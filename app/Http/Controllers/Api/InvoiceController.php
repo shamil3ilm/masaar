@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Domains\Invoice\Enums\InvoiceStatus;
-use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CreateInvoiceRequest;
+use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -29,7 +29,6 @@ class InvoiceController extends Controller
     {
         $query = Invoice::where('organization_id', $this->tenant->getOrganizationId());
 
-        // Filter by status
         if ($request->has('status')) {
             $query->where('status', $request->status);
         }
@@ -37,7 +36,7 @@ class InvoiceController extends Controller
         $invoices = $query->orderBy('created_at', 'desc')
             ->paginate($request->get('per_page', 15));
 
-        return response()->json($invoices);
+        return ApiResponse::paginated($invoices);
     }
 
     /**
@@ -61,7 +60,7 @@ class InvoiceController extends Controller
             'notes' => $request->notes,
         ]);
 
-        // Create invoice lines
+        // Create invoice lines and calculate totals
         $subtotal = 0;
         $taxAmount = 0;
 
@@ -82,17 +81,15 @@ class InvoiceController extends Controller
             $taxAmount += $lineTax;
         }
 
-        // Update totals
         $invoice->update([
             'subtotal' => $subtotal,
             'tax_amount' => $taxAmount,
             'total' => $subtotal + $taxAmount,
         ]);
 
-        return response()->json([
-            'message' => 'Invoice created',
+        return ApiResponse::created([
             'invoice' => $invoice->load('lines'),
-        ], 201);
+        ], 'Invoice created');
     }
 
     /**
@@ -106,7 +103,7 @@ class InvoiceController extends Controller
             ->with('lines')
             ->findOrFail($id);
 
-        return response()->json(['invoice' => $invoice]);
+        return ApiResponse::success(['invoice' => $invoice]);
     }
 
     /**
@@ -120,9 +117,7 @@ class InvoiceController extends Controller
             ->findOrFail($id);
 
         if (! $invoice->isEditable()) {
-            return response()->json([
-                'error' => 'Invoice cannot be edited after issuance',
-            ], 422);
+            return ApiResponse::error('Invoice cannot be edited after issuance', 422);
         }
 
         $invoice->update($request->only([
@@ -135,10 +130,9 @@ class InvoiceController extends Controller
             'notes',
         ]));
 
-        return response()->json([
-            'message' => 'Invoice updated',
+        return ApiResponse::success([
             'invoice' => $invoice->fresh('lines'),
-        ]);
+        ], 'Invoice updated');
     }
 
     /**
@@ -152,15 +146,11 @@ class InvoiceController extends Controller
             ->findOrFail($id);
 
         if (! $invoice->isEditable()) {
-            return response()->json([
-                'error' => 'Cannot delete issued invoice',
-            ], 422);
+            return ApiResponse::error('Cannot delete issued invoice', 422);
         }
 
         $invoice->delete();
 
-        return response()->json([
-            'message' => 'Invoice deleted',
-        ]);
+        return ApiResponse::success(null, 'Invoice deleted');
     }
 }
