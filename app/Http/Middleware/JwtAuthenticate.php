@@ -28,6 +28,9 @@ class JwtAuthenticate
                 ], 401);
             }
 
+            // Bind user to Laravel's auth context
+            auth()->setUser($user);
+
         } catch (TokenExpiredException $e) {
             return response()->json([
                 'error' => 'Token expired',
