@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ComplianceController;
 use App\Http\Controllers\Api\InvoiceController;
+use App\Http\Controllers\Api\OrganizationController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -32,7 +33,7 @@ Route::prefix('auth')->group(function () {
 | Protected Routes (Require JWT)
 |--------------------------------------------------------------------------
 */
-Route::middleware('jwt.auth')->group(function () {
+Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
 
     // Auth
     Route::prefix('auth')->group(function () {
@@ -51,4 +52,8 @@ Route::middleware('jwt.auth')->group(function () {
         Route::post('/submit/{invoiceId}', [ComplianceController::class, 'submit']);
         Route::get('/status/{invoiceId}', [ComplianceController::class, 'status']);
     });
+
+    // Organizations
+    Route::apiResource('organizations', OrganizationController::class)->except(['destroy']);
+    Route::post('/organizations/{id}/switch', [OrganizationController::class, 'switch']);
 });
