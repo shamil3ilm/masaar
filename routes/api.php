@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ComplianceController;
 use App\Http\Controllers\Api\InvoiceController;
+use App\Http\Controllers\Api\OnboardingController;
 use App\Http\Controllers\Api\OrganizationController;
 use Illuminate\Support\Facades\Route;
 
@@ -51,6 +52,14 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
         Route::post('/validate/{invoiceId}', [ComplianceController::class, 'validate']);
         Route::post('/submit/{invoiceId}', [ComplianceController::class, 'submit']);
         Route::get('/status/{invoiceId}', [ComplianceController::class, 'status']);
+    });
+
+    // ZATCA Onboarding (CSID flow)
+    Route::prefix('compliance/onboarding')->group(function () {
+        Route::get('/status', [OnboardingController::class, 'status']);
+        Route::post('/ccsid', [OnboardingController::class, 'requestCcsid']);
+        Route::post('/compliance-check', [OnboardingController::class, 'runComplianceCheck']);
+        Route::post('/pcsid', [OnboardingController::class, 'requestPcsid']);
     });
 
     // Organizations
