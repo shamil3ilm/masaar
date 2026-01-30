@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Domains\Organization\ValueObjects;
 
 /**
- * Value object representing the current organization context.
+ * Immutable value object representing the current organization context.
  *
- * Extracted from JWT claims or request headers.
- * Immutable and used for scoping queries and authorization.
+ * Extracted from JWT claims at request time.
+ * Used for scoping queries and authorization checks.
  */
 final readonly class OrganizationContext
 {
@@ -17,6 +17,9 @@ final readonly class OrganizationContext
         public string $role,
     ) {}
 
+    /**
+     * Create from JWT claims array.
+     */
     public static function fromClaims(array $claims): self
     {
         return new self(
@@ -25,13 +28,30 @@ final readonly class OrganizationContext
         );
     }
 
+    /**
+     * Check if user is admin in this organization.
+     */
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
     }
 
+    /**
+     * Check if user has a specific role.
+     */
     public function hasRole(string $role): bool
     {
         return $this->role === $role;
+    }
+
+    /**
+     * Convert to array (for JWT claims).
+     */
+    public function toArray(): array
+    {
+        return [
+            'org_id' => $this->organizationId,
+            'role' => $this->role,
+        ];
     }
 }
