@@ -134,16 +134,23 @@ class ZatcaComplianceService
         // Get invoice subtype (01=B2B, 02=B2C)
         $invoiceSubtype = $invoice->type->value === 'standard' ? '01' : '02';
 
-        // Format invoice lines
+        // Format invoice lines with full tax category data from database
         $lines = $invoice->lines->map(fn ($line) => [
             'description' => $line->description,
+            'itemClassificationCode' => $line->item_classification_code,
             'quantity' => (float) $line->quantity,
+            'unitCode' => $line->unit_code ?? 'PCE',
             'unitPrice' => (float) $line->unit_price,
             'taxRate' => (float) $line->tax_rate,
             'taxAmount' => (float) $line->tax_amount,
             'lineTotal' => (float) $line->line_total,
-            'taxCategory' => $this->getTaxCategory($line->tax_rate),
-            'unitCode' => 'PCE', // Default unit code
+            // Use stored tax category, fallback to computed value
+            'taxCategory' => $line->tax_category ?? $this->getTaxCategory(
+                (float) $line->tax_rate,
+                $line->tax_exemption_code
+            ),
+            'taxExemptionReasonCode' => $line->tax_exemption_code,
+            'taxExemptionReason' => $line->tax_exemption_reason,
         ])->toArray();
 
         return new InvoiceXmlData(
@@ -167,6 +174,7 @@ class ZatcaComplianceService
             sellerCrNumber: $organization->cr_number,
             buyerVatNumber: $invoice->buyer_vat_number,
             buyerAddress: $invoice->buyer_address ? AddressData::fromArray($invoice->buyer_address) : null,
+            discount: (float) ($invoice->discount_amount ?? 0),
             paymentMeansCode: $invoice->payment_means_code ?? '10',
             previousInvoiceHash: $previousInvoiceHash,
             billingReferenceId: $invoice->billing_reference_id,
