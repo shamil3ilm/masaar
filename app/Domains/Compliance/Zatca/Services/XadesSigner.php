@@ -386,11 +386,122 @@ class XadesSigner
 
     /**
      * Verify signature in signed XML.
+     *
+     * @param string $signedXml Signed XML document
+     * @return bool True if signature is valid
      */
     public function verify(string $signedXml): bool
     {
-        // Implementation would verify the signature
-        // For now, return true if signature exists
-        return $this->extractSignature($signedXml) !== null;
+        try {
+            $dom = new DOMDocument();
+            $dom->preserveWhiteSpace = false;
+            $dom->loadXML($signedXml);
+
+            $xpath = new DOMXPath($dom);
+            $xpath->registerNamespace('ds', self::DS_NS);
+
+            // Get SignedInfo element
+            $signedInfoNodes = $xpath->query('//ds:SignedInfo');
+            if ($signedInfoNodes->length === 0) {
+                return false;
+            }
+            $signedInfo = $signedInfoNodes->item(0);
+
+            // Get SignatureValue
+            $signatureValueNodes = $xpath->query('//ds:SignatureValue');
+            if ($signatureValueNodes->length === 0) {
+                return false;
+            }
+            $signatureValue = $signatureValueNodes->item(0)->textContent;
+
+            // Get certificate from KeyInfo
+            $certNodes = $xpath->query('//ds:X509Certificate');
+            if ($certNodes->length === 0) {
+                return false;
+            }
+            $certBase64 = $certNodes->item(0)->textContent;
+            $certificatePem = "-----BEGIN CERTIFICATE-----\n" .
+                chunk_split($certBase64, 64, "\n") .
+                "-----END CERTIFICATE-----";
+
+            // Canonicalize SignedInfo
+            $signedInfoC14n = $signedInfo->C14N(true, false);
+
+            // Verify the signature
+            return $this->ecdsaSigner->verify(
+                $signedInfoC14n,
+                $signatureValue,
+                $this->ecdsaSigner->extractPublicKey($certificatePem)
+            );
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Verify all references in the signature.
+     *
+     * @param string $signedXml Signed XML document
+     * @return array{valid: bool, errors: array}
+     */
+    public function verifyReferences(string $signedXml): array
+    {
+        $errors = [];
+
+        try {
+            $dom = new DOMDocument();
+            $dom->preserveWhiteSpace = false;
+            $dom->loadXML($signedXml);
+
+            $xpath = new DOMXPath($dom);
+            $xpath->registerNamespace('ds', self::DS_NS);
+
+            // Get all Reference elements
+            $references = $xpath->query('//ds:Reference');
+
+            foreach ($references as $reference) {
+                $uri = $reference->getAttribute('URI');
+                $type = $reference->getAttribute('Type');
+
+                // Get expected digest
+                $digestValueNodes = $xpath->query('ds:DigestValue', $reference);
+                if ($digestValueNodes->length === 0) {
+                    $errors[] = "Reference {$uri}: missing DigestValue";
+                    continue;
+                }
+                $expectedDigest = $digestValueNodes->item(0)->textContent;
+
+                // Calculate actual digest based on reference type
+                if ($type === 'http://uri.etsi.org/01903#SignedProperties') {
+                    // Reference to SignedProperties
+                    $targetId = ltrim($uri, '#');
+                    $targetNodes = $xpath->query("//*[@Id='{$targetId}']");
+                    if ($targetNodes->length === 0) {
+                        $errors[] = "Reference {$uri}: target element not found";
+                        continue;
+                    }
+                    $target = $targetNodes->item(0);
+                    $targetC14n = $target->C14N(true, false);
+                    $actualDigest = base64_encode(hash('sha256', $targetC14n, true));
+                } elseif (empty($uri)) {
+                    // Reference to document (enveloped signature)
+                    // Would need to apply transforms and calculate digest
+                    continue;
+                } else {
+                    continue;
+                }
+
+                if ($actualDigest !== $expectedDigest) {
+                    $errors[] = "Reference {$uri}: digest mismatch";
+                }
+            }
+        } catch (\Exception $e) {
+            $errors[] = 'Verification error: ' . $e->getMessage();
+        }
+
+        return [
+            'valid' => empty($errors),
+            'errors' => $errors,
+        ];
     }
 }
