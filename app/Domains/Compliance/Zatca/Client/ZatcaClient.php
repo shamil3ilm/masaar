@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Zatca\Client;
 
+use App\Domains\Compliance\Zatca\DTOs\CsidResponse;
 use App\Domains\Compliance\Zatca\DTOs\ZatcaResponse;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
@@ -119,6 +120,126 @@ class ZatcaClient
     }
 
     /**
+     * Request Compliance CSID (Step 1 of onboarding).
+     */
+    public function requestComplianceCsid(string $csr, string $otp): CsidResponse
+    {
+        try {
+            $response = Http::timeout($this->timeout)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json',
+                    'OTP' => $otp,
+                    'Accept-Version' => 'V2',
+                ])
+                ->post($this->baseUrl . '/compliance', [
+                    'csr' => base64_encode($csr),
+                ]);
+
+            if ($response->successful()) {
+                return CsidResponse::fromApiResponse($response->json());
+            }
+
+            return CsidResponse::failed('CSID request failed: ' . $response->status());
+
+        } catch (\Exception $e) {
+            Log::error('Compliance CSID request failed', ['error' => $e->getMessage()]);
+            return CsidResponse::failed($e->getMessage());
+        }
+    }
+
+    /**
+     * Submit compliance invoice for validation.
+     */
+    public function submitComplianceInvoice(string $invoiceXml, string $ccsid, string $secret): ZatcaResponse
+    {
+        try {
+            $response = Http::timeout($this->timeout)
+                ->withBasicAuth($ccsid, $secret)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json',
+                    'Accept-Language' => 'en',
+                    'Accept-Version' => 'V2',
+                ])
+                ->post($this->baseUrl . '/compliance/invoices', [
+                    'invoiceHash' => $this->hashInvoice($invoiceXml),
+                    'uuid' => $this->extractUuid($invoiceXml),
+                    'invoice' => base64_encode($invoiceXml),
+                ]);
+
+            if ($response->successful()) {
+                return ZatcaResponse::fromApiResponse($response->json());
+            }
+
+            return ZatcaResponse::failed('Compliance invoice submission failed: ' . $response->status());
+
+        } catch (\Exception $e) {
+            Log::error('Compliance invoice submission failed', ['error' => $e->getMessage()]);
+            return ZatcaResponse::failed($e->getMessage());
+        }
+    }
+
+    /**
+     * Request Production CSID (Step 3 of onboarding).
+     */
+    public function requestProductionCsid(string $ccsid, string $secret, string $requestId): CsidResponse
+    {
+        try {
+            $response = Http::timeout($this->timeout)
+                ->withBasicAuth($ccsid, $secret)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json',
+                    'Accept-Version' => 'V2',
+                ])
+                ->post($this->baseUrl . '/production/csids', [
+                    'compliance_request_id' => $requestId,
+                ]);
+
+            if ($response->successful()) {
+                return CsidResponse::fromApiResponse($response->json());
+            }
+
+            return CsidResponse::failed('PCSID request failed: ' . $response->status());
+
+        } catch (\Exception $e) {
+            Log::error('Production CSID request failed', ['error' => $e->getMessage()]);
+            return CsidResponse::failed($e->getMessage());
+        }
+    }
+
+    /**
+     * Renew Production CSID before expiry.
+     */
+    public function renewProductionCsid(string $pcsid, string $secret, string $csr, string $otp): CsidResponse
+    {
+        try {
+            $response = Http::timeout($this->timeout)
+                ->withBasicAuth($pcsid, $secret)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json',
+                    'OTP' => $otp,
+                    'Accept-Version' => 'V2',
+                ])
+                ->patch($this->baseUrl . '/production/csids', [
+                    'csr' => base64_encode($csr),
+                ]);
+
+            if ($response->successful()) {
+                return CsidResponse::fromApiResponse($response->json());
+            }
+
+            return CsidResponse::failed('PCSID renewal failed: ' . $response->status());
+
+        } catch (\Exception $e) {
+            Log::error('PCSID renewal failed', ['error' => $e->getMessage()]);
+            return CsidResponse::failed($e->getMessage());
+        }
+    }
+
+    /**
      * Check if client is configured.
      */
     public function isConfigured(): bool
@@ -134,5 +255,25 @@ class ZatcaClient
     public function getEnvironment(): string
     {
         return config('zatca.environment', 'sandbox');
+    }
+
+    /**
+     * Hash invoice XML for API submission.
+     */
+    private function hashInvoice(string $xml): string
+    {
+        return base64_encode(hash('sha256', $xml, true));
+    }
+
+    /**
+     * Extract UUID from invoice XML.
+     */
+    private function extractUuid(string $xml): string
+    {
+        if (preg_match('/<cbc:UUID>([^<]+)<\/cbc:UUID>/i', $xml, $matches)) {
+            return $matches[1];
+        }
+
+        return '';
     }
 }
