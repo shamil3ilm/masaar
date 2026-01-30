@@ -14,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'jwt.auth' => \App\Http\Middleware\JwtAuthenticate::class,
+            'rate.api' => \App\Http\Middleware\RateLimitApi::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

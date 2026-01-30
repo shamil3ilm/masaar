@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Audits\AuditService;
 use App\Domains\Auth\Contracts\AuthenticatesUsers;
 use App\Domains\Auth\DTOs\LoginData;
 use App\Http\Controllers\Controller;
@@ -18,7 +19,8 @@ use Illuminate\Support\Facades\Hash;
 class AuthController extends Controller
 {
     public function __construct(
-        private readonly AuthenticatesUsers $auth
+        private readonly AuthenticatesUsers $auth,
+        private readonly AuditService $audit,
     ) {}
 
     /**
@@ -41,6 +43,8 @@ class AuthController extends Controller
                 'password' => $request->password,
             ])
         );
+
+        $this->audit->logAuth('register', $user->id);
 
         return ApiResponse::created([
             'user' => [
@@ -70,6 +74,8 @@ class AuthController extends Controller
             return ApiResponse::unauthorized('Invalid credentials');
         }
 
+        $this->audit->logAuth('login');
+
         return ApiResponse::success([
             'token' => $token->toArray(),
         ], 'Login successful');
@@ -82,6 +88,7 @@ class AuthController extends Controller
      */
     public function logout(): JsonResponse
     {
+        $this->audit->logAuth('logout');
         $this->auth->logout();
 
         return ApiResponse::success(null, 'Logged out successfully');
