@@ -7,6 +7,7 @@ use App\Domains\Auth\DTOs\LoginData;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
+use App\Http\Responses\ApiResponse;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
@@ -41,15 +42,14 @@ class AuthController extends Controller
             ])
         );
 
-        return response()->json([
-            'message' => 'User registered successfully',
+        return ApiResponse::created([
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
             ],
             'token' => $token?->toArray(),
-        ], 201);
+        ], 'User registered successfully');
     }
 
     /**
@@ -67,15 +67,12 @@ class AuthController extends Controller
         );
 
         if (! $token) {
-            return response()->json([
-                'error' => 'Invalid credentials',
-            ], 401);
+            return ApiResponse::unauthorized('Invalid credentials');
         }
 
-        return response()->json([
-            'message' => 'Login successful',
+        return ApiResponse::success([
             'token' => $token->toArray(),
-        ]);
+        ], 'Login successful');
     }
 
     /**
@@ -87,9 +84,7 @@ class AuthController extends Controller
     {
         $this->auth->logout();
 
-        return response()->json([
-            'message' => 'Logged out successfully',
-        ]);
+        return ApiResponse::success(null, 'Logged out successfully');
     }
 
     /**
@@ -101,10 +96,9 @@ class AuthController extends Controller
     {
         $token = $this->auth->refresh();
 
-        return response()->json([
-            'message' => 'Token refreshed',
+        return ApiResponse::success([
             'token' => $token->toArray(),
-        ]);
+        ], 'Token refreshed');
     }
 
     /**
@@ -116,7 +110,7 @@ class AuthController extends Controller
     {
         $user = $this->auth->user();
 
-        return response()->json([
+        return ApiResponse::success([
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,

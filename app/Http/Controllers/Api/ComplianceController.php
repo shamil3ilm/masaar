@@ -2,27 +2,28 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Domains\Compliance\Zatca\Client\ZatcaClient;
-use App\Domains\Compliance\Zatca\Services\ZatcaComplianceService;
+use App\Domains\Compliance\Zatca\Services\ZatcaSubmissionService;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
+use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 
 /**
  * ZATCA Compliance API controller.
+ *
+ * Thin controller - delegates to ZatcaSubmissionService.
  */
 class ComplianceController extends Controller
 {
     public function __construct(
         private readonly TenantResolver $tenant,
-        private readonly ZatcaComplianceService $compliance,
-        private readonly ZatcaClient $zatcaClient,
+        private readonly ZatcaSubmissionService $submission,
     ) {}
 
     /**
-     * Generate compliance data for invoice (hash, QR, XML).
+     * Generate compliance data for invoice (hash, QR).
      *
      * POST /api/compliance/zatca/generate/{invoiceId}
      */
@@ -31,28 +32,9 @@ class ComplianceController extends Controller
         $invoice = $this->getInvoice($invoiceId);
         $organization = $this->tenant->getOrganization();
 
-        // Get previous invoice hash for chaining
-        $previousHash = $this->getPreviousInvoiceHash($invoice);
+        $result = $this->submission->generate($invoice, $organization);
 
-        $complianceData = $this->compliance->generateComplianceData(
-            invoice: $invoice,
-            sellerName: $organization->name,
-            sellerVatNumber: $organization->compliance_profile['vat_number'] ?? '',
-            previousInvoiceHash: $previousHash,
-        );
-
-        // Update invoice with compliance data
-        $invoice->update([
-            'hash' => $complianceData['hash'],
-            'qr_code' => $complianceData['qr_code'],
-            'status' => InvoiceStatus::Issued,
-        ]);
-
-        return response()->json([
-            'message' => 'Compliance data generated',
-            'hash' => $complianceData['hash'],
-            'qr_code' => $complianceData['qr_code'],
-        ]);
+        return ApiResponse::success($result, 'Compliance data generated');
     }
 
     /**
@@ -65,19 +47,9 @@ class ComplianceController extends Controller
         $invoice = $this->getInvoice($invoiceId);
         $organization = $this->tenant->getOrganization();
 
-        $complianceData = $this->compliance->generateComplianceData(
-            invoice: $invoice,
-            sellerName: $organization->name,
-            sellerVatNumber: $organization->compliance_profile['vat_number'] ?? '',
-        );
+        $response = $this->submission->validate($invoice, $organization);
 
-        $response = $this->zatcaClient->checkCompliance(
-            invoiceXml: $complianceData['xml'],
-            invoiceHash: $complianceData['hash'],
-            uuid: $invoice->id,
-        );
-
-        return response()->json([
+        return ApiResponse::success([
             'valid' => $response->success,
             'status' => $response->validationStatus,
             'warnings' => $response->warningMessages,
@@ -95,50 +67,25 @@ class ComplianceController extends Controller
         $invoice = $this->getInvoice($invoiceId);
 
         if ($invoice->status !== InvoiceStatus::Issued) {
-            return response()->json([
-                'error' => 'Invoice must be issued before submission',
-            ], 422);
+            return ApiResponse::error('Invoice must be issued before submission', 422);
         }
 
         $organization = $this->tenant->getOrganization();
 
-        $complianceData = $this->compliance->generateComplianceData(
-            invoice: $invoice,
-            sellerName: $organization->name,
-            sellerVatNumber: $organization->compliance_profile['vat_number'] ?? '',
-        );
+        $response = $this->submission->submit($invoice, $organization);
 
-        // Choose clearance or reporting based on invoice type
-        $response = $invoice->requiresClearance()
-            ? $this->zatcaClient->clearInvoice(
-                invoiceXml: $complianceData['xml'],
-                invoiceHash: $complianceData['hash'],
-                uuid: $invoice->id,
-            )
-            : $this->zatcaClient->reportInvoice(
-                invoiceXml: $complianceData['xml'],
-                invoiceHash: $complianceData['hash'],
-                uuid: $invoice->id,
+        if (! $response->success) {
+            return ApiResponse::error(
+                'ZATCA submission failed',
+                422,
+                $response->errorMessages
             );
+        }
 
-        // Update invoice status
-        $invoice->update([
-            'status' => $response->success ? InvoiceStatus::Accepted : InvoiceStatus::Rejected,
-            'zatca_response' => [
-                'clearance_status' => $response->clearanceStatus,
-                'reporting_status' => $response->reportingStatus,
-                'validation_status' => $response->validationStatus,
-                'warnings' => $response->warningMessages,
-                'errors' => $response->errorMessages,
-            ],
-        ]);
-
-        return response()->json([
-            'success' => $response->success,
+        return ApiResponse::success([
             'status' => $response->clearanceStatus ?? $response->reportingStatus,
             'warnings' => $response->warningMessages,
-            'errors' => $response->errorMessages,
-        ]);
+        ], 'Invoice submitted successfully');
     }
 
     /**
@@ -150,7 +97,7 @@ class ComplianceController extends Controller
     {
         $invoice = $this->getInvoice($invoiceId);
 
-        return response()->json([
+        return ApiResponse::success([
             'invoice_id' => $invoice->id,
             'status' => $invoice->status->value,
             'hash' => $invoice->hash,
@@ -167,19 +114,5 @@ class ComplianceController extends Controller
         return Invoice::where('organization_id', $this->tenant->getOrganizationId())
             ->with('lines')
             ->findOrFail($id);
-    }
-
-    /**
-     * Get hash of previous invoice for chaining.
-     */
-    private function getPreviousInvoiceHash(Invoice $invoice): ?string
-    {
-        $previous = Invoice::where('organization_id', $invoice->organization_id)
-            ->where('created_at', '<', $invoice->created_at)
-            ->whereNotNull('hash')
-            ->orderBy('created_at', 'desc')
-            ->first();
-
-        return $previous?->hash;
     }
 }
