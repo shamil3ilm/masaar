@@ -1,0 +1,793 @@
+openapi: 3.0.3
+info:
+  title: CompliPay ZATCA E-Invoicing API
+  description: |
+    CompliPay provides a comprehensive API for ZATCA-compliant e-invoicing in Saudi Arabia.
+
+    ## Features
+    - Invoice creation and management
+    - ZATCA Phase 2 compliance (clearance and reporting)
+    - Digital signatures (XAdES-BES, ECDSA)
+    - QR code generation (TLV encoding)
+    - Multi-tenant organization support
+    - Webhooks for async notifications
+
+    ## Authentication
+    Two authentication methods are supported:
+
+    ### 1. JWT Token (User Authentication)
+    ```
+    POST /api/auth/login
+    Authorization: Bearer {token}
+    ```
+
+    ### 2. API Key (Server-to-Server)
+    ```
+    X-API-Key: cpk_xxxxxxxx_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    ```
+
+    ## Rate Limiting
+    - 60 requests per minute per user/API key
+    - Headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`
+
+  version: 1.0.0
+  contact:
+    name: CompliPay Support
+    email: support@complipay.sa
+  license:
+    name: MIT
+
+servers:
+  - url: https://api.complipay.sa
+    description: Production
+  - url: https://sandbox.complipay.sa
+    description: Sandbox
+
+tags:
+  - name: Authentication
+    description: User authentication and token management
+  - name: Invoices
+    description: Invoice CRUD operations
+  - name: Compliance
+    description: ZATCA compliance operations
+  - name: Onboarding
+    description: ZATCA CSID onboarding flow
+  - name: Webhooks
+    description: Webhook subscription management
+  - name: API Keys
+    description: API key management for server-to-server auth
+
+security:
+  - bearerAuth: []
+  - apiKey: []
+
+paths:
+  /api/health:
+    get:
+      summary: Health check
+      tags: [System]
+      security: []
+      responses:
+        '200':
+          description: System is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  version:
+                    type: string
+                    example: "1.0.0"
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /api/auth/login:
+    post:
+      summary: Authenticate user
+      tags: [Authentication]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/auth/refresh:
+    post:
+      summary: Refresh JWT token
+      tags: [Authentication]
+      responses:
+        '200':
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+
+  /api/invoices:
+    get:
+      summary: List invoices
+      tags: [Invoices]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, issued, submitted, cleared, reported, rejected]
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 15
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        '200':
+          description: Paginated invoice list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedInvoices'
+
+    post:
+      summary: Create invoice
+      tags: [Invoices]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInvoice'
+      responses:
+        '201':
+          description: Invoice created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/invoices/{id}:
+    get:
+      summary: Get invoice details
+      tags: [Invoices]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Invoice details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      summary: Update draft invoice
+      tags: [Invoices]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInvoice'
+      responses:
+        '200':
+          description: Invoice updated
+        '422':
+          description: Invoice cannot be edited after issuance
+
+    delete:
+      summary: Delete draft invoice
+      tags: [Invoices]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Invoice deleted
+        '422':
+          description: Cannot delete issued invoice
+
+  /api/compliance/zatca/generate/{invoiceId}:
+    post:
+      summary: Generate compliance data (hash, QR, XML)
+      tags: [Compliance]
+      parameters:
+        - name: invoiceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Compliance data generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      xml:
+                        type: string
+                        description: UBL 2.1 XML invoice
+                      hash:
+                        type: string
+                        description: SHA-256 invoice hash (base64)
+                      qr_code:
+                        type: string
+                        description: TLV-encoded QR code (base64)
+
+  /api/compliance/zatca/submit/{invoiceId}:
+    post:
+      summary: Submit invoice to ZATCA
+      tags: [Compliance]
+      parameters:
+        - name: invoiceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Invoice submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        enum: [CLEARED, REPORTED, REJECTED]
+                      warnings:
+                        type: array
+                        items:
+                          type: string
+        '422':
+          description: Submission failed
+
+  /api/compliance/onboarding/status:
+    get:
+      summary: Get onboarding status
+      tags: [Onboarding]
+      responses:
+        '200':
+          description: Onboarding status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      profile_complete:
+                        type: boolean
+                      has_ccsid:
+                        type: boolean
+                      has_pcsid:
+                        type: boolean
+                      is_onboarded:
+                        type: boolean
+
+  /api/compliance/onboarding/ccsid:
+    post:
+      summary: Request Compliance CSID (Step 1)
+      tags: [Onboarding]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [otp, common_name, serial_number]
+              properties:
+                otp:
+                  type: string
+                  minLength: 6
+                  maxLength: 6
+                  description: OTP from ZATCA portal
+                common_name:
+                  type: string
+                serial_number:
+                  type: string
+                organization_unit:
+                  type: string
+                location:
+                  type: string
+                industry:
+                  type: string
+      responses:
+        '200':
+          description: CCSID obtained
+
+  /api/compliance/onboarding/compliance-check:
+    post:
+      summary: Run compliance checks (Step 2)
+      tags: [Onboarding]
+      responses:
+        '200':
+          description: Compliance check results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      passed:
+                        type: boolean
+                      results:
+                        type: array
+                        items:
+                          type: object
+
+  /api/compliance/onboarding/pcsid:
+    post:
+      summary: Request Production CSID (Step 3)
+      tags: [Onboarding]
+      responses:
+        '200':
+          description: PCSID obtained - organization is now ZATCA compliant
+
+  /api/webhooks:
+    get:
+      summary: List webhooks
+      tags: [Webhooks]
+      responses:
+        '200':
+          description: Webhook list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookList'
+
+    post:
+      summary: Create webhook
+      tags: [Webhooks]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url, events]
+              properties:
+                url:
+                  type: string
+                  format: uri
+                events:
+                  type: array
+                  items:
+                    type: string
+                    enum:
+                      - "*"
+                      - invoice.created
+                      - invoice.updated
+                      - invoice.issued
+                      - invoice.submitted
+                      - invoice.cleared
+                      - invoice.reported
+                      - invoice.rejected
+      responses:
+        '201':
+          description: Webhook created (secret shown only once)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookCreated'
+
+  /api/webhooks/events:
+    get:
+      summary: List available webhook events
+      tags: [Webhooks]
+      responses:
+        '200':
+          description: Available events
+
+  /api/webhooks/{id}/test:
+    post:
+      summary: Send test webhook
+      tags: [Webhooks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Test webhook sent
+
+  /api/api-keys:
+    get:
+      summary: List API keys
+      tags: [API Keys]
+      responses:
+        '200':
+          description: API key list
+
+    post:
+      summary: Create API key
+      tags: [API Keys]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                scopes:
+                  type: array
+                  items:
+                    type: string
+                    enum:
+                      - "*"
+                      - invoices:read
+                      - invoices:write
+                      - compliance:read
+                      - compliance:write
+                      - webhooks:manage
+                expires_at:
+                  type: string
+                  format: date-time
+      responses:
+        '201':
+          description: API key created (key shown only once)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyCreated'
+
+  /api/api-keys/scopes:
+    get:
+      summary: List available API key scopes
+      tags: [API Keys]
+      responses:
+        '200':
+          description: Available scopes
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    TokenResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            token:
+              type: object
+              properties:
+                access_token:
+                  type: string
+                token_type:
+                  type: string
+                  example: bearer
+                expires_in:
+                  type: integer
+                  example: 3600
+
+    CreateInvoice:
+      type: object
+      required: [invoice_number, type, buyer_name, issue_date, lines]
+      properties:
+        invoice_number:
+          type: string
+          example: INV-2026-001
+        type:
+          type: string
+          enum: [standard, simplified]
+          description: standard=B2B, simplified=B2C
+        buyer_name:
+          type: string
+        buyer_vat_number:
+          type: string
+          description: Required for B2B invoices
+        buyer_address:
+          type: object
+          properties:
+            street:
+              type: string
+            city:
+              type: string
+            district:
+              type: string
+            building_number:
+              type: string
+            postal_code:
+              type: string
+        issue_date:
+          type: string
+          format: date
+        supply_date:
+          type: string
+          format: date
+        currency:
+          type: string
+          default: SAR
+        lines:
+          type: array
+          items:
+            type: object
+            required: [description, quantity, unit_price]
+            properties:
+              description:
+                type: string
+              quantity:
+                type: number
+              unit_price:
+                type: number
+              tax_rate:
+                type: number
+                default: 15
+
+    Invoice:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        invoice_number:
+          type: string
+        type:
+          type: string
+          enum: [standard, simplified]
+        status:
+          type: string
+          enum: [draft, issued, submitted, cleared, reported, rejected]
+        issue_date:
+          type: string
+          format: date
+        subtotal:
+          type: number
+        tax_amount:
+          type: number
+        total:
+          type: number
+        hash:
+          type: string
+        qr_code:
+          type: string
+        icv:
+          type: integer
+          description: Invoice Counter Value
+        lines:
+          type: array
+          items:
+            type: object
+
+    InvoiceResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            invoice:
+              $ref: '#/components/schemas/Invoice'
+
+    PaginatedInvoices:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Invoice'
+        meta:
+          type: object
+          properties:
+            current_page:
+              type: integer
+            last_page:
+              type: integer
+            per_page:
+              type: integer
+            total:
+              type: integer
+
+    WebhookList:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            webhooks:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  url:
+                    type: string
+                    format: uri
+                  events:
+                    type: array
+                    items:
+                      type: string
+                  is_active:
+                    type: boolean
+                  failure_count:
+                    type: integer
+
+    WebhookCreated:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            webhook:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                url:
+                  type: string
+                secret:
+                  type: string
+                  description: HMAC secret (shown only once)
+                events:
+                  type: array
+                  items:
+                    type: string
+
+    ApiKeyCreated:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            api_key:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                name:
+                  type: string
+                key:
+                  type: string
+                  description: Full API key (shown only once)
+                scopes:
+                  type: array
+                  items:
+                    type: string
+
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            message:
+              type: string
+            code:
+              type: string
+
+  responses:
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ValidationError:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Validation failed
+                  code:
+                    type: string
+                    example: VALIDATION_ERROR
+                  details:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
