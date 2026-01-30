@@ -124,3 +124,66 @@ CREATE TABLE failed_jobs (
     exception LONGTEXT NOT NULL,
     failed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- -----------------------------------------------------------------------------
+-- Invoices
+-- -----------------------------------------------------------------------------
+-- Core business entity for ZATCA compliance
+-- Immutable after status changes from 'draft'
+CREATE TABLE invoices (
+    id CHAR(36) PRIMARY KEY,
+    organization_id CHAR(36) NOT NULL,
+
+    -- Identification
+    invoice_number VARCHAR(255) NOT NULL,
+    type VARCHAR(50) NOT NULL,                      -- standard (B2B), simplified (B2C)
+    status VARCHAR(50) NOT NULL,                    -- draft, issued, submitted, accepted, rejected
+
+    -- Dates
+    issue_date DATE NOT NULL,
+    supply_date DATE NULL,
+
+    -- Buyer info
+    currency CHAR(3) DEFAULT 'SAR',
+    buyer_name VARCHAR(255) NOT NULL,
+    buyer_vat_number VARCHAR(50) NULL,
+    buyer_address TEXT NULL,
+
+    -- Amounts
+    subtotal DECIMAL(12,2) DEFAULT 0,
+    tax_amount DECIMAL(12,2) DEFAULT 0,
+    total DECIMAL(12,2) DEFAULT 0,
+
+    -- ZATCA compliance fields
+    hash VARCHAR(255) NULL,                         -- Invoice hash for compliance
+    qr_code TEXT NULL,                              -- Base64 QR code
+    zatca_response JSON NULL,                       -- ZATCA API response
+
+    notes TEXT NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+
+    FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+    INDEX invoices_org_status_index (organization_id, status),
+    INDEX invoices_number_index (invoice_number)
+);
+
+-- -----------------------------------------------------------------------------
+-- Invoice Lines
+-- -----------------------------------------------------------------------------
+CREATE TABLE invoice_lines (
+    id CHAR(36) PRIMARY KEY,
+    invoice_id CHAR(36) NOT NULL,
+
+    description VARCHAR(255) NOT NULL,
+    quantity DECIMAL(12,3) NOT NULL,
+    unit_price DECIMAL(12,2) NOT NULL,
+    tax_rate DECIMAL(5,2) DEFAULT 15.00,            -- Default VAT 15%
+    tax_amount DECIMAL(12,2) DEFAULT 0,
+    line_total DECIMAL(12,2) DEFAULT 0,
+
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+
+    FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
+);
