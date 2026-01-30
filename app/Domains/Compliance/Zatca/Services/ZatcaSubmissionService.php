@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Zatca\Services;
 
+use App\Audits\AuditService;
 use App\Domains\Compliance\Zatca\Client\ZatcaClient;
 use App\Domains\Compliance\Zatca\DTOs\ZatcaResponse;
 use App\Domains\Invoice\Enums\InvoiceStatus;
@@ -26,6 +27,7 @@ class ZatcaSubmissionService
     public function __construct(
         private readonly ZatcaComplianceService $compliance,
         private readonly ZatcaClient $client,
+        private readonly AuditService $audit,
     ) {}
 
     /**
@@ -101,6 +103,13 @@ class ZatcaSubmissionService
 
         // Update invoice status based on response
         $this->updateInvoiceStatus($invoice, $response);
+
+        // Audit log the ZATCA submission
+        $this->audit->logZatcaSubmission($invoice, $response->success, [
+            'clearance_status' => $response->clearanceStatus,
+            'reporting_status' => $response->reportingStatus,
+            'errors' => $response->errorMessages,
+        ]);
 
         return $response;
     }

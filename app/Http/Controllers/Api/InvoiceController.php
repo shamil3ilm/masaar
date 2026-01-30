@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Audits\AuditService;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Services\TenantResolver;
@@ -17,7 +18,8 @@ use Illuminate\Http\Request;
 class InvoiceController extends Controller
 {
     public function __construct(
-        private readonly TenantResolver $tenant
+        private readonly TenantResolver $tenant,
+        private readonly AuditService $audit,
     ) {}
 
     /**
@@ -87,6 +89,8 @@ class InvoiceController extends Controller
             'total' => $subtotal + $taxAmount,
         ]);
 
+        $this->audit->logCreated($invoice);
+
         return ApiResponse::created([
             'invoice' => $invoice->load('lines'),
         ], 'Invoice created');
@@ -120,6 +124,8 @@ class InvoiceController extends Controller
             return ApiResponse::error('Invoice cannot be edited after issuance', 422);
         }
 
+        $oldValues = $invoice->toArray();
+
         $invoice->update($request->only([
             'invoice_number',
             'issue_date',
@@ -129,6 +135,8 @@ class InvoiceController extends Controller
             'buyer_address',
             'notes',
         ]));
+
+        $this->audit->logUpdated($invoice, $oldValues);
 
         return ApiResponse::success([
             'invoice' => $invoice->fresh('lines'),
@@ -149,6 +157,7 @@ class InvoiceController extends Controller
             return ApiResponse::error('Cannot delete issued invoice', 422);
         }
 
+        $this->audit->logDeleted($invoice);
         $invoice->delete();
 
         return ApiResponse::success(null, 'Invoice deleted');
