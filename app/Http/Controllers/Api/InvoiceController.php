@@ -52,30 +52,41 @@ class InvoiceController extends Controller
             'organization_id' => $this->tenant->getOrganizationId(),
             'invoice_number' => $request->invoice_number,
             'type' => $request->type,
+            'document_type' => $request->document_type,
             'status' => InvoiceStatus::Draft,
             'issue_date' => $request->issue_date,
             'supply_date' => $request->supply_date,
             'currency' => $request->currency ?? 'SAR',
+            'payment_means_code' => $request->payment_means_code ?? '10',
             'buyer_name' => $request->buyer_name,
             'buyer_vat_number' => $request->buyer_vat_number,
             'buyer_address' => $request->buyer_address,
+            'billing_reference_id' => $request->billing_reference_id,
+            'adjustment_reason' => $request->adjustment_reason,
             'notes' => $request->notes,
         ]);
 
         // Create invoice lines and calculate totals
         $subtotal = 0;
         $taxAmount = 0;
+        $discountAmount = (float) ($request->discount_amount ?? 0);
 
         foreach ($request->lines as $line) {
             $lineSubtotal = $line['quantity'] * $line['unit_price'];
-            $lineTax = $lineSubtotal * ($line['tax_rate'] ?? 15) / 100;
+            $taxRate = $line['tax_rate'] ?? 15;
+            $lineTax = $lineSubtotal * $taxRate / 100;
 
             $invoice->lines()->create([
                 'description' => $line['description'],
+                'item_classification_code' => $line['item_classification_code'] ?? null,
                 'quantity' => $line['quantity'],
+                'unit_code' => $line['unit_code'] ?? 'PCE',
                 'unit_price' => $line['unit_price'],
-                'tax_rate' => $line['tax_rate'] ?? 15,
+                'tax_rate' => $taxRate,
                 'tax_amount' => $lineTax,
+                'tax_category' => $line['tax_category'] ?? 'S',
+                'tax_exemption_code' => $line['tax_exemption_code'] ?? null,
+                'tax_exemption_reason' => $line['tax_exemption_reason'] ?? null,
                 'line_total' => $lineSubtotal + $lineTax,
             ]);
 
@@ -83,10 +94,12 @@ class InvoiceController extends Controller
             $taxAmount += $lineTax;
         }
 
+        // Calculate final totals with discount
         $invoice->update([
             'subtotal' => $subtotal,
+            'discount_amount' => $discountAmount,
             'tax_amount' => $taxAmount,
-            'total' => $subtotal + $taxAmount,
+            'total' => $subtotal - $discountAmount + $taxAmount,
         ]);
 
         $this->audit->logCreated($invoice);
