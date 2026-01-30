@@ -175,13 +175,34 @@ class ZatcaComplianceService
 
     /**
      * Get tax category code from rate.
+     *
+     * ZATCA Tax Categories:
+     * - S = Standard rated (any positive VAT rate: 5%, 15%, etc.)
+     * - Z = Zero rated (0% with exemption reason code)
+     * - E = Exempt (not subject to VAT with exemption reason)
+     * - O = Out of scope (services outside KSA)
+     *
+     * @param float $taxRate Tax rate percentage
+     * @param string|null $exemptionCode Optional exemption reason code
+     * @return string Tax category code
      */
-    private function getTaxCategory(float $taxRate): string
+    private function getTaxCategory(float $taxRate, ?string $exemptionCode = null): string
     {
+        // If there's an exemption code, determine category from code
+        if ($exemptionCode !== null) {
+            return match (true) {
+                str_starts_with($exemptionCode, 'VATEX-SA-') => 'E', // Exempt
+                str_starts_with($exemptionCode, 'VATEX-SA-OOS') => 'O', // Out of scope
+                str_starts_with($exemptionCode, 'VATEX-SA-HEA') => 'Z', // Zero-rated healthcare
+                str_starts_with($exemptionCode, 'VATEX-SA-EDU') => 'Z', // Zero-rated education
+                default => $taxRate > 0 ? 'S' : 'Z',
+            };
+        }
+
+        // Determine from rate alone
         return match (true) {
-            $taxRate === 15.0 => 'S',  // Standard rate
-            $taxRate === 0.0 => 'Z',   // Zero-rated
-            $taxRate === 5.0 => 'S',   // Reduced rate (treated as standard)
+            $taxRate > 0 => 'S',    // Standard rated (any positive rate)
+            $taxRate === 0.0 => 'Z', // Zero-rated (default for 0%)
             default => 'S',
         };
     }

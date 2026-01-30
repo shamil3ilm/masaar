@@ -90,7 +90,9 @@ class XmlBuilder
     private function addInvoiceIdentification(InvoiceXmlData $data): void
     {
         // Profile ID (ZATCA specific)
-        $this->addElement('cbc:ProfileID', 'reporting:1.0');
+        // B2B (standard/01) requires clearance, B2C (simplified/02) requires reporting
+        $profileId = $data->isStandard() ? 'clearance:1.0' : 'reporting:1.0';
+        $this->addElement('cbc:ProfileID', $profileId);
 
         // Invoice ID
         $this->addElement('cbc:ID', $data->invoiceNumber);
@@ -302,24 +304,57 @@ class XmlBuilder
                 $taxTotal->appendChild($this->buildTaxSubtotal($subtotal, $data->currency));
             }
         } else {
-            // Default: single VAT category at 15%
-            $taxTotal->appendChild($this->buildTaxSubtotal([
-                'taxableAmount' => $data->subtotal,
-                'taxAmount' => $data->taxAmount,
-                'taxPercent' => 15.0,
-                'taxCategory' => 'S',
-                'taxExemptionReason' => null,
-            ], $data->currency));
+            // Aggregate tax subtotals from invoice lines by category and rate
+            $aggregated = $this->aggregateTaxSubtotals($data->lines);
+            foreach ($aggregated as $subtotal) {
+                $taxTotal->appendChild($this->buildTaxSubtotal($subtotal, $data->currency));
+            }
         }
 
         $this->root->appendChild($taxTotal);
 
-        // Second TaxTotal for tax currency (if different)
+        // Second TaxTotal required by ZATCA for tax currency
+        // This contains only the tax amount (no subtotals)
         $taxTotal2 = $this->dom->createElementNS(self::CAC_NS, 'cac:TaxTotal');
         $taxAmount2 = $this->dom->createElementNS(self::CBC_NS, 'cbc:TaxAmount', $this->formatAmount($data->taxAmount));
         $taxAmount2->setAttribute('currencyID', $data->currency);
         $taxTotal2->appendChild($taxAmount2);
         $this->root->appendChild($taxTotal2);
+    }
+
+    /**
+     * Aggregate tax subtotals from invoice lines by category and rate.
+     *
+     * @param array $lines Invoice lines
+     * @return array Aggregated subtotals
+     */
+    private function aggregateTaxSubtotals(array $lines): array
+    {
+        $subtotals = [];
+
+        foreach ($lines as $line) {
+            $category = $line['taxCategory'] ?? 'S';
+            $rate = (float) ($line['taxRate'] ?? 15.0);
+            $key = $category . '_' . $rate;
+
+            if (! isset($subtotals[$key])) {
+                $subtotals[$key] = [
+                    'taxableAmount' => 0.0,
+                    'taxAmount' => 0.0,
+                    'taxPercent' => $rate,
+                    'taxCategory' => $category,
+                    'taxExemptionReason' => $line['taxExemptionReason'] ?? null,
+                    'taxExemptionReasonCode' => $line['taxExemptionReasonCode'] ?? null,
+                ];
+            }
+
+            // Calculate line taxable amount (lineTotal - taxAmount)
+            $lineNet = ($line['lineTotal'] ?? 0) - ($line['taxAmount'] ?? 0);
+            $subtotals[$key]['taxableAmount'] += $lineNet;
+            $subtotals[$key]['taxAmount'] += $line['taxAmount'] ?? 0;
+        }
+
+        return array_values($subtotals);
     }
 
     /**
