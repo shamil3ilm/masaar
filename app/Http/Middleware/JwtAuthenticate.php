@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Http\Responses\ApiResponse;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -13,7 +14,7 @@ use Tymon\JWTAuth\Exceptions\TokenInvalidException;
 /**
  * JWT authentication middleware.
  *
- * Validates JWT token and sets authenticated user.
+ * Validates JWT token and binds user to Laravel's auth context.
  */
 class JwtAuthenticate
 {
@@ -23,28 +24,20 @@ class JwtAuthenticate
             $user = JWTAuth::parseToken()->authenticate();
 
             if (! $user) {
-                return response()->json([
-                    'error' => 'User not found',
-                ], 401);
+                return ApiResponse::unauthorized('User not found');
             }
 
             // Bind user to Laravel's auth context
             auth()->setUser($user);
 
         } catch (TokenExpiredException $e) {
-            return response()->json([
-                'error' => 'Token expired',
-            ], 401);
+            return ApiResponse::unauthorized('Token expired');
 
         } catch (TokenInvalidException $e) {
-            return response()->json([
-                'error' => 'Token invalid',
-            ], 401);
+            return ApiResponse::unauthorized('Token invalid');
 
         } catch (JWTException $e) {
-            return response()->json([
-                'error' => 'Token not provided',
-            ], 401);
+            return ApiResponse::unauthorized('Token not provided');
         }
 
         return $next($request);
