@@ -50,8 +50,13 @@ class XadesSigner
         // Create Signature element
         $signature = $this->createSignatureElement($dom, $signatureId);
 
-        // Create SignedInfo
-        $signedInfo = $this->createSignedInfo($dom, $xml, $signedPropertiesId);
+        // Create XAdES Object first (need SignedProperties for digest calculation)
+        $xadesResult = $this->createXadesObject($dom, $signedPropertiesId, $certificatePem);
+        $object = $xadesResult['object'];
+        $signedProperties = $xadesResult['signedProperties'];
+
+        // Create SignedInfo (with SignedProperties digest)
+        $signedInfo = $this->createSignedInfo($dom, $xml, $signedPropertiesId, $signedProperties);
         $signature->appendChild($signedInfo);
 
         // Calculate signature value
@@ -67,7 +72,6 @@ class XadesSigner
         $signature->appendChild($keyInfo);
 
         // Add XAdES Object (signed properties)
-        $object = $this->createXadesObject($dom, $signedPropertiesId, $certificatePem);
         $signature->appendChild($object);
 
         // Insert signature into document (after UBLExtensions)
@@ -92,7 +96,7 @@ class XadesSigner
     /**
      * Create SignedInfo element with references.
      */
-    private function createSignedInfo(DOMDocument $dom, string $xml, string $signedPropertiesId): DOMElement
+    private function createSignedInfo(DOMDocument $dom, string $xml, string $signedPropertiesId, DOMElement $signedProperties): DOMElement
     {
         $signedInfo = $dom->createElementNS(self::DS_NS, 'ds:SignedInfo');
 
@@ -109,8 +113,8 @@ class XadesSigner
         // Reference to the document (invoice)
         $signedInfo->appendChild($this->createDocumentReference($dom, $xml));
 
-        // Reference to SignedProperties
-        $signedInfo->appendChild($this->createSignedPropertiesReference($dom, $signedPropertiesId));
+        // Reference to SignedProperties (with calculated digest)
+        $signedInfo->appendChild($this->createSignedPropertiesReference($dom, $signedPropertiesId, $signedProperties));
 
         return $signedInfo;
     }
@@ -163,10 +167,10 @@ class XadesSigner
     /**
      * Create reference to SignedProperties.
      */
-    private function createSignedPropertiesReference(DOMDocument $dom, string $signedPropertiesId): DOMElement
+    private function createSignedPropertiesReference(DOMDocument $dom, string $signedPropertiesId, DOMElement $signedProperties): DOMElement
     {
         $reference = $dom->createElementNS(self::DS_NS, 'ds:Reference');
-        $reference->setAttribute('Type', 'http://www.w3.org/2000/09/xmldsig#SignatureProperties');
+        $reference->setAttribute('Type', 'http://uri.etsi.org/01903#SignedProperties');
         $reference->setAttribute('URI', '#' . $signedPropertiesId);
 
         // DigestMethod
@@ -174,8 +178,10 @@ class XadesSigner
         $digestMethod->setAttribute('Algorithm', 'http://www.w3.org/2001/04/xmlenc#sha256');
         $reference->appendChild($digestMethod);
 
-        // DigestValue - placeholder, will be updated
-        $digestValue = $dom->createElementNS(self::DS_NS, 'ds:DigestValue', '');
+        // Calculate digest of SignedProperties element (canonicalized)
+        $signedPropsC14n = $signedProperties->C14N(true, false);
+        $digest = base64_encode(hash('sha256', $signedPropsC14n, true));
+        $digestValue = $dom->createElementNS(self::DS_NS, 'ds:DigestValue', $digest);
         $reference->appendChild($digestValue);
 
         return $reference;
@@ -203,8 +209,10 @@ class XadesSigner
 
     /**
      * Create XAdES Object with SignedProperties.
+     *
+     * @return array{object: DOMElement, signedProperties: DOMElement}
      */
-    private function createXadesObject(DOMDocument $dom, string $signedPropertiesId, string $certificatePem): DOMElement
+    private function createXadesObject(DOMDocument $dom, string $signedPropertiesId, string $certificatePem): array
     {
         $object = $dom->createElementNS(self::DS_NS, 'ds:Object');
 
@@ -231,7 +239,10 @@ class XadesSigner
         $qualifyingProps->appendChild($signedProps);
         $object->appendChild($qualifyingProps);
 
-        return $object;
+        return [
+            'object' => $object,
+            'signedProperties' => $signedProps,
+        ];
     }
 
     /**
