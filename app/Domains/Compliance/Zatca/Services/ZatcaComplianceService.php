@@ -149,6 +149,7 @@ class ZatcaComplianceService
         return new InvoiceXmlData(
             uuid: $invoice->id,
             invoiceNumber: $invoice->invoice_number,
+            icv: (int) $invoice->icv,
             issueDate: $invoice->issue_date->format('Y-m-d'),
             issueTime: $invoice->created_at->format('H:i:s'),
             invoiceTypeCode: $documentType->getTypeCode(),

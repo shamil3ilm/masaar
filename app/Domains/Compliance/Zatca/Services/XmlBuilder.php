@@ -135,10 +135,10 @@ class XmlBuilder
      */
     private function addAdditionalDocumentReferences(InvoiceXmlData $data): void
     {
-        // Invoice Counter Value (ICV)
+        // Invoice Counter Value (ICV) - sequential per organization
         $icv = $this->dom->createElementNS(self::CAC_NS, 'cac:AdditionalDocumentReference');
         $icv->appendChild($this->dom->createElementNS(self::CBC_NS, 'cbc:ID', 'ICV'));
-        $icv->appendChild($this->dom->createElementNS(self::CBC_NS, 'cbc:UUID', $this->generateIcv($data)));
+        $icv->appendChild($this->dom->createElementNS(self::CBC_NS, 'cbc:UUID', (string) $data->icv));
         $this->root->appendChild($icv);
 
         // Previous Invoice Hash (PIH)
@@ -544,16 +544,6 @@ class XmlBuilder
     private function formatQuantity(float $quantity): string
     {
         return number_format($quantity, 3, '.', '');
-    }
-
-    /**
-     * Generate Invoice Counter Value.
-     */
-    private function generateIcv(InvoiceXmlData $data): string
-    {
-        // ICV should be a sequential counter per organization
-        // For now, use timestamp-based value
-        return (string) time();
     }
 
     /**

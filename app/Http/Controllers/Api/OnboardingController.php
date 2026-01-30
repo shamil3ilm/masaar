@@ -2,14 +2,19 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Compliance\Zatca\DTOs\AddressData;
 use App\Domains\Compliance\Zatca\DTOs\CsrData;
+use App\Domains\Compliance\Zatca\DTOs\InvoiceXmlData;
 use App\Domains\Compliance\Zatca\Services\CsidOnboardingService;
+use App\Domains\Compliance\Zatca\Services\XmlBuilder;
+use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 /**
  * ZATCA Onboarding API controller.
@@ -25,6 +30,7 @@ class OnboardingController extends Controller
     public function __construct(
         private readonly TenantResolver $tenant,
         private readonly CsidOnboardingService $onboarding,
+        private readonly XmlBuilder $xmlBuilder,
     ) {}
 
     /**
@@ -213,15 +219,96 @@ class OnboardingController extends Controller
     }
 
     /**
-     * Generate test invoices for compliance check.
+     * Generate test invoices for ZATCA compliance check.
+     *
+     * Creates sample standard (B2B) and simplified (B2C) invoices
+     * that meet ZATCA's minimum requirements for onboarding.
+     *
+     * @param Organization $organization
+     * @return array{standard_invoice: string, simplified_invoice: string}
      */
-    private function generateTestInvoices($organization): array
+    private function generateTestInvoices(Organization $organization): array
     {
-        // In production, generate proper test invoices
-        // For now, return empty array - compliance service will generate sample XML
+        $sellerAddress = $organization->getAddressData();
+        $buyerAddress = new AddressData(
+            street: 'Test Street',
+            city: 'Riyadh',
+            postalCode: '12345',
+            district: 'Test District',
+            buildingNumber: '1234',
+            countryCode: 'SA',
+        );
+
+        // Standard invoice (B2B) for clearance test
+        $standardData = new InvoiceXmlData(
+            uuid: Str::uuid()->toString(),
+            invoiceNumber: 'TEST-STD-' . time(),
+            icv: 1,
+            issueDate: now()->format('Y-m-d'),
+            issueTime: now()->format('H:i:s'),
+            invoiceTypeCode: '388',
+            invoiceSubtype: '01', // B2B
+            currency: 'SAR',
+            sellerName: $organization->name,
+            sellerVatNumber: $organization->vat_number ?? '',
+            sellerAddress: $sellerAddress,
+            buyerName: 'Test Buyer Company',
+            subtotal: 1000.00,
+            taxAmount: 150.00,
+            total: 1150.00,
+            lines: [
+                [
+                    'description' => 'Test Product',
+                    'quantity' => 1.0,
+                    'unitPrice' => 1000.00,
+                    'taxRate' => 15.0,
+                    'taxAmount' => 150.00,
+                    'lineTotal' => 1150.00,
+                    'taxCategory' => 'S',
+                    'unitCode' => 'PCE',
+                ],
+            ],
+            sellerCrNumber: $organization->cr_number,
+            buyerVatNumber: '300000000000003',
+            buyerAddress: $buyerAddress,
+            paymentMeansCode: '10',
+        );
+
+        // Simplified invoice (B2C) for reporting test
+        $simplifiedData = new InvoiceXmlData(
+            uuid: Str::uuid()->toString(),
+            invoiceNumber: 'TEST-SMP-' . time(),
+            icv: 2,
+            issueDate: now()->format('Y-m-d'),
+            issueTime: now()->format('H:i:s'),
+            invoiceTypeCode: '388',
+            invoiceSubtype: '02', // B2C
+            currency: 'SAR',
+            sellerName: $organization->name,
+            sellerVatNumber: $organization->vat_number ?? '',
+            sellerAddress: $sellerAddress,
+            buyerName: 'Cash Customer',
+            subtotal: 100.00,
+            taxAmount: 15.00,
+            total: 115.00,
+            lines: [
+                [
+                    'description' => 'Test Item',
+                    'quantity' => 1.0,
+                    'unitPrice' => 100.00,
+                    'taxRate' => 15.0,
+                    'taxAmount' => 15.00,
+                    'lineTotal' => 115.00,
+                    'taxCategory' => 'S',
+                    'unitCode' => 'PCE',
+                ],
+            ],
+            paymentMeansCode: '10',
+        );
+
         return [
-            'standard_invoice' => '',
-            'simplified_invoice' => '',
+            'standard_invoice' => $this->xmlBuilder->build($standardData),
+            'simplified_invoice' => $this->xmlBuilder->build($simplifiedData),
         ];
     }
 }

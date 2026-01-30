@@ -26,6 +26,7 @@ final readonly class InvoiceXmlData
         // Required fields first
         public string $uuid,
         public string $invoiceNumber,
+        public int $icv,
         public string $issueDate,
         public string $issueTime,
         public string $invoiceTypeCode,
