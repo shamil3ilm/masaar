@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Zatca\Services;
 
+use InvalidArgumentException;
+
 /**
  * TLV (Tag-Length-Value) encoder for ZATCA QR codes.
  *
@@ -12,19 +14,39 @@ namespace App\Domains\Compliance\Zatca\Services;
  */
 class TlvEncoder
 {
+    private const MAX_VALUE_LENGTH = 255;
+    private const MAX_TAG = 255;
+
     /**
      * Encode a single TLV field.
      *
-     * @param int $tag Tag number (1-9)
+     * @param int $tag Tag number (1-255)
      * @param string $value Field value
      * @return string Binary TLV data
+     * @throws InvalidArgumentException If tag or value length exceeds limits
      */
     public function encodeTag(int $tag, string $value): string
     {
-        $valueBytes = $value;
-        $length = strlen($valueBytes);
+        if ($tag < 1 || $tag > self::MAX_TAG) {
+            throw new InvalidArgumentException(
+                sprintf('TLV tag must be between 1 and %d, got %d', self::MAX_TAG, $tag)
+            );
+        }
 
-        return chr($tag) . chr($length) . $valueBytes;
+        $length = strlen($value);
+
+        if ($length > self::MAX_VALUE_LENGTH) {
+            throw new InvalidArgumentException(
+                sprintf(
+                    'TLV value length exceeds maximum of %d bytes (got %d bytes for tag %d)',
+                    self::MAX_VALUE_LENGTH,
+                    $length,
+                    $tag
+                )
+            );
+        }
+
+        return chr($tag) . chr($length) . $value;
     }
 
     /**

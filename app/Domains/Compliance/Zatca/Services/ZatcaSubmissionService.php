@@ -10,6 +10,7 @@ use App\Domains\Compliance\Zatca\DTOs\ZatcaResponse;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * ZATCA submission service.
@@ -39,11 +40,15 @@ class ZatcaSubmissionService
     {
         $previousHash = $this->getPreviousInvoiceHash($invoice);
 
+        // Get signing credentials if available
+        $credentials = $this->getSigningCredentials($organization->id);
+
         $complianceData = $this->compliance->generateComplianceData(
             invoice: $invoice,
-            sellerName: $organization->name,
-            sellerVatNumber: $organization->compliance_profile['vat_number'] ?? '',
+            organization: $organization,
             previousInvoiceHash: $previousHash,
+            privateKey: $credentials['privateKey'] ?? null,
+            certificate: $credentials['certificate'] ?? null,
         );
 
         // Update invoice with compliance data
@@ -64,10 +69,13 @@ class ZatcaSubmissionService
      */
     public function validate(Invoice $invoice, Organization $organization): ZatcaResponse
     {
+        $credentials = $this->getSigningCredentials($organization->id);
+
         $complianceData = $this->compliance->generateComplianceData(
             invoice: $invoice,
-            sellerName: $organization->name,
-            sellerVatNumber: $organization->compliance_profile['vat_number'] ?? '',
+            organization: $organization,
+            privateKey: $credentials['privateKey'] ?? null,
+            certificate: $credentials['certificate'] ?? null,
         );
 
         return $this->client->checkCompliance(
@@ -82,10 +90,13 @@ class ZatcaSubmissionService
      */
     public function submit(Invoice $invoice, Organization $organization): ZatcaResponse
     {
+        $credentials = $this->getSigningCredentials($organization->id);
+
         $complianceData = $this->compliance->generateComplianceData(
             invoice: $invoice,
-            sellerName: $organization->name,
-            sellerVatNumber: $organization->compliance_profile['vat_number'] ?? '',
+            organization: $organization,
+            privateKey: $credentials['privateKey'] ?? null,
+            certificate: $credentials['certificate'] ?? null,
         );
 
         // Choose clearance (B2B) or reporting (B2C) based on invoice type
@@ -143,5 +154,31 @@ class ZatcaSubmissionService
             ->first();
 
         return $previous?->hash;
+    }
+
+    /**
+     * Get signing credentials for organization.
+     *
+     * @return array{privateKey: ?string, certificate: ?string}
+     */
+    private function getSigningCredentials(string $organizationId): array
+    {
+        $path = "zatca/{$organizationId}/pcsid.json";
+
+        if (! Storage::disk('local')->exists($path)) {
+            return ['privateKey' => null, 'certificate' => null];
+        }
+
+        try {
+            $content = Storage::disk('local')->get($path);
+            $data = json_decode(decrypt($content), true);
+
+            return [
+                'privateKey' => $data['privateKey'] ?? null,
+                'certificate' => $data['pcsid'] ?? null,
+            ];
+        } catch (\Exception $e) {
+            return ['privateKey' => null, 'certificate' => null];
+        }
     }
 }
