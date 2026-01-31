@@ -227,7 +227,246 @@ legal_hold_metadata:
 
 ---
 
-## 7. What We Do NOT Handle
+## 7. Timestamp Authority
+
+### Policy Statement
+
+**Invoice issuance time is determined by system UTC time at signing. If XAdES-T is enabled, the TSA (Timestamp Authority) timestamp supersedes local issuance time for audit disputes.**
+
+### Rationale
+
+ZATCA may later dispute invoice timestamp correctness. System clocks can drift. Having a clear policy on timestamp authority prevents legal ambiguity during audits.
+
+### Timestamp Hierarchy
+
+| Source | Priority | Use Case |
+|--------|----------|----------|
+| TSA (XAdES-T) | 1 (highest) | Legally authoritative if enabled |
+| System UTC | 2 | Default issuance time |
+| ERP timestamp | 3 (lowest) | Informational only |
+
+### Implementation
+
+Each invoice stores:
+- `issue_timestamp`: System UTC at signing
+- `timestamp_authority`: `local` or `tsa`
+- `tsa_timestamp`: TSA response timestamp (if XAdES-T enabled)
+
+### Dispute Resolution
+
+```
+Scenario: ZATCA questions invoice timestamp
+
+Resolution Path:
+1. If timestamp_authority = tsa → TSA timestamp is authoritative
+2. If timestamp_authority = local → System UTC is authoritative
+3. Compare against ZATCA's received timestamp (clearance response)
+4. Clock drift tolerance: ±30 seconds
+```
+
+### Configuration
+
+```env
+# Enable Timestamp Authority for XAdES-T
+ZATCA_USE_TSA=true
+ZATCA_TSA_URL=https://tsa.zatca.gov.sa/timestamp
+```
+
+---
+
+## 8. Certificate Overlap Resolution
+
+### Policy Statement
+
+**When multiple certificates are valid simultaneously (overlap period), always prefer the newest active certificate once issued, unless explicitly overridden for reconciliation.**
+
+### Rationale
+
+Certificate rotation creates overlap windows where both old and new certificates are valid. Without clear policy, different invoices might be signed with different certificates, causing confusion.
+
+### Overlap Scenarios
+
+| Scenario | Resolution |
+|----------|------------|
+| New cert issued, old still valid | Use new cert immediately |
+| Old cert compromised | Halt all signing, emergency rotation |
+| Reconciliation needed with old cert | Explicit override with audit log |
+| Both certs valid, unclear which to use | Newest cert wins |
+
+### Implementation
+
+```php
+// Certificate selection logic
+public function getActiveCertificate(string $organizationId): Certificate
+{
+    return CertificateLineage::where('organization_id', $organizationId)
+        ->whereNull('revoked_at')
+        ->where('valid_from', '<=', now())
+        ->where('valid_until', '>=', now())
+        ->orderByDesc('activated_at')  // Newest first
+        ->firstOrFail();
+}
+```
+
+### Override Process
+
+For reconciliation scenarios requiring old certificate:
+
+1. Document reason for override
+2. Log override in audit trail
+3. Set explicit `certificate_override_id`
+4. Review and approve by compliance officer
+5. Automatic revert after reconciliation period
+
+### Stored Metadata
+
+| Field | Purpose |
+|-------|---------|
+| `signing_certificate_hash` | Which cert signed the invoice |
+| `certificate_override_reason` | Why override was used (if any) |
+| `certificate_overlap_window` | Boolean: was signed during overlap? |
+
+---
+
+## 9. Sandbox vs Production Variance Tracking
+
+### Policy Statement
+
+**All behavioral differences between ZATCA sandbox and production environments must be tracked and documented to support customer disputes and debugging.**
+
+### Rationale
+
+Invoices frequently pass sandbox validation but fail in production due to undocumented enforcement differences. Customers say "But it worked in sandbox." We need evidence.
+
+### Tracked Variances
+
+| Variance Type | Example |
+|---------------|---------|
+| `sandbox_only_pass` | Invoice accepted in sandbox, rejected in production |
+| `production_only_fail` | Same payload, different error in production |
+| `validation_difference` | Different error codes for same issue |
+| `timing_difference` | Timeouts differ between environments |
+
+### Implementation
+
+Database table: `environment_variance_log`
+
+```sql
+CREATE TABLE environment_variance_log (
+    id UUID PRIMARY KEY,
+    organization_id UUID NOT NULL,
+    invoice_id UUID,
+    variance_type VARCHAR(50) NOT NULL,
+    sandbox_result JSONB,
+    production_result JSONB,
+    payload_hash VARCHAR(64),
+    rule_code VARCHAR(50),
+    notes TEXT,
+    reported_to_zatca BOOLEAN DEFAULT FALSE,
+    zatca_ticket_id VARCHAR(100),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+### Workflow
+
+```
+1. Invoice fails in production
+2. Check if identical payload passed sandbox
+3. If yes → Log as variance
+4. Generate variance report for customer
+5. Optionally report to ZATCA
+```
+
+### Customer Communication Template
+
+```
+Your invoice {id} was rejected in production with error {code}.
+This same payload was accepted in sandbox on {date}.
+
+Variance ID: {variance_id}
+This has been logged for ZATCA review.
+
+Please contact support with this variance ID for further assistance.
+```
+
+---
+
+## 10. Webhook Replay Protection
+
+### Policy Statement
+
+**Webhook payloads include replay protection fields. Consumers MUST implement duplicate detection. CompliPay does NOT enforce this server-side but provides the tools.**
+
+### Rationale
+
+If a customer's webhook endpoint is compromised, attackers could replay old webhook payloads internally. We provide protection mechanisms; consumers must use them.
+
+### Payload Security Fields
+
+Every webhook payload includes:
+
+```json
+{
+  "event_id": "evt_unique_uuid",
+  "event_type": "invoice.cleared",
+  "occurred_at": "2026-01-31T12:00:00Z",
+  "delivered_at": "2026-01-31T12:00:01Z",
+  "signature": "sha256=abc123...",
+  "idempotency_key": "idem_xyz789"
+}
+```
+
+### Consumer Requirements
+
+| Requirement | Implementation |
+|-------------|----------------|
+| Verify signature | HMAC-SHA256 with webhook secret |
+| Check event_id uniqueness | Store processed event_ids |
+| Validate timestamp freshness | Reject if `occurred_at` > 5 minutes old |
+| Idempotent processing | Use `idempotency_key` for deduplication |
+
+### SDK Guidance
+
+```typescript
+// TypeScript SDK - Webhook verification
+import { verifyWebhook } from '@complipay/sdk';
+
+app.post('/webhooks', (req, res) => {
+  const event = verifyWebhook(
+    req.body,
+    req.headers['x-complipay-signature'],
+    process.env.WEBHOOK_SECRET
+  );
+
+  // Check for replay
+  if (await isEventProcessed(event.event_id)) {
+    return res.status(200).send('Already processed');
+  }
+
+  // Check timestamp freshness
+  const age = Date.now() - new Date(event.occurred_at).getTime();
+  if (age > 5 * 60 * 1000) { // 5 minutes
+    return res.status(400).send('Event too old');
+  }
+
+  // Process event...
+  await markEventProcessed(event.event_id);
+  res.status(200).send('OK');
+});
+```
+
+### Documentation Requirements
+
+All SDK READMEs must include:
+1. Signature verification example
+2. Replay protection example
+3. Timestamp validation example
+4. Idempotency handling example
+
+---
+
+## 11. What We Do NOT Handle
 
 ### Explicitly Out of Scope
 
@@ -254,5 +493,6 @@ legal_hold_metadata:
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-01-31 | CompliPay Team | Initial release |
+| 1.1 | 2026-01-31 | CompliPay Team | Added timestamp authority, certificate overlap, sandbox variance, webhook replay protection policies |
 
 **Last Updated**: January 31, 2026
