@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Zatca\Client;
 
 use App\Domains\Compliance\Zatca\DTOs\CsidResponse;
 use App\Domains\Compliance\Zatca\DTOs\ZatcaResponse;
+use App\Domains\Compliance\Zatca\Services\InvoiceHasher;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -24,9 +25,11 @@ class ZatcaClient
     private int $timeout;
     private int $retryAttempts;
     private int $retryDelay;
+    private InvoiceHasher $hasher;
 
-    public function __construct()
+    public function __construct(?InvoiceHasher $hasher = null)
     {
+        $this->hasher = $hasher ?? new InvoiceHasher();
         $environment = config('zatca.environment', 'sandbox');
         $this->baseUrl = config("zatca.endpoints.{$environment}");
         $this->username = config('zatca.credentials.username');
@@ -259,10 +262,12 @@ class ZatcaClient
 
     /**
      * Hash invoice XML for API submission.
+     *
+     * Uses proper C14N canonicalization per ZATCA specification.
      */
     private function hashInvoice(string $xml): string
     {
-        return base64_encode(hash('sha256', $xml, true));
+        return $this->hasher->hash($xml);
     }
 
     /**

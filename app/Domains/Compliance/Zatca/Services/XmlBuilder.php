@@ -40,6 +40,7 @@ class XmlBuilder
         $this->addCustomerParty($data);
         $this->addDelivery($data);
         $this->addPaymentMeans($data);
+        $this->addAllowanceCharge($data);
         $this->addTaxTotal($data);
         $this->addLegalMonetaryTotal($data);
         $this->addInvoiceLines($data);
@@ -287,6 +288,72 @@ class XmlBuilder
     }
 
     /**
+     * Add document-level allowance/charge (discount).
+     *
+     * ZATCA requires cac:AllowanceCharge element for document-level discounts.
+     * Per UBL 2.1 and ZATCA specifications, this must appear before TaxTotal.
+     */
+    private function addAllowanceCharge(InvoiceXmlData $data): void
+    {
+        if ($data->discount <= 0) {
+            return;
+        }
+
+        $allowanceCharge = $this->dom->createElementNS(self::CAC_NS, 'cac:AllowanceCharge');
+
+        // ChargeIndicator: false = allowance (discount), true = charge
+        $allowanceCharge->appendChild(
+            $this->dom->createElementNS(self::CBC_NS, 'cbc:ChargeIndicator', 'false')
+        );
+
+        // AllowanceChargeReasonCode (ZATCA recommendation: 95 = discount)
+        $allowanceCharge->appendChild(
+            $this->dom->createElementNS(self::CBC_NS, 'cbc:AllowanceChargeReasonCode', '95')
+        );
+
+        // AllowanceChargeReason (required for ZATCA)
+        $reason = $data->discountReason ?? 'Discount';
+        $allowanceCharge->appendChild(
+            $this->dom->createElementNS(self::CBC_NS, 'cbc:AllowanceChargeReason', $reason)
+        );
+
+        // MultiplierFactorNumeric (optional, but good for clarity)
+        // Not adding as it's optional and we have the Amount
+
+        // Amount
+        $amount = $this->dom->createElementNS(
+            self::CBC_NS,
+            'cbc:Amount',
+            $this->formatAmount($data->discount)
+        );
+        $amount->setAttribute('currencyID', $data->currency);
+        $allowanceCharge->appendChild($amount);
+
+        // BaseAmount (the amount before discount, which is subtotal + discount)
+        $baseAmount = $this->dom->createElementNS(
+            self::CBC_NS,
+            'cbc:BaseAmount',
+            $this->formatAmount($data->subtotal + $data->discount)
+        );
+        $baseAmount->setAttribute('currencyID', $data->currency);
+        $allowanceCharge->appendChild($baseAmount);
+
+        // TaxCategory for the discount
+        $taxCategoryCode = $data->discountTaxCategory ?? 'S';
+        $taxRate = $data->discountTaxRate ?? 15.0;
+
+        $taxCategory = $this->dom->createElementNS(self::CAC_NS, 'cac:TaxCategory');
+        $taxCategory->appendChild($this->dom->createElementNS(self::CBC_NS, 'cbc:ID', $taxCategoryCode));
+        $taxCategory->appendChild($this->dom->createElementNS(self::CBC_NS, 'cbc:Percent', $this->formatAmount($taxRate)));
+        $taxScheme = $this->dom->createElementNS(self::CAC_NS, 'cac:TaxScheme');
+        $taxScheme->appendChild($this->dom->createElementNS(self::CBC_NS, 'cbc:ID', 'VAT'));
+        $taxCategory->appendChild($taxScheme);
+        $allowanceCharge->appendChild($taxCategory);
+
+        $this->root->appendChild($allowanceCharge);
+    }
+
+    /**
      * Add tax total with subtotals per category.
      */
     private function addTaxTotal(InvoiceXmlData $data): void
@@ -472,14 +539,28 @@ class XmlBuilder
             $quantity->setAttribute('unitCode', $line['unitCode'] ?? 'PCE');
             $invoiceLine->appendChild($quantity);
 
-            // Line extension amount
+            // Line extension amount (net of discount)
+            $lineNet = ($line['lineTotal'] ?? 0) - ($line['taxAmount'] ?? 0);
+            $lineDiscount = (float) ($line['discount'] ?? 0);
+
             $lineAmount = $this->dom->createElementNS(
                 self::CBC_NS,
                 'cbc:LineExtensionAmount',
-                $this->formatAmount($line['lineTotal'] - ($line['taxAmount'] ?? 0))
+                $this->formatAmount($lineNet)
             );
             $lineAmount->setAttribute('currencyID', $data->currency);
             $invoiceLine->appendChild($lineAmount);
+
+            // Line-level AllowanceCharge (discount) if present
+            if ($lineDiscount > 0) {
+                $invoiceLine->appendChild($this->buildLineAllowanceCharge(
+                    $lineDiscount,
+                    $line['discountReason'] ?? 'Line discount',
+                    $line['taxCategory'] ?? 'S',
+                    (float) ($line['taxRate'] ?? 15),
+                    $data->currency
+                ));
+            }
 
             // Tax total for this line
             $lineTax = $this->dom->createElementNS(self::CAC_NS, 'cac:TaxTotal');
@@ -498,6 +579,19 @@ class XmlBuilder
             $item = $this->dom->createElementNS(self::CAC_NS, 'cac:Item');
             $item->appendChild($this->dom->createElementNS(self::CBC_NS, 'cbc:Name', $line['description']));
 
+            // Item classification code (UNSPSC or GS1) if provided
+            if (! empty($line['itemClassificationCode'])) {
+                $commodityClass = $this->dom->createElementNS(self::CAC_NS, 'cac:CommodityClassification');
+                $classCode = $this->dom->createElementNS(
+                    self::CBC_NS,
+                    'cbc:ItemClassificationCode',
+                    $line['itemClassificationCode']
+                );
+                $classCode->setAttribute('listID', 'UNSPSC');
+                $commodityClass->appendChild($classCode);
+                $item->appendChild($commodityClass);
+            }
+
             // Item tax category
             $itemTaxCat = $this->dom->createElementNS(self::CAC_NS, 'cac:ClassifiedTaxCategory');
             $itemTaxCat->appendChild($this->dom->createElementNS(self::CBC_NS, 'cbc:ID', $line['taxCategory'] ?? 'S'));
@@ -509,15 +603,56 @@ class XmlBuilder
 
             $invoiceLine->appendChild($item);
 
-            // Price
+            // Price (gross price before any line discount)
             $price = $this->dom->createElementNS(self::CAC_NS, 'cac:Price');
             $priceAmount = $this->dom->createElementNS(self::CBC_NS, 'cbc:PriceAmount', $this->formatAmount($line['unitPrice']));
             $priceAmount->setAttribute('currencyID', $data->currency);
             $price->appendChild($priceAmount);
+
+            // BaseQuantity (optional but good for clarity)
+            $baseQty = $this->dom->createElementNS(self::CBC_NS, 'cbc:BaseQuantity', '1');
+            $baseQty->setAttribute('unitCode', $line['unitCode'] ?? 'PCE');
+            $price->appendChild($baseQty);
+
             $invoiceLine->appendChild($price);
 
             $this->root->appendChild($invoiceLine);
         }
+    }
+
+    /**
+     * Build line-level AllowanceCharge element.
+     */
+    private function buildLineAllowanceCharge(
+        float $amount,
+        string $reason,
+        string $taxCategory,
+        float $taxRate,
+        string $currency
+    ): DOMElement {
+        $allowanceCharge = $this->dom->createElementNS(self::CAC_NS, 'cac:AllowanceCharge');
+
+        // ChargeIndicator: false = allowance (discount)
+        $allowanceCharge->appendChild(
+            $this->dom->createElementNS(self::CBC_NS, 'cbc:ChargeIndicator', 'false')
+        );
+
+        // AllowanceChargeReasonCode (95 = discount)
+        $allowanceCharge->appendChild(
+            $this->dom->createElementNS(self::CBC_NS, 'cbc:AllowanceChargeReasonCode', '95')
+        );
+
+        // AllowanceChargeReason
+        $allowanceCharge->appendChild(
+            $this->dom->createElementNS(self::CBC_NS, 'cbc:AllowanceChargeReason', $reason)
+        );
+
+        // Amount
+        $amountEl = $this->dom->createElementNS(self::CBC_NS, 'cbc:Amount', $this->formatAmount($amount));
+        $amountEl->setAttribute('currencyID', $currency);
+        $allowanceCharge->appendChild($amountEl);
+
+        return $allowanceCharge;
     }
 
     /**
