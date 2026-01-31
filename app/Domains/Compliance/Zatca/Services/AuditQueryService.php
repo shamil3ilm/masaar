@@ -21,9 +21,12 @@ use Illuminate\Support\Facades\Log;
 class AuditQueryService
 {
     /**
-     * Maximum retention period for audit data (in years).
+     * Get retention period for audit data (in years).
      */
-    private const RETENTION_YEARS = 3;
+    private function getRetentionYears(): int
+    {
+        return (int) config('zatca.policies.retention.audit_logs_years', 7);
+    }
 
     /**
      * Query invoices by certificate.
@@ -199,7 +202,7 @@ class AuditQueryService
             'offline_queue_history' => $offlineHistory,
             'audit_metadata' => [
                 'reconstructed_at' => now()->toIso8601String(),
-                'retention_expires_at' => now()->addYears(self::RETENTION_YEARS)->toIso8601String(),
+                'retention_expires_at' => now()->addYears($this->getRetentionYears())->toIso8601String(),
             ],
         ];
     }

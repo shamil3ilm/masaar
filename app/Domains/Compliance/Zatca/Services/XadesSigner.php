@@ -28,12 +28,22 @@ class XadesSigner
     private ?string $tsaUrl = null;
     private ?string $tsaUsername = null;
     private ?string $tsaPassword = null;
-    private int $tsaTimeout = 30;
+    private int $tsaTimeout;
+
+    /**
+     * Get TSA timeout from config.
+     */
+    private function getDefaultTsaTimeout(): int
+    {
+        return (int) config('zatca.tsa.timeout', 30);
+    }
 
     public function __construct(
         private readonly EcdsaSigner $ecdsaSigner,
         private readonly CertificateService $certificateService,
-    ) {}
+    ) {
+        $this->tsaTimeout = $this->getDefaultTsaTimeout();
+    }
 
     /**
      * Configure Timestamp Authority (TSA) for XAdES-T signatures.
@@ -48,12 +58,12 @@ class XadesSigner
         string $url,
         ?string $username = null,
         ?string $password = null,
-        int $timeout = 30
+        ?int $timeout = null
     ): self {
         $this->tsaUrl = $url;
         $this->tsaUsername = $username;
         $this->tsaPassword = $password;
-        $this->tsaTimeout = $timeout;
+        $this->tsaTimeout = $timeout ?? $this->getDefaultTsaTimeout();
 
         return $this;
     }

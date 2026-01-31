@@ -786,4 +786,79 @@ EOL;
             'chain' => $chainInfo,
         ];
     }
+
+    /**
+     * Get days until certificate expiry.
+     *
+     * @param string $certificatePem PEM-encoded certificate
+     * @return int|null Days until expiry, negative if expired, null on error
+     */
+    public function getDaysUntilExpiry(string $certificatePem): ?int
+    {
+        $expiryDate = $this->getExpiryDate($certificatePem);
+
+        if ($expiryDate === null) {
+            return null;
+        }
+
+        $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+        $diff = $now->diff($expiryDate);
+
+        return $diff->invert ? -$diff->days : $diff->days;
+    }
+
+    /**
+     * Validate certificate for pre-submission checks.
+     *
+     * Returns detailed validation results including:
+     * - Expiry status and days remaining
+     * - Revocation status
+     * - Validity for signing
+     *
+     * @param string $certificatePem PEM-encoded certificate
+     * @return array{valid: bool, errors: array, warnings: array, days_until_expiry: int|null}
+     */
+    public function validateForSubmission(string $certificatePem): array
+    {
+        $errors = [];
+        $warnings = [];
+        $daysUntilExpiry = $this->getDaysUntilExpiry($certificatePem);
+
+        // Check if certificate is valid
+        if (! $this->isValid($certificatePem)) {
+            $errors[] = 'CERT_EXPIRED: Certificate has expired and cannot be used for signing';
+        }
+
+        // Warning thresholds from config
+        $warningDays = config('zatca.certificate.expiry_warning_days', 30);
+        $criticalDays = config('zatca.certificate.expiry_critical_days', 7);
+
+        // Check expiry warnings
+        if ($daysUntilExpiry !== null && $daysUntilExpiry > 0) {
+            if ($daysUntilExpiry <= $criticalDays) {
+                $warnings[] = "CERT_EXPIRING_CRITICAL: Certificate expires in {$daysUntilExpiry} days - immediate renewal required";
+            } elseif ($daysUntilExpiry <= $warningDays) {
+                $warnings[] = "CERT_EXPIRING_WARNING: Certificate expires in {$daysUntilExpiry} days - schedule renewal";
+            }
+        }
+
+        // Check revocation status if enabled
+        if (config('zatca.features.certificate_revocation_check', true)) {
+            try {
+                $revocationStatus = $this->checkRevocationStatus($certificatePem);
+                if ($revocationStatus['revoked']) {
+                    $errors[] = 'CERT_REVOKED: Certificate has been revoked and cannot be used';
+                }
+            } catch (\Exception $e) {
+                $warnings[] = 'CERT_REVOCATION_CHECK_FAILED: Could not verify revocation status';
+            }
+        }
+
+        return [
+            'valid' => empty($errors),
+            'errors' => $errors,
+            'warnings' => $warnings,
+            'days_until_expiry' => $daysUntilExpiry,
+        ];
+    }
 }

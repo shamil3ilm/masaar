@@ -33,9 +33,12 @@ class HashChainManager
     private const LOCK_PREFIX = 'zatca:hash_chain_lock:';
 
     /**
-     * Lock timeout in seconds.
+     * Get lock timeout in seconds from config.
      */
-    private const LOCK_TIMEOUT = 30;
+    private function getLockTimeout(): int
+    {
+        return (int) config('zatca.hash_chain.lock_timeout_seconds', 30);
+    }
 
     /**
      * Default PIH for first invoice (base64 SHA256 of zeros).
@@ -55,10 +58,11 @@ class HashChainManager
      */
     public function acquireLock(
         string $organizationId,
-        int $timeout = self::LOCK_TIMEOUT,
+        ?int $timeout = null,
         int $retryAttempts = 5,
         int $retryDelayMs = 100
     ): string {
+        $timeout = $timeout ?? $this->getLockTimeout();
         $lockKey = self::LOCK_PREFIX . $organizationId;
         $lockToken = bin2hex(random_bytes(16));
         $lockValue = json_encode([

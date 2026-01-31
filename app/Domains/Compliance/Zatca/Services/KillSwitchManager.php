@@ -49,19 +49,28 @@ class KillSwitchManager
     private const CACHE_KEY = 'zatca:kill_switches';
 
     /**
-     * Cache TTL in seconds.
+     * Get cache TTL from config.
      */
-    private const CACHE_TTL = 3600;
+    private function getCacheTtl(): int
+    {
+        return (int) config('zatca.kill_switch.cache_ttl_seconds', 3600);
+    }
 
     /**
-     * Default max duration for time-boxed switches (4 hours).
+     * Get max duration for time-boxed switches from config.
      */
-    private const DEFAULT_MAX_DURATION_SECONDS = 14400;
+    private function getMaxDurationSeconds(): int
+    {
+        return (int) config('zatca.kill_switch.max_duration_seconds', 14400);
+    }
 
     /**
-     * Alert threshold in seconds (30 minutes).
+     * Get alert threshold from config.
      */
-    private const ALERT_THRESHOLD_SECONDS = 1800;
+    private function getAlertThresholdSeconds(): int
+    {
+        return (int) config('zatca.kill_switch.alert_threshold_seconds', 1800);
+    }
 
     /**
      * Enable a kill switch with optional time-boxing.
@@ -95,12 +104,12 @@ class KillSwitchManager
         // Enforce time-boxing with maximum duration
         $expiresAt = null;
         if ($durationSeconds !== null) {
-            if ($durationSeconds > self::DEFAULT_MAX_DURATION_SECONDS) {
+            if ($durationSeconds > $this->getMaxDurationSeconds()) {
                 Log::warning('Kill switch duration exceeds maximum, capping', [
                     'requested' => $durationSeconds,
-                    'max' => self::DEFAULT_MAX_DURATION_SECONDS,
+                    'max' => $this->getMaxDurationSeconds(),
                 ]);
-                $durationSeconds = self::DEFAULT_MAX_DURATION_SECONDS;
+                $durationSeconds = $this->getMaxDurationSeconds();
             }
             $expiresAt = now()->addSeconds($durationSeconds)->toIso8601String();
         }
@@ -272,7 +281,7 @@ class KillSwitchManager
         $enabledAt = new \DateTimeImmutable($switchData['enabled_at']);
         $enabledDuration = now()->getTimestamp() - $enabledAt->getTimestamp();
 
-        if ($enabledDuration >= self::ALERT_THRESHOLD_SECONDS) {
+        if ($enabledDuration >= $this->getAlertThresholdSeconds()) {
             // Mark alert as sent
             $switchData['alert_sent'] = true;
             $switches[$key] = $switchData;
@@ -285,7 +294,7 @@ class KillSwitchManager
                 'enabled_by' => $switchData['enabled_by'],
                 'reason' => $switchData['reason'],
                 'duration_seconds' => $enabledDuration,
-                'threshold_seconds' => self::ALERT_THRESHOLD_SECONDS,
+                'threshold_seconds' => $this->getAlertThresholdSeconds(),
                 'expires_at' => $switchData['expires_at'] ?? 'never',
             ]);
 
@@ -484,7 +493,7 @@ class KillSwitchManager
             $enabledAt = new \DateTimeImmutable($switch['enabled_at']);
             $duration = now()->getTimestamp() - $enabledAt->getTimestamp();
 
-            if ($duration >= self::ALERT_THRESHOLD_SECONDS) {
+            if ($duration >= $this->getAlertThresholdSeconds()) {
                 $longRunning[] = [
                     'switch' => $switch['switch'],
                     'scope' => $switch['scope'],
@@ -533,7 +542,7 @@ class KillSwitchManager
         $enabledAt = new \DateTimeImmutable($switchData['enabled_at']);
         $totalDuration = $newExpiry->getTimestamp() - $enabledAt->getTimestamp();
 
-        if ($totalDuration > self::DEFAULT_MAX_DURATION_SECONDS * 2) {
+        if ($totalDuration > $this->getMaxDurationSeconds() * 2) {
             throw new \InvalidArgumentException(
                 'Cannot extend kill switch beyond maximum total duration (8 hours from original enable time)'
             );
@@ -644,7 +653,7 @@ class KillSwitchManager
      */
     private function saveSwitches(array $switches): void
     {
-        Cache::put(self::CACHE_KEY, $switches, now()->addSeconds(self::CACHE_TTL));
+        Cache::put(self::CACHE_KEY, $switches, now()->addSeconds($this->getCacheTtl()));
     }
 
     /**

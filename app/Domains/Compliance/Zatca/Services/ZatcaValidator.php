@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Zatca\Services;
 
-use App\Domains\Compliance\Zatca\DTOs\AddressData;
-use App\Domains\Compliance\Zatca\DTOs\InvoiceXmlData;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
@@ -14,9 +12,52 @@ use App\Domains\Organization\Models\Organization;
  * ZATCA validation service.
  *
  * Validates invoices against ZATCA business rules before submission.
+ * Implements BR-KSA-01 through BR-KSA-80 compliance checks.
+ *
+ * Validation rules are config-driven for regulatory flexibility.
+ * See config/zatca.php 'validation' section.
  */
 class ZatcaValidator
 {
+    /**
+     * Get allowed tax rates from config.
+     * Default: [0, 15] for standard KSA rates.
+     */
+    private function getAllowedTaxRates(): array
+    {
+        return config('zatca.validation.allowed_tax_rates', [0, 15]);
+    }
+
+    /**
+     * Get valid exemption codes from config.
+     * Returns array of code keys (e.g., VATEX-SA-29).
+     */
+    private function getValidExemptionCodes(): array
+    {
+        return array_keys(config('zatca.validation.exemption_codes', []));
+    }
+
+    /**
+     * Get valid invoice type codes from config.
+     * Returns associative array: code => name.
+     */
+    private function getValidInvoiceTypeCodes(): array
+    {
+        return config('zatca.validation.invoice_type_codes', [
+            '388' => 'Invoice',
+            '381' => 'Credit Note',
+            '383' => 'Debit Note',
+        ]);
+    }
+
+    /**
+     * Check if strict exemption code validation is enabled.
+     */
+    private function isStrictExemptionMode(): bool
+    {
+        return (bool) config('zatca.validation.strict_exemption_codes', false);
+    }
+
     /**
      * Validate invoice for ZATCA compliance.
      *
@@ -101,25 +142,43 @@ class ZatcaValidator
             $errors[] = 'BT-1: Invoice number is required';
         }
 
+        // UUID validation (BR-KSA-01)
+        if ($invoice->uuid && ! $this->isValidUuid($invoice->uuid)) {
+            $errors[] = 'BR-KSA-01: Invoice UUID must be a valid UUID v4 format';
+        }
+
         // Issue date (BT-2)
         if (! $invoice->issue_date) {
             $errors[] = 'BT-2: Issue date is required';
         }
 
-        // Invoice type
+        // Invoice type (BT-3)
         if (! $invoice->type) {
             $errors[] = 'BT-3: Invoice type is required';
         }
 
-        // Currency (BT-5)
+        // Invoice type code validation (BR-KSA-02)
+        $docType = $invoice->document_type ?? DocumentType::Invoice;
+        $typeCode = $docType->getTypeCode();
+        if (! $this->isValidInvoiceTypeCode($typeCode)) {
+            $errors[] = "BR-KSA-02: Invoice type code must be 388, 381, or 383 (got {$typeCode})";
+        }
+
+        // Currency (BT-5) - must be SAR for KSA
         if (! $invoice->currency) {
             $errors[] = 'BT-5: Currency code is required';
+        } elseif ($invoice->currency !== 'SAR') {
+            $errors[] = 'BR-KSA-CU-01: Currency must be SAR for Saudi invoices';
         }
 
         // Billing reference for credit/debit notes
-        $docType = $invoice->document_type ?? DocumentType::Invoice;
         if ($docType->requiresBillingReference() && ! $invoice->billing_reference_id) {
             $errors[] = 'BT-25: Billing reference is required for credit/debit notes';
+        }
+
+        // ICV must be positive (BR-KSA-25)
+        if ($invoice->icv !== null && $invoice->icv <= 0) {
+            $errors[] = 'BR-KSA-25: Invoice Counter Value (ICV) must be a positive integer';
         }
 
         return $errors;
@@ -179,17 +238,28 @@ class ZatcaValidator
                 $errors[] = "BT-146: Line {$lineNum} unit price cannot be negative";
             }
 
-            // Tax rate
-            if ($line->tax_rate < 0 || $line->tax_rate > 100) {
-                $errors[] = "BR-KSA-DEC-02: Line {$lineNum} tax rate must be between 0 and 100";
+            // Tax rate validation - must be one of allowed rates (BR-KSA-DEC-02)
+            $taxRate = (int) $line->tax_rate;
+            $allowedRates = $this->getAllowedTaxRates();
+            if (! in_array($taxRate, $allowedRates, true)) {
+                $ratesStr = implode('% or ', $allowedRates) . '%';
+                $errors[] = "BR-KSA-DEC-02: Line {$lineNum} tax rate must be {$ratesStr} (got {$taxRate}%)";
             }
 
-            // Tax category validation (BR-KSA-33, BR-KSA-34, BR-KSA-35)
+            // Tax category validation (BR-KSA-33, BR-KSA-34, BR-KSA-35, BR-KSA-40)
             $taxCategory = $line->tax_category ?? 'S';
+
+            // BR-KSA-40: Tax category must be one of S, Z, E, O
+            if (! in_array($taxCategory, ['S', 'Z', 'E', 'O'])) {
+                $errors[] = "BR-KSA-40: Line {$lineNum} tax category must be S, Z, E, or O (got {$taxCategory})";
+            }
+
             if (in_array($taxCategory, ['Z', 'E', 'O'])) {
                 // Zero-rated, Exempt, and Out-of-scope require exemption reason
                 if (empty($line->tax_exemption_code)) {
                     $errors[] = "BR-KSA-33: Line {$lineNum} requires exemption reason code for tax category {$taxCategory}";
+                } elseif (! $this->isValidExemptionCode($line->tax_exemption_code)) {
+                    $errors[] = "BR-KSA-46: Line {$lineNum} has invalid exemption code '{$line->tax_exemption_code}'. Must be a valid VATEX-SA-* code";
                 }
                 if (empty($line->tax_exemption_reason)) {
                     $errors[] = "BR-KSA-34: Line {$lineNum} requires exemption reason text for tax category {$taxCategory}";
@@ -197,11 +267,11 @@ class ZatcaValidator
             }
 
             // Validate tax category matches rate (BR-KSA-35)
-            if ($taxCategory === 'S' && $line->tax_rate <= 0) {
-                $errors[] = "BR-KSA-35: Line {$lineNum} standard rated (S) must have positive tax rate";
+            if ($taxCategory === 'S' && $taxRate !== 15) {
+                $errors[] = "BR-KSA-35: Line {$lineNum} standard rated (S) must have 15% tax rate";
             }
-            if (in_array($taxCategory, ['Z', 'E', 'O']) && $line->tax_rate > 0) {
-                $errors[] = "BR-KSA-35: Line {$lineNum} tax category {$taxCategory} should have 0% tax rate";
+            if (in_array($taxCategory, ['Z', 'E', 'O']) && $taxRate !== 0) {
+                $errors[] = "BR-KSA-35: Line {$lineNum} tax category {$taxCategory} must have 0% tax rate";
             }
         }
 
@@ -259,9 +329,14 @@ class ZatcaValidator
     {
         $warnings = [];
 
-        // Large invoice warning
-        if ((float) $invoice->total > 1000000) {
-            $warnings[] = 'Large invoice amount - ensure accuracy';
+        // BR-KSA-80: Organization compliance status check
+        if (! $organization->zatca_onboarded) {
+            $warnings[] = 'Organization has not completed ZATCA onboarding - invoice may be rejected';
+        }
+
+        // Large invoice warning - requires additional audit trail
+        if ((float) $invoice->total > config('zatca.thresholds.large_invoice_amount', 1000000)) {
+            $warnings[] = 'Large invoice amount exceeds threshold - additional audit trail recommended';
         }
 
         // Zero-rated items warning
@@ -306,6 +381,71 @@ class ZatcaValidator
         }
 
         return preg_match('/^\d{5}$/', $postalCode) === 1;
+    }
+
+    /**
+     * Validate tax exemption code against ZATCA whitelist.
+     * Must be a valid VATEX-SA-* code from config.
+     *
+     * When strict mode is disabled, also accepts any VATEX-SA-* pattern.
+     */
+    public function isValidExemptionCode(?string $code): bool
+    {
+        if ($code === null) {
+            return false;
+        }
+
+        // Check against configured codes
+        if (in_array($code, $this->getValidExemptionCodes(), true)) {
+            return true;
+        }
+
+        // In non-strict mode, accept any VATEX-SA-* pattern for forward compatibility
+        if (! $this->isStrictExemptionMode() && preg_match('/^VATEX-SA-/', $code)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Validate invoice type code.
+     * Must be 388 (Invoice), 381 (Credit Note), or 383 (Debit Note).
+     * Valid codes are defined in config/zatca.php.
+     */
+    public function isValidInvoiceTypeCode(?string $typeCode): bool
+    {
+        if ($typeCode === null) {
+            return false;
+        }
+
+        return array_key_exists($typeCode, $this->getValidInvoiceTypeCodes());
+    }
+
+    /**
+     * Validate UUID format.
+     * Must be a valid UUID v4 format.
+     */
+    public function isValidUuid(?string $uuid): bool
+    {
+        if ($uuid === null) {
+            return false;
+        }
+
+        return preg_match(
+            '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i',
+            $uuid
+        ) === 1;
+    }
+
+    /**
+     * Validate decimal precision.
+     * ZATCA requires max 2 decimal places for amounts.
+     */
+    public function isValidDecimalPrecision(float $amount): bool
+    {
+        $rounded = round($amount, 2);
+        return abs($amount - $rounded) < 0.001;
     }
 
     /**

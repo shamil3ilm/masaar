@@ -23,19 +23,51 @@ use Illuminate\Support\Facades\Redis;
 class QueueHealthMonitor
 {
     /**
-     * Alert thresholds.
-     */
-    private const STUCK_ITEM_THRESHOLD_MINUTES = 30;
-    private const MAX_RETRY_COUNT = 5;
-    private const QUEUE_GROWTH_THRESHOLD = 100;
-    private const PROCESSING_RATE_MIN_PER_HOUR = 10;
-
-    /**
      * Cache keys.
      */
     private const LAST_CHECK_KEY = 'queue_health:last_check';
     private const ALERT_COOLDOWN_KEY = 'queue_health:alert_cooldown:';
     private const METRICS_KEY = 'queue_health:metrics';
+
+    /**
+     * Get stuck item threshold in minutes from config.
+     */
+    private function getStuckItemThresholdMinutes(): int
+    {
+        return (int) config('zatca.queue_health.stuck_item_threshold_minutes', 30);
+    }
+
+    /**
+     * Get max retry count from config.
+     */
+    private function getMaxRetryCount(): int
+    {
+        return (int) config('zatca.queue_health.max_retry_count', 5);
+    }
+
+    /**
+     * Get queue growth threshold from config.
+     */
+    private function getQueueGrowthThreshold(): int
+    {
+        return (int) config('zatca.queue_health.queue_growth_threshold', 100);
+    }
+
+    /**
+     * Get minimum processing rate per hour from config.
+     */
+    private function getProcessingRateMinPerHour(): int
+    {
+        return (int) config('zatca.queue_health.processing_rate_min_per_hour', 10);
+    }
+
+    /**
+     * Get alert cooldown minutes from config.
+     */
+    private function getAlertCooldownMinutes(): int
+    {
+        return (int) config('zatca.queue_health.alert_cooldown_minutes', 30);
+    }
 
     /**
      * Run health check and return status.
@@ -87,14 +119,14 @@ class QueueHealthMonitor
      */
     private function checkStuckItems(): array
     {
-        $threshold = now()->subMinutes(self::STUCK_ITEM_THRESHOLD_MINUTES);
+        $threshold = now()->subMinutes($this->getStuckItemThresholdMinutes());
 
         $stuckItems = DB::table('offline_invoice_queue')
             ->where('status', 'pending')
             ->where('created_at', '<', $threshold)
             ->where(function ($query) {
                 $query->whereNull('last_attempt_at')
-                    ->orWhere('last_attempt_at', '<', now()->subMinutes(self::STUCK_ITEM_THRESHOLD_MINUTES));
+                    ->orWhere('last_attempt_at', '<', now()->subMinutes($this->getStuckItemThresholdMinutes()));
             })
             ->select(['id', 'invoice_id', 'organization_id', 'created_at', 'retry_count'])
             ->limit(100)
@@ -111,7 +143,7 @@ class QueueHealthMonitor
         return [
             'status' => 'alert',
             'severity' => 'warning',
-            'message' => sprintf('%d items stuck in queue for >%d minutes', $stuckItems->count(), self::STUCK_ITEM_THRESHOLD_MINUTES),
+            'message' => sprintf('%d items stuck in queue for >%d minutes', $stuckItems->count(), $this->getStuckItemThresholdMinutes()),
             'count' => $stuckItems->count(),
             'details' => [
                 'oldest_item' => $stuckItems->first()?->created_at,
@@ -127,7 +159,7 @@ class QueueHealthMonitor
     private function checkRetryExhaustion(): array
     {
         $exhaustedItems = DB::table('offline_invoice_queue')
-            ->where('retry_count', '>=', self::MAX_RETRY_COUNT)
+            ->where('retry_count', '>=', $this->getMaxRetryCount())
             ->where('status', '!=', 'submitted')
             ->select(['id', 'invoice_id', 'organization_id', 'retry_count', 'last_error', 'created_at'])
             ->get();
@@ -154,7 +186,7 @@ class QueueHealthMonitor
         return [
             'status' => 'alert',
             'severity' => 'critical',
-            'message' => sprintf('%d items have exhausted all %d retry attempts', $exhaustedItems->count(), self::MAX_RETRY_COUNT),
+            'message' => sprintf('%d items have exhausted all %d retry attempts', $exhaustedItems->count(), $this->getMaxRetryCount()),
             'count' => $exhaustedItems->count(),
             'details' => [
                 'error_distribution' => $errorGroups->toArray(),
@@ -180,7 +212,7 @@ class QueueHealthMonitor
 
         $growth = $currentSize - $previousSize;
 
-        if ($growth < self::QUEUE_GROWTH_THRESHOLD) {
+        if ($growth < $this->getQueueGrowthThreshold()) {
             return [
                 'status' => 'healthy',
                 'message' => 'Queue growth within normal limits',
@@ -191,8 +223,8 @@ class QueueHealthMonitor
 
         return [
             'status' => 'alert',
-            'severity' => $growth > self::QUEUE_GROWTH_THRESHOLD * 2 ? 'critical' : 'warning',
-            'message' => sprintf('Queue grew by %d items in last hour (threshold: %d)', $growth, self::QUEUE_GROWTH_THRESHOLD),
+            'severity' => $growth > $this->getQueueGrowthThreshold() * 2 ? 'critical' : 'warning',
+            'message' => sprintf('Queue grew by %d items in last hour (threshold: %d)', $growth, $this->getQueueGrowthThreshold()),
             'current_size' => $currentSize,
             'growth' => $growth,
             'details' => [
@@ -219,7 +251,7 @@ class QueueHealthMonitor
             ->count();
 
         // If there are pending items but no processing, alert
-        if ($pendingCount > 10 && $processedLastHour < self::PROCESSING_RATE_MIN_PER_HOUR) {
+        if ($pendingCount > 10 && $processedLastHour < $this->getProcessingRateMinPerHour()) {
             return [
                 'status' => 'alert',
                 'severity' => 'warning',
@@ -231,7 +263,7 @@ class QueueHealthMonitor
                 'processed_count' => $processedLastHour,
                 'pending_count' => $pendingCount,
                 'details' => [
-                    'expected_min_rate' => self::PROCESSING_RATE_MIN_PER_HOUR,
+                    'expected_min_rate' => $this->getProcessingRateMinPerHour(),
                     'estimated_clear_time' => $processedLastHour > 0
                         ? round($pendingCount / $processedLastHour) . ' hours'
                         : 'indefinite',
@@ -421,10 +453,10 @@ class QueueHealthMonitor
             'history' => $history,
             'by_organization' => $byOrganization,
             'thresholds' => [
-                'stuck_item_minutes' => self::STUCK_ITEM_THRESHOLD_MINUTES,
-                'max_retries' => self::MAX_RETRY_COUNT,
-                'queue_growth_threshold' => self::QUEUE_GROWTH_THRESHOLD,
-                'min_processing_rate' => self::PROCESSING_RATE_MIN_PER_HOUR,
+                'stuck_item_minutes' => $this->getStuckItemThresholdMinutes(),
+                'max_retries' => $this->getMaxRetryCount(),
+                'queue_growth_threshold' => $this->getQueueGrowthThreshold(),
+                'min_processing_rate' => $this->getProcessingRateMinPerHour(),
             ],
         ];
     }
@@ -434,12 +466,12 @@ class QueueHealthMonitor
      */
     public function requeueStuckItems(int $limit = 100): array
     {
-        $threshold = now()->subMinutes(self::STUCK_ITEM_THRESHOLD_MINUTES);
+        $threshold = now()->subMinutes($this->getStuckItemThresholdMinutes());
 
         $stuckItems = DB::table('offline_invoice_queue')
             ->where('status', 'pending')
             ->where('created_at', '<', $threshold)
-            ->where('retry_count', '<', self::MAX_RETRY_COUNT)
+            ->where('retry_count', '<', $this->getMaxRetryCount())
             ->limit($limit)
             ->get();
 

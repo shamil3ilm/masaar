@@ -34,12 +34,36 @@ class BackPressureManager
     private const CONFIG_PREFIX = 'zatca:backpressure:config:';
 
     /**
-     * Default configuration.
+     * Get default tokens per second from config.
      */
-    private const DEFAULT_TOKENS_PER_SECOND = 10;
-    private const DEFAULT_BUCKET_SIZE = 100;
-    private const DEFAULT_MIN_TOKENS_PER_SECOND = 1;
-    private const DEFAULT_BURST_ALLOWANCE = 50;
+    private function getDefaultTokensPerSecond(): int
+    {
+        return (int) config('zatca.back_pressure.tokens_per_second', 10);
+    }
+
+    /**
+     * Get default bucket size from config.
+     */
+    private function getDefaultBucketSize(): int
+    {
+        return (int) config('zatca.back_pressure.bucket_size', 100);
+    }
+
+    /**
+     * Get minimum tokens per second from config.
+     */
+    private function getDefaultMinTokensPerSecond(): int
+    {
+        return (int) config('zatca.back_pressure.min_tokens', 1);
+    }
+
+    /**
+     * Get burst allowance from config.
+     */
+    private function getDefaultBurstAllowance(): int
+    {
+        return (int) config('zatca.back_pressure.burst_allowance', 50);
+    }
 
     /**
      * Pressure levels.
@@ -372,7 +396,7 @@ class BackPressureManager
     private function getBucket(string $organizationId): array
     {
         return Cache::get(self::BUCKET_PREFIX . $organizationId, [
-            'tokens' => self::DEFAULT_BUCKET_SIZE,
+            'tokens' => $this->getDefaultBucketSize(),
             'last_refill' => microtime(true),
             'last_acquire' => null,
         ]);
@@ -408,11 +432,11 @@ class BackPressureManager
     private function getConfig(string $organizationId): array
     {
         return Cache::get(self::CONFIG_PREFIX . $organizationId, [
-            'tokens_per_second' => self::DEFAULT_TOKENS_PER_SECOND,
-            'max_tokens_per_second' => self::DEFAULT_TOKENS_PER_SECOND * 2,
-            'min_tokens_per_second' => self::DEFAULT_MIN_TOKENS_PER_SECOND,
-            'bucket_size' => self::DEFAULT_BUCKET_SIZE,
-            'burst_allowance' => self::DEFAULT_BURST_ALLOWANCE,
+            'tokens_per_second' => $this->getDefaultTokensPerSecond(),
+            'max_tokens_per_second' => $this->getDefaultTokensPerSecond() * 2,
+            'min_tokens_per_second' => $this->getDefaultMinTokensPerSecond(),
+            'bucket_size' => $this->getDefaultBucketSize(),
+            'burst_allowance' => $this->getDefaultBurstAllowance(),
         ]);
     }
 
