@@ -64,6 +64,44 @@ class ZatcaClient
     }
 
     /**
+     * Get invoice status by UUID.
+     * Used to check clearance status for pending submissions.
+     */
+    public function getInvoiceStatus(string $uuid): array
+    {
+        try {
+            $response = $this->httpClient()
+                ->get($this->baseUrl . '/invoices/' . $uuid . '/status');
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            Log::warning('ZATCA status check failed', [
+                'uuid' => $uuid,
+                'status' => $response->status(),
+            ]);
+
+            return [
+                'error' => true,
+                'status_code' => $response->status(),
+                'message' => 'Status check failed',
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('ZATCA status check exception', [
+                'uuid' => $uuid,
+                'message' => $e->getMessage(),
+            ]);
+
+            return [
+                'error' => true,
+                'message' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
      * Submit invoice to ZATCA API.
      */
     private function submitInvoice(string $endpoint, string $invoiceXml, string $invoiceHash, string $uuid): ZatcaResponse

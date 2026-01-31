@@ -54,16 +54,56 @@ class KillSwitchManager
     private const CACHE_TTL = 3600;
 
     /**
-     * Enable a kill switch.
+     * Default max duration for time-boxed switches (4 hours).
+     */
+    private const DEFAULT_MAX_DURATION_SECONDS = 14400;
+
+    /**
+     * Alert threshold in seconds (30 minutes).
+     */
+    private const ALERT_THRESHOLD_SECONDS = 1800;
+
+    /**
+     * Enable a kill switch with optional time-boxing.
+     *
+     * @param string $switch Kill switch type
+     * @param string $scope Global or tenant-specific
+     * @param string|null $tenantId Tenant ID for tenant-scoped switches
+     * @param string|null $reason REQUIRED: Reason for enabling (audit trail)
+     * @param string|null $enabledBy Who enabled the switch
+     * @param int|null $durationSeconds How long to keep enabled (null = permanent, max 4 hours default)
+     * @param bool $requireReason If true, throws if reason is empty
      */
     public function enable(
         string $switch,
         string $scope = self::SCOPE_GLOBAL,
         ?string $tenantId = null,
         ?string $reason = null,
-        ?string $enabledBy = null
+        ?string $enabledBy = null,
+        ?int $durationSeconds = null,
+        bool $requireReason = true
     ): void {
         $this->validateSwitch($switch);
+
+        // Enforce mandatory reason logging
+        if ($requireReason && empty($reason)) {
+            throw new \InvalidArgumentException(
+                'Kill switch reason is required for audit compliance'
+            );
+        }
+
+        // Enforce time-boxing with maximum duration
+        $expiresAt = null;
+        if ($durationSeconds !== null) {
+            if ($durationSeconds > self::DEFAULT_MAX_DURATION_SECONDS) {
+                Log::warning('Kill switch duration exceeds maximum, capping', [
+                    'requested' => $durationSeconds,
+                    'max' => self::DEFAULT_MAX_DURATION_SECONDS,
+                ]);
+                $durationSeconds = self::DEFAULT_MAX_DURATION_SECONDS;
+            }
+            $expiresAt = now()->addSeconds($durationSeconds)->toIso8601String();
+        }
 
         $key = $this->buildKey($switch, $scope, $tenantId);
         $switches = $this->getAllSwitches();
@@ -76,6 +116,9 @@ class KillSwitchManager
             'enabled_at' => now()->toIso8601String(),
             'enabled_by' => $enabledBy ?? 'system',
             'reason' => $reason,
+            'duration_seconds' => $durationSeconds,
+            'expires_at' => $expiresAt,
+            'alert_sent' => false,
         ];
 
         $this->saveSwitches($switches);
@@ -86,6 +129,8 @@ class KillSwitchManager
             'tenant_id' => $tenantId,
             'reason' => $reason,
             'enabled_by' => $enabledBy,
+            'expires_at' => $expiresAt,
+            'is_time_boxed' => $expiresAt !== null,
         ]);
     }
 
@@ -123,28 +168,150 @@ class KillSwitchManager
 
     /**
      * Check if a kill switch is enabled.
+     * Automatically handles expiry and alerting.
      */
     public function isEnabled(
         string $switch,
         ?string $tenantId = null
     ): bool {
         $switches = $this->getAllSwitches();
+        $modified = false;
 
         // Check global switch first
         $globalKey = $this->buildKey($switch, self::SCOPE_GLOBAL);
         if (isset($switches[$globalKey]) && $switches[$globalKey]['enabled']) {
-            return true;
+            $result = $this->checkSwitchExpiry($switches, $globalKey);
+            if ($result['expired']) {
+                $modified = true;
+            } elseif ($result['enabled']) {
+                $this->checkAndSendAlert($switches, $globalKey);
+                if ($modified) {
+                    $this->saveSwitches($switches);
+                }
+                return true;
+            }
         }
 
         // Check tenant-specific switch
         if ($tenantId !== null) {
             $tenantKey = $this->buildKey($switch, self::SCOPE_TENANT, $tenantId);
             if (isset($switches[$tenantKey]) && $switches[$tenantKey]['enabled']) {
-                return true;
+                $result = $this->checkSwitchExpiry($switches, $tenantKey);
+                if ($result['expired']) {
+                    $modified = true;
+                } elseif ($result['enabled']) {
+                    $this->checkAndSendAlert($switches, $tenantKey);
+                    if ($modified) {
+                        $this->saveSwitches($switches);
+                    }
+                    return true;
+                }
             }
         }
 
+        if ($modified) {
+            $this->saveSwitches($switches);
+        }
+
         return false;
+    }
+
+    /**
+     * Check if a switch has expired and auto-disable if so.
+     *
+     * @return array{expired: bool, enabled: bool}
+     */
+    private function checkSwitchExpiry(array &$switches, string $key): array
+    {
+        if (!isset($switches[$key])) {
+            return ['expired' => false, 'enabled' => false];
+        }
+
+        $switchData = $switches[$key];
+
+        // No expiry set - permanently enabled
+        if (empty($switchData['expires_at'])) {
+            return ['expired' => false, 'enabled' => true];
+        }
+
+        $expiresAt = new \DateTimeImmutable($switchData['expires_at']);
+        if ($expiresAt <= now()) {
+            // Auto-disable expired switch
+            Log::info('Kill switch auto-expired', [
+                'switch' => $switchData['switch'],
+                'scope' => $switchData['scope'],
+                'tenant_id' => $switchData['tenant_id'] ?? null,
+                'was_enabled_at' => $switchData['enabled_at'],
+                'expired_at' => $switchData['expires_at'],
+                'duration' => $switchData['duration_seconds'] ?? 'unknown',
+            ]);
+
+            unset($switches[$key]);
+            return ['expired' => true, 'enabled' => false];
+        }
+
+        return ['expired' => false, 'enabled' => true];
+    }
+
+    /**
+     * Check and send alert if switch has been enabled too long.
+     */
+    private function checkAndSendAlert(array &$switches, string $key): void
+    {
+        if (!isset($switches[$key])) {
+            return;
+        }
+
+        $switchData = &$switches[$key];
+
+        // Already sent alert
+        if (!empty($switchData['alert_sent'])) {
+            return;
+        }
+
+        $enabledAt = new \DateTimeImmutable($switchData['enabled_at']);
+        $enabledDuration = now()->getTimestamp() - $enabledAt->getTimestamp();
+
+        if ($enabledDuration >= self::ALERT_THRESHOLD_SECONDS) {
+            // Mark alert as sent
+            $switchData['alert_sent'] = true;
+            $switches[$key] = $switchData;
+
+            Log::warning('ALERT: Kill switch enabled for extended period', [
+                'switch' => $switchData['switch'],
+                'scope' => $switchData['scope'],
+                'tenant_id' => $switchData['tenant_id'] ?? null,
+                'enabled_at' => $switchData['enabled_at'],
+                'enabled_by' => $switchData['enabled_by'],
+                'reason' => $switchData['reason'],
+                'duration_seconds' => $enabledDuration,
+                'threshold_seconds' => self::ALERT_THRESHOLD_SECONDS,
+                'expires_at' => $switchData['expires_at'] ?? 'never',
+            ]);
+
+            // Here you would typically dispatch to your alerting system
+            // e.g., Slack, PagerDuty, email, etc.
+            $this->dispatchAlert($switchData, $enabledDuration);
+        }
+    }
+
+    /**
+     * Dispatch alert to external systems.
+     * Override this method to integrate with your alerting system.
+     */
+    protected function dispatchAlert(array $switchData, int $enabledDuration): void
+    {
+        // Default implementation just logs
+        // In production, integrate with Slack, PagerDuty, etc.
+        Log::channel('slack')->warning('Kill switch alert', [
+            'message' => sprintf(
+                '⚠️ Kill switch "%s" has been enabled for %d minutes by %s. Reason: %s',
+                $switchData['switch'],
+                (int) ($enabledDuration / 60),
+                $switchData['enabled_by'],
+                $switchData['reason'] ?? 'No reason provided'
+            ),
+        ]);
     }
 
     /**
@@ -287,9 +454,12 @@ class KillSwitchManager
 
         foreach ($allSwitches as $switch) {
             $info = $this->getSwitchInfo($switch, $tenantId);
+            $enabled = $this->isEnabled($switch, $tenantId);
             $status[$switch] = [
-                'enabled' => $this->isEnabled($switch, $tenantId),
+                'enabled' => $enabled,
                 'info' => $info,
+                'expires_at' => $info['expires_at'] ?? null,
+                'is_time_boxed' => !empty($info['expires_at']),
             ];
         }
 
@@ -298,7 +468,120 @@ class KillSwitchManager
             'switches' => $status,
             'is_offline_mode' => $this->isOfflineModeForced($tenantId),
             'is_fully_operational' => empty($this->getEnabledSwitches($tenantId)),
+            'long_running_switches' => $this->getLongRunningSwitches($tenantId),
         ];
+    }
+
+    /**
+     * Get switches that have been enabled for longer than the alert threshold.
+     */
+    public function getLongRunningSwitches(?string $tenantId = null): array
+    {
+        $enabled = $this->getEnabledSwitches($tenantId);
+        $longRunning = [];
+
+        foreach ($enabled as $switch) {
+            $enabledAt = new \DateTimeImmutable($switch['enabled_at']);
+            $duration = now()->getTimestamp() - $enabledAt->getTimestamp();
+
+            if ($duration >= self::ALERT_THRESHOLD_SECONDS) {
+                $longRunning[] = [
+                    'switch' => $switch['switch'],
+                    'scope' => $switch['scope'],
+                    'tenant_id' => $switch['tenant_id'] ?? null,
+                    'enabled_at' => $switch['enabled_at'],
+                    'enabled_by' => $switch['enabled_by'],
+                    'reason' => $switch['reason'],
+                    'duration_seconds' => $duration,
+                    'duration_human' => $this->humanizeDuration($duration),
+                    'expires_at' => $switch['expires_at'] ?? null,
+                ];
+            }
+        }
+
+        return $longRunning;
+    }
+
+    /**
+     * Extend the duration of an existing time-boxed switch.
+     */
+    public function extendDuration(
+        string $switch,
+        int $additionalSeconds,
+        string $scope = self::SCOPE_GLOBAL,
+        ?string $tenantId = null,
+        ?string $extendedBy = null,
+        ?string $reason = null
+    ): void {
+        $key = $this->buildKey($switch, $scope, $tenantId);
+        $switches = $this->getAllSwitches();
+
+        if (!isset($switches[$key])) {
+            throw new \InvalidArgumentException("Kill switch {$switch} is not enabled");
+        }
+
+        $switchData = $switches[$key];
+
+        // Calculate new expiry
+        $currentExpiry = $switchData['expires_at']
+            ? new \DateTimeImmutable($switchData['expires_at'])
+            : now();
+
+        $newExpiry = $currentExpiry->modify("+{$additionalSeconds} seconds");
+
+        // Enforce maximum total duration from original enable time
+        $enabledAt = new \DateTimeImmutable($switchData['enabled_at']);
+        $totalDuration = $newExpiry->getTimestamp() - $enabledAt->getTimestamp();
+
+        if ($totalDuration > self::DEFAULT_MAX_DURATION_SECONDS * 2) {
+            throw new \InvalidArgumentException(
+                'Cannot extend kill switch beyond maximum total duration (8 hours from original enable time)'
+            );
+        }
+
+        $switches[$key]['expires_at'] = $newExpiry->format(\DateTimeInterface::ATOM);
+        $switches[$key]['extension_history'][] = [
+            'extended_at' => now()->toIso8601String(),
+            'extended_by' => $extendedBy,
+            'additional_seconds' => $additionalSeconds,
+            'reason' => $reason,
+        ];
+
+        $this->saveSwitches($switches);
+
+        Log::warning('Kill switch duration EXTENDED', [
+            'switch' => $switch,
+            'scope' => $scope,
+            'tenant_id' => $tenantId,
+            'additional_seconds' => $additionalSeconds,
+            'new_expires_at' => $newExpiry->format(\DateTimeInterface::ATOM),
+            'extended_by' => $extendedBy,
+            'reason' => $reason,
+        ]);
+    }
+
+    /**
+     * Convert seconds to human readable duration.
+     */
+    private function humanizeDuration(int $seconds): string
+    {
+        if ($seconds < 60) {
+            return "{$seconds} seconds";
+        }
+
+        $minutes = (int) ($seconds / 60);
+        if ($minutes < 60) {
+            return "{$minutes} minute" . ($minutes !== 1 ? 's' : '');
+        }
+
+        $hours = (int) ($minutes / 60);
+        $remainingMinutes = $minutes % 60;
+
+        if ($remainingMinutes > 0) {
+            return "{$hours} hour" . ($hours !== 1 ? 's' : '') . " {$remainingMinutes} min";
+        }
+
+        return "{$hours} hour" . ($hours !== 1 ? 's' : '');
     }
 
     /**
