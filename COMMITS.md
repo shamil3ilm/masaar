@@ -36,6 +36,7 @@ This document maintains a record of all commits to the CompliPay project for aud
 | 28 | `be45bd0` | 2026-01-31 | Add support scope documentation |
 | 29 | `b7a6d3b` | 2026-01-31 | Add enterprise readiness features: idempotency, async submissions, and error taxonomy |
 | 30 | `bd9cb4c` | 2026-01-31 | Add extreme scenario handlers and infrastructure resilience |
+| 31 | `f88e9ca` | 2026-01-31 | Add critical edge-case handlers for production resilience |
 
 ## Detailed Commit Descriptions
 
@@ -110,6 +111,16 @@ This document maintains a record of all commits to the CompliPay project for aud
 - Feature flags for gradual rollout
 - Enhanced config/zatca.php with all settings
 
+### Phase 10: Critical Edge-Case Handlers (Commit 31)
+- HashChainManager: Single-writer locking for ICV sequence integrity
+- CertificateLineageService: Full certificate lifecycle tracking
+- ClearanceStateManager: Handle ZATCA partial success (HTTP 200 but not cleared)
+- BackPressureManager: Token bucket rate limiting for ERP burst traffic
+- CheckClearanceStatus job: Re-check pending clearances with backoff
+- Time-boxed kill switches: Mandatory reason, auto-expiry, alerting
+- Database tables: hash_chain_state, hash_chain_history, certificate_lineage
+- Audit queries: "All invoices with cert X" answerable in <10 minutes
+
 ## Full Commit Hashes
 
 For verification purposes, here are the full SHA-1 hashes:
@@ -145,11 +156,12 @@ fd6549d - Fix placeholder uniformity and add commit tracking
 be45bd0 - Add support scope documentation
 b7a6d3b3bb4e0248b41a1887e4832be844807dce - Add enterprise readiness features
 bd9cb4c - Add extreme scenario handlers and infrastructure resilience
+f88e9ca - Add critical edge-case handlers for production resilience
 ```
 
 ## Statistics
 
-- **Total Commits**: 30
+- **Total Commits**: 31
 - **Development Period**: January 30-31, 2026
 - **Main Branch**: `main`
 - **Contributors**: Development Team
