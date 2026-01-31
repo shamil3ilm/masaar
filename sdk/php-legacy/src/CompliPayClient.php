@@ -242,6 +242,7 @@ class HttpClient
             CURLOPT_TIMEOUT => $this->timeout,
             CURLOPT_HTTPHEADER => $this->getHeaders(),
             CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
         ]);
 
         switch (strtoupper($method)) {
