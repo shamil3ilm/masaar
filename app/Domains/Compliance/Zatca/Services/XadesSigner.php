@@ -51,7 +51,7 @@ class XadesSigner
         $signature = $this->createSignatureElement($dom, $signatureId);
 
         // Create XAdES Object first (need SignedProperties for digest calculation)
-        $xadesResult = $this->createXadesObject($dom, $signedPropertiesId, $certificatePem);
+        $xadesResult = $this->createXadesObject($dom, $signatureId, $signedPropertiesId, $certificatePem);
         $object = $xadesResult['object'];
         $signedProperties = $xadesResult['signedProperties'];
 
@@ -210,15 +210,19 @@ class XadesSigner
     /**
      * Create XAdES Object with SignedProperties.
      *
+     * @param DOMDocument $dom XML document
+     * @param string $signatureId Dynamic signature ID (for Target attribute)
+     * @param string $signedPropertiesId SignedProperties element ID
+     * @param string $certificatePem Certificate PEM
      * @return array{object: DOMElement, signedProperties: DOMElement}
      */
-    private function createXadesObject(DOMDocument $dom, string $signedPropertiesId, string $certificatePem): array
+    private function createXadesObject(DOMDocument $dom, string $signatureId, string $signedPropertiesId, string $certificatePem): array
     {
         $object = $dom->createElementNS(self::DS_NS, 'ds:Object');
 
-        // QualifyingProperties
+        // QualifyingProperties - Target must reference the actual signature ID
         $qualifyingProps = $dom->createElementNS(self::XADES_NS, 'xades:QualifyingProperties');
-        $qualifyingProps->setAttribute('Target', '#signature');
+        $qualifyingProps->setAttribute('Target', '#' . $signatureId);
 
         // SignedProperties
         $signedProps = $dom->createElementNS(self::XADES_NS, 'xades:SignedProperties');
