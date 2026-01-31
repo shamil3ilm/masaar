@@ -40,6 +40,7 @@ This document maintains a record of all commits to the CompliPay project for aud
 | 32 | `9709890` | 2026-01-31 | Fix migrations to check for existing columns before adding |
 | 33 | `31a8650` | 2026-01-31 | Add edge case handlers for production stability |
 | 34 | `5518d3c` | 2026-01-31 | Add policy framework and rare-but-real extremity handlers |
+| 35 | `025d143` | 2026-01-31 | Add advanced edge case handlers for time, crypto, and DR scenarios |
 
 ## Detailed Commit Descriptions
 
@@ -161,6 +162,41 @@ This document maintains a record of all commits to the CompliPay project for aud
   - legal_hold_reference, legal_hold_at, legal_hold_expires_at on organizations
   - Belt+suspenders ICV unique constraint (DB-level split-brain protection)
 
+### Phase 13: Advanced Edge Cases - Time, Crypto & DR (Commit 35)
+- **AtomicIcvManager**: Microsecond-precision ICV atomicity
+  - Redis Lua scripts for atomic increment with timestamp validation
+  - Database fallback with serializable transactions
+  - Monotonic clock guarantees to handle drift
+  - ICV sequence validation and gap reservation
+- **KeyCompromiseHandler**: Certificate/key compromise response
+  - Incident lifecycle: suspected → confirmed → contained → remediated
+  - Immediate signing halt on compromise report
+  - Affected invoice identification (cleared vs pending)
+  - Re-signing plan generation for pending invoices
+  - Full audit trail of compromise response
+- **ClusterCircuitBreaker**: Redis-backed cluster-wide circuit breaker
+  - Pub/Sub for immediate state propagation across nodes
+  - Node health tracking for split-brain detection
+  - Gradual recovery with half-open state
+  - Force-state capability for admin intervention
+- **QueueHealthMonitor**: Silent failure detection and alerting
+  - Stuck item detection (items pending > threshold)
+  - Retry exhaustion tracking
+  - Queue growth anomaly detection
+  - Processing rate monitoring
+  - Alert cooldown to prevent fatigue
+- **HashChainAnomalyDetector**: Chain integrity monitoring
+  - Chain break detection (previous_hash mismatches)
+  - Post-clearance modification detection
+  - ICV sequence violation detection
+  - Orphaned/phantom invoice detection
+  - Hash mismatch alerting
+- **ArchivedTenantReconstructor**: Merged/archived tenant data access
+  - Full invoice reconstruction with lifecycle context
+  - Hash chain reconstruction for audits
+  - Regulatory export for data transfer
+  - Cross-tenant isolation maintained during reconstruction
+
 ## Full Commit Hashes
 
 For verification purposes, here are the full SHA-1 hashes:
@@ -200,11 +236,12 @@ f88e9ca - Add critical edge-case handlers for production resilience
 9709890 - Fix migrations to check for existing columns before adding
 31a8650 - Add edge case handlers for production stability
 5518d3c - Add policy framework and rare-but-real extremity handlers
+025d143 - Add advanced edge case handlers for time, crypto, and DR scenarios
 ```
 
 ## Statistics
 
-- **Total Commits**: 34
+- **Total Commits**: 35
 - **Development Period**: January 30-31, 2026
 - **Main Branch**: `main`
 - **Contributors**: Development Team
