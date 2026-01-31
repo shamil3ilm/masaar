@@ -42,6 +42,7 @@ This document maintains a record of all commits to the CompliPay project for aud
 | 34 | `5518d3c` | 2026-01-31 | Add policy framework and rare-but-real extremity handlers |
 | 35 | `025d143` | 2026-01-31 | Add advanced edge case handlers for time, crypto, and DR scenarios |
 | 36 | `6c8dc46` | 2026-01-31 | Add production readiness guide with stress testing and chaos engineering |
+| 37 | `a4e7e6d` | 2026-01-31 | Add remaining extremity policies and monitoring |
 
 ## Detailed Commit Descriptions
 
@@ -210,6 +211,30 @@ This document maintains a record of all commits to the CompliPay project for aud
   - Chaos engineering game day exercises
   - Performance baselines and capacity planning
 
+### Phase 15: Remaining Extremity Policies (Commit 37)
+- **Timestamp Authority Policy**: Local vs TSA precedence for audit disputes
+  - Timestamp hierarchy: TSA > System UTC > ERP
+  - Dispute resolution path documented
+  - ±30 second clock drift tolerance
+- **Certificate Overlap Resolution**: Newest active certificate preferred
+  - Override process for reconciliation scenarios
+  - Audit trail for certificate selection decisions
+- **Sandbox/Production Variance Tracking**: EnvironmentVarianceTracker service
+  - Tracks "works in sandbox, fails in production" scenarios
+  - Customer communication templates
+  - ZATCA ticket escalation workflow
+  - environment_variance_log database table
+- **Webhook Replay Protection**: Consumer guidance documented
+  - event_id uniqueness verification
+  - Timestamp freshness validation (5 min window)
+  - Idempotency key handling
+  - SDK examples for all languages
+- **Index Health Monitoring**: Slow burn failure prevention
+  - Critical table monitoring (hash_chain_history, audit_logs)
+  - Query latency alerting (P95 thresholds)
+  - Partitioning strategy for 100M+ row tables
+  - Preventive maintenance schedule
+
 ## Full Commit Hashes
 
 For verification purposes, here are the full SHA-1 hashes:
@@ -251,11 +276,12 @@ f88e9ca - Add critical edge-case handlers for production resilience
 5518d3c - Add policy framework and rare-but-real extremity handlers
 025d143 - Add advanced edge case handlers for time, crypto, and DR scenarios
 6c8dc46 - Add production readiness guide with stress testing and chaos engineering
+a4e7e6d - Add remaining extremity policies and monitoring
 ```
 
 ## Statistics
 
-- **Total Commits**: 36
+- **Total Commits**: 37
 - **Development Period**: January 30-31, 2026
 - **Main Branch**: `main`
 - **Contributors**: Development Team
