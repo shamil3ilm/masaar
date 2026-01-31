@@ -156,12 +156,40 @@ class XadesSigner
         $digestMethod->setAttribute('Algorithm', 'http://www.w3.org/2001/04/xmlenc#sha256');
         $reference->appendChild($digestMethod);
 
-        // DigestValue
-        $digest = base64_encode(hash('sha256', $xml, true));
+        // DigestValue - apply transforms before calculating digest
+        $transformedXml = $this->applyDocumentTransforms($xml);
+        $digest = base64_encode(hash('sha256', $transformedXml, true));
         $digestValue = $dom->createElementNS(self::DS_NS, 'ds:DigestValue', $digest);
         $reference->appendChild($digestValue);
 
         return $reference;
+    }
+
+    /**
+     * Apply transforms to document for digest calculation.
+     *
+     * Per XML-DSIG, digest must be calculated on transformed data:
+     * 1. Enveloped signature transform (remove ds:Signature) - N/A before signing
+     * 2. XPath transform (exclude UBLExtensions)
+     * 3. Canonicalization (C14N 1.1)
+     */
+    private function applyDocumentTransforms(string $xml): string
+    {
+        $dom = new DOMDocument('1.0', 'UTF-8');
+        $dom->preserveWhiteSpace = false;
+        $dom->loadXML($xml);
+
+        // Apply XPath transform: exclude UBLExtensions
+        $xpath = new DOMXPath($dom);
+        $xpath->registerNamespace('ext', 'urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2');
+
+        $extensions = $xpath->query('//ext:UBLExtensions');
+        foreach ($extensions as $extension) {
+            $extension->parentNode->removeChild($extension);
+        }
+
+        // Apply C14N canonicalization
+        return $dom->documentElement->C14N(true, false);
     }
 
     /**
@@ -489,8 +517,8 @@ class XadesSigner
                     $actualDigest = base64_encode(hash('sha256', $targetC14n, true));
                 } elseif (empty($uri)) {
                     // Reference to document (enveloped signature)
-                    // Would need to apply transforms and calculate digest
-                    continue;
+                    // Apply transforms: remove signature, remove UBLExtensions, canonicalize
+                    $actualDigest = $this->calculateDocumentReferenceDigest($dom);
                 } else {
                     continue;
                 }
@@ -507,5 +535,40 @@ class XadesSigner
             'valid' => empty($errors),
             'errors' => $errors,
         ];
+    }
+
+    /**
+     * Calculate document reference digest for verification.
+     *
+     * Applies the same transforms as signing:
+     * 1. Remove ds:Signature (enveloped-signature)
+     * 2. Remove UBLExtensions (XPath)
+     * 3. Canonicalize (C14N 1.1)
+     */
+    private function calculateDocumentReferenceDigest(DOMDocument $dom): string
+    {
+        // Clone to avoid modifying original
+        $clone = $dom->cloneNode(true);
+
+        $xpath = new DOMXPath($clone);
+        $xpath->registerNamespace('ds', self::DS_NS);
+        $xpath->registerNamespace('ext', 'urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2');
+
+        // Remove ds:Signature (enveloped-signature transform)
+        $signatures = $xpath->query('//ds:Signature');
+        foreach ($signatures as $sig) {
+            $sig->parentNode->removeChild($sig);
+        }
+
+        // Remove UBLExtensions (XPath transform)
+        $extensions = $xpath->query('//ext:UBLExtensions');
+        foreach ($extensions as $ext) {
+            $ext->parentNode->removeChild($ext);
+        }
+
+        // Canonicalize and hash
+        $canonicalized = $clone->documentElement->C14N(true, false);
+
+        return base64_encode(hash('sha256', $canonicalized, true));
     }
 }
