@@ -141,7 +141,7 @@ The system may monitor for:
 
 ### 8.1 Report Violations
 
-Report suspected misuse to: [Your Security Contact]
+Report suspected misuse to: security@{YOUR_DOMAIN}
 
 ### 8.2 Security Vulnerabilities
 
