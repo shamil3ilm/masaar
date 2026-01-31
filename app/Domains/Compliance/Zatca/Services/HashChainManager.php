@@ -44,69 +44,119 @@ class HashChainManager
 
     /**
      * Acquire exclusive lock for hash chain operations.
+     * Uses Redis SETNX for cluster-safe atomic lock acquisition.
      *
      * @param string $organizationId Organization ID
      * @param int $timeout Lock timeout in seconds
+     * @param int $retryAttempts Number of retry attempts
+     * @param int $retryDelayMs Delay between retries in milliseconds
      * @return string Lock token for release
      * @throws ZatcaException If lock cannot be acquired
      */
-    public function acquireLock(string $organizationId, int $timeout = self::LOCK_TIMEOUT): string
-    {
+    public function acquireLock(
+        string $organizationId,
+        int $timeout = self::LOCK_TIMEOUT,
+        int $retryAttempts = 5,
+        int $retryDelayMs = 100
+    ): string {
         $lockKey = self::LOCK_PREFIX . $organizationId;
         $lockToken = bin2hex(random_bytes(16));
-
-        $acquired = Cache::lock($lockKey, $timeout)->get(function () use ($lockToken) {
-            return $lockToken;
-        });
-
-        if ($acquired !== $lockToken) {
-            // Check if there's an existing lock
-            $existingLock = Cache::get($lockKey . ':info');
-
-            throw new ZatcaException(
-                'Cannot acquire hash chain lock - another submission is in progress',
-                ErrorCode::RATE_CONCURRENT_LIMIT,
-                [
-                    'organization_id' => $organizationId,
-                    'existing_lock' => $existingLock,
-                    'retry_after' => $timeout,
-                ]
-            );
-        }
-
-        // Store lock metadata for debugging
-        Cache::put($lockKey . ':info', [
+        $lockValue = json_encode([
             'token' => $lockToken,
             'acquired_at' => now()->toIso8601String(),
             'expires_at' => now()->addSeconds($timeout)->toIso8601String(),
             'pid' => getmypid(),
-        ], $timeout);
-
-        Log::debug('Hash chain lock acquired', [
-            'organization_id' => $organizationId,
-            'lock_token' => substr($lockToken, 0, 8) . '...',
+            'hostname' => gethostname(),
         ]);
 
-        return $lockToken;
+        // Try to acquire with retries
+        for ($attempt = 0; $attempt < $retryAttempts; $attempt++) {
+            // Use Laravel's atomic lock with proper ownership
+            $lock = Cache::lock($lockKey, $timeout, $lockToken);
+
+            if ($lock->get()) {
+                // Store metadata separately for debugging
+                Cache::put($lockKey . ':info', $lockValue, $timeout);
+
+                Log::debug('Hash chain lock acquired', [
+                    'organization_id' => $organizationId,
+                    'lock_token' => substr($lockToken, 0, 8) . '...',
+                    'attempt' => $attempt + 1,
+                ]);
+
+                return $lockToken;
+            }
+
+            // Wait before retry with exponential backoff
+            if ($attempt < $retryAttempts - 1) {
+                $delay = $retryDelayMs * pow(2, $attempt);
+                usleep($delay * 1000);
+            }
+        }
+
+        // Lock acquisition failed
+        $existingLock = Cache::get($lockKey . ':info');
+        $existingInfo = $existingLock ? json_decode($existingLock, true) : null;
+
+        throw new ZatcaException(
+            'Cannot acquire hash chain lock - another submission is in progress',
+            ErrorCode::RATE_CONCURRENT_LIMIT,
+            [
+                'organization_id' => $organizationId,
+                'existing_lock_info' => $existingInfo ? [
+                    'acquired_at' => $existingInfo['acquired_at'] ?? 'unknown',
+                    'hostname' => $existingInfo['hostname'] ?? 'unknown',
+                ] : null,
+                'retry_after' => $timeout,
+                'attempts_made' => $retryAttempts,
+            ]
+        );
     }
 
     /**
      * Release hash chain lock.
+     * Uses atomic operation to only release if we own the lock.
      */
     public function releaseLock(string $organizationId, string $lockToken): void
     {
         $lockKey = self::LOCK_PREFIX . $organizationId;
 
-        // Verify token before release
-        $info = Cache::get($lockKey . ':info');
-        if ($info && $info['token'] === $lockToken) {
-            Cache::forget($lockKey);
+        // Use Laravel's lock release with ownership verification
+        $lock = Cache::lock($lockKey, 0, $lockToken);
+
+        try {
+            $lock->release();
             Cache::forget($lockKey . ':info');
 
             Log::debug('Hash chain lock released', [
                 'organization_id' => $organizationId,
             ]);
+        } catch (\Exception $e) {
+            // Lock may have already expired or been released
+            Log::warning('Hash chain lock release failed (may have expired)', [
+                'organization_id' => $organizationId,
+                'error' => $e->getMessage(),
+            ]);
         }
+    }
+
+    /**
+     * Force release a lock (admin operation).
+     * Use with caution - only for stuck locks.
+     */
+    public function forceReleaseLock(string $organizationId, string $reason): void
+    {
+        $lockKey = self::LOCK_PREFIX . $organizationId;
+        $existingInfo = Cache::get($lockKey . ':info');
+
+        Cache::forget($lockKey);
+        Cache::forget($lockKey . ':info');
+
+        Log::warning('Hash chain lock FORCE RELEASED', [
+            'organization_id' => $organizationId,
+            'reason' => $reason,
+            'was_held_by' => $existingInfo ? json_decode($existingInfo, true) : null,
+        ]);
     }
 
     /**

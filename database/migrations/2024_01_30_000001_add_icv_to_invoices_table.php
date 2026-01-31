@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -10,20 +11,33 @@ return new class extends Migration
     {
         Schema::table('invoices', function (Blueprint $table) {
             // Invoice Counter Value - sequential per organization
-            $table->unsignedBigInteger('icv')->nullable()->after('qr_code');
+            if (!Schema::hasColumn('invoices', 'icv')) {
+                $table->unsignedBigInteger('icv')->nullable()->after('qr_code');
+            }
 
             // Document type for credit/debit notes
-            $table->string('document_type')->nullable()->after('type');
+            if (!Schema::hasColumn('invoices', 'document_type')) {
+                $table->string('document_type')->nullable()->after('type');
+            }
 
             // Payment means code
-            $table->string('payment_means_code', 10)->nullable()->after('buyer_address');
+            if (!Schema::hasColumn('invoices', 'payment_means_code')) {
+                $table->string('payment_means_code', 10)->nullable()->after('buyer_address');
+            }
 
             // Billing reference for credit/debit notes
-            $table->string('billing_reference_id')->nullable()->after('payment_means_code');
-
-            // Index for ICV uniqueness per organization
-            $table->unique(['organization_id', 'icv'], 'invoices_org_icv_unique');
+            if (!Schema::hasColumn('invoices', 'billing_reference_id')) {
+                $table->string('billing_reference_id')->nullable()->after('payment_means_code');
+            }
         });
+
+        // Add unique index separately to check if it exists
+        $indexExists = collect(DB::select("SHOW INDEX FROM invoices WHERE Key_name = 'invoices_org_icv_unique'"))->isNotEmpty();
+        if (!$indexExists && Schema::hasColumn('invoices', 'icv')) {
+            Schema::table('invoices', function (Blueprint $table) {
+                $table->unique(['organization_id', 'icv'], 'invoices_org_icv_unique');
+            });
+        }
     }
 
     public function down(): void
