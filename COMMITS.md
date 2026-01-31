@@ -39,6 +39,7 @@ This document maintains a record of all commits to the CompliPay project for aud
 | 31 | `f88e9ca` | 2026-01-31 | Add critical edge-case handlers for production resilience |
 | 32 | `9709890` | 2026-01-31 | Fix migrations to check for existing columns before adding |
 | 33 | `31a8650` | 2026-01-31 | Add edge case handlers for production stability |
+| 34 | `5518d3c` | 2026-01-31 | Add policy framework and rare-but-real extremity handlers |
 
 ## Detailed Commit Descriptions
 
@@ -132,6 +133,34 @@ This document maintains a record of all commits to the CompliPay project for aud
 - TenantIsolationGuard: Cross-tenant data isolation verification
 - Post-clearance audit updates for ZATCA reconciliation
 
+### Phase 12: Policy Framework & Rare-But-Real Extremities (Commit 34)
+- **ComplianceSnapshot**: "Compliance-as-of" timestamps for retroactive rule changes
+  - Stores rule_version, schema_version, signature_algorithm, hash_algorithm at issuance
+  - Generates legal compliance statements for audit defense
+  - Policy: Invoices compliant at issuance remain compliant (no retroactive reprocessing)
+- **InvoiceExportService**: Watermarked exports for non-compliant invoices
+  - Three export modes: compliant, draft, audit
+  - Prominent watermarks: "*** NON-COMPLIANT - NOT CLEARED BY ZATCA ***"
+  - Mandatory reason and audit logging for non-standard exports
+  - Fraud prevention disclaimers on audit exports
+- **OrganizationLifecycleService**: Organization state machine
+  - States: active, suspended, legally_replaced, archived, legal_hold
+  - Handles company mergers, VAT changes, legal entity transitions
+  - Hash chain freezing on state transitions
+  - Legal hold placement/release with full audit trail
+- **COMPLIANCE-POLICIES.md**: Comprehensive policy documentation
+  - Retroactive regulatory changes policy
+  - Canonical invoice identity policy (UUID over ERP numbers)
+  - Non-compliant export policy with watermarking requirements
+  - Organization lifecycle state machine documentation
+  - Cryptographic obsolescence migration path
+  - Legal hold procedures and requirements
+- **Database Migration**: Algorithm versioning and constraints
+  - signature_algorithm, hash_algorithm columns on invoices
+  - compliance_determined_at timestamp
+  - legal_hold_reference, legal_hold_at, legal_hold_expires_at on organizations
+  - Belt+suspenders ICV unique constraint (DB-level split-brain protection)
+
 ## Full Commit Hashes
 
 For verification purposes, here are the full SHA-1 hashes:
@@ -170,11 +199,12 @@ bd9cb4c - Add extreme scenario handlers and infrastructure resilience
 f88e9ca - Add critical edge-case handlers for production resilience
 9709890 - Fix migrations to check for existing columns before adding
 31a8650 - Add edge case handlers for production stability
+5518d3c - Add policy framework and rare-but-real extremity handlers
 ```
 
 ## Statistics
 
-- **Total Commits**: 33
+- **Total Commits**: 34
 - **Development Period**: January 30-31, 2026
 - **Main Branch**: `main`
 - **Contributors**: Development Team
