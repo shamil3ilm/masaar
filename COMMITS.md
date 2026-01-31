@@ -35,6 +35,7 @@ This document maintains a record of all commits to the CompliPay project for aud
 | 27 | `fd6549d` | 2026-01-31 | Fix placeholder uniformity and add commit tracking |
 | 28 | `be45bd0` | 2026-01-31 | Add support scope documentation |
 | 29 | `b7a6d3b` | 2026-01-31 | Add enterprise readiness features: idempotency, async submissions, and error taxonomy |
+| 30 | `bd9cb4c` | 2026-01-31 | Add extreme scenario handlers and infrastructure resilience |
 
 ## Detailed Commit Descriptions
 
@@ -95,8 +96,19 @@ This document maintains a record of all commits to the CompliPay project for aud
 - Idempotency for ZATCA submissions (24-hour window)
 - Async submission with state machine (10 states)
 - ProcessZatcaSubmission queue job with automatic retries
-- Extreme scenario handlers (certificate health, rate limits, concurrent limits)
 - Full submission audit trail
+
+### Phase 9: Extreme Scenario Resilience (Commit 30)
+- UTC timezone fixes for all ZATCA timestamps (ZatcaTime helper)
+- MD5 to SHA256 for cryptographic consistency
+- Centralized configuration (ZatcaConfig with 80+ constants)
+- Arabic text normalization (TextNormalizer)
+- Saudi VAT number validation with Luhn checksum
+- Circuit breaker pattern for ZATCA API protection
+- Kill switch manager for emergency controls
+- Offline queue manager for POS/retail scenarios
+- Feature flags for gradual rollout
+- Enhanced config/zatca.php with all settings
 
 ## Full Commit Hashes
 
@@ -132,11 +144,12 @@ f67242adb15989d4a2f3c73780d4961057099cb8 - Add controlled open source licensing
 fd6549d - Fix placeholder uniformity and add commit tracking
 be45bd0 - Add support scope documentation
 b7a6d3b3bb4e0248b41a1887e4832be844807dce - Add enterprise readiness features
+bd9cb4c - Add extreme scenario handlers and infrastructure resilience
 ```
 
 ## Statistics
 
-- **Total Commits**: 29
+- **Total Commits**: 30
 - **Development Period**: January 30-31, 2026
 - **Main Branch**: `main`
 - **Contributors**: Development Team
