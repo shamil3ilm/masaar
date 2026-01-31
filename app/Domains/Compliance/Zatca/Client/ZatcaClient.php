@@ -22,10 +22,47 @@ class ZatcaClient
     private string $baseUrl;
     private ?string $username;
     private ?string $password;
-    private int $timeout;
-    private int $retryAttempts;
-    private int $retryDelay;
     private InvoiceHasher $hasher;
+
+    /**
+     * Get request timeout from config.
+     */
+    private function getTimeout(): int
+    {
+        return (int) config('zatca.timeout', 30);
+    }
+
+    /**
+     * Get connection timeout from config.
+     */
+    private function getConnectTimeout(): int
+    {
+        return (int) config('zatca.connect_timeout', 10);
+    }
+
+    /**
+     * Get retry attempts from config.
+     */
+    private function getRetryAttempts(): int
+    {
+        return (int) config('zatca.retry_attempts', 3);
+    }
+
+    /**
+     * Get retry delay from config.
+     */
+    private function getRetryDelay(): int
+    {
+        return (int) config('zatca.retry_delay', 1000);
+    }
+
+    /**
+     * Check if SSL verification is enabled.
+     */
+    private function isSslVerifyEnabled(): bool
+    {
+        return (bool) config('zatca.ssl_verify', true);
+    }
 
     public function __construct(?InvoiceHasher $hasher = null)
     {
@@ -34,9 +71,6 @@ class ZatcaClient
         $this->baseUrl = config("zatca.endpoints.{$environment}");
         $this->username = config('zatca.credentials.username');
         $this->password = config('zatca.credentials.password');
-        $this->timeout = config('zatca.timeout', 30);
-        $this->retryAttempts = config('zatca.retry_attempts', 3);
-        $this->retryDelay = config('zatca.retry_delay', 1000);
     }
 
     /**
@@ -139,18 +173,36 @@ class ZatcaClient
     }
 
     /**
-     * Create HTTP client with authentication and retry logic.
+     * Create base HTTP client with config-driven settings.
+     * Used as foundation for all API requests.
      */
-    private function httpClient(): PendingRequest
+    private function createBaseHttpClient(): PendingRequest
     {
-        $client = Http::timeout($this->timeout)
-            ->retry($this->retryAttempts, $this->retryDelay)
+        $client = Http::timeout($this->getTimeout())
+            ->connectTimeout($this->getConnectTimeout())
+            ->retry($this->getRetryAttempts(), $this->getRetryDelay())
             ->withHeaders([
                 'Accept' => 'application/json',
                 'Content-Type' => 'application/json',
                 'Accept-Language' => 'en',
                 'Accept-Version' => 'V2',
             ]);
+
+        // Configure SSL verification
+        if (! $this->isSslVerifyEnabled()) {
+            $client->withoutVerifying();
+        }
+
+        return $client;
+    }
+
+    /**
+     * Create HTTP client with authentication and retry logic.
+     * Uses config-driven timeouts, retries, and SSL settings.
+     */
+    private function httpClient(): PendingRequest
+    {
+        $client = $this->createBaseHttpClient();
 
         // Add basic auth if credentials configured
         if ($this->username && $this->password) {
@@ -166,16 +218,14 @@ class ZatcaClient
     public function requestComplianceCsid(string $csr, string $otp): CsidResponse
     {
         try {
-            $response = Http::timeout($this->timeout)
+            $client = $this->createBaseHttpClient()
                 ->withHeaders([
-                    'Accept' => 'application/json',
-                    'Content-Type' => 'application/json',
                     'OTP' => $otp,
-                    'Accept-Version' => 'V2',
-                ])
-                ->post($this->baseUrl . '/compliance', [
-                    'csr' => base64_encode($csr),
                 ]);
+
+            $response = $client->post($this->baseUrl . '/compliance', [
+                'csr' => base64_encode($csr),
+            ]);
 
             if ($response->successful()) {
                 return CsidResponse::fromApiResponse($response->json());
@@ -195,19 +245,14 @@ class ZatcaClient
     public function submitComplianceInvoice(string $invoiceXml, string $ccsid, string $secret): ZatcaResponse
     {
         try {
-            $response = Http::timeout($this->timeout)
-                ->withBasicAuth($ccsid, $secret)
-                ->withHeaders([
-                    'Accept' => 'application/json',
-                    'Content-Type' => 'application/json',
-                    'Accept-Language' => 'en',
-                    'Accept-Version' => 'V2',
-                ])
-                ->post($this->baseUrl . '/compliance/invoices', [
-                    'invoiceHash' => $this->hashInvoice($invoiceXml),
-                    'uuid' => $this->extractUuid($invoiceXml),
-                    'invoice' => base64_encode($invoiceXml),
-                ]);
+            $client = $this->createBaseHttpClient()
+                ->withBasicAuth($ccsid, $secret);
+
+            $response = $client->post($this->baseUrl . '/compliance/invoices', [
+                'invoiceHash' => $this->hashInvoice($invoiceXml),
+                'uuid' => $this->extractUuid($invoiceXml),
+                'invoice' => base64_encode($invoiceXml),
+            ]);
 
             if ($response->successful()) {
                 return ZatcaResponse::fromApiResponse($response->json());
@@ -227,16 +272,12 @@ class ZatcaClient
     public function requestProductionCsid(string $ccsid, string $secret, string $requestId): CsidResponse
     {
         try {
-            $response = Http::timeout($this->timeout)
-                ->withBasicAuth($ccsid, $secret)
-                ->withHeaders([
-                    'Accept' => 'application/json',
-                    'Content-Type' => 'application/json',
-                    'Accept-Version' => 'V2',
-                ])
-                ->post($this->baseUrl . '/production/csids', [
-                    'compliance_request_id' => $requestId,
-                ]);
+            $client = $this->createBaseHttpClient()
+                ->withBasicAuth($ccsid, $secret);
+
+            $response = $client->post($this->baseUrl . '/production/csids', [
+                'compliance_request_id' => $requestId,
+            ]);
 
             if ($response->successful()) {
                 return CsidResponse::fromApiResponse($response->json());
@@ -256,17 +297,13 @@ class ZatcaClient
     public function renewProductionCsid(string $pcsid, string $secret, string $csr, string $otp): CsidResponse
     {
         try {
-            $response = Http::timeout($this->timeout)
+            $client = $this->createBaseHttpClient()
                 ->withBasicAuth($pcsid, $secret)
-                ->withHeaders([
-                    'Accept' => 'application/json',
-                    'Content-Type' => 'application/json',
-                    'OTP' => $otp,
-                    'Accept-Version' => 'V2',
-                ])
-                ->patch($this->baseUrl . '/production/csids', [
-                    'csr' => base64_encode($csr),
-                ]);
+                ->withHeaders(['OTP' => $otp]);
+
+            $response = $client->patch($this->baseUrl . '/production/csids', [
+                'csr' => base64_encode($csr),
+            ]);
 
             if ($response->successful()) {
                 return CsidResponse::fromApiResponse($response->json());

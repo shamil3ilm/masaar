@@ -5,10 +5,18 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Zatca\Jobs;
 
 use App\Domains\Compliance\Zatca\Client\ZatcaClient;
+use App\Domains\Compliance\Zatca\DTOs\ZatcaResponse;
 use App\Domains\Compliance\Zatca\Enums\ErrorCode;
+use App\Domains\Compliance\Zatca\Events\InvoiceCleared;
+use App\Domains\Compliance\Zatca\Events\InvoiceFailed;
+use App\Domains\Compliance\Zatca\Events\InvoiceRejected;
+use App\Domains\Compliance\Zatca\Events\InvoiceReported;
+use App\Domains\Compliance\Zatca\Events\InvoiceSubmitted;
+use App\Domains\Compliance\Zatca\Events\InvoiceWarning;
 use App\Domains\Compliance\Zatca\Exceptions\ZatcaException;
 use App\Domains\Compliance\Zatca\Models\InvoiceSubmission;
 use App\Domains\Compliance\Zatca\Models\SubmissionIdempotency;
+use App\Domains\Compliance\Zatca\Services\ZatcaComplianceService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -38,17 +46,12 @@ class ProcessZatcaSubmission implements ShouldQueue
     /**
      * Number of times the job may be attempted.
      */
-    public int $tries = 3;
-
-    /**
-     * Backoff intervals in seconds.
-     */
-    public array $backoff = [10, 60, 300];
+    public int $tries;
 
     /**
      * Maximum processing time in seconds.
      */
-    public int $timeout = 120;
+    public int $timeout;
 
     /**
      * Create a new job instance.
@@ -56,6 +59,8 @@ class ProcessZatcaSubmission implements ShouldQueue
     public function __construct(
         public readonly InvoiceSubmission $submission
     ) {
+        $this->tries = (int) config('zatca.queue.tries', 3);
+        $this->timeout = (int) config('zatca.queue.timeout', 120);
         $this->onQueue('zatca-submissions');
     }
 
@@ -68,10 +73,22 @@ class ProcessZatcaSubmission implements ShouldQueue
     }
 
     /**
+     * Calculate the number of seconds to wait before retrying the job.
+     *
+     * @return array<int, int>
+     */
+    public function backoff(): array
+    {
+        return config('zatca.queue.backoff', [10, 60, 300]);
+    }
+
+    /**
      * Execute the job.
      */
-    public function handle(ZatcaClient $zatcaClient): void
-    {
+    public function handle(
+        ZatcaClient $zatcaClient,
+        ZatcaComplianceService $complianceService
+    ): void {
         $submission = $this->submission->fresh();
 
         if ($submission->isTerminal()) {
@@ -92,15 +109,32 @@ class ProcessZatcaSubmission implements ShouldQueue
             // Transition to pending
             $this->transitionState($submission, 'pending_submission', 'queue_job');
 
-            // Load invoice
+            // Load invoice and organization
             $invoice = $submission->invoice;
+            $organization = $submission->organization;
+
+            // Generate compliance data (XML, hash, etc.)
+            $complianceData = $complianceService->generateComplianceData(
+                invoice: $invoice,
+                organization: $organization,
+                previousInvoiceHash: $invoice->previous_invoice_hash,
+                privateKey: $organization->zatca_private_key,
+                certificate: $organization->zatca_certificate,
+            );
+
+            $invoiceXml = $complianceData['xml'];
+            $invoiceHash = $complianceData['hash'];
+            $invoiceUuid = $invoice->id;
 
             // Submit to ZATCA
             $this->transitionState($submission, 'submitted', 'queue_job');
 
+            // Fire submitted event for real-time tracking
+            event(new InvoiceSubmitted($submission->fresh()));
+
             $result = $submission->isClearance()
-                ? $zatcaClient->clearInvoice($invoice)
-                : $zatcaClient->reportInvoice($invoice);
+                ? $zatcaClient->clearInvoice($invoiceXml, $invoiceHash, $invoiceUuid)
+                : $zatcaClient->reportInvoice($invoiceXml, $invoiceHash, $invoiceUuid);
 
             // Handle response
             $this->handleZatcaResponse($submission, $result);
@@ -118,12 +152,10 @@ class ProcessZatcaSubmission implements ShouldQueue
     /**
      * Handle ZATCA API response.
      */
-    private function handleZatcaResponse(InvoiceSubmission $submission, array $response): void
+    private function handleZatcaResponse(InvoiceSubmission $submission, ZatcaResponse $response): void
     {
-        $success = ($response['clearanceStatus'] ?? null) === 'CLEARED'
-            || ($response['reportingStatus'] ?? null) === 'REPORTED';
-
-        $hasWarnings = !empty($response['validationResults']['warnings'] ?? []);
+        $success = $response->success;
+        $hasWarnings = $response->hasWarnings();
 
         // Determine final state
         $newState = match (true) {
@@ -138,12 +170,10 @@ class ProcessZatcaSubmission implements ShouldQueue
             'state' => $newState,
             'previous_state' => 'submitted',
             'state_changed_at' => now(),
-            'zatca_uuid' => $response['invoiceUuid'] ?? null,
-            'zatca_invoice_hash' => $response['invoiceHash'] ?? null,
-            'clearance_status' => $response['clearanceStatus'] ?? null,
-            'reporting_status' => $response['reportingStatus'] ?? null,
-            'zatca_warnings' => $response['validationResults']['warnings'] ?? null,
-            'zatca_errors' => $response['validationResults']['errors'] ?? null,
+            'clearance_status' => $response->clearanceStatus,
+            'reporting_status' => $response->reportingStatus,
+            'zatca_warnings' => $response->warningMessages ?: null,
+            'zatca_errors' => $response->errorMessages ?: null,
             'completed_at' => now(),
         ]);
 
@@ -152,8 +182,14 @@ class ProcessZatcaSubmission implements ShouldQueue
 
         // Log transition
         $this->logStateTransition($submission, 'submitted', $newState, 'zatca', [
-            'clearance_status' => $response['clearanceStatus'] ?? null,
-            'reporting_status' => $response['reportingStatus'] ?? null,
+            'clearance_status' => $response->clearanceStatus,
+            'reporting_status' => $response->reportingStatus,
+        ]);
+
+        // Fire appropriate event for real-time notifications
+        $this->fireStateEvent($submission->fresh(), $newState, [
+            'clearance_status' => $response->clearanceStatus,
+            'reporting_status' => $response->reportingStatus,
         ]);
     }
 
@@ -210,6 +246,14 @@ class ProcessZatcaSubmission implements ShouldQueue
             'attempt' => $this->attempts(),
             'will_retry' => $isRetryable && $this->attempts() < $this->tries,
         ]);
+
+        // Fire failed event for real-time notifications
+        event(new InvoiceFailed($submission->fresh(), [
+            'error_code' => $errorCode->value,
+            'error_message' => $e->getMessage(),
+            'attempt' => $this->attempts(),
+            'will_retry' => $isRetryable && $this->attempts() < $this->tries,
+        ]));
     }
 
     /**
@@ -259,16 +303,34 @@ class ProcessZatcaSubmission implements ShouldQueue
     }
 
     /**
+     * Fire the appropriate event based on state.
+     */
+    private function fireStateEvent(InvoiceSubmission $submission, string $state, array $context = []): void
+    {
+        $event = match ($state) {
+            'cleared' => new InvoiceCleared($submission, $context),
+            'reported' => new InvoiceReported($submission, $context),
+            'rejected' => new InvoiceRejected($submission, $context),
+            'warning' => new InvoiceWarning($submission, $context),
+            'failed' => new InvoiceFailed($submission, $context),
+            default => null,
+        };
+
+        if ($event !== null) {
+            event($event);
+        }
+    }
+
+    /**
      * Update idempotency record with response.
      */
-    private function updateIdempotency(InvoiceSubmission $submission, bool $success, array $response): void
+    private function updateIdempotency(InvoiceSubmission $submission, bool $success, ZatcaResponse $response): void
     {
         SubmissionIdempotency::where('id', $submission->idempotency_id)->update([
             'status' => $success ? 'completed' : 'failed',
             'http_status_code' => $success ? 200 : 422,
-            'response_body' => $response,
-            'zatca_request_id' => $response['requestId'] ?? null,
-            'zatca_clearance_status' => $response['clearanceStatus'] ?? null,
+            'response_body' => $response->rawResponse,
+            'zatca_clearance_status' => $response->clearanceStatus,
             'completed_at' => now(),
         ]);
     }
@@ -302,5 +364,12 @@ class ProcessZatcaSubmission implements ShouldQueue
             'invoice_id' => $submission->invoice_id,
             'error' => $exception->getMessage(),
         ]);
+
+        // Fire permanent failure event
+        event(new InvoiceFailed($submission->fresh(), [
+            'reason' => 'max_retries_exceeded',
+            'error_message' => $exception->getMessage(),
+            'permanent' => true,
+        ]));
     }
 }

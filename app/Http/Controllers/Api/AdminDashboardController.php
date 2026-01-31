@@ -1,0 +1,438 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers\Api;
+
+use App\Domains\Compliance\Zatca\Services\ClusterCircuitBreaker;
+use App\Domains\Compliance\Zatca\Services\EnvironmentVarianceTracker;
+use App\Http\Controllers\Controller;
+use App\Http\Responses\ApiResponse;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Artisan;
+
+/**
+ * Admin Dashboard Controller.
+ *
+ * Platform-wide statistics and system health monitoring.
+ * Requires admin authentication (not tenant-scoped).
+ *
+ * Note: This controller should be protected by admin middleware.
+ */
+class AdminDashboardController extends Controller
+{
+    public function __construct(
+        private readonly ClusterCircuitBreaker $circuitBreaker,
+        private readonly EnvironmentVarianceTracker $varianceTracker,
+    ) {}
+
+    /**
+     * Get platform-wide overview.
+     *
+     * GET /api/admin/dashboard
+     */
+    public function index(): JsonResponse
+    {
+        $data = Cache::remember('admin:dashboard:overview', 60, function () {
+            return [
+                'organizations' => $this->getOrganizationStats(),
+                'invoices' => $this->getPlatformInvoiceStats(),
+                'submissions' => $this->getPlatformSubmissionStats(),
+                'system' => $this->getSystemHealth(),
+                'generated_at' => now()->toIso8601String(),
+            ];
+        });
+
+        return ApiResponse::success($data);
+    }
+
+    /**
+     * Get system health status.
+     *
+     * GET /api/admin/dashboard/health
+     */
+    public function health(): JsonResponse
+    {
+        $data = [
+            'circuit_breaker' => $this->circuitBreaker->getMetrics('zatca_api'),
+            'database' => $this->getDatabaseHealth(),
+            'cache' => $this->getCacheHealth(),
+            'queue' => $this->getQueueHealth(),
+            'checked_at' => now()->toIso8601String(),
+        ];
+
+        $data['overall_status'] = $this->determineSystemHealth($data);
+
+        return ApiResponse::success($data);
+    }
+
+    /**
+     * Get top organizations by usage.
+     *
+     * GET /api/admin/dashboard/top-organizations?limit=10
+     */
+    public function topOrganizations(Request $request): JsonResponse
+    {
+        $limit = min((int) $request->query('limit', 10), 50);
+
+        $organizations = Cache::remember("admin:top_orgs:{$limit}", 300, function () use ($limit) {
+            return DB::table('invoices')
+                ->join('organizations', 'invoices.organization_id', '=', 'organizations.id')
+                ->selectRaw('organizations.id, organizations.name, COUNT(invoices.id) as invoice_count, SUM(invoices.total) as total_amount')
+                ->groupBy('organizations.id', 'organizations.name')
+                ->orderByDesc('invoice_count')
+                ->limit($limit)
+                ->get();
+        });
+
+        return ApiResponse::success([
+            'organizations' => $organizations,
+            'count' => $organizations->count(),
+        ]);
+    }
+
+    /**
+     * Run index health check manually.
+     *
+     * POST /api/admin/dashboard/run-health-check
+     */
+    public function runHealthCheck(): JsonResponse
+    {
+        try {
+            Artisan::call('compliance:index-health', ['--json' => true]);
+            $output = Artisan::output();
+
+            return ApiResponse::success([
+                'result' => json_decode($output, true) ?? $output,
+                'ran_at' => now()->toIso8601String(),
+            ], 'Health check completed');
+        } catch (\Exception $e) {
+            return ApiResponse::error('Failed to run health check: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Get environment variance comparison (sandbox vs production).
+     *
+     * GET /api/admin/dashboard/variances?limit=50
+     *
+     * Tracks cases where behavior differs between sandbox and production
+     * environments. Critical for auditing and regulatory compliance.
+     */
+    public function environmentVariances(Request $request): JsonResponse
+    {
+        $limit = min((int) $request->query('limit', 50), 200);
+
+        $variances = DB::table('environment_variance_log')
+            ->orderByDesc('created_at')
+            ->limit($limit)
+            ->get()
+            ->map(fn($row) => [
+                'id' => $row->id,
+                'rule_code' => $row->rule_code,
+                'sandbox_result' => $row->sandbox_result,
+                'production_result' => $row->production_result,
+                'variance_type' => $row->variance_type,
+                'organization_id' => $row->organization_id,
+                'invoice_id' => $row->invoice_id ?? null,
+                'detected_at' => $row->created_at,
+                'resolved' => (bool) ($row->resolved_at ?? false),
+                'notes' => $row->notes ?? null,
+            ]);
+
+        // Aggregate statistics
+        $stats = [
+            'total_variances' => DB::table('environment_variance_log')->count(),
+            'unresolved' => DB::table('environment_variance_log')
+                ->whereNull('resolved_at')
+                ->count(),
+            'by_rule_code' => DB::table('environment_variance_log')
+                ->selectRaw('rule_code, COUNT(*) as count')
+                ->groupBy('rule_code')
+                ->orderByDesc('count')
+                ->limit(10)
+                ->pluck('count', 'rule_code')
+                ->toArray(),
+            'last_7_days' => DB::table('environment_variance_log')
+                ->where('created_at', '>=', now()->subDays(7))
+                ->count(),
+        ];
+
+        return ApiResponse::success([
+            'variances' => $variances,
+            'statistics' => $stats,
+            'generated_at' => now()->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * Get hash chain health metrics for longevity monitoring.
+     *
+     * GET /api/admin/dashboard/hash-chain-health
+     *
+     * Monitors P95/P99 latency for hash chain queries to detect
+     * degradation before it becomes critical.
+     */
+    public function hashChainHealth(): JsonResponse
+    {
+        $metrics = Cache::remember('admin:hash_chain_health', 60, function () {
+            // Sample hash chain query performance
+            $samples = [];
+            for ($i = 0; $i < 5; $i++) {
+                $start = microtime(true);
+                DB::table('hash_chain_history')
+                    ->orderByDesc('icv')
+                    ->limit(1)
+                    ->first();
+                $samples[] = (microtime(true) - $start) * 1000;
+            }
+
+            sort($samples);
+            $p95Index = (int) floor(count($samples) * 0.95);
+            $p99Index = (int) floor(count($samples) * 0.99);
+
+            $thresholds = config('zatca.hash_chain_monitoring');
+
+            return [
+                'samples' => count($samples),
+                'avg_ms' => round(array_sum($samples) / count($samples), 2),
+                'p95_ms' => round($samples[$p95Index] ?? end($samples), 2),
+                'p99_ms' => round($samples[$p99Index] ?? end($samples), 2),
+                'thresholds' => [
+                    'p95_warning' => $thresholds['p95_warning_ms'] ?? 50,
+                    'p99_critical' => $thresholds['p99_critical_ms'] ?? 200,
+                ],
+                'row_count' => DB::table('hash_chain_history')->count(),
+                'oldest_entry' => DB::table('hash_chain_history')
+                    ->orderBy('created_at')
+                    ->value('created_at'),
+            ];
+        });
+
+        $status = 'healthy';
+        if ($metrics['p99_ms'] > ($metrics['thresholds']['p99_critical'] ?? 200)) {
+            $status = 'critical';
+        } elseif ($metrics['p95_ms'] > ($metrics['thresholds']['p95_warning'] ?? 50)) {
+            $status = 'warning';
+        }
+
+        return ApiResponse::success([
+            'metrics' => $metrics,
+            'status' => $status,
+            'recommendation' => $status !== 'healthy'
+                ? 'Consider partitioning hash_chain_history table or adding indexes'
+                : null,
+            'checked_at' => now()->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * Get error rates over time.
+     *
+     * GET /api/admin/dashboard/error-rates?period=24h
+     */
+    public function errorRates(Request $request): JsonResponse
+    {
+        $period = $request->query('period', '24h');
+        $hours = match ($period) {
+            '1h' => 1,
+            '6h' => 6,
+            '24h' => 24,
+            '7d' => 168,
+            default => 24,
+        };
+
+        $startTime = now()->subHours($hours);
+
+        $data = DB::table('invoice_submissions')
+            ->where('created_at', '>=', $startTime)
+            ->selectRaw("
+                DATE_FORMAT(created_at, '%Y-%m-%d %H:00:00') as hour,
+                COUNT(*) as total,
+                SUM(CASE WHEN clearance_state = 'rejected' THEN 1 ELSE 0 END) as rejected,
+                SUM(CASE WHEN clearance_state IN ('cleared', 'reported') THEN 1 ELSE 0 END) as successful
+            ")
+            ->groupBy('hour')
+            ->orderBy('hour')
+            ->get()
+            ->map(fn($row) => [
+                'hour' => $row->hour,
+                'total' => $row->total,
+                'rejected' => $row->rejected,
+                'successful' => $row->successful,
+                'error_rate' => $row->total > 0 ? round(($row->rejected / $row->total) * 100, 2) : 0,
+            ]);
+
+        return ApiResponse::success([
+            'period' => $period,
+            'data' => $data,
+        ]);
+    }
+
+    /**
+     * Get organization statistics.
+     */
+    private function getOrganizationStats(): array
+    {
+        return [
+            'total' => DB::table('organizations')->count(),
+            'active' => DB::table('organizations')
+                ->where('status', 'active')
+                ->count(),
+            'with_certificate' => DB::table('certificate_lineage')
+                ->distinct('organization_id')
+                ->count('organization_id'),
+        ];
+    }
+
+    /**
+     * Get platform-wide invoice statistics.
+     */
+    private function getPlatformInvoiceStats(): array
+    {
+        $today = now()->startOfDay();
+
+        return [
+            'total' => DB::table('invoices')->count(),
+            'today' => DB::table('invoices')
+                ->where('created_at', '>=', $today)
+                ->count(),
+            'this_hour' => DB::table('invoices')
+                ->where('created_at', '>=', now()->startOfHour())
+                ->count(),
+        ];
+    }
+
+    /**
+     * Get platform-wide submission statistics.
+     */
+    private function getPlatformSubmissionStats(): array
+    {
+        return [
+            'total' => DB::table('invoice_submissions')->count(),
+            'cleared' => DB::table('invoice_submissions')
+                ->where('clearance_state', 'cleared')
+                ->count(),
+            'reported' => DB::table('invoice_submissions')
+                ->where('clearance_state', 'reported')
+                ->count(),
+            'rejected' => DB::table('invoice_submissions')
+                ->where('clearance_state', 'rejected')
+                ->count(),
+            'pending' => DB::table('invoice_submissions')
+                ->whereIn('clearance_state', ['pending_clearance', 'submitted', 'unknown'])
+                ->count(),
+        ];
+    }
+
+    /**
+     * Get system health summary.
+     */
+    private function getSystemHealth(): array
+    {
+        $circuitState = $this->circuitBreaker->getState('zatca_api');
+
+        return [
+            'circuit_breaker' => $circuitState,
+            'queue_size' => DB::table('offline_invoice_queue')
+                ->where('status', 'pending')
+                ->count(),
+        ];
+    }
+
+    /**
+     * Get database health metrics.
+     */
+    private function getDatabaseHealth(): array
+    {
+        try {
+            $start = microtime(true);
+            DB::select('SELECT 1');
+            $latency = round((microtime(true) - $start) * 1000, 2);
+
+            return [
+                'status' => 'healthy',
+                'latency_ms' => $latency,
+            ];
+        } catch (\Exception $e) {
+            return [
+                'status' => 'unhealthy',
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Get cache health metrics.
+     */
+    private function getCacheHealth(): array
+    {
+        try {
+            $testKey = 'health_check_' . uniqid();
+            Cache::put($testKey, true, 10);
+            $retrieved = Cache::get($testKey);
+            Cache::forget($testKey);
+
+            return [
+                'status' => $retrieved === true ? 'healthy' : 'degraded',
+            ];
+        } catch (\Exception $e) {
+            return [
+                'status' => 'unhealthy',
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Get queue health metrics.
+     */
+    private function getQueueHealth(): array
+    {
+        $pending = DB::table('offline_invoice_queue')
+            ->where('status', 'pending')
+            ->count();
+
+        $stuck = DB::table('offline_invoice_queue')
+            ->where('status', 'pending')
+            ->where('created_at', '<', now()->subMinutes(30))
+            ->count();
+
+        return [
+            'pending' => $pending,
+            'stuck' => $stuck,
+            'status' => $stuck === 0 ? 'healthy' : ($stuck > 50 ? 'critical' : 'warning'),
+        ];
+    }
+
+    /**
+     * Determine overall system health.
+     */
+    private function determineSystemHealth(array $data): string
+    {
+        if (($data['database']['status'] ?? '') === 'unhealthy') {
+            return 'critical';
+        }
+
+        if (($data['circuit_breaker']['state'] ?? 'closed') === 'open') {
+            return 'critical';
+        }
+
+        if (($data['queue']['status'] ?? '') === 'critical') {
+            return 'critical';
+        }
+
+        if (($data['cache']['status'] ?? '') === 'unhealthy') {
+            return 'warning';
+        }
+
+        if (($data['queue']['status'] ?? '') === 'warning') {
+            return 'warning';
+        }
+
+        return 'healthy';
+    }
+}

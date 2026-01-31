@@ -77,16 +77,19 @@ class ZatcaComplianceService
         }
 
         // Generate QR code
+        // ZATCA TLV encoding requires raw bytes for tags 6-9, not base64
+        // The services return base64 for storage/display, so we decode here
         $qrData = new QrCodeData(
             sellerName: $organization->name,
             vatNumber: $organization->vat_number ?? '',
             timestamp: $invoice->issue_date->format('Y-m-d\TH:i:s\Z'),
             invoiceTotal: number_format((float) $invoice->total, 2, '.', ''),
             vatTotal: number_format((float) $invoice->tax_amount, 2, '.', ''),
-            invoiceHash: $hash,
-            signature: $signature,
-            publicKey: $publicKey,
-            certificateSignature: $certSignature,
+            // Tags 6-9: Decode base64 to raw bytes for TLV encoding
+            invoiceHash: $hash !== null ? base64_decode($hash) : null,
+            signature: $signature !== null ? base64_decode($signature) : null,
+            publicKey: $publicKey !== null ? base64_decode($publicKey) : null,
+            certificateSignature: $certSignature, // Already raw bytes
         );
 
         // Generate QR based on invoice type (Phase 1 for B2C, Phase 2 for B2B)
@@ -178,6 +181,12 @@ class ZatcaComplianceService
             paymentMeansCode: $invoice->payment_means_code ?? '10',
             previousInvoiceHash: $previousInvoiceHash,
             billingReferenceId: $invoice->billing_reference_id,
+            // Invoice type sub-flags (bits 3-7 per ZATCA specification)
+            isThirdParty: (bool) ($invoice->is_third_party ?? false),
+            isNominal: (bool) ($invoice->is_nominal ?? false),
+            isExport: (bool) ($invoice->is_export ?? false),
+            isSummary: (bool) ($invoice->is_summary ?? false),
+            isSelfBilled: (bool) ($invoice->is_self_billed ?? false),
         );
     }
 

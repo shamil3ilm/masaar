@@ -7,8 +7,10 @@ namespace App\Domains\Compliance\Zatca\Services;
 use App\Audits\AuditService;
 use App\Domains\Compliance\Zatca\Client\ZatcaClient;
 use App\Domains\Compliance\Zatca\DTOs\ZatcaResponse;
+use App\Domains\Compliance\Zatca\Exceptions\ZatcaException;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Licensing\Enums\LicenseEnvironment;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Support\Facades\Storage;
 
@@ -87,9 +89,15 @@ class ZatcaSubmissionService
 
     /**
      * Submit invoice to ZATCA (clearance or reporting).
+     *
+     * COMPLIANCE: Validates license environment matches ZATCA environment.
+     * Sandbox licenses cannot submit to production ZATCA.
      */
     public function submit(Invoice $invoice, Organization $organization): ZatcaResponse
     {
+        // Validate environment before submission
+        $this->validateEnvironment();
+
         $credentials = $this->getSigningCredentials($organization->id);
 
         $complianceData = $this->compliance->generateComplianceData(
@@ -123,6 +131,52 @@ class ZatcaSubmissionService
         ]);
 
         return $response;
+    }
+
+    /**
+     * Validate license environment matches ZATCA environment.
+     *
+     * COMPLIANCE: Prevents sandbox API keys from submitting to production ZATCA.
+     * This is a critical safety check to avoid test data in production.
+     *
+     * @throws ZatcaException If environment mismatch detected
+     */
+    private function validateEnvironment(): void
+    {
+        $zatcaEnvironment = $this->client->getEnvironment();
+
+        // If ZATCA is configured for production, verify license allows production
+        if ($zatcaEnvironment === 'production') {
+            $license = request()->attributes->get('license');
+
+            if ($license !== null) {
+                $licenseEnv = $license->environment;
+
+                // Sandbox licenses cannot submit to production ZATCA
+                if ($licenseEnv === LicenseEnvironment::Sandbox) {
+                    throw ZatcaException::environmentMismatch(
+                        'Sandbox API keys cannot submit invoices to production ZATCA. ' .
+                        'Please use a production API key (cp_live_*) for real invoice submissions.',
+                        [
+                            'license_environment' => $licenseEnv->value,
+                            'zatca_environment' => $zatcaEnvironment,
+                        ]
+                    );
+                }
+            }
+        }
+
+        // If license is production but ZATCA is sandbox, log warning but allow
+        // (useful for testing production keys against sandbox)
+        $license = request()->attributes->get('license');
+        if ($license !== null && $license->environment === LicenseEnvironment::Production) {
+            if ($zatcaEnvironment === 'sandbox') {
+                \Illuminate\Support\Facades\Log::info('Production license submitting to sandbox ZATCA', [
+                    'license_id' => $license->id,
+                    'zatca_environment' => $zatcaEnvironment,
+                ]);
+            }
+        }
     }
 
     /**

@@ -102,12 +102,20 @@ class CertificateLineageService
 
     /**
      * Get the currently active certificate for an organization.
+     *
+     * Certificate Overlap Resolution Policy:
+     * When multiple certificates are valid simultaneously, prefer the newest.
+     * Uses activated_at as primary sort, then created_at as tiebreaker for
+     * same-second edge cases, then id for absolute determinism.
      */
     public function getActiveCertificate(string $organizationId): ?array
     {
         $cert = DB::table('certificate_lineage')
             ->where('organization_id', $organizationId)
             ->where('status', self::STATUS_ACTIVE)
+            ->orderByDesc('activated_at')   // Primary: newest activation wins
+            ->orderByDesc('created_at')     // Secondary: same-second tiebreaker
+            ->orderByDesc('id')             // Tertiary: absolute determinism
             ->first();
 
         return $cert ? (array) $cert : null;

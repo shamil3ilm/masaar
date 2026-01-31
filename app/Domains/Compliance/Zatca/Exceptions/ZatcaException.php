@@ -80,6 +80,14 @@ class ZatcaException extends Exception
     }
 
     /**
+     * Alias for getHttpStatus() for consistency with exception handlers.
+     */
+    public function getHttpStatusCode(): int
+    {
+        return $this->getHttpStatus();
+    }
+
+    /**
      * Get error category.
      */
     public function getCategory(): string
@@ -164,6 +172,20 @@ class ZatcaException extends Exception
         return new self(
             $message,
             $code ?? ErrorCode::NET_CONNECTION_FAILED,
+            $context
+        );
+    }
+
+    /**
+     * Create an environment mismatch exception.
+     *
+     * Used when sandbox API keys attempt to access production resources.
+     */
+    public static function environmentMismatch(string $message, array $context = []): self
+    {
+        return new self(
+            $message,
+            ErrorCode::AUTH_ENVIRONMENT_MISMATCH,
             $context
         );
     }

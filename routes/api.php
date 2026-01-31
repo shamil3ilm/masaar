@@ -1,11 +1,14 @@
 <?php
 
+use App\Http\Controllers\Api\AdminDashboardController;
 use App\Http\Controllers\Api\ApiKeyController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ComplianceController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\OnboardingController;
 use App\Http\Controllers\Api\OrganizationController;
+use App\Http\Controllers\Api\VarianceController;
 use App\Http\Controllers\Api\WebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -72,6 +75,15 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
         Route::post('/pcsid', [OnboardingController::class, 'requestPcsid']);
     });
 
+    // Environment Variance Tracking
+    Route::prefix('compliance/variances')->group(function () {
+        Route::get('/', [VarianceController::class, 'index']);
+        Route::get('/statistics', [VarianceController::class, 'statistics']);
+        Route::get('/{id}', [VarianceController::class, 'show']);
+        Route::post('/{id}/report', [VarianceController::class, 'markReported']);
+        Route::post('/{id}/resolve', [VarianceController::class, 'resolve']);
+    });
+
     // Organizations
     Route::apiResource('organizations', OrganizationController::class)->except(['destroy']);
     Route::post('/organizations/{id}/switch', [OrganizationController::class, 'switch']);
@@ -86,6 +98,16 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
     // API Keys management
     Route::get('/api-keys/scopes', [ApiKeyController::class, 'scopes']);
     Route::apiResource('api-keys', ApiKeyController::class);
+
+    // Dashboard & Statistics
+    Route::prefix('dashboard')->group(function () {
+        Route::get('/', [DashboardController::class, 'index']);
+        Route::get('/invoices', [DashboardController::class, 'invoices']);
+        Route::get('/submissions', [DashboardController::class, 'submissions']);
+        Route::get('/health', [DashboardController::class, 'health']);
+        Route::get('/usage', [DashboardController::class, 'usage']);
+        Route::get('/activity', [DashboardController::class, 'activity']);
+    });
 });
 
 /*
@@ -93,29 +115,92 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
 | API Key Protected Routes (Server-to-Server Authentication)
 |--------------------------------------------------------------------------
 |
-| These routes can be accessed using an API key instead of JWT.
-| Pass the key in the X-API-Key header.
+| These routes use API key authentication with license validation.
+| Pass the key in the X-API-Key header (format: cp_live_xxx or cp_test_xxx).
+|
+| Middleware Stack:
+| - license: Validates API key, checks expiry/suspension, records usage
+| - scope:xxx: Checks if license has required scope for the operation
+| - license.quota: Checks invoice quota before allowing submission
 |
 */
-Route::middleware(['api.key', 'rate.api'])->prefix('v1')->group(function () {
+Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
 
-    // Invoices (API key access)
-    Route::get('/invoices', [InvoiceController::class, 'index']);
-    Route::post('/invoices', [InvoiceController::class, 'store']);
-    Route::get('/invoices/{invoice}', [InvoiceController::class, 'show']);
-    Route::put('/invoices/{invoice}', [InvoiceController::class, 'update']);
-    Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy']);
+    // Invoices - Read operations (require invoice.read scope)
+    Route::middleware(['scope:invoice.read'])->group(function () {
+        Route::get('/invoices', [InvoiceController::class, 'index']);
+        Route::get('/invoices/{invoice}', [InvoiceController::class, 'show']);
+    });
 
-    // ZATCA Compliance (API key access)
-    Route::post('/compliance/generate/{invoiceId}', [ComplianceController::class, 'generate']);
-    Route::post('/compliance/validate/{invoiceId}', [ComplianceController::class, 'validate']);
-    Route::post('/compliance/submit/{invoiceId}', [ComplianceController::class, 'submit']);
-    Route::get('/compliance/status/{invoiceId}', [ComplianceController::class, 'status']);
+    // Invoices - Write operations (require invoice.submit scope for create/update)
+    Route::middleware(['scope:invoice.submit'])->group(function () {
+        Route::post('/invoices', [InvoiceController::class, 'store']);
+        Route::put('/invoices/{invoice}', [InvoiceController::class, 'update']);
+    });
 
-    // Webhooks (API key access)
-    Route::get('/webhooks', [WebhookController::class, 'index']);
-    Route::post('/webhooks', [WebhookController::class, 'store']);
-    Route::get('/webhooks/{webhook}', [WebhookController::class, 'show']);
-    Route::put('/webhooks/{webhook}', [WebhookController::class, 'update']);
-    Route::delete('/webhooks/{webhook}', [WebhookController::class, 'destroy']);
+    // Invoice delete (require invoice.cancel scope)
+    Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy'])
+        ->middleware(['scope:invoice.cancel']);
+
+    // ZATCA Compliance - Generate & Validate (require invoice.submit scope)
+    Route::middleware(['scope:invoice.submit'])->group(function () {
+        Route::post('/compliance/generate/{invoiceId}', [ComplianceController::class, 'generate']);
+        Route::post('/compliance/validate/{invoiceId}', [ComplianceController::class, 'validate']);
+    });
+
+    // ZATCA Compliance - Submit (requires quota check + production environment for real submissions)
+    Route::post('/compliance/submit/{invoiceId}', [ComplianceController::class, 'submit'])
+        ->middleware(['scope:invoice.submit', 'license.quota']);
+
+    // ZATCA Compliance - Status (require compliance.status scope)
+    Route::get('/compliance/status/{invoiceId}', [ComplianceController::class, 'status'])
+        ->middleware(['scope:compliance.status']);
+
+    // Webhooks (require webhook.manage scope)
+    Route::middleware(['scope:webhook.manage'])->group(function () {
+        Route::get('/webhooks', [WebhookController::class, 'index']);
+        Route::get('/webhooks/{webhook}', [WebhookController::class, 'show']);
+        Route::post('/webhooks', [WebhookController::class, 'store']);
+        Route::put('/webhooks/{webhook}', [WebhookController::class, 'update']);
+        Route::delete('/webhooks/{webhook}', [WebhookController::class, 'destroy']);
+    });
+
+    // Environment Variance Tracking (require compliance.status scope)
+    Route::middleware(['scope:compliance.status'])->group(function () {
+        Route::get('/variances', [VarianceController::class, 'index']);
+        Route::get('/variances/statistics', [VarianceController::class, 'statistics']);
+        Route::get('/variances/{id}', [VarianceController::class, 'show']);
+        Route::post('/variances/{id}/report', [VarianceController::class, 'markReported']);
+        Route::post('/variances/{id}/resolve', [VarianceController::class, 'resolve']);
+    });
+
+    // Dashboard - Read (require any valid license)
+    Route::get('/dashboard', [DashboardController::class, 'index']);
+    Route::get('/dashboard/health', [DashboardController::class, 'health']);
+    Route::get('/dashboard/usage', [DashboardController::class, 'usage']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Admin Routes (Platform Administration)
+|--------------------------------------------------------------------------
+|
+| These routes require admin authentication and provide platform-wide
+| statistics and system health monitoring.
+|
+| TODO: Add admin middleware for production (e.g., 'auth:admin', 'role:admin')
+|
+*/
+Route::middleware(['jwt.auth', 'rate.api'])->prefix('admin')->group(function () {
+
+    // Admin Dashboard
+    Route::prefix('dashboard')->group(function () {
+        Route::get('/', [AdminDashboardController::class, 'index']);
+        Route::get('/health', [AdminDashboardController::class, 'health']);
+        Route::get('/top-organizations', [AdminDashboardController::class, 'topOrganizations']);
+        Route::post('/run-health-check', [AdminDashboardController::class, 'runHealthCheck']);
+        Route::get('/error-rates', [AdminDashboardController::class, 'errorRates']);
+        Route::get('/variances', [AdminDashboardController::class, 'environmentVariances']);
+        Route::get('/hash-chain-health', [AdminDashboardController::class, 'hashChainHealth']);
+    });
 });

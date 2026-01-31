@@ -46,19 +46,28 @@ class ClearanceStateManager
     ];
 
     /**
-     * Max re-check attempts before giving up.
+     * Get max check attempts from config.
      */
-    private const MAX_CHECK_ATTEMPTS = 10;
+    private function getMaxCheckAttempts(): int
+    {
+        return (int) config('zatca.clearance_state.max_check_attempts', 10);
+    }
 
     /**
-     * Initial check delay in seconds.
+     * Get initial check delay from config.
      */
-    private const INITIAL_CHECK_DELAY = 30;
+    private function getInitialCheckDelay(): int
+    {
+        return (int) config('zatca.clearance_state.initial_check_delay_seconds', 30);
+    }
 
     /**
-     * Maximum check delay in seconds (1 hour).
+     * Get maximum check delay from config.
      */
-    private const MAX_CHECK_DELAY = 3600;
+    private function getMaxCheckDelay(): int
+    {
+        return (int) config('zatca.clearance_state.max_check_delay_seconds', 3600);
+    }
 
     /**
      * Parse ZATCA response and determine clearance state.
@@ -245,7 +254,7 @@ class ClearanceStateManager
         }
 
         // Check if we've exceeded max attempts
-        if ($checkCount >= self::MAX_CHECK_ATTEMPTS) {
+        if ($checkCount >= $this->getMaxCheckAttempts()) {
             $updates['clearance_state'] = self::STATE_TIMEOUT;
             $updates['clearance_confirmed_at'] = now();
 
@@ -256,7 +265,7 @@ class ClearanceStateManager
             Log::warning('Clearance check timeout', [
                 'submission_id' => $submissionId,
                 'check_count' => $checkCount,
-                'max_attempts' => self::MAX_CHECK_ATTEMPTS,
+                'max_attempts' => $this->getMaxCheckAttempts(),
             ]);
 
             return [
@@ -287,9 +296,9 @@ class ClearanceStateManager
     private function calculateNextDelay(int $attemptNumber): int
     {
         // Exponential backoff: 30s, 60s, 120s, 240s, 480s, 960s, 1920s, 3600s...
-        $delay = self::INITIAL_CHECK_DELAY * pow(2, $attemptNumber - 1);
+        $delay = $this->getInitialCheckDelay() * pow(2, $attemptNumber - 1);
 
-        return (int) min($delay, self::MAX_CHECK_DELAY);
+        return (int) min($delay, $this->getMaxCheckDelay());
     }
 
     /**
@@ -303,7 +312,7 @@ class ClearanceStateManager
                 self::STATE_PENDING_CLEARANCE,
                 self::STATE_CONDITIONALLY_ACCEPTED,
             ])
-            ->where('clearance_check_count', '<', self::MAX_CHECK_ATTEMPTS)
+            ->where('clearance_check_count', '<', $this->getMaxCheckAttempts())
             ->orderBy('submitted_at', 'asc')
             ->limit($limit)
             ->get()

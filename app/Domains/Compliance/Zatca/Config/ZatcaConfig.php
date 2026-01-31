@@ -175,7 +175,7 @@ final class ZatcaConfig
      */
     public static function getRateLimitPerMinute(): int
     {
-        return (int) self::get('rate_limit_per_minute', self::DEFAULT_RATE_LIMIT_PER_MINUTE);
+        return (int) self::get('rate_limits.per_minute', self::DEFAULT_RATE_LIMIT_PER_MINUTE);
     }
 
     /**
@@ -183,7 +183,7 @@ final class ZatcaConfig
      */
     public static function getRateLimitPerDay(): int
     {
-        return (int) self::get('rate_limit_per_day', self::DEFAULT_RATE_LIMIT_PER_DAY);
+        return (int) self::get('rate_limits.per_day', self::DEFAULT_RATE_LIMIT_PER_DAY);
     }
 
     /**
@@ -191,7 +191,7 @@ final class ZatcaConfig
      */
     public static function getMaxConcurrentSubmissions(): int
     {
-        return (int) self::get('max_concurrent_submissions', self::DEFAULT_MAX_CONCURRENT_SUBMISSIONS);
+        return (int) self::get('rate_limits.max_concurrent', self::DEFAULT_MAX_CONCURRENT_SUBMISSIONS);
     }
 
     /**
@@ -199,7 +199,7 @@ final class ZatcaConfig
      */
     public static function getIdempotencyWindowHours(): int
     {
-        return (int) self::get('idempotency_window_hours', self::DEFAULT_IDEMPOTENCY_WINDOW_HOURS);
+        return (int) self::get('idempotency.window_hours', self::DEFAULT_IDEMPOTENCY_WINDOW_HOURS);
     }
 
     /**
@@ -207,7 +207,55 @@ final class ZatcaConfig
      */
     public static function getLargeInvoiceThreshold(): float
     {
-        return (float) self::get('large_invoice_threshold', self::LARGE_INVOICE_THRESHOLD);
+        return (float) self::get('thresholds.large_invoice_amount', self::LARGE_INVOICE_THRESHOLD);
+    }
+
+    /**
+     * Get certificate expiry warning days.
+     */
+    public static function getCertificateExpiryWarningDays(): int
+    {
+        return (int) self::get('certificate.expiry_warning_days', self::CERTIFICATE_EXPIRY_WARNING_DAYS);
+    }
+
+    /**
+     * Get certificate expiry critical days.
+     */
+    public static function getCertificateExpiryCriticalDays(): int
+    {
+        return (int) self::get('certificate.expiry_critical_days', self::CERTIFICATE_EXPIRY_CRITICAL_DAYS);
+    }
+
+    /**
+     * Get circuit breaker threshold.
+     */
+    public static function getCircuitBreakerThreshold(): int
+    {
+        return (int) self::get('circuit_breaker.threshold', self::CIRCUIT_BREAKER_THRESHOLD);
+    }
+
+    /**
+     * Get circuit breaker timeout seconds.
+     */
+    public static function getCircuitBreakerTimeout(): int
+    {
+        return (int) self::get('circuit_breaker.timeout', self::CIRCUIT_BREAKER_TIMEOUT);
+    }
+
+    /**
+     * Get offline queue max size.
+     */
+    public static function getOfflineQueueMaxSize(): int
+    {
+        return (int) self::get('offline.queue_max_size', self::OFFLINE_QUEUE_MAX_SIZE);
+    }
+
+    /**
+     * Get offline retry interval seconds.
+     */
+    public static function getOfflineRetryInterval(): int
+    {
+        return (int) self::get('offline.retry_interval', self::OFFLINE_RETRY_INTERVAL);
     }
 
     /**

@@ -127,6 +127,56 @@ return [
             'path' => storage_path('logs/laravel.log'),
         ],
 
+        /*
+        |--------------------------------------------------------------------------
+        | ZATCA Compliance Channels
+        |--------------------------------------------------------------------------
+        |
+        | These channels handle logging for ZATCA compliance operations.
+        | Logs are retained for audit compliance requirements.
+        |
+        */
+
+        'zatca-submissions' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/zatca/submissions.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 90,
+            'replace_placeholders' => true,
+        ],
+
+        'zatca-compliance' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/zatca/compliance.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 90,
+            'replace_placeholders' => true,
+        ],
+
+        'zatca-webhooks' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/zatca/webhooks.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 30,
+            'replace_placeholders' => true,
+        ],
+
+        'zatca-audit' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/zatca/audit.log'),
+            'level' => 'info',
+            'days' => 365,
+            'replace_placeholders' => true,
+        ],
+
+        'zatca-errors' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/zatca/errors.log'),
+            'level' => 'error',
+            'days' => 90,
+            'replace_placeholders' => true,
+        ],
+
     ],
 
 ];

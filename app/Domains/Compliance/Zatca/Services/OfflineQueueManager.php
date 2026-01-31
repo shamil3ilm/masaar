@@ -50,7 +50,15 @@ class OfflineQueueManager
     public function __construct(
         private readonly KillSwitchManager $killSwitchManager,
     ) {
-        $this->maxQueueSize = ZatcaConfig::OFFLINE_QUEUE_MAX_SIZE;
+        $this->maxQueueSize = ZatcaConfig::getOfflineQueueMaxSize();
+    }
+
+    /**
+     * Get max retry attempts from config.
+     */
+    private function getMaxAttempts(): int
+    {
+        return (int) config('zatca.offline.max_attempts', 3);
     }
 
     /**
@@ -87,7 +95,7 @@ class OfflineQueueManager
             'state' => self::STATE_PENDING,
             'priority' => $priority,
             'attempts' => 0,
-            'max_attempts' => 3,
+            'max_attempts' => $this->getMaxAttempts(),
             'queued_at' => now()->toIso8601String(),
             'next_attempt_at' => now()->toIso8601String(),
             'last_error' => null,

@@ -30,12 +30,36 @@ class ClusterCircuitBreaker
     public const STATE_HALF_OPEN = 'half_open'; // Testing recovery
 
     /**
-     * Default configuration.
+     * Get failure threshold from config.
      */
-    private const DEFAULT_FAILURE_THRESHOLD = 5;
-    private const DEFAULT_SUCCESS_THRESHOLD = 3;
-    private const DEFAULT_TIMEOUT_SECONDS = 60;
-    private const DEFAULT_HALF_OPEN_REQUESTS = 3;
+    private function getFailureThreshold(): int
+    {
+        return (int) config('zatca.cluster_circuit_breaker.failure_threshold', 5);
+    }
+
+    /**
+     * Get success threshold from config.
+     */
+    private function getSuccessThreshold(): int
+    {
+        return (int) config('zatca.cluster_circuit_breaker.success_threshold', 3);
+    }
+
+    /**
+     * Get timeout seconds from config.
+     */
+    private function getTimeoutSeconds(): int
+    {
+        return (int) config('zatca.cluster_circuit_breaker.timeout_seconds', 60);
+    }
+
+    /**
+     * Get half-open request limit from config.
+     */
+    private function getHalfOpenRequests(): int
+    {
+        return (int) config('zatca.cluster_circuit_breaker.half_open_max_requests', 3);
+    }
 
     /**
      * Redis key prefixes.
@@ -98,7 +122,7 @@ class ClusterCircuitBreaker
         if ($state === self::STATE_HALF_OPEN) {
             $successes = $this->incrementSuccesses($service);
 
-            if ($successes >= self::DEFAULT_SUCCESS_THRESHOLD) {
+            if ($successes >= $this->getSuccessThreshold()) {
                 $this->transitionTo($service, self::STATE_CLOSED);
                 $this->resetCounters($service);
             }
@@ -128,12 +152,12 @@ class ClusterCircuitBreaker
         Log::warning('Circuit breaker failure recorded', [
             'service' => $service,
             'failures' => $failures,
-            'threshold' => self::DEFAULT_FAILURE_THRESHOLD,
+            'threshold' => $this->getFailureThreshold(),
             'node_id' => $this->nodeId,
             'exception' => $exception?->getMessage(),
         ]);
 
-        if ($failures >= self::DEFAULT_FAILURE_THRESHOLD) {
+        if ($failures >= $this->getFailureThreshold()) {
             $this->transitionTo($service, self::STATE_OPEN);
         }
 
@@ -215,7 +239,7 @@ class ClusterCircuitBreaker
             return true;
         }
 
-        return (time() - (int) $lastFailure) >= self::DEFAULT_TIMEOUT_SECONDS;
+        return (time() - (int) $lastFailure) >= $this->getTimeoutSeconds();
     }
 
     /**
@@ -229,10 +253,10 @@ class ClusterCircuitBreaker
 
         if ($count === 1) {
             // First request sets expiry
-            Redis::expire($key, self::DEFAULT_TIMEOUT_SECONDS);
+            Redis::expire($key, $this->getTimeoutSeconds());
         }
 
-        return $count <= self::DEFAULT_HALF_OPEN_REQUESTS;
+        return $count <= $this->getHalfOpenRequests();
     }
 
     /**
@@ -244,7 +268,7 @@ class ClusterCircuitBreaker
         $count = Redis::incr($key);
 
         // Set expiry to reset after timeout
-        Redis::expire($key, self::DEFAULT_TIMEOUT_SECONDS * 2);
+        Redis::expire($key, $this->getTimeoutSeconds() * 2);
 
         return (int) $count;
     }
@@ -257,7 +281,7 @@ class ClusterCircuitBreaker
         $key = self::SUCCESSES_KEY_PREFIX . $service;
         $count = Redis::incr($key);
 
-        Redis::expire($key, self::DEFAULT_TIMEOUT_SECONDS * 2);
+        Redis::expire($key, $this->getTimeoutSeconds() * 2);
 
         return (int) $count;
     }
@@ -388,9 +412,9 @@ class ClusterCircuitBreaker
             'state' => $this->getState($service),
             'failures' => (int) Redis::get(self::FAILURES_KEY_PREFIX . $service),
             'successes' => (int) Redis::get(self::SUCCESSES_KEY_PREFIX . $service),
-            'failure_threshold' => self::DEFAULT_FAILURE_THRESHOLD,
-            'success_threshold' => self::DEFAULT_SUCCESS_THRESHOLD,
-            'timeout_seconds' => self::DEFAULT_TIMEOUT_SECONDS,
+            'failure_threshold' => $this->getFailureThreshold(),
+            'success_threshold' => $this->getSuccessThreshold(),
+            'timeout_seconds' => $this->getTimeoutSeconds(),
             'last_failure' => Redis::get(self::LAST_FAILURE_KEY_PREFIX . $service),
             'cluster_health' => $this->getClusterHealth($service),
         ];
