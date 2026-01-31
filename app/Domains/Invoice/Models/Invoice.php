@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Models;
 
+use App\Domains\Compliance\Zatca\Models\InvoiceSubmission;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Enums\InvoiceType;
@@ -45,6 +46,7 @@ class Invoice extends Model
         'total',
         'hash',
         'qr_code',
+        'signed_xml',
         'icv',
         'zatca_response',
         'notes',
@@ -127,5 +129,57 @@ class Invoice extends Model
     public function requiresClearance(): bool
     {
         return $this->type->requiresClearance();
+    }
+
+    /**
+     * Check if invoice is B2B (Standard - requires clearance).
+     */
+    public function isB2B(): bool
+    {
+        return $this->type === InvoiceType::Standard;
+    }
+
+    /**
+     * Check if invoice is B2C (Simplified - reporting only).
+     */
+    public function isB2C(): bool
+    {
+        return $this->type === InvoiceType::Simplified;
+    }
+
+    /**
+     * Get invoice submissions.
+     */
+    public function submissions(): HasMany
+    {
+        return $this->hasMany(InvoiceSubmission::class);
+    }
+
+    /**
+     * Get the latest submission.
+     */
+    public function latestSubmission()
+    {
+        return $this->hasOne(InvoiceSubmission::class)->latestOfMany();
+    }
+
+    /**
+     * Check if invoice has been successfully submitted.
+     */
+    public function isSubmitted(): bool
+    {
+        return $this->submissions()
+            ->whereIn('state', ['cleared', 'reported', 'warning'])
+            ->exists();
+    }
+
+    /**
+     * Check if invoice has pending submission.
+     */
+    public function hasPendingSubmission(): bool
+    {
+        return $this->submissions()
+            ->whereIn('state', ['queued', 'pending_submission', 'submitted'])
+            ->exists();
     }
 }
