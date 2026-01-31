@@ -443,6 +443,25 @@ See [SECURITY.md](SECURITY.md) for:
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines. All contributors must agree to our terms and sign off on their commits.
 
+### Support Scope
+
+See [SUPPORT.md](SUPPORT.md) for detailed information about:
+
+**We Support (Technical Issues):**
+- Installation and setup
+- API integration and SDK usage
+- ZATCA technical compliance (XML, signatures, QR codes)
+- Bug reports and feature requests
+
+**Requires Professional Consultation:**
+- Tax advice and VAT rate determination
+- Legal matters and contract disputes
+- ZATCA regulatory processes and appeals
+- Accounting and financial reporting
+- Business decisions and strategy
+
+> **Important**: CompliPay is a technical tool. We do NOT provide tax, legal, or accounting advice. Consult licensed professionals for these matters.
+
 ## License
 
 This project is licensed under the **Controlled Open Source License (COSL)** - see [LICENSE](LICENSE) for details.
