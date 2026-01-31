@@ -183,6 +183,26 @@ class ZatcaValidator
             if ($line->tax_rate < 0 || $line->tax_rate > 100) {
                 $errors[] = "BR-KSA-DEC-02: Line {$lineNum} tax rate must be between 0 and 100";
             }
+
+            // Tax category validation (BR-KSA-33, BR-KSA-34, BR-KSA-35)
+            $taxCategory = $line->tax_category ?? 'S';
+            if (in_array($taxCategory, ['Z', 'E', 'O'])) {
+                // Zero-rated, Exempt, and Out-of-scope require exemption reason
+                if (empty($line->tax_exemption_code)) {
+                    $errors[] = "BR-KSA-33: Line {$lineNum} requires exemption reason code for tax category {$taxCategory}";
+                }
+                if (empty($line->tax_exemption_reason)) {
+                    $errors[] = "BR-KSA-34: Line {$lineNum} requires exemption reason text for tax category {$taxCategory}";
+                }
+            }
+
+            // Validate tax category matches rate (BR-KSA-35)
+            if ($taxCategory === 'S' && $line->tax_rate <= 0) {
+                $errors[] = "BR-KSA-35: Line {$lineNum} standard rated (S) must have positive tax rate";
+            }
+            if (in_array($taxCategory, ['Z', 'E', 'O']) && $line->tax_rate > 0) {
+                $errors[] = "BR-KSA-35: Line {$lineNum} tax category {$taxCategory} should have 0% tax rate";
+            }
         }
 
         return $errors;
@@ -198,7 +218,8 @@ class ZatcaValidator
         // Calculate expected totals
         $expectedSubtotal = $invoice->lines->sum(fn ($line) => $line->quantity * $line->unit_price);
         $expectedTax = $invoice->lines->sum('tax_amount');
-        $expectedTotal = $expectedSubtotal + $expectedTax;
+        $discountAmount = (float) ($invoice->discount_amount ?? 0);
+        $expectedTotal = $expectedSubtotal - $discountAmount + $expectedTax;
 
         // Subtotal validation (BR-CO-10)
         if (abs((float) $invoice->subtotal - $expectedSubtotal) > 0.01) {
@@ -210,9 +231,17 @@ class ZatcaValidator
             $errors[] = 'BR-CO-14: Tax total does not match sum of line taxes';
         }
 
-        // Total validation (BR-CO-15)
+        // Total validation (BR-CO-15) - accounting for discount
         if (abs((float) $invoice->total - $expectedTotal) > 0.01) {
-            $errors[] = 'BR-CO-15: Invoice total does not match subtotal plus tax';
+            $errors[] = 'BR-CO-15: Invoice total does not match (subtotal - discount + tax)';
+        }
+
+        // Discount validation (BR-KSA-DEC-01)
+        if ($discountAmount < 0) {
+            $errors[] = 'BR-KSA-DEC-01: Discount amount cannot be negative';
+        }
+        if ($discountAmount > $expectedSubtotal) {
+            $errors[] = 'BR-KSA-DEC-01: Discount cannot exceed invoice subtotal';
         }
 
         // Amounts must be positive
