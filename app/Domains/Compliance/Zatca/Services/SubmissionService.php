@@ -625,13 +625,14 @@ class SubmissionService
 
     /**
      * Compute request hash for idempotency comparison.
+     * Uses SHA256 for cryptographic consistency with ZATCA requirements.
      */
     private function computeRequestHash(Invoice $invoice): string
     {
         return hash('sha256', implode(':', [
             $invoice->id,
             $invoice->hash,
-            $invoice->signed_xml ? md5($invoice->signed_xml) : '',
+            $invoice->signed_xml ? hash('sha256', $invoice->signed_xml) : '',
         ]));
     }
 
