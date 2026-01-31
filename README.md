@@ -12,6 +12,7 @@ A production-ready ZATCA Phase 2 compliant e-invoicing API platform for Saudi Ar
 - **Dual Authentication** - JWT tokens and API keys for server-to-server
 - **Webhook Notifications** - Real-time event notifications with HMAC signatures
 - **Comprehensive Validation** - ZATCA business rules (BR-KSA-*) enforcement
+- **Multi-Language SDKs** - Python, TypeScript/JavaScript, PHP 7.4+ (Laravel 8+)
 
 ## Requirements
 
@@ -20,25 +21,66 @@ A production-ready ZATCA Phase 2 compliant e-invoicing API platform for Saudi Ar
 - OpenSSL extension (for ECDSA signing)
 - MySQL 8.0+ or PostgreSQL 15+
 
-## Installation
+## Local Development Setup
+
+### 1. Clone and Install
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/complipay.git
-cd complipay
+git clone <your-repository-url>
+cd Zatca
 
-# Install dependencies
+# Install PHP dependencies
 composer install
 
-# Configure environment
+# Copy environment file
 cp .env.example .env
+
+# Generate application key
 php artisan key:generate
+```
 
-# Run migrations
+### 2. Configure Database
+
+Edit `.env` file:
+
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=zatca
+DB_USERNAME=root
+DB_PASSWORD=
+
+# For SQLite (simpler for testing)
+# DB_CONNECTION=sqlite
+# DB_DATABASE=/absolute/path/to/database.sqlite
+```
+
+### 3. Run Migrations
+
+```bash
 php artisan migrate
+```
 
-# Start the server
+### 4. Start Development Server
+
+```bash
 php artisan serve
+```
+
+Your API is now running at: **http://localhost:8000**
+
+### 5. Test the API
+
+```bash
+# Health check
+curl http://localhost:8000/api/health
+
+# Register a user
+curl -X POST http://localhost:8000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Test User", "email": "test@example.com", "password": "password123"}'
 ```
 
 ## Configuration
@@ -53,9 +95,20 @@ ZATCA_ENVIRONMENT=sandbox
 ZATCA_USERNAME=
 ZATCA_PASSWORD=
 
-# CORS (for CRM integrations)
-CORS_ALLOWED_ORIGINS=https://your-crm.com,https://your-app.com
+# CORS - Replace with your client application URLs
+CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080
 ```
+
+## API Base URLs
+
+| Environment | Base URL |
+|-------------|----------|
+| **Local Development** | `http://localhost:8000` |
+| **Local (Laragon)** | `http://zatca.test` |
+| **Local (Valet)** | `http://zatca.test` |
+| **Production** | `https://{YOUR_DOMAIN}` |
+
+> **Note:** Replace `{YOUR_DOMAIN}` with your actual domain when deploying to production.
 
 ## API Endpoints
 
@@ -63,65 +116,55 @@ CORS_ALLOWED_ORIGINS=https://your-crm.com,https://your-app.com
 
 ```bash
 # Register
-POST /api/auth/register
+POST {BASE_URL}/api/auth/register
 
 # Login (returns JWT token)
-POST /api/auth/login
+POST {BASE_URL}/api/auth/login
 
 # Get API Key (for server-to-server)
-POST /api/api-keys
+POST {BASE_URL}/api/api-keys
 ```
 
 ### Invoices
 
 ```bash
 # Create invoice
-POST /api/invoices
+POST {BASE_URL}/api/invoices
 Authorization: Bearer {jwt_token}
 
 # List invoices
-GET /api/invoices
+GET {BASE_URL}/api/invoices
 
 # Get invoice
-GET /api/invoices/{id}
+GET {BASE_URL}/api/invoices/{id}
 ```
 
 ### ZATCA Compliance
 
 ```bash
 # Generate compliance data (hash, QR code)
-POST /api/compliance/zatca/generate/{invoiceId}
+POST {BASE_URL}/api/compliance/zatca/generate/{invoiceId}
 
 # Validate with ZATCA (without submission)
-POST /api/compliance/zatca/validate/{invoiceId}
+POST {BASE_URL}/api/compliance/zatca/validate/{invoiceId}
 
 # Submit to ZATCA
-POST /api/compliance/zatca/submit/{invoiceId}
+POST {BASE_URL}/api/compliance/zatca/submit/{invoiceId}
 
 # Check status
-GET /api/compliance/zatca/status/{invoiceId}
+GET {BASE_URL}/api/compliance/zatca/status/{invoiceId}
 ```
 
-### ZATCA Onboarding
-
-```bash
-# Request Compliance CSID
-POST /api/onboarding/ccsid
-
-# Run compliance checks
-POST /api/onboarding/compliance-check
-
-# Request Production CSID
-POST /api/onboarding/pcsid
-```
-
-## CRM Integration
+## Client Integration
 
 ### Using API Keys
 
 ```bash
-# Create invoice via API key
-curl -X POST https://api.complipay.com/v1/invoices \
+# Replace {BASE_URL} with your server URL
+# Local: http://localhost:8000
+# Production: https://your-domain.com
+
+curl -X POST {BASE_URL}/v1/invoices \
   -H "X-API-Key: your_api_key" \
   -H "Content-Type: application/json" \
   -d '{
@@ -142,12 +185,10 @@ curl -X POST https://api.complipay.com/v1/invoices \
 
 ### Webhooks
 
-Subscribe to events for real-time notifications:
-
 ```bash
-POST /api/webhooks
+POST {BASE_URL}/api/webhooks
 {
-  "url": "https://your-crm.com/webhooks/zatca",
+  "url": "https://your-app.com/webhooks/zatca",
   "events": ["invoice.cleared", "invoice.rejected"],
   "secret": "your_webhook_secret"
 }
@@ -157,6 +198,119 @@ Events include:
 - `invoice.created`, `invoice.updated`, `invoice.issued`
 - `invoice.submitted`, `invoice.cleared`, `invoice.reported`
 - `invoice.rejected`, `invoice.cancelled`
+
+## Multi-Language SDKs
+
+SDKs are available in the `sdk/` directory for easy integration:
+
+| SDK | Location | Compatibility |
+|-----|----------|---------------|
+| **Python** | `sdk/python/` | Python 3.7+, Django, Flask, FastAPI |
+| **TypeScript/JS** | `sdk/typescript/` | Node.js 14+, React, Vue, Angular |
+| **PHP Legacy** | `sdk/php-legacy/` | PHP 7.4+, Laravel 8/9/10/11/12 |
+
+### Python Example
+
+```python
+from complipay import CompliPayClient, InvoiceLine
+
+# For local development
+client = CompliPayClient(
+    base_url="http://localhost:8000",  # Your server URL
+    api_key="your_api_key"
+)
+
+invoice = client.invoices.create(
+    invoice_number="INV-001",
+    buyer_name="Acme Corp",
+    lines=[InvoiceLine("Service", 1, 100.0)]
+)
+```
+
+### TypeScript Example
+
+```typescript
+import { CompliPayClient } from 'complipay';
+
+// For local development
+const client = new CompliPayClient({
+  baseUrl: 'http://localhost:8000',  // Your server URL
+  apiKey: 'your_api_key'
+});
+
+const invoice = await client.invoices.create({
+  invoiceNumber: 'INV-001',
+  buyerName: 'Acme Corp',
+  lines: [{ description: 'Service', quantity: 1, unitPrice: 100 }]
+});
+```
+
+### PHP (Laravel 8+) Example
+
+```php
+use CompliPay\CompliPayClient;
+use CompliPay\InvoiceLine;
+
+// For local development
+$client = new CompliPayClient([
+    'base_url' => 'http://localhost:8000',  // Your server URL
+    'api_key' => 'your_api_key',
+]);
+
+$invoice = $client->invoices->create(
+    'INV-001',
+    'Acme Corp',
+    [new InvoiceLine('Service', 1, 100.0)]
+);
+```
+
+### Other Languages (REST API)
+
+Any language with HTTP support can use the REST API directly:
+
+```java
+// Java
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("http://localhost:8000/v1/invoices"))
+    .header("X-API-Key", "your_key")
+    .header("Content-Type", "application/json")
+    .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+    .build();
+```
+
+```csharp
+// C#
+var client = new HttpClient();
+client.DefaultRequestHeaders.Add("X-API-Key", "your_key");
+var response = await client.PostAsync(
+    "http://localhost:8000/v1/invoices",
+    new StringContent(json, Encoding.UTF8, "application/json")
+);
+```
+
+```ruby
+# Ruby
+require 'net/http'
+require 'json'
+
+uri = URI('http://localhost:8000/v1/invoices')
+http = Net::HTTP.new(uri.host, uri.port)
+request = Net::HTTP::Post.new(uri, {
+  'X-API-Key' => 'your_key',
+  'Content-Type' => 'application/json'
+})
+request.body = data.to_json
+response = http.request(request)
+```
+
+```go
+// Go
+req, _ := http.NewRequest("POST", "http://localhost:8000/v1/invoices", bytes.NewBuffer(jsonData))
+req.Header.Set("X-API-Key", "your_key")
+req.Header.Set("Content-Type", "application/json")
+client := &http.Client{}
+resp, _ := client.Do(req)
+```
 
 ## Invoice Types
 
@@ -198,6 +352,11 @@ app/
 │   ├── Middleware/              # Auth & rate limiting
 │   └── Requests/                # Form validation
 └── Audits/                      # Audit logging
+
+sdk/
+├── python/                      # Python SDK
+├── typescript/                  # TypeScript/JavaScript SDK
+└── php-legacy/                  # PHP 7.4+ SDK for Laravel 8+
 ```
 
 ## ZATCA Onboarding Flow
@@ -206,25 +365,6 @@ app/
 2. **Request CCSID** - Submit CSR with OTP to get Compliance CSID
 3. **Compliance Check** - Submit test invoices for validation
 4. **Request PCSID** - Get Production CSID after passing compliance
-
-```php
-// Example: Complete onboarding
-$service = app(CsidOnboardingService::class);
-
-$result = $service->completeOnboarding(
-    csrData: new CsrData(
-        organizationName: 'Your Company',
-        vatNumber: '300000000000003',
-        // ... other fields
-    ),
-    otp: '123456',
-    testInvoices: $testInvoices
-);
-
-// Store PCSID securely
-$pcsid = $result['pcsid'];
-$secret = $result['secret'];
-```
 
 ## Security
 
@@ -252,7 +392,3 @@ php artisan test --coverage
 ## License
 
 Proprietary - All rights reserved.
-
-## Support
-
-For support, contact support@complipay.com or open an issue.
