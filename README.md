@@ -2,6 +2,11 @@
 
 A production-ready ZATCA Phase 2 compliant e-invoicing API platform for Saudi Arabia, built with Laravel 12 and PHP 8.4.
 
+> **Important**: By using this software, you agree to our [Terms of Use](TERMS.md) and [License](LICENSE). Commercial use requires [registration](#registration).
+
+[![License: COSL](https://img.shields.io/badge/License-COSL-blue.svg)](LICENSE)
+[![Security Policy](https://img.shields.io/badge/Security-Policy-green.svg)](SECURITY.md)
+
 ## Features
 
 - **ZATCA Phase 2 Compliance** - Full support for clearance (B2B) and reporting (B2C)
@@ -389,6 +394,62 @@ php artisan test
 php artisan test --coverage
 ```
 
+## Registration
+
+**Commercial use requires registration.** This helps us:
+- Provide security vulnerability notifications
+- Offer technical support
+- Ensure compliance with ZATCA regulations
+- Track usage for legal compliance
+
+### How to Register
+
+1. **Email**: Send registration details to `registration@{YOUR_DOMAIN}`
+2. **Include**:
+   - Organization name
+   - Contact person and email
+   - VAT registration number (if applicable)
+   - Intended use case
+   - Agreement to [Terms of Use](TERMS.md)
+
+### What Registration Provides
+
+- Production API credentials
+- Technical support eligibility
+- Security update notifications
+- Compliance update notifications
+
+## Legal
+
+### Terms of Use
+
+By using CompliPay, you agree to our [Terms of Use](TERMS.md), which includes:
+
+- **Permitted Uses**: Legitimate business e-invoicing
+- **Prohibited Uses**: Tax fraud, financial crimes, system manipulation
+- **Compliance Requirements**: Valid ZATCA credentials, accurate data
+- **Security Requirements**: Credential protection, access control
+
+### Security Policy
+
+See [SECURITY.md](SECURITY.md) for:
+
+- How to report security vulnerabilities
+- Security measures implemented
+- Best practices for deployment
+- Incident response procedures
+
+### Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines. All contributors must agree to our terms and sign off on their commits.
+
 ## License
 
-Proprietary - All rights reserved.
+This project is licensed under the **Controlled Open Source License (COSL)** - see [LICENSE](LICENSE) for details.
+
+Key points:
+- Free for development and testing
+- Commercial use requires registration
+- Must comply with Terms of Use
+- Attribution required for derivative works
+- Security vulnerabilities must be reported responsibly

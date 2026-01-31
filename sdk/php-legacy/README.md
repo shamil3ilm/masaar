@@ -4,6 +4,8 @@ ZATCA-compliant e-invoicing API client for PHP 7.4+
 
 Compatible with Laravel 8, 9, 10, 11, 12 and any PHP application.
 
+> **Important**: By using this SDK, you agree to the CompliPay [Terms of Use](../../TERMS.md) and [License](../../LICENSE). Commercial use requires [registration](../../README.md#registration).
+
 ## Installation
 
 ```bash
@@ -259,6 +261,16 @@ try {
 - cURL extension
 - JSON extension
 
+## Legal
+
+By using this SDK, you agree to:
+
+- [Terms of Use](../../TERMS.md) - Acceptable use policy
+- [License](../../LICENSE) - Controlled Open Source License (COSL)
+- [Security Policy](../../SECURITY.md) - Security requirements
+
+**Commercial use requires registration.** See [Registration](../../README.md#registration).
+
 ## License
 
-MIT
+Controlled Open Source License (COSL) - See [LICENSE](../../LICENSE)

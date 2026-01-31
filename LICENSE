@@ -1,0 +1,166 @@
+CompliPay Controlled Open Source License (COSL)
+Version 1.0
+
+Copyright (c) 2026 CompliPay
+
+PREAMBLE
+
+This license governs the use of the CompliPay ZATCA e-invoicing platform
+("Software"). By using, copying, modifying, or distributing the Software,
+you agree to be bound by the terms of this license and the Terms of Use
+located in the TERMS.md file.
+
+1. DEFINITIONS
+
+   "Software" means the CompliPay source code, documentation, SDKs, APIs,
+   and all associated files in this repository.
+
+   "User" means any individual or entity that uses, copies, modifies, or
+   distributes the Software.
+
+   "Commercial Use" means use of the Software for direct or indirect
+   financial gain, including but not limited to: providing services to
+   third parties, integrating into commercial products, or processing
+   invoices for business operations.
+
+   "Registration" means the process of providing identifying information
+   as required in Section 3.
+
+2. GRANT OF LICENSE
+
+   Subject to the terms and conditions of this license:
+
+   a) You are granted a non-exclusive, worldwide, royalty-free license to:
+      - Use the Software for development and testing purposes
+      - Modify the Software for your own use
+      - Distribute the Software with attribution
+
+   b) For Commercial Use, you must:
+      - Complete Registration as described in Section 3
+      - Comply with all terms in TERMS.md
+      - Maintain compliance with ZATCA regulations
+      - Not use the Software for any prohibited purposes
+
+3. REGISTRATION REQUIREMENT
+
+   Before using this Software for Commercial Use, you MUST register by:
+
+   a) Creating an account at the official CompliPay portal, OR
+   b) Sending registration details to: registration@{YOUR_DOMAIN}
+
+   Registration must include:
+   - Organization name
+   - Contact person name and email
+   - VAT registration number (if applicable)
+   - Intended use case description
+   - Agreement to Terms of Use
+
+   Registration enables:
+   - Access to production API credentials
+   - Technical support eligibility
+   - Security vulnerability notifications
+   - Compliance update notifications
+
+4. CONDITIONS
+
+   You must:
+
+   a) Include this LICENSE file in all copies or substantial portions
+      of the Software
+
+   b) Include attribution in any derivative works:
+      "Based on CompliPay - https://github.com/{YOUR_REPO}"
+
+   c) Not remove or alter any copyright, trademark, or attribution notices
+
+   d) Comply with the Terms of Use in TERMS.md, including:
+      - Prohibition on tax fraud or evasion
+      - Prohibition on financial crimes
+      - Prohibition on system manipulation
+      - Compliance with Saudi Arabian law
+
+   e) Report any security vulnerabilities responsibly before disclosure
+
+   f) Not use the Software to:
+      - Generate false or fraudulent invoices
+      - Evade taxes or regulatory requirements
+      - Harm other users or the integrity of the ZATCA system
+      - Compete directly with CompliPay's commercial offerings
+
+5. SECURITY OBLIGATIONS
+
+   Users must:
+
+   a) Implement appropriate security measures when deploying the Software
+   b) Keep credentials and API keys confidential
+   c) Report security incidents within 24 hours of discovery
+   d) Apply security updates in a timely manner
+   e) Not introduce vulnerabilities or backdoors
+
+6. DATA PROTECTION
+
+   Users are solely responsible for:
+
+   a) Compliance with data protection laws (including Saudi PDPL)
+   b) Protection of personal data processed through the Software
+   c) Obtaining necessary consents for data processing
+   d) Implementing appropriate technical and organizational measures
+
+7. INDEMNIFICATION
+
+   You agree to indemnify, defend, and hold harmless the copyright holders
+   and contributors from any claims, damages, or expenses arising from:
+
+   a) Your use of the Software
+   b) Your violation of this license or TERMS.md
+   c) Your violation of any applicable laws or regulations
+   d) Any third-party claims related to your use of the Software
+
+8. DISCLAIMER OF WARRANTY
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+
+   THE COPYRIGHT HOLDERS DO NOT WARRANT THAT:
+   - The Software will meet ZATCA requirements at all times
+   - The Software will be error-free or uninterrupted
+   - Defects will be corrected
+   - The Software is free of viruses or harmful components
+
+9. LIMITATION OF LIABILITY
+
+   IN NO EVENT SHALL THE COPYRIGHT HOLDERS BE LIABLE FOR ANY DIRECT,
+   INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+   (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+   SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+   HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+   STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+   IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+   POSSIBILITY OF SUCH DAMAGE.
+
+10. TERMINATION
+
+    a) This license terminates automatically if you breach any of its terms
+    b) Upon termination, you must cease all use and destroy all copies
+    c) Sections 7, 8, 9, and 11 survive termination
+
+11. GOVERNING LAW
+
+    This license is governed by the laws of the Kingdom of Saudi Arabia.
+    Any disputes shall be resolved in the courts of Riyadh, Saudi Arabia.
+
+12. MODIFICATIONS TO LICENSE
+
+    The copyright holders reserve the right to modify this license for
+    future versions of the Software. Continued use after modifications
+    constitutes acceptance of the new terms.
+
+---
+
+BY USING THIS SOFTWARE, YOU ACKNOWLEDGE THAT YOU HAVE READ THIS LICENSE,
+UNDERSTAND IT, AND AGREE TO BE BOUND BY ITS TERMS AND CONDITIONS.
+
+For questions about licensing: license@{YOUR_DOMAIN}
+For registration: registration@{YOUR_DOMAIN}
+For security issues: security@{YOUR_DOMAIN}
