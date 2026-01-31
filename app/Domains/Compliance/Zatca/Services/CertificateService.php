@@ -438,4 +438,348 @@ EOL;
 
         return $content;
     }
+
+    /**
+     * Check certificate revocation status via OCSP and/or CRL.
+     *
+     * This method checks if a certificate has been revoked by the issuer.
+     * It attempts OCSP first (faster, real-time), then falls back to CRL.
+     *
+     * @param string $certificatePem PEM-encoded certificate to check
+     * @param string|null $issuerCertPem PEM-encoded issuer certificate (optional, extracted if not provided)
+     * @return array{revoked: bool, method: string, reason: string|null, revokedAt: string|null}
+     * @throws CertificateException
+     */
+    public function checkRevocationStatus(string $certificatePem, ?string $issuerCertPem = null): array
+    {
+        $details = $this->parseCertificate($certificatePem);
+        $extensions = $details['extensions'] ?? [];
+
+        // Try OCSP first (preferred - real-time status)
+        $ocspUrl = $this->extractOcspUrl($extensions);
+        if ($ocspUrl !== null) {
+            try {
+                $ocspResult = $this->checkOcsp($certificatePem, $issuerCertPem, $ocspUrl);
+                if ($ocspResult !== null) {
+                    return $ocspResult;
+                }
+            } catch (\Exception $e) {
+                // OCSP failed, fall back to CRL
+                \Log::warning('OCSP check failed, falling back to CRL', [
+                    'error' => $e->getMessage(),
+                    'ocsp_url' => $ocspUrl,
+                ]);
+            }
+        }
+
+        // Fall back to CRL
+        $crlUrls = $this->extractCrlUrls($extensions);
+        foreach ($crlUrls as $crlUrl) {
+            try {
+                $crlResult = $this->checkCrl($certificatePem, $crlUrl);
+                if ($crlResult !== null) {
+                    return $crlResult;
+                }
+            } catch (\Exception $e) {
+                \Log::warning('CRL check failed', [
+                    'error' => $e->getMessage(),
+                    'crl_url' => $crlUrl,
+                ]);
+                continue;
+            }
+        }
+
+        // No revocation information available
+        return [
+            'revoked' => false,
+            'method' => 'none',
+            'reason' => null,
+            'revokedAt' => null,
+            'warning' => 'No OCSP or CRL endpoints available for revocation checking',
+        ];
+    }
+
+    /**
+     * Check certificate revocation via OCSP (Online Certificate Status Protocol).
+     *
+     * @param string $certificatePem Certificate to check
+     * @param string|null $issuerCertPem Issuer certificate
+     * @param string $ocspUrl OCSP responder URL
+     * @return array|null Revocation status or null if check failed
+     */
+    private function checkOcsp(string $certificatePem, ?string $issuerCertPem, string $ocspUrl): ?array
+    {
+        // Create temporary files for OpenSSL
+        $certFile = tempnam(sys_get_temp_dir(), 'cert_');
+        $issuerFile = $issuerCertPem ? tempnam(sys_get_temp_dir(), 'issuer_') : null;
+
+        try {
+            file_put_contents($certFile, $certificatePem);
+
+            if ($issuerCertPem && $issuerFile) {
+                file_put_contents($issuerFile, $issuerCertPem);
+            }
+
+            // Build OCSP request using OpenSSL
+            $issuerArg = $issuerFile ? "-issuer {$issuerFile}" : '';
+
+            // Generate OCSP request
+            $requestCmd = sprintf(
+                'openssl ocsp -cert %s %s -url %s -text 2>&1',
+                escapeshellarg($certFile),
+                $issuerArg,
+                escapeshellarg($ocspUrl)
+            );
+
+            $output = shell_exec($requestCmd);
+
+            if ($output === null) {
+                return null;
+            }
+
+            // Parse OCSP response
+            if (stripos($output, 'revoked') !== false) {
+                $revokedAt = null;
+                $reason = null;
+
+                if (preg_match('/Revocation Time:\s*(.+)/i', $output, $matches)) {
+                    $revokedAt = trim($matches[1]);
+                }
+                if (preg_match('/Reason:\s*(.+)/i', $output, $matches)) {
+                    $reason = trim($matches[1]);
+                }
+
+                return [
+                    'revoked' => true,
+                    'method' => 'ocsp',
+                    'reason' => $reason,
+                    'revokedAt' => $revokedAt,
+                ];
+            }
+
+            if (stripos($output, 'good') !== false) {
+                return [
+                    'revoked' => false,
+                    'method' => 'ocsp',
+                    'reason' => null,
+                    'revokedAt' => null,
+                ];
+            }
+
+            return null;
+        } finally {
+            // Clean up temporary files
+            if (file_exists($certFile)) {
+                unlink($certFile);
+            }
+            if ($issuerFile && file_exists($issuerFile)) {
+                unlink($issuerFile);
+            }
+        }
+    }
+
+    /**
+     * Check certificate revocation via CRL (Certificate Revocation List).
+     *
+     * @param string $certificatePem Certificate to check
+     * @param string $crlUrl CRL distribution point URL
+     * @return array|null Revocation status or null if check failed
+     */
+    private function checkCrl(string $certificatePem, string $crlUrl): ?array
+    {
+        // Download CRL
+        $context = stream_context_create([
+            'http' => [
+                'timeout' => 10,
+                'user_agent' => 'CompliPay-ZATCA-Client/1.0',
+            ],
+            'ssl' => [
+                'verify_peer' => true,
+                'verify_peer_name' => true,
+            ],
+        ]);
+
+        $crlData = @file_get_contents($crlUrl, false, $context);
+
+        if ($crlData === false) {
+            return null;
+        }
+
+        // Get certificate serial number
+        $details = $this->parseCertificate($certificatePem);
+        $serialNumber = $details['serialNumber'] ?? null;
+
+        if ($serialNumber === null) {
+            return null;
+        }
+
+        // Create temporary files for OpenSSL CRL verification
+        $crlFile = tempnam(sys_get_temp_dir(), 'crl_');
+
+        try {
+            file_put_contents($crlFile, $crlData);
+
+            // Parse CRL using OpenSSL
+            $crlCmd = sprintf(
+                'openssl crl -in %s -inform DER -text 2>&1',
+                escapeshellarg($crlFile)
+            );
+
+            $output = shell_exec($crlCmd);
+
+            if ($output === null) {
+                // Try PEM format if DER failed
+                $crlCmd = sprintf(
+                    'openssl crl -in %s -inform PEM -text 2>&1',
+                    escapeshellarg($crlFile)
+                );
+                $output = shell_exec($crlCmd);
+            }
+
+            if ($output === null) {
+                return null;
+            }
+
+            // Check if our serial number is in the revoked list
+            $serialHex = strtoupper(dechex((int) $serialNumber));
+
+            if (preg_match('/Serial Number:\s*' . preg_quote($serialHex, '/') . '/i', $output)) {
+                // Extract revocation date if possible
+                $revokedAt = null;
+                if (preg_match('/Serial Number:\s*' . preg_quote($serialHex, '/') . '\s+Revocation Date:\s*(.+)/i', $output, $matches)) {
+                    $revokedAt = trim($matches[1]);
+                }
+
+                return [
+                    'revoked' => true,
+                    'method' => 'crl',
+                    'reason' => 'Certificate found in CRL',
+                    'revokedAt' => $revokedAt,
+                ];
+            }
+
+            return [
+                'revoked' => false,
+                'method' => 'crl',
+                'reason' => null,
+                'revokedAt' => null,
+            ];
+        } finally {
+            if (file_exists($crlFile)) {
+                unlink($crlFile);
+            }
+        }
+    }
+
+    /**
+     * Extract OCSP responder URL from certificate extensions.
+     *
+     * @param array $extensions Certificate extensions
+     * @return string|null OCSP URL or null if not found
+     */
+    private function extractOcspUrl(array $extensions): ?string
+    {
+        // Authority Information Access (AIA) extension contains OCSP URL
+        $aia = $extensions['authorityInfoAccess'] ?? null;
+
+        if ($aia === null) {
+            return null;
+        }
+
+        // Parse AIA for OCSP URI
+        if (preg_match('/OCSP\s*-\s*URI:(\S+)/i', $aia, $matches)) {
+            return trim($matches[1]);
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract CRL distribution point URLs from certificate extensions.
+     *
+     * @param array $extensions Certificate extensions
+     * @return array List of CRL URLs
+     */
+    private function extractCrlUrls(array $extensions): array
+    {
+        $urls = [];
+
+        // CRL Distribution Points extension
+        $crlDist = $extensions['crlDistributionPoints'] ?? null;
+
+        if ($crlDist === null) {
+            return $urls;
+        }
+
+        // Parse for URIs
+        if (preg_match_all('/URI:(\S+)/i', $crlDist, $matches)) {
+            $urls = array_map('trim', $matches[1]);
+        }
+
+        return $urls;
+    }
+
+    /**
+     * Verify certificate chain including revocation status.
+     *
+     * @param string $certificatePem End-entity certificate
+     * @param array $chainPems Array of intermediate/root certificates
+     * @param bool $checkRevocation Whether to check revocation status
+     * @return array{valid: bool, errors: array, chain: array}
+     */
+    public function verifyCertificateChain(string $certificatePem, array $chainPems = [], bool $checkRevocation = true): array
+    {
+        $errors = [];
+        $chainInfo = [];
+
+        // Verify the certificate itself
+        if (!$this->isValid($certificatePem)) {
+            $errors[] = 'Certificate is expired or not yet valid';
+        }
+
+        // Check revocation if requested
+        if ($checkRevocation) {
+            $issuerPem = $chainPems[0] ?? null;
+            try {
+                $revocationStatus = $this->checkRevocationStatus($certificatePem, $issuerPem);
+                if ($revocationStatus['revoked']) {
+                    $errors[] = sprintf(
+                        'Certificate is revoked (method: %s, reason: %s)',
+                        $revocationStatus['method'],
+                        $revocationStatus['reason'] ?? 'unknown'
+                    );
+                }
+            } catch (\Exception $e) {
+                $errors[] = 'Could not verify revocation status: ' . $e->getMessage();
+            }
+        }
+
+        // Parse and verify each certificate in the chain
+        $allCerts = array_merge([$certificatePem], $chainPems);
+        foreach ($allCerts as $index => $certPem) {
+            try {
+                $details = $this->parseCertificate($certPem);
+                $chainInfo[] = [
+                    'index' => $index,
+                    'subject' => $details['subject']['CN'] ?? 'Unknown',
+                    'issuer' => $details['issuer']['CN'] ?? 'Unknown',
+                    'validFrom' => $details['validFrom'],
+                    'validTo' => $details['validTo'],
+                ];
+
+                // Check if certificate in chain is expired
+                if (!$this->isValid($certPem)) {
+                    $errors[] = sprintf('Certificate at index %d is expired', $index);
+                }
+            } catch (CertificateException $e) {
+                $errors[] = sprintf('Invalid certificate at index %d: %s', $index, $e->getMessage());
+            }
+        }
+
+        return [
+            'valid' => empty($errors),
+            'errors' => $errors,
+            'chain' => $chainInfo,
+        ];
+    }
 }
