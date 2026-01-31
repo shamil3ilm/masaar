@@ -318,10 +318,159 @@ experiments:
 
 ---
 
+## 8. Index Health Monitoring
+
+### 8.1 Slow Burn Failure Prevention
+
+**Problem**: No spike, no outage, just slow steady growth. Eventually DB indexes degrade, hash chain queries slow, audits time out.
+
+### 8.2 Critical Tables to Monitor
+
+| Table | Query Pattern | Risk |
+|-------|---------------|------|
+| `hash_chain_history` | Range scans by org+icv | Chain verification slows |
+| `audit_logs` | Time-range queries | Compliance queries timeout |
+| `invoices` | Complex filters | Reporting degrades |
+| `invoice_submissions` | Status lookups | Dashboard slows |
+
+### 8.3 Metrics to Track
+
+```sql
+-- Query latency by table (PostgreSQL)
+SELECT
+    schemaname,
+    relname,
+    seq_scan,
+    idx_scan,
+    n_tup_ins,
+    n_tup_upd,
+    n_tup_del
+FROM pg_stat_user_tables
+WHERE relname IN ('hash_chain_history', 'audit_logs', 'invoices', 'invoice_submissions')
+ORDER BY seq_scan DESC;
+
+-- Index usage (PostgreSQL)
+SELECT
+    indexrelname,
+    idx_scan,
+    idx_tup_read,
+    idx_tup_fetch
+FROM pg_stat_user_indexes
+WHERE schemaname = 'public'
+ORDER BY idx_scan DESC;
+```
+
+### 8.4 Alert Thresholds
+
+| Metric | Warning | Critical | Action |
+|--------|---------|----------|--------|
+| P95 query latency (hash_chain_history) | > 100ms | > 500ms | Analyze indexes |
+| P95 query latency (audit_logs) | > 200ms | > 1s | Consider partitioning |
+| Sequential scans / hour | > 1000 | > 5000 | Add missing index |
+| Table bloat | > 20% | > 50% | VACUUM ANALYZE |
+| Index bloat | > 30% | > 60% | REINDEX |
+
+### 8.5 Monitoring Queries
+
+**MySQL - Slow Query Detection**:
+```sql
+SELECT
+    query,
+    exec_count,
+    avg_latency,
+    max_latency
+FROM sys.statement_analysis
+WHERE query LIKE '%hash_chain%' OR query LIKE '%audit_log%'
+ORDER BY avg_latency DESC
+LIMIT 20;
+```
+
+**PostgreSQL - Index Health**:
+```sql
+SELECT
+    schemaname || '.' || relname AS table,
+    indexrelname AS index,
+    pg_size_pretty(pg_relation_size(indexrelid)) AS index_size,
+    idx_scan AS scans,
+    idx_tup_read AS tuples_read,
+    idx_tup_fetch AS tuples_fetched
+FROM pg_stat_user_indexes
+JOIN pg_index USING (indexrelid)
+WHERE NOT indisunique
+ORDER BY idx_scan ASC
+LIMIT 20;  -- Least used indexes
+```
+
+### 8.6 Automated Health Check
+
+```php
+// App\Console\Commands\IndexHealthCheck.php
+class IndexHealthCheck extends Command
+{
+    protected $signature = 'compliance:index-health';
+
+    public function handle()
+    {
+        $tables = ['hash_chain_history', 'audit_logs', 'invoices'];
+
+        foreach ($tables as $table) {
+            $stats = DB::select("EXPLAIN ANALYZE SELECT * FROM {$table} WHERE created_at > NOW() - INTERVAL '1 day' LIMIT 100");
+
+            // Parse execution time
+            $executionTime = $this->parseExecutionTime($stats);
+
+            if ($executionTime > 100) { // ms
+                Log::warning("Slow query detected on {$table}", [
+                    'execution_time_ms' => $executionTime,
+                    'table' => $table,
+                ]);
+
+                // Alert if critical
+                if ($executionTime > 500) {
+                    $this->alertOps("Critical: {$table} queries exceeding 500ms");
+                }
+            }
+        }
+    }
+}
+```
+
+### 8.7 Preventive Maintenance Schedule
+
+| Task | Frequency | Command |
+|------|-----------|---------|
+| ANALYZE tables | Daily | `ANALYZE hash_chain_history, audit_logs, invoices;` |
+| Check index bloat | Weekly | Custom monitoring query |
+| VACUUM ANALYZE | Weekly | `VACUUM ANALYZE;` |
+| REINDEX (if needed) | Monthly | `REINDEX TABLE CONCURRENTLY table_name;` |
+| Table partitioning review | Quarterly | Manual review |
+
+### 8.8 Partitioning Strategy (Future)
+
+For tables exceeding 100M rows:
+
+```sql
+-- Partition audit_logs by month
+CREATE TABLE audit_logs (
+    id UUID,
+    created_at TIMESTAMP,
+    ...
+) PARTITION BY RANGE (created_at);
+
+CREATE TABLE audit_logs_2026_01 PARTITION OF audit_logs
+    FOR VALUES FROM ('2026-01-01') TO ('2026-02-01');
+
+CREATE TABLE audit_logs_2026_02 PARTITION OF audit_logs
+    FOR VALUES FROM ('2026-02-01') TO ('2026-03-01');
+```
+
+---
+
 ## Document Control
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-01-31 | CompliPay Team | Initial release |
+| 1.1 | 2026-01-31 | CompliPay Team | Added index health monitoring section |
 
 **Last Updated**: January 31, 2026
