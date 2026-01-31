@@ -1,0 +1,61 @@
+{
+  "name": "complipay",
+  "version": "1.0.0",
+  "description": "ZATCA-compliant e-invoicing API client for TypeScript/JavaScript",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "test": "jest",
+    "lint": "eslint src/**/*.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "zatca",
+    "e-invoicing",
+    "saudi-arabia",
+    "ksa",
+    "tax",
+    "invoice",
+    "compliance",
+    "api-client"
+  ],
+  "author": "CompliPay",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/complipay/complipay-js"
+  },
+  "homepage": "https://complipay.com",
+  "bugs": {
+    "url": "https://github.com/complipay/complipay-js/issues"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "@types/node": ">=14.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@types/node": {
+      "optional": true
+    }
+  }
+}
