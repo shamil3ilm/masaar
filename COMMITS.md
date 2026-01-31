@@ -37,6 +37,8 @@ This document maintains a record of all commits to the CompliPay project for aud
 | 29 | `b7a6d3b` | 2026-01-31 | Add enterprise readiness features: idempotency, async submissions, and error taxonomy |
 | 30 | `bd9cb4c` | 2026-01-31 | Add extreme scenario handlers and infrastructure resilience |
 | 31 | `f88e9ca` | 2026-01-31 | Add critical edge-case handlers for production resilience |
+| 32 | `9709890` | 2026-01-31 | Fix migrations to check for existing columns before adding |
+| 33 | `31a8650` | 2026-01-31 | Add edge case handlers for production stability |
 
 ## Detailed Commit Descriptions
 
@@ -121,6 +123,15 @@ This document maintains a record of all commits to the CompliPay project for aud
 - Database tables: hash_chain_state, hash_chain_history, certificate_lineage
 - Audit queries: "All invoices with cert X" answerable in <10 minutes
 
+### Phase 11: Production Stability & Compliance (Commits 32-33)
+- Idempotent migrations: Schema::hasColumn() checks on all ALTER TABLE operations
+- Redis cluster-safe locks: Ownership tokens, retry logic, hostname tracking
+- Offline queue ICV protection: Duplicate prevention, certificate rotation handling
+- AuditQueryService: Complete audit reproducibility for 3-year retention
+- LogSanitizer: Private key, password, and token redaction in logs
+- TenantIsolationGuard: Cross-tenant data isolation verification
+- Post-clearance audit updates for ZATCA reconciliation
+
 ## Full Commit Hashes
 
 For verification purposes, here are the full SHA-1 hashes:
@@ -157,11 +168,13 @@ be45bd0 - Add support scope documentation
 b7a6d3b3bb4e0248b41a1887e4832be844807dce - Add enterprise readiness features
 bd9cb4c - Add extreme scenario handlers and infrastructure resilience
 f88e9ca - Add critical edge-case handlers for production resilience
+9709890 - Fix migrations to check for existing columns before adding
+31a8650 - Add edge case handlers for production stability
 ```
 
 ## Statistics
 
-- **Total Commits**: 31
+- **Total Commits**: 33
 - **Development Period**: January 30-31, 2026
 - **Main Branch**: `main`
 - **Contributors**: Development Team
