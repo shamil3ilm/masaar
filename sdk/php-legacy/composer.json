@@ -1,0 +1,45 @@
+{
+    "name": "complipay/complipay-php",
+    "description": "ZATCA-compliant e-invoicing API client for PHP 7.4+",
+    "type": "library",
+    "license": "MIT",
+    "version": "1.0.0",
+    "authors": [
+        {
+            "name": "CompliPay",
+            "email": "support@complipay.com"
+        }
+    ],
+    "require": {
+        "php": ">=7.4",
+        "ext-curl": "*",
+        "ext-json": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "CompliPay\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "CompliPay\\Tests\\": "tests/"
+        }
+    },
+    "keywords": [
+        "zatca",
+        "e-invoicing",
+        "saudi-arabia",
+        "ksa",
+        "tax",
+        "invoice",
+        "compliance",
+        "laravel"
+    ],
+    "homepage": "https://complipay.com",
+    "support": {
+        "issues": "https://github.com/complipay/complipay-php/issues"
+    }
+}
