@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Zatca\Services;
 
 use App\Domains\Compliance\Zatca\Exceptions\SigningException;
+use App\Domains\Compliance\Zatca\Helpers\ZatcaTime;
 use DOMDocument;
 use DOMElement;
 use DOMXPath;
@@ -288,8 +289,8 @@ class XadesSigner
         // SignedSignatureProperties
         $signedSigProps = $dom->createElementNS(self::XADES_NS, 'xades:SignedSignatureProperties');
 
-        // SigningTime
-        $signingTime = $dom->createElementNS(self::XADES_NS, 'xades:SigningTime', date('c'));
+        // SigningTime (must be UTC per ZATCA requirements)
+        $signingTime = $dom->createElementNS(self::XADES_NS, 'xades:SigningTime', ZatcaTime::nowFormatted());
         $signedSigProps->appendChild($signingTime);
 
         // SigningCertificate

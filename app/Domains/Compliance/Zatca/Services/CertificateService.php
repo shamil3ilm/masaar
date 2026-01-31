@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Zatca\Services;
 
 use App\Domains\Compliance\Zatca\DTOs\CsrData;
 use App\Domains\Compliance\Zatca\Exceptions\CertificateException;
+use App\Domains\Compliance\Zatca\Helpers\ZatcaTime;
 
 /**
  * Certificate management service.
@@ -207,8 +208,10 @@ EOL;
         return [
             'subject' => $details['subject'] ?? [],
             'issuer' => $details['issuer'] ?? [],
-            'validFrom' => date('Y-m-d H:i:s', $details['validFrom_time_t'] ?? 0),
-            'validTo' => date('Y-m-d H:i:s', $details['validTo_time_t'] ?? 0),
+            'validFrom' => gmdate('Y-m-d H:i:s', $details['validFrom_time_t'] ?? 0),
+            'validTo' => gmdate('Y-m-d H:i:s', $details['validTo_time_t'] ?? 0),
+            'validFromUtc' => ZatcaTime::fromUnixTimestamp($details['validFrom_time_t'] ?? 0),
+            'validToUtc' => ZatcaTime::fromUnixTimestamp($details['validTo_time_t'] ?? 0),
             'serialNumber' => $details['serialNumber'] ?? null,
             'extensions' => $details['extensions'] ?? [],
         ];
@@ -233,7 +236,7 @@ EOL;
     }
 
     /**
-     * Get certificate expiry date.
+     * Get certificate expiry date in UTC.
      *
      * @param string $certificatePem PEM-encoded certificate
      * @return \DateTimeImmutable|null
@@ -243,7 +246,8 @@ EOL;
         try {
             $details = $this->parseCertificate($certificatePem);
 
-            return new \DateTimeImmutable($details['validTo']);
+            // Use the UTC DateTimeImmutable directly
+            return $details['validToUtc'] ?? new \DateTimeImmutable($details['validTo'], new \DateTimeZone('UTC'));
         } catch (\Exception) {
             return null;
         }
