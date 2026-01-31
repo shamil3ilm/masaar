@@ -318,9 +318,30 @@ class InvoicesResource
         $this->client = $client;
     }
 
+    /**
+     * Validate resource ID format (UUID or alphanumeric).
+     *
+     * @throws InvalidArgumentException
+     */
+    private function validateId(string $id, string $name = 'ID'): void
+    {
+        if (empty($id)) {
+            throw new InvalidArgumentException("{$name} cannot be empty");
+        }
+
+        // Allow UUIDs and alphanumeric IDs (no path traversal characters)
+        if (!preg_match('/^[a-zA-Z0-9\-_]+$/', $id)) {
+            throw new InvalidArgumentException("Invalid {$name} format");
+        }
+
+        if (strlen($id) > 64) {
+            throw new InvalidArgumentException("{$name} exceeds maximum length");
+        }
+    }
+
     public function list(int $page = 1, int $perPage = 15, ?string $status = null): array
     {
-        $params = ['page' => $page, 'per_page' => $perPage];
+        $params = ['page' => $page, 'per_page' => min(max($perPage, 1), 100)];
         if ($status !== null) {
             $params['status'] = $status;
         }
@@ -329,6 +350,7 @@ class InvoicesResource
 
     public function get(string $invoiceId): array
     {
+        $this->validateId($invoiceId, 'Invoice ID');
         return $this->client->get("/v1/invoices/{$invoiceId}");
     }
 
@@ -450,13 +472,27 @@ class ComplianceResource
         $this->client = $client;
     }
 
+    /**
+     * Validate resource ID format.
+     *
+     * @throws InvalidArgumentException
+     */
+    private function validateId(string $id): void
+    {
+        if (empty($id) || !preg_match('/^[a-zA-Z0-9\-_]+$/', $id) || strlen($id) > 64) {
+            throw new InvalidArgumentException('Invalid invoice ID format');
+        }
+    }
+
     public function generate(string $invoiceId): array
     {
+        $this->validateId($invoiceId);
         return $this->client->post("/api/compliance/zatca/generate/{$invoiceId}");
     }
 
     public function validate(string $invoiceId): array
     {
+        $this->validateId($invoiceId);
         return $this->client->post("/api/compliance/zatca/validate/{$invoiceId}");
     }
 
@@ -465,6 +501,7 @@ class ComplianceResource
      */
     public function submit(string $invoiceId): array
     {
+        $this->validateId($invoiceId);
         $result = $this->client->post("/api/compliance/zatca/submit/{$invoiceId}");
 
         if (!($result['success'] ?? true)) {
@@ -479,6 +516,7 @@ class ComplianceResource
 
     public function status(string $invoiceId): array
     {
+        $this->validateId($invoiceId);
         return $this->client->get("/api/compliance/zatca/status/{$invoiceId}");
     }
 }
