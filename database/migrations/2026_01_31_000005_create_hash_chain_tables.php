@@ -74,28 +74,41 @@ return new class extends Migration
 
         // Add certificate_id to invoices for direct querying
         Schema::table('invoices', function (Blueprint $table) {
-            $table->string('signing_certificate_id', 64)->nullable()->after('signed_xml');
-            $table->string('rule_version', 20)->nullable()->after('signing_certificate_id');
-            $table->string('schema_version', 20)->nullable()->after('rule_version');
-
-            $table->index('signing_certificate_id');
+            if (!Schema::hasColumn('invoices', 'signing_certificate_id')) {
+                $table->string('signing_certificate_id', 64)->nullable()->after('signed_xml');
+                $table->index('signing_certificate_id');
+            }
+            if (!Schema::hasColumn('invoices', 'rule_version')) {
+                $table->string('rule_version', 20)->nullable()->after('signing_certificate_id');
+            }
+            if (!Schema::hasColumn('invoices', 'schema_version')) {
+                $table->string('schema_version', 20)->nullable()->after('rule_version');
+            }
         });
 
         // Add to invoice_submissions for partial success tracking
-        Schema::table('invoice_submissions', function (Blueprint $table) {
-            $table->enum('clearance_state', [
-                'unknown',           // Initial state
-                'pending_clearance', // Submitted, awaiting ZATCA
-                'conditionally_accepted', // 200 but not final
-                'cleared',           // Terminal: success
-                'reported',          // Terminal: success (B2C)
-                'rejected',          // Terminal: failure
-                'timeout',           // Need to re-check
-            ])->default('unknown')->after('reporting_status');
+        if (Schema::hasTable('invoice_submissions')) {
+            Schema::table('invoice_submissions', function (Blueprint $table) {
+                if (!Schema::hasColumn('invoice_submissions', 'clearance_state')) {
+                    $table->enum('clearance_state', [
+                        'unknown',           // Initial state
+                        'pending_clearance', // Submitted, awaiting ZATCA
+                        'conditionally_accepted', // 200 but not final
+                        'cleared',           // Terminal: success
+                        'reported',          // Terminal: success (B2C)
+                        'rejected',          // Terminal: failure
+                        'timeout',           // Need to re-check
+                    ])->default('unknown')->after('reporting_status');
+                }
 
-            $table->timestamp('clearance_confirmed_at')->nullable()->after('clearance_state');
-            $table->integer('clearance_check_count')->default(0)->after('clearance_confirmed_at');
-        });
+                if (!Schema::hasColumn('invoice_submissions', 'clearance_confirmed_at')) {
+                    $table->timestamp('clearance_confirmed_at')->nullable()->after('clearance_state');
+                }
+                if (!Schema::hasColumn('invoice_submissions', 'clearance_check_count')) {
+                    $table->integer('clearance_check_count')->default(0)->after('clearance_confirmed_at');
+                }
+            });
+        }
     }
 
     /**
@@ -103,12 +116,38 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('invoice_submissions', function (Blueprint $table) {
-            $table->dropColumn(['clearance_state', 'clearance_confirmed_at', 'clearance_check_count']);
-        });
+        if (Schema::hasTable('invoice_submissions')) {
+            Schema::table('invoice_submissions', function (Blueprint $table) {
+                $columns = [];
+                if (Schema::hasColumn('invoice_submissions', 'clearance_state')) {
+                    $columns[] = 'clearance_state';
+                }
+                if (Schema::hasColumn('invoice_submissions', 'clearance_confirmed_at')) {
+                    $columns[] = 'clearance_confirmed_at';
+                }
+                if (Schema::hasColumn('invoice_submissions', 'clearance_check_count')) {
+                    $columns[] = 'clearance_check_count';
+                }
+                if (!empty($columns)) {
+                    $table->dropColumn($columns);
+                }
+            });
+        }
 
         Schema::table('invoices', function (Blueprint $table) {
-            $table->dropColumn(['signing_certificate_id', 'rule_version', 'schema_version']);
+            $columns = [];
+            if (Schema::hasColumn('invoices', 'signing_certificate_id')) {
+                $columns[] = 'signing_certificate_id';
+            }
+            if (Schema::hasColumn('invoices', 'rule_version')) {
+                $columns[] = 'rule_version';
+            }
+            if (Schema::hasColumn('invoices', 'schema_version')) {
+                $columns[] = 'schema_version';
+            }
+            if (!empty($columns)) {
+                $table->dropColumn($columns);
+            }
         });
 
         Schema::dropIfExists('certificate_lineage');
