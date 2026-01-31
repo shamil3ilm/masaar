@@ -43,6 +43,7 @@ This document maintains a record of all commits to the CompliPay project for aud
 | 35 | `025d143` | 2026-01-31 | Add advanced edge case handlers for time, crypto, and DR scenarios |
 | 36 | `6c8dc46` | 2026-01-31 | Add production readiness guide with stress testing and chaos engineering |
 | 37 | `a4e7e6d` | 2026-01-31 | Add remaining extremity policies and monitoring |
+| 38 | `0e1120e` | 2026-01-31 | Add real-time compliance events, licensing system, and QR encoding fixes |
 
 ## Detailed Commit Descriptions
 
@@ -235,6 +236,38 @@ This document maintains a record of all commits to the CompliPay project for aud
   - Partitioning strategy for 100M+ row tables
   - Preventive maintenance schedule
 
+### Phase 16: Real-Time Compliance & Licensing (Commit 38)
+- **Event-Driven Architecture**: Invoice state transition events
+  - BaseInvoiceEvent abstract class with webhook payload logic
+  - Individual events: InvoiceCleared, InvoiceReported, InvoiceRejected, InvoiceWarning, InvoiceFailed, InvoiceSubmitted
+  - DispatchInvoiceWebhook queued listener for webhook dispatch
+  - EventServiceProvider for event-listener registration
+- **Complete Licensing Domain**: API key authentication system
+  - License model with api_key and api_secret_hash (SHA256)
+  - ValidateLicense, RequireScope, RequireEnvironment, CheckInvoiceQuota middleware
+  - LicenseValidationService, LicenseManagementService, UsageMeteringService
+  - License tiers, scopes, environments, and status enums
+  - Rate limiting and usage tracking per organization
+  - License audit logging for compliance
+- **Organization-Separated Logging**: Per-tenant log files
+  - OrganizationLoggerFactory for creating tenant-specific loggers
+  - ComplianceLogger high-level service with context and fallbacks
+  - OrganizationLogHandler for file-based organization logs
+  - ZATCA-specific log channels: zatca-submissions, zatca-compliance, zatca-webhooks, zatca-audit, zatca-errors
+- **FallbackHandler**: Resilience for failure scenarios
+  - Database, queue, API, and logging fallback mechanisms
+  - File-based replay mechanism for failed operations
+  - ReplayFailedOperations artisan command
+- **QR Code TLV Encoding Fix**: Critical ZATCA compliance fix
+  - Tags 6-9 now correctly use raw binary bytes instead of base64
+  - Prevents double-encoding that would cause ZATCA validation failures
+- **Idempotent Migrations**: Schema::hasColumn() checks
+  - Prevents duplicate column errors on re-run
+- **Additional Improvements**:
+  - ErrorCode::VALIDATION_FAILED enum case added
+  - Dashboard and admin API endpoints
+  - Console commands for health checks and partition maintenance
+
 ## Full Commit Hashes
 
 For verification purposes, here are the full SHA-1 hashes:
@@ -277,11 +310,12 @@ f88e9ca - Add critical edge-case handlers for production resilience
 025d143 - Add advanced edge case handlers for time, crypto, and DR scenarios
 6c8dc46 - Add production readiness guide with stress testing and chaos engineering
 a4e7e6d - Add remaining extremity policies and monitoring
+0e1120eebe5aa1901f91628eee302cb3a1b61fb1 - Add real-time compliance events, licensing system, and QR encoding fixes
 ```
 
 ## Statistics
 
-- **Total Commits**: 37
+- **Total Commits**: 38
 - **Development Period**: January 30-31, 2026
 - **Main Branch**: `main`
 - **Contributors**: Development Team
