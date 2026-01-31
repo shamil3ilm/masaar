@@ -284,8 +284,8 @@ Log::channel('security')->info('Credential rotated', [
 
 In case of security incidents involving credentials:
 
-1. **Security Team**: security@your-domain.com
-2. **ZATCA Support**: (As per your agreement)
+1. **Security Team**: security@{YOUR_DOMAIN}
+2. **ZATCA Support**: (As per your ZATCA agreement)
 3. **On-call Engineer**: (Your internal contact)
 
 ---
