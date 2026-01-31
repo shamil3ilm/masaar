@@ -28,17 +28,19 @@ class CheckClearanceStatus implements ShouldQueue
     /**
      * The number of times the job may be attempted.
      */
-    public int $tries = 3;
+    public int $tries;
 
     /**
      * The number of seconds to wait before retrying the job.
      */
-    public int $backoff = 60;
+    public int $backoff;
 
     public function __construct(
         private readonly string $submissionId,
         private readonly string $invoiceUuid,
     ) {
+        $this->tries = (int) config('zatca.clearance_state.check_job_tries', 3);
+        $this->backoff = (int) config('zatca.clearance_state.check_job_backoff', 60);
     }
 
     public function handle(

@@ -44,28 +44,50 @@ class EnvironmentVarianceTracker
      * Cache key for sandbox results.
      */
     private const SANDBOX_CACHE_PREFIX = 'zatca:sandbox_result:';
-    private const CACHE_TTL = 86400; // 24 hours
+
+    /**
+     * Get cache TTL in seconds from config.
+     */
+    private function getCacheTtl(): int
+    {
+        return (int) config('zatca.variance_tracking.cache_ttl_hours', 24) * 3600;
+    }
 
     /**
      * Log a production failure and check for sandbox variance.
+     *
+     * Performance-optimized for hot path:
+     * - Cache check is synchronous but fast (Redis)
+     * - Database insert uses deferred/async option for high-volume scenarios
      *
      * @param string $organizationId
      * @param string|null $invoiceId
      * @param string $payloadHash SHA-256 of the request payload
      * @param array $productionResult The production API response
+     * @param bool $async If true, queue the database insert (for high-volume scenarios)
      * @return array|null Variance record if detected, null otherwise
      */
     public function checkAndLogVariance(
         string $organizationId,
         ?string $invoiceId,
         string $payloadHash,
-        array $productionResult
+        array $productionResult,
+        bool $async = false
     ): ?array {
-        // Check if we have a cached sandbox result for this payload
-        $sandboxResult = Cache::get(self::SANDBOX_CACHE_PREFIX . $payloadHash);
+        // Fast path: Check cache with short timeout
+        try {
+            $sandboxResult = Cache::get(self::SANDBOX_CACHE_PREFIX . $payloadHash);
+        } catch (\Exception $e) {
+            // Cache failure should not block production submissions
+            Log::debug('Cache check failed during variance tracking', [
+                'payload_hash' => $payloadHash,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
 
         if (!$sandboxResult) {
-            // No sandbox result to compare
+            // No sandbox result to compare - common case, return quickly
             return null;
         }
 
@@ -79,7 +101,7 @@ class EnvironmentVarianceTracker
         // Log the variance
         $varianceId = \Illuminate\Support\Str::uuid()->toString();
 
-        DB::table('environment_variance_log')->insert([
+        $record = [
             'id' => $varianceId,
             'organization_id' => $organizationId,
             'invoice_id' => $invoiceId,
@@ -92,15 +114,36 @@ class EnvironmentVarianceTracker
             'resolution_status' => self::STATUS_OPEN,
             'created_at' => now(),
             'updated_at' => now(),
-        ]);
+        ];
 
-        Log::warning('Environment variance detected', [
-            'variance_id' => $varianceId,
-            'variance_type' => $variance['type'],
-            'organization_id' => $organizationId,
-            'invoice_id' => $invoiceId,
-            'payload_hash' => $payloadHash,
-        ]);
+        if ($async) {
+            // Queue for async insert to avoid blocking production path
+            dispatch(function () use ($record, $varianceId, $variance, $organizationId, $invoiceId, $payloadHash) {
+                try {
+                    DB::table('environment_variance_log')->insert($record);
+                    Log::warning('Environment variance detected (async)', [
+                        'variance_id' => $varianceId,
+                        'variance_type' => $variance['type'],
+                        'organization_id' => $organizationId,
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to insert variance record async', [
+                        'variance_id' => $varianceId,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            })->afterResponse();
+        } else {
+            DB::table('environment_variance_log')->insert($record);
+
+            Log::warning('Environment variance detected', [
+                'variance_id' => $varianceId,
+                'variance_type' => $variance['type'],
+                'organization_id' => $organizationId,
+                'invoice_id' => $invoiceId,
+                'payload_hash' => $payloadHash,
+            ]);
+        }
 
         return [
             'variance_id' => $varianceId,
@@ -118,7 +161,7 @@ class EnvironmentVarianceTracker
         Cache::put(
             self::SANDBOX_CACHE_PREFIX . $payloadHash,
             $result,
-            self::CACHE_TTL
+            $this->getCacheTtl()
         );
     }
 
@@ -217,17 +260,71 @@ class EnvironmentVarianceTracker
 
     /**
      * Mark variance as reported to ZATCA.
+     *
+     * Implements retry logic to handle transient database failures.
+     *
+     * @param string $varianceId
+     * @param string $ticketId
+     * @param int $maxRetries Maximum retry attempts (default: 3)
+     * @throws \RuntimeException If all retries fail
      */
-    public function markReportedToZatca(string $varianceId, string $ticketId): void
+    public function markReportedToZatca(string $varianceId, string $ticketId, int $maxRetries = 3): void
     {
-        DB::table('environment_variance_log')
-            ->where('id', $varianceId)
-            ->update([
-                'reported_to_zatca' => true,
-                'zatca_ticket_id' => $ticketId,
-                'resolution_status' => self::STATUS_REPORTED,
-                'updated_at' => now(),
-            ]);
+        $lastException = null;
+
+        for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+            try {
+                $updated = DB::table('environment_variance_log')
+                    ->where('id', $varianceId)
+                    ->update([
+                        'reported_to_zatca' => true,
+                        'zatca_ticket_id' => $ticketId,
+                        'resolution_status' => self::STATUS_REPORTED,
+                        'updated_at' => now(),
+                    ]);
+
+                if ($updated === 0) {
+                    Log::warning('Variance not found for ZATCA reporting', [
+                        'variance_id' => $varianceId,
+                        'ticket_id' => $ticketId,
+                    ]);
+                } else {
+                    Log::info('Variance marked as reported to ZATCA', [
+                        'variance_id' => $varianceId,
+                        'ticket_id' => $ticketId,
+                        'attempt' => $attempt,
+                    ]);
+                }
+
+                return; // Success
+            } catch (\Exception $e) {
+                $lastException = $e;
+
+                Log::warning('Failed to mark variance as reported (attempt {attempt})', [
+                    'variance_id' => $varianceId,
+                    'attempt' => $attempt,
+                    'max_retries' => $maxRetries,
+                    'error' => $e->getMessage(),
+                ]);
+
+                if ($attempt < $maxRetries) {
+                    // Exponential backoff: 100ms, 200ms, 400ms...
+                    usleep(100000 * (2 ** ($attempt - 1)));
+                }
+            }
+        }
+
+        // All retries exhausted
+        Log::error('All retries exhausted for marking variance as reported', [
+            'variance_id' => $varianceId,
+            'ticket_id' => $ticketId,
+            'error' => $lastException?->getMessage(),
+        ]);
+
+        throw new \RuntimeException(
+            "Failed to mark variance {$varianceId} as reported after {$maxRetries} attempts: " .
+            $lastException?->getMessage()
+        );
     }
 
     /**
@@ -328,6 +425,138 @@ class EnvironmentVarianceTracker
         }
 
         return $message;
+    }
+
+    /**
+     * Check for new/unknown ZATCA rule codes and flag for review.
+     *
+     * ZATCA occasionally changes business-rule enforcement silently.
+     * This method detects rule codes we haven't seen before and flags them.
+     *
+     * @param array $result ZATCA API response
+     * @return array|null Details about new rule codes if detected
+     */
+    public function checkForNewRuleCodes(array $result): ?array
+    {
+        $ruleCodes = $this->extractRuleCodes($result);
+
+        if (empty($ruleCodes)) {
+            return null;
+        }
+
+        // Get known rule codes from cache
+        $knownCodes = Cache::get('zatca:known_rule_codes', []);
+
+        // Find new codes
+        $newCodes = array_diff($ruleCodes, $knownCodes);
+
+        if (empty($newCodes)) {
+            return null;
+        }
+
+        // Log and store new codes
+        foreach ($newCodes as $code) {
+            Log::warning('New ZATCA rule code detected - flagged for review', [
+                'rule_code' => $code,
+                'first_seen_at' => now()->toIso8601String(),
+                'needs_review' => true,
+            ]);
+
+            // Store in database for tracking
+            DB::table('zatca_rule_codes')->insertOrIgnore([
+                'id' => \Illuminate\Support\Str::uuid()->toString(),
+                'code' => $code,
+                'first_seen_at' => now(),
+                'needs_review' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        // Update known codes cache (merge with new codes)
+        $allKnownCodes = array_unique(array_merge($knownCodes, $ruleCodes));
+        Cache::put('zatca:known_rule_codes', $allKnownCodes, now()->addDays(30));
+
+        return [
+            'new_codes' => array_values($newCodes),
+            'needs_review' => true,
+            'message' => 'New ZATCA rule codes detected. Please review for potential business rule changes.',
+        ];
+    }
+
+    /**
+     * Extract all rule codes from a ZATCA response.
+     */
+    private function extractRuleCodes(array $result): array
+    {
+        $codes = [];
+
+        // Extract from error_code
+        if (!empty($result['error_code'])) {
+            $codes[] = $result['error_code'];
+        }
+
+        // Extract from validationResults
+        if (!empty($result['validationResults']['errorMessages'])) {
+            foreach ($result['validationResults']['errorMessages'] as $error) {
+                if (!empty($error['code'])) {
+                    $codes[] = $error['code'];
+                }
+            }
+        }
+
+        if (!empty($result['validationResults']['warningMessages'])) {
+            foreach ($result['validationResults']['warningMessages'] as $warning) {
+                if (!empty($warning['code'])) {
+                    $codes[] = $warning['code'];
+                }
+            }
+        }
+
+        // Extract BR-KSA codes
+        if (!empty($result['errors'])) {
+            foreach ((array) $result['errors'] as $error) {
+                if (is_string($error) && preg_match('/BR-KSA-\d+/', $error, $matches)) {
+                    $codes[] = $matches[0];
+                } elseif (is_array($error) && !empty($error['code'])) {
+                    $codes[] = $error['code'];
+                }
+            }
+        }
+
+        return array_unique($codes);
+    }
+
+    /**
+     * Get rule codes that need review.
+     */
+    public function getRuleCodesNeedingReview(): array
+    {
+        return DB::table('zatca_rule_codes')
+            ->where('needs_review', true)
+            ->orderByDesc('first_seen_at')
+            ->get()
+            ->toArray();
+    }
+
+    /**
+     * Mark a rule code as reviewed.
+     */
+    public function markRuleCodeReviewed(string $code, ?string $notes = null): void
+    {
+        DB::table('zatca_rule_codes')
+            ->where('code', $code)
+            ->update([
+                'needs_review' => false,
+                'reviewed_at' => now(),
+                'review_notes' => $notes,
+                'updated_at' => now(),
+            ]);
+
+        Log::info('ZATCA rule code marked as reviewed', [
+            'code' => $code,
+            'notes' => $notes,
+        ]);
     }
 
     /**

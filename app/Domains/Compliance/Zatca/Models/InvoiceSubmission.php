@@ -39,6 +39,9 @@ class InvoiceSubmission extends Model
         'zatca_uuid',
         'zatca_invoice_hash',
         'clearance_status',
+        'clearance_state',           // Added: ZATCA clearance state tracking
+        'clearance_confirmed_at',    // Added: When clearance was confirmed
+        'clearance_check_count',     // Added: Number of status checks
         'reporting_status',
         'zatca_warnings',
         'zatca_errors',
@@ -51,6 +54,7 @@ class InvoiceSubmission extends Model
         'last_error_code',
         'last_error_message',
         'queued_at',
+        'signed_at',           // When XAdES signature was applied (authoritative time)
         'submitted_at',
         'completed_at',
     ];
@@ -62,12 +66,56 @@ class InvoiceSubmission extends Model
             'zatca_errors' => 'array',
             'retry_count' => 'integer',
             'max_retries' => 'integer',
+            'clearance_check_count' => 'integer',
             'state_changed_at' => 'datetime',
+            'clearance_confirmed_at' => 'datetime',
             'next_retry_at' => 'datetime',
             'queued_at' => 'datetime',
+            'signed_at' => 'datetime',
             'submitted_at' => 'datetime',
             'completed_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Boot method - prevent hard deletion and updates on terminal states.
+     *
+     * COMPLIANCE: ZATCA submissions are immutable once completed.
+     * They serve as legal evidence of tax compliance.
+     */
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        // Prevent force deletion - soft delete only
+        static::forceDeleting(function ($model) {
+            throw new \RuntimeException(
+                'InvoiceSubmission records cannot be permanently deleted. ' .
+                'This is a ZATCA compliance requirement to preserve audit trails.'
+            );
+        });
+
+        // Prevent updates on terminal states
+        static::updating(function (InvoiceSubmission $model) {
+            // Get the original state before any changes
+            $originalState = $model->getOriginal('state');
+
+            // If original state is terminal (cleared/reported/warning), block updates
+            // Exception: allow state_changed_at updates for logging purposes
+            if (in_array($originalState, self::TERMINAL_STATES, true)) {
+                $changedAttributes = array_keys($model->getDirty());
+                $allowedChanges = ['updated_at']; // Only timestamp updates allowed
+
+                $disallowedChanges = array_diff($changedAttributes, $allowedChanges);
+                if (!empty($disallowedChanges)) {
+                    throw new \RuntimeException(
+                        'InvoiceSubmission in terminal state cannot be modified. ' .
+                        'This is a ZATCA compliance requirement. Attempted changes: ' .
+                        implode(', ', $disallowedChanges)
+                    );
+                }
+            }
+        });
     }
 
     /**

@@ -71,15 +71,91 @@ class Invoice extends Model
     }
 
     /**
-     * Boot method to auto-generate ICV.
+     * Immutable fields after invoice is finalized (status != draft).
+     * These fields cannot be changed once invoice leaves draft status.
+     */
+    public const IMMUTABLE_FIELDS = [
+        'organization_id',
+        'invoice_number',
+        'type',
+        'document_type',
+        'issue_date',
+        'supply_date',
+        'currency',
+        'buyer_name',
+        'buyer_vat_number',
+        'buyer_address',
+        'payment_means_code',
+        'billing_reference_id',
+        'adjustment_reason',
+        'subtotal',
+        'discount_amount',
+        'tax_amount',
+        'total',
+        'icv',
+    ];
+
+    /**
+     * Fields that can be updated after finalization (ZATCA response data).
+     */
+    public const MUTABLE_AFTER_FINALIZED = [
+        'status',
+        'hash',
+        'qr_code',
+        'signed_xml',
+        'zatca_response',
+        'notes',
+        'updated_at',
+    ];
+
+    /**
+     * Boot method for ICV generation and immutability enforcement.
+     *
+     * COMPLIANCE: Invoices are immutable after leaving Draft status.
+     * This is a core ZATCA requirement - issued invoices cannot be modified.
      */
     protected static function boot(): void
     {
         parent::boot();
 
+        // Auto-generate ICV on creation
         static::creating(function (Invoice $invoice) {
             if ($invoice->icv === null && $invoice->organization_id) {
                 $invoice->icv = static::generateNextIcv($invoice->organization_id);
+            }
+        });
+
+        // Prevent deletion of finalized invoices
+        static::deleting(function (Invoice $invoice) {
+            if ($invoice->status !== InvoiceStatus::Draft) {
+                throw new \RuntimeException(
+                    'Finalized invoices cannot be deleted. ' .
+                    'This is a ZATCA compliance requirement. ' .
+                    'Use credit/debit notes for corrections.'
+                );
+            }
+        });
+
+        // Enforce immutability on finalized invoices
+        static::updating(function (Invoice $invoice) {
+            $originalStatus = $invoice->getOriginal('status');
+
+            // If invoice was/is in draft, allow all changes
+            if ($originalStatus === InvoiceStatus::Draft || $originalStatus === null) {
+                return;
+            }
+
+            // Invoice is finalized - check for immutable field changes
+            $changedFields = array_keys($invoice->getDirty());
+            $immutableChanges = array_intersect($changedFields, self::IMMUTABLE_FIELDS);
+
+            if (!empty($immutableChanges)) {
+                throw new \RuntimeException(
+                    'Finalized invoice fields cannot be modified. ' .
+                    'This is a ZATCA compliance requirement. ' .
+                    'Attempted to change: ' . implode(', ', $immutableChanges) . '. ' .
+                    'Use credit/debit notes for corrections.'
+                );
             }
         });
     }

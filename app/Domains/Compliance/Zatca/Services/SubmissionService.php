@@ -27,19 +27,26 @@ use Illuminate\Support\Str;
 class SubmissionService
 {
     /**
-     * Idempotency window in hours.
+     * Get idempotency window in hours from config.
      */
-    private const IDEMPOTENCY_WINDOW_HOURS = 24;
+    private function getIdempotencyWindowHours(): int
+    {
+        return (int) config('zatca.idempotency.window_hours', 24);
+    }
 
     /**
-     * Maximum concurrent submissions per organization.
+     * Get maximum concurrent submissions per organization from config.
      */
-    private const MAX_CONCURRENT_SUBMISSIONS = 10;
+    private function getMaxConcurrentSubmissions(): int
+    {
+        return (int) config('zatca.rate_limits.max_concurrent', 10);
+    }
 
     public function __construct(
         private readonly ZatcaClient $zatcaClient,
         private readonly CertificateService $certificateService,
         private readonly XadesSigner $signer,
+        private readonly ?TimestampValidator $timestampValidator = null,
     ) {}
 
     /**
@@ -155,6 +162,71 @@ class SubmissionService
 
         // 6. Verify invoice is in submittable state
         $this->verifyInvoiceState($invoice);
+
+        // 7. Validate timestamp (±30 seconds drift enforcement)
+        $this->validateInvoiceTimestamp($invoice);
+    }
+
+    /**
+     * Validate invoice timestamp against system time and ERP time.
+     *
+     * Enforces ±30 second drift tolerance as per compliance policy.
+     *
+     * @see docs/COMPLIANCE-POLICIES.md Section 7: Timestamp Authority
+     */
+    private function validateInvoiceTimestamp(Invoice $invoice): void
+    {
+        if (!$this->timestampValidator) {
+            return; // Skip if validator not injected
+        }
+
+        $invoiceTimestamp = $invoice->issue_date instanceof \DateTimeInterface
+            ? $invoice->issue_date
+            : new \DateTimeImmutable($invoice->issue_date);
+
+        // Get ERP timestamp if available (from original import)
+        $erpTimestamp = null;
+        if (isset($invoice->erp_timestamp)) {
+            try {
+                $erpTimestamp = new \DateTimeImmutable($invoice->erp_timestamp);
+            } catch (\Exception $e) {
+                // Ignore invalid ERP timestamp
+            }
+        }
+
+        $validation = $this->timestampValidator->validateTimestamps(
+            $invoiceTimestamp,
+            $erpTimestamp,
+            null, // TSA timestamp added during signing
+            null  // ZATCA received timestamp not yet known
+        );
+
+        // Log warnings but don't block
+        if (!empty($validation['warnings'])) {
+            Log::warning('Invoice timestamp validation warnings', [
+                'invoice_id' => $invoice->id,
+                'warnings' => $validation['warnings'],
+                'drift_seconds' => $validation['drift_seconds'],
+            ]);
+        }
+
+        // Block on errors (exceeds ±30 second tolerance)
+        if (!$validation['valid']) {
+            Log::error('Invoice timestamp validation failed', [
+                'invoice_id' => $invoice->id,
+                'errors' => $validation['errors'],
+                'drift_seconds' => $validation['drift_seconds'],
+            ]);
+
+            throw new ZatcaException(
+                'Invoice timestamp validation failed: ' . implode('; ', $validation['errors']),
+                ErrorCode::VALIDATION_FAILED,
+                [
+                    'drift_seconds' => $validation['drift_seconds'],
+                    'max_allowed' => TimestampValidator::MAX_DRIFT_SECONDS,
+                ]
+            );
+        }
     }
 
     /**
@@ -247,7 +319,7 @@ class SubmissionService
             ->whereIn('state', ['queued', 'pending_submission', 'submitted'])
             ->count();
 
-        if ($inProgress >= self::MAX_CONCURRENT_SUBMISSIONS) {
+        if ($inProgress >= $this->getMaxConcurrentSubmissions()) {
             throw new ZatcaException(
                 'Maximum concurrent submissions reached',
                 ErrorCode::RATE_CONCURRENT_LIMIT
@@ -318,7 +390,7 @@ class SubmissionService
                 'status' => 'processing',
                 'first_attempt_at' => now(),
                 'last_attempt_at' => now(),
-                'expires_at' => now()->addHours(self::IDEMPOTENCY_WINDOW_HOURS),
+                'expires_at' => now()->addHours($this->getIdempotencyWindowHours()),
             ]);
 
             // Create submission record

@@ -35,6 +35,7 @@ enum ErrorCode: string
     case AUTH_ORGANIZATION_NOT_FOUND = 'AUTH_007';
     case AUTH_LICENSE_EXPIRED = 'AUTH_008';
     case AUTH_LICENSE_REVOKED = 'AUTH_009';
+    case AUTH_ENVIRONMENT_MISMATCH = 'AUTH_010';
 
     // ============================================================
     // VALIDATION ERRORS (VAL_*) - Not retryable without changes
@@ -62,6 +63,8 @@ enum ErrorCode: string
     case VAL_BUYER_INFO_INCOMPLETE = 'VAL_021';
     case VAL_SELLER_INFO_INCOMPLETE = 'VAL_022';
     case VAL_ADDRESS_INCOMPLETE = 'VAL_023';
+    case VAL_TIMESTAMP_INVALID = 'VAL_024';
+    case VALIDATION_FAILED = 'VAL_099';        // Generic validation failure
 
     // ============================================================
     // ZATCA ERRORS (ZATCA_*) - Some retryable
@@ -291,6 +294,7 @@ enum ErrorCode: string
             self::AUTH_ORGANIZATION_SUSPENDED,
             self::AUTH_LICENSE_EXPIRED,
             self::AUTH_LICENSE_REVOKED,
+            self::AUTH_ENVIRONMENT_MISMATCH,
             self::ZATCA_CERTIFICATE_NOT_AUTHORIZED => 403,
 
             // 404 Not Found
@@ -358,6 +362,7 @@ enum ErrorCode: string
             self::AUTH_ORGANIZATION_NOT_FOUND => 'Organization not found',
             self::AUTH_LICENSE_EXPIRED => 'License has expired',
             self::AUTH_LICENSE_REVOKED => 'License has been revoked',
+            self::AUTH_ENVIRONMENT_MISMATCH => 'License environment does not match the target environment',
 
             // Validation
             self::VAL_MISSING_REQUIRED_FIELD => 'Required field is missing',

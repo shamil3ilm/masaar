@@ -40,6 +40,33 @@ class SubmissionStateLog extends Model
     }
 
     /**
+     * Boot method - prevent deletion and updates.
+     *
+     * COMPLIANCE: State logs are append-only audit records.
+     * They cannot be modified or deleted per ZATCA requirements.
+     */
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        // Prevent any deletion
+        static::deleting(function ($model) {
+            throw new \RuntimeException(
+                'SubmissionStateLog records cannot be deleted. ' .
+                'This is a ZATCA compliance requirement for audit trails.'
+            );
+        });
+
+        // Prevent any updates - logs are append-only
+        static::updating(function ($model) {
+            throw new \RuntimeException(
+                'SubmissionStateLog records cannot be modified. ' .
+                'This is a ZATCA compliance requirement for audit integrity.'
+            );
+        });
+    }
+
+    /**
      * Trigger types.
      */
     public const TRIGGER_API_CALL = 'api_call';
