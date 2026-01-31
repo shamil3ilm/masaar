@@ -8,16 +8,32 @@ ZATCA-compliant e-invoicing API client for Python 3.7+
 pip install complipay
 ```
 
+## Server URLs
+
+| Environment | Base URL |
+|-------------|----------|
+| **Local Development** | `http://localhost:8000` |
+| **Local (Laragon)** | `http://zatca.test` |
+| **Production** | `https://{YOUR_DOMAIN}` |
+
+> **Note:** Replace `{YOUR_DOMAIN}` with your actual domain when deploying to production.
+
 ## Quick Start
 
 ```python
 from complipay import CompliPayClient, InvoiceLine
 
-# Initialize client
+# Initialize client (local development)
 client = CompliPayClient(
-    base_url="https://api.complipay.com",
+    base_url="http://localhost:8000",  # Your server URL
     api_key="your_api_key"
 )
+
+# For production, use your deployed server URL:
+# client = CompliPayClient(
+#     base_url="https://your-domain.com",
+#     api_key="your_api_key"
+# )
 
 # Create an invoice
 invoice = client.invoices.create(
@@ -47,7 +63,12 @@ print(f"ZATCA Status: {result['status']}")
 ### Django
 
 ```python
+# settings.py
+COMPLIPAY_URL = "http://localhost:8000"  # or your production URL
+COMPLIPAY_API_KEY = "your_api_key"
+
 # views.py
+from django.conf import settings
 from django.http import JsonResponse
 from complipay import CompliPayClient
 
@@ -68,11 +89,17 @@ def create_invoice(request):
 ### Flask
 
 ```python
+import os
 from flask import Flask, request, jsonify
 from complipay import CompliPayClient
 
 app = Flask(__name__)
-client = CompliPayClient(base_url="...", api_key="...")
+
+# Use environment variables for configuration
+client = CompliPayClient(
+    base_url=os.environ.get("COMPLIPAY_URL", "http://localhost:8000"),
+    api_key=os.environ.get("COMPLIPAY_API_KEY", "your_api_key")
+)
 
 @app.route("/invoices", methods=["POST"])
 def create_invoice():
@@ -84,11 +111,17 @@ def create_invoice():
 ### FastAPI
 
 ```python
+import os
 from fastapi import FastAPI
 from complipay import CompliPayClient, InvoiceLine
 
 app = FastAPI()
-client = CompliPayClient(base_url="...", api_key="...")
+
+# Configure with environment variables
+client = CompliPayClient(
+    base_url=os.environ.get("COMPLIPAY_URL", "http://localhost:8000"),
+    api_key=os.environ.get("COMPLIPAY_API_KEY", "your_api_key")
+)
 
 @app.post("/invoices")
 async def create_invoice(invoice_number: str, buyer_name: str):
