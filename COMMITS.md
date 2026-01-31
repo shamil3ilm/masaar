@@ -32,6 +32,8 @@ This document maintains a record of all commits to the CompliPay project for aud
 | 24 | `047c8cc` | 2026-01-31 | Add security hardening improvements |
 | 25 | `800fdc1` | 2026-01-31 | Add security enhancements and regulatory documentation |
 | 26 | `f67242a` | 2026-01-31 | Add controlled open source licensing and user registration system |
+| 27 | `fd6549d` | 2026-01-31 | Fix placeholder uniformity and add commit tracking |
+| 28 | `be45bd0` | 2026-01-31 | Add support scope documentation |
 
 ## Detailed Commit Descriptions
 
@@ -73,7 +75,7 @@ This document maintains a record of all commits to the CompliPay project for aud
 - Session encryption
 - Input validation for SDKs
 
-### Phase 7: Legal & Compliance Framework (Commits 25-26)
+### Phase 7: Legal & Compliance Framework (Commits 25-28)
 - Terms of Use (TERMS.md)
 - Security Policy (SECURITY.md)
 - Controlled Open Source License (LICENSE)
@@ -82,6 +84,8 @@ This document maintains a record of all commits to the CompliPay project for aud
 - User registration tracking system
 - Certificate revocation checking (CRL/OCSP)
 - Timestamp authority support (XAdES-T)
+- Commit tracking (COMMITS.md)
+- Support scope documentation (SUPPORT.md)
 
 ## Full Commit Hashes
 
@@ -114,11 +118,13 @@ c61e7008c37ddf47b822ac214e141b00901821c0 - Fix critical security and ZATCA compl
 047c8cc3ecf9a0abfcd39586c4a5758b541ea8c3 - Add security hardening improvements
 800fdc184a2b5d52711348016ba8bd16bc9ee2dd - Add security enhancements and regulatory docs
 f67242adb15989d4a2f3c73780d4961057099cb8 - Add controlled open source licensing
+fd6549d - Fix placeholder uniformity and add commit tracking
+be45bd0 - Add support scope documentation
 ```
 
 ## Statistics
 
-- **Total Commits**: 26
+- **Total Commits**: 28
 - **Development Period**: January 30-31, 2026
 - **Main Branch**: `main`
 - **Contributors**: Development Team
