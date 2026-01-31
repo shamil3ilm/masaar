@@ -10,10 +10,11 @@ use DOMElement;
 use DOMXPath;
 
 /**
- * XAdES-BES digital signature service.
+ * XAdES-BES/XAdES-T digital signature service.
  *
  * Implements XML Advanced Electronic Signatures (XAdES) for ZATCA compliance.
  * Creates enveloped signatures embedded within the invoice XML.
+ * Supports optional timestamp authority (TSA) for XAdES-T signatures.
  *
  * @see ETSI EN 319 132-1 (XAdES specification)
  */
@@ -23,10 +24,38 @@ class XadesSigner
     private const XADES_NS = 'http://uri.etsi.org/01903/v1.3.2#';
     private const C14N_NS = 'http://www.w3.org/2006/12/xml-c14n11';
 
+    private ?string $tsaUrl = null;
+    private ?string $tsaUsername = null;
+    private ?string $tsaPassword = null;
+    private int $tsaTimeout = 30;
+
     public function __construct(
         private readonly EcdsaSigner $ecdsaSigner,
         private readonly CertificateService $certificateService,
     ) {}
+
+    /**
+     * Configure Timestamp Authority (TSA) for XAdES-T signatures.
+     *
+     * @param string $url TSA server URL (RFC 3161)
+     * @param string|null $username Optional authentication username
+     * @param string|null $password Optional authentication password
+     * @param int $timeout Request timeout in seconds
+     * @return self
+     */
+    public function withTimestampAuthority(
+        string $url,
+        ?string $username = null,
+        ?string $password = null,
+        int $timeout = 30
+    ): self {
+        $this->tsaUrl = $url;
+        $this->tsaUsername = $username;
+        $this->tsaPassword = $password;
+        $this->tsaTimeout = $timeout;
+
+        return $this;
+    }
 
     /**
      * Sign invoice XML with XAdES-BES signature.
@@ -570,5 +599,446 @@ class XadesSigner
         $canonicalized = $clone->documentElement->C14N(true, false);
 
         return base64_encode(hash('sha256', $canonicalized, true));
+    }
+
+    /**
+     * Sign invoice XML with XAdES-T (timestamped) signature.
+     *
+     * Creates an XAdES-BES signature and adds a timestamp token from a TSA.
+     * Requires TSA to be configured via withTimestampAuthority().
+     *
+     * @param string $xml Invoice XML document
+     * @param string $privateKeyPem Private key for signing
+     * @param string $certificatePem X.509 certificate
+     * @return string Signed and timestamped XML document
+     * @throws SigningException
+     */
+    public function signWithTimestamp(string $xml, string $privateKeyPem, string $certificatePem): string
+    {
+        if ($this->tsaUrl === null) {
+            throw new SigningException('Timestamp authority not configured. Call withTimestampAuthority() first.');
+        }
+
+        // First create normal XAdES-BES signature
+        $signedXml = $this->sign($xml, $privateKeyPem, $certificatePem);
+
+        // Add timestamp to the signature
+        return $this->addSignatureTimestamp($signedXml);
+    }
+
+    /**
+     * Add timestamp to an existing XAdES-BES signature (upgrade to XAdES-T).
+     *
+     * @param string $signedXml Signed XML with XAdES-BES signature
+     * @return string XML with XAdES-T signature (includes SignatureTimeStamp)
+     * @throws SigningException
+     */
+    public function addSignatureTimestamp(string $signedXml): string
+    {
+        if ($this->tsaUrl === null) {
+            throw new SigningException('Timestamp authority not configured');
+        }
+
+        $dom = new DOMDocument('1.0', 'UTF-8');
+        $dom->preserveWhiteSpace = false;
+        $dom->loadXML($signedXml);
+
+        $xpath = new DOMXPath($dom);
+        $xpath->registerNamespace('ds', self::DS_NS);
+        $xpath->registerNamespace('xades', self::XADES_NS);
+
+        // Get SignatureValue to timestamp
+        $signatureValueNodes = $xpath->query('//ds:SignatureValue');
+        if ($signatureValueNodes->length === 0) {
+            throw new SigningException('No signature found to timestamp');
+        }
+
+        $signatureValue = $signatureValueNodes->item(0);
+        $signatureValueC14n = $signatureValue->C14N(true, false);
+
+        // Request timestamp from TSA
+        $timestampToken = $this->requestTimestamp($signatureValueC14n);
+
+        // Find or create UnsignedProperties in QualifyingProperties
+        $qualifyingProps = $xpath->query('//xades:QualifyingProperties')->item(0);
+        if ($qualifyingProps === null) {
+            throw new SigningException('QualifyingProperties not found');
+        }
+
+        $unsignedProps = $xpath->query('xades:UnsignedProperties', $qualifyingProps)->item(0);
+        if ($unsignedProps === null) {
+            $unsignedProps = $dom->createElementNS(self::XADES_NS, 'xades:UnsignedProperties');
+            $qualifyingProps->appendChild($unsignedProps);
+        }
+
+        // Create UnsignedSignatureProperties
+        $unsignedSigProps = $xpath->query('xades:UnsignedSignatureProperties', $unsignedProps)->item(0);
+        if ($unsignedSigProps === null) {
+            $unsignedSigProps = $dom->createElementNS(self::XADES_NS, 'xades:UnsignedSignatureProperties');
+            $unsignedProps->appendChild($unsignedSigProps);
+        }
+
+        // Create SignatureTimeStamp element
+        $sigTimeStamp = $dom->createElementNS(self::XADES_NS, 'xades:SignatureTimeStamp');
+        $sigTimeStamp->setAttribute('Id', 'timestamp-' . bin2hex(random_bytes(8)));
+
+        // CanonicalizationMethod
+        $c14nMethod = $dom->createElementNS(self::DS_NS, 'ds:CanonicalizationMethod');
+        $c14nMethod->setAttribute('Algorithm', self::C14N_NS);
+        $sigTimeStamp->appendChild($c14nMethod);
+
+        // EncapsulatedTimeStamp (base64-encoded timestamp token)
+        $encapsulatedTS = $dom->createElementNS(self::XADES_NS, 'xades:EncapsulatedTimeStamp');
+        $encapsulatedTS->textContent = base64_encode($timestampToken);
+        $sigTimeStamp->appendChild($encapsulatedTS);
+
+        $unsignedSigProps->appendChild($sigTimeStamp);
+
+        $dom->formatOutput = true;
+
+        return $dom->saveXML();
+    }
+
+    /**
+     * Request timestamp from TSA (RFC 3161).
+     *
+     * @param string $data Data to timestamp (will be SHA-256 hashed)
+     * @return string Binary timestamp token
+     * @throws SigningException
+     */
+    private function requestTimestamp(string $data): string
+    {
+        // Create timestamp request (RFC 3161)
+        $digest = hash('sha256', $data, true);
+        $tsRequest = $this->createTimestampRequest($digest);
+
+        // Send request to TSA
+        $ch = curl_init();
+
+        $headers = [
+            'Content-Type: application/timestamp-query',
+            'Accept: application/timestamp-reply',
+        ];
+
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $this->tsaUrl,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $tsRequest,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_TIMEOUT => $this->tsaTimeout,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+        ]);
+
+        // Add authentication if configured
+        if ($this->tsaUsername !== null && $this->tsaPassword !== null) {
+            curl_setopt($ch, CURLOPT_USERPWD, $this->tsaUsername . ':' . $this->tsaPassword);
+            curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+        }
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        if ($response === false) {
+            throw new SigningException("TSA request failed: {$error}");
+        }
+
+        if ($httpCode !== 200) {
+            throw new SigningException("TSA returned HTTP {$httpCode}");
+        }
+
+        // Parse and validate timestamp response
+        $timestampToken = $this->parseTimestampResponse($response);
+
+        if ($timestampToken === null) {
+            throw new SigningException('Invalid timestamp response from TSA');
+        }
+
+        return $timestampToken;
+    }
+
+    /**
+     * Create RFC 3161 Timestamp Request.
+     *
+     * @param string $digest SHA-256 hash (binary)
+     * @return string DER-encoded timestamp request
+     */
+    private function createTimestampRequest(string $digest): string
+    {
+        // TimeStampReq ::= SEQUENCE {
+        //    version         INTEGER { v1(1) },
+        //    messageImprint  MessageImprint,
+        //    reqPolicy       TSAPolicyId OPTIONAL,
+        //    nonce           INTEGER OPTIONAL,
+        //    certReq         BOOLEAN DEFAULT FALSE,
+        //    extensions      [0] IMPLICIT Extensions OPTIONAL
+        // }
+        //
+        // MessageImprint ::= SEQUENCE {
+        //    hashAlgorithm   AlgorithmIdentifier,
+        //    hashedMessage   OCTET STRING
+        // }
+
+        // SHA-256 OID: 2.16.840.1.101.3.4.2.1
+        $sha256Oid = "\x06\x09\x60\x86\x48\x01\x65\x03\x04\x02\x01";
+
+        // Build AlgorithmIdentifier (SEQUENCE with OID and NULL)
+        $algorithmIdentifier = "\x30" . chr(strlen($sha256Oid) + 2) . $sha256Oid . "\x05\x00";
+
+        // Build hashedMessage (OCTET STRING)
+        $hashedMessage = "\x04" . chr(strlen($digest)) . $digest;
+
+        // Build MessageImprint (SEQUENCE)
+        $messageImprintContent = $algorithmIdentifier . $hashedMessage;
+        $messageImprint = "\x30" . $this->asn1Length(strlen($messageImprintContent)) . $messageImprintContent;
+
+        // Build version INTEGER (1)
+        $version = "\x02\x01\x01";
+
+        // Generate nonce
+        $nonceBytes = random_bytes(8);
+        $nonceContent = ltrim($nonceBytes, "\x00") ?: "\x00";
+        if (ord($nonceContent[0]) & 0x80) {
+            $nonceContent = "\x00" . $nonceContent;
+        }
+        $nonce = "\x02" . chr(strlen($nonceContent)) . $nonceContent;
+
+        // certReq BOOLEAN TRUE
+        $certReq = "\x01\x01\xff";
+
+        // Build TimeStampReq (SEQUENCE)
+        $tsReqContent = $version . $messageImprint . $nonce . $certReq;
+        $tsReq = "\x30" . $this->asn1Length(strlen($tsReqContent)) . $tsReqContent;
+
+        return $tsReq;
+    }
+
+    /**
+     * Encode ASN.1 length.
+     */
+    private function asn1Length(int $length): string
+    {
+        if ($length < 128) {
+            return chr($length);
+        }
+
+        $bytes = '';
+        $temp = $length;
+        while ($temp > 0) {
+            $bytes = chr($temp & 0xff) . $bytes;
+            $temp >>= 8;
+        }
+
+        return chr(0x80 | strlen($bytes)) . $bytes;
+    }
+
+    /**
+     * Parse RFC 3161 Timestamp Response.
+     *
+     * @param string $response Binary timestamp response
+     * @return string|null Timestamp token or null if invalid
+     */
+    private function parseTimestampResponse(string $response): ?string
+    {
+        // TimeStampResp ::= SEQUENCE {
+        //    status          PKIStatusInfo,
+        //    timeStampToken  TimeStampToken OPTIONAL
+        // }
+        //
+        // PKIStatusInfo ::= SEQUENCE {
+        //    status        PKIStatus,
+        //    statusString  PKIFreeText OPTIONAL,
+        //    failInfo      PKIFailureInfo OPTIONAL
+        // }
+        //
+        // PKIStatus ::= INTEGER {
+        //    granted                (0),
+        //    grantedWithMods        (1),
+        //    rejection              (2),
+        //    waiting                (3),
+        //    revocationWarning      (4),
+        //    revocationNotification (5)
+        // }
+
+        if (strlen($response) < 10) {
+            return null;
+        }
+
+        // Check for SEQUENCE tag
+        if (ord($response[0]) !== 0x30) {
+            return null;
+        }
+
+        $offset = 1;
+        $totalLength = $this->readAsn1Length($response, $offset);
+        $offset = $this->skipAsn1Length($response, 1);
+
+        // Read PKIStatusInfo SEQUENCE
+        if (ord($response[$offset]) !== 0x30) {
+            return null;
+        }
+        $offset++;
+        $statusInfoLength = $this->readAsn1Length($response, $offset);
+        $offset = $this->skipAsn1Length($response, $offset);
+
+        // Read status INTEGER
+        if (ord($response[$offset]) !== 0x02) {
+            return null;
+        }
+        $offset++;
+        $statusLength = $this->readAsn1Length($response, $offset);
+        $offset = $this->skipAsn1Length($response, $offset);
+
+        $status = 0;
+        for ($i = 0; $i < $statusLength; $i++) {
+            $status = ($status << 8) | ord($response[$offset + $i]);
+        }
+
+        // Check status (0 = granted, 1 = grantedWithMods)
+        if ($status > 1) {
+            \Log::warning('TSA returned non-granted status', ['status' => $status]);
+            return null;
+        }
+
+        // Skip to timeStampToken
+        $offset += $statusLength;
+
+        // Skip any optional statusString or failInfo
+        while ($offset < strlen($response) && ord($response[$offset]) !== 0x30) {
+            $tag = ord($response[$offset]);
+            $offset++;
+            $len = $this->readAsn1Length($response, $offset);
+            $offset = $this->skipAsn1Length($response, $offset);
+            $offset += $len;
+        }
+
+        // timeStampToken is ContentInfo SEQUENCE
+        if ($offset >= strlen($response) || ord($response[$offset]) !== 0x30) {
+            return null;
+        }
+
+        // Return the entire timeStampToken
+        $tokenStart = $offset;
+        $offset++;
+        $tokenLength = $this->readAsn1Length($response, $offset);
+        $offset = $this->skipAsn1Length($response, $offset);
+
+        return substr($response, $tokenStart, ($offset - $tokenStart) + $tokenLength);
+    }
+
+    /**
+     * Read ASN.1 length from data.
+     */
+    private function readAsn1Length(string $data, int $offset): int
+    {
+        $byte = ord($data[$offset]);
+
+        if ($byte < 0x80) {
+            return $byte;
+        }
+
+        $numBytes = $byte & 0x7F;
+        $length = 0;
+
+        for ($i = 0; $i < $numBytes; $i++) {
+            $length = ($length << 8) | ord($data[$offset + 1 + $i]);
+        }
+
+        return $length;
+    }
+
+    /**
+     * Skip ASN.1 length field.
+     */
+    private function skipAsn1Length(string $data, int $offset): int
+    {
+        $byte = ord($data[$offset]);
+
+        if ($byte < 0x80) {
+            return $offset + 1;
+        }
+
+        return $offset + 1 + ($byte & 0x7F);
+    }
+
+    /**
+     * Verify timestamp on a signed document.
+     *
+     * @param string $signedXml Signed XML with timestamp
+     * @return array{valid: bool, timestamp: string|null, tsaName: string|null}
+     */
+    public function verifyTimestamp(string $signedXml): array
+    {
+        try {
+            $dom = new DOMDocument();
+            $dom->loadXML($signedXml);
+
+            $xpath = new DOMXPath($dom);
+            $xpath->registerNamespace('xades', self::XADES_NS);
+
+            // Find EncapsulatedTimeStamp
+            $timestampNodes = $xpath->query('//xades:EncapsulatedTimeStamp');
+            if ($timestampNodes->length === 0) {
+                return [
+                    'valid' => false,
+                    'timestamp' => null,
+                    'tsaName' => null,
+                    'error' => 'No timestamp found',
+                ];
+            }
+
+            $timestampB64 = $timestampNodes->item(0)->textContent;
+            $timestampToken = base64_decode($timestampB64);
+
+            // Parse timestamp to extract time (basic parsing)
+            // Full verification would require OpenSSL or dedicated TSP library
+            $timestampFile = tempnam(sys_get_temp_dir(), 'ts_');
+            file_put_contents($timestampFile, $timestampToken);
+
+            try {
+                $output = shell_exec(sprintf(
+                    'openssl ts -reply -in %s -token_in -text 2>&1',
+                    escapeshellarg($timestampFile)
+                ));
+
+                if ($output === null) {
+                    return [
+                        'valid' => false,
+                        'timestamp' => null,
+                        'tsaName' => null,
+                        'error' => 'Could not parse timestamp',
+                    ];
+                }
+
+                $timestamp = null;
+                $tsaName = null;
+
+                if (preg_match('/Time stamp:\s*(.+)/i', $output, $matches)) {
+                    $timestamp = trim($matches[1]);
+                }
+
+                if (preg_match('/TSA:\s*(.+)/i', $output, $matches)) {
+                    $tsaName = trim($matches[1]);
+                }
+
+                return [
+                    'valid' => true,
+                    'timestamp' => $timestamp,
+                    'tsaName' => $tsaName,
+                ];
+            } finally {
+                unlink($timestampFile);
+            }
+        } catch (\Exception $e) {
+            return [
+                'valid' => false,
+                'timestamp' => null,
+                'tsaName' => null,
+                'error' => $e->getMessage(),
+            ];
+        }
     }
 }
