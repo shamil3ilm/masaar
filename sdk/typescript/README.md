@@ -14,6 +14,16 @@ yarn add complipay
 pnpm add complipay
 ```
 
+## Server URLs
+
+| Environment | Base URL |
+|-------------|----------|
+| **Local Development** | `http://localhost:8000` |
+| **Local (Laragon)** | `http://zatca.test` |
+| **Production** | `https://{YOUR_DOMAIN}` |
+
+> **Note:** Replace `{YOUR_DOMAIN}` with your actual domain when deploying to production.
+
 ## Quick Start
 
 ### TypeScript
@@ -21,10 +31,17 @@ pnpm add complipay
 ```typescript
 import { CompliPayClient, InvoiceLine } from 'complipay';
 
+// For local development
 const client = new CompliPayClient({
-  baseUrl: 'https://api.complipay.com',
+  baseUrl: 'http://localhost:8000',  // Your server URL
   apiKey: 'your_api_key'
 });
+
+// For production, use your deployed server URL:
+// const client = new CompliPayClient({
+//   baseUrl: 'https://your-domain.com',
+//   apiKey: 'your_api_key'
+// });
 
 // Create an invoice
 const invoice = await client.invoices.create({
@@ -54,8 +71,9 @@ console.log('ZATCA Status:', result.data.status);
 ```javascript
 const { CompliPayClient } = require('complipay');
 
+// For local development
 const client = new CompliPayClient({
-  baseUrl: 'https://api.complipay.com',
+  baseUrl: 'http://localhost:8000',  // Your server URL
   apiKey: 'your_api_key'
 });
 
@@ -73,6 +91,11 @@ const invoice = await client.invoices.create({
 
 ```tsx
 import { CompliPayClient } from 'complipay';
+
+// Configure via environment variables
+// .env.local:
+// NEXT_PUBLIC_COMPLIPAY_URL=http://localhost:8000
+// COMPLIPAY_API_KEY=your_api_key
 
 const client = new CompliPayClient({
   baseUrl: process.env.NEXT_PUBLIC_COMPLIPAY_URL!,
@@ -98,6 +121,11 @@ export async function createInvoice(formData: FormData) {
 <script setup lang="ts">
 import { CompliPayClient } from 'complipay';
 
+// Configure via environment variables
+// .env:
+// VITE_COMPLIPAY_URL=http://localhost:8000
+// VITE_COMPLIPAY_API_KEY=your_api_key
+
 const client = new CompliPayClient({
   baseUrl: import.meta.env.VITE_COMPLIPAY_URL,
   apiKey: import.meta.env.VITE_COMPLIPAY_API_KEY
@@ -117,8 +145,12 @@ const express = require('express');
 const { CompliPayClient } = require('complipay');
 
 const app = express();
+
+// Configure via environment variables
+// COMPLIPAY_URL=http://localhost:8000
+// COMPLIPAY_API_KEY=your_api_key
 const client = new CompliPayClient({
-  baseUrl: process.env.COMPLIPAY_URL,
+  baseUrl: process.env.COMPLIPAY_URL || 'http://localhost:8000',
   apiKey: process.env.COMPLIPAY_API_KEY
 });
 

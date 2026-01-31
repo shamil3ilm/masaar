@@ -10,6 +10,16 @@ Compatible with Laravel 8, 9, 10, 11, 12 and any PHP application.
 composer require complipay/complipay-php
 ```
 
+## Server URLs
+
+| Environment | Base URL |
+|-------------|----------|
+| **Local Development** | `http://localhost:8000` |
+| **Local (Laragon)** | `http://zatca.test` |
+| **Production** | `https://{YOUR_DOMAIN}` |
+
+> **Note:** Replace `{YOUR_DOMAIN}` with your actual domain when deploying to production.
+
 ## Quick Start
 
 ```php
@@ -18,10 +28,17 @@ composer require complipay/complipay-php
 use CompliPay\CompliPayClient;
 use CompliPay\InvoiceLine;
 
+// For local development
 $client = new CompliPayClient([
-    'base_url' => 'https://api.complipay.com',
+    'base_url' => 'http://localhost:8000',  // Your server URL
     'api_key' => 'your_api_key',
 ]);
+
+// For production, use your deployed server URL:
+// $client = new CompliPayClient([
+//     'base_url' => 'https://your-domain.com',
+//     'api_key' => 'your_api_key',
+// ]);
 
 // Create an invoice
 $invoice = $client->invoices->create(
@@ -47,7 +64,31 @@ $result = $client->compliance->submit($invoice['data']['id']);
 echo "ZATCA Status: " . $result['data']['status'];
 ```
 
-## Laravel 8 Integration
+## Laravel 8+ Integration
+
+### Configuration
+
+Add to your `config/services.php`:
+
+```php
+// config/services.php
+'complipay' => [
+    'url' => env('COMPLIPAY_URL', 'http://localhost:8000'),
+    'key' => env('COMPLIPAY_API_KEY'),
+],
+```
+
+Add to your `.env`:
+
+```env
+# Local development
+COMPLIPAY_URL=http://localhost:8000
+COMPLIPAY_API_KEY=your_api_key
+
+# Production (update when deployed)
+# COMPLIPAY_URL=https://your-domain.com
+# COMPLIPAY_API_KEY=your_production_api_key
+```
 
 ### Service Provider (Optional)
 
