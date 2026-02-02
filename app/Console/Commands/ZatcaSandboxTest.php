@@ -176,6 +176,9 @@ class ZatcaSandboxTest extends Command
             // Try using openssl command directly
             $opensslPaths = [
                 'openssl',
+                'C:\\laragon\\bin\\git\\usr\\bin\\openssl.exe',
+                'C:\\Program Files\\Git\\usr\\bin\\openssl.exe',
+                'C:\\Program Files\\Git\\mingw64\\bin\\openssl.exe',
                 'C:\\laragon\\bin\\openssl\\openssl.exe',
                 'C:\\Program Files\\OpenSSL-Win64\\bin\\openssl.exe',
                 'C:\\OpenSSL-Win64\\bin\\openssl.exe',
@@ -235,52 +238,52 @@ class ZatcaSandboxTest extends Command
             return Command::FAILURE;
         }
 
-        if (!$privateKey && $privateKeyPem) {
-            // We have PEM but couldn't load it - try to continue anyway
-            $this->warn('Could not load private key into PHP, but file was generated.');
-        }
-
-        if (!$privateKey) {
-            $this->error('Failed to generate private key');
-            return Command::FAILURE;
-        }
-
-        // Build distinguished name
-        $dn = [
-            'commonName' => $config['commonName'],
-            'serialNumber' => $config['serialNumber'],
-            'UID' => $config['organizationIdentifier'],
-            'organizationalUnitName' => $config['organizationUnitName'],
-            'organizationName' => $config['organizationName'],
-            'countryName' => $config['countryName'],
-        ];
-
-        // Generate CSR
-        $csr = openssl_csr_new($dn, $privateKey, [
-            'digest_alg' => 'sha256',
-            'config' => $this->getOpenSslConfig($config),
-        ]);
-
-        if (!$csr) {
-            $this->error('Failed to generate CSR: ' . openssl_error_string());
-            return Command::FAILURE;
-        }
-
-        // Export CSR and private key
-        openssl_csr_export($csr, $csrOut);
-        openssl_pkey_export($privateKey, $privateKeyOut);
-
-        // Save files
+        // Generate CSR using shell command (handles ZATCA's special serialNumber format)
         $csrPath = storage_path('app/zatca/csr.pem');
-        $keyPath = storage_path('app/zatca/private_key.pem');
+        $generatedKeyPath = storage_path('app/zatca/private_key.pem');
+        $configPath = $this->getOpenSslConfig($config);
 
         if (!is_dir(dirname($csrPath))) {
             mkdir(dirname($csrPath), 0755, true);
         }
 
-        file_put_contents($csrPath, $csrOut);
-        file_put_contents($keyPath, $privateKeyOut);
-        chmod($keyPath, 0600); // Restrict access
+        // If we have a PHP key object but no file, export it
+        if ($privateKey && !file_exists($generatedKeyPath)) {
+            openssl_pkey_export($privateKey, $privateKeyOut);
+            file_put_contents($generatedKeyPath, $privateKeyOut);
+            chmod($generatedKeyPath, 0600);
+        }
+
+        // Ensure key file exists (from shell command or PHP export)
+        if (!file_exists($generatedKeyPath)) {
+            $this->error('Private key file not found');
+            return Command::FAILURE;
+        }
+
+        $keyPath = $generatedKeyPath;
+
+        // Find OpenSSL for CSR generation
+        $opensslCmd = $this->findOpenSsl();
+        if (!$opensslCmd) {
+            $this->error('OpenSSL not found for CSR generation');
+            return Command::FAILURE;
+        }
+
+        // Generate CSR using shell command (bypasses PHP's serialNumber limitations)
+        $csrCmd = "\"{$opensslCmd}\" req -new -key \"{$keyPath}\" -out \"{$csrPath}\" -config \"{$configPath}\" 2>&1";
+        $this->line("Generating CSR: {$csrCmd}");
+        exec($csrCmd, $csrOutput, $csrReturnCode);
+
+        if ($csrReturnCode !== 0 || !file_exists($csrPath)) {
+            $this->error('Failed to generate CSR via shell command');
+            $this->line('Output: ' . implode("\n", $csrOutput));
+
+            // Fallback to simplified CSR without special ZATCA fields
+            $this->warn('Trying simplified CSR generation...');
+            return $this->generateSimplifiedCsr($config, $keyPath, $opensslCmd);
+        }
+
+        $csrOut = file_get_contents($csrPath);
 
         $this->info('✓ CSR generated successfully!');
         $this->line("  CSR saved to: {$csrPath}");
@@ -301,6 +304,91 @@ class ZatcaSandboxTest extends Command
         $this->line('  1. Go to: https://sandbox.zatca.gov.sa/');
         $this->line('  2. Use sandbox OTP: 123456 (or as provided)');
         $this->line('  3. Run: php artisan zatca:sandbox-test --step=compliance-csid --otp=123456');
+
+        return Command::SUCCESS;
+    }
+
+    /**
+     * Find OpenSSL executable.
+     */
+    private function findOpenSsl(): ?string
+    {
+        $opensslPaths = [
+            'openssl',
+            'C:\\laragon\\bin\\git\\usr\\bin\\openssl.exe',
+            'C:\\Program Files\\Git\\usr\\bin\\openssl.exe',
+            'C:\\Program Files\\Git\\mingw64\\bin\\openssl.exe',
+            'C:\\laragon\\bin\\openssl\\openssl.exe',
+            'C:\\Program Files\\OpenSSL-Win64\\bin\\openssl.exe',
+            'C:\\OpenSSL-Win64\\bin\\openssl.exe',
+        ];
+
+        foreach ($opensslPaths as $path) {
+            exec("\"{$path}\" version 2>&1", $output, $code);
+            if ($code === 0) {
+                return $path;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Generate simplified CSR when full ZATCA format fails.
+     */
+    private function generateSimplifiedCsr(array $config, string $keyPath, string $opensslCmd): int
+    {
+        $csrPath = storage_path('app/zatca/csr.pem');
+
+        // Create a minimal config
+        $simpleConfig = <<<EOT
+[req]
+default_bits = 2048
+distinguished_name = req_distinguished_name
+prompt = no
+
+[req_distinguished_name]
+CN = {$config['commonName']}
+O = {$config['organizationName']}
+OU = {$config['organizationUnitName']}
+C = {$config['countryName']}
+EOT;
+
+        $simpleConfigPath = storage_path('app/zatca/openssl_simple.cnf');
+        file_put_contents($simpleConfigPath, $simpleConfig);
+
+        $cmd = "\"{$opensslCmd}\" req -new -key \"{$keyPath}\" -out \"{$csrPath}\" -config \"{$simpleConfigPath}\" 2>&1";
+        exec($cmd, $output, $returnCode);
+
+        if ($returnCode !== 0 || !file_exists($csrPath)) {
+            $this->error('Failed to generate simplified CSR');
+            $this->line('Output: ' . implode("\n", $output));
+            return Command::FAILURE;
+        }
+
+        $csrOut = file_get_contents($csrPath);
+
+        $this->info('✓ Simplified CSR generated (may need adjustment for full ZATCA compliance)');
+        $this->line("  CSR saved to: {$csrPath}");
+        $this->line("  Private key saved to: {$keyPath}");
+        $this->newLine();
+
+        $this->warn('⚠️  This is a simplified CSR without all ZATCA extensions.');
+        $this->warn('   For production, use the ZATCA SDK: fatoora -generateCSR');
+        $this->newLine();
+
+        // Show CSR content
+        $this->info('CSR Content (base64 for API):');
+        $csrBase64 = base64_encode(str_replace(
+            ['-----BEGIN CERTIFICATE REQUEST-----', '-----END CERTIFICATE REQUEST-----', "\n", "\r"],
+            '',
+            $csrOut
+        ));
+        $this->line($csrBase64);
+        $this->newLine();
+
+        $this->info('▶️  NEXT STEP:');
+        $this->line('  Try: php artisan zatca:sandbox-test --step=compliance-csid --otp=123456');
 
         return Command::SUCCESS;
     }
@@ -380,7 +468,28 @@ class ZatcaSandboxTest extends Command
                 $this->line('  php artisan zatca:sandbox-test --step=compliance-check');
             } else {
                 $this->error('Failed to get CSID');
+                $this->line('Status: ' . $response->status());
                 $this->line('Response: ' . $response->body());
+                $this->newLine();
+
+                if ($response->status() === 400) {
+                    $this->warn('The CSR was rejected. Common reasons:');
+                    $this->line('  • CSR missing required ZATCA extensions (serialNumber, UID, etc.)');
+                    $this->line('  • Invalid OTP (try: 123456 for sandbox)');
+                    $this->line('  • CSR not properly encoded');
+                    $this->newLine();
+                    $this->info('Solutions:');
+                    $this->line('  1. Use ZATCA SDK to generate proper CSR:');
+                    $this->line('     fatoora -generateCSR');
+                    $this->newLine();
+                    $this->line('  2. Use ZATCA Sandbox Portal to generate CSR:');
+                    $this->line('     https://sandbox.zatca.gov.sa/');
+                    $this->line('     Navigate to: Onboarding & CSR Generator');
+                    $this->newLine();
+                    $this->line('  3. For testing without proper CSR, you can:');
+                    $this->line('     - Use the portal\'s built-in testing tools');
+                    $this->line('     - Download sample CSR/certificates from ZATCA docs');
+                }
             }
         } catch (\Exception $e) {
             $this->error('Request failed: ' . $e->getMessage());
