@@ -121,14 +121,14 @@ class QueueHealthMonitor
     {
         $threshold = now()->subMinutes($this->getStuckItemThresholdMinutes());
 
-        $stuckItems = DB::table('offline_invoice_queue')
-            ->where('status', 'pending')
-            ->where('created_at', '<', $threshold)
+        $stuckItems = DB::table('offline_queue')
+            ->where('state', 'pending')
+            ->where('queued_at', '<', $threshold)
             ->where(function ($query) {
-                $query->whereNull('last_attempt_at')
-                    ->orWhere('last_attempt_at', '<', now()->subMinutes($this->getStuckItemThresholdMinutes()));
+                $query->whereNull('next_attempt_at')
+                    ->orWhere('next_attempt_at', '<', now());
             })
-            ->select(['id', 'invoice_id', 'organization_id', 'created_at', 'retry_count'])
+            ->select(['id', 'invoice_id', 'organization_id', 'queued_at', 'attempts'])
             ->limit(100)
             ->get();
 
@@ -146,7 +146,7 @@ class QueueHealthMonitor
             'message' => sprintf('%d items stuck in queue for >%d minutes', $stuckItems->count(), $this->getStuckItemThresholdMinutes()),
             'count' => $stuckItems->count(),
             'details' => [
-                'oldest_item' => $stuckItems->first()?->created_at,
+                'oldest_item' => $stuckItems->first()?->queued_at,
                 'sample_ids' => $stuckItems->pluck('invoice_id')->take(10)->toArray(),
                 'by_organization' => $stuckItems->groupBy('organization_id')->map->count()->toArray(),
             ],
@@ -158,10 +158,10 @@ class QueueHealthMonitor
      */
     private function checkRetryExhaustion(): array
     {
-        $exhaustedItems = DB::table('offline_invoice_queue')
-            ->where('retry_count', '>=', $this->getMaxRetryCount())
-            ->where('status', '!=', 'submitted')
-            ->select(['id', 'invoice_id', 'organization_id', 'retry_count', 'last_error', 'created_at'])
+        $exhaustedItems = DB::table('offline_queue')
+            ->where('attempts', '>=', $this->getMaxRetryCount())
+            ->where('state', '!=', 'submitted')
+            ->select(['id', 'invoice_id', 'organization_id', 'attempts', 'last_error', 'queued_at'])
             ->get();
 
         if ($exhaustedItems->isEmpty()) {
@@ -190,7 +190,7 @@ class QueueHealthMonitor
             'count' => $exhaustedItems->count(),
             'details' => [
                 'error_distribution' => $errorGroups->toArray(),
-                'oldest_exhausted' => $exhaustedItems->min('created_at'),
+                'oldest_exhausted' => $exhaustedItems->min('queued_at'),
                 'sample_errors' => $exhaustedItems->pluck('last_error')->unique()->take(5)->toArray(),
             ],
         ];
@@ -202,8 +202,8 @@ class QueueHealthMonitor
     private function checkQueueGrowth(): array
     {
         // Get current queue size
-        $currentSize = DB::table('offline_invoice_queue')
-            ->where('status', 'pending')
+        $currentSize = DB::table('offline_queue')
+            ->where('state', 'pending')
             ->count();
 
         // Get size from 1 hour ago (stored in metrics)
@@ -240,14 +240,14 @@ class QueueHealthMonitor
     private function checkProcessingRate(): array
     {
         // Count items processed in last hour
-        $processedLastHour = DB::table('offline_invoice_queue')
-            ->where('status', 'submitted')
+        $processedLastHour = DB::table('offline_queue')
+            ->where('state', 'submitted')
             ->where('updated_at', '>=', now()->subHour())
             ->count();
 
         // Get pending items
-        $pendingCount = DB::table('offline_invoice_queue')
-            ->where('status', 'pending')
+        $pendingCount = DB::table('offline_queue')
+            ->where('state', 'pending')
             ->count();
 
         // If there are pending items but no processing, alert
@@ -284,9 +284,9 @@ class QueueHealthMonitor
      */
     private function checkSilentFailures(): array
     {
-        // Find items with incremented retry count but no recent error log
-        $recentlyRetried = DB::table('offline_invoice_queue')
-            ->where('retry_count', '>', 0)
+        // Find items with incremented attempts but no recent error log
+        $recentlyRetried = DB::table('offline_queue')
+            ->where('attempts', '>', 0)
             ->where('updated_at', '>=', now()->subHour())
             ->pluck('invoice_id');
 
@@ -335,7 +335,7 @@ class QueueHealthMonitor
     {
         $metrics = [
             'timestamp' => now()->toIso8601String(),
-            'queue_size' => DB::table('offline_invoice_queue')->where('status', 'pending')->count(),
+            'queue_size' => DB::table('offline_queue')->where('state', 'pending')->count(),
             'stuck_count' => $results['checks']['stuck_items']['count'] ?? 0,
             'exhausted_count' => $results['checks']['retry_exhaustion']['count'] ?? 0,
             'processing_rate' => $results['checks']['processing_rate']['processed_count'] ?? 0,
@@ -439,9 +439,9 @@ class QueueHealthMonitor
         }
 
         // Get per-organization breakdown
-        $byOrganization = DB::table('offline_invoice_queue')
-            ->where('status', 'pending')
-            ->selectRaw('organization_id, COUNT(*) as count, MIN(created_at) as oldest')
+        $byOrganization = DB::table('offline_queue')
+            ->where('state', 'pending')
+            ->selectRaw('organization_id, COUNT(*) as count, MIN(queued_at) as oldest')
             ->groupBy('organization_id')
             ->orderByDesc('count')
             ->limit(10)
@@ -468,19 +468,19 @@ class QueueHealthMonitor
     {
         $threshold = now()->subMinutes($this->getStuckItemThresholdMinutes());
 
-        $stuckItems = DB::table('offline_invoice_queue')
-            ->where('status', 'pending')
-            ->where('created_at', '<', $threshold)
-            ->where('retry_count', '<', $this->getMaxRetryCount())
+        $stuckItems = DB::table('offline_queue')
+            ->where('state', 'pending')
+            ->where('queued_at', '<', $threshold)
+            ->where('attempts', '<', $this->getMaxRetryCount())
             ->limit($limit)
             ->get();
 
         $requeued = 0;
         foreach ($stuckItems as $item) {
-            DB::table('offline_invoice_queue')
+            DB::table('offline_queue')
                 ->where('id', $item->id)
                 ->update([
-                    'last_attempt_at' => null, // Reset to allow immediate retry
+                    'next_attempt_at' => now(), // Reset to allow immediate retry
                     'updated_at' => now(),
                 ]);
             $requeued++;
