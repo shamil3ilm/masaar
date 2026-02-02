@@ -242,15 +242,15 @@ class KeyCompromiseHandler
             ];
 
             if ($submission) {
-                $clearanceState = $submission->clearance_state ?? 'unknown';
-                if (in_array($clearanceState, ['cleared', 'reported'])) {
+                $state = $submission->state ?? 'unknown';
+                if (in_array($state, ['cleared', 'reported'])) {
                     $affected['cleared'][] = $invoiceInfo;
                 } else {
                     $affected['pending'][] = $invoiceInfo;
                 }
             } else {
                 // Check offline queue
-                $inQueue = DB::table('offline_invoice_queue')
+                $inQueue = DB::table('offline_queue')
                     ->where('invoice_id', $invoice->id)
                     ->exists();
 

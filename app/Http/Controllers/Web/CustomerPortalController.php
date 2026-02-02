@@ -1,0 +1,273 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers\Web;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\View\View;
+
+/**
+ * Customer Portal Controller.
+ *
+ * Provides tenant-scoped dashboard for customers like TaxFly.
+ * In production, org_id should come from authenticated session.
+ * Preview mode uses query param for demo purposes.
+ */
+class CustomerPortalController extends Controller
+{
+    /**
+     * Get organization ID from session or query param (preview mode).
+     */
+    private function getOrganizationId(Request $request): ?string
+    {
+        // In production: return auth()->user()->organization_id;
+        // For preview: accept query param
+        return $request->query('org_id') ?? $request->session()->get('preview_org_id');
+    }
+
+    /**
+     * Customer dashboard - overview of their ZATCA compliance status.
+     */
+    public function dashboard(Request $request): View
+    {
+        $orgId = $this->getOrganizationId($request);
+
+        if (!$orgId) {
+            return view('portal.select-org');
+        }
+
+        $organization = DB::table('organizations')->where('id', $orgId)->first();
+
+        if (!$organization) {
+            return view('portal.select-org')->with('error', 'Organization not found');
+        }
+
+        // Stats
+        $stats = [
+            'invoices_today' => DB::table('invoices')
+                ->where('organization_id', $orgId)
+                ->where('created_at', '>=', now()->startOfDay())
+                ->count(),
+            'invoices_month' => DB::table('invoices')
+                ->where('organization_id', $orgId)
+                ->where('created_at', '>=', now()->startOfMonth())
+                ->count(),
+            'cleared' => DB::table('invoice_submissions')
+                ->where('organization_id', $orgId)
+                ->where('state', 'cleared')
+                ->count(),
+            'reported' => DB::table('invoice_submissions')
+                ->where('organization_id', $orgId)
+                ->where('state', 'reported')
+                ->count(),
+            'rejected' => DB::table('invoice_submissions')
+                ->where('organization_id', $orgId)
+                ->where('state', 'rejected')
+                ->count(),
+            'pending' => DB::table('invoice_submissions')
+                ->where('organization_id', $orgId)
+                ->whereIn('state', ['pending', 'queued', 'submitted'])
+                ->count(),
+        ];
+
+        // Certificate info
+        $certificate = DB::table('certificate_lineage')
+            ->where('organization_id', $orgId)
+            ->where('status', 'active')
+            ->first();
+
+        // Recent activity by user
+        $userActivity = DB::table('invoice_submissions as s')
+            ->leftJoin('users as u', 's.created_by', '=', 'u.id')
+            ->where('s.organization_id', $orgId)
+            ->where('s.created_at', '>=', now()->subDays(7))
+            ->selectRaw('COALESCE(u.name, u.email, "System") as user_name, u.id as user_id, COUNT(*) as submission_count')
+            ->groupBy('u.id', 'u.name', 'u.email')
+            ->orderByDesc('submission_count')
+            ->limit(10)
+            ->get();
+
+        // Recent submissions
+        $recentSubmissions = DB::table('invoice_submissions')
+            ->where('organization_id', $orgId)
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get();
+
+        return view('portal.dashboard', compact(
+            'organization',
+            'stats',
+            'certificate',
+            'userActivity',
+            'recentSubmissions'
+        ));
+    }
+
+    /**
+     * Submissions list - filterable by user.
+     */
+    public function submissions(Request $request): View
+    {
+        $orgId = $this->getOrganizationId($request);
+
+        if (!$orgId) {
+            return view('portal.select-org');
+        }
+
+        $organization = DB::table('organizations')->where('id', $orgId)->first();
+        $userId = $request->query('user_id');
+        $state = $request->query('state');
+        $dateFrom = $request->query('date_from');
+        $dateTo = $request->query('date_to');
+
+        $query = DB::table('invoice_submissions as s')
+            ->leftJoin('users as u', 's.created_by', '=', 'u.id')
+            ->leftJoin('invoices as i', 's.invoice_id', '=', 'i.id')
+            ->where('s.organization_id', $orgId)
+            ->select([
+                's.*',
+                'u.name as user_name',
+                'u.email as user_email',
+                'i.invoice_number',
+                'i.total as invoice_total',
+            ])
+            ->orderByDesc('s.created_at');
+
+        if ($userId) {
+            $query->where('s.created_by', $userId);
+        }
+
+        if ($state) {
+            $query->where('s.state', $state);
+        }
+
+        if ($dateFrom) {
+            $query->where('s.created_at', '>=', $dateFrom);
+        }
+
+        if ($dateTo) {
+            $query->where('s.created_at', '<=', $dateTo . ' 23:59:59');
+        }
+
+        $submissions = $query->paginate(25);
+
+        // Get users for filter dropdown (via organization_user pivot)
+        $users = DB::table('users')
+            ->join('organization_user', 'users.id', '=', 'organization_user.user_id')
+            ->where('organization_user.organization_id', $orgId)
+            ->where('organization_user.status', 'active')
+            ->orderBy('users.name')
+            ->get(['users.id', 'users.name', 'users.email']);
+
+        // State counts
+        $stateCounts = DB::table('invoice_submissions')
+            ->where('organization_id', $orgId)
+            ->selectRaw('state, COUNT(*) as count')
+            ->groupBy('state')
+            ->pluck('count', 'state');
+
+        return view('portal.submissions', compact(
+            'organization',
+            'submissions',
+            'users',
+            'stateCounts',
+            'userId',
+            'state',
+            'dateFrom',
+            'dateTo'
+        ));
+    }
+
+    /**
+     * Certificate status and history.
+     */
+    public function certificates(Request $request): View
+    {
+        $orgId = $this->getOrganizationId($request);
+
+        if (!$orgId) {
+            return view('portal.select-org');
+        }
+
+        $organization = DB::table('organizations')->where('id', $orgId)->first();
+
+        $activeCert = DB::table('certificate_lineage')
+            ->where('organization_id', $orgId)
+            ->where('status', 'active')
+            ->first();
+
+        $certHistory = DB::table('certificate_lineage')
+            ->where('organization_id', $orgId)
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get();
+
+        return view('portal.certificates', compact('organization', 'activeCert', 'certHistory'));
+    }
+
+    /**
+     * User-specific activity log.
+     */
+    public function userActivity(Request $request, string $userId): View
+    {
+        $orgId = $this->getOrganizationId($request);
+
+        if (!$orgId) {
+            return view('portal.select-org');
+        }
+
+        $organization = DB::table('organizations')->where('id', $orgId)->first();
+
+        $user = DB::table('users')
+            ->join('organization_user', 'users.id', '=', 'organization_user.user_id')
+            ->where('users.id', $userId)
+            ->where('organization_user.organization_id', $orgId)
+            ->select('users.*')
+            ->first();
+
+        if (!$user) {
+            abort(404, 'User not found');
+        }
+
+        // User's submissions
+        $submissions = DB::table('invoice_submissions as s')
+            ->leftJoin('invoices as i', 's.invoice_id', '=', 'i.id')
+            ->where('s.organization_id', $orgId)
+            ->where('s.created_by', $userId)
+            ->select([
+                's.*',
+                'i.invoice_number',
+                'i.total as invoice_total',
+            ])
+            ->orderByDesc('s.created_at')
+            ->paginate(25);
+
+        // User stats
+        $userStats = [
+            'total' => DB::table('invoice_submissions')
+                ->where('organization_id', $orgId)
+                ->where('created_by', $userId)
+                ->count(),
+            'cleared' => DB::table('invoice_submissions')
+                ->where('organization_id', $orgId)
+                ->where('created_by', $userId)
+                ->where('state', 'cleared')
+                ->count(),
+            'rejected' => DB::table('invoice_submissions')
+                ->where('organization_id', $orgId)
+                ->where('created_by', $userId)
+                ->where('state', 'rejected')
+                ->count(),
+            'today' => DB::table('invoice_submissions')
+                ->where('organization_id', $orgId)
+                ->where('created_by', $userId)
+                ->where('created_at', '>=', now()->startOfDay())
+                ->count(),
+        ];
+
+        return view('portal.user-activity', compact('organization', 'user', 'submissions', 'userStats'));
+    }
+}

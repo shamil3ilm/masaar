@@ -7,7 +7,6 @@ namespace App\Http\Controllers\Api;
 use App\Domains\Compliance\Zatca\Services\ClusterCircuitBreaker;
 use App\Domains\Compliance\Zatca\Services\EnvironmentVarianceTracker;
 use App\Domains\Compliance\Zatca\Services\CertificateLineageService;
-use App\Domains\Compliance\Zatca\Services\QueueHealthMonitor;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
@@ -29,7 +28,6 @@ class DashboardController extends Controller
         private readonly ClusterCircuitBreaker $circuitBreaker,
         private readonly EnvironmentVarianceTracker $varianceTracker,
         private readonly CertificateLineageService $certificateService,
-        private readonly QueueHealthMonitor $queueMonitor,
     ) {}
 
     /**
@@ -157,7 +155,7 @@ class DashboardController extends Controller
             ->select([
                 'id',
                 'invoice_id',
-                'clearance_state',
+                'state',
                 'reporting_status',
                 'created_at',
                 'updated_at',
@@ -166,7 +164,7 @@ class DashboardController extends Controller
             ->map(fn($s) => [
                 'id' => $s->id,
                 'invoice_id' => $s->invoice_id,
-                'status' => $s->clearance_state ?? $s->reporting_status ?? 'pending',
+                'status' => $s->state ?? $s->reporting_status ?? 'pending',
                 'timestamp' => $s->updated_at ?? $s->created_at,
             ]);
 
@@ -178,6 +176,7 @@ class DashboardController extends Controller
 
     /**
      * Get invoice statistics.
+     * Optimized: Single query with conditional aggregates instead of 6 separate queries.
      */
     private function getInvoiceStats(string $organizationId): array
     {
@@ -185,61 +184,69 @@ class DashboardController extends Controller
         $thisMonth = now()->startOfMonth();
         $lastMonth = now()->subMonth()->startOfMonth();
 
+        // Single query for all counts and sum
+        $stats = DB::table('invoices')
+            ->where('organization_id', $organizationId)
+            ->selectRaw("
+                COUNT(*) as total,
+                SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as today,
+                SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as this_month,
+                SUM(CASE WHEN created_at >= ? AND created_at < ? THEN 1 ELSE 0 END) as last_month,
+                COALESCE(SUM(total), 0) as total_amount
+            ", [$today, $thisMonth, $lastMonth, $thisMonth])
+            ->first();
+
+        // Separate query for by_type (GROUP BY needed)
+        $byType = DB::table('invoices')
+            ->where('organization_id', $organizationId)
+            ->selectRaw('type, COUNT(*) as count')
+            ->groupBy('type')
+            ->pluck('count', 'type')
+            ->toArray();
+
         return [
-            'total' => DB::table('invoices')
-                ->where('organization_id', $organizationId)
-                ->count(),
-            'today' => DB::table('invoices')
-                ->where('organization_id', $organizationId)
-                ->where('created_at', '>=', $today)
-                ->count(),
-            'this_month' => DB::table('invoices')
-                ->where('organization_id', $organizationId)
-                ->where('created_at', '>=', $thisMonth)
-                ->count(),
-            'last_month' => DB::table('invoices')
-                ->where('organization_id', $organizationId)
-                ->where('created_at', '>=', $lastMonth)
-                ->where('created_at', '<', $thisMonth)
-                ->count(),
-            'by_type' => DB::table('invoices')
-                ->where('organization_id', $organizationId)
-                ->selectRaw('invoice_type_code, COUNT(*) as count')
-                ->groupBy('invoice_type_code')
-                ->pluck('count', 'invoice_type_code')
-                ->toArray(),
-            'total_amount' => DB::table('invoices')
-                ->where('organization_id', $organizationId)
-                ->sum('total') ?? 0,
+            'total' => (int) ($stats->total ?? 0),
+            'today' => (int) ($stats->today ?? 0),
+            'this_month' => (int) ($stats->this_month ?? 0),
+            'last_month' => (int) ($stats->last_month ?? 0),
+            'by_type' => $byType,
+            'total_amount' => (float) ($stats->total_amount ?? 0),
         ];
     }
 
     /**
      * Get submission statistics.
+     * Optimized: Single query with conditional aggregates instead of 6 separate queries.
      */
     private function getSubmissionStats(string $organizationId): array
     {
+        $stats = DB::table('invoice_submissions')
+            ->where('organization_id', $organizationId)
+            ->selectRaw("
+                COUNT(*) as total,
+                SUM(CASE WHEN state = 'cleared' THEN 1 ELSE 0 END) as cleared,
+                SUM(CASE WHEN state = 'reported' THEN 1 ELSE 0 END) as reported,
+                SUM(CASE WHEN state = 'rejected' THEN 1 ELSE 0 END) as rejected,
+                SUM(CASE WHEN state IN ('pending_submission', 'submitted', 'queued') THEN 1 ELSE 0 END) as pending
+            ")
+            ->first();
+
+        $total = (int) ($stats->total ?? 0);
+        $cleared = (int) ($stats->cleared ?? 0);
+        $reported = (int) ($stats->reported ?? 0);
+        $rejected = (int) ($stats->rejected ?? 0);
+
+        // Calculate success rate inline
+        $completed = $cleared + $reported + $rejected;
+        $successRate = $completed > 0 ? round((($cleared + $reported) / $completed) * 100, 2) : 100.0;
+
         return [
-            'total' => DB::table('invoice_submissions')
-                ->where('organization_id', $organizationId)
-                ->count(),
-            'cleared' => DB::table('invoice_submissions')
-                ->where('organization_id', $organizationId)
-                ->where('clearance_state', 'cleared')
-                ->count(),
-            'reported' => DB::table('invoice_submissions')
-                ->where('organization_id', $organizationId)
-                ->where('clearance_state', 'reported')
-                ->count(),
-            'rejected' => DB::table('invoice_submissions')
-                ->where('organization_id', $organizationId)
-                ->where('clearance_state', 'rejected')
-                ->count(),
-            'pending' => DB::table('invoice_submissions')
-                ->where('organization_id', $organizationId)
-                ->whereIn('clearance_state', ['pending_clearance', 'submitted', 'unknown'])
-                ->count(),
-            'success_rate' => $this->calculateSuccessRate($organizationId),
+            'total' => $total,
+            'cleared' => $cleared,
+            'reported' => $reported,
+            'rejected' => $rejected,
+            'pending' => (int) ($stats->pending ?? 0),
+            'success_rate' => $successRate,
         ];
     }
 
@@ -285,24 +292,29 @@ class DashboardController extends Controller
 
     /**
      * Get queue health status.
+     * Fixed: Correct table name (offline_queue) and column names (state, queued_at).
+     * Optimized: Single query with conditional aggregate.
      */
     private function getQueueHealth(string $organizationId): array
     {
-        $queueSize = DB::table('offline_invoice_queue')
-            ->where('organization_id', $organizationId)
-            ->where('status', 'pending')
-            ->count();
+        $thirtyMinutesAgo = now()->subMinutes(30);
 
-        $stuckItems = DB::table('offline_invoice_queue')
+        $stats = DB::table('offline_queue')
             ->where('organization_id', $organizationId)
-            ->where('status', 'pending')
-            ->where('created_at', '<', now()->subMinutes(30))
-            ->count();
+            ->where('state', 'pending')
+            ->selectRaw("
+                COUNT(*) as pending,
+                SUM(CASE WHEN queued_at < ? THEN 1 ELSE 0 END) as stuck
+            ", [$thirtyMinutesAgo])
+            ->first();
+
+        $pending = (int) ($stats->pending ?? 0);
+        $stuck = (int) ($stats->stuck ?? 0);
 
         return [
-            'pending' => $queueSize,
-            'stuck' => $stuckItems,
-            'healthy' => $stuckItems === 0,
+            'pending' => $pending,
+            'stuck' => $stuck,
+            'healthy' => $stuck === 0,
         ];
     }
 
@@ -351,28 +363,6 @@ class DashboardController extends Controller
             'status' => 'healthy',
             'days_remaining' => $daysUntilExpiry,
         ];
-    }
-
-    /**
-     * Calculate submission success rate.
-     */
-    private function calculateSuccessRate(string $organizationId): float
-    {
-        $total = DB::table('invoice_submissions')
-            ->where('organization_id', $organizationId)
-            ->whereIn('clearance_state', ['cleared', 'reported', 'rejected'])
-            ->count();
-
-        if ($total === 0) {
-            return 100.0;
-        }
-
-        $successful = DB::table('invoice_submissions')
-            ->where('organization_id', $organizationId)
-            ->whereIn('clearance_state', ['cleared', 'reported'])
-            ->count();
-
-        return round(($successful / $total) * 100, 2);
     }
 
     /**

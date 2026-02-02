@@ -202,5 +202,24 @@ Route::middleware(['jwt.auth', 'rate.api'])->prefix('admin')->group(function () 
         Route::get('/error-rates', [AdminDashboardController::class, 'errorRates']);
         Route::get('/variances', [AdminDashboardController::class, 'environmentVariances']);
         Route::get('/hash-chain-health', [AdminDashboardController::class, 'hashChainHealth']);
+
+        // Connectivity & Status
+        Route::get('/connectivity', [AdminDashboardController::class, 'connectivity']);
+        Route::post('/connectivity/refresh', [AdminDashboardController::class, 'refreshConnectivity']);
+
+        // Offline Queue Management
+        Route::get('/offline-queue', [AdminDashboardController::class, 'offlineQueue']);
+        Route::get('/offline-queue/{organizationId}', [AdminDashboardController::class, 'offlineQueueByOrg']);
+        Route::post('/offline-queue/process', [AdminDashboardController::class, 'processOfflineQueue']);
+        Route::post('/offline-queue/{queueId}/retry', [AdminDashboardController::class, 'retryQueueItem']);
+
+        // Issues & Alerts
+        Route::get('/issues', [AdminDashboardController::class, 'issues']);
+
+        // Logs
+        Route::get('/logs', [AdminDashboardController::class, 'logs']);
+
+        // Circuit Breaker
+        Route::post('/circuit-breaker/reset', [AdminDashboardController::class, 'resetCircuitBreaker']);
     });
 });
