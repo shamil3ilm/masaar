@@ -45,6 +45,7 @@ This document maintains a record of all commits to the CompliPay project for aud
 | 37 | `a4e7e6d` | 2026-01-31 | Add remaining extremity policies and monitoring |
 | 38 | `0e1120e` | 2026-01-31 | Add real-time compliance events, licensing system, and QR encoding fixes |
 | 39 | `b8b175b` | 2026-02-02 | Add Java SDK for ZATCA-compliant e-invoicing |
+| 40 | `158cab1` | 2026-02-02 | Add multi-language SDKs and fix XML UBL 2.1 compliance |
 
 ## Detailed Commit Descriptions
 
@@ -288,6 +289,39 @@ This document maintains a record of all commits to the CompliPay project for aud
 - **Framework Integration**: Spring Boot configuration example
 - **Maven Build**: pom.xml with Gson dependency, source/javadoc plugins
 
+### Phase 18: Multi-Language SDKs & XML Compliance (Commit 40)
+- **XML UBL 2.1 Compliance Fixes**:
+  - Added UBLVersionID (2.1) and CustomizationID per ZATCA specifications
+  - Fixed PostalAddress element order per UBL 2.1 schema
+  - Added PlotIdentification and CountrySubentity fields to AddressData DTO
+  - Documented exact element sequence requirements in code comments
+- **Go SDK**: Native HTTP client with context support
+  - Generics for type-safe API responses
+  - HMAC-SHA256 webhook signature verification
+- **Ruby SDK**: Gem with clean DSL
+  - Net::HTTP based, no external dependencies
+  - rack-compatible signature verification
+- **.NET SDK**: C# 12 with modern patterns
+  - async/await with CancellationToken support
+  - IDisposable for proper resource cleanup
+  - System.Text.Json with snake_case naming
+- **Kotlin SDK**: JVM interoperability
+  - kotlinx.serialization for JSON
+  - Gradle build with Kotlin DSL
+  - Coroutines support ready
+- **Dart/Flutter SDK**: Cross-platform mobile
+  - http package for requests
+  - crypto package for HMAC verification
+  - Full Flutter compatibility
+- **Swift SDK**: Apple ecosystem
+  - async/await with actors
+  - CryptoKit for signature verification
+  - Swift Package Manager
+- **Rust SDK**: Systems programming
+  - reqwest + serde + thiserror
+  - Zero-copy deserialization
+  - Memory-safe HMAC verification
+
 ## Full Commit Hashes
 
 For verification purposes, here are the full SHA-1 hashes:
@@ -332,11 +366,12 @@ f88e9ca - Add critical edge-case handlers for production resilience
 a4e7e6d - Add remaining extremity policies and monitoring
 0e1120eebe5aa1901f91628eee302cb3a1b61fb1 - Add real-time compliance events, licensing system, and QR encoding fixes
 b8b175ba39e206471074c0c0d180671e16b12117 - Add Java SDK for ZATCA-compliant e-invoicing
+158cab1ca279c393618b3c5da3b3e35fd8959121 - Add multi-language SDKs and fix XML UBL 2.1 compliance
 ```
 
 ## Statistics
 
-- **Total Commits**: 39
+- **Total Commits**: 40
 - **Development Period**: January 30, 2026 - February 2, 2026
 - **Main Branch**: `main`
 - **Contributors**: Development Team
