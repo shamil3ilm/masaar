@@ -46,6 +46,15 @@ This document maintains a record of all commits to the CompliPay project for aud
 | 38 | `0e1120e` | 2026-01-31 | Add real-time compliance events, licensing system, and QR encoding fixes |
 | 39 | `b8b175b` | 2026-02-02 | Add Java SDK for ZATCA-compliant e-invoicing |
 | 40 | `158cab1` | 2026-02-02 | Add multi-language SDKs and fix XML UBL 2.1 compliance |
+| 41 | `30066c3` | 2026-02-02 | Add ZATCA compliance validation tools |
+| 42 | `e4a4cd8` | 2026-02-02 | Add ZATCA Sandbox testing command (no Java/SDK required) |
+| 43 | `e735587` | 2026-02-02 | Fix CSR generation for Windows compatibility |
+| 44 | `7f32cb2` | 2026-02-02 | Fix CSR generation for Windows with OpenSSL fallbacks |
+| 45 | `57fbeb4` | 2026-02-02 | Add ZATCA compliance edge case handling and documentation |
+| 46 | `25bf9cf` | 2026-02-02 | Add phpseclib dependency for cryptographic operations |
+| 47 | `893a326` | 2026-02-02 | Add deployment infrastructure and operational tooling |
+| 48 | `f197491` | 2026-02-02 | Fix database column/table name mismatches and add performance indexes |
+| 49 | `97c54a1` | 2026-02-02 | Add offline queue management commands and services |
 
 ## Detailed Commit Descriptions
 
@@ -322,6 +331,52 @@ This document maintains a record of all commits to the CompliPay project for aud
   - Zero-copy deserialization
   - Memory-safe HMAC verification
 
+### Phase 19: ZATCA Validation & Sandbox Testing (Commits 41-42)
+- **ZATCA Compliance Validation Tools**: Invoice structure validation
+  - Pre-submission validation to catch errors before ZATCA rejection
+  - Field validation, tax calculations, hash verification
+- **Sandbox Testing Command**: Direct ZATCA sandbox integration
+  - Test compliance without Java SDK dependency
+  - CSR generation, CSID acquisition, invoice submission testing
+  - Useful for development and debugging
+
+### Phase 20: Windows Compatibility & CSR Generation (Commits 43-44)
+- **Windows OpenSSL Fixes**: Cross-platform CSR generation
+  - Multiple fallback approaches for Windows environments
+  - phpseclib integration for pure PHP cryptographic operations
+  - Laragon/XAMPP compatibility improvements
+
+### Phase 21: Edge Case Handling & Documentation (Commit 45)
+- **Compliance Edge Cases**: Additional scenario handling
+  - Edge case documentation for rare compliance scenarios
+  - Improved error messages and debugging information
+
+### Phase 22: Infrastructure & Dependencies (Commits 46-47)
+- **phpseclib Integration**: Pure PHP cryptographic library
+  - RSA key generation without OpenSSL dependency
+  - Cross-platform CSR creation
+- **Deployment Infrastructure**: Operational tooling
+  - Production deployment guides
+  - Infrastructure configuration examples
+
+### Phase 23: Database & Performance Optimization (Commits 48-49)
+- **Database Column/Table Fixes**: Schema alignment
+  - Fixed `offline_invoice_queue` → `offline_queue` table references
+  - Fixed column names: `status` → `state`, `retry_count` → `attempts`
+  - Fixed `clearance_state` → `state` in dashboard queries
+- **Performance Indexes**: Query optimization
+  - Added composite indexes for dashboard aggregations
+  - Added indexes for organization lookups, submission state queries
+  - Foreign key constraints for referential integrity
+- **Admin Dashboard Views**: Blade templates for admin portal
+  - Organization detail view with stats and certificates
+  - Queue monitoring and logs views
+- **Offline Queue Management**: Commands and services
+  - ProcessOfflineQueue command for queue processing
+  - CleanupOfflineQueue command for maintenance
+  - OfflineAwareSubmissionService for offline-capable submissions
+  - ZatcaConnectivityChecker for API availability detection
+
 ## Full Commit Hashes
 
 For verification purposes, here are the full SHA-1 hashes:
@@ -367,11 +422,20 @@ a4e7e6d - Add remaining extremity policies and monitoring
 0e1120eebe5aa1901f91628eee302cb3a1b61fb1 - Add real-time compliance events, licensing system, and QR encoding fixes
 b8b175ba39e206471074c0c0d180671e16b12117 - Add Java SDK for ZATCA-compliant e-invoicing
 158cab1ca279c393618b3c5da3b3e35fd8959121 - Add multi-language SDKs and fix XML UBL 2.1 compliance
+30066c3 - Add ZATCA compliance validation tools
+e4a4cd8 - Add ZATCA Sandbox testing command (no Java/SDK required)
+e735587 - Fix CSR generation for Windows compatibility
+7f32cb2 - Fix CSR generation for Windows with OpenSSL fallbacks
+57fbeb4 - Add ZATCA compliance edge case handling and documentation
+25bf9cf - Add phpseclib dependency for cryptographic operations
+893a326 - Add deployment infrastructure and operational tooling
+f197491 - Fix database column/table name mismatches and add performance indexes
+97c54a1 - Add offline queue management commands and services
 ```
 
 ## Statistics
 
-- **Total Commits**: 40
+- **Total Commits**: 49
 - **Development Period**: January 30, 2026 - February 2, 2026
 - **Main Branch**: `main`
 - **Contributors**: Development Team

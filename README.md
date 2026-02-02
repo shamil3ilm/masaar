@@ -17,7 +17,9 @@ A production-ready ZATCA Phase 2 compliant e-invoicing API platform for Saudi Ar
 - **Dual Authentication** - JWT tokens and API keys for server-to-server
 - **Webhook Notifications** - Real-time event notifications with HMAC signatures
 - **Comprehensive Validation** - ZATCA business rules (BR-KSA-*) enforcement
-- **Multi-Language SDKs** - Python, TypeScript/JavaScript, PHP 7.4+ (Laravel 8+)
+- **Multi-Language SDKs** - Python, TypeScript/JS, PHP, Java, Go, Ruby, .NET, Kotlin, Dart, Swift, Rust
+- **Admin Dashboard** - Web-based admin portal for monitoring and management
+- **Offline Queue** - Resilient offline queue for POS/retail scenarios
 
 ## Requirements
 
@@ -213,6 +215,14 @@ SDKs are available in the `sdk/` directory for easy integration:
 | **Python** | `sdk/python/` | Python 3.7+, Django, Flask, FastAPI |
 | **TypeScript/JS** | `sdk/typescript/` | Node.js 14+, React, Vue, Angular |
 | **PHP Legacy** | `sdk/php-legacy/` | PHP 7.4+, Laravel 8/9/10/11/12 |
+| **Java** | `sdk/java/` | Java 11+, Spring Boot |
+| **Go** | `sdk/go/` | Go 1.18+ with generics |
+| **Ruby** | `sdk/ruby/` | Ruby 2.7+, Rails |
+| **.NET** | `sdk/dotnet/` | C# 12, .NET 8+ |
+| **Kotlin** | `sdk/kotlin/` | Kotlin 1.9+, Android |
+| **Dart** | `sdk/dart/` | Dart 3+, Flutter |
+| **Swift** | `sdk/swift/` | Swift 5.9+, iOS/macOS |
+| **Rust** | `sdk/rust/` | Rust 1.70+ |
 
 ### Python Example
 
@@ -361,7 +371,24 @@ app/
 sdk/
 ├── python/                      # Python SDK
 ├── typescript/                  # TypeScript/JavaScript SDK
-└── php-legacy/                  # PHP 7.4+ SDK for Laravel 8+
+├── php-legacy/                  # PHP 7.4+ SDK for Laravel 8+
+├── java/                        # Java SDK
+├── go/                          # Go SDK
+├── ruby/                        # Ruby SDK
+├── dotnet/                      # .NET SDK
+├── kotlin/                      # Kotlin SDK
+├── dart/                        # Dart/Flutter SDK
+├── swift/                       # Swift SDK
+└── rust/                        # Rust SDK
+
+resources/views/
+├── admin/                       # Admin dashboard views
+│   ├── dashboard.blade.php
+│   ├── organizations.blade.php
+│   ├── organization-detail.blade.php
+│   ├── queue.blade.php
+│   └── logs.blade.php
+└── portal/                      # Customer portal views
 ```
 
 ## ZATCA Onboarding Flow
