@@ -52,3 +52,40 @@ Schedule::command('license:check-expiration')
     ->dailyAt('00:00')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/license-expiration.log'));
+
+/*
+|--------------------------------------------------------------------------
+| ZATCA Offline Queue Scheduled Tasks
+|--------------------------------------------------------------------------
+|
+| These tasks handle offline mode recovery and queue processing.
+| Critical for POS/retail scenarios with intermittent connectivity.
+|
+*/
+
+// Process offline queue - runs every 5 minutes when auto-recovery enabled
+Schedule::command('zatca:process-offline --limit=50')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->when(fn () => config('zatca.offline.auto_recovery.enabled', true))
+    ->appendOutputTo(storage_path('logs/zatca-offline-queue.log'));
+
+// Check certificate expiry - runs daily at 8 AM with notifications
+Schedule::command('zatca:check-certificate --notify')
+    ->dailyAt('08:00')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/zatca-certificate.log'));
+
+// Verify hash chain integrity - runs weekly on Sunday at 2 AM
+Schedule::command('zatca:verify-hash-chain')
+    ->weeklyOn(0, '02:00')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/zatca-hash-chain.log'));
+
+// Clean up old offline queue items - runs daily at 4 AM
+Schedule::command('compliance:cleanup-offline-queue')
+    ->dailyAt('04:00')
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/zatca-queue-cleanup.log'));
