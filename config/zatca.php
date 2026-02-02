@@ -797,4 +797,194 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Infrastructure Requirements (CRITICAL)
+    |--------------------------------------------------------------------------
+    |
+    | These settings enforce infrastructure-level requirements for ZATCA
+    | compliance. Failures here can cause timestamp disputes and audit issues.
+    |
+    */
+    'infrastructure' => [
+        /*
+        |----------------------------------------------------------------------
+        | Clock & Time Sync (CRITICAL)
+        |----------------------------------------------------------------------
+        | XAdES-T timestamps and ZATCA API calls require accurate time.
+        | Clock drift can cause:
+        | - XAdES-T signature disputes
+        | - Timestamp rejection by ZATCA
+        | - Audit defensibility issues
+        |
+        | REQUIREMENT: All servers MUST use NTP with drift < 1 second.
+        |
+        */
+        'time_sync' => [
+            // Maximum allowed clock drift in seconds before warning
+            'max_drift_warning_seconds' => env('ZATCA_MAX_CLOCK_DRIFT_WARNING', 1),
+
+            // Maximum allowed clock drift before blocking submissions
+            'max_drift_critical_seconds' => env('ZATCA_MAX_CLOCK_DRIFT_CRITICAL', 5),
+
+            // Enforce UTC timezone at application level
+            'enforce_utc' => env('ZATCA_ENFORCE_UTC', true),
+
+            // NTP server to check against (for drift detection)
+            'ntp_server' => env('ZATCA_NTP_SERVER', 'pool.ntp.org'),
+
+            // Enable clock drift monitoring
+            'monitor_drift' => env('ZATCA_MONITOR_CLOCK_DRIFT', true),
+        ],
+
+        /*
+        |----------------------------------------------------------------------
+        | Database Transaction Isolation (CRITICAL)
+        |----------------------------------------------------------------------
+        | ICV atomicity and hash chain integrity require proper isolation.
+        |
+        | REQUIREMENT:
+        | - PostgreSQL: READ COMMITTED (default) or SERIALIZABLE
+        | - MySQL: READ COMMITTED or SERIALIZABLE
+        | - NEVER use READ UNCOMMITTED
+        |
+        | Race conditions in multi-worker environments can corrupt hash chains.
+        |
+        */
+        'database' => [
+            // Required minimum isolation level
+            'min_isolation_level' => env('ZATCA_DB_ISOLATION', 'READ COMMITTED'),
+
+            // Verify isolation level on boot
+            'verify_on_boot' => env('ZATCA_VERIFY_DB_ISOLATION', true),
+
+            // Block operations if isolation is insufficient
+            'block_on_invalid_isolation' => env('ZATCA_BLOCK_INVALID_ISOLATION', true),
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Queue Worker Configuration
+    |--------------------------------------------------------------------------
+    |
+    | ZATCA submissions should be processed asynchronously with dedicated
+    | workers to prevent webhook backlog from blocking clearance requests.
+    |
+    */
+    'queue' => [
+        // Queue name for ZATCA submissions (clearance/reporting)
+        'submissions_queue' => env('ZATCA_QUEUE_SUBMISSIONS', 'zatca-submissions'),
+
+        // Queue name for webhook deliveries
+        'webhooks_queue' => env('ZATCA_QUEUE_WEBHOOKS', 'webhooks'),
+
+        // Recommended minimum workers per queue
+        'recommended_workers' => [
+            'zatca-submissions' => 2,  // High priority, dedicated
+            'webhooks' => 1,           // Separate to prevent blocking
+            'default' => 1,            // Other jobs
+        ],
+
+        // Maximum job attempts before failure
+        'max_attempts' => env('ZATCA_QUEUE_MAX_ATTEMPTS', 3),
+
+        // Backoff delay between retries (seconds)
+        'retry_backoff' => env('ZATCA_QUEUE_RETRY_BACKOFF', 60),
+
+        // Job timeout (seconds) - ZATCA API can be slow
+        'job_timeout' => env('ZATCA_QUEUE_JOB_TIMEOUT', 120),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Certificate Expiry Notifications
+    |--------------------------------------------------------------------------
+    |
+    | Proactive notifications to organization admins before certificate
+    | expiry to prevent submission failures.
+    |
+    */
+    'certificate_notifications' => [
+        // Enable expiry notifications
+        'enabled' => env('ZATCA_CERT_NOTIFICATIONS_ENABLED', true),
+
+        // Days before expiry to send notifications
+        'notify_at_days' => [30, 14, 7, 3, 1],
+
+        // Notification channels (mail, slack, webhook)
+        'channels' => explode(',', env('ZATCA_CERT_NOTIFY_CHANNELS', 'mail,webhook')),
+
+        // Block submissions on expiry (enforced by CertificateService)
+        'block_on_expiry' => true,
+
+        // Send daily reminders when < 7 days remaining
+        'daily_reminders_threshold_days' => 7,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Legal Evidence Export
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for exporting audit-ready evidence packages.
+    | Useful for enterprise customers during tax audits and disputes.
+    |
+    */
+    'evidence_export' => [
+        // Enable evidence export API
+        'enabled' => env('ZATCA_EVIDENCE_EXPORT_ENABLED', true),
+
+        // Components to include in export
+        'include' => [
+            'signed_xml' => true,           // Original signed UBL XML
+            'hash_chain_proof' => true,     // PIH chain verification
+            'submission_logs' => true,      // API request/response logs
+            'timestamp_evidence' => true,   // XAdES-T timestamp proof
+            'certificate_info' => true,     // Certificate used for signing
+            'qr_code_data' => true,         // TLV-decoded QR data
+        ],
+
+        // Export format options
+        'formats' => ['json', 'zip'],
+
+        // Retention period for export cache (hours)
+        'cache_ttl_hours' => env('ZATCA_EVIDENCE_CACHE_TTL', 24),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Disaster Recovery
+    |--------------------------------------------------------------------------
+    |
+    | Configuration and verification requirements for disaster recovery.
+    | ZATCA compliance requires 7-year retention of signed invoices.
+    |
+    */
+    'disaster_recovery' => [
+        // Minimum backup frequency
+        'backup_frequency' => 'daily',
+
+        // Required retention period (years) per ZATCA regulations
+        'retention_years' => 7,
+
+        // Recovery Point Objective (maximum acceptable data loss)
+        'rpo_hours' => env('ZATCA_RPO_HOURS', 1),
+
+        // Recovery Time Objective (maximum acceptable downtime)
+        'rto_hours' => env('ZATCA_RTO_HOURS', 4),
+
+        // Verification checks to run after recovery
+        'recovery_checks' => [
+            'hash_chain_integrity' => true,  // Verify PIH chain is intact
+            'icv_sequence_gaps' => true,     // Detect ICV gaps
+            'certificate_validity' => true,  // Verify certs still valid
+            'invoice_count_match' => true,   // Compare with pre-disaster count
+        ],
+
+        // Enable automated recovery testing (recommended: monthly)
+        'test_recovery_enabled' => env('ZATCA_TEST_RECOVERY_ENABLED', false),
+        'test_recovery_schedule' => env('ZATCA_TEST_RECOVERY_SCHEDULE', 'monthly'),
+    ],
+
 ];
