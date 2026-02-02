@@ -195,10 +195,30 @@ return [
         'allowed_tax_rates' => [0, 15],
 
         // Valid invoice type codes per UBL 2.1 / ZATCA
+        // Note: '325' (Proforma) is NOT valid for ZATCA submission
         'invoice_type_codes' => [
-            '388' => 'Invoice',
+            '388' => 'Tax Invoice',
             '381' => 'Credit Note',
             '383' => 'Debit Note',
+            '386' => 'Prepayment Invoice',
+        ],
+
+        // Invoice types that can be submitted to ZATCA
+        // Proforma (325) is explicitly excluded
+        'zatca_submittable_types' => ['388', '381', '383', '386'],
+
+        // Valid buyer identification schemes (for non-VAT registered buyers)
+        'buyer_id_schemes' => [
+            'TIN' => 'Tax Identification Number',
+            'CRN' => 'Commercial Registration Number',
+            'MOM' => 'Momra License',
+            'MLS' => 'MLSD License',
+            'SAG' => 'Sagia License',
+            'NAT' => 'National ID (Saudis)',
+            'GCC' => 'GCC ID',
+            'IQA' => 'Iqama Number',
+            'PAS' => 'Passport Number',
+            'OTH' => 'Other ID',
         ],
 
         // Valid tax exemption reason codes (VATEX-SA-*)
@@ -635,6 +655,146 @@ return [
         'p99_critical_ms' => env('ZATCA_HASH_CHAIN_P99_CRITICAL', 200),
         'sample_interval_minutes' => env('ZATCA_HASH_CHAIN_SAMPLE_INTERVAL', 5),
         'alert_on_degradation' => env('ZATCA_HASH_CHAIN_ALERT', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | VAT Period Tracking
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for VAT period handling and cross-period adjustments.
+    | Used by VatPeriodTracker for credit/debit note period determination.
+    |
+    */
+    'vat_period' => [
+        // Default VAT filing period type: 'monthly' or 'quarterly'
+        'default_period_type' => env('ZATCA_VAT_PERIOD_TYPE', 'monthly'),
+
+        // Day of month when VAT return is due (typically 28th)
+        'filing_deadline_day' => env('ZATCA_VAT_FILING_DEADLINE_DAY', 28),
+
+        // Fuzzy match window for duplicate detection (hours)
+        'fuzzy_match_window_hours' => env('ZATCA_FUZZY_MATCH_HOURS', 24),
+
+        // Enable cross-period adjustment tracking
+        'track_cross_period' => env('ZATCA_TRACK_CROSS_PERIOD', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Duplicate Detection
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for invoice duplicate detection.
+    | Used by DuplicateInvoiceDetector service.
+    |
+    */
+    'duplicate_detection' => [
+        // Cache TTL for duplicate check results (minutes)
+        'cache_ttl_minutes' => env('ZATCA_DEDUP_CACHE_TTL', 60),
+
+        // Enable fuzzy matching for similar invoices
+        'fuzzy_matching_enabled' => env('ZATCA_FUZZY_MATCHING', true),
+
+        // Amount tolerance for fuzzy matching (SAR)
+        'fuzzy_amount_tolerance' => env('ZATCA_FUZZY_AMOUNT_TOLERANCE', 1.0),
+
+        // Enable sync conflict detection
+        'sync_conflict_detection' => env('ZATCA_SYNC_CONFLICT_DETECTION', true),
+
+        // Lookback window for sync conflict detection (minutes)
+        'sync_lookback_minutes' => env('ZATCA_SYNC_LOOKBACK_MINUTES', 60),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Out of Scope Tax Types
+    |--------------------------------------------------------------------------
+    |
+    | IMPORTANT: These tax types are EXPLICITLY NOT handled by ZATCA e-invoicing.
+    | They require separate systems, manual processes, or different authorities.
+    |
+    | This is intentional and per ZATCA regulations.
+    |
+    */
+    'out_of_scope_taxes' => [
+        /*
+        |----------------------------------------------------------------------
+        | Import VAT / Customs VAT
+        |----------------------------------------------------------------------
+        | Customs VAT is paid at import and handled by Saudi Customs Authority,
+        | NOT through the ZATCA e-invoicing system.
+        |
+        | - Paid at port of entry
+        | - Separate customs declaration process
+        | - Recoverable through VAT return (input VAT)
+        | - Handle in accounting system, not e-invoicing
+        |
+        */
+        'import_vat' => [
+            'handled' => false,
+            'authority' => 'Saudi Customs Authority',
+            'reason' => 'Customs VAT is outside ZATCA e-invoicing scope',
+            'recommendation' => 'Record in accounting system as input VAT for recovery',
+        ],
+
+        /*
+        |----------------------------------------------------------------------
+        | Excise Tax
+        |----------------------------------------------------------------------
+        | Excise tax (on tobacco, energy drinks, sweetened beverages, etc.)
+        | is handled by GSTAT separately from VAT e-invoicing.
+        |
+        | - Different tax authority process
+        | - Separate excise tax returns
+        | - Not included in e-invoice tax calculations
+        |
+        */
+        'excise_tax' => [
+            'handled' => false,
+            'authority' => 'ZATCA (separate excise system)',
+            'reason' => 'Excise tax has dedicated reporting system',
+            'recommendation' => 'Build dedicated excise tax module if needed',
+        ],
+
+        /*
+        |----------------------------------------------------------------------
+        | Deferred VAT
+        |----------------------------------------------------------------------
+        | Deferred VAT schemes (common in imports, certain sectors) have
+        | regulatory-specific treatment that varies by sector.
+        |
+        | - Import deferral schemes
+        | - Cash accounting scheme
+        | - Sector-specific treatments
+        |
+        */
+        'deferred_vat' => [
+            'handled' => false,
+            'authority' => 'ZATCA',
+            'reason' => 'Regulatory-specific, varies by sector',
+            'recommendation' => 'Add is_deferred flag to invoices if tracking needed',
+        ],
+
+        /*
+        |----------------------------------------------------------------------
+        | VAT Return Filing
+        |----------------------------------------------------------------------
+        | The actual VAT return submission to ZATCA portal is a separate process.
+        | VatPeriodTracker.getPeriodSummary() provides the data but filing is manual.
+        |
+        | - Portal submission required
+        | - Payment processing separate
+        | - Audit response handling manual
+        |
+        */
+        'vat_return_filing' => [
+            'handled' => false,
+            'authority' => 'ZATCA Portal',
+            'reason' => 'Portal submission is manual process',
+            'recommendation' => 'Use VatPeriodTracker.getPeriodSummary() for data preparation',
+            'integration_point' => 'VatPeriodTracker::getPeriodSummary()',
+        ],
     ],
 
 ];

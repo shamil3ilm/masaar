@@ -221,11 +221,16 @@ class OnboardingController extends Controller
     /**
      * Generate test invoices for ZATCA compliance check.
      *
-     * Creates sample standard (B2B) and simplified (B2C) invoices
-     * that meet ZATCA's minimum requirements for onboarding.
+     * Creates all 6 required invoice types per ZATCA specifications:
+     * 1. Standard Invoice (388, 01)
+     * 2. Standard Credit Note (381, 01)
+     * 3. Standard Debit Note (383, 01)
+     * 4. Simplified Invoice (388, 02)
+     * 5. Simplified Credit Note (381, 02)
+     * 6. Simplified Debit Note (383, 02)
      *
      * @param Organization $organization
-     * @return array{standard_invoice: string, simplified_invoice: string}
+     * @return array<string, string> Invoice type => XML
      */
     private function generateTestInvoices(Organization $organization): array
     {
@@ -239,76 +244,76 @@ class OnboardingController extends Controller
             countryCode: 'SA',
         );
 
-        // Standard invoice (B2B) for clearance test
-        $standardData = new InvoiceXmlData(
-            uuid: Str::uuid()->toString(),
-            invoiceNumber: 'TEST-STD-' . time(),
-            icv: 1,
-            issueDate: now()->format('Y-m-d'),
-            issueTime: now()->format('H:i:s'),
-            invoiceTypeCode: '388',
-            invoiceSubtype: '01', // B2B
-            currency: 'SAR',
-            sellerName: $organization->name,
-            sellerVatNumber: $organization->vat_number ?? '',
-            sellerAddress: $sellerAddress,
-            buyerName: 'Test Buyer Company',
-            subtotal: 1000.00,
-            taxAmount: 150.00,
-            total: 1150.00,
-            lines: [
-                [
-                    'description' => 'Test Product',
-                    'quantity' => 1.0,
-                    'unitPrice' => 1000.00,
-                    'taxRate' => 15.0,
-                    'taxAmount' => 150.00,
-                    'lineTotal' => 1150.00,
-                    'taxCategory' => 'S',
-                    'unitCode' => 'PCE',
-                ],
-            ],
-            sellerCrNumber: $organization->cr_number,
-            buyerVatNumber: '300000000000003',
-            buyerAddress: $buyerAddress,
-            paymentMeansCode: '10',
-        );
+        $invoices = [];
+        $icv = 0;
+        $previousHash = base64_encode(hash('sha256', '0', true)); // Initial PIH
 
-        // Simplified invoice (B2C) for reporting test
-        $simplifiedData = new InvoiceXmlData(
-            uuid: Str::uuid()->toString(),
-            invoiceNumber: 'TEST-SMP-' . time(),
-            icv: 2,
-            issueDate: now()->format('Y-m-d'),
-            issueTime: now()->format('H:i:s'),
-            invoiceTypeCode: '388',
-            invoiceSubtype: '02', // B2C
-            currency: 'SAR',
-            sellerName: $organization->name,
-            sellerVatNumber: $organization->vat_number ?? '',
-            sellerAddress: $sellerAddress,
-            buyerName: 'Cash Customer',
-            subtotal: 100.00,
-            taxAmount: 15.00,
-            total: 115.00,
-            lines: [
-                [
-                    'description' => 'Test Item',
-                    'quantity' => 1.0,
-                    'unitPrice' => 100.00,
-                    'taxRate' => 15.0,
-                    'taxAmount' => 15.00,
-                    'lineTotal' => 115.00,
-                    'taxCategory' => 'S',
-                    'unitCode' => 'PCE',
-                ],
-            ],
-            paymentMeansCode: '10',
-        );
-
-        return [
-            'standard_invoice' => $this->xmlBuilder->build($standardData),
-            'simplified_invoice' => $this->xmlBuilder->build($simplifiedData),
+        // Define the 6 required invoice types
+        $invoiceTypes = [
+            ['key' => 'standard_invoice', 'name' => 'Standard Invoice', 'typeCode' => '388', 'subtype' => '01', 'isCredit' => false, 'isDebit' => false],
+            ['key' => 'standard_credit_note', 'name' => 'Standard Credit Note', 'typeCode' => '381', 'subtype' => '01', 'isCredit' => true, 'isDebit' => false],
+            ['key' => 'standard_debit_note', 'name' => 'Standard Debit Note', 'typeCode' => '383', 'subtype' => '01', 'isCredit' => false, 'isDebit' => true],
+            ['key' => 'simplified_invoice', 'name' => 'Simplified Invoice', 'typeCode' => '388', 'subtype' => '02', 'isCredit' => false, 'isDebit' => false],
+            ['key' => 'simplified_credit_note', 'name' => 'Simplified Credit Note', 'typeCode' => '381', 'subtype' => '02', 'isCredit' => true, 'isDebit' => false],
+            ['key' => 'simplified_debit_note', 'name' => 'Simplified Debit Note', 'typeCode' => '383', 'subtype' => '02', 'isCredit' => false, 'isDebit' => true],
         ];
+
+        foreach ($invoiceTypes as $type) {
+            $icv++;
+            $isStandard = $type['subtype'] === '01';
+
+            // Credit/debit notes require billing reference and reason (BR-KSA-17)
+            $billingReferenceId = null;
+            $creditDebitReason = null;
+            if ($type['isCredit'] || $type['isDebit']) {
+                $billingReferenceId = 'INV-REF-001';
+                $creditDebitReason = $type['isCredit'] ? 'Return of goods' : 'Price adjustment';
+            }
+
+            $invoiceData = new InvoiceXmlData(
+                uuid: Str::uuid()->toString(),
+                invoiceNumber: 'TEST-' . strtoupper(substr($type['key'], 0, 3)) . '-' . time() . '-' . $icv,
+                icv: $icv,
+                issueDate: now()->format('Y-m-d'),
+                issueTime: now()->format('H:i:s'),
+                invoiceTypeCode: $type['typeCode'],
+                invoiceSubtype: $type['subtype'],
+                currency: 'SAR',
+                sellerName: $organization->name,
+                sellerVatNumber: $organization->vat_number ?? '',
+                sellerAddress: $sellerAddress,
+                buyerName: $isStandard ? 'Test Buyer Company' : 'Cash Customer',
+                subtotal: 100.00,
+                taxAmount: 15.00,
+                total: 115.00,
+                lines: [
+                    [
+                        'description' => 'Test Product',
+                        'quantity' => 1.0,
+                        'unitPrice' => 100.00,
+                        'taxRate' => 15.0,
+                        'taxAmount' => 15.00,
+                        'lineTotal' => 100.00, // Net amount (pre-tax) per UBL 2.1
+                        'taxCategory' => 'S',
+                        'unitCode' => 'PCE',
+                    ],
+                ],
+                sellerCrNumber: $organization->cr_number,
+                buyerVatNumber: $isStandard ? '300000000000003' : null,
+                buyerAddress: $isStandard ? $buyerAddress : null,
+                paymentMeansCode: '10',
+                previousInvoiceHash: $previousHash,
+                billingReferenceId: $billingReferenceId,
+                creditDebitReason: $creditDebitReason,
+            );
+
+            $xml = $this->xmlBuilder->build($invoiceData);
+            $invoices[$type['key']] = $xml;
+
+            // Update PIH for next invoice (simplified hash calculation for test)
+            $previousHash = base64_encode(hash('sha256', $xml, true));
+        }
+
+        return $invoices;
     }
 }

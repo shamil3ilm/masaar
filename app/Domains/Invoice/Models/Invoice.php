@@ -28,6 +28,7 @@ class Invoice extends Model
     protected $fillable = [
         'organization_id',
         'invoice_number',
+        'uuid',  // ZATCA BT-124: Invoice UUID (separate from database ID)
         'type',
         'document_type',
         'status',
