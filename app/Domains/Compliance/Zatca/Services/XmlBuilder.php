@@ -87,12 +87,30 @@ class XmlBuilder
 
     /**
      * Add invoice identification fields.
+     *
+     * Element order per UBL 2.1 and ZATCA specifications:
+     * 1. UBLVersionID
+     * 2. CustomizationID
+     * 3. ProfileID
+     * 4. ID
+     * 5. UUID
+     * 6. IssueDate
+     * 7. IssueTime
+     * 8. InvoiceTypeCode
+     * 9. DocumentCurrencyCode
+     * 10. TaxCurrencyCode
      */
     private function addInvoiceIdentification(InvoiceXmlData $data): void
     {
+        // UBL Version ID (mandatory per ZATCA)
+        $this->addElement('cbc:UBLVersionID', '2.1');
+
+        // Customization ID (ZATCA-specific UBL customization)
+        $this->addElement('cbc:CustomizationID', 'urn:oasis:names:specification:ubl:xpath:Invoice-2.0:sac-mod');
+
         // Profile ID (ZATCA specific)
         // B2B (standard/01) requires clearance, B2C (simplified/02) requires reporting
-        $profileId = $data->isStandard() ? 'clearance:1.0' : 'reporting:1.0';
+        $profileId = $data->isStandard() ? 'reporting:1.0' : 'reporting:1.0';
         $this->addElement('cbc:ProfileID', $profileId);
 
         // Invoice ID
@@ -657,28 +675,57 @@ class XmlBuilder
 
     /**
      * Build address element.
+     *
+     * Element order per UBL 2.1 and ZATCA specifications:
+     * 1. StreetName
+     * 2. AdditionalStreetName (optional)
+     * 3. BuildingNumber
+     * 4. PlotIdentification (optional)
+     * 5. CitySubdivisionName (district)
+     * 6. CityName
+     * 7. PostalZone
+     * 8. CountrySubentity (optional, region/state)
+     * 9. Country/IdentificationCode
      */
     private function buildAddress(AddressData $address): DOMElement
     {
         $postalAddress = $this->dom->createElementNS(self::CAC_NS, 'cac:PostalAddress');
 
+        // 1. StreetName (mandatory)
         $postalAddress->appendChild($this->dom->createElementNS(self::CBC_NS, 'cbc:StreetName', $address->street));
 
-        if ($address->buildingNumber !== null) {
-            $postalAddress->appendChild($this->dom->createElementNS(self::CBC_NS, 'cbc:BuildingNumber', $address->buildingNumber));
-        }
-
+        // 2. AdditionalStreetName (optional)
         if ($address->additionalStreet !== null) {
             $postalAddress->appendChild($this->dom->createElementNS(self::CBC_NS, 'cbc:AdditionalStreetName', $address->additionalStreet));
         }
 
+        // 3. BuildingNumber (mandatory per ZATCA)
+        if ($address->buildingNumber !== null) {
+            $postalAddress->appendChild($this->dom->createElementNS(self::CBC_NS, 'cbc:BuildingNumber', $address->buildingNumber));
+        }
+
+        // 4. PlotIdentification (optional - for plot/land identification)
+        if ($address->plotIdentification !== null) {
+            $postalAddress->appendChild($this->dom->createElementNS(self::CBC_NS, 'cbc:PlotIdentification', $address->plotIdentification));
+        }
+
+        // 5. CitySubdivisionName (district - mandatory per ZATCA)
         if ($address->district !== null) {
             $postalAddress->appendChild($this->dom->createElementNS(self::CBC_NS, 'cbc:CitySubdivisionName', $address->district));
         }
 
+        // 6. CityName (mandatory)
         $postalAddress->appendChild($this->dom->createElementNS(self::CBC_NS, 'cbc:CityName', $address->city));
+
+        // 7. PostalZone (mandatory)
         $postalAddress->appendChild($this->dom->createElementNS(self::CBC_NS, 'cbc:PostalZone', $address->postalCode));
 
+        // 8. CountrySubentity (optional - region/state)
+        if ($address->countrySubentity !== null) {
+            $postalAddress->appendChild($this->dom->createElementNS(self::CBC_NS, 'cbc:CountrySubentity', $address->countrySubentity));
+        }
+
+        // 9. Country (mandatory)
         $country = $this->dom->createElementNS(self::CAC_NS, 'cac:Country');
         $country->appendChild($this->dom->createElementNS(self::CBC_NS, 'cbc:IdentificationCode', $address->countryCode));
         $postalAddress->appendChild($country);
