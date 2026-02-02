@@ -144,14 +144,104 @@ class ZatcaSandboxTest extends Command
         ));
         $this->newLine();
 
-        // Generate private key
-        $privateKey = openssl_pkey_new([
+        // Generate private key using EC secp256k1 (ZATCA requirement)
+        // Try multiple methods for cross-platform compatibility
+        $privateKey = null;
+        $privateKeyPem = null;
+
+        // Method 1: Try OpenSSL extension with secp256k1
+        $privateKey = @openssl_pkey_new([
             'private_key_type' => OPENSSL_KEYTYPE_EC,
             'curve_name' => 'secp256k1',
         ]);
 
+        // Method 2: Try prime256v1 (more widely supported, but check ZATCA accepts it)
         if (!$privateKey) {
-            $this->error('Failed to generate private key: ' . openssl_error_string());
+            $this->warn('secp256k1 not available, trying prime256v1...');
+            $privateKey = @openssl_pkey_new([
+                'private_key_type' => OPENSSL_KEYTYPE_EC,
+                'curve_name' => 'prime256v1',
+            ]);
+        }
+
+        // Method 3: Use shell command (works on Windows with OpenSSL installed)
+        if (!$privateKey) {
+            $this->warn('PHP OpenSSL EC not available, trying shell command...');
+
+            $keyPath = storage_path('app/zatca/private_key.pem');
+            if (!is_dir(dirname($keyPath))) {
+                mkdir(dirname($keyPath), 0755, true);
+            }
+
+            // Try using openssl command directly
+            $opensslPaths = [
+                'openssl',
+                'C:\\laragon\\bin\\openssl\\openssl.exe',
+                'C:\\Program Files\\OpenSSL-Win64\\bin\\openssl.exe',
+                'C:\\OpenSSL-Win64\\bin\\openssl.exe',
+            ];
+
+            $opensslCmd = null;
+            foreach ($opensslPaths as $path) {
+                exec("{$path} version 2>&1", $output, $code);
+                if ($code === 0) {
+                    $opensslCmd = $path;
+                    $this->line("Found OpenSSL: {$path}");
+                    break;
+                }
+            }
+
+            if ($opensslCmd) {
+                // Generate EC key with secp256k1
+                $cmd = "\"{$opensslCmd}\" ecparam -name secp256k1 -genkey -noout -out \"{$keyPath}\" 2>&1";
+                exec($cmd, $output, $returnCode);
+
+                if ($returnCode === 0 && file_exists($keyPath)) {
+                    $privateKeyPem = file_get_contents($keyPath);
+                    $privateKey = openssl_pkey_get_private($privateKeyPem);
+                    $this->info('✓ Generated EC key using OpenSSL command');
+                } else {
+                    $this->warn('OpenSSL command failed, output: ' . implode("\n", $output));
+                }
+            }
+        }
+
+        // Method 4: Generate a simple test key for demonstration
+        if (!$privateKey && !$privateKeyPem) {
+            $this->warn('⚠️  Could not generate EC secp256k1 key.');
+            $this->newLine();
+            $this->info('For ZATCA compliance, you need secp256k1 EC keys.');
+            $this->info('Options to generate the key:');
+            $this->newLine();
+            $this->line('Option 1: Install OpenSSL for Windows');
+            $this->line('  Download: https://slproweb.com/products/Win32OpenSSL.html');
+            $this->line('  Then run: openssl ecparam -name secp256k1 -genkey -noout -out private_key.pem');
+            $this->newLine();
+            $this->line('Option 2: Use WSL (Windows Subsystem for Linux)');
+            $this->line('  wsl openssl ecparam -name secp256k1 -genkey -noout -out private_key.pem');
+            $this->newLine();
+            $this->line('Option 3: Use ZATCA SDK (Java)');
+            $this->line('  fatoora -generateCSR');
+            $this->newLine();
+            $this->line('Option 4: Use online CSR generator');
+            $this->line('  https://sandbox.zatca.gov.sa/ (Portal can generate CSR)');
+            $this->newLine();
+
+            // For demonstration, create a sample CSR structure
+            if ($this->confirm('Generate a DEMO CSR for testing API flow? (Not valid for actual ZATCA submission)')) {
+                return $this->generateDemoCsr($config);
+            }
+
+            return Command::FAILURE;
+        }
+
+        if (!$privateKey && $privateKeyPem) {
+            // We have PEM but couldn't load it - try to continue anyway
+            $this->warn('Could not load private key into PHP, but file was generated.');
+        }
+
+        if (!$privateKey) {
+            $this->error('Failed to generate private key');
             return Command::FAILURE;
         }
 
@@ -427,5 +517,106 @@ EOT;
         file_put_contents($configPath, $configContent);
 
         return $configPath;
+    }
+
+    /**
+     * Generate a demo CSR for testing the API flow.
+     * Note: This CSR is NOT valid for actual ZATCA submission.
+     */
+    private function generateDemoCsr(array $config): int
+    {
+        $this->warn('Generating DEMO CSR (for API flow testing only)...');
+        $this->newLine();
+
+        // Create directories
+        $csrPath = storage_path('app/zatca/csr.pem');
+        $keyPath = storage_path('app/zatca/private_key.pem');
+
+        if (!is_dir(dirname($csrPath))) {
+            mkdir(dirname($csrPath), 0755, true);
+        }
+
+        // Generate a demo CSR using RSA (more compatible)
+        $rsaKey = openssl_pkey_new([
+            'private_key_bits' => 2048,
+            'private_key_type' => OPENSSL_KEYTYPE_RSA,
+        ]);
+
+        if (!$rsaKey) {
+            $this->error('Could not generate even RSA key. OpenSSL may not be configured correctly.');
+            $this->line('Error: ' . openssl_error_string());
+            return Command::FAILURE;
+        }
+
+        // Build distinguished name
+        $dn = [
+            'commonName' => $config['commonName'],
+            'organizationalUnitName' => $config['organizationUnitName'],
+            'organizationName' => $config['organizationName'],
+            'countryName' => $config['countryName'],
+        ];
+
+        // Generate CSR
+        $csr = openssl_csr_new($dn, $rsaKey, ['digest_alg' => 'sha256']);
+
+        if (!$csr) {
+            $this->error('Failed to generate CSR: ' . openssl_error_string());
+            return Command::FAILURE;
+        }
+
+        // Export CSR and private key
+        openssl_csr_export($csr, $csrOut);
+        openssl_pkey_export($rsaKey, $privateKeyOut);
+
+        file_put_contents($csrPath, $csrOut);
+        file_put_contents($keyPath, $privateKeyOut);
+        chmod($keyPath, 0600);
+
+        $this->info('✓ DEMO CSR generated (RSA-based, for testing only)');
+        $this->line("  CSR saved to: {$csrPath}");
+        $this->line("  Private key saved to: {$keyPath}");
+        $this->newLine();
+
+        $this->warn('⚠️  IMPORTANT: This is a DEMO CSR using RSA.');
+        $this->warn('   ZATCA requires EC secp256k1 for production.');
+        $this->warn('   Use this only to test the API request/response flow.');
+        $this->newLine();
+
+        // Show CSR content
+        $this->info('CSR Content (base64):');
+        $csrBase64 = base64_encode(str_replace(
+            ['-----BEGIN CERTIFICATE REQUEST-----', '-----END CERTIFICATE REQUEST-----', "\n", "\r"],
+            '',
+            $csrOut
+        ));
+        $this->line(substr($csrBase64, 0, 100) . '...');
+        $this->newLine();
+
+        $this->info('To generate a valid ZATCA CSR, use one of these methods:');
+        $this->newLine();
+
+        $this->comment('Method 1: Install OpenSSL for Windows');
+        $this->line('  1. Download from: https://slproweb.com/products/Win32OpenSSL.html');
+        $this->line('  2. Install "Win64 OpenSSL v3.x.x Light"');
+        $this->line('  3. Add to PATH: C:\\Program Files\\OpenSSL-Win64\\bin');
+        $this->line('  4. Run these commands:');
+        $this->line('     openssl ecparam -name secp256k1 -genkey -noout -out private_key.pem');
+        $this->line('     openssl req -new -sha256 -key private_key.pem -out csr.pem');
+        $this->newLine();
+
+        $this->comment('Method 2: Use Laragon\'s OpenSSL');
+        $this->line('  C:\\laragon\\bin\\openssl\\openssl.exe ecparam -name secp256k1 -genkey -noout -out private_key.pem');
+        $this->newLine();
+
+        $this->comment('Method 3: Use ZATCA Sandbox Portal');
+        $this->line('  1. Go to: https://sandbox.zatca.gov.sa/');
+        $this->line('  2. The portal can generate CSR for you');
+        $this->newLine();
+
+        $this->info('▶️  NEXT STEP (with demo CSR):');
+        $this->line('  php artisan zatca:sandbox-test --step=compliance-csid --otp=123456');
+        $this->line('  (Note: ZATCA may reject the RSA-based CSR, but you can see the API flow)');
+
+        return Command::SUCCESS;
     }
 }
