@@ -44,6 +44,7 @@ This document maintains a record of all commits to the CompliPay project for aud
 | 36 | `6c8dc46` | 2026-01-31 | Add production readiness guide with stress testing and chaos engineering |
 | 37 | `a4e7e6d` | 2026-01-31 | Add remaining extremity policies and monitoring |
 | 38 | `0e1120e` | 2026-01-31 | Add real-time compliance events, licensing system, and QR encoding fixes |
+| 39 | `b8b175b` | 2026-02-02 | Add Java SDK for ZATCA-compliant e-invoicing |
 
 ## Detailed Commit Descriptions
 
@@ -268,6 +269,25 @@ This document maintains a record of all commits to the CompliPay project for aud
   - Dashboard and admin API endpoints
   - Console commands for health checks and partition maintenance
 
+### Phase 17: Java SDK (Commit 39)
+- **Java 11+ SDK**: Full-featured API client for Java ecosystem
+  - HttpClient-based HTTP layer (no external dependencies except Gson)
+  - Builder pattern for fluent, intuitive API
+  - CompliPayClient main entry point with resource accessors
+- **Models**: Type-safe request/response objects
+  - Invoice, InvoiceLine, CreateInvoiceRequest with builders
+  - ZatcaResult with validation messages and status
+  - ApiResponse generic wrapper
+- **Resources**: Domain-specific API operations
+  - InvoicesResource: CRUD, credit notes, debit notes
+  - ComplianceResource: generate, validate, submit, status
+  - WebhooksResource: subscribe, verify signatures
+- **Exception Hierarchy**: Typed error handling
+  - AuthenticationException, ValidationException, ZatcaException
+  - NetworkException, RateLimitException
+- **Framework Integration**: Spring Boot configuration example
+- **Maven Build**: pom.xml with Gson dependency, source/javadoc plugins
+
 ## Full Commit Hashes
 
 For verification purposes, here are the full SHA-1 hashes:
@@ -311,12 +331,13 @@ f88e9ca - Add critical edge-case handlers for production resilience
 6c8dc46 - Add production readiness guide with stress testing and chaos engineering
 a4e7e6d - Add remaining extremity policies and monitoring
 0e1120eebe5aa1901f91628eee302cb3a1b61fb1 - Add real-time compliance events, licensing system, and QR encoding fixes
+b8b175ba39e206471074c0c0d180671e16b12117 - Add Java SDK for ZATCA-compliant e-invoicing
 ```
 
 ## Statistics
 
-- **Total Commits**: 38
-- **Development Period**: January 30-31, 2026
+- **Total Commits**: 39
+- **Development Period**: January 30, 2026 - February 2, 2026
 - **Main Branch**: `main`
 - **Contributors**: Development Team
 
@@ -324,4 +345,4 @@ a4e7e6d - Add remaining extremity policies and monitoring
 
 **Note**: This file is automatically maintained. Do not edit manually.
 
-**Last Updated**: January 31, 2026
+**Last Updated**: February 2, 2026
