@@ -314,9 +314,12 @@ class ZatcaValidator
             $errors[] = 'BR-KSA-DEC-01: Discount cannot exceed invoice subtotal';
         }
 
-        // Amounts must be positive
+        // Amounts must be positive (except credit notes)
         if ((float) $invoice->total < 0) {
-            $errors[] = 'BR-04: Invoice total must not be negative';
+            // ZATCA does not allow negative invoices - must use Credit Note
+            if ($invoice->document_type !== DocumentType::CreditNote) {
+                $errors[] = 'BR-04: Negative amounts require Credit Note (type 381), not negative invoice';
+            }
         }
 
         return $errors;
@@ -352,7 +355,58 @@ class ZatcaValidator
             $warnings[] = 'Invoice date is in the future';
         }
 
+        // Free goods without market value warning
+        foreach ($invoice->lines as $line) {
+            if (isset($line->is_free_item) && $line->is_free_item) {
+                if (empty($line->market_value) || $line->market_value <= 0) {
+                    $warnings[] = "Line '{$line->description}' is free but missing market value - VAT may be incorrect";
+                }
+            }
+        }
+
+        // Buyer identification warning for B2B without VAT
+        if ($invoice->type->value === 'standard' && empty($invoice->buyer_vat_number)) {
+            if (empty($invoice->buyer_id) || empty($invoice->buyer_id_scheme)) {
+                $warnings[] = 'B2B invoice without buyer VAT or alternative ID may be rejected';
+            }
+        }
+
         return $warnings;
+    }
+
+    /**
+     * Validate buyer identification scheme.
+     * Per ZATCA: Non-VAT buyers must have alternative ID.
+     *
+     * Valid schemes: TIN, CRN, MOM, MLS, SAG, NAT, GCC, IQA, PAS, OTH
+     */
+    public function isValidBuyerIdScheme(?string $scheme): bool
+    {
+        if ($scheme === null) {
+            return true; // Optional if buyer has VAT
+        }
+
+        $validSchemes = ['TIN', 'CRN', 'MOM', 'MLS', 'SAG', 'NAT', 'GCC', 'IQA', 'PAS', 'OTH'];
+
+        return in_array($scheme, $validSchemes, true);
+    }
+
+    /**
+     * Validate that credit note total doesn't exceed original invoice.
+     *
+     * @param float $creditNoteTotal Credit note total
+     * @param float $originalInvoiceTotal Original invoice total
+     * @param float $previousCreditNotesTotal Sum of previous credit notes for same invoice
+     * @return bool True if valid
+     */
+    public function validateCreditNoteTotal(
+        float $creditNoteTotal,
+        float $originalInvoiceTotal,
+        float $previousCreditNotesTotal = 0.0
+    ): bool {
+        $maxAllowed = $originalInvoiceTotal - $previousCreditNotesTotal;
+
+        return $creditNoteTotal <= $maxAllowed + 0.01; // Allow 0.01 tolerance for rounding
     }
 
     /**
