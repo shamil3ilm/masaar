@@ -351,7 +351,7 @@ RESPONSE HANDLING:
 
 ### 4.5 Offline Mode
 - Circuit breaker opens after 5 consecutive failures
-- Invoices queued in offline_invoice_queue
+- Invoices queued in offline_queue table
 - Background job retries when API available
 - Max queue size: 10,000 invoices
 
