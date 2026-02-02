@@ -109,9 +109,9 @@ class XmlBuilder
         $this->addElement('cbc:CustomizationID', 'urn:oasis:names:specification:ubl:xpath:Invoice-2.0:sac-mod');
 
         // Profile ID (ZATCA specific)
-        // B2B (standard/01) requires clearance, B2C (simplified/02) requires reporting
-        $profileId = $data->isStandard() ? 'reporting:1.0' : 'reporting:1.0';
-        $this->addElement('cbc:ProfileID', $profileId);
+        // Per ZATCA SDK samples, 'reporting:1.0' is used for all invoice types.
+        // Note: This applies to both B2B (clearance) and B2C (reporting) in Phase 2.
+        $this->addElement('cbc:ProfileID', 'reporting:1.0');
 
         // Invoice ID
         $this->addElement('cbc:ID', $data->invoiceNumber);
@@ -127,6 +127,11 @@ class XmlBuilder
         $typeCode = $this->addElement('cbc:InvoiceTypeCode', $data->invoiceTypeCode);
         $typeCode->setAttribute('name', $data->getInvoiceTypeName());
 
+        // Note (KSA-10: required for credit/debit notes per BR-KSA-17)
+        if ($data->creditDebitReason !== null) {
+            $this->addElement('cbc:Note', $data->creditDebitReason);
+        }
+
         // Document currency
         $this->addElement('cbc:DocumentCurrencyCode', $data->currency);
 
@@ -135,20 +140,40 @@ class XmlBuilder
     }
 
     /**
-     * Add billing reference (for credit/debit notes).
+     * Add billing reference (for credit/debit notes and prepayment links).
+     *
+     * Per ZATCA:
+     * - Credit/debit notes MUST reference the original invoice
+     * - Final invoices MAY reference prepayment/deposit invoices
      */
     private function addBillingReference(InvoiceXmlData $data): void
     {
-        if ($data->billingReferenceId === null) {
-            return;
+        // Add billing reference for credit/debit notes (required)
+        if ($data->billingReferenceId !== null) {
+            $billingRef = $this->dom->createElementNS(self::CAC_NS, 'cac:BillingReference');
+            $invoiceRef = $this->dom->createElementNS(self::CAC_NS, 'cac:InvoiceDocumentReference');
+            $invoiceRef->appendChild($this->dom->createElementNS(self::CBC_NS, 'cbc:ID', $data->billingReferenceId));
+
+            $billingRef->appendChild($invoiceRef);
+            $this->root->appendChild($billingRef);
         }
 
-        $billingRef = $this->dom->createElementNS(self::CAC_NS, 'cac:BillingReference');
-        $invoiceRef = $this->dom->createElementNS(self::CAC_NS, 'cac:InvoiceDocumentReference');
-        $invoiceRef->appendChild($this->dom->createElementNS(self::CBC_NS, 'cbc:ID', $data->billingReferenceId));
+        // Add prepayment invoice references (for final invoices referencing deposits)
+        // This creates audit trail linking final invoice to deposit invoices
+        if ($data->hasPrepaymentReferences()) {
+            foreach ($data->prepaymentInvoiceIds as $prepaymentId) {
+                $billingRef = $this->dom->createElementNS(self::CAC_NS, 'cac:BillingReference');
+                $invoiceRef = $this->dom->createElementNS(self::CAC_NS, 'cac:InvoiceDocumentReference');
+                $invoiceRef->appendChild($this->dom->createElementNS(self::CBC_NS, 'cbc:ID', $prepaymentId));
 
-        $billingRef->appendChild($invoiceRef);
-        $this->root->appendChild($billingRef);
+                // Add document type code to distinguish prepayment references
+                $docTypeCode = $this->dom->createElementNS(self::CBC_NS, 'cbc:DocumentTypeCode', '386');
+                $invoiceRef->appendChild($docTypeCode);
+
+                $billingRef->appendChild($invoiceRef);
+                $this->root->appendChild($billingRef);
+            }
+        }
     }
 
     /**
@@ -176,40 +201,34 @@ class XmlBuilder
         $pih->appendChild($pihAttachment);
         $this->root->appendChild($pih);
 
-        // QR Code placeholder
-        $qr = $this->dom->createElementNS(self::CAC_NS, 'cac:AdditionalDocumentReference');
-        $qr->appendChild($this->dom->createElementNS(self::CBC_NS, 'cbc:ID', 'QR'));
-        $qrAttachment = $this->dom->createElementNS(self::CAC_NS, 'cac:Attachment');
-        $qrBinary = $this->dom->createElementNS(self::CBC_NS, 'cbc:EmbeddedDocumentBinaryObject', '');
-        $qrBinary->setAttribute('mimeCode', 'text/plain');
-        $qrAttachment->appendChild($qrBinary);
-        $qr->appendChild($qrAttachment);
-        $this->root->appendChild($qr);
+        // QR Code - only add if not empty (will be set during signing)
+        // Empty QR codes cause BR-CL-KSA-14 validation error
+        // The setQrCode() method can be used to add QR after invoice generation
     }
 
     /**
      * Add supplier (seller) party.
+     *
+     * Per ZATCA specifications, use CRN as primary PartyIdentification if available,
+     * VAT number goes in PartyTaxScheme/CompanyID.
      */
     private function addSupplierParty(InvoiceXmlData $data): void
     {
         $supplier = $this->dom->createElementNS(self::CAC_NS, 'cac:AccountingSupplierParty');
         $party = $this->dom->createElementNS(self::CAC_NS, 'cac:Party');
 
-        // Party identification (VAT number)
+        // Party identification - use CRN if available, otherwise use VAT
+        // ZATCA samples show single PartyIdentification with CRN
         $partyId = $this->dom->createElementNS(self::CAC_NS, 'cac:PartyIdentification');
-        $idElement = $this->dom->createElementNS(self::CBC_NS, 'cbc:ID', $data->sellerVatNumber);
-        $idElement->setAttribute('schemeID', 'VAT');
+        if ($data->sellerCrNumber !== null) {
+            $idElement = $this->dom->createElementNS(self::CBC_NS, 'cbc:ID', $data->sellerCrNumber);
+            $idElement->setAttribute('schemeID', 'CRN');
+        } else {
+            $idElement = $this->dom->createElementNS(self::CBC_NS, 'cbc:ID', $data->sellerVatNumber);
+            $idElement->setAttribute('schemeID', 'VAT');
+        }
         $partyId->appendChild($idElement);
         $party->appendChild($partyId);
-
-        // Commercial registration (if provided)
-        if ($data->sellerCrNumber !== null) {
-            $crId = $this->dom->createElementNS(self::CAC_NS, 'cac:PartyIdentification');
-            $crElement = $this->dom->createElementNS(self::CBC_NS, 'cbc:ID', $data->sellerCrNumber);
-            $crElement->setAttribute('schemeID', 'CRN');
-            $crId->appendChild($crElement);
-            $party->appendChild($crId);
-        }
 
         // Postal address
         $party->appendChild($this->buildAddress($data->sellerAddress));
@@ -233,17 +252,34 @@ class XmlBuilder
 
     /**
      * Add customer (buyer) party.
+     *
+     * Per ZATCA specification:
+     * - If buyer has VAT: No PartyIdentification, only PartyTaxScheme with CompanyID
+     * - If buyer has NO VAT: PartyIdentification required with other schemeID (TIN, CRN, NAT, etc.)
+     *
+     * Valid schemeIDs for non-VAT buyers:
+     * - TIN: Tax Identification Number
+     * - CRN: Commercial Registration Number
+     * - MOM: Momra License
+     * - MLS: MLSD License
+     * - SAG: Sagia License
+     * - NAT: National ID (Saudis)
+     * - GCC: GCC ID
+     * - IQA: Iqama Number
+     * - PAS: Passport Number
+     * - OTH: Other ID
      */
     private function addCustomerParty(InvoiceXmlData $data): void
     {
         $customer = $this->dom->createElementNS(self::CAC_NS, 'cac:AccountingCustomerParty');
         $party = $this->dom->createElementNS(self::CAC_NS, 'cac:Party');
 
-        // Party identification (VAT number for B2B)
-        if ($data->buyerVatNumber !== null) {
+        // Party identification - required when buyer is NOT VAT registered
+        // Per ZATCA: buyers without VAT must have alternative ID
+        if (! $data->buyerHasVat() && $data->buyerHasAlternativeId()) {
             $partyId = $this->dom->createElementNS(self::CAC_NS, 'cac:PartyIdentification');
-            $idElement = $this->dom->createElementNS(self::CBC_NS, 'cbc:ID', $data->buyerVatNumber);
-            $idElement->setAttribute('schemeID', 'VAT');
+            $idElement = $this->dom->createElementNS(self::CBC_NS, 'cbc:ID', $data->buyerId);
+            $idElement->setAttribute('schemeID', $data->buyerIdScheme);
             $partyId->appendChild($idElement);
             $party->appendChild($partyId);
         }
@@ -253,8 +289,8 @@ class XmlBuilder
             $party->appendChild($this->buildAddress($data->buyerAddress));
         }
 
-        // Party tax scheme (for B2B)
-        if ($data->buyerVatNumber !== null) {
+        // Party tax scheme (for B2B with VAT)
+        if ($data->buyerHasVat()) {
             $taxScheme = $this->dom->createElementNS(self::CAC_NS, 'cac:PartyTaxScheme');
             $taxScheme->appendChild($this->dom->createElementNS(self::CBC_NS, 'cbc:CompanyID', $data->buyerVatNumber));
             $taxSchemeInner = $this->dom->createElementNS(self::CAC_NS, 'cac:TaxScheme');
@@ -433,8 +469,8 @@ class XmlBuilder
                 ];
             }
 
-            // Calculate line taxable amount (lineTotal - taxAmount)
-            $lineNet = ($line['lineTotal'] ?? 0) - ($line['taxAmount'] ?? 0);
+            // Calculate line taxable amount (lineTotal is already net: quantity × unitPrice)
+            $lineNet = (float) ($line['lineTotal'] ?? ($line['quantity'] * $line['unitPrice']));
             $subtotals[$key]['taxableAmount'] += $lineNet;
             $subtotals[$key]['taxAmount'] += $line['taxAmount'] ?? 0;
         }
@@ -543,6 +579,12 @@ class XmlBuilder
 
     /**
      * Add invoice lines.
+     *
+     * Handles:
+     * - Standard priced items
+     * - Tax-inclusive pricing (converted to net)
+     * - Free goods/samples with market value for VAT (deemed supply)
+     * - Line-level discounts
      */
     private function addInvoiceLines(InvoiceXmlData $data): void
     {
@@ -557,17 +599,52 @@ class XmlBuilder
             $quantity->setAttribute('unitCode', $line['unitCode'] ?? 'PCE');
             $invoiceLine->appendChild($quantity);
 
-            // Line extension amount (net of discount)
-            $lineNet = ($line['lineTotal'] ?? 0) - ($line['taxAmount'] ?? 0);
+            // Calculate net amounts (handle tax-inclusive pricing and free goods)
+            $taxRate = (float) ($line['taxRate'] ?? 15.0);
             $lineDiscount = (float) ($line['discount'] ?? 0);
 
+            // Determine effective price:
+            // - For free goods: Use market value (deemed supply for VAT)
+            // - For regular items: Use unit price
+            $isFreeItem = isset($line['isFreeItem']) && $line['isFreeItem'] === true;
+            $unitPrice = $isFreeItem
+                ? (float) ($line['marketValue'] ?? 0.0)
+                : (float) $line['unitPrice'];
+
+            if ($data->isTaxInclusive && ! $isFreeItem) {
+                // Convert tax-inclusive prices to tax-exclusive for ZATCA XML
+                $netUnitPrice = InvoiceXmlData::calculateNetFromGross($unitPrice, $taxRate);
+                $lineNet = round($netUnitPrice * $line['quantity'], 2) - $lineDiscount;
+                $lineTaxAmount = InvoiceXmlData::calculateTaxFromNet($lineNet, $taxRate);
+            } else {
+                // Already tax-exclusive (or free item with market value)
+                $netUnitPrice = $unitPrice;
+                $lineNet = (float) ($line['lineTotal'] ?? ($line['quantity'] * $unitPrice)) - $lineDiscount;
+                $lineTaxAmount = (float) ($line['taxAmount'] ?? InvoiceXmlData::calculateTaxFromNet($lineNet, $taxRate));
+            }
+
+            // For free items: lineNet = 0 but VAT still calculated on market value
+            // The invoice XML shows 0 amount but includes VAT on deemed supply
+            $displayLineNet = $isFreeItem ? 0.0 : $lineNet;
+
+            // For free items: Show 0 as line amount but include VAT note
             $lineAmount = $this->dom->createElementNS(
                 self::CBC_NS,
                 'cbc:LineExtensionAmount',
-                $this->formatAmount($lineNet)
+                $this->formatAmount($displayLineNet)
             );
             $lineAmount->setAttribute('currencyID', $data->currency);
             $invoiceLine->appendChild($lineAmount);
+
+            // Add note for free items indicating deemed supply
+            if ($isFreeItem && $unitPrice > 0) {
+                $freeNote = $this->dom->createElementNS(
+                    self::CBC_NS,
+                    'cbc:Note',
+                    'Free item - VAT on deemed supply (market value: ' . $this->formatAmount($unitPrice) . ' ' . $data->currency . ')'
+                );
+                $invoiceLine->appendChild($freeNote);
+            }
 
             // Line-level AllowanceCharge (discount) if present
             if ($lineDiscount > 0) {
@@ -580,11 +657,11 @@ class XmlBuilder
                 ));
             }
 
-            // Tax total for this line
+            // Tax total for this line (use calculated tax amount for tax-inclusive support)
             $lineTax = $this->dom->createElementNS(self::CAC_NS, 'cac:TaxTotal');
-            $lineTaxAmount = $this->dom->createElementNS(self::CBC_NS, 'cbc:TaxAmount', $this->formatAmount($line['taxAmount'] ?? 0));
-            $lineTaxAmount->setAttribute('currencyID', $data->currency);
-            $lineTax->appendChild($lineTaxAmount);
+            $lineTaxAmountEl = $this->dom->createElementNS(self::CBC_NS, 'cbc:TaxAmount', $this->formatAmount($lineTaxAmount));
+            $lineTaxAmountEl->setAttribute('currencyID', $data->currency);
+            $lineTax->appendChild($lineTaxAmountEl);
 
             // Rounding amount (set to 0)
             $rounding = $this->dom->createElementNS(self::CBC_NS, 'cbc:RoundingAmount', '0.00');
@@ -621,9 +698,9 @@ class XmlBuilder
 
             $invoiceLine->appendChild($item);
 
-            // Price (gross price before any line discount)
+            // Price (net unit price - ZATCA requires tax-exclusive price in XML)
             $price = $this->dom->createElementNS(self::CAC_NS, 'cac:Price');
-            $priceAmount = $this->dom->createElementNS(self::CBC_NS, 'cbc:PriceAmount', $this->formatAmount($line['unitPrice']));
+            $priceAmount = $this->dom->createElementNS(self::CBC_NS, 'cbc:PriceAmount', $this->formatAmount($netUnitPrice));
             $priceAmount->setAttribute('currencyID', $data->currency);
             $price->appendChild($priceAmount);
 
@@ -780,7 +857,7 @@ class XmlBuilder
     }
 
     /**
-     * Update QR code in XML.
+     * Set QR code in XML (creates element if not exists).
      */
     public function setQrCode(string $qrCode): void
     {
@@ -792,6 +869,42 @@ class XmlBuilder
 
         if ($nodes->length > 0) {
             $nodes->item(0)->nodeValue = $qrCode;
+        } else {
+            // Create QR code element if it doesn't exist
+            $this->addQrCodeElement($qrCode);
+        }
+    }
+
+    /**
+     * Add QR code AdditionalDocumentReference element.
+     */
+    private function addQrCodeElement(string $qrCode): void
+    {
+        // Find the PIH element to insert QR after it
+        $xpath = new \DOMXPath($this->dom);
+        $xpath->registerNamespace('cac', self::CAC_NS);
+        $xpath->registerNamespace('cbc', self::CBC_NS);
+
+        $pihNodes = $xpath->query("//cac:AdditionalDocumentReference[cbc:ID='PIH']");
+
+        $qr = $this->dom->createElementNS(self::CAC_NS, 'cac:AdditionalDocumentReference');
+        $qr->appendChild($this->dom->createElementNS(self::CBC_NS, 'cbc:ID', 'QR'));
+        $qrAttachment = $this->dom->createElementNS(self::CAC_NS, 'cac:Attachment');
+        $qrBinary = $this->dom->createElementNS(self::CBC_NS, 'cbc:EmbeddedDocumentBinaryObject', $qrCode);
+        $qrBinary->setAttribute('mimeCode', 'text/plain');
+        $qrAttachment->appendChild($qrBinary);
+        $qr->appendChild($qrAttachment);
+
+        if ($pihNodes->length > 0) {
+            // Insert after PIH
+            $pihNode = $pihNodes->item(0);
+            if ($pihNode->nextSibling) {
+                $this->root->insertBefore($qr, $pihNode->nextSibling);
+            } else {
+                $this->root->appendChild($qr);
+            }
+        } else {
+            $this->root->appendChild($qr);
         }
     }
 }

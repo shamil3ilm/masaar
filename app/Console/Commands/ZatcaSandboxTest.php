@@ -374,7 +374,6 @@ EOT;
         $this->newLine();
 
         $this->warn('⚠️  This is a simplified CSR without all ZATCA extensions.');
-        $this->warn('   For production, use the ZATCA SDK: fatoora -generateCSR');
         $this->newLine();
 
         // Show CSR content
@@ -387,8 +386,24 @@ EOT;
         $this->line($csrBase64);
         $this->newLine();
 
-        $this->info('▶️  NEXT STEP:');
-        $this->line('  Try: php artisan zatca:sandbox-test --step=compliance-csid --otp=123456');
+        $this->info('📋 To get a ZATCA-compliant CSR, use one of these methods:');
+        $this->newLine();
+
+        $this->comment('Option 1: ZATCA Sandbox Portal (Recommended - No installation required)');
+        $this->line('  1. Visit: https://sandbox.zatca.gov.sa/');
+        $this->line('  2. Click "Onboarding and CSR Generation"');
+        $this->line('  3. Fill in company details and generate CSR');
+        $this->line('  4. Copy the CSR and place in: storage/app/zatca/csr.pem');
+        $this->newLine();
+
+        $this->comment('Option 2: ZATCA SDK (fatoora tool)');
+        $this->line('  1. Download SDK from ZATCA portal');
+        $this->line('  2. Run: fatoora -generateCSR');
+        $this->line('  3. Copy generated CSR to: storage/app/zatca/csr.pem');
+        $this->newLine();
+
+        $this->info('▶️  After obtaining proper CSR:');
+        $this->line('  php artisan zatca:sandbox-test --step=compliance-csid --otp=123456');
 
         return Command::SUCCESS;
     }
@@ -589,37 +604,45 @@ EOT;
 
     private function getOpenSslConfig(array $config): string
     {
+        // ZATCA CSR requires specific OIDs and format
+        // Note: Full ZATCA extensions require the official SDK or portal
         $configContent = <<<EOT
+# ZATCA CSR Configuration
+oid_section = zatca_oids
+
+[zatca_oids]
+certificateTemplateName = 1.3.6.1.4.1.311.20.2
+
 [req]
 default_bits = 2048
 distinguished_name = req_distinguished_name
 req_extensions = v3_req
 prompt = no
+utf8 = yes
+string_mask = utf8only
 
 [req_distinguished_name]
 CN = {$config['commonName']}
-serialNumber = {$config['serialNumber']}
-UID = {$config['organizationIdentifier']}
-OU = {$config['organizationUnitName']}
 O = {$config['organizationName']}
+OU = {$config['organizationUnitName']}
 C = {$config['countryName']}
 
 [v3_req]
-basicConstraints = CA:FALSE
-keyUsage = digitalSignature, nonRepudiation
+basicConstraints = critical, CA:FALSE
+keyUsage = critical, digitalSignature, nonRepudiation, keyEncipherment
+extendedKeyUsage = serverAuth, clientAuth
 subjectAltName = @alt_names
-1.3.6.1.4.1.311.20.2 = ASN1:UTF8String:ZATCA-Code-Signing
-2.5.29.17 = ASN1:UTF8String:1-{$config['invoiceType']}|2-{$config['location']}|3-{$config['industry']}
+certificateTemplateName = ASN1:PRINTABLESTRING:ZATCA-Code-Signing
 
 [alt_names]
-dirName = dir_sect
+dirName.1 = dir_sect
 
 [dir_sect]
-SN = {$config['serialNumber']}
-UID = {$config['organizationIdentifier']}
-title = {$config['invoiceType']}
-registeredAddress = {$config['location']}
-businessCategory = {$config['industry']}
+2.5.4.4 = UTF8:{$config['commonName']}
+2.5.4.97 = UTF8:{$config['organizationIdentifier']}
+2.5.4.12 = UTF8:{$config['invoiceType']}
+2.5.4.26 = UTF8:{$config['location']}
+2.5.4.15 = UTF8:{$config['industry']}
 EOT;
 
         $configPath = storage_path('app/zatca/openssl.cnf');

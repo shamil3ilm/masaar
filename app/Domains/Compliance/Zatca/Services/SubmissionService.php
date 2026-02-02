@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Zatca\Services;
 
 use App\Domains\Compliance\Zatca\Client\ZatcaClient;
+use App\Domains\Compliance\Zatca\DTOs\ZatcaResponse;
 use App\Domains\Compliance\Zatca\Enums\ErrorCode;
 use App\Domains\Compliance\Zatca\Exceptions\ZatcaException;
 use App\Domains\Compliance\Zatca\Jobs\ProcessZatcaSubmission;
 use App\Domains\Compliance\Zatca\Models\InvoiceSubmission;
 use App\Domains\Compliance\Zatca\Models\SubmissionIdempotency;
 use App\Domains\Invoice\Models\Invoice;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -47,6 +49,8 @@ class SubmissionService
         private readonly CertificateService $certificateService,
         private readonly XadesSigner $signer,
         private readonly ?TimestampValidator $timestampValidator = null,
+        private readonly ?DuplicateInvoiceDetector $duplicateDetector = null,
+        private readonly ?VatPeriodTracker $vatPeriodTracker = null,
     ) {}
 
     /**
@@ -165,6 +169,46 @@ class SubmissionService
 
         // 7. Validate timestamp (±30 seconds drift enforcement)
         $this->validateInvoiceTimestamp($invoice);
+
+        // 8. Validate VAT period for credit/debit notes
+        $this->validateVatPeriod($invoice);
+    }
+
+    /**
+     * Validate VAT period for credit/debit notes.
+     *
+     * Per ZATCA: Credit/debit notes issued after the original invoice's
+     * VAT period has closed must be reported in the current period.
+     */
+    private function validateVatPeriod(Invoice $invoice): void
+    {
+        if (!$this->vatPeriodTracker) {
+            return; // Skip if tracker not injected
+        }
+
+        // Only applies to credit/debit notes
+        $documentType = $invoice->document_type;
+        if (!$documentType?->requiresBillingReference()) {
+            return;
+        }
+
+        $validation = $this->vatPeriodTracker->validateCreditNotePeriod($invoice);
+
+        if (!$validation['valid']) {
+            throw new ZatcaException(
+                $validation['warning'] ?? 'VAT period validation failed',
+                ErrorCode::VAL_INVALID_FORMAT
+            );
+        }
+
+        // Log cross-period warnings (non-blocking)
+        if ($validation['warning']) {
+            Log::warning('Cross-period VAT adjustment', [
+                'invoice_id' => $invoice->id,
+                'warning' => $validation['warning'],
+                'suggested_period' => $validation['suggested_period'],
+            ]);
+        }
     }
 
     /**
@@ -253,12 +297,16 @@ class SubmissionService
 
         // Check expiry warning (30 days)
         $expiryDate = $this->certificateService->getExpiryDate($certificate);
-        if ($expiryDate && $expiryDate->diffInDays(now()) <= 30) {
-            Log::warning('ZATCA certificate expiring soon', [
-                'organization_id' => $organization->id,
-                'expires_at' => $expiryDate->toIso8601String(),
-                'days_remaining' => $expiryDate->diffInDays(now()),
-            ]);
+        if ($expiryDate) {
+            $expiryCarbon = Carbon::instance($expiryDate);
+            $daysRemaining = $expiryCarbon->diffInDays(now());
+            if ($daysRemaining <= 30) {
+                Log::warning('ZATCA certificate expiring soon', [
+                    'organization_id' => $organization->id,
+                    'expires_at' => $expiryCarbon->toIso8601String(),
+                    'days_remaining' => $daysRemaining,
+                ]);
+            }
         }
 
         // Check revocation (non-blocking if check fails)
@@ -332,6 +380,7 @@ class SubmissionService
      */
     private function checkDuplicateSubmission(Invoice $invoice): void
     {
+        // Check if this exact invoice ID has already been submitted
         $existingSubmission = InvoiceSubmission::where('invoice_id', $invoice->id)
             ->whereIn('state', ['cleared', 'reported'])
             ->first();
@@ -342,6 +391,31 @@ class SubmissionService
                 : ErrorCode::ZATCA_INVOICE_ALREADY_REPORTED;
 
             throw new ZatcaException($errorCode->getMessage(), $errorCode);
+        }
+
+        // Check for duplicate invoice numbers, UUIDs, or content hashes
+        if ($this->duplicateDetector) {
+            $duplicateCheck = $this->duplicateDetector->check(
+                organizationId: $invoice->organization_id,
+                invoiceNumber: $invoice->invoice_number,
+                uuid: $invoice->uuid ?? $invoice->id,
+                hash: $invoice->hash,
+                fuzzyMatchData: [
+                    'buyer_vat' => $invoice->buyer_vat_number,
+                    'buyer_name' => $invoice->buyer_name,
+                    'total' => (float) $invoice->total,
+                    'issue_date' => $invoice->issue_date?->format('Y-m-d'),
+                ]
+            );
+
+            if ($duplicateCheck['is_duplicate']) {
+                $firstDuplicate = $duplicateCheck['duplicates'][0] ?? null;
+                throw new ZatcaException(
+                    'Duplicate invoice detected: ' . ($firstDuplicate['message'] ?? 'Unknown duplicate'),
+                    ErrorCode::VAL_INVALID_FORMAT,
+                    ['duplicates' => $duplicateCheck['duplicates']]
+                );
+            }
         }
     }
 
@@ -419,12 +493,17 @@ class SubmissionService
         $this->transitionState($submission, 'submitted', 'api_call');
 
         try {
-            // Determine submission type
-            $result = $invoice->isB2B()
-                ? $this->zatcaClient->clearInvoice($invoice)
-                : $this->zatcaClient->reportInvoice($invoice);
+            // Extract required data from invoice
+            $invoiceXml = $invoice->signed_xml;
+            $invoiceHash = $invoice->hash;
+            $invoiceUuid = $invoice->uuid;
 
-            return $this->handleZatcaResponse($submission, $result);
+            // Determine submission type and call ZATCA API
+            $response = $invoice->isB2B()
+                ? $this->zatcaClient->clearInvoice($invoiceXml, $invoiceHash, $invoiceUuid)
+                : $this->zatcaClient->reportInvoice($invoiceXml, $invoiceHash, $invoiceUuid);
+
+            return $this->handleZatcaResponse($submission, $response);
         } catch (\Exception $e) {
             throw $e;
         }
@@ -464,12 +543,10 @@ class SubmissionService
     /**
      * Handle ZATCA API response.
      */
-    private function handleZatcaResponse(InvoiceSubmission $submission, array $response): array
+    private function handleZatcaResponse(InvoiceSubmission $submission, ZatcaResponse $response): array
     {
-        $success = $response['clearanceStatus'] === 'CLEARED'
-            || $response['reportingStatus'] === 'REPORTED';
-
-        $hasWarnings = !empty($response['validationResults']['warnings'] ?? []);
+        $success = $response->success;
+        $hasWarnings = $response->hasWarnings();
 
         // Determine final state
         $newState = match (true) {
@@ -479,22 +556,36 @@ class SubmissionService
             default => 'rejected',
         };
 
+        // Extract warnings and errors from validation results
+        $warnings = $response->validationResults['warnings'] ?? $response->warningMessages;
+        $errors = $response->validationResults['errors'] ?? $response->errorMessages;
+
         // Update submission
         $submission->update([
             'state' => $newState,
             'previous_state' => $submission->state,
             'state_changed_at' => now(),
-            'zatca_uuid' => $response['invoiceUuid'] ?? null,
-            'zatca_invoice_hash' => $response['invoiceHash'] ?? null,
-            'clearance_status' => $response['clearanceStatus'] ?? null,
-            'reporting_status' => $response['reportingStatus'] ?? null,
-            'zatca_warnings' => $response['validationResults']['warnings'] ?? null,
-            'zatca_errors' => $response['validationResults']['errors'] ?? null,
+            'zatca_uuid' => $response->validationResults['invoiceUuid'] ?? null,
+            'zatca_invoice_hash' => $response->validationResults['invoiceHash'] ?? null,
+            'clearance_status' => $response->clearanceStatus,
+            'reporting_status' => $response->reportingStatus,
+            'zatca_warnings' => !empty($warnings) ? $warnings : null,
+            'zatca_errors' => !empty($errors) ? $errors : null,
             'completed_at' => now(),
         ]);
 
+        // Convert response to array for idempotency storage
+        $responseArray = [
+            'clearanceStatus' => $response->clearanceStatus,
+            'reportingStatus' => $response->reportingStatus,
+            'validationStatus' => $response->validationStatus,
+            'validationResults' => $response->validationResults,
+            'warningMessages' => $response->warningMessages,
+            'errorMessages' => $response->errorMessages,
+        ];
+
         // Update idempotency record
-        $this->updateIdempotency($submission, $success, $response);
+        $this->updateIdempotency($submission, $success, $responseArray);
 
         // Log state transition
         $this->logStateTransition($submission, 'submitted', $newState, 'zatca');
