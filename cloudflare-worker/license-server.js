@@ -48,6 +48,12 @@ export default {
       case '/list':
         return handleList(request, env, corsHeaders);
 
+      case '/usage':
+        return handleUsageReport(request, env, corsHeaders);
+
+      case '/usage/stats':
+        return handleUsageStats(request, env, corsHeaders);
+
       case '/health':
         return jsonResponse({ status: 'ok', timestamp: new Date().toISOString() }, corsHeaders);
 
@@ -291,6 +297,166 @@ function getDefaultFeatures(type) {
       };
     default:
       return {};
+  }
+}
+
+/**
+ * Handle usage report from partner deployments
+ * Partners report their usage metrics periodically
+ */
+async function handleUsageReport(request, env, corsHeaders) {
+  try {
+    const body = await request.json();
+    const { license_key, metrics } = body;
+
+    if (!license_key || !metrics) {
+      return jsonResponse({ error: 'Missing license_key or metrics' }, corsHeaders, 400);
+    }
+
+    // Extract partner from license key
+    const partner = license_key.split('-')[0];
+    const today = new Date().toISOString().split('T')[0];
+    const usageKey = `usage:${partner}:${today}`;
+
+    // Get existing usage for today or create new
+    let dailyUsage = await env.LICENSES.get(usageKey, 'json') || {
+      partner,
+      date: today,
+      invoices_created: 0,
+      invoices_submitted: 0,
+      invoices_cleared: 0,
+      invoices_reported: 0,
+      organizations_count: 0,
+      api_calls: 0,
+      reports: [],
+    };
+
+    // Accumulate metrics
+    dailyUsage.invoices_created += metrics.invoices_created || 0;
+    dailyUsage.invoices_submitted += metrics.invoices_submitted || 0;
+    dailyUsage.invoices_cleared += metrics.invoices_cleared || 0;
+    dailyUsage.invoices_reported += metrics.invoices_reported || 0;
+    dailyUsage.organizations_count = metrics.organizations_count || dailyUsage.organizations_count;
+    dailyUsage.api_calls += metrics.api_calls || 0;
+    dailyUsage.last_report = new Date().toISOString();
+    dailyUsage.reports.push({
+      timestamp: new Date().toISOString(),
+      metrics,
+    });
+
+    // Keep only last 24 reports per day
+    if (dailyUsage.reports.length > 24) {
+      dailyUsage.reports = dailyUsage.reports.slice(-24);
+    }
+
+    // Store with 90-day expiration
+    await env.LICENSES.put(usageKey, JSON.stringify(dailyUsage), {
+      expirationTtl: 90 * 24 * 60 * 60, // 90 days
+    });
+
+    // Also update monthly aggregate
+    const month = today.substring(0, 7); // YYYY-MM
+    const monthlyKey = `usage:${partner}:${month}`;
+    let monthlyUsage = await env.LICENSES.get(monthlyKey, 'json') || {
+      partner,
+      month,
+      total_invoices_created: 0,
+      total_invoices_submitted: 0,
+      total_invoices_cleared: 0,
+      total_invoices_reported: 0,
+      peak_organizations: 0,
+      total_api_calls: 0,
+      days_active: 0,
+      first_report: new Date().toISOString(),
+    };
+
+    monthlyUsage.total_invoices_created += metrics.invoices_created || 0;
+    monthlyUsage.total_invoices_submitted += metrics.invoices_submitted || 0;
+    monthlyUsage.total_invoices_cleared += metrics.invoices_cleared || 0;
+    monthlyUsage.total_invoices_reported += metrics.invoices_reported || 0;
+    monthlyUsage.peak_organizations = Math.max(
+      monthlyUsage.peak_organizations,
+      metrics.organizations_count || 0
+    );
+    monthlyUsage.total_api_calls += metrics.api_calls || 0;
+    monthlyUsage.last_report = new Date().toISOString();
+
+    await env.LICENSES.put(monthlyKey, JSON.stringify(monthlyUsage), {
+      expirationTtl: 365 * 24 * 60 * 60, // 1 year
+    });
+
+    console.log(JSON.stringify({
+      event: 'usage_report',
+      partner,
+      metrics,
+      timestamp: new Date().toISOString(),
+    }));
+
+    return jsonResponse({
+      success: true,
+      message: 'Usage recorded',
+    }, corsHeaders);
+
+  } catch (error) {
+    console.error('Usage report error:', error);
+    return jsonResponse({ error: 'Failed to record usage' }, corsHeaders, 500);
+  }
+}
+
+/**
+ * Get usage statistics (admin only)
+ */
+async function handleUsageStats(request, env, corsHeaders) {
+  try {
+    const url = new URL(request.url);
+    const adminSecret = url.searchParams.get('admin_secret');
+    const partner = url.searchParams.get('partner');
+    const period = url.searchParams.get('period') || 'month'; // 'day', 'month'
+
+    if (adminSecret !== env.ADMIN_SECRET) {
+      return jsonResponse({ error: 'Unauthorized' }, corsHeaders, 401);
+    }
+
+    if (!partner) {
+      // Return all partners' current month stats
+      const list = await env.LICENSES.list({ prefix: 'usage:' });
+      const stats = [];
+      const currentMonth = new Date().toISOString().substring(0, 7);
+
+      for (const key of list.keys) {
+        if (key.name.includes(`:${currentMonth}`)) {
+          const data = await env.LICENSES.get(key.name, 'json');
+          if (data) {
+            stats.push(data);
+          }
+        }
+      }
+
+      return jsonResponse({
+        period: currentMonth,
+        partners: stats,
+      }, corsHeaders);
+    }
+
+    // Get specific partner stats
+    const today = new Date().toISOString().split('T')[0];
+    const currentMonth = today.substring(0, 7);
+
+    const dailyKey = `usage:${partner}:${today}`;
+    const monthlyKey = `usage:${partner}:${currentMonth}`;
+
+    const dailyUsage = await env.LICENSES.get(dailyKey, 'json');
+    const monthlyUsage = await env.LICENSES.get(monthlyKey, 'json');
+
+    return jsonResponse({
+      partner,
+      today: dailyUsage || { message: 'No data for today' },
+      month: monthlyUsage || { message: 'No data for this month' },
+    }, corsHeaders);
+
+  } catch (error) {
+    console.error('Usage stats error:', error);
+    return jsonResponse({ error: 'Failed to retrieve stats' }, corsHeaders, 500);
   }
 }
 
