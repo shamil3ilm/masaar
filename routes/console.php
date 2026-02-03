@@ -53,6 +53,14 @@ Schedule::command('license:check-expiration')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/license-expiration.log'));
 
+// Report usage metrics to license server - runs hourly
+Schedule::command('license:report-usage')
+    ->hourly()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->when(fn () => config('platform-license.enabled', false))
+    ->appendOutputTo(storage_path('logs/license-usage.log'));
+
 /*
 |--------------------------------------------------------------------------
 | ZATCA Offline Queue Scheduled Tasks

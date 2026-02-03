@@ -43,6 +43,8 @@ https://raspy-wood-ef0d.shamil3ilm.workers.dev
 | `/register` | POST | ADMIN_SECRET | Register new license |
 | `/revoke` | POST | ADMIN_SECRET | Revoke a license |
 | `/list` | GET | ADMIN_SECRET | List all licenses |
+| `/usage` | POST | None | Report usage metrics |
+| `/usage/stats` | GET | ADMIN_SECRET | Get usage statistics |
 
 ### Environment Variables
 
@@ -89,6 +91,60 @@ php artisan license:generate ACME --type=PROD --expires=2027-12-31
 ```powershell
 php artisan license:status
 php artisan license:status --clear-cache
+```
+
+### Report Usage Metrics
+```powershell
+# Show current metrics without reporting
+php artisan license:report-usage --show
+
+# Report metrics to license server
+php artisan license:report-usage
+```
+
+## Usage Tracking
+
+Partners automatically report usage metrics hourly (via scheduler). This enables:
+- Usage-based billing
+- Monitoring partner activity
+- Enforcing license limits
+
+### Tracked Metrics
+
+| Metric | Description |
+|--------|-------------|
+| `invoices_created` | New invoices since last report |
+| `invoices_submitted` | Invoices submitted to ZATCA |
+| `invoices_cleared` | B2B invoices cleared |
+| `invoices_reported` | B2C invoices reported |
+| `organizations_count` | Total active organizations |
+| `api_calls` | API requests made |
+
+### View Partner Usage (Admin)
+
+```powershell
+# All partners this month
+Invoke-RestMethod -Uri "https://raspy-wood-ef0d.shamil3ilm.workers.dev/usage/stats?admin_secret=YOUR_ADMIN_SECRET"
+
+# Specific partner
+Invoke-RestMethod -Uri "https://raspy-wood-ef0d.shamil3ilm.workers.dev/usage/stats?admin_secret=YOUR_ADMIN_SECRET&partner=TAXFLY"
+```
+
+### Response Example
+```json
+{
+  "partner": "TAXFLY",
+  "month": {
+    "partner": "TAXFLY",
+    "month": "2026-02",
+    "total_invoices_created": 1500,
+    "total_invoices_submitted": 1450,
+    "total_invoices_cleared": 1000,
+    "total_invoices_reported": 450,
+    "peak_organizations": 25,
+    "total_api_calls": 50000
+  }
+}
 ```
 
 ## API Operations

@@ -100,6 +100,32 @@ curl -X POST https://your-worker.workers.dev/revoke \
 curl "https://your-worker.workers.dev/list?admin_secret=your-admin-secret"
 ```
 
+### Report Usage (From Partner)
+```bash
+curl -X POST https://your-worker.workers.dev/usage \
+  -H "Content-Type: application/json" \
+  -d '{
+    "license_key": "TAXFLY-PROD-20270203-abc123",
+    "metrics": {
+      "invoices_created": 150,
+      "invoices_submitted": 145,
+      "invoices_cleared": 100,
+      "invoices_reported": 45,
+      "organizations_count": 25,
+      "api_calls": 5000
+    }
+  }'
+```
+
+### Get Usage Stats (Admin)
+```bash
+# All partners this month
+curl "https://your-worker.workers.dev/usage/stats?admin_secret=your-admin-secret"
+
+# Specific partner
+curl "https://your-worker.workers.dev/usage/stats?admin_secret=your-admin-secret&partner=TAXFLY"
+```
+
 ### Health Check
 ```bash
 curl https://your-worker.workers.dev/health

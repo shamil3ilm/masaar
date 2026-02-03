@@ -118,6 +118,12 @@ class PlatformLicenseService
                     ];
                 }
 
+                // If server says to fall back to offline validation, do so
+                if ($data['fallback_to_offline'] ?? false) {
+                    Log::info('License server suggests offline validation fallback');
+                    return null; // Will trigger offline validation
+                }
+
                 return $this->invalidResult($data['message'] ?? 'License validation failed');
             }
         } catch (\Exception $e) {
