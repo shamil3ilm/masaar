@@ -67,7 +67,8 @@ This document maintains a record of all commits to the CompliPay project for aud
 | 59 | `fc651bb` | 2026-02-03 | Add phone-home license validation system with Cloudflare Worker |
 | 60 | `feaa8bd` | 2026-02-03 | Add usage reporting and fix license validation fallback |
 | 61 | `c3ca49d` | 2026-02-03 | Fix ZATCA compliance issues and code quality problems |
-| 62 | `pending` | 2026-02-03 | Add ZATCA directory compliance: onboarding validation and certificate checks |
+| 62 | `3c382c9` | 2026-02-03 | Add ZATCA directory compliance: onboarding validation and certificate checks |
+| 63 | `pending` | 2026-02-03 | Add 24-hour B2C reporting deadline enforcement per ZATCA requirements |
 
 ## Detailed Commit Descriptions
 
@@ -431,6 +432,11 @@ This document maintains a record of all commits to the CompliPay project for aud
   - Sync VAT validation across ZatcaValidator and Organization model
   - Add certificate validation and revocation check before submission
   - Add new exception types: notOnboarded, missingCredentials, invalidCredentials
+- **B2C Reporting Deadline Enforcement** (Commit 63):
+  - Add `validateReportingDeadline()` method to enforce 24-hour ZATCA requirement
+  - Configurable via `zatca.reporting.deadline_hours` and `zatca.reporting.enforce_deadline`
+  - Log warnings when invoices approach 80% of deadline
+  - Clear error messages with age and deadline details
 
 ## Full Commit Hashes
 
@@ -501,7 +507,7 @@ feaa8bd - Add usage reporting and fix license validation fallback
 
 ## Statistics
 
-- **Total Commits**: 62
+- **Total Commits**: 63
 - **Development Period**: January 30, 2026 - February 3, 2026
 - **Main Branch**: `main`
 - **Contributors**: Development Team
