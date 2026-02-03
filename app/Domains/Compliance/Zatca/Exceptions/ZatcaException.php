@@ -189,4 +189,46 @@ class ZatcaException extends Exception
             $context
         );
     }
+
+    /**
+     * Create a not onboarded exception.
+     *
+     * Used when organization hasn't completed ZATCA onboarding.
+     */
+    public static function notOnboarded(string $message, array $context = []): self
+    {
+        return new self(
+            $message,
+            ErrorCode::CERT_NOT_FOUND,
+            $context
+        );
+    }
+
+    /**
+     * Create a missing credentials exception.
+     *
+     * Used when PCSID credentials file doesn't exist.
+     */
+    public static function missingCredentials(string $message, array $context = []): self
+    {
+        return new self(
+            $message,
+            ErrorCode::CERT_NOT_FOUND,
+            $context
+        );
+    }
+
+    /**
+     * Create an invalid credentials exception.
+     *
+     * Used when PCSID credentials are corrupted or incomplete.
+     */
+    public static function invalidCredentials(string $message, array $context = []): self
+    {
+        return new self(
+            $message,
+            ErrorCode::CERT_INVALID,
+            $context
+        );
+    }
 }
