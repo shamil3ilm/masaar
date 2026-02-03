@@ -3,6 +3,8 @@
 use App\Http\Controllers\Api\AdminDashboardController;
 use App\Http\Controllers\Api\ApiKeyController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BranchController;
+use App\Http\Controllers\Api\BranchOnboardingController;
 use App\Http\Controllers\Api\ComplianceController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\InvoiceController;
@@ -108,6 +110,25 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
     // Organizations
     Route::apiResource('organizations', OrganizationController::class)->except(['destroy']);
     Route::post('/organizations/{id}/switch', [OrganizationController::class, 'switch']);
+
+    // Branches (EGS Units)
+    Route::prefix('organizations/branches')->group(function () {
+        Route::get('/', [BranchController::class, 'index']);
+        Route::post('/', [BranchController::class, 'store']);
+        Route::get('/{branch}', [BranchController::class, 'show']);
+        Route::put('/{branch}', [BranchController::class, 'update']);
+        Route::delete('/{branch}', [BranchController::class, 'destroy']);
+        Route::post('/{branch}/set-default', [BranchController::class, 'setDefault']);
+        Route::post('/{branch}/suspend', [BranchController::class, 'suspend']);
+        Route::post('/{branch}/reactivate', [BranchController::class, 'reactivate']);
+        Route::get('/{branch}/onboarding-status', [BranchController::class, 'onboardingStatus']);
+
+        // Branch ZATCA Onboarding
+        Route::post('/{branch}/onboarding/ccsid', [BranchOnboardingController::class, 'requestCcsid']);
+        Route::post('/{branch}/onboarding/compliance-check', [BranchOnboardingController::class, 'runComplianceCheck']);
+        Route::post('/{branch}/onboarding/pcsid', [BranchOnboardingController::class, 'requestPcsid']);
+        Route::post('/{branch}/onboarding/reset', [BranchOnboardingController::class, 'resetOnboarding']);
+    });
 
     // Webhooks management
     Route::get('/webhooks/events', [WebhookController::class, 'events']);

@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Domains\Organization\Models;
 
 use App\Domains\Compliance\Zatca\DTOs\AddressData;
+use App\Domains\Invoice\Models\Invoice;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Organization entity (tenant).
@@ -51,6 +53,53 @@ class Organization extends Model
         return $this->belongsToMany(User::class)
             ->withPivot(['role', 'status'])
             ->withTimestamps();
+    }
+
+    /**
+     * Branches (EGS units) belonging to this organization.
+     */
+    public function branches(): HasMany
+    {
+        return $this->hasMany(Branch::class);
+    }
+
+    /**
+     * Get active branches ready for invoicing.
+     */
+    public function activeBranches(): HasMany
+    {
+        return $this->branches()->zatcaReady();
+    }
+
+    /**
+     * Get the default branch.
+     */
+    public function defaultBranch(): ?Branch
+    {
+        return $this->branches()->where('is_default', true)->first();
+    }
+
+    /**
+     * Invoices belonging to this organization.
+     */
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    /**
+     * Check if organization has completed ZATCA onboarding.
+     * True if at least one branch is active.
+     */
+    public function getZatcaOnboardedAttribute(): bool
+    {
+        // Check compliance_profile first (legacy)
+        if ($this->compliance_profile['zatca_onboarded'] ?? false) {
+            return true;
+        }
+
+        // Check if any branch is active
+        return $this->branches()->where('onboarding_status', Branch::STATUS_ACTIVE)->exists();
     }
 
     /**
