@@ -11,7 +11,9 @@ use App\Domains\Compliance\Zatca\Exceptions\ZatcaException;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Licensing\Enums\LicenseEnvironment;
+use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\BranchService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -33,6 +35,7 @@ class ZatcaSubmissionService
         private readonly ZatcaClient $client,
         private readonly AuditService $audit,
         private readonly ?CertificateService $certificateService = null,
+        private readonly ?BranchService $branchService = null,
     ) {}
 
     /**
@@ -95,6 +98,9 @@ class ZatcaSubmissionService
      * COMPLIANCE: Validates license environment matches ZATCA environment.
      * Sandbox licenses cannot submit to production ZATCA.
      *
+     * Supports both branch-level and organization-level credentials.
+     * If invoice has a branch_id, uses branch credentials; otherwise falls back to org credentials.
+     *
      * @throws ZatcaException If organization not onboarded or credentials missing
      */
     public function submit(Invoice $invoice, Organization $organization): ZatcaResponse
@@ -105,10 +111,25 @@ class ZatcaSubmissionService
         // Validate environment before submission
         $this->validateEnvironment();
 
-        $credentials = $this->getSigningCredentials($organization->id, required: true);
+        // Get credentials - branch-level if available, otherwise organization-level
+        $branch = $invoice->branch;
+        $credentials = $this->getSigningCredentials($organization->id, $branch, required: true);
 
         // Validate certificate is valid and not revoked before submission
         $this->validateCertificate($credentials['certificate']);
+
+        // Validate branch is active if invoice has branch
+        if ($branch && !$branch->isZatcaReady()) {
+            throw ZatcaException::notOnboarded(
+                'Branch is not ready for invoice submission. ' .
+                'Status: ' . $branch->onboarding_status,
+                [
+                    'branch_id' => $branch->id,
+                    'branch_name' => $branch->name,
+                    'onboarding_status' => $branch->onboarding_status,
+                ]
+            );
+        }
 
         $complianceData = $this->compliance->generateComplianceData(
             invoice: $invoice,
@@ -343,6 +364,11 @@ class ZatcaSubmissionService
                 'errors' => $response->errorMessages,
             ],
         ]);
+
+        // Increment branch invoice count if successful
+        if ($response->success) {
+            $this->incrementBranchInvoiceCount($invoice);
+        }
     }
 
     /**
@@ -360,26 +386,62 @@ class ZatcaSubmissionService
     }
 
     /**
-     * Get signing credentials for organization.
+     * Get signing credentials for organization or branch.
+     *
+     * Supports multi-branch architecture:
+     * 1. If branch provided, tries branch credentials first
+     * 2. Falls back to organization-level credentials (legacy)
      *
      * @param string $organizationId The organization ID
+     * @param Branch|null $branch The branch (optional)
      * @param bool $required If true, throws exception when credentials are missing
      * @return array{privateKey: ?string, certificate: ?string}
      * @throws ZatcaException If required is true and credentials are missing/invalid
      */
-    private function getSigningCredentials(string $organizationId, bool $required = false): array
+    private function getSigningCredentials(string $organizationId, ?Branch $branch = null, bool $required = false): array
     {
+        // Try branch credentials first if branch is provided and BranchService is available
+        if ($branch && $this->branchService) {
+            $branchCredentials = $this->branchService->getCredentials($branch, 'pcsid');
+
+            if ($branchCredentials) {
+                $privateKey = $branchCredentials['privateKey'] ?? null;
+                $certificate = $branchCredentials['pcsid'] ?? null;
+
+                if (!empty($privateKey) && !empty($certificate)) {
+                    Log::debug('Using branch-level credentials', [
+                        'organization_id' => $organizationId,
+                        'branch_id' => $branch->id,
+                    ]);
+
+                    return [
+                        'privateKey' => $privateKey,
+                        'certificate' => $certificate,
+                    ];
+                }
+            }
+        }
+
+        // Fall back to organization-level credentials (legacy path)
         $path = "zatca/{$organizationId}/pcsid.json";
 
         if (!Storage::disk('local')->exists($path)) {
             if ($required) {
+                $errorContext = [
+                    'organization_id' => $organizationId,
+                    'expected_path' => $path,
+                ];
+
+                if ($branch) {
+                    $errorContext['branch_id'] = $branch->id;
+                    $errorContext['branch_name'] = $branch->name;
+                }
+
                 throw ZatcaException::missingCredentials(
-                    'PCSID credentials not found. Organization must complete ZATCA onboarding ' .
+                    'PCSID credentials not found. ' .
+                    ($branch ? 'Branch' : 'Organization') . ' must complete ZATCA onboarding ' .
                     'to obtain Production CSID (PCSID) before submitting invoices.',
-                    [
-                        'organization_id' => $organizationId,
-                        'expected_path' => $path,
-                    ]
+                    $errorContext
                 );
             }
             return ['privateKey' => null, 'certificate' => null];
@@ -405,6 +467,10 @@ class ZatcaSubmissionService
                 );
             }
 
+            Log::debug('Using organization-level credentials (legacy)', [
+                'organization_id' => $organizationId,
+            ]);
+
             return [
                 'privateKey' => $privateKey,
                 'certificate' => $certificate,
@@ -423,6 +489,16 @@ class ZatcaSubmissionService
                 );
             }
             return ['privateKey' => null, 'certificate' => null];
+        }
+    }
+
+    /**
+     * Increment branch invoice count after successful submission.
+     */
+    private function incrementBranchInvoiceCount(Invoice $invoice): void
+    {
+        if ($invoice->branch_id && $invoice->branch) {
+            $invoice->branch->incrementInvoiceCount();
         }
     }
 }
