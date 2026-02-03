@@ -79,8 +79,10 @@ RUN apk add --no-cache \
     # Required for OpenSSL/ECDSA signing
     openssl \
     openssl-dev \
-    # Required for bcmath
+    # Required for GMP
     gmp-dev \
+    # Required for mbstring (oniguruma)
+    oniguruma-dev \
     # Supervisor for queue workers
     supervisor \
     # Nginx for serving
@@ -88,9 +90,11 @@ RUN apk add --no-cache \
     # Curl for healthchecks
     curl \
     # Git for composer
-    git
+    git \
+    # Linux headers for some extensions
+    linux-headers
 
-# Install PHP extensions
+# Install PHP extensions (dom is part of xml, don't install separately)
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
         pdo \
@@ -101,8 +105,6 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
         bcmath \
         intl \
         opcache \
-        xml \
-        dom \
         gmp \
         pcntl \
         sockets
