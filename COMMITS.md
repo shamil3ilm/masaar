@@ -65,6 +65,8 @@ This document maintains a record of all commits to the CompliPay project for aud
 | 57 | `04b047b` | 2026-02-03 | Fix composer dump-autoload by skipping scripts |
 | 58 | `0635335` | 2026-02-03 | Fix GitHub Actions OIDC permissions for attestation |
 | 59 | `fc651bb` | 2026-02-03 | Add phone-home license validation system with Cloudflare Worker |
+| 60 | `feaa8bd` | 2026-02-03 | Add usage reporting and fix license validation fallback |
+| 61 | `pending` | 2026-02-03 | Fix ZATCA compliance issues and code quality problems |
 
 ## Detailed Commit Descriptions
 
@@ -402,6 +404,27 @@ This document maintains a record of all commits to the CompliPay project for aud
   - CHANGELOG.md for version tracking
   - Container security documentation in SECURITY.md
 
+### Phase 25: License System & Compliance Fixes (Commits 59-61)
+- **Phone-Home License Validation** (Commit 59):
+  - Cloudflare Worker for serverless license validation
+  - License key format: `{PARTNER}-{TYPE}-{EXPIRY}-{SIGNATURE}`
+  - HMAC-SHA256 signature verification
+  - Offline validation fallback when server unreachable
+  - License types: TRIAL (500 inv/month), PROD (unlimited), DEV (100 inv/month)
+  - KV storage for license registry
+- **Usage Reporting & License Fixes** (Commit 60):
+  - UsageReportingService for collecting partner metrics
+  - `license:report-usage` artisan command with `--show` option
+  - Cloudflare Worker `/usage` and `/usage/stats` endpoints
+  - Daily (90-day retention) and monthly (1-year) usage aggregates
+  - Fix for `fallback_to_offline` flag handling
+  - Hourly scheduler entry when license enabled
+- **ZATCA Compliance Fixes** (Commit 61):
+  - Remove hardcoded SDK path, use config-based `zatca.sdk_path`
+  - Fix VAT number regex to check both start AND end with 3 (`/^3\d{13}3$/`)
+  - Fix per-line exemption validation to apply per-line instead of globally
+  - Delete debug/test files (test_api.php, debug_csr.php, etc.)
+
 ## Full Commit Hashes
 
 For verification purposes, here are the full SHA-1 hashes:
@@ -458,11 +481,20 @@ f197491 - Fix database column/table name mismatches and add performance indexes
 97c54a1 - Add offline queue management commands and services
 0d40552 - Add SDK README files and update documentation
 35bbb90 - Add deployment infrastructure and Docker support
+b0744cf - Update documentation and add version tracking
+a32e53a - Fix Docker build by including composer.lock
+2304d1b - Fix Docker build for npm dependencies
+c8f1e20 - Fix PHP extension installation for Alpine
+ef462f0 - Fix composer autoload in Docker build
+04b047b - Fix composer dump-autoload by skipping scripts
+0635335 - Fix GitHub Actions OIDC permissions for attestation
+fc651bb - Add phone-home license validation system with Cloudflare Worker
+feaa8bd - Add usage reporting and fix license validation fallback
 ```
 
 ## Statistics
 
-- **Total Commits**: 51
+- **Total Commits**: 61
 - **Development Period**: January 30, 2026 - February 3, 2026
 - **Main Branch**: `main`
 - **Contributors**: Development Team
