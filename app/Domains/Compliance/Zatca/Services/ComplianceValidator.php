@@ -195,12 +195,12 @@ class ComplianceValidator
             ];
         }
 
-        // VAT number format (15 digits starting with 3)
+        // VAT number format (15 digits starting AND ending with 3)
         $sellerVat = $this->getNodeValue('//cac:AccountingSupplierParty//cac:PartyTaxScheme/cbc:CompanyID');
-        if ($sellerVat !== null && !preg_match('/^3\d{14}$/', $sellerVat)) {
+        if ($sellerVat !== null && !preg_match('/^3\d{13}3$/', $sellerVat)) {
             $this->warnings[] = [
                 'code' => 'KSA-02',
-                'message' => 'Saudi VAT number should be 15 digits starting with 3',
+                'message' => 'Saudi VAT number should be 15 digits starting and ending with 3',
             ];
         }
 

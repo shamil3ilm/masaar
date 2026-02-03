@@ -125,8 +125,6 @@ class CreateInvoiceRequest extends FormRequest
                 'nullable',
                 'string',
                 Rule::in(self::VALID_EXEMPTION_CODES),
-                // Required when tax category is Z, E, or O
-                Rule::requiredIf(fn () => $this->lineRequiresExemption()),
             ],
             'lines.*.tax_exemption_reason' => [
                 'nullable',
@@ -139,20 +137,26 @@ class CreateInvoiceRequest extends FormRequest
     }
 
     /**
-     * Check if any line requires exemption code.
+     * Configure the validator instance with per-line exemption validation.
      */
-    private function lineRequiresExemption(): bool
+    public function withValidator($validator): void
     {
-        $lines = $this->input('lines', []);
+        $validator->after(function ($validator) {
+            $lines = $this->input('lines', []);
 
-        foreach ($lines as $line) {
-            $category = $line['tax_category'] ?? null;
-            if (in_array($category, ['Z', 'E', 'O'])) {
-                return true;
+            foreach ($lines as $index => $line) {
+                $category = $line['tax_category'] ?? null;
+                $exemptionCode = $line['tax_exemption_code'] ?? null;
+
+                // Check if this specific line requires exemption code
+                if (in_array($category, ['Z', 'E', 'O']) && empty($exemptionCode)) {
+                    $validator->errors()->add(
+                        "lines.{$index}.tax_exemption_code",
+                        "Exemption code is required for line " . ($index + 1) . " with tax category {$category}."
+                    );
+                }
             }
-        }
-
-        return false;
+        });
     }
 
     /**

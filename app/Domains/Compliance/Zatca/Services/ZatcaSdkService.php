@@ -18,7 +18,7 @@ use RuntimeException;
  */
 class ZatcaSdkService
 {
-    private const SDK_PATH = 'C:/Users/Shamil/Downloads/zatca-einvoicing-sdk-Java-238-R3.4.8/zatca-einvoicing-sdk-Java-238-R3.4.8/Apps';
+    private const SDK_PATH = null; // Use config('zatca.sdk_path') instead
     private const SDK_JAR = 'zatca-einvoicing-sdk-238-R3.4.8.jar';
     private const SDK_VERSION = '238-R3.4.8';
 
@@ -28,7 +28,7 @@ class ZatcaSdkService
 
     public function __construct(?string $sdkPath = null, ?string $outputDir = null)
     {
-        $this->sdkPath = $sdkPath ?? self::SDK_PATH;
+        $this->sdkPath = $sdkPath ?? config('zatca.sdk_path', storage_path('app/zatca-sdk/Apps'));
         $this->outputDir = $outputDir ?? storage_path('app/zatca');
         $this->configPath = dirname($this->sdkPath) . '/Configuration/config.json';
 
