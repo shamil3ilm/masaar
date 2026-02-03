@@ -31,9 +31,13 @@ Complete guide for integrating CompliPay ZATCA E-Invoicing API into TaxFly's exi
 - QR code generation (9 tags for Phase 2)
 - ZATCA API integration (clearance & reporting)
 - Webhook notifications for status updates
+- **Multi-branch EGS support** (separate credentials per branch)
+- **Foreign currency invoices** (USD, EUR, etc. with SAR VAT reporting)
 
 ### Integration Strategy
 Replace TaxFly's partial ZATCA implementation with CompliPay API calls while keeping TaxFly's existing invoice management UI and business logic.
+
+> **Advanced Scenarios**: For multi-business, multi-branch, and cross-border transactions, see [TAXFLY-ADVANCED-SCENARIOS.md](./TAXFLY-ADVANCED-SCENARIOS.md).
 
 ---
 
@@ -1434,6 +1438,21 @@ tail -f storage/logs/laravel.log | grep -i complipay
 | `/api/organizations/{id}/onboarding` | POST | Start onboarding |
 | `/api/organizations/{id}/onboarding/complete-compliance` | POST | Complete compliance |
 
+### Branches (EGS Units)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/organizations/branches` | GET | List branches |
+| `/api/organizations/branches` | POST | Create branch |
+| `/api/organizations/branches/{id}` | GET | Get branch |
+| `/api/organizations/branches/{id}` | PUT | Update branch |
+| `/api/organizations/branches/{id}` | DELETE | Delete branch |
+| `/api/organizations/branches/{id}/set-default` | POST | Set as default |
+| `/api/organizations/branches/{id}/onboarding/ccsid` | POST | Request CCSID |
+| `/api/organizations/branches/{id}/onboarding/compliance-check` | POST | Run compliance check |
+| `/api/organizations/branches/{id}/onboarding/pcsid` | POST | Request PCSID |
+| `/api/organizations/branches/{id}/onboarding/reset` | POST | Reset onboarding |
+
 ### Webhooks
 
 | Endpoint | Method | Description |
@@ -1444,7 +1463,35 @@ tail -f storage/logs/laravel.log | grep -i complipay
 
 ---
 
-## Appendix B: ZATCA Error Codes
+## Appendix B: Multi-Currency Support
+
+Per ZATCA official guidelines, foreign currency invoices are supported:
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `currency` | Yes | Document currency (SAR, USD, EUR, etc.) |
+| `exchange_rate` | If non-SAR | Exchange rate to SAR |
+| `exchange_rate_date` | Recommended | Date of exchange rate |
+
+**ZATCA Requirements:**
+- `DocumentCurrencyCode` (BT-5): Can be foreign currency
+- `TaxCurrencyCode` (BT-6): Always SAR for VAT reporting
+- Two `TaxTotal` elements: BT-110 (doc currency), BT-111 (SAR)
+
+**Example:**
+```php
+$invoiceData = [
+    'currency' => 'USD',
+    'exchange_rate' => 3.75,
+    'subtotal' => 1000.00,  // USD
+    'tax_amount' => 150.00, // USD - converted to 562.50 SAR for VAT
+    'total' => 1150.00,
+];
+```
+
+---
+
+## Appendix C: ZATCA Error Codes
 
 | Code | Description | Resolution |
 |------|-------------|------------|
@@ -1457,6 +1504,9 @@ tail -f storage/logs/laravel.log | grep -i complipay
 
 ---
 
-*Document Version: 1.0*
-*Last Updated: 2026-02-02*
+*Document Version: 1.1*
+*Last Updated: 2026-02-03*
 *CompliPay API Version: v1*
+
+**Changelog:**
+- v1.1: Added multi-branch EGS support, foreign currency invoices, branch API endpoints

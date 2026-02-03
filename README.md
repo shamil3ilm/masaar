@@ -15,6 +15,8 @@ A production-ready ZATCA Phase 2 compliant e-invoicing API platform for Saudi Ar
 - **XAdES-BES Digital Signatures** - ECDSA secp256k1 cryptographic signing
 - **QR Code Generation** - TLV-encoded QR codes (9 tags for Phase 2)
 - **Multi-tenant Architecture** - Organization-scoped data isolation
+- **Multi-Branch EGS Support** - Separate ZATCA credentials per branch/location
+- **Foreign Currency Invoices** - USD, EUR, GBP, etc. with automatic SAR VAT reporting
 - **Dual Authentication** - JWT tokens and API keys for server-to-server
 - **Webhook Notifications** - Real-time event notifications with HMAC signatures
 - **Comprehensive Validation** - ZATCA business rules (BR-KSA-*) enforcement
@@ -161,6 +163,38 @@ POST {BASE_URL}/api/compliance/zatca/submit/{invoiceId}
 
 # Check status
 GET {BASE_URL}/api/compliance/zatca/status/{invoiceId}
+```
+
+### Branches (Multi-EGS Support)
+
+```bash
+# List branches
+GET {BASE_URL}/api/organizations/branches
+
+# Create branch
+POST {BASE_URL}/api/organizations/branches
+
+# Get branch
+GET {BASE_URL}/api/organizations/branches/{id}
+
+# Update branch
+PUT {BASE_URL}/api/organizations/branches/{id}
+
+# Delete branch
+DELETE {BASE_URL}/api/organizations/branches/{id}
+
+# Set as default branch
+POST {BASE_URL}/api/organizations/branches/{id}/set-default
+
+# Branch onboarding - Step 1: Request CCSID
+POST {BASE_URL}/api/organizations/branches/{id}/onboarding/ccsid
+Body: { "otp": "123456" }
+
+# Branch onboarding - Step 2: Compliance check
+POST {BASE_URL}/api/organizations/branches/{id}/onboarding/compliance-check
+
+# Branch onboarding - Step 3: Request PCSID
+POST {BASE_URL}/api/organizations/branches/{id}/onboarding/pcsid
 ```
 
 ## Client Integration
@@ -337,6 +371,32 @@ resp, _ := client.Do(req)
 | Credit Note | 381 | Adjustment reducing amount |
 | Debit Note | 383 | Adjustment increasing amount |
 
+## Multi-Currency Support
+
+Foreign currency invoices are supported per ZATCA guidelines:
+
+| Field | Description |
+|-------|-------------|
+| `currency` | Document currency (SAR, USD, EUR, GBP, etc.) |
+| `exchange_rate` | Exchange rate to SAR (required for non-SAR) |
+| `exchange_rate_date` | Date of exchange rate |
+
+**ZATCA Requirements:**
+- `DocumentCurrencyCode` (BT-5): Can be foreign currency
+- `TaxCurrencyCode` (BT-6): Always SAR for VAT reporting
+- Two `TaxTotal` elements: document currency + SAR equivalent
+
+Example:
+```json
+{
+  "currency": "USD",
+  "exchange_rate": 3.75,
+  "subtotal": 1000.00,
+  "tax_amount": 150.00,
+  "total": 1150.00
+}
+```
+
 ## Tax Categories
 
 | Code | Description | Rate |
@@ -398,6 +458,28 @@ resources/views/
 2. **Request CCSID** - Submit CSR with OTP to get Compliance CSID
 3. **Compliance Check** - Submit test invoices for validation
 4. **Request PCSID** - Get Production CSID after passing compliance
+
+## Multi-Branch EGS Support
+
+Each physical location (EGS device) requires separate ZATCA credentials:
+
+```
+Organization
+├── Branch A (Store 1) → Own ZATCA certificate
+├── Branch B (Store 2) → Own ZATCA certificate
+└── Branch C (Warehouse) → Own ZATCA certificate
+```
+
+**Key Features:**
+- Per-branch ZATCA onboarding (CCSID → Compliance → PCSID)
+- Separate certificate lifecycle management
+- Shared ICV sequence per organization
+- Certificate expiry monitoring per branch
+
+**Workflow:**
+1. Create branch with `POST /api/organizations/branches`
+2. Complete 3-step onboarding per branch
+3. Invoices include `branch_id` to use branch credentials
 
 ## Security
 
