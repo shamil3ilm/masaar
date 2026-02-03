@@ -13,10 +13,10 @@ WORKDIR /app
 COPY composer.json composer.lock ./
 
 # Install dependencies without dev packages
+# Note: We use --no-scripts as scripts may need the full app context
 RUN composer install \
     --no-dev \
     --no-scripts \
-    --no-autoloader \
     --ignore-platform-reqs \
     --prefer-dist
 
@@ -146,28 +146,30 @@ COPY docker/nginx/default.conf /etc/nginx/http.d/default.conf
 # Copy Supervisor configuration
 COPY docker/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Copy application files
-COPY --chown=complipay:complipay . .
+# Copy application files (as root first for composer operations)
+COPY . .
 
 # Copy Composer dependencies from build stage
-COPY --from=composer-deps --chown=complipay:complipay /app/vendor ./vendor
+COPY --from=composer-deps /app/vendor ./vendor
 
 # Copy built assets from node stage (if any)
-COPY --from=node-build --chown=complipay:complipay /app/public/build ./public/build
+COPY --from=node-build /app/public/build ./public/build
 
 # Install Composer for autoload optimization
 COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
 
 # Regenerate optimized autoloader with all files present
-RUN composer dump-autoload --optimize --no-dev --classmap-authoritative
+RUN composer dump-autoload --optimize --classmap-authoritative
 
 # Create required directories
 RUN mkdir -p storage/framework/cache/data \
     storage/framework/sessions \
     storage/framework/views \
     storage/logs \
-    bootstrap/cache \
-    && chown -R complipay:complipay storage bootstrap/cache
+    bootstrap/cache
+
+# Set ownership to application user
+RUN chown -R complipay:complipay /var/www/html
 
 # Set proper permissions
 RUN chmod -R 775 storage bootstrap/cache
