@@ -57,6 +57,14 @@ This document maintains a record of all commits to the CompliPay project for aud
 | 49 | `97c54a1` | 2026-02-02 | Add offline queue management commands and services |
 | 50 | `0d40552` | 2026-02-02 | Add SDK README files and update documentation |
 | 51 | `35bbb90` | 2026-02-03 | Add deployment infrastructure and Docker support |
+| 52 | `b0744cf` | 2026-02-03 | Update documentation and add version tracking |
+| 53 | `a32e53a` | 2026-02-03 | Fix Docker build by including composer.lock |
+| 54 | `2304d1b` | 2026-02-03 | Fix Docker build for npm dependencies |
+| 55 | `c8f1e20` | 2026-02-03 | Fix PHP extension installation for Alpine |
+| 56 | `ef462f0` | 2026-02-03 | Fix composer autoload in Docker build |
+| 57 | `04b047b` | 2026-02-03 | Fix composer dump-autoload by skipping scripts |
+| 58 | `0635335` | 2026-02-03 | Fix GitHub Actions OIDC permissions for attestation |
+| 59 | `fc651bb` | 2026-02-03 | Add phone-home license validation system with Cloudflare Worker |
 
 ## Detailed Commit Descriptions
 
