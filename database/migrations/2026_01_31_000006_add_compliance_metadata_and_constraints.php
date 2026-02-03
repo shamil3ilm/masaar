@@ -19,9 +19,6 @@ return new class extends Migration
     {
         // Add algorithm versioning to invoices (if not already present)
         Schema::table('invoices', function (Blueprint $table) {
-            // Compliance metadata - already added in previous migration
-            // This ensures they exist with proper defaults
-
             // Add compliance timestamp if not exists
             if (!Schema::hasColumn('invoices', 'compliance_determined_at')) {
                 $table->timestamp('compliance_determined_at')->nullable()->after('schema_version');
@@ -39,8 +36,6 @@ return new class extends Migration
         });
 
         // BELT+SUSPENDERS: Ensure unique ICV constraint exists
-        // This is a DB-level protection against split-brain scenarios where
-        // multiple workers might try to use the same ICV
         $this->ensureIcvConstraint();
 
         // Add legal hold tracking to organizations
@@ -97,71 +92,35 @@ return new class extends Migration
 
     /**
      * Ensure the ICV unique constraint exists.
-     * This is critical for preventing split-brain ICV duplication.
+     * Uses try/catch for database-agnostic compatibility.
      */
     private function ensureIcvConstraint(): void
     {
-        $driver = Schema::getConnection()->getDriverName();
+        if (!Schema::hasColumn('invoices', 'icv')) {
+            return;
+        }
 
-        if ($driver === 'mysql') {
-            $indexExists = collect(
-                DB::select("SHOW INDEX FROM invoices WHERE Key_name = 'invoices_org_icv_unique'")
-            )->isNotEmpty();
-
-            if (!$indexExists && Schema::hasColumn('invoices', 'icv')) {
-                // MySQL: Add unique index
-                DB::statement('CREATE UNIQUE INDEX invoices_org_icv_unique ON invoices (organization_id, icv)');
-            }
-        } elseif ($driver === 'pgsql') {
-            $indexExists = DB::selectOne(
-                "SELECT 1 FROM pg_indexes WHERE indexname = 'invoices_org_icv_unique'"
-            );
-
-            if (!$indexExists && Schema::hasColumn('invoices', 'icv')) {
-                // PostgreSQL: Add unique index
-                DB::statement('CREATE UNIQUE INDEX invoices_org_icv_unique ON invoices (organization_id, icv)');
-            }
-        } elseif ($driver === 'sqlite') {
-            // SQLite: Check and add via pragma
-            if (Schema::hasColumn('invoices', 'icv')) {
-                try {
-                    DB::statement('CREATE UNIQUE INDEX IF NOT EXISTS invoices_org_icv_unique ON invoices (organization_id, icv)');
-                } catch (\Exception $e) {
-                    // Index might already exist
-                }
-            }
+        try {
+            Schema::table('invoices', function (Blueprint $table) {
+                $table->unique(['organization_id', 'icv'], 'invoices_org_icv_unique');
+            });
+        } catch (\Exception $e) {
+            // Index already exists, ignore
         }
     }
 
     /**
      * Add index if it doesn't exist.
+     * Uses try/catch for database-agnostic compatibility.
      */
     private function addIndexIfNotExists(string $table, string $column, string $indexName): void
     {
-        $driver = Schema::getConnection()->getDriverName();
-
         try {
-            if ($driver === 'mysql') {
-                $indexExists = collect(
-                    DB::select("SHOW INDEX FROM {$table} WHERE Key_name = '{$indexName}'")
-                )->isNotEmpty();
-
-                if (!$indexExists) {
-                    DB::statement("CREATE INDEX {$indexName} ON {$table} ({$column})");
-                }
-            } elseif ($driver === 'pgsql') {
-                $indexExists = DB::selectOne(
-                    "SELECT 1 FROM pg_indexes WHERE indexname = '{$indexName}'"
-                );
-
-                if (!$indexExists) {
-                    DB::statement("CREATE INDEX {$indexName} ON {$table} ({$column})");
-                }
-            } elseif ($driver === 'sqlite') {
-                DB::statement("CREATE INDEX IF NOT EXISTS {$indexName} ON {$table} ({$column})");
-            }
+            Schema::table($table, function (Blueprint $blueprint) use ($column, $indexName) {
+                $blueprint->index($column, $indexName);
+            });
         } catch (\Exception $e) {
-            // Index might already exist, ignore
+            // Index already exists, ignore
         }
     }
 };

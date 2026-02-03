@@ -1,0 +1,75 @@
+# ==============================================================================
+# CompliPay Docker Ignore
+# ==============================================================================
+# Excludes unnecessary files from Docker build context
+# ==============================================================================
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# GitHub
+.github
+
+# Documentation (not needed in runtime)
+docs/
+*.md
+!README.md
+
+# Development files
+.env
+.env.local
+.env.*.local
+.env.example
+
+# IDE
+.idea
+.vscode
+*.sublime-*
+
+# Testing
+tests/
+phpunit.xml
+.phpunit.result.cache
+coverage/
+
+# Node modules (rebuilt in container)
+node_modules/
+
+# Composer development
+vendor/
+composer.lock
+
+# Build artifacts
+*.log
+*.cache
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Laravel storage (use volumes)
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+!storage/framework/.gitignore
+!storage/logs/.gitignore
+
+# SDK source (not needed in API container)
+sdk/
+
+# Local development
+docker-compose.override.yml
+.docker/
+
+# Security - Never include
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+credentials/
+secrets/

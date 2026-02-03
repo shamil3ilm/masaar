@@ -1,0 +1,294 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "gridPos": { "h": 3, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "options": {
+        "content": "# CompliPay ZATCA E-Invoicing Dashboard\nReal-time monitoring of invoice processing and ZATCA submissions.",
+        "mode": "markdown"
+      },
+      "title": "",
+      "type": "text"
+    },
+    {
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 3 },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "complipay_invoices_created_today",
+          "refId": "A"
+        }
+      ],
+      "title": "Invoices Today",
+      "type": "stat"
+    },
+    {
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 3 },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "complipay_zatca_submissions_cleared",
+          "refId": "A"
+        }
+      ],
+      "title": "ZATCA Cleared (24h)",
+      "type": "stat"
+    },
+    {
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 3 },
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "complipay_zatca_offline_queue_size",
+          "refId": "A"
+        }
+      ],
+      "title": "Offline Queue Size",
+      "type": "stat"
+    },
+    {
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 3 },
+      "id": 5,
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "options": { "0": { "text": "CLOSED" } }, "type": "value" },
+            { "options": { "1": { "text": "OPEN" } }, "type": "value" }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "complipay_zatca_circuit_breaker_open",
+          "refId": "A"
+        }
+      ],
+      "title": "Circuit Breaker",
+      "type": "stat"
+    },
+    {
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 7 },
+      "id": 6,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "expr": "rate(complipay_http_requests_total[5m])",
+          "legendFormat": "Requests/s",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(complipay_http_errors_total[5m])",
+          "legendFormat": "Errors/s",
+          "refId": "B"
+        }
+      ],
+      "title": "HTTP Request Rate",
+      "type": "timeseries"
+    },
+    {
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 7 },
+      "id": 7,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "expr": "complipay_zatca_submission_duration_avg_ms",
+          "legendFormat": "Avg Submission Time (ms)",
+          "refId": "A"
+        },
+        {
+          "expr": "complipay_database_latency_ms",
+          "legendFormat": "DB Latency (ms)",
+          "refId": "B"
+        }
+      ],
+      "title": "Latency Metrics",
+      "type": "timeseries"
+    },
+    {
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 15 },
+      "id": 8,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "right" },
+        "pieType": "pie",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "expr": "complipay_invoices_total_draft",
+          "legendFormat": "Draft",
+          "refId": "A"
+        },
+        {
+          "expr": "complipay_invoices_total_submitted",
+          "legendFormat": "Submitted",
+          "refId": "B"
+        },
+        {
+          "expr": "complipay_invoices_total_cleared",
+          "legendFormat": "Cleared",
+          "refId": "C"
+        },
+        {
+          "expr": "complipay_invoices_total_rejected",
+          "legendFormat": "Rejected",
+          "refId": "D"
+        }
+      ],
+      "title": "Invoice Status Distribution",
+      "type": "piechart"
+    },
+    {
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 15 },
+      "id": 9,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "expr": "complipay_queue_size_default",
+          "legendFormat": "Default Queue",
+          "refId": "A"
+        },
+        {
+          "expr": "complipay_queue_size_zatca_submissions",
+          "legendFormat": "ZATCA Queue",
+          "refId": "B"
+        },
+        {
+          "expr": "complipay_queue_size_webhooks",
+          "legendFormat": "Webhooks Queue",
+          "refId": "C"
+        }
+      ],
+      "title": "Queue Sizes",
+      "type": "timeseries"
+    },
+    {
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 15 },
+      "id": 10,
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "complipay_database_up",
+          "legendFormat": "Database",
+          "refId": "A"
+        },
+        {
+          "expr": "complipay_cache_up",
+          "legendFormat": "Cache",
+          "refId": "B"
+        }
+      ],
+      "title": "System Health",
+      "type": "stat"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["complipay", "zatca", "invoicing"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "CompliPay ZATCA Dashboard",
+  "uid": "complipay-zatca",
+  "version": 1
+}

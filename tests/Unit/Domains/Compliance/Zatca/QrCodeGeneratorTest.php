@@ -33,6 +33,7 @@ it('generates Phase 2 QR code with hash', function () {
     $encoder = new TlvEncoder();
     $generator = new QrCodeGenerator($encoder);
 
+    // Phase 2 requires all cryptographic fields (tags 6-9)
     $data = new QrCodeData(
         sellerName: 'Test Company',
         vatNumber: '300000000000003',
@@ -40,12 +41,18 @@ it('generates Phase 2 QR code with hash', function () {
         invoiceTotal: '1150.00',
         vatTotal: '150.00',
         invoiceHash: 'abc123hash',
+        signature: 'MEUCIQDtest123signature', // Tag 7
+        publicKey: 'BHTestPublicKey123', // Tag 8
+        certificateSignature: 'MIIBtest456signature', // Tag 9
     );
 
     $qrCode = $generator->generatePhase2($data);
     $decoded = $encoder->decode($qrCode);
 
     expect($decoded[6])->toBe('abc123hash');
+    expect($decoded[7])->toBe('MEUCIQDtest123signature');
+    expect($decoded[8])->toBe('BHTestPublicKey123');
+    expect($decoded[9])->toBe('MIIBtest456signature');
 });
 
 it('creates QrCodeData from invoice data', function () {

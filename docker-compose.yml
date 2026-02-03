@@ -1,0 +1,154 @@
+# CompliPay Docker Compose Configuration
+# ZATCA E-Invoicing Compliance Platform
+#
+# For TaxFly Infrastructure Deployment:
+# 1. Copy this file to your server
+# 2. Create .env file with required variables
+# 3. Run: docker-compose up -d
+#
+# For production, use: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+version: '3.8'
+
+services:
+  # ==========================================================================
+  # CompliPay Application
+  # ==========================================================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: complipay/zatca-api:${IMAGE_TAG:-latest}
+    container_name: complipay-app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8000}:80"
+    environment:
+      # Application
+      APP_NAME: CompliPay
+      APP_ENV: ${APP_ENV:-production}
+      APP_KEY: ${APP_KEY}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      APP_URL: ${APP_URL}
+
+      # Database
+      DB_CONNECTION: ${DB_CONNECTION:-mysql}
+      DB_HOST: ${DB_HOST:-db}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_DATABASE: ${DB_DATABASE:-complipay}
+      DB_USERNAME: ${DB_USERNAME:-complipay}
+      DB_PASSWORD: ${DB_PASSWORD}
+
+      # Redis (for queues and cache)
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-null}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+
+      # Cache & Session
+      CACHE_DRIVER: ${CACHE_DRIVER:-redis}
+      SESSION_DRIVER: ${SESSION_DRIVER:-redis}
+      QUEUE_CONNECTION: ${QUEUE_CONNECTION:-redis}
+
+      # ZATCA Configuration
+      ZATCA_ENVIRONMENT: ${ZATCA_ENVIRONMENT:-sandbox}
+      ZATCA_USERNAME: ${ZATCA_USERNAME}
+      ZATCA_PASSWORD: ${ZATCA_PASSWORD}
+
+      # Auto-migration (set to true for initial deployment)
+      AUTO_MIGRATE: ${AUTO_MIGRATE:-false}
+
+      # Logging
+      LOG_CHANNEL: ${LOG_CHANNEL:-stack}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      # Persistent storage for logs and uploads
+      - complipay-storage:/var/www/html/storage
+      - complipay-logs:/var/www/html/storage/logs
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - complipay-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ==========================================================================
+  # MySQL Database
+  # ==========================================================================
+  db:
+    image: mysql:8.0
+    container_name: complipay-db
+    restart: unless-stopped
+    ports:
+      - "${DB_EXTERNAL_PORT:-3306}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE:-complipay}
+      MYSQL_USER: ${DB_USERNAME:-complipay}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - complipay-mysql:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+      - --max-connections=500
+      - --innodb-buffer-pool-size=256M
+    networks:
+      - complipay-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ==========================================================================
+  # Redis (Cache, Sessions, Queues)
+  # ==========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: complipay-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_EXTERNAL_PORT:-6379}:6379"
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-complipay_redis}
+    volumes:
+      - complipay-redis:/data
+    networks:
+      - complipay-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-complipay_redis}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# ==========================================================================
+# Networks
+# ==========================================================================
+networks:
+  complipay-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+# ==========================================================================
+# Volumes (Persistent Data)
+# ==========================================================================
+volumes:
+  complipay-storage:
+    driver: local
+  complipay-logs:
+    driver: local
+  complipay-mysql:
+    driver: local
+  complipay-redis:
+    driver: local

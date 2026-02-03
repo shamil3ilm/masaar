@@ -2,7 +2,6 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -31,19 +30,26 @@ return new class extends Migration
             }
         });
 
-        // Add unique index separately to check if it exists
-        $indexExists = collect(DB::select("SHOW INDEX FROM invoices WHERE Key_name = 'invoices_org_icv_unique'"))->isNotEmpty();
-        if (!$indexExists && Schema::hasColumn('invoices', 'icv')) {
-            Schema::table('invoices', function (Blueprint $table) {
-                $table->unique(['organization_id', 'icv'], 'invoices_org_icv_unique');
-            });
+        // Add unique index - use try/catch for database compatibility
+        if (Schema::hasColumn('invoices', 'icv')) {
+            try {
+                Schema::table('invoices', function (Blueprint $table) {
+                    $table->unique(['organization_id', 'icv'], 'invoices_org_icv_unique');
+                });
+            } catch (\Exception $e) {
+                // Index might already exist, ignore
+            }
         }
     }
 
     public function down(): void
     {
         Schema::table('invoices', function (Blueprint $table) {
-            $table->dropUnique('invoices_org_icv_unique');
+            try {
+                $table->dropUnique('invoices_org_icv_unique');
+            } catch (\Exception $e) {
+                // Index might not exist
+            }
             $table->dropColumn(['icv', 'document_type', 'payment_means_code', 'billing_reference_id']);
         });
     }
