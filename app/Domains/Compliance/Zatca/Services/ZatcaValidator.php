@@ -411,7 +411,7 @@ class ZatcaValidator
 
     /**
      * Validate VAT number format.
-     * Must be 15 digits starting with 3.
+     * Must be 15 digits starting AND ending with 3 per ZATCA requirements.
      */
     public function isValidVatNumber(?string $vatNumber): bool
     {
@@ -419,9 +419,11 @@ class ZatcaValidator
             return false;
         }
 
+        // Saudi VAT numbers must be 15 digits, start with 3, and end with 3
         return strlen($vatNumber) === 15
             && ctype_digit($vatNumber)
-            && str_starts_with($vatNumber, '3');
+            && str_starts_with($vatNumber, '3')
+            && str_ends_with($vatNumber, '3');
     }
 
     /**

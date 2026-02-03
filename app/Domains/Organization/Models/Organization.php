@@ -92,15 +92,17 @@ class Organization extends Model
 
     /**
      * Validate VAT number format.
-     * Must be 15 digits starting with 3.
+     * Must be 15 digits starting AND ending with 3 per ZATCA requirements.
      */
     public function isValidVatNumber(): bool
     {
         $vat = $this->vat_number;
 
+        // Saudi VAT numbers must be 15 digits, start with 3, and end with 3
         return $vat !== null
             && strlen($vat) === 15
             && ctype_digit($vat)
-            && str_starts_with($vat, '3');
+            && str_starts_with($vat, '3')
+            && str_ends_with($vat, '3');
     }
 }

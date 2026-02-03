@@ -66,7 +66,8 @@ This document maintains a record of all commits to the CompliPay project for aud
 | 58 | `0635335` | 2026-02-03 | Fix GitHub Actions OIDC permissions for attestation |
 | 59 | `fc651bb` | 2026-02-03 | Add phone-home license validation system with Cloudflare Worker |
 | 60 | `feaa8bd` | 2026-02-03 | Add usage reporting and fix license validation fallback |
-| 61 | `pending` | 2026-02-03 | Fix ZATCA compliance issues and code quality problems |
+| 61 | `c3ca49d` | 2026-02-03 | Fix ZATCA compliance issues and code quality problems |
+| 62 | `pending` | 2026-02-03 | Add ZATCA directory compliance: onboarding validation and certificate checks |
 
 ## Detailed Commit Descriptions
 
@@ -424,6 +425,12 @@ This document maintains a record of all commits to the CompliPay project for aud
   - Fix VAT number regex to check both start AND end with 3 (`/^3\d{13}3$/`)
   - Fix per-line exemption validation to apply per-line instead of globally
   - Delete debug/test files (test_api.php, debug_csr.php, etc.)
+- **ZATCA Directory Compliance** (Commit 62):
+  - Add mandatory onboarding validation before invoice submission
+  - Throw exception on missing/invalid PCSID credentials (instead of silent null)
+  - Sync VAT validation across ZatcaValidator and Organization model
+  - Add certificate validation and revocation check before submission
+  - Add new exception types: notOnboarded, missingCredentials, invalidCredentials
 
 ## Full Commit Hashes
 
@@ -494,7 +501,7 @@ feaa8bd - Add usage reporting and fix license validation fallback
 
 ## Statistics
 
-- **Total Commits**: 61
+- **Total Commits**: 62
 - **Development Period**: January 30, 2026 - February 3, 2026
 - **Main Branch**: `main`
 - **Contributors**: Development Team

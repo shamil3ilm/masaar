@@ -12,6 +12,7 @@ use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Licensing\Enums\LicenseEnvironment;
 use App\Domains\Organization\Models\Organization;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -31,6 +32,7 @@ class ZatcaSubmissionService
         private readonly ZatcaComplianceService $compliance,
         private readonly ZatcaClient $client,
         private readonly AuditService $audit,
+        private readonly ?CertificateService $certificateService = null,
     ) {}
 
     /**
@@ -92,13 +94,21 @@ class ZatcaSubmissionService
      *
      * COMPLIANCE: Validates license environment matches ZATCA environment.
      * Sandbox licenses cannot submit to production ZATCA.
+     *
+     * @throws ZatcaException If organization not onboarded or credentials missing
      */
     public function submit(Invoice $invoice, Organization $organization): ZatcaResponse
     {
+        // CRITICAL: Validate organization has completed ZATCA onboarding
+        $this->validateOnboarding($organization);
+
         // Validate environment before submission
         $this->validateEnvironment();
 
-        $credentials = $this->getSigningCredentials($organization->id);
+        $credentials = $this->getSigningCredentials($organization->id, required: true);
+
+        // Validate certificate is valid and not revoked before submission
+        $this->validateCertificate($credentials['certificate']);
 
         $complianceData = $this->compliance->generateComplianceData(
             invoice: $invoice,
@@ -131,6 +141,86 @@ class ZatcaSubmissionService
         ]);
 
         return $response;
+    }
+
+    /**
+     * Validate certificate is valid and not revoked.
+     *
+     * COMPLIANCE: Checks certificate expiry and revocation status before submission.
+     * Prevents submission with expired or revoked certificates.
+     *
+     * @throws ZatcaException If certificate is invalid, expired, or revoked
+     */
+    private function validateCertificate(?string $certificate): void
+    {
+        if (empty($certificate)) {
+            return; // Already handled by getSigningCredentials
+        }
+
+        // Only validate if CertificateService is available
+        if ($this->certificateService === null) {
+            return;
+        }
+
+        // Check if certificate validation is enabled
+        if (!config('zatca.features.certificate_revocation_check', true)) {
+            return;
+        }
+
+        try {
+            $validation = $this->certificateService->validateForSubmission($certificate);
+
+            if (!$validation['valid']) {
+                $errors = $validation['errors'] ?? [];
+                throw ZatcaException::certificate(
+                    'Certificate validation failed: ' . implode('; ', $errors),
+                    context: [
+                        'errors' => $errors,
+                        'warnings' => $validation['warnings'] ?? [],
+                        'days_until_expiry' => $validation['days_until_expiry'] ?? null,
+                    ]
+                );
+            }
+
+            // Log warning if certificate is expiring soon
+            $daysUntilExpiry = $validation['days_until_expiry'] ?? null;
+            if ($daysUntilExpiry !== null && $daysUntilExpiry <= 30) {
+                Log::warning('Certificate expiring soon', [
+                    'days_until_expiry' => $daysUntilExpiry,
+                    'warnings' => $validation['warnings'] ?? [],
+                ]);
+            }
+        } catch (ZatcaException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            // Log but don't block submission if validation fails unexpectedly
+            Log::warning('Certificate validation failed unexpectedly', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Validate organization has completed ZATCA onboarding.
+     *
+     * COMPLIANCE: Organizations must complete the full onboarding process
+     * (CSR generation, compliance check, PCSID acquisition) before submitting invoices.
+     *
+     * @throws ZatcaException If organization not onboarded
+     */
+    private function validateOnboarding(Organization $organization): void
+    {
+        if (!$organization->zatca_onboarded) {
+            throw ZatcaException::notOnboarded(
+                'Organization has not completed ZATCA onboarding. ' .
+                'Complete the 3-step onboarding process before submitting invoices: ' .
+                '1) Generate CSR and get CCSID, 2) Pass compliance checks, 3) Get PCSID.',
+                [
+                    'organization_id' => $organization->id,
+                    'zatca_onboarded' => false,
+                ]
+            );
+        }
     }
 
     /**
@@ -213,13 +303,26 @@ class ZatcaSubmissionService
     /**
      * Get signing credentials for organization.
      *
+     * @param string $organizationId The organization ID
+     * @param bool $required If true, throws exception when credentials are missing
      * @return array{privateKey: ?string, certificate: ?string}
+     * @throws ZatcaException If required is true and credentials are missing/invalid
      */
-    private function getSigningCredentials(string $organizationId): array
+    private function getSigningCredentials(string $organizationId, bool $required = false): array
     {
         $path = "zatca/{$organizationId}/pcsid.json";
 
-        if (! Storage::disk('local')->exists($path)) {
+        if (!Storage::disk('local')->exists($path)) {
+            if ($required) {
+                throw ZatcaException::missingCredentials(
+                    'PCSID credentials not found. Organization must complete ZATCA onboarding ' .
+                    'to obtain Production CSID (PCSID) before submitting invoices.',
+                    [
+                        'organization_id' => $organizationId,
+                        'expected_path' => $path,
+                    ]
+                );
+            }
             return ['privateKey' => null, 'certificate' => null];
         }
 
@@ -227,11 +330,39 @@ class ZatcaSubmissionService
             $content = Storage::disk('local')->get($path);
             $data = json_decode(decrypt($content), true);
 
+            $privateKey = $data['privateKey'] ?? null;
+            $certificate = $data['pcsid'] ?? null;
+
+            // Validate credentials are not empty when required
+            if ($required && (empty($privateKey) || empty($certificate))) {
+                throw ZatcaException::invalidCredentials(
+                    'PCSID credentials are incomplete or corrupted. ' .
+                    'Please re-run Step 3 of ZATCA onboarding to obtain valid PCSID.',
+                    [
+                        'organization_id' => $organizationId,
+                        'has_private_key' => !empty($privateKey),
+                        'has_certificate' => !empty($certificate),
+                    ]
+                );
+            }
+
             return [
-                'privateKey' => $data['privateKey'] ?? null,
-                'certificate' => $data['pcsid'] ?? null,
+                'privateKey' => $privateKey,
+                'certificate' => $certificate,
             ];
+        } catch (ZatcaException $e) {
+            throw $e;
         } catch (\Exception $e) {
+            if ($required) {
+                throw ZatcaException::invalidCredentials(
+                    'Failed to decrypt PCSID credentials. The credentials may be corrupted ' .
+                    'or the application encryption key has changed.',
+                    [
+                        'organization_id' => $organizationId,
+                        'error' => $e->getMessage(),
+                    ]
+                );
+            }
             return ['privateKey' => null, 'certificate' => null];
         }
     }
