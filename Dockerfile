@@ -159,7 +159,8 @@ COPY --from=node-build /app/public/build ./public/build
 COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
 
 # Regenerate optimized autoloader with all files present
-RUN composer dump-autoload --optimize --classmap-authoritative
+# Use --no-scripts to avoid running artisan commands that need bootstrap
+RUN composer dump-autoload --optimize --classmap-authoritative --no-scripts
 
 # Create required directories
 RUN mkdir -p storage/framework/cache/data \
