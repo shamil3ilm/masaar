@@ -38,20 +38,20 @@ docker build -t ghcr.io/YOUR_USERNAME/zatca:1.0.0 .
 docker push ghcr.io/YOUR_USERNAME/zatca:1.0.0
 ```
 
-## For Northwind Deployment
+## For Partner Deployment
 
-### Give Northwind Access
+### Give Partner Access
 
 1. Go to your GitHub package: `https://github.com/users/YOUR_USERNAME/packages/container/zatca`
 2. Click "Package settings"
-3. Under "Manage access", add Northwind's GitHub username or organization
+3. Under "Manage access", add partner's GitHub username or organization
 4. Grant "Read" permission
 
-### Northwind Pull Command
+### Partner Pull Command
 
 ```bash
-# Northwind logs in with their GitHub token
-echo $ACME_GITHUB_TOKEN | docker login ghcr.io -u example --password-stdin
+# Partner logs in with their GitHub token
+echo $PARTNER_GITHUB_TOKEN | docker login ghcr.io -u PARTNER_USERNAME --password-stdin
 
 # Pull the image
 docker pull ghcr.io/YOUR_USERNAME/zatca:1.0.0
@@ -69,7 +69,7 @@ docker-compose up -d
 | `v1` | Major version (latest minor + patch) |
 | `latest` | Most recent build (use for testing only) |
 
-## Updating docker-compose.yml for Northwind
+## Updating docker-compose.yml for Partners
 
 Update the image reference in `docker-compose.yml`:
 

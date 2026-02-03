@@ -6,6 +6,7 @@ A production-ready ZATCA Phase 2 compliant e-invoicing API platform for Saudi Ar
 
 [![License: COSL](https://img.shields.io/badge/License-COSL-blue.svg)](LICENSE)
 [![Security Policy](https://img.shields.io/badge/Security-Policy-green.svg)](SECURITY.md)
+[![Docker Image](https://img.shields.io/badge/Docker-ghcr.io-blue.svg)](https://github.com/shamil3ilm/zatca/pkgs/container/zatca)
 
 ## Features
 
@@ -419,6 +420,105 @@ php artisan test
 
 # Run with coverage
 php artisan test --coverage
+```
+
+## Docker Deployment
+
+### Quick Start with Docker
+
+```bash
+# Clone and build
+git clone https://github.com/shamil3ilm/zatca.git
+cd zatca
+
+# Copy environment file
+cp docker/.env.template .env
+
+# Start services
+docker-compose up -d
+
+# Run migrations
+docker-compose exec app php artisan migrate
+```
+
+### Production Deployment
+
+```bash
+# Use production configuration
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+### Pull Pre-built Image
+
+```bash
+# Pull from GitHub Container Registry
+docker pull ghcr.io/shamil3ilm/zatca:latest
+
+# Or specific version
+docker pull ghcr.io/shamil3ilm/zatca:v1.0.0
+```
+
+### Key Environment Variables
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `APP_KEY` | Application encryption key | Yes |
+| `DB_HOST` | Database host | Yes |
+| `DB_DATABASE` | Database name | Yes |
+| `DB_USERNAME` | Database user | Yes |
+| `DB_PASSWORD` | Database password | Yes |
+| `REDIS_HOST` | Redis host | Yes |
+| `ZATCA_ENVIRONMENT` | sandbox/simulation/production | Yes |
+| `JWT_SECRET` | JWT signing key | Yes |
+
+See [docker/.env.template](docker/.env.template) for full configuration.
+
+## Monitoring
+
+### Health Check
+
+```bash
+curl http://localhost:8000/api/health
+```
+
+### Prometheus Metrics
+
+Metrics endpoint available at `/api/metrics`:
+
+```bash
+curl http://localhost:8000/api/metrics
+```
+
+Exposed metrics:
+- `complipay_invoices_total` - Invoice counts by status
+- `complipay_zatca_submissions_total` - ZATCA submissions by result
+- `complipay_queue_size` - Current queue depth
+- `complipay_db_latency_seconds` - Database response time
+
+### Grafana Dashboard
+
+Pre-configured dashboard available in `docker/monitoring/grafana-dashboard.json`.
+
+```bash
+# Start monitoring stack
+docker-compose -f docker/monitoring/docker-compose.monitoring.yml up -d
+```
+
+## Load Testing
+
+K6 load testing scripts are available in `tests/Load/`:
+
+```bash
+# Install k6 - https://k6.io/docs/getting-started/installation/
+
+# Run health check test
+k6 run tests/Load/health-check.k6.js
+
+# Run invoice API test
+k6 run tests/Load/invoice-api.k6.js
+
+# Run stress test
+k6 run tests/Load/stress-test.k6.js
 ```
 
 ## Registration
