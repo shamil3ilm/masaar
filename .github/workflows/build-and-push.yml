@@ -75,7 +75,7 @@ jobs:
           subject-digest: ${{ steps.build-and-push.outputs.digest }}
           push-to-registry: true
 
-  # Output image info for TaxFly
+  # Output image info for deployment
   notify:
     needs: build-and-push
     runs-on: ubuntu-latest

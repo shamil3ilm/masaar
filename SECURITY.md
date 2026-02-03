@@ -81,6 +81,14 @@ CompliPay is committed to ensuring the security of our users and the integrity o
 - **Logging**: Comprehensive audit logging without sensitive data
 - **Monitoring**: Real-time alerting for suspicious activities
 
+### Container Security
+
+- **Non-root User**: Containers run as non-root user (UID 1000)
+- **Read-only Filesystem**: Application code is immutable
+- **Health Checks**: Automated container health monitoring
+- **Resource Limits**: CPU and memory constraints in production
+- **No Privileged Mode**: Containers run without elevated privileges
+
 ## Security Best Practices for Users
 
 ### Deployment
@@ -116,6 +124,16 @@ CompliPay is committed to ensuring the security of our users and the integrity o
    - Large invoice amounts
    - Unusual time patterns
 3. **Set up alerts** for security events
+
+### Docker Deployment
+
+1. **Use official images** from GitHub Container Registry
+2. **Scan images** for vulnerabilities before deployment
+3. **Set resource limits** (CPU, memory) in production
+4. **Use secrets management** (Docker secrets, Kubernetes secrets)
+5. **Enable health checks** for container orchestration
+6. **Use network policies** to restrict container communication
+7. **Keep images updated** with security patches
 
 ## Vulnerability Disclosure Policy
 
