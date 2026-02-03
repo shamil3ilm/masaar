@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ComplianceController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\InvoiceController;
+use App\Http\Controllers\Api\MetricsController;
 use App\Http\Controllers\Api\OnboardingController;
 use App\Http\Controllers\Api\OrganizationController;
 use App\Http\Controllers\Api\VarianceController;
@@ -31,6 +32,10 @@ Route::get('/health', fn () => response()->json([
     'version' => '1.0.0',
     'timestamp' => now()->toISOString(),
 ]));
+
+// Prometheus metrics (restrict by IP in production)
+Route::get('/metrics', [MetricsController::class, 'index'])
+    ->middleware('throttle:60,1');
 
 /*
 |--------------------------------------------------------------------------

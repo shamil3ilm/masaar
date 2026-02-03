@@ -1,0 +1,135 @@
+# CompliPay Production Override
+# Use with: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# This override adds production-specific configurations:
+# - Resource limits
+# - Replicas for high availability
+# - SSL/TLS termination (via reverse proxy)
+# - Enhanced security settings
+
+version: '3.8'
+
+services:
+  # ==========================================================================
+  # Production Application Configuration
+  # ==========================================================================
+  app:
+    deploy:
+      mode: replicated
+      replicas: 2
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+        order: start-first
+      rollback_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+    labels:
+      # Traefik labels for reverse proxy (if using Traefik)
+      - "traefik.enable=true"
+      - "traefik.http.routers.complipay.rule=Host(`${APP_DOMAIN}`)"
+      - "traefik.http.routers.complipay.entrypoints=websecure"
+      - "traefik.http.routers.complipay.tls.certresolver=letsencrypt"
+      - "traefik.http.services.complipay.loadbalancer.server.port=80"
+
+  # ==========================================================================
+  # Production Database Configuration
+  # ==========================================================================
+  db:
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+      - --max-connections=1000
+      - --innodb-buffer-pool-size=1G
+      - --innodb-log-file-size=256M
+      - --innodb-flush-log-at-trx-commit=1
+      - --sync-binlog=1
+      - --slow-query-log=1
+      - --slow-query-log-file=/var/lib/mysql/slow.log
+      - --long-query-time=2
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+
+  # ==========================================================================
+  # Production Redis Configuration
+  # ==========================================================================
+  redis:
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD}
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  # ==========================================================================
+  # Reverse Proxy (Traefik) - Optional
+  # ==========================================================================
+  traefik:
+    image: traefik:v3.0
+    container_name: complipay-traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    command:
+      - "--api.dashboard=false"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=${SSL_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - complipay-letsencrypt:/letsencrypt
+    networks:
+      - complipay-network
+
+volumes:
+  complipay-letsencrypt:
+    driver: local

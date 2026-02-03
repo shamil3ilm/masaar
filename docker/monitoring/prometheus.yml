@@ -1,0 +1,38 @@
+# CompliPay Prometheus Configuration
+# Use with: docker run -v ./prometheus.yml:/etc/prometheus/prometheus.yml prom/prometheus
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+rule_files: []
+
+scrape_configs:
+  # CompliPay Application Metrics
+  - job_name: 'complipay'
+    metrics_path: '/api/metrics'
+    static_configs:
+      - targets: ['app:80']
+        labels:
+          app: 'complipay'
+          env: 'production'
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Optional: MySQL metrics (requires mysqld_exporter)
+  # - job_name: 'mysql'
+  #   static_configs:
+  #     - targets: ['mysql-exporter:9104']
+
+  # Optional: Redis metrics (requires redis_exporter)
+  # - job_name: 'redis'
+  #   static_configs:
+  #     - targets: ['redis-exporter:9121']
