@@ -28,19 +28,19 @@ FROM node:20-alpine AS node-build
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY package.json package-lock.json* ./
 
-# Install dependencies (skip if no package.json)
-RUN if [ -f package.json ]; then npm ci --omit=dev; fi
+# Install all dependencies (including dev for build tools)
+RUN if [ -f package-lock.json ]; then npm ci; elif [ -f package.json ]; then npm install; fi
 
-# Copy source files
+# Copy source files for building
 COPY resources/ ./resources/
 COPY vite.config.js* ./
 COPY tailwind.config.js* ./
 COPY postcss.config.js* ./
 
 # Build assets (skip if no vite config)
-RUN if [ -f vite.config.js ]; then npm run build; fi
+RUN if [ -f vite.config.js ]; then npm run build; else mkdir -p public/build; fi
 
 # =============================================================================
 # Stage 3: Production Image
