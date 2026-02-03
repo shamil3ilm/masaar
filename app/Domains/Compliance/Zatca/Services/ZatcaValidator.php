@@ -164,11 +164,19 @@ class ZatcaValidator
             $errors[] = "BR-KSA-02: Invoice type code must be 388, 381, or 383 (got {$typeCode})";
         }
 
-        // Currency (BT-5) - must be SAR for KSA
+        // Currency (BT-5) - SAR required, or foreign currency with exchange rate
+        // Per ZATCA: Foreign currency invoices allowed if TaxCurrencyCode is SAR
+        // and exchange rate is provided for conversion
         if (! $invoice->currency) {
             $errors[] = 'BT-5: Currency code is required';
         } elseif ($invoice->currency !== 'SAR') {
-            $errors[] = 'BR-KSA-CU-01: Currency must be SAR for Saudi invoices';
+            // Foreign currency is allowed if exchange rate is provided
+            // The caller must provide amounts in foreign currency + exchange rate
+            // so we can compute SAR amounts for VAT reporting
+            $hasExchangeRate = isset($invoice->exchange_rate) && $invoice->exchange_rate > 0;
+            if (! $hasExchangeRate) {
+                $errors[] = 'BR-KSA-CU-01: Foreign currency invoices require exchange_rate to SAR';
+            }
         }
 
         // Billing reference for credit/debit notes

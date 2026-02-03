@@ -132,11 +132,13 @@ class XmlBuilder
             $this->addElement('cbc:Note', $data->creditDebitReason);
         }
 
-        // Document currency
+        // Document currency (can be foreign currency like USD, EUR)
         $this->addElement('cbc:DocumentCurrencyCode', $data->currency);
 
-        // Tax currency (same as document currency for SA)
-        $this->addElement('cbc:TaxCurrencyCode', $data->currency);
+        // Tax currency - ALWAYS SAR for Saudi VAT per ZATCA requirements
+        // BT-6: When document is in foreign currency, tax amounts must still be reported in SAR
+        $taxCurrency = $data->isMultiCurrency() ? 'SAR' : $data->currency;
+        $this->addElement('cbc:TaxCurrencyCode', $taxCurrency);
     }
 
     /**
@@ -409,17 +411,33 @@ class XmlBuilder
 
     /**
      * Add tax total with subtotals per category.
+     *
+     * MULTI-CURRENCY SUPPORT (per ZATCA spec):
+     * When document currency differs from SAR (e.g., USD, EUR):
+     * - BT-110: Invoice total VAT amount (in document currency)
+     * - BT-111: Invoice total VAT amount in accounting currency (SAR) - REQUIRED
+     *
+     * First TaxTotal: Document currency with subtotals
+     * Second TaxTotal: SAR amount only (required for BT-111 when multi-currency)
      */
     private function addTaxTotal(InvoiceXmlData $data): void
     {
+        $isMultiCurrency = $data->isMultiCurrency();
+
+        // Calculate SAR tax amount for multi-currency invoices
+        $taxAmountSar = $isMultiCurrency
+            ? $data->convertToSar($data->taxAmount)
+            : $data->taxAmount;
+
+        // First TaxTotal - document currency with subtotals (BT-110)
         $taxTotal = $this->dom->createElementNS(self::CAC_NS, 'cac:TaxTotal');
 
-        // Total tax amount
+        // Total tax amount in document currency
         $taxAmount = $this->dom->createElementNS(self::CBC_NS, 'cbc:TaxAmount', $this->formatAmount($data->taxAmount));
         $taxAmount->setAttribute('currencyID', $data->currency);
         $taxTotal->appendChild($taxAmount);
 
-        // Tax subtotals by category
+        // Tax subtotals by category (in document currency)
         if (! empty($data->taxSubtotals)) {
             foreach ($data->taxSubtotals as $subtotal) {
                 $taxTotal->appendChild($this->buildTaxSubtotal($subtotal, $data->currency));
@@ -434,11 +452,17 @@ class XmlBuilder
 
         $this->root->appendChild($taxTotal);
 
-        // Second TaxTotal required by ZATCA for tax currency
-        // This contains only the tax amount (no subtotals)
+        // Second TaxTotal - SAR amount only (BT-111, required for multi-currency)
+        // Per ZATCA: "If the VAT accounting currency code (BT-6) is present,
+        // then the Invoice total VAT amount in accounting currency (BT-111) shall be provided"
         $taxTotal2 = $this->dom->createElementNS(self::CAC_NS, 'cac:TaxTotal');
-        $taxAmount2 = $this->dom->createElementNS(self::CBC_NS, 'cbc:TaxAmount', $this->formatAmount($data->taxAmount));
-        $taxAmount2->setAttribute('currencyID', $data->currency);
+        $taxAmount2 = $this->dom->createElementNS(
+            self::CBC_NS,
+            'cbc:TaxAmount',
+            $this->formatAmount($isMultiCurrency ? $taxAmountSar : $data->taxAmount)
+        );
+        // For multi-currency: SAR; for SAR invoices: same currency
+        $taxAmount2->setAttribute('currencyID', $isMultiCurrency ? 'SAR' : $data->currency);
         $taxTotal2->appendChild($taxAmount2);
         $this->root->appendChild($taxTotal2);
     }
