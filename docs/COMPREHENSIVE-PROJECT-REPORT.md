@@ -497,7 +497,13 @@ $xmlData = new InvoiceXmlData(
 
 ### 5.9 Multi-Currency Support
 
-**Per ZATCA**: Invoices can be in foreign currency but must show SAR conversion.
+**Per ZATCA Official Guidelines**: Foreign currency invoices are fully supported with these requirements:
+
+1. **DocumentCurrencyCode (BT-5)**: Can be foreign currency (USD, EUR, GBP, etc.)
+2. **TaxCurrencyCode (BT-6)**: MUST be SAR for VAT reporting
+3. **Two TaxTotal elements required**:
+   - First TaxTotal (BT-110): Document currency with subtotals
+   - Second TaxTotal (BT-111): SAR amount only for VAT accounting
 
 ```php
 $xmlData = new InvoiceXmlData(
@@ -505,11 +511,46 @@ $xmlData = new InvoiceXmlData(
     originalCurrency: 'USD',
     exchangeRate: 3.75,         // 1 USD = 3.75 SAR
     exchangeRateDate: '2026-01-15',
+    subtotal: 1000.00,          // USD
+    taxAmount: 150.00,          // USD - converted to 562.50 SAR internally
+    total: 1150.00,             // USD
 );
-// Totals converted to SAR for VAT calculation
+
+// XmlBuilder generates:
+// - DocumentCurrencyCode = USD
+// - TaxCurrencyCode = SAR
+// - TaxTotal[1]: 150.00 USD with subtotals
+// - TaxTotal[2]: 562.50 SAR (150 × 3.75)
 ```
 
-### 5.10 Proforma Invoice Handling
+**Validation**: Foreign currencies require `exchange_rate` field to convert VAT to SAR.
+
+### 5.10 Multi-Branch EGS Support
+
+**Per ZATCA**: Each physical location (EGS - Electronic Generation Solution) requires separate ZATCA onboarding.
+
+**Architecture:**
+```
+Organization
+├── Branch A (EGS Device 1) → Own CCSID/PCSID, own certificate
+├── Branch B (EGS Device 2) → Own CCSID/PCSID, own certificate
+└── Branch C (EGS Device 3) → Own CCSID/PCSID, own certificate
+```
+
+**Implementation:**
+- `Branch` model with `device_serial`, `onboarding_status`, `certificate_expires_at`
+- `BranchService` stores credentials per branch: `zatca/{orgId}/branches/{branchId}/pcsid.json`
+- `BranchOnboardingController` handles 3-step ZATCA onboarding per branch
+- `ZatcaSubmissionService` uses branch credentials if invoice has `branch_id`
+
+**API Endpoints:**
+- `POST /api/organizations/branches/{id}/onboarding/ccsid` - Step 1: Request CCSID
+- `POST /api/organizations/branches/{id}/onboarding/compliance-check` - Step 2: Run checks
+- `POST /api/organizations/branches/{id}/onboarding/pcsid` - Step 3: Get PCSID
+
+**ICV/PIH per Organization**: All branches share the same ICV sequence and hash chain per organization.
+
+### 5.11 Proforma Invoice Handling
 
 **Per ZATCA**: Proforma invoices (type 325) are NOT valid for ZATCA submission.
 
@@ -524,7 +565,7 @@ if ($documentType->isProforma()) {
 }
 ```
 
-### 5.11 Invoice Reprint Validation
+### 5.12 Invoice Reprint Validation
 
 **Per ZATCA**: Reprints MUST retain the same invoice number and QR code.
 
