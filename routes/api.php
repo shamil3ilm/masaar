@@ -33,6 +33,22 @@ Route::get('/health', fn () => response()->json([
     'timestamp' => now()->toISOString(),
 ]));
 
+// Platform license status (public - for partners to check their license)
+Route::get('/license/status', function () {
+    $licenseService = app(\App\Services\Licensing\PlatformLicenseService::class);
+    $result = $licenseService->validate();
+
+    return response()->json([
+        'valid' => $result['valid'],
+        'type' => $result['type'],
+        'partner' => $result['partner'],
+        'expires_at' => $result['expires_at'],
+        'days_remaining' => $result['days_remaining'],
+        'message' => $result['message'],
+        'features' => $result['features'] ?? [],
+    ]);
+});
+
 // Prometheus metrics (restrict by IP in production)
 Route::get('/metrics', [MetricsController::class, 'index'])
     ->middleware('throttle:60,1');

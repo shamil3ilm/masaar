@@ -35,6 +35,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'license.quota' => \App\Domains\Licensing\Http\Middleware\CheckInvoiceQuota::class,
             'scope' => \App\Domains\Licensing\Http\Middleware\RequireScope::class,
             'env' => \App\Domains\Licensing\Http\Middleware\RequireEnvironment::class,
+            'platform.license' => \App\Http\Middleware\ValidatePlatformLicense::class,
         ]);
 
         // Apply CORS to API routes
