@@ -39,7 +39,6 @@ node_modules/
 
 # Composer development
 vendor/
-composer.lock
 
 # Build artifacts
 *.log
