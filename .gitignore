@@ -1,3 +1,4 @@
+.worktrees/
 *.log
 .DS_Store
 .env
@@ -22,3 +23,17 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+nul
+
+# Debug/test artifacts
+test-output*.txt
+test-results*.txt
+test-results*.xml
+test-cn.xml
+fail-classes.txt
+failed-tests.txt
+analyze-errors*.php
+fix-imports*.php
+run-tests*.php
+run-mfg-test*.php
+run-module-tests*.php
