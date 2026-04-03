@@ -1,6 +1,6 @@
 <?php
 
-use App\Domains\Compliance\Zatca\Services\InvoiceHasher;
+use App\Domains\Compliance\Fatoora\Services\InvoiceHasher;
 
 it('generates consistent hash for same XML', function () {
     $hasher = new InvoiceHasher();

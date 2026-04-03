@@ -1,8 +1,8 @@
 <?php
 
-use App\Domains\Compliance\Zatca\Exceptions\ZatcaException;
-use App\Domains\Compliance\Zatca\Exceptions\CertificateException;
-use App\Domains\Compliance\Zatca\Exceptions\SigningException;
+use App\Domains\Compliance\Fatoora\Exceptions\ZatcaException;
+use App\Domains\Compliance\Fatoora\Exceptions\CertificateException;
+use App\Domains\Compliance\Fatoora\Exceptions\SigningException;
 use App\Domains\Licensing\Exceptions\LicenseException;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Foundation\Application;
@@ -29,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Register middleware aliases
         $middleware->alias([
             'jwt.auth' => \App\Http\Middleware\JwtAuthenticate::class,
+            'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
             'api.key' => \App\Http\Middleware\ApiKeyAuthenticate::class,
             'rate.api' => \App\Http\Middleware\RateLimitApi::class,
             'license' => \App\Domains\Licensing\Http\Middleware\ValidateLicense::class,

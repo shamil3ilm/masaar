@@ -81,13 +81,13 @@ Invoice 3 (ICV=3): PIH = DEF456 (hash of rejected Invoice 2)
 
 ## Implementation in This Codebase
 
-### AtomicIcvManager (`app/Domains/Compliance/Zatca/Services/AtomicIcvManager.php`)
+### AtomicIcvManager (`app/Domains/Compliance/Fatoora/Services/AtomicIcvManager.php`)
 
 - Manages ICV per organization (maps to CSID)
 - Uses Redis for atomic increments (falls back to DB)
 - Ensures strict monotonicity even at millisecond precision
 
-### HashChainManager (`app/Domains/Compliance/Zatca/Services/HashChainManager.php`)
+### HashChainManager (`app/Domains/Compliance/Fatoora/Services/HashChainManager.php`)
 
 - Manages PIH chain per organization
 - Provides exclusive locking to prevent race conditions
