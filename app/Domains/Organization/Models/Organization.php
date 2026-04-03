@@ -93,25 +93,35 @@ class Organization extends Model
 
     /**
      * Check if organization has completed ZATCA onboarding.
-     * True if at least one branch is active.
+     *
+     * @deprecated Use complianceProfileFor('SA')->isActive() instead.
      */
     public function getZatcaOnboardedAttribute(): bool
     {
-        // Check compliance_profile first (legacy)
+        $profile = $this->complianceProfileFor('SA');
+
+        if ($profile !== null) {
+            return $profile->isActive();
+        }
+
+        // Legacy fallback
         if ($this->compliance_profile['zatca_onboarded'] ?? false) {
             return true;
         }
 
-        // Check if any branch is active
         return $this->branches()->where('onboarding_status', Branch::STATUS_ACTIVE)->exists();
     }
 
     /**
-     * Get VAT number from compliance profile.
+     * Get VAT number — prefers active ComplianceProfile, falls back to legacy JSON.
      */
     public function getVatNumberAttribute(): ?string
     {
-        return $this->compliance_profile['vat_number'] ?? null;
+        $profile = $this->complianceProfileFor($this->country ?? 'SA');
+
+        return $profile?->setting('vat_number')
+            ?? $this->compliance_profile['vat_number']
+            ?? null;
     }
 
     /**
