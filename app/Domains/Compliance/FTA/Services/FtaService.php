@@ -162,7 +162,7 @@ class FtaService
      * Build DTO from Invoice + Organization Eloquent models.
      * Adapt field mapping to match your actual Invoice model columns.
      */
-    private function buildInvoiceData(Invoice $invoice, Organization $organization): FtaInvoiceData
+    public function buildInvoiceData(Invoice $invoice, Organization $organization): FtaInvoiceData
     {
         return new FtaInvoiceData(
             invoiceNumber:        $invoice->invoice_number,
