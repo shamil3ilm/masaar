@@ -8,6 +8,7 @@ use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Enums\InvoiceType;
+use App\Domains\Organization\Models\ComplianceProfile;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -27,6 +28,7 @@ class Invoice extends Model
 
     protected $fillable = [
         'organization_id',
+        'compliance_profile_id',
         'invoice_number',
         'uuid',  // ZATCA BT-124: Invoice UUID (separate from database ID)
         'type',
@@ -195,6 +197,14 @@ class Invoice extends Model
     public function organization(): BelongsTo
     {
         return $this->belongsTo(Organization::class);
+    }
+
+    /**
+     * Compliance profile used for this invoice's jurisdiction.
+     */
+    public function complianceProfile(): BelongsTo
+    {
+        return $this->belongsTo(ComplianceProfile::class);
     }
 
     /**
