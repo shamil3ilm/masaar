@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Models;
 
-use App\Domains\Compliance\Zatca\Models\InvoiceSubmission;
+use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Enums\InvoiceType;
@@ -51,6 +51,13 @@ class Invoice extends Model
         'icv',
         'zatca_response',
         'notes',
+        'erp_reference_id',
+        // ZATCA BT-3 invoice sub-type flags (bits 3-7)
+        'is_third_party',
+        'is_nominal',
+        'is_export',
+        'is_summary',
+        'is_self_billed',
     ];
 
     protected function casts(): array
@@ -68,6 +75,11 @@ class Invoice extends Model
             'icv' => 'integer',
             'zatca_response' => 'array',
             'buyer_address' => 'array',
+            'is_third_party' => 'boolean',
+            'is_nominal'     => 'boolean',
+            'is_export'      => 'boolean',
+            'is_summary'     => 'boolean',
+            'is_self_billed' => 'boolean',
         ];
     }
 
@@ -106,6 +118,7 @@ class Invoice extends Model
         'signed_xml',
         'zatca_response',
         'notes',
+        'erp_reference_id',
         'updated_at',
     ];
 

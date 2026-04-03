@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Domains\Compliance\Zatca\Services\ZatcaSubmissionService;
+use App\Domains\Compliance\Fatoora\Services\FatooraSubmissionService;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Services\TenantResolver;
@@ -11,21 +11,21 @@ use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 
 /**
- * ZATCA Compliance API controller.
+ * Fatoora (KSA) Compliance API controller.
  *
- * Thin controller - delegates to ZatcaSubmissionService.
+ * Thin controller - delegates to FatooraSubmissionService.
  */
 class ComplianceController extends Controller
 {
     public function __construct(
         private readonly TenantResolver $tenant,
-        private readonly ZatcaSubmissionService $submission,
+        private readonly FatooraSubmissionService $submission,
     ) {}
 
     /**
      * Generate compliance data for invoice (hash, QR).
      *
-     * POST /api/compliance/zatca/generate/{invoiceId}
+     * POST /api/compliance/sa/generate/{invoiceId}
      */
     public function generate(string $invoiceId): JsonResponse
     {
@@ -38,9 +38,9 @@ class ComplianceController extends Controller
     }
 
     /**
-     * Validate invoice with ZATCA (without submission).
+     * Validate invoice with Fatoora (without submission).
      *
-     * POST /api/compliance/zatca/validate/{invoiceId}
+     * POST /api/compliance/sa/validate/{invoiceId}
      */
     public function validate(string $invoiceId): JsonResponse
     {
@@ -58,9 +58,9 @@ class ComplianceController extends Controller
     }
 
     /**
-     * Submit invoice to ZATCA.
+     * Submit invoice to Fatoora.
      *
-     * POST /api/compliance/zatca/submit/{invoiceId}
+     * POST /api/compliance/sa/submit/{invoiceId}
      */
     public function submit(string $invoiceId): JsonResponse
     {
@@ -76,7 +76,7 @@ class ComplianceController extends Controller
 
         if (! $response->success) {
             return ApiResponse::error(
-                'ZATCA submission failed',
+                'Fatoora submission failed',
                 422,
                 $response->errorMessages
             );
@@ -91,7 +91,7 @@ class ComplianceController extends Controller
     /**
      * Get invoice status.
      *
-     * GET /api/compliance/zatca/status/{invoiceId}
+     * GET /api/compliance/sa/status/{invoiceId}
      */
     public function status(string $invoiceId): JsonResponse
     {

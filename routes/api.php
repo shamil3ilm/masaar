@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\MetricsController;
 use App\Http\Controllers\Api\OnboardingController;
 use App\Http\Controllers\Api\OrganizationController;
+use App\Http\Controllers\Api\PipelineController;
 use App\Http\Controllers\Api\VarianceController;
 use App\Http\Controllers\Api\WebhookController;
 use Illuminate\Support\Facades\Route;
@@ -20,7 +21,7 @@ use Illuminate\Support\Facades\Route;
 | API Routes
 |--------------------------------------------------------------------------
 |
-| CompliPay API endpoints for authentication, invoices, and ZATCA compliance.
+| Masaar API endpoints for authentication, invoices, and Fatoora (KSA) compliance.
 |
 | Authentication Methods:
 | 1. JWT Token: POST /api/auth/login -> Authorization: Bearer {token}
@@ -82,15 +83,33 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
     // Invoices (full CRUD)
     Route::apiResource('invoices', InvoiceController::class);
 
-    // ZATCA Compliance
-    Route::prefix('compliance/zatca')->group(function () {
+    // Saudi Arabia — Fatoora (KSA) Compliance (Phase 2 e-invoicing)
+    Route::prefix('compliance/sa')->group(function () {
         Route::post('/generate/{invoiceId}', [ComplianceController::class, 'generate']);
         Route::post('/validate/{invoiceId}', [ComplianceController::class, 'validate']);
         Route::post('/submit/{invoiceId}', [ComplianceController::class, 'submit']);
-        Route::get('/status/{invoiceId}', [ComplianceController::class, 'status']);
+        Route::get('/status/{submissionId}', [ComplianceController::class, 'status']);
     });
 
-    // ZATCA Onboarding (CSID flow)
+    // Deprecated: /compliance/zatca/ → /compliance/sa/ (remove in v2.0)
+    Route::prefix('compliance/zatca')->group(function () {
+        Route::any('/{path?}', function () {
+            return response()->json([
+                'message' => 'This endpoint has moved. Use /api/compliance/sa/ instead.',
+                'docs' => 'https://docs.masaar.sa/migration/v1-to-v2',
+            ], 301);
+        })->where('path', '.*');
+    });
+
+    // UAE — FTA e-Invoicing (Peppol BIS Billing 3.0)
+    Route::prefix('compliance/uae-fta')->group(function () {
+        Route::post('/submit/{invoiceId}', [\App\Http\Controllers\Api\UAE\UaeFtaController::class, 'submit']);
+        Route::get('/status/{submissionId}', [\App\Http\Controllers\Api\UAE\UaeFtaController::class, 'status']);
+        Route::post('/retry/{submissionId}', [\App\Http\Controllers\Api\UAE\UaeFtaController::class, 'retry']);
+        Route::get('/submissions', [\App\Http\Controllers\Api\UAE\UaeFtaController::class, 'index']);
+    });
+
+    // Saudi Arabia — Fatoora Onboarding (CSID flow)
     Route::prefix('compliance/onboarding')->group(function () {
         Route::get('/status', [OnboardingController::class, 'status']);
         Route::post('/ccsid', [OnboardingController::class, 'requestCcsid']);
@@ -123,7 +142,7 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
         Route::post('/{branch}/reactivate', [BranchController::class, 'reactivate']);
         Route::get('/{branch}/onboarding-status', [BranchController::class, 'onboardingStatus']);
 
-        // Branch ZATCA Onboarding
+        // Branch Fatoora Onboarding
         Route::post('/{branch}/onboarding/ccsid', [BranchOnboardingController::class, 'requestCcsid']);
         Route::post('/{branch}/onboarding/compliance-check', [BranchOnboardingController::class, 'runComplianceCheck']);
         Route::post('/{branch}/onboarding/pcsid', [BranchOnboardingController::class, 'requestPcsid']);
@@ -184,17 +203,17 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
     Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy'])
         ->middleware(['scope:invoice.cancel']);
 
-    // ZATCA Compliance - Generate & Validate (require invoice.submit scope)
+    // Fatoora (KSA) Compliance - Generate & Validate (require invoice.submit scope)
     Route::middleware(['scope:invoice.submit'])->group(function () {
         Route::post('/compliance/generate/{invoiceId}', [ComplianceController::class, 'generate']);
         Route::post('/compliance/validate/{invoiceId}', [ComplianceController::class, 'validate']);
     });
 
-    // ZATCA Compliance - Submit (requires quota check + production environment for real submissions)
+    // Fatoora (KSA) Compliance - Submit (requires quota check + production environment for real submissions)
     Route::post('/compliance/submit/{invoiceId}', [ComplianceController::class, 'submit'])
         ->middleware(['scope:invoice.submit', 'license.quota']);
 
-    // ZATCA Compliance - Status (require compliance.status scope)
+    // Fatoora (KSA) Compliance - Status (require compliance.status scope)
     Route::get('/compliance/status/{invoiceId}', [ComplianceController::class, 'status'])
         ->middleware(['scope:compliance.status']);
 
@@ -216,6 +235,12 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
         Route::post('/variances/{id}/resolve', [VarianceController::class, 'resolve']);
     });
 
+    // Pipeline - Atomic ERP integration (create + generate + submit in one call)
+    Route::post('/pipeline/submit', [PipelineController::class, 'submit'])
+        ->middleware(['scope:invoice.submit', 'license.quota']);
+    Route::get('/pipeline/status/{invoiceId}', [PipelineController::class, 'status'])
+        ->middleware(['scope:compliance.status']);
+
     // Dashboard - Read (require any valid license)
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::get('/dashboard/health', [DashboardController::class, 'health']);
@@ -230,10 +255,11 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
 | These routes require admin authentication and provide platform-wide
 | statistics and system health monitoring.
 |
-| TODO: Add admin middleware for production (e.g., 'auth:admin', 'role:admin')
+| The 'admin' middleware verifies that the authenticated user carries
+| role=admin in their JWT organization context. Any other role receives 403.
 |
 */
-Route::middleware(['jwt.auth', 'rate.api'])->prefix('admin')->group(function () {
+Route::middleware(['jwt.auth', 'admin', 'rate.api'])->prefix('admin')->group(function () {
 
     // Admin Dashboard
     Route::prefix('dashboard')->group(function () {

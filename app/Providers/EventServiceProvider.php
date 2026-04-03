@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use App\Domains\Compliance\Zatca\Events\InvoiceCleared;
-use App\Domains\Compliance\Zatca\Events\InvoiceFailed;
-use App\Domains\Compliance\Zatca\Events\InvoiceRejected;
-use App\Domains\Compliance\Zatca\Events\InvoiceReported;
-use App\Domains\Compliance\Zatca\Events\InvoiceSubmitted;
-use App\Domains\Compliance\Zatca\Events\InvoiceWarning;
-use App\Domains\Compliance\Zatca\Listeners\DispatchInvoiceWebhook;
+use App\Domains\Compliance\Fatoora\Events\InvoiceCleared;
+use App\Domains\Compliance\Fatoora\Events\InvoiceFailed;
+use App\Domains\Compliance\Fatoora\Events\InvoiceRejected;
+use App\Domains\Compliance\Fatoora\Events\InvoiceReported;
+use App\Domains\Compliance\Fatoora\Events\InvoiceSubmitted;
+use App\Domains\Compliance\Fatoora\Events\InvoiceWarning;
+use App\Domains\Compliance\Fatoora\Listeners\DispatchInvoiceWebhook;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
 /**

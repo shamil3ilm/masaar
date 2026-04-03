@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Models;
 
-use App\Domains\Compliance\Zatca\DTOs\AddressData;
+use App\Domains\Compliance\Fatoora\DTOs\AddressData;
 use App\Domains\Invoice\Models\Invoice;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -68,7 +68,7 @@ class Organization extends Model
      */
     public function activeBranches(): HasMany
     {
-        return $this->branches()->zatcaReady();
+        return $this->branches()->fatooraReady();
     }
 
     /**
