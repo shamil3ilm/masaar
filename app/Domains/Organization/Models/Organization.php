@@ -9,6 +9,9 @@ use App\Domains\Invoice\Models\Invoice;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use App\Domains\Organization\Models\ComplianceProfile;
+use App\Domains\Organization\Models\OrganizationGroup;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -26,6 +29,7 @@ class Organization extends Model
         'name',
         'country',
         'status',
+        'group_id',
         'compliance_profile',
         // Address fields (ZATCA required)
         'street',
@@ -124,6 +128,33 @@ class Organization extends Model
             district: $this->district,
             countryCode: $this->country,
         );
+    }
+
+    /**
+     * The optional holding group this organization belongs to.
+     */
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(OrganizationGroup::class, 'group_id');
+    }
+
+    /**
+     * All compliance profiles for this organization (one per jurisdiction).
+     */
+    public function complianceProfiles(): HasMany
+    {
+        return $this->hasMany(ComplianceProfile::class);
+    }
+
+    /**
+     * Get the active compliance profile for a given jurisdiction.
+     */
+    public function complianceProfileFor(string $jurisdiction): ?ComplianceProfile
+    {
+        return $this->complianceProfiles()
+            ->where('jurisdiction', $jurisdiction)
+            ->where('status', ComplianceProfile::STATUS_ACTIVE)
+            ->first();
     }
 
     /**
