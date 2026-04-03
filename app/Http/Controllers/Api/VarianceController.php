@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
-use App\Domains\Compliance\Zatca\Services\EnvironmentVarianceTracker;
+use App\Domains\Compliance\Fatoora\Services\EnvironmentVarianceTracker;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;

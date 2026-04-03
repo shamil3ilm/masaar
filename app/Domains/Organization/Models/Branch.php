@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Models;
 
-use App\Domains\Compliance\Zatca\DTOs\AddressData;
-use App\Domains\Compliance\Zatca\DTOs\CsrData;
+use App\Domains\Compliance\Fatoora\DTOs\AddressData;
+use App\Domains\Compliance\Fatoora\DTOs\CsrData;
 use App\Domains\Invoice\Models\Invoice;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * Branch model for multi-EGS support.
  *
  * Each branch represents a physical location or EGS device
- * that can have its own ZATCA certificate and invoice stream.
+ * that can have its own Fatoora certificate and invoice stream.
  *
  * @property string $id
  * @property string $organization_id
@@ -112,7 +112,7 @@ class Branch extends Model
     /**
      * Check if branch is ready to issue invoices.
      */
-    public function isZatcaReady(): bool
+    public function isFatooraReady(): bool
     {
         return $this->onboarding_status === self::STATUS_ACTIVE
             && $this->is_active
@@ -287,7 +287,7 @@ class Branch extends Model
     /**
      * Scope to branches ready for invoicing.
      */
-    public function scopeZatcaReady($query)
+    public function scopeFatooraReady($query)
     {
         return $query->where('onboarding_status', self::STATUS_ACTIVE)
             ->where('is_active', true)

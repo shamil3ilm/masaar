@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Domains\Compliance\Zatca\Services\FallbackHandler;
+use App\Domains\Compliance\Fatoora\Services\FallbackHandler;
 use Illuminate\Console\Command;
 
 /**
@@ -16,7 +16,7 @@ use Illuminate\Console\Command;
  */
 class ReplayFailedOperations extends Command
 {
-    protected $signature = 'zatca:replay-failed
+    protected $signature = 'fatoora:replay-failed
                             {--dry-run : Show what would be replayed without executing}
                             {--force : Force replay even if some operations might be stale}';
 

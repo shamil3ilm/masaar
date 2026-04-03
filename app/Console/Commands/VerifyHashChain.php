@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\DB;
  */
 class VerifyHashChain extends Command
 {
-    protected $signature = 'zatca:verify-hash-chain
+    protected $signature = 'fatoora:verify-hash-chain
                             {--organization= : Verify specific organization only}
                             {--database= : Use alternate database connection}
                             {--fix : Attempt to fix minor issues}
