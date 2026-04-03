@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Domains\Compliance\Zatca\Services\CertificateService;
+use App\Domains\Compliance\Fatoora\Services\CertificateService;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Mail;
  */
 class CheckCertificateExpiry extends Command
 {
-    protected $signature = 'zatca:check-certificate
+    protected $signature = 'fatoora:check-certificate
                             {--organization= : Check specific organization only}
                             {--notify : Send notifications for expiring certificates}';
 
@@ -154,7 +154,7 @@ class CheckCertificateExpiry extends Command
         int $daysRemaining,
         Carbon $expiryDate
     ): void {
-        $notifyAtDays = config('zatca.certificate_notifications.notify_at_days', [30, 14, 7, 3, 1]);
+        $notifyAtDays = config('fatoora.certificate_notifications.notify_at_days', [30, 14, 7, 3, 1]);
 
         if (!in_array($daysRemaining, $notifyAtDays) && $daysRemaining > 0) {
             return;
@@ -166,7 +166,7 @@ class CheckCertificateExpiry extends Command
             return;
         }
 
-        $channels = config('zatca.certificate_notifications.channels', ['mail', 'webhook']);
+        $channels = config('fatoora.certificate_notifications.channels', ['mail', 'webhook']);
 
         foreach ($channels as $channel) {
             match ($channel) {

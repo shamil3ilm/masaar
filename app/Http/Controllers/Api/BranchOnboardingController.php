@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
-use App\Domains\Compliance\Zatca\DTOs\AddressData;
-use App\Domains\Compliance\Zatca\DTOs\InvoiceXmlData;
-use App\Domains\Compliance\Zatca\Services\CsidOnboardingService;
-use App\Domains\Compliance\Zatca\Services\XmlBuilder;
+use App\Domains\Compliance\Fatoora\DTOs\AddressData;
+use App\Domains\Compliance\Fatoora\DTOs\InvoiceXmlData;
+use App\Domains\Compliance\Fatoora\Services\CsidOnboardingService;
+use App\Domains\Compliance\Fatoora\Services\XmlBuilder;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Services\BranchService;
 use App\Domains\Organization\Services\TenantResolver;

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
-use App\Domains\Compliance\Zatca\Services\ClusterCircuitBreaker;
-use App\Domains\Compliance\Zatca\Services\EnvironmentVarianceTracker;
-use App\Domains\Compliance\Zatca\Services\OfflineQueueManager;
-use App\Domains\Compliance\Zatca\Services\ZatcaConnectivityChecker;
+use App\Domains\Compliance\Fatoora\Services\ClusterCircuitBreaker;
+use App\Domains\Compliance\Fatoora\Services\EnvironmentVarianceTracker;
+use App\Domains\Compliance\Fatoora\Services\OfflineQueueManager;
+use App\Domains\Compliance\Fatoora\Services\FatooraConnectivityChecker;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -30,7 +30,7 @@ class AdminDashboardController extends Controller
         private readonly ClusterCircuitBreaker $circuitBreaker,
         private readonly EnvironmentVarianceTracker $varianceTracker,
         private readonly OfflineQueueManager $offlineQueueManager,
-        private readonly ZatcaConnectivityChecker $connectivityChecker,
+        private readonly FatooraConnectivityChecker $connectivityChecker,
     ) {}
 
     /**
@@ -198,7 +198,7 @@ class AdminDashboardController extends Controller
             $p95Index = (int) floor(count($samples) * 0.95);
             $p99Index = (int) floor(count($samples) * 0.99);
 
-            $thresholds = config('zatca.hash_chain_monitoring');
+            $thresholds = config('fatoora.hash_chain_monitoring');
 
             return [
                 'samples' => count($samples),

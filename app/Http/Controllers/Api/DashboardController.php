@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
-use App\Domains\Compliance\Zatca\Services\ClusterCircuitBreaker;
-use App\Domains\Compliance\Zatca\Services\EnvironmentVarianceTracker;
-use App\Domains\Compliance\Zatca\Services\CertificateLineageService;
+use App\Domains\Compliance\Fatoora\Services\ClusterCircuitBreaker;
+use App\Domains\Compliance\Fatoora\Services\EnvironmentVarianceTracker;
+use App\Domains\Compliance\Fatoora\Services\CertificateLineageService;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Domains\Compliance\Zatca\Client\ZatcaClient;
-use App\Domains\Compliance\Zatca\Services\OfflineQueueManager;
-use App\Domains\Compliance\Zatca\Services\ZatcaConnectivityChecker;
+use App\Domains\Compliance\Fatoora\Client\FatooraClient;
+use App\Domains\Compliance\Fatoora\Services\OfflineQueueManager;
+use App\Domains\Compliance\Fatoora\Services\FatooraConnectivityChecker;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Console\Command;
@@ -22,11 +22,11 @@ use Illuminate\Support\Facades\Log;
  * - Manual sync is needed for POS/retail systems
  *
  * Scheduler recommendation: Run every 5 minutes
- * `$schedule->command('zatca:process-offline')->everyFiveMinutes();`
+ * `$schedule->command('fatoora:process-offline')->everyFiveMinutes();`
  */
 class ProcessOfflineQueue extends Command
 {
-    protected $signature = 'zatca:process-offline
+    protected $signature = 'fatoora:process-offline
                             {--organization= : Process specific organization only}
                             {--limit=50 : Maximum items to process per run}
                             {--dry-run : Check connectivity and show queue status without processing}
@@ -41,8 +41,8 @@ class ProcessOfflineQueue extends Command
 
     public function __construct(
         private readonly OfflineQueueManager $queueManager,
-        private readonly ZatcaClient $zatcaClient,
-        private readonly ?ZatcaConnectivityChecker $connectivityChecker = null,
+        private readonly FatooraClient $zatcaClient,
+        private readonly ?FatooraConnectivityChecker $connectivityChecker = null,
     ) {
         parent::__construct();
     }

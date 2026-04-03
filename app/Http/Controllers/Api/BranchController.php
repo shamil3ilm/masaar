@@ -48,7 +48,7 @@ class BranchController extends Controller
 
         // Filter by zatca_ready
         if ($request->boolean('zatca_ready')) {
-            $query->zatcaReady();
+            $query->fatooraReady();
         }
 
         $branches = $query->orderBy('is_default', 'desc')
@@ -288,7 +288,7 @@ class BranchController extends Controller
             'onboarding_status' => $branch->onboarding_status,
             'has_ccsid' => $hasCcsid,
             'has_pcsid' => $hasPcsid,
-            'is_zatca_ready' => $branch->isZatcaReady(),
+            'is_fatoora_ready' => $branch->isFatooraReady(),
             'certificate_expires_at' => $branch->certificate_expires_at?->toIso8601String(),
             'days_until_expiry' => $branch->getDaysUntilCertificateExpiry(),
             'steps' => [
@@ -313,7 +313,7 @@ class BranchController extends Controller
             'name_ar' => $branch->name_ar,
             'device_serial' => $branch->device_serial,
             'onboarding_status' => $branch->onboarding_status,
-            'is_zatca_ready' => $branch->isZatcaReady(),
+            'is_fatoora_ready' => $branch->isFatooraReady(),
             'is_active' => $branch->is_active,
             'is_default' => $branch->is_default,
             'invoice_count' => $branch->invoice_count,

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Domains\Compliance\Zatca\Services\OfflineQueueManager;
+use App\Domains\Compliance\Fatoora\Services\OfflineQueueManager;
 use Illuminate\Console\Command;
 
 /**
