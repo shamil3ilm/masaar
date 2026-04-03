@@ -101,12 +101,22 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
         })->where('path', '.*');
     });
 
-    // UAE — FTA e-Invoicing (Peppol BIS Billing 3.0)
+    // UAE FTA compliance endpoints (Peppol PINT AE)
+    Route::prefix('compliance/ae')->group(function () {
+        Route::post('/submit/{invoiceId}', [\App\Http\Controllers\Api\FTA\FtaController::class, 'submit']);
+        Route::get('/status/{submissionId}', [\App\Http\Controllers\Api\FTA\FtaController::class, 'status']);
+        Route::post('/retry/{submissionId}', [\App\Http\Controllers\Api\FTA\FtaController::class, 'retry']);
+        Route::get('/submissions', [\App\Http\Controllers\Api\FTA\FtaController::class, 'index']);
+    });
+
+    // Deprecated: /compliance/uae-fta/ → /compliance/ae/ (remove in v2.0)
     Route::prefix('compliance/uae-fta')->group(function () {
-        Route::post('/submit/{invoiceId}', [\App\Http\Controllers\Api\UAE\UaeFtaController::class, 'submit']);
-        Route::get('/status/{submissionId}', [\App\Http\Controllers\Api\UAE\UaeFtaController::class, 'status']);
-        Route::post('/retry/{submissionId}', [\App\Http\Controllers\Api\UAE\UaeFtaController::class, 'retry']);
-        Route::get('/submissions', [\App\Http\Controllers\Api\UAE\UaeFtaController::class, 'index']);
+        Route::any('/{path?}', function () {
+            return response()->json([
+                'message' => 'This endpoint has moved. Use /api/compliance/ae/ instead.',
+                'docs' => 'https://docs.masaar.sa/migration/v1-to-v2',
+            ], 301);
+        })->where('path', '.*');
     });
 
     // Saudi Arabia — Fatoora Onboarding (CSID flow)
