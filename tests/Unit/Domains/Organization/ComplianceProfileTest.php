@@ -52,3 +52,36 @@ it('enforces one profile per organization per jurisdiction', function () {
         'settings'        => [],
     ]))->toThrow(\Illuminate\Database\QueryException::class);
 });
+
+it('can resolve compliance profile from invoice', function () {
+    $org = Organization::create([
+        'name'    => 'Invoice Corp',
+        'country' => 'SA',
+        'status'  => 'active',
+    ]);
+
+    $profile = ComplianceProfile::create([
+        'organization_id' => $org->id,
+        'jurisdiction'    => 'SA',
+        'engine'          => 'fatoora',
+        'status'          => 'active',
+        'settings'        => [],
+    ]);
+
+    $invoice = \App\Domains\Invoice\Models\Invoice::create([
+        'organization_id'       => $org->id,
+        'compliance_profile_id' => $profile->id,
+        'invoice_number'        => 'INV-0001',
+        'type'                  => 'standard',
+        'status'                => 'draft',
+        'issue_date'            => now()->toDateString(),
+        'currency'              => 'SAR',
+        'buyer_name'            => 'Buyer Co',
+        'subtotal'              => 100,
+        'tax_amount'            => 15,
+        'total'                 => 115,
+    ]);
+
+    expect($invoice->complianceProfile->jurisdiction)->toBe('SA')
+        ->and($profile->invoices()->count())->toBe(1);
+});
