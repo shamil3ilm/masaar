@@ -11,8 +11,8 @@ use Illuminate\Console\Command;
  * Command to replay operations that failed due to temporary outages.
  *
  * Usage:
- *   php artisan zatca:replay-failed
- *   php artisan zatca:replay-failed --dry-run
+ *   php artisan fatoora:replay-failed
+ *   php artisan fatoora:replay-failed --dry-run
  */
 class ReplayFailedOperations extends Command
 {

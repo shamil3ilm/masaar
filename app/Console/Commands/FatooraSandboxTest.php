@@ -20,10 +20,10 @@ use Illuminate\Support\Facades\Http;
  * 4. Submit test invoices
  *
  * Usage:
- *   php artisan zatca:sandbox-test --step=info
- *   php artisan zatca:sandbox-test --step=generate-csr
- *   php artisan zatca:sandbox-test --step=compliance-csid --otp=123456
- *   php artisan zatca:sandbox-test --step=compliance-check --invoice-hash=xxx
+ *   php artisan fatoora:sandbox-test --step=info
+ *   php artisan fatoora:sandbox-test --step=generate-csr
+ *   php artisan fatoora:sandbox-test --step=compliance-csid --otp=123456
+ *   php artisan fatoora:sandbox-test --step=compliance-check --invoice-hash=xxx
  */
 class FatooraSandboxTest extends Command
 {
@@ -113,7 +113,7 @@ class FatooraSandboxTest extends Command
         $this->newLine();
 
         $this->info('▶️  NEXT STEP:');
-        $this->line('  php artisan zatca:sandbox-test --step=generate-csr');
+        $this->line('  php artisan fatoora:sandbox-test --step=generate-csr');
 
         return Command::SUCCESS;
     }
@@ -303,7 +303,7 @@ class FatooraSandboxTest extends Command
         $this->info('▶️  NEXT STEP:');
         $this->line('  1. Go to: https://sandbox.zatca.gov.sa/');
         $this->line('  2. Use sandbox OTP: 123456 (or as provided)');
-        $this->line('  3. Run: php artisan zatca:sandbox-test --step=compliance-csid --otp=123456');
+        $this->line('  3. Run: php artisan fatoora:sandbox-test --step=compliance-csid --otp=123456');
 
         return Command::SUCCESS;
     }
@@ -403,7 +403,7 @@ EOT;
         $this->newLine();
 
         $this->info('▶️  After obtaining proper CSR:');
-        $this->line('  php artisan zatca:sandbox-test --step=compliance-csid --otp=123456');
+        $this->line('  php artisan fatoora:sandbox-test --step=compliance-csid --otp=123456');
 
         return Command::SUCCESS;
     }
@@ -480,7 +480,7 @@ EOT;
                 $this->newLine();
 
                 $this->info('▶️  NEXT STEP:');
-                $this->line('  php artisan zatca:sandbox-test --step=compliance-check');
+                $this->line('  php artisan fatoora:sandbox-test --step=compliance-check');
             } else {
                 $this->error('Failed to get CSID');
                 $this->line('Status: ' . $response->status());
@@ -746,7 +746,7 @@ EOT;
         $this->newLine();
 
         $this->info('▶️  NEXT STEP (with demo CSR):');
-        $this->line('  php artisan zatca:sandbox-test --step=compliance-csid --otp=123456');
+        $this->line('  php artisan fatoora:sandbox-test --step=compliance-csid --otp=123456');
         $this->line('  (Note: ZATCA may reject the RSA-based CSR, but you can see the API flow)');
 
         return Command::SUCCESS;

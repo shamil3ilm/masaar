@@ -30,10 +30,10 @@ use Illuminate\Support\Facades\Http;
  * for compliance verification BEFORE you can obtain the PCSID.
  *
  * Usage:
- *   php artisan zatca:onboard --step=ccsid --otp=<your-otp>
- *   php artisan zatca:onboard --step=compliance
- *   php artisan zatca:onboard --step=pcsid
- *   php artisan zatca:onboard --step=full --otp=<your-otp>
+ *   php artisan fatoora:onboard --step=ccsid --otp=<your-otp>
+ *   php artisan fatoora:onboard --step=compliance
+ *   php artisan fatoora:onboard --step=pcsid
+ *   php artisan fatoora:onboard --step=full --otp=<your-otp>
  */
 class FatooraOnboarding extends Command
 {
@@ -98,9 +98,9 @@ class FatooraOnboarding extends Command
         $this->newLine();
 
         $this->table(['Step', 'Description', 'Command'], [
-            ['1. CCSID', 'Request Compliance CSID using OTP', 'php artisan zatca:onboard --step=ccsid --otp=<otp>'],
-            ['2. Compliance', 'Submit 6 invoice types for validation', 'php artisan zatca:onboard --step=compliance'],
-            ['3. PCSID', 'Request Production CSID', 'php artisan zatca:onboard --step=pcsid'],
+            ['1. CCSID', 'Request Compliance CSID using OTP', 'php artisan fatoora:onboard --step=ccsid --otp=<otp>'],
+            ['2. Compliance', 'Submit 6 invoice types for validation', 'php artisan fatoora:onboard --step=compliance'],
+            ['3. PCSID', 'Request Production CSID', 'php artisan fatoora:onboard --step=pcsid'],
         ]);
         $this->newLine();
 
@@ -135,7 +135,7 @@ class FatooraOnboarding extends Command
         $this->newLine();
 
         $this->info('Quick Start (full onboarding):');
-        $this->line('  php artisan zatca:onboard --step=full --otp=<your-otp> --target=simulation');
+        $this->line('  php artisan fatoora:onboard --step=full --otp=<your-otp> --target=simulation');
 
         return Command::SUCCESS;
     }
@@ -159,7 +159,7 @@ class FatooraOnboarding extends Command
         $csrPath = $this->option('csr') ?? storage_path('app/zatca/taxpayer.csr');
         if (!file_exists($csrPath)) {
             $this->error("CSR not found at: {$csrPath}");
-            $this->line('Generate CSR first: php artisan zatca:generate-csr');
+            $this->line('Generate CSR first: php artisan fatoora:generate-csr');
             return Command::FAILURE;
         }
 
@@ -214,7 +214,7 @@ class FatooraOnboarding extends Command
                 $this->newLine();
 
                 $this->info('NEXT: Run compliance check with 6 invoices:');
-                $this->line("  php artisan zatca:onboard --step=compliance --target={$this->environment}");
+                $this->line("  php artisan fatoora:onboard --step=compliance --target={$this->environment}");
 
                 return Command::SUCCESS;
             }
@@ -251,7 +251,7 @@ class FatooraOnboarding extends Command
 
         if (!file_exists($csrPath)) {
             $this->error("CSR not found at: {$csrPath}");
-            $this->line('Generate CSR first: php artisan zatca:generate-csr');
+            $this->line('Generate CSR first: php artisan fatoora:generate-csr');
             return Command::FAILURE;
         }
 
@@ -322,7 +322,7 @@ class FatooraOnboarding extends Command
             $this->newLine();
 
             $this->info('NEXT: Run compliance check (local validation):');
-            $this->line('  php artisan zatca:onboard --step=compliance --target=local');
+            $this->line('  php artisan fatoora:onboard --step=compliance --target=local');
 
             return Command::SUCCESS;
 
@@ -481,7 +481,7 @@ class FatooraOnboarding extends Command
             $this->info('All 6 invoices passed compliance check!');
             $this->newLine();
             $this->info('NEXT: Request Production CSID:');
-            $this->line("  php artisan zatca:onboard --step=pcsid --target={$this->environment}");
+            $this->line("  php artisan fatoora:onboard --step=pcsid --target={$this->environment}");
             return Command::SUCCESS;
         }
 
