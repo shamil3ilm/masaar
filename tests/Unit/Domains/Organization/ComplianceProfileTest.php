@@ -85,3 +85,48 @@ it('can resolve compliance profile from invoice', function () {
     expect($invoice->complianceProfile->jurisdiction)->toBe('SA')
         ->and($profile->invoices()->count())->toBe(1);
 });
+
+it('backfill seeder converts legacy JSON to compliance profile row', function () {
+    // Org with legacy JSON compliance_profile (no ComplianceProfile row yet)
+    $org = Organization::create([
+        'name'               => 'Legacy Corp',
+        'country'            => 'SA',
+        'status'             => 'active',
+        'compliance_profile' => [
+            'vat_number'      => '300000000000003',
+            'zatca_onboarded' => true,
+            'production_csid' => 'csid-prod-abc',
+            'compliance_csid' => 'csid-comp-xyz',
+        ],
+    ]);
+
+    expect(ComplianceProfile::where('organization_id', $org->id)->count())->toBe(0);
+
+    $seeder = new \Database\Seeders\BackfillComplianceProfilesSeeder();
+    $seeder->run();
+
+    $profile = ComplianceProfile::where('organization_id', $org->id)
+        ->where('jurisdiction', 'SA')
+        ->first();
+
+    expect($profile)->not->toBeNull()
+        ->and($profile->engine)->toBe('fatoora')
+        ->and($profile->status)->toBe(ComplianceProfile::STATUS_ACTIVE)
+        ->and($profile->setting('vat_number'))->toBe('300000000000003')
+        ->and($profile->setting('production_csid'))->toBe('csid-prod-abc');
+});
+
+it('backfill seeder is idempotent', function () {
+    $org = Organization::create([
+        'name'               => 'Idem Corp',
+        'country'            => 'SA',
+        'status'             => 'active',
+        'compliance_profile' => ['vat_number' => '300000000000003'],
+    ]);
+
+    $seeder = new \Database\Seeders\BackfillComplianceProfilesSeeder();
+    $seeder->run();
+    $seeder->run(); // second run should not create duplicates
+
+    expect(ComplianceProfile::where('organization_id', $org->id)->count())->toBe(1);
+});
