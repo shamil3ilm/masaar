@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Domains\Compliance\Contracts\ComplianceEngine;
 use App\Domains\Compliance\Contracts\SubmissionResult;
 use App\Domains\Compliance\Contracts\ValidationResult;
+use App\Domains\Compliance\Fatoora\FatooraEngine;
+use App\Domains\Compliance\Contracts\ComplianceEngine as EngineContract;
 
 it('ComplianceEngine interface is defined', function () {
     expect(interface_exists(ComplianceEngine::class))->toBeTrue();
@@ -34,4 +36,16 @@ it('ValidationResult can be constructed', function () {
 
     expect($result->valid)->toBeFalse()
         ->and($result->errors)->toHaveCount(1);
+});
+
+it('FatooraEngine implements ComplianceEngine', function () {
+    expect(is_a(FatooraEngine::class, EngineContract::class, true))->toBeTrue();
+});
+
+it('FatooraEngine supports SA jurisdiction only', function () {
+    $engine = app(FatooraEngine::class);
+
+    expect($engine->supports('SA'))->toBeTrue()
+        ->and($engine->supports('AE'))->toBeFalse()
+        ->and($engine->supports('QA'))->toBeFalse();
 });
