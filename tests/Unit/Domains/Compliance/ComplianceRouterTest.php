@@ -6,6 +6,7 @@ use App\Domains\Compliance\Contracts\ComplianceEngine;
 use App\Domains\Compliance\Contracts\SubmissionResult;
 use App\Domains\Compliance\Contracts\ValidationResult;
 use App\Domains\Compliance\Fatoora\FatooraEngine;
+use App\Domains\Compliance\FTA\FtaEngine;
 use App\Domains\Compliance\Contracts\ComplianceEngine as EngineContract;
 
 it('ComplianceEngine interface is defined', function () {
@@ -47,5 +48,17 @@ it('FatooraEngine supports SA jurisdiction only', function () {
 
     expect($engine->supports('SA'))->toBeTrue()
         ->and($engine->supports('AE'))->toBeFalse()
+        ->and($engine->supports('QA'))->toBeFalse();
+});
+
+it('FtaEngine implements ComplianceEngine', function () {
+    expect(is_a(FtaEngine::class, EngineContract::class, true))->toBeTrue();
+});
+
+it('FtaEngine supports AE jurisdiction only', function () {
+    $engine = app(FtaEngine::class);
+
+    expect($engine->supports('AE'))->toBeTrue()
+        ->and($engine->supports('SA'))->toBeFalse()
         ->and($engine->supports('QA'))->toBeFalse();
 });
