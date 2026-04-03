@@ -1,6 +1,6 @@
 <?php
 
-use App\Domains\Compliance\Zatca\DTOs\ZatcaResponse;
+use App\Domains\Compliance\Fatoora\DTOs\ZatcaResponse;
 
 it('creates successful response from API data', function () {
     $apiResponse = [

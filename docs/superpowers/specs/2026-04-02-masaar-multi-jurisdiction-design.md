@@ -403,7 +403,7 @@ Each jurisdiction README (both top-level and platform) includes:
 2. Rename `Compliance/UAE/` → `Compliance/FTA/`, update all namespaces
 3. Rename Zatca-prefixed classes → Fatoora-prefixed
 4. Rename UaeFta-prefixed classes → Fta-prefixed
-5. Fix `Organization` and `Branch` models (remove `Compliance\Zatca\DTOs` imports)
+5. Fix `Organization` and `Branch` models (remove `Compliance\Fatoora\DTOs` imports)
 6. Add deprecated route aliases
 
 ### Phase 3 — New data model

@@ -1,6 +1,6 @@
 <?php
 
-use App\Domains\Compliance\Zatca\Services\TlvEncoder;
+use App\Domains\Compliance\Fatoora\Services\TlvEncoder;
 
 it('encodes single TLV tag correctly', function () {
     $encoder = new TlvEncoder();

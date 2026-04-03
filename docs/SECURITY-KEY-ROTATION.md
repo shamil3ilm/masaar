@@ -1,8 +1,8 @@
-# CompliPay - Security Key Rotation Policy
+# Masaar - Security Key Rotation Policy
 
 ## Overview
 
-This document outlines the key and credential rotation policies for the CompliPay ZATCA e-invoicing platform. Regular rotation of cryptographic keys and credentials is essential for maintaining security and compliance.
+This document outlines the key and credential rotation policies for the Masaar ZATCA e-invoicing platform. Regular rotation of cryptographic keys and credentials is essential for maintaining security and compliance.
 
 ## 1. ZATCA Certificate Rotation
 
@@ -11,7 +11,7 @@ This document outlines the key and credential rotation policies for the CompliPa
 ZATCA-issued certificates have a defined validity period. Monitor certificate expiry and plan rotation in advance.
 
 ```php
-use App\Domains\Compliance\Zatca\Services\CertificateService;
+use App\Domains\Compliance\Fatoora\Services\CertificateService;
 
 $certificateService = app(CertificateService::class);
 
@@ -98,7 +98,7 @@ $oldApiKey->revoke();
 
 ```php
 // PHP SDK - Update API key
-$client = new CompliPayClient([
+$client = new MasaarClient([
     'base_url' => 'https://api.your-domain.com',
     'api_key' => $newApiKey, // Use new rotated key
 ]);

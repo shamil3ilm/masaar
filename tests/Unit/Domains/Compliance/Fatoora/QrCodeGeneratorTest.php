@@ -1,8 +1,8 @@
 <?php
 
-use App\Domains\Compliance\Zatca\DTOs\QrCodeData;
-use App\Domains\Compliance\Zatca\Services\QrCodeGenerator;
-use App\Domains\Compliance\Zatca\Services\TlvEncoder;
+use App\Domains\Compliance\Fatoora\DTOs\QrCodeData;
+use App\Domains\Compliance\Fatoora\Services\QrCodeGenerator;
+use App\Domains\Compliance\Fatoora\Services\TlvEncoder;
 
 it('generates Phase 1 QR code with 5 tags', function () {
     $encoder = new TlvEncoder();
