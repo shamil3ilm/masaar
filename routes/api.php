@@ -140,6 +140,13 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
     Route::apiResource('organizations', OrganizationController::class)->except(['destroy']);
     Route::post('/organizations/{id}/switch', [OrganizationController::class, 'switch']);
 
+    // Compliance Profile CRUD (per organization)
+    Route::prefix('organizations/{organization}')->group(function () {
+        Route::get('/compliance-profiles', [\App\Http\Controllers\Api\ComplianceProfileController::class, 'index']);
+        Route::post('/compliance-profiles', [\App\Http\Controllers\Api\ComplianceProfileController::class, 'store']);
+        Route::delete('/compliance-profiles/{profile}', [\App\Http\Controllers\Api\ComplianceProfileController::class, 'destroy']);
+    });
+
     // Branches (EGS Units)
     Route::prefix('organizations/branches')->group(function () {
         Route::get('/', [BranchController::class, 'index']);
