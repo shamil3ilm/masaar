@@ -15,11 +15,11 @@ use phpseclib3\File\X509;
  * Generate CSR and Private Key for ZATCA onboarding.
  *
  * This command generates a ZATCA-compliant CSR without requiring the SDK.
- * The generated CSR can be used with the zatca:onboard command.
+ * The generated CSR can be used with the fatoora:onboard command.
  *
  * Usage:
- *   php artisan zatca:generate-csr
- *   php artisan zatca:generate-csr --vat=399999999900003 --org="My Company"
+ *   php artisan fatoora:generate-csr
+ *   php artisan fatoora:generate-csr --vat=399999999900003 --org="My Company"
  */
 class FatooraGenerateCsr extends Command
 {
@@ -121,10 +121,10 @@ class FatooraGenerateCsr extends Command
             // Display next steps
             $this->info('Next Steps:');
             $this->line('1. Request CCSID with the generated CSR and key:');
-            $this->line("   php artisan zatca:onboard --step=ccsid --otp=<your-otp> --target=sandbox --csr={$csrPath} --key={$keyPath}");
+            $this->line("   php artisan fatoora:onboard --step=ccsid --otp=<your-otp> --target=sandbox --csr={$csrPath} --key={$keyPath}");
             $this->newLine();
             $this->line('2. Run compliance check (invoices will be signed):');
-            $this->line('   php artisan zatca:onboard --step=compliance --target=sandbox');
+            $this->line('   php artisan fatoora:onboard --step=compliance --target=sandbox');
             $this->newLine();
 
             // Show CSR content (first few lines)

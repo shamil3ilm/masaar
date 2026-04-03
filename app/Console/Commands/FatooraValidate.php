@@ -14,8 +14,8 @@ use Illuminate\Support\Facades\File;
  * Generate a sample ZATCA-compliant invoice XML for validation.
  *
  * Usage:
- *   php artisan zatca:validate-compliance
- *   php artisan zatca:validate-compliance --output=/path/to/invoice.xml
+ *   php artisan fatoora:validate
+ *   php artisan fatoora:validate --output=/path/to/invoice.xml
  *
  * Then validate with ZATCA SDK:
  *   fatoora -validate -invoice storage/app/zatca/sample_invoice.xml
