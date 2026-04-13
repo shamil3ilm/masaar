@@ -343,13 +343,11 @@ class CustomerPortalController extends Controller
             return $this->unauthorized();
         }
 
-        try {
-            $updated = $this->portalService->acceptQuotation($portalUser->id, $quotation);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success($updated, 'Quotation accepted.');
+        return $this->tryAction(
+            fn() => $this->portalService->acceptQuotation($portalUser->id, $quotation),
+            'Quotation accepted.',
+            'VALIDATION_ERROR'
+        );
     }
 
     /**
@@ -363,13 +361,11 @@ class CustomerPortalController extends Controller
             return $this->unauthorized();
         }
 
-        try {
-            $updated = $this->portalService->declineQuotation($portalUser->id, $quotation);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success($updated, 'Quotation declined.');
+        return $this->tryAction(
+            fn() => $this->portalService->declineQuotation($portalUser->id, $quotation),
+            'Quotation declined.',
+            'VALIDATION_ERROR'
+        );
     }
 
     /**

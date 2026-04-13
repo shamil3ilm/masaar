@@ -113,13 +113,11 @@ class OpportunityController extends Controller
             'competitors' => 'nullable|array',
         ]);
 
-        try {
-            $opportunity = $this->opportunityService->update($opportunity, $validated);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success(new OpportunityResource($opportunity), 'Opportunity updated successfully.');
+        return $this->tryAction(
+            fn() => new OpportunityResource($this->opportunityService->update($opportunity, $validated)),
+            'Opportunity updated successfully.',
+            'VALIDATION_ERROR'
+        );
     }
 
     /**
@@ -142,14 +140,14 @@ class OpportunityController extends Controller
             'pipeline_stage_id' => ['required', Rule::exists('pipeline_stages', 'id')->where('organization_id', $request->user()->organization_id)],
         ]);
 
-        try {
-            $stage = PipelineStage::findOrFail($validated['pipeline_stage_id']);
-            $opportunity = $this->opportunityService->moveToStage($opportunity, $stage, auth()->id());
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success(new OpportunityResource($opportunity), 'Opportunity moved to new stage.');
+        return $this->tryAction(
+            function () use ($validated, $opportunity) {
+                $stage = PipelineStage::findOrFail($validated['pipeline_stage_id']);
+                return new OpportunityResource($this->opportunityService->moveToStage($opportunity, $stage, auth()->id()));
+            },
+            'Opportunity moved to new stage.',
+            'VALIDATION_ERROR'
+        );
     }
 
     /**
@@ -164,13 +162,11 @@ class OpportunityController extends Controller
 
         $reason = $validated['won_reason'] ?? $validated['reason'] ?? null;
 
-        try {
-            $opportunity = $this->opportunityService->win($opportunity, auth()->id(), $reason);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success(new OpportunityResource($opportunity), 'Opportunity marked as won.');
+        return $this->tryAction(
+            fn() => new OpportunityResource($this->opportunityService->win($opportunity, auth()->id(), $reason)),
+            'Opportunity marked as won.',
+            'VALIDATION_ERROR'
+        );
     }
 
     /**
@@ -185,13 +181,11 @@ class OpportunityController extends Controller
 
         $reason = $validated['lost_reason'] ?? $validated['reason'] ?? null;
 
-        try {
-            $opportunity = $this->opportunityService->lose($opportunity, auth()->id(), $reason);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success(new OpportunityResource($opportunity), 'Opportunity marked as lost.');
+        return $this->tryAction(
+            fn() => new OpportunityResource($this->opportunityService->lose($opportunity, auth()->id(), $reason)),
+            'Opportunity marked as lost.',
+            'VALIDATION_ERROR'
+        );
     }
 
     /**
@@ -199,13 +193,11 @@ class OpportunityController extends Controller
      */
     public function reopen(Opportunity $opportunity): JsonResponse
     {
-        try {
-            $opportunity = $this->opportunityService->reopen($opportunity, auth()->id());
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success(new OpportunityResource($opportunity), 'Opportunity reopened.');
+        return $this->tryAction(
+            fn() => new OpportunityResource($this->opportunityService->reopen($opportunity, auth()->id())),
+            'Opportunity reopened.',
+            'VALIDATION_ERROR'
+        );
     }
 
     /**

@@ -74,24 +74,23 @@ class PaymentToleranceController extends Controller
             'is_default'  => ['sometimes', 'boolean'],
         ]);
 
-        try {
-            $group = $this->toleranceService->updateGroup($paymentToleranceGroup, $validated);
-
-            return $this->success($group);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'UPDATE_FAILED', 422);
-        }
+        return $this->tryAction(
+            fn() => $this->toleranceService->updateGroup($paymentToleranceGroup, $validated),
+            'Tolerance group updated.',
+            'UPDATE_FAILED'
+        );
     }
 
     public function destroyGroup(PaymentToleranceGroup $paymentToleranceGroup): JsonResponse
     {
-        try {
-            $this->toleranceService->deleteGroup($paymentToleranceGroup);
-
-            return $this->success(null, 'Tolerance group deleted.');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'DELETE_FAILED', 422);
-        }
+        return $this->tryAction(
+            function () use ($paymentToleranceGroup) {
+                $this->toleranceService->deleteGroup($paymentToleranceGroup);
+                return null;
+            },
+            'Tolerance group deleted.',
+            'DELETE_FAILED'
+        );
     }
 
     // =========================================================================

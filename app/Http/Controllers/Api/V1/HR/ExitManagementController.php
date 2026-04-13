@@ -86,26 +86,22 @@ class ExitManagementController extends Controller
             'remarks' => 'nullable|string',
         ]);
 
-        try {
-            $item = $this->service->clearItem($item, $validated['remarks'] ?? null);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'INVALID_STATUS', 422);
-        }
-
-        return $this->success($item, 'Clearance item marked as cleared.');
+        return $this->tryAction(
+            fn() => $this->service->clearItem($item, $validated['remarks'] ?? null),
+            'Clearance item marked as cleared.',
+            'INVALID_STATUS'
+        );
     }
 
     public function completeClearance(string $id): JsonResponse
     {
         $exit = EmployeeExit::findOrFail($id);
 
-        try {
-            $exit = $this->service->completeClearance($exit);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'INVALID_STATUS', 422);
-        }
-
-        return $this->success($exit->load('clearanceItems'), 'Clearance completed successfully.');
+        return $this->tryAction(
+            fn() => $this->service->completeClearance($exit)->load('clearanceItems'),
+            'Clearance completed successfully.',
+            'INVALID_STATUS'
+        );
     }
 
     public function settle(Request $request, string $id): JsonResponse
@@ -119,25 +115,21 @@ class ExitManagementController extends Controller
             'leave_encashment_amount' => 'nullable|numeric|min:0',
         ]);
 
-        try {
-            $exit = $this->service->settle($exit, $validated);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'INVALID_STATUS', 422);
-        }
-
-        return $this->success($exit->load('employee'), 'Final settlement recorded.');
+        return $this->tryAction(
+            fn() => $this->service->settle($exit, $validated)->load('employee'),
+            'Final settlement recorded.',
+            'INVALID_STATUS'
+        );
     }
 
     public function close(string $id): JsonResponse
     {
         $exit = EmployeeExit::findOrFail($id);
 
-        try {
-            $exit = $this->service->close($exit);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'INVALID_STATUS', 422);
-        }
-
-        return $this->success($exit, 'Exit record closed.');
+        return $this->tryAction(
+            fn() => $this->service->close($exit),
+            'Exit record closed.',
+            'INVALID_STATUS'
+        );
     }
 }

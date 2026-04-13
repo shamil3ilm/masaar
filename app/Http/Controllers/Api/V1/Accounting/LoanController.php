@@ -215,11 +215,11 @@ class LoanController extends Controller
      */
     public function close(Loan $loan): JsonResponse
     {
-        try {
-            $loan = $this->loanService->close($loan);
-            return $this->success($loan, 'Loan closed successfully');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'CLOSE_FAILED', 400);
-        }
+        return $this->tryAction(
+            fn() => $this->loanService->close($loan),
+            'Loan closed successfully',
+            'CLOSE_FAILED',
+            400
+        );
     }
 }

@@ -119,15 +119,13 @@ class BackdatedTransactionController extends Controller
             'transaction_date' => 'required|date',
         ]);
 
-        try {
-            $this->backdatedService->validateDate($validated['transaction_date']);
-
-            return $this->success([
-                'valid' => true,
-                'transaction_date' => $validated['transaction_date'],
-            ], 'Date is valid for backdating.');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
+        return $this->tryAction(
+            function () use ($validated) {
+                $this->backdatedService->validateDate($validated['transaction_date']);
+                return ['valid' => true, 'transaction_date' => $validated['transaction_date']];
+            },
+            'Date is valid for backdating.',
+            'VALIDATION_ERROR'
+        );
     }
 }

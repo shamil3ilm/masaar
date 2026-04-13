@@ -157,12 +157,12 @@ class ImportExportShipmentController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
-        try {
-            $shipment = $this->shipmentService->update($importExportShipment, $validated);
-            return $this->success($shipment, 'Shipment updated successfully');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 400);
-        }
+        return $this->tryAction(
+            fn() => $this->shipmentService->update($importExportShipment, $validated),
+            'Shipment updated successfully',
+            'VALIDATION_ERROR',
+            400
+        );
     }
 
     /**
@@ -193,17 +193,16 @@ class ImportExportShipmentController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
-        try {
-            $shipment = $this->shipmentService->updateStatus(
+        return $this->tryAction(
+            fn() => $this->shipmentService->updateStatus(
                 $importExportShipment,
                 $validated['status'],
                 collect($validated)->except('status')->filter()->toArray()
-            );
-
-            return $this->success($shipment, 'Shipment status updated successfully');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'STATUS_UPDATE_FAILED', 400);
-        }
+            ),
+            'Shipment status updated successfully',
+            'STATUS_UPDATE_FAILED',
+            400
+        );
     }
 
     /**

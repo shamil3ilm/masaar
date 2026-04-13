@@ -111,13 +111,11 @@ class PaymentReceivedController extends Controller
      */
     public function complete(PaymentReceived $paymentReceived): JsonResponse
     {
-        try {
-            $payment = $this->paymentService->complete($paymentReceived);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success(new PaymentReceivedResource($payment), 'Payment completed successfully.');
+        return $this->tryAction(
+            fn() => new PaymentReceivedResource($this->paymentService->complete($paymentReceived)),
+            'Payment completed successfully.',
+            'VALIDATION_ERROR'
+        );
     }
 
     /**
@@ -129,13 +127,11 @@ class PaymentReceivedController extends Controller
             'reason' => 'nullable|string|max:500',
         ]);
 
-        try {
-            $payment = $this->paymentService->void($paymentReceived, $request->input('reason', ''));
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success(new PaymentReceivedResource($payment), 'Payment voided successfully.');
+        return $this->tryAction(
+            fn() => new PaymentReceivedResource($this->paymentService->void($paymentReceived, $request->input('reason', ''))),
+            'Payment voided successfully.',
+            'VALIDATION_ERROR'
+        );
     }
 
     /**
@@ -147,13 +143,11 @@ class PaymentReceivedController extends Controller
             'reason' => 'nullable|string|max:500',
         ]);
 
-        try {
-            $payment = $this->paymentService->recordBounce($paymentReceived, $request->input('reason', ''));
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success(new PaymentReceivedResource($payment), 'Cheque bounce recorded.');
+        return $this->tryAction(
+            fn() => new PaymentReceivedResource($this->paymentService->recordBounce($paymentReceived, $request->input('reason', ''))),
+            'Cheque bounce recorded.',
+            'VALIDATION_ERROR'
+        );
     }
 
     /**
@@ -167,21 +161,21 @@ class PaymentReceivedController extends Controller
             'allocations.*.amount' => 'required|numeric|gt:0',
         ]);
 
-        try {
-            $results = [];
-            foreach ($validated['allocations'] as $allocation) {
-                $invoice = \App\Models\Sales\Invoice::findOrFail($allocation['invoice_id']);
-                $alloc = $this->paymentService->allocate($paymentReceived, $invoice, $allocation['amount']);
-                $results[] = $alloc;
-            }
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success([
-            'allocations' => $results,
-            'unallocated_amount' => $paymentReceived->fresh()->getUnallocatedAmount(),
-        ], 'Payment allocated successfully.');
+        return $this->tryAction(
+            function () use ($validated, $paymentReceived) {
+                $results = [];
+                foreach ($validated['allocations'] as $allocation) {
+                    $invoice = \App\Models\Sales\Invoice::findOrFail($allocation['invoice_id']);
+                    $results[] = $this->paymentService->allocate($paymentReceived, $invoice, $allocation['amount']);
+                }
+                return [
+                    'allocations'        => $results,
+                    'unallocated_amount' => $paymentReceived->fresh()->getUnallocatedAmount(),
+                ];
+            },
+            'Payment allocated successfully.',
+            'VALIDATION_ERROR'
+        );
     }
 
     /**

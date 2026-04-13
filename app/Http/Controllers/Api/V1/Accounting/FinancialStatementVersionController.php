@@ -83,12 +83,11 @@ class FinancialStatementVersionController extends Controller
             'is_active' => ['nullable', 'boolean'],
         ]);
 
-        try {
-            $fsv = $this->service->update($financialStatementVersion, $validated);
-            return $this->success($fsv, 'Financial statement version updated successfully.');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
+        return $this->tryAction(
+            fn() => $this->service->update($financialStatementVersion, $validated),
+            'Financial statement version updated successfully.',
+            'VALIDATION_ERROR'
+        );
     }
 
     /**

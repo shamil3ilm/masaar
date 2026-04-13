@@ -97,13 +97,11 @@ class LeaveController extends Controller
      */
     public function submit(LeaveRequest $leaveRequest): JsonResponse
     {
-        try {
-            $request = $this->leaveService->submit($leaveRequest);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success(new LeaveRequestResource($request), 'Leave request submitted successfully.');
+        return $this->tryAction(
+            fn() => new LeaveRequestResource($this->leaveService->submit($leaveRequest)),
+            'Leave request submitted successfully.',
+            'VALIDATION_ERROR'
+        );
     }
 
     /**

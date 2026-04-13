@@ -126,13 +126,14 @@ class PositionController extends Controller
             'employee_id' => 'required|exists:employees,id',
         ]);
 
-        try {
-            $this->positionService->assignEmployee($position, $validated['employee_id']);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'ASSIGNMENT_ERROR', 422);
-        }
-
-        return $this->success(null, 'Employee assigned to position.');
+        return $this->tryAction(
+            function () use ($position, $validated) {
+                $this->positionService->assignEmployee($position, $validated['employee_id']);
+                return null;
+            },
+            'Employee assigned to position.',
+            'ASSIGNMENT_ERROR'
+        );
     }
 
     /**
@@ -144,12 +145,13 @@ class PositionController extends Controller
             'employee_id' => 'required|exists:employees,id',
         ]);
 
-        try {
-            $this->positionService->vacatePosition($position, $validated['employee_id']);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VACATE_ERROR', 422);
-        }
-
-        return $this->success(null, 'Employee vacated from position.');
+        return $this->tryAction(
+            function () use ($position, $validated) {
+                $this->positionService->vacatePosition($position, $validated['employee_id']);
+                return null;
+            },
+            'Employee vacated from position.',
+            'VACATE_ERROR'
+        );
     }
 }

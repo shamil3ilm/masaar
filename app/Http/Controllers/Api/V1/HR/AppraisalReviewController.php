@@ -114,13 +114,11 @@ class AppraisalReviewController extends Controller
             'responses.*.response_text'   => 'nullable|string|max:2000',
         ]);
 
-        try {
-            $result = $this->service->submitReview($reviewerModel, $validated, auth()->id());
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'SUBMIT_REVIEW_ERROR', 422);
-        }
-
-        return $this->success($result, 'Review submitted successfully.');
+        return $this->tryAction(
+            fn() => $this->service->submitReview($reviewerModel, $validated, auth()->id()),
+            'Review submitted successfully.',
+            'SUBMIT_REVIEW_ERROR'
+        );
     }
 
     /**
@@ -142,13 +140,11 @@ class AppraisalReviewController extends Controller
             return $this->notFound('Reviewer record not found.');
         }
 
-        try {
-            $result = $this->service->declineReview($reviewerModel);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'DECLINE_REVIEW_ERROR', 422);
-        }
-
-        return $this->success($result, 'Review declined.');
+        return $this->tryAction(
+            fn() => $this->service->declineReview($reviewerModel),
+            'Review declined.',
+            'DECLINE_REVIEW_ERROR'
+        );
     }
 
     /**

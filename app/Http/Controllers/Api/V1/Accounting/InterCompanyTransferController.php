@@ -110,18 +110,16 @@ class InterCompanyTransferController extends Controller
             'reason' => 'nullable|string|max:500',
         ]);
 
-        try {
-            $transfer = $validated['action'] === 'approve'
-                ? $this->transferService->approve($interCompanyTransfer, auth()->id())
-                : $this->transferService->reject($interCompanyTransfer, $validated['reason'] ?? null);
-
-            return $this->success(
-                $transfer,
-                $validated['action'] === 'approve' ? 'Transfer approved successfully' : 'Transfer cancelled successfully'
-            );
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 400);
-        }
+        return $this->tryAction(
+            function () use ($validated, $interCompanyTransfer) {
+                return $validated['action'] === 'approve'
+                    ? $this->transferService->approve($interCompanyTransfer, auth()->id())
+                    : $this->transferService->reject($interCompanyTransfer, $validated['reason'] ?? null);
+            },
+            $validated['action'] === 'approve' ? 'Transfer approved successfully' : 'Transfer cancelled successfully',
+            'VALIDATION_ERROR',
+            400
+        );
     }
 
     /**
@@ -129,11 +127,11 @@ class InterCompanyTransferController extends Controller
      */
     public function complete(InterCompanyTransfer $interCompanyTransfer): JsonResponse
     {
-        try {
-            $transfer = $this->transferService->complete($interCompanyTransfer);
-            return $this->success($transfer, 'Transfer completed successfully');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'COMPLETE_FAILED', 400);
-        }
+        return $this->tryAction(
+            fn() => $this->transferService->complete($interCompanyTransfer),
+            'Transfer completed successfully',
+            'COMPLETE_FAILED',
+            400
+        );
     }
 }

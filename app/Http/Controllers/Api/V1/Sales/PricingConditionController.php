@@ -63,13 +63,11 @@ class PricingConditionController extends Controller
             'is_active' => 'boolean',
         ]);
 
-        try {
-            $procedure = $this->service->updateProcedure($pricingProcedure, $validated);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success($procedure, 'Pricing procedure updated successfully.');
+        return $this->tryAction(
+            fn() => $this->service->updateProcedure($pricingProcedure, $validated),
+            'Pricing procedure updated successfully.',
+            'VALIDATION_ERROR'
+        );
     }
 
     public function destroyProcedure(PricingProcedure $pricingProcedure): JsonResponse

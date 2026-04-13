@@ -69,13 +69,11 @@ class OvertimeController extends Controller
      */
     public function approve(OvertimeRequest $overtimeRequest): JsonResponse
     {
-        try {
-            $approved = $this->overtimeService->approve($overtimeRequest);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'STATE_ERROR', 422);
-        }
-
-        return $this->success($approved, 'Overtime request approved.');
+        return $this->tryAction(
+            fn() => $this->overtimeService->approve($overtimeRequest),
+            'Overtime request approved.',
+            'STATE_ERROR'
+        );
     }
 
     /**
@@ -87,13 +85,11 @@ class OvertimeController extends Controller
             'reason' => 'required|string|max:500',
         ]);
 
-        try {
-            $rejected = $this->overtimeService->reject($overtimeRequest, $validated['reason']);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'STATE_ERROR', 422);
-        }
-
-        return $this->success($rejected, 'Overtime request rejected.');
+        return $this->tryAction(
+            fn() => $this->overtimeService->reject($overtimeRequest, $validated['reason']),
+            'Overtime request rejected.',
+            'STATE_ERROR'
+        );
     }
 
     /**

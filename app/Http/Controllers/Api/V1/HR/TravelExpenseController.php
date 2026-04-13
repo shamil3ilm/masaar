@@ -237,13 +237,14 @@ class TravelExpenseController extends Controller
 
     public function submitRequest(Request $request, TravelRequest $travelRequest): JsonResponse
     {
-        try {
-            $this->service->submit($travelRequest);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'INVALID_STATE', 422);
-        }
-
-        return $this->success($travelRequest->refresh(), 'Travel request submitted.');
+        return $this->tryAction(
+            function () use ($travelRequest) {
+                $this->service->submit($travelRequest);
+                return $travelRequest->refresh();
+            },
+            'Travel request submitted.',
+            'INVALID_STATE'
+        );
     }
 
     public function approveRequest(Request $request, TravelRequest $travelRequest): JsonResponse
@@ -252,13 +253,14 @@ class TravelExpenseController extends Controller
             'advance_approved' => 'nullable|numeric|min:0',
         ]);
 
-        try {
-            $this->service->approve($travelRequest, (float) ($validated['advance_approved'] ?? 0));
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'INVALID_STATE', 422);
-        }
-
-        return $this->success($travelRequest->refresh(), 'Travel request approved.');
+        return $this->tryAction(
+            function () use ($travelRequest, $validated) {
+                $this->service->approve($travelRequest, (float) ($validated['advance_approved'] ?? 0));
+                return $travelRequest->refresh();
+            },
+            'Travel request approved.',
+            'INVALID_STATE'
+        );
     }
 
     public function rejectRequest(Request $request, TravelRequest $travelRequest): JsonResponse
@@ -267,13 +269,14 @@ class TravelExpenseController extends Controller
             'reason' => 'required|string|max:500',
         ]);
 
-        try {
-            $this->service->reject($travelRequest, $validated['reason']);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'INVALID_STATE', 422);
-        }
-
-        return $this->success($travelRequest->refresh(), 'Travel request rejected.');
+        return $this->tryAction(
+            function () use ($travelRequest, $validated) {
+                $this->service->reject($travelRequest, $validated['reason']);
+                return $travelRequest->refresh();
+            },
+            'Travel request rejected.',
+            'INVALID_STATE'
+        );
     }
 
     // ---------------------------------------------------------------
@@ -343,34 +346,37 @@ class TravelExpenseController extends Controller
 
     public function submitClaim(TravelExpenseClaim $travelExpenseClaim): JsonResponse
     {
-        try {
-            $this->service->submitClaim($travelExpenseClaim);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'INVALID_STATE', 422);
-        }
-
-        return $this->success($travelExpenseClaim->refresh(), 'Claim submitted.');
+        return $this->tryAction(
+            function () use ($travelExpenseClaim) {
+                $this->service->submitClaim($travelExpenseClaim);
+                return $travelExpenseClaim->refresh();
+            },
+            'Claim submitted.',
+            'INVALID_STATE'
+        );
     }
 
     public function approveClaim(TravelExpenseClaim $travelExpenseClaim): JsonResponse
     {
-        try {
-            $this->service->approveClaim($travelExpenseClaim);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'INVALID_STATE', 422);
-        }
-
-        return $this->success($travelExpenseClaim->refresh(), 'Claim approved.');
+        return $this->tryAction(
+            function () use ($travelExpenseClaim) {
+                $this->service->approveClaim($travelExpenseClaim);
+                return $travelExpenseClaim->refresh();
+            },
+            'Claim approved.',
+            'INVALID_STATE'
+        );
     }
 
     public function processClaim(TravelExpenseClaim $travelExpenseClaim): JsonResponse
     {
-        try {
-            $this->service->processClaim($travelExpenseClaim);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'INVALID_STATE', 422);
-        }
-
-        return $this->success($travelExpenseClaim->refresh(), 'Claim processed for payment.');
+        return $this->tryAction(
+            function () use ($travelExpenseClaim) {
+                $this->service->processClaim($travelExpenseClaim);
+                return $travelExpenseClaim->refresh();
+            },
+            'Claim processed for payment.',
+            'INVALID_STATE'
+        );
     }
 }

@@ -132,13 +132,11 @@ class LeadController extends Controller
             'tags' => 'nullable|array',
         ]);
 
-        try {
-            $lead = $this->leadService->update($lead, $validated);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success(new LeadResource($lead), 'Lead updated successfully.');
+        return $this->tryAction(
+            fn() => new LeadResource($this->leadService->update($lead, $validated)),
+            'Lead updated successfully.',
+            'VALIDATION_ERROR'
+        );
     }
 
     /**
@@ -166,13 +164,11 @@ class LeadController extends Controller
             'reason' => 'nullable|string|max:500',
         ]);
 
-        try {
-            $lead = $this->leadService->changeStatus($lead, $validated['status'], $validated['reason'] ?? null);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success(new LeadResource($lead), 'Lead status changed successfully.');
+        return $this->tryAction(
+            fn() => new LeadResource($this->leadService->changeStatus($lead, $validated['status'], $validated['reason'] ?? null)),
+            'Lead status changed successfully.',
+            'VALIDATION_ERROR'
+        );
     }
 
     /**

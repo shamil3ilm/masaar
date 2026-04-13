@@ -129,13 +129,11 @@ class ProjectController extends Controller
             'branch_id' => 'nullable|exists:branches,id',
         ]);
 
-        try {
-            $project = $this->projectService->updateProject($project, $validated);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success($project->fresh(['manager', 'customer']), 'Project updated successfully.');
+        return $this->tryAction(
+            fn() => $this->projectService->updateProject($project, $validated)->fresh(['manager', 'customer']),
+            'Project updated successfully.',
+            'VALIDATION_ERROR'
+        );
     }
 
     /**
@@ -161,13 +159,11 @@ class ProjectController extends Controller
      */
     public function activateProject(Project $project): JsonResponse
     {
-        try {
-            $project = $this->projectService->activateProject($project, auth()->id());
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success($project, 'Project activated successfully.');
+        return $this->tryAction(
+            fn() => $this->projectService->activateProject($project, auth()->id()),
+            'Project activated successfully.',
+            'VALIDATION_ERROR'
+        );
     }
 
     /**
@@ -175,13 +171,11 @@ class ProjectController extends Controller
      */
     public function completeProject(Project $project): JsonResponse
     {
-        try {
-            $project = $this->projectService->completeProject($project, auth()->id());
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success($project, 'Project completed successfully.');
+        return $this->tryAction(
+            fn() => $this->projectService->completeProject($project, auth()->id()),
+            'Project completed successfully.',
+            'VALIDATION_ERROR'
+        );
     }
 
     /**
@@ -294,17 +288,11 @@ class ProjectController extends Controller
             'progress_percent' => 'required|integer|min:0|max:100',
         ]);
 
-        try {
-            $element = $this->projectService->updateProgress(
-                $wbsElement,
-                $validated['progress_percent'],
-                auth()->id()
-            );
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success($element, 'Progress updated successfully.');
+        return $this->tryAction(
+            fn() => $this->projectService->updateProgress($wbsElement, $validated['progress_percent'], auth()->id()),
+            'Progress updated successfully.',
+            'VALIDATION_ERROR'
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -373,13 +361,11 @@ class ProjectController extends Controller
      */
     public function achieveMilestone(ProjectMilestone $milestone): JsonResponse
     {
-        try {
-            $milestone = $this->projectService->achieveMilestone($milestone, auth()->id());
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success($milestone, 'Milestone achieved.');
+        return $this->tryAction(
+            fn() => $this->projectService->achieveMilestone($milestone, auth()->id()),
+            'Milestone achieved.',
+            'VALIDATION_ERROR'
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -439,13 +425,11 @@ class ProjectController extends Controller
      */
     public function approveTime(ProjectTimeEntry $timeEntry): JsonResponse
     {
-        try {
-            $entry = $this->projectService->approveTime($timeEntry, auth()->id());
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success($entry, 'Time entry approved.');
+        return $this->tryAction(
+            fn() => $this->projectService->approveTime($timeEntry, auth()->id()),
+            'Time entry approved.',
+            'VALIDATION_ERROR'
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────────────

@@ -102,13 +102,11 @@ class PayrollController extends Controller
      */
     public function closePeriod(PayrollPeriod $payrollPeriod): JsonResponse
     {
-        try {
-            $period = $this->payrollService->closePeriod($payrollPeriod, auth()->id());
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success(new PayrollPeriodResource($period), 'Payroll period closed successfully.');
+        return $this->tryAction(
+            fn() => new PayrollPeriodResource($this->payrollService->closePeriod($payrollPeriod, auth()->id())),
+            'Payroll period closed successfully.',
+            'VALIDATION_ERROR'
+        );
     }
 
     /**
@@ -164,13 +162,11 @@ class PayrollController extends Controller
      */
     public function submitPayslip(Payslip $payslip): JsonResponse
     {
-        try {
-            $payslip = $this->payrollService->submitPayslip($payslip, auth()->id());
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success(new PayslipResource($payslip), 'Payslip submitted for approval.');
+        return $this->tryAction(
+            fn() => new PayslipResource($this->payrollService->submitPayslip($payslip, auth()->id())),
+            'Payslip submitted for approval.',
+            'VALIDATION_ERROR'
+        );
     }
 
     /**
@@ -178,13 +174,11 @@ class PayrollController extends Controller
      */
     public function approvePayslip(Payslip $payslip): JsonResponse
     {
-        try {
-            $payslip = $this->payrollService->approvePayslip($payslip, auth()->id());
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success(new PayslipResource($payslip), 'Payslip approved successfully.');
+        return $this->tryAction(
+            fn() => new PayslipResource($this->payrollService->approvePayslip($payslip, auth()->id())),
+            'Payslip approved successfully.',
+            'VALIDATION_ERROR'
+        );
     }
 
     /**
@@ -197,17 +191,11 @@ class PayrollController extends Controller
             'payment_reference' => 'nullable|string|max:100',
         ]);
 
-        try {
-            $payslip = $this->payrollService->markAsPaid(
-                $payslip,
-                $validated['payment_mode'],
-                $validated['payment_reference'] ?? null
-            );
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success(new PayslipResource($payslip), 'Payslip marked as paid.');
+        return $this->tryAction(
+            fn() => new PayslipResource($this->payrollService->markAsPaid($payslip, $validated['payment_mode'], $validated['payment_reference'] ?? null)),
+            'Payslip marked as paid.',
+            'VALIDATION_ERROR'
+        );
     }
 
     /**

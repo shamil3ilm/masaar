@@ -89,13 +89,11 @@ class CompensationController extends Controller
      */
     public function approve(CompensationReview $compensationReview): JsonResponse
     {
-        try {
-            $review = $this->compensationService->approve($compensationReview);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'STATE_ERROR', 422);
-        }
-
-        return $this->success($review, 'Compensation review approved.');
+        return $this->tryAction(
+            fn() => $this->compensationService->approve($compensationReview),
+            'Compensation review approved.',
+            'STATE_ERROR'
+        );
     }
 
     /**

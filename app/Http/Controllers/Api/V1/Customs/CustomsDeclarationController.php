@@ -256,12 +256,11 @@ class CustomsDeclarationController extends Controller
             'items.*.vat_rate' => ['nullable', 'numeric', 'min:0'],
         ]);
 
-        try {
-            $result = $this->declarationService->assess($customsDeclaration, $validated);
-            return $this->success($result, 'Declaration assessed successfully');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'ASSESS_FAILED', 422);
-        }
+        return $this->tryAction(
+            fn() => $this->declarationService->assess($customsDeclaration, $validated),
+            'Declaration assessed successfully',
+            'ASSESS_FAILED'
+        );
     }
 
     /**
@@ -279,12 +278,11 @@ class CustomsDeclarationController extends Controller
             'journal_entry_id' => ['nullable', 'exists:journal_entries,id'],
         ]);
 
-        try {
-            $result = $this->declarationService->payDuty($customsDeclaration, $validated);
-            return $this->success($result, 'Duty payment recorded successfully');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'PAYMENT_FAILED', 422);
-        }
+        return $this->tryAction(
+            fn() => $this->declarationService->payDuty($customsDeclaration, $validated),
+            'Duty payment recorded successfully',
+            'PAYMENT_FAILED'
+        );
     }
 
     /**
@@ -324,11 +322,10 @@ class CustomsDeclarationController extends Controller
             'reason' => ['required', 'string', 'max:1000'],
         ]);
 
-        try {
-            $result = $this->declarationService->reject($customsDeclaration, $validated['reason']);
-            return $this->success($result, 'Declaration rejected');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'REJECT_FAILED', 422);
-        }
+        return $this->tryAction(
+            fn() => $this->declarationService->reject($customsDeclaration, $validated['reason']),
+            'Declaration rejected',
+            'REJECT_FAILED'
+        );
     }
 }

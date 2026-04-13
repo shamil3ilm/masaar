@@ -61,17 +61,11 @@ class TravelExpenseReportController extends Controller
 
     public function approve(Request $request, string $uuid): JsonResponse
     {
-        try {
-            $travelRequest = $this->service->approveRequest(
-                $this->organizationId($request),
-                $uuid,
-                (int) auth()->id()
-            );
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'INVALID_STATE', 422);
-        }
-
-        return $this->success($travelRequest, 'Travel request approved.');
+        return $this->tryAction(
+            fn() => $this->service->approveRequest($this->organizationId($request), $uuid, (int) auth()->id()),
+            'Travel request approved.',
+            'INVALID_STATE'
+        );
     }
 
     public function indexReports(Request $request, string $uuid): JsonResponse
@@ -122,17 +116,11 @@ class TravelExpenseReportController extends Controller
 
     public function approveReport(Request $request, string $uuid): JsonResponse
     {
-        try {
-            $report = $this->service->approveExpenseReport(
-                $this->organizationId($request),
-                $uuid,
-                (int) auth()->id()
-            );
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'INVALID_STATE', 422);
-        }
-
-        return $this->success($report, 'Expense report approved.');
+        return $this->tryAction(
+            fn() => $this->service->approveExpenseReport($this->organizationId($request), $uuid, (int) auth()->id()),
+            'Expense report approved.',
+            'INVALID_STATE'
+        );
     }
 
     public function postReport(Request $request, string $uuid): JsonResponse

@@ -91,12 +91,12 @@ class ExpenseReportController extends Controller
             'expense_ids.*' => ['exists:expenses,id'],
         ]);
 
-        try {
-            $report = $this->reportService->addExpenses($expenseReport, $validated['expense_ids']);
-            return $this->success($report, 'Expenses added to report successfully');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'ADD_EXPENSES_FAILED', 400);
-        }
+        return $this->tryAction(
+            fn() => $this->reportService->addExpenses($expenseReport, $validated['expense_ids']),
+            'Expenses added to report successfully',
+            'ADD_EXPENSES_FAILED',
+            400
+        );
     }
 
     /**
@@ -104,12 +104,12 @@ class ExpenseReportController extends Controller
      */
     public function submit(ExpenseReport $expenseReport): JsonResponse
     {
-        try {
-            $report = $this->reportService->submit($expenseReport);
-            return $this->success($report, 'Report submitted for approval');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'SUBMIT_FAILED', 400);
-        }
+        return $this->tryAction(
+            fn() => $this->reportService->submit($expenseReport),
+            'Report submitted for approval',
+            'SUBMIT_FAILED',
+            400
+        );
     }
 
     /**
@@ -124,16 +124,12 @@ class ExpenseReportController extends Controller
             'item_approvals.*.notes' => ['nullable', 'string'],
         ]);
 
-        try {
-            $report = $this->reportService->approve(
-                $expenseReport,
-                $request->user()->id,
-                $validated['item_approvals'] ?? null
-            );
-            return $this->success($report, 'Report approved successfully');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'APPROVAL_FAILED', 400);
-        }
+        return $this->tryAction(
+            fn() => $this->reportService->approve($expenseReport, $request->user()->id, $validated['item_approvals'] ?? null),
+            'Report approved successfully',
+            'APPROVAL_FAILED',
+            400
+        );
     }
 
     /**
@@ -145,12 +141,12 @@ class ExpenseReportController extends Controller
             'reason' => ['required', 'string', 'max:500'],
         ]);
 
-        try {
-            $report = $this->reportService->reject($expenseReport, $validated['reason']);
-            return $this->success($report, 'Report rejected');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'REJECTION_FAILED', 400);
-        }
+        return $this->tryAction(
+            fn() => $this->reportService->reject($expenseReport, $validated['reason']),
+            'Report rejected',
+            'REJECTION_FAILED',
+            400
+        );
     }
 
     /**
@@ -162,11 +158,11 @@ class ExpenseReportController extends Controller
             'reimbursed_amount' => ['nullable', 'numeric', 'min:0'],
         ]);
 
-        try {
-            $report = $this->reportService->reimburse($expenseReport, $validated);
-            return $this->success($report, 'Report reimbursed successfully');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'REIMBURSE_FAILED', 400);
-        }
+        return $this->tryAction(
+            fn() => $this->reportService->reimburse($expenseReport, $validated),
+            'Report reimbursed successfully',
+            'REIMBURSE_FAILED',
+            400
+        );
     }
 }

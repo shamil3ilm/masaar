@@ -439,13 +439,11 @@ class MaintenanceController extends Controller
 
     public function orderStart(Request $request, MaintenanceOrder $maintenanceOrder): JsonResponse
     {
-        try {
-            $order = $this->maintenanceService->startOrder($maintenanceOrder, auth()->id());
-
-            return $this->success($order, 'Maintenance order started successfully.');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'INVALID_STATE', 422);
-        }
+        return $this->tryAction(
+            fn() => $this->maintenanceService->startOrder($maintenanceOrder, auth()->id()),
+            'Maintenance order started successfully.',
+            'INVALID_STATE'
+        );
     }
 
     public function orderCompleteTask(Request $request, MaintenanceOrder $maintenanceOrder, int $taskId): JsonResponse
@@ -454,18 +452,11 @@ class MaintenanceController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        try {
-            $task = $this->maintenanceService->completeTask(
-                $maintenanceOrder,
-                $taskId,
-                $data['notes'] ?? '',
-                auth()->id()
-            );
-
-            return $this->success($task, 'Task completed successfully.');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'INVALID_STATE', 422);
-        }
+        return $this->tryAction(
+            fn() => $this->maintenanceService->completeTask($maintenanceOrder, $taskId, $data['notes'] ?? '', auth()->id()),
+            'Task completed successfully.',
+            'INVALID_STATE'
+        );
     }
 
     public function orderComplete(Request $request, MaintenanceOrder $maintenanceOrder): JsonResponse
@@ -476,24 +467,20 @@ class MaintenanceController extends Controller
             'downtime_hours'   => 'nullable|numeric|min:0',
         ]);
 
-        try {
-            $order = $this->maintenanceService->completeOrder($maintenanceOrder, $data, auth()->id());
-
-            return $this->success($order, 'Maintenance order completed successfully.');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'INVALID_STATE', 422);
-        }
+        return $this->tryAction(
+            fn() => $this->maintenanceService->completeOrder($maintenanceOrder, $data, auth()->id()),
+            'Maintenance order completed successfully.',
+            'INVALID_STATE'
+        );
     }
 
     public function orderCancel(Request $request, MaintenanceOrder $maintenanceOrder): JsonResponse
     {
-        try {
-            $order = $this->maintenanceService->cancelOrder($maintenanceOrder, auth()->id());
-
-            return $this->success($order, 'Maintenance order cancelled successfully.');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'INVALID_STATE', 422);
-        }
+        return $this->tryAction(
+            fn() => $this->maintenanceService->cancelOrder($maintenanceOrder, auth()->id()),
+            'Maintenance order cancelled successfully.',
+            'INVALID_STATE'
+        );
     }
 
     // =========================================================================

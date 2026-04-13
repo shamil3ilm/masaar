@@ -149,19 +149,11 @@ class ShiftPlanningController extends Controller
             ? ShiftPattern::findOrFail($validated['shift_pattern_id'])
             : null;
 
-        try {
-            $line = $this->shiftService->assignShift(
-                $shiftRoster,
-                $employee,
-                $validated['shift_date'],
-                $pattern,
-                $validated
-            );
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success($line->load('employee', 'shiftPattern'), 'Shift assigned successfully.');
+        return $this->tryAction(
+            fn() => $this->shiftService->assignShift($shiftRoster, $employee, $validated['shift_date'], $pattern, $validated)->load('employee', 'shiftPattern'),
+            'Shift assigned successfully.',
+            'VALIDATION_ERROR'
+        );
     }
 
     /**
@@ -199,13 +191,11 @@ class ShiftPlanningController extends Controller
      */
     public function publishRoster(ShiftRoster $shiftRoster): JsonResponse
     {
-        try {
-            $roster = $this->shiftService->publishRoster($shiftRoster);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success($roster, 'Roster published successfully.');
+        return $this->tryAction(
+            fn() => $this->shiftService->publishRoster($shiftRoster),
+            'Roster published successfully.',
+            'VALIDATION_ERROR'
+        );
     }
 
     /**
@@ -259,13 +249,11 @@ class ShiftPlanningController extends Controller
      */
     public function approveSwap(ShiftSwapRequest $shiftSwapRequest): JsonResponse
     {
-        try {
-            $swap = $this->shiftService->approveSwap($shiftSwapRequest);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success($swap, 'Swap approved.');
+        return $this->tryAction(
+            fn() => $this->shiftService->approveSwap($shiftSwapRequest),
+            'Swap approved.',
+            'VALIDATION_ERROR'
+        );
     }
 
     /**
@@ -277,12 +265,10 @@ class ShiftPlanningController extends Controller
             'reason' => 'required|string|max:500',
         ]);
 
-        try {
-            $swap = $this->shiftService->rejectSwap($shiftSwapRequest, $validated['reason']);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success($swap, 'Swap request rejected.');
+        return $this->tryAction(
+            fn() => $this->shiftService->rejectSwap($shiftSwapRequest, $validated['reason']),
+            'Swap request rejected.',
+            'VALIDATION_ERROR'
+        );
     }
 }

@@ -97,13 +97,11 @@ class InstallmentPlanController extends Controller
             'payment_type' => ['nullable', 'in:payment_received,payment_made'],
         ]);
 
-        try {
-            $schedule = $this->installmentService->recordPayment($installmentSchedule, $validated);
-
-            return $this->success($schedule->load('plan'), 'Payment recorded.');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'PAYMENT_FAILED', 422);
-        }
+        return $this->tryAction(
+            fn() => $this->installmentService->recordPayment($installmentSchedule, $validated)->load('plan'),
+            'Payment recorded.',
+            'PAYMENT_FAILED'
+        );
     }
 
     /** Mark overdue installments for this organisation. */

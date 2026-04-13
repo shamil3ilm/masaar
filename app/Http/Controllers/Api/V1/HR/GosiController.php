@@ -51,17 +51,11 @@ class GosiController extends Controller
 
         $employee = Employee::findOrFail($validated['employee_id']);
 
-        try {
-            $contribution = $this->gosiService->calculateContributions(
-                $employee,
-                (int) $validated['year'],
-                (int) $validated['month']
-            );
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success($contribution->load('employee'), 'GOSI contribution calculated successfully.');
+        return $this->tryAction(
+            fn() => $this->gosiService->calculateContributions($employee, (int) $validated['year'], (int) $validated['month'])->load('employee'),
+            'GOSI contribution calculated successfully.',
+            'VALIDATION_ERROR'
+        );
     }
 
     /**

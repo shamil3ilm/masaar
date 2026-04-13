@@ -128,24 +128,26 @@ class TimeEvaluationController extends Controller
 
     public function submit(TimeSheet $timeSheet): JsonResponse
     {
-        try {
-            $this->service->submit($timeSheet);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'INVALID_STATE', 422);
-        }
-
-        return $this->success($timeSheet->refresh(), 'Time sheet submitted.');
+        return $this->tryAction(
+            function () use ($timeSheet) {
+                $this->service->submit($timeSheet);
+                return $timeSheet->refresh();
+            },
+            'Time sheet submitted.',
+            'INVALID_STATE'
+        );
     }
 
     public function approve(TimeSheet $timeSheet): JsonResponse
     {
-        try {
-            $this->service->approve($timeSheet);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'INVALID_STATE', 422);
-        }
-
-        return $this->success($timeSheet->refresh(), 'Time sheet approved.');
+        return $this->tryAction(
+            function () use ($timeSheet) {
+                $this->service->approve($timeSheet);
+                return $timeSheet->refresh();
+            },
+            'Time sheet approved.',
+            'INVALID_STATE'
+        );
     }
 
     public function reject(Request $request, TimeSheet $timeSheet): JsonResponse
@@ -154,13 +156,14 @@ class TimeEvaluationController extends Controller
             'reason' => 'required|string|max:500',
         ]);
 
-        try {
-            $this->service->reject($timeSheet, $validated['reason']);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'INVALID_STATE', 422);
-        }
-
-        return $this->success($timeSheet->refresh(), 'Time sheet rejected.');
+        return $this->tryAction(
+            function () use ($timeSheet, $validated) {
+                $this->service->reject($timeSheet, $validated['reason']);
+                return $timeSheet->refresh();
+            },
+            'Time sheet rejected.',
+            'INVALID_STATE'
+        );
     }
 
     // ---------------------------------------------------------------
@@ -169,24 +172,20 @@ class TimeEvaluationController extends Controller
 
     public function evaluate(TimeSheet $timeSheet): JsonResponse
     {
-        try {
-            $result = $this->service->evaluate($timeSheet);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'INVALID_STATE', 422);
-        }
-
-        return $this->success($result, 'Evaluation completed.');
+        return $this->tryAction(
+            fn() => $this->service->evaluate($timeSheet),
+            'Evaluation completed.',
+            'INVALID_STATE'
+        );
     }
 
     public function transferToPayroll(TimeSheet $timeSheet): JsonResponse
     {
-        try {
-            $payrollData = $this->service->transferToPayroll($timeSheet);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'INVALID_STATE', 422);
-        }
-
-        return $this->success($payrollData, 'Transferred to payroll.');
+        return $this->tryAction(
+            fn() => $this->service->transferToPayroll($timeSheet),
+            'Transferred to payroll.',
+            'INVALID_STATE'
+        );
     }
 
     public function costAllocation(TimeSheet $timeSheet): JsonResponse

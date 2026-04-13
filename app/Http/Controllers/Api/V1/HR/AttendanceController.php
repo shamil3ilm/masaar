@@ -92,18 +92,16 @@ class AttendanceController extends Controller
 
         $employee = Employee::findOrFail($validated['employee_id']);
 
-        try {
-            $attendance = $this->attendanceService->checkOut(
+        return $this->tryAction(
+            fn() => new AttendanceResource($this->attendanceService->checkOut(
                 $employee,
                 isset($validated['check_out_time']) ? new \DateTime($validated['check_out_time']) : null,
                 $validated['latitude'] ?? null,
                 $validated['longitude'] ?? null
-            );
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
-
-        return $this->success(new AttendanceResource($attendance), 'Check-out recorded successfully.');
+            )),
+            'Check-out recorded successfully.',
+            'VALIDATION_ERROR'
+        );
     }
 
     /**

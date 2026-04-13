@@ -132,12 +132,11 @@ class LetterOfCreditController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
-        try {
-            $lc = $this->lcService->update($letterOfCredit, $validated);
-            return $this->success($lc, 'Letter of credit updated successfully');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 422);
-        }
+        return $this->tryAction(
+            fn() => $this->lcService->update($letterOfCredit, $validated),
+            'Letter of credit updated successfully',
+            'VALIDATION_ERROR'
+        );
     }
 
     /**
@@ -164,12 +163,11 @@ class LetterOfCreditController extends Controller
             'issue_date' => ['nullable', 'date'],
         ]);
 
-        try {
-            $lc = $this->lcService->issue($letterOfCredit, $validated['issue_date'] ?? null);
-            return $this->success($lc, 'Letter of credit issued successfully');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'ISSUE_FAILED', 422);
-        }
+        return $this->tryAction(
+            fn() => $this->lcService->issue($letterOfCredit, $validated['issue_date'] ?? null),
+            'Letter of credit issued successfully',
+            'ISSUE_FAILED'
+        );
     }
 
     /**
@@ -215,12 +213,11 @@ class LetterOfCreditController extends Controller
             'changes' => $changes,
         ];
 
-        try {
-            $amendment = $this->lcService->amend($letterOfCredit, $amendmentData);
-            return $this->success($amendment, 'Letter of credit amended successfully');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'AMEND_FAILED', 422);
-        }
+        return $this->tryAction(
+            fn() => $this->lcService->amend($letterOfCredit, $amendmentData),
+            'Letter of credit amended successfully',
+            'AMEND_FAILED'
+        );
     }
 
     /**
@@ -233,17 +230,11 @@ class LetterOfCreditController extends Controller
             'reference' => ['nullable', 'string', 'max:100'],
         ]);
 
-        try {
-            $lc = $this->lcService->utilize(
-                $letterOfCredit,
-                (float) $validated['amount'],
-                $validated['reference'] ?? null
-            );
-
-            return $this->success($lc, 'LC utilization recorded successfully');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'UTILIZE_FAILED', 422);
-        }
+        return $this->tryAction(
+            fn() => $this->lcService->utilize($letterOfCredit, (float) $validated['amount'], $validated['reference'] ?? null),
+            'LC utilization recorded successfully',
+            'UTILIZE_FAILED'
+        );
     }
 
     /**
@@ -255,11 +246,10 @@ class LetterOfCreditController extends Controller
             'reason' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        try {
-            $lc = $this->lcService->close($letterOfCredit);
-            return $this->success($lc, 'Letter of credit closed successfully');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'CLOSE_FAILED', 422);
-        }
+        return $this->tryAction(
+            fn() => $this->lcService->close($letterOfCredit),
+            'Letter of credit closed successfully',
+            'CLOSE_FAILED'
+        );
     }
 }

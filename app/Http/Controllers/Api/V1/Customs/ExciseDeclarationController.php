@@ -189,12 +189,12 @@ class ExciseDeclarationController extends Controller
             'journal_entry_id' => ['nullable', 'exists:journal_entries,id'],
         ]);
 
-        try {
-            $result = $this->exciseService->payDeclaration($exciseDeclaration, $validated);
-            return $this->success($result, 'Excise declaration payment recorded successfully');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'PAYMENT_FAILED', 400);
-        }
+        return $this->tryAction(
+            fn() => $this->exciseService->payDeclaration($exciseDeclaration, $validated),
+            'Excise declaration payment recorded successfully',
+            'PAYMENT_FAILED',
+            400
+        );
     }
 
     /**

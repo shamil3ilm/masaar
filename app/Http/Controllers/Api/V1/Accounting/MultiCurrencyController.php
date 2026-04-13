@@ -70,16 +70,12 @@ class MultiCurrencyController extends Controller
      */
     public function removeCurrency(Request $request, string $currencyCode): JsonResponse
     {
-        try {
-            $orgCurrency = $this->multiCurrencyService->removeCurrency(
-                $this->organizationId($request),
-                $currencyCode
-            );
-
-            return $this->success($orgCurrency, 'Currency removed successfully');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 400);
-        }
+        return $this->tryAction(
+            fn() => $this->multiCurrencyService->removeCurrency($this->organizationId($request), $currencyCode),
+            'Currency removed successfully',
+            'VALIDATION_ERROR',
+            400
+        );
     }
 
     /**
@@ -160,16 +156,12 @@ class MultiCurrencyController extends Controller
             'gain_loss_account_id' => ['nullable', 'exists:chart_of_accounts,id'],
         ]);
 
-        try {
-            $revaluation = $this->multiCurrencyService->postRevaluation(
-                $currencyRevaluation,
-                $validated['gain_loss_account_id'] ?? null
-            );
-
-            return $this->success($revaluation, 'Revaluation posted successfully');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'POST_FAILED', 400);
-        }
+        return $this->tryAction(
+            fn() => $this->multiCurrencyService->postRevaluation($currencyRevaluation, $validated['gain_loss_account_id'] ?? null),
+            'Revaluation posted successfully',
+            'POST_FAILED',
+            400
+        );
     }
 
     /**
@@ -204,12 +196,12 @@ class MultiCurrencyController extends Controller
      */
     public function reverseRevaluation(CurrencyRevaluation $currencyRevaluation): JsonResponse
     {
-        try {
-            $revaluation = $this->multiCurrencyService->reverseRevaluation($currencyRevaluation);
-            return $this->success($revaluation, 'Revaluation reversed successfully');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'REVERSE_FAILED', 400);
-        }
+        return $this->tryAction(
+            fn() => $this->multiCurrencyService->reverseRevaluation($currencyRevaluation),
+            'Revaluation reversed successfully',
+            'REVERSE_FAILED',
+            400
+        );
     }
 
     /**

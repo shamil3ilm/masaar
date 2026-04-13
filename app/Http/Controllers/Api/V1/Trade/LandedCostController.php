@@ -142,12 +142,12 @@ class LandedCostController extends Controller
             'items.*.volume_cbm' => ['nullable', 'numeric', 'min:0'],
         ]);
 
-        try {
-            $voucher = $this->landedCostService->addItems($landedCostVoucher, $validated['items']);
-            return $this->success($voucher, 'Items added successfully');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 400);
-        }
+        return $this->tryAction(
+            fn() => $this->landedCostService->addItems($landedCostVoucher, $validated['items']),
+            'Items added successfully',
+            'VALIDATION_ERROR',
+            400
+        );
     }
 
     /**
@@ -168,12 +168,12 @@ class LandedCostController extends Controller
             'charges.*.account_id' => ['nullable', 'exists:chart_of_accounts,id'],
         ]);
 
-        try {
-            $voucher = $this->landedCostService->addCharges($landedCostVoucher, $validated['charges']);
-            return $this->success($voucher, 'Charges added successfully');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'VALIDATION_ERROR', 400);
-        }
+        return $this->tryAction(
+            fn() => $this->landedCostService->addCharges($landedCostVoucher, $validated['charges']),
+            'Charges added successfully',
+            'VALIDATION_ERROR',
+            400
+        );
     }
 
     /**
@@ -185,16 +185,12 @@ class LandedCostController extends Controller
             'method' => ['sometimes', 'in:value,quantity,weight,volume,manual'],
         ]);
 
-        try {
-            $voucher = $this->landedCostService->allocate(
-                $landedCostVoucher,
-                $validated['method'] ?? $landedCostVoucher->allocation_method
-            );
-
-            return $this->success($voucher, 'Charges allocated successfully');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'ALLOCATION_FAILED', 400);
-        }
+        return $this->tryAction(
+            fn() => $this->landedCostService->allocate($landedCostVoucher, $validated['method'] ?? $landedCostVoucher->allocation_method),
+            'Charges allocated successfully',
+            'ALLOCATION_FAILED',
+            400
+        );
     }
 
     /**
@@ -202,11 +198,11 @@ class LandedCostController extends Controller
      */
     public function post(LandedCostVoucher $landedCostVoucher): JsonResponse
     {
-        try {
-            $voucher = $this->landedCostService->post($landedCostVoucher);
-            return $this->success($voucher, 'Landed cost voucher posted successfully');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'POST_FAILED', 400);
-        }
+        return $this->tryAction(
+            fn() => $this->landedCostService->post($landedCostVoucher),
+            'Landed cost voucher posted successfully',
+            'POST_FAILED',
+            400
+        );
     }
 }

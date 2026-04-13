@@ -141,12 +141,12 @@ class ExpenseController extends Controller
             'items.*.amount' => ['required', 'numeric', 'min:0.01'],
         ]);
 
-        try {
-            $expense = $this->expenseService->update($expense, $validated);
-            return $this->success($expense, 'Expense updated successfully');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'UPDATE_FAILED', 400);
-        }
+        return $this->tryAction(
+            fn() => $this->expenseService->update($expense, $validated),
+            'Expense updated successfully',
+            'UPDATE_FAILED',
+            400
+        );
     }
 
     /**
@@ -168,12 +168,12 @@ class ExpenseController extends Controller
      */
     public function submit(Expense $expense): JsonResponse
     {
-        try {
-            $expense = $this->expenseService->submit($expense);
-            return $this->success($expense, 'Expense submitted for approval');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'SUBMIT_FAILED', 400);
-        }
+        return $this->tryAction(
+            fn() => $this->expenseService->submit($expense),
+            'Expense submitted for approval',
+            'SUBMIT_FAILED',
+            400
+        );
     }
 
     /**
@@ -187,17 +187,16 @@ class ExpenseController extends Controller
             'reason' => ['nullable', 'string', 'max:500'],
         ]);
 
-        try {
-            if ($validated['action'] === 'approve') {
-                $expense = $this->expenseService->approve($expense, $request->user()->id);
-                return $this->success($expense, 'Expense approved successfully');
-            }
-
-            $expense = $this->expenseService->reject($expense, $validated['reason'] ?? null);
-            return $this->success($expense, 'Expense rejected');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 'REJECTION_FAILED', 400);
-        }
+        return $this->tryAction(
+            function () use ($expense, $validated, $request) {
+                return $validated['action'] === 'approve'
+                    ? $this->expenseService->approve($expense, $request->user()->id)
+                    : $this->expenseService->reject($expense, $validated['reason'] ?? null);
+            },
+            $validated['action'] === 'approve' ? 'Expense approved successfully' : 'Expense rejected',
+            'REJECTION_FAILED',
+            400
+        );
     }
 
     /**
