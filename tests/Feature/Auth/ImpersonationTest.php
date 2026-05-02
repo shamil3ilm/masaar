@@ -180,7 +180,7 @@ class ImpersonationTest extends TestCase
                 'reason' => 'Attempting to impersonate a super admin',
             ]);
 
-        $response->assertStatus(400);
+        $response->assertStatus(403);
     }
 
     public function test_user_without_permission_cannot_impersonate(): void
@@ -195,7 +195,7 @@ class ImpersonationTest extends TestCase
                 'reason' => 'No permission attempt',
             ]);
 
-        $response->assertStatus(400);
+        $response->assertStatus(403);
     }
 
     // ----- ImpersonationAuditController -----

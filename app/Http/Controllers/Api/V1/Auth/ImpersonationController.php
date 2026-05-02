@@ -13,44 +13,55 @@ use Illuminate\Http\Request;
 class ImpersonationController extends Controller
 {
     public function __construct(
-        private ImpersonationService $impersonationService
+        private readonly ImpersonationService $impersonationService,
     ) {}
 
+    /**
+     * Start an impersonation session.
+     * POST /api/v1/auth/impersonate/{user}
+     */
     public function start(Request $request, User $user): JsonResponse
     {
         $validated = $request->validate([
             'reason' => ['required', 'string', 'min:10', 'max:500'],
         ]);
 
-        return $this->tryAction(
-            fn() => $this->impersonationService->start(
-                auth()->user(),
-                $user,
-                $validated['reason']
-            ),
-            'Impersonation session started.',
-            'IMPERSONATION_FAILED',
-            400
-        );
+        $admin = $request->user();
+
+        try {
+            $result = $this->impersonationService->start($admin, $user, $validated['reason']);
+        } catch (\InvalidArgumentException $e) {
+            return $this->error($e->getMessage(), 'IMPERSONATION_FAILED', 403);
+        }
+
+        return $this->success([
+            'token'                    => $result['token'],
+            'expires_at'               => $result['expires_at'],
+            'impersonation_session_id' => $result['impersonation_session_id'],
+            'target_user'              => [
+                'id'    => $result['target_user']->id,
+                'name'  => $result['target_user']->name,
+                'email' => $result['target_user']->email,
+            ],
+        ], 'Impersonation session started.');
     }
 
-    public function end(): JsonResponse
+    /**
+     * End an impersonation session.
+     * POST /api/v1/auth/impersonate/end
+     */
+    public function end(Request $request): JsonResponse
     {
-        try {
-            $payload = auth('api')->payload();
-        } catch (\Throwable) {
-            return $this->error('No active impersonation session.', 'NOT_IMPERSONATING', 400);
+        $adminId   = $request->attributes->get('impersonated_by_id');
+        $sessionId = $request->attributes->get('impersonation_session_id');
+
+        if (! $adminId || ! $sessionId) {
+            return $this->error('No active impersonation session found.', 'NOT_IMPERSONATING', 400);
         }
 
-        if (!$payload || !$payload->get('is_impersonating')) {
-            return $this->error('No active impersonation session.', 'NOT_IMPERSONATING', 400);
-        }
+        $targetUser = $request->user();
 
-        $this->impersonationService->end(
-            auth()->user(),
-            (int) $payload->get('impersonated_by_id'),
-            (string) $payload->get('impersonation_session_id')
-        );
+        $this->impersonationService->end($targetUser, (int) $adminId, (string) $sessionId);
 
         return $this->success(null, 'Impersonation session ended.');
     }
