@@ -36,6 +36,8 @@ class ActivityLog extends Model
     public const ACTION_RESTORED = 'restored';
     public const ACTION_LOGIN = 'login';
     public const ACTION_LOGOUT = 'logout';
+    public const ACTION_IMPERSONATION_STARTED = 'impersonation_started';
+    public const ACTION_IMPERSONATION_ENDED = 'impersonation_ended';
 
     public const ACTIONS = [
         self::ACTION_CREATED,
@@ -53,6 +55,8 @@ class ActivityLog extends Model
         self::ACTION_RESTORED,
         self::ACTION_LOGIN,
         self::ACTION_LOGOUT,
+        self::ACTION_IMPERSONATION_STARTED,
+        self::ACTION_IMPERSONATION_ENDED,
     ];
 
     // Severity levels
@@ -81,6 +85,8 @@ class ActivityLog extends Model
     protected $fillable = [
         'organization_id',
         'user_id',
+        'impersonated_by_id',
+        'impersonation_session_id',
         'branch_id',
         'action',
         'entity_type',
@@ -123,6 +129,11 @@ class ActivityLog extends Model
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
+    }
+
+    public function impersonatedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'impersonated_by_id');
     }
 
     // Scopes
