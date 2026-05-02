@@ -142,6 +142,26 @@ class ImpersonationAuditControllerTest extends TestCase
                     'actions',
                 ],
             ]);
+
+        // 'actions' must be an array and must contain only the mid-session entry
+        $actions = $response->json('data.actions');
+        $this->assertIsArray($actions);
+        $this->assertCount(1, $actions);
+        $this->assertSame(ActivityLog::ACTION_VIEWED, $actions[0]['action']);
+    }
+
+    public function test_non_super_admin_cannot_access_session_detail(): void
+    {
+        $this->setUpOrganization();
+        $regularUser = User::factory()->create(['is_super_admin' => false, 'organization_id' => $this->organization->id]);
+
+        $token = JWTAuth::fromUser($regularUser);
+        $response = $this->getJson(route('admin.impersonation-sessions.show', 'any-session-id'), [
+            'Authorization' => 'Bearer ' . $token,
+            'Accept'        => 'application/json',
+        ]);
+
+        $response->assertStatus(403);
     }
 
     public function test_show_returns_404_for_unknown_session(): void

@@ -13,26 +13,25 @@ class ImpersonationAuditController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $sessions = ActivityLog::where('action', ActivityLog::ACTION_IMPERSONATION_STARTED)
+        $sessions = ActivityLog::withoutGlobalScopes()->where('action', ActivityLog::ACTION_IMPERSONATION_STARTED)
             ->with(['user:id,name,email', 'impersonatedBy:id,name,email'])
             ->orderByDesc('created_at')
-            ->paginate($request->integer('per_page', 20));
+            ->paginate(min(100, max(1, $request->integer('per_page', 20))));
 
         return $this->paginated($sessions);
     }
 
     public function show(string $sessionId): JsonResponse
     {
-        $actions = ActivityLog::where('impersonation_session_id', $sessionId)
+        $actions = ActivityLog::withoutGlobalScopes()->where('impersonation_session_id', $sessionId)
             ->with(['user:id,name,email', 'impersonatedBy:id,name,email'])
             ->orderBy('created_at')
             ->get();
 
-        if ($actions->isEmpty()) {
+        $start = $actions->firstWhere('action', ActivityLog::ACTION_IMPERSONATION_STARTED);
+        if ($start === null) {
             return $this->notFound('Impersonation session not found.');
         }
-
-        $start = $actions->firstWhere('action', ActivityLog::ACTION_IMPERSONATION_STARTED);
         $end   = $actions->firstWhere('action', ActivityLog::ACTION_IMPERSONATION_ENDED);
 
         return $this->success([

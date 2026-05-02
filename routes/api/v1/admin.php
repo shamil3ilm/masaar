@@ -68,8 +68,8 @@ Route::prefix('settings')->group(function () {
 
 // Impersonation audit log
 Route::prefix('impersonation-sessions')->group(function () {
-    Route::get('/', [ImpersonationAuditController::class, 'index'])->name('admin.impersonation.index');
-    Route::get('/{session_id}', [ImpersonationAuditController::class, 'show'])->name('admin.impersonation.show');
+    Route::get('/', [ImpersonationAuditController::class, 'index'])->name('admin.impersonation-sessions.index');
+    Route::get('/{session_id}', [ImpersonationAuditController::class, 'show'])->name('admin.impersonation-sessions.show');
 });
 
 // Feature flags
