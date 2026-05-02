@@ -27,7 +27,7 @@ return new class extends Migration
             $table->dropForeign(['impersonated_by_id']);
             $table->dropIndex(['impersonation_session_id']);
             $table->dropIndex(['impersonated_by_id']);
-            $table->dropColumn(['impersonation_session_id', 'impersonated_by_id']);
+            $table->dropColumn(['impersonated_by_id', 'impersonation_session_id']);
         });
     }
 };
