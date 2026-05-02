@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Admin\FeatureFlagController;
+use App\Http\Controllers\Api\V1\Admin\ImpersonationAuditController;
 use App\Http\Controllers\Api\V1\Admin\PlatformAdminController;
 use App\Http\Controllers\Api\V1\Admin\PlatformSettingsController;
 use App\Http\Controllers\Api\V1\Admin\SuperAdminDashboardController;
@@ -63,6 +64,12 @@ Route::prefix('settings')->group(function () {
     Route::put('/', [PlatformSettingsController::class, 'bulkUpdate']);
     Route::get('/{key}', [PlatformSettingsController::class, 'show']);
     Route::put('/{key}', [PlatformSettingsController::class, 'update']);
+});
+
+// Impersonation audit log
+Route::prefix('impersonation-sessions')->group(function () {
+    Route::get('/', [ImpersonationAuditController::class, 'index'])->name('admin.impersonation.index');
+    Route::get('/{session_id}', [ImpersonationAuditController::class, 'show'])->name('admin.impersonation.show');
 });
 
 // Feature flags

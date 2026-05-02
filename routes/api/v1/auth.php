@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Auth\AuthController;
+use App\Http\Controllers\Api\V1\Auth\ImpersonationController;
 use App\Http\Controllers\Api\V1\Auth\TwoFactorController;
 use Illuminate\Support\Facades\Route;
 
@@ -32,6 +33,10 @@ Route::prefix('auth')->group(function () {
         Route::post('refresh', [AuthController::class, 'refresh'])->name('auth.refresh');
         Route::post('logout', [AuthController::class, 'logout'])->name('auth.logout');
         Route::post('change-password', [AuthController::class, 'changePassword'])->name('auth.change-password');
+
+        // Impersonation — end must come before {user} to prevent 'end' being matched as a user ID
+        Route::post('/impersonate/end', [ImpersonationController::class, 'end'])->name('auth.impersonate.end');
+        Route::post('/impersonate/{user}', [ImpersonationController::class, 'start'])->name('auth.impersonate.start');
 
         // 2FA management (requires full JWT auth + active organization)
         Route::middleware(['check.organization'])->group(function () {
