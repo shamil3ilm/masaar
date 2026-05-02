@@ -56,6 +56,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'track.response.time'    => TrackResponseTime::class,
             'simulation'             => SimulationMode::class,
             'query.budget'           => \App\Http\Middleware\QueryBudget::class,
+            'track.impersonation'    => \App\Http\Middleware\TrackImpersonation::class,
         ]);
 
         // Security headers on every response
@@ -63,6 +64,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Track response time and log slow responses on every request
         $middleware->append(TrackResponseTime::class);
+
+        // Propagate impersonation context from JWT claims to request attributes
+        $middleware->append(\App\Http\Middleware\TrackImpersonation::class);
 
         // Ensure super.admin and validate.jwt run before SubstituteBindings
         // so that authorization checks happen before route model binding
