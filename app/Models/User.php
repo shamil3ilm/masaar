@@ -44,6 +44,16 @@ class User extends Authenticatable implements JWTSubject, \Illuminate\Contracts\
         'last_login_ip',
         'email_verification_code',
         'email_verification_code_sent_at',
+        'registration_source',
+        'utm_source',
+        'utm_medium',
+        'utm_campaign',
+        'utm_term',
+        'utm_content',
+        'referral_code',
+        'registration_device_type',
+        'registration_ip',
+        'invited_by_user_id',
     ];
 
     protected $hidden = [
@@ -233,5 +243,10 @@ class User extends Authenticatable implements JWTSubject, \Illuminate\Contracts\
             'last_login_at' => now(),
             'last_login_ip' => request()->ip(),
         ]);
+    }
+
+    public function invitedBy(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'invited_by_user_id');
     }
 }
