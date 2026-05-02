@@ -12,12 +12,21 @@ use InvalidArgumentException;
 
 class ImpersonationService
 {
+    private const IMPERSONATION_TTL_MINUTES = 60;
+
     public function __construct(
         private ActivityLogService $activityLogService
     ) {}
 
     public function start(User $admin, User $target, string $reason): array
     {
+        if (trim($reason) === '') {
+            throw new InvalidArgumentException('Reason is required.');
+        }
+        if (mb_strlen($reason) > 500) {
+            throw new InvalidArgumentException('Reason must not exceed 500 characters.');
+        }
+
         try {
             $payload = auth('api')->payload();
             if ($payload && $payload->get('is_impersonating')) {
@@ -44,7 +53,7 @@ class ImpersonationService
         $sessionId = Str::uuid()->toString();
 
         $token = auth('api')
-            ->setTTL(60)
+            ->setTTL(self::IMPERSONATION_TTL_MINUTES)
             ->claims([
                 'impersonated_by_id'       => $admin->id,
                 'impersonation_session_id' => $sessionId,
@@ -74,8 +83,9 @@ class ImpersonationService
 
         return [
             'token'                    => $token,
-            'expires_at'               => now()->addMinutes(60)->toIso8601String(),
+            'expires_at'               => now()->addMinutes(self::IMPERSONATION_TTL_MINUTES)->toIso8601String(),
             'impersonation_session_id' => $sessionId,
+            'target_user'              => $target,
         ];
     }
 

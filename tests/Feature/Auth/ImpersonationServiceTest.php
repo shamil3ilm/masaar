@@ -93,6 +93,7 @@ class ImpersonationServiceTest extends TestCase
         $this->assertArrayHasKey('token', $result);
         $this->assertArrayHasKey('expires_at', $result);
         $this->assertArrayHasKey('impersonation_session_id', $result);
+        $this->assertArrayHasKey('target_user', $result);
         $this->assertNotEmpty($result['token']);
         $this->assertNotEmpty($result['impersonation_session_id']);
     }
@@ -161,6 +162,30 @@ class ImpersonationServiceTest extends TestCase
             'impersonated_by_id'       => $admin->id,
             'impersonation_session_id' => $sessionId,
         ]);
+    }
+
+    // -------------------------------------------------------------------------
+    // Guard: nested impersonation (already impersonating) is blocked
+    // -------------------------------------------------------------------------
+
+    public function test_cannot_start_impersonation_while_already_impersonating(): void
+    {
+        $this->setUpOrganization();
+        $admin  = User::factory()->create(['is_super_admin' => true, 'organization_id' => $this->organization->id]);
+        $target = User::factory()->create(['is_super_admin' => false, 'organization_id' => $this->organization->id]);
+        $target2 = User::factory()->create(['is_super_admin' => false, 'organization_id' => $this->organization->id]);
+
+        // Start a first impersonation session so we have a JWT with is_impersonating=true
+        $this->actingAs($admin, 'api');
+        $result = app(ImpersonationService::class)->start($admin, $target, 'First impersonation session');
+
+        // Act as the impersonated user using the token that carries is_impersonating=true
+        $this->withToken($result['token']);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('already');
+
+        app(ImpersonationService::class)->start($target, $target2, 'Trying to double-impersonate');
     }
 
     // -------------------------------------------------------------------------
