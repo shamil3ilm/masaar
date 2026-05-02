@@ -23,6 +23,8 @@ return new class extends Migration
             $table->foreign('invited_by_user_id')
                 ->references('id')->on('users')
                 ->nullOnDelete();
+
+            $table->index('invited_by_user_id');
         });
     }
 
@@ -30,10 +32,11 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->dropForeign(['invited_by_user_id']);
+            $table->dropIndex(['invited_by_user_id']);
             $table->dropColumn([
-                'registration_source', 'utm_source', 'utm_medium', 'utm_campaign',
-                'utm_term', 'utm_content', 'referral_code', 'registration_device_type',
-                'registration_ip', 'invited_by_user_id',
+                'invited_by_user_id', 'registration_ip', 'registration_device_type',
+                'referral_code', 'utm_content', 'utm_term', 'utm_campaign',
+                'utm_medium', 'utm_source', 'registration_source',
             ]);
         });
     }
