@@ -101,4 +101,116 @@ class SignupTrackingTest extends TestCase
         $response->assertUnprocessable()
             ->assertJsonValidationErrors(['registration_source']);
     }
+
+    // -----------------------------------------------------------------------
+    // Task 9 required tests
+    // -----------------------------------------------------------------------
+
+    public function test_utm_fields_are_stored_on_registration(): void
+    {
+        $response = $this->postJson('/api/v1/auth/register', [
+            'name'                     => 'UTM User',
+            'email'                    => 'utm@example.com',
+            'password'                 => 'Password123!',
+            'password_confirmation'    => 'Password123!',
+            'organization_name'        => 'UTM Corp',
+            'country_code'             => 'AE',
+            'registration_source'      => 'api',
+            'utm_source'               => 'newsletter',
+            'utm_medium'               => 'email',
+            'utm_campaign'             => 'spring-promo',
+            'utm_term'                 => 'cloud erp',
+            'utm_content'              => 'cta-button',
+            'referral_code'            => 'REF-001',
+            'registration_device_type' => 'mobile',
+        ]);
+
+        $response->assertCreated();
+
+        $this->assertDatabaseHas('users', [
+            'email'                    => 'utm@example.com',
+            'registration_source'      => 'api',
+            'utm_source'               => 'newsletter',
+            'utm_medium'               => 'email',
+            'utm_campaign'             => 'spring-promo',
+            'utm_term'                 => 'cloud erp',
+            'utm_content'              => 'cta-button',
+            'referral_code'            => 'REF-001',
+            'registration_device_type' => 'mobile',
+        ]);
+    }
+
+    public function test_registration_ip_is_captured_server_side(): void
+    {
+        $response = $this->postJson('/api/v1/auth/register', [
+            'name'                  => 'IP User',
+            'email'                 => 'ipuser@example.com',
+            'password'              => 'Password123!',
+            'password_confirmation' => 'Password123!',
+            'organization_name'     => 'IP Corp',
+            'country_code'          => 'SA',
+        ]);
+
+        $response->assertCreated();
+
+        $user = User::where('email', 'ipuser@example.com')->first();
+        $this->assertNotNull($user);
+        $this->assertNotNull($user->registration_ip);
+    }
+
+    public function test_registration_ip_cannot_be_set_from_payload(): void
+    {
+        $spoofedIp = '1.2.3.4';
+
+        $response = $this->postJson('/api/v1/auth/register', [
+            'name'                  => 'Spoof User',
+            'email'                 => 'spoof@example.com',
+            'password'              => 'Password123!',
+            'password_confirmation' => 'Password123!',
+            'organization_name'     => 'Spoof Corp',
+            'country_code'          => 'SA',
+            'registration_ip'       => $spoofedIp,
+        ]);
+
+        $response->assertCreated();
+
+        $user = User::where('email', 'spoof@example.com')->first();
+        $this->assertNotNull($user);
+        // The stored IP must equal the server-side IP (127.0.0.1 in tests), not the spoofed value
+        $this->assertNotSame($spoofedIp, $user->registration_ip);
+    }
+
+    public function test_existing_registration_flow_unaffected(): void
+    {
+        $response = $this->postJson('/api/v1/auth/register', [
+            'name'                  => 'Plain User',
+            'email'                 => 'plain@example.com',
+            'password'              => 'Password123!',
+            'password_confirmation' => 'Password123!',
+            'organization_name'     => 'Plain Corp',
+            'country_code'          => 'IN',
+        ]);
+
+        $response->assertStatus(201);
+
+        $this->assertDatabaseHas('users', ['email' => 'plain@example.com']);
+    }
+
+    public function test_invited_by_user_id_is_validated(): void
+    {
+        $nonExistentId = 999999;
+
+        $response = $this->postJson('/api/v1/auth/register', [
+            'name'                  => 'Invite User',
+            'email'                 => 'invite@example.com',
+            'password'              => 'Password123!',
+            'password_confirmation' => 'Password123!',
+            'organization_name'     => 'Invite Corp',
+            'country_code'          => 'AE',
+            'invited_by_user_id'    => $nonExistentId,
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['invited_by_user_id']);
+    }
 }
