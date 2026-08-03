@@ -2,8 +2,7 @@
 
 use App\Http\Controllers\Web\AdminController;
 use App\Http\Controllers\Web\CustomerPortalController;
-use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\Web\SessionAuthController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -12,35 +11,44 @@ Route::get('/', function () {
 
 /*
 |--------------------------------------------------------------------------
-| Admin Dashboard Routes (CompliPay Internal)
+| Session Authentication (Blade surfaces)
 |--------------------------------------------------------------------------
+|
+| The JSON API uses JWT and API keys, neither of which yields a session. The
+| server-rendered admin console and customer portal authenticate here.
+|
 */
-Route::prefix('admin')->name('admin.')->group(function () {
-    Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
-    Route::get('/organizations', [AdminController::class, 'organizations'])->name('organizations');
-    Route::get('/organizations/{id}', [AdminController::class, 'organizationDetail'])->name('organization.detail');
-    Route::get('/queue', [AdminController::class, 'queue'])->name('queue');
-    Route::get('/logs', [AdminController::class, 'logs'])->name('logs');
+Route::get('/login', [SessionAuthController::class, 'showLogin'])->name('login');
+Route::post('/login', [SessionAuthController::class, 'login'])
+    ->middleware('throttle:10,1')
+    ->name('login.attempt');
+Route::post('/logout', [SessionAuthController::class, 'logout'])
+    ->middleware('auth')
+    ->name('logout');
 
-    // Actions
-    Route::post('/queue/process', function () {
-        Artisan::call('zatca:process-offline', ['--limit' => 50]);
-        return back()->with('success', 'Queue processing started');
-    })->name('queue.process');
+/*
+|--------------------------------------------------------------------------
+| Admin Dashboard Routes (Masaar Internal)
+|--------------------------------------------------------------------------
+|
+| Cross-tenant console. `platform.admin` checks the platform-wide privilege,
+| NOT the per-organization `admin` pivot role — a customer's org-admin must not
+| reach these views.
+|
+*/
+Route::prefix('admin')->name('admin.')
+    ->middleware(['auth', 'platform.admin'])
+    ->group(function () {
+        Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
+        Route::get('/organizations', [AdminController::class, 'organizations'])->name('organizations');
+        Route::get('/organizations/{id}', [AdminController::class, 'organizationDetail'])->name('organization.detail');
+        Route::get('/queue', [AdminController::class, 'queue'])->name('queue');
+        Route::get('/logs', [AdminController::class, 'logs'])->name('logs');
 
-    Route::post('/queue/{id}/retry', function (string $id) {
-        DB::table('offline_queue')
-            ->where('id', $id)
-            ->update([
-                'state' => 'pending',
-                'attempts' => 0,
-                'next_attempt_at' => now(),
-                'last_error' => null,
-                'updated_at' => now(),
-            ]);
-        return back()->with('success', 'Item queued for retry');
-    })->name('queue.retry');
-});
+        // Actions
+        Route::post('/queue/process', [AdminController::class, 'processQueue'])->name('queue.process');
+        Route::post('/queue/{id}/retry', [AdminController::class, 'retryQueueItem'])->name('queue.retry');
+    });
 
 /*
 |--------------------------------------------------------------------------
@@ -48,13 +56,21 @@ Route::prefix('admin')->name('admin.')->group(function () {
 |--------------------------------------------------------------------------
 |
 | Tenant-scoped dashboard for customers to monitor their ZATCA compliance.
-| In production, protect with tenant authentication middleware.
+| `portal.tenant` derives the organization from the authenticated session's
+| memberships; the controllers never read a tenant identifier from input.
 |
 */
-Route::prefix('portal')->name('portal.')->group(function () {
-    // Preview mode - accepts org_id as query param for demo
-    Route::get('/', [CustomerPortalController::class, 'dashboard'])->name('dashboard');
-    Route::get('/submissions', [CustomerPortalController::class, 'submissions'])->name('submissions');
-    Route::get('/certificates', [CustomerPortalController::class, 'certificates'])->name('certificates');
-    Route::get('/users/{userId}/activity', [CustomerPortalController::class, 'userActivity'])->name('user.activity');
+Route::prefix('portal')->name('portal.')->middleware('auth')->group(function () {
+    // Clears the session selection, so it sits outside `portal.tenant`, which
+    // would otherwise immediately re-resolve it.
+    Route::get('/switch', [CustomerPortalController::class, 'switchOrganization'])->name('switch');
 });
+
+Route::prefix('portal')->name('portal.')
+    ->middleware(['auth', 'portal.tenant'])
+    ->group(function () {
+        Route::get('/', [CustomerPortalController::class, 'dashboard'])->name('dashboard');
+        Route::get('/submissions', [CustomerPortalController::class, 'submissions'])->name('submissions');
+        Route::get('/certificates', [CustomerPortalController::class, 'certificates'])->name('certificates');
+        Route::get('/users/{userId}/activity', [CustomerPortalController::class, 'userActivity'])->name('user.activity');
+    });

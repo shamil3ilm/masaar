@@ -28,6 +28,8 @@ class UserFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
+            'status' => 'active',
+            'is_platform_admin' => false,
             'remember_token' => Str::random(10),
         ];
     }
@@ -39,6 +41,26 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
+        ]);
+    }
+
+    /**
+     * A Masaar-internal operator permitted to use the admin console.
+     */
+    public function platformAdmin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_platform_admin' => true,
+        ]);
+    }
+
+    /**
+     * An account that must not be able to authenticate.
+     */
+    public function suspended(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => 'suspended',
         ]);
     }
 }

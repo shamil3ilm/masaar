@@ -5,14 +5,18 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
 /**
  * Web Admin Dashboard Controller.
  *
- * Provides Blade-based admin views for CompliPay internal use.
+ * Provides Blade-based admin views for Masaar internal use.
  * Uses API endpoints for data to keep logic DRY.
  */
 class AdminController extends Controller
@@ -168,5 +172,49 @@ class AdminController extends Controller
             ->pluck('count', 'state');
 
         return view('admin.logs', compact('logs', 'stateCounts', 'state', 'orgId'));
+    }
+
+    /**
+     * Drain a batch of the offline submission queue.
+     *
+     * Previously an inline route closure, which made the privileged Artisan
+     * invocation untestable and left no record of who triggered it.
+     */
+    public function processQueue(): RedirectResponse
+    {
+        Log::info('Offline queue processing triggered from admin console', [
+            'actor_id' => Auth::id(),
+        ]);
+
+        Artisan::call('zatca:process-offline', ['--limit' => 50]);
+
+        return back()->with('success', 'Queue processing started');
+    }
+
+    /**
+     * Requeue a single offline item for another submission attempt.
+     */
+    public function retryQueueItem(string $id): RedirectResponse
+    {
+        $updated = DB::table('offline_queue')
+            ->where('id', $id)
+            ->update([
+                'state' => 'pending',
+                'attempts' => 0,
+                'next_attempt_at' => now(),
+                'last_error' => null,
+                'updated_at' => now(),
+            ]);
+
+        if ($updated === 0) {
+            return back()->with('error', 'Queue item not found');
+        }
+
+        Log::info('Offline queue item requeued from admin console', [
+            'actor_id' => Auth::id(),
+            'queue_item_id' => $id,
+        ]);
+
+        return back()->with('success', 'Item queued for retry');
     }
 }
