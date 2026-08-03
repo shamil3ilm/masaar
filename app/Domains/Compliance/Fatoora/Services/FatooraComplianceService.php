@@ -10,6 +10,7 @@ use App\Domains\Compliance\Fatoora\DTOs\QrCodeData;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
+use App\Support\Xml;
 
 /**
  * Main ZATCA compliance service.
@@ -100,7 +101,7 @@ class FatooraComplianceService
         // Update QR in XML if signed
         if ($signedXml !== null) {
             $dom = new \DOMDocument();
-            $dom->loadXML($signedXml);
+            Xml::load($dom, $signedXml);
             $this->updateQrInXml($dom, $qrCode);
             $signedXml = $dom->saveXML();
         }

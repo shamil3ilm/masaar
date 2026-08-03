@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Fatoora\Services;
 
 use App\Domains\Compliance\Fatoora\Exceptions\SigningException;
 use App\Domains\Compliance\Fatoora\Helpers\FatooraTime;
+use App\Support\Xml;
 use DOMDocument;
 use DOMElement;
 use DOMXPath;
@@ -81,7 +82,7 @@ class XadesSigner
     {
         $dom = new DOMDocument('1.0', 'UTF-8');
         $dom->preserveWhiteSpace = false;
-        $dom->loadXML($xml);
+        Xml::load($dom, $xml);
 
         // Generate signature ID
         $signatureId = 'signature-' . bin2hex(random_bytes(8));
@@ -217,7 +218,7 @@ class XadesSigner
     {
         $dom = new DOMDocument('1.0', 'UTF-8');
         $dom->preserveWhiteSpace = false;
-        $dom->loadXML($xml);
+        Xml::load($dom, $xml);
 
         // Apply XPath transform: exclude UBLExtensions
         $xpath = new DOMXPath($dom);
@@ -442,7 +443,7 @@ class XadesSigner
     public function extractSignature(string $signedXml): ?string
     {
         $dom = new DOMDocument();
-        $dom->loadXML($signedXml);
+        Xml::load($dom, $signedXml);
 
         $xpath = new DOMXPath($dom);
         $xpath->registerNamespace('ds', self::DS_NS);
@@ -467,7 +468,7 @@ class XadesSigner
         try {
             $dom = new DOMDocument();
             $dom->preserveWhiteSpace = false;
-            $dom->loadXML($signedXml);
+            Xml::load($dom, $signedXml);
 
             $xpath = new DOMXPath($dom);
             $xpath->registerNamespace('ds', self::DS_NS);
@@ -523,7 +524,7 @@ class XadesSigner
         try {
             $dom = new DOMDocument();
             $dom->preserveWhiteSpace = false;
-            $dom->loadXML($signedXml);
+            Xml::load($dom, $signedXml);
 
             $xpath = new DOMXPath($dom);
             $xpath->registerNamespace('ds', self::DS_NS);
@@ -652,7 +653,7 @@ class XadesSigner
 
         $dom = new DOMDocument('1.0', 'UTF-8');
         $dom->preserveWhiteSpace = false;
-        $dom->loadXML($signedXml);
+        Xml::load($dom, $signedXml);
 
         $xpath = new DOMXPath($dom);
         $xpath->registerNamespace('ds', self::DS_NS);
@@ -985,7 +986,7 @@ class XadesSigner
     {
         try {
             $dom = new DOMDocument();
-            $dom->loadXML($signedXml);
+            Xml::load($dom, $signedXml);
 
             $xpath = new DOMXPath($dom);
             $xpath->registerNamespace('xades', self::XADES_NS);
