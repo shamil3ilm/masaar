@@ -5,27 +5,64 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\ResolvePortalTenant;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 /**
  * Customer Portal Controller.
  *
- * Provides tenant-scoped dashboard for customers like TaxFly.
- * In production, org_id should come from authenticated session.
- * Preview mode uses query param for demo purposes.
+ * Provides a tenant-scoped dashboard for customers like TaxFly.
+ *
+ * The organization is resolved by ResolvePortalTenant from the authenticated
+ * session's active memberships. Nothing here may read a tenant identifier from
+ * query, body or header — doing so reopens cross-tenant disclosure.
  */
 class CustomerPortalController extends Controller
 {
     /**
-     * Get organization ID from session or query param (preview mode).
+     * The organization the authenticated user is currently viewing.
+     *
+     * Null only when a multi-organization user has not chosen one yet; the
+     * middleware has already rejected any organization they cannot access.
      */
     private function getOrganizationId(Request $request): ?string
     {
-        // In production: return auth()->user()->organization_id;
-        // For preview: accept query param
-        return $request->query('org_id') ?? $request->session()->get('preview_org_id');
+        return $request->attributes->get(ResolvePortalTenant::ORG_ID);
+    }
+
+    /**
+     * Organizations offered on the selection screen — the user's own, only.
+     */
+    private function userOrganizations(): \Illuminate\Support\Collection
+    {
+        return Auth::user()
+            ->activeOrganizations()
+            ->orderBy('name')
+            ->get(['organizations.id', 'organizations.name', 'organizations.vat_number', 'organizations.status']);
+    }
+
+    /**
+     * Selection screen shown when no organization is resolved for this session.
+     */
+    private function organizationPicker(?string $error = null): View
+    {
+        return view('portal.select-org', [
+            'organizations' => $this->userOrganizations(),
+            'error' => $error,
+        ]);
+    }
+
+    /**
+     * Drop the current organization selection and offer the user's own list.
+     */
+    public function switchOrganization(Request $request): View
+    {
+        $request->session()->forget('portal_organization_id');
+
+        return $this->organizationPicker();
     }
 
     /**
@@ -36,13 +73,13 @@ class CustomerPortalController extends Controller
         $orgId = $this->getOrganizationId($request);
 
         if (!$orgId) {
-            return view('portal.select-org');
+            return $this->organizationPicker();
         }
 
         $organization = DB::table('organizations')->where('id', $orgId)->first();
 
         if (!$organization) {
-            return view('portal.select-org')->with('error', 'Organization not found');
+            return $this->organizationPicker('Organization not found');
         }
 
         // Stats
@@ -114,7 +151,7 @@ class CustomerPortalController extends Controller
         $orgId = $this->getOrganizationId($request);
 
         if (!$orgId) {
-            return view('portal.select-org');
+            return $this->organizationPicker();
         }
 
         $organization = DB::table('organizations')->where('id', $orgId)->first();
@@ -189,7 +226,7 @@ class CustomerPortalController extends Controller
         $orgId = $this->getOrganizationId($request);
 
         if (!$orgId) {
-            return view('portal.select-org');
+            return $this->organizationPicker();
         }
 
         $organization = DB::table('organizations')->where('id', $orgId)->first();
@@ -216,7 +253,7 @@ class CustomerPortalController extends Controller
         $orgId = $this->getOrganizationId($request);
 
         if (!$orgId) {
-            return view('portal.select-org');
+            return $this->organizationPicker();
         }
 
         $organization = DB::table('organizations')->where('id', $orgId)->first();
