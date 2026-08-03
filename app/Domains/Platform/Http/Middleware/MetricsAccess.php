@@ -20,7 +20,7 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * @see config/metrics.php
  */
-class RestrictMetrics
+class MetricsAccess
 {
     public function handle(Request $request, Closure $next): Response
     {

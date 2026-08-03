@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Security;
 
-use App\Domains\Platform\Http\Middleware\RestrictMetrics;
+use App\Domains\Platform\Http\Middleware\MetricsAccess;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -90,13 +90,13 @@ class MetricsAccessTest extends TestCase
     }
 
     /**
-     * Whether RestrictMetrics passes the request through to the route.
+     * Whether MetricsAccess passes the request through to the route.
      */
     private function passesGate(Request $request): bool
     {
         $reached = false;
 
-        $response = (new RestrictMetrics)->handle($request, function () use (&$reached) {
+        $response = (new MetricsAccess)->handle($request, function () use (&$reached) {
             $reached = true;
 
             return new Response('metrics');
