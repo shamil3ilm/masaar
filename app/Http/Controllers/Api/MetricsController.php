@@ -8,13 +8,18 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 
 /**
  * Prometheus Metrics Controller
  *
  * Exposes application metrics in Prometheus format for monitoring.
- * Access: GET /metrics (protected by IP whitelist or auth)
+ * Access is enforced by the `metrics` middleware — see config/metrics.php.
+ *
+ * Each collector degrades independently: a subsystem that cannot be reached
+ * omits its metrics rather than failing the scrape, so one broken dependency
+ * does not blind the whole endpoint.
  */
 class MetricsController extends Controller
 {
@@ -126,8 +131,8 @@ class MetricsController extends Controller
                 'value' => $todayCount,
             ];
 
-        } catch (\Exception $e) {
-            // Database unavailable
+        } catch (\Throwable $e) {
+            $this->logCollectorFailure('invoice', $e);
         }
 
         return $metrics;
@@ -184,8 +189,8 @@ class MetricsController extends Controller
                 'value' => $offlineQueueSize,
             ];
 
-        } catch (\Exception $e) {
-            // Database unavailable
+        } catch (\Throwable $e) {
+            $this->logCollectorFailure('zatca', $e);
         }
 
         return $metrics;
@@ -220,8 +225,10 @@ class MetricsController extends Controller
                 'value' => $failedJobs,
             ];
 
-        } catch (\Exception $e) {
-            // Redis/DB unavailable
+        } catch (\Throwable $e) {
+            // Reached when phpredis is absent as well as when Redis is down:
+            // a missing extension raises Error, not Exception.
+            $this->logCollectorFailure('queue', $e);
         }
 
         return $metrics;
@@ -251,7 +258,9 @@ class MetricsController extends Controller
                 'value' => 1,
             ];
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            $this->logCollectorFailure('database', $e);
+
             $metrics['database_up'] = [
                 'type' => 'gauge',
                 'help' => 'Database availability (1=up, 0=down)',
@@ -286,7 +295,9 @@ class MetricsController extends Controller
                 'value' => 1,
             ];
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            $this->logCollectorFailure('cache', $e);
+
             $metrics['cache_up'] = [
                 'type' => 'gauge',
                 'help' => 'Cache availability (1=up, 0=down)',
@@ -298,6 +309,22 @@ class MetricsController extends Controller
     }
 
     /**
+     * Record that one collector could not gather its metrics.
+     *
+     * A scrape must not fail because a single dependency is unreachable, but a
+     * silent skip is worse: the metric simply disappears and the endpoint looks
+     * healthy. Logging keeps the omission diagnosable.
+     */
+    private function logCollectorFailure(string $collector, \Throwable $e): void
+    {
+        Log::debug('Metrics collector unavailable', [
+            'collector' => $collector,
+            'exception' => $e::class,
+            'message' => $e->getMessage(),
+        ]);
+    }
+
+    /**
      * Format metrics in Prometheus exposition format
      */
     private function formatPrometheus(array $metrics): string
@@ -306,7 +333,7 @@ class MetricsController extends Controller
 
         foreach ($metrics as $name => $metric) {
             // Sanitize metric name
-            $name = 'complipay_' . preg_replace('/[^a-zA-Z0-9_]/', '_', $name);
+            $name = 'masaar_' . preg_replace('/[^a-zA-Z0-9_]/', '_', $name);
 
             // Add HELP line
             $output[] = "# HELP {$name} {$metric['help']}";

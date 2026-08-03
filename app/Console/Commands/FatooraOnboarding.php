@@ -14,6 +14,7 @@ use App\Domains\Compliance\Fatoora\Services\QrCodeGenerator;
 use App\Domains\Compliance\Fatoora\Services\TlvEncoder;
 use App\Domains\Compliance\Fatoora\Services\XadesSigner;
 use App\Domains\Compliance\Fatoora\Services\XmlBuilder;
+use App\Support\Xml;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
@@ -717,7 +718,7 @@ class FatooraOnboarding extends Command
         // Basic XML structure validation
         try {
             $dom = new \DOMDocument();
-            $dom->loadXML($xml, LIBXML_NOERROR | LIBXML_NOWARNING);
+            Xml::load($dom, $xml, LIBXML_NOERROR | LIBXML_NOWARNING);
 
             // Check for required elements
             $xpath = new \DOMXPath($dom);
@@ -902,7 +903,7 @@ class FatooraOnboarding extends Command
     {
         $dom = new \DOMDocument('1.0', 'UTF-8');
         $dom->preserveWhiteSpace = false;
-        $dom->loadXML($xml);
+        Xml::load($dom, $xml);
 
         $xpath = new \DOMXPath($dom);
         $xpath->registerNamespace('cac', 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2');

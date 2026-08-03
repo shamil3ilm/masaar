@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Services;
 
+use App\Support\Xml;
 use DOMDocument;
 use DOMXPath;
 
@@ -34,7 +35,7 @@ class InvoiceHasher
     {
         $dom = new DOMDocument('1.0', 'UTF-8');
         $dom->preserveWhiteSpace = false;
-        $dom->loadXML($xml);
+        Xml::load($dom, $xml);
 
         // Remove UBLExtensions element (contains signature) before hashing
         $this->removeUblExtensions($dom);
@@ -64,7 +65,7 @@ class InvoiceHasher
     {
         $dom = new DOMDocument('1.0', 'UTF-8');
         $dom->preserveWhiteSpace = false;
-        $dom->loadXML($signedXml);
+        Xml::load($dom, $signedXml);
 
         // For PIH, we hash the entire document including signature
         // but still use canonicalization for consistency
