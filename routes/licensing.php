@@ -18,11 +18,23 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Admin Routes (Protected by admin authentication)
+| Admin Routes (Masaar-internal license administration)
 |--------------------------------------------------------------------------
+|
+| These issue, revoke and regenerate the secrets of customer licences, so
+| they are gated the same way as the rest of the cross-tenant surface:
+| 'jwt.auth' to establish identity, 'platform.admin' for the Masaar-internal
+| privilege.
+|
+| Previously 'auth:sanctum' — a guard this application does not define, with
+| Sanctum not installed — followed by 'admin', which only checks the JWT's
+| per-organization role. The undefined guard meant every one of these routes
+| raised "Auth guard [sanctum] is not defined" rather than authorizing
+| anything.
+|
 */
 Route::prefix('api/admin/licenses')
-    ->middleware(['auth:sanctum', 'admin'])
+    ->middleware(['jwt.auth', 'platform.admin'])
     ->group(function () {
         // Statistics endpoint (before {id} routes)
         Route::get('statistics', [LicenseController::class, 'statistics']);

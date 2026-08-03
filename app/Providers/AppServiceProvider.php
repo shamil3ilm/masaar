@@ -11,10 +11,32 @@ use App\Domains\Compliance\Fatoora\Services\FallbackHandler;
 use App\Domains\Compliance\Fatoora\Services\TimestampValidator;
 use App\Domains\Logging\Services\ComplianceLogger;
 use App\Domains\Organization\Services\TenantResolver;
+use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
+    /**
+     * The application's route middleware aliases.
+     *
+     * Declared here rather than inline in bootstrap/app.php so there is one
+     * list, and so boot() can reassert it — see reclaimMiddlewareAliases().
+     */
+    public const MIDDLEWARE_ALIASES = [
+        'jwt.auth' => \App\Domains\Auth\Http\Middleware\JwtAuthenticate::class,
+        'admin' => \App\Domains\Auth\Http\Middleware\EnsureUserIsAdmin::class,
+        'platform.admin' => \App\Domains\Auth\Http\Middleware\EnsurePlatformAdmin::class,
+        'api.key' => \App\Domains\Auth\Http\Middleware\ApiKeyAuthenticate::class,
+        'portal.tenant' => \App\Domains\Organization\Http\Middleware\ResolvePortalTenant::class,
+        'metrics' => \App\Domains\Platform\Http\Middleware\RestrictMetrics::class,
+        'rate.api' => \App\Domains\Platform\Http\Middleware\RateLimitApi::class,
+        'license' => \App\Domains\Licensing\Http\Middleware\ValidateLicense::class,
+        'license.quota' => \App\Domains\Licensing\Http\Middleware\CheckInvoiceQuota::class,
+        'scope' => \App\Domains\Licensing\Http\Middleware\RequireScope::class,
+        'env' => \App\Domains\Licensing\Http\Middleware\RequireEnvironment::class,
+        'platform.license' => \App\Domains\Licensing\Http\Middleware\ValidatePlatformLicense::class,
+    ];
+
     /**
      * Register any application services.
      */
@@ -44,6 +66,32 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->assertDebugDisabledInProduction();
+        $this->reclaimMiddlewareAliases();
+    }
+
+    /**
+     * Reassert the application's middleware aliases after packages have booted.
+     *
+     * Aliases declared in bootstrap/app.php are applied before package service
+     * providers boot, so a package can overwrite one. tymon/jwt-auth does
+     * exactly that: its provider registers `jwt.auth` pointing at its own
+     * Authenticate middleware, silently displacing ours.
+     *
+     * That was not cosmetic. Our JwtAuthenticate is the only code that calls
+     * TenantResolver::setContext(), so while it was out of the pipeline the
+     * tenant context was never populated — EnsureUserIsAdmin denied every
+     * request and tenant-scoped queries filtered on organization_id = null.
+     *
+     * Provider boot order puts this after package providers, so the
+     * application's mapping wins. MiddlewareAliasTest pins it.
+     */
+    private function reclaimMiddlewareAliases(): void
+    {
+        $router = $this->app->make(Router::class);
+
+        foreach (self::MIDDLEWARE_ALIASES as $alias => $middleware) {
+            $router->aliasMiddleware($alias, $middleware);
+        }
     }
 
     /**
