@@ -42,7 +42,7 @@ class CertificateLineageService
      * @param \DateTimeInterface $validTo
      * @return array The created lineage record
      */
-    public function registerCertificate(
+    public function register(
         string $organizationId,
         string $certificateId,
         string $certificateSerial,
@@ -64,7 +64,7 @@ class CertificateLineageService
         }
 
         // Mark any existing active certificates as superseded
-        $activeCert = $this->getActiveCertificate($organizationId);
+        $activeCert = $this->getActive($organizationId);
         if ($activeCert) {
             $this->markSuperseded($activeCert['id'], $certificateId, 'New certificate registered');
         }
@@ -108,7 +108,7 @@ class CertificateLineageService
      * Uses activated_at as primary sort, then created_at as tiebreaker for
      * same-second edge cases, then id for absolute determinism.
      */
-    public function getActiveCertificate(string $organizationId): ?array
+    public function getActive(string $organizationId): ?array
     {
         $cert = DB::table('certificate_lineage')
             ->where('organization_id', $organizationId)
@@ -220,7 +220,7 @@ class CertificateLineageService
     /**
      * Get full certificate history for an organization.
      */
-    public function getCertificateHistory(string $organizationId): array
+    public function getHistory(string $organizationId): array
     {
         return DB::table('certificate_lineage')
             ->where('organization_id', $organizationId)
@@ -236,7 +236,7 @@ class CertificateLineageService
      *
      * Uses the indexed hash_chain_history table for fast queries.
      */
-    public function getInvoicesSignedWithCertificate(
+    public function getSignedInvoices(
         string $certificateId,
         ?string $organizationId = null,
         ?int $limit = 1000
@@ -264,7 +264,7 @@ class CertificateLineageService
     /**
      * Get count of invoices signed with a certificate.
      */
-    public function getInvoiceCountForCertificate(string $certificateId): int
+    public function getInvoiceCount(string $certificateId): int
     {
         return DB::table('hash_chain_history')
             ->where('certificate_id', $certificateId)
@@ -275,7 +275,7 @@ class CertificateLineageService
      * Find certificates expiring within a given period.
      * Used for proactive renewal alerts.
      */
-    public function getCertificatesExpiringSoon(int $days = 30): array
+    public function getExpiringSoon(int $days = 30): array
     {
         return DB::table('certificate_lineage')
             ->where('status', self::STATUS_ACTIVE)
@@ -290,7 +290,7 @@ class CertificateLineageService
     /**
      * Find already expired but still active certificates.
      */
-    public function getExpiredActiveCertificates(): array
+    public function getExpiredActive(): array
     {
         return DB::table('certificate_lineage')
             ->where('status', self::STATUS_ACTIVE)
@@ -305,7 +305,7 @@ class CertificateLineageService
      *
      * @throws FatooraException if certificate is not valid
      */
-    public function validateCertificateForSigning(string $organizationId, string $certificateId): void
+    public function validateForSigning(string $organizationId, string $certificateId): void
     {
         $lineage = DB::table('certificate_lineage')
             ->where('organization_id', $organizationId)
@@ -363,11 +363,11 @@ class CertificateLineageService
      */
     public function generateAuditReport(string $organizationId): array
     {
-        $certificates = $this->getCertificateHistory($organizationId);
+        $certificates = $this->getHistory($organizationId);
         $report = [];
 
         foreach ($certificates as $cert) {
-            $invoiceCount = $this->getInvoiceCountForCertificate($cert['certificate_id']);
+            $invoiceCount = $this->getInvoiceCount($cert['certificate_id']);
 
             $report[] = [
                 'certificate_id' => $cert['certificate_id'],
