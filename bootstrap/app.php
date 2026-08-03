@@ -26,21 +26,10 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Register middleware aliases
-        $middleware->alias([
-            'jwt.auth' => \App\Domains\Auth\Http\Middleware\JwtAuthenticate::class,
-            'admin' => \App\Domains\Auth\Http\Middleware\EnsureUserIsAdmin::class,
-            'api.key' => \App\Domains\Auth\Http\Middleware\ApiKeyAuthenticate::class,
-            'rate.api' => \App\Domains\Platform\Http\Middleware\RateLimitApi::class,
-            'license' => \App\Domains\Licensing\Http\Middleware\ValidateLicense::class,
-            'license.quota' => \App\Domains\Licensing\Http\Middleware\CheckInvoiceQuota::class,
-            'scope' => \App\Domains\Licensing\Http\Middleware\RequireScope::class,
-            'env' => \App\Domains\Licensing\Http\Middleware\RequireEnvironment::class,
-            'platform.license' => \App\Domains\Licensing\Http\Middleware\ValidatePlatformLicense::class,
-            'platform.admin' => \App\Domains\Auth\Http\Middleware\EnsurePlatformAdmin::class,
-            'portal.tenant' => \App\Domains\Organization\Http\Middleware\ResolvePortalTenant::class,
-            'metrics' => \App\Domains\Platform\Http\Middleware\RestrictMetrics::class,
-        ]);
+        // Single source of truth. AppServiceProvider::boot() reasserts these
+        // after package providers boot, because a package can otherwise claim
+        // an alias declared here.
+        $middleware->alias(\App\Providers\AppServiceProvider::MIDDLEWARE_ALIASES);
 
         // Blade consoles authenticate with a session; send guests to the form.
         $middleware->redirectGuestsTo(fn () => route('login'));
