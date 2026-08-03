@@ -32,13 +32,13 @@ class AdminConsoleAccessTest extends TestCase
     }
 
     #[DataProvider('adminRouteProvider')]
-    public function test_guest_is_redirected_to_login(string $uri): void
+    public function test_guest_redirected(string $uri): void
     {
         $this->get($uri)->assertRedirect('/login');
     }
 
     #[DataProvider('adminRouteProvider')]
-    public function test_authenticated_non_admin_is_forbidden(string $uri): void
+    public function test_non_admin_denied(string $uri): void
     {
         $this->actingAs(User::factory()->create())
             ->get($uri)
@@ -49,7 +49,7 @@ class AdminConsoleAccessTest extends TestCase
      * The admin console is cross-tenant. An organization's own admin holds
      * `organization_user.role = 'admin'`, which must NOT reach it.
      */
-    public function test_organization_admin_is_not_a_platform_admin(): void
+    public function test_org_admin_denied(): void
     {
         $user = User::factory()->create();
         $organization = Organization::create(['name' => 'Acme', 'country' => 'SA']);
@@ -60,7 +60,7 @@ class AdminConsoleAccessTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_suspended_platform_admin_is_forbidden(): void
+    public function test_suspended_admin_denied(): void
     {
         $user = User::factory()->platformAdmin()->suspended()->create();
 
@@ -69,14 +69,14 @@ class AdminConsoleAccessTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_platform_admin_can_view_console(): void
+    public function test_admin_allowed(): void
     {
         $this->actingAs(User::factory()->platformAdmin()->create())
             ->get('/admin/organizations')
             ->assertOk();
     }
 
-    public function test_guest_cannot_trigger_offline_queue_processing(): void
+    public function test_guest_cannot_process_queue(): void
     {
         Artisan::spy();
 
@@ -85,7 +85,7 @@ class AdminConsoleAccessTest extends TestCase
         Artisan::shouldNotHaveReceived('call');
     }
 
-    public function test_non_admin_cannot_trigger_offline_queue_processing(): void
+    public function test_non_admin_cannot_process_queue(): void
     {
         Artisan::spy();
 
@@ -96,14 +96,14 @@ class AdminConsoleAccessTest extends TestCase
         Artisan::shouldNotHaveReceived('call');
     }
 
-    public function test_guest_cannot_mutate_the_offline_queue(): void
+    public function test_guest_cannot_retry_item(): void
     {
         $this->post('/admin/queue/any-id/retry')->assertRedirect('/login');
 
         $this->assertDatabaseCount('offline_queue', 0);
     }
 
-    public function test_non_admin_cannot_mutate_the_offline_queue(): void
+    public function test_non_admin_cannot_retry_item(): void
     {
         $this->actingAs(User::factory()->create())
             ->post('/admin/queue/any-id/retry')

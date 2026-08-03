@@ -26,7 +26,7 @@ class AdminApiAccessTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_platform_admin_routes_do_not_use_the_organization_admin_gate(): void
+    public function test_routes_use_platform_gate(): void
     {
         $router = app(Router::class);
         $aliases = $router->getMiddleware();
@@ -57,7 +57,7 @@ class AdminApiAccessTest extends TestCase
         }
     }
 
-    public function test_guest_cannot_reach_the_admin_api(): void
+    public function test_guest_denied(): void
     {
         $this->getJson('/api/admin/dashboard')->assertUnauthorized();
     }
@@ -66,7 +66,7 @@ class AdminApiAccessTest extends TestCase
      * An org-admin carries role=admin in their token's organization context.
      * That is exactly the credential the old gate accepted.
      */
-    public function test_organization_admin_cannot_reach_the_admin_api(): void
+    public function test_org_admin_denied(): void
     {
         $user = User::factory()->create();
         $organization = Organization::create(['name' => 'Acme', 'country' => 'SA']);
@@ -77,7 +77,7 @@ class AdminApiAccessTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_platform_admin_passes_the_gate(): void
+    public function test_platform_admin_allowed(): void
     {
         $user = User::factory()->platformAdmin()->create();
 

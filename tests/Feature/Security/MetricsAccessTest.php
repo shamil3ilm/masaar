@@ -19,7 +19,7 @@ class MetricsAccessTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_unconfigured_production_deployment_denies_access(): void
+    public function test_unconfigured_prod_denied(): void
     {
         config(['metrics.token' => null, 'metrics.allowed_ips' => []]);
         app()->detectEnvironment(fn () => 'production');
@@ -27,21 +27,21 @@ class MetricsAccessTest extends TestCase
         $this->get('/api/metrics')->assertForbidden();
     }
 
-    public function test_token_is_required_once_configured(): void
+    public function test_token_required(): void
     {
         config(['metrics.token' => 'scrape-token', 'metrics.allowed_ips' => []]);
 
         $this->get('/api/metrics')->assertForbidden();
     }
 
-    public function test_wrong_token_is_denied(): void
+    public function test_wrong_token_denied(): void
     {
         config(['metrics.token' => 'scrape-token', 'metrics.allowed_ips' => []]);
 
         $this->withToken('not-the-token')->get('/api/metrics')->assertForbidden();
     }
 
-    public function test_non_allowlisted_source_ip_is_denied(): void
+    public function test_other_ip_denied(): void
     {
         config(['metrics.token' => null, 'metrics.allowed_ips' => ['10.0.0.5']]);
 
@@ -62,7 +62,7 @@ class MetricsAccessTest extends TestCase
     |
     */
 
-    public function test_correct_token_is_admitted(): void
+    public function test_valid_token_allowed(): void
     {
         config(['metrics.token' => 'scrape-token', 'metrics.allowed_ips' => []]);
 
@@ -73,7 +73,7 @@ class MetricsAccessTest extends TestCase
         $this->assertTrue($this->passesGate($request));
     }
 
-    public function test_allowlisted_source_ip_is_admitted(): void
+    public function test_allowed_ip_admitted(): void
     {
         config(['metrics.token' => null, 'metrics.allowed_ips' => ['10.0.0.5']]);
 
@@ -82,7 +82,7 @@ class MetricsAccessTest extends TestCase
         $this->assertTrue($this->passesGate($request));
     }
 
-    public function test_non_production_deployment_without_configuration_is_admitted(): void
+    public function test_open_outside_production(): void
     {
         config(['metrics.token' => null, 'metrics.allowed_ips' => []]);
 

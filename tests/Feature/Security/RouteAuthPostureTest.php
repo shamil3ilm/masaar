@@ -32,7 +32,7 @@ class RouteAuthPostureTest extends TestCase
         'up' => 'Container health probe',
     ];
 
-    public function test_every_web_route_is_either_authenticated_or_declared_public(): void
+    public function test_all_web_routes_guarded(): void
     {
         $unguarded = [];
 
@@ -62,7 +62,7 @@ class RouteAuthPostureTest extends TestCase
      * The admin console additionally requires the cross-tenant privilege, and
      * the portal additionally requires session-derived tenant resolution.
      */
-    public function test_admin_and_portal_routes_carry_their_authorization_middleware(): void
+    public function test_admin_portal_gates_present(): void
     {
         foreach ($this->webRoutes() as $route) {
             $uri = '/'.$route->uri();
@@ -80,7 +80,7 @@ class RouteAuthPostureTest extends TestCase
         }
     }
 
-    public function test_login_form_is_reachable_by_a_guest(): void
+    public function test_login_page_is_public(): void
     {
         $this->get('/login')->assertOk();
     }

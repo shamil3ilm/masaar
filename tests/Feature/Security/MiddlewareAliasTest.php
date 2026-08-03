@@ -39,7 +39,7 @@ class MiddlewareAliasTest extends TestCase
         'platform.license' => \App\Domains\Licensing\Http\Middleware\ValidatePlatformLicense::class,
     ];
 
-    public function test_application_aliases_are_not_replaced_by_packages(): void
+    public function test_aliases_not_hijacked(): void
     {
         $registered = app(Router::class)->getMiddleware();
 
@@ -57,7 +57,7 @@ class MiddlewareAliasTest extends TestCase
      * The JWT pipeline must include the middleware that establishes tenant
      * context, or every downstream tenant check silently sees no tenant.
      */
-    public function test_jwt_routes_run_the_middleware_that_sets_tenant_context(): void
+    public function test_jwt_sets_tenant_context(): void
     {
         $router = app(Router::class);
 
