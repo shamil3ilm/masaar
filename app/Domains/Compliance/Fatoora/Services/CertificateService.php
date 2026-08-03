@@ -213,6 +213,10 @@ EOL;
             'validFromUtc' => FatooraTime::fromUnixTimestamp($details['validFrom_time_t'] ?? 0),
             'validToUtc' => FatooraTime::fromUnixTimestamp($details['validTo_time_t'] ?? 0),
             'serialNumber' => $details['serialNumber'] ?? null,
+            // X.509 serials are up to 20 octets (160 bits), so they do not fit
+            // in a PHP int. Always compare using this hex form, never by
+            // casting serialNumber to a number.
+            'serialNumberHex' => $details['serialNumberHex'] ?? null,
             'extensions' => $details['extensions'] ?? [],
         ];
     }
@@ -609,11 +613,16 @@ EOL;
             return null;
         }
 
-        // Get certificate serial number
+        // Get certificate serial number. The hex form is required: X.509
+        // serials run to 20 octets and will not fit in a PHP int.
         $details = $this->parseCertificate($certificatePem);
-        $serialNumber = $details['serialNumber'] ?? null;
+        $serialHex = $details['serialNumberHex'] ?? null;
 
-        if ($serialNumber === null) {
+        if ($serialHex === null) {
+            // Inconclusive, not "not revoked" — the caller must not read a
+            // missing serial as a clean bill of health.
+            \Log::warning('CRL check skipped: certificate has no readable hex serial');
+
             return null;
         }
 
@@ -644,21 +653,15 @@ EOL;
                 return null;
             }
 
-            // Check if our serial number is in the revoked list
-            $serialHex = strtoupper(dechex((int) $serialNumber));
+            $revoked = $this->revokedSerialsFrom($output);
+            $ours = $this->normalizeSerial($serialHex);
 
-            if (preg_match('/Serial Number:\s*' . preg_quote($serialHex, '/') . '/i', $output)) {
-                // Extract revocation date if possible
-                $revokedAt = null;
-                if (preg_match('/Serial Number:\s*' . preg_quote($serialHex, '/') . '\s+Revocation Date:\s*(.+)/i', $output, $matches)) {
-                    $revokedAt = trim($matches[1]);
-                }
-
+            if (array_key_exists($ours, $revoked)) {
                 return [
                     'revoked' => true,
                     'method' => 'crl',
                     'reason' => 'Certificate found in CRL',
-                    'revokedAt' => $revokedAt,
+                    'revokedAt' => $revoked[$ours],
                 ];
             }
 
@@ -673,6 +676,55 @@ EOL;
                 unlink($crlFile);
             }
         }
+    }
+
+    /**
+     * Build a serial => revocation date map from `openssl crl -text` output.
+     *
+     * Parsed into an exact-match set rather than scanned with a regex per
+     * serial. A substring search over this output matches prefixes, so
+     * "Serial Number: 4F8A" would report a hit against an unrelated entry
+     * "4F8A2B1C..." — reporting a valid certificate as revoked.
+     *
+     * @return array<string, string|null> Normalized serial => revocation date
+     */
+    private function revokedSerialsFrom(string $opensslOutput): array
+    {
+        // Horizontal whitespace only between the serial and the line break:
+        // \s* would swallow the newline the Revocation Date group needs.
+        $matched = preg_match_all(
+            '/Serial Number:[ \t]*([0-9A-Fa-f]+)[ \t]*(?:\R[ \t]*Revocation Date:[ \t]*(.+))?/',
+            $opensslOutput,
+            $entries,
+            PREG_SET_ORDER
+        );
+
+        if ($matched === false || $matched === 0) {
+            return [];
+        }
+
+        $revoked = [];
+
+        foreach ($entries as $entry) {
+            $revoked[$this->normalizeSerial($entry[1])] = isset($entry[2]) ? trim($entry[2]) : null;
+        }
+
+        return $revoked;
+    }
+
+    /**
+     * Reduce a serial to one comparable form.
+     *
+     * openssl_x509_parse() and `openssl crl -text` differ on the 0x prefix,
+     * on case, and on leading zero padding, so both sides are normalised
+     * before comparison.
+     */
+    private function normalizeSerial(string $serial): string
+    {
+        $serial = preg_replace('/^0x/i', '', trim($serial));
+        $serial = ltrim(strtoupper($serial), '0');
+
+        return $serial === '' ? '0' : $serial;
     }
 
     /**
@@ -846,11 +898,18 @@ EOL;
         if (config('fatoora.features.certificate_revocation_check', true)) {
             try {
                 $revocationStatus = $this->checkRevocationStatus($certificatePem);
+
                 if ($revocationStatus['revoked']) {
                     $errors[] = 'CERT_REVOKED: Certificate has been revoked and cannot be used';
+                } elseif (isset($revocationStatus['warning'])) {
+                    // Reaching no OCSP or CRL endpoint is not the same as being
+                    // told the certificate is good. Surface it rather than
+                    // letting an unperformed check read as a pass.
+                    $warnings[] = 'CERT_REVOCATION_UNVERIFIED: '.$revocationStatus['warning'];
                 }
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 $warnings[] = 'CERT_REVOCATION_CHECK_FAILED: Could not verify revocation status';
+                \Log::warning('Certificate revocation check failed', ['error' => $e->getMessage()]);
             }
         }
 
