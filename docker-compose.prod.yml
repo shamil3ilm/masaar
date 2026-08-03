@@ -1,4 +1,4 @@
-# CompliPay Production Override
+# Masaar Production Override
 # Use with: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 #
 # This override adds production-specific configurations:
@@ -45,10 +45,10 @@ services:
     labels:
       # Traefik labels for reverse proxy (if using Traefik)
       - "traefik.enable=true"
-      - "traefik.http.routers.complipay.rule=Host(`${APP_DOMAIN}`)"
-      - "traefik.http.routers.complipay.entrypoints=websecure"
-      - "traefik.http.routers.complipay.tls.certresolver=letsencrypt"
-      - "traefik.http.services.complipay.loadbalancer.server.port=80"
+      - "traefik.http.routers.masaar.rule=Host(`${APP_DOMAIN}`)"
+      - "traefik.http.routers.masaar.entrypoints=websecure"
+      - "traefik.http.routers.masaar.tls.certresolver=letsencrypt"
+      - "traefik.http.services.masaar.loadbalancer.server.port=80"
 
   # ==========================================================================
   # Production Database Configuration
@@ -109,7 +109,7 @@ services:
   # ==========================================================================
   traefik:
     image: traefik:v3.0
-    container_name: complipay-traefik
+    container_name: masaar-traefik
     restart: unless-stopped
     ports:
       - "80:80"
@@ -126,10 +126,10 @@ services:
       - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - complipay-letsencrypt:/letsencrypt
+      - masaar-letsencrypt:/letsencrypt
     networks:
-      - complipay-network
+      - masaar-network
 
 volumes:
-  complipay-letsencrypt:
+  masaar-letsencrypt:
     driver: local

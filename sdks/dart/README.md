@@ -1,4 +1,4 @@
-# CompliPay Dart SDK
+# Masaar Dart SDK
 
 ZATCA-compliant e-invoicing API client for Dart 3+ and Flutter.
 
@@ -8,7 +8,7 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  complipay: ^1.0.0
+  masaar: ^1.0.0
 ```
 
 Then run:
@@ -22,11 +22,11 @@ flutter pub get
 ## Quick Start
 
 ```dart
-import 'package:complipay/complipay.dart';
+import 'package:masaar/masaar.dart';
 
 void main() async {
   // Initialize client
-  final client = CompliPayClient(
+  final client = MasaarClient(
     baseUrl: 'http://localhost:8000',  // Your server URL
     apiKey: 'your_api_key',
     apiSecret: 'your_api_secret',
@@ -137,7 +137,7 @@ final status = await client.compliance.status(invoiceId);
 // Subscribe to events
 final webhook = await client.webhooks.create(
   CreateWebhookRequest(
-    url: 'https://your-app.com/webhooks/complipay',
+    url: 'https://your-app.com/webhooks/masaar',
     events: ['invoice.cleared', 'invoice.rejected'],
     secret: 'your-webhook-secret',
   ),
@@ -145,7 +145,7 @@ final webhook = await client.webhooks.create(
 
 // Verify webhook signature
 bool verifyWebhook(String payload, String signature, String secret) {
-  return CompliPayWebhook.verifySignature(payload, signature, secret);
+  return MasaarWebhook.verifySignature(payload, signature, secret);
 }
 ```
 
@@ -165,7 +165,7 @@ try {
   print('ZATCA error: ${e.message}');
 } on RateLimitException catch (e) {
   print('Rate limited - retry after ${e.retryAfter} seconds');
-} on CompliPayException catch (e) {
+} on MasaarException catch (e) {
   print('API error: ${e.message}');
 }
 ```
@@ -174,13 +174,13 @@ try {
 
 ```dart
 // Using Provider
-class CompliPayProvider extends ChangeNotifier {
-  final CompliPayClient _client;
+class MasaarProvider extends ChangeNotifier {
+  final MasaarClient _client;
   Invoice? _currentInvoice;
   bool _loading = false;
   String? _error;
 
-  CompliPayProvider(this._client);
+  MasaarProvider(this._client);
 
   Invoice? get currentInvoice => _currentInvoice;
   bool get loading => _loading;
@@ -193,7 +193,7 @@ class CompliPayProvider extends ChangeNotifier {
 
     try {
       _currentInvoice = await _client.invoices.create(request);
-    } on CompliPayException catch (e) {
+    } on MasaarException catch (e) {
       _error = e.message;
     } finally {
       _loading = false;
@@ -206,7 +206,7 @@ class CompliPayProvider extends ChangeNotifier {
 class InvoiceScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Consumer<CompliPayProvider>(
+    return Consumer<MasaarProvider>(
       builder: (context, provider, child) {
         if (provider.loading) {
           return CircularProgressIndicator();

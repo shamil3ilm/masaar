@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
-  title: CompliPay ZATCA E-Invoicing API
+  title: Masaar ZATCA E-Invoicing API
   description: |
-    CompliPay provides a comprehensive API for ZATCA-compliant e-invoicing in Saudi Arabia.
+    Masaar provides a comprehensive API for ZATCA-compliant e-invoicing in Saudi Arabia.
 
     ## Features
     - Invoice creation and management
@@ -32,15 +32,15 @@ info:
 
   version: 1.0.0
   contact:
-    name: CompliPay Support
-    email: support@complipay.sa
+    name: Masaar Support
+    email: support@masaar.sa
   license:
     name: MIT
 
 servers:
-  - url: https://api.complipay.sa
+  - url: https://api.masaar.sa
     description: Production
-  - url: https://sandbox.complipay.sa
+  - url: https://sandbox.masaar.sa
     description: Sandbox
 
 tags:

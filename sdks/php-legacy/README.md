@@ -1,15 +1,15 @@
-# CompliPay PHP SDK
+# Masaar PHP SDK
 
 ZATCA-compliant e-invoicing API client for PHP 7.4+
 
 Compatible with Laravel 8, 9, 10, 11, 12 and any PHP application.
 
-> **Important**: By using this SDK, you agree to the CompliPay [Terms of Use](../../TERMS.md) and [License](../../LICENSE). Commercial use requires [registration](../../README.md#registration).
+> **Important**: By using this SDK, you agree to the Masaar [Terms of Use](../../TERMS.md) and [License](../../LICENSE). Commercial use requires [registration](../../README.md#registration).
 
 ## Installation
 
 ```bash
-composer require complipay/complipay-php
+composer require masaar/masaar-php
 ```
 
 ## Server URLs
@@ -27,17 +27,17 @@ composer require complipay/complipay-php
 ```php
 <?php
 
-use CompliPay\CompliPayClient;
-use CompliPay\InvoiceLine;
+use Masaar\MasaarClient;
+use Masaar\InvoiceLine;
 
 // For local development
-$client = new CompliPayClient([
+$client = new MasaarClient([
     'base_url' => 'http://localhost:8000',  // Your server URL
     'api_key' => 'your_api_key',
 ]);
 
 // For production, use your deployed server URL:
-// $client = new CompliPayClient([
+// $client = new MasaarClient([
 //     'base_url' => 'https://your-domain.com',
 //     'api_key' => 'your_api_key',
 // ]);
@@ -74,7 +74,7 @@ Add to your `config/services.php`:
 
 ```php
 // config/services.php
-'complipay' => [
+'masaar' => [
     'url' => env('COMPLIPAY_URL', 'http://localhost:8000'),
     'key' => env('COMPLIPAY_API_KEY'),
 ],
@@ -95,22 +95,22 @@ COMPLIPAY_API_KEY=your_api_key
 ### Service Provider (Optional)
 
 ```php
-// app/Providers/CompliPayServiceProvider.php
+// app/Providers/MasaarServiceProvider.php
 <?php
 
 namespace App\Providers;
 
-use CompliPay\CompliPayClient;
+use Masaar\MasaarClient;
 use Illuminate\Support\ServiceProvider;
 
-class CompliPayServiceProvider extends ServiceProvider
+class MasaarServiceProvider extends ServiceProvider
 {
     public function register()
     {
-        $this->app->singleton(CompliPayClient::class, function ($app) {
-            return new CompliPayClient([
-                'base_url' => config('services.complipay.url'),
-                'api_key' => config('services.complipay.key'),
+        $this->app->singleton(MasaarClient::class, function ($app) {
+            return new MasaarClient([
+                'base_url' => config('services.masaar.url'),
+                'api_key' => config('services.masaar.key'),
             ]);
         });
     }
@@ -124,22 +124,22 @@ class CompliPayServiceProvider extends ServiceProvider
 
 namespace App\Http\Controllers;
 
-use CompliPay\CompliPayClient;
-use CompliPay\InvoiceLine;
+use Masaar\MasaarClient;
+use Masaar\InvoiceLine;
 use Illuminate\Http\Request;
 
 class InvoiceController extends Controller
 {
-    private $complipay;
+    private $masaar;
 
-    public function __construct(CompliPayClient $complipay)
+    public function __construct(MasaarClient $masaar)
     {
-        $this->complipay = $complipay;
+        $this->masaar = $masaar;
     }
 
     public function store(Request $request)
     {
-        $invoice = $this->complipay->invoices->create(
+        $invoice = $this->masaar->invoices->create(
             $request->input('invoice_number'),
             $request->input('buyer_name'),
             array_map(function ($line) {
@@ -155,8 +155,8 @@ class InvoiceController extends Controller
         );
 
         // Generate and submit to ZATCA
-        $this->complipay->compliance->generate($invoice['data']['id']);
-        $this->complipay->compliance->submit($invoice['data']['id']);
+        $this->masaar->compliance->generate($invoice['data']['id']);
+        $this->masaar->compliance->submit($invoice['data']['id']);
 
         return response()->json($invoice);
     }
@@ -203,7 +203,7 @@ $webhook = $client->webhooks->create(
 );
 
 // Verify webhook signature in your controller
-use CompliPay\WebhooksResource;
+use Masaar\WebhooksResource;
 
 public function handleWebhook(Request $request)
 {
@@ -232,10 +232,10 @@ public function handleWebhook(Request $request)
 ## Error Handling
 
 ```php
-use CompliPay\AuthenticationException;
-use CompliPay\ValidationException;
-use CompliPay\ZatcaException;
-use CompliPay\CompliPayException;
+use Masaar\AuthenticationException;
+use Masaar\ValidationException;
+use Masaar\ZatcaException;
+use Masaar\MasaarException;
 
 try {
     $invoice = $client->invoices->create(...);
@@ -249,7 +249,7 @@ try {
 } catch (ZatcaException $e) {
     // ZATCA rejected the invoice
     Log::error('ZATCA rejected', ['errors' => $e->getErrors()]);
-} catch (CompliPayException $e) {
+} catch (MasaarException $e) {
     // General API error
     Log::error('API error: ' . $e->getMessage());
 }

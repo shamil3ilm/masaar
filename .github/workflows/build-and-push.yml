@@ -1,4 +1,4 @@
-# CompliPay Docker Build & Push to GitHub Container Registry
+# Masaar Docker Build & Push to GitHub Container Registry
 #
 # This workflow builds the Docker image and pushes to ghcr.io
 # Triggered on version tags (v1.0.0, v1.1.0, etc.)

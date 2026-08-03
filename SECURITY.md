@@ -2,7 +2,7 @@
 
 ## Our Commitment
 
-CompliPay is committed to ensuring the security of our users and the integrity of the ZATCA e-invoicing ecosystem. We take security seriously and appreciate the community's efforts in identifying and responsibly disclosing vulnerabilities.
+Masaar is committed to ensuring the security of our users and the integrity of the ZATCA e-invoicing ecosystem. We take security seriously and appreciate the community's efforts in identifying and responsibly disclosing vulnerabilities.
 
 ## Supported Versions
 
@@ -169,7 +169,7 @@ We currently operate a private bug bounty program. Researchers who report valid 
 ### Scope
 
 **In Scope**:
-- CompliPay API endpoints
+- Masaar API endpoints
 - Authentication and authorization
 - Cryptographic implementations
 - SDK security issues
@@ -215,4 +215,4 @@ This project is designed to comply with:
 
 ---
 
-Thank you for helping keep CompliPay and its users safe.
+Thank you for helping keep Masaar and its users safe.

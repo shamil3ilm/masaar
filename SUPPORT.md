@@ -1,4 +1,4 @@
-# CompliPay - Support Scope & Professional Consultation Guide
+# Masaar - Support Scope & Professional Consultation Guide
 
 This document clarifies the types of issues we can assist with and those that require professional consultation from qualified experts.
 
@@ -55,7 +55,7 @@ We provide support for the following technical issues:
 
 ### IMPORTANT DISCLAIMER
 
-**CompliPay is a technical tool. We are NOT licensed to provide:**
+**Masaar is a technical tool. We are NOT licensed to provide:**
 - Legal advice
 - Tax advice
 - Accounting services
@@ -177,7 +177,7 @@ We provide support for the following technical issues:
 ### We CAN Help With:
 
 ```
-✅ "How do I generate a QR code using CompliPay?"
+✅ "How do I generate a QR code using Masaar?"
 ✅ "Why is my XML validation failing?"
 ✅ "How do I configure webhooks?"
 ✅ "What format should the VAT number be in?"
@@ -247,9 +247,9 @@ We provide support for the following technical issues:
 
 ## Frequently Misunderstood Issues
 
-### "CompliPay says my invoice is valid, so I'm compliant, right?"
+### "Masaar says my invoice is valid, so I'm compliant, right?"
 
-**No.** CompliPay validates technical compliance (XML structure, signatures, QR codes). It does NOT validate:
+**No.** Masaar validates technical compliance (XML structure, signatures, QR codes). It does NOT validate:
 - Whether the tax rate is correct for your goods/services
 - Whether you're eligible for exemptions
 - Whether the transaction is legitimate

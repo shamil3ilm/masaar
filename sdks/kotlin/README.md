@@ -1,4 +1,4 @@
-# CompliPay Kotlin SDK
+# Masaar Kotlin SDK
 
 ZATCA-compliant e-invoicing API client for Kotlin 1.9+ and Android.
 
@@ -8,22 +8,22 @@ ZATCA-compliant e-invoicing API client for Kotlin 1.9+ and Android.
 
 ```kotlin
 dependencies {
-    implementation("com.complipay:complipay-sdk:1.0.0")
+    implementation("com.masaar:masaar-sdk:1.0.0")
 }
 ```
 
 ### Gradle (Groovy)
 
 ```groovy
-implementation 'com.complipay:complipay-sdk:1.0.0'
+implementation 'com.masaar:masaar-sdk:1.0.0'
 ```
 
 ### Maven
 
 ```xml
 <dependency>
-    <groupId>com.complipay</groupId>
-    <artifactId>complipay-sdk</artifactId>
+    <groupId>com.masaar</groupId>
+    <artifactId>masaar-sdk</artifactId>
     <version>1.0.0</version>
 </dependency>
 ```
@@ -31,11 +31,11 @@ implementation 'com.complipay:complipay-sdk:1.0.0'
 ## Quick Start
 
 ```kotlin
-import com.complipay.CompliPayClient
-import com.complipay.models.*
+import com.masaar.MasaarClient
+import com.masaar.models.*
 
 // Initialize client
-val client = CompliPayClient(
+val client = MasaarClient(
     baseUrl = "http://localhost:8000",  // Your server URL
     apiKey = "your_api_key",
     apiSecret = "your_api_secret"
@@ -140,7 +140,7 @@ val status = client.compliance.status(invoiceId)
 // Subscribe to events
 val webhook = client.webhooks.create(
     CreateWebhookRequest(
-        url = "https://your-app.com/webhooks/complipay",
+        url = "https://your-app.com/webhooks/masaar",
         events = listOf("invoice.cleared", "invoice.rejected"),
         secret = "your-webhook-secret"
     )
@@ -150,12 +150,12 @@ val webhook = client.webhooks.create(
 @RestController
 class WebhookController {
 
-    @PostMapping("/webhooks/complipay")
+    @PostMapping("/webhooks/masaar")
     fun handleWebhook(
         @RequestBody payload: String,
-        @RequestHeader("X-CompliPay-Signature") signature: String
+        @RequestHeader("X-Masaar-Signature") signature: String
     ): ResponseEntity<Unit> {
-        if (!CompliPayWebhook.verifySignature(payload, signature, webhookSecret)) {
+        if (!MasaarWebhook.verifySignature(payload, signature, webhookSecret)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
         }
 
@@ -185,7 +185,7 @@ try {
     println("ZATCA error: ${e.message}")
 } catch (e: RateLimitException) {
     println("Rate limited - retry after ${e.retryAfter} seconds")
-} catch (e: CompliPayException) {
+} catch (e: MasaarException) {
     println("API error: ${e.message}")
 }
 ```
@@ -194,14 +194,14 @@ try {
 
 ```kotlin
 // In your Application class or DI module
-val compliPayClient = CompliPayClient(
+val compliPayClient = MasaarClient(
     baseUrl = BuildConfig.COMPLIPAY_BASE_URL,
     apiKey = BuildConfig.COMPLIPAY_API_KEY,
     apiSecret = BuildConfig.COMPLIPAY_API_SECRET
 )
 
 // In your ViewModel
-class InvoiceViewModel(private val compliPay: CompliPayClient) : ViewModel() {
+class InvoiceViewModel(private val compliPay: MasaarClient) : ViewModel() {
 
     private val _invoiceState = MutableStateFlow<InvoiceState>(InvoiceState.Idle)
     val invoiceState: StateFlow<InvoiceState> = _invoiceState
@@ -212,7 +212,7 @@ class InvoiceViewModel(private val compliPay: CompliPayClient) : ViewModel() {
             try {
                 val invoice = compliPay.invoices.create(request)
                 _invoiceState.value = InvoiceState.Success(invoice)
-            } catch (e: CompliPayException) {
+            } catch (e: MasaarException) {
                 _invoiceState.value = InvoiceState.Error(e.message)
             }
         }

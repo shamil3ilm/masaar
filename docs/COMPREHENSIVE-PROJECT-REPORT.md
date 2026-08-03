@@ -1,4 +1,4 @@
-# CompliPay - ZATCA E-Invoicing Platform
+# Masaar - ZATCA E-Invoicing Platform
 ## Comprehensive Project Report
 
 ---
@@ -24,7 +24,7 @@
 
 ### 1.1 Project Overview
 
-**CompliPay** is a production-ready Laravel-based e-invoicing compliance platform designed for Saudi Arabian ZATCA (Zakat, Tax and Customs Authority) Phase 2 requirements. The platform enables businesses to:
+**Masaar** is a production-ready Laravel-based e-invoicing compliance platform designed for Saudi Arabian ZATCA (Zakat, Tax and Customs Authority) Phase 2 requirements. The platform enables businesses to:
 
 - Generate UBL 2.1 compliant invoices
 - Apply XAdES-BES/XAdES-T digital signatures using ECDSA secp256k1
@@ -790,7 +790,7 @@ Response:
 
 ### 11.5 Webhook Consumer Responsibilities
 
-**POLICY**: Consumers are responsible for implementing security checks. CompliPay is not liable for issues caused by failure to verify signatures or check freshness.
+**POLICY**: Consumers are responsible for implementing security checks. Masaar is not liable for issues caused by failure to verify signatures or check freshness.
 
 **MANDATORY CHECKS**:
 
@@ -876,7 +876,7 @@ Response:
 
 ### 11.9 Data Residency & Sovereignty
 
-**POLICY**: CompliPay supports Saudi Arabia–resident deployments. Data residency is determined by infrastructure configuration, not application logic.
+**POLICY**: Masaar supports Saudi Arabia–resident deployments. Data residency is determined by infrastructure configuration, not application logic.
 
 ```php
 // config/zatca.php
@@ -928,7 +928,7 @@ Response:
 ],
 ```
 
-**CLARIFICATION**: Enforcement is organizational policy, not application logic. CompliPay logs all critical operations for audit purposes. Organizations must implement their own approval workflows.
+**CLARIFICATION**: Enforcement is organizational policy, not application logic. Masaar logs all critical operations for audit purposes. Organizations must implement their own approval workflows.
 
 ### 11.11 Clock Source Integrity
 
@@ -965,40 +965,40 @@ Response:
 
 ## 12. Explicit Non-Goals
 
-**IMPORTANT**: This section defines what CompliPay explicitly does NOT do. This protects scope, liability, and roadmap.
+**IMPORTANT**: This section defines what Masaar explicitly does NOT do. This protects scope, liability, and roadmap.
 
 ### 12.1 Tax Law Interpretation
-- CompliPay does **NOT** interpret tax law correctness
+- Masaar does **NOT** interpret tax law correctness
 - We validate format and business rules, not legal compliance
 - Tax advice must come from qualified professionals
 
 ### 12.2 Business Data Correction
-- CompliPay does **NOT** auto-correct business data
+- Masaar does **NOT** auto-correct business data
 - Invalid VAT numbers, incorrect amounts, or wrong exemption codes are rejected, not fixed
 - Data correction is the responsibility of the calling system
 
 ### 12.3 Cross-Tenant Operations
-- CompliPay does **NOT** support cross-tenant hash chains
+- Masaar does **NOT** support cross-tenant hash chains
 - Each organization has its own isolated ICV sequence
 - No data sharing between organizations
 
 ### 12.4 Retroactive Invoice Mutation
-- CompliPay does **NOT** allow retroactive changes to submitted invoices
+- Masaar does **NOT** allow retroactive changes to submitted invoices
 - Once CLEARED/REPORTED, invoices are immutable
 - Corrections require credit/debit notes
 
 ### 12.5 AI-Based Compliance Decisions
-- CompliPay does **NOT** use AI for compliance decisions
+- Masaar does **NOT** use AI for compliance decisions
 - All validation is deterministic and rule-based
 - No machine learning in the critical path
 
 ### 12.6 Real-Time Tax Calculations
-- CompliPay does **NOT** calculate taxes
+- Masaar does **NOT** calculate taxes
 - Tax amounts must be provided by the calling system
 - We validate calculations match line items
 
 ### 12.7 Payment Processing
-- CompliPay is **NOT** a payment processor
+- Masaar is **NOT** a payment processor
 - We handle invoice compliance, not payment collection
 - Integration with payment systems is out of scope
 
@@ -1112,4 +1112,4 @@ $summary = $tracker->getPeriodSummary($organizationId, '2026-01');
 
 *Document Version: 1.2*
 *Last Updated: January 2026*
-*Platform Version: CompliPay 1.0.0*
+*Platform Version: Masaar 1.0.0*
