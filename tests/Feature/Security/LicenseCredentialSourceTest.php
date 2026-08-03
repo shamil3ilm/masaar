@@ -16,21 +16,21 @@ use Tests\TestCase;
  */
 class LicenseCredentialSourceTest extends TestCase
 {
-    public function test_api_key_is_not_read_from_the_query_string(): void
+    public function test_key_not_from_query(): void
     {
         $request = Request::create('/v1/invoices?api_key=cpay_leaked_key', 'GET');
 
         $this->assertNull($this->extract('extractApiKey', $request));
     }
 
-    public function test_api_secret_is_not_read_from_the_query_string(): void
+    public function test_secret_not_from_query(): void
     {
         $request = Request::create('/v1/invoices?api_secret=leaked_secret', 'GET');
 
         $this->assertNull($this->extract('extractApiSecret', $request));
     }
 
-    public function test_credentials_are_read_from_dedicated_headers(): void
+    public function test_creds_from_headers(): void
     {
         $request = Request::create('/v1/invoices', 'GET', server: [
             'HTTP_X_API_KEY' => 'cpay_key',
@@ -41,7 +41,7 @@ class LicenseCredentialSourceTest extends TestCase
         $this->assertSame('secret', $this->extract('extractApiSecret', $request));
     }
 
-    public function test_credentials_are_read_from_the_bearer_pair(): void
+    public function test_creds_from_bearer(): void
     {
         $request = Request::create('/v1/invoices', 'GET', server: [
             'HTTP_AUTHORIZATION' => 'Bearer '.base64_encode('cpay_key:secret'),
@@ -55,7 +55,7 @@ class LicenseCredentialSourceTest extends TestCase
      * Headers must win outright: a query parameter cannot supplement or
      * override a header-supplied credential.
      */
-    public function test_query_string_cannot_supply_the_missing_half_of_a_pair(): void
+    public function test_query_cannot_fill_gap(): void
     {
         $request = Request::create('/v1/invoices?api_secret=leaked_secret', 'GET', server: [
             'HTTP_X_API_KEY' => 'cpay_key',

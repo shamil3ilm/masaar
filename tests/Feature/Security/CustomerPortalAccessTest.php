@@ -33,13 +33,13 @@ class CustomerPortalAccessTest extends TestCase
     }
 
     #[DataProvider('portalRouteProvider')]
-    public function test_guest_is_redirected_to_login(string $uri): void
+    public function test_guest_redirected(string $uri): void
     {
         $this->get($uri)->assertRedirect('/login');
     }
 
     #[DataProvider('portalRouteProvider')]
-    public function test_guest_cannot_reach_a_tenant_by_supplying_org_id(string $uri): void
+    public function test_guest_cannot_use_org_id(string $uri): void
     {
         $organization = $this->makeOrganization('Victim Co');
 
@@ -47,7 +47,7 @@ class CustomerPortalAccessTest extends TestCase
     }
 
     #[DataProvider('portalRouteProvider')]
-    public function test_member_of_one_tenant_cannot_read_another_by_org_id(string $uri): void
+    public function test_cross_tenant_denied(string $uri): void
     {
         $attacker = $this->makeMember('Attacker Co');
         $victim = $this->makeOrganization('Victim Co');
@@ -57,7 +57,7 @@ class CustomerPortalAccessTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_rejected_org_id_is_not_retained_in_the_session(): void
+    public function test_rejected_org_id_not_stored(): void
     {
         $attacker = $this->makeMember('Attacker Co');
         $victim = $this->makeOrganization('Victim Co');
@@ -68,14 +68,14 @@ class CustomerPortalAccessTest extends TestCase
             ->assertSessionMissing('portal_organization_id');
     }
 
-    public function test_single_membership_user_is_resolved_without_any_input(): void
+    public function test_single_org_auto_selected(): void
     {
         $user = $this->makeMember('Acme');
 
         $this->actingAs($user)->get('/portal')->assertOk();
     }
 
-    public function test_member_can_select_their_own_organization(): void
+    public function test_member_can_switch_org(): void
     {
         $user = User::factory()->create();
         $first = $this->makeOrganization('First Co');
@@ -93,7 +93,7 @@ class CustomerPortalAccessTest extends TestCase
      * A revoked membership must stop granting access, including when the old
      * selection is still sitting in the session.
      */
-    public function test_removed_membership_loses_access(): void
+    public function test_removed_member_denied(): void
     {
         $user = $this->makeMember('Acme');
         $organizationId = $user->organizations()->first()->id;
@@ -112,7 +112,7 @@ class CustomerPortalAccessTest extends TestCase
      * The selection screen must offer only the user's own organizations —
      * it previously queried the whole organizations table from the template.
      */
-    public function test_selection_screen_does_not_disclose_other_tenants(): void
+    public function test_picker_shows_own_orgs_only(): void
     {
         $user = User::factory()->create();
         $mine = $this->makeOrganization('My Own Company');

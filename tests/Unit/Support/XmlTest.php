@@ -12,7 +12,7 @@ use PHPUnit\Framework\TestCase;
 
 class XmlTest extends TestCase
 {
-    public function test_well_formed_document_loads(): void
+    public function test_valid_xml_loads(): void
     {
         $dom = Xml::load(new DOMDocument(), '<Invoice><ID>INV-1</ID></Invoice>');
 
@@ -25,21 +25,21 @@ class XmlTest extends TestCase
      * on querying an empty document, so signing produces a signature over
      * nothing instead of failing.
      */
-    public function test_malformed_document_throws_instead_of_yielding_an_empty_document(): void
+    public function test_malformed_throws(): void
     {
         $this->expectException(XmlException::class);
 
         Xml::load(new DOMDocument(), '<Invoice><ID>unclosed</Invoice>');
     }
 
-    public function test_empty_document_throws(): void
+    public function test_empty_throws(): void
     {
         $this->expectException(XmlException::class);
 
         Xml::load(new DOMDocument(), '');
     }
 
-    public function test_doctype_is_rejected(): void
+    public function test_doctype_rejected(): void
     {
         $xml = <<<'XML'
         <?xml version="1.0"?>
@@ -57,7 +57,7 @@ class XmlTest extends TestCase
      * Billion laughs: the entity nesting is what makes this dangerous, and the
      * DOCTYPE rejection removes it before libxml expands anything.
      */
-    public function test_entity_expansion_document_is_rejected(): void
+    public function test_entity_expansion_rejected(): void
     {
         $xml = <<<'XML'
         <?xml version="1.0"?>
@@ -74,7 +74,7 @@ class XmlTest extends TestCase
         Xml::load(new DOMDocument(), $xml);
     }
 
-    public function test_oversized_document_is_rejected(): void
+    public function test_oversized_rejected(): void
     {
         $xml = '<Invoice>'.str_repeat('x', 2048).'</Invoice>';
 
@@ -94,7 +94,7 @@ class XmlTest extends TestCase
      *
      */
     #[DataProvider('documentConstructionProvider')]
-    public function test_serialisation_is_byte_identical_to_a_plain_load(
+    public function test_output_byte_identical(
         ?string $version,
         ?string $encoding,
         bool $preserveWhiteSpace,
@@ -122,7 +122,7 @@ class XmlTest extends TestCase
         ];
     }
 
-    public function test_errors_from_reports_diagnostics_without_throwing(): void
+    public function test_errors_returns_diagnostics(): void
     {
         $errors = Xml::errors(new DOMDocument(), '<Invoice><ID>unclosed</Invoice>');
 
@@ -130,7 +130,7 @@ class XmlTest extends TestCase
         $this->assertStringContainsString('line', $errors[0]);
     }
 
-    public function test_errors_from_is_empty_for_a_valid_document(): void
+    public function test_errors_empty_when_valid(): void
     {
         $this->assertSame([], Xml::errors(new DOMDocument(), '<Invoice/>'));
     }
@@ -140,7 +140,7 @@ class XmlTest extends TestCase
      * it exactly as it was found, or unrelated code starts seeing (or missing)
      * errors depending on what parsed last.
      */
-    public function test_global_libxml_error_state_is_restored(): void
+    public function test_libxml_state_restored(): void
     {
         $previous = libxml_use_internal_errors(false);
 

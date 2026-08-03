@@ -42,7 +42,7 @@ class CertificateRevocationTest extends TestCase
                 Revocation Date: Mar  2 08:15:00 2026 GMT
     TXT;
 
-    public function test_the_old_cast_collapses_a_real_serial_to_zero(): void
+    public function test_int_cast_yields_zero(): void
     {
         // Documents the defect rather than the fix: this is what the previous
         // implementation compared against, for every certificate.
@@ -51,7 +51,7 @@ class CertificateRevocationTest extends TestCase
         $this->assertSame('0', strtoupper(dechex((int) $serial)));
     }
 
-    public function test_revoked_serial_is_found(): void
+    public function test_revoked_serial_found(): void
     {
         $revoked = $this->revokedSerials();
 
@@ -59,12 +59,12 @@ class CertificateRevocationTest extends TestCase
         $this->assertSame('Jan  5 09:30:00 2026 GMT', $revoked['4F8A2B1C9D3E6F7A0B1C2D3E4F5A6B7C8D9E0F11']);
     }
 
-    public function test_every_crl_entry_is_captured(): void
+    public function test_all_entries_parsed(): void
     {
         $this->assertCount(3, $this->revokedSerials());
     }
 
-    public function test_certificate_not_on_the_list_is_not_reported_revoked(): void
+    public function test_unlisted_serial_not_revoked(): void
     {
         $this->assertArrayNotHasKey(
             $this->normalize('0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEF'),
@@ -76,7 +76,7 @@ class CertificateRevocationTest extends TestCase
      * The old unanchored regex matched a prefix, so a certificate whose serial
      * merely starts with a revoked serial's digits was reported revoked.
      */
-    public function test_a_prefix_of_a_revoked_serial_does_not_match(): void
+    public function test_prefix_does_not_match(): void
     {
         $this->assertArrayNotHasKey($this->normalize('0x4F8A'), $this->revokedSerials());
         $this->assertArrayNotHasKey($this->normalize('0x0A1B'), $this->revokedSerials());
@@ -87,7 +87,7 @@ class CertificateRevocationTest extends TestCase
      * prefix, letter case and zero padding. All three must compare equal.
      */
     #[DataProvider('equivalentSerialProvider')]
-    public function test_serial_forms_normalise_to_the_same_value(string $a, string $b): void
+    public function test_serial_forms_equal(string $a, string $b): void
     {
         $this->assertSame($this->normalize($a), $this->normalize($b));
     }
@@ -102,7 +102,7 @@ class CertificateRevocationTest extends TestCase
         ];
     }
 
-    public function test_all_zero_serial_normalises_to_zero(): void
+    public function test_zero_serial(): void
     {
         $this->assertSame('0', $this->normalize('0x0000'));
     }
@@ -110,7 +110,7 @@ class CertificateRevocationTest extends TestCase
     /**
      * A padded CRL entry must still be findable from the certificate's form.
      */
-    public function test_zero_padded_crl_entry_matches_unpadded_certificate_serial(): void
+    public function test_padded_entry_matches(): void
     {
         $this->assertArrayHasKey($this->normalize('0xFF'), $this->revokedSerials());
     }
