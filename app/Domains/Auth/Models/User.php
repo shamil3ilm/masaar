@@ -1,8 +1,9 @@
 <?php
 
-namespace App\Models;
+namespace App\Domains\Auth\Models;
 
 use App\Domains\Organization\Models\Organization;
+use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -54,6 +55,16 @@ class User extends Authenticatable implements JWTSubject
     public function isPlatformAdmin(): bool
     {
         return $this->status === 'active' && $this->is_platform_admin === true;
+    }
+
+    /**
+     * Stated explicitly because the model lives outside App\Models, so
+     * Laravel's namespace convention would look for the factory under
+     * Database\Factories\Domains\Auth\Models.
+     */
+    protected static function newFactory(): UserFactory
+    {
+        return UserFactory::new();
     }
 
     /**

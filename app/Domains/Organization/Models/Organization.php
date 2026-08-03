@@ -6,7 +6,7 @@ namespace App\Domains\Organization\Models;
 
 use App\Domains\Compliance\Fatoora\DTOs\AddressData;
 use App\Domains\Invoice\Models\Invoice;
-use App\Models\User;
+use App\Domains\Auth\Models\User;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use App\Domains\Organization\Models\ComplianceProfile;

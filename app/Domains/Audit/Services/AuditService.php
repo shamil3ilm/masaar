@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Audits;
+namespace App\Domains\Audit\Services;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;

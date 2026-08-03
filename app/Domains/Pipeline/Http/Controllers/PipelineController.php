@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers\Api;
+namespace App\Domains\Pipeline\Http\Controllers;
 
 use App\Domains\Invoice\Models\Invoice;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\PipelineSubmitRequest;
+use App\Domains\Pipeline\Http\Requests\PipelineSubmitRequest;
 use App\Http\Responses\ApiResponse;
-use App\Services\PipelineService;
+use App\Domains\Pipeline\Services\PipelineService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Audits\AuditService;
+use App\Domains\Audit\Services\AuditService;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Services\TenantResolver;

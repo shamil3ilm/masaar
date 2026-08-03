@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Audits\AuditService;
+use App\Domains\Audit\Services\AuditService;
 use App\Domains\Auth\Contracts\AuthenticatesUsers;
 use App\Domains\Auth\DTOs\LoginData;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
 use App\Http\Responses\ApiResponse;
-use App\Models\User;
+use App\Domains\Auth\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
 

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Services\Licensing\UsageReportingService;
+use App\Domains\Licensing\Services\UsageReportingService;
 use Illuminate\Console\Command;
 
 /**
