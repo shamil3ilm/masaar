@@ -3,7 +3,7 @@
 namespace App\Domains\Auth\Http\Controllers;
 
 use App\Domains\Audit\Services\AuditService;
-use App\Domains\Auth\Contracts\AuthenticatesUsers;
+use App\Domains\Auth\Contracts\Authenticator;
 use App\Domains\Auth\DTOs\LoginData;
 use App\Http\Controllers\Controller;
 use App\Domains\Auth\Http\Requests\LoginRequest;
@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Hash;
 class AuthController extends Controller
 {
     public function __construct(
-        private readonly AuthenticatesUsers $auth,
+        private readonly Authenticator $auth,
         private readonly AuditService $audit,
     ) {}
 

@@ -1,7 +1,7 @@
 <?php
 
 use App\Domains\Auth\DTOs\LoginData;
-use App\Domains\Auth\Services\JwtAuthenticatesUsers;
+use App\Domains\Auth\Services\JwtAuthenticator;
 use Tymon\JWTAuth\JWTAuth;
 use Tymon\JWTAuth\Factory;
 
@@ -9,7 +9,7 @@ it('returns null for invalid credentials', function () {
     $jwt = mock(JWTAuth::class);
     $jwt->shouldReceive('attempt')->andReturn(false);
 
-    $service = new JwtAuthenticatesUsers($jwt);
+    $service = new JwtAuthenticator($jwt);
 
     $result = $service->attempt(
         LoginData::from([
@@ -29,7 +29,7 @@ it('returns AuthToken for valid credentials', function () {
     $jwt->shouldReceive('attempt')->andReturn('valid.jwt.token');
     $jwt->shouldReceive('factory')->andReturn($factory);
 
-    $service = new JwtAuthenticatesUsers($jwt);
+    $service = new JwtAuthenticator($jwt);
 
     $result = $service->attempt(
         LoginData::from([
@@ -49,7 +49,7 @@ it('returns null when JWT exception is thrown', function () {
     $jwt->shouldReceive('attempt')
         ->andThrow(new \Tymon\JWTAuth\Exceptions\JWTException('Token error'));
 
-    $service = new JwtAuthenticatesUsers($jwt);
+    $service = new JwtAuthenticator($jwt);
 
     $result = $service->attempt(
         LoginData::from([
@@ -69,7 +69,7 @@ it('can refresh a token', function () {
     $jwt->shouldReceive('refresh')->andReturn('new.jwt.token');
     $jwt->shouldReceive('factory')->andReturn($factory);
 
-    $service = new JwtAuthenticatesUsers($jwt);
+    $service = new JwtAuthenticator($jwt);
 
     $result = $service->refresh();
 
@@ -81,7 +81,7 @@ it('can logout and invalidate token', function () {
     $jwt = mock(JWTAuth::class);
     $jwt->shouldReceive('invalidate')->once();
 
-    $service = new JwtAuthenticatesUsers($jwt);
+    $service = new JwtAuthenticator($jwt);
 
     $service->logout();
 
@@ -96,7 +96,7 @@ it('can retrieve the authenticated user', function () {
     $jwt = mock(JWTAuth::class);
     $jwt->shouldReceive('user')->andReturn($user);
 
-    $service = new JwtAuthenticatesUsers($jwt);
+    $service = new JwtAuthenticator($jwt);
 
     $result = $service->user();
 

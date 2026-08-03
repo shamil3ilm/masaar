@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\Response;
  * role=admin inside the organization context. This middleware must run
  * after jwt.auth so that the tenant context is already populated.
  */
-class EnsureUserIsAdmin
+class IsAdmin
 {
     public function __construct(
         private readonly TenantResolver $tenantResolver,

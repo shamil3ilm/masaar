@@ -14,7 +14,7 @@ use Symfony\Component\HttpFoundation\Response;
  * Authenticates requests using API keys for server-to-server integration.
  * API key should be passed in the X-API-Key header.
  */
-class ApiKeyAuthenticate
+class ApiKeyAuth
 {
     public function handle(Request $request, Closure $next, ?string $scope = null): Response
     {

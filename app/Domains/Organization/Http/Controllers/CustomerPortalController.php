@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Organization\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Domains\Organization\Http\Middleware\ResolvePortalTenant;
+use App\Domains\Organization\Http\Middleware\PortalTenant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +16,7 @@ use Illuminate\View\View;
  *
  * Provides a tenant-scoped dashboard for customers like TaxFly.
  *
- * The organization is resolved by ResolvePortalTenant from the authenticated
+ * The organization is resolved by PortalTenant from the authenticated
  * session's active memberships. Nothing here may read a tenant identifier from
  * query, body or header — doing so reopens cross-tenant disclosure.
  */
@@ -30,7 +30,7 @@ class CustomerPortalController extends Controller
      */
     private function getOrganizationId(Request $request): ?string
     {
-        return $request->attributes->get(ResolvePortalTenant::ORG_ID);
+        return $request->attributes->get(PortalTenant::ORG_ID);
     }
 
     /**

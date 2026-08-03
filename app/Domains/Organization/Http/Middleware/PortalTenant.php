@@ -23,7 +23,7 @@ use Symfony\Component\HttpFoundation\Response;
  * Downstream code must read the tenant from the request attribute this sets,
  * never from the query string.
  */
-class ResolvePortalTenant
+class PortalTenant
 {
     public const ORG_ID = 'portal_organization_id';
 

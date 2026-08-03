@@ -17,9 +17,9 @@ use Tests\TestCase;
  * suggest the app ever wanted something different.
  *
  * The consequence was not cosmetic. App\Domains\Auth\Http\Middleware\
- * JwtAuthenticate is the only code that calls TenantResolver::setContext(),
+ * JwtGuard is the only code that calls TenantResolver::setContext(),
  * so with it out of the pipeline the tenant context was never populated:
- * every JWT route saw a null organization, EnsureUserIsAdmin denied every
+ * every JWT route saw a null organization, IsAdmin denied every
  * request, and tenant-scoped queries filtered on organization_id = null.
  */
 class MiddlewareAliasTest extends TestCase
@@ -28,15 +28,15 @@ class MiddlewareAliasTest extends TestCase
      * Aliases the application declares and must own, whatever packages do.
      */
     private const OWNED = [
-        'jwt.auth' => \App\Domains\Auth\Http\Middleware\JwtAuthenticate::class,
-        'admin' => \App\Domains\Auth\Http\Middleware\EnsureUserIsAdmin::class,
-        'platform.admin' => \App\Domains\Auth\Http\Middleware\EnsurePlatformAdmin::class,
-        'api.key' => \App\Domains\Auth\Http\Middleware\ApiKeyAuthenticate::class,
-        'portal.tenant' => \App\Domains\Organization\Http\Middleware\ResolvePortalTenant::class,
-        'metrics' => \App\Domains\Platform\Http\Middleware\RestrictMetrics::class,
+        'jwt.auth' => \App\Domains\Auth\Http\Middleware\JwtGuard::class,
+        'admin' => \App\Domains\Auth\Http\Middleware\IsAdmin::class,
+        'platform.admin' => \App\Domains\Auth\Http\Middleware\IsPlatformAdmin::class,
+        'api.key' => \App\Domains\Auth\Http\Middleware\ApiKeyAuth::class,
+        'portal.tenant' => \App\Domains\Organization\Http\Middleware\PortalTenant::class,
+        'metrics' => \App\Domains\Platform\Http\Middleware\MetricsAccess::class,
         'rate.api' => \App\Domains\Platform\Http\Middleware\RateLimitApi::class,
         'license' => \App\Domains\Licensing\Http\Middleware\ValidateLicense::class,
-        'platform.license' => \App\Domains\Licensing\Http\Middleware\ValidatePlatformLicense::class,
+        'platform.license' => \App\Domains\Licensing\Http\Middleware\PlatformLicense::class,
     ];
 
     public function test_aliases_not_hijacked(): void
@@ -75,9 +75,9 @@ class MiddlewareAliasTest extends TestCase
         );
 
         $this->assertContains(
-            \App\Domains\Auth\Http\Middleware\JwtAuthenticate::class,
+            \App\Domains\Auth\Http\Middleware\JwtGuard::class,
             $resolved,
-            'api/invoices does not run JwtAuthenticate, so TenantResolver is never populated.'
+            'api/invoices does not run JwtGuard, so TenantResolver is never populated.'
         );
     }
 }
