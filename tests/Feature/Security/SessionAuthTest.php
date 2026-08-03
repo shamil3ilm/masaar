@@ -16,7 +16,7 @@ class SessionAuthTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_valid_credentials_authenticate(): void
+    public function test_valid_login(): void
     {
         $user = User::factory()->create(['email' => 'operator@masaar.test']);
 
@@ -28,7 +28,7 @@ class SessionAuthTest extends TestCase
         $this->assertAuthenticatedAs($user);
     }
 
-    public function test_invalid_password_is_rejected(): void
+    public function test_wrong_password_denied(): void
     {
         User::factory()->create(['email' => 'operator@masaar.test']);
 
@@ -44,7 +44,7 @@ class SessionAuthTest extends TestCase
      * `status` is part of the credential set, so deactivating an account
      * revokes login without needing to rotate its password.
      */
-    public function test_suspended_account_cannot_authenticate(): void
+    public function test_suspended_account_denied(): void
     {
         User::factory()->suspended()->create(['email' => 'suspended@masaar.test']);
 
@@ -56,7 +56,7 @@ class SessionAuthTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_repeated_failures_are_throttled(): void
+    public function test_login_throttled(): void
     {
         User::factory()->create(['email' => 'operator@masaar.test']);
 
@@ -76,7 +76,7 @@ class SessionAuthTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_session_identifier_is_rotated_on_login(): void
+    public function test_session_id_rotates(): void
     {
         User::factory()->create(['email' => 'operator@masaar.test']);
 
@@ -91,7 +91,7 @@ class SessionAuthTest extends TestCase
         $this->assertNotSame($before, session()->getId());
     }
 
-    public function test_platform_admin_lands_on_the_admin_console(): void
+    public function test_admin_lands_on_console(): void
     {
         User::factory()->platformAdmin()->create(['email' => 'admin@masaar.test']);
 
@@ -101,7 +101,7 @@ class SessionAuthTest extends TestCase
         ])->assertRedirect(route('admin.dashboard'));
     }
 
-    public function test_regular_user_lands_on_the_portal(): void
+    public function test_user_lands_on_portal(): void
     {
         User::factory()->create(['email' => 'user@masaar.test']);
 
@@ -111,7 +111,7 @@ class SessionAuthTest extends TestCase
         ])->assertRedirect(route('portal.dashboard'));
     }
 
-    public function test_logout_clears_the_session(): void
+    public function test_logout_clears_session(): void
     {
         $user = User::factory()->create();
 
@@ -121,7 +121,7 @@ class SessionAuthTest extends TestCase
         $this->assertNull(Auth::user());
     }
 
-    public function test_logout_requires_authentication(): void
+    public function test_logout_requires_auth(): void
     {
         $this->post('/logout')->assertRedirect('/login');
     }

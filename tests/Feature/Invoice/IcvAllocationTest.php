@@ -20,14 +20,14 @@ class IcvAllocationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_first_invoice_for_an_organization_starts_at_one(): void
+    public function test_first_icv_is_one(): void
     {
         $invoice = $this->makeInvoice($this->makeOrganization()->id, 'INV-1');
 
         $this->assertSame(1, $invoice->icv);
     }
 
-    public function test_icv_increments_sequentially(): void
+    public function test_icv_increments(): void
     {
         $organizationId = $this->makeOrganization()->id;
 
@@ -42,7 +42,7 @@ class IcvAllocationTest extends TestCase
      * The counter is per taxpayer, so one organization's invoices must not
      * advance another's.
      */
-    public function test_each_organization_has_its_own_counter(): void
+    public function test_counter_is_per_org(): void
     {
         $first = $this->makeOrganization('First Co')->id;
         $second = $this->makeOrganization('Second Co')->id;
@@ -55,7 +55,7 @@ class IcvAllocationTest extends TestCase
         $this->assertSame(3, $this->makeInvoice($first, 'A-3')->icv);
     }
 
-    public function test_an_explicitly_supplied_icv_is_respected(): void
+    public function test_explicit_icv_kept(): void
     {
         $invoice = $this->makeInvoice($this->makeOrganization()->id, 'INV-9', ['icv' => 42]);
 
@@ -67,7 +67,7 @@ class IcvAllocationTest extends TestCase
      * application lock. Without it a collision would silently break the chain
      * instead of failing the insert.
      */
-    public function test_duplicate_icv_for_one_organization_is_rejected_by_the_database(): void
+    public function test_duplicate_icv_rejected(): void
     {
         if (DB::connection()->getDriverName() === 'sqlite'
             && ! $this->uniqueIndexExists('invoices', 'invoices_org_icv_unique')) {
