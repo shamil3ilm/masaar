@@ -7,6 +7,7 @@ namespace App\Domains\Compliance\Fatoora\Services;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
+use App\Support\Xml;
 
 /**
  * ZATCA validation service.
@@ -518,24 +519,12 @@ class FatooraValidator
      */
     public function validateXml(string $xml): array
     {
-        $errors = [];
-
-        libxml_use_internal_errors(true);
-
-        $dom = new \DOMDocument();
-        $dom->loadXML($xml);
-
         // For full validation, would load ZATCA XSD schema
         // $schemaPath = base_path('resources/zatca/Invoice.xsd');
         // $dom->schemaValidate($schemaPath);
-
-        $xmlErrors = libxml_get_errors();
-        foreach ($xmlErrors as $error) {
-            $errors[] = "XML Error line {$error->line}: {$error->message}";
-        }
-
-        libxml_clear_errors();
-
-        return $errors;
+        return array_map(
+            static fn (string $error): string => "XML Error {$error}",
+            Xml::errors(new \DOMDocument(), $xml)
+        );
     }
 }
