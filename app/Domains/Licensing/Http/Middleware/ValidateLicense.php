@@ -80,6 +80,7 @@ class ValidateLicense
             // Bind license to request for downstream use
             $request->attributes->set('license', $license);
             $request->attributes->set('license_id', $license->id);
+            $request->attributes->set('organization_id', $license->organization_id);
             $request->attributes->set('request_id', $requestId);
 
             // Process request
@@ -141,6 +142,12 @@ class ValidateLicense
 
     /**
      * Extract API key from request.
+     *
+     * Headers only. Credentials must never be read from the query string:
+     * URLs are recorded by web servers, reverse proxies, CDNs, APM traces,
+     * browser history and the Referer header, so a query-string credential
+     * leaks into systems with far weaker access controls than the credential
+     * store — and here it would leak the key and secret together.
      */
     private function extractApiKey(Request $request): ?string
     {
@@ -162,12 +169,13 @@ class ValidateLicense
             }
         }
 
-        // Try query parameter (not recommended but supported)
-        return $request->query('api_key');
+        return null;
     }
 
     /**
      * Extract API secret from request.
+     *
+     * Headers only — see extractApiKey().
      */
     private function extractApiSecret(Request $request): ?string
     {
@@ -189,8 +197,7 @@ class ValidateLicense
             }
         }
 
-        // Try query parameter (not recommended but supported)
-        return $request->query('api_secret');
+        return null;
     }
 
     /**

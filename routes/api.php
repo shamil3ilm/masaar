@@ -52,9 +52,11 @@ Route::get('/license/status', function () {
     ]);
 });
 
-// Prometheus metrics (restrict by IP in production)
+// Prometheus metrics. Discloses application/PHP version, APP_ENV and business
+// telemetry, so access is closed by default and opened via METRICS_ALLOWED_IPS
+// or METRICS_TOKEN. See config/metrics.php.
 Route::get('/metrics', [MetricsController::class, 'index'])
-    ->middleware('throttle:60,1');
+    ->middleware(['metrics', 'throttle:60,1']);
 
 /*
 |--------------------------------------------------------------------------

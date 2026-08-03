@@ -37,7 +37,13 @@ return Application::configure(basePath: dirname(__DIR__))
             'scope' => \App\Domains\Licensing\Http\Middleware\RequireScope::class,
             'env' => \App\Domains\Licensing\Http\Middleware\RequireEnvironment::class,
             'platform.license' => \App\Http\Middleware\ValidatePlatformLicense::class,
+            'platform.admin' => \App\Http\Middleware\EnsurePlatformAdmin::class,
+            'portal.tenant' => \App\Http\Middleware\ResolvePortalTenant::class,
+            'metrics' => \App\Http\Middleware\RestrictMetrics::class,
         ]);
+
+        // Blade consoles authenticate with a session; send guests to the form.
+        $middleware->redirectGuestsTo(fn () => route('login'));
 
         // Apply CORS to API routes
         $middleware->api(prepend: [

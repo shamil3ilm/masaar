@@ -20,6 +20,10 @@ class User extends Authenticatable implements JWTSubject
 {
     use HasFactory, HasUuids, Notifiable;
 
+    /**
+     * `is_platform_admin` is deliberately absent: it is a cross-tenant
+     * privilege and must never be settable from request input.
+     */
     protected $fillable = [
         'name',
         'email',
@@ -37,7 +41,19 @@ class User extends Authenticatable implements JWTSubject
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_platform_admin' => 'boolean',
         ];
+    }
+
+    /**
+     * Whether the account may use the Masaar-internal admin console.
+     *
+     * Distinct from the per-organization `admin` pivot role, which only
+     * confers administration of that single tenant.
+     */
+    public function isPlatformAdmin(): bool
+    {
+        return $this->status === 'active' && $this->is_platform_admin === true;
     }
 
     /**
@@ -66,5 +82,26 @@ class User extends Authenticatable implements JWTSubject
         return $this->belongsToMany(Organization::class)
             ->withPivot(['role', 'status'])
             ->withTimestamps();
+    }
+
+    /**
+     * Organizations this user may currently act for.
+     *
+     * This is the authoritative set for portal tenant selection — a tenant
+     * identifier is only ever accepted if it appears here.
+     */
+    public function activeOrganizations(): BelongsToMany
+    {
+        return $this->organizations()->wherePivot('status', 'active');
+    }
+
+    /**
+     * Whether the user holds an active membership of the given organization.
+     */
+    public function belongsToOrganization(string $organizationId): bool
+    {
+        return $this->activeOrganizations()
+            ->whereKey($organizationId)
+            ->exists();
     }
 }
