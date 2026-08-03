@@ -43,13 +43,13 @@ class AdminApiAccessTest extends TestCase
             );
 
             $this->assertContains(
-                \App\Domains\Auth\Http\Middleware\EnsurePlatformAdmin::class,
+                \App\Domains\Auth\Http\Middleware\IsPlatformAdmin::class,
                 $resolved,
                 "/{$route->uri()} is missing the platform-admin gate."
             );
 
             $this->assertNotContains(
-                \App\Domains\Auth\Http\Middleware\EnsureUserIsAdmin::class,
+                \App\Domains\Auth\Http\Middleware\IsAdmin::class,
                 $resolved,
                 "/{$route->uri()} uses the per-organization admin gate, which any "
                 ."customer's org-admin satisfies."
@@ -90,7 +90,7 @@ class AdminApiAccessTest extends TestCase
     }
 
     /**
-     * A real signed token: JwtAuthenticate calls JWTAuth::parseToken(), so
+     * A real signed token: JwtGuard calls JWTAuth::parseToken(), so
      * actingAs() (which only seeds the guard) does not exercise this path.
      */
     private function tokenFor(User $user, ?string $organizationId = null, string $role = 'member'): string

@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\Response;
  * This ensures the platform deployment is properly licensed.
  * Invalid or expired licenses will block API access.
  */
-class ValidatePlatformLicense
+class PlatformLicense
 {
     public function __construct(
         private PlatformLicenseService $licenseService

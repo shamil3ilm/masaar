@@ -12,7 +12,7 @@ use App\Domains\Auth\DTOs\LoginData;
  *
  * JWT represents a User. Organization context is secondary.
  */
-interface AuthenticatesUsers
+interface Authenticator
 {
     /**
      * Authenticate a user and return a token.

@@ -13,14 +13,14 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Restricts the Masaar-internal admin console to platform administrators.
  *
- * Session-guard counterpart to EnsureUserIsAdmin, which reads the JWT tenant
+ * Session-guard counterpart to IsAdmin, which reads the JWT tenant
  * context and answers in JSON. The privilege checked here is cross-tenant and
  * is NOT the per-organization `admin` pivot role — a customer's org-admin must
  * not reach this console.
  *
  * Must run after `auth`, which guarantees a user is present.
  */
-class EnsurePlatformAdmin
+class IsPlatformAdmin
 {
     public function handle(Request $request, Closure $next): Response
     {

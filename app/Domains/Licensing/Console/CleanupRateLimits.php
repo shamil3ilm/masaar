@@ -13,7 +13,7 @@ use Illuminate\Console\Command;
  * This command should be scheduled to run hourly to prevent
  * the license_rate_limits table from growing unbounded.
  */
-class CleanupLicenseRateLimitsCommand extends Command
+class CleanupRateLimits extends Command
 {
     protected $signature = 'license:cleanup-rate-limits';
 

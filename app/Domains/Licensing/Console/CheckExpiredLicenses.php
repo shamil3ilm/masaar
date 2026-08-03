@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Log;
  *
  * This command should be scheduled to run daily.
  */
-class CheckLicenseExpirationCommand extends Command
+class CheckExpiredLicenses extends Command
 {
     protected $signature = 'license:check-expiration';
 

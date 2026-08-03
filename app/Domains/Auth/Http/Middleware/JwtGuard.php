@@ -20,7 +20,7 @@ use Tymon\JWTAuth\Exceptions\TokenInvalidException;
  * and sets the tenant context so all downstream queries are
  * properly scoped to the authenticated organization.
  */
-class JwtAuthenticate
+class JwtGuard
 {
     public function __construct(
         private readonly TenantResolver $tenantResolver,

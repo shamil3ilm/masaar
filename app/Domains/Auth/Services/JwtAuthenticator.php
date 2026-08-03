@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domains\Auth\Services;
 
-use App\Domains\Auth\Contracts\AuthenticatesUsers;
+use App\Domains\Auth\Contracts\Authenticator;
 use App\Domains\Auth\DTOs\AuthToken;
 use App\Domains\Auth\DTOs\LoginData;
 use Tymon\JWTAuth\JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
 
-final class JwtAuthenticatesUsers implements AuthenticatesUsers
+final class JwtAuthenticator implements Authenticator
 {
     public function __construct(
         private readonly JWTAuth $jwt
