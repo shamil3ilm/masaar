@@ -1,8 +1,8 @@
 <?php
 
-use App\Http\Controllers\Web\AdminController;
-use App\Http\Controllers\Web\CustomerPortalController;
-use App\Http\Controllers\Web\SessionAuthController;
+use App\Domains\Platform\Http\Controllers\AdminController;
+use App\Domains\Organization\Http\Controllers\CustomerPortalController;
+use App\Domains\Auth\Http\Controllers\SessionAuthController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
