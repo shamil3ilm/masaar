@@ -1,19 +1,19 @@
 <?php
 
-use App\Http\Controllers\Api\AdminDashboardController;
-use App\Http\Controllers\Api\ApiKeyController;
-use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\BranchController;
-use App\Http\Controllers\Api\BranchOnboardingController;
-use App\Http\Controllers\Api\ComplianceController;
-use App\Http\Controllers\Api\DashboardController;
-use App\Http\Controllers\Api\InvoiceController;
-use App\Http\Controllers\Api\MetricsController;
-use App\Http\Controllers\Api\OnboardingController;
-use App\Http\Controllers\Api\OrganizationController;
+use App\Domains\Platform\Http\Controllers\AdminDashboardController;
+use App\Domains\Auth\Http\Controllers\ApiKeyController;
+use App\Domains\Auth\Http\Controllers\AuthController;
+use App\Domains\Organization\Http\Controllers\BranchController;
+use App\Domains\Compliance\Fatoora\Http\Controllers\BranchOnboardingController;
+use App\Domains\Compliance\Fatoora\Http\Controllers\ComplianceController;
+use App\Domains\Platform\Http\Controllers\DashboardController;
+use App\Domains\Invoice\Http\Controllers\InvoiceController;
+use App\Domains\Platform\Http\Controllers\MetricsController;
+use App\Domains\Compliance\Fatoora\Http\Controllers\OnboardingController;
+use App\Domains\Organization\Http\Controllers\OrganizationController;
 use App\Domains\Pipeline\Http\Controllers\PipelineController;
-use App\Http\Controllers\Api\VarianceController;
-use App\Http\Controllers\Api\WebhookController;
+use App\Domains\Compliance\Fatoora\Http\Controllers\VarianceController;
+use App\Domains\Webhook\Http\Controllers\WebhookController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -105,10 +105,10 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
 
     // UAE FTA compliance endpoints (Peppol PINT AE)
     Route::prefix('compliance/ae')->group(function () {
-        Route::post('/submit/{invoiceId}', [\App\Http\Controllers\Api\FTA\FtaController::class, 'submit']);
-        Route::get('/status/{submissionId}', [\App\Http\Controllers\Api\FTA\FtaController::class, 'status']);
-        Route::post('/retry/{submissionId}', [\App\Http\Controllers\Api\FTA\FtaController::class, 'retry']);
-        Route::get('/submissions', [\App\Http\Controllers\Api\FTA\FtaController::class, 'index']);
+        Route::post('/submit/{invoiceId}', [\App\Domains\Compliance\FTA\Http\Controllers\FtaController::class, 'submit']);
+        Route::get('/status/{submissionId}', [\App\Domains\Compliance\FTA\Http\Controllers\FtaController::class, 'status']);
+        Route::post('/retry/{submissionId}', [\App\Domains\Compliance\FTA\Http\Controllers\FtaController::class, 'retry']);
+        Route::get('/submissions', [\App\Domains\Compliance\FTA\Http\Controllers\FtaController::class, 'index']);
     });
 
     // Deprecated: /compliance/uae-fta/ → /compliance/ae/ (remove in v2.0)
@@ -144,9 +144,9 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
 
     // Compliance Profile CRUD (per organization)
     Route::prefix('organizations/{organization}')->group(function () {
-        Route::get('/compliance-profiles', [\App\Http\Controllers\Api\ComplianceProfileController::class, 'index']);
-        Route::post('/compliance-profiles', [\App\Http\Controllers\Api\ComplianceProfileController::class, 'store']);
-        Route::delete('/compliance-profiles/{profile}', [\App\Http\Controllers\Api\ComplianceProfileController::class, 'destroy']);
+        Route::get('/compliance-profiles', [\App\Domains\Organization\Http\Controllers\ComplianceProfileController::class, 'index']);
+        Route::post('/compliance-profiles', [\App\Domains\Organization\Http\Controllers\ComplianceProfileController::class, 'store']);
+        Route::delete('/compliance-profiles/{profile}', [\App\Domains\Organization\Http\Controllers\ComplianceProfileController::class, 'destroy']);
     });
 
     // Branches (EGS Units)
