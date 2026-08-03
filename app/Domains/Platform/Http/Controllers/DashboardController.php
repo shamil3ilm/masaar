@@ -271,8 +271,8 @@ class DashboardController extends Controller
      */
     private function getCertificateStats(string $organizationId): array
     {
-        $activeCert = $this->certificateService->getActiveCertificate($organizationId);
-        $history = $this->certificateService->getCertificateHistory($organizationId);
+        $activeCert = $this->certificateService->getActive($organizationId);
+        $history = $this->certificateService->getHistory($organizationId);
 
         $daysUntilExpiry = null;
         if ($activeCert && isset($activeCert['valid_to'])) {
@@ -285,7 +285,7 @@ class DashboardController extends Controller
             'days_until_expiry' => $daysUntilExpiry,
             'total_certificates' => count($history),
             'invoices_signed' => $activeCert
-                ? $this->certificateService->getInvoiceCountForCertificate($activeCert['certificate_id'])
+                ? $this->certificateService->getInvoiceCount($activeCert['certificate_id'])
                 : 0,
         ];
     }
@@ -323,7 +323,7 @@ class DashboardController extends Controller
      */
     private function getCertificateHealth(string $organizationId): array
     {
-        $activeCert = $this->certificateService->getActiveCertificate($organizationId);
+        $activeCert = $this->certificateService->getActive($organizationId);
 
         if (!$activeCert) {
             return [
