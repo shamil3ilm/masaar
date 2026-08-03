@@ -271,14 +271,16 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
 | Admin Routes (Platform Administration)
 |--------------------------------------------------------------------------
 |
-| These routes require admin authentication and provide platform-wide
-| statistics and system health monitoring.
+| These routes expose platform-wide statistics across every tenant.
 |
-| The 'admin' middleware verifies that the authenticated user carries
-| role=admin in their JWT organization context. Any other role receives 403.
+| Gated by 'platform.admin', NOT 'admin'. The 'admin' middleware checks
+| role=admin inside the JWT's organization context, which any customer's own
+| org-admin carries — that would hand one tenant a cross-tenant view of all
+| the others. 'platform.admin' checks users.is_platform_admin, a
+| Masaar-internal privilege, and matches the gate on the Blade console.
 |
 */
-Route::middleware(['jwt.auth', 'admin', 'rate.api'])->prefix('admin')->group(function () {
+Route::middleware(['jwt.auth', 'platform.admin', 'rate.api'])->prefix('admin')->group(function () {
 
     // Admin Dashboard
     Route::prefix('dashboard')->group(function () {
