@@ -1,13 +1,13 @@
 {
-    "name": "complipay/complipay-php",
+    "name": "masaar/masaar-php",
     "description": "ZATCA-compliant e-invoicing API client for PHP 7.4+",
     "type": "library",
     "license": "MIT",
     "version": "1.0.0",
     "authors": [
         {
-            "name": "CompliPay",
-            "email": "support@complipay.com"
+            "name": "Masaar",
+            "email": "support@masaar.com"
         }
     ],
     "require": {
@@ -20,12 +20,12 @@
     },
     "autoload": {
         "psr-4": {
-            "CompliPay\\": "src/"
+            "Masaar\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "CompliPay\\Tests\\": "tests/"
+            "Masaar\\Tests\\": "tests/"
         }
     },
     "keywords": [
@@ -38,8 +38,8 @@
         "compliance",
         "laravel"
     ],
-    "homepage": "https://complipay.com",
+    "homepage": "https://masaar.com",
     "support": {
-        "issues": "https://github.com/complipay/complipay-php/issues"
+        "issues": "https://github.com/masaar/masaar-php/issues"
     }
 }

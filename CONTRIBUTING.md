@@ -1,6 +1,6 @@
-# Contributing to CompliPay
+# Contributing to Masaar
 
-Thank you for your interest in contributing to CompliPay! This document provides guidelines and requirements for contributing to this controlled open source project.
+Thank you for your interest in contributing to Masaar! This document provides guidelines and requirements for contributing to this controlled open source project.
 
 ## Before You Start
 
@@ -276,4 +276,4 @@ Before submitting:
 
 ---
 
-Thank you for contributing to CompliPay!
+Thank you for contributing to Masaar!

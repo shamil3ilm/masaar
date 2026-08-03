@@ -1,4 +1,4 @@
-# CompliPay Prometheus Configuration
+# Masaar Prometheus Configuration
 # Use with: docker run -v ./prometheus.yml:/etc/prometheus/prometheus.yml prom/prometheus
 
 global:
@@ -13,13 +13,13 @@ alerting:
 rule_files: []
 
 scrape_configs:
-  # CompliPay Application Metrics
-  - job_name: 'complipay'
+  # Masaar Application Metrics
+  - job_name: 'masaar'
     metrics_path: '/api/metrics'
     static_configs:
       - targets: ['app:80']
         labels:
-          app: 'complipay'
+          app: 'masaar'
           env: 'production'
 
   # Prometheus self-monitoring

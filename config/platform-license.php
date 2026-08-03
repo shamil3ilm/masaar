@@ -6,7 +6,7 @@ return [
     | Platform License Configuration
     |--------------------------------------------------------------------------
     |
-    | This configuration controls the platform licensing system for CompliPay
+    | This configuration controls the platform licensing system for Masaar
     | deployments. Partners must have a valid license key to run the platform.
     |
     */
@@ -27,7 +27,7 @@ return [
     | License Key
     |--------------------------------------------------------------------------
     |
-    | The platform license key provided by CompliPay. Format:
+    | The platform license key provided by Masaar. Format:
     | {PARTNER}-{TYPE}-{EXPIRY_YYYYMMDD}-{SIGNATURE}
     |
     | Example: TAXFLY-TRIAL-20260303-a1b2c3d4
@@ -43,7 +43,7 @@ return [
     | URL of the license validation server for phone-home verification.
     | If not set, the system will use offline validation only.
     |
-    | Example: https://license.complipay.com
+    | Example: https://license.masaar.com
     |
     */
     'server_url' => env('PLATFORM_LICENSE_SERVER_URL'),
@@ -56,10 +56,12 @@ return [
     | Secret key used to sign and verify license keys. This must match
     | the secret used to generate the license key.
     |
-    | IMPORTANT: Change this in production!
+    | REQUIRED: Set PLATFORM_LICENSE_SECRET in .env. There is intentionally
+    | no default value — the application will fail explicitly at startup if
+    | this variable is absent rather than silently using a guessable secret.
     |
     */
-    'signing_secret' => env('PLATFORM_LICENSE_SECRET', 'complipay-change-this-secret-in-production'),
+    'signing_secret' => env('PLATFORM_LICENSE_SECRET'),
 
     /*
     |--------------------------------------------------------------------------

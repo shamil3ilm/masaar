@@ -1,19 +1,19 @@
-# CompliPay TypeScript/JavaScript SDK
+# Masaar TypeScript/JavaScript SDK
 
 ZATCA-compliant e-invoicing API client for TypeScript and JavaScript.
 
 Works with Node.js 14+, React, Vue, Angular, Next.js, or any JavaScript environment.
 
-> **Important**: By using this SDK, you agree to the CompliPay [Terms of Use](../../TERMS.md) and [License](../../LICENSE). Commercial use requires [registration](../../README.md#registration).
+> **Important**: By using this SDK, you agree to the Masaar [Terms of Use](../../TERMS.md) and [License](../../LICENSE). Commercial use requires [registration](../../README.md#registration).
 
 ## Installation
 
 ```bash
-npm install complipay
+npm install masaar
 # or
-yarn add complipay
+yarn add masaar
 # or
-pnpm add complipay
+pnpm add masaar
 ```
 
 ## Server URLs
@@ -31,16 +31,16 @@ pnpm add complipay
 ### TypeScript
 
 ```typescript
-import { CompliPayClient, InvoiceLine } from 'complipay';
+import { MasaarClient, InvoiceLine } from 'masaar';
 
 // For local development
-const client = new CompliPayClient({
+const client = new MasaarClient({
   baseUrl: 'http://localhost:8000',  // Your server URL
   apiKey: 'your_api_key'
 });
 
 // For production, use your deployed server URL:
-// const client = new CompliPayClient({
+// const client = new MasaarClient({
 //   baseUrl: 'https://your-domain.com',
 //   apiKey: 'your_api_key'
 // });
@@ -71,10 +71,10 @@ console.log('ZATCA Status:', result.data.status);
 ### JavaScript (CommonJS)
 
 ```javascript
-const { CompliPayClient } = require('complipay');
+const { MasaarClient } = require('masaar');
 
 // For local development
-const client = new CompliPayClient({
+const client = new MasaarClient({
   baseUrl: 'http://localhost:8000',  // Your server URL
   apiKey: 'your_api_key'
 });
@@ -92,14 +92,14 @@ const invoice = await client.invoices.create({
 ### React / Next.js
 
 ```tsx
-import { CompliPayClient } from 'complipay';
+import { MasaarClient } from 'masaar';
 
 // Configure via environment variables
 // .env.local:
 // NEXT_PUBLIC_COMPLIPAY_URL=http://localhost:8000
 // COMPLIPAY_API_KEY=your_api_key
 
-const client = new CompliPayClient({
+const client = new MasaarClient({
   baseUrl: process.env.NEXT_PUBLIC_COMPLIPAY_URL!,
   apiKey: process.env.COMPLIPAY_API_KEY!
 });
@@ -121,14 +121,14 @@ export async function createInvoice(formData: FormData) {
 
 ```vue
 <script setup lang="ts">
-import { CompliPayClient } from 'complipay';
+import { MasaarClient } from 'masaar';
 
 // Configure via environment variables
 // .env:
 // VITE_COMPLIPAY_URL=http://localhost:8000
 // VITE_COMPLIPAY_API_KEY=your_api_key
 
-const client = new CompliPayClient({
+const client = new MasaarClient({
   baseUrl: import.meta.env.VITE_COMPLIPAY_URL,
   apiKey: import.meta.env.VITE_COMPLIPAY_API_KEY
 });
@@ -144,14 +144,14 @@ async function submitInvoice() {
 
 ```javascript
 const express = require('express');
-const { CompliPayClient } = require('complipay');
+const { MasaarClient } = require('masaar');
 
 const app = express();
 
 // Configure via environment variables
 // COMPLIPAY_URL=http://localhost:8000
 // COMPLIPAY_API_KEY=your_api_key
-const client = new CompliPayClient({
+const client = new MasaarClient({
   baseUrl: process.env.COMPLIPAY_URL || 'http://localhost:8000',
   apiKey: process.env.COMPLIPAY_API_KEY
 });
@@ -169,7 +169,7 @@ app.post('/invoices', async (req, res) => {
 ## Webhooks
 
 ```typescript
-import { WebhooksResource } from 'complipay';
+import { WebhooksResource } from 'masaar';
 import express from 'express';
 
 const app = express();
@@ -206,12 +206,12 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
 
 ```typescript
 import {
-  CompliPayClient,
-  CompliPayError,
+  MasaarClient,
+  MasaarError,
   AuthenticationError,
   ValidationError,
   ZatcaError
-} from 'complipay';
+} from 'masaar';
 
 try {
   await client.invoices.create({...});
@@ -222,7 +222,7 @@ try {
     console.error('Validation errors:', error.errors);
   } else if (error instanceof ZatcaError) {
     console.error('ZATCA rejected:', error.errors);
-  } else if (error instanceof CompliPayError) {
+  } else if (error instanceof MasaarError) {
     console.error('API error:', error.message);
   }
 }

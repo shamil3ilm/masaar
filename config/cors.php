@@ -6,7 +6,7 @@ return [
     | Cross-Origin Resource Sharing (CORS) Configuration
     |--------------------------------------------------------------------------
     |
-    | CompliPay API CORS settings for CRM and third-party integrations.
+    | Masaar API CORS settings for CRM and third-party integrations.
     |
     | For production, set CORS_ALLOWED_ORIGINS in .env to your specific domains:
     | CORS_ALLOWED_ORIGINS=https://app.client.com,https://crm.client.com
@@ -17,9 +17,12 @@ return [
 
     'allowed_methods' => ['*'],
 
+    // No fallback to '*'. When CORS_ALLOWED_ORIGINS is unset the list is
+    // intentionally empty so the browser's same-origin policy blocks all
+    // cross-origin requests. Set CORS_ALLOWED_ORIGINS in .env explicitly.
     'allowed_origins' => env('CORS_ALLOWED_ORIGINS')
         ? explode(',', env('CORS_ALLOWED_ORIGINS'))
-        : ['*'],
+        : [],
 
     'allowed_origins_patterns' => [],
 

@@ -13,7 +13,7 @@
       "gridPos": { "h": 3, "w": 24, "x": 0, "y": 0 },
       "id": 1,
       "options": {
-        "content": "# CompliPay ZATCA E-Invoicing Dashboard\nReal-time monitoring of invoice processing and ZATCA submissions.",
+        "content": "# Masaar ZATCA E-Invoicing Dashboard\nReal-time monitoring of invoice processing and ZATCA submissions.",
         "mode": "markdown"
       },
       "title": "",
@@ -36,7 +36,7 @@
       },
       "targets": [
         {
-          "expr": "complipay_invoices_created_today",
+          "expr": "masaar_invoices_created_today",
           "refId": "A"
         }
       ],
@@ -60,7 +60,7 @@
       },
       "targets": [
         {
-          "expr": "complipay_zatca_submissions_cleared",
+          "expr": "masaar_zatca_submissions_cleared",
           "refId": "A"
         }
       ],
@@ -84,7 +84,7 @@
       },
       "targets": [
         {
-          "expr": "complipay_zatca_offline_queue_size",
+          "expr": "masaar_zatca_offline_queue_size",
           "refId": "A"
         }
       ],
@@ -123,7 +123,7 @@
       },
       "targets": [
         {
-          "expr": "complipay_zatca_circuit_breaker_open",
+          "expr": "masaar_zatca_circuit_breaker_open",
           "refId": "A"
         }
       ],
@@ -139,12 +139,12 @@
       },
       "targets": [
         {
-          "expr": "rate(complipay_http_requests_total[5m])",
+          "expr": "rate(masaar_http_requests_total[5m])",
           "legendFormat": "Requests/s",
           "refId": "A"
         },
         {
-          "expr": "rate(complipay_http_errors_total[5m])",
+          "expr": "rate(masaar_http_errors_total[5m])",
           "legendFormat": "Errors/s",
           "refId": "B"
         }
@@ -161,12 +161,12 @@
       },
       "targets": [
         {
-          "expr": "complipay_zatca_submission_duration_avg_ms",
+          "expr": "masaar_zatca_submission_duration_avg_ms",
           "legendFormat": "Avg Submission Time (ms)",
           "refId": "A"
         },
         {
-          "expr": "complipay_database_latency_ms",
+          "expr": "masaar_database_latency_ms",
           "legendFormat": "DB Latency (ms)",
           "refId": "B"
         }
@@ -189,22 +189,22 @@
       },
       "targets": [
         {
-          "expr": "complipay_invoices_total_draft",
+          "expr": "masaar_invoices_total_draft",
           "legendFormat": "Draft",
           "refId": "A"
         },
         {
-          "expr": "complipay_invoices_total_submitted",
+          "expr": "masaar_invoices_total_submitted",
           "legendFormat": "Submitted",
           "refId": "B"
         },
         {
-          "expr": "complipay_invoices_total_cleared",
+          "expr": "masaar_invoices_total_cleared",
           "legendFormat": "Cleared",
           "refId": "C"
         },
         {
-          "expr": "complipay_invoices_total_rejected",
+          "expr": "masaar_invoices_total_rejected",
           "legendFormat": "Rejected",
           "refId": "D"
         }
@@ -221,17 +221,17 @@
       },
       "targets": [
         {
-          "expr": "complipay_queue_size_default",
+          "expr": "masaar_queue_size_default",
           "legendFormat": "Default Queue",
           "refId": "A"
         },
         {
-          "expr": "complipay_queue_size_zatca_submissions",
+          "expr": "masaar_queue_size_zatca_submissions",
           "legendFormat": "ZATCA Queue",
           "refId": "B"
         },
         {
-          "expr": "complipay_queue_size_webhooks",
+          "expr": "masaar_queue_size_webhooks",
           "legendFormat": "Webhooks Queue",
           "refId": "C"
         }
@@ -266,12 +266,12 @@
       },
       "targets": [
         {
-          "expr": "complipay_database_up",
+          "expr": "masaar_database_up",
           "legendFormat": "Database",
           "refId": "A"
         },
         {
-          "expr": "complipay_cache_up",
+          "expr": "masaar_cache_up",
           "legendFormat": "Cache",
           "refId": "B"
         }
@@ -283,12 +283,12 @@
   "refresh": "30s",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["complipay", "zatca", "invoicing"],
+  "tags": ["masaar", "zatca", "invoicing"],
   "templating": { "list": [] },
   "time": { "from": "now-6h", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
-  "title": "CompliPay ZATCA Dashboard",
-  "uid": "complipay-zatca",
+  "title": "Masaar ZATCA Dashboard",
+  "uid": "masaar-zatca",
   "version": 1
 }

@@ -1,10 +1,10 @@
-# TaxFly Deployment Guide for CompliPay
+# TaxFly Deployment Guide for Masaar
 
-This document provides TaxFly's DevOps team with everything needed to deploy and operate CompliPay on TaxFly infrastructure.
+This document provides TaxFly's DevOps team with everything needed to deploy and operate Masaar on TaxFly infrastructure.
 
 ## Deployment Model: TaxFly Hosts Everything
 
-In this partnership model, **TaxFly provides 100% of the infrastructure**. CompliPay provides:
+In this partnership model, **TaxFly provides 100% of the infrastructure**. Masaar provides:
 - Docker image (pre-built or Dockerfile for building)
 - Configuration templates
 - Database migrations
@@ -21,11 +21,11 @@ In this partnership model, **TaxFly provides 100% of the infrastructure**. Compl
 | **Storage** | 50GB+ SSD | For logs and file storage |
 | **Network** | Internal VPC | Isolated from public |
 | **Load Balancer** | HTTPS termination | With valid SSL certificate |
-| **DNS** | Subdomain | e.g., `api.complipay.taxfly.sa` |
+| **DNS** | Subdomain | e.g., `api.masaar.taxfly.sa` |
 | **Monitoring** | Health checks | `/api/health` endpoint |
 | **Backup** | Daily automated | Database + Redis |
 
-### What CompliPay Provides
+### What Masaar Provides
 
 | Deliverable | Format | Description |
 |-------------|--------|-------------|
@@ -44,7 +44,7 @@ In this partnership model, **TaxFly provides 100% of the infrastructure**. Compl
 ### Prerequisites
 
 - Docker 24+ and Docker Compose v2
-- Access to CompliPay Docker registry (credentials provided)
+- Access to Masaar Docker registry (credentials provided)
 - MySQL 8.0 database (empty, will be migrated)
 - Redis 7+ instance
 - Domain with SSL certificate
@@ -52,22 +52,22 @@ In this partnership model, **TaxFly provides 100% of the infrastructure**. Compl
 ### Step 1: Pull the Docker Image
 
 ```bash
-# Login to CompliPay registry (credentials provided separately)
-docker login registry.complipay.io
+# Login to Masaar registry (credentials provided separately)
+docker login registry.masaar.io
 
 # Pull the latest stable image
-docker pull registry.complipay.io/complipay/zatca-api:latest
+docker pull registry.masaar.io/masaar/zatca-api:latest
 
 # Or a specific version
-docker pull registry.complipay.io/complipay/zatca-api:1.0.0
+docker pull registry.masaar.io/masaar/zatca-api:1.0.0
 ```
 
 ### Step 2: Configure Environment
 
 ```bash
 # Create deployment directory
-mkdir -p /opt/complipay
-cd /opt/complipay
+mkdir -p /opt/masaar
+cd /opt/masaar
 
 # Copy environment template
 cp docker/.env.template .env
@@ -79,16 +79,16 @@ nano .env
 **Required Variables:**
 
 ```env
-# Generate with: docker run --rm complipay/zatca-api php artisan key:generate --show
+# Generate with: docker run --rm masaar/zatca-api php artisan key:generate --show
 APP_KEY=base64:YOUR_GENERATED_KEY_HERE
 
 # Your domain
-APP_URL=https://api.complipay.taxfly.sa
+APP_URL=https://api.masaar.taxfly.sa
 
 # Database (your MySQL server)
 DB_HOST=your-mysql-host.taxfly.sa
-DB_DATABASE=complipay
-DB_USERNAME=complipay_user
+DB_DATABASE=masaar
+DB_USERNAME=masaar_user
 DB_PASSWORD=SECURE_PASSWORD_HERE
 
 # Redis (your Redis server)
@@ -119,7 +119,7 @@ docker-compose exec app php artisan migrate --force
 docker-compose ps
 
 # Check application health
-curl https://api.complipay.taxfly.sa/api/health
+curl https://api.masaar.taxfly.sa/api/health
 
 # Expected response:
 # {"status":"ok","timestamp":"2026-02-03T12:00:00Z"}
@@ -140,7 +140,7 @@ docker-compose logs -f app
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  ┌──────────────┐     ┌──────────────┐     ┌──────────────┐    │
-│  │   TaxFly     │     │  CompliPay   │     │  CompliPay   │    │
+│  │   TaxFly     │     │  Masaar   │     │  Masaar   │    │
 │  │   Load       │────▶│  Container   │     │  Container   │    │
 │  │   Balancer   │     │  (Replica 1) │     │  (Replica 2) │    │
 │  │   (HTTPS)    │────▶│              │     │              │    │
@@ -175,7 +175,7 @@ If TaxFly prefers to run everything in Docker:
 docker-compose up -d
 
 # All services run in isolated network
-# - app: CompliPay application
+# - app: Masaar application
 # - db: MySQL 8.0
 # - redis: Redis 7
 ```
@@ -203,7 +203,7 @@ docker-compose up -d
 
 ```bash
 # 1. Pull new image
-docker pull registry.complipay.io/complipay/zatca-api:1.1.0
+docker pull registry.masaar.io/masaar/zatca-api:1.1.0
 
 # 2. Update docker-compose.yml IMAGE_TAG
 IMAGE_TAG=1.1.0
@@ -215,7 +215,7 @@ docker-compose up -d --no-deps app
 docker-compose exec app php artisan migrate --force
 
 # 5. Verify
-curl https://api.complipay.taxfly.sa/api/health
+curl https://api.masaar.taxfly.sa/api/health
 ```
 
 #### Rollback Procedure
@@ -226,7 +226,7 @@ docker-compose down
 IMAGE_TAG=1.0.0 docker-compose up -d
 
 # Note: Database migrations may need manual rollback
-# Coordinate with CompliPay support before rolling back
+# Coordinate with Masaar support before rolling back
 ```
 
 ### Backup Procedures
@@ -235,10 +235,10 @@ IMAGE_TAG=1.0.0 docker-compose up -d
 
 ```bash
 # Manual backup
-docker-compose exec db mysqldump -u root -p complipay > backup_$(date +%Y%m%d).sql
+docker-compose exec db mysqldump -u root -p masaar > backup_$(date +%Y%m%d).sql
 
 # Restore from backup
-docker-compose exec -T db mysql -u root -p complipay < backup_20260203.sql
+docker-compose exec -T db mysql -u root -p masaar < backup_20260203.sql
 ```
 
 #### Redis Backup
@@ -246,7 +246,7 @@ docker-compose exec -T db mysql -u root -p complipay < backup_20260203.sql
 ```bash
 # Redis automatically persists to appendonly.aof
 # Backup the volume:
-docker run --rm -v complipay-redis:/data -v $(pwd):/backup alpine tar czf /backup/redis_backup.tar.gz /data
+docker run --rm -v masaar-redis:/data -v $(pwd):/backup alpine tar czf /backup/redis_backup.tar.gz /data
 ```
 
 ### Monitoring Endpoints
@@ -289,9 +289,9 @@ services:
 
 ```sql
 -- Create dedicated user with minimal privileges
-CREATE USER 'complipay'@'%' IDENTIFIED BY 'secure_password';
-GRANT SELECT, INSERT, UPDATE, DELETE ON complipay.* TO 'complipay'@'%';
-GRANT CREATE, ALTER, INDEX ON complipay.* TO 'complipay'@'%';  -- For migrations
+CREATE USER 'masaar'@'%' IDENTIFIED BY 'secure_password';
+GRANT SELECT, INSERT, UPDATE, DELETE ON masaar.* TO 'masaar'@'%';
+GRANT CREATE, ALTER, INDEX ON masaar.* TO 'masaar'@'%';  -- For migrations
 FLUSH PRIVILEGES;
 ```
 
@@ -323,7 +323,7 @@ docker-compose exec app php artisan db:monitor
 docker-compose exec app ping db
 
 # Verify credentials
-docker-compose exec db mysql -u complipay -p -e "SELECT 1"
+docker-compose exec db mysql -u masaar -p -e "SELECT 1"
 ```
 
 #### Queue Jobs Not Processing
@@ -365,8 +365,8 @@ docker-compose exec app php artisan tinker
 
 ### For Technical Issues
 
-- **Email**: support@complipay.io
-- **Slack**: #complipay-taxfly (invite provided)
+- **Email**: support@masaar.io
+- **Slack**: #masaar-taxfly (invite provided)
 - **Response Time**: 24 hours (business days)
 
 ### For Emergencies
@@ -394,5 +394,5 @@ When reporting issues, please provide:
 
 ---
 
-**Document Owner**: CompliPay Team
+**Document Owner**: Masaar Team
 **Last Updated**: February 3, 2026

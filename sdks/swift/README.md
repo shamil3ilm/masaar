@@ -1,4 +1,4 @@
-# CompliPay Swift SDK
+# Masaar Swift SDK
 
 ZATCA-compliant e-invoicing API client for Swift 5.9+ (iOS, macOS, watchOS, tvOS).
 
@@ -10,7 +10,7 @@ Add to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/complipay/complipay-swift.git", from: "1.0.0")
+    .package(url: "https://github.com/masaar/masaar-swift.git", from: "1.0.0")
 ]
 ```
 
@@ -19,16 +19,16 @@ Or in Xcode: File → Add Packages → Enter the repository URL.
 ### CocoaPods
 
 ```ruby
-pod 'CompliPay', '~> 1.0'
+pod 'Masaar', '~> 1.0'
 ```
 
 ## Quick Start
 
 ```swift
-import CompliPay
+import Masaar
 
 // Initialize client
-let client = CompliPayClient(
+let client = MasaarClient(
     baseURL: URL(string: "http://localhost:8000")!,  // Your server URL
     apiKey: "your_api_key",
     apiSecret: "your_api_secret"
@@ -137,7 +137,7 @@ let status = try await client.compliance.status(invoiceId: invoiceId)
 // Subscribe to events
 let webhook = try await client.webhooks.create(
     CreateWebhookRequest(
-        url: "https://your-app.com/webhooks/complipay",
+        url: "https://your-app.com/webhooks/masaar",
         events: [.invoiceCleared, .invoiceRejected],
         secret: "your-webhook-secret"
     )
@@ -145,7 +145,7 @@ let webhook = try await client.webhooks.create(
 
 // Verify webhook signature
 func handleWebhook(payload: Data, signature: String) -> Bool {
-    return CompliPayWebhook.verifySignature(
+    return MasaarWebhook.verifySignature(
         payload: payload,
         signature: signature,
         secret: webhookSecret
@@ -158,14 +158,14 @@ func handleWebhook(payload: Data, signature: String) -> Bool {
 ```swift
 do {
     let invoice = try await client.invoices.create(request)
-} catch CompliPayError.authentication(let message) {
+} catch MasaarError.authentication(let message) {
     print("Auth failed: \(message)")
-} catch CompliPayError.validation(let message, let errors) {
+} catch MasaarError.validation(let message, let errors) {
     print("Validation failed: \(message)")
     errors.forEach { print("  - \($0)") }
-} catch CompliPayError.zatca(let message, let errors) {
+} catch MasaarError.zatca(let message, let errors) {
     print("ZATCA error: \(message)")
-} catch CompliPayError.rateLimit(let retryAfter) {
+} catch MasaarError.rateLimit(let retryAfter) {
     print("Rate limited - retry after \(retryAfter) seconds")
 } catch {
     print("Error: \(error)")
@@ -177,13 +177,13 @@ do {
 ```swift
 @MainActor
 class InvoiceViewModel: ObservableObject {
-    private let client: CompliPayClient
+    private let client: MasaarClient
 
     @Published var invoice: Invoice?
     @Published var isLoading = false
     @Published var error: String?
 
-    init(client: CompliPayClient) {
+    init(client: MasaarClient) {
         self.client = client
     }
 

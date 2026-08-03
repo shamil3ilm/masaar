@@ -1,4 +1,4 @@
-# CompliPay License Server (Cloudflare Worker)
+# Masaar License Server (Cloudflare Worker)
 
 Free license validation server for phone-home verification.
 
@@ -17,7 +17,7 @@ Free license validation server for phone-home verification.
 ### 2. Create Worker
 1. Go to **Workers & Pages** in Cloudflare dashboard
 2. Click **Create Application** → **Create Worker**
-3. Name it (e.g., `complipay-license-server`)
+3. Name it (e.g., `masaar-license-server`)
 4. Click **Deploy**
 
 ### 3. Add Code
@@ -50,10 +50,10 @@ In Worker Settings → Variables → Environment Variables:
 ### 7. Get Your Worker URL
 Your license server URL will be:
 ```
-https://complipay-license-server.YOUR-SUBDOMAIN.workers.dev
+https://masaar-license-server.YOUR-SUBDOMAIN.workers.dev
 ```
 
-### 8. Configure CompliPay
+### 8. Configure Masaar
 Add to your `.env`:
 ```env
 PLATFORM_LICENSE_ENABLED=true

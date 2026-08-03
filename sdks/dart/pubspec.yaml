@@ -1,7 +1,7 @@
-name: complipay
+name: masaar
 description: ZATCA-compliant e-invoicing API client for Dart/Flutter
 version: 1.0.0
-homepage: https://github.com/complipay/complipay-dart
+homepage: https://github.com/masaar/masaar-dart
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

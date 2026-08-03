@@ -22,8 +22,8 @@ Strategic framework for a temporary merger (18-24 months) with clean exit to ind
 Partner with TaxFly for 18-24 months to gain market access, revenue, and credibility, then exit to operate independently while potentially maintaining TaxFly as a paying customer.
 
 ### Core Principles
-1. **IP Protection** - CompliPay core remains separate and owned by you
-2. **Brand Visibility** - "Powered by CompliPay" builds exit runway
+1. **IP Protection** - Masaar core remains separate and owned by you
+2. **Brand Visibility** - "Powered by Masaar" builds exit runway
 3. **Clean Boundaries** - Technical separation enables painless exit
 4. **Data Rights** - Customer relationships portable at exit
 5. **Fair Exit** - Both parties benefit from the partnership and separation
@@ -47,17 +47,17 @@ Partner with TaxFly for 18-24 months to gain market access, revenue, and credibi
 │  │                                                              │   │
 │  │  ┌─────────────────────────────────────────────────────────┐│   │
 │  │  │              TaxFly Adapter Layer                       ││   │
-│  │  │  - Maps TaxFly models to CompliPay API format           ││   │
+│  │  │  - Maps TaxFly models to Masaar API format           ││   │
 │  │  │  - Handles webhook reception                            ││   │
 │  │  │  - Manages credential storage                           ││   │
 │  │  │  - THIS CODE BELONGS TO TAXFLY                          ││   │
 │  │  └───────────────────────┬─────────────────────────────────┘│   │
 │  └──────────────────────────┼──────────────────────────────────┘   │
 │                             │                                       │
-│                             │ HTTPS API (Standard CompliPay API)    │
+│                             │ HTTPS API (Standard Masaar API)    │
 │                             │                                       │
 │  ┌──────────────────────────▼──────────────────────────────────┐   │
-│  │              CompliPay Compliance Engine                     │   │
+│  │              Masaar Compliance Engine                     │   │
 │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │   │
 │  │  │  Laravel 12 │  │  ZATCA API  │  │  XAdES-BES Signing  │  │   │
 │  │  │  PHP 8.4    │  │  Integration│  │  QR Generation      │  │   │
@@ -82,32 +82,32 @@ services:
   taxfly-app:
     image: taxfly/app:latest
     environment:
-      COMPLIPAY_BASE_URL: http://complipay:8000
+      COMPLIPAY_BASE_URL: http://masaar:8000
       COMPLIPAY_API_KEY: ${COMPLIPAY_API_KEY}
     depends_on:
-      - complipay
+      - masaar
     networks:
       - taxfly-network
 
-  complipay:
-    image: complipay/engine:latest  # Your image, pulled from your registry
+  masaar:
+    image: masaar/engine:latest  # Your image, pulled from your registry
     environment:
       DB_CONNECTION: mysql
-      DB_HOST: complipay-db
+      DB_HOST: masaar-db
       ZATCA_ENVIRONMENT: ${ZATCA_ENVIRONMENT}
     volumes:
-      - complipay-keys:/app/storage/keys  # Encrypted key storage
+      - masaar-keys:/app/storage/keys  # Encrypted key storage
     networks:
       - taxfly-network
     # NO direct external access - only through TaxFly
 
-  complipay-db:
+  masaar-db:
     image: mysql:8.0
     environment:
-      MYSQL_DATABASE: complipay
+      MYSQL_DATABASE: masaar
       MYSQL_ROOT_PASSWORD: ${COMPLIPAY_DB_PASSWORD}
     volumes:
-      - complipay-data:/var/lib/mysql
+      - masaar-data:/var/lib/mysql
     networks:
       - taxfly-network
 
@@ -116,8 +116,8 @@ networks:
     driver: bridge
 
 volumes:
-  complipay-keys:
-  complipay-data:
+  masaar-keys:
+  masaar-data:
 ```
 
 **Why This Model:**
@@ -130,12 +130,12 @@ volumes:
 
 ```
 ┌─────────────────────┐         ┌─────────────────────┐
-│   TaxFly Servers    │  HTTPS  │  CompliPay Cloud    │
+│   TaxFly Servers    │  HTTPS  │  Masaar Cloud    │
 │   (Their infra)     │◄───────►│  (Your infra)       │
 └─────────────────────┘         └─────────────────────┘
 ```
 
-- You host CompliPay on your own infrastructure
+- You host Masaar on your own infrastructure
 - TaxFly connects via public API
 - Even cleaner separation
 - You maintain full control
@@ -143,7 +143,7 @@ volumes:
 
 ### 2.3 API Contract
 
-TaxFly uses the **standard CompliPay API** - no special endpoints:
+TaxFly uses the **standard Masaar API** - no special endpoints:
 
 ```php
 <?php
@@ -153,30 +153,30 @@ namespace TaxFly\Services;
 
 use GuzzleHttp\Client;
 
-class CompliPayAdapter
+class MasaarAdapter
 {
     private Client $http;
 
     public function __construct()
     {
         $this->http = new Client([
-            'base_uri' => config('services.complipay.url'),
+            'base_uri' => config('services.masaar.url'),
             'headers' => [
-                'X-API-Key' => config('services.complipay.key'),
+                'X-API-Key' => config('services.masaar.key'),
                 'Content-Type' => 'application/json',
             ],
         ]);
     }
 
     /**
-     * Submit TaxFly invoice to CompliPay for ZATCA compliance
+     * Submit TaxFly invoice to Masaar for ZATCA compliance
      */
     public function submitInvoice(TaxFlyInvoice $invoice): array
     {
-        // Map TaxFly format to CompliPay format
-        $payload = $this->mapToCompliPayFormat($invoice);
+        // Map TaxFly format to Masaar format
+        $payload = $this->mapToMasaarFormat($invoice);
 
-        // Use standard CompliPay API
+        // Use standard Masaar API
         $response = $this->http->post('/api/invoices', [
             'json' => $payload
         ]);
@@ -187,7 +187,7 @@ class CompliPayAdapter
     /**
      * Mapping logic - TaxFly's responsibility to maintain
      */
-    private function mapToCompliPayFormat(TaxFlyInvoice $invoice): array
+    private function mapToMasaarFormat(TaxFlyInvoice $invoice): array
     {
         return [
             'invoice_number' => $invoice->invoice_number,
@@ -212,9 +212,9 @@ class CompliPayAdapter
 |-------|-----|---------|
 | Merge codebases | Can't separate later | Keep as separate services |
 | Give them repo access | They could fork | Provide Docker images only |
-| Build TaxFly-specific features in CompliPay | Clutters your core | They build adapters |
+| Build TaxFly-specific features in Masaar | Clutters your core | They build adapters |
 | Share database | Data entanglement | Separate DBs, API boundary |
-| Use their auth system | Dependency | CompliPay has own auth |
+| Use their auth system | Dependency | Masaar has own auth |
 | Custom endpoints for TaxFly | Creates lock-in | Standard API only |
 
 ### 2.5 Branding Integration
@@ -226,7 +226,7 @@ class CompliPayAdapter
         {{ $invoice->zatca_qr_code }}
     </div>
     <div class="compliance-badge">
-        <img src="/images/complipay-badge.svg" alt="Powered by CompliPay" />
+        <img src="/images/masaar-badge.svg" alt="Powered by Masaar" />
         <span>ZATCA Phase 2 Compliant</span>
     </div>
 </div>
@@ -236,15 +236,15 @@ class CompliPayAdapter
 <!-- TaxFly's dashboard -->
 <div class="zatca-status-widget">
     <h3>ZATCA Compliance</h3>
-    <p>Powered by <a href="https://complipay.sa">CompliPay</a></p>
-    <!-- Stats from CompliPay API -->
+    <p>Powered by <a href="https://masaar.sa">Masaar</a></p>
+    <!-- Stats from Masaar API -->
 </div>
 ```
 
 **Minimum Brand Visibility:**
-- "Powered by CompliPay" on invoice PDFs
-- CompliPay mention in ZATCA status screens
-- Link to CompliPay in documentation
+- "Powered by Masaar" on invoice PDFs
+- Masaar mention in ZATCA status screens
+- Link to Masaar in documentation
 - Co-marketing in press releases
 
 ---
@@ -255,7 +255,7 @@ class CompliPayAdapter
 
 This section outlines ZATCA regulatory requirements that directly impact the partnership structure, hosting decisions, and contractual obligations.
 
-> **CRITICAL**: CompliPay has not yet been hosted. All infrastructure decisions should be made with these requirements in mind from the start.
+> **CRITICAL**: Masaar has not yet been hosted. All infrastructure decisions should be made with these requirements in mind from the start.
 
 ### 3.2 Third-Party Provider Rules
 
@@ -264,10 +264,10 @@ This section outlines ZATCA regulatory requirements that directly impact the par
 > "Taxpayers have the option to get E-invoicing services from any company, as long as the Solution used by the taxpayer complies to E-invoicing requirements."
 
 **Key implications:**
-- CompliPay CAN operate as TaxFly's compliance provider ✓
+- Masaar CAN operate as TaxFly's compliance provider ✓
 - ZATCA maintains a [Solution Providers Directory](https://zatca.gov.sa/en/E-Invoicing/SolutionProviders/Pages/SolutionProvidersDirectory.aspx) but listing is **optional**
-- **TaxFly remains legally responsible** for compliance even when using CompliPay
-- CompliPay should consider applying for directory listing (marketing benefit)
+- **TaxFly remains legally responsible** for compliance even when using Masaar
+- Masaar should consider applying for directory listing (marketing benefit)
 
 ### 3.3 Data Residency Requirements
 
@@ -282,7 +282,7 @@ This section outlines ZATCA regulatory requirements that directly impact the par
 
 ### 3.4 Hosting Architecture Options
 
-Given that CompliPay is not yet hosted, the partnership must decide on infrastructure:
+Given that Masaar is not yet hosted, the partnership must decide on infrastructure:
 
 #### Option A: Full Saudi Hosting (Recommended)
 
@@ -292,12 +292,12 @@ Given that CompliPay is not yet hosted, the partnership must decide on infrastru
 │         (AWS me-south-1 / Azure UAE / Local DC)                 │
 │                                                                 │
 │  ┌─────────────────────┐      ┌─────────────────────────────┐  │
-│  │    TaxFly App       │      │     CompliPay Engine        │  │
+│  │    TaxFly App       │      │     Masaar Engine        │  │
 │  │    (Laravel 8)      │◄────►│     (Laravel 12)            │  │
 │  └─────────────────────┘      └─────────────────────────────┘  │
 │                                                                 │
 │  ┌─────────────────────┐      ┌─────────────────────────────┐  │
-│  │   TaxFly Database   │      │   CompliPay Database        │  │
+│  │   TaxFly Database   │      │   Masaar Database        │  │
 │  │   (Customer data)   │      │   (Compliance records)      │  │
 │  └─────────────────────┘      └─────────────────────────────┘  │
 │                                                                 │
@@ -338,7 +338,7 @@ Given that CompliPay is not yet hosted, the partnership must decide on infrastru
 ┌───────────────────────────────▼─────────────────────────────────┐
 │                    EXTERNAL (Any Region)                        │
 │  ┌─────────────────────────────────────────────────────────┐   │
-│  │                  CompliPay Processing                    │   │
+│  │                  Masaar Processing                    │   │
 │  │  • XML Generation                                        │   │
 │  │  • Digital Signing                                       │   │
 │  │  • QR Code Generation                                    │   │
@@ -364,19 +364,19 @@ Given that CompliPay is not yet hosted, the partnership must decide on infrastru
 │              TAXFLY'S SAUDI INFRASTRUCTURE                      │
 │                                                                 │
 │  ┌─────────────────────────────────────────────────────────┐   │
-│  │  TaxFly Platform + CompliPay (containerized)            │   │
+│  │  TaxFly Platform + Masaar (containerized)            │   │
 │  │                                                          │   │
 │  │  • TaxFly manages all servers                            │   │
-│  │  • CompliPay deployed as Docker container                │   │
+│  │  • Masaar deployed as Docker container                │   │
 │  │  • Single compliance jurisdiction                        │   │
 │  │  • TaxFly bears infrastructure responsibility            │   │
 │  └─────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────┘
 
 ✓ Fully compliant
-✓ CompliPay has no infrastructure cost
+✓ Masaar has no infrastructure cost
 ✓ TaxFly controls everything
-⚠️ CompliPay dependent on TaxFly for hosting
+⚠️ Masaar dependent on TaxFly for hosting
 ⚠️ Harder to exit (need to set up own infrastructure)
 ```
 
@@ -385,18 +385,18 @@ Given that CompliPay is not yet hosted, the partnership must decide on infrastru
 **For this partnership, recommend Option C (TaxFly Hosts) initially, with planned migration to Option A:**
 
 **Phase 1 (Month 1-12): TaxFly Hosts**
-- Deploy CompliPay container on TaxFly's Saudi infrastructure
-- Zero infrastructure cost for CompliPay
+- Deploy Masaar container on TaxFly's Saudi infrastructure
+- Zero infrastructure cost for Masaar
 - Fast time to market
 - Focus on product, not DevOps
 
 **Phase 2 (Month 12-18): Build Independence**
-- CompliPay establishes own Saudi hosting
+- Masaar establishes own Saudi hosting
 - Begin migration planning
 - Maintain TaxFly as customer via API
 
 **Phase 3 (Month 18-24): Full Independence**
-- CompliPay runs on own infrastructure
+- Masaar runs on own infrastructure
 - TaxFly transitions to standard API customer
 - Clean separation complete
 
@@ -428,8 +428,8 @@ Both parties must be prepared for ZATCA audits:
 | Requirement | Responsibility |
 |-------------|---------------|
 | Provide unrestricted data access | TaxFly (as taxpayer's agent) |
-| Generate compliance reports | CompliPay |
-| Explain technical implementation | CompliPay |
+| Generate compliance reports | Masaar |
+| Explain technical implementation | Masaar |
 | Provide business justification | TaxFly |
 | Historical invoice retrieval | Joint |
 
@@ -459,14 +459,14 @@ Before launch, ensure:
 ├─────────────────────────────────┬───────────────────────────────┤
 │          COMPLIPAY OWNS         │         TAXFLY OWNS           │
 ├─────────────────────────────────┼───────────────────────────────┤
-│ • CompliPay source code         │ • TaxFly source code          │
+│ • Masaar source code         │ • TaxFly source code          │
 │ • ZATCA compliance engine       │ • TaxFly UI/UX                │
 │ • XAdES-BES signing logic       │ • Adapter layer code          │
 │ • QR generation algorithms      │ • TaxFly-specific mappings    │
 │ • Multi-tenant architecture     │ • Customer relationships      │
 │ • All SDKs                      │ • TaxFly brand/trademark      │
 │ • API design & documentation    │ • TaxFly customer data        │
-│ • CompliPay brand/trademark     │                               │
+│ • Masaar brand/trademark     │                               │
 ├─────────────────────────────────┴───────────────────────────────┤
 │                       JOINT/SHARED                              │
 ├─────────────────────────────────────────────────────────────────┤
@@ -477,25 +477,25 @@ Before launch, ensure:
 ```
 
 **Key Clause:**
-> "CompliPay grants TaxFly a non-exclusive, non-transferable license to use
-> the CompliPay API during the Partnership Term. This license does not include
-> rights to the source code, algorithms, or internal implementation of CompliPay.
+> "Masaar grants TaxFly a non-exclusive, non-transferable license to use
+> the Masaar API during the Partnership Term. This license does not include
+> rights to the source code, algorithms, or internal implementation of Masaar.
 > TaxFly shall not reverse engineer, decompile, or attempt to derive source code
-> from CompliPay services."
+> from Masaar services."
 
 ### 4.2 Branding Requirements
 
 | Requirement | Details |
 |-------------|---------|
-| Invoice PDFs | "Powered by CompliPay" badge on all ZATCA-compliant invoices |
-| Dashboard | CompliPay attribution in ZATCA status section |
-| Documentation | Credit to CompliPay in technical docs |
+| Invoice PDFs | "Powered by Masaar" badge on all ZATCA-compliant invoices |
+| Dashboard | Masaar attribution in ZATCA status section |
+| Documentation | Credit to Masaar in technical docs |
 | Marketing | Joint press release at launch |
-| Website | CompliPay listed as technology partner |
-| Support | "ZATCA compliance powered by CompliPay" in support materials |
+| Website | Masaar listed as technology partner |
+| Support | "ZATCA compliance powered by Masaar" in support materials |
 
 **Key Clause:**
-> "TaxFly shall display 'Powered by CompliPay' branding on all customer-facing
+> "TaxFly shall display 'Powered by Masaar' branding on all customer-facing
 > materials related to ZATCA compliance functionality, including but not limited
 > to: invoice documents, compliance dashboards, and help documentation."
 
@@ -517,15 +517,15 @@ Before launch, ensure:
 ```
 
 **At Exit - Data Portability:**
-- CompliPay may export anonymized/aggregated statistics
-- CompliPay may reference customer count in marketing ("Processed X invoices")
-- CompliPay may contact customers who independently reach out
+- Masaar may export anonymized/aggregated statistics
+- Masaar may reference customer count in marketing ("Processed X invoices")
+- Masaar may contact customers who independently reach out
 - TaxFly retains all customer PII and business data
 
 **Key Clause:**
-> "Upon termination, CompliPay shall retain the right to use aggregated,
+> "Upon termination, Masaar shall retain the right to use aggregated,
 > anonymized statistics regarding usage volume and compliance rates for
-> marketing purposes. CompliPay shall not retain or use any customer PII
+> marketing purposes. Masaar shall not retain or use any customer PII
 > beyond the termination date except as required for audit compliance
 > (retained for [X] years in encrypted, access-restricted storage)."
 
@@ -533,13 +533,13 @@ Before launch, ensure:
 
 #### Option A: Revenue Share
 ```
-Monthly Revenue to CompliPay = (TaxFly ZATCA Revenue) × 30%
+Monthly Revenue to Masaar = (TaxFly ZATCA Revenue) × 30%
 
 Example:
 - TaxFly charges customers 50 SAR/month for ZATCA compliance
 - TaxFly has 1,000 customers using ZATCA features
 - Monthly ZATCA revenue: 50,000 SAR
-- CompliPay share: 15,000 SAR/month
+- Masaar share: 15,000 SAR/month
 ```
 
 #### Option B: Per-Transaction Fee
@@ -548,7 +548,7 @@ Fee per invoice submission = 0.50 SAR
 
 Example:
 - 100,000 invoices/month processed
-- CompliPay revenue: 50,000 SAR/month
+- Masaar revenue: 50,000 SAR/month
 ```
 
 #### Option C: Tiered Licensing
@@ -567,7 +567,7 @@ Tier 4: 200,001+ invoices           = 200,000 SAR/month
 | Trigger | Notice Period | Terms |
 |---------|---------------|-------|
 | Scheduled exit (18-24 months) | 90 days | Standard terms |
-| CompliPay early exit | 180 days | Must provide transition support |
+| Masaar early exit | 180 days | Must provide transition support |
 | TaxFly early exit | 90 days | Pay remaining minimum commitment |
 | Material breach | 30 days cure period | Immediate if uncured |
 | Acquisition of either party | 90 days | Renegotiation option |
@@ -575,13 +575,13 @@ Tier 4: 200,001+ invoices           = 200,000 SAR/month
 #### Post-Exit Options for TaxFly
 
 **Option 1: Continue as Customer**
-- Transition to standard CompliPay pricing
+- Transition to standard Masaar pricing
 - No "Powered by" requirement (they can white-label)
 - Market rate API access
 
 **Option 2: Clean Break**
 - 90-day transition period
-- CompliPay provides data export
+- Masaar provides data export
 - TaxFly finds alternative solution
 
 **Option 3: Extended Partnership**
@@ -601,7 +601,7 @@ Tier 4: 200,001+ invoices           = 200,000 SAR/month
 │   invoicing platform in Saudi   │   compliance engine           │
 │                                 │                               │
 │ • Won't directly solicit        │ • Won't reverse engineer      │
-│   TaxFly's existing customers   │   CompliPay technology        │
+│   TaxFly's existing customers   │   Masaar technology        │
 │                                 │                               │
 │ • Will refer invoicing leads    │ • Won't partner with          │
 │   to TaxFly during term         │   competing compliance vendor │
@@ -613,7 +613,7 @@ Tier 4: 200,001+ invoices           = 200,000 SAR/month
 ┌─────────────────────────────────────────────────────────────────┐
 │              POST-EXIT NON-COMPETE (12 months)                  │
 ├─────────────────────────────────────────────────────────────────┤
-│ CompliPay:                                                      │
+│ Masaar:                                                      │
 │ • MAY offer API services to any customer (including TaxFly's)   │
 │ • MAY launch own invoicing UI if desired                        │
 │ • MAY NOT directly solicit TaxFly customers for 12 months       │
@@ -623,33 +623,33 @@ Tier 4: 200,001+ invoices           = 200,000 SAR/month
 │ • MAY switch to another compliance vendor                       │
 │ • MAY NOT build/sell standalone ZATCA compliance product        │
 │   for 24 months                                                 │
-│ • MAY NOT hire CompliPay employees for 12 months                │
+│ • MAY NOT hire Masaar employees for 12 months                │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 **Key Clause:**
 > "For a period of twenty-four (24) months following termination, TaxFly
 > shall not develop, market, or sell a standalone ZATCA compliance API
-> or service that competes directly with CompliPay's core offering. This
+> or service that competes directly with Masaar's core offering. This
 > restriction does not prevent TaxFly from using third-party compliance
 > services or building internal-only compliance tools."
 
 ### 4.7 Warranties and Liability
 
-**CompliPay Warrants:**
+**Masaar Warrants:**
 - API uptime of 99.5% (excluding scheduled maintenance)
 - ZATCA Phase 2 compliance accuracy
 - Security best practices (encryption, access control)
 - Timely updates for ZATCA regulation changes
 
-**CompliPay Does NOT Warrant:**
+**Masaar Does NOT Warrant:**
 - TaxFly's correct use of the API
 - TaxFly's data accuracy
 - Business outcomes or tax advice
 - Third-party service availability (ZATCA itself)
 
 **Liability Cap:**
-> "CompliPay's total liability shall not exceed the fees paid by TaxFly
+> "Masaar's total liability shall not exceed the fees paid by TaxFly
 > in the twelve (12) months preceding the claim."
 
 ### 4.8 Dispute Resolution
@@ -742,14 +742,14 @@ Month 24:  Partnership ends or converts to standard customer
 ### 6.1 Preparing for Exit (Start at Month 15)
 
 **Build Your Independence:**
-- [ ] Establish CompliPay brand presence (website, social, content)
+- [ ] Establish Masaar brand presence (website, social, content)
 - [ ] Build direct sales pipeline
 - [ ] Develop case studies from TaxFly partnership
 - [ ] Hire sales/marketing team
 - [ ] Set up customer support infrastructure
 
 **Technical Preparation:**
-- [ ] Ensure CompliPay runs independently (not dependent on TaxFly infra)
+- [ ] Ensure Masaar runs independently (not dependent on TaxFly infra)
 - [ ] Document all TaxFly-specific configurations
 - [ ] Prepare customer migration tooling (if applicable)
 - [ ] Test standalone deployment
@@ -866,7 +866,7 @@ BETWEEN:
     A company registered in [JURISDICTION]
     Registration No: [NUMBER]
     Address: [ADDRESS]
-    ("CompliPay" or "Provider")
+    ("Masaar" or "Provider")
 
 AND:
 
@@ -885,14 +885,14 @@ Each a "Party" and collectively the "Parties"
 
 WHEREAS:
 
-A.  CompliPay has developed a ZATCA Phase 2 compliant e-invoicing
+A.  Masaar has developed a ZATCA Phase 2 compliant e-invoicing
     platform providing XML generation, digital signing, QR code
     generation, and ZATCA API integration services.
 
 B.  TaxFly operates an invoicing and accounting platform serving
     businesses in the Kingdom of Saudi Arabia.
 
-C.  TaxFly wishes to integrate CompliPay's compliance services
+C.  TaxFly wishes to integrate Masaar's compliance services
     into its platform to provide ZATCA Phase 2 compliance to
     its customers.
 
@@ -907,10 +907,10 @@ agreements set forth herein, the Parties agree as follows:
                     ARTICLE 1: DEFINITIONS
 ═══════════════════════════════════════════════════════════════════
 
-1.1  "API" means CompliPay's application programming interface
+1.1  "API" means Masaar's application programming interface
      through which the Services are accessed.
 
-1.2  "Compliance Data" means all data generated by CompliPay in
+1.2  "Compliance Data" means all data generated by Masaar in
      the course of providing Services, including signed XMLs,
      QR codes, hash values, and ZATCA submission records.
 
@@ -921,7 +921,7 @@ agreements set forth herein, the Parties agree as follows:
 1.4  "Customer Data" means all data provided by TaxFly's end
      customers through the Services.
 
-1.5  "Documentation" means CompliPay's technical documentation,
+1.5  "Documentation" means Masaar's technical documentation,
      API specifications, and integration guides.
 
 1.6  "Effective Date" means the date first written above.
@@ -969,7 +969,7 @@ agreements set forth herein, the Parties agree as follows:
          terminate this Agreement for convenience by providing
          ninety (90) days written notice.
 
-     (b) CompliPay may terminate for convenience prior to Month 18
+     (b) Masaar may terminate for convenience prior to Month 18
          by providing one hundred eighty (180) days written notice
          and reasonable transition support.
 
@@ -996,7 +996,7 @@ agreements set forth herein, the Parties agree as follows:
      (a) TaxFly shall pay all fees accrued through the termination
          date within thirty (30) days;
 
-     (b) CompliPay shall provide data export as specified in
+     (b) Masaar shall provide data export as specified in
          Article 8;
 
      (c) Licenses granted herein shall terminate, except as
@@ -1006,9 +1006,9 @@ agreements set forth herein, the Parties agree as follows:
          (Liability), and 11 (Dispute Resolution) shall survive.
 
 2.7  TRANSITION ASSISTANCE
-     Upon termination for any reason, CompliPay shall provide
+     Upon termination for any reason, Masaar shall provide
      reasonable transition assistance for a period of ninety (90)
-     days at CompliPay's then-current rates, including:
+     days at Masaar's then-current rates, including:
 
      (a) Continued API access during transition period;
      (b) Data export in standard formats;
@@ -1020,7 +1020,7 @@ agreements set forth herein, the Parties agree as follows:
 ═══════════════════════════════════════════════════════════════════
 
 3.1  SERVICES PROVIDED
-     CompliPay shall provide TaxFly with the Services described
+     Masaar shall provide TaxFly with the Services described
      in Schedule A, including:
 
      (a) ZATCA-compliant UBL 2.1 XML invoice generation;
@@ -1032,7 +1032,7 @@ agreements set forth herein, the Parties agree as follows:
      (g) API access and technical support.
 
 3.2  SERVICE LEVELS
-     CompliPay shall provide Services in accordance with the SLA
+     Masaar shall provide Services in accordance with the SLA
      in Schedule A, including:
 
      (a) API availability of 99.5% monthly, excluding scheduled
@@ -1041,7 +1041,7 @@ agreements set forth herein, the Parties agree as follows:
      (c) Support response times as specified.
 
 3.3  SERVICE MODIFICATIONS
-     CompliPay may modify the Services to:
+     Masaar may modify the Services to:
 
      (a) Comply with changes in ZATCA regulations;
      (b) Improve security or performance;
@@ -1051,15 +1051,15 @@ agreements set forth herein, the Parties agree as follows:
      days advance notice where practicable.
 
 3.4  INTEGRATION
-     (a) TaxFly shall integrate with CompliPay's standard API as
+     (a) TaxFly shall integrate with Masaar's standard API as
          documented;
      (b) TaxFly is responsible for developing and maintaining its
          own adapter layer;
-     (c) CompliPay shall not develop TaxFly-specific features in
+     (c) Masaar shall not develop TaxFly-specific features in
          its core platform.
 
 3.5  SUPPORT
-     CompliPay shall provide technical support as follows:
+     Masaar shall provide technical support as follows:
 
      (a) Email support: Response within 24 business hours
      (b) Critical issues: Response within 4 hours
@@ -1071,13 +1071,13 @@ agreements set forth herein, the Parties agree as follows:
 ═══════════════════════════════════════════════════════════════════
 
 4.1  COMPLIPAY IP
-     CompliPay retains all right, title, and interest in:
+     Masaar retains all right, title, and interest in:
 
-     (a) The CompliPay platform, including all source code,
+     (a) The Masaar platform, including all source code,
          algorithms, and architecture;
      (b) The API design, specifications, and documentation;
      (c) All SDKs, libraries, and tools provided;
-     (d) The CompliPay name, trademarks, and branding;
+     (d) The Masaar name, trademarks, and branding;
      (e) Any improvements, modifications, or derivative works
          created during the Term.
 
@@ -1091,21 +1091,21 @@ agreements set forth herein, the Parties agree as follows:
      (d) The TaxFly name, trademarks, and branding.
 
 4.3  LICENSE GRANT TO TAXFLY
-     Subject to the terms of this Agreement, CompliPay grants
+     Subject to the terms of this Agreement, Masaar grants
      TaxFly a non-exclusive, non-transferable, revocable license
      to:
 
      (a) Access and use the API for the purpose of integrating
          the Services into TaxFly's platform;
-     (b) Use CompliPay's documentation for integration purposes;
-     (c) Display "Powered by CompliPay" branding as required by
+     (b) Use Masaar's documentation for integration purposes;
+     (c) Display "Powered by Masaar" branding as required by
          Article 7.
 
      This license does not include rights to the source code,
-     algorithms, or internal implementation of CompliPay.
+     algorithms, or internal implementation of Masaar.
 
 4.4  LICENSE GRANT TO COMPLIPAY
-     TaxFly grants CompliPay a non-exclusive license to:
+     TaxFly grants Masaar a non-exclusive license to:
 
      (a) Use aggregated, anonymized usage statistics for marketing;
      (b) Reference TaxFly as a customer (with TaxFly's approval);
@@ -1121,7 +1121,7 @@ agreements set forth herein, the Parties agree as follows:
      (e) Use the Services to develop a competing product.
 
 4.6  SURVIVING LICENSE
-     Upon termination, CompliPay grants TaxFly a perpetual,
+     Upon termination, Masaar grants TaxFly a perpetual,
      royalty-free license to retain and use Compliance Data
      (signed XMLs, QR codes) for:
 
@@ -1134,7 +1134,7 @@ agreements set forth herein, the Parties agree as follows:
 ═══════════════════════════════════════════════════════════════════
 
 5.1  FEES
-     TaxFly shall pay CompliPay the fees set forth in Schedule B.
+     TaxFly shall pay Masaar the fees set forth in Schedule B.
 
 5.2  PAYMENT TERMS
      (a) Fees are payable monthly in arrears;
@@ -1152,11 +1152,11 @@ agreements set forth herein, the Parties agree as follows:
 
 5.5  TAXES
      All fees are exclusive of applicable taxes. TaxFly is
-     responsible for all taxes except those based on CompliPay's
+     responsible for all taxes except those based on Masaar's
      income.
 
 5.6  AUDIT RIGHTS
-     CompliPay may audit TaxFly's usage records upon thirty (30)
+     Masaar may audit TaxFly's usage records upon thirty (30)
      days notice, no more than once per year. If an audit reveals
      underpayment exceeding 5%, TaxFly shall pay the shortfall
      plus audit costs.
@@ -1203,7 +1203,7 @@ agreements set forth herein, the Parties agree as follows:
 ═══════════════════════════════════════════════════════════════════
 
 7.1  POWERED BY BRANDING
-     During the Term, TaxFly shall display "Powered by CompliPay"
+     During the Term, TaxFly shall display "Powered by Masaar"
      branding on:
 
      (a) All ZATCA-compliant invoice PDFs generated through the
@@ -1221,11 +1221,11 @@ agreements set forth herein, the Parties agree as follows:
 
 7.3  MARKETING
      (a) The Parties shall issue a joint press release at launch;
-     (b) CompliPay may list TaxFly as a customer with approval;
+     (b) Masaar may list TaxFly as a customer with approval;
      (c) Case studies require mutual written consent.
 
 7.4  POST-EXIT BRANDING
-     Upon termination, if TaxFly continues as a CompliPay customer:
+     Upon termination, if TaxFly continues as a Masaar customer:
 
      (a) "Powered by" branding becomes optional;
      (b) TaxFly may white-label the Services;
@@ -1243,9 +1243,9 @@ agreements set forth herein, the Parties agree as follows:
      ├─────────────────────────────────────────────────────────┤
      │  Customer PII       │  TaxFly   │  TaxFly              │
      │  Invoice Data       │  TaxFly   │  TaxFly              │
-     │  Compliance Data    │  Joint    │  CompliPay           │
-     │  Usage Analytics    │  CompliPay│  CompliPay           │
-     │  API Logs           │  CompliPay│  CompliPay           │
+     │  Compliance Data    │  Joint    │  Masaar           │
+     │  Usage Analytics    │  Masaar│  Masaar           │
+     │  API Logs           │  Masaar│  Masaar           │
      └─────────────────────────────────────────────────────────┘
 
 8.2  DATA RESIDENCY REQUIREMENTS
@@ -1265,23 +1265,23 @@ agreements set forth herein, the Parties agree as follows:
 8.3  HOSTING ARRANGEMENT
      The Parties agree to the following hosting arrangement:
 
-     [ ] OPTION A: CompliPay hosts in Saudi Arabia
-         CompliPay shall deploy and operate the Services on
+     [ ] OPTION A: Masaar hosts in Saudi Arabia
+         Masaar shall deploy and operate the Services on
          infrastructure located within Saudi Arabia.
 
-     [ ] OPTION B: TaxFly hosts CompliPay container
+     [ ] OPTION B: TaxFly hosts Masaar container
          TaxFly shall provide Saudi-based infrastructure on which
-         CompliPay's containerized service shall be deployed.
-         CompliPay shall provide the container image.
+         Masaar's containerized service shall be deployed.
+         Masaar shall provide the container image.
 
      [ ] OPTION C: Processing-only model
-         CompliPay processes data transiently (no persistent
+         Masaar processes data transiently (no persistent
          storage). TaxFly stores all data in Saudi Arabia.
 
      [CHECK APPLICABLE OPTION]
 
 8.4  DATA PROCESSING
-     CompliPay shall:
+     Masaar shall:
 
      (a) Process Customer Data only as necessary to provide
          Services;
@@ -1292,7 +1292,7 @@ agreements set forth herein, the Parties agree as follows:
      (d) Promptly notify TaxFly of any data breach.
 
 8.5  DATA RETENTION
-     (a) CompliPay shall retain Compliance Data for six (6) years
+     (a) Masaar shall retain Compliance Data for six (6) years
          as required by ZATCA;
      (b) Upon termination, data shall be handled as specified in
          Section 8.7;
@@ -1302,26 +1302,26 @@ agreements set forth herein, the Parties agree as follows:
 8.6  AUDIT ACCESS
      (a) TaxFly shall provide ZATCA unrestricted access to data
          upon lawful request;
-     (b) CompliPay shall cooperate in generating compliance reports;
+     (b) Masaar shall cooperate in generating compliance reports;
      (c) Both Parties shall maintain audit logs for six (6) years.
 
 8.7  DATA EXPORT AND DELETION
      Upon termination:
 
-     (a) CompliPay shall provide TaxFly with a complete export of
+     (a) Masaar shall provide TaxFly with a complete export of
          all Compliance Data within thirty (30) days in standard
          formats (XML, JSON, CSV);
 
-     (b) After export confirmation, CompliPay shall delete TaxFly-
+     (b) After export confirmation, Masaar shall delete TaxFly-
          specific data within ninety (90) days, except:
          - Data required for legal/audit compliance (retained per
            ZATCA requirements);
          - Aggregated, anonymized analytics (retained indefinitely);
 
-     (c) CompliPay shall provide written certification of deletion.
+     (c) Masaar shall provide written certification of deletion.
 
 8.8  SECURITY MEASURES
-     CompliPay shall implement and maintain:
+     Masaar shall implement and maintain:
 
      (a) Encryption at rest (AES-256 or equivalent);
      (b) Encryption in transit (TLS 1.2+);
@@ -1335,21 +1335,21 @@ agreements set forth herein, the Parties agree as follows:
 ═══════════════════════════════════════════════════════════════════
 
 9.1  COMPLIPAY WARRANTIES
-     CompliPay warrants that:
+     Masaar warrants that:
 
      (a) The Services will substantially conform to the
          Documentation and SLA;
      (b) The Services are designed to comply with ZATCA Phase 2
          requirements as of the Effective Date;
-     (c) CompliPay has the right to grant the licenses herein;
+     (c) Masaar has the right to grant the licenses herein;
      (d) The Services will not infringe third-party IP rights;
-     (e) CompliPay will implement reasonable security measures.
+     (e) Masaar will implement reasonable security measures.
 
 9.2  TAXFLY WARRANTIES
      TaxFly warrants that:
 
      (a) TaxFly has the authority to enter into this Agreement;
-     (b) Customer Data provided to CompliPay is accurate and
+     (b) Customer Data provided to Masaar is accurate and
          lawfully obtained;
      (c) TaxFly will use the Services in compliance with
          applicable laws;
@@ -1376,11 +1376,11 @@ agreements set forth herein, the Parties agree as follows:
          - Indemnification obligations.
 
 9.5  INDEMNIFICATION
-     (a) CompliPay shall indemnify TaxFly against third-party
+     (a) Masaar shall indemnify TaxFly against third-party
          claims that the Services infringe intellectual property
          rights;
 
-     (b) TaxFly shall indemnify CompliPay against claims arising
+     (b) TaxFly shall indemnify Masaar against claims arising
          from TaxFly's misuse of the Services or breach of this
          Agreement.
 
@@ -1390,7 +1390,7 @@ agreements set forth herein, the Parties agree as follows:
 
 10.1 DURING THE TERM
 
-     CompliPay agrees:
+     Masaar agrees:
      (a) Not to launch a competing invoicing platform directly
          targeting TaxFly's existing customers in Saudi Arabia;
      (b) To refer invoicing platform leads to TaxFly.
@@ -1398,7 +1398,7 @@ agreements set forth herein, the Parties agree as follows:
      TaxFly agrees:
      (a) Not to develop, acquire, or license an internal ZATCA
          compliance engine;
-     (b) Not to reverse engineer CompliPay technology;
+     (b) Not to reverse engineer Masaar technology;
      (c) Not to partner with a competing compliance vendor.
 
 10.2 POST-TERMINATION
@@ -1407,11 +1407,11 @@ agreements set forth herein, the Parties agree as follows:
 
      TaxFly shall not:
      (a) Develop, market, or sell a standalone ZATCA compliance
-         API or service that competes directly with CompliPay;
-     (b) Hire or solicit CompliPay employees for twelve (12)
+         API or service that competes directly with Masaar;
+     (b) Hire or solicit Masaar employees for twelve (12)
          months.
 
-     CompliPay shall not:
+     Masaar shall not:
      (a) Directly solicit TaxFly's existing customers for twelve
          (12) months (inbound inquiries permitted);
      (b) Use Confidential Information to target TaxFly customers.
@@ -1419,7 +1419,7 @@ agreements set forth herein, the Parties agree as follows:
 10.3 PERMITTED ACTIVITIES
      Notwithstanding the above:
 
-     (a) CompliPay may offer Services to any customer, including
+     (a) Masaar may offer Services to any customer, including
          those who are also TaxFly customers, through independent
          channels;
      (b) TaxFly may use third-party compliance services;
@@ -1486,7 +1486,7 @@ agreements set forth herein, the Parties agree as follows:
      Neither Party shall be liable for delays caused by events
      beyond reasonable control, including natural disasters, war,
      terrorism, or government action. ZATCA system outages shall
-     not be considered force majeure for CompliPay's obligations.
+     not be considered force majeure for Masaar's obligations.
 
 12.6 SEVERABILITY
      If any provision is held invalid, the remaining provisions
@@ -1635,10 +1635,10 @@ C.1  SCOPE
 
 C.2  ROLES
      - TaxFly: Data Controller
-     - CompliPay: Data Processor
+     - Masaar: Data Processor
 
 C.3  PROCESSING PURPOSES
-     CompliPay processes data solely to provide Services.
+     Masaar processes data solely to provide Services.
 
 C.4  DATA TYPES PROCESSED
      - Business name and address
@@ -1650,11 +1650,11 @@ C.5  SECURITY MEASURES
      As specified in Article 8.8.
 
 C.6  SUB-PROCESSORS
-     CompliPay may engage sub-processors with notice to TaxFly.
+     Masaar may engage sub-processors with notice to TaxFly.
      Current sub-processors: [LIST]
 
 C.7  DATA SUBJECT RIGHTS
-     CompliPay shall assist TaxFly in responding to data subject
+     Masaar shall assist TaxFly in responding to data subject
      requests within applicable timeframes.
 
 
@@ -1671,9 +1671,9 @@ D.1  "POWERED BY" BADGE
 
 D.2  APPROVED FORMATS
 
-     - complipay-badge-color.svg
-     - complipay-badge-mono.svg
-     - complipay-badge-white.svg
+     - masaar-badge-color.svg
+     - masaar-badge-mono.svg
+     - masaar-badge-white.svg
 
 D.3  PROHIBITED USES
 
@@ -1731,8 +1731,8 @@ E.4  WEBHOOK EVENTS
 ## Appendix A: Negotiation Checklist
 
 ### Must-Haves (Walk Away If Not Agreed)
-- [ ] IP ownership stays with CompliPay
-- [ ] "Powered by CompliPay" branding
+- [ ] IP ownership stays with Masaar
+- [ ] "Powered by Masaar" branding
 - [ ] Right to exit after 18-24 months
 - [ ] No source code transfer
 - [ ] Post-exit ability to compete
@@ -1747,8 +1747,8 @@ E.4  WEBHOOK EVENTS
 - [ ] Source code escrow that triggers on minor events
 - [ ] Perpetual non-compete
 - [ ] Unlimited liability
-- [ ] Right of first refusal on CompliPay sale
-- [ ] TaxFly control over CompliPay roadmap
+- [ ] Right of first refusal on Masaar sale
+- [ ] TaxFly control over Masaar roadmap
 
 ---
 
@@ -1756,7 +1756,7 @@ E.4  WEBHOOK EVENTS
 
 ```
 PARTNERSHIP TERM SHEET
-CompliPay + TaxFly
+Masaar + TaxFly
 [Date]
 
 1. STRUCTURE
@@ -1774,17 +1774,17 @@ CompliPay + TaxFly
    - Minimum commitment: [X] SAR/month
 
 4. IP
-   - CompliPay retains all IP
+   - Masaar retains all IP
    - TaxFly receives API license only
    - No source code access
 
 5. BRANDING
-   - "Powered by CompliPay" required
+   - "Powered by Masaar" required
    - Joint launch announcement
 
 6. EXCLUSIVITY
    - TaxFly: Exclusive ZATCA compliance partner in Saudi
-   - CompliPay: Non-exclusive (may serve other customers)
+   - Masaar: Non-exclusive (may serve other customers)
 
 7. EXIT
    - Data export within 30 days

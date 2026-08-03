@@ -1,12 +1,12 @@
-# CompliPay - Commit History
+# Masaar - Commit History
 
-This document maintains a record of all commits to the CompliPay project for audit and compliance purposes.
+This document maintains a record of all commits to the Masaar project for audit and compliance purposes.
 
 ## Commit Log
 
 | # | Short Hash | Date | Description |
 |---|------------|------|-------------|
-| 1 | `f8c1582` | 2026-01-30 | Initial CompliPay project setup |
+| 1 | `f8c1582` | 2026-01-30 | Initial Masaar project setup |
 | 2 | `21b2350` | 2026-01-30 | Add Organization domain folder |
 | 3 | `926c1f1` | 2026-01-30 | Add Auth and Organization domain intent files |
 | 4 | `7562a3e` | 2026-01-30 | Implement JWT-backed Auth domain service |
@@ -297,7 +297,7 @@ This document maintains a record of all commits to the CompliPay project for aud
 - **Java 11+ SDK**: Full-featured API client for Java ecosystem
   - HttpClient-based HTTP layer (no external dependencies except Gson)
   - Builder pattern for fluent, intuitive API
-  - CompliPayClient main entry point with resource accessors
+  - MasaarClient main entry point with resource accessors
 - **Models**: Type-safe request/response objects
   - Invoice, InvoiceLine, CreateInvoiceRequest with builders
   - ZatcaResult with validation messages and status
@@ -443,7 +443,7 @@ This document maintains a record of all commits to the CompliPay project for aud
 For verification purposes, here are the full SHA-1 hashes:
 
 ```
-f8c1582e19d9107750a6f539ae080bf3ca08b67c - Initial CompliPay project setup
+f8c1582e19d9107750a6f539ae080bf3ca08b67c - Initial Masaar project setup
 21b23505c663c50152a82fd28b9800d331777bfc - Add Organization domain folder
 926c1f1a24c7be66d8195a44b4492bb89e645847 - Add Auth and Organization domain intent files
 7562a3e9d45ca2d9d0f658b066cfd039e3fd0dec - Implement JWT-backed Auth domain service

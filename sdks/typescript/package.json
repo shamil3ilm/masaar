@@ -1,5 +1,5 @@
 {
-  "name": "complipay",
+  "name": "masaar",
   "version": "1.0.0",
   "description": "ZATCA-compliant e-invoicing API client for TypeScript/JavaScript",
   "main": "dist/index.js",
@@ -33,15 +33,15 @@
     "compliance",
     "api-client"
   ],
-  "author": "CompliPay",
+  "author": "Masaar",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/complipay/complipay-js"
+    "url": "https://github.com/masaar/masaar-js"
   },
-  "homepage": "https://complipay.com",
+  "homepage": "https://masaar.com",
   "bugs": {
-    "url": "https://github.com/complipay/complipay-js/issues"
+    "url": "https://github.com/masaar/masaar-js/issues"
   },
   "engines": {
     "node": ">=14.0.0"

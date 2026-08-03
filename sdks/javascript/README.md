@@ -1,4 +1,4 @@
-# CompliPay JavaScript SDK
+# Masaar JavaScript SDK
 
 ZATCA-compliant e-invoicing API client for JavaScript (Node.js and browsers).
 
@@ -7,18 +7,18 @@ ZATCA-compliant e-invoicing API client for JavaScript (Node.js and browsers).
 ## Installation
 
 ```bash
-npm install complipay
+npm install masaar
 # or
-yarn add complipay
+yarn add masaar
 ```
 
 ## Quick Start
 
 ```javascript
-const { CompliPayClient } = require('complipay');
+const { MasaarClient } = require('masaar');
 
 // Initialize client
-const client = new CompliPayClient({
+const client = new MasaarClient({
   baseUrl: 'http://localhost:8000',  // Your server URL
   apiKey: 'your_api_key',
   apiSecret: 'your_api_secret'
@@ -57,9 +57,9 @@ createInvoice().catch(console.error);
 ## ES Modules
 
 ```javascript
-import { CompliPayClient } from 'complipay';
+import { MasaarClient } from 'masaar';
 
-const client = new CompliPayClient({
+const client = new MasaarClient({
   baseUrl: 'http://localhost:8000',
   apiKey: 'your_api_key'
 });
@@ -129,18 +129,18 @@ const status = await client.compliance.status(invoiceId);
 ```javascript
 // Subscribe to events
 const webhook = await client.webhooks.create({
-  url: 'https://your-app.com/webhooks/complipay',
+  url: 'https://your-app.com/webhooks/masaar',
   events: ['invoice.cleared', 'invoice.rejected'],
   secret: 'your-webhook-secret'
 });
 
 // Express.js webhook handler
 const express = require('express');
-const { verifyWebhookSignature } = require('complipay');
+const { verifyWebhookSignature } = require('masaar');
 
-app.post('/webhooks/complipay', express.raw({ type: 'application/json' }), (req, res) => {
+app.post('/webhooks/masaar', express.raw({ type: 'application/json' }), (req, res) => {
   const payload = req.body.toString();
-  const signature = req.headers['x-complipay-signature'];
+  const signature = req.headers['x-masaar-signature'];
 
   if (!verifyWebhookSignature(payload, signature, process.env.WEBHOOK_SECRET)) {
     return res.status(401).send('Invalid signature');
@@ -185,9 +185,9 @@ try {
 ## Browser Usage
 
 ```html
-<script src="https://unpkg.com/complipay/dist/complipay.min.js"></script>
+<script src="https://unpkg.com/masaar/dist/masaar.min.js"></script>
 <script>
-  const client = new CompliPay.Client({
+  const client = new Masaar.Client({
     baseUrl: 'http://localhost:8000',
     apiKey: 'your_api_key'
   });

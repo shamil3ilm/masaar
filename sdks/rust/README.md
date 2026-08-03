@@ -1,4 +1,4 @@
-# CompliPay Rust SDK
+# Masaar Rust SDK
 
 ZATCA-compliant e-invoicing API client for Rust 1.70+.
 
@@ -8,25 +8,25 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-complipay = "1.0"
+masaar = "1.0"
 ```
 
 With all features:
 
 ```toml
 [dependencies]
-complipay = { version = "1.0", features = ["full"] }
+masaar = { version = "1.0", features = ["full"] }
 ```
 
 ## Quick Start
 
 ```rust
-use complipay::{CompliPayClient, CreateInvoiceRequest, InvoiceLine};
+use masaar::{MasaarClient, CreateInvoiceRequest, InvoiceLine};
 
 #[tokio::main]
-async fn main() -> Result<(), complipay::Error> {
+async fn main() -> Result<(), masaar::Error> {
     // Initialize client
-    let client = CompliPayClient::builder()
+    let client = MasaarClient::builder()
         .base_url("http://localhost:8000")  // Your server URL
         .api_key("your_api_key")
         .api_secret("your_api_secret")
@@ -137,12 +137,12 @@ let status = client.compliance().status(&invoice_id).await?;
 ### Webhooks
 
 ```rust
-use complipay::webhook;
+use masaar::webhook;
 
 // Subscribe to events
 let webhook = client.webhooks().create(
     CreateWebhookRequest::builder()
-        .url("https://your-app.com/webhooks/complipay")
+        .url("https://your-app.com/webhooks/masaar")
         .events(vec!["invoice.cleared", "invoice.rejected"])
         .secret("your-webhook-secret")
         .build()
@@ -154,7 +154,7 @@ async fn handle_webhook(
     body: String,
 ) -> impl IntoResponse {
     let signature = headers
-        .get("X-CompliPay-Signature")
+        .get("X-Masaar-Signature")
         .and_then(|v| v.to_str().ok())
         .unwrap_or("");
 
@@ -177,7 +177,7 @@ async fn handle_webhook(
 ## Error Handling
 
 ```rust
-use complipay::Error;
+use masaar::Error;
 
 match client.invoices().create(request).await {
     Ok(invoice) => println!("Created: {}", invoice.id),
@@ -203,7 +203,7 @@ match client.invoices().create(request).await {
 ## Configuration Options
 
 ```rust
-let client = CompliPayClient::builder()
+let client = MasaarClient::builder()
     .base_url("http://localhost:8000")
     .api_key("your_api_key")
     .api_secret("your_api_secret")

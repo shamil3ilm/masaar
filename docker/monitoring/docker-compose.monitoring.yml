@@ -1,4 +1,4 @@
-# CompliPay Monitoring Stack
+# Masaar Monitoring Stack
 # Optional add-on for TaxFly deployment
 #
 # Usage: docker-compose -f docker-compose.yml -f docker/monitoring/docker-compose.monitoring.yml up -d
@@ -9,7 +9,7 @@ services:
   # Prometheus - Metrics Collection
   prometheus:
     image: prom/prometheus:v2.48.0
-    container_name: complipay-prometheus
+    container_name: masaar-prometheus
     restart: unless-stopped
     ports:
       - "9090:9090"
@@ -22,12 +22,12 @@ services:
       - '--storage.tsdb.retention.time=30d'
       - '--web.enable-lifecycle'
     networks:
-      - complipay-network
+      - masaar-network
 
   # Grafana - Dashboards
   grafana:
     image: grafana/grafana:10.2.0
-    container_name: complipay-grafana
+    container_name: masaar-grafana
     restart: unless-stopped
     ports:
       - "3000:3000"
@@ -37,9 +37,9 @@ services:
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - grafana-data:/var/lib/grafana
-      - ./grafana-dashboard.json:/etc/grafana/provisioning/dashboards/complipay.json:ro
+      - ./grafana-dashboard.json:/etc/grafana/provisioning/dashboards/masaar.json:ro
     networks:
-      - complipay-network
+      - masaar-network
 
 volumes:
   prometheus-data:
@@ -48,5 +48,5 @@ volumes:
     driver: local
 
 networks:
-  complipay-network:
+  masaar-network:
     external: true

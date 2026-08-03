@@ -1,4 +1,4 @@
-# CompliPay .NET SDK
+# Masaar .NET SDK
 
 ZATCA-compliant e-invoicing API client for .NET 8+ and C# 12.
 
@@ -7,22 +7,22 @@ ZATCA-compliant e-invoicing API client for .NET 8+ and C# 12.
 ### NuGet Package Manager
 
 ```bash
-Install-Package CompliPay
+Install-Package Masaar
 ```
 
 ### .NET CLI
 
 ```bash
-dotnet add package CompliPay
+dotnet add package Masaar
 ```
 
 ## Quick Start
 
 ```csharp
-using CompliPay;
+using Masaar;
 
 // Initialize client
-var client = new CompliPayClient(new CompliPayOptions
+var client = new MasaarClient(new MasaarOptions
 {
     BaseUrl = "http://localhost:8000",  // Your server URL
     ApiKey = "your_api_key",
@@ -131,7 +131,7 @@ var status = await client.Compliance.StatusAsync(invoiceId);
 // Subscribe to events
 var webhook = await client.Webhooks.CreateAsync(new CreateWebhookRequest
 {
-    Url = "https://your-app.com/webhooks/complipay",
+    Url = "https://your-app.com/webhooks/masaar",
     Events = ["invoice.cleared", "invoice.rejected"],
     Secret = "your-webhook-secret"
 });
@@ -143,14 +143,14 @@ public class WebhooksController : ControllerBase
 {
     private readonly string _webhookSecret;
 
-    [HttpPost("complipay")]
+    [HttpPost("masaar")]
     public async Task<IActionResult> HandleWebhook()
     {
         using var reader = new StreamReader(Request.Body);
         var payload = await reader.ReadToEndAsync();
-        var signature = Request.Headers["X-CompliPay-Signature"].FirstOrDefault();
+        var signature = Request.Headers["X-Masaar-Signature"].FirstOrDefault();
 
-        if (!CompliPayWebhook.VerifySignature(payload, signature, _webhookSecret))
+        if (!MasaarWebhook.VerifySignature(payload, signature, _webhookSecret))
         {
             return Unauthorized();
         }
@@ -199,7 +199,7 @@ catch (RateLimitException ex)
 {
     Console.WriteLine($"Rate limited - retry after {ex.RetryAfter} seconds");
 }
-catch (CompliPayException ex)
+catch (MasaarException ex)
 {
     Console.WriteLine($"API error: {ex.Message}");
 }
@@ -209,19 +209,19 @@ catch (CompliPayException ex)
 
 ```csharp
 // Program.cs
-builder.Services.AddCompliPay(options =>
+builder.Services.AddMasaar(options =>
 {
-    options.BaseUrl = builder.Configuration["CompliPay:BaseUrl"];
-    options.ApiKey = builder.Configuration["CompliPay:ApiKey"];
-    options.ApiSecret = builder.Configuration["CompliPay:ApiSecret"];
+    options.BaseUrl = builder.Configuration["Masaar:BaseUrl"];
+    options.ApiKey = builder.Configuration["Masaar:ApiKey"];
+    options.ApiSecret = builder.Configuration["Masaar:ApiSecret"];
 });
 
 // Usage in your service
 public class InvoiceService
 {
-    private readonly ICompliPayClient _compliPay;
+    private readonly IMasaarClient _compliPay;
 
-    public InvoiceService(ICompliPayClient compliPay)
+    public InvoiceService(IMasaarClient compliPay)
     {
         _compliPay = compliPay;
     }

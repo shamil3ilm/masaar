@@ -1,4 +1,4 @@
-# CompliPay Java SDK
+# Masaar Java SDK
 
 ZATCA-compliant e-invoicing API client for Java 11+.
 
@@ -10,8 +10,8 @@ Works with Spring Boot, Jakarta EE, Micronaut, Quarkus, or any Java application.
 
 ```xml
 <dependency>
-    <groupId>com.complipay</groupId>
-    <artifactId>complipay-sdk</artifactId>
+    <groupId>com.masaar</groupId>
+    <artifactId>masaar-sdk</artifactId>
     <version>1.0.0</version>
 </dependency>
 ```
@@ -19,7 +19,7 @@ Works with Spring Boot, Jakarta EE, Micronaut, Quarkus, or any Java application.
 ### Gradle
 
 ```groovy
-implementation 'com.complipay:complipay-sdk:1.0.0'
+implementation 'com.masaar:masaar-sdk:1.0.0'
 ```
 
 ### Local Installation
@@ -32,12 +32,12 @@ mvn clean install
 ## Quick Start
 
 ```java
-import com.complipay.CompliPayClient;
-import com.complipay.models.*;
-import com.complipay.exceptions.*;
+import com.masaar.MasaarClient;
+import com.masaar.models.*;
+import com.masaar.exceptions.*;
 
 // Initialize client
-CompliPayClient client = new CompliPayClient.Builder()
+MasaarClient client = new MasaarClient.Builder()
     .baseUrl("https://api.your-domain.com")
     .apiKey("cp_live_your_api_key")
     .apiSecret("your_api_secret")
@@ -173,11 +173,11 @@ ApiResponse<ZatcaResult> status = client.compliance().status(invoiceId);
 ### Webhooks
 
 ```java
-import com.complipay.resources.WebhooksResource;
+import com.masaar.resources.WebhooksResource;
 
 // Subscribe to events
 ApiResponse<?> webhook = client.webhooks().create(
-    "https://your-app.com/webhooks/complipay",
+    "https://your-app.com/webhooks/masaar",
     List.of(
         WebhooksResource.Events.INVOICE_CLEARED,
         WebhooksResource.Events.INVOICE_REJECTED,
@@ -187,10 +187,10 @@ ApiResponse<?> webhook = client.webhooks().create(
 );
 
 // In your webhook handler (Spring Boot example)
-@PostMapping("/webhooks/complipay")
+@PostMapping("/webhooks/masaar")
 public ResponseEntity<Void> handleWebhook(
     @RequestBody String payload,
-    @RequestHeader("X-CompliPay-Signature") String signature
+    @RequestHeader("X-Masaar-Signature") String signature
 ) {
     // Verify signature
     if (!WebhooksResource.verifySignature(payload, signature, webhookSecret)) {
@@ -268,7 +268,7 @@ try {
 } catch (NetworkException e) {
     // Network/connectivity issue
     System.err.println("Network error: " + e.getMessage());
-} catch (CompliPayException e) {
+} catch (MasaarException e) {
     // Other API error
     System.err.println("API error: " + e.getMessage());
 }
@@ -278,20 +278,20 @@ try {
 
 ```java
 @Configuration
-public class CompliPayConfig {
+public class MasaarConfig {
 
-    @Value("${complipay.base-url}")
+    @Value("${masaar.base-url}")
     private String baseUrl;
 
-    @Value("${complipay.api-key}")
+    @Value("${masaar.api-key}")
     private String apiKey;
 
-    @Value("${complipay.api-secret}")
+    @Value("${masaar.api-secret}")
     private String apiSecret;
 
     @Bean
-    public CompliPayClient compliPayClient() {
-        return new CompliPayClient.Builder()
+    public MasaarClient compliPayClient() {
+        return new MasaarClient.Builder()
             .baseUrl(baseUrl)
             .apiKey(apiKey)
             .apiSecret(apiSecret)
@@ -303,13 +303,13 @@ public class CompliPayConfig {
 @Service
 public class InvoiceService {
 
-    private final CompliPayClient compliPay;
+    private final MasaarClient compliPay;
 
-    public InvoiceService(CompliPayClient compliPay) {
+    public InvoiceService(MasaarClient compliPay) {
         this.compliPay = compliPay;
     }
 
-    public Invoice createAndSubmit(CreateInvoiceRequest request) throws CompliPayException {
+    public Invoice createAndSubmit(CreateInvoiceRequest request) throws MasaarException {
         // Create invoice
         ApiResponse<Invoice> response = compliPay.invoices().create(request);
         Invoice invoice = response.getData();
@@ -330,9 +330,9 @@ public class InvoiceService {
 
 ## Support
 
-- Documentation: https://docs.complipay.com
-- Issues: https://github.com/complipay/complipay-java/issues
-- Email: support@complipay.com
+- Documentation: https://docs.masaar.com
+- Issues: https://github.com/masaar/masaar-java/issues
+- Email: support@masaar.com
 
 ## License
 

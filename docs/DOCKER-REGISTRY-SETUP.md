@@ -1,6 +1,6 @@
 # Docker Registry Setup Guide
 
-This guide explains how to publish CompliPay Docker images to GitHub Container Registry (free).
+This guide explains how to publish Masaar Docker images to GitHub Container Registry (free).
 
 ## Quick Start
 
@@ -92,8 +92,8 @@ If you prefer Docker Hub:
 docker login -u YOUR_DOCKERHUB_USERNAME
 
 # Build and push
-docker build -t YOUR_DOCKERHUB_USERNAME/complipay:1.0.0 .
-docker push YOUR_DOCKERHUB_USERNAME/complipay:1.0.0
+docker build -t YOUR_DOCKERHUB_USERNAME/masaar:1.0.0 .
+docker push YOUR_DOCKERHUB_USERNAME/masaar:1.0.0
 ```
 
 Docker Hub offers 1 free private repository.

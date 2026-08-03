@@ -1,6 +1,6 @@
-# TaxFly + CompliPay Integration Guide
+# TaxFly + Masaar Integration Guide
 
-Complete guide for integrating CompliPay ZATCA E-Invoicing API into TaxFly's existing system.
+Complete guide for integrating Masaar ZATCA E-Invoicing API into TaxFly's existing system.
 
 ## Table of Contents
 
@@ -24,7 +24,7 @@ Complete guide for integrating CompliPay ZATCA E-Invoicing API into TaxFly's exi
 - **Phase 1**: Partial (QR generation exists but incomplete TLV encoding)
 - **Phase 2**: Not Ready (missing XAdES-BES signing, ZATCA API integration)
 
-### What CompliPay Provides
+### What Masaar Provides
 - Complete ZATCA Phase 2 compliance
 - UBL 2.1 XML generation with all required elements
 - XAdES-BES digital signatures (ECDSA secp256k1)
@@ -35,7 +35,7 @@ Complete guide for integrating CompliPay ZATCA E-Invoicing API into TaxFly's exi
 - **Foreign currency invoices** (USD, EUR, etc. with SAR VAT reporting)
 
 ### Integration Strategy
-Replace TaxFly's partial ZATCA implementation with CompliPay API calls while keeping TaxFly's existing invoice management UI and business logic.
+Replace TaxFly's partial ZATCA implementation with Masaar API calls while keeping TaxFly's existing invoice management UI and business logic.
 
 > **Advanced Scenarios**: For multi-business, multi-branch, and cross-border transactions, see [TAXFLY-ADVANCED-SCENARIOS.md](./TAXFLY-ADVANCED-SCENARIOS.md).
 
@@ -50,17 +50,17 @@ Replace TaxFly's partial ZATCA implementation with CompliPay API calls while kee
 - JSON extension
 
 ### Required Credentials
-1. **CompliPay API Key** - Obtain from CompliPay registration
+1. **Masaar API Key** - Obtain from Masaar registration
 2. **ZATCA OTP** - From ZATCA Fatoora Portal for onboarding
 3. **Organization VAT Number** - Valid Saudi VAT registration
 
-### CompliPay Endpoints
+### Masaar Endpoints
 
 | Environment | Base URL |
 |-------------|----------|
-| Sandbox | `https://sandbox.complipay.sa` |
-| Simulation | `https://simulation.complipay.sa` |
-| Production | `https://api.complipay.sa` |
+| Sandbox | `https://sandbox.masaar.sa` |
+| Simulation | `https://simulation.masaar.sa` |
+| Production | `https://api.masaar.sa` |
 
 ---
 
@@ -76,7 +76,7 @@ composer require guzzlehttp/guzzle:^7.0
 
 ### Step 2: Add Configuration
 
-Create `config/complipay.php`:
+Create `config/masaar.php`:
 
 ```php
 <?php
@@ -84,11 +84,11 @@ Create `config/complipay.php`:
 return [
     /*
     |--------------------------------------------------------------------------
-    | CompliPay API Configuration
+    | Masaar API Configuration
     |--------------------------------------------------------------------------
     */
 
-    'base_url' => env('COMPLIPAY_BASE_URL', 'https://sandbox.complipay.sa'),
+    'base_url' => env('COMPLIPAY_BASE_URL', 'https://sandbox.masaar.sa'),
 
     'api_key' => env('COMPLIPAY_API_KEY'),
 
@@ -119,11 +119,11 @@ return [
     |--------------------------------------------------------------------------
     | Organization Mapping
     |--------------------------------------------------------------------------
-    | Map TaxFly company IDs to CompliPay organization IDs
+    | Map TaxFly company IDs to Masaar organization IDs
     */
 
     'organization_map' => [
-        // 'taxfly_company_id' => 'complipay_organization_id',
+        // 'taxfly_company_id' => 'masaar_organization_id',
     ],
 ];
 ```
@@ -133,8 +133,8 @@ return [
 Add to `.env`:
 
 ```env
-# CompliPay Configuration
-COMPLIPAY_BASE_URL=https://sandbox.complipay.sa
+# Masaar Configuration
+COMPLIPAY_BASE_URL=https://sandbox.masaar.sa
 COMPLIPAY_API_KEY=your_api_key_here
 COMPLIPAY_WEBHOOK_SECRET=your_webhook_secret_here
 COMPLIPAY_TIMEOUT=30
@@ -144,21 +144,21 @@ COMPLIPAY_TIMEOUT=30
 
 ## 4. API Authentication
 
-### CompliPay API Client
+### Masaar API Client
 
-Create `app/Services/CompliPay/CompliPayClient.php`:
+Create `app/Services/Masaar/MasaarClient.php`:
 
 ```php
 <?php
 
-namespace App\Services\CompliPay;
+namespace App\Services\Masaar;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Exception\RequestException;
 use Illuminate\Support\Facades\Log;
 
-class CompliPayClient
+class MasaarClient
 {
     private Client $http;
     private string $baseUrl;
@@ -166,12 +166,12 @@ class CompliPayClient
 
     public function __construct()
     {
-        $this->baseUrl = config('complipay.base_url');
-        $this->apiKey = config('complipay.api_key');
+        $this->baseUrl = config('masaar.base_url');
+        $this->apiKey = config('masaar.api_key');
 
         $this->http = new Client([
             'base_uri' => $this->baseUrl,
-            'timeout' => config('complipay.timeout', 30),
+            'timeout' => config('masaar.timeout', 30),
             'headers' => [
                 'X-API-Key' => $this->apiKey,
                 'Content-Type' => 'application/json',
@@ -217,8 +217,8 @@ class CompliPayClient
      */
     private function request(string $method, string $endpoint, array $options = []): array
     {
-        $retryTimes = config('complipay.retry.times', 3);
-        $retrySleep = config('complipay.retry.sleep', 1000);
+        $retryTimes = config('masaar.retry.times', 3);
+        $retrySleep = config('masaar.retry.sleep', 1000);
         $lastException = null;
 
         for ($attempt = 1; $attempt <= $retryTimes; $attempt++) {
@@ -235,7 +235,7 @@ class CompliPayClient
                     break;
                 }
 
-                Log::warning("CompliPay API request failed (attempt {$attempt}/{$retryTimes})", [
+                Log::warning("Masaar API request failed (attempt {$attempt}/{$retryTimes})", [
                     'method' => $method,
                     'endpoint' => $endpoint,
                     'error' => $e->getMessage(),
@@ -254,14 +254,14 @@ class CompliPayClient
                 true
             );
 
-            throw new CompliPayException(
+            throw new MasaarException(
                 $errorBody['message'] ?? $lastException->getMessage(),
                 $lastException->getResponse()->getStatusCode(),
                 $errorBody['errors'] ?? []
             );
         }
 
-        throw new CompliPayException(
+        throw new MasaarException(
             $lastException?->getMessage() ?? 'Unknown API error',
             500
         );
@@ -271,16 +271,16 @@ class CompliPayClient
 
 ### Exception Class
 
-Create `app/Services/CompliPay/CompliPayException.php`:
+Create `app/Services/Masaar/MasaarException.php`:
 
 ```php
 <?php
 
-namespace App\Services\CompliPay;
+namespace App\Services\Masaar;
 
 use Exception;
 
-class CompliPayException extends Exception
+class MasaarException extends Exception
 {
     private array $errors;
 
@@ -303,12 +303,12 @@ class CompliPayException extends Exception
 
 ### Invoice Service
 
-Create `app/Services/CompliPay/InvoiceService.php`:
+Create `app/Services/Masaar/InvoiceService.php`:
 
 ```php
 <?php
 
-namespace App\Services\CompliPay;
+namespace App\Services\Masaar;
 
 use App\Models\Invoice;
 use App\Models\Company;
@@ -316,27 +316,27 @@ use Illuminate\Support\Facades\Log;
 
 class InvoiceService
 {
-    private CompliPayClient $client;
+    private MasaarClient $client;
 
-    public function __construct(CompliPayClient $client)
+    public function __construct(MasaarClient $client)
     {
         $this->client = $client;
     }
 
     /**
-     * Create invoice in CompliPay and get ZATCA compliance data
+     * Create invoice in Masaar and get ZATCA compliance data
      */
     public function createAndSubmit(Invoice $invoice, Company $company): array
     {
-        // Step 1: Map TaxFly invoice to CompliPay format
+        // Step 1: Map TaxFly invoice to Masaar format
         $invoiceData = $this->mapInvoiceData($invoice, $company);
 
-        // Step 2: Create invoice in CompliPay
+        // Step 2: Create invoice in Masaar
         $created = $this->client->post('/api/invoices', $invoiceData);
 
-        Log::info('Invoice created in CompliPay', [
+        Log::info('Invoice created in Masaar', [
             'taxfly_invoice_id' => $invoice->id,
-            'complipay_invoice_id' => $created['id'],
+            'masaar_invoice_id' => $created['id'],
         ]);
 
         // Step 3: Generate compliance data (XML, hash, QR)
@@ -350,7 +350,7 @@ class InvoiceService
         );
 
         return [
-            'complipay_id' => $created['id'],
+            'masaar_id' => $created['id'],
             'zatca_status' => $submission['status'],
             'clearance_status' => $submission['clearance_status'] ?? null,
             'reporting_status' => $submission['reporting_status'] ?? null,
@@ -363,7 +363,7 @@ class InvoiceService
     }
 
     /**
-     * Map TaxFly invoice format to CompliPay format
+     * Map TaxFly invoice format to Masaar format
      */
     private function mapInvoiceData(Invoice $invoice, Company $company): array
     {
@@ -388,7 +388,7 @@ class InvoiceService
             // Line items
             'lines' => $this->mapLineItems($invoice),
 
-            // Totals (calculated by CompliPay, but can be provided)
+            // Totals (calculated by Masaar, but can be provided)
             'subtotal' => (float) $invoice->subtotal,
             'discount_amount' => (float) ($invoice->discount ?? 0),
             'tax_amount' => (float) $invoice->vat_amount,
@@ -528,7 +528,7 @@ class InvoiceService
     }
 
     /**
-     * Get invoice status from CompliPay
+     * Get invoice status from Masaar
      */
     public function getStatus(string $compliPayId): array
     {
@@ -547,26 +547,26 @@ class InvoiceService
 
 ### Organization Service
 
-Create `app/Services/CompliPay/OrganizationService.php`:
+Create `app/Services/Masaar/OrganizationService.php`:
 
 ```php
 <?php
 
-namespace App\Services\CompliPay;
+namespace App\Services\Masaar;
 
 use App\Models\Company;
 
 class OrganizationService
 {
-    private CompliPayClient $client;
+    private MasaarClient $client;
 
-    public function __construct(CompliPayClient $client)
+    public function __construct(MasaarClient $client)
     {
         $this->client = $client;
     }
 
     /**
-     * Register company as organization in CompliPay
+     * Register company as organization in Masaar
      */
     public function register(Company $company): array
     {
@@ -619,40 +619,40 @@ class OrganizationService
 
 ### Service Provider
 
-Create `app/Providers/CompliPayServiceProvider.php`:
+Create `app/Providers/MasaarServiceProvider.php`:
 
 ```php
 <?php
 
 namespace App\Providers;
 
-use App\Services\CompliPay\CompliPayClient;
-use App\Services\CompliPay\InvoiceService;
-use App\Services\CompliPay\OrganizationService;
+use App\Services\Masaar\MasaarClient;
+use App\Services\Masaar\InvoiceService;
+use App\Services\Masaar\OrganizationService;
 use Illuminate\Support\ServiceProvider;
 
-class CompliPayServiceProvider extends ServiceProvider
+class MasaarServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->singleton(CompliPayClient::class, function ($app) {
-            return new CompliPayClient();
+        $this->app->singleton(MasaarClient::class, function ($app) {
+            return new MasaarClient();
         });
 
         $this->app->singleton(InvoiceService::class, function ($app) {
-            return new InvoiceService($app->make(CompliPayClient::class));
+            return new InvoiceService($app->make(MasaarClient::class));
         });
 
         $this->app->singleton(OrganizationService::class, function ($app) {
-            return new OrganizationService($app->make(CompliPayClient::class));
+            return new OrganizationService($app->make(MasaarClient::class));
         });
     }
 
     public function boot(): void
     {
         $this->publishes([
-            __DIR__.'/../../config/complipay.php' => config_path('complipay.php'),
-        ], 'complipay-config');
+            __DIR__.'/../../config/masaar.php' => config_path('masaar.php'),
+        ], 'masaar-config');
     }
 }
 ```
@@ -662,7 +662,7 @@ Register in `config/app.php`:
 ```php
 'providers' => [
     // ...
-    App\Providers\CompliPayServiceProvider::class,
+    App\Providers\MasaarServiceProvider::class,
 ],
 ```
 
@@ -670,12 +670,12 @@ Register in `config/app.php`:
 
 ## 6. Database Changes
 
-### Migration for CompliPay Integration
+### Migration for Masaar Integration
 
 Create migration:
 
 ```bash
-php artisan make:migration add_complipay_fields_to_invoices_table
+php artisan make:migration add_masaar_fields_to_invoices_table
 ```
 
 ```php
@@ -690,9 +690,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('invoices', function (Blueprint $table) {
-            // CompliPay reference
-            $table->string('complipay_id')->nullable()->after('id');
-            $table->index('complipay_id');
+            // Masaar reference
+            $table->string('masaar_id')->nullable()->after('id');
+            $table->index('masaar_id');
 
             // ZATCA compliance data
             $table->string('zatca_status')->default('pending')->after('status');
@@ -709,11 +709,11 @@ return new class extends Migration
             $table->timestamp('zatca_cleared_at')->nullable();
         });
 
-        // Add CompliPay organization mapping to companies
+        // Add Masaar organization mapping to companies
         Schema::table('companies', function (Blueprint $table) {
-            $table->string('complipay_org_id')->nullable()->after('id');
-            $table->string('complipay_onboarding_status')->default('pending');
-            $table->index('complipay_org_id');
+            $table->string('masaar_org_id')->nullable()->after('id');
+            $table->string('masaar_onboarding_status')->default('pending');
+            $table->index('masaar_org_id');
         });
     }
 
@@ -721,7 +721,7 @@ return new class extends Migration
     {
         Schema::table('invoices', function (Blueprint $table) {
             $table->dropColumn([
-                'complipay_id',
+                'masaar_id',
                 'zatca_status',
                 'zatca_clearance_status',
                 'zatca_reporting_status',
@@ -736,7 +736,7 @@ return new class extends Migration
         });
 
         Schema::table('companies', function (Blueprint $table) {
-            $table->dropColumn(['complipay_org_id', 'complipay_onboarding_status']);
+            $table->dropColumn(['masaar_org_id', 'masaar_onboarding_status']);
         });
     }
 };
@@ -762,8 +762,8 @@ Update `app/Http/Controllers/InvoiceController.php`:
 namespace App\Http\Controllers;
 
 use App\Models\Invoice;
-use App\Services\CompliPay\InvoiceService;
-use App\Services\CompliPay\CompliPayException;
+use App\Services\Masaar\InvoiceService;
+use App\Services\Masaar\MasaarException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -793,16 +793,16 @@ class InvoiceController extends Controller
         $invoice = Invoice::create($validated);
         $invoice->load('items', 'company');
 
-        // Submit to CompliPay for ZATCA compliance
+        // Submit to Masaar for ZATCA compliance
         try {
             $result = $this->compliPayInvoice->createAndSubmit(
                 $invoice,
                 $invoice->company
             );
 
-            // Update invoice with CompliPay data
+            // Update invoice with Masaar data
             $invoice->update([
-                'complipay_id' => $result['complipay_id'],
+                'masaar_id' => $result['masaar_id'],
                 'zatca_status' => $result['zatca_status'],
                 'zatca_clearance_status' => $result['clearance_status'],
                 'zatca_reporting_status' => $result['reporting_status'],
@@ -827,7 +827,7 @@ class InvoiceController extends Controller
                 ],
             ], 201);
 
-        } catch (CompliPayException $e) {
+        } catch (MasaarException $e) {
             Log::error('ZATCA submission failed', [
                 'invoice_id' => $invoice->id,
                 'error' => $e->getMessage(),
@@ -867,7 +867,7 @@ class InvoiceController extends Controller
             );
 
             $invoice->update([
-                'complipay_id' => $result['complipay_id'],
+                'masaar_id' => $result['masaar_id'],
                 'zatca_status' => $result['zatca_status'],
                 'zatca_clearance_status' => $result['clearance_status'],
                 'zatca_invoice_hash' => $result['hash'],
@@ -883,7 +883,7 @@ class InvoiceController extends Controller
                 'invoice' => $invoice->fresh(),
             ]);
 
-        } catch (CompliPayException $e) {
+        } catch (MasaarException $e) {
             $invoice->update([
                 'zatca_status' => 'failed',
                 'zatca_errors' => $e->getErrors(),
@@ -901,14 +901,14 @@ class InvoiceController extends Controller
      */
     public function zatcaStatus(Invoice $invoice)
     {
-        if (!$invoice->complipay_id) {
+        if (!$invoice->masaar_id) {
             return response()->json([
                 'status' => 'not_submitted',
             ]);
         }
 
         try {
-            $status = $this->compliPayInvoice->getStatus($invoice->complipay_id);
+            $status = $this->compliPayInvoice->getStatus($invoice->masaar_id);
 
             // Update local status if changed
             if ($status['status'] !== $invoice->zatca_status) {
@@ -920,7 +920,7 @@ class InvoiceController extends Controller
 
             return response()->json($status);
 
-        } catch (CompliPayException $e) {
+        } catch (MasaarException $e) {
             return response()->json([
                 'error' => $e->getMessage(),
             ], 500);
@@ -939,8 +939,8 @@ Create `app/Jobs/SubmitInvoiceToZatca.php`:
 namespace App\Jobs;
 
 use App\Models\Invoice;
-use App\Services\CompliPay\InvoiceService;
-use App\Services\CompliPay\CompliPayException;
+use App\Services\Masaar\InvoiceService;
+use App\Services\Masaar\MasaarException;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -968,7 +968,7 @@ class SubmitInvoiceToZatca implements ShouldQueue
             );
 
             $this->invoice->update([
-                'complipay_id' => $result['complipay_id'],
+                'masaar_id' => $result['masaar_id'],
                 'zatca_status' => $result['zatca_status'],
                 'zatca_clearance_status' => $result['clearance_status'],
                 'zatca_reporting_status' => $result['reporting_status'],
@@ -984,7 +984,7 @@ class SubmitInvoiceToZatca implements ShouldQueue
                 'zatca_status' => $result['zatca_status'],
             ]);
 
-        } catch (CompliPayException $e) {
+        } catch (MasaarException $e) {
             Log::error('ZATCA submission failed', [
                 'invoice_id' => $this->invoice->id,
                 'error' => $e->getMessage(),
@@ -1021,7 +1021,7 @@ return response()->json([
 
 ### Webhook Controller
 
-Create `app/Http/Controllers/CompliPayWebhookController.php`:
+Create `app/Http/Controllers/MasaarWebhookController.php`:
 
 ```php
 <?php
@@ -1032,23 +1032,23 @@ use App\Models\Invoice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
-class CompliPayWebhookController extends Controller
+class MasaarWebhookController extends Controller
 {
     /**
-     * Handle CompliPay webhooks
+     * Handle Masaar webhooks
      */
     public function handle(Request $request)
     {
         // Verify webhook signature
         if (!$this->verifySignature($request)) {
-            Log::warning('Invalid CompliPay webhook signature');
+            Log::warning('Invalid Masaar webhook signature');
             return response()->json(['error' => 'Invalid signature'], 401);
         }
 
         $payload = $request->all();
         $event = $payload['event'] ?? null;
 
-        Log::info('CompliPay webhook received', [
+        Log::info('Masaar webhook received', [
             'event' => $event,
             'invoice_id' => $payload['data']['invoice_id'] ?? null,
         ]);
@@ -1067,8 +1067,8 @@ class CompliPayWebhookController extends Controller
      */
     private function verifySignature(Request $request): bool
     {
-        $signature = $request->header('X-CompliPay-Signature');
-        $secret = config('complipay.webhook.secret');
+        $signature = $request->header('X-Masaar-Signature');
+        $secret = config('masaar.webhook.secret');
 
         if (!$signature || !$secret) {
             return false;
@@ -1090,7 +1090,7 @@ class CompliPayWebhookController extends Controller
     {
         $compliPayId = $payload['data']['invoice_id'];
 
-        $invoice = Invoice::where('complipay_id', $compliPayId)->first();
+        $invoice = Invoice::where('masaar_id', $compliPayId)->first();
 
         if ($invoice) {
             $invoice->update([
@@ -1114,7 +1114,7 @@ class CompliPayWebhookController extends Controller
     {
         $compliPayId = $payload['data']['invoice_id'];
 
-        $invoice = Invoice::where('complipay_id', $compliPayId)->first();
+        $invoice = Invoice::where('masaar_id', $compliPayId)->first();
 
         if ($invoice) {
             $invoice->update([
@@ -1133,7 +1133,7 @@ class CompliPayWebhookController extends Controller
     {
         $compliPayId = $payload['data']['invoice_id'];
 
-        $invoice = Invoice::where('complipay_id', $compliPayId)->first();
+        $invoice = Invoice::where('masaar_id', $compliPayId)->first();
 
         if ($invoice) {
             $invoice->update([
@@ -1174,23 +1174,23 @@ class CompliPayWebhookController extends Controller
 Add to `routes/api.php`:
 
 ```php
-use App\Http\Controllers\CompliPayWebhookController;
+use App\Http\Controllers\MasaarWebhookController;
 
-// CompliPay webhooks (no auth required, verified by signature)
-Route::post('/webhooks/complipay', [CompliPayWebhookController::class, 'handle'])
+// Masaar webhooks (no auth required, verified by signature)
+Route::post('/webhooks/masaar', [MasaarWebhookController::class, 'handle'])
     ->withoutMiddleware(['auth', 'throttle']);
 ```
 
-### Register Webhook with CompliPay
+### Register Webhook with Masaar
 
 After deployment, register webhook URL:
 
 ```bash
-curl -X POST https://api.complipay.sa/api/webhooks \
+curl -X POST https://api.masaar.sa/api/webhooks \
   -H "X-API-Key: your_api_key" \
   -H "Content-Type: application/json" \
   -d '{
-    "url": "https://your-taxfly-domain.com/api/webhooks/complipay",
+    "url": "https://your-taxfly-domain.com/api/webhooks/masaar",
     "events": ["invoice.cleared", "invoice.reported", "invoice.rejected", "certificate.expiring"],
     "secret": "your_webhook_secret"
   }'
@@ -1202,7 +1202,7 @@ curl -X POST https://api.complipay.sa/api/webhooks \
 
 ### Test Configuration
 
-Create `tests/Feature/CompliPayIntegrationTest.php`:
+Create `tests/Feature/MasaarIntegrationTest.php`:
 
 ```php
 <?php
@@ -1211,11 +1211,11 @@ namespace Tests\Feature;
 
 use App\Models\Invoice;
 use App\Models\Company;
-use App\Services\CompliPay\InvoiceService;
-use App\Services\CompliPay\CompliPayClient;
+use App\Services\Masaar\InvoiceService;
+use App\Services\Masaar\MasaarClient;
 use Tests\TestCase;
 
-class CompliPayIntegrationTest extends TestCase
+class MasaarIntegrationTest extends TestCase
 {
     /**
      * Test invoice creation and submission
@@ -1235,7 +1235,7 @@ class CompliPayIntegrationTest extends TestCase
 
         $result = $service->createAndSubmit($invoice, $company);
 
-        $this->assertArrayHasKey('complipay_id', $result);
+        $this->assertArrayHasKey('masaar_id', $result);
         $this->assertArrayHasKey('zatca_status', $result);
         $this->assertArrayHasKey('qr_code', $result);
         $this->assertNotEmpty($result['qr_code']);
@@ -1276,7 +1276,7 @@ class CompliPayIntegrationTest extends TestCase
 1. **Environment Setup**
    ```bash
    # Ensure sandbox configuration
-   COMPLIPAY_BASE_URL=https://sandbox.complipay.sa
+   COMPLIPAY_BASE_URL=https://sandbox.masaar.sa
    ```
 
 2. **Test Standard Invoice (B2B)**
@@ -1320,21 +1320,21 @@ class CompliPayIntegrationTest extends TestCase
 ## 10. Migration Checklist
 
 ### Phase 1: Setup (Day 1-2)
-- [ ] Install CompliPay SDK/dependencies
+- [ ] Install Masaar SDK/dependencies
 - [ ] Create configuration file
 - [ ] Set environment variables
 - [ ] Run database migrations
 - [ ] Register service provider
 
 ### Phase 2: Development (Day 3-7)
-- [ ] Create CompliPayClient
+- [ ] Create MasaarClient
 - [ ] Create InvoiceService
 - [ ] Create OrganizationService
 - [ ] Update Invoice model
 - [ ] Update InvoiceController
 
 ### Phase 3: Onboarding (Day 8-10)
-- [ ] Register organization in CompliPay
+- [ ] Register organization in Masaar
 - [ ] Obtain ZATCA OTP from Fatoora Portal
 - [ ] Complete CCSID request
 - [ ] Submit compliance test invoices
@@ -1370,13 +1370,13 @@ Error: Authentication failed
 ```
 Error: Organization {id} not found
 ```
-**Solution**: Register company with CompliPay first using `OrganizationService::register()`.
+**Solution**: Register company with Masaar first using `OrganizationService::register()`.
 
 #### 3. "Certificate not configured"
 ```
 Error: No valid ZATCA certificate
 ```
-**Solution**: Complete ZATCA onboarding process via CompliPay.
+**Solution**: Complete ZATCA onboarding process via Masaar.
 
 #### 4. "Invoice validation failed"
 ```
@@ -1392,7 +1392,7 @@ Error: BR-KSA-* validation errors
 1. Verify webhook URL is publicly accessible
 2. Check webhook secret matches
 3. Verify HTTPS certificate is valid
-4. Check firewall allows CompliPay IPs
+4. Check firewall allows Masaar IPs
 
 ### Logging
 
@@ -1404,14 +1404,14 @@ LOG_LEVEL=debug
 
 Check logs:
 ```bash
-tail -f storage/logs/laravel.log | grep -i complipay
+tail -f storage/logs/laravel.log | grep -i masaar
 ```
 
 ### Support Contacts
 
-- **CompliPay Technical Support**: support@complipay.sa
-- **Documentation**: https://docs.complipay.sa
-- **API Status**: https://status.complipay.sa
+- **Masaar Technical Support**: support@masaar.sa
+- **Documentation**: https://docs.masaar.sa
+- **API Status**: https://status.masaar.sa
 
 ---
 
@@ -1499,14 +1499,14 @@ $invoiceData = [
 | BR-KSA-02 | Missing seller address | Provide complete address |
 | BR-KSA-08 | Invalid ICV | ICV must be sequential |
 | BR-KSA-31 | Tax calculation error | Verify line item totals |
-| BR-KSA-40 | Invalid QR code | Re-generate through CompliPay |
+| BR-KSA-40 | Invalid QR code | Re-generate through Masaar |
 | BR-KSA-52 | Certificate expired | Renew ZATCA certificate |
 
 ---
 
 *Document Version: 1.1*
 *Last Updated: 2026-02-03*
-*CompliPay API Version: v1*
+*Masaar API Version: v1*
 
 **Changelog:**
 - v1.1: Added multi-branch EGS support, foreign currency invoices, branch API endpoints

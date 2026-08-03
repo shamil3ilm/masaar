@@ -1,24 +1,24 @@
 <?php
 
 /**
- * CompliPay PHP SDK
+ * Masaar PHP SDK
  *
  * ZATCA-compliant e-invoicing API client for PHP 7.4+
  * Compatible with Laravel 8, 9, 10, 11, 12 and any PHP application.
  *
- * @package CompliPay
+ * @package Masaar
  * @version 1.0.0
  */
 
-namespace CompliPay;
+namespace Masaar;
 
 use Exception;
 use InvalidArgumentException;
 
 /**
- * Base exception for CompliPay errors.
+ * Base exception for Masaar errors.
  */
-class CompliPayException extends Exception
+class MasaarException extends Exception
 {
     /** @var array */
     protected $errors;
@@ -38,7 +38,7 @@ class CompliPayException extends Exception
 /**
  * Authentication error.
  */
-class AuthenticationException extends CompliPayException
+class AuthenticationException extends MasaarException
 {
     public function __construct(string $message = 'Invalid API key or token')
     {
@@ -49,7 +49,7 @@ class AuthenticationException extends CompliPayException
 /**
  * Validation error.
  */
-class ValidationException extends CompliPayException
+class ValidationException extends MasaarException
 {
     public function __construct(string $message, array $errors = [])
     {
@@ -60,7 +60,7 @@ class ValidationException extends CompliPayException
 /**
  * ZATCA submission error.
  */
-class ZatcaException extends CompliPayException
+class ZatcaException extends MasaarException
 {
     public function __construct(string $message, array $errors = [])
     {
@@ -201,7 +201,7 @@ class HttpClient
     }
 
     /**
-     * @throws CompliPayException
+     * @throws MasaarException
      */
     private function handleResponse(array $response): array
     {
@@ -220,7 +220,7 @@ class HttpClient
         }
 
         if ($statusCode >= 400) {
-            throw new CompliPayException(
+            throw new MasaarException(
                 $data['message'] ?? "Request failed with status {$statusCode}",
                 $statusCode,
                 $data['errors'] ?? []
@@ -270,7 +270,7 @@ class HttpClient
         curl_close($ch);
 
         if ($response === false) {
-            throw new CompliPayException("cURL error: {$error}");
+            throw new MasaarException("cURL error: {$error}");
         }
 
         $responseData = json_decode($response, true) ?? ['message' => $response];
@@ -564,13 +564,13 @@ class WebhooksResource
 }
 
 /**
- * CompliPay API Client.
+ * Masaar API Client.
  *
  * ZATCA-compliant e-invoicing API client for PHP 7.4+
  *
  * @example
- * $client = new CompliPayClient([
- *     'base_url' => 'https://api.complipay.com',
+ * $client = new MasaarClient([
+ *     'base_url' => 'https://api.masaar.com',
  *     'api_key' => 'your_api_key',
  * ]);
  *
@@ -582,7 +582,7 @@ class WebhooksResource
  *
  * $client->compliance->submit($invoice['data']['id']);
  */
-class CompliPayClient
+class MasaarClient
 {
     /** @var InvoicesResource */
     public $invoices;
