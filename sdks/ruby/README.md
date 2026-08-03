@@ -1,4 +1,4 @@
-# CompliPay Ruby SDK
+# Masaar Ruby SDK
 
 ZATCA-compliant e-invoicing API client for Ruby 2.7+.
 
@@ -7,7 +7,7 @@ ZATCA-compliant e-invoicing API client for Ruby 2.7+.
 Add to your Gemfile:
 
 ```ruby
-gem 'complipay'
+gem 'masaar'
 ```
 
 Then run:
@@ -19,16 +19,16 @@ bundle install
 Or install directly:
 
 ```bash
-gem install complipay
+gem install masaar
 ```
 
 ## Quick Start
 
 ```ruby
-require 'complipay'
+require 'masaar'
 
 # Initialize client
-client = CompliPay::Client.new(
+client = Masaar::Client.new(
   base_url: 'http://localhost:8000',  # Your server URL
   api_key: 'your_api_key',
   api_secret: 'your_api_secret'
@@ -120,7 +120,7 @@ status = client.compliance.status(invoice_id)
 ```ruby
 # Subscribe to events
 webhook = client.webhooks.create(
-  url: 'https://your-app.com/webhooks/complipay',
+  url: 'https://your-app.com/webhooks/masaar',
   events: ['invoice.cleared', 'invoice.rejected'],
   secret: 'your-webhook-secret'
 )
@@ -129,11 +129,11 @@ webhook = client.webhooks.create(
 class WebhooksController < ApplicationController
   skip_before_action :verify_authenticity_token
 
-  def complipay
+  def masaar
     payload = request.raw_post
-    signature = request.headers['X-CompliPay-Signature']
+    signature = request.headers['X-Masaar-Signature']
 
-    unless CompliPay::Webhook.verify_signature(payload, signature, ENV['WEBHOOK_SECRET'])
+    unless Masaar::Webhook.verify_signature(payload, signature, ENV['WEBHOOK_SECRET'])
       head :unauthorized
       return
     end
@@ -157,16 +157,16 @@ end
 ```ruby
 begin
   invoice = client.invoices.create(params)
-rescue CompliPay::AuthenticationError => e
+rescue Masaar::AuthenticationError => e
   puts "Auth failed: #{e.message}"
-rescue CompliPay::ValidationError => e
+rescue Masaar::ValidationError => e
   puts "Validation failed: #{e.message}"
   e.errors.each { |err| puts "  - #{err}" }
-rescue CompliPay::ZatcaError => e
+rescue Masaar::ZatcaError => e
   puts "ZATCA error: #{e.message}"
-rescue CompliPay::RateLimitError => e
+rescue Masaar::RateLimitError => e
   puts "Rate limited - retry after #{e.retry_after} seconds"
-rescue CompliPay::Error => e
+rescue Masaar::Error => e
   puts "API error: #{e.message}"
 end
 ```
@@ -174,8 +174,8 @@ end
 ## Rails Integration
 
 ```ruby
-# config/initializers/complipay.rb
-CompliPay.configure do |config|
+# config/initializers/masaar.rb
+Masaar.configure do |config|
   config.base_url = ENV['COMPLIPAY_BASE_URL'] || 'http://localhost:8000'
   config.api_key = ENV['COMPLIPAY_API_KEY']
   config.api_secret = ENV['COMPLIPAY_API_SECRET']
@@ -183,7 +183,7 @@ CompliPay.configure do |config|
 end
 
 # Usage in your app
-client = CompliPay::Client.new
+client = Masaar::Client.new
 invoice = client.invoices.create(...)
 ```
 

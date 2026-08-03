@@ -1,4 +1,4 @@
-# CompliPay Docker Compose Configuration
+# Masaar Docker Compose Configuration
 # ZATCA E-Invoicing Compliance Platform
 #
 # For TaxFly Infrastructure Deployment:
@@ -12,20 +12,20 @@ version: '3.8'
 
 services:
   # ==========================================================================
-  # CompliPay Application
+  # Masaar Application
   # ==========================================================================
   app:
     build:
       context: .
       dockerfile: Dockerfile
-    image: complipay/zatca-api:${IMAGE_TAG:-latest}
-    container_name: complipay-app
+    image: masaar/zatca-api:${IMAGE_TAG:-latest}
+    container_name: masaar-app
     restart: unless-stopped
     ports:
       - "${APP_PORT:-8000}:80"
     environment:
       # Application
-      APP_NAME: CompliPay
+      APP_NAME: Masaar
       APP_ENV: ${APP_ENV:-production}
       APP_KEY: ${APP_KEY}
       APP_DEBUG: ${APP_DEBUG:-false}
@@ -35,8 +35,8 @@ services:
       DB_CONNECTION: ${DB_CONNECTION:-mysql}
       DB_HOST: ${DB_HOST:-db}
       DB_PORT: ${DB_PORT:-3306}
-      DB_DATABASE: ${DB_DATABASE:-complipay}
-      DB_USERNAME: ${DB_USERNAME:-complipay}
+      DB_DATABASE: ${DB_DATABASE:-masaar}
+      DB_USERNAME: ${DB_USERNAME:-masaar}
       DB_PASSWORD: ${DB_PASSWORD}
 
       # Redis (for queues and cache)
@@ -62,15 +62,15 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
     volumes:
       # Persistent storage for logs and uploads
-      - complipay-storage:/var/www/html/storage
-      - complipay-logs:/var/www/html/storage/logs
+      - masaar-storage:/var/www/html/storage
+      - masaar-logs:/var/www/html/storage/logs
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
     networks:
-      - complipay-network
+      - masaar-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/api/health"]
       interval: 30s
@@ -83,17 +83,17 @@ services:
   # ==========================================================================
   db:
     image: mysql:8.0
-    container_name: complipay-db
+    container_name: masaar-db
     restart: unless-stopped
     ports:
       - "${DB_EXTERNAL_PORT:-3306}:3306"
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${DB_DATABASE:-complipay}
-      MYSQL_USER: ${DB_USERNAME:-complipay}
+      MYSQL_DATABASE: ${DB_DATABASE:-masaar}
+      MYSQL_USER: ${DB_USERNAME:-masaar}
       MYSQL_PASSWORD: ${DB_PASSWORD}
     volumes:
-      - complipay-mysql:/var/lib/mysql
+      - masaar-mysql:/var/lib/mysql
       - ./docker/mysql/init:/docker-entrypoint-initdb.d
     command:
       - --character-set-server=utf8mb4
@@ -102,7 +102,7 @@ services:
       - --max-connections=500
       - --innodb-buffer-pool-size=256M
     networks:
-      - complipay-network
+      - masaar-network
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
       interval: 10s
@@ -115,17 +115,17 @@ services:
   # ==========================================================================
   redis:
     image: redis:7-alpine
-    container_name: complipay-redis
+    container_name: masaar-redis
     restart: unless-stopped
     ports:
       - "${REDIS_EXTERNAL_PORT:-6379}:6379"
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-complipay_redis}
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-masaar_redis}
     volumes:
-      - complipay-redis:/data
+      - masaar-redis:/data
     networks:
-      - complipay-network
+      - masaar-network
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-complipay_redis}", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-masaar_redis}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -134,7 +134,7 @@ services:
 # Networks
 # ==========================================================================
 networks:
-  complipay-network:
+  masaar-network:
     driver: bridge
     ipam:
       config:
@@ -144,11 +144,11 @@ networks:
 # Volumes (Persistent Data)
 # ==========================================================================
 volumes:
-  complipay-storage:
+  masaar-storage:
     driver: local
-  complipay-logs:
+  masaar-logs:
     driver: local
-  complipay-mysql:
+  masaar-mysql:
     driver: local
-  complipay-redis:
+  masaar-redis:
     driver: local

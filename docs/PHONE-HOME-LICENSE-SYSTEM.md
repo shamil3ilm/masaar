@@ -1,6 +1,6 @@
 # Phone-Home License System
 
-This document describes the CompliPay license validation system using Cloudflare Workers.
+This document describes the Masaar license validation system using Cloudflare Workers.
 
 ## Architecture
 
@@ -12,7 +12,7 @@ This document describes the CompliPay license validation system using Cloudflare
 │   Partner's Server                    Cloudflare Worker (Free)           │
 │   ┌─────────────────┐                ┌─────────────────────────┐        │
 │   │                 │   1. Validate  │                         │        │
-│   │  CompliPay App  │ ─────────────► │  License Server         │        │
+│   │  Masaar App  │ ─────────────► │  License Server         │        │
 │   │  (Docker)       │                │  raspy-wood-ef0d        │        │
 │   │                 │ ◄───────────── │  .shamil3ilm.workers.dev│        │
 │   └─────────────────┘   2. Response  └──────────┬──────────────┘        │

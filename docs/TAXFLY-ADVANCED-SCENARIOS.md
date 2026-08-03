@@ -61,7 +61,7 @@ For a TaxFly user to become ZATCA-compliant, collect the following:
 |-------|-------------|--------|
 | `otp` | One-Time Password | ZATCA Fatoora Portal |
 | `device_serial` | EGS Device Serial | Auto-generated or provided |
-| `solution_name` | E-invoicing solution name | "CompliPay" |
+| `solution_name` | E-invoicing solution name | "Masaar" |
 
 ### 1.3 Optional Enhancement Data
 
@@ -91,7 +91,7 @@ TaxFly User (Account)
         └── Store 3 (EGS Device)
 ```
 
-### 2.2 CompliPay Multi-Organization Support
+### 2.2 Masaar Multi-Organization Support
 
 Each business needs **separate ZATCA onboarding**:
 
@@ -104,13 +104,13 @@ class User {
 }
 
 class Business {
-    // Each business has its own CompliPay organization
+    // Each business has its own Masaar organization
     protected $fillable = [
         'user_id',
         'name',
         'vat_number',
         'cr_number',
-        'complipay_org_id',        // Unique per business
+        'masaar_org_id',        // Unique per business
         'zatca_onboarding_status', // Independent status
     ];
 
@@ -123,7 +123,7 @@ class Business {
 ### 2.3 Registration Flow for Multiple Businesses
 
 ```php
-namespace App\Services\CompliPay;
+namespace App\Services\Masaar;
 
 class MultiBusinessService
 {
@@ -138,10 +138,10 @@ class MultiBusinessService
 
         foreach ($user->businesses as $business) {
             // Skip if already registered
-            if ($business->complipay_org_id) {
+            if ($business->masaar_org_id) {
                 $results[$business->id] = [
                     'status' => 'already_registered',
-                    'org_id' => $business->complipay_org_id,
+                    'org_id' => $business->masaar_org_id,
                 ];
                 continue;
             }
@@ -156,7 +156,7 @@ class MultiBusinessService
             ]);
 
             $business->update([
-                'complipay_org_id' => $org['id'],
+                'masaar_org_id' => $org['id'],
                 'zatca_onboarding_status' => 'pending',
             ]);
 
@@ -179,7 +179,7 @@ class MultiBusinessService
                 'business_id' => $business->id,
                 'business_name' => $business->name,
                 'vat_number' => $business->vat_number,
-                'complipay_org_id' => $business->complipay_org_id,
+                'masaar_org_id' => $business->masaar_org_id,
                 'onboarding_status' => $business->zatca_onboarding_status,
                 'can_submit_invoices' => $business->zatca_onboarding_status === 'completed',
             ];
@@ -201,17 +201,17 @@ class InvoiceService
         // Get the business for this invoice
         $business = $invoice->business;
 
-        if (!$business->complipay_org_id) {
-            throw new Exception("Business {$business->name} not registered with CompliPay");
+        if (!$business->masaar_org_id) {
+            throw new Exception("Business {$business->name} not registered with Masaar");
         }
 
         if ($business->zatca_onboarding_status !== 'completed') {
             throw new Exception("Business {$business->name} ZATCA onboarding incomplete");
         }
 
-        // Submit to CompliPay with organization context
+        // Submit to Masaar with organization context
         return $this->client->post('/api/invoices', [
-            'organization_id' => $business->complipay_org_id,
+            'organization_id' => $business->masaar_org_id,
             'invoice_data' => $this->mapInvoiceData($invoice),
         ]);
     }
@@ -249,10 +249,10 @@ Schema::create('branches', function (Blueprint $table) {
 
     // ZATCA EGS identification
     $table->string('device_serial')->unique();
-    $table->string('complipay_egs_id')->nullable();
+    $table->string('masaar_egs_id')->nullable();
     $table->boolean('is_active')->default(true);
 
-    // Invoice counters (managed by CompliPay, but track locally)
+    // Invoice counters (managed by Masaar, but track locally)
     $table->unsignedBigInteger('last_icv')->default(0);
 
     $table->timestamps();
@@ -264,12 +264,12 @@ Schema::table('invoices', function (Blueprint $table) {
 });
 ```
 
-### 3.3 Branch Registration with CompliPay
+### 3.3 Branch Registration with Masaar
 
 ```php
 class BranchService
 {
-    private CompliPayClient $client;
+    private MasaarClient $client;
 
     /**
      * Register branch as EGS device
@@ -278,12 +278,12 @@ class BranchService
     {
         $business = $branch->business;
 
-        if (!$business->complipay_org_id) {
+        if (!$business->masaar_org_id) {
             throw new Exception("Business must be registered first");
         }
 
         $response = $this->client->post(
-            "/api/organizations/{$business->complipay_org_id}/egs-units",
+            "/api/organizations/{$business->masaar_org_id}/egs-units",
             [
                 'device_serial' => $branch->device_serial,
                 'branch_name' => $branch->name,
@@ -301,7 +301,7 @@ class BranchService
         );
 
         $branch->update([
-            'complipay_egs_id' => $response['egs_id'],
+            'masaar_egs_id' => $response['egs_id'],
         ]);
 
         return $response;
@@ -349,8 +349,8 @@ class InvoiceService
     private function submit(Invoice $invoice, Branch $branch): array
     {
         return $this->client->post('/api/invoices', [
-            'organization_id' => $branch->business->complipay_org_id,
-            'egs_unit_id' => $branch->complipay_egs_id,
+            'organization_id' => $branch->business->masaar_org_id,
+            'egs_unit_id' => $branch->masaar_egs_id,
             'invoice_data' => $this->mapInvoiceData($invoice),
         ]);
     }
@@ -668,7 +668,7 @@ Per ZATCA specification, foreign currency invoices ARE supported with these requ
    - First TaxTotal: Document currency amount with subtotals (BT-110)
    - Second TaxTotal: SAR amount only for VAT accounting (BT-111)
 
-**CompliPay Implementation:**
+**Masaar Implementation:**
 
 When submitting a foreign currency invoice:
 
@@ -684,7 +684,7 @@ $invoiceData = [
     // ... other fields
 ];
 
-// CompliPay will:
+// Masaar will:
 // 1. Set DocumentCurrencyCode = USD
 // 2. Set TaxCurrencyCode = SAR
 // 3. Generate TaxTotal in USD with subtotals
@@ -759,14 +759,14 @@ class MultiCurrencyService
 ### 6.1 Database Schema Changes
 
 ```php
-// Migration: Add CompliPay integration fields
+// Migration: Add Masaar integration fields
 
 // 1. Users table (no changes needed)
 
 // 2. Businesses table
 Schema::table('businesses', function (Blueprint $table) {
-    // CompliPay organization mapping
-    $table->string('complipay_org_id')->nullable()->index();
+    // Masaar organization mapping
+    $table->string('masaar_org_id')->nullable()->index();
     $table->enum('zatca_onboarding_status', [
         'pending', 'csr_generated', 'compliance_passed', 'completed', 'failed'
     ])->default('pending');
@@ -790,7 +790,7 @@ Schema::create('branches', function (Blueprint $table) {
     $table->string('name');
     $table->string('name_ar')->nullable();
     $table->string('device_serial')->unique();
-    $table->string('complipay_egs_id')->nullable();
+    $table->string('masaar_egs_id')->nullable();
 
     // Address fields
     $table->string('street');
@@ -809,8 +809,8 @@ Schema::table('invoices', function (Blueprint $table) {
     // Branch reference
     $table->foreignId('branch_id')->nullable()->constrained();
 
-    // CompliPay tracking
-    $table->string('complipay_id')->nullable()->index();
+    // Masaar tracking
+    $table->string('masaar_id')->nullable()->index();
 
     // ZATCA compliance data
     $table->string('zatca_status')->default('pending');
@@ -867,7 +867,7 @@ class Business extends Model
         'district',
         'city',
         'postal_code',
-        'complipay_org_id',
+        'masaar_org_id',
         'zatca_onboarding_status',
         'exemption_codes',
     ];
@@ -900,7 +900,7 @@ class Branch extends Model
         'name',
         'name_ar',
         'device_serial',
-        'complipay_egs_id',
+        'masaar_egs_id',
         'street',
         'building_number',
         'additional_number',
@@ -927,7 +927,7 @@ class Invoice extends Model
     protected $fillable = [
         // ... existing fields
         'branch_id',
-        'complipay_id',
+        'masaar_id',
         'zatca_status',
         'zatca_clearance_status',
         'zatca_reporting_status',
@@ -990,7 +990,7 @@ Route::prefix('zatca')->middleware('auth:api')->group(function () {
 });
 
 // Webhooks (no auth)
-Route::post('/webhooks/complipay', [CompliPayWebhookController::class, 'handle'])
+Route::post('/webhooks/masaar', [MasaarWebhookController::class, 'handle'])
     ->withoutMiddleware(['auth', 'throttle']);
 ```
 
@@ -1103,7 +1103,7 @@ Route::post('/webhooks/complipay', [CompliPayWebhookController::class, 'handle']
     {{-- Step indicator --}}
     <div class="steps">
         <div class="step {{ $step >= 1 ? 'completed' : '' }}">
-            1. Register with CompliPay
+            1. Register with Masaar
         </div>
         <div class="step {{ $step >= 2 ? 'completed' : '' }}">
             2. Get ZATCA OTP
@@ -1122,10 +1122,10 @@ Route::post('/webhooks/complipay', [CompliPayWebhookController::class, 'handle']
     {{-- Step content --}}
     @if($step === 1)
         <div class="step-content">
-            <h3>Step 1: Register with CompliPay</h3>
+            <h3>Step 1: Register with Masaar</h3>
             <p>We'll register your business with our ZATCA compliance service.</p>
 
-            <button onclick="registerWithCompliPay()" class="btn btn-primary">
+            <button onclick="registerWithMasaar()" class="btn btn-primary">
                 Register Business
             </button>
         </div>
@@ -1307,8 +1307,8 @@ User creates account in TaxFly
 │ STEP 1: Business Registration                                       │
 │ - User enters business details (name, VAT, CR, address)             │
 │ - TaxFly validates format locally                                   │
-│ - TaxFly calls CompliPay API to register organization               │
-│ - CompliPay validates VAT with ZATCA                                │
+│ - TaxFly calls Masaar API to register organization               │
+│ - Masaar validates VAT with ZATCA                                │
 └─────────────────────────────────────────────────────────────────────┘
            │
            ▼
@@ -1323,16 +1323,16 @@ User creates account in TaxFly
            ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │ STEP 3: CSR Generation (Automatic)                                  │
-│ - CompliPay generates ECDSA secp256k1 key pair                      │
-│ - CompliPay creates CSR with business details                       │
-│ - CompliPay submits CSR to ZATCA with OTP                           │
+│ - Masaar generates ECDSA secp256k1 key pair                      │
+│ - Masaar creates CSR with business details                       │
+│ - Masaar submits CSR to ZATCA with OTP                           │
 │ - ZATCA returns CCSID (Compliance Certificate)                      │
 └─────────────────────────────────────────────────────────────────────┘
            │
            ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │ STEP 4: Compliance Check                                            │
-│ - CompliPay submits 6 test invoices to ZATCA:                       │
+│ - Masaar submits 6 test invoices to ZATCA:                       │
 │   • Standard invoice (B2B)                                          │
 │   • Simplified invoice (B2C)                                        │
 │   • Standard credit note                                            │
@@ -1345,9 +1345,9 @@ User creates account in TaxFly
            ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │ STEP 5: Production CSID                                             │
-│ - CompliPay requests PCSID from ZATCA                               │
+│ - Masaar requests PCSID from ZATCA                               │
 │ - ZATCA issues production certificate                               │
-│ - CompliPay stores credentials securely                             │
+│ - Masaar stores credentials securely                             │
 │ - Business is now ZATCA-ready                                       │
 └─────────────────────────────────────────────────────────────────────┘
            │
@@ -1355,10 +1355,10 @@ User creates account in TaxFly
 ┌─────────────────────────────────────────────────────────────────────┐
 │ READY: Invoice Submission                                           │
 │ - User creates invoices in TaxFly                                   │
-│ - TaxFly sends to CompliPay                                         │
-│ - CompliPay generates XML, signs, submits to ZATCA                  │
+│ - TaxFly sends to Masaar                                         │
+│ - Masaar generates XML, signs, submits to ZATCA                  │
 │ - ZATCA clears/reports invoice                                      │
-│ - CompliPay returns QR code and status to TaxFly                    │
+│ - Masaar returns QR code and status to TaxFly                    │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -1369,7 +1369,7 @@ class ZatcaOnboardingService
 {
     public function __construct(
         private OrganizationService $orgService,
-        private CompliPayClient $client,
+        private MasaarClient $client,
     ) {}
 
     /**
@@ -1378,17 +1378,17 @@ class ZatcaOnboardingService
     public function onboard(Business $business, string $otp): array
     {
         // Step 1: Register if not already
-        if (!$business->complipay_org_id) {
+        if (!$business->masaar_org_id) {
             $org = $this->orgService->register($business);
             $business->update([
-                'complipay_org_id' => $org['id'],
+                'masaar_org_id' => $org['id'],
                 'zatca_onboarding_status' => 'pending',
             ]);
         }
 
         // Step 2: Start onboarding with OTP
         $csr = $this->client->post(
-            "/api/organizations/{$business->complipay_org_id}/onboarding",
+            "/api/organizations/{$business->masaar_org_id}/onboarding",
             ['otp' => $otp]
         );
 
@@ -1396,7 +1396,7 @@ class ZatcaOnboardingService
 
         // Step 3: Run compliance checks
         $compliance = $this->client->post(
-            "/api/organizations/{$business->complipay_org_id}/onboarding/compliance-check"
+            "/api/organizations/{$business->masaar_org_id}/onboarding/compliance-check"
         );
 
         if (!$compliance['all_passed']) {
@@ -1412,14 +1412,14 @@ class ZatcaOnboardingService
 
         // Step 4: Get production CSID
         $pcsid = $this->client->post(
-            "/api/organizations/{$business->complipay_org_id}/onboarding/complete"
+            "/api/organizations/{$business->masaar_org_id}/onboarding/complete"
         );
 
         $business->update(['zatca_onboarding_status' => 'completed']);
 
         return [
             'success' => true,
-            'organization_id' => $business->complipay_org_id,
+            'organization_id' => $business->masaar_org_id,
             'status' => 'completed',
             'message' => 'Business is now ZATCA-compliant and ready for invoice submission',
         ];
@@ -1472,14 +1472,14 @@ class ZatcaOnboardingService
 
 ### For TaxFly Development Team
 
-- [ ] Add `complipay_org_id` to businesses table
+- [ ] Add `masaar_org_id` to businesses table
 - [ ] Add `zatca_*` fields to invoices table
 - [ ] Create branches table with EGS device support
 - [ ] Add Arabic name fields where required
 - [ ] Add complete address fields (building_number, additional_number, district)
 - [ ] Add `country_code` to customers for cross-border
 - [ ] Add per-line tax exemption fields
-- [ ] Create CompliPayClient service
+- [ ] Create MasaarClient service
 - [ ] Create InvoiceService for mapping
 - [ ] Create OrganizationService for onboarding
 - [ ] Create webhook handler
@@ -1501,4 +1501,4 @@ class ZatcaOnboardingService
 
 *Document Version: 1.0*
 *Last Updated: 2026-02-03*
-*For use with CompliPay API v1*
+*For use with Masaar API v1*

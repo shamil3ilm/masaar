@@ -1,4 +1,4 @@
-# CompliPay Deployment Guide
+# Masaar Deployment Guide
 
 Complete deployment guide for production-ready ZATCA e-invoicing infrastructure.
 
@@ -108,9 +108,9 @@ extension=openssl
 ```bash
 # Create database and user
 sudo -u postgres psql << EOF
-CREATE USER complipay WITH PASSWORD 'your-strong-password-here';
-CREATE DATABASE complipay_prod OWNER complipay;
-GRANT ALL PRIVILEGES ON DATABASE complipay_prod TO complipay;
+CREATE USER masaar WITH PASSWORD 'your-strong-password-here';
+CREATE DATABASE masaar_prod OWNER masaar;
+GRANT ALL PRIVILEGES ON DATABASE masaar_prod TO masaar;
 EOF
 ```
 
@@ -120,7 +120,7 @@ Verify isolation level:
 
 ```sql
 -- Connect to database
-psql -U complipay -d complipay_prod
+psql -U masaar -d masaar_prod
 
 -- Check isolation level (MUST be READ COMMITTED or higher)
 SHOW default_transaction_isolation;
@@ -193,7 +193,7 @@ redis-cli -a your-redis-password ping
 
 ### Supervisor Configuration
 
-Create `/etc/supervisor/conf.d/complipay.conf`:
+Create `/etc/supervisor/conf.d/masaar.conf`:
 
 ```ini
 ;--------------------------------------------
@@ -202,9 +202,9 @@ Create `/etc/supervisor/conf.d/complipay.conf`:
 ; Dedicated workers for clearance/reporting
 ; Do NOT mix with long-running jobs
 ;--------------------------------------------
-[program:complipay-zatca-submissions]
+[program:masaar-zatca-submissions]
 process_name=%(program_name)s_%(process_num)02d
-command=php /var/www/complipay/artisan queue:work redis --queue=zatca-submissions --sleep=3 --tries=3 --max-time=3600 --memory=256
+command=php /var/www/masaar/artisan queue:work redis --queue=zatca-submissions --sleep=3 --tries=3 --max-time=3600 --memory=256
 autostart=true
 autorestart=true
 stopasgroup=true
@@ -212,7 +212,7 @@ killasgroup=true
 user=www-data
 numprocs=2
 redirect_stderr=true
-stdout_logfile=/var/log/complipay/zatca-submissions.log
+stdout_logfile=/var/log/masaar/zatca-submissions.log
 stopwaitsecs=120
 
 ;--------------------------------------------
@@ -220,9 +220,9 @@ stopwaitsecs=120
 ;--------------------------------------------
 ; Separate worker to prevent blocking submissions
 ;--------------------------------------------
-[program:complipay-webhooks]
+[program:masaar-webhooks]
 process_name=%(program_name)s_%(process_num)02d
-command=php /var/www/complipay/artisan queue:work redis --queue=webhooks --sleep=3 --tries=5 --max-time=3600 --memory=128
+command=php /var/www/masaar/artisan queue:work redis --queue=webhooks --sleep=3 --tries=5 --max-time=3600 --memory=128
 autostart=true
 autorestart=true
 stopasgroup=true
@@ -230,7 +230,7 @@ killasgroup=true
 user=www-data
 numprocs=1
 redirect_stderr=true
-stdout_logfile=/var/log/complipay/webhooks.log
+stdout_logfile=/var/log/masaar/webhooks.log
 stopwaitsecs=60
 
 ;--------------------------------------------
@@ -238,9 +238,9 @@ stopwaitsecs=60
 ;--------------------------------------------
 ; For non-critical background jobs
 ;--------------------------------------------
-[program:complipay-default]
+[program:masaar-default]
 process_name=%(program_name)s_%(process_num)02d
-command=php /var/www/complipay/artisan queue:work redis --queue=default --sleep=3 --tries=3 --max-time=3600 --memory=128
+command=php /var/www/masaar/artisan queue:work redis --queue=default --sleep=3 --tries=3 --max-time=3600 --memory=128
 autostart=true
 autorestart=true
 stopasgroup=true
@@ -248,27 +248,27 @@ killasgroup=true
 user=www-data
 numprocs=1
 redirect_stderr=true
-stdout_logfile=/var/log/complipay/default.log
+stdout_logfile=/var/log/masaar/default.log
 stopwaitsecs=60
 
 ;--------------------------------------------
 ; Laravel Scheduler
 ;--------------------------------------------
-[program:complipay-scheduler]
+[program:masaar-scheduler]
 process_name=%(program_name)s
-command=/bin/bash -c "while [ true ]; do php /var/www/complipay/artisan schedule:run --verbose --no-interaction >> /var/log/complipay/scheduler.log 2>&1; sleep 60; done"
+command=/bin/bash -c "while [ true ]; do php /var/www/masaar/artisan schedule:run --verbose --no-interaction >> /var/log/masaar/scheduler.log 2>&1; sleep 60; done"
 autostart=true
 autorestart=true
 user=www-data
 redirect_stderr=true
-stdout_logfile=/var/log/complipay/scheduler.log
+stdout_logfile=/var/log/masaar/scheduler.log
 ```
 
 ### Create Log Directory
 
 ```bash
-sudo mkdir -p /var/log/complipay
-sudo chown www-data:www-data /var/log/complipay
+sudo mkdir -p /var/log/masaar
+sudo chown www-data:www-data /var/log/masaar
 ```
 
 ### Start Workers
@@ -284,11 +284,11 @@ sudo supervisorctl status
 
 Expected output:
 ```
-complipay-zatca-submissions:complipay-zatca-submissions_00   RUNNING   pid 12345, uptime 0:01:00
-complipay-zatca-submissions:complipay-zatca-submissions_01   RUNNING   pid 12346, uptime 0:01:00
-complipay-webhooks:complipay-webhooks_00                      RUNNING   pid 12347, uptime 0:01:00
-complipay-default:complipay-default_00                        RUNNING   pid 12348, uptime 0:01:00
-complipay-scheduler                                           RUNNING   pid 12349, uptime 0:01:00
+masaar-zatca-submissions:masaar-zatca-submissions_00   RUNNING   pid 12345, uptime 0:01:00
+masaar-zatca-submissions:masaar-zatca-submissions_01   RUNNING   pid 12346, uptime 0:01:00
+masaar-webhooks:masaar-webhooks_00                      RUNNING   pid 12347, uptime 0:01:00
+masaar-default:masaar-default_00                        RUNNING   pid 12348, uptime 0:01:00
+masaar-scheduler                                           RUNNING   pid 12349, uptime 0:01:00
 ```
 
 ---
@@ -372,7 +372,7 @@ $schedule->call(function () {
 
 ```bash
 # Obtain certificate
-sudo certbot --nginx -d api.complipay.sa -d sandbox.complipay.sa
+sudo certbot --nginx -d api.masaar.sa -d sandbox.masaar.sa
 
 # Verify auto-renewal
 sudo certbot renew --dry-run
@@ -380,24 +380,24 @@ sudo certbot renew --dry-run
 
 ### Nginx Configuration
 
-Create `/etc/nginx/sites-available/complipay`:
+Create `/etc/nginx/sites-available/masaar`:
 
 ```nginx
 server {
     listen 80;
-    server_name api.complipay.sa sandbox.complipay.sa;
+    server_name api.masaar.sa sandbox.masaar.sa;
     return 301 https://$server_name$request_uri;
 }
 
 server {
     listen 443 ssl http2;
-    server_name api.complipay.sa;
+    server_name api.masaar.sa;
 
-    root /var/www/complipay/public;
+    root /var/www/masaar/public;
     index index.php;
 
-    ssl_certificate /etc/letsencrypt/live/api.complipay.sa/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/api.complipay.sa/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/api.masaar.sa/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.masaar.sa/privkey.pem;
 
     # Modern SSL configuration
     ssl_protocols TLSv1.2 TLSv1.3;
@@ -437,7 +437,7 @@ server {
 Enable site:
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/complipay /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/masaar /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl reload nginx
 ```
@@ -461,7 +461,7 @@ aws configure
 ### Storage Structure
 
 ```
-s3://complipay-invoices/
+s3://masaar-invoices/
 ├── {organization_id}/
 │   ├── {year}/
 │   │   ├── {month}/
@@ -509,11 +509,11 @@ Note: 2555 days ≈ 7 years (ZATCA retention requirement)
 #--------------------------------------------
 # Application
 #--------------------------------------------
-APP_NAME=CompliPay
+APP_NAME=Masaar
 APP_ENV=production
 APP_KEY=base64:your-generated-key
 APP_DEBUG=false
-APP_URL=https://api.complipay.sa
+APP_URL=https://api.masaar.sa
 
 #--------------------------------------------
 # Database (CRITICAL)
@@ -521,8 +521,8 @@ APP_URL=https://api.complipay.sa
 DB_CONNECTION=pgsql
 DB_HOST=127.0.0.1
 DB_PORT=5432
-DB_DATABASE=complipay_prod
-DB_USERNAME=complipay
+DB_DATABASE=masaar_prod
+DB_USERNAME=masaar
 DB_PASSWORD=your-strong-password
 
 #--------------------------------------------
@@ -543,7 +543,7 @@ FILESYSTEM_DISK=s3
 AWS_ACCESS_KEY_ID=your-access-key
 AWS_SECRET_ACCESS_KEY=your-secret-key
 AWS_DEFAULT_REGION=me-south-1
-AWS_BUCKET=complipay-invoices
+AWS_BUCKET=masaar-invoices
 AWS_USE_PATH_STYLE_ENDPOINT=false
 
 #--------------------------------------------
@@ -592,14 +592,14 @@ MAIL_HOST=smtp.mailgun.org
 MAIL_PORT=587
 MAIL_USERNAME=your-mailgun-username
 MAIL_PASSWORD=your-mailgun-password
-MAIL_FROM_ADDRESS=noreply@complipay.sa
-MAIL_FROM_NAME="CompliPay Notifications"
+MAIL_FROM_ADDRESS=noreply@masaar.sa
+MAIL_FROM_NAME="Masaar Notifications"
 ```
 
 ### Deploy Application
 
 ```bash
-cd /var/www/complipay
+cd /var/www/masaar
 
 # Install dependencies
 composer install --no-dev --optimize-autoloader
@@ -632,7 +632,7 @@ Create `scripts/verify-deployment.sh`:
 #!/bin/bash
 
 echo "=========================================="
-echo "CompliPay Pre-Launch Verification"
+echo "Masaar Pre-Launch Verification"
 echo "=========================================="
 
 ERRORS=0
@@ -716,7 +716,7 @@ fi
 
 # 9. Check SSL certificate
 echo -n "SSL Certificate: "
-EXPIRY=$(echo | openssl s_client -servername api.complipay.sa -connect api.complipay.sa:443 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
+EXPIRY=$(echo | openssl s_client -servername api.masaar.sa -connect api.masaar.sa:443 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
 if [[ -n "$EXPIRY" ]]; then
     echo "✅ OK (expires: $EXPIRY)"
 else
@@ -778,17 +778,17 @@ echo "  Latest Hash: $PRE_LATEST_HASH"
 # 2. Create backup
 echo "Step 2: Creating backup..."
 BACKUP_FILE="/tmp/dr-test-$(date +%Y%m%d-%H%M%S).sql"
-pg_dump -U complipay complipay_prod > "$BACKUP_FILE"
+pg_dump -U masaar masaar_prod > "$BACKUP_FILE"
 echo "  Backup: $BACKUP_FILE ($(du -h $BACKUP_FILE | cut -f1))"
 
 # 3. Simulate disaster (create test database)
 echo "Step 3: Simulating disaster..."
-sudo -u postgres psql -c "CREATE DATABASE complipay_dr_test;"
+sudo -u postgres psql -c "CREATE DATABASE masaar_dr_test;"
 
 # 4. Restore from backup
 echo "Step 4: Restoring from backup..."
 RESTORE_START=$(date +%s)
-psql -U complipay complipay_dr_test < "$BACKUP_FILE"
+psql -U masaar masaar_dr_test < "$BACKUP_FILE"
 RESTORE_END=$(date +%s)
 RESTORE_TIME=$((RESTORE_END - RESTORE_START))
 echo "  Restore time: ${RESTORE_TIME}s"
@@ -796,11 +796,11 @@ echo "  Restore time: ${RESTORE_TIME}s"
 # 5. Verify hash chain integrity
 echo "Step 5: Verifying hash chain integrity..."
 # This should be a dedicated artisan command
-php artisan zatca:verify-hash-chain --database=complipay_dr_test
+php artisan zatca:verify-hash-chain --database=masaar_dr_test
 
 # 6. Compare counts
 echo "Step 6: Comparing invoice counts..."
-POST_INVOICE_COUNT=$(psql -U complipay -d complipay_dr_test -t -c "SELECT COUNT(*) FROM invoices;")
+POST_INVOICE_COUNT=$(psql -U masaar -d masaar_dr_test -t -c "SELECT COUNT(*) FROM invoices;")
 if [[ "$PRE_INVOICE_COUNT" == "$POST_INVOICE_COUNT" ]]; then
     echo "  ✅ Invoice count matches: $POST_INVOICE_COUNT"
 else
@@ -809,7 +809,7 @@ fi
 
 # 7. Cleanup
 echo "Step 7: Cleaning up..."
-sudo -u postgres psql -c "DROP DATABASE complipay_dr_test;"
+sudo -u postgres psql -c "DROP DATABASE masaar_dr_test;"
 rm "$BACKUP_FILE"
 
 echo "=========================================="
@@ -891,11 +891,11 @@ class VerifyHashChain extends Command
 ```php
 // Add to a middleware or dedicated endpoint
 $metrics = [
-    'complipay_invoices_total' => Invoice::count(),
-    'complipay_invoices_cleared' => Invoice::where('zatca_status', 'cleared')->count(),
-    'complipay_invoices_failed' => Invoice::where('zatca_status', 'failed')->count(),
-    'complipay_queue_depth' => Redis::llen('queues:zatca-submissions'),
-    'complipay_certificate_days_remaining' => $certificateService->getDaysUntilExpiry(),
+    'masaar_invoices_total' => Invoice::count(),
+    'masaar_invoices_cleared' => Invoice::where('zatca_status', 'cleared')->count(),
+    'masaar_invoices_failed' => Invoice::where('zatca_status', 'failed')->count(),
+    'masaar_queue_depth' => Redis::llen('queues:zatca-submissions'),
+    'masaar_certificate_days_remaining' => $certificateService->getDaysUntilExpiry(),
 ];
 ```
 
@@ -944,11 +944,11 @@ php artisan zatca:verify-hash-chain
 **ZATCA API Down:**
 ```bash
 # Pause ZATCA submission workers
-sudo supervisorctl stop complipay-zatca-submissions:*
+sudo supervisorctl stop masaar-zatca-submissions:*
 
 # Jobs will accumulate in Redis
 # Resume when ZATCA is back
-sudo supervisorctl start complipay-zatca-submissions:*
+sudo supervisorctl start masaar-zatca-submissions:*
 ```
 
 **Database Recovery:**
@@ -957,7 +957,7 @@ sudo supervisorctl start complipay-zatca-submissions:*
 sudo supervisorctl stop all
 
 # Restore from backup
-pg_restore -U complipay -d complipay_prod backup.dump
+pg_restore -U masaar -d masaar_prod backup.dump
 
 # Verify hash chain
 php artisan zatca:verify-hash-chain

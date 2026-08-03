@@ -1,17 +1,17 @@
-# CompliPay Go SDK
+# Masaar Go SDK
 
 ZATCA-compliant e-invoicing API client for Go 1.18+.
 
 ## Installation
 
 ```bash
-go get github.com/complipay/complipay-go
+go get github.com/masaar/masaar-go
 ```
 
 Or add to your `go.mod`:
 
 ```go
-require github.com/complipay/complipay-go v1.0.0
+require github.com/masaar/masaar-go v1.0.0
 ```
 
 ## Quick Start
@@ -24,25 +24,25 @@ import (
     "fmt"
     "log"
 
-    "github.com/complipay/complipay-go"
+    "github.com/masaar/masaar-go"
 )
 
 func main() {
     // Initialize client
-    client := complipay.NewClient(
-        complipay.WithBaseURL("http://localhost:8000"), // Your server URL
-        complipay.WithAPIKey("your_api_key"),
-        complipay.WithAPISecret("your_api_secret"),
+    client := masaar.NewClient(
+        masaar.WithBaseURL("http://localhost:8000"), // Your server URL
+        masaar.WithAPIKey("your_api_key"),
+        masaar.WithAPISecret("your_api_secret"),
     )
 
     ctx := context.Background()
 
     // Create an invoice
-    invoice, err := client.Invoices.Create(ctx, &complipay.CreateInvoiceRequest{
+    invoice, err := client.Invoices.Create(ctx, &masaar.CreateInvoiceRequest{
         InvoiceNumber:  "INV-2026-001",
         BuyerName:      "Acme Corporation",
         BuyerVATNumber: "300000000000003",
-        Lines: []complipay.InvoiceLine{
+        Lines: []masaar.InvoiceLine{
             {
                 Description: "Consulting Services",
                 Quantity:    10,
@@ -76,7 +76,7 @@ func main() {
 
 ```go
 // List invoices
-invoices, err := client.Invoices.List(ctx, &complipay.ListOptions{
+invoices, err := client.Invoices.List(ctx, &masaar.ListOptions{
     Page:   1,
     Limit:  20,
     Status: "cleared",
@@ -86,10 +86,10 @@ invoices, err := client.Invoices.List(ctx, &complipay.ListOptions{
 invoice, err := client.Invoices.Get(ctx, "invoice-uuid")
 
 // Create credit note
-creditNote, err := client.Invoices.CreateCreditNote(ctx, &complipay.CreateCreditNoteRequest{
+creditNote, err := client.Invoices.CreateCreditNote(ctx, &masaar.CreateCreditNoteRequest{
     CreditNoteNumber:  "CN-001",
     OriginalInvoiceID: "original-invoice-uuid",
-    Lines: []complipay.InvoiceLine{
+    Lines: []masaar.InvoiceLine{
         {Description: "Returned Item", Quantity: 1, UnitPrice: 100.00},
     },
 })
@@ -120,8 +120,8 @@ status, err := client.Compliance.Status(ctx, invoiceID)
 
 ```go
 // Subscribe to events
-webhook, err := client.Webhooks.Create(ctx, &complipay.CreateWebhookRequest{
-    URL:    "https://your-app.com/webhooks/complipay",
+webhook, err := client.Webhooks.Create(ctx, &masaar.CreateWebhookRequest{
+    URL:    "https://your-app.com/webhooks/masaar",
     Events: []string{"invoice.cleared", "invoice.rejected"},
     Secret: "your-webhook-secret",
 })
@@ -129,14 +129,14 @@ webhook, err := client.Webhooks.Create(ctx, &complipay.CreateWebhookRequest{
 // Verify webhook signature
 func handleWebhook(w http.ResponseWriter, r *http.Request) {
     payload, _ := io.ReadAll(r.Body)
-    signature := r.Header.Get("X-CompliPay-Signature")
+    signature := r.Header.Get("X-Masaar-Signature")
 
-    if !complipay.VerifyWebhookSignature(payload, signature, webhookSecret) {
+    if !masaar.VerifyWebhookSignature(payload, signature, webhookSecret) {
         http.Error(w, "Invalid signature", http.StatusUnauthorized)
         return
     }
 
-    var event complipay.WebhookEvent
+    var event masaar.WebhookEvent
     json.Unmarshal(payload, &event)
 
     switch event.Type {
@@ -155,7 +155,7 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 ```go
 result, err := client.Invoices.Create(ctx, request)
 if err != nil {
-    var apiErr *complipay.APIError
+    var apiErr *masaar.APIError
     if errors.As(err, &apiErr) {
         switch apiErr.Code {
         case "AUTH_INVALID_KEY":
@@ -173,13 +173,13 @@ if err != nil {
 ## Configuration Options
 
 ```go
-client := complipay.NewClient(
-    complipay.WithBaseURL("http://localhost:8000"),
-    complipay.WithAPIKey("your_api_key"),
-    complipay.WithAPISecret("your_api_secret"),
-    complipay.WithTimeout(30 * time.Second),
-    complipay.WithRetries(3),
-    complipay.WithHTTPClient(customHTTPClient),
+client := masaar.NewClient(
+    masaar.WithBaseURL("http://localhost:8000"),
+    masaar.WithAPIKey("your_api_key"),
+    masaar.WithAPISecret("your_api_secret"),
+    masaar.WithTimeout(30 * time.Second),
+    masaar.WithRetries(3),
+    masaar.WithHTTPClient(customHTTPClient),
 )
 ```
 

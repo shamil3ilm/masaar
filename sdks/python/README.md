@@ -1,13 +1,13 @@
-# CompliPay Python SDK
+# Masaar Python SDK
 
 ZATCA-compliant e-invoicing API client for Python 3.7+
 
-> **Important**: By using this SDK, you agree to the CompliPay [Terms of Use](../../TERMS.md) and [License](../../LICENSE). Commercial use requires [registration](../../README.md#registration).
+> **Important**: By using this SDK, you agree to the Masaar [Terms of Use](../../TERMS.md) and [License](../../LICENSE). Commercial use requires [registration](../../README.md#registration).
 
 ## Installation
 
 ```bash
-pip install complipay
+pip install masaar
 ```
 
 ## Server URLs
@@ -23,16 +23,16 @@ pip install complipay
 ## Quick Start
 
 ```python
-from complipay import CompliPayClient, InvoiceLine
+from masaar import MasaarClient, InvoiceLine
 
 # Initialize client (local development)
-client = CompliPayClient(
+client = MasaarClient(
     base_url="http://localhost:8000",  # Your server URL
     api_key="your_api_key"
 )
 
 # For production, use your deployed server URL:
-# client = CompliPayClient(
+# client = MasaarClient(
 #     base_url="https://your-domain.com",
 #     api_key="your_api_key"
 # )
@@ -72,9 +72,9 @@ COMPLIPAY_API_KEY = "your_api_key"
 # views.py
 from django.conf import settings
 from django.http import JsonResponse
-from complipay import CompliPayClient
+from masaar import MasaarClient
 
-client = CompliPayClient(
+client = MasaarClient(
     base_url=settings.COMPLIPAY_URL,
     api_key=settings.COMPLIPAY_API_KEY
 )
@@ -93,12 +93,12 @@ def create_invoice(request):
 ```python
 import os
 from flask import Flask, request, jsonify
-from complipay import CompliPayClient
+from masaar import MasaarClient
 
 app = Flask(__name__)
 
 # Use environment variables for configuration
-client = CompliPayClient(
+client = MasaarClient(
     base_url=os.environ.get("COMPLIPAY_URL", "http://localhost:8000"),
     api_key=os.environ.get("COMPLIPAY_API_KEY", "your_api_key")
 )
@@ -115,12 +115,12 @@ def create_invoice():
 ```python
 import os
 from fastapi import FastAPI
-from complipay import CompliPayClient, InvoiceLine
+from masaar import MasaarClient, InvoiceLine
 
 app = FastAPI()
 
 # Configure with environment variables
-client = CompliPayClient(
+client = MasaarClient(
     base_url=os.environ.get("COMPLIPAY_URL", "http://localhost:8000"),
     api_key=os.environ.get("COMPLIPAY_API_KEY", "your_api_key")
 )
@@ -138,7 +138,7 @@ async def create_invoice(invoice_number: str, buyer_name: str):
 
 ```python
 from flask import Flask, request
-from complipay import WebhooksResource
+from masaar import WebhooksResource
 
 @app.route("/webhook", methods=["POST"])
 def handle_webhook():

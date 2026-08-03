@@ -1,6 +1,6 @@
-# CompliPay Compliance Policies
+# Masaar Compliance Policies
 
-This document defines the compliance policies for CompliPay. These are **decision boundaries**, not code - they define how the system handles edge cases that require human judgment.
+This document defines the compliance policies for Masaar. These are **decision boundaries**, not code - they define how the system handles edge cases that require human judgment.
 
 ## 1. Retroactive Regulatory Changes
 
@@ -396,7 +396,7 @@ Please contact support with this variance ID for further assistance.
 
 ### Policy Statement
 
-**Webhook payloads include replay protection fields. Consumers MUST implement duplicate detection. CompliPay does NOT enforce this server-side but provides the tools.**
+**Webhook payloads include replay protection fields. Consumers MUST implement duplicate detection. Masaar does NOT enforce this server-side but provides the tools.**
 
 ### Rationale
 
@@ -430,12 +430,12 @@ Every webhook payload includes:
 
 ```typescript
 // TypeScript SDK - Webhook verification
-import { verifyWebhook } from '@complipay/sdk';
+import { verifyWebhook } from '@masaar/sdk';
 
 app.post('/webhooks', (req, res) => {
   const event = verifyWebhook(
     req.body,
-    req.headers['x-complipay-signature'],
+    req.headers['x-masaar-signature'],
     process.env.WEBHOOK_SECRET
   );
 
@@ -492,7 +492,7 @@ All SDK READMEs must include:
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
-| 1.0 | 2026-01-31 | CompliPay Team | Initial release |
-| 1.1 | 2026-01-31 | CompliPay Team | Added timestamp authority, certificate overlap, sandbox variance, webhook replay protection policies |
+| 1.0 | 2026-01-31 | Masaar Team | Initial release |
+| 1.1 | 2026-01-31 | Masaar Team | Added timestamp authority, certificate overlap, sandbox variance, webhook replay protection policies |
 
 **Last Updated**: January 31, 2026
