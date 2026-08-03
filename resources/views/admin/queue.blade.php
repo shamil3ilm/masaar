@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Offline Queue - CompliPay Admin')
+@section('title', 'Offline Queue - Masaar Admin')
 
 @section('content')
 <div class="mb-6 flex justify-between items-center">

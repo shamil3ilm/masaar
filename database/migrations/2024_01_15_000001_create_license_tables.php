@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Create license and usage tracking tables.
  *
- * Implements API Key + Usage Metering for CompliPay licensing.
+ * Implements API Key + Usage Metering for Masaar licensing.
  */
 return new class extends Migration
 {

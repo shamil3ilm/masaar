@@ -60,6 +60,7 @@ class License extends Model
         'api_key',
         'api_secret_hash',
         'environment',
+        'organization_id',
         'organization_name',
         'organization_vat',
         'contact_email',
