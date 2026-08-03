@@ -46,7 +46,7 @@ class PlatformLicenseService
 
     public function __construct()
     {
-        $this->signingSecret = config('platform-license.signing_secret', 'complipay-default-secret-change-me');
+        $this->signingSecret = config('platform-license.signing_secret', 'masaar-default-secret-change-me');
         $this->licenseServerUrl = config('platform-license.server_url');
     }
 
@@ -180,7 +180,7 @@ class PlatformLicenseService
         $now = new \DateTime();
         if ($now > $expiresAt) {
             $expiredDays = $now->diff($expiresAt)->days;
-            return $this->invalidResult("License expired {$expiredDays} days ago. Contact sales@complipay.com to renew.");
+            return $this->invalidResult("License expired {$expiredDays} days ago. Contact sales@masaar.com to renew.");
         }
 
         $daysRemaining = (int) $now->diff($expiresAt)->days;

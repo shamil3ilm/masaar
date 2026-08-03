@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Dashboard - CompliPay Admin')
+@section('title', 'Dashboard - Masaar Admin')
 
 @section('content')
 <div x-data="dashboardData()" x-init="loadData()" @refresh-dashboard.window="loadData()">
