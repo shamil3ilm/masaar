@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Licensing;
+namespace App\Domains\Licensing\Services;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;

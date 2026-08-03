@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Services;
 
-use App\Audits\AuditService;
+use App\Domains\Audit\Services\AuditService;
 use App\Domains\Compliance\Fatoora\Client\FatooraClient;
 use App\Domains\Compliance\Fatoora\DTOs\FatooraResponse;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;

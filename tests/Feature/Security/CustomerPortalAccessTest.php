@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Security;
 
 use App\Domains\Organization\Models\Organization;
-use App\Models\User;
+use App\Domains\Auth\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;

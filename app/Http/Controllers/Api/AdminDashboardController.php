@@ -767,7 +767,7 @@ class AdminDashboardController extends Controller
      */
     public function resetCircuitBreaker(): JsonResponse
     {
-        /** @var \App\Models\User|null $user */
+        /** @var \App\Domains\Auth\Models\User|null $user */
         $user = auth()->user();
 
         $result = $this->circuitBreaker->forceState(
