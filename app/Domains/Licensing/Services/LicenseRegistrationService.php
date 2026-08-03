@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Services;
+namespace App\Domains\Licensing\Services;
 
-use App\Models\LicenseRegistration;
-use App\Models\LicenseRegistrationAudit;
+use App\Domains\Licensing\Models\LicenseRegistration;
+use App\Domains\Licensing\Models\LicenseRegistrationAudit;
 use App\Notifications\LicenseRegistrationApproved;
 use App\Notifications\LicenseRegistrationPending;
 use App\Notifications\LicenseRegistrationRejected;

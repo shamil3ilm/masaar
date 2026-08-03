@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Services\Licensing\PlatformLicenseService;
+use App\Domains\Licensing\Services\PlatformLicenseService;
 use Illuminate\Console\Command;
 
 /**

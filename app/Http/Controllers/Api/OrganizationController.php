@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Audits\AuditService;
+use App\Domains\Audit\Services\AuditService;
 use App\Domains\Organization\Models\Organization;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;

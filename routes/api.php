@@ -11,7 +11,7 @@ use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\MetricsController;
 use App\Http\Controllers\Api\OnboardingController;
 use App\Http\Controllers\Api\OrganizationController;
-use App\Http\Controllers\Api\PipelineController;
+use App\Domains\Pipeline\Http\Controllers\PipelineController;
 use App\Http\Controllers\Api\VarianceController;
 use App\Http\Controllers\Api\WebhookController;
 use Illuminate\Support\Facades\Route;
@@ -38,7 +38,7 @@ Route::get('/health', fn () => response()->json([
 
 // Platform license status (public - for partners to check their license)
 Route::get('/license/status', function () {
-    $licenseService = app(\App\Services\Licensing\PlatformLicenseService::class);
+    $licenseService = app(\App\Domains\Licensing\Services\PlatformLicenseService::class);
     $result = $licenseService->validate();
 
     return response()->json([

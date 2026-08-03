@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Requests;
+namespace App\Domains\Pipeline\Http\Requests;
 
 /**
  * Pipeline submit request validation.

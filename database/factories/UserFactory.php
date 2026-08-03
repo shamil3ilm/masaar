@@ -2,15 +2,23 @@
 
 namespace Database\Factories;
 
+use App\Domains\Auth\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\User>
+ * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Domains\Auth\Models\User>
  */
 class UserFactory extends Factory
 {
+    /**
+     * Stated explicitly because the model no longer sits in App\Models, so
+     * Laravel's Database\Factories\XFactory -> App\Models\X convention would
+     * resolve to a class that does not exist.
+     */
+    protected $model = User::class;
+
     /**
      * The current password being used by the factory.
      */

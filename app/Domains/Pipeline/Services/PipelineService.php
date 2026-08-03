@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Services;
+namespace App\Domains\Pipeline\Services;
 
-use App\Audits\AuditService;
+use App\Domains\Audit\Services\AuditService;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Services\FatooraSubmissionService;
 use App\Domains\Invoice\Enums\InvoiceStatus;
