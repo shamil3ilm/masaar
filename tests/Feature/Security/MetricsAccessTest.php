@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Security;
 
-use App\Http\Middleware\RestrictMetrics;
+use App\Domains\Platform\Http\Middleware\RestrictMetrics;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
