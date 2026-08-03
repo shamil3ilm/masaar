@@ -177,17 +177,34 @@ class Invoice extends Model
     }
 
     /**
-     * Generate next ICV for organization.
-     * Uses database lock to ensure sequential uniqueness.
+     * Allocate the next ICV for an organization.
+     *
+     * ZATCA requires the invoice counter to be strictly sequential per
+     * taxpayer, and the PIH chain is built on it, so two invoices must never
+     * receive the same value.
+     *
+     * The lock is taken on the organization row rather than on the invoice
+     * rows. Locking `SELECT MAX(icv) ... FOR UPDATE` looks equivalent but has
+     * a hole: for an organization's first invoice there are no invoice rows to
+     * lock, so two concurrent requests both read no rows and both allocate 1.
+     * The organization row always exists, so it serialises every case.
+     *
+     * Callers must create the invoice inside a transaction. Laravel turns this
+     * nested transaction into a savepoint, which keeps the lock held until the
+     * outer commit — that is, until after the INSERT. Without an outer
+     * transaction the lock is released here and the window reopens.
+     * `invoices_org_icv_unique` is the backstop either way: a collision fails
+     * the insert rather than corrupting the chain.
      */
     public static function generateNextIcv(string $organizationId): int
     {
         return DB::transaction(function () use ($organizationId) {
-            $maxIcv = static::where('organization_id', $organizationId)
+            DB::table('organizations')
+                ->where('id', $organizationId)
                 ->lockForUpdate()
-                ->max('icv');
+                ->first();
 
-            return ($maxIcv ?? 0) + 1;
+            return ((int) static::where('organization_id', $organizationId)->max('icv')) + 1;
         });
     }
 
