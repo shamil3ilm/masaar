@@ -69,11 +69,14 @@ class CreateInvoiceRequest extends FormRequest
 
     public function rules(): array
     {
+        $isB2B = fn () => $this->input('type') === 'standard';
+
         return [
             // Invoice header
             'invoice_number' => ['required', 'string', 'max:255'],
             'type' => ['required', Rule::enum(InvoiceType::class)],
-            'document_type' => ['nullable', Rule::enum(DocumentType::class)],
+            // Proforma (document_type=325) is not valid for ZATCA VAT reporting
+            'document_type' => ['nullable', Rule::enum(DocumentType::class), Rule::notIn(['proforma'])],
             'issue_date' => ['required', 'date'],
             'supply_date' => ['nullable', 'date'],
             'currency' => ['nullable', 'string', 'size:3'],
@@ -85,16 +88,18 @@ class CreateInvoiceRequest extends FormRequest
                 'nullable',
                 'string',
                 'max:50',
-                // Required for B2B invoices
-                Rule::requiredIf(fn () => $this->type === 'standard'),
+                // BT-46: Required for B2B (Standard) invoices
+                Rule::requiredIf($isB2B),
             ],
-            'buyer_address' => ['nullable', 'array'],
-            'buyer_address.street' => ['nullable', 'string', 'max:255'],
-            'buyer_address.city' => ['nullable', 'string', 'max:100'],
+            // BT-50/52/53: Buyer address required for B2B (Standard) invoices
+            'buyer_address' => ['nullable', 'array', Rule::requiredIf($isB2B)],
+            'buyer_address.street' => ['nullable', 'string', 'max:255', Rule::requiredIf($isB2B)],
+            'buyer_address.city' => ['nullable', 'string', 'max:100', Rule::requiredIf($isB2B)],
             'buyer_address.district' => ['nullable', 'string', 'max:100'],
-            'buyer_address.building_number' => ['nullable', 'string', 'max:20'],
+            'buyer_address.building_number' => ['nullable', 'string', 'max:20', Rule::requiredIf($isB2B)],
             'buyer_address.postal_code' => ['nullable', 'string', 'max:10'],
-            'buyer_address.country_code' => ['nullable', 'string', 'size:2'],
+            // BT-55: Must be valid ISO 3166-1 alpha-2 uppercase code (e.g. SA, AE, GB)
+            'buyer_address.country_code' => ['nullable', 'string', 'size:2', 'regex:/^[A-Z]{2}$/'],
 
             // Credit/debit note references
             'billing_reference_id' => [
@@ -137,19 +142,18 @@ class CreateInvoiceRequest extends FormRequest
     }
 
     /**
-     * Configure the validator instance with per-line exemption validation.
+     * Configure the validator instance with cross-field validation.
      */
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
-            $lines = $this->input('lines', []);
-
-            foreach ($lines as $index => $line) {
+            // Per-line: exemption code required when tax category is Z, E, or O
+            // Note: proforma rejection is handled by Rule::notIn(['proforma']) in rules()
+            foreach ($this->input('lines', []) as $index => $line) {
                 $category = $line['tax_category'] ?? null;
                 $exemptionCode = $line['tax_exemption_code'] ?? null;
 
-                // Check if this specific line requires exemption code
-                if (in_array($category, ['Z', 'E', 'O']) && empty($exemptionCode)) {
+                if (in_array($category, ['Z', 'E', 'O'], true) && empty($exemptionCode)) {
                     $validator->errors()->add(
                         "lines.{$index}.tax_exemption_code",
                         "Exemption code is required for line " . ($index + 1) . " with tax category {$category}."
@@ -165,11 +169,21 @@ class CreateInvoiceRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'buyer_vat_number.required_if' => 'Buyer VAT number is required for B2B (standard) invoices.',
+            // Buyer
+            'buyer_vat_number.required_if' => 'Buyer VAT number is required for B2B (standard) invoices (BT-46).',
+            'buyer_address.required_if' => 'Buyer address is required for B2B (standard) invoices (BT-50).',
+            'buyer_address.street.required_if' => 'Buyer street is required for B2B (standard) invoices.',
+            'buyer_address.city.required_if' => 'Buyer city is required for B2B (standard) invoices.',
+            'buyer_address.building_number.required_if' => 'Buyer building number is required for B2B (standard) invoices.',
+            'buyer_address.country_code.regex' => 'Country code must be a valid ISO 3166-1 alpha-2 code in uppercase (e.g. SA, AE, GB).',
+            // Document type
+            'document_type.not_in' => 'Proforma invoices (document_type=proforma) cannot be submitted to ZATCA.',
+            // Credit/debit note references
             'billing_reference_id.required_if' => 'Original invoice reference is required for credit/debit notes.',
-            'lines.*.tax_exemption_code.required_if' => 'Exemption code is required when tax category is Z, E, or O.',
+            // Tax exemption
             'lines.*.tax_exemption_code.in' => 'Invalid ZATCA exemption code. Must be a valid VATEX-SA-* code.',
             'lines.*.tax_exemption_reason.required_with' => 'Exemption reason is required when exemption code is provided.',
+            // Units
             'lines.*.unit_code.in' => 'Invalid unit code. Must be a valid UN/ECE Rec 20 code.',
         ];
     }

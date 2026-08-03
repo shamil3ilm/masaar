@@ -11,6 +11,7 @@ use App\Http\Requests\CreateInvoiceRequest;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Invoice API controller.
@@ -48,61 +49,72 @@ class InvoiceController extends Controller
      */
     public function store(CreateInvoiceRequest $request): JsonResponse
     {
-        $invoice = Invoice::create([
-            'organization_id' => $this->tenant->getOrganizationId(),
-            'invoice_number' => $request->invoice_number,
-            'type' => $request->type,
-            'document_type' => $request->document_type,
-            'status' => InvoiceStatus::Draft,
-            'issue_date' => $request->issue_date,
-            'supply_date' => $request->supply_date,
-            'currency' => $request->currency ?? 'SAR',
-            'payment_means_code' => $request->payment_means_code ?? '10',
-            'buyer_name' => $request->buyer_name,
-            'buyer_vat_number' => $request->buyer_vat_number,
-            'buyer_address' => $request->buyer_address,
-            'billing_reference_id' => $request->billing_reference_id,
-            'adjustment_reason' => $request->adjustment_reason,
-            'notes' => $request->notes,
-        ]);
-
-        // Create invoice lines and calculate totals
-        $subtotal = 0;
-        $taxAmount = 0;
-        $discountAmount = (float) ($request->discount_amount ?? 0);
-
-        foreach ($request->lines as $line) {
-            $lineSubtotal = $line['quantity'] * $line['unit_price'];
-            $taxRate = $line['tax_rate'] ?? 15;
-            $lineTax = $lineSubtotal * $taxRate / 100;
-
-            $invoice->lines()->create([
-                'description' => $line['description'],
-                'item_classification_code' => $line['item_classification_code'] ?? null,
-                'quantity' => $line['quantity'],
-                'unit_code' => $line['unit_code'] ?? 'PCE',
-                'unit_price' => $line['unit_price'],
-                'tax_rate' => $taxRate,
-                'tax_amount' => $lineTax,
-                'tax_category' => $line['tax_category'] ?? 'S',
-                'tax_exemption_code' => $line['tax_exemption_code'] ?? null,
-                'tax_exemption_reason' => $line['tax_exemption_reason'] ?? null,
-                'line_total' => $lineSubtotal + $lineTax,
+        $invoice = DB::transaction(function () use ($request) {
+            $invoice = Invoice::create([
+                'organization_id' => $this->tenant->getOrganizationId(),
+                'invoice_number' => $request->invoice_number,
+                'type' => $request->type,
+                'document_type' => $request->document_type,
+                'status' => InvoiceStatus::Draft,
+                'issue_date' => $request->issue_date,
+                'supply_date' => $request->supply_date,
+                'currency' => $request->currency ?? 'SAR',
+                'payment_means_code' => $request->payment_means_code ?? '10',
+                'buyer_name' => $request->buyer_name,
+                'buyer_vat_number' => $request->buyer_vat_number,
+                'buyer_address' => $request->buyer_address,
+                'billing_reference_id' => $request->billing_reference_id,
+                'adjustment_reason' => $request->adjustment_reason,
+                'notes' => $request->notes,
             ]);
 
-            $subtotal += $lineSubtotal;
-            $taxAmount += $lineTax;
-        }
+            // Create invoice lines and calculate totals using bcmath to avoid
+            // floating-point precision errors on monetary values (P1 fix).
+            $subtotal = '0';
+            $taxTotal = '0';
+            $discountAmount = (string) ($request->discount_amount ?? '0');
 
-        // Calculate final totals with discount
-        $invoice->update([
-            'subtotal' => $subtotal,
-            'discount_amount' => $discountAmount,
-            'tax_amount' => $taxAmount,
-            'total' => $subtotal - $discountAmount + $taxAmount,
-        ]);
+            foreach ($request->lines as $line) {
+                $quantity = (string) $line['quantity'];
+                $unitPrice = (string) $line['unit_price'];
+                $taxRate = (string) ($line['tax_rate'] ?? 15);
 
-        $this->audit->logCreated($invoice);
+                $lineSubtotal = bcmul($quantity, $unitPrice, 2);
+                $lineTax = bcdiv(bcmul($lineSubtotal, $taxRate, 4), '100', 2);
+                $lineTotal = bcadd($lineSubtotal, $lineTax, 2);
+
+                $invoice->lines()->create([
+                    'description' => $line['description'],
+                    'item_classification_code' => $line['item_classification_code'] ?? null,
+                    'quantity' => $quantity,
+                    'unit_code' => $line['unit_code'] ?? 'PCE',
+                    'unit_price' => $unitPrice,
+                    'tax_rate' => $taxRate,
+                    'tax_amount' => $lineTax,
+                    'tax_category' => $line['tax_category'] ?? 'S',
+                    'tax_exemption_code' => $line['tax_exemption_code'] ?? null,
+                    'tax_exemption_reason' => $line['tax_exemption_reason'] ?? null,
+                    'line_total' => $lineTotal,
+                ]);
+
+                $subtotal = bcadd($subtotal, $lineSubtotal, 2);
+                $taxTotal = bcadd($taxTotal, $lineTax, 2);
+            }
+
+            // Calculate final totals with discount
+            $total = bcadd(bcsub($subtotal, $discountAmount, 2), $taxTotal, 2);
+
+            $invoice->update([
+                'subtotal' => $subtotal,
+                'discount_amount' => $discountAmount,
+                'tax_amount' => $taxTotal,
+                'total' => $total,
+            ]);
+
+            $this->audit->logCreated($invoice);
+
+            return $invoice;
+        });
 
         return ApiResponse::created([
             'invoice' => $invoice->load('lines'),

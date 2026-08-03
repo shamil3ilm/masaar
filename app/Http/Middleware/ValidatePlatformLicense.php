@@ -49,7 +49,7 @@ class ValidatePlatformLicense
             return response()->json([
                 'error' => 'license_invalid',
                 'message' => $validation['message'],
-                'support' => 'Contact sales@complipay.com for licensing inquiries.',
+                'support' => 'Contact sales@masaar.com for licensing inquiries.',
             ], 403);
         }
 

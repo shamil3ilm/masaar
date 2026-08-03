@@ -82,7 +82,7 @@ class WebhookService
                     'X-Webhook-Event' => $event,
                     'X-Webhook-Signature' => $signature,
                     'X-Webhook-Timestamp' => $timestamp,
-                    'User-Agent' => 'CompliPay-Webhook/1.0',
+                    'User-Agent' => 'Masaar-Webhook/1.0',
                 ])
                 ->post($webhook->url, $body);
 

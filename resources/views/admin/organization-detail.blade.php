@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', $organization->name . ' - CompliPay Admin')
+@section('title', $organization->name . ' - Masaar Admin')
 
 @section('content')
 <div class="mb-6">

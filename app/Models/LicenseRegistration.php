@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 /**
  * License Registration Model.
  *
- * Tracks users/organizations that register to use CompliPay commercially.
+ * Tracks users/organizations that register to use Masaar commercially.
  * Required by the Controlled Open Source License (COSL).
  *
  * @property string $id
