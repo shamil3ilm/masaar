@@ -7,6 +7,7 @@ namespace App\Domains\Compliance\Fatoora\Services;
 use App\Domains\Compliance\Fatoora\DTOs\CsrData;
 use App\Domains\Compliance\Fatoora\Exceptions\CertificateException;
 use App\Domains\Compliance\Fatoora\Helpers\FatooraTime;
+use App\Support\SafeUrl;
 
 /**
  * Certificate management service.
@@ -465,7 +466,7 @@ EOL;
 
         // Try OCSP first (preferred - real-time status)
         $ocspUrl = $this->extractOcspUrl($extensions);
-        if ($ocspUrl !== null) {
+        if ($ocspUrl !== null && $this->mayFetch($ocspUrl, 'OCSP')) {
             try {
                 $ocspResult = $this->checkOcsp($certificatePem, $issuerCertPem, $ocspUrl);
                 if ($ocspResult !== null) {
@@ -483,6 +484,10 @@ EOL;
         // Fall back to CRL
         $crlUrls = $this->extractCrlUrls($extensions);
         foreach ($crlUrls as $crlUrl) {
+            if (! $this->mayFetch($crlUrl, 'CRL')) {
+                continue;
+            }
+
             try {
                 $crlResult = $this->checkCrl($certificatePem, $crlUrl);
                 if ($crlResult !== null) {
@@ -676,6 +681,27 @@ EOL;
                 unlink($crlFile);
             }
         }
+    }
+
+    /**
+     * Whether a revocation endpoint taken from a certificate may be contacted.
+     *
+     * The address is chosen by whoever supplied the certificate, so it is
+     * treated as untrusted input rather than configuration. A refusal is
+     * logged: an operator needs to tell "the responder is down" apart from
+     * "we declined to call that host".
+     */
+    private function mayFetch(string $url, string $kind): bool
+    {
+        $reason = SafeUrl::reject($url, 'security.revocation_hosts');
+
+        if ($reason === null) {
+            return true;
+        }
+
+        \Log::warning("{$kind} endpoint refused", ['url' => $url, 'reason' => $reason]);
+
+        return false;
     }
 
     /**
