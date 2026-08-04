@@ -30,7 +30,6 @@ class Invoice extends Model
         'organization_id',
         'compliance_profile_id',
         'invoice_number',
-        'uuid',  // ZATCA BT-124: Invoice UUID (separate from database ID)
         'type',
         'document_type',
         'status',

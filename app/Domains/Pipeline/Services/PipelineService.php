@@ -7,6 +7,7 @@ namespace App\Domains\Pipeline\Services;
 use App\Domains\Audit\Services\AuditService;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Services\FatooraSubmissionService;
+use App\Domains\Compliance\Fatoora\Services\SubmissionService;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
@@ -25,11 +26,17 @@ use Illuminate\Support\Facades\Log;
  *
  * Designed for server-to-server ERP integration where the caller
  * needs a single atomic endpoint instead of 3 separate calls.
+ *
+ * Submission runs through SubmissionService rather than calling ZATCA
+ * directly, so each attempt is recorded in invoice_submissions and guarded by
+ * an idempotency key. An ERP that retries a timed-out request therefore
+ * receives the original outcome instead of filing the invoice twice.
  */
 class PipelineService
 {
     public function __construct(
-        private readonly FatooraSubmissionService $submissionService,
+        private readonly FatooraSubmissionService $compliance,
+        private readonly SubmissionService $submissions,
         private readonly WebhookService $webhookService,
         private readonly AuditService $auditService,
     ) {}
@@ -42,8 +49,12 @@ class PipelineService
      * @param string|null $branchId Optional branch UUID
      * @return array Pipeline result with invoice data, compliance info, and ZATCA response
      */
-    public function submitInvoice(array $data, string $organizationId, ?string $branchId = null): array
-    {
+    public function submitInvoice(
+        array $data,
+        string $organizationId,
+        ?string $branchId = null,
+        ?string $idempotencyKey = null,
+    ): array {
         $errors = [];
         $warnings = [];
         $zatcaResponse = null;
@@ -61,7 +72,7 @@ class PipelineService
 
         // Step 2: Generate compliance data (hash, QR, signed XML)
         try {
-            $complianceResult = $this->submissionService->generate($invoice, $organization);
+            $this->compliance->generate($invoice, $organization);
 
             // Refresh invoice to get updated fields
             $invoice->refresh();
@@ -96,19 +107,20 @@ class PipelineService
         // Step 3: Submit to ZATCA government API if auto_submit is enabled
         if ($autoSubmit) {
             try {
-                $response = $this->submissionService->submit($invoice, $organization);
+                $result = $this->submissions->submit($invoice, $idempotencyKey);
                 $invoice->refresh();
 
                 $zatcaResponse = [
-                    'clearance_status' => $response->clearanceStatus,
-                    'reporting_status' => $response->reportingStatus,
-                    'validation_status' => $response->validationStatus,
+                    'submission_id' => $result['submission_id'] ?? null,
+                    'state' => $result['state'] ?? null,
+                    'clearance_status' => $result['clearance_status'] ?? null,
+                    'reporting_status' => $result['reporting_status'] ?? null,
                 ];
 
-                $warnings = $response->warningMessages ?? [];
+                $warnings = $result['warnings'] ?? [];
 
-                if (!$response->success) {
-                    $errors = array_merge($errors, $response->errorMessages ?? []);
+                if (! ($result['success'] ?? false)) {
+                    $errors = array_merge($errors, $result['errors'] ?? []);
 
                     // Dispatch rejection webhook
                     $this->dispatchWebhookSafely(
@@ -237,7 +249,7 @@ class PipelineService
     ): array {
         return [
             'invoice_id' => $invoice->id,
-            'uuid' => $invoice->uuid ?? $invoice->id,
+            'uuid' => $invoice->id,
             'invoice_number' => $invoice->invoice_number,
             'erp_reference_id' => $invoice->erp_reference_id,
             'status' => $invoice->status->value,

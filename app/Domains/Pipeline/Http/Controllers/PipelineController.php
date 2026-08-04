@@ -53,6 +53,9 @@ class PipelineController extends Controller
             data: $data,
             organizationId: $organizationId,
             branchId: $branchId,
+            // An ERP retrying a timed-out call sends the same key and gets the
+            // original outcome rather than filing the invoice a second time.
+            idempotencyKey: $request->header('Idempotency-Key'),
         );
 
         $hasErrors = !empty($result['errors']);
@@ -102,7 +105,7 @@ class PipelineController extends Controller
 
         return ApiResponse::success([
             'invoice_id' => $invoice->id,
-            'uuid' => $invoice->uuid ?? $invoice->id,
+            'uuid' => $invoice->id,
             'invoice_number' => $invoice->invoice_number,
             'status' => $invoice->status->value,
             'type' => $invoice->type->value,
