@@ -214,12 +214,12 @@ class ProcessOfflineQueue extends Command
                 ? $this->zatcaClient->clearInvoice(
                     $item->signed_xml,
                     $item->invoice_hash,
-                    $invoice->uuid ?? $invoice->id
+                    $invoice->id
                 )
                 : $this->zatcaClient->reportInvoice(
                     $item->signed_xml,
                     $item->invoice_hash,
-                    $invoice->uuid ?? $invoice->id
+                    $invoice->id
                 );
 
             if ($response->success) {

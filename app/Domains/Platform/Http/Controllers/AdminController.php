@@ -177,8 +177,8 @@ class AdminController extends Controller
     /**
      * Drain a batch of the offline submission queue.
      *
-     * Previously an inline route closure, which made the privileged Artisan
-     * invocation untestable and left no record of who triggered it.
+     * Runs a privileged Artisan command, so the acting administrator is
+     * recorded.
      */
     public function processQueue(): RedirectResponse
     {
