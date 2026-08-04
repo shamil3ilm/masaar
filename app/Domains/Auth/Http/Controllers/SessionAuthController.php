@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Auth\Http\Controllers;
 
+use App\Domains\Audit\Services\AuditService;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -29,6 +30,10 @@ class SessionAuthController extends Controller
     private const MAX_ATTEMPTS = 5;
 
     private const LOCKOUT_SECONDS = 300;
+
+    public function __construct(
+        private readonly AuditService $audit,
+    ) {}
 
     public function showLogin(): View|RedirectResponse
     {
@@ -73,6 +78,12 @@ class SessionAuthController extends Controller
                 'user_agent' => $request->userAgent(),
             ]);
 
+            // Failed attempts are the signal that distinguishes a break-in
+            // from ordinary use, so they are audited alongside successes.
+            $this->audit->logSecurity('login.failed', 'User', null, [
+                'email' => $credentials['email'],
+            ]);
+
             throw ValidationException::withMessages([
                 'email' => __('These credentials do not match our records.'),
             ]);
@@ -85,6 +96,10 @@ class SessionAuthController extends Controller
         $request->session()->regenerate();
 
         $user = Auth::user();
+
+        $this->audit->logSecurity('login.succeeded', 'User', (string) $user->getAuthIdentifier(), [
+            'platform_admin' => $user->isPlatformAdmin(),
+        ]);
 
         Log::info('Console login succeeded', [
             'user_id' => $user->getAuthIdentifier(),
@@ -102,6 +117,8 @@ class SessionAuthController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
+        $this->audit->logSecurity('logout', 'User', $userId === null ? null : (string) $userId);
 
         Log::info('Console logout', ['user_id' => $userId]);
 

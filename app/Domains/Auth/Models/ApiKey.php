@@ -8,6 +8,7 @@ use App\Domains\Organization\Concerns\BelongsToTenant;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
@@ -71,7 +72,7 @@ class ApiKey extends Model
             'organization_id' => $organizationId,
             'name' => $name,
             'key_prefix' => $prefix,
-            'key_hash' => hash('sha256', $plainKey),
+            'key_hash' => self::hashKey($plainKey),
             'scopes' => $scopes,
             'is_active' => true,
             'expires_at' => $expiresAt,
@@ -85,14 +86,42 @@ class ApiKey extends Model
 
     /**
      * Find API key by plain text key.
+     *
+     * Runs outside the tenant scope on purpose: this lookup is what
+     * establishes the tenant, so scoping it to the tenant would mean no key
+     * could ever be found and every API-key request would fail to
+     * authenticate. The key hash is the credential, and it is unique.
+     *
+     * Expiry is filtered in SQL rather than checked afterwards in PHP, so a
+     * caller that uses this directly cannot be handed an expired key.
      */
     public static function findByKey(string $plainKey): ?self
     {
-        $hash = hash('sha256', $plainKey);
-
-        return static::where('key_hash', $hash)
+        return static::withoutTenantScope(fn () => static::query()
+            ->where('key_hash', self::hashKey($plainKey))
             ->where('is_active', true)
-            ->first();
+            ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
+            ->first());
+    }
+
+    /**
+     * Hash a key for storage and lookup.
+     *
+     * Peppered with a secret held outside the database, so a leaked table of
+     * hashes cannot be attacked offline without also compromising the
+     * application's configuration. Keys carry 40 characters of entropy, which
+     * is the primary control; the pepper is defence in depth.
+     *
+     * With no pepper configured this is a plain SHA-256, which keeps existing
+     * keys working. Setting one invalidates every key issued before it.
+     */
+    private static function hashKey(string $plainKey): string
+    {
+        $pepper = (string) config('security.api_key_pepper', '');
+
+        return $pepper === ''
+            ? hash('sha256', $plainKey)
+            : hash_hmac('sha256', $plainKey, $pepper);
     }
 
     /**
@@ -126,6 +155,21 @@ class ApiKey extends Model
      */
     public function recordUsage(): void
     {
-        $this->update(['last_used_at' => now()]);
+        // last_used_at answers "is this key still in use", which needs
+        // minute resolution at most. Writing it on every request puts a
+        // synchronous UPDATE on the hot path and makes one busy key a source
+        // of row contention. A short cache marker collapses a minute's worth
+        // of requests into a single write.
+        $marker = "api_key:used:{$this->id}";
+
+        if (Cache::get($marker) !== null) {
+            return;
+        }
+
+        Cache::put($marker, true, now()->addMinute());
+
+        static::withoutTenantScope(fn () => static::query()
+            ->whereKey($this->id)
+            ->update(['last_used_at' => now()]));
     }
 }
