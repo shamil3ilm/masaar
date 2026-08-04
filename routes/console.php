@@ -72,7 +72,7 @@ Schedule::command('license:report-usage')
 */
 
 // Process offline queue - runs every 5 minutes when auto-recovery enabled
-Schedule::command('zatca:process-offline --limit=50')
+Schedule::command('fatoora:process-offline --limit=50')
     ->everyFiveMinutes()
     ->withoutOverlapping()
     ->runInBackground()
@@ -80,13 +80,13 @@ Schedule::command('zatca:process-offline --limit=50')
     ->appendOutputTo(storage_path('logs/zatca-offline-queue.log'));
 
 // Check certificate expiry - runs daily at 8 AM with notifications
-Schedule::command('zatca:check-certificate --notify')
+Schedule::command('fatoora:check-certificate --notify')
     ->dailyAt('08:00')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/zatca-certificate.log'));
 
 // Verify hash chain integrity - runs weekly on Sunday at 2 AM
-Schedule::command('zatca:verify-hash-chain')
+Schedule::command('fatoora:verify-hash-chain')
     ->weeklyOn(0, '02:00')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/zatca-hash-chain.log'));
