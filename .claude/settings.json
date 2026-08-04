@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "additionalDirectories": [
+      "c:\\laragon\\www\\erp-backend",
+      "c:\\laragon\\www\\erp-frontend"
+    ]
+  }
+}

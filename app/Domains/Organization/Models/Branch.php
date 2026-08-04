@@ -234,7 +234,7 @@ class Branch extends Model
     /**
      * Mark branch as active (PCSID obtained).
      */
-    public function markAsActive(\DateTime $certificateExpiry = null): void
+    public function markAsActive(?\DateTime $certificateExpiry = null): void
     {
         $this->update([
             'onboarding_status' => self::STATUS_ACTIVE,
