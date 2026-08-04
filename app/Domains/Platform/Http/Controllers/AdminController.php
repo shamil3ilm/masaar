@@ -186,7 +186,7 @@ class AdminController extends Controller
             'actor_id' => Auth::id(),
         ]);
 
-        Artisan::call('zatca:process-offline', ['--limit' => 50]);
+        Artisan::call('fatoora:process-offline', ['--limit' => 50]);
 
         return back()->with('success', 'Queue processing started');
     }

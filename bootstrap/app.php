@@ -25,6 +25,12 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->group(base_path('routes/licensing.php'));
         },
     )
+    // Laravel only auto-discovers commands in app/Console/Commands. Domains
+    // that own console commands must be listed, or their commands are never
+    // registered and anything scheduling them fails silently.
+    ->withCommands([
+        __DIR__.'/../app/Domains/Licensing/Console',
+    ])
     ->withMiddleware(function (Middleware $middleware): void {
         // Single source of truth. AppServiceProvider::boot() reasserts these
         // after package providers boot, because a package can otherwise claim
