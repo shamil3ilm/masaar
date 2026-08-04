@@ -143,7 +143,7 @@ class FatooraException extends Exception
     /**
      * Create a validation exception.
      */
-    public static function validation(string $message, ErrorCode $code = null, array $context = []): self
+    public static function validation(string $message, ?ErrorCode $code = null, array $context = []): self
     {
         return new self(
             $message,
@@ -155,7 +155,7 @@ class FatooraException extends Exception
     /**
      * Create a certificate exception.
      */
-    public static function certificate(string $message, ErrorCode $code = null, array $context = []): self
+    public static function certificate(string $message, ?ErrorCode $code = null, array $context = []): self
     {
         return new self(
             $message,
@@ -167,7 +167,7 @@ class FatooraException extends Exception
     /**
      * Create a network exception.
      */
-    public static function network(string $message, ErrorCode $code = null, array $context = []): self
+    public static function network(string $message, ?ErrorCode $code = null, array $context = []): self
     {
         return new self(
             $message,
