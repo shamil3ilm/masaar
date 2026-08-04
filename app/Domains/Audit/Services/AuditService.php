@@ -2,8 +2,9 @@
 
 namespace App\Domains\Audit\Services;
 
+use App\Domains\Audit\Models\AuditLog;
+use App\Domains\Organization\Services\TenantResolver;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Http\Request;
 
 /**
  * Audit logging service.
@@ -105,6 +106,38 @@ class AuditService
             'entity_id' => $userId ?? auth()->id(),
             'ip_address' => request()?->ip(),
             'user_agent' => request()?->userAgent(),
+        ]);
+    }
+
+    /**
+     * Record a security-relevant event.
+     *
+     * Covers what an incident reconstruction needs and ordinary entity
+     * auditing does not: who signed in and who failed to, who issued or
+     * revoked a credential, who onboarded a certificate, who ran a privileged
+     * admin action. Closes audit finding M-8.
+     *
+     * Failed attempts matter as much as successful ones — a breach that shows
+     * only successes cannot be told apart from normal use.
+     *
+     * @param  string  $action  Dotted event name, e.g. 'api_key.revoked'
+     * @param  array<string, mixed>  $metadata  Never credentials; identifiers and outcome only
+     */
+    public function logSecurity(
+        string $action,
+        ?string $entityType = null,
+        ?string $entityId = null,
+        array $metadata = [],
+    ): AuditLog {
+        return AuditLog::create([
+            'organization_id' => app(TenantResolver::class)->getOrganizationId(),
+            'user_id' => auth()->id(),
+            'action' => 'security.'.$action,
+            'entity_type' => $entityType,
+            'entity_id' => $entityId,
+            'ip_address' => request()?->ip(),
+            'user_agent' => request()?->userAgent(),
+            'metadata' => $metadata,
         ]);
     }
 

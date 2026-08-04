@@ -15,7 +15,7 @@ class ApiResponse
     /**
      * Success response.
      */
-    public static function success(mixed $data = null, string $message = null, int $status = 200): JsonResponse
+    public static function success(mixed $data = null, ?string $message = null, int $status = 200): JsonResponse
     {
         $response = ['success' => true];
 
@@ -41,7 +41,7 @@ class ApiResponse
     /**
      * Paginated response.
      */
-    public static function paginated(LengthAwarePaginator $paginator, string $message = null): JsonResponse
+    public static function paginated(LengthAwarePaginator $paginator, ?string $message = null): JsonResponse
     {
         $response = [
             'success' => true,

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Pipeline\Http\Requests;
 
+use App\Domains\Invoice\Http\Requests\CreateInvoiceRequest;
+
 /**
  * Pipeline submit request validation.
  *
