@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Logging\Services;
 
+use App\Domains\Compliance\Fatoora\Helpers\LogSanitizer;
 use Illuminate\Support\Facades\Log;
 use Psr\Log\LoggerInterface;
 use Throwable;
@@ -200,7 +201,10 @@ class ComplianceLogger
      */
     private function log(string $type, string $level, string $message, array $context): void
     {
-        $fullContext = $this->buildContext($context);
+        // Sanitised at the single choke point rather than at each call site,
+        // so no caller can leak an API secret, private key or buyer detail by
+        // forgetting to. Compliance logs are retained for years.
+        $fullContext = LogSanitizer::sanitize($this->buildContext($context));
         $channel = self::CHANNELS[$type] ?? self::FALLBACK_CHANNEL;
 
         try {

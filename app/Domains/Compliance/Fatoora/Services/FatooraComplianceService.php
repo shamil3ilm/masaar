@@ -7,6 +7,7 @@ namespace App\Domains\Compliance\Fatoora\Services;
 use App\Domains\Compliance\Fatoora\DTOs\AddressData;
 use App\Domains\Compliance\Fatoora\DTOs\InvoiceXmlData;
 use App\Domains\Compliance\Fatoora\DTOs\QrCodeData;
+use App\Domains\Compliance\Fatoora\Helpers\TextNormalizer;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
@@ -81,7 +82,9 @@ class FatooraComplianceService
         // ZATCA TLV encoding requires raw bytes for tags 6-9, not base64
         // The services return base64 for storage/display, so we decode here
         $qrData = new QrCodeData(
-            sellerName: $organization->name,
+            // Same normalisation as the XML: TLV tag 1 and the XML seller name
+            // must carry identical bytes.
+            sellerName: $this->normalizeName($organization->name),
             vatNumber: $organization->vat_number ?? '',
             timestamp: $invoice->issue_date->format('Y-m-d\TH:i:s\Z'),
             invoiceTotal: number_format((float) $invoice->total, 2, '.', ''),
@@ -112,6 +115,25 @@ class FatooraComplianceService
             'qr_code' => $qrCode,
             'signed_xml' => $signedXml,
         ];
+    }
+
+    /**
+     * Normalise a party name for the invoice XML.
+     *
+     * Arabic text reaches ZATCA in several visually identical encodings —
+     * alef variants, presentation forms, embedded bidi marks. Two spellings of
+     * the same taxpayer name would otherwise produce different bytes, and the
+     * bytes are what gets hashed and signed.
+     *
+     * Controlled by fatoora.features.arabic_normalization.
+     */
+    private function normalizeName(string $name): string
+    {
+        if (! config('fatoora.features.arabic_normalization', true)) {
+            return $name;
+        }
+
+        return TextNormalizer::normalizeName($name);
     }
 
     /**
@@ -166,10 +188,10 @@ class FatooraComplianceService
             invoiceTypeCode: $documentType->getTypeCode(),
             invoiceSubtype: $invoiceSubtype,
             currency: $invoice->currency,
-            sellerName: $organization->name,
+            sellerName: $this->normalizeName($organization->name),
             sellerVatNumber: $organization->vat_number ?? '',
             sellerAddress: $organization->getAddressData(),
-            buyerName: $invoice->buyer_name,
+            buyerName: $this->normalizeName((string) $invoice->buyer_name),
             subtotal: (float) $invoice->subtotal,
             taxAmount: (float) $invoice->tax_amount,
             total: (float) $invoice->total,
