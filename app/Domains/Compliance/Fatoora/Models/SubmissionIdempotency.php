@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Models;
 
+use App\Domains\Organization\Concerns\BelongsToTenant;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -20,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  */
 class SubmissionIdempotency extends Model
 {
+    use BelongsToTenant;
     use HasUuids;
 
     protected $table = 'submission_idempotency';

@@ -29,6 +29,18 @@ final readonly class OrganizationContext
     }
 
     /**
+     * Context for a machine credential — an API key or a licence.
+     *
+     * These authenticate an integration rather than a person, so they carry no
+     * organization role. They still establish the tenant, which is what query
+     * scoping depends on.
+     */
+    public static function forMachine(string $organizationId): self
+    {
+        return new self(organizationId: $organizationId, role: 'service');
+    }
+
+    /**
      * Check if user is admin in this organization.
      */
     public function isAdmin(): bool

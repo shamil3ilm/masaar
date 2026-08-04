@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Models;
 
+use App\Domains\Organization\Concerns\BelongsToTenant;
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
@@ -24,6 +25,7 @@ use Illuminate\Support\Facades\DB;
  */
 class Invoice extends Model
 {
+    use BelongsToTenant;
     use HasUuids;
 
     protected $fillable = [
