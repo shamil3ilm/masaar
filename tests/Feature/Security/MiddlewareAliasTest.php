@@ -19,7 +19,7 @@ use Tests\TestCase;
  * The consequence was not cosmetic. App\Domains\Auth\Http\Middleware\
  * JwtGuard is the only code that calls TenantResolver::setContext(),
  * so with it out of the pipeline the tenant context was never populated:
- * every JWT route saw a null organization, IsAdmin denied every
+ * every JWT route saw a null organization, the admin gate denied every
  * request, and tenant-scoped queries filtered on organization_id = null.
  */
 class MiddlewareAliasTest extends TestCase
@@ -29,7 +29,6 @@ class MiddlewareAliasTest extends TestCase
      */
     private const OWNED = [
         'jwt.auth' => \App\Domains\Auth\Http\Middleware\JwtGuard::class,
-        'admin' => \App\Domains\Auth\Http\Middleware\IsAdmin::class,
         'platform.admin' => \App\Domains\Auth\Http\Middleware\IsPlatformAdmin::class,
         'api.key' => \App\Domains\Auth\Http\Middleware\ApiKeyAuth::class,
         'portal.tenant' => \App\Domains\Organization\Http\Middleware\PortalTenant::class,
