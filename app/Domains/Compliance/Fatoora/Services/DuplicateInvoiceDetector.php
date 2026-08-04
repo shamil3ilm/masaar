@@ -134,13 +134,16 @@ class DuplicateInvoiceDetector
 
     /**
      * Check if UUID already exists globally.
+     *
+     * ZATCA's BT-124 invoice UUID is the invoice's primary key, so this is a
+     * key lookup rather than a column search.
      */
     public function checkUuid(string $uuid): ?Invoice
     {
         $cacheKey = "dup_check:uuid:{$uuid}";
 
         return Cache::remember($cacheKey, self::CACHE_TTL * 60, function () use ($uuid) {
-            return Invoice::where('uuid', $uuid)->first();
+            return Invoice::find($uuid);
         });
     }
 
@@ -217,18 +220,8 @@ class DuplicateInvoiceDetector
             ];
         }
 
-        // Check UUID uniqueness
-        $existingByUuid = Invoice::where('uuid', $invoice->uuid)
-            ->when($excludeId, fn ($q) => $q->where('id', '!=', $excludeId))
-            ->first();
-
-        if ($existingByUuid) {
-            $errors[] = [
-                'code' => 'DUPLICATE_UUID',
-                'message' => "UUID '{$invoice->uuid}' already exists",
-                'existing_invoice_id' => $existingByUuid->id,
-            ];
-        }
+        // BT-124 is the invoice's primary key, so the database guarantees its
+        // uniqueness and no application-level check is needed here.
 
         // Check if already submitted successfully
         if ($invoice->submissions()->whereIn('state', ['cleared', 'reported'])->exists()) {

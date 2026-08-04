@@ -398,7 +398,7 @@ class SubmissionService
             $duplicateCheck = $this->duplicateDetector->check(
                 organizationId: $invoice->organization_id,
                 invoiceNumber: $invoice->invoice_number,
-                uuid: $invoice->uuid ?? $invoice->id,
+                uuid: $invoice->id,
                 hash: $invoice->hash,
                 fuzzyMatchData: [
                     'buyer_vat' => $invoice->buyer_vat_number,
@@ -496,7 +496,7 @@ class SubmissionService
             // Extract required data from invoice
             $invoiceXml = $invoice->signed_xml;
             $invoiceHash = $invoice->hash;
-            $invoiceUuid = $invoice->uuid;
+            $invoiceUuid = $invoice->id;
 
             // Determine submission type and call ZATCA API
             $response = $invoice->isB2B()

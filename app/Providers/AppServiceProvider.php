@@ -72,14 +72,13 @@ class AppServiceProvider extends ServiceProvider
      * Reassert the application's middleware aliases after packages have booted.
      *
      * Aliases declared in bootstrap/app.php are applied before package service
-     * providers boot, so a package can overwrite one. tymon/jwt-auth does
-     * exactly that: its provider registers `jwt.auth` pointing at its own
-     * Authenticate middleware, silently displacing ours.
+     * providers boot, so a package can overwrite one. tymon/jwt-auth claims
+     * `jwt.auth` for its own Authenticate middleware from its provider.
      *
-     * That was not cosmetic. Our JwtGuard is the only code that calls
-     * TenantResolver::setContext(), so while it was out of the pipeline the
-     * tenant context was never populated — the admin gate denied every
-     * request and tenant-scoped queries filtered on organization_id = null.
+     * The application's JwtGuard is the only code that calls
+     * TenantResolver::setContext(). If a package holds that alias, no JWT
+     * route establishes a tenant, so admin gates deny every request and
+     * tenant-scoped queries filter on organization_id = null.
      *
      * Provider boot order puts this after package providers, so the
      * application's mapping wins. MiddlewareAliasTest pins it.
