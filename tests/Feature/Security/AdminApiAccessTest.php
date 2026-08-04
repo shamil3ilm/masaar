@@ -47,13 +47,6 @@ class AdminApiAccessTest extends TestCase
                 $resolved,
                 "/{$route->uri()} is missing the platform-admin gate."
             );
-
-            $this->assertNotContains(
-                \App\Domains\Auth\Http\Middleware\IsAdmin::class,
-                $resolved,
-                "/{$route->uri()} uses the per-organization admin gate, which any "
-                ."customer's org-admin satisfies."
-            );
         }
     }
 

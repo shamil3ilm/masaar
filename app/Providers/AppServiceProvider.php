@@ -24,7 +24,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public const MIDDLEWARE_ALIASES = [
         'jwt.auth' => \App\Domains\Auth\Http\Middleware\JwtGuard::class,
-        'admin' => \App\Domains\Auth\Http\Middleware\IsAdmin::class,
         'platform.admin' => \App\Domains\Auth\Http\Middleware\IsPlatformAdmin::class,
         'api.key' => \App\Domains\Auth\Http\Middleware\ApiKeyAuth::class,
         'portal.tenant' => \App\Domains\Organization\Http\Middleware\PortalTenant::class,
@@ -79,7 +78,7 @@ class AppServiceProvider extends ServiceProvider
      *
      * That was not cosmetic. Our JwtGuard is the only code that calls
      * TenantResolver::setContext(), so while it was out of the pipeline the
-     * tenant context was never populated — IsAdmin denied every
+     * tenant context was never populated — the admin gate denied every
      * request and tenant-scoped queries filtered on organization_id = null.
      *
      * Provider boot order puts this after package providers, so the
