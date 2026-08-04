@@ -2,6 +2,7 @@
 
 namespace App\Domains\Auth\Http\Controllers;
 
+use App\Domains\Audit\Services\AuditService;
 use App\Domains\Auth\Models\ApiKey;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
@@ -19,6 +20,7 @@ class ApiKeyController extends Controller
 {
     public function __construct(
         private readonly TenantResolver $tenant,
+        private readonly AuditService $audit,
     ) {}
 
     /**
@@ -65,6 +67,13 @@ class ApiKeyController extends Controller
             $request->scopes ?? ['*'],
             $request->expires_at ? new \DateTime($request->expires_at) : null
         );
+
+        // The key itself is never audited, only that one was issued and by whom.
+        $this->audit->logSecurity('api_key.created', 'ApiKey', $result['model']->id, [
+            'name' => $result['model']->name,
+            'scopes' => $result['model']->scopes,
+            'expires_at' => $result['model']->expires_at?->toISOString(),
+        ]);
 
         return ApiResponse::created([
             'api_key' => [
@@ -137,6 +146,11 @@ class ApiKeyController extends Controller
     public function destroy(string $id): JsonResponse
     {
         $key = $this->getApiKey($id);
+
+        $this->audit->logSecurity('api_key.revoked', 'ApiKey', $key->id, [
+            'name' => $key->name,
+        ]);
+
         $key->delete();
 
         return ApiResponse::success(null, 'API key revoked');
