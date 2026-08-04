@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\FTA\Models;
 
+use App\Domains\Organization\Concerns\BelongsToTenant;
 use App\Domains\Compliance\FTA\Enums\FtaStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
@@ -23,6 +24,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class FtaSubmission extends Model
 {
+    use BelongsToTenant;
     use HasUuids;
     use SoftDeletes;
 

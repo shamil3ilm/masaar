@@ -9,6 +9,8 @@ use App\Domains\Licensing\Models\License;
 use App\Domains\Licensing\Models\UsageEvent;
 use App\Domains\Licensing\Services\LicenseValidationService;
 use App\Domains\Licensing\Services\UsageMeteringService;
+use App\Domains\Organization\Services\TenantResolver;
+use App\Domains\Organization\ValueObjects\OrganizationContext;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -31,6 +33,7 @@ class ValidateLicense
     public function __construct(
         private readonly LicenseValidationService $validationService,
         private readonly UsageMeteringService $meteringService,
+        private readonly TenantResolver $tenantResolver,
     ) {}
 
     /**
@@ -76,6 +79,13 @@ class ValidateLicense
 
             // Check rate limits
             $this->meteringService->checkRateLimit($license);
+
+            // Establish the tenant through the resolver, which is what the
+            // BelongsToTenant scope reads. A request attribute alone would
+            // authenticate the licence without scoping its queries.
+            $this->tenantResolver->setContext(
+                OrganizationContext::forMachine((string) $license->organization_id)
+            );
 
             // Bind license to request for downstream use
             $request->attributes->set('license', $license);
