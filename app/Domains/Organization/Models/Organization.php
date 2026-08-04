@@ -31,6 +31,9 @@ class Organization extends Model
         'status',
         'group_id',
         'compliance_profile',
+        // Required by ZATCA for seller BT-31 and QR tag 2. The onboarding API
+        // accepts it, so it has to be mass-assignable or it is silently lost.
+        'vat_number',
         // Address fields (ZATCA required)
         'street',
         'building_number',
@@ -115,12 +118,24 @@ class Organization extends Model
     /**
      * Get VAT number — prefers active ComplianceProfile, falls back to legacy JSON.
      */
+    /**
+     * The organization's VAT registration number.
+     *
+     * A jurisdiction's compliance profile wins, because one organization can
+     * hold different registrations in KSA and the UAE. The stored column is
+     * the fallback, and it is the value the onboarding API writes.
+     *
+     * Without that fallback the column is unreachable: ZATCA needs this for
+     * seller BT-31 and QR tag 2, and reading null there makes submission
+     * impossible for every organization that has no profile row.
+     */
     public function getVatNumberAttribute(): ?string
     {
         $profile = $this->complianceProfileFor($this->country ?? 'SA');
 
         return $profile?->setting('vat_number')
             ?? $this->compliance_profile['vat_number']
+            ?? $this->attributes['vat_number']
             ?? null;
     }
 

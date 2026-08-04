@@ -13,8 +13,10 @@ return new class extends Migration
         // Creates the uae_fta_submissions table for UAE FTA Peppol PINT AE submissions
         Schema::create('uae_fta_submissions', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignId('invoice_id')->constrained('invoices')->restrictOnDelete();
-            $table->foreignId('organization_id')->constrained('organizations')->restrictOnDelete();
+            // foreignUuid, not foreignId: invoices.id and organizations.id are
+            // UUIDs, and a bigint column cannot carry a foreign key to them.
+            $table->foreignUuid('invoice_id')->constrained('invoices')->restrictOnDelete();
+            $table->foreignUuid('organization_id')->constrained('organizations')->restrictOnDelete();
             $table->string('status')->default('draft');
             $table->string('fta_submission_id')->nullable()->unique();   // FTA-assigned ref
             $table->string('fta_validation_status')->nullable();         // PASS|WARNING|ERROR
