@@ -7,7 +7,7 @@ namespace App\Domains\Pipeline\Services;
 use App\Domains\Audit\Services\AuditService;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Services\FatooraSubmissionService;
-use App\Domains\Compliance\Fatoora\Services\SubmissionService;
+use App\Domains\Compliance\Fatoora\Services\OfflineAwareSubmissionService;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
@@ -27,16 +27,22 @@ use Illuminate\Support\Facades\Log;
  * Designed for server-to-server ERP integration where the caller
  * needs a single atomic endpoint instead of 3 separate calls.
  *
- * Submission runs through SubmissionService rather than calling ZATCA
- * directly, so each attempt is recorded in invoice_submissions and guarded by
- * an idempotency key. An ERP that retries a timed-out request therefore
- * receives the original outcome instead of filing the invoice twice.
+ * Submission is delegated rather than performed here, through one layer per
+ * concern:
+ *
+ *   OfflineAwareSubmissionService  decides online vs offline queue
+ *     SubmissionService            idempotency, submission record, state machine
+ *       FatooraClient              the ZATCA call itself
+ *
+ * So an invoice issued while ZATCA is unreachable is still signed and queued,
+ * and an ERP retrying a timed-out request receives the original outcome
+ * instead of filing the invoice twice.
  */
 class PipelineService
 {
     public function __construct(
         private readonly FatooraSubmissionService $compliance,
-        private readonly SubmissionService $submissions,
+        private readonly OfflineAwareSubmissionService $submissions,
         private readonly WebhookService $webhookService,
         private readonly AuditService $auditService,
     ) {}
@@ -107,7 +113,9 @@ class PipelineService
         // Step 3: Submit to ZATCA government API if auto_submit is enabled
         if ($autoSubmit) {
             try {
-                $result = $this->submissions->submit($invoice, $idempotencyKey);
+                $result = $this->submissions->submit($invoice, [
+                    'idempotency_key' => $idempotencyKey,
+                ]);
                 $invoice->refresh();
 
                 $zatcaResponse = [
