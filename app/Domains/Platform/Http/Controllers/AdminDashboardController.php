@@ -572,7 +572,7 @@ class AdminDashboardController extends Controller
                 $params['--organization'] = $organizationId;
             }
 
-            Artisan::call('zatca:process-offline', $params);
+            Artisan::call('fatoora:process-offline', $params);
             $output = Artisan::output();
 
             Cache::forget('admin:offline_queue');
