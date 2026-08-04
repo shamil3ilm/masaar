@@ -3,6 +3,8 @@
 namespace App\Domains\Auth\Http\Middleware;
 
 use App\Domains\Auth\Models\ApiKey;
+use App\Domains\Organization\Services\TenantResolver;
+use App\Domains\Organization\ValueObjects\OrganizationContext;
 use App\Http\Responses\ApiResponse;
 use Closure;
 use Illuminate\Http\Request;
@@ -16,6 +18,10 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class ApiKeyAuth
 {
+    public function __construct(
+        private readonly TenantResolver $tenantResolver,
+    ) {}
+
     public function handle(Request $request, Closure $next, ?string $scope = null): Response
     {
         $apiKey = $request->header('X-API-Key');
@@ -42,7 +48,13 @@ class ApiKeyAuth
         // Record usage
         $key->recordUsage();
 
-        // Store organization context for the request
+        // Establish the tenant through the resolver, which is what the
+        // BelongsToTenant scope reads. Setting only a request attribute would
+        // authenticate the caller without scoping their queries.
+        $this->tenantResolver->setContext(
+            OrganizationContext::forMachine($key->organization_id)
+        );
+
         $request->attributes->set('api_key', $key);
         $request->attributes->set('organization_id', $key->organization_id);
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Models;
 
+use App\Domains\Organization\Concerns\BelongsToTenant;
 use App\Domains\Compliance\Fatoora\DTOs\AddressData;
 use App\Domains\Compliance\Fatoora\DTOs\CsrData;
 use App\Domains\Invoice\Models\Invoice;
@@ -42,6 +43,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class Branch extends Model
 {
+    use BelongsToTenant;
     use HasUuids;
     use SoftDeletes;
 

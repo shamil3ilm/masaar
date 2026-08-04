@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Models;
 
+use App\Domains\Organization\Concerns\BelongsToTenant;
 use App\Domains\Invoice\Models\Invoice;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ComplianceProfile extends Model
 {
+    use BelongsToTenant;
     use HasUuids;
 
     public const STATUS_PENDING   = 'pending_onboarding';
