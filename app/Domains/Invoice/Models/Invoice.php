@@ -205,7 +205,16 @@ class Invoice extends Model
                 ->lockForUpdate()
                 ->first();
 
-            return ((int) static::where('organization_id', $organizationId)->max('icv')) + 1;
+            // Outside the tenant scope: the organization is given explicitly,
+            // and the counter must reflect every invoice that organization
+            // holds regardless of who is asking. Left scoped, a request with
+            // no tenant context reads zero rows, restarts the counter at 1,
+            // and the unique index rejects the insert.
+            $highest = static::withoutTenantScope(
+                fn () => static::query()->where('organization_id', $organizationId)->max('icv')
+            );
+
+            return ((int) $highest) + 1;
         });
     }
 
