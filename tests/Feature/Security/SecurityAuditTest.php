@@ -10,12 +10,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Closes audit finding M-8.
+ * A breach has to be reconstructable from the trail.
  *
- * Entity auditing covered invoice CRUD, but nothing recorded who signed in,
- * who failed to, or who issued and revoked credentials. A breach could not be
- * reconstructed from the trail, which both ZATCA and PDPL expect for
- * tax-document operations.
+ * ZATCA and PDPL both expect that for tax-document operations, and entity
+ * auditing alone does not provide it: it records what changed, not who signed
+ * in, who failed to, or who issued and revoked a credential.
  */
 class SecurityAuditTest extends TestCase
 {

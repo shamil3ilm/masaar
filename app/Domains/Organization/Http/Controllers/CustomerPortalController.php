@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Http\Controllers;
 
+use App\Domains\Auth\Models\User;
+use App\Domains\Compliance\Fatoora\Models\Certificate;
+use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
+use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
+use App\Domains\Organization\Models\Organization;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 /**
@@ -20,6 +24,11 @@ use Illuminate\View\View;
  * The organization is resolved by PortalTenant from the authenticated
  * session's active memberships. Nothing here may read a tenant identifier from
  * query, body or header — doing so reopens cross-tenant disclosure.
+ *
+ * The queries below carry no org_id condition on purpose. PortalTenant puts
+ * the resolved tenant into TenantResolver, so BelongsToTenant's global scope
+ * applies it to every model here. Adding the filter by hand would work today
+ * and hide the omission on the day someone forgets.
  */
 class CustomerPortalController extends Controller
 {
@@ -77,61 +86,40 @@ class CustomerPortalController extends Controller
             return $this->organizationPicker();
         }
 
-        $organization = DB::table('organizations')->where('id', $orgId)->first();
+        $organization = Organization::find($orgId);
 
         if (! $organization) {
             return $this->organizationPicker('Organization not found');
         }
 
-        // Stats
+        // One grouped query rather than one COUNT per state.
+        $byState = InvoiceSubmission::query()
+            ->selectRaw('state, COUNT(*) as total')
+            ->groupBy('state')
+            ->pluck('total', 'state');
+
         $stats = [
-            'invoices_today' => DB::table('invoices')
-                ->where('org_id', $orgId)
-                ->where('created_at', '>=', now()->startOfDay())
-                ->count(),
-            'invoices_month' => DB::table('invoices')
-                ->where('org_id', $orgId)
-                ->where('created_at', '>=', now()->startOfMonth())
-                ->count(),
-            'cleared' => DB::table('invoice_submissions')
-                ->where('org_id', $orgId)
-                ->where('state', 'cleared')
-                ->count(),
-            'reported' => DB::table('invoice_submissions')
-                ->where('org_id', $orgId)
-                ->where('state', 'reported')
-                ->count(),
-            'rejected' => DB::table('invoice_submissions')
-                ->where('org_id', $orgId)
-                ->where('state', 'rejected')
-                ->count(),
-            'pending' => DB::table('invoice_submissions')
-                ->where('org_id', $orgId)
-                ->whereIn('state', ['pending', 'queued', 'submitted'])
-                ->count(),
+            'invoices_today' => Invoice::where('created_at', '>=', now()->startOfDay())->count(),
+            'invoices_month' => Invoice::where('created_at', '>=', now()->startOfMonth())->count(),
+            'cleared' => (int) $byState->get('cleared', 0),
+            'reported' => (int) $byState->get('reported', 0),
+            'rejected' => (int) $byState->get('rejected', 0),
+            'pending' => (int) $byState->only(['pending', 'queued', 'submitted'])->sum(),
         ];
 
-        // Certificate info
-        $certificate = DB::table('certificate_lineage')
-            ->where('org_id', $orgId)
-            ->where('status', 'active')
-            ->first();
+        $certificate = Certificate::active()->first();
 
-        // Recent activity by user
-        $userActivity = DB::table('invoice_submissions as s')
-            ->leftJoin('users as u', 's.created_by', '=', 'u.id')
-            ->where('s.org_id', $orgId)
-            ->where('s.created_at', '>=', now()->subDays(7))
-            ->selectRaw('COALESCE(u.name, u.email, "System") as user_name, u.id as user_id, COUNT(*) as submission_count')
-            ->groupBy('u.id', 'u.name', 'u.email')
+        $userActivity = InvoiceSubmission::query()
+            ->leftJoin('users', 'invoice_submissions.created_by', '=', 'users.id')
+            ->where('invoice_submissions.created_at', '>=', now()->subDays(7))
+            ->selectRaw('COALESCE(users.name, users.email, ?) as user_name, users.id as user_id, COUNT(*) as submission_count', ['System'])
+            ->groupBy('users.id', 'users.name', 'users.email')
             ->orderByDesc('submission_count')
             ->limit(10)
             ->get();
 
-        // Recent submissions
-        $recentSubmissions = DB::table('invoice_submissions')
-            ->where('org_id', $orgId)
-            ->orderByDesc('created_at')
+        $recentSubmissions = InvoiceSubmission::query()
+            ->latest()
             ->limit(10)
             ->get();
 
@@ -155,54 +143,33 @@ class CustomerPortalController extends Controller
             return $this->organizationPicker();
         }
 
-        $organization = DB::table('organizations')->where('id', $orgId)->first();
+        $organization = Organization::find($orgId);
         $userId = $request->query('user_id');
         $state = $request->query('state');
         $dateFrom = $request->query('date_from');
         $dateTo = $request->query('date_to');
 
-        $query = DB::table('invoice_submissions as s')
-            ->leftJoin('users as u', 's.created_by', '=', 'u.id')
-            ->leftJoin('invoices as i', 's.invoice_id', '=', 'i.id')
-            ->where('s.org_id', $orgId)
+        $submissions = InvoiceSubmission::query()
+            ->leftJoin('users', 'invoice_submissions.created_by', '=', 'users.id')
+            ->leftJoin('invoices', 'invoice_submissions.invoice_id', '=', 'invoices.id')
             ->select([
-                's.*',
-                'u.name as user_name',
-                'u.email as user_email',
-                'i.invoice_number',
-                'i.total as invoice_total',
+                'invoice_submissions.*',
+                'users.name as user_name',
+                'users.email as user_email',
+                'invoices.invoice_number',
+                'invoices.total as invoice_total',
             ])
-            ->orderByDesc('s.created_at');
+            ->when($userId, fn ($q) => $q->where('invoice_submissions.created_by', $userId))
+            ->when($state, fn ($q) => $q->where('invoice_submissions.state', $state))
+            ->when($dateFrom, fn ($q) => $q->where('invoice_submissions.created_at', '>=', $dateFrom))
+            ->when($dateTo, fn ($q) => $q->where('invoice_submissions.created_at', '<=', $dateTo.' 23:59:59'))
+            ->orderByDesc('invoice_submissions.created_at')
+            ->paginate(25)
+            ->withQueryString();
 
-        if ($userId) {
-            $query->where('s.created_by', $userId);
-        }
+        $users = $this->organizationUsers($orgId);
 
-        if ($state) {
-            $query->where('s.state', $state);
-        }
-
-        if ($dateFrom) {
-            $query->where('s.created_at', '>=', $dateFrom);
-        }
-
-        if ($dateTo) {
-            $query->where('s.created_at', '<=', $dateTo.' 23:59:59');
-        }
-
-        $submissions = $query->paginate(25);
-
-        // Get users for filter dropdown (via organization_user pivot)
-        $users = DB::table('users')
-            ->join('organization_user', 'users.id', '=', 'organization_user.user_id')
-            ->where('organization_user.org_id', $orgId)
-            ->where('organization_user.status', 'active')
-            ->orderBy('users.name')
-            ->get(['users.id', 'users.name', 'users.email']);
-
-        // State counts
-        $stateCounts = DB::table('invoice_submissions')
-            ->where('org_id', $orgId)
+        $stateCounts = InvoiceSubmission::query()
             ->selectRaw('state, COUNT(*) as count')
             ->groupBy('state')
             ->pluck('count', 'state');
@@ -230,16 +197,11 @@ class CustomerPortalController extends Controller
             return $this->organizationPicker();
         }
 
-        $organization = DB::table('organizations')->where('id', $orgId)->first();
+        $organization = Organization::find($orgId);
+        $activeCert = Certificate::active()->first();
 
-        $activeCert = DB::table('certificate_lineage')
-            ->where('org_id', $orgId)
-            ->where('status', 'active')
-            ->first();
-
-        $certHistory = DB::table('certificate_lineage')
-            ->where('org_id', $orgId)
-            ->orderByDesc('created_at')
+        $certHistory = Certificate::query()
+            ->latest()
             ->limit(10)
             ->get();
 
@@ -257,55 +219,59 @@ class CustomerPortalController extends Controller
             return $this->organizationPicker();
         }
 
-        $organization = DB::table('organizations')->where('id', $orgId)->first();
+        $organization = Organization::find($orgId);
 
-        $user = DB::table('users')
-            ->join('organization_user', 'users.id', '=', 'organization_user.user_id')
-            ->where('users.id', $userId)
-            ->where('organization_user.org_id', $orgId)
-            ->select('users.*')
-            ->first();
+        // Membership of this organization is what makes the user visible here;
+        // without it the id is just an unrelated account.
+        $user = $this->organizationUsers($orgId)->firstWhere('id', $userId);
 
         if (! $user) {
             abort(404, 'User not found');
         }
 
-        // User's submissions
-        $submissions = DB::table('invoice_submissions as s')
-            ->leftJoin('invoices as i', 's.invoice_id', '=', 'i.id')
-            ->where('s.org_id', $orgId)
-            ->where('s.created_by', $userId)
+        $submissions = InvoiceSubmission::query()
+            ->leftJoin('invoices', 'invoice_submissions.invoice_id', '=', 'invoices.id')
+            ->where('invoice_submissions.created_by', $userId)
             ->select([
-                's.*',
-                'i.invoice_number',
-                'i.total as invoice_total',
+                'invoice_submissions.*',
+                'invoices.invoice_number',
+                'invoices.total as invoice_total',
             ])
-            ->orderByDesc('s.created_at')
-            ->paginate(25);
+            ->orderByDesc('invoice_submissions.created_at')
+            ->paginate(25)
+            ->withQueryString();
 
-        // User stats
+        $byState = InvoiceSubmission::query()
+            ->where('created_by', $userId)
+            ->selectRaw('state, COUNT(*) as total')
+            ->groupBy('state')
+            ->pluck('total', 'state');
+
         $userStats = [
-            'total' => DB::table('invoice_submissions')
-                ->where('org_id', $orgId)
-                ->where('created_by', $userId)
-                ->count(),
-            'cleared' => DB::table('invoice_submissions')
-                ->where('org_id', $orgId)
-                ->where('created_by', $userId)
-                ->where('state', 'cleared')
-                ->count(),
-            'rejected' => DB::table('invoice_submissions')
-                ->where('org_id', $orgId)
-                ->where('created_by', $userId)
-                ->where('state', 'rejected')
-                ->count(),
-            'today' => DB::table('invoice_submissions')
-                ->where('org_id', $orgId)
-                ->where('created_by', $userId)
+            'total' => (int) $byState->sum(),
+            'cleared' => (int) $byState->get('cleared', 0),
+            'rejected' => (int) $byState->get('rejected', 0),
+            'today' => InvoiceSubmission::where('created_by', $userId)
                 ->where('created_at', '>=', now()->startOfDay())
                 ->count(),
         ];
 
         return view('portal.user-activity', compact('organization', 'user', 'submissions', 'userStats'));
+    }
+
+    /**
+     * Members of one organization.
+     *
+     * Users are not tenant-scoped — a person can belong to several
+     * organizations — so this walks the membership pivot explicitly.
+     *
+     * @return Collection<int, User>
+     */
+    private function organizationUsers(string $orgId): Collection
+    {
+        return User::query()
+            ->whereHas('activeOrganizations', fn ($q) => $q->whereKey($orgId))
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
     }
 }

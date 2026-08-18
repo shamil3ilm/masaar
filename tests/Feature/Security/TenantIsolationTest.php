@@ -14,16 +14,15 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Closes audit finding C-4.
+ * One taxpayer must never see another taxpayer's invoices.
  *
- * Isolation used to rest on each author remembering to write
- * where('org_id', ...). Nothing failed when someone forgot, so the
- * platform's most important invariant had no structural backstop.
- * BelongsToTenant makes the safe behaviour the default.
+ * BelongsToTenant makes that the default for every query rather than
+ * something each author has to remember, since a forgotten where clause
+ * fails silently and leaks.
  *
- * These tests run as HTTP rather than console, because the scope deliberately
- * stands down for commands and queue workers, which have no credential to
- * derive a tenant from.
+ * These run as HTTP rather than console: the scope deliberately stands down
+ * for commands and queue workers, which carry no credential to derive a
+ * tenant from.
  */
 class TenantIsolationTest extends TestCase
 {
@@ -110,7 +109,7 @@ class TenantIsolationTest extends TestCase
     {
         $this->asSystem(fn () => $this->makeInvoice($this->acme->id, 'ACME-1'));
 
-        $this->withoutConsole(fn () => $this->assertSame(0, Invoice::count()));
+        $this->asRequest(fn () => $this->assertSame(0, Invoice::count()));
     }
 
     /**
@@ -149,7 +148,7 @@ class TenantIsolationTest extends TestCase
     {
         app(TenantResolver::class)->setContext(OrganizationContext::forMachine($organizationId));
 
-        return $this->withoutConsole($callback);
+        return $this->asRequest($callback);
     }
 
     /**
@@ -158,28 +157,6 @@ class TenantIsolationTest extends TestCase
     private function asSystem(callable $callback): mixed
     {
         return $callback();
-    }
-
-    /**
-     * The scope exempts console context, and the test runner is console, so
-     * this flips the app into the request-like mode the scope guards.
-     */
-    private function withoutConsole(callable $callback): mixed
-    {
-        $app = app();
-        $original = $app->runningInConsole();
-        $app->instance('__test_running_in_console', false);
-
-        // Laravel resolves runningInConsole() from the container's runningInConsole
-        // flag; override it for the duration of the callback.
-        $reflection = new \ReflectionProperty($app, 'isRunningInConsole');
-        $reflection->setValue($app, false);
-
-        try {
-            return $callback();
-        } finally {
-            $reflection->setValue($app, $original);
-        }
     }
 
     private function makeInvoice(?string $organizationId, string $number): Invoice

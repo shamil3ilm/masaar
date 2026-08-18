@@ -13,9 +13,8 @@ use RecursiveIteratorIterator;
  *
  * Moving a class into a new namespace silently breaks references that relied
  * on the two being co-located, because those carry no `use` statement for a
- * rewriter to find and no error until the line runs. AuditService lost its
- * AuditLog that way, and two Licensing models lost User, whose relations then
- * pointed at a class that does not exist.
+ * rewriter to find, and nothing fails until the line runs. A parent class or
+ * a belongsTo target can sit broken for as long as nothing exercises it.
  *
  * Names that only ever appear inside strings — ASN.1 structure names, for
  * instance — are listed as known text rather than treated as references.

@@ -41,6 +41,17 @@ final readonly class OrganizationContext
     }
 
     /**
+     * Context for a person browsing the portal, where the tenant comes from
+     * the session rather than from a token claim. The role is the one on the
+     * organization_user pivot, so isAdmin() means the same thing here as it
+     * does on the JWT path.
+     */
+    public static function forMember(string $organizationId, ?string $role): self
+    {
+        return new self(organizationId: $organizationId, role: $role ?? 'member');
+    }
+
+    /**
      * Check if user is admin in this organization.
      */
     public function isAdmin(): bool

@@ -115,4 +115,16 @@ class User extends Authenticatable implements JWTSubject
             ->whereKey($organizationId)
             ->exists();
     }
+
+    /**
+     * The user's role in one organization, or null without active membership.
+     */
+    public function roleIn(string $organizationId): ?string
+    {
+        $organization = $this->activeOrganizations()
+            ->whereKey($organizationId)
+            ->first();
+
+        return $organization?->pivot->role;
+    }
 }

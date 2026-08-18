@@ -11,9 +11,12 @@ use Illuminate\Http\Response;
 use Tests\TestCase;
 
 /**
- * Regression guard for H-6 — /api/metrics carried only a rate limit, publishing
- * application and PHP version, APP_ENV, and business telemetry (invoice counts,
- * submission states, ZATCA error rates, queue depth) to anyone.
+ * /api/metrics is not public.
+ *
+ * It discloses application and PHP version, APP_ENV, and business telemetry —
+ * invoice counts, submission states, ZATCA error rates, queue depth. The
+ * versions assist targeted attack; the volumes are commercially sensitive. A
+ * rate limit bounds how fast that can be read, not who reads it.
  */
 class MetricsAccessTest extends TestCase
 {

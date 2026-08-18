@@ -10,8 +10,6 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Closes audit finding H-5.
- *
  * CSR fields are tenant-supplied and get written into an OpenSSL config file.
  * A newline ends the current directive, so an unvalidated organization name
  * can inject a [section] or override a key and change what the certificate

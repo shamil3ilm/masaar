@@ -19,10 +19,9 @@ use Tests\TestCase;
  * signing a branch's invoice with the organization's default credentials
  * attributes the document to the wrong device.
  *
- * The pipeline accepted a branch_id and discarded it: the column existed with
- * an index and a foreign key, Submitter already read $invoice->branch, but the
- * model had no branch relation, branch_id was not fillable, and BranchService
- * was an optional constructor argument the container therefore never supplied.
+ * Routing therefore has to hold end to end: the branch is persisted on the
+ * invoice, reachable through the relation Submitter reads, and confirmed to
+ * belong to the paying organization before any of that happens.
  */
 class BranchRoutingTest extends TestCase
 {
