@@ -16,12 +16,11 @@ use Tymon\JWTAuth\Facades\JWTAuth;
  * The JSON admin API is cross-tenant: it reports statistics over every
  * organization on the platform.
  *
- * It was gated by the `admin` alias, which checks role=admin inside the JWT's
- * organization context — a role any customer's own org-admin carries. That
- * went unnoticed because TenantResolver was never populated (see
- * MiddlewareAliasTest), so the check denied everyone and looked safe. Once the
- * tenant context started working, it would have admitted one tenant's admin to
- * every other tenant's figures.
+ * The gate is `platform.admin`, not the `admin` alias. `admin` checks
+ * role=admin inside the JWT's organization context, which every customer's own
+ * org-admin carries — using it here would hand one tenant every other tenant's
+ * figures. `platform.admin` checks users.is_platform_admin, which only Masaar
+ * staff hold.
  */
 class AdminApiAccessTest extends TestCase
 {

@@ -115,7 +115,7 @@ class AuditService
      * Covers what an incident reconstruction needs and ordinary entity
      * auditing does not: who signed in and who failed to, who issued or
      * revoked a credential, who onboarded a certificate, who ran a privileged
-     * admin action. Closes audit finding M-8.
+     * admin action.
      *
      * Failed attempts matter as much as successful ones — a breach that shows
      * only successes cannot be told apart from normal use.

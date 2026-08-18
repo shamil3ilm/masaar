@@ -9,8 +9,6 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * Closes audit finding H-2.
- *
  * Certificate revocation endpoints are read from extensions inside the
  * certificate being validated, so whoever supplies the certificate chooses
  * the address. Unchecked, that turns the server into a fetcher for addresses

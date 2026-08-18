@@ -100,9 +100,10 @@ class NamingConventionTest extends TestCase
     }
 
     /**
-     * Class names are case-insensitive in PHP, so a class whose name matches an
-     * imported one — differing only in case — is a fatal redeclare. Renaming
-     * JwtAuthenticate to JwtAuth hit exactly this against Tymon's JWTAuth.
+     * Class names are case-insensitive in PHP, so a class whose name matches one
+     * of its own imports — differing only in case — is a fatal redeclare on
+     * load. JwtGuard cannot be JwtAuth for that reason: the file imports
+     * Tymon\JWTAuth\Facades\JWTAuth.
      */
     public function test_no_import_collision(): void
     {
