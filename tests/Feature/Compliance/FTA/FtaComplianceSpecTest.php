@@ -100,7 +100,7 @@ it('accepts document type 380 (standard invoice per Peppol/PINT AE)', function (
 
 it('accepts document type 381 (credit note) with a reference', function () {
     expect(fn () => app(FtaValidator::class)->validate(makeUaeInvoice([
-        'documentType'        => '381',
+        'documentType' => '381',
         'creditNoteReference' => 'INV-AE-001',
     ])))->not->toThrow(FtaException::class);
 });
@@ -108,7 +108,7 @@ it('accepts document type 381 (credit note) with a reference', function () {
 it('accepts document type 383 (debit note) with a reference', function () {
     // 383 debit note is listed in PINT AE spec; UAE FTA confirmed acceptance
     expect(fn () => app(FtaValidator::class)->validate(makeUaeInvoice([
-        'documentType'        => '383',
+        'documentType' => '383',
         'creditNoteReference' => 'INV-AE-001',
     ])))->not->toThrow(FtaException::class);
 });
@@ -130,21 +130,21 @@ it('rejects an unknown document type', function () {
 
 it('rejects a credit note (381) without an original invoice reference', function () {
     expect(fn () => app(FtaValidator::class)->validate(makeUaeInvoice([
-        'documentType'        => '381',
+        'documentType' => '381',
         'creditNoteReference' => null,
     ])))->toThrow(FtaException::class);
 });
 
 it('rejects a debit note (383) without an original invoice reference', function () {
     expect(fn () => app(FtaValidator::class)->validate(makeUaeInvoice([
-        'documentType'        => '383',
+        'documentType' => '383',
         'creditNoteReference' => null,
     ])))->toThrow(FtaException::class);
 });
 
 it('does not require a reference for a standard invoice (380)', function () {
     expect(fn () => app(FtaValidator::class)->validate(makeUaeInvoice([
-        'documentType'        => '380',
+        'documentType' => '380',
         'creditNoteReference' => null,
     ])))->not->toThrow(FtaException::class);
 });
@@ -160,8 +160,8 @@ it('accepts 5% VAT (UAE standard rate)', function () {
 
 it('accepts 0% VAT (zero-rated supplies)', function () {
     expect(fn () => app(FtaValidator::class)->validate(makeUaeInvoice([
-        'vatRate'            => 0.00,
-        'vatAmount'          => 0.00,
+        'vatRate' => 0.00,
+        'vatAmount' => 0.00,
         'taxInclusiveAmount' => 1000.00,
     ])))->not->toThrow(FtaException::class);
 });
@@ -183,7 +183,7 @@ it('rejects an arbitrary non-standard VAT rate', function () {
 it('accepts a correctly calculated tax-inclusive amount', function () {
     expect(fn () => app(FtaValidator::class)->validate(makeUaeInvoice([
         'taxExclusiveAmount' => 1000.00,
-        'vatAmount'          => 50.00,
+        'vatAmount' => 50.00,
         'taxInclusiveAmount' => 1050.00,
     ])))->not->toThrow(FtaException::class);
 });
@@ -191,7 +191,7 @@ it('accepts a correctly calculated tax-inclusive amount', function () {
 it('accepts a tax-inclusive amount within 0.01 rounding tolerance', function () {
     expect(fn () => app(FtaValidator::class)->validate(makeUaeInvoice([
         'taxExclusiveAmount' => 1000.00,
-        'vatAmount'          => 50.00,
+        'vatAmount' => 50.00,
         'taxInclusiveAmount' => 1050.005, // within 0.01 tolerance
     ])))->not->toThrow(FtaException::class);
 });
@@ -199,7 +199,7 @@ it('accepts a tax-inclusive amount within 0.01 rounding tolerance', function () 
 it('rejects a tax-inclusive amount that does not match the sum', function () {
     expect(fn () => app(FtaValidator::class)->validate(makeUaeInvoice([
         'taxExclusiveAmount' => 1000.00,
-        'vatAmount'          => 50.00,
+        'vatAmount' => 50.00,
         'taxInclusiveAmount' => 1100.00, // off by 50 — clearly wrong
     ])))->toThrow(FtaException::class);
 });
@@ -255,34 +255,34 @@ it('XML contains AED as the document currency', function () {
 function makeUaeInvoice(array $overrides = []): FtaInvoiceData
 {
     $taxExcl = $overrides['taxExclusiveAmount'] ?? 1000.00;
-    $vat     = $overrides['vatAmount']          ?? 50.00;
+    $vat = $overrides['vatAmount'] ?? 50.00;
     $taxIncl = $overrides['taxInclusiveAmount'] ?? 1050.00;
 
     return new FtaInvoiceData(
-        invoiceNumber:        $overrides['invoiceNumber']        ?? 'INV-AE-001',
-        invoiceDate:          $overrides['invoiceDate']          ?? '2026-04-01',
-        dueDate:              $overrides['dueDate']              ?? '2026-04-30',
-        currencyCode:         $overrides['currencyCode']         ?? 'AED',
-        supplierName:         $overrides['supplierName']         ?? 'Acme UAE LLC',
-        supplierTrn:          $overrides['supplierTrn']          ?? '100000000000003',
-        supplierStreet:       $overrides['supplierStreet']       ?? '1 Sheikh Zayed Road',
-        supplierCity:         $overrides['supplierCity']         ?? 'Dubai',
-        supplierCountry:      $overrides['supplierCountry']      ?? 'AE',
-        customerName:         $overrides['customerName']         ?? 'Buyer Corp',
-        customerTrn:          $overrides['customerTrn']          ?? '200000000000009',
-        customerStreet:       $overrides['customerStreet']       ?? '5 Business Bay',
-        customerCity:         $overrides['customerCity']         ?? 'Dubai',
-        customerCountry:      $overrides['customerCountry']      ?? 'AE',
-        lineExtensionAmount:  $overrides['lineExtensionAmount']  ?? 1000.00,
-        taxExclusiveAmount:   $taxExcl,
-        taxInclusiveAmount:   $taxIncl,
-        payableAmount:        $overrides['payableAmount']        ?? 1050.00,
-        vatAmount:            $vat,
-        vatRate:              $overrides['vatRate']              ?? 0.05,
+        invoiceNumber: $overrides['invoiceNumber'] ?? 'INV-AE-001',
+        invoiceDate: $overrides['invoiceDate'] ?? '2026-04-01',
+        dueDate: $overrides['dueDate'] ?? '2026-04-30',
+        currencyCode: $overrides['currencyCode'] ?? 'AED',
+        supplierName: $overrides['supplierName'] ?? 'Acme UAE LLC',
+        supplierTrn: $overrides['supplierTrn'] ?? '100000000000003',
+        supplierStreet: $overrides['supplierStreet'] ?? '1 Sheikh Zayed Road',
+        supplierCity: $overrides['supplierCity'] ?? 'Dubai',
+        supplierCountry: $overrides['supplierCountry'] ?? 'AE',
+        customerName: $overrides['customerName'] ?? 'Buyer Corp',
+        customerTrn: $overrides['customerTrn'] ?? '200000000000009',
+        customerStreet: $overrides['customerStreet'] ?? '5 Business Bay',
+        customerCity: $overrides['customerCity'] ?? 'Dubai',
+        customerCountry: $overrides['customerCountry'] ?? 'AE',
+        lineExtensionAmount: $overrides['lineExtensionAmount'] ?? 1000.00,
+        taxExclusiveAmount: $taxExcl,
+        taxInclusiveAmount: $taxIncl,
+        payableAmount: $overrides['payableAmount'] ?? 1050.00,
+        vatAmount: $vat,
+        vatRate: $overrides['vatRate'] ?? 0.05,
         lines: $overrides['lines'] ?? [
             ['description' => 'Consulting', 'quantity' => 1.0, 'unitPrice' => 1000.00, 'lineTotal' => 1000.00, 'vatRate' => 0.05],
         ],
-        documentType:         $overrides['documentType']         ?? '380',
-        creditNoteReference:  $overrides['creditNoteReference']  ?? null,
+        documentType: $overrides['documentType'] ?? '380',
+        creditNoteReference: $overrides['creditNoteReference'] ?? null,
     );
 }

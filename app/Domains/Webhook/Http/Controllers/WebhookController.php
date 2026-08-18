@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * Webhook management API controller.
@@ -56,7 +57,7 @@ class WebhookController extends Controller
         $request->validate([
             'url' => ['required', 'url', 'max:500'],
             'events' => ['required', 'array', 'min:1'],
-            'events.*' => ['string', 'in:' . implode(',', WebhookService::EVENTS) . ',*'],
+            'events.*' => ['string', 'in:'.implode(',', WebhookService::EVENTS).',*'],
         ]);
 
         $webhook = $this->webhookService->create(
@@ -111,7 +112,7 @@ class WebhookController extends Controller
         $request->validate([
             'url' => ['sometimes', 'url', 'max:500'],
             'events' => ['sometimes', 'array', 'min:1'],
-            'events.*' => ['string', 'in:' . implode(',', WebhookService::EVENTS) . ',*'],
+            'events.*' => ['string', 'in:'.implode(',', WebhookService::EVENTS).',*'],
             'is_active' => ['sometimes', 'boolean'],
         ]);
 
@@ -200,7 +201,7 @@ class WebhookController extends Controller
     {
         $webhook = $this->getWebhook($id);
 
-        $newSecret = \Illuminate\Support\Str::random(64);
+        $newSecret = Str::random(64);
         $webhook->update(['secret' => $newSecret]);
 
         return ApiResponse::success([

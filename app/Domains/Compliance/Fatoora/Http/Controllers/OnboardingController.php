@@ -74,13 +74,13 @@ class OnboardingController extends Controller
             $this->storeCredentials($organization->id, 'ccsid', $result);
 
             return ApiResponse::success([
-                'ccsid' => substr($result['ccsid'], 0, 50) . '...', // Truncate for display
+                'ccsid' => substr($result['ccsid'], 0, 50).'...', // Truncate for display
                 'request_id' => $result['requestId'],
                 'message' => 'Compliance CSID obtained. Proceed with compliance checks.',
             ]);
 
         } catch (\Exception $e) {
-            return ApiResponse::error('Failed to obtain CCSID: ' . $e->getMessage(), 422);
+            return ApiResponse::error('Failed to obtain CCSID: '.$e->getMessage(), 422);
         }
     }
 
@@ -118,7 +118,7 @@ class OnboardingController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            return ApiResponse::error('Compliance check failed: ' . $e->getMessage(), 422);
+            return ApiResponse::error('Compliance check failed: '.$e->getMessage(), 422);
         }
     }
 
@@ -163,7 +163,7 @@ class OnboardingController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            return ApiResponse::error('Failed to obtain PCSID: ' . $e->getMessage(), 422);
+            return ApiResponse::error('Failed to obtain PCSID: '.$e->getMessage(), 422);
         }
     }
 
@@ -229,7 +229,6 @@ class OnboardingController extends Controller
      * 5. Simplified Credit Note (381, 02)
      * 6. Simplified Debit Note (383, 02)
      *
-     * @param Organization $organization
      * @return array<string, string> Invoice type => XML
      */
     private function generateTestInvoices(Organization $organization): array
@@ -272,7 +271,7 @@ class OnboardingController extends Controller
 
             $invoiceData = new InvoiceXmlData(
                 uuid: Str::uuid()->toString(),
-                invoiceNumber: 'TEST-' . strtoupper(substr($type['key'], 0, 3)) . '-' . time() . '-' . $icv,
+                invoiceNumber: 'TEST-'.strtoupper(substr($type['key'], 0, 3)).'-'.time().'-'.$icv,
                 icv: $icv,
                 issueDate: now()->format('Y-m-d'),
                 issueTime: now()->format('H:i:s'),

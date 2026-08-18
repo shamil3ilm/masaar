@@ -62,7 +62,7 @@ class ClassReferenceTest extends TestCase
         }
 
         $this->assertSame([], $unresolved, sprintf(
-            "These class references do not resolve. A class was most likely moved to a new "
+            'These class references do not resolve. A class was most likely moved to a new '
             ."namespace while a same-namespace reference to it was left behind:\n  %s",
             implode("\n  ", $unresolved)
         ));

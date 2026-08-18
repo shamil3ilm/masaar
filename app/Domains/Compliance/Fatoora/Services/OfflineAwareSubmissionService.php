@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Services;
 
-use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
+use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Invoice\Models\Invoice;
 use Illuminate\Support\Facades\Log;
 
@@ -34,8 +34,8 @@ class OfflineAwareSubmissionService
     /**
      * Submit invoice with automatic offline fallback.
      *
-     * @param Invoice $invoice Invoice to submit
-     * @param array $options Submission options
+     * @param  Invoice  $invoice  Invoice to submit
+     * @param  array  $options  Submission options
      * @return array Submission result
      */
     public function submit(Invoice $invoice, array $options = []): array
@@ -47,7 +47,7 @@ class OfflineAwareSubmissionService
 
         // Check if offline mode should be used
         $useOffline = $forceOffline || (
-            !$skipConnectivityCheck && $this->connectivityChecker->shouldUseOfflineMode()
+            ! $skipConnectivityCheck && $this->connectivityChecker->shouldUseOfflineMode()
         );
 
         if ($useOffline) {
@@ -95,7 +95,7 @@ class OfflineAwareSubmissionService
         $organization = $invoice->organization;
 
         // Generate signed XML if not already signed
-        if (!$invoice->signed_xml || !$invoice->hash || !$invoice->qr_code) {
+        if (! $invoice->signed_xml || ! $invoice->hash || ! $invoice->qr_code) {
             $complianceData = $this->complianceService->generateComplianceData(
                 invoice: $invoice,
                 organization: $organization,

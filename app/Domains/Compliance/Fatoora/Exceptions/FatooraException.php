@@ -17,6 +17,7 @@ use Throwable;
 class FatooraException extends Exception
 {
     private ErrorCode $errorCode;
+
     private array $context;
 
     public function __construct(

@@ -94,7 +94,7 @@ class QrCodeGenerator
         }
 
         if (! empty($errors)) {
-            throw new InvalidArgumentException('QR code validation failed: ' . implode(', ', $errors));
+            throw new InvalidArgumentException('QR code validation failed: '.implode(', ', $errors));
         }
     }
 
@@ -121,7 +121,7 @@ class QrCodeGenerator
 
         if (! empty($errors)) {
             throw new InvalidArgumentException(
-                'Phase 2 QR code requires cryptographic fields for B2B clearance: ' . implode(', ', $errors)
+                'Phase 2 QR code requires cryptographic fields for B2B clearance: '.implode(', ', $errors)
             );
         }
     }

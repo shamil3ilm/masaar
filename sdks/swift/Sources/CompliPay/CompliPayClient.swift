@@ -6,7 +6,7 @@ import CryptoKit
 /// Usage:
 /// ```swift
 /// let client = CompliPayClient(
-///     baseURL: "https://api.complipay.com",
+///     baseURL: "https://api.masaar.sa",
 ///     apiKey: "your_api_key",
 ///     apiSecret: "your_api_secret"
 /// )

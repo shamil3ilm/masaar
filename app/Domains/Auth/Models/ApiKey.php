@@ -8,8 +8,8 @@ use App\Domains\Organization\Concerns\BelongsToTenant;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 /**
@@ -64,9 +64,9 @@ class ApiKey extends Model
     public static function generate(string $organizationId, string $name, array $scopes = ['*'], ?\DateTimeInterface $expiresAt = null): array
     {
         // Generate a random key with prefix for identification
-        $prefix = 'cpk_' . Str::random(8);
+        $prefix = 'cpk_'.Str::random(8);
         $secret = Str::random(40);
-        $plainKey = $prefix . '_' . $secret;
+        $plainKey = $prefix.'_'.$secret;
 
         $model = static::create([
             'organization_id' => $organizationId,

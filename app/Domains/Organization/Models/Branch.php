@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Models;
 
-use App\Domains\Organization\Concerns\BelongsToTenant;
 use App\Domains\Compliance\Fatoora\DTOs\AddressData;
 use App\Domains\Compliance\Fatoora\DTOs\CsrData;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Organization\Concerns\BelongsToTenant;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -34,10 +35,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $postal_code
  * @property string $country_code
  * @property string $onboarding_status
- * @property \Carbon\Carbon|null $onboarded_at
- * @property \Carbon\Carbon|null $certificate_expires_at
+ * @property Carbon|null $onboarded_at
+ * @property Carbon|null $certificate_expires_at
  * @property int $invoice_count
- * @property \Carbon\Carbon|null $last_invoice_at
+ * @property Carbon|null $last_invoice_at
  * @property bool $is_active
  * @property bool $is_default
  */
@@ -89,10 +90,15 @@ class Branch extends Model
 
     // Onboarding status constants
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_CSR_GENERATED = 'csr_generated';
+
     public const STATUS_COMPLIANCE_PASSED = 'compliance_passed';
+
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_SUSPENDED = 'suspended';
+
     public const STATUS_REVOKED = 'revoked';
 
     /**
@@ -118,7 +124,7 @@ class Branch extends Model
     {
         return $this->onboarding_status === self::STATUS_ACTIVE
             && $this->is_active
-            && !$this->isCertificateExpired();
+            && ! $this->isCertificateExpired();
     }
 
     /**
@@ -126,7 +132,7 @@ class Branch extends Model
      */
     public function isCertificateExpired(): bool
     {
-        if (!$this->certificate_expires_at) {
+        if (! $this->certificate_expires_at) {
             return false;
         }
 
@@ -138,7 +144,7 @@ class Branch extends Model
      */
     public function isCertificateExpiringSoon(): bool
     {
-        if (!$this->certificate_expires_at) {
+        if (! $this->certificate_expires_at) {
             return false;
         }
 
@@ -150,7 +156,7 @@ class Branch extends Model
      */
     public function getDaysUntilCertificateExpiry(): ?int
     {
-        if (!$this->certificate_expires_at) {
+        if (! $this->certificate_expires_at) {
             return null;
         }
 

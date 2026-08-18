@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Fatoora\Services;
 
 use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
+use Carbon\Carbon;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -78,6 +80,7 @@ class FatooraConnectivityChecker
                 'circuit_state' => 'open',
             ];
             Cache::put(self::CACHE_KEY, $result, self::CACHE_TTL);
+
             return $result;
         }
 
@@ -99,6 +102,7 @@ class FatooraConnectivityChecker
     public function forceCheck(): array
     {
         Cache::forget(self::CACHE_KEY);
+
         return $this->check();
     }
 
@@ -116,12 +120,12 @@ class FatooraConnectivityChecker
     public function shouldUseOfflineMode(): bool
     {
         // Check if offline mode is globally enabled
-        if (!config('fatoora.features.offline_mode', true)) {
+        if (! config('fatoora.features.offline_mode', true)) {
             return false;
         }
 
         // Check connectivity
-        return !$this->isAvailable();
+        return ! $this->isAvailable();
     }
 
     /**
@@ -152,7 +156,7 @@ class FatooraConnectivityChecker
                 'available' => $isAvailable,
                 'latency_ms' => $latencyMs,
                 'status_code' => $response->status(),
-                'reason' => $isAvailable ? null : 'Server returned error: ' . $response->status(),
+                'reason' => $isAvailable ? null : 'Server returned error: '.$response->status(),
                 'checked_at' => now()->toIso8601String(),
                 'circuit_state' => 'closed',
             ];
@@ -171,7 +175,7 @@ class FatooraConnectivityChecker
 
             return $result;
 
-        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+        } catch (ConnectionException $e) {
             $latencyMs = (int) ((microtime(true) - $startTime) * 1000);
 
             Log::warning('ZATCA connectivity check failed - connection error', [
@@ -182,7 +186,7 @@ class FatooraConnectivityChecker
             return [
                 'available' => false,
                 'latency_ms' => $latencyMs,
-                'reason' => 'Connection failed: ' . $e->getMessage(),
+                'reason' => 'Connection failed: '.$e->getMessage(),
                 'checked_at' => now()->toIso8601String(),
                 'circuit_state' => 'closed',
             ];
@@ -195,7 +199,7 @@ class FatooraConnectivityChecker
             return [
                 'available' => false,
                 'latency_ms' => null,
-                'reason' => 'Check failed: ' . $e->getMessage(),
+                'reason' => 'Check failed: '.$e->getMessage(),
                 'checked_at' => now()->toIso8601String(),
                 'circuit_state' => 'closed',
             ];
@@ -220,11 +224,12 @@ class FatooraConnectivityChecker
 
         if ($circuit['opened_at'] !== null) {
             // Check if circuit should be half-open (allow retry)
-            $openedAt = \Carbon\Carbon::parse($circuit['opened_at']);
+            $openedAt = Carbon::parse($circuit['opened_at']);
             if ($openedAt->addSeconds(self::CIRCUIT_OPEN_DURATION)->isPast()) {
                 // Allow retry (half-open state)
                 return false;
             }
+
             return true;
         }
 
@@ -243,6 +248,7 @@ class FatooraConnectivityChecker
             } else {
                 $this->circuitBreaker->recordFailure('zatca_api');
             }
+
             return;
         }
 
@@ -307,7 +313,7 @@ class FatooraConnectivityChecker
                 'threshold' => self::FAILURE_THRESHOLD,
                 'opened_at' => $circuit['opened_at'],
                 'will_retry_at' => $circuit['opened_at']
-                    ? \Carbon\Carbon::parse($circuit['opened_at'])
+                    ? Carbon::parse($circuit['opened_at'])
                         ->addSeconds(self::CIRCUIT_OPEN_DURATION)
                         ->toIso8601String()
                     : null,

@@ -8,7 +8,7 @@ Usage:
     from complipay import CompliPayClient
 
     client = CompliPayClient(
-        base_url="https://api.complipay.com",
+        base_url="https://api.masaar.sa",
         api_key="your_api_key"
     )
 
@@ -363,7 +363,7 @@ class CompliPayClient:
 
     Usage:
         client = CompliPayClient(
-            base_url="https://api.complipay.com",
+            base_url="https://api.masaar.sa",
             api_key="your_api_key"
         )
 

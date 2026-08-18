@@ -6,7 +6,6 @@
  * ZATCA-compliant e-invoicing API client for PHP 7.4+
  * Compatible with Laravel 8, 9, 10, 11, 12 and any PHP application.
  *
- * @package Masaar
  * @version 1.0.0
  */
 
@@ -192,9 +191,9 @@ class HttpClient
         ];
 
         if ($this->apiKey !== null) {
-            $headers[] = 'X-API-Key: ' . $this->apiKey;
+            $headers[] = 'X-API-Key: '.$this->apiKey;
         } elseif ($this->jwtToken !== null) {
-            $headers[] = 'Authorization: Bearer ' . $this->jwtToken;
+            $headers[] = 'Authorization: Bearer '.$this->jwtToken;
         }
 
         return $headers;
@@ -209,7 +208,7 @@ class HttpClient
         $data = $response['data'];
 
         if ($statusCode === 401) {
-            throw new AuthenticationException();
+            throw new AuthenticationException;
         }
 
         if ($statusCode === 422) {
@@ -232,7 +231,7 @@ class HttpClient
 
     private function request(string $method, string $endpoint, ?array $data = null): array
     {
-        $url = $this->baseUrl . $endpoint;
+        $url = $this->baseUrl.$endpoint;
 
         $ch = curl_init();
 
@@ -283,9 +282,10 @@ class HttpClient
 
     public function get(string $endpoint, array $params = []): array
     {
-        if (!empty($params)) {
-            $endpoint .= '?' . http_build_query($params);
+        if (! empty($params)) {
+            $endpoint .= '?'.http_build_query($params);
         }
+
         return $this->request('GET', $endpoint);
     }
 
@@ -330,7 +330,7 @@ class InvoicesResource
         }
 
         // Allow UUIDs and alphanumeric IDs (no path traversal characters)
-        if (!preg_match('/^[a-zA-Z0-9\-_]+$/', $id)) {
+        if (! preg_match('/^[a-zA-Z0-9\-_]+$/', $id)) {
             throw new InvalidArgumentException("Invalid {$name} format");
         }
 
@@ -345,17 +345,19 @@ class InvoicesResource
         if ($status !== null) {
             $params['status'] = $status;
         }
+
         return $this->client->get('/v1/invoices', $params);
     }
 
     public function get(string $invoiceId): array
     {
         $this->validateId($invoiceId, 'Invoice ID');
+
         return $this->client->get("/v1/invoices/{$invoiceId}");
     }
 
     /**
-     * @param InvoiceLine[]|array[] $lines
+     * @param  InvoiceLine[]|array[]  $lines
      */
     public function create(
         string $invoiceNumber,
@@ -405,7 +407,7 @@ class InvoicesResource
     }
 
     /**
-     * @param InvoiceLine[]|array[] $lines
+     * @param  InvoiceLine[]|array[]  $lines
      */
     public function createCreditNote(
         string $invoiceNumber,
@@ -432,7 +434,7 @@ class InvoicesResource
     }
 
     /**
-     * @param InvoiceLine[]|array[] $lines
+     * @param  InvoiceLine[]|array[]  $lines
      */
     public function createDebitNote(
         string $invoiceNumber,
@@ -479,7 +481,7 @@ class ComplianceResource
      */
     private function validateId(string $id): void
     {
-        if (empty($id) || !preg_match('/^[a-zA-Z0-9\-_]+$/', $id) || strlen($id) > 64) {
+        if (empty($id) || ! preg_match('/^[a-zA-Z0-9\-_]+$/', $id) || strlen($id) > 64) {
             throw new InvalidArgumentException('Invalid invoice ID format');
         }
     }
@@ -487,12 +489,14 @@ class ComplianceResource
     public function generate(string $invoiceId): array
     {
         $this->validateId($invoiceId);
+
         return $this->client->post("/api/compliance/zatca/generate/{$invoiceId}");
     }
 
     public function validate(string $invoiceId): array
     {
         $this->validateId($invoiceId);
+
         return $this->client->post("/api/compliance/zatca/validate/{$invoiceId}");
     }
 
@@ -504,7 +508,7 @@ class ComplianceResource
         $this->validateId($invoiceId);
         $result = $this->client->post("/api/compliance/zatca/submit/{$invoiceId}");
 
-        if (!($result['success'] ?? true)) {
+        if (! ($result['success'] ?? true)) {
             throw new ZatcaException(
                 'ZATCA submission failed',
                 $result['errors'] ?? []
@@ -517,6 +521,7 @@ class ComplianceResource
     public function status(string $invoiceId): array
     {
         $this->validateId($invoiceId);
+
         return $this->client->get("/api/compliance/zatca/status/{$invoiceId}");
     }
 }
@@ -545,6 +550,7 @@ class WebhooksResource
         if ($secret !== null) {
             $data['secret'] = $secret;
         }
+
         return $this->client->post('/api/webhooks', $data);
     }
 
@@ -558,7 +564,8 @@ class WebhooksResource
      */
     public static function verifySignature(string $payload, string $signature, string $secret): bool
     {
-        $expected = 'sha256=' . hash_hmac('sha256', $payload, $secret);
+        $expected = 'sha256='.hash_hmac('sha256', $payload, $secret);
+
         return hash_equals($expected, $signature);
     }
 }
@@ -570,7 +577,7 @@ class WebhooksResource
  *
  * @example
  * $client = new MasaarClient([
- *     'base_url' => 'https://api.masaar.com',
+ *     'base_url' => 'https://api.masaar.sa',
  *     'api_key' => 'your_api_key',
  * ]);
  *
@@ -597,20 +604,20 @@ class MasaarClient
     private $http;
 
     /**
-     * @param array $config [
-     *     'base_url' => string (required),
-     *     'api_key' => string (optional),
-     *     'jwt_token' => string (optional),
-     *     'timeout' => int (default: 30),
-     * ]
+     * @param  array  $config  [
+     *                         'base_url' => string (required),
+     *                         'api_key' => string (optional),
+     *                         'jwt_token' => string (optional),
+     *                         'timeout' => int (default: 30),
+     *                         ]
      */
     public function __construct(array $config)
     {
-        if (!isset($config['base_url'])) {
+        if (! isset($config['base_url'])) {
             throw new InvalidArgumentException('base_url is required');
         }
 
-        if (!isset($config['api_key']) && !isset($config['jwt_token'])) {
+        if (! isset($config['api_key']) && ! isset($config['jwt_token'])) {
             throw new InvalidArgumentException('Either api_key or jwt_token must be provided');
         }
 

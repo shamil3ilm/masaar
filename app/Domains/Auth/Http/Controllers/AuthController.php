@@ -5,11 +5,11 @@ namespace App\Domains\Auth\Http\Controllers;
 use App\Domains\Audit\Services\AuditService;
 use App\Domains\Auth\Contracts\Authenticator;
 use App\Domains\Auth\DTOs\LoginData;
-use App\Http\Controllers\Controller;
 use App\Domains\Auth\Http\Requests\LoginRequest;
 use App\Domains\Auth\Http\Requests\RegisterRequest;
-use App\Http\Responses\ApiResponse;
 use App\Domains\Auth\Models\User;
+use App\Http\Controllers\Controller;
+use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
 

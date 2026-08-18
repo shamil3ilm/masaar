@@ -3,7 +3,7 @@
 /// Usage:
 /// ```dart
 /// final client = CompliPayClient(
-///   baseUrl: 'https://api.complipay.com',
+///   baseUrl: 'https://api.masaar.sa',
 ///   apiKey: 'your_api_key',
 ///   apiSecret: 'your_api_secret',
 /// );

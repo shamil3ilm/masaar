@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Domains\Compliance\Fatoora\DTOs\CsrData;
-use App\Domains\Compliance\Fatoora\Services\CertificateService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use phpseclib3\Crypt\EC;
@@ -47,7 +46,7 @@ class FatooraGenerateCsr extends Command
         // Determine invoice types - default to both if neither specified
         $invoiceTypesStandard = $this->option('standard');
         $invoiceTypesSimplified = $this->option('simplified');
-        if (!$invoiceTypesStandard && !$invoiceTypesSimplified) {
+        if (! $invoiceTypesStandard && ! $invoiceTypesSimplified) {
             $invoiceTypesStandard = true;
             $invoiceTypesSimplified = true;
         }
@@ -67,9 +66,10 @@ class FatooraGenerateCsr extends Command
 
         // Validate VAT number
         $vatNumber = $csrData->vatNumber;
-        if (strlen($vatNumber) !== 15 || !preg_match('/^3\d{13}3$/', $vatNumber)) {
+        if (strlen($vatNumber) !== 15 || ! preg_match('/^3\d{13}3$/', $vatNumber)) {
             $this->error('VAT number must be 15 digits starting and ending with 3');
-            $this->line("Example: 399999999900003");
+            $this->line('Example: 399999999900003');
+
             return Command::FAILURE;
         }
 
@@ -88,29 +88,29 @@ class FatooraGenerateCsr extends Command
 
         try {
             // Check if ZATCA SDK is available
-            $sdkJar = self::SDK_PATH . '/zatca-einvoicing-sdk-238-R3.4.8.jar';
+            $sdkJar = self::SDK_PATH.'/zatca-einvoicing-sdk-238-R3.4.8.jar';
             if (file_exists($sdkJar)) {
                 $this->info('Using ZATCA SDK for CSR generation (recommended)...');
                 $result = $this->generateCsrWithSdk($csrData);
             } else {
                 $this->warn('ZATCA SDK not found, falling back to phpseclib...');
-                $this->line('For best results, install ZATCA SDK at: ' . self::SDK_PATH);
+                $this->line('For best results, install ZATCA SDK at: '.self::SDK_PATH);
                 $result = $this->generateCsrWithPhpseclib($csrData);
             }
 
             // Output directory
             $outputDir = $this->option('output') ?? storage_path('app/zatca');
-            if (!File::isDirectory($outputDir)) {
+            if (! File::isDirectory($outputDir)) {
                 File::makeDirectory($outputDir, 0755, true);
             }
 
             // Save CSR
-            $csrPath = $outputDir . '/taxpayer.csr';
+            $csrPath = $outputDir.'/taxpayer.csr';
             File::put($csrPath, $result['csr']);
             $this->info("CSR saved to: {$csrPath}");
 
             // Save private key
-            $keyPath = $outputDir . '/taxpayer.key';
+            $keyPath = $outputDir.'/taxpayer.key';
             File::put($keyPath, $result['privateKey']);
             $this->info("Private key saved to: {$keyPath}");
 
@@ -138,7 +138,7 @@ class FatooraGenerateCsr extends Command
             return Command::SUCCESS;
 
         } catch (\Exception $e) {
-            $this->error('Failed to generate CSR: ' . $e->getMessage());
+            $this->error('Failed to generate CSR: '.$e->getMessage());
             $this->newLine();
             $this->warn('Troubleshooting:');
             $this->line('1. Ensure OpenSSL extension is enabled in PHP');
@@ -158,6 +158,7 @@ class FatooraGenerateCsr extends Command
         if ($simplified) {
             $types[] = 'Simplified (B2C)';
         }
+
         return implode(', ', $types);
     }
 
@@ -168,13 +169,13 @@ class FatooraGenerateCsr extends Command
     private function generateCsrWithSdk(CsrData $csrData): array
     {
         $outputDir = storage_path('app/zatca');
-        if (!is_dir($outputDir)) {
+        if (! is_dir($outputDir)) {
             mkdir($outputDir, 0755, true);
         }
 
         // Create CSR config file for SDK
         $invoiceType = $csrData->getInvoiceTypeCode();
-        $configPath = $outputDir . '/csr-config.properties';
+        $configPath = $outputDir.'/csr-config.properties';
         $configContent = <<<EOT
 csr.common.name=TST-886431145-{$csrData->vatNumber}
 csr.serial.number={$csrData->serialNumber}
@@ -188,20 +189,20 @@ csr.industry.business.category={$csrData->industry}
 EOT;
         file_put_contents($configPath, $configContent);
 
-        $this->info('Created CSR config: ' . $configPath);
+        $this->info('Created CSR config: '.$configPath);
 
         // Set up SDK environment
-        $sdkConfigPath = dirname(self::SDK_PATH) . '/Configuration/config.json';
-        $sdkJar = self::SDK_PATH . '/zatca-einvoicing-sdk-238-R3.4.8.jar';
+        $sdkConfigPath = dirname(self::SDK_PATH).'/Configuration/config.json';
+        $sdkJar = self::SDK_PATH.'/zatca-einvoicing-sdk-238-R3.4.8.jar';
 
         // Ensure SDK config exists
-        if (!file_exists($sdkConfigPath)) {
+        if (! file_exists($sdkConfigPath)) {
             $this->createSdkConfig($sdkConfigPath);
         }
 
         // Run SDK to generate CSR
-        $csrOutput = $outputDir . '/taxpayer-sdk.csr';
-        $keyOutput = $outputDir . '/taxpayer-sdk.key';
+        $csrOutput = $outputDir.'/taxpayer-sdk.csr';
+        $keyOutput = $outputDir.'/taxpayer-sdk.key';
 
         $cmd = sprintf(
             'java -Djdk.module.illegalAccess=deny -Dfile.encoding=UTF-8 -jar "%s" --globalVersion 238-R3.4.8 -csr -csrConfig "%s" -generatedCsr "%s" -privateKey "%s" -sim 2>&1',
@@ -214,14 +215,14 @@ EOT;
         // Change to output directory and run
         $cwd = getcwd();
         chdir($outputDir);
-        putenv('SDK_CONFIG=' . $sdkConfigPath);
+        putenv('SDK_CONFIG='.$sdkConfigPath);
 
         $this->line('Running ZATCA SDK...');
         exec($cmd, $output, $returnCode);
         chdir($cwd);
 
         if ($returnCode !== 0) {
-            throw new \RuntimeException('SDK CSR generation failed: ' . implode("\n", $output));
+            throw new \RuntimeException('SDK CSR generation failed: '.implode("\n", $output));
         }
 
         $this->info('✓ CSR generated by ZATCA SDK');
@@ -237,13 +238,13 @@ EOT;
 
         // Key: base64 content is the DER, wrap with PEM headers
         // The SDK key is already base64-encoded DER, so wrap it directly
-        $keyPem = "-----BEGIN EC PRIVATE KEY-----\n" .
-            chunk_split($keyBase64, 64, "\n") .
-            "-----END EC PRIVATE KEY-----";
+        $keyPem = "-----BEGIN EC PRIVATE KEY-----\n".
+            chunk_split($keyBase64, 64, "\n").
+            '-----END EC PRIVATE KEY-----';
 
         // Save PEM files
-        $csrPath = $outputDir . '/taxpayer.csr';
-        $keyPath = $outputDir . '/taxpayer.key';
+        $csrPath = $outputDir.'/taxpayer.csr';
+        $keyPath = $outputDir.'/taxpayer.key';
         file_put_contents($csrPath, $csrPem);
         file_put_contents($keyPath, $keyPem);
 
@@ -263,14 +264,14 @@ EOT;
     {
         $sdkRoot = dirname(dirname(self::SDK_PATH));
         $config = [
-            'xsdPath' => $sdkRoot . '/Data/Schemas/xsds/UBL2.1/xsd/maindoc/UBL-Invoice-2.1.xsd',
-            'enSchematron' => $sdkRoot . '/Data/Rules/schematrons/CEN-EN16931-UBL.xsl',
-            'zatcaSchematron' => $sdkRoot . '/Data/Rules/schematrons/20210819_ZATCA_E-invoice_Validation_Rules.xsl',
-            'certPath' => $sdkRoot . '/Data/Certificates/cert.pem',
-            'privateKeyPath' => $sdkRoot . '/Data/Certificates/ec-secp256k1-priv-key.pem',
-            'pihPath' => $sdkRoot . '/Data/PIH/pih.txt',
-            'inputPath' => $sdkRoot . '/Data/Input',
-            'usagePathFile' => dirname($configPath) . '/usage.txt',
+            'xsdPath' => $sdkRoot.'/Data/Schemas/xsds/UBL2.1/xsd/maindoc/UBL-Invoice-2.1.xsd',
+            'enSchematron' => $sdkRoot.'/Data/Rules/schematrons/CEN-EN16931-UBL.xsl',
+            'zatcaSchematron' => $sdkRoot.'/Data/Rules/schematrons/20210819_ZATCA_E-invoice_Validation_Rules.xsl',
+            'certPath' => $sdkRoot.'/Data/Certificates/cert.pem',
+            'privateKeyPath' => $sdkRoot.'/Data/Certificates/ec-secp256k1-priv-key.pem',
+            'pihPath' => $sdkRoot.'/Data/PIH/pih.txt',
+            'inputPath' => $sdkRoot.'/Data/Input',
+            'usagePathFile' => dirname($configPath).'/usage.txt',
         ];
 
         // Convert to forward slashes for cross-platform compatibility
@@ -289,7 +290,7 @@ EOT;
     {
         // Find OpenSSL executable
         $opensslCmd = $this->findOpenSsl();
-        if (!$opensslCmd) {
+        if (! $opensslCmd) {
             throw new \RuntimeException('OpenSSL not found. Please install OpenSSL or add it to PATH.');
         }
 
@@ -297,12 +298,12 @@ EOT;
 
         // Create output directory
         $outputDir = storage_path('app/zatca');
-        if (!is_dir($outputDir)) {
+        if (! is_dir($outputDir)) {
             mkdir($outputDir, 0755, true);
         }
 
-        $keyPath = $outputDir . '/taxpayer.key';
-        $csrPath = $outputDir . '/taxpayer.csr';
+        $keyPath = $outputDir.'/taxpayer.key';
+        $csrPath = $outputDir.'/taxpayer.csr';
         $configPath = $this->createFullZatcaConfig($csrData);
 
         // Generate EC private key using shell command (secp256k1 for ZATCA)
@@ -310,14 +311,14 @@ EOT;
         $this->line('Generating EC key: secp256k1');
         exec($keyCmd, $keyOutput, $keyReturnCode);
 
-        if ($keyReturnCode !== 0 || !file_exists($keyPath)) {
+        if ($keyReturnCode !== 0 || ! file_exists($keyPath)) {
             // Try prime256v1 as fallback
             $this->warn('secp256k1 not available, trying prime256v1...');
             $keyCmd = "\"{$opensslCmd}\" ecparam -name prime256v1 -genkey -noout -out \"{$keyPath}\" 2>&1";
             exec($keyCmd, $keyOutput, $keyReturnCode);
 
-            if ($keyReturnCode !== 0 || !file_exists($keyPath)) {
-                throw new \RuntimeException('Failed to generate EC private key: ' . implode("\n", $keyOutput));
+            if ($keyReturnCode !== 0 || ! file_exists($keyPath)) {
+                throw new \RuntimeException('Failed to generate EC private key: '.implode("\n", $keyOutput));
             }
         }
 
@@ -328,8 +329,8 @@ EOT;
         $this->line('Generating CSR with ZATCA extensions...');
         exec($csrCmd, $csrOutput, $csrReturnCode);
 
-        if ($csrReturnCode !== 0 || !file_exists($csrPath)) {
-            $this->error('CSR generation failed: ' . implode("\n", $csrOutput));
+        if ($csrReturnCode !== 0 || ! file_exists($csrPath)) {
+            $this->error('CSR generation failed: '.implode("\n", $csrOutput));
             throw new \RuntimeException('Failed to generate CSR with ZATCA extensions');
         }
 
@@ -355,7 +356,7 @@ EOT;
     private function createFullZatcaConfig(CsrData $csrData): string
     {
         // Organization identifier in ZATCA format
-        $orgIdentifier = 'VATSA-' . $csrData->vatNumber;
+        $orgIdentifier = 'VATSA-'.$csrData->vatNumber;
 
         // Invoice type code (1100 = both standard and simplified)
         $invoiceType = $csrData->getInvoiceTypeCode();
@@ -429,10 +430,10 @@ EOT;
         $this->info('✓ EC private key generated (secp256k1)');
 
         // Organization identifier in ZATCA format: VATSA-{VAT number}
-        $orgIdentifier = 'VATSA-' . $csrData->vatNumber;
+        $orgIdentifier = 'VATSA-'.$csrData->vatNumber;
 
         // Create X509 CSR
-        $x509 = new X509();
+        $x509 = new X509;
         $x509->setPrivateKey($privateKey);
 
         // Set Distinguished Name with ZATCA-required fields
@@ -461,11 +462,11 @@ EOT;
 
         // Save the files
         $outputDir = storage_path('app/zatca');
-        if (!is_dir($outputDir)) {
+        if (! is_dir($outputDir)) {
             mkdir($outputDir, 0755, true);
         }
-        file_put_contents($outputDir . '/taxpayer.csr', $csrPem);
-        file_put_contents($outputDir . '/taxpayer.key', $privateKeyPem);
+        file_put_contents($outputDir.'/taxpayer.csr', $csrPem);
+        file_put_contents($outputDir.'/taxpayer.key', $privateKeyPem);
 
         return [
             'csr' => $csrPem,
@@ -481,7 +482,7 @@ EOT;
     {
         // Find OpenSSL executable
         $opensslCmd = $this->findOpenSsl();
-        if (!$opensslCmd) {
+        if (! $opensslCmd) {
             throw new \RuntimeException('OpenSSL not found. Please install OpenSSL or add it to PATH.');
         }
 
@@ -489,26 +490,26 @@ EOT;
 
         // Create output directory
         $outputDir = storage_path('app/zatca');
-        if (!is_dir($outputDir)) {
+        if (! is_dir($outputDir)) {
             mkdir($outputDir, 0755, true);
         }
 
-        $keyPath = $outputDir . '/taxpayer.key';
-        $csrPath = $outputDir . '/taxpayer.csr';
+        $keyPath = $outputDir.'/taxpayer.key';
+        $csrPath = $outputDir.'/taxpayer.csr';
 
         // Generate EC private key using shell command (secp256k1 for ZATCA)
         $keyCmd = "\"{$opensslCmd}\" ecparam -name secp256k1 -genkey -noout -out \"{$keyPath}\" 2>&1";
-        $this->line("Generating EC key: secp256k1");
+        $this->line('Generating EC key: secp256k1');
         exec($keyCmd, $keyOutput, $keyReturnCode);
 
-        if ($keyReturnCode !== 0 || !file_exists($keyPath)) {
+        if ($keyReturnCode !== 0 || ! file_exists($keyPath)) {
             // Try prime256v1 as fallback
             $this->warn('secp256k1 not available, trying prime256v1...');
             $keyCmd = "\"{$opensslCmd}\" ecparam -name prime256v1 -genkey -noout -out \"{$keyPath}\" 2>&1";
             exec($keyCmd, $keyOutput, $keyReturnCode);
 
-            if ($keyReturnCode !== 0 || !file_exists($keyPath)) {
-                throw new \RuntimeException('Failed to generate EC private key: ' . implode("\n", $keyOutput));
+            if ($keyReturnCode !== 0 || ! file_exists($keyPath)) {
+                throw new \RuntimeException('Failed to generate EC private key: '.implode("\n", $keyOutput));
             }
         }
 
@@ -519,17 +520,17 @@ EOT;
 
         // Generate CSR using shell command
         $csrCmd = "\"{$opensslCmd}\" req -new -sha256 -key \"{$keyPath}\" -out \"{$csrPath}\" -config \"{$configPath}\" 2>&1";
-        $this->line("Generating CSR with ZATCA extensions...");
+        $this->line('Generating CSR with ZATCA extensions...');
         exec($csrCmd, $csrOutput, $csrReturnCode);
 
-        if ($csrReturnCode !== 0 || !file_exists($csrPath)) {
+        if ($csrReturnCode !== 0 || ! file_exists($csrPath)) {
             $this->warn('Full ZATCA config failed, trying simplified config...');
             $configPath = $this->createSimplifiedConfig($csrData);
             $csrCmd = "\"{$opensslCmd}\" req -new -sha256 -key \"{$keyPath}\" -out \"{$csrPath}\" -config \"{$configPath}\" 2>&1";
             exec($csrCmd, $csrOutput, $csrReturnCode);
 
-            if ($csrReturnCode !== 0 || !file_exists($csrPath)) {
-                throw new \RuntimeException('Failed to generate CSR: ' . implode("\n", $csrOutput));
+            if ($csrReturnCode !== 0 || ! file_exists($csrPath)) {
+                throw new \RuntimeException('Failed to generate CSR: '.implode("\n", $csrOutput));
             }
         }
 
@@ -587,7 +588,7 @@ EOT;
     private function createZatcaConfig(CsrData $csrData): string
     {
         // For CN, use ZATCA format: TST-{timestamp}-{VAT}
-        $commonName = 'TST-' . time() . '-' . $csrData->vatNumber;
+        $commonName = 'TST-'.time().'-'.$csrData->vatNumber;
 
         // Serial number without pipes (replace with dashes for compatibility)
         $serialNumber = str_replace('|', '-', $csrData->serialNumber);

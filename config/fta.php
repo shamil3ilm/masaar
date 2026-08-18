@@ -24,7 +24,7 @@ return [
     |--------------------------------------------------------------------------
     */
     'endpoints' => [
-        'sandbox'    => env('UAE_FTA_SANDBOX_URL', 'https://sandbox-einvoicing.tax.gov.ae/api/v1'),
+        'sandbox' => env('UAE_FTA_SANDBOX_URL', 'https://sandbox-einvoicing.tax.gov.ae/api/v1'),
         'production' => env('UAE_FTA_PRODUCTION_URL', 'https://einvoicing.tax.gov.ae/api/v1'),
     ],
 
@@ -33,8 +33,8 @@ return [
     | API Credentials
     |--------------------------------------------------------------------------
     */
-    'api_key'    => env('UAE_FTA_API_KEY'),
-    'client_id'  => env('UAE_FTA_CLIENT_ID'),
+    'api_key' => env('UAE_FTA_API_KEY'),
+    'client_id' => env('UAE_FTA_CLIENT_ID'),
     'client_secret' => env('UAE_FTA_CLIENT_SECRET'),
 
     /*
@@ -50,11 +50,11 @@ return [
     |--------------------------------------------------------------------------
     */
     'peppol' => [
-        'profile_id'   => 'urn:fdc:peppol.eu:2017:poacc:billing:01:1.0',
+        'profile_id' => 'urn:fdc:peppol.eu:2017:poacc:billing:01:1.0',
         'customization_id' => 'urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0',
         'country_code' => 'AE',
-        'currency'     => 'AED',
-        'vat_rate'     => 0.05,     // 5% UAE VAT
+        'currency' => 'AED',
+        'vat_rate' => 0.05,     // 5% UAE VAT
     ],
 
     /*
@@ -64,7 +64,7 @@ return [
     */
     'retry' => [
         'max_attempts' => 5,
-        'backoff'      => [60, 300, 900, 3600, 7200],   // seconds
+        'backoff' => [60, 300, 900, 3600, 7200],   // seconds
     ],
 
     /*
@@ -72,7 +72,7 @@ return [
     | HTTP Client
     |--------------------------------------------------------------------------
     */
-    'timeout'        => env('UAE_FTA_TIMEOUT', 30),
+    'timeout' => env('UAE_FTA_TIMEOUT', 30),
     'connect_timeout' => 10,
 
 ];

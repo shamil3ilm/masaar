@@ -16,18 +16,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('certificate_lineage', function (Blueprint $table) {
-            if (!Schema::hasColumn('certificate_lineage', 'activated_at')) {
+            if (! Schema::hasColumn('certificate_lineage', 'activated_at')) {
                 $table->timestamp('activated_at')->nullable()->after('valid_to');
                 $table->index(['organization_id', 'status', 'activated_at']);
             }
 
             // Add revoked_at for key compromise tracking
-            if (!Schema::hasColumn('certificate_lineage', 'revoked_at')) {
+            if (! Schema::hasColumn('certificate_lineage', 'revoked_at')) {
                 $table->timestamp('revoked_at')->nullable()->after('activated_at');
             }
 
             // Add certificate_hash for SHA-256 fingerprint
-            if (!Schema::hasColumn('certificate_lineage', 'certificate_hash')) {
+            if (! Schema::hasColumn('certificate_lineage', 'certificate_hash')) {
                 $table->string('certificate_hash', 64)->nullable()->after('certificate_serial');
             }
         });
@@ -51,7 +51,7 @@ return new class extends Migration
             if (Schema::hasColumn('certificate_lineage', 'certificate_hash')) {
                 $columns[] = 'certificate_hash';
             }
-            if (!empty($columns)) {
+            if (! empty($columns)) {
                 $table->dropColumn($columns);
             }
         });

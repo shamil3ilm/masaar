@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Models;
 
-use App\Domains\Organization\Concerns\BelongsToTenant;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Organization\Concerns\BelongsToTenant;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -92,7 +92,7 @@ class InvoiceSubmission extends Model
         // Prevent force deletion - soft delete only
         static::forceDeleting(function ($model) {
             throw new \RuntimeException(
-                'InvoiceSubmission records cannot be permanently deleted. ' .
+                'InvoiceSubmission records cannot be permanently deleted. '.
                 'This is a ZATCA compliance requirement to preserve audit trails.'
             );
         });
@@ -109,10 +109,10 @@ class InvoiceSubmission extends Model
                 $allowedChanges = ['updated_at']; // Only timestamp updates allowed
 
                 $disallowedChanges = array_diff($changedAttributes, $allowedChanges);
-                if (!empty($disallowedChanges)) {
+                if (! empty($disallowedChanges)) {
                     throw new \RuntimeException(
-                        'InvoiceSubmission in terminal state cannot be modified. ' .
-                        'This is a ZATCA compliance requirement. Attempted changes: ' .
+                        'InvoiceSubmission in terminal state cannot be modified. '.
+                        'This is a ZATCA compliance requirement. Attempted changes: '.
                         implode(', ', $disallowedChanges)
                     );
                 }
@@ -179,6 +179,7 @@ class InvoiceSubmission extends Model
     public function canTransitionTo(string $newState): bool
     {
         $allowedTransitions = self::STATE_TRANSITIONS[$this->state] ?? [];
+
         return in_array($newState, $allowedTransitions, true);
     }
 
@@ -203,7 +204,7 @@ class InvoiceSubmission extends Model
      */
     public function canRetry(): bool
     {
-        if (!in_array($this->state, ['failed', 'rejected'], true)) {
+        if (! in_array($this->state, ['failed', 'rejected'], true)) {
             return false;
         }
 

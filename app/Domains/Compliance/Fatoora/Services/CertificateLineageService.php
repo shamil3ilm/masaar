@@ -27,19 +27,19 @@ class CertificateLineageService
      * Certificate status values.
      */
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_EXPIRED = 'expired';
+
     public const STATUS_REVOKED = 'revoked';
+
     public const STATUS_SUPERSEDED = 'superseded';
 
     /**
      * Register a new certificate in the lineage.
      *
-     * @param string $organizationId
-     * @param string $certificateId Fingerprint/hash of certificate
-     * @param string $certificateSerial Serial number from certificate
-     * @param string $issuer Certificate issuer
-     * @param \DateTimeInterface $validFrom
-     * @param \DateTimeInterface $validTo
+     * @param  string  $certificateId  Fingerprint/hash of certificate
+     * @param  string  $certificateSerial  Serial number from certificate
+     * @param  string  $issuer  Certificate issuer
      * @return array The created lineage record
      */
     public function register(
@@ -60,6 +60,7 @@ class CertificateLineageService
                 'certificate_id' => $certificateId,
                 'organization_id' => $organizationId,
             ]);
+
             return (array) $existing;
         }
 
@@ -135,12 +136,13 @@ class CertificateLineageService
             ->where('certificate_id', $certificateId)
             ->first();
 
-        if (!$lineage) {
+        if (! $lineage) {
             Log::warning('Invoice signed with unregistered certificate', [
                 'certificate_id' => $certificateId,
                 'organization_id' => $organizationId,
                 'icv' => $icv,
             ]);
+
             return;
         }
 
@@ -226,7 +228,7 @@ class CertificateLineageService
             ->where('organization_id', $organizationId)
             ->orderBy('created_at', 'asc')
             ->get()
-            ->map(fn($cert) => (array) $cert)
+            ->map(fn ($cert) => (array) $cert)
             ->toArray();
     }
 
@@ -252,7 +254,7 @@ class CertificateLineageService
             ->orderBy('icv', 'asc')
             ->limit($limit)
             ->get()
-            ->map(fn($entry) => [
+            ->map(fn ($entry) => [
                 'invoice_id' => $entry->invoice_id,
                 'icv' => $entry->icv,
                 'invoice_hash' => $entry->invoice_hash,
@@ -283,7 +285,7 @@ class CertificateLineageService
             ->where('valid_to', '>', now())
             ->orderBy('valid_to', 'asc')
             ->get()
-            ->map(fn($cert) => (array) $cert)
+            ->map(fn ($cert) => (array) $cert)
             ->toArray();
     }
 
@@ -296,7 +298,7 @@ class CertificateLineageService
             ->where('status', self::STATUS_ACTIVE)
             ->where('valid_to', '<', now())
             ->get()
-            ->map(fn($cert) => (array) $cert)
+            ->map(fn ($cert) => (array) $cert)
             ->toArray();
     }
 
@@ -312,7 +314,7 @@ class CertificateLineageService
             ->where('certificate_id', $certificateId)
             ->first();
 
-        if (!$lineage) {
+        if (! $lineage) {
             throw new FatooraException(
                 'Certificate not registered in lineage',
                 ErrorCode::CERT_NOT_FOUND,

@@ -4,6 +4,8 @@ namespace App\Domains\Organization\Http\Controllers;
 
 use App\Domains\Audit\Services\AuditService;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\TenantResolver;
+use App\Domains\Organization\ValueObjects\OrganizationContext;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -17,6 +19,7 @@ class OrganizationController extends Controller
     public function __construct(
         private readonly AuditService $audit,
     ) {}
+
     /**
      * List user's organizations.
      *
@@ -123,8 +126,8 @@ class OrganizationController extends Controller
         $membership = auth()->user()->organizations()->findOrFail($id)->pivot;
 
         // Set tenant context
-        $resolver = app(\App\Domains\Organization\Services\TenantResolver::class);
-        $resolver->setContext(new \App\Domains\Organization\ValueObjects\OrganizationContext(
+        $resolver = app(TenantResolver::class);
+        $resolver->setContext(new OrganizationContext(
             organizationId: $id,
             role: $membership->role,
         ));

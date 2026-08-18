@@ -102,7 +102,7 @@ final readonly class CsrData
      */
     public function getOrganizationIdentifier(): string
     {
-        return 'VATSA-' . $this->vatNumber;
+        return 'VATSA-'.$this->vatNumber;
     }
 
     /**

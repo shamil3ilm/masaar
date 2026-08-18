@@ -63,7 +63,7 @@ final readonly class CsidResponse
         $decoded = base64_decode($this->binarySecurityToken);
 
         return "-----BEGIN CERTIFICATE-----\n"
-            . chunk_split(base64_encode($decoded), 64, "\n")
-            . "-----END CERTIFICATE-----";
+            .chunk_split(base64_encode($decoded), 64, "\n")
+            .'-----END CERTIFICATE-----';
     }
 }

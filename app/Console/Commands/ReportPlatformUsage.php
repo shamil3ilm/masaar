@@ -44,16 +44,17 @@ class ReportPlatformUsage extends Command
             $this->newLine();
 
             if (isset($result['metrics'])) {
-                $this->line('  Invoices created: ' . ($result['metrics']['invoices_created'] ?? 0));
-                $this->line('  Invoices submitted: ' . ($result['metrics']['invoices_submitted'] ?? 0));
-                $this->line('  Organizations: ' . ($result['metrics']['organizations_count'] ?? 0));
-                $this->line('  API calls: ' . ($result['metrics']['api_calls'] ?? 0));
+                $this->line('  Invoices created: '.($result['metrics']['invoices_created'] ?? 0));
+                $this->line('  Invoices submitted: '.($result['metrics']['invoices_submitted'] ?? 0));
+                $this->line('  Organizations: '.($result['metrics']['organizations_count'] ?? 0));
+                $this->line('  API calls: '.($result['metrics']['api_calls'] ?? 0));
             }
 
             return Command::SUCCESS;
         }
 
-        $this->error('✗ Failed to report usage: ' . $result['message']);
+        $this->error('✗ Failed to report usage: '.$result['message']);
+
         return Command::FAILURE;
     }
 }

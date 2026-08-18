@@ -42,7 +42,7 @@ class ApiKeyAuth
 
         // Check scope if specified
         if ($scope && ! $key->hasScope($scope)) {
-            return ApiResponse::forbidden('API key lacks required scope: ' . $scope);
+            return ApiResponse::forbidden('API key lacks required scope: '.$scope);
         }
 
         // Record usage

@@ -3,7 +3,7 @@
 use App\Domains\Compliance\Fatoora\Services\InvoiceHasher;
 
 it('generates consistent hash for same XML', function () {
-    $hasher = new InvoiceHasher();
+    $hasher = new InvoiceHasher;
 
     $xml = '<Invoice><ID>INV-001</ID></Invoice>';
 
@@ -14,7 +14,7 @@ it('generates consistent hash for same XML', function () {
 });
 
 it('generates different hash for different XML', function () {
-    $hasher = new InvoiceHasher();
+    $hasher = new InvoiceHasher;
 
     $xml1 = '<Invoice><ID>INV-001</ID></Invoice>';
     $xml2 = '<Invoice><ID>INV-002</ID></Invoice>';
@@ -23,7 +23,7 @@ it('generates different hash for different XML', function () {
 });
 
 it('returns base64 encoded hash', function () {
-    $hasher = new InvoiceHasher();
+    $hasher = new InvoiceHasher;
 
     $xml = '<Invoice><ID>INV-001</ID></Invoice>';
     $hash = $hasher->hash($xml);
@@ -33,7 +33,7 @@ it('returns base64 encoded hash', function () {
 });
 
 it('verifies hash correctly', function () {
-    $hasher = new InvoiceHasher();
+    $hasher = new InvoiceHasher;
 
     $xml = '<Invoice><ID>INV-001</ID></Invoice>';
     $hash = $hasher->hash($xml);
@@ -43,7 +43,7 @@ it('verifies hash correctly', function () {
 });
 
 it('normalizes XML whitespace for consistent hashing', function () {
-    $hasher = new InvoiceHasher();
+    $hasher = new InvoiceHasher;
 
     $xml1 = '<Invoice><ID>INV-001</ID></Invoice>';
     $xml2 = "<Invoice>\n  <ID>INV-001</ID>\n</Invoice>";

@@ -39,10 +39,8 @@ class ValidateLicense
     /**
      * Handle an incoming request.
      *
-     * @param Request $request
-     * @param Closure $next
-     * @param string|null $requiredScope Required scope (e.g., 'invoice.submit')
-     * @param string|null $requiredEnvironment Required environment (e.g., 'production')
+     * @param  string|null  $requiredScope  Required scope (e.g., 'invoice.submit')
+     * @param  string|null  $requiredEnvironment  Required environment (e.g., 'production')
      */
     public function handle(
         Request $request,
@@ -60,7 +58,7 @@ class ValidateLicense
             $apiKey = $this->extractApiKey($request);
             $apiSecret = $this->extractApiSecret($request);
 
-            if (!$apiKey || !$apiSecret) {
+            if (! $apiKey || ! $apiSecret) {
                 throw LicenseException::invalidApiKey();
             }
 
@@ -203,6 +201,7 @@ class ValidateLicense
             $decoded = base64_decode($token, true);
             if ($decoded && str_contains($decoded, ':')) {
                 $parts = explode(':', $decoded, 2);
+
                 return $parts[1] ?? null;
             }
         }
@@ -217,7 +216,7 @@ class ValidateLicense
      */
     private function validateScopeAccess(License $license, string $scope): void
     {
-        if (!$license->hasScope($scope)) {
+        if (! $license->hasScope($scope)) {
             throw LicenseException::scopeDenied($scope);
         }
     }
@@ -229,7 +228,7 @@ class ValidateLicense
      */
     private function validateEnvironment(License $license, string $requiredEnvironment): void
     {
-        if (!$license->matchesEnvironment($requiredEnvironment)) {
+        if (! $license->matchesEnvironment($requiredEnvironment)) {
             throw LicenseException::environmentMismatch(
                 $license->environment->value,
                 $requiredEnvironment
@@ -276,7 +275,7 @@ class ValidateLicense
      */
     private function validateFeatureAccess(License $license, string $feature): void
     {
-        if (!$license->hasFeature($feature)) {
+        if (! $license->hasFeature($feature)) {
             throw LicenseException::featureNotAvailable($feature);
         }
     }
@@ -286,7 +285,7 @@ class ValidateLicense
      */
     private function addRateLimitHeaders(mixed $response, License $license): void
     {
-        if (!method_exists($response, 'header')) {
+        if (! method_exists($response, 'header')) {
             return;
         }
 
@@ -307,7 +306,7 @@ class ValidateLicense
             'message' => $e->getMessage(),
         ];
 
-        if (!empty($e->context)) {
+        if (! empty($e->context)) {
             $response['context'] = $e->context;
         }
 

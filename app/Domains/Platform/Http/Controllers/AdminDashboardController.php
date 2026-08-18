@@ -4,17 +4,18 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Http\Controllers;
 
+use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Fatoora\Services\ClusterCircuitBreaker;
 use App\Domains\Compliance\Fatoora\Services\EnvironmentVarianceTracker;
-use App\Domains\Compliance\Fatoora\Services\OfflineQueueManager;
 use App\Domains\Compliance\Fatoora\Services\FatooraConnectivityChecker;
+use App\Domains\Compliance\Fatoora\Services\OfflineQueueManager;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Admin Dashboard Controller.
@@ -114,7 +115,7 @@ class AdminDashboardController extends Controller
                 'ran_at' => now()->toIso8601String(),
             ], 'Health check completed');
         } catch (\Exception $e) {
-            return ApiResponse::error('Failed to run health check: ' . $e->getMessage(), 500);
+            return ApiResponse::error('Failed to run health check: '.$e->getMessage(), 500);
         }
     }
 
@@ -134,7 +135,7 @@ class AdminDashboardController extends Controller
             ->orderByDesc('created_at')
             ->limit($limit)
             ->get()
-            ->map(fn($row) => [
+            ->map(fn ($row) => [
                 'id' => $row->id,
                 'rule_code' => $row->rule_code,
                 'sandbox_result' => $row->sandbox_result,
@@ -262,7 +263,7 @@ class AdminDashboardController extends Controller
             ->groupBy('hour')
             ->orderBy('hour')
             ->get()
-            ->map(fn($row) => [
+            ->map(fn ($row) => [
                 'hour' => $row->hour,
                 'total' => $row->total,
                 'rejected' => $row->rejected,
@@ -302,11 +303,11 @@ class AdminDashboardController extends Controller
         $thisHour = now()->startOfHour();
 
         $stats = DB::table('invoices')
-            ->selectRaw("
+            ->selectRaw('
                 COUNT(*) as total,
                 SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as today,
                 SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as this_hour
-            ", [$today, $thisHour])
+            ', [$today, $thisHour])
             ->first();
 
         return [
@@ -384,7 +385,7 @@ class AdminDashboardController extends Controller
     private function getCacheHealth(): array
     {
         try {
-            $testKey = 'health_check_' . uniqid();
+            $testKey = 'health_check_'.uniqid();
             Cache::put($testKey, true, 10);
             $retrieved = Cache::get($testKey);
             Cache::forget($testKey);
@@ -410,10 +411,10 @@ class AdminDashboardController extends Controller
 
         $stats = DB::table('offline_queue')
             ->where('state', 'pending')
-            ->selectRaw("
+            ->selectRaw('
                 COUNT(*) as pending,
                 SUM(CASE WHEN queued_at < ? THEN 1 ELSE 0 END) as stuck
-            ", [$thirtyMinutesAgo])
+            ', [$thirtyMinutesAgo])
             ->first();
 
         $pending = (int) ($stats->pending ?? 0);
@@ -495,11 +496,11 @@ class AdminDashboardController extends Controller
     {
         $data = Cache::remember('admin:offline_queue', 30, function () {
             $stats = DB::table('offline_queue')
-                ->selectRaw("
+                ->selectRaw('
                     state,
                     COUNT(*) as count,
                     COUNT(DISTINCT organization_id) as organizations
-                ")
+                ')
                 ->groupBy('state')
                 ->get()
                 ->keyBy('state');
@@ -582,7 +583,7 @@ class AdminDashboardController extends Controller
                 'processed_at' => now()->toIso8601String(),
             ], 'Offline queue processing triggered');
         } catch (\Exception $e) {
-            return ApiResponse::error('Failed to process offline queue: ' . $e->getMessage(), 500);
+            return ApiResponse::error('Failed to process offline queue: '.$e->getMessage(), 500);
         }
     }
 
@@ -595,7 +596,7 @@ class AdminDashboardController extends Controller
     {
         $item = $this->offlineQueueManager->getItem($queueId);
 
-        if (!$item) {
+        if (! $item) {
             return ApiResponse::error('Queue item not found', 404);
         }
 
@@ -632,7 +633,7 @@ class AdminDashboardController extends Controller
 
             // Check connectivity
             $connectivity = $this->connectivityChecker->check();
-            if (!$connectivity['available']) {
+            if (! $connectivity['available']) {
                 $issues[] = [
                     'type' => 'connectivity',
                     'severity' => 'critical',
@@ -678,7 +679,7 @@ class AdminDashboardController extends Controller
             // Check expiring certificates
             $expiringCerts = DB::table('certificate_lineage')
                 ->where('status', 'active')
-                ->whereRaw("expires_at <= ?", [now()->addDays(7)])
+                ->whereRaw('expires_at <= ?', [now()->addDays(7)])
                 ->count();
             if ($expiringCerts > 0) {
                 $issues[] = [
@@ -767,7 +768,7 @@ class AdminDashboardController extends Controller
      */
     public function resetCircuitBreaker(): JsonResponse
     {
-        /** @var \App\Domains\Auth\Models\User|null $user */
+        /** @var User|null $user */
         $user = auth()->user();
 
         $result = $this->circuitBreaker->forceState(

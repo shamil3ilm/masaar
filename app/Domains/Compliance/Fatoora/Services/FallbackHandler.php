@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Services;
 
-use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Logging\Services\ComplianceLogger;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -77,10 +77,11 @@ class FallbackHandler
     ): mixed {
         try {
             // Check if queue is healthy
-            if (!$this->isQueueHealthy()) {
+            if (! $this->isQueueHealthy()) {
                 $this->logger->warning('Queue unhealthy, falling back to sync', [
                     'operation' => $operationType,
                 ]);
+
                 return $syncFallback();
             }
 
@@ -126,6 +127,7 @@ class FallbackHandler
                 $this->logger->warning('API marked unavailable, using cache fallback', [
                     'service' => $serviceName,
                 ]);
+
                 return $cacheFallback();
             }
 
@@ -206,11 +208,11 @@ class FallbackHandler
         );
 
         $replayPath = storage_path('logs/replay');
-        if (!is_dir($replayPath)) {
+        if (! is_dir($replayPath)) {
             mkdir($replayPath, 0755, true);
         }
 
-        $filepath = $replayPath . '/' . $filename;
+        $filepath = $replayPath.'/'.$filename;
 
         $replayData = [
             'operation_type' => $operationType,
@@ -230,11 +232,11 @@ class FallbackHandler
     public function replayStoredOperations(): array
     {
         $replayPath = storage_path('logs/replay');
-        if (!is_dir($replayPath)) {
+        if (! is_dir($replayPath)) {
             return ['replayed' => 0, 'failed' => 0, 'total' => 0];
         }
 
-        $files = glob($replayPath . '/replay_*.json');
+        $files = glob($replayPath.'/replay_*.json');
         $results = ['replayed' => 0, 'failed' => 0, 'total' => count($files)];
 
         foreach ($files as $file) {
@@ -288,6 +290,7 @@ class FallbackHandler
     {
         try {
             DB::table('invoice_submissions')->insert($data);
+
             return true;
         } catch (Throwable $e) {
             return false;
@@ -301,6 +304,7 @@ class FallbackHandler
     {
         try {
             DB::table('submission_state_logs')->insert($data);
+
             return true;
         } catch (Throwable $e) {
             return false;
@@ -315,6 +319,7 @@ class FallbackHandler
         // Re-queue the webhook
         try {
             Queue::push('App\Domains\Webhook\Jobs\DeliverWebhook', $data);
+
             return true;
         } catch (Throwable $e) {
             return false;
@@ -329,6 +334,7 @@ class FallbackHandler
         try {
             $connection = config('queue.default');
             $size = Queue::size($connection === 'sync' ? null : 'default');
+
             return $size < 10000; // Consider unhealthy if queue is too backed up
         } catch (Throwable $e) {
             return false;
@@ -342,7 +348,7 @@ class FallbackHandler
     {
         $dbExceptions = [
             \PDOException::class,
-            \Illuminate\Database\QueryException::class,
+            QueryException::class,
         ];
 
         foreach ($dbExceptions as $class) {
@@ -386,17 +392,17 @@ class FallbackHandler
     public function getPendingReplayCount(): int
     {
         $replayPath = storage_path('logs/replay');
-        if (!is_dir($replayPath)) {
+        if (! is_dir($replayPath)) {
             return 0;
         }
 
         $count = 0;
-        $files = glob($replayPath . '/replay_*.json');
+        $files = glob($replayPath.'/replay_*.json');
 
         foreach ($files as $file) {
             try {
                 $data = json_decode(file_get_contents($file), true);
-                if (!($data['replayed'] ?? false)) {
+                if (! ($data['replayed'] ?? false)) {
                     $count++;
                 }
             } catch (Throwable $e) {

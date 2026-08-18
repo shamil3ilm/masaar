@@ -7,7 +7,6 @@ namespace App\Domains\Compliance\Fatoora\Services;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Models\Invoice;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -27,13 +26,14 @@ class VatPeriodTracker
      * VAT period types.
      */
     public const PERIOD_MONTHLY = 'monthly';
+
     public const PERIOD_QUARTERLY = 'quarterly';
 
     /**
      * Get VAT period for a given date.
      *
-     * @param Carbon|string $date Invoice date
-     * @param string $periodType 'monthly' or 'quarterly'
+     * @param  Carbon|string  $date  Invoice date
+     * @param  string  $periodType  'monthly' or 'quarterly'
      * @return array{start: string, end: string, period_key: string}
      */
     public function getPeriodForDate(Carbon|string $date, string $periodType = self::PERIOD_MONTHLY): array
@@ -45,7 +45,7 @@ class VatPeriodTracker
             $startMonth = (($quarter - 1) * 3) + 1;
             $start = $date->copy()->setMonth($startMonth)->startOfMonth();
             $end = $start->copy()->addMonths(2)->endOfMonth();
-            $periodKey = $date->year . '-Q' . $quarter;
+            $periodKey = $date->year.'-Q'.$quarter;
         } else {
             $start = $date->copy()->startOfMonth();
             $end = $date->copy()->endOfMonth();
@@ -64,8 +64,8 @@ class VatPeriodTracker
      *
      * A period is considered "open" until the filing deadline (typically 28th of following month).
      *
-     * @param Carbon|string $invoiceDate Original invoice date
-     * @param int $filingDeadlineDay Day of month when VAT return is due (default: 28)
+     * @param  Carbon|string  $invoiceDate  Original invoice date
+     * @param  int  $filingDeadlineDay  Day of month when VAT return is due (default: 28)
      * @return bool True if period is still open for modifications
      */
     public function isPeriodOpen(Carbon|string $invoiceDate, int $filingDeadlineDay = 28): bool
@@ -85,8 +85,8 @@ class VatPeriodTracker
      *
      * Per ZATCA: If original invoice's period is closed, CN/DN goes in current period.
      *
-     * @param Invoice $adjustmentNote The credit or debit note
-     * @param Invoice $originalInvoice The original invoice being adjusted
+     * @param  Invoice  $adjustmentNote  The credit or debit note
+     * @param  Invoice  $originalInvoice  The original invoice being adjusted
      * @return array{report_in_period: string, is_cross_period: bool, original_period: string}
      */
     public function determineReportingPeriod(Invoice $adjustmentNote, Invoice $originalInvoice): array
@@ -123,8 +123,8 @@ class VatPeriodTracker
     /**
      * Get VAT summary for a period.
      *
-     * @param string $organizationId Organization ID
-     * @param string $periodKey Period key (e.g., '2024-01' or '2024-Q1')
+     * @param  string  $organizationId  Organization ID
+     * @param  string  $periodKey  Period key (e.g., '2024-01' or '2024-Q1')
      * @return array VAT summary with totals
      */
     public function getPeriodSummary(string $organizationId, string $periodKey): array
@@ -198,8 +198,8 @@ class VatPeriodTracker
      *
      * These are credit/debit notes where the original invoice's period has closed.
      *
-     * @param string $organizationId Organization ID
-     * @param string $currentPeriodKey Current reporting period
+     * @param  string  $organizationId  Organization ID
+     * @param  string  $currentPeriodKey  Current reporting period
      * @return array List of cross-period adjustments
      */
     public function getCrossPeriodAdjustments(string $organizationId, string $currentPeriodKey): array
@@ -217,10 +217,12 @@ class VatPeriodTracker
                     return false;
                 }
                 $originalPeriod = $this->getPeriodForDate($note->billingReference->issue_date);
+
                 return $originalPeriod['period_key'] !== $currentPeriodKey;
             })
             ->map(function ($note) {
                 $originalPeriod = $this->getPeriodForDate($note->billingReference->issue_date);
+
                 return [
                     'note_id' => $note->id,
                     'note_number' => $note->invoice_number,
@@ -251,7 +253,7 @@ class VatPeriodTracker
             $end = $start->copy()->addMonths(2)->endOfMonth();
         } else {
             // Monthly: 2024-01
-            $start = Carbon::parse($periodKey . '-01')->startOfMonth();
+            $start = Carbon::parse($periodKey.'-01')->startOfMonth();
             $end = $start->copy()->endOfMonth();
         }
 
@@ -264,7 +266,7 @@ class VatPeriodTracker
     /**
      * Validate that a credit note is being reported in the correct period.
      *
-     * @param Invoice $creditNote The credit note to validate
+     * @param  Invoice  $creditNote  The credit note to validate
      * @return array{valid: bool, warning: ?string, suggested_period: ?string}
      */
     public function validateCreditNotePeriod(Invoice $creditNote): array
@@ -295,7 +297,7 @@ class VatPeriodTracker
         if ($reporting['is_cross_period']) {
             return [
                 'valid' => true,
-                'warning' => "Cross-period adjustment: Original invoice from {$reporting['original_period']}, " .
+                'warning' => "Cross-period adjustment: Original invoice from {$reporting['original_period']}, ".
                     "credit note will be reported in {$reporting['report_in_period']}",
                 'suggested_period' => $reporting['report_in_period'],
             ];

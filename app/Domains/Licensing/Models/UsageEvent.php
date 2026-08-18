@@ -124,6 +124,7 @@ class UsageEvent extends Model
     private static function categorizeEvent(string $event): string
     {
         $parts = explode('.', $event);
+
         return $parts[0] ?? 'api';
     }
 

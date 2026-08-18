@@ -53,7 +53,7 @@ class LicenseException extends Exception
     public static function suspended(?string $reason): self
     {
         return new self(
-            'License is suspended' . ($reason ? ": {$reason}" : ''),
+            'License is suspended'.($reason ? ": {$reason}" : ''),
             'LICENSE_SUSPENDED',
             ['reason' => $reason],
             403
@@ -63,7 +63,7 @@ class LicenseException extends Exception
     public static function revoked(?string $reason): self
     {
         return new self(
-            'License has been revoked' . ($reason ? ": {$reason}" : ''),
+            'License has been revoked'.($reason ? ": {$reason}" : ''),
             'LICENSE_REVOKED',
             ['reason' => $reason],
             403

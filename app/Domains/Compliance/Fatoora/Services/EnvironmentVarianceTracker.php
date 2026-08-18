@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Services;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 /**
  * Environment Variance Tracker.
@@ -28,16 +29,22 @@ class EnvironmentVarianceTracker
      * Variance types.
      */
     public const TYPE_SANDBOX_ONLY_PASS = 'sandbox_only_pass';
+
     public const TYPE_PRODUCTION_ONLY_FAIL = 'production_only_fail';
+
     public const TYPE_VALIDATION_DIFFERENCE = 'validation_difference';
+
     public const TYPE_TIMING_DIFFERENCE = 'timing_difference';
 
     /**
      * Resolution statuses.
      */
     public const STATUS_OPEN = 'open';
+
     public const STATUS_RESOLVED = 'resolved';
+
     public const STATUS_WONT_FIX = 'wont_fix';
+
     public const STATUS_REPORTED = 'reported_to_zatca';
 
     /**
@@ -60,11 +67,9 @@ class EnvironmentVarianceTracker
      * - Cache check is synchronous but fast (Redis)
      * - Database insert uses deferred/async option for high-volume scenarios
      *
-     * @param string $organizationId
-     * @param string|null $invoiceId
-     * @param string $payloadHash SHA-256 of the request payload
-     * @param array $productionResult The production API response
-     * @param bool $async If true, queue the database insert (for high-volume scenarios)
+     * @param  string  $payloadHash  SHA-256 of the request payload
+     * @param  array  $productionResult  The production API response
+     * @param  bool  $async  If true, queue the database insert (for high-volume scenarios)
      * @return array|null Variance record if detected, null otherwise
      */
     public function checkAndLogVariance(
@@ -76,17 +81,18 @@ class EnvironmentVarianceTracker
     ): ?array {
         // Fast path: Check cache with short timeout
         try {
-            $sandboxResult = Cache::get(self::SANDBOX_CACHE_PREFIX . $payloadHash);
+            $sandboxResult = Cache::get(self::SANDBOX_CACHE_PREFIX.$payloadHash);
         } catch (\Exception $e) {
             // Cache failure should not block production submissions
             Log::debug('Cache check failed during variance tracking', [
                 'payload_hash' => $payloadHash,
                 'error' => $e->getMessage(),
             ]);
+
             return null;
         }
 
-        if (!$sandboxResult) {
+        if (! $sandboxResult) {
             // No sandbox result to compare - common case, return quickly
             return null;
         }
@@ -94,12 +100,12 @@ class EnvironmentVarianceTracker
         // Determine if there's a variance
         $variance = $this->detectVariance($sandboxResult, $productionResult);
 
-        if (!$variance) {
+        if (! $variance) {
             return null;
         }
 
         // Log the variance
-        $varianceId = \Illuminate\Support\Str::uuid()->toString();
+        $varianceId = Str::uuid()->toString();
 
         $record = [
             'id' => $varianceId,
@@ -118,7 +124,7 @@ class EnvironmentVarianceTracker
 
         if ($async) {
             // Queue for async insert to avoid blocking production path
-            dispatch(function () use ($record, $varianceId, $variance, $organizationId, $invoiceId, $payloadHash) {
+            dispatch(function () use ($record, $varianceId, $variance, $organizationId) {
                 try {
                     DB::table('environment_variance_log')->insert($record);
                     Log::warning('Environment variance detected (async)', [
@@ -159,7 +165,7 @@ class EnvironmentVarianceTracker
     public function storeSandboxResult(string $payloadHash, array $result): void
     {
         Cache::put(
-            self::SANDBOX_CACHE_PREFIX . $payloadHash,
+            self::SANDBOX_CACHE_PREFIX.$payloadHash,
             $result,
             $this->getCacheTtl()
         );
@@ -174,7 +180,7 @@ class EnvironmentVarianceTracker
         $productionSuccess = $this->wasSuccessful($productionResult);
 
         // Case 1: Sandbox passed, production failed
-        if ($sandboxSuccess && !$productionSuccess) {
+        if ($sandboxSuccess && ! $productionSuccess) {
             return [
                 'type' => self::TYPE_SANDBOX_ONLY_PASS,
                 'rule_code' => $productionResult['error_code'] ?? $productionResult['validationResults']['errorMessages'][0]['code'] ?? null,
@@ -187,7 +193,7 @@ class EnvironmentVarianceTracker
         }
 
         // Case 2: Both failed but with different errors
-        if (!$sandboxSuccess && !$productionSuccess) {
+        if (! $sandboxSuccess && ! $productionSuccess) {
             $sandboxError = $sandboxResult['error_code'] ?? 'unknown';
             $productionError = $productionResult['error_code'] ?? 'unknown';
 
@@ -263,9 +269,8 @@ class EnvironmentVarianceTracker
      *
      * Implements retry logic to handle transient database failures.
      *
-     * @param string $varianceId
-     * @param string $ticketId
-     * @param int $maxRetries Maximum retry attempts (default: 3)
+     * @param  int  $maxRetries  Maximum retry attempts (default: 3)
+     *
      * @throws \RuntimeException If all retries fail
      */
     public function markReportedToZatca(string $varianceId, string $ticketId, int $maxRetries = 3): void
@@ -322,7 +327,7 @@ class EnvironmentVarianceTracker
         ]);
 
         throw new \RuntimeException(
-            "Failed to mark variance {$varianceId} as reported after {$maxRetries} attempts: " .
+            "Failed to mark variance {$varianceId} as reported after {$maxRetries} attempts: ".
             $lastException?->getMessage()
         );
     }
@@ -342,7 +347,7 @@ class EnvironmentVarianceTracker
             $existing = DB::table('environment_variance_log')
                 ->where('id', $varianceId)
                 ->value('notes');
-            $update['notes'] = ($existing ?? '') . "\n\nResolution: " . $notes;
+            $update['notes'] = ($existing ?? '')."\n\nResolution: ".$notes;
         }
 
         DB::table('environment_variance_log')
@@ -357,7 +362,7 @@ class EnvironmentVarianceTracker
     {
         $variance = $this->getVariance($varianceId);
 
-        if (!$variance) {
+        if (! $variance) {
             return ['error' => 'Variance not found'];
         }
 
@@ -437,7 +442,7 @@ class EnvironmentVarianceTracker
      * ZATCA occasionally changes business-rule enforcement silently.
      * This method detects rule codes we haven't seen before and flags them.
      *
-     * @param array $result ZATCA API response
+     * @param  array  $result  ZATCA API response
      * @return array|null Details about new rule codes if detected
      */
     public function checkForNewRuleCodes(array $result): ?array
@@ -468,7 +473,7 @@ class EnvironmentVarianceTracker
 
             // Store in database for tracking
             DB::table('zatca_rule_codes')->insertOrIgnore([
-                'id' => \Illuminate\Support\Str::uuid()->toString(),
+                'id' => Str::uuid()->toString(),
                 'code' => $code,
                 'first_seen_at' => now(),
                 'needs_review' => true,
@@ -496,33 +501,33 @@ class EnvironmentVarianceTracker
         $codes = [];
 
         // Extract from error_code
-        if (!empty($result['error_code'])) {
+        if (! empty($result['error_code'])) {
             $codes[] = $result['error_code'];
         }
 
         // Extract from validationResults
-        if (!empty($result['validationResults']['errorMessages'])) {
+        if (! empty($result['validationResults']['errorMessages'])) {
             foreach ($result['validationResults']['errorMessages'] as $error) {
-                if (!empty($error['code'])) {
+                if (! empty($error['code'])) {
                     $codes[] = $error['code'];
                 }
             }
         }
 
-        if (!empty($result['validationResults']['warningMessages'])) {
+        if (! empty($result['validationResults']['warningMessages'])) {
             foreach ($result['validationResults']['warningMessages'] as $warning) {
-                if (!empty($warning['code'])) {
+                if (! empty($warning['code'])) {
                     $codes[] = $warning['code'];
                 }
             }
         }
 
         // Extract BR-KSA codes
-        if (!empty($result['errors'])) {
+        if (! empty($result['errors'])) {
             foreach ((array) $result['errors'] as $error) {
                 if (is_string($error) && preg_match('/BR-KSA-\d+/', $error, $matches)) {
                     $codes[] = $matches[0];
-                } elseif (is_array($error) && !empty($error['code'])) {
+                } elseif (is_array($error) && ! empty($error['code'])) {
                     $codes[] = $error['code'];
                 }
             }
@@ -577,21 +582,21 @@ class EnvironmentVarianceTracker
         $total = $query->count();
 
         $byType = DB::table('environment_variance_log')
-            ->when($organizationId, fn($q) => $q->where('organization_id', $organizationId))
+            ->when($organizationId, fn ($q) => $q->where('organization_id', $organizationId))
             ->selectRaw('variance_type, COUNT(*) as count')
             ->groupBy('variance_type')
             ->pluck('count', 'variance_type')
             ->toArray();
 
         $byStatus = DB::table('environment_variance_log')
-            ->when($organizationId, fn($q) => $q->where('organization_id', $organizationId))
+            ->when($organizationId, fn ($q) => $q->where('organization_id', $organizationId))
             ->selectRaw('resolution_status, COUNT(*) as count')
             ->groupBy('resolution_status')
             ->pluck('count', 'resolution_status')
             ->toArray();
 
         $reportedToZatca = DB::table('environment_variance_log')
-            ->when($organizationId, fn($q) => $q->where('organization_id', $organizationId))
+            ->when($organizationId, fn ($q) => $q->where('organization_id', $organizationId))
             ->where('reported_to_zatca', true)
             ->count();
 

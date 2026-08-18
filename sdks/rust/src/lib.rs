@@ -7,7 +7,7 @@
 //! #[tokio::main]
 //! async fn main() -> Result<(), complipay::Error> {
 //!     let client = CompliPayClient::new(
-//!         "https://api.complipay.com",
+//!         "https://api.masaar.sa",
 //!         "your_api_key",
 //!         "your_api_secret",
 //!     );

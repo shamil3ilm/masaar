@@ -15,7 +15,7 @@ namespace CompliPay;
 /// CompliPay .NET SDK for ZATCA-compliant e-invoicing.
 /// </summary>
 /// <example>
-/// var client = new CompliPayClient("https://api.complipay.com", "api_key", "api_secret");
+/// var client = new CompliPayClient("https://api.masaar.sa", "api_key", "api_secret");
 ///
 /// var invoice = await client.Invoices.CreateAsync(new CreateInvoiceRequest
 /// {

@@ -23,12 +23,17 @@ use DOMXPath;
 class XadesSigner
 {
     private const DS_NS = 'http://www.w3.org/2000/09/xmldsig#';
+
     private const XADES_NS = 'http://uri.etsi.org/01903/v1.3.2#';
+
     private const C14N_NS = 'http://www.w3.org/2006/12/xml-c14n11';
 
     private ?string $tsaUrl = null;
+
     private ?string $tsaUsername = null;
+
     private ?string $tsaPassword = null;
+
     private int $tsaTimeout;
 
     /**
@@ -49,11 +54,10 @@ class XadesSigner
     /**
      * Configure Timestamp Authority (TSA) for XAdES-T signatures.
      *
-     * @param string $url TSA server URL (RFC 3161)
-     * @param string|null $username Optional authentication username
-     * @param string|null $password Optional authentication password
-     * @param int $timeout Request timeout in seconds
-     * @return self
+     * @param  string  $url  TSA server URL (RFC 3161)
+     * @param  string|null  $username  Optional authentication username
+     * @param  string|null  $password  Optional authentication password
+     * @param  int  $timeout  Request timeout in seconds
      */
     public function withTimestampAuthority(
         string $url,
@@ -72,10 +76,11 @@ class XadesSigner
     /**
      * Sign invoice XML with XAdES-BES signature.
      *
-     * @param string $xml Invoice XML document
-     * @param string $privateKeyPem Private key for signing
-     * @param string $certificatePem X.509 certificate
+     * @param  string  $xml  Invoice XML document
+     * @param  string  $privateKeyPem  Private key for signing
+     * @param  string  $certificatePem  X.509 certificate
      * @return string Signed XML document
+     *
      * @throws SigningException
      */
     public function sign(string $xml, string $privateKeyPem, string $certificatePem): string
@@ -85,8 +90,8 @@ class XadesSigner
         Xml::load($dom, $xml);
 
         // Generate signature ID
-        $signatureId = 'signature-' . bin2hex(random_bytes(8));
-        $signedPropertiesId = 'signedprops-' . bin2hex(random_bytes(8));
+        $signatureId = 'signature-'.bin2hex(random_bytes(8));
+        $signedPropertiesId = 'signedprops-'.bin2hex(random_bytes(8));
 
         // Create Signature element
         $signature = $this->createSignatureElement($dom, $signatureId);
@@ -240,7 +245,7 @@ class XadesSigner
     {
         $reference = $dom->createElementNS(self::DS_NS, 'ds:Reference');
         $reference->setAttribute('Type', 'http://uri.etsi.org/01903#SignedProperties');
-        $reference->setAttribute('URI', '#' . $signedPropertiesId);
+        $reference->setAttribute('URI', '#'.$signedPropertiesId);
 
         // DigestMethod
         $digestMethod = $dom->createElementNS(self::DS_NS, 'ds:DigestMethod');
@@ -279,10 +284,10 @@ class XadesSigner
     /**
      * Create XAdES Object with SignedProperties.
      *
-     * @param DOMDocument $dom XML document
-     * @param string $signatureId Dynamic signature ID (for Target attribute)
-     * @param string $signedPropertiesId SignedProperties element ID
-     * @param string $certificatePem Certificate PEM
+     * @param  DOMDocument  $dom  XML document
+     * @param  string  $signatureId  Dynamic signature ID (for Target attribute)
+     * @param  string  $signedPropertiesId  SignedProperties element ID
+     * @param  string  $certificatePem  Certificate PEM
      * @return array{object: DOMElement, signedProperties: DOMElement}
      */
     private function createXadesObject(DOMDocument $dom, string $signatureId, string $signedPropertiesId, string $certificatePem): array
@@ -291,7 +296,7 @@ class XadesSigner
 
         // QualifyingProperties - Target must reference the actual signature ID
         $qualifyingProps = $dom->createElementNS(self::XADES_NS, 'xades:QualifyingProperties');
-        $qualifyingProps->setAttribute('Target', '#' . $signatureId);
+        $qualifyingProps->setAttribute('Target', '#'.$signatureId);
 
         // SignedProperties
         $signedProps = $dom->createElementNS(self::XADES_NS, 'xades:SignedProperties');
@@ -425,13 +430,13 @@ class XadesSigner
         $parts = [];
 
         if (isset($issuer['CN'])) {
-            $parts[] = 'CN=' . $issuer['CN'];
+            $parts[] = 'CN='.$issuer['CN'];
         }
         if (isset($issuer['O'])) {
-            $parts[] = 'O=' . $issuer['O'];
+            $parts[] = 'O='.$issuer['O'];
         }
         if (isset($issuer['C'])) {
-            $parts[] = 'C=' . $issuer['C'];
+            $parts[] = 'C='.$issuer['C'];
         }
 
         return implode(', ', $parts);
@@ -442,7 +447,7 @@ class XadesSigner
      */
     public function extractSignature(string $signedXml): ?string
     {
-        $dom = new DOMDocument();
+        $dom = new DOMDocument;
         Xml::load($dom, $signedXml);
 
         $xpath = new DOMXPath($dom);
@@ -460,13 +465,13 @@ class XadesSigner
     /**
      * Verify signature in signed XML.
      *
-     * @param string $signedXml Signed XML document
+     * @param  string  $signedXml  Signed XML document
      * @return bool True if signature is valid
      */
     public function verify(string $signedXml): bool
     {
         try {
-            $dom = new DOMDocument();
+            $dom = new DOMDocument;
             $dom->preserveWhiteSpace = false;
             Xml::load($dom, $signedXml);
 
@@ -493,9 +498,9 @@ class XadesSigner
                 return false;
             }
             $certBase64 = $certNodes->item(0)->textContent;
-            $certificatePem = "-----BEGIN CERTIFICATE-----\n" .
-                chunk_split($certBase64, 64, "\n") .
-                "-----END CERTIFICATE-----";
+            $certificatePem = "-----BEGIN CERTIFICATE-----\n".
+                chunk_split($certBase64, 64, "\n").
+                '-----END CERTIFICATE-----';
 
             // Canonicalize SignedInfo
             $signedInfoC14n = $signedInfo->C14N(true, false);
@@ -514,7 +519,7 @@ class XadesSigner
     /**
      * Verify all references in the signature.
      *
-     * @param string $signedXml Signed XML document
+     * @param  string  $signedXml  Signed XML document
      * @return array{valid: bool, errors: array}
      */
     public function verifyReferences(string $signedXml): array
@@ -522,7 +527,7 @@ class XadesSigner
         $errors = [];
 
         try {
-            $dom = new DOMDocument();
+            $dom = new DOMDocument;
             $dom->preserveWhiteSpace = false;
             Xml::load($dom, $signedXml);
 
@@ -540,6 +545,7 @@ class XadesSigner
                 $digestValueNodes = $xpath->query('ds:DigestValue', $reference);
                 if ($digestValueNodes->length === 0) {
                     $errors[] = "Reference {$uri}: missing DigestValue";
+
                     continue;
                 }
                 $expectedDigest = $digestValueNodes->item(0)->textContent;
@@ -551,6 +557,7 @@ class XadesSigner
                     $targetNodes = $xpath->query("//*[@Id='{$targetId}']");
                     if ($targetNodes->length === 0) {
                         $errors[] = "Reference {$uri}: target element not found";
+
                         continue;
                     }
                     $target = $targetNodes->item(0);
@@ -569,7 +576,7 @@ class XadesSigner
                 }
             }
         } catch (\Exception $e) {
-            $errors[] = 'Verification error: ' . $e->getMessage();
+            $errors[] = 'Verification error: '.$e->getMessage();
         }
 
         return [
@@ -619,10 +626,11 @@ class XadesSigner
      * Creates an XAdES-BES signature and adds a timestamp token from a TSA.
      * Requires TSA to be configured via withTimestampAuthority().
      *
-     * @param string $xml Invoice XML document
-     * @param string $privateKeyPem Private key for signing
-     * @param string $certificatePem X.509 certificate
+     * @param  string  $xml  Invoice XML document
+     * @param  string  $privateKeyPem  Private key for signing
+     * @param  string  $certificatePem  X.509 certificate
      * @return string Signed and timestamped XML document
+     *
      * @throws SigningException
      */
     public function signWithTimestamp(string $xml, string $privateKeyPem, string $certificatePem): string
@@ -641,8 +649,9 @@ class XadesSigner
     /**
      * Add timestamp to an existing XAdES-BES signature (upgrade to XAdES-T).
      *
-     * @param string $signedXml Signed XML with XAdES-BES signature
+     * @param  string  $signedXml  Signed XML with XAdES-BES signature
      * @return string XML with XAdES-T signature (includes SignatureTimeStamp)
+     *
      * @throws SigningException
      */
     public function addSignatureTimestamp(string $signedXml): string
@@ -692,7 +701,7 @@ class XadesSigner
 
         // Create SignatureTimeStamp element
         $sigTimeStamp = $dom->createElementNS(self::XADES_NS, 'xades:SignatureTimeStamp');
-        $sigTimeStamp->setAttribute('Id', 'timestamp-' . bin2hex(random_bytes(8)));
+        $sigTimeStamp->setAttribute('Id', 'timestamp-'.bin2hex(random_bytes(8)));
 
         // CanonicalizationMethod
         $c14nMethod = $dom->createElementNS(self::DS_NS, 'ds:CanonicalizationMethod');
@@ -714,8 +723,9 @@ class XadesSigner
     /**
      * Request timestamp from TSA (RFC 3161).
      *
-     * @param string $data Data to timestamp (will be SHA-256 hashed)
+     * @param  string  $data  Data to timestamp (will be SHA-256 hashed)
      * @return string Binary timestamp token
+     *
      * @throws SigningException
      */
     private function requestTimestamp(string $data): string
@@ -745,7 +755,7 @@ class XadesSigner
 
         // Add authentication if configured
         if ($this->tsaUsername !== null && $this->tsaPassword !== null) {
-            curl_setopt($ch, CURLOPT_USERPWD, $this->tsaUsername . ':' . $this->tsaPassword);
+            curl_setopt($ch, CURLOPT_USERPWD, $this->tsaUsername.':'.$this->tsaPassword);
             curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
         }
 
@@ -775,7 +785,7 @@ class XadesSigner
     /**
      * Create RFC 3161 Timestamp Request.
      *
-     * @param string $digest SHA-256 hash (binary)
+     * @param  string  $digest  SHA-256 hash (binary)
      * @return string DER-encoded timestamp request
      */
     private function createTimestampRequest(string $digest): string
@@ -798,14 +808,14 @@ class XadesSigner
         $sha256Oid = "\x06\x09\x60\x86\x48\x01\x65\x03\x04\x02\x01";
 
         // Build AlgorithmIdentifier (SEQUENCE with OID and NULL)
-        $algorithmIdentifier = "\x30" . chr(strlen($sha256Oid) + 2) . $sha256Oid . "\x05\x00";
+        $algorithmIdentifier = "\x30".chr(strlen($sha256Oid) + 2).$sha256Oid."\x05\x00";
 
         // Build hashedMessage (OCTET STRING)
-        $hashedMessage = "\x04" . chr(strlen($digest)) . $digest;
+        $hashedMessage = "\x04".chr(strlen($digest)).$digest;
 
         // Build MessageImprint (SEQUENCE)
-        $messageImprintContent = $algorithmIdentifier . $hashedMessage;
-        $messageImprint = "\x30" . $this->asn1Length(strlen($messageImprintContent)) . $messageImprintContent;
+        $messageImprintContent = $algorithmIdentifier.$hashedMessage;
+        $messageImprint = "\x30".$this->asn1Length(strlen($messageImprintContent)).$messageImprintContent;
 
         // Build version INTEGER (1)
         $version = "\x02\x01\x01";
@@ -814,16 +824,16 @@ class XadesSigner
         $nonceBytes = random_bytes(8);
         $nonceContent = ltrim($nonceBytes, "\x00") ?: "\x00";
         if (ord($nonceContent[0]) & 0x80) {
-            $nonceContent = "\x00" . $nonceContent;
+            $nonceContent = "\x00".$nonceContent;
         }
-        $nonce = "\x02" . chr(strlen($nonceContent)) . $nonceContent;
+        $nonce = "\x02".chr(strlen($nonceContent)).$nonceContent;
 
         // certReq BOOLEAN TRUE
         $certReq = "\x01\x01\xff";
 
         // Build TimeStampReq (SEQUENCE)
-        $tsReqContent = $version . $messageImprint . $nonce . $certReq;
-        $tsReq = "\x30" . $this->asn1Length(strlen($tsReqContent)) . $tsReqContent;
+        $tsReqContent = $version.$messageImprint.$nonce.$certReq;
+        $tsReq = "\x30".$this->asn1Length(strlen($tsReqContent)).$tsReqContent;
 
         return $tsReq;
     }
@@ -840,17 +850,17 @@ class XadesSigner
         $bytes = '';
         $temp = $length;
         while ($temp > 0) {
-            $bytes = chr($temp & 0xff) . $bytes;
+            $bytes = chr($temp & 0xFF).$bytes;
             $temp >>= 8;
         }
 
-        return chr(0x80 | strlen($bytes)) . $bytes;
+        return chr(0x80 | strlen($bytes)).$bytes;
     }
 
     /**
      * Parse RFC 3161 Timestamp Response.
      *
-     * @param string $response Binary timestamp response
+     * @param  string  $response  Binary timestamp response
      * @return string|null Timestamp token or null if invalid
      */
     private function parseTimestampResponse(string $response): ?string
@@ -912,6 +922,7 @@ class XadesSigner
         // Check status (0 = granted, 1 = grantedWithMods)
         if ($status > 1) {
             \Log::warning('TSA returned non-granted status', ['status' => $status]);
+
             return null;
         }
 
@@ -979,13 +990,13 @@ class XadesSigner
     /**
      * Verify timestamp on a signed document.
      *
-     * @param string $signedXml Signed XML with timestamp
+     * @param  string  $signedXml  Signed XML with timestamp
      * @return array{valid: bool, timestamp: string|null, tsaName: string|null}
      */
     public function verifyTimestamp(string $signedXml): array
     {
         try {
-            $dom = new DOMDocument();
+            $dom = new DOMDocument;
             Xml::load($dom, $signedXml);
 
             $xpath = new DOMXPath($dom);

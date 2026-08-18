@@ -322,29 +322,29 @@ return [
         // Source: ZATCA E-Invoicing Implementation Guidelines
         'exemption_codes' => [
             // Zero-rated supplies (Z) - Article 32 & 33
-            'VATEX-SA-29'   => 'Supply of qualified metals',
+            'VATEX-SA-29' => 'Supply of qualified metals',
             'VATEX-SA-29-7' => 'Supply of eligible goods to SEZ',
-            'VATEX-SA-30'   => 'Medicines and medical equipment',
-            'VATEX-SA-31'   => 'Transport services for goods/passengers',
-            'VATEX-SA-32'   => 'Export of goods',
-            'VATEX-SA-33'   => 'Export of services',
+            'VATEX-SA-30' => 'Medicines and medical equipment',
+            'VATEX-SA-31' => 'Transport services for goods/passengers',
+            'VATEX-SA-32' => 'Export of goods',
+            'VATEX-SA-33' => 'Export of services',
             'VATEX-SA-34-1' => 'Intra-GCC supply of goods',
             'VATEX-SA-34-2' => 'Intra-GCC supply of services',
             'VATEX-SA-34-3' => 'Intra-GCC supply to GCC government',
             'VATEX-SA-34-4' => 'Intra-GCC supply of tourist services',
             'VATEX-SA-34-5' => 'Intra-GCC supply via agent',
-            'VATEX-SA-35'   => 'First supply of residential real estate within 3 years',
-            'VATEX-SA-36'   => 'Transfer of qualifying assets between related parties',
+            'VATEX-SA-35' => 'First supply of residential real estate within 3 years',
+            'VATEX-SA-36' => 'Transfer of qualifying assets between related parties',
 
             // Exempt supplies (E) - Article 29 & 30
-            'VATEX-SA-EDU'  => 'Private education services',
-            'VATEX-SA-HEA'  => 'Private healthcare services',
+            'VATEX-SA-EDU' => 'Private education services',
+            'VATEX-SA-HEA' => 'Private healthcare services',
             'VATEX-SA-29-1' => 'Financial services - margin based',
             'VATEX-SA-29-2' => 'Life insurance services',
             'VATEX-SA-29-3' => 'Real estate lease - residential',
 
             // Out of scope (O)
-            'VATEX-SA-OOS'  => 'Out of scope supply',
+            'VATEX-SA-OOS' => 'Out of scope supply',
         ],
 
         // Strict mode: reject invoices with unknown exemption codes

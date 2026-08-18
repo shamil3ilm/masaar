@@ -13,9 +13,12 @@ use App\Domains\Compliance\FTA\Exceptions\FtaException;
 class FtaValidator
 {
     private const ALLOWED_CURRENCIES = ['AED'];
-    private const ALLOWED_DOC_TYPES  = ['380', '381', '383'];
-    private const VAT_RATE_STANDARD  = 0.05;
-    private const VAT_RATE_ZERO      = 0.00;
+
+    private const ALLOWED_DOC_TYPES = ['380', '381', '383'];
+
+    private const VAT_RATE_STANDARD = 0.05;
+
+    private const VAT_RATE_ZERO = 0.00;
 
     /** @throws FtaException */
     public function validate(FtaInvoiceData $data): void

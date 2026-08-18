@@ -1,14 +1,18 @@
 <?php
 
-use App\Domains\Compliance\Fatoora\Exceptions\ZatcaException;
 use App\Domains\Compliance\Fatoora\Exceptions\CertificateException;
 use App\Domains\Compliance\Fatoora\Exceptions\SigningException;
+use App\Domains\Compliance\Fatoora\Exceptions\ZatcaException;
 use App\Domains\Licensing\Exceptions\LicenseException;
 use App\Http\Responses\ApiResponse;
+use App\Providers\AppServiceProvider;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Middleware\HandleCors;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -21,7 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
         then: function () {
             // Load licensing routes
-            \Illuminate\Support\Facades\Route::middleware('api')
+            Route::middleware('api')
                 ->group(base_path('routes/licensing.php'));
         },
     )
@@ -35,21 +39,21 @@ return Application::configure(basePath: dirname(__DIR__))
         // Single source of truth. AppServiceProvider::boot() reasserts these
         // after package providers boot, because a package can otherwise claim
         // an alias declared here.
-        $middleware->alias(\App\Providers\AppServiceProvider::MIDDLEWARE_ALIASES);
+        $middleware->alias(AppServiceProvider::MIDDLEWARE_ALIASES);
 
         // Blade consoles authenticate with a session; send guests to the form.
         $middleware->redirectGuestsTo(fn () => route('login'));
 
         // Apply CORS to API routes
         $middleware->api(prepend: [
-            \Illuminate\Http\Middleware\HandleCors::class,
+            HandleCors::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Handle ZATCA-specific exceptions with structured responses
         $exceptions->render(function (ZatcaException $e, Request $request) {
             if ($request->is('api/*') || $request->is('v1/*')) {
-                \Illuminate\Support\Facades\Log::warning('ZATCA Exception', [
+                Log::warning('ZATCA Exception', [
                     'code' => $e->getErrorCode()?->value,
                     'message' => $e->getMessage(),
                     'context' => $e->getContext(),
@@ -71,7 +75,7 @@ return Application::configure(basePath: dirname(__DIR__))
                     $response['error']['max_retries'] = $e->getMaxRetries();
                 }
 
-                if (!empty($e->getContext())) {
+                if (! empty($e->getContext())) {
                     $response['error']['context'] = $e->getContext();
                 }
 
@@ -82,7 +86,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Handle Certificate exceptions
         $exceptions->render(function (CertificateException $e, Request $request) {
             if ($request->is('api/*') || $request->is('v1/*')) {
-                \Illuminate\Support\Facades\Log::error('Certificate Exception', [
+                Log::error('Certificate Exception', [
                     'message' => $e->getMessage(),
                 ]);
 
@@ -100,7 +104,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Handle Signing exceptions
         $exceptions->render(function (SigningException $e, Request $request) {
             if ($request->is('api/*') || $request->is('v1/*')) {
-                \Illuminate\Support\Facades\Log::error('Signing Exception', [
+                Log::error('Signing Exception', [
                     'message' => $e->getMessage(),
                 ]);
 
@@ -118,7 +122,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Handle License exceptions
         $exceptions->render(function (LicenseException $e, Request $request) {
             if ($request->is('api/*') || $request->is('v1/*')) {
-                \Illuminate\Support\Facades\Log::warning('License Exception', [
+                Log::warning('License Exception', [
                     'code' => $e->errorCode,
                     'message' => $e->getMessage(),
                     'context' => $e->context,
@@ -133,7 +137,7 @@ return Application::configure(basePath: dirname(__DIR__))
                     ],
                 ];
 
-                if (!empty($e->context)) {
+                if (! empty($e->context)) {
                     $response['error']['context'] = $e->context;
                 }
 
@@ -170,10 +174,10 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
-        $exceptions->render(function (\Throwable $e, Request $request) {
+        $exceptions->render(function (Throwable $e, Request $request) {
             if ($request->is('api/*') || $request->is('v1/*')) {
                 // Log the error for debugging
-                \Illuminate\Support\Facades\Log::error('API Error', [
+                Log::error('API Error', [
                     'message' => $e->getMessage(),
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),

@@ -42,7 +42,7 @@ class FatooraValidate extends Command
         // Create sample invoice data matching the updated DTO structure
         $invoiceData = new InvoiceXmlData(
             uuid: $this->generateUuid(),
-            invoiceNumber: 'INV-' . date('Ymd') . '-001',
+            invoiceNumber: 'INV-'.date('Ymd').'-001',
             icv: 1,
             issueDate: date('Y-m-d'),
             issueTime: date('H:i:s'),
@@ -100,7 +100,7 @@ class FatooraValidate extends Command
         );
 
         // Build XML
-        $builder = new XmlBuilder();
+        $builder = new XmlBuilder;
         $xml = $builder->build($invoiceData);
 
         // Output path
@@ -109,7 +109,7 @@ class FatooraValidate extends Command
 
         // Ensure directory exists
         $dir = dirname($outputPath);
-        if (!File::isDirectory($dir)) {
+        if (! File::isDirectory($dir)) {
             File::makeDirectory($dir, 0755, true);
         }
 
@@ -126,7 +126,7 @@ class FatooraValidate extends Command
         $this->newLine();
         $this->info('Next Steps for ZATCA SDK Validation:');
         $this->line('1. Navigate to your ZATCA SDK folder');
-        $this->line('2. Run: fatoora -validate -invoice ' . $outputPath);
+        $this->line('2. Run: fatoora -validate -invoice '.$outputPath);
         $this->line('3. Expected result: GLOBALVALIDATIONRESULT = PASSED');
         $this->newLine();
 
@@ -158,8 +158,8 @@ class FatooraValidate extends Command
                 ['Seller Address', '✓', 'Complete with all fields'],
                 ['Supply Date', $isStandard ? '✓' : 'N/A', $data->supplyDate ?? 'Not required for B2C'],
                 ['Buyer VAT', $isStandard ? '✓' : 'N/A', $data->buyerVatNumber ?? 'Not required for B2C'],
-                ['Tax Total', '✓', number_format($data->taxAmount, 2) . ' SAR'],
-                ['Invoice Lines', '✓', count($data->lines) . ' line(s)'],
+                ['Tax Total', '✓', number_format($data->taxAmount, 2).' SAR'],
+                ['Invoice Lines', '✓', count($data->lines).' line(s)'],
             ]
         );
     }
@@ -168,8 +168,8 @@ class FatooraValidate extends Command
     {
         // Generate UUID v4
         $data = random_bytes(16);
-        $data[6] = chr(ord($data[6]) & 0x0f | 0x40);
-        $data[8] = chr(ord($data[8]) & 0x3f | 0x80);
+        $data[6] = chr(ord($data[6]) & 0x0F | 0x40);
+        $data[8] = chr(ord($data[8]) & 0x3F | 0x80);
 
         return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
     }

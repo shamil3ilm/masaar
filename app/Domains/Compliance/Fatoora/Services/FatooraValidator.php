@@ -62,8 +62,6 @@ class FatooraValidator
     /**
      * Validate invoice for ZATCA compliance.
      *
-     * @param Invoice $invoice
-     * @param Organization $organization
      * @return array{valid: bool, errors: array, warnings: array}
      */
     public function validate(Invoice $invoice, Organization $organization): array
@@ -227,6 +225,7 @@ class FatooraValidator
 
         if ($invoice->lines->isEmpty()) {
             $errors[] = 'BR-16: Invoice must have at least one line item';
+
             return $errors;
         }
 
@@ -252,7 +251,7 @@ class FatooraValidator
             $taxRate = (int) $line->tax_rate;
             $allowedRates = $this->getAllowedTaxRates();
             if (! in_array($taxRate, $allowedRates, true)) {
-                $ratesStr = implode('% or ', $allowedRates) . '%';
+                $ratesStr = implode('% or ', $allowedRates).'%';
                 $errors[] = "BR-KSA-DEC-02: Line {$lineNum} tax rate must be {$ratesStr} (got {$taxRate}%)";
             }
 
@@ -404,9 +403,9 @@ class FatooraValidator
     /**
      * Validate that credit note total doesn't exceed original invoice.
      *
-     * @param float $creditNoteTotal Credit note total
-     * @param float $originalInvoiceTotal Original invoice total
-     * @param float $previousCreditNotesTotal Sum of previous credit notes for same invoice
+     * @param  float  $creditNoteTotal  Credit note total
+     * @param  float  $originalInvoiceTotal  Original invoice total
+     * @param  float  $previousCreditNotesTotal  Sum of previous credit notes for same invoice
      * @return bool True if valid
      */
     public function validateCreditNoteTotal(
@@ -511,6 +510,7 @@ class FatooraValidator
     public function isValidDecimalPrecision(float $amount): bool
     {
         $rounded = round($amount, 2);
+
         return abs($amount - $rounded) < 0.001;
     }
 
@@ -525,7 +525,7 @@ class FatooraValidator
         // $dom->schemaValidate($schemaPath);
         return array_map(
             static fn (string $error): string => "XML Error {$error}",
-            Xml::errors(new \DOMDocument(), $xml)
+            Xml::errors(new \DOMDocument, $xml)
         );
     }
 }

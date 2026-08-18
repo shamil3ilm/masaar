@@ -11,7 +11,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 /**
  * Branch management API controller.
@@ -54,7 +53,7 @@ class BranchController extends Controller
         $branches = $query->orderBy('is_default', 'desc')
             ->orderBy('name')
             ->get()
-            ->map(fn(Branch $branch) => $this->formatBranch($branch));
+            ->map(fn (Branch $branch) => $this->formatBranch($branch));
 
         return ApiResponse::success([
             'branches' => $branches,
@@ -93,7 +92,7 @@ class BranchController extends Controller
             ], 201);
 
         } catch (\Exception $e) {
-            return ApiResponse::error('Failed to create branch: ' . $e->getMessage(), 422);
+            return ApiResponse::error('Failed to create branch: '.$e->getMessage(), 422);
         }
     }
 
@@ -108,7 +107,7 @@ class BranchController extends Controller
 
         $branch = $organization->branches()->find($branchId);
 
-        if (!$branch) {
+        if (! $branch) {
             return ApiResponse::error('Branch not found', 404);
         }
 
@@ -128,7 +127,7 @@ class BranchController extends Controller
 
         $branch = $organization->branches()->find($branchId);
 
-        if (!$branch) {
+        if (! $branch) {
             return ApiResponse::error('Branch not found', 404);
         }
 
@@ -153,7 +152,7 @@ class BranchController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            return ApiResponse::error('Failed to update branch: ' . $e->getMessage(), 422);
+            return ApiResponse::error('Failed to update branch: '.$e->getMessage(), 422);
         }
     }
 
@@ -168,7 +167,7 @@ class BranchController extends Controller
 
         $branch = $organization->branches()->find($branchId);
 
-        if (!$branch) {
+        if (! $branch) {
             return ApiResponse::error('Branch not found', 404);
         }
 
@@ -195,7 +194,7 @@ class BranchController extends Controller
 
         $branch = $organization->branches()->find($branchId);
 
-        if (!$branch) {
+        if (! $branch) {
             return ApiResponse::error('Branch not found', 404);
         }
 
@@ -218,7 +217,7 @@ class BranchController extends Controller
 
         $branch = $organization->branches()->find($branchId);
 
-        if (!$branch) {
+        if (! $branch) {
             return ApiResponse::error('Branch not found', 404);
         }
 
@@ -241,7 +240,7 @@ class BranchController extends Controller
 
         $branch = $organization->branches()->find($branchId);
 
-        if (!$branch) {
+        if (! $branch) {
             return ApiResponse::error('Branch not found', 404);
         }
 
@@ -249,7 +248,7 @@ class BranchController extends Controller
             return ApiResponse::error('Cannot reactivate revoked branch. Re-onboard instead.', 422);
         }
 
-        if (!$this->branchService->hasPcsid($branch)) {
+        if (! $this->branchService->hasPcsid($branch)) {
             return ApiResponse::error('Branch has no PCSID. Complete onboarding first.', 422);
         }
 
@@ -275,7 +274,7 @@ class BranchController extends Controller
 
         $branch = $organization->branches()->find($branchId);
 
-        if (!$branch) {
+        if (! $branch) {
             return ApiResponse::error('Branch not found', 404);
         }
 
@@ -357,11 +356,11 @@ class BranchController extends Controller
             return 'Re-onboard to obtain new certificate';
         }
 
-        if (!$hasCcsid) {
+        if (! $hasCcsid) {
             return 'Obtain OTP from ZATCA Fatoora Portal and call POST /onboarding/ccsid';
         }
 
-        if (!$hasPcsid) {
+        if (! $hasPcsid) {
             return 'Run compliance check and call POST /onboarding/pcsid';
         }
 

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Domains\Compliance\Fatoora\Client\FatooraClient;
-use App\Domains\Compliance\Fatoora\Services\OfflineQueueManager;
 use App\Domains\Compliance\Fatoora\Services\FatooraConnectivityChecker;
+use App\Domains\Compliance\Fatoora\Services\OfflineQueueManager;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Console\Command;
@@ -35,8 +35,11 @@ class ProcessOfflineQueue extends Command
     protected $description = 'Process queued invoices from offline mode and submit to ZATCA';
 
     private int $processed = 0;
+
     private int $succeeded = 0;
+
     private int $failed = 0;
+
     private int $skipped = 0;
 
     public function __construct(
@@ -61,15 +64,16 @@ class ProcessOfflineQueue extends Command
         $force = $this->option('force');
 
         // Step 1: Check ZATCA connectivity
-        if (!$force) {
+        if (! $force) {
             $this->info('Checking ZATCA API connectivity...');
 
             if ($this->connectivityChecker) {
                 $connectivity = $this->connectivityChecker->check();
 
-                if (!$connectivity['available']) {
-                    $this->error('ZATCA API is not available: ' . ($connectivity['reason'] ?? 'Unknown'));
+                if (! $connectivity['available']) {
+                    $this->error('ZATCA API is not available: '.($connectivity['reason'] ?? 'Unknown'));
                     $this->line('  Use --force to process anyway');
+
                     return Command::FAILURE;
                 }
 
@@ -120,6 +124,7 @@ class ProcessOfflineQueue extends Command
 
         if ($organizations->isEmpty()) {
             $this->info('No pending items in offline queue.');
+
             return;
         }
 
@@ -135,8 +140,9 @@ class ProcessOfflineQueue extends Command
     {
         $organization = Organization::find($organizationId);
 
-        if (!$organization) {
+        if (! $organization) {
             $this->warn("Organization {$organizationId} not found, skipping...");
+
             return;
         }
 
@@ -152,11 +158,13 @@ class ProcessOfflineQueue extends Command
 
         if ($status['pending'] === 0) {
             $this->line('  No pending items.');
+
             return;
         }
 
         if ($isDryRun) {
             $this->line("  Would process up to {$limit} items.");
+
             return;
         }
 
@@ -165,6 +173,7 @@ class ProcessOfflineQueue extends Command
 
         if (empty($batch)) {
             $this->line('  No items ready for processing.');
+
             return;
         }
 
@@ -191,8 +200,9 @@ class ProcessOfflineQueue extends Command
         // Validate item before processing
         $validation = $this->queueManager->validateQueuedItem($item);
 
-        if (!$validation['valid']) {
+        if (! $validation['valid']) {
             $this->handleInvalidItem($item, $validation);
+
             return;
         }
 
@@ -203,9 +213,10 @@ class ProcessOfflineQueue extends Command
             // Get invoice
             $invoice = Invoice::find($item->invoice_id);
 
-            if (!$invoice) {
+            if (! $invoice) {
                 $this->queueManager->markFailed($item->id, 'Invoice not found', false);
                 $this->failed++;
+
                 return;
             }
 
@@ -282,7 +293,7 @@ class ProcessOfflineQueue extends Command
                 // Needs re-signing, keep in queue with error
                 $this->queueManager->markFailed(
                     $item->id,
-                    'Certificate changed - needs re-signing: ' . $validation['reason'],
+                    'Certificate changed - needs re-signing: '.$validation['reason'],
                     false
                 );
                 $this->skipped++;
@@ -292,7 +303,7 @@ class ProcessOfflineQueue extends Command
                 // ICV conflict, needs manual intervention
                 $this->queueManager->markFailed(
                     $item->id,
-                    'ICV conflict - manual intervention required: ' . $validation['reason'],
+                    'ICV conflict - manual intervention required: '.$validation['reason'],
                     false
                 );
                 $this->failed++;

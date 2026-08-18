@@ -1,7 +1,11 @@
 <?php
 
+use App\Providers\AppServiceProvider;
+use App\Providers\ComplianceServiceProvider;
+use App\Providers\EventServiceProvider;
+
 return [
-    App\Providers\AppServiceProvider::class,
-    App\Providers\EventServiceProvider::class,
-    App\Providers\ComplianceServiceProvider::class,
+    AppServiceProvider::class,
+    EventServiceProvider::class,
+    ComplianceServiceProvider::class,
 ];

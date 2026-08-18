@@ -18,13 +18,19 @@ use DOMElement;
 class XmlBuilder
 {
     private const UBL_NS = 'urn:oasis:names:specification:ubl:schema:xsd:Invoice-2';
+
     private const CAC_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2';
+
     private const CBC_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2';
+
     private const EXT_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2';
+
     private const SIG_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonSignatureComponents-2';
+
     private const SBC_NS = 'urn:oasis:names:specification:ubl:schema:xsd:SignatureBasicComponents-2';
 
     private DOMDocument $dom;
+
     private DOMElement $root;
 
     /**
@@ -471,7 +477,7 @@ class XmlBuilder
     /**
      * Aggregate tax subtotals from invoice lines by category and rate.
      *
-     * @param array $lines Invoice lines
+     * @param  array  $lines  Invoice lines
      * @return array Aggregated subtotals
      */
     private function aggregateTaxSubtotals(array $lines): array
@@ -481,7 +487,7 @@ class XmlBuilder
         foreach ($lines as $line) {
             $category = $line['taxCategory'] ?? 'S';
             $rate = (float) ($line['taxRate'] ?? 15.0);
-            $key = $category . '_' . $rate;
+            $key = $category.'_'.$rate;
 
             if (! isset($subtotals[$key])) {
                 $subtotals[$key] = [
@@ -666,7 +672,7 @@ class XmlBuilder
                 $freeNote = $this->dom->createElementNS(
                     self::CBC_NS,
                     'cbc:Note',
-                    'Free item - VAT on deemed supply (market value: ' . $this->formatAmount($unitPrice) . ' ' . $data->currency . ')'
+                    'Free item - VAT on deemed supply (market value: '.$this->formatAmount($unitPrice).' '.$data->currency.')'
                 );
                 $invoiceLine->appendChild($freeNote);
             }

@@ -130,6 +130,6 @@ class CertificateRevocationTest extends TestCase
         $reflection = new ReflectionMethod(CertificateService::class, $method);
         $reflection->setAccessible(true);
 
-        return $reflection->invoke(new CertificateService(), $argument);
+        return $reflection->invoke(new CertificateService, $argument);
     }
 }

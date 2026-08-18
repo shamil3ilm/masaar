@@ -15,14 +15,16 @@ use InvalidArgumentException;
 class TlvEncoder
 {
     private const MAX_VALUE_LENGTH = 255;
+
     private const MAX_TAG = 255;
 
     /**
      * Encode a single TLV field.
      *
-     * @param int $tag Tag number (1-255)
-     * @param string $value Field value
+     * @param  int  $tag  Tag number (1-255)
+     * @param  string  $value  Field value
      * @return string Binary TLV data
+     *
      * @throws InvalidArgumentException If tag or value length exceeds limits
      */
     public function encodeTag(int $tag, string $value): string
@@ -46,13 +48,13 @@ class TlvEncoder
             );
         }
 
-        return chr($tag) . chr($length) . $value;
+        return chr($tag).chr($length).$value;
     }
 
     /**
      * Encode multiple TLV fields and return base64.
      *
-     * @param array<int, string> $fields [tag => value]
+     * @param  array<int, string>  $fields  [tag => value]
      * @return string Base64 encoded TLV data
      */
     public function encode(array $fields): string
@@ -69,7 +71,7 @@ class TlvEncoder
     /**
      * Decode base64 TLV data back to fields.
      *
-     * @param string $base64 Base64 encoded TLV
+     * @param  string  $base64  Base64 encoded TLV
      * @return array<int, string> [tag => value]
      */
     public function decode(string $base64): array

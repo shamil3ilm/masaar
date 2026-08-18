@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Http\Controllers;
 
+use App\Domains\Compliance\Fatoora\Services\CertificateLineageService;
 use App\Domains\Compliance\Fatoora\Services\ClusterCircuitBreaker;
 use App\Domains\Compliance\Fatoora\Services\EnvironmentVarianceTracker;
-use App\Domains\Compliance\Fatoora\Services\CertificateLineageService;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Dashboard API Controller.
@@ -161,7 +161,7 @@ class DashboardController extends Controller
                 'updated_at',
             ])
             ->get()
-            ->map(fn($s) => [
+            ->map(fn ($s) => [
                 'id' => $s->id,
                 'invoice_id' => $s->invoice_id,
                 'status' => $s->state ?? $s->reporting_status ?? 'pending',
@@ -187,13 +187,13 @@ class DashboardController extends Controller
         // Single query for all counts and sum
         $stats = DB::table('invoices')
             ->where('organization_id', $organizationId)
-            ->selectRaw("
+            ->selectRaw('
                 COUNT(*) as total,
                 SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as today,
                 SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as this_month,
                 SUM(CASE WHEN created_at >= ? AND created_at < ? THEN 1 ELSE 0 END) as last_month,
                 COALESCE(SUM(total), 0) as total_amount
-            ", [$today, $thisMonth, $lastMonth, $thisMonth])
+            ', [$today, $thisMonth, $lastMonth, $thisMonth])
             ->first();
 
         // Separate query for by_type (GROUP BY needed)
@@ -302,10 +302,10 @@ class DashboardController extends Controller
         $stats = DB::table('offline_queue')
             ->where('organization_id', $organizationId)
             ->where('state', 'pending')
-            ->selectRaw("
+            ->selectRaw('
                 COUNT(*) as pending,
                 SUM(CASE WHEN queued_at < ? THEN 1 ELSE 0 END) as stuck
-            ", [$thirtyMinutesAgo])
+            ', [$thirtyMinutesAgo])
             ->first();
 
         $pending = (int) ($stats->pending ?? 0);
@@ -325,7 +325,7 @@ class DashboardController extends Controller
     {
         $activeCert = $this->certificateService->getActive($organizationId);
 
-        if (!$activeCert) {
+        if (! $activeCert) {
             return [
                 'status' => 'missing',
                 'message' => 'No active certificate found',
@@ -375,7 +375,7 @@ class DashboardController extends Controller
             ->where('organization_id', $organizationId)
             ->first();
 
-        if (!$state) {
+        if (! $state) {
             return true; // No chain yet
         }
 
@@ -384,7 +384,7 @@ class DashboardController extends Controller
             ->orderByDesc('icv')
             ->first();
 
-        if (!$lastEntry) {
+        if (! $lastEntry) {
             return false; // State exists but no history
         }
 

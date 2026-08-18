@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Security;
 
+use App\Domains\Auth\Http\Middleware\IsPlatformAdmin;
 use App\Domains\Auth\Models\User;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -43,7 +44,7 @@ class AdminApiAccessTest extends TestCase
             );
 
             $this->assertContains(
-                \App\Domains\Auth\Http\Middleware\IsPlatformAdmin::class,
+                IsPlatformAdmin::class,
                 $resolved,
                 "/{$route->uri()} is missing the platform-admin gate."
             );

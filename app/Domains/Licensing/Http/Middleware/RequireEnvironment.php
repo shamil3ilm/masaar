@@ -29,21 +29,19 @@ class RequireEnvironment
     /**
      * Handle an incoming request.
      *
-     * @param Request $request
-     * @param Closure $next
-     * @param string $environment Required environment ('sandbox' or 'production')
+     * @param  string  $environment  Required environment ('sandbox' or 'production')
      */
     public function handle(Request $request, Closure $next, string $environment): mixed
     {
         $license = $request->attributes->get('license');
 
-        if (!$license instanceof License) {
+        if (! $license instanceof License) {
             throw new \RuntimeException('License not found in request. Ensure ValidateLicense middleware runs first.');
         }
 
         // Validate environment enum
         $requiredEnv = LicenseEnvironment::tryFrom($environment);
-        if (!$requiredEnv) {
+        if (! $requiredEnv) {
             throw new \InvalidArgumentException("Invalid environment: {$environment}");
         }
 

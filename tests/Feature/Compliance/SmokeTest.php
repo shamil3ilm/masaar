@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Compliance;
 
+use App\Domains\Compliance\Fatoora\Services\FatooraComplianceService;
 use App\Domains\Compliance\Fatoora\Services\FatooraSubmissionService;
 use App\Domains\Compliance\Fatoora\Services\FatooraValidator;
-use App\Domains\Compliance\Fatoora\Services\FatooraComplianceService;
-use App\Domains\Compliance\Fatoora\Client\FatooraClient;
-use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\FTA\Services\FtaService;
 use App\Domains\Compliance\FTA\Services\FtaValidator;
 use App\Domains\Compliance\FTA\Services\FtaXmlBuilder;
+use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 /**
@@ -88,15 +87,15 @@ class SmokeTest extends TestCase
 
     public function test_compliance_sa_routes_registered(): void
     {
-        $routes = collect(\Illuminate\Support\Facades\Route::getRoutes()->getRoutes());
-        $saPaths = $routes->filter(fn($r) => str_contains($r->uri(), 'compliance/sa'));
+        $routes = collect(Route::getRoutes()->getRoutes());
+        $saPaths = $routes->filter(fn ($r) => str_contains($r->uri(), 'compliance/sa'));
         $this->assertGreaterThanOrEqual(3, $saPaths->count(), 'Expected at least 3 /compliance/sa routes');
     }
 
     public function test_compliance_ae_routes_registered(): void
     {
-        $routes = collect(\Illuminate\Support\Facades\Route::getRoutes()->getRoutes());
-        $aePaths = $routes->filter(fn($r) => str_contains($r->uri(), 'compliance/ae'));
+        $routes = collect(Route::getRoutes()->getRoutes());
+        $aePaths = $routes->filter(fn ($r) => str_contains($r->uri(), 'compliance/ae'));
         $this->assertGreaterThanOrEqual(3, $aePaths->count(), 'Expected at least 3 /compliance/ae routes');
     }
 
