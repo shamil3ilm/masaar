@@ -10,20 +10,20 @@ use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
 /**
- * Regression guard for H-3 — checkCrl() compared against
- * strtoupper(dechex((int) $serialNumber)).
+ * A revoked certificate must never sign an invoice.
  *
- * openssl_x509_parse() returns the serial as 0x-prefixed hex, and casting
- * that to int yields 0, so the comparison string was literally "0". Two
- * consequences, both live:
+ * X.509 serials run to 20 octets, which does not fit a PHP int, and
+ * openssl_x509_parse() returns them as 0x-prefixed hex. So the serial is
+ * compared as a normalised hex string and matched against a whole CRL entry:
+ * casting to a number collapses every serial to 0, and an unanchored match
+ * makes any entry starting with the same digits look like a hit.
  *
- *   - a genuinely revoked certificate never matched, so it was accepted
- *     for signing, silently
- *   - the regex was unanchored, so "Serial Number: 0..." matched any CRL
- *     entry beginning with zero, reporting valid certificates as revoked
+ * Both failure directions matter. Missing a revoked certificate signs tax
+ * documents with a dead key; a false match refuses a valid one and stops
+ * invoicing.
  *
- * These tests drive the serial handling directly, because the surrounding
- * method shells out to `openssl crl` and fetches a URL.
+ * These drive the serial handling directly, because the surrounding method
+ * shells out to `openssl crl` and fetches a URL.
  */
 class CertificateRevocationTest extends TestCase
 {

@@ -11,18 +11,17 @@ use Tests\TestCase;
 /**
  * Every command referenced by name must actually be registered.
  *
- * The CompliPay -> Masaar rebrand renamed the command signatures from zatca:*
- * to fatoora:* but left routes/console.php scheduling the old names. Laravel
- * reports nothing for a scheduled command that does not exist, so three jobs
- * stopped running with no error anywhere: the offline queue never drained,
- * certificate expiry was never checked, and the hash chain was never verified.
+ * Laravel reports nothing for a scheduled command that does not exist, so a
+ * signature that drifts from its caller takes the job out of service silently.
+ * The offline queue stops draining, certificates stop being checked for
+ * expiry, and the hash chain stops being verified — with nothing in any log.
  *
- * Two licensing commands were unregistered for a different reason — they live
- * in app/Domains/Licensing/Console, and Laravel only auto-discovers
- * app/Console/Commands.
+ * Registration is the other half: Laravel auto-discovers only
+ * app/Console/Commands, so a command living in a domain is absent from the
+ * registry unless bootstrap/app.php lists its directory.
  *
- * A string referring to a command is a dependency the compiler cannot see, so
- * it gets a test instead.
+ * A command named by string is a dependency the compiler cannot check, so it
+ * gets a test instead.
  */
 class ScheduledCommandTest extends TestCase
 {

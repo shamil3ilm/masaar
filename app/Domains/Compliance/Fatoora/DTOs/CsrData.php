@@ -17,7 +17,7 @@ use InvalidArgumentException;
  * the taxpayer.
  *
  * Validation happens here, in the constructor, so no caller can assemble an
- * unchecked instance. Closes audit finding H-5.
+ * unchecked instance.
  */
 final readonly class CsrData
 {

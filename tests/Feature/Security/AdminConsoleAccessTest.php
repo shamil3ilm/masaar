@@ -12,9 +12,12 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * Regression guard for C-1 — the /admin console was registered with no
- * authentication middleware at all, exposing every organization, submission
- * log, and two state-mutating POST routes to anonymous callers.
+ * The /admin console is Masaar-internal and spans every tenant.
+ *
+ * It exposes the full organization register, submission logs, and two routes
+ * that mutate state, so no part of it is reachable without a platform-admin
+ * session. Access is checked on every route, including the POSTs, because a
+ * guarded index page with an unguarded action is no guard at all.
  */
 class AdminConsoleAccessTest extends TestCase
 {

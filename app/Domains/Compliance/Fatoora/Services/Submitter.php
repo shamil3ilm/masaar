@@ -31,13 +31,13 @@ use Illuminate\Support\Facades\Storage;
 class Submitter
 {
     /**
-     * Every dependency is required.
+     * Every dependency is required, none optional.
      *
-     * BranchService was optional, and the container skips optional parameters,
-     * so it was always null — silently disabling branch-level signing. An
-     * invoice for a branch would be signed with the organization's default
-     * certificate instead of that branch's own EGS credentials, which ZATCA
-     * treats as a different device.
+     * The container skips optional constructor parameters, so an optional
+     * BranchService resolves to null and the branch credential lookup below
+     * becomes unreachable — signing a branch's invoice with the organization's
+     * certificate, which ZATCA reads as a different device. A missing binding
+     * should fail at boot instead.
      */
     public function __construct(
         private readonly DocumentBuilder $compliance,

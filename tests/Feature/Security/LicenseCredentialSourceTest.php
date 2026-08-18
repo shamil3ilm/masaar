@@ -10,9 +10,12 @@ use ReflectionMethod;
 use Tests\TestCase;
 
 /**
- * Regression guard for C-3 — the licence middleware accepted the API key AND
- * secret from the query string, leaking a complete credential pair into access
- * logs, proxy logs, CDN logs, APM traces, browser history and Referer headers.
+ * Licence credentials are read from headers only.
+ *
+ * URLs are recorded by web servers, reverse proxies, CDNs, APM traces, browser
+ * history and the Referer header. A credential in the query string therefore
+ * lands in systems with far weaker access controls than the credential store —
+ * and here it would be the key and the secret together.
  */
 class LicenseCredentialSourceTest extends TestCase
 {

@@ -11,12 +11,13 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * Regression guard for C-2 — the /portal surface was unauthenticated and read
- * its tenant from `?org_id=`, so any UUID returned that tenant's invoice
- * volumes, submission states and certificate status.
+ * Tenant identity is derived from the credential, never from request input.
  *
- * The invariant under test: tenant identity is derived from the credential,
- * never from request input.
+ * The portal shows a tenant's invoice volumes, submission states and
+ * certificate status. An `?org_id=` that the caller can choose would make
+ * every one of those readable by supplying someone else's UUID, so the
+ * parameter is only ever a selection among organizations the session already
+ * belongs to.
  */
 class CustomerPortalAccessTest extends TestCase
 {
@@ -109,8 +110,8 @@ class CustomerPortalAccessTest extends TestCase
     }
 
     /**
-     * The selection screen must offer only the user's own organizations —
-     * it previously queried the whole organizations table from the template.
+     * The picker lists organizations, so it must list only the ones this user
+     * belongs to — otherwise it is itself a directory of every tenant.
      */
     public function test_picker_shows_own_orgs_only(): void
     {

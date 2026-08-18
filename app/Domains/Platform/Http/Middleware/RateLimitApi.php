@@ -18,9 +18,9 @@ use Symfony\Component\HttpFoundation\Response;
  * ceiling. Two reasons:
  *
  *   A tenant is the unit that pays and the unit that can be noisy. Keying on
- *   the user let one customer open several sessions and multiply their share,
- *   while an integration authenticating with an API key had no user at all and
- *   fell back to an IP, which is trivially rotated.
+ *   the user would let one customer multiply its share by opening sessions,
+ *   and an integration authenticating with an API key has no user at all —
+ *   leaving only an IP, which is trivially rotated.
  *
  *   Endpoints are not equal. /pipeline/submit signs an invoice and calls ZATCA;
  *   /health returns a constant. Sharing one budget means the cheap endpoint's

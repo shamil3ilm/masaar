@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Organization\Http\Middleware;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Organization\Services\TenantResolver;
+use App\Domains\Organization\ValueObjects\OrganizationContext;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -59,8 +61,7 @@ class PortalTenant
                 abort(403, 'You do not have access to that organization.');
             }
 
-            $request->session()->put(self::SESSION_KEY, $requested);
-            $request->attributes->set(self::ORG_ID, $requested);
+            $this->activate($request, $user, $requested);
 
             return $next($request);
         }
@@ -69,11 +70,28 @@ class PortalTenant
         $organizationIds = $user->activeOrganizations()->pluck('organizations.id');
 
         if ($organizationIds->count() === 1) {
-            $only = (string) $organizationIds->first();
-            $request->session()->put(self::SESSION_KEY, $only);
-            $request->attributes->set(self::ORG_ID, $only);
+            $this->activate($request, $user, (string) $organizationIds->first());
         }
 
         return $next($request);
+    }
+
+    /**
+     * Record the resolved tenant for the rest of the request.
+     *
+     * TenantResolver is what BelongsToTenant's global scope reads, so setting
+     * it here is what puts portal queries inside tenant scoping rather than
+     * leaving them to filter by hand. The request attribute stays for the
+     * controller, which needs the id itself to answer "which organization am
+     * I showing?".
+     */
+    private function activate(Request $request, User $user, string $organizationId): void
+    {
+        $request->session()->put(self::SESSION_KEY, $organizationId);
+        $request->attributes->set(self::ORG_ID, $organizationId);
+
+        app(TenantResolver::class)->setContext(
+            OrganizationContext::forMember($organizationId, $user->roleIn($organizationId))
+        );
     }
 }
