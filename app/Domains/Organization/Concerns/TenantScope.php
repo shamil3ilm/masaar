@@ -24,18 +24,20 @@ class TenantScope implements Scope
             return;
         }
 
-        // Console and queue workers carry no credential to derive a tenant
-        // from, and legitimately operate across all of them.
-        if (app()->runningInConsole()) {
+        $tenantId = app(TenantResolver::class)->getOrganizationId();
+
+        // A command or worker that has declared which tenant it is acting for
+        // — TenantResolver::runAs() — is held to it, the same as a request.
+        // Without that declaration console stays unscoped, because maintenance
+        // work legitimately spans tenants and carries no credential to derive
+        // one from.
+        if ($tenantId === null && app()->runningInConsole()) {
             return;
         }
 
         // A null tenant matches no rows, so a request that lost its tenant
         // context returns nothing rather than everything.
-        $builder->where(
-            $model->getTable().'.org_id',
-            app(TenantResolver::class)->getOrganizationId()
-        );
+        $builder->where($model->getTable().'.org_id', $tenantId);
     }
 
     /**

@@ -9,6 +9,7 @@ use App\Domains\Compliance\Fatoora\Services\Connectivity;
 use App\Domains\Compliance\Fatoora\Services\OfflineQueue;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\TenantResolver;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -136,7 +137,22 @@ class ProcessOfflineQueue extends Command
         }
     }
 
+    /**
+     * Drain one organization's queue.
+     *
+     * The work runs inside runAs() so tenant scoping applies for its duration:
+     * the command walks every organization in turn, and a query here that
+     * forgot its own filter would otherwise submit another taxpayer's invoices.
+     */
     private function processOrganization(string $organizationId, int $limit, bool $isDryRun): void
+    {
+        app(TenantResolver::class)->runAs(
+            $organizationId,
+            fn () => $this->drain($organizationId, $limit, $isDryRun)
+        );
+    }
+
+    private function drain(string $organizationId, int $limit, bool $isDryRun): void
     {
         $organization = Organization::find($organizationId);
 
