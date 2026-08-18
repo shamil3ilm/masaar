@@ -126,7 +126,7 @@ class VarianceTracker
             // Queue for async insert to avoid blocking production path
             dispatch(function () use ($record, $varianceId, $variance, $organizationId) {
                 try {
-                    DB::table('environment_variance_log')->insert($record);
+                    DB::table('variance_logs')->insert($record);
                     Log::warning('Environment variance detected (async)', [
                         'variance_id' => $varianceId,
                         'variance_type' => $variance['type'],
@@ -140,7 +140,7 @@ class VarianceTracker
                 }
             })->afterResponse();
         } else {
-            DB::table('environment_variance_log')->insert($record);
+            DB::table('variance_logs')->insert($record);
 
             Log::warning('Environment variance detected', [
                 'variance_id' => $varianceId,
@@ -240,7 +240,7 @@ class VarianceTracker
      */
     public function getVariance(string $varianceId): ?object
     {
-        return DB::table('environment_variance_log')
+        return DB::table('variance_logs')
             ->where('id', $varianceId)
             ->first();
     }
@@ -253,7 +253,7 @@ class VarianceTracker
         ?string $type = null,
         int $limit = 50
     ): array {
-        $query = DB::table('environment_variance_log')
+        $query = DB::table('variance_logs')
             ->where('organization_id', $organizationId)
             ->orderByDesc('created_at');
 
@@ -279,7 +279,7 @@ class VarianceTracker
 
         for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
             try {
-                $updated = DB::table('environment_variance_log')
+                $updated = DB::table('variance_logs')
                     ->where('id', $varianceId)
                     ->update([
                         'reported_to_zatca' => true,
@@ -344,13 +344,13 @@ class VarianceTracker
 
         if ($notes) {
             // Fetch and append in PHP to avoid any SQL injection risk from string interpolation
-            $existing = DB::table('environment_variance_log')
+            $existing = DB::table('variance_logs')
                 ->where('id', $varianceId)
                 ->value('notes');
             $update['notes'] = ($existing ?? '')."\n\nResolution: ".$notes;
         }
 
-        DB::table('environment_variance_log')
+        DB::table('variance_logs')
             ->where('id', $varianceId)
             ->update($update);
     }
@@ -573,7 +573,7 @@ class VarianceTracker
      */
     public function getStatistics(?string $organizationId = null): array
     {
-        $query = DB::table('environment_variance_log');
+        $query = DB::table('variance_logs');
 
         if ($organizationId) {
             $query->where('organization_id', $organizationId);
@@ -581,21 +581,21 @@ class VarianceTracker
 
         $total = $query->count();
 
-        $byType = DB::table('environment_variance_log')
+        $byType = DB::table('variance_logs')
             ->when($organizationId, fn ($q) => $q->where('organization_id', $organizationId))
             ->selectRaw('variance_type, COUNT(*) as count')
             ->groupBy('variance_type')
             ->pluck('count', 'variance_type')
             ->toArray();
 
-        $byStatus = DB::table('environment_variance_log')
+        $byStatus = DB::table('variance_logs')
             ->when($organizationId, fn ($q) => $q->where('organization_id', $organizationId))
             ->selectRaw('resolution_status, COUNT(*) as count')
             ->groupBy('resolution_status')
             ->pluck('count', 'resolution_status')
             ->toArray();
 
-        $reportedToZatca = DB::table('environment_variance_log')
+        $reportedToZatca = DB::table('variance_logs')
             ->when($organizationId, fn ($q) => $q->where('organization_id', $organizationId))
             ->where('reported_to_zatca', true)
             ->count();
