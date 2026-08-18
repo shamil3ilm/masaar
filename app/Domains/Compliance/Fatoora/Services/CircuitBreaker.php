@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Redis;
  * - Node health tracking for split-brain detection
  * - Automatic recovery with gradual traffic increase
  */
-class ClusterCircuitBreaker
+class CircuitBreaker
 {
     /**
      * Circuit breaker states.

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Compliance;
 
-use App\Domains\Compliance\Fatoora\Services\FatooraComplianceService;
-use App\Domains\Compliance\Fatoora\Services\FatooraSubmissionService;
-use App\Domains\Compliance\Fatoora\Services\FatooraValidator;
+use App\Domains\Compliance\Fatoora\Services\DocumentBuilder;
+use App\Domains\Compliance\Fatoora\Services\InvoiceValidator;
+use App\Domains\Compliance\Fatoora\Services\Submitter;
 use App\Domains\Compliance\FTA\Services\FtaService;
 use App\Domains\Compliance\FTA\Services\FtaValidator;
 use App\Domains\Compliance\FTA\Services\FtaXmlBuilder;
@@ -24,24 +24,24 @@ class SmokeTest extends TestCase
     public function test_fatoora_submission_service_resolves(): void
     {
         $this->assertInstanceOf(
-            FatooraSubmissionService::class,
-            $this->app->make(FatooraSubmissionService::class)
+            Submitter::class,
+            $this->app->make(Submitter::class)
         );
     }
 
     public function test_fatoora_validator_resolves(): void
     {
         $this->assertInstanceOf(
-            FatooraValidator::class,
-            $this->app->make(FatooraValidator::class)
+            InvoiceValidator::class,
+            $this->app->make(InvoiceValidator::class)
         );
     }
 
     public function test_fatoora_compliance_service_resolves(): void
     {
         $this->assertInstanceOf(
-            FatooraComplianceService::class,
-            $this->app->make(FatooraComplianceService::class)
+            DocumentBuilder::class,
+            $this->app->make(DocumentBuilder::class)
         );
     }
 
@@ -65,7 +65,7 @@ class SmokeTest extends TestCase
 
     // ── PINT AE spec ───────────────────────────────────────────────
 
-    public function test_fta_xml_builder_uses_pint_ae_customization_id(): void
+    public function test_pint_ae_customization_id(): void
     {
         $ref = new \ReflectionClass(FtaXmlBuilder::class);
         $this->assertSame(
@@ -74,7 +74,7 @@ class SmokeTest extends TestCase
         );
     }
 
-    public function test_fta_xml_builder_uses_pint_ae_profile_id(): void
+    public function test_pint_ae_profile_id(): void
     {
         $ref = new \ReflectionClass(FtaXmlBuilder::class);
         $this->assertSame(

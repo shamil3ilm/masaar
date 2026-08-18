@@ -19,7 +19,7 @@ use App\Support\Xml;
  * Orchestrates XML generation, hashing, signing, and QR code creation.
  * This is the primary service for preparing invoices for ZATCA submission.
  */
-class FatooraComplianceService
+class DocumentBuilder
 {
     public function __construct(
         private readonly XmlBuilder $xmlBuilder,
@@ -28,7 +28,7 @@ class FatooraComplianceService
         private readonly EcdsaSigner $ecdsaSigner,
         private readonly XadesSigner $xadesSigner,
         private readonly CertificateService $certificateService,
-        private readonly FatooraValidator $validator,
+        private readonly InvoiceValidator $validator,
     ) {}
 
     /**

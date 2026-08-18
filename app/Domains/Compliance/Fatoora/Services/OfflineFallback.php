@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Log;
 /**
  * Offline-Aware Submission Service.
  *
- * Wraps the standard SubmissionService with offline mode detection.
+ * Wraps the standard SubmissionTracker with offline mode detection.
  * Automatically queues invoices for later submission when:
  * - ZATCA API is unavailable
  * - Network connectivity issues detected
@@ -22,13 +22,13 @@ use Illuminate\Support\Facades\Log;
  * Use this service for POS/retail scenarios where invoices
  * must be issued regardless of connectivity.
  */
-class OfflineAwareSubmissionService
+class OfflineFallback
 {
     public function __construct(
-        private readonly SubmissionService $submissionService,
-        private readonly OfflineQueueManager $offlineQueueManager,
-        private readonly FatooraConnectivityChecker $connectivityChecker,
-        private readonly FatooraComplianceService $complianceService,
+        private readonly SubmissionTracker $submissionService,
+        private readonly OfflineQueue $offlineQueueManager,
+        private readonly Connectivity $connectivityChecker,
+        private readonly DocumentBuilder $complianceService,
     ) {}
 
     /**

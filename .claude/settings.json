@@ -3,7 +3,8 @@
     "additionalDirectories": [
       "c:\\laragon\\www\\erp-backend",
       "c:\\laragon\\www\\erp-frontend",
-      "c:\\laragon\\www\\erp-backend\\app\\Http\\Controllers\\Api\\V1\\Sales"
+      "c:\\laragon\\www\\erp-backend\\app\\Http\\Controllers\\Api\\V1\\Sales",
+      "c:\\laragon\\www\\erp-backend\\tests\\Unit\\Core"
     ]
   }
 }

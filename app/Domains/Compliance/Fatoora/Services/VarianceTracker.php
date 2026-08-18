@@ -23,7 +23,7 @@ use Illuminate\Support\Str;
  * - validation_difference: Different error codes for same issue
  * - timing_difference: Timeout/latency differences
  */
-class EnvironmentVarianceTracker
+class VarianceTracker
 {
     /**
      * Variance types.

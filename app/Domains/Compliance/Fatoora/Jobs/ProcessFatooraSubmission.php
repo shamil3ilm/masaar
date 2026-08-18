@@ -16,7 +16,7 @@ use App\Domains\Compliance\Fatoora\Events\InvoiceWarning;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Compliance\Fatoora\Models\SubmissionIdempotency;
-use App\Domains\Compliance\Fatoora\Services\FatooraComplianceService;
+use App\Domains\Compliance\Fatoora\Services\DocumentBuilder;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -87,7 +87,7 @@ class ProcessFatooraSubmission implements ShouldQueue
      */
     public function handle(
         FatooraClient $zatcaClient,
-        FatooraComplianceService $complianceService
+        DocumentBuilder $complianceService
     ): void {
         $submission = $this->submission->fresh();
 

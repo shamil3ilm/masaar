@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Domains\Compliance\Fatoora\Services\OfflineQueueManager;
+use App\Domains\Compliance\Fatoora\Services\OfflineQueue;
 use Illuminate\Console\Command;
 
 /**
@@ -22,7 +22,7 @@ class CleanupOfflineQueue extends Command
     protected $description = 'Clean up old items from the ZATCA offline queue';
 
     public function __construct(
-        private readonly OfflineQueueManager $queueManager,
+        private readonly OfflineQueue $queueManager,
     ) {
         parent::__construct();
     }

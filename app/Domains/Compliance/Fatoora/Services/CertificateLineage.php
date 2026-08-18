@@ -21,7 +21,7 @@ use Illuminate\Support\Str;
  * Audit requirement: "Show me every invoice signed with certificate X"
  * must be answerable in <10 minutes.
  */
-class CertificateLineageService
+class CertificateLineage
 {
     /**
      * Certificate status values.

@@ -6,7 +6,7 @@ namespace App\Domains\Compliance\Fatoora\Http\Controllers;
 
 use App\Domains\Compliance\Fatoora\DTOs\AddressData;
 use App\Domains\Compliance\Fatoora\DTOs\InvoiceXmlData;
-use App\Domains\Compliance\Fatoora\Services\CsidOnboardingService;
+use App\Domains\Compliance\Fatoora\Services\CsidOnboarding;
 use App\Domains\Compliance\Fatoora\Services\XmlBuilder;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Services\BranchService;
@@ -28,7 +28,7 @@ class BranchOnboardingController extends Controller
     public function __construct(
         private readonly TenantResolver $tenant,
         private readonly BranchService $branchService,
-        private readonly CsidOnboardingService $onboarding,
+        private readonly CsidOnboarding $onboarding,
         private readonly XmlBuilder $xmlBuilder,
     ) {}
 

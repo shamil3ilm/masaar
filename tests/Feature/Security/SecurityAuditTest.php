@@ -49,7 +49,7 @@ class SecurityAuditTest extends TestCase
         $this->assertSame('operator@masaar.test', $entry->metadata['email'] ?? null);
     }
 
-    public function test_login_attempt_for_unknown_account_is_recorded(): void
+    public function test_unknown_account_recorded(): void
     {
         $this->post('/login', ['email' => 'nobody@masaar.test', 'password' => 'guess']);
 

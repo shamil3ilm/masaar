@@ -41,7 +41,7 @@ class TenantIsolationTest extends TestCase
         $this->rival = Organization::create(['name' => 'Rival', 'country' => 'SA']);
     }
 
-    public function test_invoices_are_scoped_to_the_active_tenant(): void
+    public function test_invoices_scoped(): void
     {
         $this->asSystem(fn () => $this->makeInvoice($this->acme->id, 'ACME-1'));
         $this->asSystem(fn () => $this->makeInvoice($this->rival->id, 'RIVAL-1'));
@@ -53,7 +53,7 @@ class TenantIsolationTest extends TestCase
         });
     }
 
-    public function test_another_tenants_invoice_cannot_be_fetched_by_id(): void
+    public function test_other_tenant_invoice_denied(): void
     {
         $rivalInvoice = $this->asSystem(fn () => $this->makeInvoice($this->rival->id, 'RIVAL-1'));
 

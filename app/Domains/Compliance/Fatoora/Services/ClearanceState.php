@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Log;
  * - Handles timeout scenarios
  * - Provides audit trail for compliance
  */
-class ClearanceStateManager
+class ClearanceState
 {
     /**
      * Clearance states.

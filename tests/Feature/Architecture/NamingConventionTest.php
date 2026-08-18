@@ -104,7 +104,7 @@ class NamingConventionTest extends TestCase
      * imported one — differing only in case — is a fatal redeclare. Renaming
      * JwtAuthenticate to JwtAuth hit exactly this against Tymon's JWTAuth.
      */
-    public function test_no_class_collides_with_its_own_imports(): void
+    public function test_no_import_collision(): void
     {
         $offenders = [];
 
@@ -124,6 +124,65 @@ class NamingConventionTest extends TestCase
         }
 
         $this->assertSame([], $offenders, implode("\n", $offenders));
+    }
+
+    /**
+     * A test name states the outcome; the docblock carries the reasoning.
+     *
+     * Six is where the existing suite sits — 75% of its names are two to four
+     * words — and it is the line docs/NAMING.md already draws by example: its
+     * rejected sample, test_organization_admin_cannot_reach_the_admin_api, is
+     * seven. Past that a name is a sentence, and a sentence belongs above the
+     * method where it does not have to fit on one line.
+     */
+    public function test_names_stay_short(): void
+    {
+        $limit = 6;
+        $offenders = [];
+
+        foreach ($this->allTestMethods() as $name => $path) {
+            $words = substr_count($name, '_');
+
+            if ($words > $limit) {
+                $offenders[] = sprintf(
+                    '%s (%d words) in %s — name the outcome, move the detail to the docblock',
+                    $name,
+                    $words,
+                    basename($path)
+                );
+            }
+        }
+
+        $this->assertSame([], $offenders, implode("\n", $offenders));
+    }
+
+    /**
+     * @return array<string, string> method name => path
+     */
+    private function allTestMethods(): array
+    {
+        $found = [];
+        $dir = __DIR__.'/../..';
+
+        $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir));
+
+        foreach ($it as $file) {
+            if (! $file->isFile() || $file->getExtension() !== 'php') {
+                continue;
+            }
+
+            preg_match_all(
+                '/function (test_[a-z0-9_]+)\(/',
+                (string) file_get_contents($file->getPathname()),
+                $matches
+            );
+
+            foreach ($matches[1] ?? [] as $method) {
+                $found[$method] = $file->getPathname();
+            }
+        }
+
+        return $found;
     }
 
     /**
