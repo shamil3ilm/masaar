@@ -28,10 +28,10 @@ use Illuminate\Support\Facades\Storage;
  *
  * This is the single entry point for ZATCA submissions.
  */
-class FatooraSubmissionService
+class Submitter
 {
     public function __construct(
-        private readonly FatooraComplianceService $compliance,
+        private readonly DocumentBuilder $compliance,
         private readonly FatooraClient $client,
         private readonly AuditService $audit,
         private readonly ?CertificateService $certificateService = null,

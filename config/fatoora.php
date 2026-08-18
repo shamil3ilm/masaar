@@ -783,7 +783,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | Configuration for invoice duplicate detection.
-    | Used by DuplicateInvoiceDetector service.
+    | Used by DuplicateDetector service.
     |
     */
     'duplicate_detection' => [

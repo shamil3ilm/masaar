@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Log;
  * 3. Run compliance checks
  * 4. Request Production CSID (PCSID)
  */
-class CsidOnboardingService
+class CsidOnboarding
 {
     public function __construct(
         private readonly CertificateService $certificateService,

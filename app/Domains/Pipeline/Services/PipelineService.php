@@ -6,8 +6,8 @@ namespace App\Domains\Pipeline\Services;
 
 use App\Domains\Audit\Services\AuditService;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
-use App\Domains\Compliance\Fatoora\Services\FatooraSubmissionService;
-use App\Domains\Compliance\Fatoora\Services\OfflineAwareSubmissionService;
+use App\Domains\Compliance\Fatoora\Services\OfflineFallback;
+use App\Domains\Compliance\Fatoora\Services\Submitter;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
@@ -30,8 +30,8 @@ use Illuminate\Support\Facades\Log;
  * Submission is delegated rather than performed here, through one layer per
  * concern:
  *
- *   OfflineAwareSubmissionService  decides online vs offline queue
- *     SubmissionService            idempotency, submission record, state machine
+ *   OfflineFallback  decides online vs offline queue
+ *     SubmissionTracker            idempotency, submission record, state machine
  *       FatooraClient              the ZATCA call itself
  *
  * So an invoice issued while ZATCA is unreachable is still signed and queued,
@@ -41,8 +41,8 @@ use Illuminate\Support\Facades\Log;
 class PipelineService
 {
     public function __construct(
-        private readonly FatooraSubmissionService $compliance,
-        private readonly OfflineAwareSubmissionService $submissions,
+        private readonly Submitter $compliance,
+        private readonly OfflineFallback $submissions,
         private readonly WebhookService $webhookService,
         private readonly AuditService $auditService,
     ) {}
@@ -69,7 +69,7 @@ class PipelineService
         $organization = Organization::findOrFail($organizationId);
 
         // Note: branch_id is accepted but not stored on the invoice (no branch_id column).
-        // FatooraSubmissionService falls back to org-level credentials when branch is null.
+        // Submitter falls back to org-level credentials when branch is null.
         // Branch validation is skipped here intentionally until branch migration is added.
 
         // Step 1: Create invoice and lines within a transaction

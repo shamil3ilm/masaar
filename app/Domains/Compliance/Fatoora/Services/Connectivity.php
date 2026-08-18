@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Log;
  *
  * Uses circuit breaker pattern to prevent hammering unavailable API.
  */
-class FatooraConnectivityChecker
+class Connectivity
 {
     /**
      * Cache key for connectivity status.
@@ -54,7 +54,7 @@ class FatooraConnectivityChecker
     private const TIMEOUT = 10;
 
     public function __construct(
-        private readonly ?ClusterCircuitBreaker $circuitBreaker = null,
+        private readonly ?CircuitBreaker $circuitBreaker = null,
     ) {}
 
     /**

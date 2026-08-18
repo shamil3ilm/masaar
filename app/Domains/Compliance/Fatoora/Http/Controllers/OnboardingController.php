@@ -5,7 +5,7 @@ namespace App\Domains\Compliance\Fatoora\Http\Controllers;
 use App\Domains\Compliance\Fatoora\DTOs\AddressData;
 use App\Domains\Compliance\Fatoora\DTOs\CsrData;
 use App\Domains\Compliance\Fatoora\DTOs\InvoiceXmlData;
-use App\Domains\Compliance\Fatoora\Services\CsidOnboardingService;
+use App\Domains\Compliance\Fatoora\Services\CsidOnboarding;
 use App\Domains\Compliance\Fatoora\Services\XmlBuilder;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\TenantResolver;
@@ -29,7 +29,7 @@ class OnboardingController extends Controller
 {
     public function __construct(
         private readonly TenantResolver $tenant,
-        private readonly CsidOnboardingService $onboarding,
+        private readonly CsidOnboarding $onboarding,
         private readonly XmlBuilder $xmlBuilder,
     ) {}
 

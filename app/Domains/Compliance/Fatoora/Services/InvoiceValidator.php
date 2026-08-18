@@ -18,7 +18,7 @@ use App\Support\Xml;
  * Validation rules are config-driven for regulatory flexibility.
  * See config/zatca.php 'validation' section.
  */
-class FatooraValidator
+class InvoiceValidator
 {
     /**
      * Get allowed tax rates from config.

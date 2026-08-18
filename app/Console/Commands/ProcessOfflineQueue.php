@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Domains\Compliance\Fatoora\Client\FatooraClient;
-use App\Domains\Compliance\Fatoora\Services\FatooraConnectivityChecker;
-use App\Domains\Compliance\Fatoora\Services\OfflineQueueManager;
+use App\Domains\Compliance\Fatoora\Services\Connectivity;
+use App\Domains\Compliance\Fatoora\Services\OfflineQueue;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Console\Command;
@@ -43,9 +43,9 @@ class ProcessOfflineQueue extends Command
     private int $skipped = 0;
 
     public function __construct(
-        private readonly OfflineQueueManager $queueManager,
+        private readonly OfflineQueue $queueManager,
         private readonly FatooraClient $zatcaClient,
-        private readonly ?FatooraConnectivityChecker $connectivityChecker = null,
+        private readonly ?Connectivity $connectivityChecker = null,
     ) {
         parent::__construct();
     }
@@ -118,7 +118,7 @@ class ProcessOfflineQueue extends Command
     {
         // Get all organizations with pending items
         $organizations = DB::table('offline_queue')
-            ->where('state', OfflineQueueManager::STATE_PENDING)
+            ->where('state', OfflineQueue::STATE_PENDING)
             ->distinct()
             ->pluck('organization_id');
 

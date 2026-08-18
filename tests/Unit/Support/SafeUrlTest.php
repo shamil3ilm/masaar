@@ -55,7 +55,7 @@ class SafeUrlTest extends TestCase
      * A DNS failure and a private address are both refusals, but an operator
      * has to be able to tell them apart.
      */
-    public function test_unresolvable_host_is_refused_with_its_own_reason(): void
+    public function test_unresolvable_host_refused(): void
     {
         $reason = SafeUrl::reject('https://nx.invalid/crl', 'security.revocation_hosts');
 

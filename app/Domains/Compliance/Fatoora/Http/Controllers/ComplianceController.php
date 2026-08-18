@@ -2,7 +2,7 @@
 
 namespace App\Domains\Compliance\Fatoora\Http\Controllers;
 
-use App\Domains\Compliance\Fatoora\Services\FatooraSubmissionService;
+use App\Domains\Compliance\Fatoora\Services\Submitter;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Services\TenantResolver;
@@ -13,13 +13,13 @@ use Illuminate\Http\JsonResponse;
 /**
  * Fatoora (KSA) Compliance API controller.
  *
- * Thin controller - delegates to FatooraSubmissionService.
+ * Thin controller - delegates to Submitter.
  */
 class ComplianceController extends Controller
 {
     public function __construct(
         private readonly TenantResolver $tenant,
-        private readonly FatooraSubmissionService $submission,
+        private readonly Submitter $submission,
     ) {}
 
     /**

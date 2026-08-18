@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Http\Controllers;
 
-use App\Domains\Compliance\Fatoora\Services\EnvironmentVarianceTracker;
+use App\Domains\Compliance\Fatoora\Services\VarianceTracker;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
@@ -24,7 +24,7 @@ class VarianceController extends Controller
 {
     public function __construct(
         private readonly TenantResolver $tenant,
-        private readonly EnvironmentVarianceTracker $varianceTracker,
+        private readonly VarianceTracker $varianceTracker,
     ) {}
 
     /**

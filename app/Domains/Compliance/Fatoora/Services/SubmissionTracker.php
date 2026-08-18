@@ -26,7 +26,7 @@ use Illuminate\Support\Str;
  * - Response replay for duplicate requests
  * - Extreme scenario handling
  */
-class SubmissionService
+class SubmissionTracker
 {
     /**
      * Get idempotency window in hours from config.
@@ -49,7 +49,7 @@ class SubmissionService
         private readonly CertificateService $certificateService,
         private readonly XadesSigner $signer,
         private readonly ?TimestampValidator $timestampValidator = null,
-        private readonly ?DuplicateInvoiceDetector $duplicateDetector = null,
+        private readonly ?DuplicateDetector $duplicateDetector = null,
         private readonly ?VatPeriodTracker $vatPeriodTracker = null,
     ) {}
 

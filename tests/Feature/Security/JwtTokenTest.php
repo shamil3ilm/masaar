@@ -22,7 +22,7 @@ use Tymon\JWTAuth\Facades\JWTAuth;
  * regression in signing, claim encoding, expiry handling or blacklisting fails
  * here rather than in production.
  */
-class JwtTokenLifecycleTest extends TestCase
+class JwtTokenTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -35,19 +35,17 @@ class JwtTokenLifecycleTest extends TestCase
 
     private function login(string $email = 'token-subject@masaar.test'): string
     {
-        $response = $this->postJson('/api/auth/login', [
+        return $this->postJson('/api/auth/login', [
             'email' => $email,
             'password' => 'password',
-        ])->assertOk();
-
-        return $response->json('data.token.access_token');
+        ])->assertOk()->json('data.token.access_token');
     }
 
     // -------------------------------------------------------------------
     // Issue
     // -------------------------------------------------------------------
 
-    public function test_login_issues_a_structurally_valid_token(): void
+    public function test_login_issues_token(): void
     {
         $this->user();
 
@@ -66,7 +64,7 @@ class JwtTokenLifecycleTest extends TestCase
      * `org_id`/`role` to establish tenant context. A library upgrade that
      * renamed or re-typed claims would break authorisation silently.
      */
-    public function test_token_carries_the_expected_claims(): void
+    public function test_token_carries_claims(): void
     {
         $user = $this->user();
 
@@ -82,7 +80,7 @@ class JwtTokenLifecycleTest extends TestCase
     // Consume
     // -------------------------------------------------------------------
 
-    public function test_token_authenticates_a_protected_route(): void
+    public function test_token_authenticates(): void
     {
         $user = $this->user();
 
@@ -92,7 +90,7 @@ class JwtTokenLifecycleTest extends TestCase
             ->assertJsonPath('data.user.email', $user->email);
     }
 
-    public function test_protected_route_rejects_a_missing_token(): void
+    public function test_missing_token_denied(): void
     {
         $this->getJson('/api/auth/me')->assertUnauthorized();
     }
@@ -101,7 +99,7 @@ class JwtTokenLifecycleTest extends TestCase
      * Flipping one character of the signature must invalidate the token. If
      * this ever passes, signature verification is not running.
      */
-    public function test_tampered_signature_is_rejected(): void
+    public function test_tampered_signature_denied(): void
     {
         $this->user();
 
@@ -117,7 +115,7 @@ class JwtTokenLifecycleTest extends TestCase
      * Editing the payload invalidates the signature, so a caller cannot
      * escalate by rewriting their own `sub`.
      */
-    public function test_tampered_payload_is_rejected(): void
+    public function test_tampered_payload_denied(): void
     {
         $this->user();
         $other = User::factory()->create(['email' => 'victim@masaar.test']);
@@ -135,7 +133,7 @@ class JwtTokenLifecycleTest extends TestCase
             ->assertUnauthorized();
     }
 
-    public function test_garbage_token_is_rejected(): void
+    public function test_garbage_token_denied(): void
     {
         $this->withToken('not-a-token')
             ->getJson('/api/auth/me')
@@ -150,7 +148,7 @@ class JwtTokenLifecycleTest extends TestCase
      * Expiry is enforced from the `exp` claim rather than from any server-side
      * record, so travelling past it must close the token off.
      */
-    public function test_expired_token_is_rejected(): void
+    public function test_expired_token_denied(): void
     {
         $this->user();
         $token = $this->login();
@@ -168,7 +166,7 @@ class JwtTokenLifecycleTest extends TestCase
      * misconfigured to something far shorter than intended — it pins the
      * rejection to the boundary rather than to travelling at all.
      */
-    public function test_token_still_valid_just_before_expiry(): void
+    public function test_valid_before_expiry(): void
     {
         $this->user();
         $token = $this->login();
@@ -184,7 +182,7 @@ class JwtTokenLifecycleTest extends TestCase
     // Refresh & revoke
     // -------------------------------------------------------------------
 
-    public function test_refresh_issues_a_working_replacement_token(): void
+    public function test_refresh_issues_token(): void
     {
         $user = $this->user();
 
@@ -205,7 +203,7 @@ class JwtTokenLifecycleTest extends TestCase
      * Logout blacklists the token. Without this, a leaked token stays valid
      * for its full TTL and "log out" is cosmetic.
      */
-    public function test_logout_revokes_the_token(): void
+    public function test_logout_revokes_token(): void
     {
         $this->user();
         $token = $this->login();
