@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Fatoora\Services;
 
 use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
-use Carbon\Carbon;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -29,9 +28,9 @@ class Connectivity
     private const CACHE_KEY = 'zatca:connectivity:status';
 
     /**
-     * Cache key for circuit breaker state.
+     * The name this service is tracked under in the shared circuit breaker.
      */
-    private const CIRCUIT_BREAKER_KEY = 'zatca:connectivity:circuit';
+    private const SERVICE = 'zatca_api';
 
     /**
      * How long to cache connectivity status (seconds).
@@ -39,22 +38,12 @@ class Connectivity
     private const CACHE_TTL = 30;
 
     /**
-     * Circuit breaker open duration (seconds).
-     */
-    private const CIRCUIT_OPEN_DURATION = 60;
-
-    /**
-     * Number of failures before opening circuit.
-     */
-    private const FAILURE_THRESHOLD = 3;
-
-    /**
      * Request timeout (seconds).
      */
     private const TIMEOUT = 10;
 
     public function __construct(
-        private readonly ?CircuitBreaker $circuitBreaker = null,
+        private readonly CircuitBreaker $circuitBreaker,
     ) {}
 
     /**
@@ -211,29 +200,7 @@ class Connectivity
      */
     private function isCircuitOpen(): bool
     {
-        // Use cluster circuit breaker if available
-        if ($this->circuitBreaker) {
-            return $this->circuitBreaker->isOpen('zatca_api');
-        }
-
-        // Simple local circuit breaker
-        $circuit = Cache::get(self::CIRCUIT_BREAKER_KEY, [
-            'failures' => 0,
-            'opened_at' => null,
-        ]);
-
-        if ($circuit['opened_at'] !== null) {
-            // Check if circuit should be half-open (allow retry)
-            $openedAt = Carbon::parse($circuit['opened_at']);
-            if ($openedAt->addSeconds(self::CIRCUIT_OPEN_DURATION)->isPast()) {
-                // Allow retry (half-open state)
-                return false;
-            }
-
-            return true;
-        }
-
-        return false;
+        return ! $this->circuitBreaker->allowRequest(self::SERVICE);
     }
 
     /**
@@ -241,40 +208,10 @@ class Connectivity
      */
     private function updateCircuitBreaker(bool $success): void
     {
-        // Use cluster circuit breaker if available
-        if ($this->circuitBreaker) {
-            if ($success) {
-                $this->circuitBreaker->recordSuccess('zatca_api');
-            } else {
-                $this->circuitBreaker->recordFailure('zatca_api');
-            }
-
-            return;
-        }
-
-        // Simple local circuit breaker
-        $circuit = Cache::get(self::CIRCUIT_BREAKER_KEY, [
-            'failures' => 0,
-            'opened_at' => null,
-        ]);
-
         if ($success) {
-            // Reset on success
-            Cache::put(self::CIRCUIT_BREAKER_KEY, [
-                'failures' => 0,
-                'opened_at' => null,
-            ], now()->addMinutes(10));
+            $this->circuitBreaker->recordSuccess(self::SERVICE);
         } else {
-            $circuit['failures']++;
-
-            if ($circuit['failures'] >= self::FAILURE_THRESHOLD) {
-                $circuit['opened_at'] = now()->toIso8601String();
-                Log::warning('ZATCA connectivity circuit breaker opened', [
-                    'failures' => $circuit['failures'],
-                ]);
-            }
-
-            Cache::put(self::CIRCUIT_BREAKER_KEY, $circuit, now()->addMinutes(10));
+            $this->circuitBreaker->recordFailure(self::SERVICE);
         }
     }
 
@@ -283,11 +220,10 @@ class Connectivity
      */
     public function resetCircuitBreaker(): void
     {
-        if ($this->circuitBreaker) {
-            $this->circuitBreaker->reset('zatca_api');
-        }
+        $this->circuitBreaker->forceState(self::SERVICE, 'closed', 'manual reset', 'operator');
 
-        Cache::forget(self::CIRCUIT_BREAKER_KEY);
+        // Drop the cached verdict too, or the next check returns the stale
+        // "circuit open" answer for up to CACHE_TTL after the reset.
         Cache::forget(self::CACHE_KEY);
 
         Log::info('ZATCA connectivity circuit breaker manually reset');
@@ -298,26 +234,11 @@ class Connectivity
      */
     public function getDetailedStatus(): array
     {
-        $connectivity = $this->check();
-
-        $circuit = Cache::get(self::CIRCUIT_BREAKER_KEY, [
-            'failures' => 0,
-            'opened_at' => null,
-        ]);
-
         return [
-            'connectivity' => $connectivity,
-            'circuit_breaker' => [
-                'state' => $circuit['opened_at'] !== null ? 'open' : 'closed',
-                'failure_count' => $circuit['failures'],
-                'threshold' => self::FAILURE_THRESHOLD,
-                'opened_at' => $circuit['opened_at'],
-                'will_retry_at' => $circuit['opened_at']
-                    ? Carbon::parse($circuit['opened_at'])
-                        ->addSeconds(self::CIRCUIT_OPEN_DURATION)
-                        ->toIso8601String()
-                    : null,
-            ],
+            'connectivity' => $this->check(),
+            // Read from the shared breaker, so every replica reports the same
+            // state rather than its own local view of ZATCA's health.
+            'circuit_breaker' => $this->circuitBreaker->getMetrics(self::SERVICE),
             'config' => [
                 'base_url' => FatooraConfig::getBaseUrl(),
                 'timeout_seconds' => self::TIMEOUT,
