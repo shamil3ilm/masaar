@@ -11,6 +11,7 @@ use App\Domains\Compliance\FTA\Exceptions\FtaException;
 use App\Domains\Compliance\FTA\Models\FtaSubmission;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -45,13 +46,13 @@ class FtaService
         $xml = $this->xmlBuilder->build($data);
 
         $submission = FtaSubmission::create([
-            'invoice_id'      => $invoice->id,
+            'invoice_id' => $invoice->id,
             'organization_id' => $organization->id,
-            'status'          => FtaStatus::Queued,
-            'document_type'   => $data->documentType,
-            'invoice_xml'     => $xml,
-            'max_retries'     => config('fta.retry.max_attempts', 5),
-            'retry_count'     => 0,
+            'status' => FtaStatus::Queued,
+            'document_type' => $data->documentType,
+            'invoice_xml' => $xml,
+            'max_retries' => config('fta.retry.max_attempts', 5),
+            'retry_count' => 0,
         ]);
 
         return $this->dispatch($submission);
@@ -67,7 +68,7 @@ class FtaService
         }
 
         $submission->update([
-            'status'      => FtaStatus::Queued,
+            'status' => FtaStatus::Queued,
             'retry_count' => $submission->retry_count + 1,
         ]);
 
@@ -86,7 +87,7 @@ class FtaService
         try {
             $response = Http::withToken($this->getApiKey())
                 ->timeout(config('fta.timeout', 30))
-                ->get($this->getBaseUrl() . "/submissions/{$submission->fta_submission_id}/status");
+                ->get($this->getBaseUrl()."/submissions/{$submission->fta_submission_id}/status");
 
             if ($response->successful()) {
                 $ftaStatus = $response->json('status');
@@ -94,13 +95,13 @@ class FtaService
                 $newStatus = match ($ftaStatus) {
                     'accepted' => FtaStatus::Accepted,
                     'rejected' => FtaStatus::Rejected,
-                    default    => FtaStatus::PendingReview,
+                    default => FtaStatus::PendingReview,
                 };
 
                 $submission->update([
-                    'status'          => $newStatus,
-                    'fta_errors'      => $response->json('errors', []),
-                    'accepted_at'     => $newStatus === FtaStatus::Accepted ? now() : null,
+                    'status' => $newStatus,
+                    'fta_errors' => $response->json('errors', []),
+                    'accepted_at' => $newStatus === FtaStatus::Accepted ? now() : null,
                 ]);
             }
         } catch (\Throwable $e) {
@@ -123,35 +124,35 @@ class FtaService
                 ->timeout(config('fta.timeout', 30))
                 ->withHeaders(['Content-Type' => 'application/xml', 'Accept' => 'application/json'])
                 ->withBody($submission->invoice_xml, 'application/xml')
-                ->post($this->getBaseUrl() . '/invoices');
+                ->post($this->getBaseUrl().'/invoices');
 
             $ftaResponse = FtaResponse::fromApiResponse($response->json() ?? []);
 
             $newStatus = match (true) {
-                $ftaResponse->success                   => FtaStatus::Accepted,
+                $ftaResponse->success => FtaStatus::Accepted,
                 $ftaResponse->status === 'pending_review' => FtaStatus::PendingReview,
-                default                                 => FtaStatus::Rejected,
+                default => FtaStatus::Rejected,
             };
 
             $submission->update([
-                'status'               => $newStatus,
-                'fta_submission_id'    => $ftaResponse->submissionId,
+                'status' => $newStatus,
+                'fta_submission_id' => $ftaResponse->submissionId,
                 'fta_validation_status' => $ftaResponse->validationStatus,
-                'fta_warnings'         => $ftaResponse->warnings,
-                'fta_errors'           => $ftaResponse->errors,
-                'accepted_at'          => $newStatus === FtaStatus::Accepted ? now() : null,
+                'fta_warnings' => $ftaResponse->warnings,
+                'fta_errors' => $ftaResponse->errors,
+                'accepted_at' => $newStatus === FtaStatus::Accepted ? now() : null,
             ]);
 
         } catch (\Throwable $e) {
             Log::error('UAE FTA submission failed', [
                 'submission_id' => $submission->id,
-                'error'         => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
 
             $submission->update([
-                'status'             => FtaStatus::Failed,
+                'status' => FtaStatus::Failed,
                 'last_error_message' => $e->getMessage(),
-                'next_retry_at'      => $this->nextRetryAt($submission->retry_count),
+                'next_retry_at' => $this->nextRetryAt($submission->retry_count),
             ]);
         }
 
@@ -165,29 +166,29 @@ class FtaService
     public function buildInvoiceData(Invoice $invoice, Organization $organization): FtaInvoiceData
     {
         return new FtaInvoiceData(
-            invoiceNumber:        $invoice->invoice_number,
-            invoiceDate:          $invoice->issue_date->format('Y-m-d'),
-            dueDate:              ($invoice->due_date ?? $invoice->issue_date)->format('Y-m-d'),
-            currencyCode:         'AED',
-            supplierName:         $organization->name,
-            supplierTrn:          $organization->tax_registration_number ?? '',
-            supplierStreet:       $organization->address ?? '',
-            supplierCity:         $organization->city ?? '',
-            supplierCountry:      'AE',
-            customerName:         $invoice->contact->name ?? '',
-            customerTrn:          $invoice->contact->tax_number ?? null,
-            customerStreet:       $invoice->contact->address ?? '',
-            customerCity:         $invoice->contact->city ?? '',
-            customerCountry:      $invoice->contact->country_code ?? 'AE',
-            lineExtensionAmount:  (float) $invoice->subtotal,
-            taxExclusiveAmount:   (float) $invoice->subtotal,
-            taxInclusiveAmount:   (float) $invoice->total,
-            payableAmount:        (float) $invoice->total,
-            vatAmount:            (float) $invoice->tax_amount,
-            vatRate:              0.05,
-            lines:                $this->mapLines($invoice),
-            documentType:         '380',
-            creditNoteReference:  null,
+            invoiceNumber: $invoice->invoice_number,
+            invoiceDate: $invoice->issue_date->format('Y-m-d'),
+            dueDate: ($invoice->due_date ?? $invoice->issue_date)->format('Y-m-d'),
+            currencyCode: 'AED',
+            supplierName: $organization->name,
+            supplierTrn: $organization->tax_registration_number ?? '',
+            supplierStreet: $organization->address ?? '',
+            supplierCity: $organization->city ?? '',
+            supplierCountry: 'AE',
+            customerName: $invoice->contact->name ?? '',
+            customerTrn: $invoice->contact->tax_number ?? null,
+            customerStreet: $invoice->contact->address ?? '',
+            customerCity: $invoice->contact->city ?? '',
+            customerCountry: $invoice->contact->country_code ?? 'AE',
+            lineExtensionAmount: (float) $invoice->subtotal,
+            taxExclusiveAmount: (float) $invoice->subtotal,
+            taxInclusiveAmount: (float) $invoice->total,
+            payableAmount: (float) $invoice->total,
+            vatAmount: (float) $invoice->tax_amount,
+            vatRate: 0.05,
+            lines: $this->mapLines($invoice),
+            documentType: '380',
+            creditNoteReference: null,
         );
     }
 
@@ -195,17 +196,18 @@ class FtaService
     {
         return $invoice->lines->map(fn ($line) => [
             'description' => $line->description ?? $line->product_name ?? '',
-            'quantity'    => (float) ($line->quantity ?? 1),
-            'unit_price'  => (float) $line->unit_price,
-            'net_amount'  => (float) $line->line_total,
-            'tax_amount'  => (float) ($line->tax_amount ?? 0),
-            'unit_code'   => 'PCE',
+            'quantity' => (float) ($line->quantity ?? 1),
+            'unit_price' => (float) $line->unit_price,
+            'net_amount' => (float) $line->line_total,
+            'tax_amount' => (float) ($line->tax_amount ?? 0),
+            'unit_code' => 'PCE',
         ])->toArray();
     }
 
     private function getBaseUrl(): string
     {
         $env = config('fta.environment', 'sandbox');
+
         return config("fta.endpoints.{$env}");
     }
 
@@ -214,10 +216,11 @@ class FtaService
         return config('fta.api_key', '');
     }
 
-    private function nextRetryAt(int $retryCount): \Carbon\Carbon
+    private function nextRetryAt(int $retryCount): Carbon
     {
         $backoff = config('fta.retry.backoff', [60, 300, 900, 3600, 7200]);
         $seconds = $backoff[$retryCount] ?? 7200;
+
         return now()->addSeconds($seconds);
     }
 }

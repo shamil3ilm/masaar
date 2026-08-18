@@ -9,6 +9,4 @@ use Exception;
 /**
  * Exception thrown during cryptographic signing operations.
  */
-class SigningException extends Exception
-{
-}
+class SigningException extends Exception {}

@@ -39,10 +39,15 @@ class FatooraSandboxTest extends Command
 
     // ZATCA Sandbox URLs
     private const SANDBOX_BASE_URL = 'https://gw-fatoora.zatca.gov.sa/e-invoicing/developer-portal';
+
     private const SANDBOX_COMPLIANCE_CSID = '/compliance';
+
     private const SANDBOX_COMPLIANCE_CHECK = '/compliance/invoices';
+
     private const SANDBOX_PRODUCTION_CSID = '/production/csids';
+
     private const SANDBOX_REPORTING = '/invoices/reporting/single';
+
     private const SANDBOX_CLEARANCE = '/invoices/clearance/single';
 
     public function handle(): int
@@ -88,11 +93,11 @@ class FatooraSandboxTest extends Command
 
         $this->info('🧪 SANDBOX API ENDPOINTS:');
         $this->table(['Endpoint', 'Purpose'], [
-            [self::SANDBOX_BASE_URL . self::SANDBOX_COMPLIANCE_CSID, 'Get Compliance CSID'],
-            [self::SANDBOX_BASE_URL . self::SANDBOX_COMPLIANCE_CHECK, 'Submit Compliance Invoices'],
-            [self::SANDBOX_BASE_URL . self::SANDBOX_PRODUCTION_CSID, 'Get Production CSID'],
-            [self::SANDBOX_BASE_URL . self::SANDBOX_REPORTING, 'Report B2C Invoices'],
-            [self::SANDBOX_BASE_URL . self::SANDBOX_CLEARANCE, 'Clear B2B Invoices'],
+            [self::SANDBOX_BASE_URL.self::SANDBOX_COMPLIANCE_CSID, 'Get Compliance CSID'],
+            [self::SANDBOX_BASE_URL.self::SANDBOX_COMPLIANCE_CHECK, 'Submit Compliance Invoices'],
+            [self::SANDBOX_BASE_URL.self::SANDBOX_PRODUCTION_CSID, 'Get Production CSID'],
+            [self::SANDBOX_BASE_URL.self::SANDBOX_REPORTING, 'Report B2C Invoices'],
+            [self::SANDBOX_BASE_URL.self::SANDBOX_CLEARANCE, 'Clear B2B Invoices'],
         ]);
         $this->newLine();
 
@@ -125,9 +130,9 @@ class FatooraSandboxTest extends Command
 
         // CSR configuration for ZATCA
         $config = [
-            'commonName' => 'TST-886431145-' . str_pad((string) random_int(100000000, 999999999), 10, '0', STR_PAD_LEFT),
-            'serialNumber' => '1-TST|2-TST|3-' . bin2hex(random_bytes(14)),
-            'organizationIdentifier' => 'TESTIN-ENT-' . str_pad((string) random_int(100000000, 999999999), 10, '0', STR_PAD_LEFT),
+            'commonName' => 'TST-886431145-'.str_pad((string) random_int(100000000, 999999999), 10, '0', STR_PAD_LEFT),
+            'serialNumber' => '1-TST|2-TST|3-'.bin2hex(random_bytes(14)),
+            'organizationIdentifier' => 'TESTIN-ENT-'.str_pad((string) random_int(100000000, 999999999), 10, '0', STR_PAD_LEFT),
             'organizationUnitName' => 'Test Branch',
             'organizationName' => 'Test Company',
             'countryName' => 'SA',
@@ -138,7 +143,7 @@ class FatooraSandboxTest extends Command
 
         $this->info('CSR Configuration:');
         $this->table(['Field', 'Value'], array_map(
-            fn($k, $v) => [$k, $v],
+            fn ($k, $v) => [$k, $v],
             array_keys($config),
             array_values($config)
         ));
@@ -156,7 +161,7 @@ class FatooraSandboxTest extends Command
         ]);
 
         // Method 2: Try prime256v1 (more widely supported, but check ZATCA accepts it)
-        if (!$privateKey) {
+        if (! $privateKey) {
             $this->warn('secp256k1 not available, trying prime256v1...');
             $privateKey = @openssl_pkey_new([
                 'private_key_type' => OPENSSL_KEYTYPE_EC,
@@ -165,11 +170,11 @@ class FatooraSandboxTest extends Command
         }
 
         // Method 3: Use shell command (works on Windows with OpenSSL installed)
-        if (!$privateKey) {
+        if (! $privateKey) {
             $this->warn('PHP OpenSSL EC not available, trying shell command...');
 
             $keyPath = storage_path('app/zatca/private_key.pem');
-            if (!is_dir(dirname($keyPath))) {
+            if (! is_dir(dirname($keyPath))) {
                 mkdir(dirname($keyPath), 0755, true);
             }
 
@@ -204,13 +209,13 @@ class FatooraSandboxTest extends Command
                     $privateKey = openssl_pkey_get_private($privateKeyPem);
                     $this->info('✓ Generated EC key using OpenSSL command');
                 } else {
-                    $this->warn('OpenSSL command failed, output: ' . implode("\n", $output));
+                    $this->warn('OpenSSL command failed, output: '.implode("\n", $output));
                 }
             }
         }
 
         // Method 4: Generate a simple test key for demonstration
-        if (!$privateKey && !$privateKeyPem) {
+        if (! $privateKey && ! $privateKeyPem) {
             $this->warn('⚠️  Could not generate EC secp256k1 key.');
             $this->newLine();
             $this->info('For ZATCA compliance, you need secp256k1 EC keys.');
@@ -243,20 +248,21 @@ class FatooraSandboxTest extends Command
         $generatedKeyPath = storage_path('app/zatca/private_key.pem');
         $configPath = $this->getOpenSslConfig($config);
 
-        if (!is_dir(dirname($csrPath))) {
+        if (! is_dir(dirname($csrPath))) {
             mkdir(dirname($csrPath), 0755, true);
         }
 
         // If we have a PHP key object but no file, export it
-        if ($privateKey && !file_exists($generatedKeyPath)) {
+        if ($privateKey && ! file_exists($generatedKeyPath)) {
             openssl_pkey_export($privateKey, $privateKeyOut);
             file_put_contents($generatedKeyPath, $privateKeyOut);
             chmod($generatedKeyPath, 0600);
         }
 
         // Ensure key file exists (from shell command or PHP export)
-        if (!file_exists($generatedKeyPath)) {
+        if (! file_exists($generatedKeyPath)) {
             $this->error('Private key file not found');
+
             return Command::FAILURE;
         }
 
@@ -264,8 +270,9 @@ class FatooraSandboxTest extends Command
 
         // Find OpenSSL for CSR generation
         $opensslCmd = $this->findOpenSsl();
-        if (!$opensslCmd) {
+        if (! $opensslCmd) {
             $this->error('OpenSSL not found for CSR generation');
+
             return Command::FAILURE;
         }
 
@@ -274,12 +281,13 @@ class FatooraSandboxTest extends Command
         $this->line("Generating CSR: {$csrCmd}");
         exec($csrCmd, $csrOutput, $csrReturnCode);
 
-        if ($csrReturnCode !== 0 || !file_exists($csrPath)) {
+        if ($csrReturnCode !== 0 || ! file_exists($csrPath)) {
             $this->error('Failed to generate CSR via shell command');
-            $this->line('Output: ' . implode("\n", $csrOutput));
+            $this->line('Output: '.implode("\n", $csrOutput));
 
             // Fallback to simplified CSR without special ZATCA fields
             $this->warn('Trying simplified CSR generation...');
+
             return $this->generateSimplifiedCsr($config, $keyPath, $opensslCmd);
         }
 
@@ -360,9 +368,10 @@ EOT;
         $cmd = "\"{$opensslCmd}\" req -new -key \"{$keyPath}\" -out \"{$csrPath}\" -config \"{$simpleConfigPath}\" 2>&1";
         exec($cmd, $output, $returnCode);
 
-        if ($returnCode !== 0 || !file_exists($csrPath)) {
+        if ($returnCode !== 0 || ! file_exists($csrPath)) {
             $this->error('Failed to generate simplified CSR');
-            $this->line('Output: ' . implode("\n", $output));
+            $this->line('Output: '.implode("\n", $output));
+
             return Command::FAILURE;
         }
 
@@ -412,15 +421,17 @@ EOT;
     {
         $otp = $this->option('otp');
 
-        if (!$otp) {
+        if (! $otp) {
             $this->error('OTP is required. Use --otp=123456');
             $this->line('For sandbox testing, the OTP is usually: 123456');
+
             return Command::FAILURE;
         }
 
         $csrPath = storage_path('app/zatca/csr.pem');
-        if (!file_exists($csrPath)) {
+        if (! file_exists($csrPath)) {
             $this->error('CSR not found. Run --step=generate-csr first');
+
             return Command::FAILURE;
         }
 
@@ -434,7 +445,7 @@ EOT;
         $this->info('Requesting Compliance CSID from ZATCA Sandbox...');
         $this->newLine();
 
-        $url = self::SANDBOX_BASE_URL . self::SANDBOX_COMPLIANCE_CSID;
+        $url = self::SANDBOX_BASE_URL.self::SANDBOX_COMPLIANCE_CSID;
 
         $this->line("POST {$url}");
         $this->line("OTP: {$otp}");
@@ -450,7 +461,7 @@ EOT;
                 'csr' => $csrBase64,
             ]);
 
-            $this->info('Response Status: ' . $response->status());
+            $this->info('Response Status: '.$response->status());
             $this->newLine();
 
             if ($response->successful()) {
@@ -469,8 +480,8 @@ EOT;
                 $this->table(['Field', 'Value'], [
                     ['Request ID', $data['requestID'] ?? 'N/A'],
                     ['Disposition', $data['dispositionMessage'] ?? 'N/A'],
-                    ['CSID', substr($data['binarySecurityToken'] ?? '', 0, 50) . '...'],
-                    ['Secret', substr($data['secret'] ?? '', 0, 20) . '...'],
+                    ['CSID', substr($data['binarySecurityToken'] ?? '', 0, 50).'...'],
+                    ['Secret', substr($data['secret'] ?? '', 0, 20).'...'],
                 ]);
                 $this->newLine();
 
@@ -483,8 +494,8 @@ EOT;
                 $this->line('  php artisan fatoora:sandbox-test --step=compliance-check');
             } else {
                 $this->error('Failed to get CSID');
-                $this->line('Status: ' . $response->status());
-                $this->line('Response: ' . $response->body());
+                $this->line('Status: '.$response->status());
+                $this->line('Response: '.$response->body());
                 $this->newLine();
 
                 if ($response->status() === 400) {
@@ -507,7 +518,7 @@ EOT;
                 }
             }
         } catch (\Exception $e) {
-            $this->error('Request failed: ' . $e->getMessage());
+            $this->error('Request failed: '.$e->getMessage());
             $this->newLine();
             $this->warn('Note: The sandbox may require VPN or specific network access.');
             $this->line('Try accessing https://sandbox.zatca.gov.sa/ in your browser first.');
@@ -521,8 +532,9 @@ EOT;
         $csidPath = storage_path('app/zatca/compliance_csid.txt');
         $secretPath = storage_path('app/zatca/compliance_secret.txt');
 
-        if (!file_exists($csidPath) || !file_exists($secretPath)) {
+        if (! file_exists($csidPath) || ! file_exists($secretPath)) {
             $this->error('CSID or secret not found. Run --step=compliance-csid first');
+
             return Command::FAILURE;
         }
 
@@ -566,14 +578,14 @@ EOT;
 
         $this->warn('To complete compliance check:');
         $this->line('1. Generate signed XML for each invoice type');
-        $this->line('2. Submit to: ' . self::SANDBOX_BASE_URL . self::SANDBOX_COMPLIANCE_CHECK);
+        $this->line('2. Submit to: '.self::SANDBOX_BASE_URL.self::SANDBOX_COMPLIANCE_CHECK);
         $this->line('3. Use Basic Auth with CSID:Secret');
         $this->newLine();
 
         $this->info('API Request Format:');
-        $this->line('POST ' . self::SANDBOX_BASE_URL . self::SANDBOX_COMPLIANCE_CHECK);
+        $this->line('POST '.self::SANDBOX_BASE_URL.self::SANDBOX_COMPLIANCE_CHECK);
         $this->line('Headers:');
-        $this->line('  Authorization: Basic ' . base64_encode($csid . ':' . $secret));
+        $this->line('  Authorization: Basic '.base64_encode($csid.':'.$secret));
         $this->line('  Content-Type: application/json');
         $this->line('  Accept-Version: V2');
         $this->line('Body:');
@@ -595,8 +607,8 @@ EOT;
         $this->newLine();
 
         $this->table(['Invoice Type', 'Endpoint', 'Method'], [
-            ['B2B (Standard)', self::SANDBOX_BASE_URL . self::SANDBOX_CLEARANCE, 'POST'],
-            ['B2C (Simplified)', self::SANDBOX_BASE_URL . self::SANDBOX_REPORTING, 'POST'],
+            ['B2B (Standard)', self::SANDBOX_BASE_URL.self::SANDBOX_CLEARANCE, 'POST'],
+            ['B2C (Simplified)', self::SANDBOX_BASE_URL.self::SANDBOX_REPORTING, 'POST'],
         ]);
 
         return Command::SUCCESS;
@@ -664,7 +676,7 @@ EOT;
         $csrPath = storage_path('app/zatca/csr.pem');
         $keyPath = storage_path('app/zatca/private_key.pem');
 
-        if (!is_dir(dirname($csrPath))) {
+        if (! is_dir(dirname($csrPath))) {
             mkdir(dirname($csrPath), 0755, true);
         }
 
@@ -674,9 +686,10 @@ EOT;
             'private_key_type' => OPENSSL_KEYTYPE_RSA,
         ]);
 
-        if (!$rsaKey) {
+        if (! $rsaKey) {
             $this->error('Could not generate even RSA key. OpenSSL may not be configured correctly.');
-            $this->line('Error: ' . openssl_error_string());
+            $this->line('Error: '.openssl_error_string());
+
             return Command::FAILURE;
         }
 
@@ -691,8 +704,9 @@ EOT;
         // Generate CSR
         $csr = openssl_csr_new($dn, $rsaKey, ['digest_alg' => 'sha256']);
 
-        if (!$csr) {
-            $this->error('Failed to generate CSR: ' . openssl_error_string());
+        if (! $csr) {
+            $this->error('Failed to generate CSR: '.openssl_error_string());
+
             return Command::FAILURE;
         }
 
@@ -721,7 +735,7 @@ EOT;
             '',
             $csrOut
         ));
-        $this->line(substr($csrBase64, 0, 100) . '...');
+        $this->line(substr($csrBase64, 0, 100).'...');
         $this->newLine();
 
         $this->info('To generate a valid ZATCA CSR, use one of these methods:');

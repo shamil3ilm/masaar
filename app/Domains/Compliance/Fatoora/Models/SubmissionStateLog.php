@@ -52,7 +52,7 @@ class SubmissionStateLog extends Model
         // Prevent any deletion
         static::deleting(function ($model) {
             throw new \RuntimeException(
-                'SubmissionStateLog records cannot be deleted. ' .
+                'SubmissionStateLog records cannot be deleted. '.
                 'This is a ZATCA compliance requirement for audit trails.'
             );
         });
@@ -60,7 +60,7 @@ class SubmissionStateLog extends Model
         // Prevent any updates - logs are append-only
         static::updating(function ($model) {
             throw new \RuntimeException(
-                'SubmissionStateLog records cannot be modified. ' .
+                'SubmissionStateLog records cannot be modified. '.
                 'This is a ZATCA compliance requirement for audit integrity.'
             );
         });
@@ -70,18 +70,26 @@ class SubmissionStateLog extends Model
      * Trigger types.
      */
     public const TRIGGER_API_CALL = 'api_call';
+
     public const TRIGGER_QUEUE_JOB = 'queue_job';
+
     public const TRIGGER_MANUAL = 'manual';
+
     public const TRIGGER_TIMEOUT = 'timeout';
+
     public const TRIGGER_RETRY = 'retry';
+
     public const TRIGGER_ZATCA = 'zatca';
+
     public const TRIGGER_ERROR = 'error';
 
     /**
      * Actor types.
      */
     public const ACTOR_USER = 'user';
+
     public const ACTOR_SYSTEM = 'system';
+
     public const ACTOR_ZATCA = 'zatca';
 
     /**
@@ -126,7 +134,7 @@ class SubmissionStateLog extends Model
             ->orderByDesc('created_at')
             ->first();
 
-        if (!$previous) {
+        if (! $previous) {
             return null;
         }
 

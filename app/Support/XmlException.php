@@ -15,7 +15,7 @@ use RuntimeException;
 class XmlException extends RuntimeException
 {
     /**
-     * @param list<string> $errors libxml diagnostics
+     * @param  list<string>  $errors  libxml diagnostics
      */
     public function __construct(string $message, public readonly array $errors = [])
     {
@@ -23,7 +23,7 @@ class XmlException extends RuntimeException
     }
 
     /**
-     * @param list<string> $errors
+     * @param  list<string>  $errors
      */
     public static function cannotParse(array $errors): self
     {

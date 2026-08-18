@@ -65,6 +65,7 @@ class InvoiceLine extends Model
     public function calculateTax(): string
     {
         $subtotal = $this->calculateSubtotal();
+
         return bcmul($subtotal, bcdiv($this->tax_rate, '100', 4), 2);
     }
 }

@@ -18,17 +18,17 @@ uses(RefreshDatabase::class);
 function makeComplianceProfile(string $jurisdiction, string $engine): ComplianceProfile
 {
     $org = Organization::create([
-        'name'    => "{$jurisdiction} Corp",
+        'name' => "{$jurisdiction} Corp",
         'country' => $jurisdiction,
-        'status'  => 'active',
+        'status' => 'active',
     ]);
 
     return ComplianceProfile::create([
         'organization_id' => $org->id,
-        'jurisdiction'    => $jurisdiction,
-        'engine'          => $engine,
-        'status'          => 'active',
-        'settings'        => [],
+        'jurisdiction' => $jurisdiction,
+        'engine' => $engine,
+        'status' => 'active',
+        'settings' => [],
     ]);
 }
 
@@ -36,32 +36,32 @@ function makeInvoice(string $organizationId): Invoice
 {
     return Invoice::create([
         'organization_id' => $organizationId,
-        'invoice_number'  => 'INV-' . uniqid(),
-        'type'            => 'standard',
-        'status'          => 'draft',
-        'issue_date'      => now()->toDateString(),
-        'currency'        => 'SAR',
-        'buyer_name'      => 'Test Buyer',
+        'invoice_number' => 'INV-'.uniqid(),
+        'type' => 'standard',
+        'status' => 'draft',
+        'issue_date' => now()->toDateString(),
+        'currency' => 'SAR',
+        'buyer_name' => 'Test Buyer',
     ]);
 }
 
 it('routes SA profile to FatooraEngine', function () {
     $profile = makeComplianceProfile('SA', 'fatoora');
-    $router  = app(ComplianceRouter::class);
+    $router = app(ComplianceRouter::class);
 
     expect($router->engineFor($profile))->toBeInstanceOf(FatooraEngine::class);
 });
 
 it('routes AE profile to FtaEngine', function () {
     $profile = makeComplianceProfile('AE', 'fta');
-    $router  = app(ComplianceRouter::class);
+    $router = app(ComplianceRouter::class);
 
     expect($router->engineFor($profile))->toBeInstanceOf(FtaEngine::class);
 });
 
 it('throws UnsupportedJurisdictionException for unregistered jurisdiction', function () {
     $profile = makeComplianceProfile('QA', 'gta');
-    $router  = app(ComplianceRouter::class);
+    $router = app(ComplianceRouter::class);
 
     expect(fn () => $router->engineFor($profile))
         ->toThrow(UnsupportedJurisdictionException::class);

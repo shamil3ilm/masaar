@@ -46,11 +46,11 @@ class BackfillComplianceProfilesSeeder extends Seeder
                 ComplianceProfile::firstOrCreate(
                     [
                         'organization_id' => $org->id,
-                        'jurisdiction'    => $jurisdiction,
+                        'jurisdiction' => $jurisdiction,
                     ],
                     [
-                        'engine'   => $engine,
-                        'status'   => $isOnboarded
+                        'engine' => $engine,
+                        'status' => $isOnboarded
                             ? ComplianceProfile::STATUS_ACTIVE
                             : ComplianceProfile::STATUS_PENDING,
                         'settings' => $legacy,

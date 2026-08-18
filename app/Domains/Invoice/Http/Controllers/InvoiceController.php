@@ -4,10 +4,10 @@ namespace App\Domains\Invoice\Http\Controllers;
 
 use App\Domains\Audit\Services\AuditService;
 use App\Domains\Invoice\Enums\InvoiceStatus;
+use App\Domains\Invoice\Http\Requests\CreateInvoiceRequest;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
-use App\Domains\Invoice\Http\Requests\CreateInvoiceRequest;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

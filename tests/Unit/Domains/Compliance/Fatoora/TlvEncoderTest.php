@@ -3,16 +3,16 @@
 use App\Domains\Compliance\Fatoora\Services\TlvEncoder;
 
 it('encodes single TLV tag correctly', function () {
-    $encoder = new TlvEncoder();
+    $encoder = new TlvEncoder;
 
     $result = $encoder->encodeTag(1, 'Test');
 
     // Tag 1 + Length 4 + "Test"
-    expect($result)->toBe(chr(1) . chr(4) . 'Test');
+    expect($result)->toBe(chr(1).chr(4).'Test');
 });
 
 it('encodes multiple fields to base64', function () {
-    $encoder = new TlvEncoder();
+    $encoder = new TlvEncoder;
 
     $result = $encoder->encode([
         1 => 'Seller',
@@ -25,7 +25,7 @@ it('encodes multiple fields to base64', function () {
 });
 
 it('decodes base64 TLV back to fields', function () {
-    $encoder = new TlvEncoder();
+    $encoder = new TlvEncoder;
 
     $original = [
         1 => 'Test Seller',

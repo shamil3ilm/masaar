@@ -2,8 +2,9 @@
 
 use App\Domains\Auth\DTOs\LoginData;
 use App\Domains\Auth\Services\JwtAuthenticator;
-use Tymon\JWTAuth\JWTAuth;
+use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Factory;
+use Tymon\JWTAuth\JWTAuth;
 
 it('returns null for invalid credentials', function () {
     $jwt = mock(JWTAuth::class);
@@ -47,7 +48,7 @@ it('returns AuthToken for valid credentials', function () {
 it('returns null when JWT exception is thrown', function () {
     $jwt = mock(JWTAuth::class);
     $jwt->shouldReceive('attempt')
-        ->andThrow(new \Tymon\JWTAuth\Exceptions\JWTException('Token error'));
+        ->andThrow(new JWTException('Token error'));
 
     $service = new JwtAuthenticator($jwt);
 
@@ -89,7 +90,7 @@ it('can logout and invalidate token', function () {
 });
 
 it('can retrieve the authenticated user', function () {
-    $user = new stdClass();
+    $user = new stdClass;
     $user->id = 'user-uuid';
     $user->email = 'user@example.com';
 

@@ -156,7 +156,7 @@ class CreateInvoiceRequest extends FormRequest
                 if (in_array($category, ['Z', 'E', 'O'], true) && empty($exemptionCode)) {
                     $validator->errors()->add(
                         "lines.{$index}.tax_exemption_code",
-                        "Exemption code is required for line " . ($index + 1) . " with tax category {$category}."
+                        'Exemption code is required for line '.($index + 1)." with tax category {$category}."
                     );
                 }
             }

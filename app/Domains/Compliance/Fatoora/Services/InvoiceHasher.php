@@ -18,6 +18,7 @@ use DOMXPath;
 class InvoiceHasher
 {
     private const EXT_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2';
+
     private const SIG_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonSignatureComponents-2';
 
     /**
@@ -28,7 +29,7 @@ class InvoiceHasher
      * 2. Exclusion of UBLExtensions element (contains signature)
      * 3. SHA-256 hash, base64 encoded
      *
-     * @param string $xml Invoice XML content
+     * @param  string  $xml  Invoice XML content
      * @return string Base64-encoded hash
      */
     public function hash(string $xml): string
@@ -58,7 +59,7 @@ class InvoiceHasher
      * For PIH, we need to hash the complete signed XML of the previous invoice.
      * This uses the same canonicalization but includes the signature.
      *
-     * @param string $signedXml Complete signed invoice XML
+     * @param  string  $signedXml  Complete signed invoice XML
      * @return string Base64-encoded hash for PIH
      */
     public function hashForPih(string $signedXml): string

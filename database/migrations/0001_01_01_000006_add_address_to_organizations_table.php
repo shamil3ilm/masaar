@@ -14,25 +14,25 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('organizations', function (Blueprint $table) {
-            if (!Schema::hasColumn('organizations', 'street')) {
+            if (! Schema::hasColumn('organizations', 'street')) {
                 $table->string('street')->nullable()->after('country');
             }
-            if (!Schema::hasColumn('organizations', 'building_number')) {
+            if (! Schema::hasColumn('organizations', 'building_number')) {
                 $table->string('building_number')->nullable()->after('street');
             }
-            if (!Schema::hasColumn('organizations', 'additional_street')) {
+            if (! Schema::hasColumn('organizations', 'additional_street')) {
                 $table->string('additional_street')->nullable()->after('building_number');
             }
-            if (!Schema::hasColumn('organizations', 'district')) {
+            if (! Schema::hasColumn('organizations', 'district')) {
                 $table->string('district')->nullable()->after('additional_street');
             }
-            if (!Schema::hasColumn('organizations', 'city')) {
+            if (! Schema::hasColumn('organizations', 'city')) {
                 $table->string('city')->nullable()->after('district');
             }
-            if (!Schema::hasColumn('organizations', 'postal_code')) {
+            if (! Schema::hasColumn('organizations', 'postal_code')) {
                 $table->string('postal_code', 5)->nullable()->after('city');
             }
-            if (!Schema::hasColumn('organizations', 'cr_number')) {
+            if (! Schema::hasColumn('organizations', 'cr_number')) {
                 $table->string('cr_number', 20)->nullable()->after('postal_code');
             }
         });

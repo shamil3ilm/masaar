@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use App\Domains\Compliance\Fatoora\Services\CertificateService;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Webhook\Events\CertificateExpiring;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -53,6 +54,7 @@ class CheckCertificateExpiry extends Command
 
         if ($organizations->isEmpty()) {
             $this->warn('No organizations with certificates found.');
+
             return Command::SUCCESS;
         }
 
@@ -64,6 +66,7 @@ class CheckCertificateExpiry extends Command
         );
 
         $this->info('');
+
         return Command::SUCCESS;
     }
 
@@ -71,7 +74,7 @@ class CheckCertificateExpiry extends Command
     {
         $certificate = $organization->zatca_certificate;
 
-        if (!$certificate) {
+        if (! $certificate) {
             return [
                 $organization->name,
                 $organization->vat_number ?? 'N/A',
@@ -84,7 +87,7 @@ class CheckCertificateExpiry extends Command
         try {
             $expiryDate = $this->certificateService->getExpiryDate($certificate);
 
-            if (!$expiryDate) {
+            if (! $expiryDate) {
                 return [
                     $organization->name,
                     $organization->vat_number ?? 'N/A',
@@ -123,7 +126,7 @@ class CheckCertificateExpiry extends Command
                 $organization->vat_number ?? 'N/A',
                 'Error',
                 'Error',
-                '❌ ' . $e->getMessage(),
+                '❌ '.$e->getMessage(),
             ];
         }
     }
@@ -156,7 +159,7 @@ class CheckCertificateExpiry extends Command
     ): void {
         $notifyAtDays = config('fatoora.certificate_notifications.notify_at_days', [30, 14, 7, 3, 1]);
 
-        if (!in_array($daysRemaining, $notifyAtDays) && $daysRemaining > 0) {
+        if (! in_array($daysRemaining, $notifyAtDays) && $daysRemaining > 0) {
             return;
         }
 
@@ -207,7 +210,7 @@ class CheckCertificateExpiry extends Command
             : "⚠️ ZATCA Certificate Expiring in {$daysRemaining} days - {$organization->name}";
 
         $body = $daysRemaining <= 0
-            ? "Your ZATCA certificate has EXPIRED. Invoice submissions will fail until renewed."
+            ? 'Your ZATCA certificate has EXPIRED. Invoice submissions will fail until renewed.'
             : "Your ZATCA certificate will expire on {$expiryDate->format('Y-m-d')}. Please renew before expiry to avoid service interruption.";
 
         Mail::raw($body, function ($message) use ($adminEmails, $subject) {
@@ -223,7 +226,7 @@ class CheckCertificateExpiry extends Command
     ): void {
         // Trigger webhook event for certificate expiry
         // This integrates with the existing webhook system
-        event(new \App\Domains\Webhook\Events\CertificateExpiring(
+        event(new CertificateExpiring(
             organizationId: $organization->id,
             daysRemaining: $daysRemaining,
             expiryDate: $expiryDate->toIso8601String(),
@@ -237,7 +240,7 @@ class CheckCertificateExpiry extends Command
     ): void {
         $webhookUrl = config('logging.channels.slack.url');
 
-        if (!$webhookUrl) {
+        if (! $webhookUrl) {
             return;
         }
 

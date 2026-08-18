@@ -7,8 +7,8 @@ namespace App\Domains\Auth\Services;
 use App\Domains\Auth\Contracts\Authenticator;
 use App\Domains\Auth\DTOs\AuthToken;
 use App\Domains\Auth\DTOs\LoginData;
-use Tymon\JWTAuth\JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
+use Tymon\JWTAuth\JWTAuth;
 
 final class JwtAuthenticator implements Authenticator
 {

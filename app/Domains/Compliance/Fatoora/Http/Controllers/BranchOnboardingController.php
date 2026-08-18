@@ -49,11 +49,11 @@ class BranchOnboardingController extends Controller
         $organization = $this->tenant->getOrganization();
         $branch = $organization->branches()->find($branchId);
 
-        if (!$branch) {
+        if (! $branch) {
             return ApiResponse::error('Branch not found', 404);
         }
 
-        if (!$organization->hasCompleteZatcaProfile()) {
+        if (! $organization->hasCompleteZatcaProfile()) {
             return ApiResponse::error(
                 'Organization profile incomplete. Ensure VAT number and address are set.',
                 422
@@ -81,16 +81,16 @@ class BranchOnboardingController extends Controller
             $branch->update(['onboarding_status' => Branch::STATUS_CSR_GENERATED]);
 
             return ApiResponse::success([
-                'ccsid' => substr($result['ccsid'], 0, 50) . '...',
+                'ccsid' => substr($result['ccsid'], 0, 50).'...',
                 'request_id' => $result['requestId'],
                 'branch_id' => $branch->id,
                 'branch_name' => $branch->name,
                 'message' => 'Compliance CSID obtained. Proceed with compliance checks.',
-                'next_step' => 'POST /api/organizations/branches/' . $branch->id . '/onboarding/compliance-check',
+                'next_step' => 'POST /api/organizations/branches/'.$branch->id.'/onboarding/compliance-check',
             ]);
 
         } catch (\Exception $e) {
-            return ApiResponse::error('Failed to obtain CCSID: ' . $e->getMessage(), 422);
+            return ApiResponse::error('Failed to obtain CCSID: '.$e->getMessage(), 422);
         }
     }
 
@@ -106,13 +106,13 @@ class BranchOnboardingController extends Controller
         $organization = $this->tenant->getOrganization();
         $branch = $organization->branches()->find($branchId);
 
-        if (!$branch) {
+        if (! $branch) {
             return ApiResponse::error('Branch not found', 404);
         }
 
         $credentials = $this->branchService->getCredentials($branch, 'ccsid');
 
-        if (!$credentials) {
+        if (! $credentials) {
             return ApiResponse::error('No CCSID found. Complete step 1 first.', 422);
         }
 
@@ -139,12 +139,12 @@ class BranchOnboardingController extends Controller
                     ? 'Compliance checks passed. Proceed to request PCSID.'
                     : 'Compliance checks failed. Fix errors and retry.',
                 'next_step' => $result['passed']
-                    ? 'POST /api/organizations/branches/' . $branch->id . '/onboarding/pcsid'
+                    ? 'POST /api/organizations/branches/'.$branch->id.'/onboarding/pcsid'
                     : 'Fix errors and retry compliance check',
             ]);
 
         } catch (\Exception $e) {
-            return ApiResponse::error('Compliance check failed: ' . $e->getMessage(), 422);
+            return ApiResponse::error('Compliance check failed: '.$e->getMessage(), 422);
         }
     }
 
@@ -158,13 +158,13 @@ class BranchOnboardingController extends Controller
         $organization = $this->tenant->getOrganization();
         $branch = $organization->branches()->find($branchId);
 
-        if (!$branch) {
+        if (! $branch) {
             return ApiResponse::error('Branch not found', 404);
         }
 
         $credentials = $this->branchService->getCredentials($branch, 'ccsid');
 
-        if (!$credentials) {
+        if (! $credentials) {
             return ApiResponse::error('No CCSID found. Complete steps 1-2 first.', 422);
         }
 
@@ -198,7 +198,7 @@ class BranchOnboardingController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            return ApiResponse::error('Failed to obtain PCSID: ' . $e->getMessage(), 422);
+            return ApiResponse::error('Failed to obtain PCSID: '.$e->getMessage(), 422);
         }
     }
 
@@ -214,7 +214,7 @@ class BranchOnboardingController extends Controller
         $organization = $this->tenant->getOrganization();
         $branch = $organization->branches()->find($branchId);
 
-        if (!$branch) {
+        if (! $branch) {
             return ApiResponse::error('Branch not found', 404);
         }
 
@@ -230,7 +230,7 @@ class BranchOnboardingController extends Controller
         return ApiResponse::success([
             'branch_id' => $branch->id,
             'message' => 'Onboarding reset. Obtain new OTP from ZATCA Fatoora Portal to start fresh.',
-            'next_step' => 'POST /api/organizations/branches/' . $branch->id . '/onboarding/ccsid',
+            'next_step' => 'POST /api/organizations/branches/'.$branch->id.'/onboarding/ccsid',
         ]);
     }
 
@@ -275,7 +275,7 @@ class BranchOnboardingController extends Controller
 
             $invoiceData = new InvoiceXmlData(
                 uuid: Str::uuid()->toString(),
-                invoiceNumber: 'TEST-' . $branch->id . '-' . strtoupper(substr($type['key'], 0, 3)) . '-' . $icv,
+                invoiceNumber: 'TEST-'.$branch->id.'-'.strtoupper(substr($type['key'], 0, 3)).'-'.$icv,
                 icv: $icv,
                 issueDate: now()->format('Y-m-d'),
                 issueTime: now()->format('H:i:s'),
@@ -326,16 +326,16 @@ class BranchOnboardingController extends Controller
     {
         try {
             $cert = openssl_x509_read($certificate);
-            if (!$cert) {
+            if (! $cert) {
                 return null;
             }
 
             $certInfo = openssl_x509_parse($cert);
-            if (!$certInfo || !isset($certInfo['validTo_time_t'])) {
+            if (! $certInfo || ! isset($certInfo['validTo_time_t'])) {
                 return null;
             }
 
-            return (new \DateTime())->setTimestamp($certInfo['validTo_time_t']);
+            return (new \DateTime)->setTimestamp($certInfo['validTo_time_t']);
         } catch (\Exception $e) {
             return null;
         }

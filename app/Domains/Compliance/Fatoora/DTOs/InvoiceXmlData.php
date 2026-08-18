@@ -55,7 +55,7 @@ final readonly class InvoiceXmlData
      *   isFreeItem?: bool,
      *   marketValue?: float
      * }> $lines
-     * @param array<int, string> $prepaymentInvoiceIds References to deposit/prepayment invoices
+     * @param  array<int, string>  $prepaymentInvoiceIds  References to deposit/prepayment invoices
      */
     public function __construct(
         // Required fields first
@@ -176,7 +176,7 @@ final readonly class InvoiceXmlData
         $bit6 = $this->isSummary ? '1' : '0';
         $bit7 = $this->isSelfBilled ? '1' : '0';
 
-        return $transactionType . $bit3 . $bit4 . $bit5 . $bit6 . $bit7;
+        return $transactionType.$bit3.$bit4.$bit5.$bit6.$bit7;
     }
 
     /**
@@ -208,8 +208,8 @@ final readonly class InvoiceXmlData
      *
      * Formula: Net = Gross / (1 + taxRate/100)
      *
-     * @param float $grossPrice Tax-inclusive price
-     * @param float $taxRate Tax rate percentage (e.g., 15 for 15%)
+     * @param  float  $grossPrice  Tax-inclusive price
+     * @param  float  $taxRate  Tax rate percentage (e.g., 15 for 15%)
      * @return float Net (tax-exclusive) price
      */
     public static function calculateNetFromGross(float $grossPrice, float $taxRate): float
@@ -226,8 +226,8 @@ final readonly class InvoiceXmlData
      *
      * Formula: Tax = Gross - Net = Gross - (Gross / (1 + taxRate/100))
      *
-     * @param float $grossPrice Tax-inclusive price
-     * @param float $taxRate Tax rate percentage (e.g., 15 for 15%)
+     * @param  float  $grossPrice  Tax-inclusive price
+     * @param  float  $taxRate  Tax rate percentage (e.g., 15 for 15%)
      * @return float Tax amount
      */
     public static function calculateTaxFromGross(float $grossPrice, float $taxRate): float
@@ -246,8 +246,8 @@ final readonly class InvoiceXmlData
      *
      * Formula: Gross = Net × (1 + taxRate/100)
      *
-     * @param float $netPrice Tax-exclusive price
-     * @param float $taxRate Tax rate percentage (e.g., 15 for 15%)
+     * @param  float  $netPrice  Tax-exclusive price
+     * @param  float  $taxRate  Tax rate percentage (e.g., 15 for 15%)
      * @return float Gross (tax-inclusive) price
      */
     public static function calculateGrossFromNet(float $netPrice, float $taxRate): float
@@ -260,8 +260,8 @@ final readonly class InvoiceXmlData
      *
      * Formula: Tax = Net × (taxRate/100)
      *
-     * @param float $netPrice Tax-exclusive price
-     * @param float $taxRate Tax rate percentage (e.g., 15 for 15%)
+     * @param  float  $netPrice  Tax-exclusive price
+     * @param  float  $taxRate  Tax rate percentage (e.g., 15 for 15%)
      * @return float Tax amount
      */
     public static function calculateTaxFromNet(float $netPrice, float $taxRate): float
@@ -328,7 +328,7 @@ final readonly class InvoiceXmlData
     /**
      * Convert amount from original currency to SAR.
      *
-     * @param float $amount Amount in original currency
+     * @param  float  $amount  Amount in original currency
      * @return float Amount in SAR
      */
     public function convertToSar(float $amount): float
@@ -359,7 +359,7 @@ final readonly class InvoiceXmlData
      *
      * Per ZATCA: Free goods require VAT on "deemed supply" at market value.
      *
-     * @param array $line Line item data
+     * @param  array  $line  Line item data
      * @return float Price to use for VAT calculation
      */
     public static function getEffectivePrice(array $line): float
@@ -378,8 +378,8 @@ final readonly class InvoiceXmlData
      * Per ZATCA: Bundle discounts must be allocated by VAT rate to ensure
      * correct VAT calculation per line.
      *
-     * @param array $lines Line items with subtotals
-     * @param float $totalDiscount Total discount to allocate
+     * @param  array  $lines  Line items with subtotals
+     * @param  float  $totalDiscount  Total discount to allocate
      * @return array Lines with allocated discounts
      */
     public static function allocateBundleDiscount(array $lines, float $totalDiscount): array
@@ -423,8 +423,8 @@ final readonly class InvoiceXmlData
     /**
      * Validate that credit note doesn't exceed original invoice.
      *
-     * @param float $originalTotal Original invoice total
-     * @param float $previousCnTotal Sum of previous credit notes for same invoice
+     * @param  float  $originalTotal  Original invoice total
+     * @param  float  $previousCnTotal  Sum of previous credit notes for same invoice
      * @return bool True if valid
      */
     public function validateCreditNoteAmount(float $originalTotal, float $previousCnTotal = 0.0): bool

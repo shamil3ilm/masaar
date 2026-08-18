@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Models;
 
-use App\Domains\Organization\Concerns\BelongsToTenant;
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Enums\InvoiceType;
+use App\Domains\Organization\Concerns\BelongsToTenant;
 use App\Domains\Organization\Models\ComplianceProfile;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -79,9 +79,9 @@ class Invoice extends Model
             'zatca_response' => 'array',
             'buyer_address' => 'array',
             'is_third_party' => 'boolean',
-            'is_nominal'     => 'boolean',
-            'is_export'      => 'boolean',
-            'is_summary'     => 'boolean',
+            'is_nominal' => 'boolean',
+            'is_export' => 'boolean',
+            'is_summary' => 'boolean',
             'is_self_billed' => 'boolean',
         ];
     }
@@ -146,8 +146,8 @@ class Invoice extends Model
         static::deleting(function (Invoice $invoice) {
             if ($invoice->status !== InvoiceStatus::Draft) {
                 throw new \RuntimeException(
-                    'Finalized invoices cannot be deleted. ' .
-                    'This is a ZATCA compliance requirement. ' .
+                    'Finalized invoices cannot be deleted. '.
+                    'This is a ZATCA compliance requirement. '.
                     'Use credit/debit notes for corrections.'
                 );
             }
@@ -166,11 +166,11 @@ class Invoice extends Model
             $changedFields = array_keys($invoice->getDirty());
             $immutableChanges = array_intersect($changedFields, self::IMMUTABLE_FIELDS);
 
-            if (!empty($immutableChanges)) {
+            if (! empty($immutableChanges)) {
                 throw new \RuntimeException(
-                    'Finalized invoice fields cannot be modified. ' .
-                    'This is a ZATCA compliance requirement. ' .
-                    'Attempted to change: ' . implode(', ', $immutableChanges) . '. ' .
+                    'Finalized invoice fields cannot be modified. '.
+                    'This is a ZATCA compliance requirement. '.
+                    'Attempted to change: '.implode(', ', $immutableChanges).'. '.
                     'Use credit/debit notes for corrections.'
                 );
             }

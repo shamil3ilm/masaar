@@ -48,14 +48,14 @@ it('invoice can be linked to a compliance profile', function () {
     ]);
 
     $invoice = Invoice::create([
-        'organization_id'       => $org->id,
+        'organization_id' => $org->id,
         'compliance_profile_id' => $profile->id,
-        'invoice_number'        => 'INV-MJ-001',
-        'type'                  => 'standard',
-        'status'                => 'draft',
-        'issue_date'            => now()->toDateString(),
-        'currency'              => 'SAR',
-        'buyer_name'            => 'Buyer Co',
+        'invoice_number' => 'INV-MJ-001',
+        'type' => 'standard',
+        'status' => 'draft',
+        'issue_date' => now()->toDateString(),
+        'currency' => 'SAR',
+        'buyer_name' => 'Buyer Co',
     ]);
 
     expect($invoice->complianceProfile->jurisdiction)->toBe('SA')
@@ -72,12 +72,12 @@ it('mock submit routes correctly per jurisdiction', function () {
 
     $invoice = Invoice::create([
         'organization_id' => $org->id,
-        'invoice_number'  => 'INV-AE-001',
-        'type'            => 'standard',
-        'status'          => 'draft',
-        'issue_date'      => now()->toDateString(),
-        'currency'        => 'SAR',
-        'buyer_name'      => 'UAE Buyer',
+        'invoice_number' => 'INV-AE-001',
+        'type' => 'standard',
+        'status' => 'draft',
+        'issue_date' => now()->toDateString(),
+        'currency' => 'SAR',
+        'buyer_name' => 'UAE Buyer',
     ]);
 
     $mockEngine = Mockery::mock(FtaEngine::class);

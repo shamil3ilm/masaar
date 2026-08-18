@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
@@ -36,7 +37,7 @@ class CustomerPortalController extends Controller
     /**
      * Organizations offered on the selection screen — the user's own, only.
      */
-    private function userOrganizations(): \Illuminate\Support\Collection
+    private function userOrganizations(): Collection
     {
         return Auth::user()
             ->activeOrganizations()
@@ -72,13 +73,13 @@ class CustomerPortalController extends Controller
     {
         $orgId = $this->getOrganizationId($request);
 
-        if (!$orgId) {
+        if (! $orgId) {
             return $this->organizationPicker();
         }
 
         $organization = DB::table('organizations')->where('id', $orgId)->first();
 
-        if (!$organization) {
+        if (! $organization) {
             return $this->organizationPicker('Organization not found');
         }
 
@@ -150,7 +151,7 @@ class CustomerPortalController extends Controller
     {
         $orgId = $this->getOrganizationId($request);
 
-        if (!$orgId) {
+        if (! $orgId) {
             return $this->organizationPicker();
         }
 
@@ -186,7 +187,7 @@ class CustomerPortalController extends Controller
         }
 
         if ($dateTo) {
-            $query->where('s.created_at', '<=', $dateTo . ' 23:59:59');
+            $query->where('s.created_at', '<=', $dateTo.' 23:59:59');
         }
 
         $submissions = $query->paginate(25);
@@ -225,7 +226,7 @@ class CustomerPortalController extends Controller
     {
         $orgId = $this->getOrganizationId($request);
 
-        if (!$orgId) {
+        if (! $orgId) {
             return $this->organizationPicker();
         }
 
@@ -252,7 +253,7 @@ class CustomerPortalController extends Controller
     {
         $orgId = $this->getOrganizationId($request);
 
-        if (!$orgId) {
+        if (! $orgId) {
             return $this->organizationPicker();
         }
 
@@ -265,7 +266,7 @@ class CustomerPortalController extends Controller
             ->select('users.*')
             ->first();
 
-        if (!$user) {
+        if (! $user) {
             abort(404, 'User not found');
         }
 

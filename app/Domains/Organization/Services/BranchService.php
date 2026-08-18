@@ -6,6 +6,7 @@ namespace App\Domains\Organization\Services;
 
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -66,7 +67,7 @@ class BranchService
             'district' => $data['district'] ?? null,
             'city' => $data['city'] ?? null,
             'postal_code' => $data['postal_code'] ?? null,
-        ], fn($v) => $v !== null);
+        ], fn ($v) => $v !== null);
 
         // Prevent device_serial change if already onboarded
         if ($branch->onboarding_status !== Branch::STATUS_PENDING && isset($data['device_serial'])) {
@@ -127,6 +128,7 @@ class BranchService
         $anyBranch = $organization->branches()->active()->first();
         if ($anyBranch) {
             $anyBranch->setAsDefault();
+
             return $anyBranch;
         }
 
@@ -159,7 +161,7 @@ class BranchService
     {
         $path = $this->getCredentialsPath($branch, $type);
 
-        if (!Storage::disk('local')->exists($path)) {
+        if (! Storage::disk('local')->exists($path)) {
             return null;
         }
 
@@ -194,7 +196,7 @@ class BranchService
     /**
      * Get branches with expiring certificates.
      */
-    public function getExpiringCertificates(int $days = 30): \Illuminate\Support\Collection
+    public function getExpiringCertificates(int $days = 30): Collection
     {
         return Branch::certificateExpiringSoon($days)
             ->with('organization')
@@ -224,7 +226,7 @@ class BranchService
         $hasCcsid = Storage::disk('local')->exists($legacyCcsidPath);
         $hasPcsid = Storage::disk('local')->exists($legacyPcsidPath);
 
-        if (!$hasCcsid && !$hasPcsid) {
+        if (! $hasCcsid && ! $hasPcsid) {
             return null;
         }
 

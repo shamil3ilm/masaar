@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Licensing\Services;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
 
 /**
  * Usage Reporting Service.
@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Cache;
 class UsageReportingService
 {
     private ?string $licenseServerUrl;
+
     private ?string $licenseKey;
 
     /**
@@ -35,7 +36,7 @@ class UsageReportingService
      */
     public function report(): array
     {
-        if (!$this->licenseServerUrl || !$this->licenseKey) {
+        if (! $this->licenseServerUrl || ! $this->licenseKey) {
             return [
                 'success' => false,
                 'message' => 'License server URL or key not configured',
@@ -46,7 +47,7 @@ class UsageReportingService
             $metrics = $this->collectMetrics();
 
             $response = Http::timeout(10)
-                ->post($this->licenseServerUrl . '/usage', [
+                ->post($this->licenseServerUrl.'/usage', [
                     'license_key' => $this->licenseKey,
                     'metrics' => $metrics,
                 ]);
@@ -163,7 +164,8 @@ class UsageReportingService
     private function getApiCallCount(): int
     {
         // Get from rate limiter cache or return 0
-        $cacheKey = 'api_calls_count_' . now()->format('Y-m-d');
+        $cacheKey = 'api_calls_count_'.now()->format('Y-m-d');
+
         return (int) Cache::get($cacheKey, 0);
     }
 
@@ -172,7 +174,7 @@ class UsageReportingService
      */
     public static function incrementApiCalls(): void
     {
-        $cacheKey = 'api_calls_count_' . now()->format('Y-m-d');
+        $cacheKey = 'api_calls_count_'.now()->format('Y-m-d');
         Cache::increment($cacheKey);
 
         // Ensure it expires at end of day

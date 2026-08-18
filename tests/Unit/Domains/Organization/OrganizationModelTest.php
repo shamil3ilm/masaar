@@ -10,17 +10,17 @@ uses(RefreshDatabase::class);
 
 it('returns vat number from compliance profile when present', function () {
     $org = Organization::create([
-        'name'    => 'Corp A',
+        'name' => 'Corp A',
         'country' => 'SA',
-        'status'  => 'active',
+        'status' => 'active',
     ]);
 
     ComplianceProfile::create([
         'organization_id' => $org->id,
-        'jurisdiction'    => 'SA',
-        'engine'          => 'fatoora',
-        'status'          => ComplianceProfile::STATUS_ACTIVE,
-        'settings'        => ['vat_number' => '300000000000099'],
+        'jurisdiction' => 'SA',
+        'engine' => 'fatoora',
+        'status' => ComplianceProfile::STATUS_ACTIVE,
+        'settings' => ['vat_number' => '300000000000099'],
     ]);
 
     expect($org->fresh()->vat_number)->toBe('300000000000099');
@@ -28,9 +28,9 @@ it('returns vat number from compliance profile when present', function () {
 
 it('falls back to legacy JSON for vat number when no compliance profile', function () {
     $org = Organization::create([
-        'name'               => 'Corp B',
-        'country'            => 'SA',
-        'status'             => 'active',
+        'name' => 'Corp B',
+        'country' => 'SA',
+        'status' => 'active',
         'compliance_profile' => ['vat_number' => '300000000000077'],
     ]);
 
@@ -39,17 +39,17 @@ it('falls back to legacy JSON for vat number when no compliance profile', functi
 
 it('complianceProfileFor returns active profile for jurisdiction', function () {
     $org = Organization::create([
-        'name'    => 'Corp C',
+        'name' => 'Corp C',
         'country' => 'SA',
-        'status'  => 'active',
+        'status' => 'active',
     ]);
 
     ComplianceProfile::create([
         'organization_id' => $org->id,
-        'jurisdiction'    => 'SA',
-        'engine'          => 'fatoora',
-        'status'          => ComplianceProfile::STATUS_ACTIVE,
-        'settings'        => [],
+        'jurisdiction' => 'SA',
+        'engine' => 'fatoora',
+        'status' => ComplianceProfile::STATUS_ACTIVE,
+        'settings' => [],
     ]);
 
     $profile = $org->complianceProfileFor('SA');
@@ -59,9 +59,9 @@ it('complianceProfileFor returns active profile for jurisdiction', function () {
 
 it('complianceProfileFor returns null for unknown jurisdiction', function () {
     $org = Organization::create([
-        'name'    => 'Corp D',
+        'name' => 'Corp D',
         'country' => 'SA',
-        'status'  => 'active',
+        'status' => 'active',
     ]);
 
     expect($org->complianceProfileFor('QA'))->toBeNull();

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -52,6 +53,7 @@ class PartitionMaintenance extends Command
         if ($driver !== 'pgsql') {
             $this->warn('Partition maintenance is only supported for PostgreSQL.');
             $this->info('For MySQL, use table partitioning DDL directly.');
+
             return 0;
         }
 
@@ -97,14 +99,14 @@ class PartitionMaintenance extends Command
         // Check if table is partitioned
         $isPartitioned = $this->isTablePartitioned($table);
 
-        if (!$isPartitioned) {
+        if (! $isPartitioned) {
             $rowCount = $this->getRowCount($table);
-            $this->line("  Status: Not partitioned");
-            $this->line("  Rows: " . number_format($rowCount));
+            $this->line('  Status: Not partitioned');
+            $this->line('  Rows: '.number_format($rowCount));
 
             if ($rowCount >= self::PARTITION_THRESHOLD_ROWS) {
-                $this->warn("  Recommendation: Table exceeds " . number_format(self::PARTITION_THRESHOLD_ROWS) . " rows. Consider partitioning.");
-                $this->line("  To partition, run migration with partition schema:");
+                $this->warn('  Recommendation: Table exceeds '.number_format(self::PARTITION_THRESHOLD_ROWS).' rows. Consider partitioning.');
+                $this->line('  To partition, run migration with partition schema:');
                 $this->line("    php artisan make:migration partition_{$table}_table");
             }
 
@@ -113,8 +115,8 @@ class PartitionMaintenance extends Command
 
         // Get existing partitions
         $partitions = $this->getPartitions($table);
-        $this->line("  Status: Partitioned");
-        $this->line("  Existing partitions: " . count($partitions));
+        $this->line('  Status: Partitioned');
+        $this->line('  Existing partitions: '.count($partitions));
 
         foreach ($partitions as $partition) {
             $this->line("    - {$partition['name']}: {$partition['range']}");
@@ -139,12 +141,12 @@ class PartitionMaintenance extends Command
     private function isTablePartitioned(string $table): bool
     {
         try {
-            $result = DB::selectOne("
+            $result = DB::selectOne('
                 SELECT COUNT(*) as count
                 FROM pg_partitioned_table pt
                 JOIN pg_class c ON c.oid = pt.partrelid
                 WHERE c.relname = ?
-            ", [$table]);
+            ', [$table]);
 
             return ($result->count ?? 0) > 0;
         } catch (\Exception $e) {
@@ -158,7 +160,7 @@ class PartitionMaintenance extends Command
     private function getPartitions(string $table): array
     {
         try {
-            $results = DB::select("
+            $results = DB::select('
                 SELECT
                     c.relname as name,
                     pg_get_expr(c.relpartbound, c.oid) as range
@@ -167,9 +169,9 @@ class PartitionMaintenance extends Command
                 JOIN pg_class p ON p.oid = i.inhparent
                 WHERE p.relname = ?
                 ORDER BY c.relname
-            ", [$table]);
+            ', [$table]);
 
-            return array_map(fn($r) => ['name' => $r->name, 'range' => $r->range], $results);
+            return array_map(fn ($r) => ['name' => $r->name, 'range' => $r->range], $results);
         } catch (\Exception $e) {
             return [];
         }
@@ -184,13 +186,14 @@ class PartitionMaintenance extends Command
 
         for ($i = 1; $i <= $monthsAhead; $i++) {
             $month = $now->copy()->addMonths($i);
-            $partitionName = $table . '_' . $month->format('Y_m');
+            $partitionName = $table.'_'.$month->format('Y_m');
             $startDate = $month->startOfMonth()->toDateString();
             $endDate = $month->copy()->addMonth()->startOfMonth()->toDateString();
 
             // Check if partition already exists
             if ($this->partitionExists($partitionName)) {
                 $this->line("  Partition {$partitionName} already exists");
+
                 continue;
             }
 
@@ -209,7 +212,7 @@ class PartitionMaintenance extends Command
                     'range' => "{$startDate} to {$endDate}",
                 ]);
             } catch (\Exception $e) {
-                $this->error("  Failed to create partition {$partitionName}: " . $e->getMessage());
+                $this->error("  Failed to create partition {$partitionName}: ".$e->getMessage());
             }
         }
     }
@@ -224,15 +227,15 @@ class PartitionMaintenance extends Command
 
         foreach ($partitions as $partition) {
             // Parse partition date from name (format: table_YYYY_MM)
-            if (!preg_match('/_(\d{4})_(\d{2})$/', $partition['name'], $matches)) {
+            if (! preg_match('/_(\d{4})_(\d{2})$/', $partition['name'], $matches)) {
                 continue;
             }
 
-            $partitionDate = \Carbon\Carbon::createFromDate((int) $matches[1], (int) $matches[2], 1);
+            $partitionDate = Carbon::createFromDate((int) $matches[1], (int) $matches[2], 1);
 
             if ($partitionDate < $cutoffDate) {
                 $this->warn("  Partition {$partition['name']} is beyond {$thresholdMonths} months threshold");
-                $this->line("    Consider archiving to cold storage");
+                $this->line('    Consider archiving to cold storage');
 
                 // Note: We don't automatically drop partitions for compliance data
                 // Just log for manual review
@@ -259,11 +262,11 @@ class PartitionMaintenance extends Command
     private function partitionExists(string $partitionName): bool
     {
         try {
-            $result = DB::selectOne("
+            $result = DB::selectOne('
                 SELECT COUNT(*) as count
                 FROM pg_class
                 WHERE relname = ?
-            ", [$partitionName]);
+            ', [$partitionName]);
 
             return ($result->count ?? 0) > 0;
         } catch (\Exception $e) {
@@ -278,11 +281,11 @@ class PartitionMaintenance extends Command
     {
         try {
             // Use estimate for large tables
-            $result = DB::selectOne("
+            $result = DB::selectOne('
                 SELECT reltuples::bigint as estimate
                 FROM pg_class
                 WHERE relname = ?
-            ", [$table]);
+            ', [$table]);
 
             $estimate = (int) ($result->estimate ?? 0);
 

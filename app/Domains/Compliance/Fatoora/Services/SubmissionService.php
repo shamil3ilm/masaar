@@ -56,10 +56,11 @@ class SubmissionService
     /**
      * Submit invoice to ZATCA with idempotency support.
      *
-     * @param Invoice $invoice Invoice to submit
-     * @param string|null $idempotencyKey Optional idempotency key
-     * @param bool $async Whether to process asynchronously
+     * @param  Invoice  $invoice  Invoice to submit
+     * @param  string|null  $idempotencyKey  Optional idempotency key
+     * @param  bool  $async  Whether to process asynchronously
      * @return array Submission result
+     *
      * @throws FatooraException
      */
     public function submit(Invoice $invoice, ?string $idempotencyKey = null, bool $async = false): array
@@ -99,7 +100,7 @@ class SubmissionService
             ->where('expires_at', '>', now())
             ->first();
 
-        if (!$idempotency) {
+        if (! $idempotency) {
             return null;
         }
 
@@ -182,19 +183,19 @@ class SubmissionService
      */
     private function validateVatPeriod(Invoice $invoice): void
     {
-        if (!$this->vatPeriodTracker) {
+        if (! $this->vatPeriodTracker) {
             return; // Skip if tracker not injected
         }
 
         // Only applies to credit/debit notes
         $documentType = $invoice->document_type;
-        if (!$documentType?->requiresBillingReference()) {
+        if (! $documentType?->requiresBillingReference()) {
             return;
         }
 
         $validation = $this->vatPeriodTracker->validateCreditNotePeriod($invoice);
 
-        if (!$validation['valid']) {
+        if (! $validation['valid']) {
             throw new FatooraException(
                 $validation['warning'] ?? 'VAT period validation failed',
                 ErrorCode::VAL_INVALID_FORMAT
@@ -220,7 +221,7 @@ class SubmissionService
      */
     private function validateInvoiceTimestamp(Invoice $invoice): void
     {
-        if (!$this->timestampValidator) {
+        if (! $this->timestampValidator) {
             return; // Skip if validator not injected
         }
 
@@ -246,7 +247,7 @@ class SubmissionService
         );
 
         // Log warnings but don't block
-        if (!empty($validation['warnings'])) {
+        if (! empty($validation['warnings'])) {
             Log::warning('Invoice timestamp validation warnings', [
                 'invoice_id' => $invoice->id,
                 'warnings' => $validation['warnings'],
@@ -255,7 +256,7 @@ class SubmissionService
         }
 
         // Block on errors (exceeds ±30 second tolerance)
-        if (!$validation['valid']) {
+        if (! $validation['valid']) {
             Log::error('Invoice timestamp validation failed', [
                 'invoice_id' => $invoice->id,
                 'errors' => $validation['errors'],
@@ -263,7 +264,7 @@ class SubmissionService
             ]);
 
             throw new FatooraException(
-                'Invoice timestamp validation failed: ' . implode('; ', $validation['errors']),
+                'Invoice timestamp validation failed: '.implode('; ', $validation['errors']),
                 ErrorCode::VALIDATION_FAILED,
                 [
                     'drift_seconds' => $validation['drift_seconds'],
@@ -280,7 +281,7 @@ class SubmissionService
     {
         $certificate = $organization->zatca_certificate ?? null;
 
-        if (!$certificate) {
+        if (! $certificate) {
             throw new FatooraException(
                 'ZATCA certificate not found',
                 ErrorCode::CERT_NOT_FOUND
@@ -288,7 +289,7 @@ class SubmissionService
         }
 
         // Check validity
-        if (!$this->certificateService->isValid($certificate)) {
+        if (! $this->certificateService->isValid($certificate)) {
             throw new FatooraException(
                 'ZATCA certificate is expired or invalid',
                 ErrorCode::CERT_EXPIRED
@@ -411,7 +412,7 @@ class SubmissionService
             if ($duplicateCheck['is_duplicate']) {
                 $firstDuplicate = $duplicateCheck['duplicates'][0] ?? null;
                 throw new FatooraException(
-                    'Duplicate invoice detected: ' . ($firstDuplicate['message'] ?? 'Unknown duplicate'),
+                    'Duplicate invoice detected: '.($firstDuplicate['message'] ?? 'Unknown duplicate'),
                     ErrorCode::VAL_INVALID_FORMAT,
                     ['duplicates' => $duplicateCheck['duplicates']]
                 );
@@ -425,21 +426,21 @@ class SubmissionService
     private function verifyInvoiceState(Invoice $invoice): void
     {
         // Check invoice has required data
-        if (!$invoice->signed_xml) {
+        if (! $invoice->signed_xml) {
             throw new FatooraException(
                 'Invoice must be signed before submission',
                 ErrorCode::VAL_MISSING_REQUIRED_FIELD
             );
         }
 
-        if (!$invoice->hash) {
+        if (! $invoice->hash) {
             throw new FatooraException(
                 'Invoice hash is missing',
                 ErrorCode::ZATCA_INVALID_HASH
             );
         }
 
-        if (!$invoice->qr_code) {
+        if (! $invoice->qr_code) {
             throw new FatooraException(
                 'QR code is missing',
                 ErrorCode::ZATCA_INVALID_QR_CODE
@@ -569,8 +570,8 @@ class SubmissionService
             'zatca_invoice_hash' => $response->validationResults['invoiceHash'] ?? null,
             'clearance_status' => $response->clearanceStatus,
             'reporting_status' => $response->reportingStatus,
-            'zatca_warnings' => !empty($warnings) ? $warnings : null,
-            'zatca_errors' => !empty($errors) ? $errors : null,
+            'zatca_warnings' => ! empty($warnings) ? $warnings : null,
+            'zatca_errors' => ! empty($errors) ? $errors : null,
             'completed_at' => now(),
         ]);
 
@@ -665,7 +666,7 @@ class SubmissionService
      */
     public function retry(InvoiceSubmission $submission): array
     {
-        if (!in_array($submission->state, ['failed', 'rejected'])) {
+        if (! in_array($submission->state, ['failed', 'rejected'])) {
             throw new FatooraException(
                 'Only failed or rejected submissions can be retried',
                 ErrorCode::VAL_INVALID_FORMAT
@@ -673,7 +674,7 @@ class SubmissionService
         }
 
         $errorCode = ErrorCode::tryFrom($submission->last_error_code);
-        if ($errorCode && !$errorCode->isRetryable()) {
+        if ($errorCode && ! $errorCode->isRetryable()) {
             throw new FatooraException(
                 'This error is not retryable',
                 ErrorCode::VAL_INVALID_FORMAT
@@ -700,7 +701,7 @@ class SubmissionService
      */
     public function cancel(InvoiceSubmission $submission, string $reason): bool
     {
-        if (!in_array($submission->state, ['draft', 'queued'])) {
+        if (! in_array($submission->state, ['draft', 'queued'])) {
             return false;
         }
 
@@ -749,7 +750,7 @@ class SubmissionService
             'from_state' => $fromState,
             'to_state' => $toState,
             'trigger' => $trigger,
-            'context' => !empty($context) ? json_encode($context) : null,
+            'context' => ! empty($context) ? json_encode($context) : null,
             'actor_type' => auth()->check() ? 'user' : 'system',
             'actor_id' => auth()->id(),
             'ip_address' => request()->ip(),
@@ -806,7 +807,7 @@ class SubmissionService
     {
         $submission = InvoiceSubmission::with(['invoice', 'stateLogs'])->find($submissionId);
 
-        if (!$submission) {
+        if (! $submission) {
             return null;
         }
 
@@ -828,7 +829,7 @@ class SubmissionService
             'queued_at' => $submission->queued_at?->toIso8601String(),
             'submitted_at' => $submission->submitted_at?->toIso8601String(),
             'completed_at' => $submission->completed_at?->toIso8601String(),
-            'state_history' => $submission->stateLogs->map(fn($log) => [
+            'state_history' => $submission->stateLogs->map(fn ($log) => [
                 'from' => $log->from_state,
                 'to' => $log->to_state,
                 'trigger' => $log->trigger,

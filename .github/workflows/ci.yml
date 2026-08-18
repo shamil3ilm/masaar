@@ -1,0 +1,112 @@
+# Continuous integration for the Masaar compliance platform.
+#
+# The test suite is the only thing standing between a refactor and a
+# cross-tenant leak: tests/Feature/Security sweeps the router for unguarded
+# routes and proves tenant scoping holds. Nothing enforced that automatically
+# before this workflow existed, so security-critical changes merged unverified.
+#
+# PHP 8.4 is required by the dependency tree (symfony/* and pest/*), not a
+# preference. Keep this in step with the "php" constraint in composer.json.
+
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PHP_VERSION: '8.4'
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP ${{ env.PHP_VERSION }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          # sqlite3/pdo_sqlite back the in-memory test database declared in
+          # phpunit.xml; bcmath is required for monetary arithmetic.
+          extensions: openssl, mbstring, bcmath, dom, xml, curl, zip, fileinfo, tokenizer, sqlite3, pdo_sqlite
+          coverage: none
+
+      - name: Validate composer.json
+        run: composer validate --strict --no-check-publish
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache/files
+          key: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      # .env.example ships APP_ENV=production, so both generators would stop for
+      # an "are you sure?" confirmation and hang the runner. --force skips it.
+      # phpunit.xml overrides APP_ENV to "testing" for the run itself.
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+          php artisan jwt:secret --force
+
+      - name: Run test suite
+        run: php artisan test
+
+  # Blocking. The codebase was formatted with Pint on 2026-08-18 (~180 files)
+  # and the suite was re-run green afterwards, so this gate starts satisfied.
+  #
+  # Note for anyone running Pint by hand: some fixer combinations need more
+  # than one pass to converge. If `pint --test` still reports files straight
+  # after `pint`, run it again — the second pass settles it.
+  formatting:
+    name: Formatting
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP ${{ env.PHP_VERSION }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Check formatting
+        run: vendor/bin/pint --test
+
+  security:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP ${{ env.PHP_VERSION }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          coverage: none
+
+      # Reports known CVEs in locked dependencies. composer.lock had gone
+      # unreviewed for months; this makes that visible on every push.
+      - name: Audit dependencies
+        run: composer audit --locked

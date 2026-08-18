@@ -8,6 +8,7 @@ use App\Domains\Licensing\Enums\ApiScope;
 use App\Domains\Licensing\Enums\LicenseEnvironment;
 use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Enums\LicenseTier;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -42,9 +43,9 @@ use Illuminate\Support\Str;
  * @property bool $multi_tenant_enabled
  * @property bool $webhook_enabled
  * @property LicenseStatus $status
- * @property \Carbon\Carbon|null $activated_at
- * @property \Carbon\Carbon|null $expires_at
- * @property \Carbon\Carbon|null $suspended_at
+ * @property Carbon|null $activated_at
+ * @property Carbon|null $expires_at
+ * @property Carbon|null $suspended_at
  * @property string|null $suspension_reason
  * @property string|null $issued_by
  * @property string|null $notes
@@ -115,7 +116,7 @@ class License extends Model
         // Prevent force deletion (hard delete)
         static::forceDeleting(function ($model) {
             throw new \RuntimeException(
-                'Licenses cannot be permanently deleted. Use soft delete (revoke) instead. ' .
+                'Licenses cannot be permanently deleted. Use soft delete (revoke) instead. '.
                 'This is a compliance requirement to preserve audit trails.'
             );
         });
@@ -128,7 +129,8 @@ class License extends Model
     {
         $environment = $environment ?? LicenseEnvironment::Sandbox;
         $prefix = $environment->getApiKeyPrefix();
-        return $prefix . Str::random(48);
+
+        return $prefix.Str::random(48);
     }
 
     /**
@@ -223,7 +225,7 @@ class License extends Model
      */
     public function hasFeature(string $feature): bool
     {
-        if (!is_array($this->features)) {
+        if (! is_array($this->features)) {
             return false;
         }
 
@@ -242,7 +244,7 @@ class License extends Model
     {
         $scopeValue = $scope instanceof ApiScope ? $scope->value : $scope;
 
-        if (!is_array($this->scopes)) {
+        if (! is_array($this->scopes)) {
             return false;
         }
 
@@ -258,10 +260,11 @@ class License extends Model
     public function hasAllScopes(array $scopes): bool
     {
         foreach ($scopes as $scope) {
-            if (!$this->hasScope($scope)) {
+            if (! $this->hasScope($scope)) {
                 return false;
             }
         }
+
         return true;
     }
 
@@ -275,6 +278,7 @@ class License extends Model
                 return true;
             }
         }
+
         return false;
     }
 
@@ -301,7 +305,7 @@ class License extends Model
      */
     public function getDaysUntilExpiry(): ?int
     {
-        if (!$this->expires_at) {
+        if (! $this->expires_at) {
             return null; // No expiry
         }
 

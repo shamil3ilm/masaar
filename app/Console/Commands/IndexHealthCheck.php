@@ -57,18 +57,21 @@ class IndexHealthCheck extends Command
      * Sequential scan threshold per hour.
      */
     private const SEQ_SCAN_WARNING = 1000;
+
     private const SEQ_SCAN_CRITICAL = 5000;
 
     /**
      * Table bloat thresholds (percentage).
      */
     private const TABLE_BLOAT_WARNING = 20;
+
     private const TABLE_BLOAT_CRITICAL = 50;
 
     /**
      * Index bloat thresholds (percentage).
      */
     private const INDEX_BLOAT_WARNING = 30;
+
     private const INDEX_BLOAT_CRITICAL = 60;
 
     public function handle(): int
@@ -104,7 +107,7 @@ class IndexHealthCheck extends Command
         $results['database'] = $this->getDatabaseStats();
 
         // Send alerts if requested
-        if ($sendAlerts && !empty($results['alerts'])) {
+        if ($sendAlerts && ! empty($results['alerts'])) {
             $this->sendAlerts($results['alerts']);
         }
 
@@ -138,7 +141,7 @@ class IndexHealthCheck extends Command
         ];
 
         // Check if table exists
-        if (!$this->tableExists($table)) {
+        if (! $this->tableExists($table)) {
             return [
                 'table' => $table,
                 'status' => 'skipped',
@@ -176,7 +179,7 @@ class IndexHealthCheck extends Command
         }
 
         // Check for missing index usage
-        if (!$queryResult['used_index']) {
+        if (! $queryResult['used_index']) {
             $result['recommendations'][] = 'Query did not use index - verify index exists for this query pattern';
             if ($result['status'] === 'healthy') {
                 $result['status'] = 'warning';
@@ -211,7 +214,7 @@ class IndexHealthCheck extends Command
         try {
             if ($driver === 'pgsql') {
                 // PostgreSQL: Use EXPLAIN ANALYZE
-                $explainQuery = "EXPLAIN ANALYZE " . $query;
+                $explainQuery = 'EXPLAIN ANALYZE '.$query;
                 $explainResult = DB::select($explainQuery, $params);
                 $executionTime = $this->parsePostgresExecutionTime($explainResult);
                 $usedIndex = $this->checkPostgresUsedIndex($explainResult);
@@ -220,7 +223,7 @@ class IndexHealthCheck extends Command
                 DB::select($query, $params);
                 $executionTime = (microtime(true) - $startTime) * 1000;
 
-                $explainResult = DB::select("EXPLAIN " . $query, $params);
+                $explainResult = DB::select('EXPLAIN '.$query, $params);
                 $usedIndex = $this->checkMysqlUsedIndex($explainResult);
             } else {
                 // Fallback: Just measure
@@ -253,6 +256,7 @@ class IndexHealthCheck extends Command
                 return (float) $matches[1];
             }
         }
+
         return 0;
     }
 
@@ -267,6 +271,7 @@ class IndexHealthCheck extends Command
                 return true;
             }
         }
+
         return false;
     }
 
@@ -281,6 +286,7 @@ class IndexHealthCheck extends Command
                 return true;
             }
         }
+
         return false;
     }
 
@@ -318,18 +324,20 @@ class IndexHealthCheck extends Command
         try {
             if ($driver === 'pgsql') {
                 $result = DB::selectOne(
-                    "SELECT pg_total_relation_size(?) / 1024 / 1024 AS size_mb",
+                    'SELECT pg_total_relation_size(?) / 1024 / 1024 AS size_mb',
                     [$table]
                 );
+
                 return round((float) ($result->size_mb ?? 0), 2);
             } elseif ($driver === 'mysql') {
                 $database = DB::connection()->getDatabaseName();
                 $result = DB::selectOne(
-                    "SELECT ROUND((data_length + index_length) / 1024 / 1024, 2) AS size_mb
+                    'SELECT ROUND((data_length + index_length) / 1024 / 1024, 2) AS size_mb
                      FROM information_schema.tables
-                     WHERE table_schema = ? AND table_name = ?",
+                     WHERE table_schema = ? AND table_name = ?',
                     [$database, $table]
                 );
+
                 return (float) ($result->size_mb ?? 0);
             }
         } catch (\Exception $e) {
@@ -357,7 +365,7 @@ class IndexHealthCheck extends Command
 
                 // Get database size
                 $size = DB::selectOne(
-                    "SELECT pg_size_pretty(pg_database_size(current_database())) AS size"
+                    'SELECT pg_size_pretty(pg_database_size(current_database())) AS size'
                 );
                 $stats['database_size'] = $size->size ?? 'unknown';
             } elseif ($driver === 'mysql') {
@@ -383,7 +391,7 @@ class IndexHealthCheck extends Command
             // For now, just log at critical level
         }
 
-        $this->error('Alerts sent: ' . count($alerts));
+        $this->error('Alerts sent: '.count($alerts));
     }
 
     /**
@@ -393,7 +401,7 @@ class IndexHealthCheck extends Command
     {
         $this->newLine();
         $this->info('=== Index Health Check Results ===');
-        $this->line('Checked at: ' . $results['checked_at']);
+        $this->line('Checked at: '.$results['checked_at']);
         $this->newLine();
 
         foreach ($results['tables'] as $table => $data) {
@@ -407,14 +415,14 @@ class IndexHealthCheck extends Command
             $this->line("<fg={$statusColor}>[{$data['status']}]</> {$table}");
 
             if (isset($data['metrics'])) {
-                $this->line("    Rows: " . number_format($data['metrics']['row_count'] ?? 0));
-                $this->line("    Size: " . ($data['metrics']['size_mb'] ?? 'N/A') . " MB");
-                $this->line("    Query time: " . ($data['metrics']['sample_query_ms'] ?? 'N/A') . " ms");
-                $this->line("    Used index: " . ($data['metrics']['used_index'] ? 'Yes' : 'No'));
+                $this->line('    Rows: '.number_format($data['metrics']['row_count'] ?? 0));
+                $this->line('    Size: '.($data['metrics']['size_mb'] ?? 'N/A').' MB');
+                $this->line('    Query time: '.($data['metrics']['sample_query_ms'] ?? 'N/A').' ms');
+                $this->line('    Used index: '.($data['metrics']['used_index'] ? 'Yes' : 'No'));
             }
 
-            if (!empty($data['recommendations'])) {
-                $this->line("    Recommendations:");
+            if (! empty($data['recommendations'])) {
+                $this->line('    Recommendations:');
                 foreach ($data['recommendations'] as $rec) {
                     $this->line("      - {$rec}");
                 }
@@ -439,9 +447,9 @@ class IndexHealthCheck extends Command
             'critical' => 'red',
             default => 'white',
         };
-        $this->line("<fg={$overallColor};options=bold>Overall Status: " . strtoupper($results['overall_status']) . "</>");
+        $this->line("<fg={$overallColor};options=bold>Overall Status: ".strtoupper($results['overall_status']).'</>');
 
-        if (!empty($results['alerts'])) {
+        if (! empty($results['alerts'])) {
             $this->newLine();
             $this->error('ALERTS:');
             foreach ($results['alerts'] as $alert) {

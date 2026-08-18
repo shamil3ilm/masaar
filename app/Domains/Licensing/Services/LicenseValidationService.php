@@ -49,12 +49,12 @@ class LicenseValidationService
         $cacheKey = $this->getCacheKey($apiKey);
         $license = Cache::get($cacheKey);
 
-        if (!$license) {
+        if (! $license) {
             $license = License::where('api_key', $apiKey)->first();
 
-            if (!$license) {
+            if (! $license) {
                 Log::warning('Invalid API key attempted', [
-                    'api_key_prefix' => substr($apiKey, 0, 12) . '...',
+                    'api_key_prefix' => substr($apiKey, 0, 12).'...',
                 ]);
                 throw LicenseException::invalidApiKey();
             }
@@ -64,7 +64,7 @@ class LicenseValidationService
         }
 
         // Verify secret
-        if (!$license->verifySecret($apiSecret)) {
+        if (! $license->verifySecret($apiSecret)) {
             Log::warning('Invalid API secret attempted', [
                 'license_id' => $license->id,
             ]);
@@ -85,10 +85,10 @@ class LicenseValidationService
         $cacheKey = $this->getCacheKey($apiKey);
         $license = Cache::get($cacheKey);
 
-        if (!$license) {
+        if (! $license) {
             $license = License::where('api_key', $apiKey)->first();
 
-            if (!$license) {
+            if (! $license) {
                 throw LicenseException::invalidApiKey();
             }
 
@@ -206,6 +206,6 @@ class LicenseValidationService
      */
     private function getCacheKey(string $apiKey): string
     {
-        return 'license:' . hash('sha256', $apiKey);
+        return 'license:'.hash('sha256', $apiKey);
     }
 }

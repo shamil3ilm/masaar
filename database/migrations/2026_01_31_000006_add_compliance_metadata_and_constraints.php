@@ -20,17 +20,17 @@ return new class extends Migration
         // Add algorithm versioning to invoices (if not already present)
         Schema::table('invoices', function (Blueprint $table) {
             // Add compliance timestamp if not exists
-            if (!Schema::hasColumn('invoices', 'compliance_determined_at')) {
+            if (! Schema::hasColumn('invoices', 'compliance_determined_at')) {
                 $table->timestamp('compliance_determined_at')->nullable()->after('schema_version');
             }
 
             // Add signature algorithm tracking
-            if (!Schema::hasColumn('invoices', 'signature_algorithm')) {
+            if (! Schema::hasColumn('invoices', 'signature_algorithm')) {
                 $table->string('signature_algorithm', 50)->nullable()->after('compliance_determined_at');
             }
 
             // Add hash algorithm tracking
-            if (!Schema::hasColumn('invoices', 'hash_algorithm')) {
+            if (! Schema::hasColumn('invoices', 'hash_algorithm')) {
                 $table->string('hash_algorithm', 20)->nullable()->after('signature_algorithm');
             }
         });
@@ -40,13 +40,13 @@ return new class extends Migration
 
         // Add legal hold tracking to organizations
         Schema::table('organizations', function (Blueprint $table) {
-            if (!Schema::hasColumn('organizations', 'legal_hold_reference')) {
+            if (! Schema::hasColumn('organizations', 'legal_hold_reference')) {
                 $table->string('legal_hold_reference')->nullable()->after('compliance_profile');
             }
-            if (!Schema::hasColumn('organizations', 'legal_hold_at')) {
+            if (! Schema::hasColumn('organizations', 'legal_hold_at')) {
                 $table->timestamp('legal_hold_at')->nullable()->after('legal_hold_reference');
             }
-            if (!Schema::hasColumn('organizations', 'legal_hold_expires_at')) {
+            if (! Schema::hasColumn('organizations', 'legal_hold_expires_at')) {
                 $table->timestamp('legal_hold_expires_at')->nullable()->after('legal_hold_at');
             }
         });
@@ -68,7 +68,7 @@ return new class extends Migration
             if (Schema::hasColumn('invoices', 'hash_algorithm')) {
                 $columns[] = 'hash_algorithm';
             }
-            if (!empty($columns)) {
+            if (! empty($columns)) {
                 $table->dropColumn($columns);
             }
         });
@@ -84,7 +84,7 @@ return new class extends Migration
             if (Schema::hasColumn('organizations', 'legal_hold_expires_at')) {
                 $columns[] = 'legal_hold_expires_at';
             }
-            if (!empty($columns)) {
+            if (! empty($columns)) {
                 $table->dropColumn($columns);
             }
         });
@@ -96,7 +96,7 @@ return new class extends Migration
      */
     private function ensureIcvConstraint(): void
     {
-        if (!Schema::hasColumn('invoices', 'icv')) {
+        if (! Schema::hasColumn('invoices', 'icv')) {
             return;
         }
 
@@ -104,7 +104,7 @@ return new class extends Migration
             Schema::table('invoices', function (Blueprint $table) {
                 $table->unique(['organization_id', 'icv'], 'invoices_org_icv_unique');
             });
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // Index already exists, ignore
         }
     }
@@ -119,7 +119,7 @@ return new class extends Migration
             Schema::table($table, function (Blueprint $blueprint) use ($column, $indexName) {
                 $blueprint->index($column, $indexName);
             });
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // Index already exists, ignore
         }
     }

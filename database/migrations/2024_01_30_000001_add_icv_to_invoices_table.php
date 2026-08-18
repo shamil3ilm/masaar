@@ -10,22 +10,22 @@ return new class extends Migration
     {
         Schema::table('invoices', function (Blueprint $table) {
             // Invoice Counter Value - sequential per organization
-            if (!Schema::hasColumn('invoices', 'icv')) {
+            if (! Schema::hasColumn('invoices', 'icv')) {
                 $table->unsignedBigInteger('icv')->nullable()->after('qr_code');
             }
 
             // Document type for credit/debit notes
-            if (!Schema::hasColumn('invoices', 'document_type')) {
+            if (! Schema::hasColumn('invoices', 'document_type')) {
                 $table->string('document_type')->nullable()->after('type');
             }
 
             // Payment means code
-            if (!Schema::hasColumn('invoices', 'payment_means_code')) {
+            if (! Schema::hasColumn('invoices', 'payment_means_code')) {
                 $table->string('payment_means_code', 10)->nullable()->after('buyer_address');
             }
 
             // Billing reference for credit/debit notes
-            if (!Schema::hasColumn('invoices', 'billing_reference_id')) {
+            if (! Schema::hasColumn('invoices', 'billing_reference_id')) {
                 $table->string('billing_reference_id')->nullable()->after('payment_means_code');
             }
         });
@@ -36,7 +36,7 @@ return new class extends Migration
                 Schema::table('invoices', function (Blueprint $table) {
                     $table->unique(['organization_id', 'icv'], 'invoices_org_icv_unique');
                 });
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 // Index might already exist, ignore
             }
         }
@@ -47,7 +47,7 @@ return new class extends Migration
         Schema::table('invoices', function (Blueprint $table) {
             try {
                 $table->dropUnique('invoices_org_icv_unique');
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 // Index might not exist
             }
             $table->dropColumn(['icv', 'document_type', 'payment_means_code', 'billing_reference_id']);

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Domains\Auth\Models\User;
 use App\Domains\Organization\Models\ComplianceProfile;
 use App\Domains\Organization\Models\Organization;
-use App\Domains\Auth\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -15,6 +15,7 @@ function makeComplianceAuthToken(): array
     $user = User::factory()->create();
     $user->organizations()->attach($org->id, ['role' => 'admin', 'status' => 'active']);
     $token = auth('api')->login($user);
+
     return [$org, $user, $token];
 }
 
@@ -23,10 +24,10 @@ it('lists compliance profiles for an organization', function () {
 
     ComplianceProfile::create([
         'organization_id' => $org->id,
-        'jurisdiction'    => 'SA',
-        'engine'          => 'fatoora',
-        'status'          => 'active',
-        'settings'        => [],
+        'jurisdiction' => 'SA',
+        'engine' => 'fatoora',
+        'status' => 'active',
+        'settings' => [],
     ]);
 
     $response = $this->withToken($token)
@@ -43,9 +44,9 @@ it('creates a compliance profile', function () {
     $response = $this->withToken($token)
         ->postJson("/api/organizations/{$org->id}/compliance-profiles", [
             'jurisdiction' => 'AE',
-            'engine'       => 'fta',
-            'status'       => 'pending_onboarding',
-            'settings'     => ['vat_number' => '100000000000003'],
+            'engine' => 'fta',
+            'status' => 'pending_onboarding',
+            'settings' => ['vat_number' => '100000000000003'],
         ]);
 
     $response->assertStatus(201)
@@ -58,10 +59,10 @@ it('deletes a compliance profile', function () {
 
     $profile = ComplianceProfile::create([
         'organization_id' => $org->id,
-        'jurisdiction'    => 'SA',
-        'engine'          => 'fatoora',
-        'status'          => 'active',
-        'settings'        => [],
+        'jurisdiction' => 'SA',
+        'engine' => 'fatoora',
+        'status' => 'active',
+        'settings' => [],
     ]);
 
     $response = $this->withToken($token)

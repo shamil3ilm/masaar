@@ -69,7 +69,7 @@ class ProcessFatooraSubmission implements ShouldQueue
      */
     public function uniqueId(): string
     {
-        return 'zatca-submission-' . $this->submission->id;
+        return 'zatca-submission-'.$this->submission->id;
     }
 
     /**
@@ -96,6 +96,7 @@ class ProcessFatooraSubmission implements ShouldQueue
                 'submission_id' => $submission->id,
                 'state' => $submission->state,
             ]);
+
             return;
         }
 
@@ -293,7 +294,7 @@ class ProcessFatooraSubmission implements ShouldQueue
             'from_state' => $fromState,
             'to_state' => $toState,
             'trigger' => $trigger,
-            'context' => !empty($context) ? json_encode($context) : null,
+            'context' => ! empty($context) ? json_encode($context) : null,
             'actor_type' => 'system',
             'actor_id' => null,
             'ip_address' => null,
@@ -346,7 +347,7 @@ class ProcessFatooraSubmission implements ShouldQueue
         $submission->update([
             'state' => 'failed',
             'state_changed_at' => now(),
-            'last_error_message' => 'Max retries exceeded: ' . $exception->getMessage(),
+            'last_error_message' => 'Max retries exceeded: '.$exception->getMessage(),
             'next_retry_at' => null,
         ]);
 

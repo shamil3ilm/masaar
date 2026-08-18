@@ -68,7 +68,7 @@ class AdminController extends Controller
     {
         $organization = DB::table('organizations')->where('id', $id)->first();
 
-        if (!$organization) {
+        if (! $organization) {
             abort(404);
         }
 

@@ -24,7 +24,7 @@ import com.google.gson.GsonBuilder;
  *
  * <pre>{@code
  * CompliPayClient client = new CompliPayClient.Builder()
- *     .baseUrl("https://api.complipay.com")
+ *     .baseUrl("https://api.masaar.sa")
  *     .apiKey("your_api_key")
  *     .apiSecret("your_api_secret")
  *     .build();

@@ -5,7 +5,7 @@ use App\Domains\Compliance\Fatoora\Services\QrCodeGenerator;
 use App\Domains\Compliance\Fatoora\Services\TlvEncoder;
 
 it('generates Phase 1 QR code with 5 tags', function () {
-    $encoder = new TlvEncoder();
+    $encoder = new TlvEncoder;
     $generator = new QrCodeGenerator($encoder);
 
     $data = new QrCodeData(
@@ -30,7 +30,7 @@ it('generates Phase 1 QR code with 5 tags', function () {
 });
 
 it('generates Phase 2 QR code with hash', function () {
-    $encoder = new TlvEncoder();
+    $encoder = new TlvEncoder;
     $generator = new QrCodeGenerator($encoder);
 
     // Phase 2 requires all cryptographic fields (tags 6-9)
@@ -56,7 +56,7 @@ it('generates Phase 2 QR code with hash', function () {
 });
 
 it('creates QrCodeData from invoice data', function () {
-    $timestamp = new \DateTime('2024-01-15 10:30:00');
+    $timestamp = new DateTime('2024-01-15 10:30:00');
 
     $data = QrCodeData::fromInvoice(
         sellerName: 'Test Seller',

@@ -36,13 +36,13 @@ class CheckPlatformLicense extends Command
             $this->info('╚════════════════════════════════════════════════════════════╝');
             $this->newLine();
 
-            $this->line("  <fg=cyan>Partner:</fg=cyan>            " . ($result['partner'] ?? 'N/A'));
-            $this->line("  <fg=cyan>Type:</fg=cyan>               " . ($result['type'] ?? 'N/A'));
-            $this->line("  <fg=cyan>Expires:</fg=cyan>            " . ($result['expires_at'] ?? 'N/A'));
-            $this->line("  <fg=cyan>Days Remaining:</fg=cyan>     " . ($result['days_remaining'] ?? 'N/A'));
-            $this->line("  <fg=cyan>Validation Method:</fg=cyan>  " . ($result['validation_method'] ?? 'N/A'));
+            $this->line('  <fg=cyan>Partner:</fg=cyan>            '.($result['partner'] ?? 'N/A'));
+            $this->line('  <fg=cyan>Type:</fg=cyan>               '.($result['type'] ?? 'N/A'));
+            $this->line('  <fg=cyan>Expires:</fg=cyan>            '.($result['expires_at'] ?? 'N/A'));
+            $this->line('  <fg=cyan>Days Remaining:</fg=cyan>     '.($result['days_remaining'] ?? 'N/A'));
+            $this->line('  <fg=cyan>Validation Method:</fg=cyan>  '.($result['validation_method'] ?? 'N/A'));
 
-            if (!empty($result['features'])) {
+            if (! empty($result['features'])) {
                 $this->newLine();
                 $this->line('  <fg=cyan>Features:</fg=cyan>');
                 foreach ($result['features'] as $feature => $value) {
@@ -59,6 +59,7 @@ class CheckPlatformLicense extends Command
             }
 
             $this->newLine();
+
             return Command::SUCCESS;
         } else {
             $this->error('╔════════════════════════════════════════════════════════════╗');
@@ -66,7 +67,7 @@ class CheckPlatformLicense extends Command
             $this->error('╚════════════════════════════════════════════════════════════╝');
             $this->newLine();
 
-            $this->line("  <fg=red>Error:</fg=red> " . $result['message']);
+            $this->line('  <fg=red>Error:</fg=red> '.$result['message']);
             $this->newLine();
             $this->line('  To resolve:');
             $this->line('  1. Ensure PLATFORM_LICENSE_KEY is set in .env');

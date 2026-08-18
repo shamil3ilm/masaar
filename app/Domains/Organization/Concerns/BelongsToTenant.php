@@ -34,7 +34,7 @@ trait BelongsToTenant
 {
     public static function bootBelongsToTenant(): void
     {
-        static::addGlobalScope(new TenantScope());
+        static::addGlobalScope(new TenantScope);
 
         // New records inherit the active tenant, so a caller cannot create a
         // row that its own queries would then be unable to see.

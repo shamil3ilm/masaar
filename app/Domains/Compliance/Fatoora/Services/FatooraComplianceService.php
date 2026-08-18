@@ -103,7 +103,7 @@ class FatooraComplianceService
 
         // Update QR in XML if signed
         if ($signedXml !== null) {
-            $dom = new \DOMDocument();
+            $dom = new \DOMDocument;
             Xml::load($dom, $signedXml);
             $this->updateQrInXml($dom, $qrCode);
             $signedXml = $dom->saveXML();
@@ -222,8 +222,8 @@ class FatooraComplianceService
      * - E = Exempt (not subject to VAT with exemption reason)
      * - O = Out of scope (services outside KSA)
      *
-     * @param float $taxRate Tax rate percentage
-     * @param string|null $exemptionCode Optional exemption reason code
+     * @param  float  $taxRate  Tax rate percentage
+     * @param  string|null  $exemptionCode  Optional exemption reason code
      * @return string Tax category code
      */
     private function getTaxCategory(float $taxRate, ?string $exemptionCode = null): string
@@ -237,7 +237,7 @@ class FatooraComplianceService
                 str_starts_with($exemptionCode, 'VATEX-SA-OOS') => 'O', // Out of scope
                 str_starts_with($exemptionCode, 'VATEX-SA-HEA') => 'Z', // Zero-rated healthcare
                 str_starts_with($exemptionCode, 'VATEX-SA-EDU') => 'Z', // Zero-rated education
-                str_starts_with($exemptionCode, 'VATEX-SA-')    => 'E', // All other exempt
+                str_starts_with($exemptionCode, 'VATEX-SA-') => 'E', // All other exempt
                 default => $taxRate > 0 ? 'S' : 'Z',
             };
         }

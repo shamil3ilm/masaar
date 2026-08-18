@@ -6,6 +6,7 @@ namespace Tests\Feature\Invoice;
 
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -77,7 +78,7 @@ class IcvAllocationTest extends TestCase
         $organizationId = $this->makeOrganization()->id;
         $this->makeInvoice($organizationId, 'INV-1');
 
-        $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->expectException(QueryException::class);
 
         $this->makeInvoice($organizationId, 'INV-2', ['icv' => 1]);
     }

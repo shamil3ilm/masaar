@@ -19,15 +19,19 @@ class CertificateService
 {
     // ZATCA-specific OIDs
     private const OID_ORGANIZATION_IDENTIFIER = '2.5.4.97';
+
     private const OID_INVOICE_TYPE = '1.3.6.1.4.1.311.20.2';
+
     private const OID_ZATCA_REGISTERED_ADDRESS = '2.5.4.26';
+
     private const OID_ZATCA_BUSINESS_CATEGORY = '2.5.4.15';
 
     /**
      * Generate Certificate Signing Request (CSR).
      *
-     * @param CsrData $data CSR configuration data
+     * @param  CsrData  $data  CSR configuration data
      * @return array{csr: string, privateKey: string}
+     *
      * @throws CertificateException
      */
     public function generateCsr(CsrData $data): array
@@ -46,7 +50,7 @@ class CertificateService
             $privateKey = openssl_pkey_new($keyConfig);
 
             if ($privateKey === false) {
-                throw new CertificateException('Failed to generate private key: ' . openssl_error_string());
+                throw new CertificateException('Failed to generate private key: '.openssl_error_string());
             }
 
             // Build distinguished name with ZATCA requirements
@@ -68,7 +72,7 @@ class CertificateService
             $csr = openssl_csr_new($dn, $privateKey, $csrConfig);
 
             if ($csr === false) {
-                throw new CertificateException('Failed to generate CSR: ' . openssl_error_string());
+                throw new CertificateException('Failed to generate CSR: '.openssl_error_string());
             }
 
             // Export CSR
@@ -153,7 +157,7 @@ EOL;
         // Ensure VAT number is 15 digits
         $cleanVat = preg_replace('/[^0-9]/', '', $vatNumber);
 
-        return 'VATSA-' . str_pad($cleanVat, 15, '0', STR_PAD_LEFT);
+        return 'VATSA-'.str_pad($cleanVat, 15, '0', STR_PAD_LEFT);
     }
 
     /**
@@ -170,7 +174,7 @@ EOL;
         $entries[] = "dirName.2 = UID={$data->vatNumber}";
 
         // Title - Invoice type (1100 for all types)
-        $entries[] = "dirName.3 = title=1100";
+        $entries[] = 'dirName.3 = title=1100';
 
         // Registered address
         if (! empty($data->location)) {
@@ -188,8 +192,9 @@ EOL;
     /**
      * Parse certificate and extract details.
      *
-     * @param string $certificatePem PEM-encoded certificate
+     * @param  string  $certificatePem  PEM-encoded certificate
      * @return array Certificate details
+     *
      * @throws CertificateException
      */
     public function parseCertificate(string $certificatePem): array
@@ -197,7 +202,7 @@ EOL;
         $cert = openssl_x509_read($certificatePem);
 
         if ($cert === false) {
-            throw new CertificateException('Invalid certificate: ' . openssl_error_string());
+            throw new CertificateException('Invalid certificate: '.openssl_error_string());
         }
 
         $details = openssl_x509_parse($cert);
@@ -225,7 +230,7 @@ EOL;
     /**
      * Check if certificate is valid (not expired).
      *
-     * @param string $certificatePem PEM-encoded certificate
+     * @param  string  $certificatePem  PEM-encoded certificate
      * @return bool True if valid
      */
     public function isValid(string $certificatePem): bool
@@ -243,8 +248,7 @@ EOL;
     /**
      * Get certificate expiry date in UTC.
      *
-     * @param string $certificatePem PEM-encoded certificate
-     * @return \DateTimeImmutable|null
+     * @param  string  $certificatePem  PEM-encoded certificate
      */
     public function getExpiryDate(string $certificatePem): ?\DateTimeImmutable
     {
@@ -264,8 +268,9 @@ EOL;
      * Parses the X.509 certificate ASN.1 structure to extract
      * the digital signature value.
      *
-     * @param string $certificatePem PEM-encoded certificate
+     * @param  string  $certificatePem  PEM-encoded certificate
      * @return string Raw signature bytes (not base64 encoded)
+     *
      * @throws CertificateException
      */
     public function getCertificateSignature(string $certificatePem): string
@@ -283,7 +288,7 @@ EOL;
 
             return $signature;
         } catch (\Exception $e) {
-            throw new CertificateException('Failed to extract certificate signature: ' . $e->getMessage());
+            throw new CertificateException('Failed to extract certificate signature: '.$e->getMessage());
         }
     }
 
@@ -399,8 +404,9 @@ EOL;
     /**
      * Load certificate from file.
      *
-     * @param string $path File path
+     * @param  string  $path  File path
      * @return string PEM-encoded certificate
+     *
      * @throws CertificateException
      */
     public function loadFromFile(string $path): string
@@ -421,9 +427,10 @@ EOL;
     /**
      * Load private key from file.
      *
-     * @param string $path File path
-     * @param string|null $passphrase Optional passphrase
+     * @param  string  $path  File path
+     * @param  string|null  $passphrase  Optional passphrase
      * @return string PEM-encoded private key
+     *
      * @throws CertificateException
      */
     public function loadPrivateKey(string $path, ?string $passphrase = null): string
@@ -442,7 +449,7 @@ EOL;
         $key = openssl_pkey_get_private($content, $passphrase);
 
         if ($key === false) {
-            throw new CertificateException('Invalid private key: ' . openssl_error_string());
+            throw new CertificateException('Invalid private key: '.openssl_error_string());
         }
 
         return $content;
@@ -454,9 +461,10 @@ EOL;
      * This method checks if a certificate has been revoked by the issuer.
      * It attempts OCSP first (faster, real-time), then falls back to CRL.
      *
-     * @param string $certificatePem PEM-encoded certificate to check
-     * @param string|null $issuerCertPem PEM-encoded issuer certificate (optional, extracted if not provided)
+     * @param  string  $certificatePem  PEM-encoded certificate to check
+     * @param  string|null  $issuerCertPem  PEM-encoded issuer certificate (optional, extracted if not provided)
      * @return array{revoked: bool, method: string, reason: string|null, revokedAt: string|null}
+     *
      * @throws CertificateException
      */
     public function checkRevocationStatus(string $certificatePem, ?string $issuerCertPem = null): array
@@ -498,6 +506,7 @@ EOL;
                     'error' => $e->getMessage(),
                     'crl_url' => $crlUrl,
                 ]);
+
                 continue;
             }
         }
@@ -515,9 +524,9 @@ EOL;
     /**
      * Check certificate revocation via OCSP (Online Certificate Status Protocol).
      *
-     * @param string $certificatePem Certificate to check
-     * @param string|null $issuerCertPem Issuer certificate
-     * @param string $ocspUrl OCSP responder URL
+     * @param  string  $certificatePem  Certificate to check
+     * @param  string|null  $issuerCertPem  Issuer certificate
+     * @param  string  $ocspUrl  OCSP responder URL
      * @return array|null Revocation status or null if check failed
      */
     private function checkOcsp(string $certificatePem, ?string $issuerCertPem, string $ocspUrl): ?array
@@ -594,8 +603,8 @@ EOL;
     /**
      * Check certificate revocation via CRL (Certificate Revocation List).
      *
-     * @param string $certificatePem Certificate to check
-     * @param string $crlUrl CRL distribution point URL
+     * @param  string  $certificatePem  Certificate to check
+     * @param  string  $crlUrl  CRL distribution point URL
      * @return array|null Revocation status or null if check failed
      */
     private function checkCrl(string $certificatePem, string $crlUrl): ?array
@@ -756,7 +765,7 @@ EOL;
     /**
      * Extract OCSP responder URL from certificate extensions.
      *
-     * @param array $extensions Certificate extensions
+     * @param  array  $extensions  Certificate extensions
      * @return string|null OCSP URL or null if not found
      */
     private function extractOcspUrl(array $extensions): ?string
@@ -779,7 +788,7 @@ EOL;
     /**
      * Extract CRL distribution point URLs from certificate extensions.
      *
-     * @param array $extensions Certificate extensions
+     * @param  array  $extensions  Certificate extensions
      * @return array List of CRL URLs
      */
     private function extractCrlUrls(array $extensions): array
@@ -804,9 +813,9 @@ EOL;
     /**
      * Verify certificate chain including revocation status.
      *
-     * @param string $certificatePem End-entity certificate
-     * @param array $chainPems Array of intermediate/root certificates
-     * @param bool $checkRevocation Whether to check revocation status
+     * @param  string  $certificatePem  End-entity certificate
+     * @param  array  $chainPems  Array of intermediate/root certificates
+     * @param  bool  $checkRevocation  Whether to check revocation status
      * @return array{valid: bool, errors: array, chain: array}
      */
     public function verifyCertificateChain(string $certificatePem, array $chainPems = [], bool $checkRevocation = true): array
@@ -815,7 +824,7 @@ EOL;
         $chainInfo = [];
 
         // Verify the certificate itself
-        if (!$this->isValid($certificatePem)) {
+        if (! $this->isValid($certificatePem)) {
             $errors[] = 'Certificate is expired or not yet valid';
         }
 
@@ -832,7 +841,7 @@ EOL;
                     );
                 }
             } catch (\Exception $e) {
-                $errors[] = 'Could not verify revocation status: ' . $e->getMessage();
+                $errors[] = 'Could not verify revocation status: '.$e->getMessage();
             }
         }
 
@@ -850,7 +859,7 @@ EOL;
                 ];
 
                 // Check if certificate in chain is expired
-                if (!$this->isValid($certPem)) {
+                if (! $this->isValid($certPem)) {
                     $errors[] = sprintf('Certificate at index %d is expired', $index);
                 }
             } catch (CertificateException $e) {
@@ -868,7 +877,7 @@ EOL;
     /**
      * Get days until certificate expiry.
      *
-     * @param string $certificatePem PEM-encoded certificate
+     * @param  string  $certificatePem  PEM-encoded certificate
      * @return int|null Days until expiry, negative if expired, null on error
      */
     public function getDaysUntilExpiry(string $certificatePem): ?int
@@ -893,7 +902,7 @@ EOL;
      * - Revocation status
      * - Validity for signing
      *
-     * @param string $certificatePem PEM-encoded certificate
+     * @param  string  $certificatePem  PEM-encoded certificate
      * @return array{valid: bool, errors: array, warnings: array, days_until_expiry: int|null}
      */
     public function validateForSubmission(string $certificatePem): array

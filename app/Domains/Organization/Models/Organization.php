@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Models;
 
+use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Fatoora\DTOs\AddressData;
 use App\Domains\Invoice\Models\Invoice;
-use App\Domains\Auth\Models\User;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
-use App\Domains\Organization\Models\ComplianceProfile;
-use App\Domains\Organization\Models\OrganizationGroup;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
