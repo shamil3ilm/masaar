@@ -131,7 +131,7 @@ class AdminDashboardController extends Controller
     {
         $limit = min((int) $request->query('limit', 50), 200);
 
-        $variances = DB::table('environment_variance_log')
+        $variances = DB::table('variance_logs')
             ->orderByDesc('created_at')
             ->limit($limit)
             ->get()
@@ -150,18 +150,18 @@ class AdminDashboardController extends Controller
 
         // Aggregate statistics
         $stats = [
-            'total_variances' => DB::table('environment_variance_log')->count(),
-            'unresolved' => DB::table('environment_variance_log')
+            'total_variances' => DB::table('variance_logs')->count(),
+            'unresolved' => DB::table('variance_logs')
                 ->whereNull('resolved_at')
                 ->count(),
-            'by_rule_code' => DB::table('environment_variance_log')
+            'by_rule_code' => DB::table('variance_logs')
                 ->selectRaw('rule_code, COUNT(*) as count')
                 ->groupBy('rule_code')
                 ->orderByDesc('count')
                 ->limit(10)
                 ->pluck('count', 'rule_code')
                 ->toArray(),
-            'last_7_days' => DB::table('environment_variance_log')
+            'last_7_days' => DB::table('variance_logs')
                 ->where('created_at', '>=', now()->subDays(7))
                 ->count(),
         ];

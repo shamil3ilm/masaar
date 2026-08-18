@@ -28,7 +28,7 @@ class FtaSubmission extends Model
     use HasUuids;
     use SoftDeletes;
 
-    protected $table = 'uae_fta_submissions';
+    protected $table = 'fta_submissions';
 
     protected $fillable = [
         'invoice_id',

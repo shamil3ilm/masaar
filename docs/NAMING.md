@@ -94,10 +94,46 @@ Tables are `snake_case` plural (`invoices`, `invoice_submissions`); pivots are
 the two singulars alphabetically (`organization_user`); columns are
 `snake_case`, foreign keys are `<singular>_id`.
 
-Table names are **not** renamed casually: `erp-backend` reads this schema
-directly, so every rename is a migration plus a coordinated release in another
-repository. Most current names are already clear; the ones that read oddly
-(`licenses` vs `license_registrations` vs `organization_licenses`) are
-indistinguishable because the *concepts* overlap, and renaming would hide that
-rather than fix it. See the licensing consolidation in
-`docs/audit/05-TARGET-ARCHITECTURE-AND-ROADMAP.md`.
+Table names are **not** renamed casually — but the reason is not cross-repo
+coupling. `erp-backend` reaches this platform over HTTP
+(`config/zatca-integration.php` → `/api/v1`) and defines no connection to this
+database, so a rename here breaks nothing in that repository.
+
+The real constraint is that a rename costs a migration, a coordinated deploy,
+and a window where old and new code disagree about the table — so it has to buy
+something. Two that do:
+
+| Current | Rename to | Why |
+|---|---|---|
+| `environment_variance_log` | `variance_logs` | Only singular table name in the schema; `environment_` restates the column it holds |
+| `uae_fta_submissions` | `fta_submissions` | The API moved to ISO codes (`/compliance/ae/`) and the `uae_fta` config key is already gone |
+
+The `license_*` cluster — eight tables — is the one that reads worst, and it is
+the one **not** to rename yet. `licenses`, `license_registrations` and
+`organization_licenses` are hard to tell apart because the *concepts* overlap:
+three licensing systems occupy one namespace. Renaming would give the confusion
+better labels. Collapse the concepts first, rename once afterwards. See the
+licensing consolidation in `docs/audit/05-TARGET-ARCHITECTURE-AND-ROADMAP.md`.
+
+---
+
+## Migration filenames
+
+Keep the timestamps. They look redundant next to a `0010_`-style sequence, but
+they are load-bearing:
+
+- Laravel stores the **filename** in the `migrations` table. Renaming a file
+  that has already run makes every existing database believe it never ran, so
+  the next `migrate` re-runs it — duplicate column and table errors, against
+  live data.
+- Timestamps stop branches colliding. Two people adding a migration the same
+  week get distinct names automatically; two people both reaching for `0042_`
+  do not.
+- `make:migration` generates timestamps, so a sequence has to be maintained by
+  hand forever.
+
+The real problem a sequence is reaching for — 36 files with three different
+date conventions — is solved by squashing instead: `php artisan schema:dump
+--prune` collapses them into one `database/schema/` file and deletes the
+originals. Existing databases keep working, because Laravel loads the schema
+file and then applies only the migrations dated after it.
