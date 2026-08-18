@@ -8,8 +8,10 @@ use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Licensing\Models\License;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * License Management Service.
@@ -226,7 +228,7 @@ class LicenseManagementService
 
         $updates = array_intersect_key($limits, array_flip($allowedFields));
 
-        if (!empty($updates)) {
+        if (! empty($updates)) {
             $license->update($updates);
             $this->logAudit($licenseId, 'limits_updated', $updates);
         }
@@ -265,7 +267,7 @@ class LicenseManagementService
         $this->logAudit($licenseId, 'secret_regenerated');
 
         // Clear cached license
-        \Illuminate\Support\Facades\Cache::forget("license:{$license->api_key}");
+        Cache::forget("license:{$license->api_key}");
 
         return [
             'license' => $license->fresh(),
@@ -312,7 +314,7 @@ class LicenseManagementService
             ->orderBy('created_at', 'desc')
             ->limit($limit)
             ->get()
-            ->map(fn($log) => [
+            ->map(fn ($log) => [
                 'id' => $log->id,
                 'action' => $log->action,
                 'details' => json_decode($log->details, true),
@@ -332,13 +334,13 @@ class LicenseManagementService
         array $details = [],
         ?string $performedBy = null
     ): void {
-        if (!config('licensing.audit.enabled', true)) {
+        if (! config('licensing.audit.enabled', true)) {
             return;
         }
 
         try {
             DB::table('license_audit_logs')->insert([
-                'id' => \Illuminate\Support\Str::uuid()->toString(),
+                'id' => Str::uuid()->toString(),
                 'license_id' => $licenseId,
                 'action' => $action,
                 'details' => json_encode($details),

@@ -6,8 +6,8 @@ namespace App\Domains\Compliance\Fatoora\Services;
 
 use App\Domains\Invoice\Models\Invoice;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -39,11 +39,11 @@ class DuplicateInvoiceDetector
     /**
      * Check for potential duplicates before creating/submitting an invoice.
      *
-     * @param string $organizationId Organization ID
-     * @param string $invoiceNumber Invoice number to check
-     * @param string $uuid UUID to check
-     * @param string|null $hash Invoice hash (if available)
-     * @param array $fuzzyMatchData Optional data for fuzzy matching
+     * @param  string  $organizationId  Organization ID
+     * @param  string  $invoiceNumber  Invoice number to check
+     * @param  string  $uuid  UUID to check
+     * @param  string|null  $hash  Invoice hash (if available)
+     * @param  array  $fuzzyMatchData  Optional data for fuzzy matching
      * @return array{is_duplicate: bool, duplicates: array, warnings: array}
      */
     public function check(
@@ -103,7 +103,7 @@ class DuplicateInvoiceDetector
                     'severity' => 'warning',
                     'existing_invoice_id' => $match->id,
                     'existing_invoice_number' => $match->invoice_number,
-                    'message' => "Similar invoice found: same buyer '{$fuzzyMatchData['buyer_name']}', " .
+                    'message' => "Similar invoice found: same buyer '{$fuzzyMatchData['buyer_name']}', ".
                         "amount {$match->total}, dated {$match->issue_date->format('Y-m-d')}",
                 ];
             }
@@ -160,9 +160,9 @@ class DuplicateInvoiceDetector
     /**
      * Check for fuzzy matches (same buyer, amount, similar date).
      *
-     * @param string $organizationId Organization ID
-     * @param array{buyer_name?: string, buyer_vat?: string, total?: float, issue_date?: string} $data
-     * @return \Illuminate\Support\Collection
+     * @param  string  $organizationId  Organization ID
+     * @param  array{buyer_name?: string, buyer_vat?: string, total?: float, issue_date?: string}  $data
+     * @return Collection
      */
     public function checkFuzzyMatch(string $organizationId, array $data)
     {
@@ -172,7 +172,7 @@ class DuplicateInvoiceDetector
         if (! empty($data['buyer_vat'])) {
             $query->where('buyer_vat_number', $data['buyer_vat']);
         } elseif (! empty($data['buyer_name'])) {
-            $query->where('buyer_name', 'LIKE', '%' . $data['buyer_name'] . '%');
+            $query->where('buyer_name', 'LIKE', '%'.$data['buyer_name'].'%');
         } else {
             return collect();
         }
@@ -197,8 +197,8 @@ class DuplicateInvoiceDetector
     /**
      * Validate invoice before submission to ZATCA.
      *
-     * @param Invoice $invoice Invoice to validate
-     * @param string|null $excludeId Exclude this invoice ID (for updates)
+     * @param  Invoice  $invoice  Invoice to validate
+     * @param  string|null  $excludeId  Exclude this invoice ID (for updates)
      * @return array{valid: bool, errors: array, warnings: array}
      */
     public function validateForSubmission(Invoice $invoice, ?string $excludeId = null): array
@@ -252,9 +252,9 @@ class DuplicateInvoiceDetector
      * Per ZATCA: Invoice reprints must have SAME invoice number and QR code.
      * Creating new invoice numbers for reprints is a violation.
      *
-     * @param string $organizationId Organization ID
-     * @param string $originalInvoiceNumber Original invoice number
-     * @param string $newInvoiceNumber New invoice number (should match original)
+     * @param  string  $organizationId  Organization ID
+     * @param  string  $originalInvoiceNumber  Original invoice number
+     * @param  string  $newInvoiceNumber  New invoice number (should match original)
      * @return array{is_valid_reprint: bool, error: ?string}
      */
     public function validateReprint(
@@ -265,7 +265,7 @@ class DuplicateInvoiceDetector
         if ($originalInvoiceNumber !== $newInvoiceNumber) {
             return [
                 'is_valid_reprint' => false,
-                'error' => 'Invoice reprints must use the same invoice number. ' .
+                'error' => 'Invoice reprints must use the same invoice number. '.
                     "Expected: {$originalInvoiceNumber}, Got: {$newInvoiceNumber}",
             ];
         }
@@ -294,8 +294,8 @@ class DuplicateInvoiceDetector
      *
      * When multiple systems generate invoices, duplicates can occur.
      *
-     * @param string $organizationId Organization ID
-     * @param int $lookbackMinutes Time window to check (default: 60)
+     * @param  string  $organizationId  Organization ID
+     * @param  int  $lookbackMinutes  Time window to check (default: 60)
      * @return array List of potential sync conflicts
      */
     public function detectSyncConflicts(string $organizationId, int $lookbackMinutes = 60): array
@@ -328,7 +328,7 @@ class DuplicateInvoiceDetector
                     'from_icv' => $prev,
                     'to_icv' => $curr,
                     'gap' => $curr - $prev - 1,
-                    'message' => "ICV gap detected: {$prev} to {$curr} (missing " . ($curr - $prev - 1) . " invoices)",
+                    'message' => "ICV gap detected: {$prev} to {$curr} (missing ".($curr - $prev - 1).' invoices)',
                 ];
             }
         }
@@ -345,7 +345,7 @@ class DuplicateInvoiceDetector
                     'invoice_1' => $prev->invoice_number,
                     'invoice_2' => $curr->invoice_number,
                     'time_diff_ms' => $diffSeconds * 1000,
-                    'message' => "Near-simultaneous invoice creation detected - verify no duplicates",
+                    'message' => 'Near-simultaneous invoice creation detected - verify no duplicates',
                 ];
             }
         }

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Services;
 
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 
@@ -26,7 +25,9 @@ class ClusterCircuitBreaker
      * Circuit breaker states.
      */
     public const STATE_CLOSED = 'closed';     // Normal operation
+
     public const STATE_OPEN = 'open';         // Failing, reject requests
+
     public const STATE_HALF_OPEN = 'half_open'; // Testing recovery
 
     /**
@@ -65,10 +66,15 @@ class ClusterCircuitBreaker
      * Redis key prefixes.
      */
     private const STATE_KEY_PREFIX = 'circuit_breaker:state:';
+
     private const FAILURES_KEY_PREFIX = 'circuit_breaker:failures:';
+
     private const SUCCESSES_KEY_PREFIX = 'circuit_breaker:successes:';
+
     private const LAST_FAILURE_KEY_PREFIX = 'circuit_breaker:last_failure:';
+
     private const NODES_KEY_PREFIX = 'circuit_breaker:nodes:';
+
     private const PUBSUB_CHANNEL = 'circuit_breaker:events';
 
     /**
@@ -78,13 +84,13 @@ class ClusterCircuitBreaker
 
     public function __construct()
     {
-        $this->nodeId = gethostname() . ':' . getmypid();
+        $this->nodeId = gethostname().':'.getmypid();
     }
 
     /**
      * Check if circuit allows requests.
      *
-     * @param string $service Service identifier (e.g., 'zatca_api')
+     * @param  string  $service  Service identifier (e.g., 'zatca_api')
      * @return bool True if request is allowed
      */
     public function allowRequest(string $service): bool
@@ -99,8 +105,10 @@ class ClusterCircuitBreaker
                 // Check if timeout has passed
                 if ($this->hasTimeoutPassed($service)) {
                     $this->transitionTo($service, self::STATE_HALF_OPEN);
+
                     return true;
                 }
+
                 return false;
 
             case self::STATE_HALF_OPEN:
@@ -144,6 +152,7 @@ class ClusterCircuitBreaker
         if ($state === self::STATE_HALF_OPEN) {
             // Single failure in half-open returns to open
             $this->transitionTo($service, self::STATE_OPEN);
+
             return;
         }
 
@@ -169,7 +178,8 @@ class ClusterCircuitBreaker
      */
     public function getState(string $service): string
     {
-        $state = Redis::get(self::STATE_KEY_PREFIX . $service);
+        $state = Redis::get(self::STATE_KEY_PREFIX.$service);
+
         return $state ?: self::STATE_CLOSED;
     }
 
@@ -185,11 +195,11 @@ class ClusterCircuitBreaker
         }
 
         // Store new state
-        Redis::set(self::STATE_KEY_PREFIX . $service, $newState);
+        Redis::set(self::STATE_KEY_PREFIX.$service, $newState);
 
         if ($newState === self::STATE_OPEN) {
             Redis::set(
-                self::LAST_FAILURE_KEY_PREFIX . $service,
+                self::LAST_FAILURE_KEY_PREFIX.$service,
                 time()
             );
         }
@@ -233,9 +243,9 @@ class ClusterCircuitBreaker
      */
     private function hasTimeoutPassed(string $service): bool
     {
-        $lastFailure = Redis::get(self::LAST_FAILURE_KEY_PREFIX . $service);
+        $lastFailure = Redis::get(self::LAST_FAILURE_KEY_PREFIX.$service);
 
-        if (!$lastFailure) {
+        if (! $lastFailure) {
             return true;
         }
 
@@ -248,7 +258,7 @@ class ClusterCircuitBreaker
     private function allowHalfOpenRequest(string $service): bool
     {
         // Use Redis to coordinate half-open request limit across cluster
-        $key = 'circuit_breaker:half_open_count:' . $service;
+        $key = 'circuit_breaker:half_open_count:'.$service;
         $count = Redis::incr($key);
 
         if ($count === 1) {
@@ -264,7 +274,7 @@ class ClusterCircuitBreaker
      */
     private function incrementFailures(string $service): int
     {
-        $key = self::FAILURES_KEY_PREFIX . $service;
+        $key = self::FAILURES_KEY_PREFIX.$service;
         $count = Redis::incr($key);
 
         // Set expiry to reset after timeout
@@ -278,7 +288,7 @@ class ClusterCircuitBreaker
      */
     private function incrementSuccesses(string $service): int
     {
-        $key = self::SUCCESSES_KEY_PREFIX . $service;
+        $key = self::SUCCESSES_KEY_PREFIX.$service;
         $count = Redis::incr($key);
 
         Redis::expire($key, $this->getTimeoutSeconds() * 2);
@@ -291,7 +301,7 @@ class ClusterCircuitBreaker
      */
     private function resetFailures(string $service): void
     {
-        Redis::del(self::FAILURES_KEY_PREFIX . $service);
+        Redis::del(self::FAILURES_KEY_PREFIX.$service);
     }
 
     /**
@@ -300,9 +310,9 @@ class ClusterCircuitBreaker
     private function resetCounters(string $service): void
     {
         Redis::del([
-            self::FAILURES_KEY_PREFIX . $service,
-            self::SUCCESSES_KEY_PREFIX . $service,
-            'circuit_breaker:half_open_count:' . $service,
+            self::FAILURES_KEY_PREFIX.$service,
+            self::SUCCESSES_KEY_PREFIX.$service,
+            'circuit_breaker:half_open_count:'.$service,
         ]);
     }
 
@@ -311,7 +321,7 @@ class ClusterCircuitBreaker
      */
     private function registerNodeHealth(string $service, bool $healthy): void
     {
-        $key = self::NODES_KEY_PREFIX . $service;
+        $key = self::NODES_KEY_PREFIX.$service;
 
         Redis::hset($key, $this->nodeId, json_encode([
             'healthy' => $healthy,
@@ -327,7 +337,7 @@ class ClusterCircuitBreaker
      */
     public function getClusterHealth(string $service): array
     {
-        $key = self::NODES_KEY_PREFIX . $service;
+        $key = self::NODES_KEY_PREFIX.$service;
         $nodes = Redis::hgetall($key);
 
         $healthyNodes = 0;
@@ -373,7 +383,7 @@ class ClusterCircuitBreaker
     {
         $validStates = [self::STATE_CLOSED, self::STATE_OPEN, self::STATE_HALF_OPEN];
 
-        if (!in_array($state, $validStates, true)) {
+        if (! in_array($state, $validStates, true)) {
             throw new \InvalidArgumentException("Invalid state: {$state}");
         }
 
@@ -410,12 +420,12 @@ class ClusterCircuitBreaker
         return [
             'service' => $service,
             'state' => $this->getState($service),
-            'failures' => (int) Redis::get(self::FAILURES_KEY_PREFIX . $service),
-            'successes' => (int) Redis::get(self::SUCCESSES_KEY_PREFIX . $service),
+            'failures' => (int) Redis::get(self::FAILURES_KEY_PREFIX.$service),
+            'successes' => (int) Redis::get(self::SUCCESSES_KEY_PREFIX.$service),
             'failure_threshold' => $this->getFailureThreshold(),
             'success_threshold' => $this->getSuccessThreshold(),
             'timeout_seconds' => $this->getTimeoutSeconds(),
-            'last_failure' => Redis::get(self::LAST_FAILURE_KEY_PREFIX . $service),
+            'last_failure' => Redis::get(self::LAST_FAILURE_KEY_PREFIX.$service),
             'cluster_health' => $this->getClusterHealth($service),
         ];
     }

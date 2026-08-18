@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Licensing\Models;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Organization\Models\Organization;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -85,20 +86,29 @@ class LicenseRegistration extends Model
 
     // Status constants
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_APPROVED = 'approved';
+
     public const STATUS_REJECTED = 'rejected';
+
     public const STATUS_SUSPENDED = 'suspended';
+
     public const STATUS_REVOKED = 'revoked';
 
     // License type constants
     public const TYPE_COMMERCIAL = 'commercial';
+
     public const TYPE_EDUCATIONAL = 'educational';
+
     public const TYPE_NON_PROFIT = 'non-profit';
 
     // Company size constants
     public const SIZE_SMALL = 'small';       // 1-50 employees
+
     public const SIZE_MEDIUM = 'medium';     // 51-250 employees
+
     public const SIZE_LARGE = 'large';       // 251-1000 employees
+
     public const SIZE_ENTERPRISE = 'enterprise'; // 1000+ employees
 
     /**
@@ -106,7 +116,7 @@ class LicenseRegistration extends Model
      */
     public function organization(): BelongsTo
     {
-        return $this->belongsTo(\App\Domains\Organization\Models\Organization::class);
+        return $this->belongsTo(Organization::class);
     }
 
     /**
@@ -231,7 +241,7 @@ class LicenseRegistration extends Model
         $oldStatus = $this->status;
 
         $this->status = self::STATUS_SUSPENDED;
-        $this->admin_notes = ($this->admin_notes ?? '') . "\n[Suspended] " . $reason;
+        $this->admin_notes = ($this->admin_notes ?? '')."\n[Suspended] ".$reason;
 
         $saved = $this->save();
 
@@ -250,7 +260,7 @@ class LicenseRegistration extends Model
         $oldStatus = $this->status;
 
         $this->status = self::STATUS_REVOKED;
-        $this->admin_notes = ($this->admin_notes ?? '') . "\n[Revoked] " . $reason;
+        $this->admin_notes = ($this->admin_notes ?? '')."\n[Revoked] ".$reason;
 
         $saved = $this->save();
 

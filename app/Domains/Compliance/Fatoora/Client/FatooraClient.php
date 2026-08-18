@@ -20,8 +20,11 @@ use Illuminate\Support\Facades\Log;
 class FatooraClient
 {
     private string $baseUrl;
+
     private ?string $username;
+
     private ?string $password;
+
     private InvoiceHasher $hasher;
 
     /**
@@ -66,7 +69,7 @@ class FatooraClient
 
     public function __construct(?InvoiceHasher $hasher = null)
     {
-        $this->hasher = $hasher ?? new InvoiceHasher();
+        $this->hasher = $hasher ?? new InvoiceHasher;
         $environment = config('fatoora.environment', 'sandbox');
         $this->baseUrl = config("fatoora.endpoints.{$environment}");
         $this->username = config('fatoora.credentials.username');
@@ -105,7 +108,7 @@ class FatooraClient
     {
         try {
             $response = $this->httpClient()
-                ->get($this->baseUrl . '/invoices/' . $uuid . '/status');
+                ->get($this->baseUrl.'/invoices/'.$uuid.'/status');
 
             if ($response->successful()) {
                 return $response->json();
@@ -142,7 +145,7 @@ class FatooraClient
     {
         try {
             $response = $this->httpClient()
-                ->post($this->baseUrl . $endpoint, [
+                ->post($this->baseUrl.$endpoint, [
                     'invoiceHash' => $invoiceHash,
                     'uuid' => $uuid,
                     'invoice' => base64_encode($invoiceXml),
@@ -158,7 +161,7 @@ class FatooraClient
             ]);
 
             return FatooraResponse::failed(
-                'ZATCA API returned status: ' . $response->status(),
+                'ZATCA API returned status: '.$response->status(),
                 $response->body()
             );
 
@@ -223,7 +226,7 @@ class FatooraClient
                     'OTP' => $otp,
                 ]);
 
-            $response = $client->post($this->baseUrl . '/compliance', [
+            $response = $client->post($this->baseUrl.'/compliance', [
                 'csr' => base64_encode($csr),
             ]);
 
@@ -231,10 +234,11 @@ class FatooraClient
                 return CsidResponse::fromApiResponse($response->json());
             }
 
-            return CsidResponse::failed('CSID request failed: ' . $response->status());
+            return CsidResponse::failed('CSID request failed: '.$response->status());
 
         } catch (\Exception $e) {
             Log::error('Compliance CSID request failed', ['error' => $e->getMessage()]);
+
             return CsidResponse::failed($e->getMessage());
         }
     }
@@ -248,7 +252,7 @@ class FatooraClient
             $client = $this->createBaseHttpClient()
                 ->withBasicAuth($ccsid, $secret);
 
-            $response = $client->post($this->baseUrl . '/compliance/invoices', [
+            $response = $client->post($this->baseUrl.'/compliance/invoices', [
                 'invoiceHash' => $this->hashInvoice($invoiceXml),
                 'uuid' => $this->extractUuid($invoiceXml),
                 'invoice' => base64_encode($invoiceXml),
@@ -258,10 +262,11 @@ class FatooraClient
                 return FatooraResponse::fromApiResponse($response->json());
             }
 
-            return FatooraResponse::failed('Compliance invoice submission failed: ' . $response->status());
+            return FatooraResponse::failed('Compliance invoice submission failed: '.$response->status());
 
         } catch (\Exception $e) {
             Log::error('Compliance invoice submission failed', ['error' => $e->getMessage()]);
+
             return FatooraResponse::failed($e->getMessage());
         }
     }
@@ -275,7 +280,7 @@ class FatooraClient
             $client = $this->createBaseHttpClient()
                 ->withBasicAuth($ccsid, $secret);
 
-            $response = $client->post($this->baseUrl . '/production/csids', [
+            $response = $client->post($this->baseUrl.'/production/csids', [
                 'compliance_request_id' => $requestId,
             ]);
 
@@ -283,10 +288,11 @@ class FatooraClient
                 return CsidResponse::fromApiResponse($response->json());
             }
 
-            return CsidResponse::failed('PCSID request failed: ' . $response->status());
+            return CsidResponse::failed('PCSID request failed: '.$response->status());
 
         } catch (\Exception $e) {
             Log::error('Production CSID request failed', ['error' => $e->getMessage()]);
+
             return CsidResponse::failed($e->getMessage());
         }
     }
@@ -301,7 +307,7 @@ class FatooraClient
                 ->withBasicAuth($pcsid, $secret)
                 ->withHeaders(['OTP' => $otp]);
 
-            $response = $client->patch($this->baseUrl . '/production/csids', [
+            $response = $client->patch($this->baseUrl.'/production/csids', [
                 'csr' => base64_encode($csr),
             ]);
 
@@ -309,10 +315,11 @@ class FatooraClient
                 return CsidResponse::fromApiResponse($response->json());
             }
 
-            return CsidResponse::failed('PCSID renewal failed: ' . $response->status());
+            return CsidResponse::failed('PCSID renewal failed: '.$response->status());
 
         } catch (\Exception $e) {
             Log::error('PCSID renewal failed', ['error' => $e->getMessage()]);
+
             return CsidResponse::failed($e->getMessage());
         }
     }

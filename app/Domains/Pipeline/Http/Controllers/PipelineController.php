@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Domains\Pipeline\Http\Controllers;
 
 use App\Domains\Invoice\Models\Invoice;
-use App\Http\Controllers\Controller;
 use App\Domains\Pipeline\Http\Requests\PipelineSubmitRequest;
-use App\Http\Responses\ApiResponse;
 use App\Domains\Pipeline\Services\PipelineService;
+use App\Http\Controllers\Controller;
+use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -32,7 +32,6 @@ class PipelineController extends Controller
      *
      * Creates the invoice, generates compliance data (hash, QR, signed XML),
      * and optionally submits to ZATCA government API in a single request.
-     *
      */
     public function submit(PipelineSubmitRequest $request): JsonResponse
     {
@@ -58,7 +57,7 @@ class PipelineController extends Controller
             idempotencyKey: $request->header('Idempotency-Key'),
         );
 
-        $hasErrors = !empty($result['errors']);
+        $hasErrors = ! empty($result['errors']);
         $status = $result['status'];
 
         // Determine HTTP status code based on outcome

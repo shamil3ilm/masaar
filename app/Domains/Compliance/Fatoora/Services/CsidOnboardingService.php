@@ -28,9 +28,10 @@ class CsidOnboardingService
     /**
      * Step 1: Generate CSR and request Compliance CSID.
      *
-     * @param CsrData $csrData CSR configuration
-     * @param string $otp One-time password from ZATCA portal (valid 1 hour)
+     * @param  CsrData  $csrData  CSR configuration
+     * @param  string  $otp  One-time password from ZATCA portal (valid 1 hour)
      * @return array{ccsid: string, privateKey: string, requestId: string}
+     *
      * @throws CertificateException
      */
     public function requestComplianceCsid(CsrData $csrData, string $otp): array
@@ -47,7 +48,7 @@ class CsidOnboardingService
 
             if (! $response->success) {
                 throw new CertificateException(
-                    'Failed to obtain CCSID: ' . implode(', ', $response->errorMessages)
+                    'Failed to obtain CCSID: '.implode(', ', $response->errorMessages)
                 );
             }
 
@@ -66,16 +67,16 @@ class CsidOnboardingService
             Log::error('CCSID request failed', [
                 'error' => $e->getMessage(),
             ]);
-            throw new CertificateException('CCSID request failed: ' . $e->getMessage());
+            throw new CertificateException('CCSID request failed: '.$e->getMessage());
         }
     }
 
     /**
      * Step 2: Run compliance checks with test invoices.
      *
-     * @param string $ccsid Compliance CSID (base64 encoded certificate)
-     * @param string $secret CCSID secret for authentication
-     * @param array $testInvoices Array of test invoice XMLs
+     * @param  string  $ccsid  Compliance CSID (base64 encoded certificate)
+     * @param  string  $secret  CCSID secret for authentication
+     * @param  array  $testInvoices  Array of test invoice XMLs
      * @return array{passed: bool, results: array}
      */
     public function runComplianceChecks(string $ccsid, string $secret, array $testInvoices): array
@@ -116,10 +117,11 @@ class CsidOnboardingService
     /**
      * Step 3: Request Production CSID after passing compliance.
      *
-     * @param string $ccsid Compliance CSID
-     * @param string $secret CCSID secret
-     * @param string $requestId Original CCSID request ID
+     * @param  string  $ccsid  Compliance CSID
+     * @param  string  $secret  CCSID secret
+     * @param  string  $requestId  Original CCSID request ID
      * @return array{pcsid: string, secret: string}
+     *
      * @throws CertificateException
      */
     public function requestProductionCsid(string $ccsid, string $secret, string $requestId): array
@@ -133,7 +135,7 @@ class CsidOnboardingService
 
             if (! $response->success) {
                 throw new CertificateException(
-                    'Failed to obtain PCSID: ' . implode(', ', $response->errorMessages)
+                    'Failed to obtain PCSID: '.implode(', ', $response->errorMessages)
                 );
             }
 
@@ -150,17 +152,18 @@ class CsidOnboardingService
             Log::error('PCSID request failed', [
                 'error' => $e->getMessage(),
             ]);
-            throw new CertificateException('PCSID request failed: ' . $e->getMessage());
+            throw new CertificateException('PCSID request failed: '.$e->getMessage());
         }
     }
 
     /**
      * Complete onboarding flow (all steps).
      *
-     * @param CsrData $csrData CSR configuration
-     * @param string $otp One-time password from ZATCA portal
-     * @param array $testInvoices Test invoices for compliance check
+     * @param  CsrData  $csrData  CSR configuration
+     * @param  string  $otp  One-time password from ZATCA portal
+     * @param  array  $testInvoices  Test invoices for compliance check
      * @return array{pcsid: string, secret: string, privateKey: string}
+     *
      * @throws CertificateException
      */
     public function completeOnboarding(CsrData $csrData, string $otp, array $testInvoices): array

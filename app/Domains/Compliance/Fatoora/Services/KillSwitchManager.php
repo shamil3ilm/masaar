@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Services;
 
-use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use Illuminate\Support\Facades\Cache;
@@ -31,16 +30,22 @@ class KillSwitchManager
      * Kill switch types.
      */
     public const SWITCH_ISSUANCE = 'issuance';
+
     public const SWITCH_SUBMISSION = 'submission';
+
     public const SWITCH_CLEARANCE = 'clearance';
+
     public const SWITCH_REPORTING = 'reporting';
+
     public const SWITCH_SIGNING = 'signing';
+
     public const SWITCH_OFFLINE_MODE = 'offline_mode';
 
     /**
      * Scope types.
      */
     public const SCOPE_GLOBAL = 'global';
+
     public const SCOPE_TENANT = 'tenant';
 
     /**
@@ -75,13 +80,13 @@ class KillSwitchManager
     /**
      * Enable a kill switch with optional time-boxing.
      *
-     * @param string $switch Kill switch type
-     * @param string $scope Global or tenant-specific
-     * @param string|null $tenantId Tenant ID for tenant-scoped switches
-     * @param string|null $reason REQUIRED: Reason for enabling (audit trail)
-     * @param string|null $enabledBy Who enabled the switch
-     * @param int|null $durationSeconds How long to keep enabled (null = permanent, max 4 hours default)
-     * @param bool $requireReason If true, throws if reason is empty
+     * @param  string  $switch  Kill switch type
+     * @param  string  $scope  Global or tenant-specific
+     * @param  string|null  $tenantId  Tenant ID for tenant-scoped switches
+     * @param  string|null  $reason  REQUIRED: Reason for enabling (audit trail)
+     * @param  string|null  $enabledBy  Who enabled the switch
+     * @param  int|null  $durationSeconds  How long to keep enabled (null = permanent, max 4 hours default)
+     * @param  bool  $requireReason  If true, throws if reason is empty
      */
     public function enable(
         string $switch,
@@ -197,6 +202,7 @@ class KillSwitchManager
                 if ($modified) {
                     $this->saveSwitches($switches);
                 }
+
                 return true;
             }
         }
@@ -213,6 +219,7 @@ class KillSwitchManager
                     if ($modified) {
                         $this->saveSwitches($switches);
                     }
+
                     return true;
                 }
             }
@@ -232,7 +239,7 @@ class KillSwitchManager
      */
     private function checkSwitchExpiry(array &$switches, string $key): array
     {
-        if (!isset($switches[$key])) {
+        if (! isset($switches[$key])) {
             return ['expired' => false, 'enabled' => false];
         }
 
@@ -256,6 +263,7 @@ class KillSwitchManager
             ]);
 
             unset($switches[$key]);
+
             return ['expired' => true, 'enabled' => false];
         }
 
@@ -267,14 +275,14 @@ class KillSwitchManager
      */
     private function checkAndSendAlert(array &$switches, string $key): void
     {
-        if (!isset($switches[$key])) {
+        if (! isset($switches[$key])) {
             return;
         }
 
         $switchData = &$switches[$key];
 
         // Already sent alert
-        if (!empty($switchData['alert_sent'])) {
+        if (! empty($switchData['alert_sent'])) {
             return;
         }
 
@@ -336,7 +344,7 @@ class KillSwitchManager
             $info = $this->getSwitchInfo($switch, $tenantId);
 
             throw new FatooraException(
-                "Operation blocked: {$switch} kill switch is enabled" .
+                "Operation blocked: {$switch} kill switch is enabled".
                     ($info['reason'] ? " - Reason: {$info['reason']}" : ''),
                 ErrorCode::SYS_MAINTENANCE_MODE,
                 [
@@ -426,13 +434,14 @@ class KillSwitchManager
         $enabled = [];
 
         foreach ($switches as $key => $switch) {
-            if (!$switch['enabled']) {
+            if (! $switch['enabled']) {
                 continue;
             }
 
             // Include global switches
             if ($switch['scope'] === self::SCOPE_GLOBAL) {
                 $enabled[] = $switch;
+
                 continue;
             }
 
@@ -468,7 +477,7 @@ class KillSwitchManager
                 'enabled' => $enabled,
                 'info' => $info,
                 'expires_at' => $info['expires_at'] ?? null,
-                'is_time_boxed' => !empty($info['expires_at']),
+                'is_time_boxed' => ! empty($info['expires_at']),
             ];
         }
 
@@ -525,7 +534,7 @@ class KillSwitchManager
         $key = $this->buildKey($switch, $scope, $tenantId);
         $switches = $this->getAllSwitches();
 
-        if (!isset($switches[$key])) {
+        if (! isset($switches[$key])) {
             throw new \InvalidArgumentException("Kill switch {$switch} is not enabled");
         }
 
@@ -580,17 +589,17 @@ class KillSwitchManager
 
         $minutes = (int) ($seconds / 60);
         if ($minutes < 60) {
-            return "{$minutes} minute" . ($minutes !== 1 ? 's' : '');
+            return "{$minutes} minute".($minutes !== 1 ? 's' : '');
         }
 
         $hours = (int) ($minutes / 60);
         $remainingMinutes = $minutes % 60;
 
         if ($remainingMinutes > 0) {
-            return "{$hours} hour" . ($hours !== 1 ? 's' : '') . " {$remainingMinutes} min";
+            return "{$hours} hour".($hours !== 1 ? 's' : '')." {$remainingMinutes} min";
         }
 
-        return "{$hours} hour" . ($hours !== 1 ? 's' : '');
+        return "{$hours} hour".($hours !== 1 ? 's' : '');
     }
 
     /**
@@ -684,9 +693,9 @@ class KillSwitchManager
             self::SWITCH_OFFLINE_MODE,
         ];
 
-        if (!in_array($switch, $validSwitches, true)) {
+        if (! in_array($switch, $validSwitches, true)) {
             throw new \InvalidArgumentException(
-                "Invalid kill switch: {$switch}. Valid switches: " . implode(', ', $validSwitches)
+                "Invalid kill switch: {$switch}. Valid switches: ".implode(', ', $validSwitches)
             );
         }
     }

@@ -124,10 +124,10 @@ class FatooraSubmissionService
         $this->validateCertificate($credentials['certificate']);
 
         // Validate branch is active if invoice has branch
-        if ($branch && !$branch->isFatooraReady()) {
+        if ($branch && ! $branch->isFatooraReady()) {
             throw FatooraException::notOnboarded(
-                'Branch is not ready for invoice submission. ' .
-                'Status: ' . $branch->onboarding_status,
+                'Branch is not ready for invoice submission. '.
+                'Status: '.$branch->onboarding_status,
                 [
                     'branch_id' => $branch->id,
                     'branch_name' => $branch->name,
@@ -194,17 +194,17 @@ class FatooraSubmissionService
         }
 
         // Check if certificate validation is enabled
-        if (!config('fatoora.features.certificate_revocation_check', true)) {
+        if (! config('fatoora.features.certificate_revocation_check', true)) {
             return;
         }
 
         try {
             $validation = $this->certificateService->validateForSubmission($certificate);
 
-            if (!$validation['valid']) {
+            if (! $validation['valid']) {
                 $errors = $validation['errors'] ?? [];
                 throw FatooraException::certificate(
-                    'Certificate validation failed: ' . implode('; ', $errors),
+                    'Certificate validation failed: '.implode('; ', $errors),
                     context: [
                         'errors' => $errors,
                         'warnings' => $validation['warnings'] ?? [],
@@ -245,22 +245,22 @@ class FatooraSubmissionService
         $deadlineHours = config('fatoora.reporting.deadline_hours', 24);
 
         // Skip deadline check if explicitly disabled
-        if (!config('fatoora.reporting.enforce_deadline', true)) {
+        if (! config('fatoora.reporting.enforce_deadline', true)) {
             return;
         }
 
         $issueDate = $invoice->issue_date;
-        if (!$issueDate instanceof \DateTimeInterface) {
+        if (! $issueDate instanceof \DateTimeInterface) {
             $issueDate = new \DateTime($issueDate);
         }
 
-        $now = new \DateTime();
+        $now = new \DateTime;
         $ageHours = ($now->getTimestamp() - $issueDate->getTimestamp()) / 3600;
 
         if ($ageHours > $deadlineHours) {
             throw FatooraException::validation(
                 sprintf(
-                    'B2C invoice reporting deadline exceeded. Invoice was issued %.1f hours ago. ' .
+                    'B2C invoice reporting deadline exceeded. Invoice was issued %.1f hours ago. '.
                     'ZATCA requires simplified invoices to be reported within %d hours of issuance.',
                     $ageHours,
                     $deadlineHours
@@ -295,10 +295,10 @@ class FatooraSubmissionService
      */
     private function validateOnboarding(Organization $organization): void
     {
-        if (!$organization->zatca_onboarded) {
+        if (! $organization->zatca_onboarded) {
             throw FatooraException::notOnboarded(
-                'Organization has not completed ZATCA onboarding. ' .
-                'Complete the 3-step onboarding process before submitting invoices: ' .
+                'Organization has not completed ZATCA onboarding. '.
+                'Complete the 3-step onboarding process before submitting invoices: '.
                 '1) Generate CSR and get CCSID, 2) Pass compliance checks, 3) Get PCSID.',
                 [
                     'organization_id' => $organization->id,
@@ -330,7 +330,7 @@ class FatooraSubmissionService
                 // Sandbox licenses cannot submit to production ZATCA
                 if ($licenseEnv === LicenseEnvironment::Sandbox) {
                     throw FatooraException::environmentMismatch(
-                        'Sandbox API keys cannot submit invoices to production ZATCA. ' .
+                        'Sandbox API keys cannot submit invoices to production ZATCA. '.
                         'Please use a production API key (cp_live_*) for real invoice submissions.',
                         [
                             'license_environment' => $licenseEnv->value,
@@ -346,7 +346,7 @@ class FatooraSubmissionService
         $license = request()->attributes->get('license');
         if ($license !== null && $license->environment === LicenseEnvironment::Production) {
             if ($zatcaEnvironment === 'sandbox') {
-                \Illuminate\Support\Facades\Log::info('Production license submitting to sandbox ZATCA', [
+                Log::info('Production license submitting to sandbox ZATCA', [
                     'license_id' => $license->id,
                     'zatca_environment' => $zatcaEnvironment,
                 ]);
@@ -401,10 +401,11 @@ class FatooraSubmissionService
      * 1. If branch provided, tries branch credentials first
      * 2. Falls back to organization-level credentials (legacy)
      *
-     * @param string $organizationId The organization ID
-     * @param Branch|null $branch The branch (optional)
-     * @param bool $required If true, throws exception when credentials are missing
+     * @param  string  $organizationId  The organization ID
+     * @param  Branch|null  $branch  The branch (optional)
+     * @param  bool  $required  If true, throws exception when credentials are missing
      * @return array{privateKey: ?string, certificate: ?string}
+     *
      * @throws FatooraException If required is true and credentials are missing/invalid
      */
     private function getSigningCredentials(string $organizationId, ?Branch $branch = null, bool $required = false): array
@@ -417,7 +418,7 @@ class FatooraSubmissionService
                 $privateKey = $branchCredentials['privateKey'] ?? null;
                 $certificate = $branchCredentials['pcsid'] ?? null;
 
-                if (!empty($privateKey) && !empty($certificate)) {
+                if (! empty($privateKey) && ! empty($certificate)) {
                     Log::debug('Using branch-level credentials', [
                         'organization_id' => $organizationId,
                         'branch_id' => $branch->id,
@@ -434,7 +435,7 @@ class FatooraSubmissionService
         // Fall back to organization-level credentials (legacy path)
         $path = "zatca/{$organizationId}/pcsid.json";
 
-        if (!Storage::disk('local')->exists($path)) {
+        if (! Storage::disk('local')->exists($path)) {
             if ($required) {
                 $errorContext = [
                     'organization_id' => $organizationId,
@@ -447,12 +448,13 @@ class FatooraSubmissionService
                 }
 
                 throw FatooraException::missingCredentials(
-                    'PCSID credentials not found. ' .
-                    ($branch ? 'Branch' : 'Organization') . ' must complete ZATCA onboarding ' .
+                    'PCSID credentials not found. '.
+                    ($branch ? 'Branch' : 'Organization').' must complete ZATCA onboarding '.
                     'to obtain Production CSID (PCSID) before submitting invoices.',
                     $errorContext
                 );
             }
+
             return ['privateKey' => null, 'certificate' => null];
         }
 
@@ -466,12 +468,12 @@ class FatooraSubmissionService
             // Validate credentials are not empty when required
             if ($required && (empty($privateKey) || empty($certificate))) {
                 throw FatooraException::invalidCredentials(
-                    'PCSID credentials are incomplete or corrupted. ' .
+                    'PCSID credentials are incomplete or corrupted. '.
                     'Please re-run Step 3 of ZATCA onboarding to obtain valid PCSID.',
                     [
                         'organization_id' => $organizationId,
-                        'has_private_key' => !empty($privateKey),
-                        'has_certificate' => !empty($certificate),
+                        'has_private_key' => ! empty($privateKey),
+                        'has_certificate' => ! empty($certificate),
                     ]
                 );
             }
@@ -489,7 +491,7 @@ class FatooraSubmissionService
         } catch (\Exception $e) {
             if ($required) {
                 throw FatooraException::invalidCredentials(
-                    'Failed to decrypt PCSID credentials. The credentials may be corrupted ' .
+                    'Failed to decrypt PCSID credentials. The credentials may be corrupted '.
                     'or the application encryption key has changed.',
                     [
                         'organization_id' => $organizationId,
@@ -497,6 +499,7 @@ class FatooraSubmissionService
                     ]
                 );
             }
+
             return ['privateKey' => null, 'certificate' => null];
         }
     }

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Models;
 
-use App\Domains\Organization\Concerns\BelongsToTenant;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Organization\Concerns\BelongsToTenant;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -65,8 +65,11 @@ class SubmissionIdempotency extends Model
      * Statuses.
      */
     public const STATUS_PROCESSING = 'processing';
+
     public const STATUS_COMPLETED = 'completed';
+
     public const STATUS_FAILED = 'failed';
+
     public const STATUS_EXPIRED = 'expired';
 
     /**

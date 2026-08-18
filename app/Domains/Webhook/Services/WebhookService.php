@@ -37,9 +37,9 @@ class WebhookService
     /**
      * Dispatch webhook for an event.
      *
-     * @param string $organizationId Organization ID
-     * @param string $event Event name
-     * @param array $payload Event payload
+     * @param  string  $organizationId  Organization ID
+     * @param  string  $event  Event name
+     * @param  array  $payload  Event payload
      */
     public function dispatch(string $organizationId, string $event, array $payload): void
     {
@@ -139,7 +139,7 @@ class WebhookService
     {
         $json = json_encode($payload);
 
-        return 'sha256=' . hash_hmac('sha256', $json, $secret);
+        return 'sha256='.hash_hmac('sha256', $json, $secret);
     }
 
     /**
@@ -147,7 +147,7 @@ class WebhookService
      */
     public function verifySignature(string $payload, string $signature, string $secret): bool
     {
-        $expected = 'sha256=' . hash_hmac('sha256', $payload, $secret);
+        $expected = 'sha256='.hash_hmac('sha256', $payload, $secret);
 
         return hash_equals($expected, $signature);
     }

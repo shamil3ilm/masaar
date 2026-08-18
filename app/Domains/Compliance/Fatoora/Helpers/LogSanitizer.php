@@ -78,7 +78,7 @@ class LogSanitizer
     /**
      * Sanitize data for logging.
      *
-     * @param mixed $data Data to sanitize (string, array, or object)
+     * @param  mixed  $data  Data to sanitize (string, array, or object)
      * @return mixed Sanitized data
      */
     public static function sanitize(mixed $data): mixed
@@ -124,6 +124,7 @@ class LogSanitizer
             // Check if this is a sensitive field
             if (self::isSensitiveField($lowerKey)) {
                 $sanitized[$key] = self::redactValue($value);
+
                 continue;
             }
 
@@ -165,7 +166,7 @@ class LogSanitizer
      */
     private static function redactValue(mixed $value): string
     {
-        if (!is_string($value) || strlen($value) === 0) {
+        if (! is_string($value) || strlen($value) === 0) {
             return self::REDACTED;
         }
 
@@ -180,7 +181,7 @@ class LogSanitizer
         $first = substr($value, 0, self::PARTIAL_REDACT_LENGTH);
         $last = substr($value, -self::PARTIAL_REDACT_LENGTH);
 
-        return $first . '...' . self::REDACTED . '...' . $last;
+        return $first.'...'.self::REDACTED.'...'.$last;
     }
 
     /**
@@ -239,7 +240,7 @@ class LogSanitizer
         $last = substr($value, -$visibleChars);
         $middle = str_repeat('*', min($length - ($visibleChars * 2), 10));
 
-        return $first . $middle . $last;
+        return $first.$middle.$last;
     }
 
     /**

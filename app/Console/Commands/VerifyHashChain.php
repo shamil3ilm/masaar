@@ -27,7 +27,9 @@ class VerifyHashChain extends Command
     protected $description = 'Verify PIH (Previous Invoice Hash) chain integrity for ZATCA compliance';
 
     private int $errors = 0;
+
     private int $warnings = 0;
+
     private int $checked = 0;
 
     public function handle(): int
@@ -67,15 +69,18 @@ class VerifyHashChain extends Command
         if ($this->errors > 0) {
             $this->error('❌ Hash chain verification FAILED');
             $this->error('   Action required: Investigate and repair hash chain');
+
             return Command::FAILURE;
         }
 
         if ($this->warnings > 0) {
             $this->warn('⚠️  Hash chain verified with warnings');
+
             return Command::SUCCESS;
         }
 
         $this->info('✅ Hash chain verification PASSED');
+
         return Command::SUCCESS;
     }
 
@@ -105,6 +110,7 @@ class VerifyHashChain extends Command
 
         if ($invoices->isEmpty()) {
             $this->line('  No invoices found');
+
             return;
         }
 

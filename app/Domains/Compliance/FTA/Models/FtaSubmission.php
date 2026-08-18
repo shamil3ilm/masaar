@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\FTA\Models;
 
-use App\Domains\Organization\Concerns\BelongsToTenant;
 use App\Domains\Compliance\FTA\Enums\FtaStatus;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Organization\Concerns\BelongsToTenant;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -51,14 +51,14 @@ class FtaSubmission extends Model
     protected function casts(): array
     {
         return [
-            'status'         => FtaStatus::class,
-            'fta_warnings'   => 'array',
-            'fta_errors'     => 'array',
-            'retry_count'    => 'integer',
-            'max_retries'    => 'integer',
-            'next_retry_at'  => 'datetime',
-            'submitted_at'   => 'datetime',
-            'accepted_at'    => 'datetime',
+            'status' => FtaStatus::class,
+            'fta_warnings' => 'array',
+            'fta_errors' => 'array',
+            'retry_count' => 'integer',
+            'max_retries' => 'integer',
+            'next_retry_at' => 'datetime',
+            'submitted_at' => 'datetime',
+            'accepted_at' => 'datetime',
         ];
     }
 

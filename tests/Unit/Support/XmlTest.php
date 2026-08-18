@@ -14,7 +14,7 @@ class XmlTest extends TestCase
 {
     public function test_valid_xml_loads(): void
     {
-        $dom = Xml::load(new DOMDocument(), '<Invoice><ID>INV-1</ID></Invoice>');
+        $dom = Xml::load(new DOMDocument, '<Invoice><ID>INV-1</ID></Invoice>');
 
         $this->assertSame('Invoice', $dom->documentElement->nodeName);
         $this->assertSame('INV-1', $dom->getElementsByTagName('ID')->item(0)->nodeValue);
@@ -29,14 +29,14 @@ class XmlTest extends TestCase
     {
         $this->expectException(XmlException::class);
 
-        Xml::load(new DOMDocument(), '<Invoice><ID>unclosed</Invoice>');
+        Xml::load(new DOMDocument, '<Invoice><ID>unclosed</Invoice>');
     }
 
     public function test_empty_throws(): void
     {
         $this->expectException(XmlException::class);
 
-        Xml::load(new DOMDocument(), '');
+        Xml::load(new DOMDocument, '');
     }
 
     public function test_doctype_rejected(): void
@@ -50,7 +50,7 @@ class XmlTest extends TestCase
         $this->expectException(XmlException::class);
         $this->expectExceptionMessageMatches('/DOCTYPE/');
 
-        Xml::load(new DOMDocument(), $xml);
+        Xml::load(new DOMDocument, $xml);
     }
 
     /**
@@ -71,7 +71,7 @@ class XmlTest extends TestCase
 
         $this->expectException(XmlException::class);
 
-        Xml::load(new DOMDocument(), $xml);
+        Xml::load(new DOMDocument, $xml);
     }
 
     public function test_oversized_rejected(): void
@@ -81,7 +81,7 @@ class XmlTest extends TestCase
         $this->expectException(XmlException::class);
         $this->expectExceptionMessageMatches('/exceeds the 1024 byte limit/');
 
-        Xml::load(new DOMDocument(), $xml, maxBytes: 1024);
+        Xml::load(new DOMDocument, $xml, maxBytes: 1024);
     }
 
     /**
@@ -91,7 +91,6 @@ class XmlTest extends TestCase
      * which feeds the invoice hash and the signature. Any drift here silently
      * changes what gets signed, so this compares the loader's result against a
      * plain loadXML() on an identically-constructed document.
-     *
      */
     #[DataProvider('documentConstructionProvider')]
     public function test_output_byte_identical(
@@ -101,11 +100,11 @@ class XmlTest extends TestCase
     ): void {
         $xml = "<Invoice>\n    <ID>INV-1</ID>\n    <Total>100.00</Total>\n</Invoice>";
 
-        $expected = $version === null ? new DOMDocument() : new DOMDocument($version, $encoding);
+        $expected = $version === null ? new DOMDocument : new DOMDocument($version, $encoding);
         $expected->preserveWhiteSpace = $preserveWhiteSpace;
         $expected->loadXML($xml);
 
-        $actual = $version === null ? new DOMDocument() : new DOMDocument($version, $encoding);
+        $actual = $version === null ? new DOMDocument : new DOMDocument($version, $encoding);
         $actual->preserveWhiteSpace = $preserveWhiteSpace;
         Xml::load($actual, $xml);
 
@@ -124,7 +123,7 @@ class XmlTest extends TestCase
 
     public function test_errors_returns_diagnostics(): void
     {
-        $errors = Xml::errors(new DOMDocument(), '<Invoice><ID>unclosed</Invoice>');
+        $errors = Xml::errors(new DOMDocument, '<Invoice><ID>unclosed</Invoice>');
 
         $this->assertNotEmpty($errors);
         $this->assertStringContainsString('line', $errors[0]);
@@ -132,7 +131,7 @@ class XmlTest extends TestCase
 
     public function test_errors_empty_when_valid(): void
     {
-        $this->assertSame([], Xml::errors(new DOMDocument(), '<Invoice/>'));
+        $this->assertSame([], Xml::errors(new DOMDocument, '<Invoice/>'));
     }
 
     /**
@@ -145,11 +144,11 @@ class XmlTest extends TestCase
         $previous = libxml_use_internal_errors(false);
 
         try {
-            Xml::errors(new DOMDocument(), '<Invoice><ID>unclosed</Invoice>');
+            Xml::errors(new DOMDocument, '<Invoice><ID>unclosed</Invoice>');
             $this->assertFalse(libxml_use_internal_errors(false), 'internal error flag was left enabled');
 
             libxml_use_internal_errors(true);
-            Xml::errors(new DOMDocument(), '<Invoice/>');
+            Xml::errors(new DOMDocument, '<Invoice/>');
             $this->assertTrue(libxml_use_internal_errors(true), 'internal error flag was left disabled');
         } finally {
             libxml_use_internal_errors($previous);

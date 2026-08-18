@@ -30,9 +30,9 @@ class ComplianceProfileController extends Controller
     {
         $validated = $request->validate([
             'jurisdiction' => ['required', 'string', 'size:2'],
-            'engine'       => ['required', 'string', 'max:32'],
-            'status'       => ['sometimes', 'string'],
-            'settings'     => ['sometimes', 'array'],
+            'engine' => ['required', 'string', 'max:32'],
+            'status' => ['sometimes', 'string'],
+            'settings' => ['sometimes', 'array'],
         ]);
 
         $profile = $organization->complianceProfiles()->create($validated);

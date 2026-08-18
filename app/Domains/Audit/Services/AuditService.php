@@ -45,7 +45,7 @@ class AuditService
     public function logCreated(Model $entity, ?array $metadata = null): AuditLog
     {
         return $this->log(
-            action: class_basename($entity) . '.created',
+            action: class_basename($entity).'.created',
             entity: $entity,
             newValues: $entity->toArray(),
             metadata: $metadata,
@@ -58,7 +58,7 @@ class AuditService
     public function logUpdated(Model $entity, array $oldValues, ?array $metadata = null): AuditLog
     {
         return $this->log(
-            action: class_basename($entity) . '.updated',
+            action: class_basename($entity).'.updated',
             entity: $entity,
             oldValues: $oldValues,
             newValues: $entity->toArray(),
@@ -72,7 +72,7 @@ class AuditService
     public function logDeleted(Model $entity, ?array $metadata = null): AuditLog
     {
         return $this->log(
-            action: class_basename($entity) . '.deleted',
+            action: class_basename($entity).'.deleted',
             entity: $entity,
             oldValues: $entity->toArray(),
             metadata: $metadata,
@@ -101,7 +101,7 @@ class AuditService
         return AuditLog::create([
             'organization_id' => null,
             'user_id' => $userId ?? auth()->id(),
-            'action' => 'auth.' . $action,
+            'action' => 'auth.'.$action,
             'entity_type' => 'User',
             'entity_id' => $userId ?? auth()->id(),
             'ip_address' => request()?->ip(),
@@ -146,6 +146,6 @@ class AuditService
      */
     private function getOrganizationId(): ?string
     {
-        return app(\App\Domains\Organization\Services\TenantResolver::class)->getOrganizationId();
+        return app(TenantResolver::class)->getOrganizationId();
     }
 }

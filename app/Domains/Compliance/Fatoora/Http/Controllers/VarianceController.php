@@ -67,7 +67,7 @@ class VarianceController extends Controller
     {
         $variance = $this->varianceTracker->getVariance($id);
 
-        if (!$variance) {
+        if (! $variance) {
             return ApiResponse::notFound('Variance not found');
         }
 
@@ -108,7 +108,7 @@ class VarianceController extends Controller
 
         $variance = $this->varianceTracker->getVariance($id);
 
-        if (!$variance) {
+        if (! $variance) {
             return ApiResponse::notFound('Variance not found');
         }
 
@@ -129,7 +129,7 @@ class VarianceController extends Controller
                 'status' => 'reported',
             ], 'Variance marked as reported to ZATCA');
         } catch (\RuntimeException $e) {
-            return ApiResponse::error('Failed to update variance: ' . $e->getMessage(), 500);
+            return ApiResponse::error('Failed to update variance: '.$e->getMessage(), 500);
         }
     }
 
@@ -151,7 +151,7 @@ class VarianceController extends Controller
 
         $variance = $this->varianceTracker->getVariance($id);
 
-        if (!$variance) {
+        if (! $variance) {
             return ApiResponse::notFound('Variance not found');
         }
 

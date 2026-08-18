@@ -2,7 +2,7 @@
 //
 // Example usage:
 //
-//	client := complipay.NewClient("https://api.complipay.com", "api_key", "api_secret")
+//	client := complipay.NewClient("https://api.masaar.sa", "api_key", "api_secret")
 //
 //	invoice, err := client.Invoices.Create(context.Background(), &complipay.CreateInvoiceRequest{
 //	    InvoiceNumber: "INV-001",

@@ -24,18 +24,18 @@ return new class extends Migration
         Schema::table('invoice_submissions', function (Blueprint $table) {
             // Authoritative signing time (when XAdES signature was applied)
             // This is the cryptographic proof timestamp, separate from issue_date
-            if (!Schema::hasColumn('invoice_submissions', 'signed_at')) {
+            if (! Schema::hasColumn('invoice_submissions', 'signed_at')) {
                 $table->timestamp('signed_at')->nullable()->after('queued_at');
             }
 
             // Clearance state tracking for B2B invoices
-            if (!Schema::hasColumn('invoice_submissions', 'clearance_state')) {
+            if (! Schema::hasColumn('invoice_submissions', 'clearance_state')) {
                 $table->string('clearance_state')->nullable()->after('clearance_status');
             }
-            if (!Schema::hasColumn('invoice_submissions', 'clearance_confirmed_at')) {
+            if (! Schema::hasColumn('invoice_submissions', 'clearance_confirmed_at')) {
                 $table->timestamp('clearance_confirmed_at')->nullable()->after('clearance_state');
             }
-            if (!Schema::hasColumn('invoice_submissions', 'clearance_check_count')) {
+            if (! Schema::hasColumn('invoice_submissions', 'clearance_check_count')) {
                 $table->integer('clearance_check_count')->default(0)->after('clearance_confirmed_at');
             }
         });
@@ -46,7 +46,7 @@ return new class extends Migration
                 ->pluck('name')
                 ->contains('invoice_submissions_signed_at_index');
 
-            if (!$indexExists) {
+            if (! $indexExists) {
                 Schema::table('invoice_submissions', function (Blueprint $table) {
                     $table->index('signed_at');
                 });
@@ -77,7 +77,7 @@ return new class extends Migration
                 }
             }
 
-            if (!empty($columnsToDrop)) {
+            if (! empty($columnsToDrop)) {
                 $table->dropColumn($columnsToDrop);
             }
         });

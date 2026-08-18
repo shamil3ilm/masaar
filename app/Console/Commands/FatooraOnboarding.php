@@ -55,20 +55,25 @@ class FatooraOnboarding extends Command
     ];
 
     private InvoiceHasher $hasher;
+
     private XadesSigner $signer;
+
     private QrCodeGenerator $qrGenerator;
+
     private CertificateService $certificateService;
+
     private string $environment;
+
     private string $baseUrl;
 
     public function __construct()
     {
         parent::__construct();
-        $this->hasher = new InvoiceHasher();
-        $ecdsaSigner = new EcdsaSigner();
-        $this->certificateService = new CertificateService();
+        $this->hasher = new InvoiceHasher;
+        $ecdsaSigner = new EcdsaSigner;
+        $this->certificateService = new CertificateService;
         $this->signer = new XadesSigner($ecdsaSigner, $this->certificateService);
-        $this->qrGenerator = new QrCodeGenerator(new TlvEncoder());
+        $this->qrGenerator = new QrCodeGenerator(new TlvEncoder);
     }
 
     public function handle(): int
@@ -149,18 +154,20 @@ class FatooraOnboarding extends Command
         }
 
         $otp = $this->option('otp');
-        if (!$otp) {
+        if (! $otp) {
             $this->error('OTP is required. Use --otp=<your-otp>');
             $this->line('Get OTP from: https://fatoora.zatca.gov.sa/');
             $this->newLine();
             $this->info('TIP: Use --target=local for local testing without OTP');
+
             return Command::FAILURE;
         }
 
         $csrPath = $this->option('csr') ?? storage_path('app/zatca/taxpayer.csr');
-        if (!file_exists($csrPath)) {
+        if (! file_exists($csrPath)) {
             $this->error("CSR not found at: {$csrPath}");
             $this->line('Generate CSR first: php artisan fatoora:generate-csr');
+
             return Command::FAILURE;
         }
 
@@ -192,7 +199,7 @@ class FatooraOnboarding extends Command
                     'Accept-Language' => 'en',
                     'OTP' => $otp,
                 ])
-                ->post($this->baseUrl . '/compliance', [
+                ->post($this->baseUrl.'/compliance', [
                     'csr' => $csrBase64,
                 ]);
 
@@ -221,7 +228,7 @@ class FatooraOnboarding extends Command
             }
 
             $this->error('Failed to get CCSID');
-            $this->line('Response: ' . $response->body());
+            $this->line('Response: '.$response->body());
 
             if ($response->status() === 400) {
                 $errors = $response->json('errors') ?? [];
@@ -233,7 +240,8 @@ class FatooraOnboarding extends Command
             return Command::FAILURE;
 
         } catch (\Exception $e) {
-            $this->error('Request failed: ' . $e->getMessage());
+            $this->error('Request failed: '.$e->getMessage());
+
             return Command::FAILURE;
         }
     }
@@ -250,14 +258,16 @@ class FatooraOnboarding extends Command
         $csrPath = $this->option('csr') ?? storage_path('app/zatca/taxpayer.csr');
         $keyPath = $this->option('key') ?? storage_path('app/zatca/taxpayer.key');
 
-        if (!file_exists($csrPath)) {
+        if (! file_exists($csrPath)) {
             $this->error("CSR not found at: {$csrPath}");
             $this->line('Generate CSR first: php artisan fatoora:generate-csr');
+
             return Command::FAILURE;
         }
 
-        if (!file_exists($keyPath)) {
+        if (! file_exists($keyPath)) {
             $this->error("Private key not found at: {$keyPath}");
+
             return Command::FAILURE;
         }
 
@@ -267,11 +277,12 @@ class FatooraOnboarding extends Command
 
             // Find OpenSSL executable
             $opensslCmd = $this->findOpenSsl();
-            if (!$opensslCmd) {
+            if (! $opensslCmd) {
                 $this->error('OpenSSL not found. Please install OpenSSL or add it to PATH.');
                 $this->line('Common locations:');
                 $this->line('  - C:\\laragon\\bin\\git\\usr\\bin\\openssl.exe');
                 $this->line('  - C:\\Program Files\\Git\\usr\\bin\\openssl.exe');
+
                 return Command::FAILURE;
             }
 
@@ -286,9 +297,10 @@ class FatooraOnboarding extends Command
 
             exec($cmd, $output, $returnCode);
 
-            if ($returnCode !== 0 || !file_exists($certPath)) {
+            if ($returnCode !== 0 || ! file_exists($certPath)) {
                 $this->error('Failed to generate self-signed certificate');
                 $this->line(implode("\n", $output));
+
                 return Command::FAILURE;
             }
 
@@ -299,10 +311,10 @@ class FatooraOnboarding extends Command
             $certificate = file_get_contents($certPath);
 
             $data = [
-                'requestID' => 'LOCAL-' . time(),
+                'requestID' => 'LOCAL-'.time(),
                 'dispositionMessage' => 'LOCAL TEST MODE',
                 'binarySecurityToken' => base64_encode($certificate),
-                'secret' => base64_encode('local-test-secret-' . bin2hex(random_bytes(16))),
+                'secret' => base64_encode('local-test-secret-'.bin2hex(random_bytes(16))),
                 'tokenType' => 'LOCAL',
             ];
 
@@ -328,7 +340,8 @@ class FatooraOnboarding extends Command
             return Command::SUCCESS;
 
         } catch (\Exception $e) {
-            $this->error('Failed to generate local CCSID: ' . $e->getMessage());
+            $this->error('Failed to generate local CCSID: '.$e->getMessage());
+
             return Command::FAILURE;
         }
     }
@@ -343,17 +356,18 @@ class FatooraOnboarding extends Command
         $this->newLine();
 
         $ccsid = $this->loadCcsidCredentials();
-        if (!$ccsid) {
+        if (! $ccsid) {
             $this->error('CCSID credentials not found. Run --step=ccsid first with --target=local.');
+
             return Command::FAILURE;
         }
 
         // In local mode, PCSID is essentially the same as CCSID (same self-signed cert)
         $data = [
-            'requestID' => 'PCSID-LOCAL-' . time(),
+            'requestID' => 'PCSID-LOCAL-'.time(),
             'dispositionMessage' => 'LOCAL PRODUCTION TEST MODE',
             'binarySecurityToken' => $ccsid['token'],
-            'secret' => base64_encode('local-prod-secret-' . bin2hex(random_bytes(16))),
+            'secret' => base64_encode('local-prod-secret-'.bin2hex(random_bytes(16))),
             'tokenType' => 'LOCAL-PRODUCTION',
         ];
 
@@ -379,14 +393,15 @@ class FatooraOnboarding extends Command
     private function runComplianceCheck(): int
     {
         $ccsid = $this->loadCcsidCredentials();
-        if (!$ccsid) {
+        if (! $ccsid) {
             $this->error('CCSID credentials not found. Run --step=ccsid first.');
+
             return Command::FAILURE;
         }
 
         // Check if we have signing credentials
-        $canSign = !empty($ccsid['certificate']) && !empty($ccsid['privateKey']);
-        if (!$canSign) {
+        $canSign = ! empty($ccsid['certificate']) && ! empty($ccsid['privateKey']);
+        if (! $canSign) {
             $this->warn('Certificate or private key not found. Invoices will be submitted unsigned.');
             $this->line('For proper compliance, provide --key option when running --step=ccsid');
             $this->newLine();
@@ -428,11 +443,11 @@ class FatooraOnboarding extends Command
             try {
                 // Generate invoice XML
                 $invoiceData = $this->createComplianceInvoice($type, $index + 1, $previousHash);
-                $builder = new XmlBuilder();
+                $builder = new XmlBuilder;
                 $xml = $builder->build($invoiceData);
 
                 // Sign invoice if credentials are available (skip in local mode for structure validation)
-                if ($canSign && !$isLocalMode) {
+                if ($canSign && ! $isLocalMode) {
                     $xml = $this->signer->sign($xml, $ccsid['privateKey'], $ccsid['certificate']);
 
                     // Generate and inject QR code for signed invoice
@@ -452,7 +467,7 @@ class FatooraOnboarding extends Command
                 }
 
                 $status = $result['success'] ? '✓ PASSED' : '✗ FAILED';
-                if (!$result['success']) {
+                if (! $result['success']) {
                     $allPassed = false;
                 }
 
@@ -483,10 +498,12 @@ class FatooraOnboarding extends Command
             $this->newLine();
             $this->info('NEXT: Request Production CSID:');
             $this->line("  php artisan fatoora:onboard --step=pcsid --target={$this->environment}");
+
             return Command::SUCCESS;
         }
 
         $this->error('Some invoices failed compliance check. Review errors and retry.');
+
         return Command::FAILURE;
     }
 
@@ -498,8 +515,9 @@ class FatooraOnboarding extends Command
         }
 
         $ccsid = $this->loadCcsidCredentials();
-        if (!$ccsid) {
+        if (! $ccsid) {
             $this->error('CCSID credentials not found. Run --step=ccsid first.');
+
             return Command::FAILURE;
         }
 
@@ -517,7 +535,7 @@ class FatooraOnboarding extends Command
                     'Accept-Version' => 'V2',
                     'Accept-Language' => 'en',
                 ])
-                ->post($this->baseUrl . '/production/csids', [
+                ->post($this->baseUrl.'/production/csids', [
                     'compliance_request_id' => $ccsid['requestId'],
                 ]);
 
@@ -548,7 +566,7 @@ class FatooraOnboarding extends Command
             }
 
             $this->error('Failed to get PCSID');
-            $this->line('Response: ' . $response->body());
+            $this->line('Response: '.$response->body());
 
             if ($response->status() === 400) {
                 $this->warn('Common reasons for PCSID failure:');
@@ -560,7 +578,8 @@ class FatooraOnboarding extends Command
             return Command::FAILURE;
 
         } catch (\Exception $e) {
-            $this->error('Request failed: ' . $e->getMessage());
+            $this->error('Request failed: '.$e->getMessage());
+
             return Command::FAILURE;
         }
     }
@@ -588,6 +607,7 @@ class FatooraOnboarding extends Command
 
         // Step 3: Get PCSID
         $this->info('═══ Step 3/3: Request Production CSID ═══');
+
         return $this->requestProductionCsid();
     }
 
@@ -595,7 +615,7 @@ class FatooraOnboarding extends Command
     {
         $isStandard = $type['subtype'] === '01';
         $uuid = $this->generateUuid();
-        $invoiceNumber = 'COMP-' . date('Ymd') . '-' . str_pad((string) $icv, 3, '0', STR_PAD_LEFT);
+        $invoiceNumber = 'COMP-'.date('Ymd').'-'.str_pad((string) $icv, 3, '0', STR_PAD_LEFT);
 
         // For credit/debit notes, reference a previous invoice and add reason (BR-KSA-17)
         $billingReferenceId = null;
@@ -670,7 +690,7 @@ class FatooraOnboarding extends Command
                     'Accept-Version' => 'V2',
                     'Accept-Language' => 'en',
                 ])
-                ->post($this->baseUrl . '/compliance/invoices', [
+                ->post($this->baseUrl.'/compliance/invoices', [
                     'invoiceHash' => $hash, // Already base64-encoded from InvoiceHasher
                     'uuid' => $uuid,
                     'invoice' => base64_encode($xml),
@@ -679,16 +699,17 @@ class FatooraOnboarding extends Command
             if ($response->successful()) {
                 $data = $response->json();
                 $status = $data['validationResults']['status'] ?? $data['clearanceStatus'] ?? 'UNKNOWN';
+
                 return [
                     'success' => in_array($status, ['PASS', 'PASSED', 'CLEARED', 'REPORTED']),
                     'message' => $status,
                 ];
             }
 
-            $errorMsg = 'HTTP ' . $response->status();
+            $errorMsg = 'HTTP '.$response->status();
             $errors = $response->json('errors') ?? $response->json('validationResults.errors') ?? [];
-            if (!empty($errors)) {
-                $errorMsg .= ': ' . ($errors[0]['message'] ?? json_encode($errors[0]));
+            if (! empty($errors)) {
+                $errorMsg .= ': '.($errors[0]['message'] ?? json_encode($errors[0]));
             }
 
             return ['success' => false, 'message' => $errorMsg];
@@ -717,7 +738,7 @@ class FatooraOnboarding extends Command
 
         // Basic XML structure validation
         try {
-            $dom = new \DOMDocument();
+            $dom = new \DOMDocument;
             Xml::load($dom, $xml, LIBXML_NOERROR | LIBXML_NOWARNING);
 
             // Check for required elements
@@ -734,43 +755,43 @@ class FatooraOnboarding extends Command
                 'LegalMonetaryTotal' => $xpath->query('//cac:LegalMonetaryTotal')->length > 0,
             ];
 
-            $missing = array_keys(array_filter($checks, fn($v) => !$v));
+            $missing = array_keys(array_filter($checks, fn ($v) => ! $v));
 
             if (empty($missing)) {
                 return ['success' => true, 'message' => 'LOCAL: Structure OK'];
             }
 
-            return ['success' => false, 'message' => 'Missing: ' . implode(', ', $missing)];
+            return ['success' => false, 'message' => 'Missing: '.implode(', ', $missing)];
 
         } catch (\Exception $e) {
-            return ['success' => false, 'message' => 'XML Error: ' . $e->getMessage()];
+            return ['success' => false, 'message' => 'XML Error: '.$e->getMessage()];
         }
     }
 
     private function saveCcsidCredentials(array $data): void
     {
         $dir = storage_path('app/zatca');
-        if (!File::isDirectory($dir)) {
+        if (! File::isDirectory($dir)) {
             File::makeDirectory($dir, 0755, true);
         }
 
         // Save the raw token and secret
-        File::put($dir . '/ccsid_token.txt', $data['binarySecurityToken'] ?? '');
-        File::put($dir . '/ccsid_secret.txt', $data['secret'] ?? '');
-        File::put($dir . '/ccsid_request_id.txt', $data['requestID'] ?? '');
+        File::put($dir.'/ccsid_token.txt', $data['binarySecurityToken'] ?? '');
+        File::put($dir.'/ccsid_secret.txt', $data['secret'] ?? '');
+        File::put($dir.'/ccsid_request_id.txt', $data['requestID'] ?? '');
 
         // Handle certificate - for local mode use raw cert, for API mode convert from base64
-        if (!empty($data['certificate']) && str_starts_with($data['certificate'], '-----BEGIN')) {
+        if (! empty($data['certificate']) && str_starts_with($data['certificate'], '-----BEGIN')) {
             // Local mode: certificate is already in PEM format
-            File::put($dir . '/ccsid_certificate.pem', $data['certificate']);
+            File::put($dir.'/ccsid_certificate.pem', $data['certificate']);
         } else {
             // API mode: binarySecurityToken is base64-encoded DER certificate
             $certBase64 = $data['binarySecurityToken'] ?? '';
             if ($certBase64) {
-                $certPem = "-----BEGIN CERTIFICATE-----\n" .
-                    chunk_split($certBase64, 64, "\n") .
-                    "-----END CERTIFICATE-----";
-                File::put($dir . '/ccsid_certificate.pem', $certPem);
+                $certPem = "-----BEGIN CERTIFICATE-----\n".
+                    chunk_split($certBase64, 64, "\n").
+                    '-----END CERTIFICATE-----';
+                File::put($dir.'/ccsid_certificate.pem', $certPem);
             }
         }
 
@@ -778,10 +799,10 @@ class FatooraOnboarding extends Command
         $keyPath = $this->option('key') ?? storage_path('app/zatca/taxpayer.key');
         if (file_exists($keyPath)) {
             $privateKey = file_get_contents($keyPath);
-            File::put($dir . '/ccsid_private_key.pem', $privateKey);
-            $this->line('Private key copied from: ' . $keyPath);
+            File::put($dir.'/ccsid_private_key.pem', $privateKey);
+            $this->line('Private key copied from: '.$keyPath);
         } else {
-            $this->warn('Private key not found at: ' . $keyPath);
+            $this->warn('Private key not found at: '.$keyPath);
             $this->line('You will need to provide the private key for invoice signing.');
         }
 
@@ -791,13 +812,13 @@ class FatooraOnboarding extends Command
     private function loadCcsidCredentials(): ?array
     {
         $dir = storage_path('app/zatca');
-        $tokenPath = $dir . '/ccsid_token.txt';
-        $secretPath = $dir . '/ccsid_secret.txt';
-        $requestIdPath = $dir . '/ccsid_request_id.txt';
-        $certPath = $dir . '/ccsid_certificate.pem';
-        $keyPath = $dir . '/ccsid_private_key.pem';
+        $tokenPath = $dir.'/ccsid_token.txt';
+        $secretPath = $dir.'/ccsid_secret.txt';
+        $requestIdPath = $dir.'/ccsid_request_id.txt';
+        $certPath = $dir.'/ccsid_certificate.pem';
+        $keyPath = $dir.'/ccsid_private_key.pem';
 
-        if (!file_exists($tokenPath) || !file_exists($secretPath)) {
+        if (! file_exists($tokenPath) || ! file_exists($secretPath)) {
             return null;
         }
 
@@ -813,9 +834,9 @@ class FatooraOnboarding extends Command
     private function savePcsidCredentials(array $data): void
     {
         $dir = storage_path('app/zatca');
-        File::put($dir . '/pcsid_token.txt', $data['binarySecurityToken'] ?? '');
-        File::put($dir . '/pcsid_secret.txt', $data['secret'] ?? '');
-        File::put($dir . '/pcsid_request_id.txt', $data['requestID'] ?? '');
+        File::put($dir.'/pcsid_token.txt', $data['binarySecurityToken'] ?? '');
+        File::put($dir.'/pcsid_secret.txt', $data['secret'] ?? '');
+        File::put($dir.'/pcsid_request_id.txt', $data['requestID'] ?? '');
 
         $this->line('Production credentials saved to storage/app/zatca/pcsid_*.txt');
     }
@@ -873,7 +894,7 @@ class FatooraOnboarding extends Command
         $qrData = new QrCodeData(
             sellerName: $invoiceData->sellerName,
             vatNumber: $invoiceData->sellerVatNumber,
-            timestamp: $invoiceData->issueDate . 'T' . $invoiceData->issueTime,
+            timestamp: $invoiceData->issueDate.'T'.$invoiceData->issueTime,
             invoiceTotal: number_format($invoiceData->total, 2, '.', ''),
             vatTotal: number_format($invoiceData->taxAmount, 2, '.', ''),
             invoiceHash: base64_encode($invoiceHash),
@@ -939,14 +960,15 @@ class FatooraOnboarding extends Command
         }
 
         $dom->formatOutput = true;
+
         return $dom->saveXML();
     }
 
     private function generateUuid(): string
     {
         $data = random_bytes(16);
-        $data[6] = chr(ord($data[6]) & 0x0f | 0x40);
-        $data[8] = chr(ord($data[8]) & 0x3f | 0x80);
+        $data[6] = chr(ord($data[6]) & 0x0F | 0x40);
+        $data[8] = chr(ord($data[8]) & 0x3F | 0x80);
 
         return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
     }

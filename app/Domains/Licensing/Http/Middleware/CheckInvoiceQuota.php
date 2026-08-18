@@ -32,7 +32,7 @@ class CheckInvoiceQuota
         try {
             $license = $request->attributes->get('license');
 
-            if (!$license instanceof License) {
+            if (! $license instanceof License) {
                 throw new \RuntimeException('License not found in request. Ensure ValidateLicense middleware runs first.');
             }
 

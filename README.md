@@ -1,14 +1,21 @@
 # Masaar — GCC E-Invoicing Compliance Platform
 
-A production-ready multi-jurisdiction e-invoicing compliance API platform for GCC businesses.
+A multi-jurisdiction e-invoicing compliance API platform for GCC businesses.
 
 ## Supported Jurisdictions
 
 | Country | Authority | System | Status |
 |---------|-----------|--------|--------|
-| 🇸🇦 Saudi Arabia | ZATCA | Fatoora Phase 2 | ✅ Production Ready |
-| 🇦🇪 UAE | FTA | Peppol PINT AE | 🚧 In Development (mandate: 2027-01-01) |
+| 🇸🇦 Saudi Arabia | ZATCA | Fatoora Phase 2 | 🟢 Feature complete — conformance suite pending |
+| 🇦🇪 UAE | FTA | Peppol PINT AE | 🚧 In development (mandate: 2027-01-01) |
 | 🇶🇦 Qatar | GTA | — | 📋 Planned |
+
+> **Production readiness.** The Saudi pipeline — UBL generation, ICV/PIH hash
+> chaining, XAdES signing, TLV QR, CSID onboarding and submission — is built and
+> covered by tests. It has **not** yet been validated against ZATCA's official
+> conformance fixtures, and signing keys are not yet held in a managed KMS.
+> See [`docs/audit/09-WORK-MAP.md`](docs/audit/09-WORK-MAP.md) for the current
+> gap list before deploying to production.
 
 ## Repository Structure
 
@@ -29,6 +36,9 @@ Masaar/
 
 ## Quick Start
 
+**Requires PHP 8.4+** — the dependency tree (Symfony 8, Pest 4) will not install
+on 8.3 or below.
+
 ```bash
 composer install
 cp .env.example .env
@@ -37,6 +47,12 @@ php artisan jwt:secret
 php artisan migrate
 php artisan db:seed
 php artisan serve
+```
+
+Run the test suite:
+
+```bash
+php artisan test
 ```
 
 ## Documentation
@@ -49,7 +65,24 @@ php artisan serve
 
 ## SDKs
 
-Available in `sdks/`: PHP, TypeScript, Python, Java, Go, Kotlin, Dart, Swift, Ruby, Rust, .NET
+Client libraries live in [`sdks/`](sdks/). **None are published to a package
+registry yet** — use them by vendoring the source. They are hand-written against
+the API rather than generated, so treat the HTTP API and
+[`docs/openapi.yaml`](docs/openapi.yaml) as authoritative where they disagree.
+
+| SDK | Status | Notes |
+|-----|--------|-------|
+| [Java](sdks/java/) | 🟢 Most complete | Typed models, resource classes, exception hierarchy |
+| [PHP](sdks/php-legacy/) | 🟡 Single-file client | Directory named `php-legacy`; predates the current API surface |
+| [TypeScript](sdks/typescript/) | 🟡 Single-file client | Intended Tier-1 target |
+| [Python](sdks/python/) | 🟡 Single-file client | |
+| [Rust](sdks/rust/) · [Go](sdks/go/) · [Kotlin](sdks/kotlin/) · [Swift](sdks/swift/) · [.NET](sdks/dotnet/) · [Ruby](sdks/ruby/) · [Dart](sdks/dart/) | 🟠 Skeleton | One client file each; no tests, unverified against a live API |
+| JavaScript | 🔴 Not implemented | Use the TypeScript SDK — it compiles to JavaScript |
+
+Known gaps, tracked in [`docs/audit/`](docs/audit/): the SDKs cover a subset of
+the API, carry no automated tests, and several still use the platform's former
+name in class names. The intended direction is to generate them from the OpenAPI
+specification rather than maintain eleven by hand.
 
 ## License
 

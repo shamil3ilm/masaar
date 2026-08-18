@@ -15,7 +15,7 @@ return new class extends Migration
     {
         // organization_licenses.organization_id -> organizations.id
         Schema::table('organization_licenses', function (Blueprint $table) {
-            if (!$this->foreignKeyExists('organization_licenses', 'organization_licenses_organization_id_foreign')) {
+            if (! $this->foreignKeyExists('organization_licenses', 'organization_licenses_organization_id_foreign')) {
                 $table->foreign('organization_id', 'organization_licenses_organization_id_foreign')
                     ->references('id')
                     ->on('organizations')
@@ -25,7 +25,7 @@ return new class extends Migration
 
         // hash_chain_history.invoice_id -> invoices.id
         Schema::table('hash_chain_history', function (Blueprint $table) {
-            if (!$this->foreignKeyExists('hash_chain_history', 'hash_chain_history_invoice_id_foreign')) {
+            if (! $this->foreignKeyExists('hash_chain_history', 'hash_chain_history_invoice_id_foreign')) {
                 $table->foreign('invoice_id', 'hash_chain_history_invoice_id_foreign')
                     ->references('id')
                     ->on('invoices')
@@ -36,7 +36,7 @@ return new class extends Migration
         // licenses.issued_by -> users.id (nullable, so nullOnDelete)
         Schema::table('licenses', function (Blueprint $table) {
             if (Schema::hasColumn('licenses', 'issued_by')) {
-                if (!$this->foreignKeyExists('licenses', 'licenses_issued_by_foreign')) {
+                if (! $this->foreignKeyExists('licenses', 'licenses_issued_by_foreign')) {
                     $table->foreign('issued_by', 'licenses_issued_by_foreign')
                         ->references('id')
                         ->on('users')
@@ -83,7 +83,7 @@ return new class extends Migration
                     return true;
                 }
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return false;
         }
 

@@ -39,7 +39,7 @@ function makeFtaValidatorData(array $overrides = []): FtaInvoiceData
 
 it('passes validation for a valid invoice', function () {
     expect(fn () => app(FtaValidator::class)->validate(makeFtaValidatorData()))
-        ->not->toThrow(\Throwable::class);
+        ->not->toThrow(Throwable::class);
 });
 
 it('throws for non-AED currency', function () {
@@ -69,15 +69,15 @@ it('throws for invalid VAT rate', function () {
 
 it('throws for credit note missing reference', function () {
     expect(fn () => app(FtaValidator::class)->validate(makeFtaValidatorData([
-        'documentType'        => '381',
+        'documentType' => '381',
         'creditNoteReference' => null,
     ])))->toThrow(FtaException::class);
 });
 
 it('accepts zero VAT rate', function () {
     expect(fn () => app(FtaValidator::class)->validate(makeFtaValidatorData([
-        'vatRate'            => 0.00,
-        'vatAmount'          => 0.00,
+        'vatRate' => 0.00,
+        'vatAmount' => 0.00,
         'taxInclusiveAmount' => 1000.00,
-    ])))->not->toThrow(\Throwable::class);
+    ])))->not->toThrow(Throwable::class);
 });

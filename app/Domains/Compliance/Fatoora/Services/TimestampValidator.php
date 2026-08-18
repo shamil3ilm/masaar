@@ -29,25 +29,31 @@ class TimestampValidator
      * Timestamp authority types.
      */
     public const AUTHORITY_TSA = 'tsa';
+
     public const AUTHORITY_LOCAL = 'local';
+
     public const AUTHORITY_ERP = 'erp';
 
     /**
      * Validation result codes.
      */
     public const RESULT_VALID = 'valid';
+
     public const RESULT_DRIFT_WARNING = 'drift_warning';
+
     public const RESULT_DRIFT_ERROR = 'drift_error';
+
     public const RESULT_FUTURE_TIMESTAMP = 'future_timestamp';
+
     public const RESULT_STALE_TIMESTAMP = 'stale_timestamp';
 
     /**
      * Validate invoice timestamp against multiple sources.
      *
-     * @param \DateTimeInterface|string|null $invoiceTimestamp The invoice's claimed issue time
-     * @param \DateTimeInterface|string|null $erpTimestamp ERP-provided timestamp (if any)
-     * @param \DateTimeInterface|string|null $tsaTimestamp TSA response timestamp (if XAdES-T)
-     * @param \DateTimeInterface|string|null $zatcaReceivedAt ZATCA's received timestamp (from clearance response)
+     * @param  \DateTimeInterface|string|null  $invoiceTimestamp  The invoice's claimed issue time
+     * @param  \DateTimeInterface|string|null  $erpTimestamp  ERP-provided timestamp (if any)
+     * @param  \DateTimeInterface|string|null  $tsaTimestamp  TSA response timestamp (if XAdES-T)
+     * @param  \DateTimeInterface|string|null  $zatcaReceivedAt  ZATCA's received timestamp (from clearance response)
      * @return array{valid: bool, authority: string, drift_seconds: int, warnings: array, errors: array}
      */
     public function validateTimestamps(
@@ -169,7 +175,7 @@ class TimestampValidator
 
         $isValid = empty($errors);
 
-        if (!$isValid || !empty($warnings)) {
+        if (! $isValid || ! empty($warnings)) {
             Log::warning('Timestamp validation completed', [
                 'authority' => $authority,
                 'drift_seconds' => $maxDriftFound,
@@ -197,8 +203,8 @@ class TimestampValidator
      *
      * Used when ZATCA questions an invoice timestamp.
      *
-     * @param array $invoiceMetadata Invoice's stored timestamp metadata
-     * @param \DateTimeInterface $zatcaClaimedTime ZATCA's claimed receipt time
+     * @param  array  $invoiceMetadata  Invoice's stored timestamp metadata
+     * @param  \DateTimeInterface  $zatcaClaimedTime  ZATCA's claimed receipt time
      * @return array{resolution: string, authoritative_time: string, explanation: string}
      */
     public function resolveDispute(array $invoiceMetadata, \DateTimeInterface $zatcaClaimedTime): array
@@ -236,7 +242,6 @@ class TimestampValidator
     /**
      * Check if ERP timestamp is drifting and needs correction.
      *
-     * @param \DateTimeInterface $erpTimestamp
      * @return array{drifting: bool, drift_seconds: int, recommendation: string|null}
      */
     public function checkErpDrift(\DateTimeInterface $erpTimestamp): array
@@ -265,8 +270,8 @@ class TimestampValidator
     /**
      * Generate timestamp metadata to store with invoice.
      *
-     * @param \DateTimeInterface|null $tsaTimestamp TSA timestamp if XAdES-T was used
-     * @param \DateTimeInterface|null $erpTimestamp ERP-provided timestamp for reference
+     * @param  \DateTimeInterface|null  $tsaTimestamp  TSA timestamp if XAdES-T was used
+     * @param  \DateTimeInterface|null  $erpTimestamp  ERP-provided timestamp for reference
      * @return array Metadata to store with invoice
      */
     public function generateTimestampMetadata(
@@ -296,9 +301,6 @@ class TimestampValidator
 
     /**
      * Parse a timestamp from various formats.
-     *
-     * @param \DateTimeInterface|string|null $timestamp
-     * @return \DateTimeInterface|null
      */
     private function parseTimestamp(\DateTimeInterface|string|null $timestamp): ?\DateTimeInterface
     {
@@ -317,6 +319,7 @@ class TimestampValidator
                 'timestamp' => $timestamp,
                 'error' => $e->getMessage(),
             ]);
+
             return null;
         }
     }
@@ -349,7 +352,7 @@ class TimestampValidator
      */
     private function determineResultCode(bool $isValid, int $maxDrift, array $warnings): string
     {
-        if (!$isValid) {
+        if (! $isValid) {
             return self::RESULT_DRIFT_ERROR;
         }
 
@@ -357,7 +360,7 @@ class TimestampValidator
             return self::RESULT_DRIFT_WARNING;
         }
 
-        if (!empty($warnings)) {
+        if (! empty($warnings)) {
             return self::RESULT_DRIFT_WARNING;
         }
 
@@ -375,15 +378,18 @@ class TimestampValidator
 
         if ($seconds < 3600) {
             $minutes = floor($seconds / 60);
-            return "{$minutes} minute" . ($minutes > 1 ? 's' : '');
+
+            return "{$minutes} minute".($minutes > 1 ? 's' : '');
         }
 
         if ($seconds < 86400) {
             $hours = floor($seconds / 3600);
-            return "{$hours} hour" . ($hours > 1 ? 's' : '');
+
+            return "{$hours} hour".($hours > 1 ? 's' : '');
         }
 
         $days = floor($seconds / 86400);
-        return "{$days} day" . ($days > 1 ? 's' : '');
+
+        return "{$days} day".($days > 1 ? 's' : '');
     }
 }

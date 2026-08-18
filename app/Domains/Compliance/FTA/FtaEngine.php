@@ -44,6 +44,7 @@ class FtaEngine implements ComplianceEngine
             );
         } catch (\Throwable $e) {
             Log::error('FtaEngine::submit failed', ['error' => $e->getMessage()]);
+
             return SubmissionResult::failure($e->getMessage());
         }
     }

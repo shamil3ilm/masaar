@@ -21,76 +21,107 @@ final class FatooraConfig
     // XML NAMESPACES (ZATCA UBL 2.1 Specification)
     // ============================================================
     public const UBL_NS = 'urn:oasis:names:specification:ubl:schema:xsd:Invoice-2';
+
     public const CAC_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2';
+
     public const CBC_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2';
+
     public const EXT_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2';
+
     public const SIG_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonSignatureComponents-2';
+
     public const SBC_NS = 'urn:oasis:names:specification:ubl:schema:xsd:SignatureBasicComponents-2';
 
     // ============================================================
     // DIGITAL SIGNATURE NAMESPACES
     // ============================================================
     public const DS_NS = 'http://www.w3.org/2000/09/xmldsig#';
+
     public const XADES_NS = 'http://uri.etsi.org/01903/v1.3.2#';
+
     public const C14N_NS = 'http://www.w3.org/2006/12/xml-c14n11';
+
     public const C14N_EXCLUSIVE_NS = 'http://www.w3.org/2001/10/xml-exc-c14n#';
 
     // ============================================================
     // ALGORITHM URIs
     // ============================================================
     public const ALGO_ECDSA_SHA256 = 'http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha256';
+
     public const ALGO_RSA_SHA256 = 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256';
+
     public const ALGO_SHA256 = 'http://www.w3.org/2001/04/xmlenc#sha256';
+
     public const ALGO_ENVELOPED_SIGNATURE = 'http://www.w3.org/2000/09/xmldsig#enveloped-signature';
+
     public const ALGO_XPATH = 'http://www.w3.org/TR/1999/REC-xpath-19991116';
 
     // ============================================================
     // ZATCA API ENDPOINTS
     // ============================================================
     public const SANDBOX_BASE_URL = 'https://gw-fatoora.zatca.gov.sa/e-invoicing/developer-portal';
+
     public const SIMULATION_BASE_URL = 'https://gw-fatoora.zatca.gov.sa/e-invoicing/simulation';
+
     public const PRODUCTION_BASE_URL = 'https://gw-fatoora.zatca.gov.sa/e-invoicing/core';
 
     // ============================================================
     // INVOICE TYPE CODES (KSA-specific per ZATCA)
     // ============================================================
     public const INVOICE_TYPE_STANDARD = '388';     // Standard (B2B)
+
     public const INVOICE_TYPE_SIMPLIFIED = '388';   // Simplified (B2C) - same code, different subtype
+
     public const INVOICE_TYPE_DEBIT_NOTE = '383';
+
     public const INVOICE_TYPE_CREDIT_NOTE = '381';
 
     // ============================================================
     // INVOICE SUBTYPES (Bits for KSA extensions)
     // ============================================================
     public const SUBTYPE_STANDARD = '0100000';      // Standard tax invoice
+
     public const SUBTYPE_SIMPLIFIED = '0200000';    // Simplified tax invoice
+
     public const SUBTYPE_THIRD_PARTY = '0100001';   // Third party
+
     public const SUBTYPE_NOMINAL = '0100010';       // Nominal
+
     public const SUBTYPE_EXPORTS = '0100100';       // Exports
+
     public const SUBTYPE_SUMMARY = '0101000';       // Summary
 
     // ============================================================
     // TAX CATEGORIES (UN/CEFACT 5305)
     // ============================================================
     public const TAX_CATEGORY_STANDARD = 'S';       // Standard rate (15%)
+
     public const TAX_CATEGORY_ZERO_RATED = 'Z';     // Zero rated
+
     public const TAX_CATEGORY_EXEMPT = 'E';         // Exempt
+
     public const TAX_CATEGORY_OUT_OF_SCOPE = 'O';   // Out of scope
 
     // ============================================================
     // PAYMENT MEANS CODES (UN/EDIFACT 4461)
     // ============================================================
     public const PAYMENT_CASH = '10';
+
     public const PAYMENT_CHEQUE = '20';
+
     public const PAYMENT_CREDIT_TRANSFER = '30';
+
     public const PAYMENT_BANK_CARD = '48';
+
     public const PAYMENT_DIRECT_DEBIT = '49';
 
     // ============================================================
     // RATE LIMITS (Configurable)
     // ============================================================
     public const DEFAULT_RATE_LIMIT_PER_MINUTE = 60;
+
     public const DEFAULT_RATE_LIMIT_PER_DAY = 10000;
+
     public const DEFAULT_MAX_CONCURRENT_SUBMISSIONS = 10;
 
     // ============================================================
@@ -102,27 +133,34 @@ final class FatooraConfig
     // THRESHOLDS (Configurable)
     // ============================================================
     public const LARGE_INVOICE_THRESHOLD = 1000000.00; // SAR
+
     public const CERTIFICATE_EXPIRY_WARNING_DAYS = 30;
+
     public const CERTIFICATE_EXPIRY_CRITICAL_DAYS = 7;
 
     // ============================================================
     // CRYPTOGRAPHY
     // ============================================================
     public const DEFAULT_RSA_KEY_SIZE = 2048;
+
     public const DEFAULT_EC_CURVE = 'secp256k1';
+
     public const DEFAULT_HASH_ALGORITHM = 'sha256';
 
     // ============================================================
     // CLASSIFICATION SCHEMES
     // ============================================================
     public const CLASSIFICATION_UNSPSC = 'UNSPSC';
+
     public const CLASSIFICATION_HS = 'HS';          // Harmonized System
 
     // ============================================================
     // UBL EXTENSION IDENTIFIERS
     // ============================================================
     public const EXT_ID_ICV = 'ICV';
+
     public const EXT_ID_PIH = 'PIH';
+
     public const EXT_ID_QR = 'QR';
 
     // ============================================================
@@ -135,26 +173,32 @@ final class FatooraConfig
     // COUNTRY CODES
     // ============================================================
     public const COUNTRY_SA = 'SA';
+
     public const CURRENCY_SAR = 'SAR';
 
     // ============================================================
     // ALLOWANCE/CHARGE REASON CODES
     // ============================================================
     public const REASON_DISCOUNT = '95';
+
     public const REASON_SPECIAL_AGREEMENT = '100';
+
     public const REASON_PRODUCTION_ERROR = '104';
 
     // ============================================================
     // CIRCUIT BREAKER SETTINGS
     // ============================================================
     public const CIRCUIT_BREAKER_THRESHOLD = 5;     // Failures before opening
+
     public const CIRCUIT_BREAKER_TIMEOUT = 60;      // Seconds before half-open
+
     public const CIRCUIT_BREAKER_SAMPLE_SIZE = 10;  // Requests to sample
 
     // ============================================================
     // OFFLINE MODE SETTINGS
     // ============================================================
     public const OFFLINE_QUEUE_MAX_SIZE = 10000;
+
     public const OFFLINE_RETRY_INTERVAL = 300;      // 5 minutes
 
     // ============================================================

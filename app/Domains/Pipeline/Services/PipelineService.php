@@ -50,9 +50,9 @@ class PipelineService
     /**
      * Submit an invoice through the full pipeline.
      *
-     * @param array $data Validated request data
-     * @param string $organizationId Organization UUID
-     * @param string|null $branchId Optional branch UUID
+     * @param  array  $data  Validated request data
+     * @param  string  $organizationId  Organization UUID
+     * @param  string|null  $branchId  Optional branch UUID
      * @return array Pipeline result with invoice data, compliance info, and ZATCA response
      */
     public function submitInvoice(
@@ -96,7 +96,7 @@ class PipelineService
                 'error' => $e->getMessage(),
             ]);
 
-            $errors[] = 'Compliance generation failed: ' . $e->getMessage();
+            $errors[] = 'Compliance generation failed: '.$e->getMessage();
 
             return $this->buildResult($invoice, $errors, $warnings, null);
         } catch (\Exception $e) {
@@ -105,7 +105,7 @@ class PipelineService
                 'error' => $e->getMessage(),
             ]);
 
-            $errors[] = 'Unexpected error during compliance generation: ' . $e->getMessage();
+            $errors[] = 'Unexpected error during compliance generation: '.$e->getMessage();
 
             return $this->buildResult($invoice, $errors, $warnings, null);
         }
@@ -156,7 +156,7 @@ class PipelineService
                     'retryable' => $e->isRetryable(),
                 ]);
 
-                $errors[] = 'ZATCA submission failed: ' . $e->getMessage();
+                $errors[] = 'ZATCA submission failed: '.$e->getMessage();
                 $invoice->refresh();
             } catch (\Exception $e) {
                 Log::error('Pipeline: unexpected error during ZATCA submission', [
@@ -164,7 +164,7 @@ class PipelineService
                     'error' => $e->getMessage(),
                 ]);
 
-                $errors[] = 'Unexpected error during ZATCA submission: ' . $e->getMessage();
+                $errors[] = 'Unexpected error during ZATCA submission: '.$e->getMessage();
                 $invoice->refresh();
             }
         }

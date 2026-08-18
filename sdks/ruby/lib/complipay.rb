@@ -9,7 +9,7 @@ require 'openssl'
 #
 # @example
 #   client = CompliPay::Client.new(
-#     base_url: 'https://api.complipay.com',
+#     base_url: 'https://api.masaar.sa',
 #     api_key: 'your_api_key',
 #     api_secret: 'your_api_secret'
 #   )

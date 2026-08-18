@@ -10,7 +10,7 @@ uses(RefreshDatabase::class);
 
 it('creates an organization group', function () {
     $group = OrganizationGroup::create([
-        'name'   => 'ACME Holdings',
+        'name' => 'ACME Holdings',
         'status' => 'active',
     ]);
 
@@ -23,9 +23,9 @@ it('links organizations to a group', function () {
     $group = OrganizationGroup::create(['name' => 'Holdings', 'status' => 'active']);
 
     $org = Organization::create([
-        'name'     => 'Sub Corp',
-        'country'  => 'SA',
-        'status'   => 'active',
+        'name' => 'Sub Corp',
+        'country' => 'SA',
+        'status' => 'active',
         'group_id' => $group->id,
     ]);
 

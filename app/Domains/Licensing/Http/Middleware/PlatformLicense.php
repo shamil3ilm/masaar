@@ -27,7 +27,7 @@ class PlatformLicense
     public function handle(Request $request, Closure $next): Response
     {
         // Skip license check if disabled (for development)
-        if (!config('platform-license.enabled', true)) {
+        if (! config('platform-license.enabled', true)) {
             return $next($request);
         }
 
@@ -45,7 +45,7 @@ class PlatformLicense
 
         $validation = $this->licenseService->validate();
 
-        if (!$validation['valid']) {
+        if (! $validation['valid']) {
             return response()->json([
                 'error' => 'license_invalid',
                 'message' => $validation['message'],

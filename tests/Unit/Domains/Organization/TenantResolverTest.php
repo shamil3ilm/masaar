@@ -4,7 +4,7 @@ use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Organization\ValueObjects\OrganizationContext;
 
 it('starts with no context', function () {
-    $resolver = new TenantResolver();
+    $resolver = new TenantResolver;
 
     expect($resolver->hasContext())->toBeFalse();
     expect($resolver->getContext())->toBeNull();
@@ -12,7 +12,7 @@ it('starts with no context', function () {
 });
 
 it('stores and retrieves context', function () {
-    $resolver = new TenantResolver();
+    $resolver = new TenantResolver;
     $context = new OrganizationContext('org-123', 'admin');
 
     $resolver->setContext($context);

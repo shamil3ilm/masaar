@@ -28,15 +28,13 @@ class RequireScope
     /**
      * Handle an incoming request.
      *
-     * @param Request $request
-     * @param Closure $next
-     * @param string ...$scopes Required scopes (comma-separated or multiple args)
+     * @param  string  ...$scopes  Required scopes (comma-separated or multiple args)
      */
     public function handle(Request $request, Closure $next, string ...$scopes): mixed
     {
         $license = $request->attributes->get('license');
 
-        if (!$license instanceof License) {
+        if (! $license instanceof License) {
             throw new \RuntimeException('License not found in request. Ensure ValidateLicense middleware runs first.');
         }
 
@@ -49,7 +47,7 @@ class RequireScope
         // Check all required scopes
         foreach ($requiredScopes as $scope) {
             $scope = trim($scope);
-            if (!$license->hasScope($scope)) {
+            if (! $license->hasScope($scope)) {
                 throw LicenseException::scopeDenied($scope);
             }
         }

@@ -96,7 +96,7 @@ class PipelineSubmitRequest extends CreateInvoiceRequest
         // Gap 2: ERP does not send `invoice_number` — auto-generate it
         if (empty($this->invoice_number)) {
             $seed = $this->erp_reference_id ?? now()->format('YmdHis');
-            $merges['invoice_number'] = 'INV-' . $seed;
+            $merges['invoice_number'] = 'INV-'.$seed;
         }
 
         $this->merge($merges);

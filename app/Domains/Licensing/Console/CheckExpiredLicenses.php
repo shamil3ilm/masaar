@@ -37,7 +37,7 @@ class CheckExpiredLicenses extends Command
             if ($expiring > 0) {
                 $this->warn("Found {$expiring} licenses expiring in {$days} days.");
 
-                Log::info("Licenses expiring soon", [
+                Log::info('Licenses expiring soon', [
                     'days' => $days,
                     'count' => $expiring,
                 ]);

@@ -6,7 +6,6 @@ namespace App\Domains\Logging\Services;
 
 use App\Domains\Compliance\Fatoora\Helpers\LogSanitizer;
 use Illuminate\Support\Facades\Log;
-use Psr\Log\LoggerInterface;
 use Throwable;
 
 /**
@@ -25,7 +24,9 @@ use Throwable;
 class ComplianceLogger
 {
     private ?string $organizationId = null;
+
     private ?string $userId = null;
+
     private array $defaultContext = [];
 
     /**
@@ -51,6 +52,7 @@ class ComplianceLogger
     {
         $clone = clone $this;
         $clone->organizationId = $organizationId;
+
         return $clone;
     }
 
@@ -61,6 +63,7 @@ class ComplianceLogger
     {
         $clone = clone $this;
         $clone->userId = $userId;
+
         return $clone;
     }
 
@@ -71,6 +74,7 @@ class ComplianceLogger
     {
         $clone = clone $this;
         $clone->defaultContext = array_merge($clone->defaultContext, $context);
+
         return $clone;
     }
 
@@ -274,7 +278,7 @@ class ComplianceLogger
      */
     public static function fromRequest(): self
     {
-        $logger = new self();
+        $logger = new self;
 
         // Try to get organization from request attributes
         $organizationId = request()?->attributes?->get('organization_id');

@@ -333,7 +333,7 @@ class MetricsController extends Controller
 
         foreach ($metrics as $name => $metric) {
             // Sanitize metric name
-            $name = 'masaar_' . preg_replace('/[^a-zA-Z0-9_]/', '_', $name);
+            $name = 'masaar_'.preg_replace('/[^a-zA-Z0-9_]/', '_', $name);
 
             // Add HELP line
             $output[] = "# HELP {$name} {$metric['help']}";
@@ -342,12 +342,12 @@ class MetricsController extends Controller
             $output[] = "# TYPE {$name} {$metric['type']}";
 
             // Add metric value with optional labels
-            if (isset($metric['labels']) && !empty($metric['labels'])) {
+            if (isset($metric['labels']) && ! empty($metric['labels'])) {
                 $labelPairs = [];
                 foreach ($metric['labels'] as $key => $value) {
                     $labelPairs[] = "{$key}=\"{$value}\"";
                 }
-                $labelStr = '{' . implode(',', $labelPairs) . '}';
+                $labelStr = '{'.implode(',', $labelPairs).'}';
                 $output[] = "{$name}{$labelStr} {$metric['value']}";
             } else {
                 $output[] = "{$name} {$metric['value']}";

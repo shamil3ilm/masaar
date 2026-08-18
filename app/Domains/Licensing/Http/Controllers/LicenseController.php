@@ -6,8 +6,10 @@ namespace App\Domains\Licensing\Http\Controllers;
 
 use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Enums\LicenseTier;
+use App\Domains\Licensing\Models\License;
 use App\Domains\Licensing\Services\LicenseManagementService;
 use App\Domains\Licensing\Services\UsageMeteringService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -111,7 +113,7 @@ class LicenseController extends Controller
                 'success' => true,
                 'data' => $details,
             ]);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        } catch (ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
                 'error_code' => 'LICENSE_NOT_FOUND',
@@ -345,7 +347,7 @@ class LicenseController extends Controller
      */
     public function usage(Request $request, string $id): JsonResponse
     {
-        $license = \App\Domains\Licensing\Models\License::findOrFail($id);
+        $license = License::findOrFail($id);
         $month = $request->get('month', now()->format('Y-m'));
 
         $usage = $this->meteringService->getUsageSummary($license, $month);

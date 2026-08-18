@@ -10,6 +10,7 @@ class FtaException extends \RuntimeException
     {
         $e = new self("UAE FTA submission failed: {$message}");
         $e->rawResponse = $raw;
+
         return $e;
     }
 

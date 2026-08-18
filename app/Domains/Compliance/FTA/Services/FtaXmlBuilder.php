@@ -21,12 +21,15 @@ use DOMElement;
  */
 class FtaXmlBuilder
 {
-    private const UBL_NS  = 'urn:oasis:names:specification:ubl:schema:xsd:Invoice-2';
-    private const CAC_NS  = 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2';
-    private const CBC_NS  = 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2';
+    private const UBL_NS = 'urn:oasis:names:specification:ubl:schema:xsd:Invoice-2';
+
+    private const CAC_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2';
+
+    private const CBC_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2';
 
     private const CUSTOMIZATION = 'urn:peppol:pint:billing-1@ae-1';
-    private const PROFILE_ID    = 'urn:peppol:bis:billing';
+
+    private const PROFILE_ID = 'urn:peppol:bis:billing';
 
     private DOMDocument $dom;
 
@@ -169,6 +172,7 @@ class FtaXmlBuilder
             $el->setAttribute($k, $v);
         }
         $parent->appendChild($el);
+
         return $el;
     }
 
@@ -176,6 +180,7 @@ class FtaXmlBuilder
     {
         $el = $this->dom->createElementNS(self::CAC_NS, "cac:{$name}");
         $parent->appendChild($el);
+
         return $el;
     }
 }

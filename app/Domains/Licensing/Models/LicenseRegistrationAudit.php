@@ -47,11 +47,17 @@ class LicenseRegistrationAudit extends Model
 
     // Action constants
     public const ACTION_CREATED = 'created';
+
     public const ACTION_APPROVED = 'approved';
+
     public const ACTION_REJECTED = 'rejected';
+
     public const ACTION_SUSPENDED = 'suspended';
+
     public const ACTION_REVOKED = 'revoked';
+
     public const ACTION_UPDATED = 'updated';
+
     public const ACTION_VERIFIED = 'verified';
 
     /**

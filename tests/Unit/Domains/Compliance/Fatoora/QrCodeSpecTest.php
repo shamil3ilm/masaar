@@ -28,7 +28,7 @@ use App\Domains\Compliance\Fatoora\Services\TlvEncoder;
 // ---------------------------------------------------------------------------
 
 it('Phase 1 QR encodes exactly 5 TLV tags per ZATCA spec', function () {
-    $encoder   = new TlvEncoder();
+    $encoder = new TlvEncoder;
     $generator = new QrCodeGenerator($encoder);
 
     $data = new QrCodeData(
@@ -47,7 +47,7 @@ it('Phase 1 QR encodes exactly 5 TLV tags per ZATCA spec', function () {
 });
 
 it('Phase 1 tag 1 contains the seller name exactly', function () {
-    $encoder   = new TlvEncoder();
+    $encoder = new TlvEncoder;
     $generator = new QrCodeGenerator($encoder);
 
     $data = new QrCodeData(
@@ -64,7 +64,7 @@ it('Phase 1 tag 1 contains the seller name exactly', function () {
 });
 
 it('Phase 1 tag 2 contains the 15-digit VAT registration number', function () {
-    $encoder   = new TlvEncoder();
+    $encoder = new TlvEncoder;
     $generator = new QrCodeGenerator($encoder);
 
     $vatNumber = '300000000000003';
@@ -84,7 +84,7 @@ it('Phase 1 tag 2 contains the 15-digit VAT registration number', function () {
 });
 
 it('Phase 1 tag 3 contains an ISO 8601 timestamp with UTC marker', function () {
-    $encoder   = new TlvEncoder();
+    $encoder = new TlvEncoder;
     $generator = new QrCodeGenerator($encoder);
 
     $timestamp = '2024-11-15T10:30:00Z';
@@ -104,7 +104,7 @@ it('Phase 1 tag 3 contains an ISO 8601 timestamp with UTC marker', function () {
 });
 
 it('Phase 1 tag 4 is the tax-inclusive invoice total (BT-112)', function () {
-    $encoder   = new TlvEncoder();
+    $encoder = new TlvEncoder;
     $generator = new QrCodeGenerator($encoder);
 
     $data = new QrCodeData(
@@ -121,7 +121,7 @@ it('Phase 1 tag 4 is the tax-inclusive invoice total (BT-112)', function () {
 });
 
 it('Phase 1 tag 5 is the VAT total (BT-110)', function () {
-    $encoder   = new TlvEncoder();
+    $encoder = new TlvEncoder;
     $generator = new QrCodeGenerator($encoder);
 
     $data = new QrCodeData(
@@ -138,7 +138,7 @@ it('Phase 1 tag 5 is the VAT total (BT-110)', function () {
 });
 
 it('Phase 1 QR returns valid base64', function () {
-    $encoder   = new TlvEncoder();
+    $encoder = new TlvEncoder;
     $generator = new QrCodeGenerator($encoder);
 
     $data = new QrCodeData(
@@ -159,7 +159,7 @@ it('Phase 1 QR returns valid base64', function () {
 // ---------------------------------------------------------------------------
 
 it('Phase 2 QR encodes exactly 9 TLV tags per ZATCA spec', function () {
-    $encoder   = new TlvEncoder();
+    $encoder = new TlvEncoder;
     $generator = new QrCodeGenerator($encoder);
 
     // Tags 6-9 are raw binary bytes in practice; using ASCII stand-ins here
@@ -182,7 +182,7 @@ it('Phase 2 QR encodes exactly 9 TLV tags per ZATCA spec', function () {
 });
 
 it('Phase 2 tag 6 carries the raw binary invoice hash', function () {
-    $encoder   = new TlvEncoder();
+    $encoder = new TlvEncoder;
     $generator = new QrCodeGenerator($encoder);
 
     $rawHash = random_bytes(32); // 32 raw bytes — not base64 at this stage
@@ -207,7 +207,7 @@ it('Phase 2 tag 6 carries the raw binary invoice hash', function () {
 });
 
 it('Phase 2 throws when invoice hash (tag 6) is absent', function () {
-    $encoder   = new TlvEncoder();
+    $encoder = new TlvEncoder;
     $generator = new QrCodeGenerator($encoder);
 
     $data = new QrCodeData(
@@ -223,11 +223,11 @@ it('Phase 2 throws when invoice hash (tag 6) is absent', function () {
     );
 
     expect(fn () => $generator->generatePhase2($data))
-        ->toThrow(\InvalidArgumentException::class);
+        ->toThrow(InvalidArgumentException::class);
 });
 
 it('Phase 2 throws when ECDSA signature (tag 7) is absent', function () {
-    $encoder   = new TlvEncoder();
+    $encoder = new TlvEncoder;
     $generator = new QrCodeGenerator($encoder);
 
     $data = new QrCodeData(
@@ -243,11 +243,11 @@ it('Phase 2 throws when ECDSA signature (tag 7) is absent', function () {
     );
 
     expect(fn () => $generator->generatePhase2($data))
-        ->toThrow(\InvalidArgumentException::class);
+        ->toThrow(InvalidArgumentException::class);
 });
 
 it('Phase 2 throws when public key (tag 8) is absent', function () {
-    $encoder   = new TlvEncoder();
+    $encoder = new TlvEncoder;
     $generator = new QrCodeGenerator($encoder);
 
     $data = new QrCodeData(
@@ -263,11 +263,11 @@ it('Phase 2 throws when public key (tag 8) is absent', function () {
     );
 
     expect(fn () => $generator->generatePhase2($data))
-        ->toThrow(\InvalidArgumentException::class);
+        ->toThrow(InvalidArgumentException::class);
 });
 
 it('Phase 2 throws when ZATCA CA certificate signature (tag 9) is absent', function () {
-    $encoder   = new TlvEncoder();
+    $encoder = new TlvEncoder;
     $generator = new QrCodeGenerator($encoder);
 
     $data = new QrCodeData(
@@ -283,7 +283,7 @@ it('Phase 2 throws when ZATCA CA certificate signature (tag 9) is absent', funct
     );
 
     expect(fn () => $generator->generatePhase2($data))
-        ->toThrow(\InvalidArgumentException::class);
+        ->toThrow(InvalidArgumentException::class);
 });
 
 // ---------------------------------------------------------------------------
@@ -291,7 +291,7 @@ it('Phase 2 throws when ZATCA CA certificate signature (tag 9) is absent', funct
 // ---------------------------------------------------------------------------
 
 it('TLV tag byte encodes as a single byte followed by length then value', function () {
-    $encoder = new TlvEncoder();
+    $encoder = new TlvEncoder;
 
     // "ArabCo" = 6 bytes
     $tlv = $encoder->encodeTag(1, 'ArabCo');
@@ -303,7 +303,7 @@ it('TLV tag byte encodes as a single byte followed by length then value', functi
 });
 
 it('TLV encodes multi-byte UTF-8 seller name by byte length, not character count', function () {
-    $encoder = new TlvEncoder();
+    $encoder = new TlvEncoder;
 
     // Arabic text: each character is 2 bytes in UTF-8
     $arabicName = 'شركة'; // 4 Arabic chars = 8 UTF-8 bytes
@@ -314,17 +314,17 @@ it('TLV encodes multi-byte UTF-8 seller name by byte length, not character count
 });
 
 it('TLV round-trip preserves all 9 Phase 2 fields exactly', function () {
-    $encoder = new TlvEncoder();
+    $encoder = new TlvEncoder;
 
     $sellerName = 'شركة الاختبار ذ.م.م';
-    $vatNumber  = '300000000000003';
-    $timestamp  = '2024-11-15T10:30:00Z';
-    $total      = '11500.00';
-    $vat        = '1500.00';
-    $hash       = random_bytes(32);
-    $sig        = random_bytes(71);
-    $pubKey     = random_bytes(65); // Uncompressed EC public key = 65 bytes
-    $caSig      = random_bytes(32);
+    $vatNumber = '300000000000003';
+    $timestamp = '2024-11-15T10:30:00Z';
+    $total = '11500.00';
+    $vat = '1500.00';
+    $hash = random_bytes(32);
+    $sig = random_bytes(71);
+    $pubKey = random_bytes(65); // Uncompressed EC public key = 65 bytes
+    $caSig = random_bytes(32);
 
     $fields = [
         1 => $sellerName,
@@ -348,7 +348,7 @@ it('QrCodeData::fromInvoice formats total to 2 decimal places', function () {
     $data = QrCodeData::fromInvoice(
         sellerName: 'Seller',
         vatNumber: '300000000000003',
-        timestamp: new \DateTime('2024-11-15 10:30:00'),
+        timestamp: new DateTime('2024-11-15 10:30:00'),
         total: 1150.5,
         vatAmount: 150.0,
     );
@@ -358,7 +358,7 @@ it('QrCodeData::fromInvoice formats total to 2 decimal places', function () {
 });
 
 it('QrCodeData::fromInvoice timestamp uses Z UTC suffix per spec', function () {
-    $dt = new \DateTime('2024-11-15 10:30:00', new \DateTimeZone('UTC'));
+    $dt = new DateTime('2024-11-15 10:30:00', new DateTimeZone('UTC'));
 
     $data = QrCodeData::fromInvoice(
         sellerName: 'Seller',

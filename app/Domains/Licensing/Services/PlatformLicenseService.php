@@ -20,7 +20,9 @@ class PlatformLicenseService
      * License types.
      */
     public const TYPE_TRIAL = 'TRIAL';
+
     public const TYPE_PRODUCTION = 'PROD';
+
     public const TYPE_DEVELOPMENT = 'DEV';
 
     /**
@@ -74,6 +76,7 @@ class PlatformLicenseService
             $result = $this->validateRemote($licenseKey);
             if ($result !== null) {
                 Cache::put(self::CACHE_KEY, $result, self::CACHE_DURATION);
+
                 return $result;
             }
             // If remote validation fails, fall through to offline
@@ -95,7 +98,7 @@ class PlatformLicenseService
         try {
             $response = Http::timeout(5)
                 ->retry(2, 100)
-                ->post($this->licenseServerUrl . '/validate', [
+                ->post($this->licenseServerUrl.'/validate', [
                     'license_key' => $licenseKey,
                     'domain' => request()->getHost(),
                     'ip' => request()->server('SERVER_ADDR'),
@@ -121,6 +124,7 @@ class PlatformLicenseService
                 // If server says to fall back to offline validation, do so
                 if ($data['fallback_to_offline'] ?? false) {
                     Log::info('License server suggests offline validation fallback');
+
                     return null; // Will trigger offline validation
                 }
 
@@ -157,19 +161,19 @@ class PlatformLicenseService
 
         // Validate signature
         $expectedSignature = $this->generateSignature($partner, $type, $expiryDate);
-        if (!hash_equals($expectedSignature, $signature)) {
+        if (! hash_equals($expectedSignature, $signature)) {
             return $this->invalidResult('Invalid license key signature');
         }
 
         // Validate type
-        if (!in_array($type, [self::TYPE_TRIAL, self::TYPE_PRODUCTION, self::TYPE_DEVELOPMENT])) {
+        if (! in_array($type, [self::TYPE_TRIAL, self::TYPE_PRODUCTION, self::TYPE_DEVELOPMENT])) {
             return $this->invalidResult('Invalid license type');
         }
 
         // Validate expiry
         try {
             $expiresAt = \DateTime::createFromFormat('Ymd', $expiryDate);
-            if (!$expiresAt) {
+            if (! $expiresAt) {
                 return $this->invalidResult('Invalid expiration date in license');
             }
             $expiresAt->setTime(23, 59, 59);
@@ -177,9 +181,10 @@ class PlatformLicenseService
             return $this->invalidResult('Invalid expiration date format');
         }
 
-        $now = new \DateTime();
+        $now = new \DateTime;
         if ($now > $expiresAt) {
             $expiredDays = $now->diff($expiresAt)->days;
+
             return $this->invalidResult("License expired {$expiredDays} days ago. Contact sales@masaar.com to renew.");
         }
 
@@ -200,9 +205,9 @@ class PlatformLicenseService
     /**
      * Generate a license key.
      *
-     * @param string $partner Partner identifier (e.g., 'TAXFLY')
-     * @param string $type License type (TRIAL, PROD, DEV)
-     * @param \DateTime $expiresAt Expiration date
+     * @param  string  $partner  Partner identifier (e.g., 'TAXFLY')
+     * @param  string  $type  License type (TRIAL, PROD, DEV)
+     * @param  \DateTime  $expiresAt  Expiration date
      * @return string The license key
      */
     public function generateKey(string $partner, string $type, \DateTime $expiresAt): string
@@ -221,6 +226,7 @@ class PlatformLicenseService
     private function generateSignature(string $partner, string $type, string $expiryDate): string
     {
         $data = "{$partner}-{$type}-{$expiryDate}";
+
         return substr(hash_hmac('sha256', $data, $this->signingSecret), 0, 8);
     }
 
@@ -299,6 +305,7 @@ class PlatformLicenseService
     public function isTrial(): bool
     {
         $result = $this->validate();
+
         return $result['valid'] && $result['type'] === self::TYPE_TRIAL;
     }
 

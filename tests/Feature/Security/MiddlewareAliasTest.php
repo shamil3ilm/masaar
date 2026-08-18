@@ -4,6 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Security;
 
+use App\Domains\Auth\Http\Middleware\ApiKeyAuth;
+use App\Domains\Auth\Http\Middleware\IsPlatformAdmin;
+use App\Domains\Auth\Http\Middleware\JwtGuard;
+use App\Domains\Licensing\Http\Middleware\PlatformLicense;
+use App\Domains\Licensing\Http\Middleware\ValidateLicense;
+use App\Domains\Organization\Http\Middleware\PortalTenant;
+use App\Domains\Platform\Http\Middleware\MetricsAccess;
+use App\Domains\Platform\Http\Middleware\RateLimitApi;
 use Illuminate\Routing\Router;
 use Tests\TestCase;
 
@@ -28,14 +36,14 @@ class MiddlewareAliasTest extends TestCase
      * Aliases the application declares and must own, whatever packages do.
      */
     private const OWNED = [
-        'jwt.auth' => \App\Domains\Auth\Http\Middleware\JwtGuard::class,
-        'platform.admin' => \App\Domains\Auth\Http\Middleware\IsPlatformAdmin::class,
-        'api.key' => \App\Domains\Auth\Http\Middleware\ApiKeyAuth::class,
-        'portal.tenant' => \App\Domains\Organization\Http\Middleware\PortalTenant::class,
-        'metrics' => \App\Domains\Platform\Http\Middleware\MetricsAccess::class,
-        'rate.api' => \App\Domains\Platform\Http\Middleware\RateLimitApi::class,
-        'license' => \App\Domains\Licensing\Http\Middleware\ValidateLicense::class,
-        'platform.license' => \App\Domains\Licensing\Http\Middleware\PlatformLicense::class,
+        'jwt.auth' => JwtGuard::class,
+        'platform.admin' => IsPlatformAdmin::class,
+        'api.key' => ApiKeyAuth::class,
+        'portal.tenant' => PortalTenant::class,
+        'metrics' => MetricsAccess::class,
+        'rate.api' => RateLimitApi::class,
+        'license' => ValidateLicense::class,
+        'platform.license' => PlatformLicense::class,
     ];
 
     public function test_aliases_not_hijacked(): void
@@ -47,7 +55,7 @@ class MiddlewareAliasTest extends TestCase
                 $expected,
                 $registered[$alias] ?? null,
                 "Middleware alias '{$alias}' does not resolve to the application's class. "
-                ."A package provider has most likely claimed it."
+                .'A package provider has most likely claimed it.'
             );
         }
     }
@@ -74,7 +82,7 @@ class MiddlewareAliasTest extends TestCase
         );
 
         $this->assertContains(
-            \App\Domains\Auth\Http\Middleware\JwtGuard::class,
+            JwtGuard::class,
             $resolved,
             'api/invoices does not run JwtGuard, so TenantResolver is never populated.'
         );

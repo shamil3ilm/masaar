@@ -85,7 +85,7 @@ final class TextNormalizer
      */
     public static function normalizeArabic(string $text): string
     {
-        if (!self::containsArabic($text)) {
+        if (! self::containsArabic($text)) {
             return $text;
         }
 
@@ -192,7 +192,7 @@ final class TextNormalizer
         $errors = [];
 
         // Check UTF-8 validity
-        if (!mb_check_encoding($text, 'UTF-8')) {
+        if (! mb_check_encoding($text, 'UTF-8')) {
             $errors[] = 'Text is not valid UTF-8';
         }
 
@@ -226,7 +226,7 @@ final class TextNormalizer
             return $text;
         }
 
-        return mb_substr($text, 0, $maxLength - mb_strlen($suffix)) . $suffix;
+        return mb_substr($text, 0, $maxLength - mb_strlen($suffix)).$suffix;
     }
 
     /**
@@ -255,7 +255,7 @@ final class TextNormalizer
             return ['valid' => false, 'error' => 'VAT number must be 15 digits'];
         }
 
-        if (!ctype_digit($vatNumber)) {
+        if (! ctype_digit($vatNumber)) {
             return ['valid' => false, 'error' => 'VAT number must contain only digits'];
         }
 
@@ -264,7 +264,7 @@ final class TextNormalizer
         }
 
         // Validate checksum (Luhn-like algorithm)
-        if (!self::validateVatChecksum($vatNumber)) {
+        if (! self::validateVatChecksum($vatNumber)) {
             return ['valid' => false, 'error' => 'Invalid VAT number checksum'];
         }
 

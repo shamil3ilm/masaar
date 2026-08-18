@@ -178,7 +178,7 @@ final class FatooraTime
      */
     public static function fromUnixTimestamp(int $timestamp): DateTimeImmutable
     {
-        return (new DateTimeImmutable('@' . $timestamp))
+        return (new DateTimeImmutable('@'.$timestamp))
             ->setTimezone(new DateTimeZone(self::ZATCA_TIMEZONE));
     }
 

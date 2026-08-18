@@ -29,11 +29,17 @@ class ClearanceStateManager
      * Clearance states.
      */
     public const STATE_UNKNOWN = 'unknown';
+
     public const STATE_PENDING_CLEARANCE = 'pending_clearance';
+
     public const STATE_CONDITIONALLY_ACCEPTED = 'conditionally_accepted';
+
     public const STATE_CLEARED = 'cleared';
+
     public const STATE_REPORTED = 'reported';
+
     public const STATE_REJECTED = 'rejected';
+
     public const STATE_TIMEOUT = 'timeout';
 
     /**
@@ -72,8 +78,8 @@ class ClearanceStateManager
     /**
      * Parse ZATCA response and determine clearance state.
      *
-     * @param array $zatcaResponse The response from ZATCA API
-     * @param bool $isSimplified Whether this is a simplified (B2C) invoice
+     * @param  array  $zatcaResponse  The response from ZATCA API
+     * @param  bool  $isSimplified  Whether this is a simplified (B2C) invoice
      * @return array{state: string, is_terminal: bool, warnings: array, errors: array}
      */
     public function parseResponse(array $zatcaResponse, bool $isSimplified = false): array
@@ -88,7 +94,7 @@ class ClearanceStateManager
 
         if (isset($validationResults['warningMessages'])) {
             $warnings = array_map(
-                fn($w) => [
+                fn ($w) => [
                     'code' => $w['code'] ?? 'UNKNOWN',
                     'message' => $w['message'] ?? '',
                     'category' => $w['category'] ?? 'general',
@@ -99,7 +105,7 @@ class ClearanceStateManager
 
         if (isset($validationResults['errorMessages'])) {
             $errors = array_map(
-                fn($e) => [
+                fn ($e) => [
                     'code' => $e['code'] ?? 'UNKNOWN',
                     'message' => $e['message'] ?? '',
                     'category' => $e['category'] ?? 'general',
@@ -132,12 +138,12 @@ class ClearanceStateManager
         array $errors
     ): string {
         // If there are errors, it's rejected
-        if (!empty($errors)) {
+        if (! empty($errors)) {
             return self::STATE_REJECTED;
         }
 
         // For B2B (standard) invoices
-        if (!$isSimplified) {
+        if (! $isSimplified) {
             if ($clearanceStatus === 'CLEARED') {
                 return self::STATE_CLEARED;
             }
@@ -182,7 +188,7 @@ class ClearanceStateManager
             ->where('id', $submissionId)
             ->first();
 
-        if (!$submission) {
+        if (! $submission) {
             throw new FatooraException(
                 'Submission not found',
                 ErrorCode::VAL_INVALID_INVOICE_ID,
@@ -230,7 +236,7 @@ class ClearanceStateManager
             ->where('id', $submissionId)
             ->first();
 
-        if (!$submission) {
+        if (! $submission) {
             return ['scheduled' => false, 'reason' => 'submission_not_found'];
         }
 
@@ -316,7 +322,7 @@ class ClearanceStateManager
             ->orderBy('submitted_at', 'asc')
             ->limit($limit)
             ->get()
-            ->map(fn($s) => (array) $s)
+            ->map(fn ($s) => (array) $s)
             ->toArray();
     }
 

@@ -33,12 +33,12 @@ final readonly class QrCodeData
      * For Phase 2 invoices, use the constructor directly with all
      * cryptographic fields (hash, signature, publicKey, certificateSignature).
      *
-     * @param string $sellerName Seller's legal name
-     * @param string $vatNumber Seller's VAT registration number
-     * @param \DateTimeInterface $timestamp Invoice issue date/time
-     * @param float $total Invoice total including VAT
-     * @param float $vatAmount Total VAT amount
-     * @param string|null $hash RAW bytes of SHA-256 hash (not base64)
+     * @param  string  $sellerName  Seller's legal name
+     * @param  string  $vatNumber  Seller's VAT registration number
+     * @param  \DateTimeInterface  $timestamp  Invoice issue date/time
+     * @param  float  $total  Invoice total including VAT
+     * @param  float  $vatAmount  Total VAT amount
+     * @param  string|null  $hash  RAW bytes of SHA-256 hash (not base64)
      */
     public static function fromInvoice(
         string $sellerName,

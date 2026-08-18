@@ -19,7 +19,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('environment_variance_log')) {
+        if (! Schema::hasTable('environment_variance_log')) {
             Schema::create('environment_variance_log', function (Blueprint $table) {
                 $table->uuid('id')->primary();
                 $table->uuid('organization_id')->index();

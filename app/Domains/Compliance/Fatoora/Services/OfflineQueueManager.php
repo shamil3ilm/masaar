@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Fatoora\Services;
 
 use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
-use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
+use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Invoice\Models\Invoice;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -33,8 +33,11 @@ class OfflineQueueManager
      * Queue states.
      */
     public const STATE_PENDING = 'pending';
+
     public const STATE_PROCESSING = 'processing';
+
     public const STATE_COMPLETED = 'completed';
+
     public const STATE_FAILED = 'failed';
 
     /**
@@ -196,7 +199,7 @@ class OfflineQueueManager
     {
         $item = DB::table('offline_queue')->where('id', $queueId)->first();
 
-        if (!$item) {
+        if (! $item) {
             return;
         }
 
@@ -272,7 +275,7 @@ class OfflineQueueManager
     {
         $counts = DB::table('offline_queue')
             ->where('organization_id', $organizationId)
-            ->selectRaw("state, count(*) as count")
+            ->selectRaw('state, count(*) as count')
             ->groupBy('state')
             ->pluck('count', 'state')
             ->toArray();
@@ -323,7 +326,7 @@ class OfflineQueueManager
     {
         $item = DB::table('offline_queue')->where('id', $queueId)->first();
 
-        if (!$item || $item->state !== self::STATE_PENDING) {
+        if (! $item || $item->state !== self::STATE_PENDING) {
             return false;
         }
 
@@ -430,7 +433,7 @@ class OfflineQueueManager
             ->where('status', 'active')
             ->first();
 
-        if (!$certLineage) {
+        if (! $certLineage) {
             return [
                 'valid' => false,
                 'reason' => 'No active certificate found',
@@ -448,8 +451,8 @@ class OfflineQueueManager
             // If chain has advanced, we may need to re-sign
             Log::debug('Validating queued item hash chain', [
                 'queue_id' => $item->id,
-                'queued_hash' => substr($item->invoice_hash, 0, 16) . '...',
-                'current_chain_hash' => substr($currentState->last_hash, 0, 16) . '...',
+                'queued_hash' => substr($item->invoice_hash, 0, 16).'...',
+                'current_chain_hash' => substr($currentState->last_hash, 0, 16).'...',
             ]);
         }
 

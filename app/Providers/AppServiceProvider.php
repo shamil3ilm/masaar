@@ -3,14 +3,25 @@
 namespace App\Providers;
 
 use App\Domains\Auth\Contracts\Authenticator;
+use App\Domains\Auth\Http\Middleware\ApiKeyAuth;
+use App\Domains\Auth\Http\Middleware\IsPlatformAdmin;
+use App\Domains\Auth\Http\Middleware\JwtGuard;
 use App\Domains\Auth\Services\JwtAuthenticator;
 use App\Domains\Compliance\Fatoora\Services\CertificateLineageService;
 use App\Domains\Compliance\Fatoora\Services\ClusterCircuitBreaker;
 use App\Domains\Compliance\Fatoora\Services\EnvironmentVarianceTracker;
 use App\Domains\Compliance\Fatoora\Services\FallbackHandler;
 use App\Domains\Compliance\Fatoora\Services\TimestampValidator;
+use App\Domains\Licensing\Http\Middleware\CheckInvoiceQuota;
+use App\Domains\Licensing\Http\Middleware\PlatformLicense;
+use App\Domains\Licensing\Http\Middleware\RequireEnvironment;
+use App\Domains\Licensing\Http\Middleware\RequireScope;
+use App\Domains\Licensing\Http\Middleware\ValidateLicense;
 use App\Domains\Logging\Services\ComplianceLogger;
+use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Services\TenantResolver;
+use App\Domains\Platform\Http\Middleware\MetricsAccess;
+use App\Domains\Platform\Http\Middleware\RateLimitApi;
 use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
 
@@ -23,17 +34,17 @@ class AppServiceProvider extends ServiceProvider
      * list, and so boot() can reassert it — see reclaimMiddlewareAliases().
      */
     public const MIDDLEWARE_ALIASES = [
-        'jwt.auth' => \App\Domains\Auth\Http\Middleware\JwtGuard::class,
-        'platform.admin' => \App\Domains\Auth\Http\Middleware\IsPlatformAdmin::class,
-        'api.key' => \App\Domains\Auth\Http\Middleware\ApiKeyAuth::class,
-        'portal.tenant' => \App\Domains\Organization\Http\Middleware\PortalTenant::class,
-        'metrics' => \App\Domains\Platform\Http\Middleware\MetricsAccess::class,
-        'rate.api' => \App\Domains\Platform\Http\Middleware\RateLimitApi::class,
-        'license' => \App\Domains\Licensing\Http\Middleware\ValidateLicense::class,
-        'license.quota' => \App\Domains\Licensing\Http\Middleware\CheckInvoiceQuota::class,
-        'scope' => \App\Domains\Licensing\Http\Middleware\RequireScope::class,
-        'env' => \App\Domains\Licensing\Http\Middleware\RequireEnvironment::class,
-        'platform.license' => \App\Domains\Licensing\Http\Middleware\PlatformLicense::class,
+        'jwt.auth' => JwtGuard::class,
+        'platform.admin' => IsPlatformAdmin::class,
+        'api.key' => ApiKeyAuth::class,
+        'portal.tenant' => PortalTenant::class,
+        'metrics' => MetricsAccess::class,
+        'rate.api' => RateLimitApi::class,
+        'license' => ValidateLicense::class,
+        'license.quota' => CheckInvoiceQuota::class,
+        'scope' => RequireScope::class,
+        'env' => RequireEnvironment::class,
+        'platform.license' => PlatformLicense::class,
     ];
 
     /**
