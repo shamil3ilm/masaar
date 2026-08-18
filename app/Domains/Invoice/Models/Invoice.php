@@ -9,6 +9,7 @@ use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Organization\Concerns\BelongsToTenant;
+use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\ComplianceProfile;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -30,6 +31,9 @@ class Invoice extends Model
 
     protected $fillable = [
         'org_id',
+        // The EGS unit that issued this invoice. A branch signs with its own
+        // ZATCA certificate, so this decides which credentials are used.
+        'branch_id',
         'profile_id',
         'invoice_number',
         'type',
@@ -92,6 +96,9 @@ class Invoice extends Model
      */
     public const IMMUTABLE_FIELDS = [
         'org_id',
+        // Which EGS unit issued it is bound into the signature and the
+        // certificate that produced it, so it cannot move after issue.
+        'branch_id',
         'invoice_number',
         'type',
         'document_type',
@@ -221,17 +228,29 @@ class Invoice extends Model
     /**
      * Organization that owns this invoice.
      */
-    public function organization(): BelongsTo
+    public function org(): BelongsTo
     {
-        return $this->belongsTo(Organization::class, 'org_id');
+        return $this->belongsTo(Organization::class);
+    }
+
+    /**
+     * The EGS unit that issued this invoice, if any.
+     *
+     * Submitter reads this to choose signing credentials: a branch holds its
+     * own ZATCA certificate, and ZATCA treats each as a separate device. Null
+     * means the organization's own credentials are used.
+     */
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
     }
 
     /**
      * Compliance profile used for this invoice's jurisdiction.
      */
-    public function complianceProfile(): BelongsTo
+    public function profile(): BelongsTo
     {
-        return $this->belongsTo(ComplianceProfile::class, 'profile_id');
+        return $this->belongsTo(ComplianceProfile::class);
     }
 
     /**

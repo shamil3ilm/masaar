@@ -112,7 +112,7 @@ class ProcessFatooraSubmission implements ShouldQueue
 
             // Load invoice and organization
             $invoice = $submission->invoice;
-            $organization = $submission->organization;
+            $organization = $submission->org;
 
             // Generate compliance data (XML, hash, etc.)
             $complianceData = $complianceService->generateComplianceData(

@@ -8,6 +8,7 @@ use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Services\OfflineFallback;
 use App\Domains\Compliance\Fatoora\Services\Submitter;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Support\Facades\Log;
 
@@ -52,10 +53,11 @@ class PipelineService
     ): array {
         $organization = Organization::findOrFail($organizationId);
 
-        // branch_id is accepted but not stored: invoices carry no branch column
-        // yet, and Submitter falls back to organization-level credentials when
-        // no branch is given.
-        $invoice = $this->drafter->draft($data, $organizationId);
+        $invoice = $this->drafter->draft(
+            $data,
+            $organizationId,
+            $this->resolveBranch($branchId, $organizationId)
+        );
 
         $compliance = $this->generate($invoice, $organization);
 
@@ -68,6 +70,35 @@ class PipelineService
         }
 
         return $this->submit($invoice, $idempotencyKey);
+    }
+
+    /**
+     * Confirm the requested branch belongs to the paying organization.
+     *
+     * The branch decides which ZATCA certificate signs the invoice, so an
+     * unchecked identifier would let one taxpayer issue documents under
+     * another's credentials. Looked up through the tenant scope, so a branch
+     * belonging to anyone else is simply not found.
+     *
+     * @throws FatooraException When the branch is not this organization's
+     */
+    private function resolveBranch(?string $branchId, string $organizationId): ?string
+    {
+        if ($branchId === null) {
+            return null;
+        }
+
+        $exists = Branch::where('org_id', $organizationId)
+            ->whereKey($branchId)
+            ->exists();
+
+        if (! $exists) {
+            throw FatooraException::validation(
+                "Branch {$branchId} does not belong to this organization."
+            );
+        }
+
+        return $branchId;
     }
 
     /**

@@ -25,7 +25,7 @@ class FatooraEngine implements ComplianceEngine
 
     public function submit(Invoice $invoice, ComplianceProfile $profile): SubmissionResult
     {
-        $organization = $profile->organization;
+        $organization = $profile->org;
 
         try {
             $response = $this->submissionService->submit($invoice, $organization);
@@ -59,7 +59,7 @@ class FatooraEngine implements ComplianceEngine
 
     public function validate(Invoice $invoice, ComplianceProfile $profile): ValidationResult
     {
-        $organization = $profile->organization;
+        $organization = $profile->org;
 
         try {
             $response = $this->submissionService->validate($invoice, $organization);

@@ -104,9 +104,9 @@ class Branch extends Model
     /**
      * Get the organization that owns this branch.
      */
-    public function organization(): BelongsTo
+    public function org(): BelongsTo
     {
-        return $this->belongsTo(Organization::class, 'org_id');
+        return $this->belongsTo(Organization::class);
     }
 
     /**
@@ -184,7 +184,7 @@ class Branch extends Model
      */
     public function getCsrData(): CsrData
     {
-        $organization = $this->organization;
+        $organization = $this->org;
 
         return new CsrData(
             organizationName: $organization->name,
@@ -203,7 +203,7 @@ class Branch extends Model
      */
     public function generateSerialNumber(): string
     {
-        $orgName = substr(preg_replace('/[^A-Za-z0-9]/', '', $this->organization->name), 0, 20);
+        $orgName = substr(preg_replace('/[^A-Za-z0-9]/', '', $this->org->name), 0, 20);
         $branchName = substr(preg_replace('/[^A-Za-z0-9]/', '', $this->name), 0, 20);
 
         return sprintf(

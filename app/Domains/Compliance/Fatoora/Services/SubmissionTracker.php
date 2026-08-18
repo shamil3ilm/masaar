@@ -143,7 +143,7 @@ class SubmissionTracker
      */
     private function performPreSubmissionChecks(Invoice $invoice): void
     {
-        $organization = $invoice->organization;
+        $organization = $invoice->org;
 
         // 1. Check organization status
         if ($organization->is_suspended ?? false) {
