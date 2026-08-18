@@ -51,9 +51,9 @@ class ApiKey extends Model
     /**
      * Organization that owns this API key.
      */
-    public function organization(): BelongsTo
+    public function org(): BelongsTo
     {
-        return $this->belongsTo(Organization::class, 'org_id');
+        return $this->belongsTo(Organization::class);
     }
 
     /**

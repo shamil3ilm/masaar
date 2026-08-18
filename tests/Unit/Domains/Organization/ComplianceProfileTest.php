@@ -85,7 +85,7 @@ it('can resolve compliance profile from invoice', function () {
         'total' => 115,
     ]);
 
-    expect($invoice->complianceProfile->jurisdiction)->toBe('SA')
+    expect($invoice->profile->jurisdiction)->toBe('SA')
         ->and($profile->invoices()->count())->toBe(1);
 });
 
