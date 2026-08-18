@@ -61,11 +61,23 @@ class Organization extends Model
     }
 
     /**
+     * The column other tables use to point here.
+     *
+     * Eloquent would derive organization_id from the class name. The column is
+     * org_id, so stating it once here keeps hasMany, hasOne and belongsToMany
+     * working by convention instead of each relation naming the key itself.
+     */
+    public function getForeignKey(): string
+    {
+        return 'org_id';
+    }
+
+    /**
      * Branches (EGS units) belonging to this organization.
      */
     public function branches(): HasMany
     {
-        return $this->hasMany(Branch::class, 'org_id');
+        return $this->hasMany(Branch::class);
     }
 
     /**
@@ -89,7 +101,7 @@ class Organization extends Model
      */
     public function invoices(): HasMany
     {
-        return $this->hasMany(Invoice::class, 'org_id');
+        return $this->hasMany(Invoice::class);
     }
 
     /**
@@ -166,7 +178,7 @@ class Organization extends Model
      */
     public function complianceProfiles(): HasMany
     {
-        return $this->hasMany(ComplianceProfile::class, 'org_id');
+        return $this->hasMany(ComplianceProfile::class);
     }
 
     /**

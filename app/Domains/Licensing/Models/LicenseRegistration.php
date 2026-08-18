@@ -114,9 +114,9 @@ class LicenseRegistration extends Model
     /**
      * Get the organization this registration is linked to.
      */
-    public function organization(): BelongsTo
+    public function org(): BelongsTo
     {
-        return $this->belongsTo(Organization::class, 'org_id');
+        return $this->belongsTo(Organization::class);
     }
 
     /**

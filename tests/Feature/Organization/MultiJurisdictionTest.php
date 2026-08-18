@@ -58,8 +58,8 @@ it('invoice can be linked to a compliance profile', function () {
         'buyer_name' => 'Buyer Co',
     ]);
 
-    expect($invoice->complianceProfile->jurisdiction)->toBe('SA')
-        ->and($invoice->complianceProfile->engine)->toBe('fatoora');
+    expect($invoice->profile->jurisdiction)->toBe('SA')
+        ->and($invoice->profile->engine)->toBe('fatoora');
 });
 
 it('mock submit routes correctly per jurisdiction', function () {

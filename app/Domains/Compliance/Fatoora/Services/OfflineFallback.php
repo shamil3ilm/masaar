@@ -92,7 +92,7 @@ class OfflineFallback
      */
     private function queueForOffline(Invoice $invoice, array $options): array
     {
-        $organization = $invoice->organization;
+        $organization = $invoice->org;
 
         // Generate signed XML if not already signed
         if (! $invoice->signed_xml || ! $invoice->hash || ! $invoice->qr_code) {

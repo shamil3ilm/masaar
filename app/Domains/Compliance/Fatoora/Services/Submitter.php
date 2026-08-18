@@ -30,12 +30,21 @@ use Illuminate\Support\Facades\Storage;
  */
 class Submitter
 {
+    /**
+     * Every dependency is required.
+     *
+     * BranchService was optional, and the container skips optional parameters,
+     * so it was always null — silently disabling branch-level signing. An
+     * invoice for a branch would be signed with the organization's default
+     * certificate instead of that branch's own EGS credentials, which ZATCA
+     * treats as a different device.
+     */
     public function __construct(
         private readonly DocumentBuilder $compliance,
         private readonly FatooraClient $client,
         private readonly AuditService $audit,
-        private readonly ?CertificateService $certificateService = null,
-        private readonly ?BranchService $branchService = null,
+        private readonly CertificateService $certificateService,
+        private readonly BranchService $branchService,
     ) {}
 
     /**
@@ -186,11 +195,6 @@ class Submitter
     {
         if (empty($certificate)) {
             return; // Already handled by getSigningCredentials
-        }
-
-        // Only validate if CertificateService is available
-        if ($this->certificateService === null) {
-            return;
         }
 
         // Check if certificate validation is enabled
@@ -410,8 +414,9 @@ class Submitter
      */
     private function getSigningCredentials(string $organizationId, ?Branch $branch = null, bool $required = false): array
     {
-        // Try branch credentials first if branch is provided and BranchService is available
-        if ($branch && $this->branchService) {
+        // A branch is an EGS unit with its own certificate, so its credentials
+        // take precedence over the organization's.
+        if ($branch) {
             $branchCredentials = $this->branchService->getCredentials($branch, 'pcsid');
 
             if ($branchCredentials) {

@@ -90,7 +90,7 @@ class User extends Authenticatable implements JWTSubject
      */
     public function organizations(): BelongsToMany
     {
-        return $this->belongsToMany(Organization::class, 'organization_user', 'user_id', 'org_id')
+        return $this->belongsToMany(Organization::class)
             ->withPivot(['role', 'status'])
             ->withTimestamps();
     }

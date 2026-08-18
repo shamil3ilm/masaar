@@ -39,14 +39,23 @@ class ComplianceProfile extends Model
         ];
     }
 
-    public function organization(): BelongsTo
+    public function org(): BelongsTo
     {
-        return $this->belongsTo(Organization::class, 'org_id');
+        return $this->belongsTo(Organization::class);
+    }
+
+    /**
+     * The column other tables use to point here. Eloquent would derive
+     * compliance_profile_id from the class name; the column is profile_id.
+     */
+    public function getForeignKey(): string
+    {
+        return 'profile_id';
     }
 
     public function invoices(): HasMany
     {
-        return $this->hasMany(Invoice::class, 'profile_id');
+        return $this->hasMany(Invoice::class);
     }
 
     public function isActive(): bool

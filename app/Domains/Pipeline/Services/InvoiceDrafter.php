@@ -36,11 +36,17 @@ class InvoiceDrafter
      * counter's lock is released early and two concurrent requests can
      * allocate the same value.
      */
-    public function draft(array $data, string $organizationId): Invoice
+    /**
+     * @param  string|null  $branchId  EGS unit issuing this invoice. Already
+     *                                 confirmed to belong to the organization;
+     *                                 decides which certificate signs it.
+     */
+    public function draft(array $data, string $organizationId, ?string $branchId = null): Invoice
     {
-        return DB::transaction(function () use ($data, $organizationId) {
+        return DB::transaction(function () use ($data, $organizationId, $branchId) {
             $invoice = Invoice::create([
                 'org_id' => $organizationId,
+                'branch_id' => $branchId,
                 'invoice_number' => $data['invoice_number'],
                 'type' => $data['type'],
                 'document_type' => $data['document_type'],

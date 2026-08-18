@@ -199,7 +199,7 @@ class BranchService
     public function getExpiringCertificates(int $days = 30): Collection
     {
         return Branch::certificateExpiringSoon($days)
-            ->with('organization')
+            ->with('org')
             ->get();
     }
 

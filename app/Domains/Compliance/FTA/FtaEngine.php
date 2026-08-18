@@ -29,7 +29,7 @@ class FtaEngine implements ComplianceEngine
 
     public function submit(Invoice $invoice, ComplianceProfile $profile): SubmissionResult
     {
-        $organization = $profile->organization;
+        $organization = $profile->org;
 
         try {
             $submission = $this->ftaService->submit($invoice, $organization);
@@ -89,7 +89,7 @@ class FtaEngine implements ComplianceEngine
 
     public function validate(Invoice $invoice, ComplianceProfile $profile): ValidationResult
     {
-        $organization = $profile->organization;
+        $organization = $profile->org;
 
         try {
             $data = $this->ftaService->buildInvoiceData($invoice, $organization);
