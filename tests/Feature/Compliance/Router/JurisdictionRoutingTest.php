@@ -24,7 +24,7 @@ function makeComplianceProfile(string $jurisdiction, string $engine): Compliance
     ]);
 
     return ComplianceProfile::create([
-        'organization_id' => $org->id,
+        'org_id' => $org->id,
         'jurisdiction' => $jurisdiction,
         'engine' => $engine,
         'status' => 'active',
@@ -35,7 +35,7 @@ function makeComplianceProfile(string $jurisdiction, string $engine): Compliance
 function makeInvoice(string $organizationId): Invoice
 {
     return Invoice::create([
-        'organization_id' => $organizationId,
+        'org_id' => $organizationId,
         'invoice_number' => 'INV-'.uniqid(),
         'type' => 'standard',
         'status' => 'draft',
@@ -69,7 +69,7 @@ it('throws UnsupportedJurisdictionException for unregistered jurisdiction', func
 
 it('routes submit call through to the correct engine', function () {
     $profile = makeComplianceProfile('SA', 'fatoora');
-    $invoice = makeInvoice($profile->organization_id);
+    $invoice = makeInvoice($profile->org_id);
 
     $mockEngine = Mockery::mock(FatooraEngine::class);
     $mockEngine->allows('supports')->with('SA')->andReturns(true);
@@ -86,7 +86,7 @@ it('routes submit call through to the correct engine', function () {
 
 it('routes validate call through to the correct engine', function () {
     $profile = makeComplianceProfile('AE', 'fta');
-    $invoice = makeInvoice($profile->organization_id);
+    $invoice = makeInvoice($profile->org_id);
 
     $mockEngine = Mockery::mock(FtaEngine::class);
     $mockEngine->allows('supports')->with('AE')->andReturns(true);

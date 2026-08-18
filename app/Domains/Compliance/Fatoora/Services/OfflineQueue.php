@@ -74,7 +74,7 @@ class OfflineQueue
         string $qrCode,
         ?string $priority = 'normal'
     ): array {
-        $organizationId = $invoice->organization_id;
+        $organizationId = $invoice->org_id;
 
         // Check queue size limit
         $currentSize = $this->getQueueSize($organizationId);
@@ -89,7 +89,7 @@ class OfflineQueue
         $queueItem = [
             'id' => Str::uuid()->toString(),
             'invoice_id' => $invoice->id,
-            'organization_id' => $organizationId,
+            'org_id' => $organizationId,
             'invoice_number' => $invoice->invoice_number,
             'invoice_type' => $invoice->type->value ?? 'standard',
             'signed_xml' => $signedXml,
@@ -108,7 +108,7 @@ class OfflineQueue
         DB::table('offline_queue')->insert([
             'id' => $queueItem['id'],
             'invoice_id' => $queueItem['invoice_id'],
-            'organization_id' => $queueItem['organization_id'],
+            'org_id' => $queueItem['org_id'],
             'signed_xml' => $queueItem['signed_xml'],
             'invoice_hash' => $queueItem['invoice_hash'],
             'qr_code' => $queueItem['qr_code'],
@@ -125,7 +125,7 @@ class OfflineQueue
         Log::info('Invoice queued for offline submission', [
             'queue_id' => $queueItem['id'],
             'invoice_id' => $invoice->id,
-            'organization_id' => $organizationId,
+            'org_id' => $organizationId,
             'queue_size' => $currentSize + 1,
         ]);
 
@@ -148,7 +148,7 @@ class OfflineQueue
         }
 
         return DB::table('offline_queue')
-            ->where('organization_id', $organizationId)
+            ->where('org_id', $organizationId)
             ->where('state', self::STATE_PENDING)
             ->where('next_attempt_at', '<=', now())
             ->orderBy('priority', 'desc')
@@ -167,7 +167,7 @@ class OfflineQueue
             ->where('id', $queueId)
             ->update([
                 'state' => self::STATE_PROCESSING,
-                'processing_started_at' => now(),
+                'started_at' => now(),
                 'updated_at' => now(),
             ]);
     }
@@ -252,7 +252,7 @@ class OfflineQueue
     public function getQueueSize(string $organizationId): int
     {
         return DB::table('offline_queue')
-            ->where('organization_id', $organizationId)
+            ->where('org_id', $organizationId)
             ->whereIn('state', [self::STATE_PENDING, self::STATE_PROCESSING])
             ->count();
     }
@@ -274,20 +274,20 @@ class OfflineQueue
     public function getStatus(string $organizationId): array
     {
         $counts = DB::table('offline_queue')
-            ->where('organization_id', $organizationId)
+            ->where('org_id', $organizationId)
             ->selectRaw('state, count(*) as count')
             ->groupBy('state')
             ->pluck('count', 'state')
             ->toArray();
 
         $oldestPending = DB::table('offline_queue')
-            ->where('organization_id', $organizationId)
+            ->where('org_id', $organizationId)
             ->where('state', self::STATE_PENDING)
             ->orderBy('queued_at', 'asc')
             ->value('queued_at');
 
         return [
-            'organization_id' => $organizationId,
+            'org_id' => $organizationId,
             'pending' => $counts[self::STATE_PENDING] ?? 0,
             'processing' => $counts[self::STATE_PROCESSING] ?? 0,
             'completed' => $counts[self::STATE_COMPLETED] ?? 0,
@@ -412,7 +412,7 @@ class OfflineQueue
         $invoice = DB::table('invoices')->where('id', $item->invoice_id)->first();
         if ($invoice && $invoice->icv) {
             $icvConflict = DB::table('hash_chain_history')
-                ->where('organization_id', $item->organization_id)
+                ->where('org_id', $item->org_id)
                 ->where('icv', $invoice->icv)
                 ->where('invoice_id', '!=', $item->invoice_id)
                 ->exists();
@@ -429,7 +429,7 @@ class OfflineQueue
 
         // Check if the certificate used for signing is still valid
         $certLineage = DB::table('certificate_lineage')
-            ->where('organization_id', $item->organization_id)
+            ->where('org_id', $item->org_id)
             ->where('status', 'active')
             ->first();
 
@@ -443,7 +443,7 @@ class OfflineQueue
 
         // Check if hash in queue matches current chain
         $currentState = DB::table('hash_chain_state')
-            ->where('organization_id', $item->organization_id)
+            ->where('org_id', $item->org_id)
             ->first();
 
         if ($currentState && $invoice && $invoice->hash) {
@@ -470,7 +470,7 @@ class OfflineQueue
     public function handleCertificateRotation(string $organizationId): array
     {
         $affected = DB::table('offline_queue')
-            ->where('organization_id', $organizationId)
+            ->where('org_id', $organizationId)
             ->where('state', self::STATE_PENDING)
             ->get();
 
@@ -494,7 +494,7 @@ class OfflineQueue
         }
 
         Log::info('Certificate rotation handling for offline queue', array_merge(
-            ['organization_id' => $organizationId],
+            ['org_id' => $organizationId],
             $results
         ));
 
@@ -507,7 +507,7 @@ class OfflineQueue
     public function getItemsNeedingResign(string $organizationId): array
     {
         return DB::table('offline_queue')
-            ->where('organization_id', $organizationId)
+            ->where('org_id', $organizationId)
             ->where('state', self::STATE_PENDING)
             ->where('last_error', 'LIKE', '%needs re-signing%')
             ->get()

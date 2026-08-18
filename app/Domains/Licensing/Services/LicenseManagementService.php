@@ -42,9 +42,9 @@ class LicenseManagementService
             'contact_phone' => $data['contact_phone'] ?? null,
             'tier' => $tier,
             'status' => LicenseStatus::from($data['status'] ?? 'pending_activation'),
-            'max_invoices_per_month' => $data['max_invoices_per_month'] ?? $defaults['max_invoices_per_month'],
-            'max_api_calls_per_day' => $data['max_api_calls_per_day'] ?? $defaults['max_api_calls_per_day'],
-            'max_api_calls_per_minute' => $data['max_api_calls_per_minute'] ?? $defaults['max_api_calls_per_minute'],
+            'invoices_per_month' => $data['invoices_per_month'] ?? $defaults['invoices_per_month'],
+            'calls_per_day' => $data['calls_per_day'] ?? $defaults['calls_per_day'],
+            'calls_per_min' => $data['calls_per_min'] ?? $defaults['calls_per_min'],
             'max_organizations' => $data['max_organizations'] ?? $defaults['max_organizations'],
             'features' => $data['features'] ?? $defaults['features'],
             'expires_at' => isset($data['expires_at']) ? new \DateTime($data['expires_at']) : null,
@@ -220,9 +220,9 @@ class LicenseManagementService
         $license = License::findOrFail($licenseId);
 
         $allowedFields = [
-            'max_invoices_per_month',
-            'max_api_calls_per_day',
-            'max_api_calls_per_minute',
+            'invoices_per_month',
+            'calls_per_day',
+            'calls_per_min',
             'max_organizations',
         ];
 

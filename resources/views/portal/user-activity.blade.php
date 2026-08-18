@@ -85,9 +85,9 @@
                     {{ \Carbon\Carbon::parse($sub->created_at)->format('M d, H:i') }}
                 </td>
                 <td class="px-6 py-4">
-                    @if($sub->last_error_message)
-                    <span class="text-xs text-red-600" title="{{ $sub->last_error_message }}">
-                        {{ Str::limit($sub->last_error_message, 30) }}
+                    @if($sub->last_error)
+                    <span class="text-xs text-red-600" title="{{ $sub->last_error }}">
+                        {{ Str::limit($sub->last_error, 30) }}
                     </span>
                     @else
                     <span class="text-gray-400">-</span>

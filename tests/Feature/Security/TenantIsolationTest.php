@@ -17,7 +17,7 @@ use Tests\TestCase;
  * Closes audit finding C-4.
  *
  * Isolation used to rest on each author remembering to write
- * where('organization_id', ...). Nothing failed when someone forgot, so the
+ * where('org_id', ...). Nothing failed when someone forgot, so the
  * platform's most important invariant had no structural backstop.
  * BelongsToTenant makes the safe behaviour the default.
  *
@@ -80,7 +80,7 @@ class TenantIsolationTest extends TestCase
     {
         $this->asSystem(function () {
             ApiKey::create([
-                'organization_id' => $this->rival->id,
+                'org_id' => $this->rival->id,
                 'name' => 'Rival key',
                 'key_prefix' => 'cpay_riv',
                 'key_hash' => hash('sha256', 'rival-secret'),
@@ -88,7 +88,7 @@ class TenantIsolationTest extends TestCase
                 'is_active' => true,
             ]);
             Webhook::create([
-                'organization_id' => $this->rival->id,
+                'org_id' => $this->rival->id,
                 'url' => 'https://rival.example/hook',
                 'events' => ['invoice.cleared'],
                 'secret' => 'shh',
@@ -122,7 +122,7 @@ class TenantIsolationTest extends TestCase
         $this->asTenant($this->acme->id, function () {
             $invoice = $this->makeInvoice(null, 'ACME-AUTO');
 
-            $this->assertSame($this->acme->id, $invoice->organization_id);
+            $this->assertSame($this->acme->id, $invoice->org_id);
         });
     }
 
@@ -197,7 +197,7 @@ class TenantIsolationTest extends TestCase
         ];
 
         if ($organizationId !== null) {
-            $attributes['organization_id'] = $organizationId;
+            $attributes['org_id'] = $organizationId;
         }
 
         return Invoice::create($attributes);

@@ -25,7 +25,7 @@ class ComplianceProfile extends Model
     public const STATUS_REVOKED = 'revoked';
 
     protected $fillable = [
-        'organization_id',
+        'org_id',
         'jurisdiction',
         'engine',
         'status',
@@ -41,12 +41,12 @@ class ComplianceProfile extends Model
 
     public function organization(): BelongsTo
     {
-        return $this->belongsTo(Organization::class);
+        return $this->belongsTo(Organization::class, 'org_id');
     }
 
     public function invoices(): HasMany
     {
-        return $this->hasMany(Invoice::class);
+        return $this->hasMany(Invoice::class, 'profile_id');
     }
 
     public function isActive(): bool

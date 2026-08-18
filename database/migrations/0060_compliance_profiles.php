@@ -11,26 +11,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('compliance_profiles', function (Blueprint $table) {
-            $table->uuid('id')->primary();
-            $table->foreignUuid('organization_id')->constrained()->cascadeOnDelete();
-
-            // ISO 3166-1 alpha-2 country code: SA, AE, QA, …
+            $table->uuid('id');
+            $table->uuid('org_id');
             $table->string('jurisdiction', 2);
-
-            // Engine slug that ComplianceRouter will resolve: fatoora, fta, gta, …
             $table->string('engine', 32);
-
-            // Profile lifecycle: pending_onboarding | active | suspended | revoked
             $table->string('status', 32)->default('pending_onboarding');
-
-            // Jurisdiction-specific settings blob
             $table->json('settings')->nullable();
-
-            $table->timestamps();
-
-            // One profile per org per jurisdiction
-            $table->unique(['organization_id', 'jurisdiction']);
-            $table->index(['organization_id', 'status']);
+            $table->timestamp('created_at')->nullable();
+            $table->timestamp('updated_at')->nullable();
+            $table->primary(['id']);
+            $table->unique(['org_id', 'jurisdiction'], 'compliance_profiles_organization_id_jurisdiction_unique');
+            $table->index(['org_id', 'status'], 'compliance_profiles_organization_id_status_index');
+            $table->foreign('org_id', 'compliance_profiles_organization_id_foreign')->references('id')->on('organizations')->cascadeOnDelete();
         });
     }
 

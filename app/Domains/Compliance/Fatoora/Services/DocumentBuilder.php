@@ -163,7 +163,7 @@ class DocumentBuilder
         // Format invoice lines with full tax category data from database
         $lines = $invoice->lines->map(fn ($line) => [
             'description' => $line->description,
-            'itemClassificationCode' => $line->item_classification_code,
+            'itemClassificationCode' => $line->class_code,
             'quantity' => (float) $line->quantity,
             'unitCode' => $line->unit_code ?? 'PCE',
             'unitPrice' => (float) $line->unit_price,
@@ -173,10 +173,10 @@ class DocumentBuilder
             // Use stored tax category, fallback to computed value
             'taxCategory' => $line->tax_category ?? $this->getTaxCategory(
                 (float) $line->tax_rate,
-                $line->tax_exemption_code
+                $line->exempt_code
             ),
-            'taxExemptionReasonCode' => $line->tax_exemption_code,
-            'taxExemptionReason' => $line->tax_exemption_reason,
+            'taxExemptionReasonCode' => $line->exempt_code,
+            'taxExemptionReason' => $line->exempt_reason,
         ])->toArray();
 
         return new InvoiceXmlData(
@@ -203,7 +203,7 @@ class DocumentBuilder
             discount: (float) ($invoice->discount_amount ?? 0),
             paymentMeansCode: $invoice->payment_means_code ?? '10',
             previousInvoiceHash: $previousInvoiceHash,
-            billingReferenceId: $invoice->billing_reference_id,
+            billingReferenceId: $invoice->billing_ref,
             // Invoice type sub-flags (bits 3-7 per ZATCA specification)
             isThirdParty: (bool) ($invoice->is_third_party ?? false),
             isNominal: (bool) ($invoice->is_nominal ?? false),

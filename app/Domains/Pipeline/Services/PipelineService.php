@@ -87,7 +87,7 @@ class PipelineService
         } catch (FatooraException $e) {
             Log::error('Pipeline: compliance generation failed', [
                 'invoice_id' => $invoice->id,
-                'organization_id' => $organization->id,
+                'org_id' => $organization->id,
                 'error' => $e->getMessage(),
             ]);
 

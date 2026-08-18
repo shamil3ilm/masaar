@@ -26,7 +26,7 @@ class AuditService
         $request = request();
 
         return AuditLog::create([
-            'organization_id' => $this->getOrganizationId(),
+            'org_id' => $this->getOrganizationId(),
             'user_id' => auth()->id(),
             'action' => $action,
             'entity_type' => $entity ? class_basename($entity) : null,
@@ -99,7 +99,7 @@ class AuditService
     public function logAuth(string $action, ?string $userId = null): AuditLog
     {
         return AuditLog::create([
-            'organization_id' => null,
+            'org_id' => null,
             'user_id' => $userId ?? auth()->id(),
             'action' => 'auth.'.$action,
             'entity_type' => 'User',
@@ -130,7 +130,7 @@ class AuditService
         array $metadata = [],
     ): AuditLog {
         return AuditLog::create([
-            'organization_id' => app(TenantResolver::class)->getOrganizationId(),
+            'org_id' => app(TenantResolver::class)->getOrganizationId(),
             'user_id' => auth()->id(),
             'action' => 'security.'.$action,
             'entity_type' => $entityType,

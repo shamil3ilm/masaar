@@ -43,7 +43,7 @@ class WebhookService
      */
     public function dispatch(string $organizationId, string $event, array $payload): void
     {
-        $webhooks = Webhook::where('organization_id', $organizationId)
+        $webhooks = Webhook::where('org_id', $organizationId)
             ->where('is_active', true)
             ->get();
 
@@ -158,7 +158,7 @@ class WebhookService
     public function create(string $organizationId, string $url, array $events): Webhook
     {
         return Webhook::create([
-            'organization_id' => $organizationId,
+            'org_id' => $organizationId,
             'url' => $url,
             'secret' => Str::random(64),
             'events' => $events,

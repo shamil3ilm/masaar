@@ -111,7 +111,7 @@ class ComplianceController extends Controller
      */
     private function getInvoice(string $id): Invoice
     {
-        return Invoice::where('organization_id', $this->tenant->getOrganizationId())
+        return Invoice::where('org_id', $this->tenant->getOrganizationId())
             ->with('lines')
             ->findOrFail($id);
     }

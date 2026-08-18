@@ -237,19 +237,19 @@ class PlatformLicenseService
     {
         return match ($type) {
             self::TYPE_TRIAL => [
-                'max_invoices_per_month' => 500,
+                'invoices_per_month' => 500,
                 'max_organizations' => 5,
                 'support' => 'email',
                 'api_rate_limit' => 100,
             ],
             self::TYPE_PRODUCTION => [
-                'max_invoices_per_month' => -1, // unlimited
+                'invoices_per_month' => -1, // unlimited
                 'max_organizations' => -1,
                 'support' => 'priority',
                 'api_rate_limit' => 10000,
             ],
             self::TYPE_DEVELOPMENT => [
-                'max_invoices_per_month' => 100,
+                'invoices_per_month' => 100,
                 'max_organizations' => 2,
                 'support' => 'community',
                 'api_rate_limit' => 50,

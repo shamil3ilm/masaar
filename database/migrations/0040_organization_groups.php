@@ -11,11 +11,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('organization_groups', function (Blueprint $table) {
-            $table->uuid('id')->primary();
-            $table->string('name');
-            $table->string('status')->default('active'); // active, suspended
+            $table->uuid('id');
+            $table->string('name', 255);
+            $table->string('status', 255)->default('active');
             $table->text('notes')->nullable();
-            $table->timestamps();
+            $table->timestamp('created_at')->nullable();
+            $table->timestamp('updated_at')->nullable();
+            $table->primary(['id']);
         });
     }
 

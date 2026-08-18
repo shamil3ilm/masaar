@@ -27,7 +27,7 @@ class BranchService
             $deviceSerial = $data['device_serial'] ?? Branch::generateDeviceSerial($organization);
 
             $branch = Branch::create([
-                'organization_id' => $organization->id,
+                'org_id' => $organization->id,
                 'name' => $data['name'],
                 'name_ar' => $data['name_ar'] ?? null,
                 'device_serial' => $deviceSerial,
@@ -93,7 +93,7 @@ class BranchService
 
         // Check if default and other branches exist
         if ($branch->is_default) {
-            $otherBranch = Branch::where('organization_id', $branch->organization_id)
+            $otherBranch = Branch::where('org_id', $branch->org_id)
                 ->where('id', '!=', $branch->id)
                 ->active()
                 ->first();
@@ -175,7 +175,7 @@ class BranchService
      */
     public function deleteCredentials(Branch $branch): void
     {
-        $basePath = "zatca/{$branch->organization_id}/branches/{$branch->id}";
+        $basePath = "zatca/{$branch->org_id}/branches/{$branch->id}";
 
         foreach (['ccsid', 'pcsid'] as $type) {
             $path = "{$basePath}/{$type}.json";
@@ -208,7 +208,7 @@ class BranchService
      */
     private function getCredentialsPath(Branch $branch, string $type): string
     {
-        return "zatca/{$branch->organization_id}/branches/{$branch->id}/{$type}.json";
+        return "zatca/{$branch->org_id}/branches/{$branch->id}/{$type}.json";
     }
 
     /**

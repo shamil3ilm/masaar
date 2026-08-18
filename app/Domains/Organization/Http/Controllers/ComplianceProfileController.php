@@ -46,7 +46,7 @@ class ComplianceProfileController extends Controller
     public function destroy(Organization $organization, ComplianceProfile $profile): JsonResponse
     {
         abort_if(
-            $profile->organization_id !== $organization->id,
+            $profile->org_id !== $organization->id,
             403,
             'Profile does not belong to this organization'
         );

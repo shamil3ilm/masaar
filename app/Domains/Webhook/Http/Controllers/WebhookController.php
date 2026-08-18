@@ -31,7 +31,7 @@ class WebhookController extends Controller
      */
     public function index(): JsonResponse
     {
-        $webhooks = Webhook::where('organization_id', $this->tenant->getOrganizationId())
+        $webhooks = Webhook::where('org_id', $this->tenant->getOrganizationId())
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(fn (Webhook $w) => [
@@ -215,7 +215,7 @@ class WebhookController extends Controller
      */
     private function getWebhook(string $id): Webhook
     {
-        return Webhook::where('organization_id', $this->tenant->getOrganizationId())
+        return Webhook::where('org_id', $this->tenant->getOrganizationId())
             ->findOrFail($id);
     }
 }

@@ -30,9 +30,9 @@ class LicenseUsage extends Model
         'invoices_failed',
         'api_calls',
         'api_errors',
-        'organizations_active',
+        'orgs_active',
         'users_active',
-        'invoice_total_value',
+        'total_value',
     ];
 
     protected $casts = [
@@ -43,9 +43,9 @@ class LicenseUsage extends Model
         'invoices_failed' => 'integer',
         'api_calls' => 'integer',
         'api_errors' => 'integer',
-        'organizations_active' => 'integer',
+        'orgs_active' => 'integer',
         'users_active' => 'integer',
-        'invoice_total_value' => 'decimal:2',
+        'total_value' => 'decimal:2',
     ];
 
     /**

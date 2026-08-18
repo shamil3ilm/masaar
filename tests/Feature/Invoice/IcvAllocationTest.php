@@ -97,7 +97,7 @@ class IcvAllocationTest extends TestCase
     private function makeInvoice(string $organizationId, string $number, array $overrides = []): Invoice
     {
         return Invoice::create(array_merge([
-            'organization_id' => $organizationId,
+            'org_id' => $organizationId,
             'invoice_number' => $number,
             'type' => 'standard',
             'status' => 'draft',

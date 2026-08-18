@@ -212,7 +212,7 @@ class ProcessFatooraSubmission implements ShouldQueue
             'previous_state' => $submission->state,
             'state_changed_at' => now(),
             'last_error_code' => $errorCode->value,
-            'last_error_message' => $e->getMessage(),
+            'last_error' => $e->getMessage(),
             'retry_count' => $submission->retry_count + 1,
             'next_retry_at' => $isRetryable && $this->attempts() < $this->tries
                 ? now()->addSeconds($this->backoff[$this->attempts() - 1] ?? 300)
@@ -331,7 +331,7 @@ class ProcessFatooraSubmission implements ShouldQueue
             'status' => $success ? 'completed' : 'failed',
             'http_status_code' => $success ? 200 : 422,
             'response_body' => $response->rawResponse,
-            'zatca_clearance_status' => $response->clearanceStatus,
+            'clearance_status' => $response->clearanceStatus,
             'completed_at' => now(),
         ]);
     }
@@ -347,7 +347,7 @@ class ProcessFatooraSubmission implements ShouldQueue
         $submission->update([
             'state' => 'failed',
             'state_changed_at' => now(),
-            'last_error_message' => 'Max retries exceeded: '.$exception->getMessage(),
+            'last_error' => 'Max retries exceeded: '.$exception->getMessage(),
             'next_retry_at' => null,
         ]);
 

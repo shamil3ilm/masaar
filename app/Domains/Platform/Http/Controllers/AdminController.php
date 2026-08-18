@@ -36,7 +36,7 @@ class AdminController extends Controller
     {
         $organizations = DB::table('organizations')
             ->leftJoin('certificate_lineage', function ($join) {
-                $join->on('organizations.id', '=', 'certificate_lineage.organization_id')
+                $join->on('organizations.id', '=', 'certificate_lineage.org_id')
                     ->where('certificate_lineage.status', '=', 'active');
             })
             ->select([
@@ -53,10 +53,10 @@ class AdminController extends Controller
         // Get submission stats per org
         $orgIds = $organizations->pluck('id');
         $submissionStats = DB::table('invoice_submissions')
-            ->whereIn('organization_id', $orgIds)
-            ->selectRaw('organization_id, COUNT(*) as total, SUM(CASE WHEN state IN ("cleared", "reported") THEN 1 ELSE 0 END) as successful')
-            ->groupBy('organization_id')
-            ->pluck('successful', 'organization_id');
+            ->whereIn('org_id', $orgIds)
+            ->selectRaw('org_id, COUNT(*) as total, SUM(CASE WHEN state IN ("cleared", "reported") THEN 1 ELSE 0 END) as successful')
+            ->groupBy('org_id')
+            ->pluck('successful', 'org_id');
 
         return view('admin.organizations', compact('organizations', 'submissionStats'));
     }
@@ -73,11 +73,11 @@ class AdminController extends Controller
         }
 
         // Optimized: Single query for invoice count
-        $invoiceCount = DB::table('invoices')->where('organization_id', $id)->count();
+        $invoiceCount = DB::table('invoices')->where('org_id', $id)->count();
 
         // Optimized: Single query for all submission stats
         $submissionStats = DB::table('invoice_submissions')
-            ->where('organization_id', $id)
+            ->where('org_id', $id)
             ->selectRaw("
                 COUNT(*) as total,
                 SUM(CASE WHEN state = 'cleared' THEN 1 ELSE 0 END) as cleared,
@@ -93,13 +93,13 @@ class AdminController extends Controller
         ];
 
         $recentSubmissions = DB::table('invoice_submissions')
-            ->where('organization_id', $id)
+            ->where('org_id', $id)
             ->orderByDesc('created_at')
             ->limit(20)
             ->get();
 
         $certificate = DB::table('certificate_lineage')
-            ->where('organization_id', $id)
+            ->where('org_id', $id)
             ->where('status', 'active')
             ->first();
 
@@ -112,10 +112,10 @@ class AdminController extends Controller
     public function queue(Request $request): View
     {
         $state = $request->query('state');
-        $orgId = $request->query('organization_id');
+        $orgId = $request->query('org_id');
 
         $query = DB::table('offline_queue')
-            ->leftJoin('organizations', 'offline_queue.organization_id', '=', 'organizations.id')
+            ->leftJoin('organizations', 'offline_queue.org_id', '=', 'organizations.id')
             ->select([
                 'offline_queue.*',
                 'organizations.name as organization_name',
@@ -127,7 +127,7 @@ class AdminController extends Controller
         }
 
         if ($orgId) {
-            $query->where('offline_queue.organization_id', $orgId);
+            $query->where('offline_queue.org_id', $orgId);
         }
 
         $items = $query->paginate(50);
@@ -146,10 +146,10 @@ class AdminController extends Controller
     public function logs(Request $request): View
     {
         $state = $request->query('state');
-        $orgId = $request->query('organization_id');
+        $orgId = $request->query('org_id');
 
         $query = DB::table('invoice_submissions')
-            ->leftJoin('organizations', 'invoice_submissions.organization_id', '=', 'organizations.id')
+            ->leftJoin('organizations', 'invoice_submissions.org_id', '=', 'organizations.id')
             ->select([
                 'invoice_submissions.*',
                 'organizations.name as organization_name',
@@ -161,7 +161,7 @@ class AdminController extends Controller
         }
 
         if ($orgId) {
-            $query->where('invoice_submissions.organization_id', $orgId);
+            $query->where('invoice_submissions.org_id', $orgId);
         }
 
         $logs = $query->paginate(50);

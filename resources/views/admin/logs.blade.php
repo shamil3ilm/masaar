@@ -36,7 +36,7 @@
 <div class="bg-white rounded-lg shadow p-4 mb-6">
     <form method="GET" class="flex flex-wrap gap-4">
         <input type="hidden" name="state" value="{{ $state }}">
-        <input type="text" name="organization_id" value="{{ $orgId }}" placeholder="Organization ID" class="border rounded px-3 py-2 text-sm">
+        <input type="text" name="org_id" value="{{ $orgId }}" placeholder="Organization ID" class="border rounded px-3 py-2 text-sm">
         <button type="submit" class="px-4 py-2 bg-gray-600 text-white rounded text-sm">Filter</button>
         <a href="{{ route('admin.logs', $state ? ['state' => $state] : []) }}" class="px-4 py-2 bg-gray-200 text-gray-700 rounded text-sm">Clear Org Filter</a>
     </form>
@@ -63,7 +63,7 @@
                     <div class="font-medium">{{ Str::limit($log->id, 8) }}</div>
                     <div class="text-xs text-gray-500">Inv: {{ Str::limit($log->invoice_id, 8) }}</div>
                 </td>
-                <td class="px-6 py-4 text-sm">{{ $log->organization_name ?? Str::limit($log->organization_id, 8) }}</td>
+                <td class="px-6 py-4 text-sm">{{ $log->organization_name ?? Str::limit($log->org_id, 8) }}</td>
                 <td class="px-6 py-4">
                     <span class="px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-800">
                         {{ $log->submission_type }}
@@ -89,9 +89,9 @@
                     @endif
                 </td>
                 <td class="px-6 py-4 text-sm">
-                    @if($log->last_error_message)
-                        <span class="text-red-600" title="{{ $log->last_error_message }}">
-                            {{ $log->last_error_code }}: {{ Str::limit($log->last_error_message, 30) }}
+                    @if($log->last_error)
+                        <span class="text-red-600" title="{{ $log->last_error }}">
+                            {{ $log->last_error_code }}: {{ Str::limit($log->last_error, 30) }}
                         </span>
                     @else
                         <span class="text-gray-400">-</span>

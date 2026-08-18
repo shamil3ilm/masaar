@@ -58,7 +58,7 @@ class CertificateLineage
         if ($existing) {
             Log::debug('Certificate already registered', [
                 'certificate_id' => $certificateId,
-                'organization_id' => $organizationId,
+                'org_id' => $organizationId,
             ]);
 
             return (array) $existing;
@@ -73,9 +73,9 @@ class CertificateLineage
         $lineageId = Str::uuid()->toString();
         $record = [
             'id' => $lineageId,
-            'organization_id' => $organizationId,
+            'org_id' => $organizationId,
             'certificate_id' => $certificateId,
-            'certificate_serial' => $certificateSerial,
+            'cert_serial' => $certificateSerial,
             'issuer' => $issuer,
             'valid_from' => $validFrom->format('Y-m-d H:i:s'),
             'valid_to' => $validTo->format('Y-m-d H:i:s'),
@@ -93,7 +93,7 @@ class CertificateLineage
         Log::info('Certificate registered in lineage', [
             'lineage_id' => $lineageId,
             'certificate_id' => $certificateId,
-            'organization_id' => $organizationId,
+            'org_id' => $organizationId,
             'valid_from' => $validFrom->format('Y-m-d'),
             'valid_to' => $validTo->format('Y-m-d'),
         ]);
@@ -112,7 +112,7 @@ class CertificateLineage
     public function getActive(string $organizationId): ?array
     {
         $cert = DB::table('certificate_lineage')
-            ->where('organization_id', $organizationId)
+            ->where('org_id', $organizationId)
             ->where('status', self::STATUS_ACTIVE)
             ->orderByDesc('activated_at')   // Primary: newest activation wins
             ->orderByDesc('created_at')     // Secondary: same-second tiebreaker
@@ -132,14 +132,14 @@ class CertificateLineage
         int $icv
     ): void {
         $lineage = DB::table('certificate_lineage')
-            ->where('organization_id', $organizationId)
+            ->where('org_id', $organizationId)
             ->where('certificate_id', $certificateId)
             ->first();
 
         if (! $lineage) {
             Log::warning('Invoice signed with unregistered certificate', [
                 'certificate_id' => $certificateId,
-                'organization_id' => $organizationId,
+                'org_id' => $organizationId,
                 'icv' => $icv,
             ]);
 
@@ -225,7 +225,7 @@ class CertificateLineage
     public function getHistory(string $organizationId): array
     {
         return DB::table('certificate_lineage')
-            ->where('organization_id', $organizationId)
+            ->where('org_id', $organizationId)
             ->orderBy('created_at', 'asc')
             ->get()
             ->map(fn ($cert) => (array) $cert)
@@ -247,7 +247,7 @@ class CertificateLineage
             ->where('certificate_id', $certificateId);
 
         if ($organizationId) {
-            $query->where('organization_id', $organizationId);
+            $query->where('org_id', $organizationId);
         }
 
         return $query
@@ -310,7 +310,7 @@ class CertificateLineage
     public function validateForSigning(string $organizationId, string $certificateId): void
     {
         $lineage = DB::table('certificate_lineage')
-            ->where('organization_id', $organizationId)
+            ->where('org_id', $organizationId)
             ->where('certificate_id', $certificateId)
             ->first();
 
@@ -373,7 +373,7 @@ class CertificateLineage
 
             $report[] = [
                 'certificate_id' => $cert['certificate_id'],
-                'serial' => $cert['certificate_serial'],
+                'serial' => $cert['cert_serial'],
                 'issuer' => $cert['issuer'],
                 'status' => $cert['status'],
                 'valid_from' => $cert['valid_from'],
@@ -387,7 +387,7 @@ class CertificateLineage
         }
 
         return [
-            'organization_id' => $organizationId,
+            'org_id' => $organizationId,
             'generated_at' => now()->toIso8601String(),
             'total_certificates' => count($certificates),
             'certificates' => $report,

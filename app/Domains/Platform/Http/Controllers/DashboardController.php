@@ -149,7 +149,7 @@ class DashboardController extends Controller
 
         // Activity is not cached - always fresh
         $activities = DB::table('invoice_submissions')
-            ->where('organization_id', $organizationId)
+            ->where('org_id', $organizationId)
             ->orderByDesc('created_at')
             ->limit($limit)
             ->select([
@@ -186,7 +186,7 @@ class DashboardController extends Controller
 
         // Single query for all counts and sum
         $stats = DB::table('invoices')
-            ->where('organization_id', $organizationId)
+            ->where('org_id', $organizationId)
             ->selectRaw('
                 COUNT(*) as total,
                 SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as today,
@@ -198,7 +198,7 @@ class DashboardController extends Controller
 
         // Separate query for by_type (GROUP BY needed)
         $byType = DB::table('invoices')
-            ->where('organization_id', $organizationId)
+            ->where('org_id', $organizationId)
             ->selectRaw('type, COUNT(*) as count')
             ->groupBy('type')
             ->pluck('count', 'type')
@@ -221,7 +221,7 @@ class DashboardController extends Controller
     private function getSubmissionStats(string $organizationId): array
     {
         $stats = DB::table('invoice_submissions')
-            ->where('organization_id', $organizationId)
+            ->where('org_id', $organizationId)
             ->selectRaw("
                 COUNT(*) as total,
                 SUM(CASE WHEN state = 'cleared' THEN 1 ELSE 0 END) as cleared,
@@ -260,7 +260,7 @@ class DashboardController extends Controller
         return [
             'hash_chain_intact' => $this->isHashChainIntact($organizationId),
             'latest_icv' => DB::table('hash_chain_state')
-                ->where('organization_id', $organizationId)
+                ->where('org_id', $organizationId)
                 ->value('last_icv') ?? 0,
             'variances' => $variances,
         ];
@@ -300,7 +300,7 @@ class DashboardController extends Controller
         $thirtyMinutesAgo = now()->subMinutes(30);
 
         $stats = DB::table('offline_queue')
-            ->where('organization_id', $organizationId)
+            ->where('org_id', $organizationId)
             ->where('state', 'pending')
             ->selectRaw('
                 COUNT(*) as pending,
@@ -372,7 +372,7 @@ class DashboardController extends Controller
     {
         // Simple check - verify last entry matches state
         $state = DB::table('hash_chain_state')
-            ->where('organization_id', $organizationId)
+            ->where('org_id', $organizationId)
             ->first();
 
         if (! $state) {
@@ -380,7 +380,7 @@ class DashboardController extends Controller
         }
 
         $lastEntry = DB::table('hash_chain_history')
-            ->where('organization_id', $organizationId)
+            ->where('org_id', $organizationId)
             ->orderByDesc('icv')
             ->first();
 
@@ -399,7 +399,7 @@ class DashboardController extends Controller
         $startDate = now()->subDays($days)->startOfDay();
 
         $invoices = DB::table('invoices')
-            ->where('organization_id', $organizationId)
+            ->where('org_id', $organizationId)
             ->where('created_at', '>=', $startDate)
             ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
             ->groupBy('date')
@@ -408,7 +408,7 @@ class DashboardController extends Controller
             ->toArray();
 
         $submissions = DB::table('invoice_submissions')
-            ->where('organization_id', $organizationId)
+            ->where('org_id', $organizationId)
             ->where('created_at', '>=', $startDate)
             ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
             ->groupBy('date')

@@ -1,9 +1,8 @@
 # Continuous integration for the Masaar compliance platform.
 #
-# The test suite is the only thing standing between a refactor and a
-# cross-tenant leak: tests/Feature/Security sweeps the router for unguarded
-# routes and proves tenant scoping holds. Nothing enforced that automatically
-# before this workflow existed, so security-critical changes merged unverified.
+# tests/Feature/Security carries the load here: it sweeps the router for
+# unguarded routes and proves tenant scoping holds, so a refactor that opens a
+# cross-tenant path fails the build rather than reaching a deployment.
 #
 # PHP 8.4 is required by the dependency tree (symfony/* and pest/*), not a
 # preference. Keep this in step with the "php" constraint in composer.json.
@@ -66,12 +65,9 @@ jobs:
       - name: Run test suite
         run: php artisan test
 
-  # Blocking. The codebase was formatted with Pint on 2026-08-18 (~180 files)
-  # and the suite was re-run green afterwards, so this gate starts satisfied.
-  #
-  # Note for anyone running Pint by hand: some fixer combinations need more
-  # than one pass to converge. If `pint --test` still reports files straight
-  # after `pint`, run it again — the second pass settles it.
+  # Some Pint fixer combinations need more than one pass to converge. If
+  # `pint --test` still reports files straight after running `pint`, run it
+  # again — the second pass settles it.
   formatting:
     name: Formatting
     runs-on: ubuntu-latest
@@ -106,7 +102,7 @@ jobs:
           php-version: ${{ env.PHP_VERSION }}
           coverage: none
 
-      # Reports known CVEs in locked dependencies. composer.lock had gone
-      # unreviewed for months; this makes that visible on every push.
+      # Reports known CVEs in the locked dependency tree on every push, so an
+      # advisory published against a pinned package surfaces here.
       - name: Audit dependencies
         run: composer audit --locked

@@ -20,12 +20,12 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * Required by the Controlled Open Source License (COSL).
  *
  * @property string $id
- * @property string|null $organization_id
+ * @property string|null $org_id
  * @property string $organization_name
  * @property string $contact_name
  * @property string $contact_email
  * @property string|null $vat_number
- * @property string $use_case_description
+ * @property string $use_case
  * @property bool $terms_accepted
  * @property \DateTime|null $terms_accepted_at
  * @property string $terms_version
@@ -33,7 +33,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $status
  * @property string $license_type
  * @property string|null $rejection_reason
- * @property string|null $verification_token
+ * @property string|null $verify_token
  * @property \DateTime|null $verified_at
  * @property string $country_code
  * @property string|null $industry
@@ -49,12 +49,12 @@ class LicenseRegistration extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'organization_id',
+        'org_id',
         'organization_name',
         'contact_name',
         'contact_email',
         'vat_number',
-        'use_case_description',
+        'use_case',
         'terms_accepted',
         'terms_accepted_at',
         'terms_version',
@@ -62,7 +62,7 @@ class LicenseRegistration extends Model
         'status',
         'license_type',
         'rejection_reason',
-        'verification_token',
+        'verify_token',
         'verified_at',
         'country_code',
         'industry',
@@ -80,7 +80,7 @@ class LicenseRegistration extends Model
     ];
 
     protected $hidden = [
-        'verification_token',
+        'verify_token',
         'admin_notes',
     ];
 
@@ -116,7 +116,7 @@ class LicenseRegistration extends Model
      */
     public function organization(): BelongsTo
     {
-        return $this->belongsTo(Organization::class);
+        return $this->belongsTo(Organization::class, 'org_id');
     }
 
     /**
@@ -172,10 +172,10 @@ class LicenseRegistration extends Model
      */
     public function generateVerificationToken(): string
     {
-        $this->verification_token = bin2hex(random_bytes(32));
+        $this->verify_token = bin2hex(random_bytes(32));
         $this->save();
 
-        return $this->verification_token;
+        return $this->verify_token;
     }
 
     /**
@@ -184,7 +184,7 @@ class LicenseRegistration extends Model
     public function verify(): bool
     {
         $this->verified_at = now();
-        $this->verification_token = null;
+        $this->verify_token = null;
 
         return $this->save();
     }

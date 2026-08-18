@@ -120,7 +120,7 @@ class ProcessOfflineQueue extends Command
         $organizations = DB::table('offline_queue')
             ->where('state', OfflineQueue::STATE_PENDING)
             ->distinct()
-            ->pluck('organization_id');
+            ->pluck('org_id');
 
         if ($organizations->isEmpty()) {
             $this->info('No pending items in offline queue.');

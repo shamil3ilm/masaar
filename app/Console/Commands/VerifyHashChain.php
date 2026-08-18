@@ -86,9 +86,9 @@ class VerifyHashChain extends Command
 
     private function verifyAllOrganizations(): void
     {
-        $organizations = Invoice::select('organization_id')
+        $organizations = Invoice::select('org_id')
             ->distinct()
-            ->pluck('organization_id');
+            ->pluck('org_id');
 
         $this->info("Found {$organizations->count()} organization(s) to verify");
         $this->info('');
@@ -104,7 +104,7 @@ class VerifyHashChain extends Command
         $this->info(str_repeat('-', 40));
 
         // Get all invoices ordered by ICV
-        $invoices = Invoice::where('organization_id', $organizationId)
+        $invoices = Invoice::where('org_id', $organizationId)
             ->orderBy('icv')
             ->get(['id', 'invoice_number', 'icv', 'hash', 'previous_invoice_hash', 'created_at']);
 

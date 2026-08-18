@@ -94,7 +94,7 @@ class UsageMeteringService
             $query->increment('invoices_failed');
         }
         if ($invoiceValue > 0) {
-            $query->increment('invoice_total_value', $invoiceValue);
+            $query->increment('total_value', $invoiceValue);
         }
     }
 
@@ -107,8 +107,8 @@ class UsageMeteringService
     {
         $limits = match ($limitType) {
             'api' => [
-                'per_minute' => $license->max_api_calls_per_minute,
-                'per_day' => $license->max_api_calls_per_day,
+                'per_minute' => $license->calls_per_min,
+                'per_day' => $license->calls_per_day,
             ],
             default => throw new \InvalidArgumentException("Unknown limit type: {$limitType}"),
         };
@@ -145,10 +145,10 @@ class UsageMeteringService
             ->where('usage_month', $month)
             ->sum('invoices_submitted');
 
-        if ($monthlyCount >= $license->max_invoices_per_month) {
+        if ($monthlyCount >= $license->invoices_per_month) {
             throw LicenseException::quotaExceeded(
                 'invoices_per_month',
-                $license->max_invoices_per_month,
+                $license->invoices_per_month,
                 (int) $monthlyCount
             );
         }
@@ -260,21 +260,21 @@ class UsageMeteringService
             'invoices_failed' => $usage->sum('invoices_failed'),
             'api_calls' => $usage->sum('api_calls'),
             'api_errors' => $usage->sum('api_errors'),
-            'invoice_total_value' => $usage->sum('invoice_total_value'),
+            'total_value' => $usage->sum('total_value'),
         ];
 
         return [
             'month' => $month,
             'totals' => $totals,
             'limits' => [
-                'invoices_per_month' => $license->max_invoices_per_month,
-                'invoices_remaining' => max(0, $license->max_invoices_per_month - $totals['invoices_submitted']),
-                'api_calls_per_day' => $license->max_api_calls_per_day,
-                'api_calls_per_minute' => $license->max_api_calls_per_minute,
+                'invoices_per_month' => $license->invoices_per_month,
+                'invoices_remaining' => max(0, $license->invoices_per_month - $totals['invoices_submitted']),
+                'api_calls_per_day' => $license->calls_per_day,
+                'api_calls_per_minute' => $license->calls_per_min,
             ],
             'utilization' => [
-                'invoices_percent' => $license->max_invoices_per_month > 0
-                    ? round(($totals['invoices_submitted'] / $license->max_invoices_per_month) * 100, 2)
+                'invoices_percent' => $license->invoices_per_month > 0
+                    ? round(($totals['invoices_submitted'] / $license->invoices_per_month) * 100, 2)
                     : 0,
                 'success_rate' => $totals['invoices_submitted'] > 0
                     ? round((($totals['invoices_cleared'] + $totals['invoices_reported']) / $totals['invoices_submitted']) * 100, 2)

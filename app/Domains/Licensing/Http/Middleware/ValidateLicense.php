@@ -82,13 +82,13 @@ class ValidateLicense
             // BelongsToTenant scope reads. A request attribute alone would
             // authenticate the licence without scoping its queries.
             $this->tenantResolver->setContext(
-                OrganizationContext::forMachine((string) $license->organization_id)
+                OrganizationContext::forMachine((string) $license->org_id)
             );
 
             // Bind license to request for downstream use
             $request->attributes->set('license', $license);
             $request->attributes->set('license_id', $license->id);
-            $request->attributes->set('organization_id', $license->organization_id);
+            $request->attributes->set('org_id', $license->org_id);
             $request->attributes->set('request_id', $requestId);
 
             // Process request
@@ -289,8 +289,8 @@ class ValidateLicense
             return;
         }
 
-        $response->header('X-RateLimit-Limit-Minute', $license->max_api_calls_per_minute);
-        $response->header('X-RateLimit-Limit-Day', $license->max_api_calls_per_day);
+        $response->header('X-RateLimit-Limit-Minute', $license->calls_per_min);
+        $response->header('X-RateLimit-Limit-Day', $license->calls_per_day);
         $response->header('X-License-Tier', $license->tier->value);
         $response->header('X-License-Environment', $license->environment->value);
     }

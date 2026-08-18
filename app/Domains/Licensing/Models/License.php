@@ -33,14 +33,14 @@ use Illuminate\Support\Str;
  * @property string $contact_email
  * @property string|null $contact_phone
  * @property LicenseTier $tier
- * @property int $max_invoices_per_month
+ * @property int $invoices_per_month
  * @property int $max_organizations
- * @property int $max_api_calls_per_minute
- * @property int $max_api_calls_per_day
+ * @property int $calls_per_min
+ * @property int $calls_per_day
  * @property array|null $features
  * @property array|null $scopes
- * @property bool $offline_mode_enabled
- * @property bool $multi_tenant_enabled
+ * @property bool $offline_mode
+ * @property bool $multi_tenant
  * @property bool $webhook_enabled
  * @property LicenseStatus $status
  * @property Carbon|null $activated_at
@@ -61,20 +61,20 @@ class License extends Model
         'api_key',
         'api_secret_hash',
         'environment',
-        'organization_id',
+        'org_id',
         'organization_name',
         'organization_vat',
         'contact_email',
         'contact_phone',
         'tier',
-        'max_invoices_per_month',
+        'invoices_per_month',
         'max_organizations',
-        'max_api_calls_per_minute',
-        'max_api_calls_per_day',
+        'calls_per_min',
+        'calls_per_day',
         'features',
         'scopes',
-        'offline_mode_enabled',
-        'multi_tenant_enabled',
+        'offline_mode',
+        'multi_tenant',
         'webhook_enabled',
         'status',
         'activated_at',
@@ -91,8 +91,8 @@ class License extends Model
         'environment' => LicenseEnvironment::class,
         'features' => 'array',
         'scopes' => 'array',
-        'offline_mode_enabled' => 'boolean',
-        'multi_tenant_enabled' => 'boolean',
+        'offline_mode' => 'boolean',
+        'multi_tenant' => 'boolean',
         'webhook_enabled' => 'boolean',
         'activated_at' => 'datetime',
         'expires_at' => 'datetime',

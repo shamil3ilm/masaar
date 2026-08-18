@@ -37,14 +37,14 @@ class PipelineController extends Controller
     {
         $data = $request->validated();
 
-        $organizationId = $data['organization_id'];
+        $organizationId = $data['org_id'];
         $branchId = $data['branch_id'] ?? null;
 
         // Security: ensure the request org matches the authenticated API key's org
-        $authenticatedOrgId = $request->attributes->get('organization_id');
+        $authenticatedOrgId = $request->attributes->get('org_id');
         if ($authenticatedOrgId !== null && $authenticatedOrgId !== $organizationId) {
             return ApiResponse::forbidden(
-                'organization_id does not match the authenticated API key\'s organization.'
+                'org_id does not match the authenticated API key\'s organization.'
             );
         }
 
@@ -92,14 +92,14 @@ class PipelineController extends Controller
      */
     public function status(Request $request, string $invoiceId): JsonResponse
     {
-        $authenticatedOrgId = $request->attributes->get('organization_id');
+        $authenticatedOrgId = $request->attributes->get('org_id');
 
         if ($authenticatedOrgId === null) {
             return ApiResponse::error('Organization context is required.', 401);
         }
 
         $invoice = Invoice::with('lines')
-            ->where('organization_id', $authenticatedOrgId)
+            ->where('org_id', $authenticatedOrgId)
             ->findOrFail($invoiceId);
 
         return ApiResponse::success([

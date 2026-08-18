@@ -102,7 +102,7 @@ class CreateInvoiceRequest extends FormRequest
             'buyer_address.country_code' => ['nullable', 'string', 'size:2', 'regex:/^[A-Z]{2}$/'],
 
             // Credit/debit note references
-            'billing_reference_id' => [
+            'billing_ref' => [
                 'nullable',
                 'string',
                 'max:255',
@@ -120,23 +120,23 @@ class CreateInvoiceRequest extends FormRequest
             // Invoice lines
             'lines' => ['required', 'array', 'min:1'],
             'lines.*.description' => ['required', 'string', 'max:255'],
-            'lines.*.item_classification_code' => ['nullable', 'string', 'max:50'],
+            'lines.*.class_code' => ['nullable', 'string', 'max:50'],
             'lines.*.quantity' => ['required', 'numeric', 'min:0.001'],
             'lines.*.unit_code' => ['nullable', 'string', Rule::in(self::VALID_UNIT_CODES)],
             'lines.*.unit_price' => ['required', 'numeric', 'min:0'],
             'lines.*.tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'lines.*.tax_category' => ['nullable', Rule::enum(TaxCategory::class)],
-            'lines.*.tax_exemption_code' => [
+            'lines.*.exempt_code' => [
                 'nullable',
                 'string',
                 Rule::in(self::VALID_EXEMPTION_CODES),
             ],
-            'lines.*.tax_exemption_reason' => [
+            'lines.*.exempt_reason' => [
                 'nullable',
                 'string',
                 'max:255',
                 // Required when exemption code is provided
-                'required_with:lines.*.tax_exemption_code',
+                'required_with:lines.*.exempt_code',
             ],
         ];
     }
@@ -151,11 +151,11 @@ class CreateInvoiceRequest extends FormRequest
             // Note: proforma rejection is handled by Rule::notIn(['proforma']) in rules()
             foreach ($this->input('lines', []) as $index => $line) {
                 $category = $line['tax_category'] ?? null;
-                $exemptionCode = $line['tax_exemption_code'] ?? null;
+                $exemptionCode = $line['exempt_code'] ?? null;
 
                 if (in_array($category, ['Z', 'E', 'O'], true) && empty($exemptionCode)) {
                     $validator->errors()->add(
-                        "lines.{$index}.tax_exemption_code",
+                        "lines.{$index}.exempt_code",
                         'Exemption code is required for line '.($index + 1)." with tax category {$category}."
                     );
                 }
@@ -179,10 +179,10 @@ class CreateInvoiceRequest extends FormRequest
             // Document type
             'document_type.not_in' => 'Proforma invoices (document_type=proforma) cannot be submitted to ZATCA.',
             // Credit/debit note references
-            'billing_reference_id.required_if' => 'Original invoice reference is required for credit/debit notes.',
+            'billing_ref.required_if' => 'Original invoice reference is required for credit/debit notes.',
             // Tax exemption
-            'lines.*.tax_exemption_code.in' => 'Invalid ZATCA exemption code. Must be a valid VATEX-SA-* code.',
-            'lines.*.tax_exemption_reason.required_with' => 'Exemption reason is required when exemption code is provided.',
+            'lines.*.exempt_code.in' => 'Invalid ZATCA exemption code. Must be a valid VATEX-SA-* code.',
+            'lines.*.exempt_reason.required_with' => 'Exemption reason is required when exemption code is provided.',
             // Units
             'lines.*.unit_code.in' => 'Invalid unit code. Must be a valid UN/ECE Rec 20 code.',
         ];
