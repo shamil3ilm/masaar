@@ -10,7 +10,7 @@ use App\Domains\Invoice\Http\Requests\CreateInvoiceRequest;
  * Pipeline submit request validation.
  *
  * Extends CreateInvoiceRequest with pipeline-specific fields:
- * - organization_id: required for multi-tenant routing
+ * - org_id: required for multi-tenant routing
  * - auto_submit: whether to immediately submit to ZATCA after generation
  * - branch_id: optional branch for credential resolution
  * - erp_reference_id: opaque reference ID from the calling ERP system
@@ -38,7 +38,7 @@ class PipelineSubmitRequest extends CreateInvoiceRequest
             // Accept due_date as ZATCA supply_date alias
             'due_date' => ['nullable', 'date'],
             // Pipeline-specific fields
-            'organization_id' => ['required', 'string', 'uuid'],
+            'org_id' => ['required', 'string', 'uuid'],
             'auto_submit' => ['nullable', 'boolean'],
             'branch_id' => ['nullable', 'string', 'uuid'],
             'erp_reference_id' => ['nullable', 'string', 'max:255'],
@@ -62,8 +62,8 @@ class PipelineSubmitRequest extends CreateInvoiceRequest
     public function messages(): array
     {
         return array_merge(parent::messages(), [
-            'organization_id.required' => 'Organization ID is required for pipeline submissions.',
-            'organization_id.uuid' => 'Organization ID must be a valid UUID.',
+            'org_id.required' => 'Organization ID is required for pipeline submissions.',
+            'org_id.uuid' => 'Organization ID must be a valid UUID.',
             'branch_id.uuid' => 'Branch ID must be a valid UUID.',
             'erp_reference_id.max' => 'ERP reference ID must not exceed 255 characters.',
         ]);

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -9,26 +11,23 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('webhooks', function (Blueprint $table) {
-            $table->uuid('id')->primary();
-            $table->uuid('organization_id');
+            $table->uuid('id');
+            $table->uuid('org_id');
             $table->string('url', 500);
             $table->string('secret', 128);
             $table->json('events');
             $table->boolean('is_active')->default(true);
             $table->timestamp('last_triggered_at')->nullable();
             $table->unsignedInteger('failure_count')->default(0);
-            $table->timestamps();
-
-            $table->foreign('organization_id')
-                ->references('id')
-                ->on('organizations')
-                ->onDelete('cascade');
-
-            $table->index(['organization_id', 'is_active']);
+            $table->timestamp('created_at')->nullable();
+            $table->timestamp('updated_at')->nullable();
+            $table->primary(['id']);
+            $table->index(['org_id', 'is_active'], 'webhooks_organization_id_is_active_index');
+            $table->foreign('org_id', 'webhooks_organization_id_foreign')->references('id')->on('organizations')->cascadeOnDelete();
         });
 
         Schema::create('webhook_logs', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+            $table->uuid('id');
             $table->uuid('webhook_id');
             $table->string('event', 100);
             $table->json('payload');
@@ -36,15 +35,12 @@ return new class extends Migration
             $table->text('response_body')->nullable();
             $table->unsignedInteger('duration_ms')->default(0);
             $table->boolean('success')->default(false);
-            $table->timestamps();
-
-            $table->foreign('webhook_id')
-                ->references('id')
-                ->on('webhooks')
-                ->onDelete('cascade');
-
-            $table->index(['webhook_id', 'created_at']);
-            $table->index(['webhook_id', 'success']);
+            $table->timestamp('created_at')->nullable();
+            $table->timestamp('updated_at')->nullable();
+            $table->primary(['id']);
+            $table->index(['webhook_id', 'created_at'], 'webhook_logs_webhook_id_created_at_index');
+            $table->index(['webhook_id', 'success'], 'webhook_logs_webhook_id_success_index');
+            $table->foreign('webhook_id', 'webhook_logs_webhook_id_foreign')->references('id')->on('webhooks')->cascadeOnDelete();
         });
     }
 

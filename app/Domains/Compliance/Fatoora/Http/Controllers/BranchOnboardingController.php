@@ -193,7 +193,7 @@ class BranchOnboardingController extends Controller
                 'branch_id' => $branch->id,
                 'branch_name' => $branch->name,
                 'onboarded' => true,
-                'certificate_expires_at' => $certificateExpiry?->toIso8601String(),
+                'cert_expires_at' => $certificateExpiry?->toIso8601String(),
                 'message' => 'Production CSID obtained. Branch is now ZATCA compliant and ready for invoicing.',
             ]);
 
@@ -224,7 +224,7 @@ class BranchOnboardingController extends Controller
         // Reset status
         $branch->update([
             'onboarding_status' => Branch::STATUS_PENDING,
-            'certificate_expires_at' => null,
+            'cert_expires_at' => null,
         ]);
 
         return ApiResponse::success([

@@ -30,7 +30,7 @@ class ApiKeyController extends Controller
      */
     public function index(): JsonResponse
     {
-        $keys = ApiKey::where('organization_id', $this->tenant->getOrganizationId())
+        $keys = ApiKey::where('org_id', $this->tenant->getOrganizationId())
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(fn (ApiKey $key) => [
@@ -180,7 +180,7 @@ class ApiKeyController extends Controller
      */
     private function getApiKey(string $id): ApiKey
     {
-        return ApiKey::where('organization_id', $this->tenant->getOrganizationId())
+        return ApiKey::where('org_id', $this->tenant->getOrganizationId())
             ->findOrFail($id);
     }
 }

@@ -61,7 +61,7 @@ class CustomerPortalController extends Controller
      */
     public function switchOrganization(Request $request): View
     {
-        $request->session()->forget('portal_organization_id');
+        $request->session()->forget('portal_org_id');
 
         return $this->organizationPicker();
     }
@@ -86,41 +86,41 @@ class CustomerPortalController extends Controller
         // Stats
         $stats = [
             'invoices_today' => DB::table('invoices')
-                ->where('organization_id', $orgId)
+                ->where('org_id', $orgId)
                 ->where('created_at', '>=', now()->startOfDay())
                 ->count(),
             'invoices_month' => DB::table('invoices')
-                ->where('organization_id', $orgId)
+                ->where('org_id', $orgId)
                 ->where('created_at', '>=', now()->startOfMonth())
                 ->count(),
             'cleared' => DB::table('invoice_submissions')
-                ->where('organization_id', $orgId)
+                ->where('org_id', $orgId)
                 ->where('state', 'cleared')
                 ->count(),
             'reported' => DB::table('invoice_submissions')
-                ->where('organization_id', $orgId)
+                ->where('org_id', $orgId)
                 ->where('state', 'reported')
                 ->count(),
             'rejected' => DB::table('invoice_submissions')
-                ->where('organization_id', $orgId)
+                ->where('org_id', $orgId)
                 ->where('state', 'rejected')
                 ->count(),
             'pending' => DB::table('invoice_submissions')
-                ->where('organization_id', $orgId)
+                ->where('org_id', $orgId)
                 ->whereIn('state', ['pending', 'queued', 'submitted'])
                 ->count(),
         ];
 
         // Certificate info
         $certificate = DB::table('certificate_lineage')
-            ->where('organization_id', $orgId)
+            ->where('org_id', $orgId)
             ->where('status', 'active')
             ->first();
 
         // Recent activity by user
         $userActivity = DB::table('invoice_submissions as s')
             ->leftJoin('users as u', 's.created_by', '=', 'u.id')
-            ->where('s.organization_id', $orgId)
+            ->where('s.org_id', $orgId)
             ->where('s.created_at', '>=', now()->subDays(7))
             ->selectRaw('COALESCE(u.name, u.email, "System") as user_name, u.id as user_id, COUNT(*) as submission_count')
             ->groupBy('u.id', 'u.name', 'u.email')
@@ -130,7 +130,7 @@ class CustomerPortalController extends Controller
 
         // Recent submissions
         $recentSubmissions = DB::table('invoice_submissions')
-            ->where('organization_id', $orgId)
+            ->where('org_id', $orgId)
             ->orderByDesc('created_at')
             ->limit(10)
             ->get();
@@ -164,7 +164,7 @@ class CustomerPortalController extends Controller
         $query = DB::table('invoice_submissions as s')
             ->leftJoin('users as u', 's.created_by', '=', 'u.id')
             ->leftJoin('invoices as i', 's.invoice_id', '=', 'i.id')
-            ->where('s.organization_id', $orgId)
+            ->where('s.org_id', $orgId)
             ->select([
                 's.*',
                 'u.name as user_name',
@@ -195,14 +195,14 @@ class CustomerPortalController extends Controller
         // Get users for filter dropdown (via organization_user pivot)
         $users = DB::table('users')
             ->join('organization_user', 'users.id', '=', 'organization_user.user_id')
-            ->where('organization_user.organization_id', $orgId)
+            ->where('organization_user.org_id', $orgId)
             ->where('organization_user.status', 'active')
             ->orderBy('users.name')
             ->get(['users.id', 'users.name', 'users.email']);
 
         // State counts
         $stateCounts = DB::table('invoice_submissions')
-            ->where('organization_id', $orgId)
+            ->where('org_id', $orgId)
             ->selectRaw('state, COUNT(*) as count')
             ->groupBy('state')
             ->pluck('count', 'state');
@@ -233,12 +233,12 @@ class CustomerPortalController extends Controller
         $organization = DB::table('organizations')->where('id', $orgId)->first();
 
         $activeCert = DB::table('certificate_lineage')
-            ->where('organization_id', $orgId)
+            ->where('org_id', $orgId)
             ->where('status', 'active')
             ->first();
 
         $certHistory = DB::table('certificate_lineage')
-            ->where('organization_id', $orgId)
+            ->where('org_id', $orgId)
             ->orderByDesc('created_at')
             ->limit(10)
             ->get();
@@ -262,7 +262,7 @@ class CustomerPortalController extends Controller
         $user = DB::table('users')
             ->join('organization_user', 'users.id', '=', 'organization_user.user_id')
             ->where('users.id', $userId)
-            ->where('organization_user.organization_id', $orgId)
+            ->where('organization_user.org_id', $orgId)
             ->select('users.*')
             ->first();
 
@@ -273,7 +273,7 @@ class CustomerPortalController extends Controller
         // User's submissions
         $submissions = DB::table('invoice_submissions as s')
             ->leftJoin('invoices as i', 's.invoice_id', '=', 'i.id')
-            ->where('s.organization_id', $orgId)
+            ->where('s.org_id', $orgId)
             ->where('s.created_by', $userId)
             ->select([
                 's.*',
@@ -286,21 +286,21 @@ class CustomerPortalController extends Controller
         // User stats
         $userStats = [
             'total' => DB::table('invoice_submissions')
-                ->where('organization_id', $orgId)
+                ->where('org_id', $orgId)
                 ->where('created_by', $userId)
                 ->count(),
             'cleared' => DB::table('invoice_submissions')
-                ->where('organization_id', $orgId)
+                ->where('org_id', $orgId)
                 ->where('created_by', $userId)
                 ->where('state', 'cleared')
                 ->count(),
             'rejected' => DB::table('invoice_submissions')
-                ->where('organization_id', $orgId)
+                ->where('org_id', $orgId)
                 ->where('created_by', $userId)
                 ->where('state', 'rejected')
                 ->count(),
             'today' => DB::table('invoice_submissions')
-                ->where('organization_id', $orgId)
+                ->where('org_id', $orgId)
                 ->where('created_by', $userId)
                 ->where('created_at', '>=', now()->startOfDay())
                 ->count(),

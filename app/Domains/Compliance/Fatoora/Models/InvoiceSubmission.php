@@ -33,17 +33,17 @@ class InvoiceSubmission extends Model
 
     protected $fillable = [
         'invoice_id',
-        'organization_id',
+        'org_id',
         'idempotency_id',
         'state',
         'previous_state',
         'state_changed_at',
         'zatca_uuid',
-        'zatca_invoice_hash',
+        'invoice_hash',
         'clearance_status',
         'clearance_state',           // Added: ZATCA clearance state tracking
-        'clearance_confirmed_at',    // Added: When clearance was confirmed
-        'clearance_check_count',     // Added: Number of status checks
+        'cleared_at',    // Added: When clearance was confirmed
+        'check_count',     // Added: Number of status checks
         'reporting_status',
         'zatca_warnings',
         'zatca_errors',
@@ -54,7 +54,7 @@ class InvoiceSubmission extends Model
         'max_retries',
         'next_retry_at',
         'last_error_code',
-        'last_error_message',
+        'last_error',
         'queued_at',
         'signed_at',           // When XAdES signature was applied (authoritative time)
         'submitted_at',
@@ -68,9 +68,9 @@ class InvoiceSubmission extends Model
             'zatca_errors' => 'array',
             'retry_count' => 'integer',
             'max_retries' => 'integer',
-            'clearance_check_count' => 'integer',
+            'check_count' => 'integer',
             'state_changed_at' => 'datetime',
-            'clearance_confirmed_at' => 'datetime',
+            'cleared_at' => 'datetime',
             'next_retry_at' => 'datetime',
             'queued_at' => 'datetime',
             'signed_at' => 'datetime',
@@ -154,7 +154,7 @@ class InvoiceSubmission extends Model
      */
     public function organization(): BelongsTo
     {
-        return $this->belongsTo(Organization::class);
+        return $this->belongsTo(Organization::class, 'org_id');
     }
 
     /**
@@ -259,6 +259,6 @@ class InvoiceSubmission extends Model
      */
     public function scopeForOrganization($query, string $organizationId)
     {
-        return $query->where('organization_id', $organizationId);
+        return $query->where('org_id', $organizationId);
     }
 }

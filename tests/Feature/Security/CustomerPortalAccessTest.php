@@ -65,7 +65,7 @@ class CustomerPortalAccessTest extends TestCase
         $this->actingAs($attacker)
             ->get('/portal?org_id='.$victim->id)
             ->assertForbidden()
-            ->assertSessionMissing('portal_organization_id');
+            ->assertSessionMissing('portal_org_id');
     }
 
     public function test_single_org_auto_selected(): void
@@ -86,7 +86,7 @@ class CustomerPortalAccessTest extends TestCase
         $this->actingAs($user)
             ->get('/portal?org_id='.$second->id)
             ->assertOk()
-            ->assertSessionHas('portal_organization_id', $second->id);
+            ->assertSessionHas('portal_org_id', $second->id);
     }
 
     /**
@@ -103,7 +103,7 @@ class CustomerPortalAccessTest extends TestCase
         $user->organizations()->updateExistingPivot($organizationId, ['status' => 'removed']);
 
         $this->actingAs($user)
-            ->withSession(['portal_organization_id' => $organizationId])
+            ->withSession(['portal_org_id' => $organizationId])
             ->get('/portal')
             ->assertForbidden();
     }

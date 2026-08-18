@@ -301,7 +301,7 @@ class Submitter
                 'Complete the 3-step onboarding process before submitting invoices: '.
                 '1) Generate CSR and get CCSID, 2) Pass compliance checks, 3) Get PCSID.',
                 [
-                    'organization_id' => $organization->id,
+                    'org_id' => $organization->id,
                     'zatca_onboarded' => false,
                 ]
             );
@@ -385,7 +385,7 @@ class Submitter
      */
     private function getPreviousInvoiceHash(Invoice $invoice): ?string
     {
-        $previous = Invoice::where('organization_id', $invoice->organization_id)
+        $previous = Invoice::where('org_id', $invoice->org_id)
             ->where('icv', '<', $invoice->icv)
             ->whereNotNull('hash')
             ->orderBy('icv', 'desc')
@@ -420,7 +420,7 @@ class Submitter
 
                 if (! empty($privateKey) && ! empty($certificate)) {
                     Log::debug('Using branch-level credentials', [
-                        'organization_id' => $organizationId,
+                        'org_id' => $organizationId,
                         'branch_id' => $branch->id,
                     ]);
 
@@ -438,7 +438,7 @@ class Submitter
         if (! Storage::disk('local')->exists($path)) {
             if ($required) {
                 $errorContext = [
-                    'organization_id' => $organizationId,
+                    'org_id' => $organizationId,
                     'expected_path' => $path,
                 ];
 
@@ -471,7 +471,7 @@ class Submitter
                     'PCSID credentials are incomplete or corrupted. '.
                     'Please re-run Step 3 of ZATCA onboarding to obtain valid PCSID.',
                     [
-                        'organization_id' => $organizationId,
+                        'org_id' => $organizationId,
                         'has_private_key' => ! empty($privateKey),
                         'has_certificate' => ! empty($certificate),
                     ]
@@ -479,7 +479,7 @@ class Submitter
             }
 
             Log::debug('Using organization-level credentials (legacy)', [
-                'organization_id' => $organizationId,
+                'org_id' => $organizationId,
             ]);
 
             return [
@@ -494,7 +494,7 @@ class Submitter
                     'Failed to decrypt PCSID credentials. The credentials may be corrupted '.
                     'or the application encryption key has changed.',
                     [
-                        'organization_id' => $organizationId,
+                        'org_id' => $organizationId,
                         'error' => $e->getMessage(),
                     ]
                 );

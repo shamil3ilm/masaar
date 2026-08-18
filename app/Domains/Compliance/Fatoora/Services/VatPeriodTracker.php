@@ -131,7 +131,7 @@ class VatPeriodTracker
     {
         $period = $this->parsePeriodKey($periodKey);
 
-        $invoices = Invoice::where('organization_id', $organizationId)
+        $invoices = Invoice::where('org_id', $organizationId)
             ->whereBetween('issue_date', [$period['start'], $period['end']])
             ->whereIn('status', ['cleared', 'reported', 'warning'])
             ->get();
@@ -165,8 +165,8 @@ class VatPeriodTracker
                 $summary['vat_adjusted'] -= (float) $invoice->tax_amount;
 
                 // Check if this is a cross-period adjustment
-                if ($invoice->billing_reference_id) {
-                    $originalInvoice = Invoice::find($invoice->billing_reference_id);
+                if ($invoice->billing_ref) {
+                    $originalInvoice = Invoice::find($invoice->billing_ref);
                     if ($originalInvoice) {
                         $originalPeriod = $this->getPeriodForDate($originalInvoice->issue_date);
                         if ($originalPeriod['period_key'] !== $periodKey) {
@@ -206,10 +206,10 @@ class VatPeriodTracker
     {
         $period = $this->parsePeriodKey($currentPeriodKey);
 
-        return Invoice::where('organization_id', $organizationId)
+        return Invoice::where('org_id', $organizationId)
             ->whereBetween('issue_date', [$period['start'], $period['end']])
             ->whereIn('document_type', [DocumentType::CreditNote, DocumentType::DebitNote])
-            ->whereNotNull('billing_reference_id')
+            ->whereNotNull('billing_ref')
             ->with('billingReference')
             ->get()
             ->filter(function ($note) use ($currentPeriodKey) {
@@ -228,7 +228,7 @@ class VatPeriodTracker
                     'note_number' => $note->invoice_number,
                     'note_type' => $note->document_type->value,
                     'note_date' => $note->issue_date->format('Y-m-d'),
-                    'original_invoice_id' => $note->billing_reference_id,
+                    'original_invoice_id' => $note->billing_ref,
                     'original_invoice_number' => $note->billingReference->invoice_number,
                     'original_period' => $originalPeriod['period_key'],
                     'amount' => (float) $note->total,
@@ -275,7 +275,7 @@ class VatPeriodTracker
             return ['valid' => true, 'warning' => null, 'suggested_period' => null];
         }
 
-        if (! $creditNote->billing_reference_id) {
+        if (! $creditNote->billing_ref) {
             return [
                 'valid' => false,
                 'warning' => 'Credit note must reference original invoice for VAT period validation',
@@ -283,7 +283,7 @@ class VatPeriodTracker
             ];
         }
 
-        $originalInvoice = Invoice::find($creditNote->billing_reference_id);
+        $originalInvoice = Invoice::find($creditNote->billing_ref);
         if (! $originalInvoice) {
             return [
                 'valid' => false,

@@ -263,7 +263,7 @@ class ComplianceLogger
         ];
 
         if ($this->organizationId !== null) {
-            $baseContext['organization_id'] = $this->organizationId;
+            $baseContext['org_id'] = $this->organizationId;
         }
 
         if ($this->userId !== null) {
@@ -281,7 +281,7 @@ class ComplianceLogger
         $logger = new self;
 
         // Try to get organization from request attributes
-        $organizationId = request()?->attributes?->get('organization_id');
+        $organizationId = request()?->attributes?->get('org_id');
         if ($organizationId !== null) {
             $logger = $logger->forOrganization($organizationId);
         }

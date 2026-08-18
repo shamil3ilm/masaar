@@ -19,15 +19,7 @@ const client = new MasaarClient({
 
 ---
 
-### Why this file used to say otherwise
-
-Until 2026-08-18 this README documented a full JavaScript client — an
-`invoices` resource, a `compliance` resource, a `verifyWebhookSignature`
-helper and a UMD bundle on unpkg. None of it existed; the directory has never
-contained JavaScript source. Anyone following it wrote code against an API that
-was never built.
-
-It was replaced rather than deleted so that existing links land on a correction
-instead of a 404. The API surface it described is a reasonable sketch of what a
-generated SDK should eventually expose — see [`docs/audit/`](../../docs/audit/)
-for the plan to generate SDKs from the OpenAPI specification.
+This directory holds no JavaScript source and is kept only so links to it land
+on this pointer rather than a 404. The plan is to generate SDKs from the
+OpenAPI specification instead of maintaining one per language by hand — see
+[`docs/audit/`](../../docs/audit/).

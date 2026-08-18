@@ -37,7 +37,7 @@ class FtaEngine implements ComplianceEngine
             return new SubmissionResult(
                 success: true,
                 submissionId: $submission->id,
-                referenceId: $submission->fta_submission_id,
+                referenceId: $submission->reference,
                 status: $submission->status->value,
                 rawResponse: $submission->toArray(),
                 errorMessage: null,
@@ -58,7 +58,7 @@ class FtaEngine implements ComplianceEngine
             return new SubmissionResult(
                 success: true,
                 submissionId: $updated->id,
-                referenceId: $updated->fta_submission_id,
+                referenceId: $updated->reference,
                 status: $updated->status->value,
                 rawResponse: $updated->toArray(),
                 errorMessage: null,
@@ -77,7 +77,7 @@ class FtaEngine implements ComplianceEngine
             return new SubmissionResult(
                 success: true,
                 submissionId: $updated->id,
-                referenceId: $updated->fta_submission_id,
+                referenceId: $updated->reference,
                 status: $updated->status->value,
                 rawResponse: $updated->toArray(),
                 errorMessage: null,

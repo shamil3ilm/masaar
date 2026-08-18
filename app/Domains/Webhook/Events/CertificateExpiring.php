@@ -40,7 +40,7 @@ class CertificateExpiring
         return [
             'event' => $this->getWebhookEventName(),
             'data' => [
-                'organization_id' => $this->organizationId,
+                'org_id' => $this->organizationId,
                 'days_remaining' => $this->daysRemaining,
                 'expiry_date' => $this->expiryDate,
                 'severity' => $this->getSeverity(),

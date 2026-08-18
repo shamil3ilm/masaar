@@ -129,11 +129,9 @@ class NamingConventionTest extends TestCase
     /**
      * A test name states the outcome; the docblock carries the reasoning.
      *
-     * Six is where the existing suite sits — 75% of its names are two to four
-     * words — and it is the line docs/NAMING.md already draws by example: its
-     * rejected sample, test_organization_admin_cannot_reach_the_admin_api, is
-     * seven. Past that a name is a sentence, and a sentence belongs above the
-     * method where it does not have to fit on one line.
+     * Past six words a name stops naming an outcome and starts describing why,
+     * and the why belongs here in the docblock where it does not have to fit
+     * on one line.
      */
     public function test_names_stay_short(): void
     {

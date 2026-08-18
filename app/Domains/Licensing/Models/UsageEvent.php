@@ -37,7 +37,7 @@ class UsageEvent extends Model
      */
     protected $fillable = [
         'license_id',
-        'organization_id',
+        'org_id',
         'api_key_id',
         'event',
         'event_category',
@@ -99,7 +99,7 @@ class UsageEvent extends Model
     ): self {
         return self::create([
             'license_id' => $licenseId,
-            'organization_id' => $options['organization_id'] ?? null,
+            'org_id' => $options['org_id'] ?? null,
             'api_key_id' => $options['api_key_id'] ?? null,
             'event' => $event,
             'event_category' => $options['event_category'] ?? self::categorizeEvent($event),

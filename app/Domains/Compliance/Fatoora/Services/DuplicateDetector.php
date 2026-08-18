@@ -126,7 +126,7 @@ class DuplicateDetector
         $cacheKey = "dup_check:number:{$organizationId}:{$invoiceNumber}";
 
         return Cache::remember($cacheKey, self::CACHE_TTL * 60, function () use ($organizationId, $invoiceNumber) {
-            return Invoice::where('organization_id', $organizationId)
+            return Invoice::where('org_id', $organizationId)
                 ->where('invoice_number', $invoiceNumber)
                 ->first();
         });
@@ -152,7 +152,7 @@ class DuplicateDetector
      */
     public function checkHash(string $organizationId, string $hash): ?Invoice
     {
-        return Invoice::where('organization_id', $organizationId)
+        return Invoice::where('org_id', $organizationId)
             ->where('hash', $hash)
             ->first();
     }
@@ -166,7 +166,7 @@ class DuplicateDetector
      */
     public function checkFuzzyMatch(string $organizationId, array $data)
     {
-        $query = Invoice::where('organization_id', $organizationId);
+        $query = Invoice::where('org_id', $organizationId);
 
         // Match by buyer
         if (! empty($data['buyer_vat'])) {
@@ -207,7 +207,7 @@ class DuplicateDetector
         $warnings = [];
 
         // Check invoice number uniqueness
-        $existingByNumber = Invoice::where('organization_id', $invoice->organization_id)
+        $existingByNumber = Invoice::where('org_id', $invoice->org_id)
             ->where('invoice_number', $invoice->invoice_number)
             ->when($excludeId, fn ($q) => $q->where('id', '!=', $excludeId))
             ->first();
@@ -271,7 +271,7 @@ class DuplicateDetector
         }
 
         // Verify original exists
-        $original = Invoice::where('organization_id', $organizationId)
+        $original = Invoice::where('org_id', $organizationId)
             ->where('invoice_number', $originalInvoiceNumber)
             ->first();
 
@@ -303,7 +303,7 @@ class DuplicateDetector
         $cutoff = now()->subMinutes($lookbackMinutes);
 
         // Find invoices with sequential numbers created around the same time
-        $recentInvoices = Invoice::where('organization_id', $organizationId)
+        $recentInvoices = Invoice::where('org_id', $organizationId)
             ->where('created_at', '>=', $cutoff)
             ->orderBy('created_at')
             ->get();
@@ -352,7 +352,7 @@ class DuplicateDetector
 
         if (! empty($conflicts)) {
             Log::warning('Potential sync conflicts detected', [
-                'organization_id' => $organizationId,
+                'org_id' => $organizationId,
                 'conflicts' => $conflicts,
             ]);
         }

@@ -15,7 +15,7 @@ class AuditLog extends Model
     use HasUuids;
 
     protected $fillable = [
-        'organization_id',
+        'org_id',
         'user_id',
         'action',
         'entity_type',

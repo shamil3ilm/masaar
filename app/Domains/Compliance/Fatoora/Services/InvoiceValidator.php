@@ -180,7 +180,7 @@ class InvoiceValidator
         }
 
         // Billing reference for credit/debit notes
-        if ($docType->requiresBillingReference() && ! $invoice->billing_reference_id) {
+        if ($docType->requiresBillingReference() && ! $invoice->billing_ref) {
             $errors[] = 'BT-25: Billing reference is required for credit/debit notes';
         }
 
@@ -265,12 +265,12 @@ class InvoiceValidator
 
             if (in_array($taxCategory, ['Z', 'E', 'O'])) {
                 // Zero-rated, Exempt, and Out-of-scope require exemption reason
-                if (empty($line->tax_exemption_code)) {
+                if (empty($line->exempt_code)) {
                     $errors[] = "BR-KSA-33: Line {$lineNum} requires exemption reason code for tax category {$taxCategory}";
-                } elseif (! $this->isValidExemptionCode($line->tax_exemption_code)) {
-                    $errors[] = "BR-KSA-46: Line {$lineNum} has invalid exemption code '{$line->tax_exemption_code}'. Must be a valid VATEX-SA-* code";
+                } elseif (! $this->isValidExemptionCode($line->exempt_code)) {
+                    $errors[] = "BR-KSA-46: Line {$lineNum} has invalid exemption code '{$line->exempt_code}'. Must be a valid VATEX-SA-* code";
                 }
-                if (empty($line->tax_exemption_reason)) {
+                if (empty($line->exempt_reason)) {
                     $errors[] = "BR-KSA-34: Line {$lineNum} requires exemption reason text for tax category {$taxCategory}";
                 }
             }

@@ -54,9 +54,9 @@ return [
     */
     'tiers' => [
         'starter' => [
-            'max_invoices_per_month' => 100,
-            'max_api_calls_per_day' => 1000,
-            'max_api_calls_per_minute' => 10,
+            'invoices_per_month' => 100,
+            'calls_per_day' => 1000,
+            'calls_per_min' => 10,
             'max_organizations' => 1,
             'features' => [
                 'simplified_invoices',
@@ -64,9 +64,9 @@ return [
             ],
         ],
         'professional' => [
-            'max_invoices_per_month' => 1000,
-            'max_api_calls_per_day' => 10000,
-            'max_api_calls_per_minute' => 60,
+            'invoices_per_month' => 1000,
+            'calls_per_day' => 10000,
+            'calls_per_min' => 60,
             'max_organizations' => 5,
             'features' => [
                 'simplified_invoices',
@@ -78,9 +78,9 @@ return [
             ],
         ],
         'enterprise' => [
-            'max_invoices_per_month' => 10000,
-            'max_api_calls_per_day' => 100000,
-            'max_api_calls_per_minute' => 300,
+            'invoices_per_month' => 10000,
+            'calls_per_day' => 100000,
+            'calls_per_min' => 300,
             'max_organizations' => 50,
             'features' => [
                 'simplified_invoices',
@@ -95,9 +95,9 @@ return [
             ],
         ],
         'unlimited' => [
-            'max_invoices_per_month' => -1, // -1 means unlimited
-            'max_api_calls_per_day' => -1,
-            'max_api_calls_per_minute' => 1000,
+            'invoices_per_month' => -1, // -1 means unlimited
+            'calls_per_day' => -1,
+            'calls_per_min' => 1000,
             'max_organizations' => -1,
             'features' => [
                 'simplified_invoices',

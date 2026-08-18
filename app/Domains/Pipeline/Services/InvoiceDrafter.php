@@ -40,7 +40,7 @@ class InvoiceDrafter
     {
         return DB::transaction(function () use ($data, $organizationId) {
             $invoice = Invoice::create([
-                'organization_id' => $organizationId,
+                'org_id' => $organizationId,
                 'invoice_number' => $data['invoice_number'],
                 'type' => $data['type'],
                 'document_type' => $data['document_type'],
@@ -52,7 +52,7 @@ class InvoiceDrafter
                 'buyer_name' => $data['buyer_name'],
                 'buyer_vat_number' => $data['buyer_vat_number'] ?? null,
                 'buyer_address' => $data['buyer_address'] ?? null,
-                'billing_reference_id' => $data['billing_reference_id'] ?? null,
+                'billing_ref' => $data['billing_ref'] ?? null,
                 'adjustment_reason' => $data['adjustment_reason'] ?? null,
                 'notes' => $data['notes'] ?? null,
                 'erp_reference_id' => $data['erp_reference_id'] ?? null,
@@ -91,21 +91,21 @@ class InvoiceDrafter
             $taxRate = (string) ($line['tax_rate'] ?? self::DEFAULT_TAX_RATE);
 
             $lineSubtotal = bcmul($quantity, $unitPrice, 2);
-            // Four digits through the multiply so the division rounds once, at
-            // the end, rather than compounding a half-halalah per line.
-            $lineTax = bcdiv(bcmul($lineSubtotal, $taxRate, 4), '100', 2);
+            // Carry four digits through the multiply, then round once at the
+            // end. bcmath truncates, so the rounding is explicit.
+            $lineTax = self::round(bcdiv(bcmul($lineSubtotal, $taxRate, 4), '100', 4));
 
             $invoice->lines()->create([
                 'description' => $line['description'],
-                'item_classification_code' => $line['item_classification_code'] ?? null,
+                'class_code' => $line['class_code'] ?? null,
                 'quantity' => $quantity,
                 'unit_code' => $line['unit_code'] ?? 'PCE',
                 'unit_price' => $unitPrice,
                 'tax_rate' => $taxRate,
                 'tax_amount' => $lineTax,
                 'tax_category' => $line['tax_category'] ?? 'S',
-                'tax_exemption_code' => $line['tax_exemption_code'] ?? null,
-                'tax_exemption_reason' => $line['tax_exemption_reason'] ?? null,
+                'exempt_code' => $line['exempt_code'] ?? null,
+                'exempt_reason' => $line['exempt_reason'] ?? null,
                 'line_total' => bcadd($lineSubtotal, $lineTax, 2),
             ]);
 
@@ -114,5 +114,20 @@ class InvoiceDrafter
         }
 
         return ['subtotal' => $subtotal, 'tax' => $tax];
+    }
+
+    /**
+     * Round half away from zero to the halalah.
+     *
+     * bcmath truncates rather than rounds, so bcdiv of 899.55 by 100 yields
+     * 8.99 and not 9.00. ZATCA reconciles each line's VAT against its taxable
+     * amount times the rate, and a truncated figure understates VAT by up to a
+     * halalah per line — enough to fail that reconciliation.
+     */
+    private static function round(string $value, int $scale = 2): string
+    {
+        $half = '0.'.str_repeat('0', $scale).'5';
+
+        return bcadd($value, str_starts_with($value, '-') ? "-$half" : $half, $scale);
     }
 }

@@ -32,18 +32,18 @@ class FtaSubmission extends Model
 
     protected $fillable = [
         'invoice_id',
-        'organization_id',
+        'org_id',
         'status',
-        'fta_submission_id',     // FTA-assigned reference
-        'fta_validation_status',
-        'fta_warnings',
-        'fta_errors',
+        'reference',     // FTA-assigned reference
+        'validation_status',
+        'warnings',
+        'errors',
         'document_type',         // 380|381|383
         'invoice_xml',           // Peppol UBL XML
         'retry_count',
         'max_retries',
         'next_retry_at',
-        'last_error_message',
+        'last_error',
         'submitted_at',
         'accepted_at',
     ];
@@ -52,8 +52,8 @@ class FtaSubmission extends Model
     {
         return [
             'status' => FtaStatus::class,
-            'fta_warnings' => 'array',
-            'fta_errors' => 'array',
+            'warnings' => 'array',
+            'errors' => 'array',
             'retry_count' => 'integer',
             'max_retries' => 'integer',
             'next_retry_at' => 'datetime',
@@ -83,7 +83,7 @@ class FtaSubmission extends Model
 
     public function organization(): BelongsTo
     {
-        return $this->belongsTo(Organization::class);
+        return $this->belongsTo(Organization::class, 'org_id');
     }
 
     // ----------------------------------------------------------------

@@ -19,7 +19,7 @@ it('creates a compliance profile for an organization', function () {
     ]);
 
     $profile = ComplianceProfile::create([
-        'organization_id' => $org->id,
+        'org_id' => $org->id,
         'jurisdiction' => 'SA',
         'engine' => 'fatoora',
         'status' => 'active',
@@ -40,7 +40,7 @@ it('enforces one profile per organization per jurisdiction', function () {
     ]);
 
     ComplianceProfile::create([
-        'organization_id' => $org->id,
+        'org_id' => $org->id,
         'jurisdiction' => 'SA',
         'engine' => 'fatoora',
         'status' => 'active',
@@ -48,7 +48,7 @@ it('enforces one profile per organization per jurisdiction', function () {
     ]);
 
     expect(fn () => ComplianceProfile::create([
-        'organization_id' => $org->id,
+        'org_id' => $org->id,
         'jurisdiction' => 'SA',
         'engine' => 'fatoora',
         'status' => 'active',
@@ -64,7 +64,7 @@ it('can resolve compliance profile from invoice', function () {
     ]);
 
     $profile = ComplianceProfile::create([
-        'organization_id' => $org->id,
+        'org_id' => $org->id,
         'jurisdiction' => 'SA',
         'engine' => 'fatoora',
         'status' => 'active',
@@ -72,8 +72,8 @@ it('can resolve compliance profile from invoice', function () {
     ]);
 
     $invoice = Invoice::create([
-        'organization_id' => $org->id,
-        'compliance_profile_id' => $profile->id,
+        'org_id' => $org->id,
+        'profile_id' => $profile->id,
         'invoice_number' => 'INV-0001',
         'type' => 'standard',
         'status' => 'draft',
@@ -103,12 +103,12 @@ it('backfill seeder converts legacy JSON to compliance profile row', function ()
         ],
     ]);
 
-    expect(ComplianceProfile::where('organization_id', $org->id)->count())->toBe(0);
+    expect(ComplianceProfile::where('org_id', $org->id)->count())->toBe(0);
 
     $seeder = new BackfillComplianceProfilesSeeder;
     $seeder->run();
 
-    $profile = ComplianceProfile::where('organization_id', $org->id)
+    $profile = ComplianceProfile::where('org_id', $org->id)
         ->where('jurisdiction', 'SA')
         ->first();
 
@@ -131,5 +131,5 @@ it('backfill seeder is idempotent', function () {
     $seeder->run();
     $seeder->run(); // second run should not create duplicates
 
-    expect(ComplianceProfile::where('organization_id', $org->id)->count())->toBe(1);
+    expect(ComplianceProfile::where('org_id', $org->id)->count())->toBe(1);
 });

@@ -62,10 +62,10 @@ class PipelineNotifier
         ], $extra);
 
         try {
-            $this->webhooks->dispatch($invoice->organization_id, $event, $payload);
+            $this->webhooks->dispatch($invoice->org_id, $event, $payload);
         } catch (\Throwable $e) {
             Log::warning('Pipeline: webhook dispatch failed', [
-                'organization_id' => $invoice->organization_id,
+                'org_id' => $invoice->org_id,
                 'invoice_id' => $invoice->id,
                 'event' => $event,
                 'error' => $e->getMessage(),

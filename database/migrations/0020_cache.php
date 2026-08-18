@@ -1,35 +1,35 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('cache', function (Blueprint $table) {
-            $table->string('key')->primary();
+            $table->string('key', 255);
             $table->mediumText('value');
-            $table->integer('expiration')->index();
+            $table->integer('expiration');
+            $table->primary(['key']);
+            $table->index(['expiration'], 'cache_expiration_index');
         });
 
         Schema::create('cache_locks', function (Blueprint $table) {
-            $table->string('key')->primary();
-            $table->string('owner');
-            $table->integer('expiration')->index();
+            $table->string('key', 255);
+            $table->string('owner', 255);
+            $table->integer('expiration');
+            $table->primary(['key']);
+            $table->index(['expiration'], 'cache_locks_expiration_index');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::dropIfExists('cache');
         Schema::dropIfExists('cache_locks');
+        Schema::dropIfExists('cache');
     }
 };

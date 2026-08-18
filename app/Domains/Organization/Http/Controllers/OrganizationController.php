@@ -133,7 +133,7 @@ class OrganizationController extends Controller
         ));
 
         return ApiResponse::success([
-            'organization_id' => $id,
+            'org_id' => $id,
             'role' => $membership->role,
         ], 'Organization switched');
     }

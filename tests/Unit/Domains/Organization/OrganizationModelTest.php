@@ -16,7 +16,7 @@ it('returns vat number from compliance profile when present', function () {
     ]);
 
     ComplianceProfile::create([
-        'organization_id' => $org->id,
+        'org_id' => $org->id,
         'jurisdiction' => 'SA',
         'engine' => 'fatoora',
         'status' => ComplianceProfile::STATUS_ACTIVE,
@@ -45,7 +45,7 @@ it('complianceProfileFor returns active profile for jurisdiction', function () {
     ]);
 
     ComplianceProfile::create([
-        'organization_id' => $org->id,
+        'org_id' => $org->id,
         'jurisdiction' => 'SA',
         'engine' => 'fatoora',
         'status' => ComplianceProfile::STATUS_ACTIVE,

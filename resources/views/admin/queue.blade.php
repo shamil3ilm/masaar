@@ -46,7 +46,7 @@
             <option value="completed" {{ $state === 'completed' ? 'selected' : '' }}>Completed</option>
             <option value="failed" {{ $state === 'failed' ? 'selected' : '' }}>Failed</option>
         </select>
-        <input type="text" name="organization_id" value="{{ $orgId }}" placeholder="Organization ID" class="border rounded px-3 py-2 text-sm">
+        <input type="text" name="org_id" value="{{ $orgId }}" placeholder="Organization ID" class="border rounded px-3 py-2 text-sm">
         <button type="submit" class="px-4 py-2 bg-gray-600 text-white rounded text-sm">Filter</button>
         <a href="{{ route('admin.queue') }}" class="px-4 py-2 bg-gray-200 text-gray-700 rounded text-sm">Clear</a>
     </form>
@@ -70,7 +70,7 @@
             @forelse($items as $item)
             <tr class="hover:bg-gray-50">
                 <td class="px-6 py-4 text-sm">{{ Str::limit($item->invoice_id, 8) }}</td>
-                <td class="px-6 py-4 text-sm">{{ $item->organization_name ?? Str::limit($item->organization_id, 8) }}</td>
+                <td class="px-6 py-4 text-sm">{{ $item->organization_name ?? Str::limit($item->org_id, 8) }}</td>
                 <td class="px-6 py-4">
                     <span class="px-2 py-1 text-xs font-medium rounded-full
                         {{ $item->state === 'pending' ? 'bg-yellow-100 text-yellow-800' : '' }}

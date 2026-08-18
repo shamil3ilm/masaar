@@ -21,8 +21,8 @@ class InvoiceCleared extends BaseInvoiceEvent
     {
         return array_merge(parent::getWebhookPayload(), [
             'clearance_status' => $this->submission->clearance_status,
-            'clearance_confirmed_at' => $this->submission->clearance_confirmed_at?->toIso8601String(),
-            'zatca_invoice_hash' => $this->submission->zatca_invoice_hash,
+            'cleared_at' => $this->submission->cleared_at?->toIso8601String(),
+            'invoice_hash' => $this->submission->invoice_hash,
         ]);
     }
 }

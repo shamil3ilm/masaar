@@ -37,7 +37,7 @@ class FtaController extends Controller
         return ApiResponse::success([
             'submission_id' => $submission->id,
             'status' => $submission->status->value,
-            'fta_ref' => $submission->fta_submission_id,
+            'fta_ref' => $submission->reference,
         ], 'UAE FTA invoice submitted', 201);
     }
 
@@ -49,10 +49,10 @@ class FtaController extends Controller
         return ApiResponse::success([
             'submission_id' => $updated->id,
             'status' => $updated->status->value,
-            'fta_ref' => $updated->fta_submission_id,
-            'fta_validation_status' => $updated->fta_validation_status,
-            'warnings' => $updated->fta_warnings,
-            'errors' => $updated->fta_errors,
+            'fta_ref' => $updated->reference,
+            'validation_status' => $updated->validation_status,
+            'warnings' => $updated->warnings,
+            'errors' => $updated->errors,
             'submitted_at' => $updated->submitted_at?->toISOString(),
             'accepted_at' => $updated->accepted_at?->toISOString(),
         ]);
@@ -74,7 +74,7 @@ class FtaController extends Controller
     {
         $organization = $this->tenant->getOrganization();
 
-        $submissions = FtaSubmission::where('organization_id', $organization->id)
+        $submissions = FtaSubmission::where('org_id', $organization->id)
             ->with('invoice:id,invoice_number')
             ->latest()
             ->paginate(25);

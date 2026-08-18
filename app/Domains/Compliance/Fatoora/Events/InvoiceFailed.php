@@ -21,7 +21,7 @@ class InvoiceFailed extends BaseInvoiceEvent
     {
         return array_merge(parent::getWebhookPayload(), [
             'error_code' => $this->submission->last_error_code,
-            'error_message' => $this->submission->last_error_message,
+            'error_message' => $this->submission->last_error,
             'retry_count' => $this->submission->retry_count,
             'max_retries' => $this->submission->max_retries,
             'will_retry' => $this->submission->next_retry_at !== null,

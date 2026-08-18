@@ -22,7 +22,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * that can have its own Fatoora certificate and invoice stream.
  *
  * @property string $id
- * @property string $organization_id
+ * @property string $org_id
  * @property string $name
  * @property string|null $name_ar
  * @property string $device_serial
@@ -36,7 +36,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $country_code
  * @property string $onboarding_status
  * @property Carbon|null $onboarded_at
- * @property Carbon|null $certificate_expires_at
+ * @property Carbon|null $cert_expires_at
  * @property int $invoice_count
  * @property Carbon|null $last_invoice_at
  * @property bool $is_active
@@ -49,7 +49,7 @@ class Branch extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'organization_id',
+        'org_id',
         'name',
         'name_ar',
         'device_serial',
@@ -63,7 +63,7 @@ class Branch extends Model
         'country_code',
         'onboarding_status',
         'onboarded_at',
-        'certificate_expires_at',
+        'cert_expires_at',
         'invoice_count',
         'last_invoice_at',
         'is_active',
@@ -72,7 +72,7 @@ class Branch extends Model
 
     protected $casts = [
         'onboarded_at' => 'datetime',
-        'certificate_expires_at' => 'datetime',
+        'cert_expires_at' => 'datetime',
         'last_invoice_at' => 'datetime',
         'invoice_count' => 'integer',
         'is_active' => 'boolean',
@@ -106,7 +106,7 @@ class Branch extends Model
      */
     public function organization(): BelongsTo
     {
-        return $this->belongsTo(Organization::class);
+        return $this->belongsTo(Organization::class, 'org_id');
     }
 
     /**
@@ -132,11 +132,11 @@ class Branch extends Model
      */
     public function isCertificateExpired(): bool
     {
-        if (! $this->certificate_expires_at) {
+        if (! $this->cert_expires_at) {
             return false;
         }
 
-        return $this->certificate_expires_at->isPast();
+        return $this->cert_expires_at->isPast();
     }
 
     /**
@@ -144,11 +144,11 @@ class Branch extends Model
      */
     public function isCertificateExpiringSoon(): bool
     {
-        if (! $this->certificate_expires_at) {
+        if (! $this->cert_expires_at) {
             return false;
         }
 
-        return $this->certificate_expires_at->diffInDays(now()) <= 30;
+        return $this->cert_expires_at->diffInDays(now()) <= 30;
     }
 
     /**
@@ -156,11 +156,11 @@ class Branch extends Model
      */
     public function getDaysUntilCertificateExpiry(): ?int
     {
-        if (! $this->certificate_expires_at) {
+        if (! $this->cert_expires_at) {
             return null;
         }
 
-        return (int) now()->diffInDays($this->certificate_expires_at, false);
+        return (int) now()->diffInDays($this->cert_expires_at, false);
     }
 
     /**
@@ -245,7 +245,7 @@ class Branch extends Model
         $this->update([
             'onboarding_status' => self::STATUS_ACTIVE,
             'onboarded_at' => now(),
-            'certificate_expires_at' => $certificateExpiry,
+            'cert_expires_at' => $certificateExpiry,
         ]);
     }
 
@@ -277,7 +277,7 @@ class Branch extends Model
     public function setAsDefault(): void
     {
         // Remove default from other branches
-        static::where('organization_id', $this->organization_id)
+        static::where('org_id', $this->org_id)
             ->where('id', '!=', $this->id)
             ->update(['is_default' => false]);
 
@@ -300,8 +300,8 @@ class Branch extends Model
         return $query->where('onboarding_status', self::STATUS_ACTIVE)
             ->where('is_active', true)
             ->where(function ($q) {
-                $q->whereNull('certificate_expires_at')
-                    ->orWhere('certificate_expires_at', '>', now());
+                $q->whereNull('cert_expires_at')
+                    ->orWhere('cert_expires_at', '>', now());
             });
     }
 
@@ -310,8 +310,8 @@ class Branch extends Model
      */
     public function scopeCertificateExpiringSoon($query, int $days = 30)
     {
-        return $query->whereNotNull('certificate_expires_at')
-            ->where('certificate_expires_at', '<=', now()->addDays($days))
-            ->where('certificate_expires_at', '>', now());
+        return $query->whereNotNull('cert_expires_at')
+            ->where('cert_expires_at', '<=', now()->addDays($days))
+            ->where('cert_expires_at', '>', now());
     }
 }
