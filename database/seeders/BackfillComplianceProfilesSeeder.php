@@ -45,7 +45,7 @@ class BackfillComplianceProfilesSeeder extends Seeder
 
                 ComplianceProfile::firstOrCreate(
                     [
-                        'organization_id' => $org->id,
+                        'org_id' => $org->id,
                         'jurisdiction' => $jurisdiction,
                     ],
                     [

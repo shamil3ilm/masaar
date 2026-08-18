@@ -47,7 +47,7 @@ abstract class BaseInvoiceEvent
      */
     public function getOrganizationId(): string
     {
-        return $this->submission->organization_id;
+        return $this->submission->org_id;
     }
 
     /**
@@ -68,7 +68,7 @@ abstract class BaseInvoiceEvent
         return array_merge([
             'submission_id' => $this->submission->id,
             'invoice_id' => $this->submission->invoice_id,
-            'organization_id' => $this->submission->organization_id,
+            'org_id' => $this->submission->org_id,
             'invoice_number' => $invoice?->invoice_number,
             'invoice_type' => $invoice?->type,
             'issue_date' => $invoice?->issue_date?->toIso8601String(),

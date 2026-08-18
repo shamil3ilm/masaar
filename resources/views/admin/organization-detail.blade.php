@@ -141,7 +141,7 @@
 <div class="bg-white rounded-lg shadow">
     <div class="p-6 border-b flex justify-between items-center">
         <h3 class="text-lg font-semibold text-gray-800">Recent Submissions</h3>
-        <a href="{{ route('admin.logs', ['organization_id' => $organization->id]) }}" class="text-sm text-blue-600 hover:text-blue-800">View All</a>
+        <a href="{{ route('admin.logs', ['org_id' => $organization->id]) }}" class="text-sm text-blue-600 hover:text-blue-800">View All</a>
     </div>
     <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">

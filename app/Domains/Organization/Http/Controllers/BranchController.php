@@ -288,7 +288,7 @@ class BranchController extends Controller
             'has_ccsid' => $hasCcsid,
             'has_pcsid' => $hasPcsid,
             'is_fatoora_ready' => $branch->isFatooraReady(),
-            'certificate_expires_at' => $branch->certificate_expires_at?->toIso8601String(),
+            'cert_expires_at' => $branch->cert_expires_at?->toIso8601String(),
             'days_until_expiry' => $branch->getDaysUntilCertificateExpiry(),
             'steps' => [
                 'step_1_ccsid' => $hasCcsid ? 'completed' : 'pending',
@@ -330,7 +330,7 @@ class BranchController extends Controller
                     'postal_code' => $branch->postal_code,
                     'country_code' => $branch->country_code,
                 ],
-                'certificate_expires_at' => $branch->certificate_expires_at?->toIso8601String(),
+                'cert_expires_at' => $branch->cert_expires_at?->toIso8601String(),
                 'days_until_expiry' => $branch->getDaysUntilCertificateExpiry(),
                 'is_certificate_expiring_soon' => $branch->isCertificateExpiringSoon(),
                 'onboarded_at' => $branch->onboarded_at?->toIso8601String(),

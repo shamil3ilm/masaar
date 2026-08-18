@@ -65,7 +65,7 @@ class Organization extends Model
      */
     public function branches(): HasMany
     {
-        return $this->hasMany(Branch::class);
+        return $this->hasMany(Branch::class, 'org_id');
     }
 
     /**
@@ -89,7 +89,7 @@ class Organization extends Model
      */
     public function invoices(): HasMany
     {
-        return $this->hasMany(Invoice::class);
+        return $this->hasMany(Invoice::class, 'org_id');
     }
 
     /**
@@ -166,7 +166,7 @@ class Organization extends Model
      */
     public function complianceProfiles(): HasMany
     {
-        return $this->hasMany(ComplianceProfile::class);
+        return $this->hasMany(ComplianceProfile::class, 'org_id');
     }
 
     /**

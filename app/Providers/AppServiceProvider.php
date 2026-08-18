@@ -89,7 +89,7 @@ class AppServiceProvider extends ServiceProvider
      * The application's JwtGuard is the only code that calls
      * TenantResolver::setContext(). If a package holds that alias, no JWT
      * route establishes a tenant, so admin gates deny every request and
-     * tenant-scoped queries filter on organization_id = null.
+     * tenant-scoped queries filter on org_id = null.
      *
      * Provider boot order puts this after package providers, so the
      * application's mapping wins. MiddlewareAliasTest pins it.

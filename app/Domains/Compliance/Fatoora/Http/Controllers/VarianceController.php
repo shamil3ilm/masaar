@@ -72,7 +72,7 @@ class VarianceController extends Controller
         }
 
         // Verify organization ownership
-        if ($variance->organization_id !== $this->tenant->getOrganizationId()) {
+        if ($variance->org_id !== $this->tenant->getOrganizationId()) {
             return ApiResponse::forbidden('You do not have access to this variance');
         }
 
@@ -112,7 +112,7 @@ class VarianceController extends Controller
             return ApiResponse::notFound('Variance not found');
         }
 
-        if ($variance->organization_id !== $this->tenant->getOrganizationId()) {
+        if ($variance->org_id !== $this->tenant->getOrganizationId()) {
             return ApiResponse::forbidden('You do not have access to this variance');
         }
 
@@ -155,7 +155,7 @@ class VarianceController extends Controller
             return ApiResponse::notFound('Variance not found');
         }
 
-        if ($variance->organization_id !== $this->tenant->getOrganizationId()) {
+        if ($variance->org_id !== $this->tenant->getOrganizationId()) {
             return ApiResponse::forbidden('You do not have access to this variance');
         }
 

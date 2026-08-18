@@ -150,8 +150,8 @@ class LicenseValidationService
 
         // Check tier-based features
         return match ($feature) {
-            'offline_mode' => $license->offline_mode_enabled,
-            'multi_tenant' => $license->multi_tenant_enabled,
+            'offline_mode' => $license->offline_mode,
+            'multi_tenant' => $license->multi_tenant,
             'webhooks' => $license->webhook_enabled,
             default => false,
         };
@@ -177,14 +177,14 @@ class LicenseValidationService
             'status' => $license->status->value,
             'organization_name' => $license->organization_name,
             'limits' => [
-                'invoices_per_month' => $license->max_invoices_per_month,
+                'invoices_per_month' => $license->invoices_per_month,
                 'organizations' => $license->max_organizations,
-                'api_calls_per_minute' => $license->max_api_calls_per_minute,
-                'api_calls_per_day' => $license->max_api_calls_per_day,
+                'api_calls_per_minute' => $license->calls_per_min,
+                'api_calls_per_day' => $license->calls_per_day,
             ],
             'features' => [
-                'offline_mode' => $license->offline_mode_enabled,
-                'multi_tenant' => $license->multi_tenant_enabled,
+                'offline_mode' => $license->offline_mode,
+                'multi_tenant' => $license->multi_tenant,
                 'webhooks' => $license->webhook_enabled,
             ],
             'expires_at' => $license->expires_at?->toIso8601String(),

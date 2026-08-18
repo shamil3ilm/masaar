@@ -23,7 +23,7 @@ class Webhook extends Model
     use HasUuids;
 
     protected $fillable = [
-        'organization_id',
+        'org_id',
         'url',
         'secret',
         'events',
@@ -47,7 +47,7 @@ class Webhook extends Model
      */
     public function organization(): BelongsTo
     {
-        return $this->belongsTo(Organization::class);
+        return $this->belongsTo(Organization::class, 'org_id');
     }
 
     /**

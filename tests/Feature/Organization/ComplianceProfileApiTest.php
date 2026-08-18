@@ -23,7 +23,7 @@ it('lists compliance profiles for an organization', function () {
     [$org, $user, $token] = makeComplianceAuthToken();
 
     ComplianceProfile::create([
-        'organization_id' => $org->id,
+        'org_id' => $org->id,
         'jurisdiction' => 'SA',
         'engine' => 'fatoora',
         'status' => 'active',
@@ -58,7 +58,7 @@ it('deletes a compliance profile', function () {
     [$org, $user, $token] = makeComplianceAuthToken();
 
     $profile = ComplianceProfile::create([
-        'organization_id' => $org->id,
+        'org_id' => $org->id,
         'jurisdiction' => 'SA',
         'engine' => 'fatoora',
         'status' => 'active',

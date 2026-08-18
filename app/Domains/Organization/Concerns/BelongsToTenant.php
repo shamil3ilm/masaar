@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
  *
  * Tenant isolation is the platform's most important invariant: one taxpayer
  * must never see another's invoices. Enforcing it by writing
- * `where('organization_id', ...)` in every query works only for as long as
+ * `where('org_id', ...)` in every query works only for as long as
  * every future author remembers, and nothing fails when one does not. This
  * makes the default safe and the exception explicit.
  *
@@ -39,11 +39,11 @@ trait BelongsToTenant
         // New records inherit the active tenant, so a caller cannot create a
         // row that its own queries would then be unable to see.
         static::creating(function (Model $model): void {
-            if ($model->getAttribute('organization_id') === null) {
+            if ($model->getAttribute('org_id') === null) {
                 $tenantId = app(TenantResolver::class)->getOrganizationId();
 
                 if ($tenantId !== null) {
-                    $model->setAttribute('organization_id', $tenantId);
+                    $model->setAttribute('org_id', $tenantId);
                 }
             }
         });

@@ -39,9 +39,9 @@ class LicenseUsageController extends Controller
                 'expires_at' => $license->expires_at?->toIso8601String(),
                 'features' => $license->features,
                 'limits' => [
-                    'max_invoices_per_month' => $license->max_invoices_per_month,
-                    'max_api_calls_per_day' => $license->max_api_calls_per_day,
-                    'max_api_calls_per_minute' => $license->max_api_calls_per_minute,
+                    'invoices_per_month' => $license->invoices_per_month,
+                    'calls_per_day' => $license->calls_per_day,
+                    'calls_per_min' => $license->calls_per_min,
                     'max_organizations' => $license->max_organizations,
                 ],
             ],
@@ -76,23 +76,23 @@ class LicenseUsageController extends Controller
         $license = $this->getLicenseFromRequest($request);
         $usage = $this->meteringService->getUsageSummary($license);
 
-        $invoicesRemaining = $license->max_invoices_per_month === -1
+        $invoicesRemaining = $license->invoices_per_month === -1
             ? -1
-            : max(0, $license->max_invoices_per_month - $usage['totals']['invoices_submitted']);
+            : max(0, $license->invoices_per_month - $usage['totals']['invoices_submitted']);
 
         return response()->json([
             'success' => true,
             'data' => [
                 'invoices' => [
                     'used' => $usage['totals']['invoices_submitted'],
-                    'limit' => $license->max_invoices_per_month,
+                    'limit' => $license->invoices_per_month,
                     'remaining' => $invoicesRemaining,
                     'percent_used' => $usage['utilization']['invoices_percent'],
-                    'is_unlimited' => $license->max_invoices_per_month === -1,
+                    'is_unlimited' => $license->invoices_per_month === -1,
                 ],
                 'api_calls' => [
-                    'daily_limit' => $license->max_api_calls_per_day,
-                    'minute_limit' => $license->max_api_calls_per_minute,
+                    'daily_limit' => $license->calls_per_day,
+                    'minute_limit' => $license->calls_per_min,
                     'today_used' => $usage['totals']['api_calls'],
                 ],
                 'organizations' => [

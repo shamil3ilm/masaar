@@ -29,8 +29,8 @@ class Invoice extends Model
     use HasUuids;
 
     protected $fillable = [
-        'organization_id',
-        'compliance_profile_id',
+        'org_id',
+        'profile_id',
         'invoice_number',
         'type',
         'document_type',
@@ -42,7 +42,7 @@ class Invoice extends Model
         'buyer_vat_number',
         'buyer_address',
         'payment_means_code',
-        'billing_reference_id',
+        'billing_ref',
         'adjustment_reason',
         'subtotal',
         'discount_amount',
@@ -91,7 +91,7 @@ class Invoice extends Model
      * These fields cannot be changed once invoice leaves draft status.
      */
     public const IMMUTABLE_FIELDS = [
-        'organization_id',
+        'org_id',
         'invoice_number',
         'type',
         'document_type',
@@ -102,7 +102,7 @@ class Invoice extends Model
         'buyer_vat_number',
         'buyer_address',
         'payment_means_code',
-        'billing_reference_id',
+        'billing_ref',
         'adjustment_reason',
         'subtotal',
         'discount_amount',
@@ -137,8 +137,8 @@ class Invoice extends Model
 
         // Auto-generate ICV on creation
         static::creating(function (Invoice $invoice) {
-            if ($invoice->icv === null && $invoice->organization_id) {
-                $invoice->icv = static::generateNextIcv($invoice->organization_id);
+            if ($invoice->icv === null && $invoice->org_id) {
+                $invoice->icv = static::generateNextIcv($invoice->org_id);
             }
         });
 
@@ -211,7 +211,7 @@ class Invoice extends Model
             // no tenant context reads zero rows, restarts the counter at 1,
             // and the unique index rejects the insert.
             $highest = static::withoutTenantScope(
-                fn () => static::query()->where('organization_id', $organizationId)->max('icv')
+                fn () => static::query()->where('org_id', $organizationId)->max('icv')
             );
 
             return ((int) $highest) + 1;
@@ -223,7 +223,7 @@ class Invoice extends Model
      */
     public function organization(): BelongsTo
     {
-        return $this->belongsTo(Organization::class);
+        return $this->belongsTo(Organization::class, 'org_id');
     }
 
     /**
@@ -231,7 +231,7 @@ class Invoice extends Model
      */
     public function complianceProfile(): BelongsTo
     {
-        return $this->belongsTo(ComplianceProfile::class);
+        return $this->belongsTo(ComplianceProfile::class, 'profile_id');
     }
 
     /**

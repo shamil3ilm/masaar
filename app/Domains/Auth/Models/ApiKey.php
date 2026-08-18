@@ -24,7 +24,7 @@ class ApiKey extends Model
     use HasUuids;
 
     protected $fillable = [
-        'organization_id',
+        'org_id',
         'name',
         'key_prefix',
         'key_hash',
@@ -53,7 +53,7 @@ class ApiKey extends Model
      */
     public function organization(): BelongsTo
     {
-        return $this->belongsTo(Organization::class);
+        return $this->belongsTo(Organization::class, 'org_id');
     }
 
     /**
@@ -69,7 +69,7 @@ class ApiKey extends Model
         $plainKey = $prefix.'_'.$secret;
 
         $model = static::create([
-            'organization_id' => $organizationId,
+            'org_id' => $organizationId,
             'name' => $name,
             'key_prefix' => $prefix,
             'key_hash' => self::hashKey($plainKey),

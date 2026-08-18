@@ -117,7 +117,7 @@ class CheckCertificateExpiry extends Command
 
         } catch (\Exception $e) {
             Log::error('Certificate check failed', [
-                'organization_id' => $organization->id,
+                'org_id' => $organization->id,
                 'error' => $e->getMessage(),
             ]);
 
@@ -184,7 +184,7 @@ class CheckCertificateExpiry extends Command
         cache()->put($cacheKey, true, now()->endOfDay());
 
         Log::info('Certificate expiry notification sent', [
-            'organization_id' => $organization->id,
+            'org_id' => $organization->id,
             'days_remaining' => $daysRemaining,
             'channels' => $channels,
         ]);

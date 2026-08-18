@@ -29,7 +29,7 @@ class SubmissionIdempotency extends Model
     protected $fillable = [
         'idempotency_key',
         'invoice_id',
-        'organization_id',
+        'org_id',
         'request_hash',
         'endpoint',
         'method',
@@ -38,7 +38,7 @@ class SubmissionIdempotency extends Model
         'response_body',
         'response_headers',
         'zatca_request_id',
-        'zatca_clearance_status',
+        'clearance_status',
         'zatca_errors',
         'attempt_count',
         'first_attempt_at',
@@ -85,7 +85,7 @@ class SubmissionIdempotency extends Model
      */
     public function organization(): BelongsTo
     {
-        return $this->belongsTo(Organization::class);
+        return $this->belongsTo(Organization::class, 'org_id');
     }
 
     /**

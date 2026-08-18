@@ -33,7 +33,7 @@ class TenantScope implements Scope
         // A null tenant matches no rows, so a request that lost its tenant
         // context returns nothing rather than everything.
         $builder->where(
-            $model->getTable().'.organization_id',
+            $model->getTable().'.org_id',
             app(TenantResolver::class)->getOrganizationId()
         );
     }

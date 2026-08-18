@@ -109,7 +109,7 @@ class VarianceTracker
 
         $record = [
             'id' => $varianceId,
-            'organization_id' => $organizationId,
+            'org_id' => $organizationId,
             'invoice_id' => $invoiceId,
             'variance_type' => $variance['type'],
             'rule_code' => $variance['rule_code'] ?? null,
@@ -130,7 +130,7 @@ class VarianceTracker
                     Log::warning('Environment variance detected (async)', [
                         'variance_id' => $varianceId,
                         'variance_type' => $variance['type'],
-                        'organization_id' => $organizationId,
+                        'org_id' => $organizationId,
                     ]);
                 } catch (\Exception $e) {
                     Log::error('Failed to insert variance record async', [
@@ -145,7 +145,7 @@ class VarianceTracker
             Log::warning('Environment variance detected', [
                 'variance_id' => $varianceId,
                 'variance_type' => $variance['type'],
-                'organization_id' => $organizationId,
+                'org_id' => $organizationId,
                 'invoice_id' => $invoiceId,
                 'payload_hash' => $payloadHash,
             ]);
@@ -254,7 +254,7 @@ class VarianceTracker
         int $limit = 50
     ): array {
         $query = DB::table('variance_logs')
-            ->where('organization_id', $organizationId)
+            ->where('org_id', $organizationId)
             ->orderByDesc('created_at');
 
         if ($type) {
@@ -576,27 +576,27 @@ class VarianceTracker
         $query = DB::table('variance_logs');
 
         if ($organizationId) {
-            $query->where('organization_id', $organizationId);
+            $query->where('org_id', $organizationId);
         }
 
         $total = $query->count();
 
         $byType = DB::table('variance_logs')
-            ->when($organizationId, fn ($q) => $q->where('organization_id', $organizationId))
+            ->when($organizationId, fn ($q) => $q->where('org_id', $organizationId))
             ->selectRaw('variance_type, COUNT(*) as count')
             ->groupBy('variance_type')
             ->pluck('count', 'variance_type')
             ->toArray();
 
         $byStatus = DB::table('variance_logs')
-            ->when($organizationId, fn ($q) => $q->where('organization_id', $organizationId))
+            ->when($organizationId, fn ($q) => $q->where('org_id', $organizationId))
             ->selectRaw('resolution_status, COUNT(*) as count')
             ->groupBy('resolution_status')
             ->pluck('count', 'resolution_status')
             ->toArray();
 
         $reportedToZatca = DB::table('variance_logs')
-            ->when($organizationId, fn ($q) => $q->where('organization_id', $organizationId))
+            ->when($organizationId, fn ($q) => $q->where('org_id', $organizationId))
             ->where('reported_to_zatca', true)
             ->count();
 

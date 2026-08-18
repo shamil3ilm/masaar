@@ -47,7 +47,7 @@ class FtaService
 
         $submission = FtaSubmission::create([
             'invoice_id' => $invoice->id,
-            'organization_id' => $organization->id,
+            'org_id' => $organization->id,
             'status' => FtaStatus::Queued,
             'document_type' => $data->documentType,
             'invoice_xml' => $xml,
@@ -80,14 +80,14 @@ class FtaService
      */
     public function checkStatus(FtaSubmission $submission): FtaSubmission
     {
-        if ($submission->status !== FtaStatus::PendingReview || $submission->fta_submission_id === null) {
+        if ($submission->status !== FtaStatus::PendingReview || $submission->reference === null) {
             return $submission;
         }
 
         try {
             $response = Http::withToken($this->getApiKey())
                 ->timeout(config('fta.timeout', 30))
-                ->get($this->getBaseUrl()."/submissions/{$submission->fta_submission_id}/status");
+                ->get($this->getBaseUrl()."/submissions/{$submission->reference}/status");
 
             if ($response->successful()) {
                 $ftaStatus = $response->json('status');
@@ -100,7 +100,7 @@ class FtaService
 
                 $submission->update([
                     'status' => $newStatus,
-                    'fta_errors' => $response->json('errors', []),
+                    'errors' => $response->json('errors', []),
                     'accepted_at' => $newStatus === FtaStatus::Accepted ? now() : null,
                 ]);
             }
@@ -136,10 +136,10 @@ class FtaService
 
             $submission->update([
                 'status' => $newStatus,
-                'fta_submission_id' => $ftaResponse->submissionId,
-                'fta_validation_status' => $ftaResponse->validationStatus,
-                'fta_warnings' => $ftaResponse->warnings,
-                'fta_errors' => $ftaResponse->errors,
+                'reference' => $ftaResponse->submissionId,
+                'validation_status' => $ftaResponse->validationStatus,
+                'warnings' => $ftaResponse->warnings,
+                'errors' => $ftaResponse->errors,
                 'accepted_at' => $newStatus === FtaStatus::Accepted ? now() : null,
             ]);
 
@@ -151,7 +151,7 @@ class FtaService
 
             $submission->update([
                 'status' => FtaStatus::Failed,
-                'last_error_message' => $e->getMessage(),
+                'last_error' => $e->getMessage(),
                 'next_retry_at' => $this->nextRetryAt($submission->retry_count),
             ]);
         }

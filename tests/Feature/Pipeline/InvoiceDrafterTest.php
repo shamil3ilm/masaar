@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Pipeline;
 
+use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Pipeline\Services\InvoiceDrafter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -98,6 +99,23 @@ class InvoiceDrafterTest extends TestCase
     }
 
     /**
+     * bcmath truncates, so VAT has to be rounded explicitly. 3 x 19.99 at 15%
+     * is 8.9955, which truncates to 8.99 and rounds to 9.00. ZATCA reconciles
+     * line VAT against taxable amount times rate, and the truncated figure
+     * fails that check.
+     */
+    public function test_vat_rounds_half_up(): void
+    {
+        $invoice = $this->draft([
+            ['description' => 'Widget', 'quantity' => 3, 'unit_price' => '19.99'],
+        ]);
+
+        $this->assertSame('59.97', $invoice->subtotal);
+        $this->assertSame('9.00', $invoice->tax_amount);
+        $this->assertSame('68.97', $invoice->total);
+    }
+
+    /**
      * The invoice total must equal the sum of its lines, or ZATCA rejects it.
      */
     public function test_lines_reconcile_to_the_total(): void
@@ -125,7 +143,7 @@ class InvoiceDrafterTest extends TestCase
         $this->assertCount(2, $invoice->lines);
     }
 
-    private function draft(array $lines, array $extra = []): \App\Domains\Invoice\Models\Invoice
+    private function draft(array $lines, array $extra = []): Invoice
     {
         $invoice = app(InvoiceDrafter::class)->draft(array_merge([
             'invoice_number' => 'INV-'.uniqid(),

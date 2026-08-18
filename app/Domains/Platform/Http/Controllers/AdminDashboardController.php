@@ -85,7 +85,7 @@ class AdminDashboardController extends Controller
 
         $organizations = Cache::remember("admin:top_orgs:{$limit}", 300, function () use ($limit) {
             return DB::table('invoices')
-                ->join('organizations', 'invoices.organization_id', '=', 'organizations.id')
+                ->join('organizations', 'invoices.org_id', '=', 'organizations.id')
                 ->selectRaw('organizations.id, organizations.name, COUNT(invoices.id) as invoice_count, SUM(invoices.total) as total_amount')
                 ->groupBy('organizations.id', 'organizations.name')
                 ->orderByDesc('invoice_count')
@@ -141,7 +141,7 @@ class AdminDashboardController extends Controller
                 'sandbox_result' => $row->sandbox_result,
                 'production_result' => $row->production_result,
                 'variance_type' => $row->variance_type,
-                'organization_id' => $row->organization_id,
+                'org_id' => $row->org_id,
                 'invoice_id' => $row->invoice_id ?? null,
                 'detected_at' => $row->created_at,
                 'resolved' => (bool) ($row->resolved_at ?? false),
@@ -288,8 +288,8 @@ class AdminDashboardController extends Controller
                 ->where('status', 'active')
                 ->count(),
             'with_certificate' => DB::table('certificate_lineage')
-                ->distinct('organization_id')
-                ->count('organization_id'),
+                ->distinct('org_id')
+                ->count('org_id'),
         ];
     }
 
@@ -499,7 +499,7 @@ class AdminDashboardController extends Controller
                 ->selectRaw('
                     state,
                     COUNT(*) as count,
-                    COUNT(DISTINCT organization_id) as organizations
+                    COUNT(DISTINCT org_id) as organizations
                 ')
                 ->groupBy('state')
                 ->get()
@@ -514,7 +514,7 @@ class AdminDashboardController extends Controller
                 ->where('state', 'failed')
                 ->orderByDesc('updated_at')
                 ->limit(10)
-                ->get(['id', 'invoice_id', 'organization_id', 'last_error', 'attempts', 'updated_at']);
+                ->get(['id', 'invoice_id', 'org_id', 'last_error', 'attempts', 'updated_at']);
 
             return [
                 'summary' => [
@@ -545,7 +545,7 @@ class AdminDashboardController extends Controller
         $status = $this->offlineQueueManager->getStatus($organizationId);
 
         $items = DB::table('offline_queue')
-            ->where('organization_id', $organizationId)
+            ->where('org_id', $organizationId)
             ->whereIn('state', ['pending', 'processing', 'failed'])
             ->orderByDesc('queued_at')
             ->limit(50)
@@ -564,7 +564,7 @@ class AdminDashboardController extends Controller
      */
     public function processOfflineQueue(Request $request): JsonResponse
     {
-        $organizationId = $request->input('organization_id');
+        $organizationId = $request->input('org_id');
         $limit = min((int) $request->input('limit', 50), 200);
 
         try {
@@ -722,7 +722,7 @@ class AdminDashboardController extends Controller
     {
         $limit = min((int) $request->query('limit', 50), 200);
         $state = $request->query('state');
-        $organizationId = $request->query('organization_id');
+        $organizationId = $request->query('org_id');
 
         $query = DB::table('invoice_submissions')
             ->orderByDesc('created_at')
@@ -733,19 +733,19 @@ class AdminDashboardController extends Controller
         }
 
         if ($organizationId) {
-            $query->where('organization_id', $organizationId);
+            $query->where('org_id', $organizationId);
         }
 
         $logs = $query->get([
             'id',
             'invoice_id',
-            'organization_id',
+            'org_id',
             'state',
             'submission_type',
             'clearance_status',
             'reporting_status',
             'last_error_code',
-            'last_error_message',
+            'last_error',
             'retry_count',
             'created_at',
             'completed_at',
@@ -756,7 +756,7 @@ class AdminDashboardController extends Controller
             'count' => $logs->count(),
             'filters' => [
                 'state' => $state,
-                'organization_id' => $organizationId,
+                'org_id' => $organizationId,
             ],
         ]);
     }

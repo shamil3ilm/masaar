@@ -76,7 +76,7 @@ it('ComplianceRouter resolves FatooraEngine for SA profile', function () {
     ]);
 
     $profile = ComplianceProfile::create([
-        'organization_id' => $org->id,
+        'org_id' => $org->id,
         'jurisdiction' => 'SA',
         'engine' => 'fatoora',
         'status' => 'active',
@@ -95,7 +95,7 @@ it('ComplianceRouter resolves FtaEngine for AE profile', function () {
     ]);
 
     $profile = ComplianceProfile::create([
-        'organization_id' => $org->id,
+        'org_id' => $org->id,
         'jurisdiction' => 'AE',
         'engine' => 'fta',
         'status' => 'active',
@@ -114,7 +114,7 @@ it('ComplianceRouter throws for unknown jurisdiction', function () {
     ]);
 
     $profile = ComplianceProfile::create([
-        'organization_id' => $org->id,
+        'org_id' => $org->id,
         'jurisdiction' => 'QA',
         'engine' => 'gta',
         'status' => 'active',

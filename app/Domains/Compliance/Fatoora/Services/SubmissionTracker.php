@@ -303,7 +303,7 @@ class SubmissionTracker
             $daysRemaining = $expiryCarbon->diffInDays(now());
             if ($daysRemaining <= 30) {
                 Log::warning('ZATCA certificate expiring soon', [
-                    'organization_id' => $organization->id,
+                    'org_id' => $organization->id,
                     'expires_at' => $expiryCarbon->toIso8601String(),
                     'days_remaining' => $daysRemaining,
                 ]);
@@ -323,7 +323,7 @@ class SubmissionTracker
             throw $e;
         } catch (\Exception $e) {
             Log::warning('Certificate revocation check failed', [
-                'organization_id' => $organization->id,
+                'org_id' => $organization->id,
                 'error' => $e->getMessage(),
             ]);
         }
@@ -335,7 +335,7 @@ class SubmissionTracker
     private function checkRateLimits($organization): void
     {
         // Check per-minute rate limit
-        $recentSubmissions = InvoiceSubmission::where('organization_id', $organization->id)
+        $recentSubmissions = InvoiceSubmission::where('org_id', $organization->id)
             ->where('created_at', '>=', now()->subMinute())
             ->count();
 
@@ -347,7 +347,7 @@ class SubmissionTracker
         }
 
         // Check daily limit
-        $dailySubmissions = InvoiceSubmission::where('organization_id', $organization->id)
+        $dailySubmissions = InvoiceSubmission::where('org_id', $organization->id)
             ->where('created_at', '>=', now()->startOfDay())
             ->count();
 
@@ -364,7 +364,7 @@ class SubmissionTracker
      */
     private function checkConcurrentSubmissions($organization): void
     {
-        $inProgress = InvoiceSubmission::where('organization_id', $organization->id)
+        $inProgress = InvoiceSubmission::where('org_id', $organization->id)
             ->whereIn('state', ['queued', 'pending_submission', 'submitted'])
             ->count();
 
@@ -397,7 +397,7 @@ class SubmissionTracker
         // Check for duplicate invoice numbers, UUIDs, or content hashes
         if ($this->duplicateDetector) {
             $duplicateCheck = $this->duplicateDetector->check(
-                organizationId: $invoice->organization_id,
+                organizationId: $invoice->org_id,
                 invoiceNumber: $invoice->invoice_number,
                 uuid: $invoice->id,
                 hash: $invoice->hash,
@@ -458,7 +458,7 @@ class SubmissionTracker
             $idempotency = SubmissionIdempotency::create([
                 'idempotency_key' => $idempotencyKey,
                 'invoice_id' => $invoice->id,
-                'organization_id' => $invoice->organization_id,
+                'org_id' => $invoice->org_id,
                 'request_hash' => $this->computeRequestHash($invoice),
                 'endpoint' => $invoice->isB2B() ? '/clearance' : '/reporting',
                 'method' => 'POST',
@@ -471,7 +471,7 @@ class SubmissionTracker
             // Create submission record
             $submission = InvoiceSubmission::create([
                 'invoice_id' => $invoice->id,
-                'organization_id' => $invoice->organization_id,
+                'org_id' => $invoice->org_id,
                 'idempotency_id' => $idempotency->id,
                 'state' => $async ? 'queued' : 'pending_submission',
                 'submission_type' => $invoice->isB2B() ? 'clearance' : 'reporting',
@@ -567,7 +567,7 @@ class SubmissionTracker
             'previous_state' => $submission->state,
             'state_changed_at' => now(),
             'zatca_uuid' => $response->validationResults['invoiceUuid'] ?? null,
-            'zatca_invoice_hash' => $response->validationResults['invoiceHash'] ?? null,
+            'invoice_hash' => $response->validationResults['invoiceHash'] ?? null,
             'clearance_status' => $response->clearanceStatus,
             'reporting_status' => $response->reportingStatus,
             'zatca_warnings' => ! empty($warnings) ? $warnings : null,
@@ -620,7 +620,7 @@ class SubmissionTracker
             'previous_state' => $submission->state,
             'state_changed_at' => now(),
             'last_error_code' => $errorCode->value,
-            'last_error_message' => $e->getMessage(),
+            'last_error' => $e->getMessage(),
             'retry_count' => $submission->retry_count + 1,
             'next_retry_at' => $isRetryable && $submission->retry_count < $errorCode->getMaxRetries()
                 ? now()->addSeconds($errorCode->getRetryDelay())
@@ -769,7 +769,7 @@ class SubmissionTracker
             'http_status_code' => $success ? 200 : 422,
             'response_body' => $response,
             'zatca_request_id' => $response['requestId'] ?? null,
-            'zatca_clearance_status' => $response['clearanceStatus'] ?? null,
+            'clearance_status' => $response['clearanceStatus'] ?? null,
             'completed_at' => now(),
         ]);
     }
@@ -781,7 +781,7 @@ class SubmissionTracker
     {
         return hash('sha256', implode(':', [
             $invoice->id,
-            $invoice->organization_id,
+            $invoice->org_id,
             $invoice->hash,
             now()->format('Y-m-d'),
         ]));

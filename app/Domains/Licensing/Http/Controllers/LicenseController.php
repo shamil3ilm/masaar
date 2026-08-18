@@ -66,9 +66,9 @@ class LicenseController extends Controller
             'contact_phone' => 'sometimes|nullable|string|max:20',
             'tier' => ['required', Rule::in(array_column(LicenseTier::cases(), 'value'))],
             'status' => ['sometimes', Rule::in(array_column(LicenseStatus::cases(), 'value'))],
-            'max_invoices_per_month' => 'sometimes|integer|min:-1',
-            'max_api_calls_per_day' => 'sometimes|integer|min:-1',
-            'max_api_calls_per_minute' => 'sometimes|integer|min:1',
+            'invoices_per_month' => 'sometimes|integer|min:-1',
+            'calls_per_day' => 'sometimes|integer|min:-1',
+            'calls_per_min' => 'sometimes|integer|min:1',
             'max_organizations' => 'sometimes|integer|min:-1',
             'features' => 'sometimes|array',
             'expires_at' => 'sometimes|nullable|date|after:now',
@@ -268,9 +268,9 @@ class LicenseController extends Controller
     public function updateLimits(Request $request, string $id): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'max_invoices_per_month' => 'sometimes|integer|min:-1',
-            'max_api_calls_per_day' => 'sometimes|integer|min:-1',
-            'max_api_calls_per_minute' => 'sometimes|integer|min:1',
+            'invoices_per_month' => 'sometimes|integer|min:-1',
+            'calls_per_day' => 'sometimes|integer|min:-1',
+            'calls_per_min' => 'sometimes|integer|min:1',
             'max_organizations' => 'sometimes|integer|min:-1',
         ]);
 

@@ -28,7 +28,7 @@ use Tests\TestCase;
  * JwtGuard is the only code that calls TenantResolver::setContext(),
  * so with it out of the pipeline the tenant context was never populated:
  * every JWT route saw a null organization, the admin gate denied every
- * request, and tenant-scoped queries filtered on organization_id = null.
+ * request, and tenant-scoped queries filtered on org_id = null.
  */
 class MiddlewareAliasTest extends TestCase
 {

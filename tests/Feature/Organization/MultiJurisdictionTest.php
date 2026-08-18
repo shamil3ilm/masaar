@@ -22,11 +22,11 @@ it('an org in a group with two profiles routes to the right engine per profile',
     ]);
 
     $saProfile = ComplianceProfile::create([
-        'organization_id' => $org->id, 'jurisdiction' => 'SA',
+        'org_id' => $org->id, 'jurisdiction' => 'SA',
         'engine' => 'fatoora', 'status' => 'active', 'settings' => [],
     ]);
     $aeProfile = ComplianceProfile::create([
-        'organization_id' => $org->id, 'jurisdiction' => 'AE',
+        'org_id' => $org->id, 'jurisdiction' => 'AE',
         'engine' => 'fta', 'status' => 'active', 'settings' => [],
     ]);
 
@@ -43,13 +43,13 @@ it('invoice can be linked to a compliance profile', function () {
     $org = Organization::create(['name' => 'Invoice Linker Corp', 'country' => 'SA', 'status' => 'active']);
 
     $profile = ComplianceProfile::create([
-        'organization_id' => $org->id, 'jurisdiction' => 'SA',
+        'org_id' => $org->id, 'jurisdiction' => 'SA',
         'engine' => 'fatoora', 'status' => 'active', 'settings' => [],
     ]);
 
     $invoice = Invoice::create([
-        'organization_id' => $org->id,
-        'compliance_profile_id' => $profile->id,
+        'org_id' => $org->id,
+        'profile_id' => $profile->id,
         'invoice_number' => 'INV-MJ-001',
         'type' => 'standard',
         'status' => 'draft',
@@ -66,12 +66,12 @@ it('mock submit routes correctly per jurisdiction', function () {
     $org = Organization::create(['name' => 'Mock Submit Corp', 'country' => 'AE', 'status' => 'active']);
 
     $aeProfile = ComplianceProfile::create([
-        'organization_id' => $org->id, 'jurisdiction' => 'AE',
+        'org_id' => $org->id, 'jurisdiction' => 'AE',
         'engine' => 'fta', 'status' => 'active', 'settings' => [],
     ]);
 
     $invoice = Invoice::create([
-        'organization_id' => $org->id,
+        'org_id' => $org->id,
         'invoice_number' => 'INV-AE-001',
         'type' => 'standard',
         'status' => 'draft',

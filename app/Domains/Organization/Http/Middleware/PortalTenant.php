@@ -25,9 +25,9 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class PortalTenant
 {
-    public const ORG_ID = 'portal_organization_id';
+    public const ORG_ID = 'portal_org_id';
 
-    private const SESSION_KEY = 'portal_organization_id';
+    private const SESSION_KEY = 'portal_org_id';
 
     public function handle(Request $request, Closure $next): Response
     {
@@ -48,7 +48,7 @@ class PortalTenant
             if (! $user->belongsToOrganization($requested)) {
                 Log::warning('Portal tenant access denied', [
                     'user_id' => $user->getAuthIdentifier(),
-                    'requested_organization_id' => $requested,
+                    'requested_org_id' => $requested,
                     'path' => $request->path(),
                     'ip' => $request->ip(),
                 ]);

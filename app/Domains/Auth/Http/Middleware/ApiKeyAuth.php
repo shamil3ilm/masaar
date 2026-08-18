@@ -52,11 +52,11 @@ class ApiKeyAuth
         // BelongsToTenant scope reads. Setting only a request attribute would
         // authenticate the caller without scoping their queries.
         $this->tenantResolver->setContext(
-            OrganizationContext::forMachine($key->organization_id)
+            OrganizationContext::forMachine($key->org_id)
         );
 
         $request->attributes->set('api_key', $key);
-        $request->attributes->set('organization_id', $key->organization_id);
+        $request->attributes->set('org_id', $key->org_id);
 
         return $next($request);
     }

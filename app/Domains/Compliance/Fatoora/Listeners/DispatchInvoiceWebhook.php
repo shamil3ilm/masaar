@@ -51,7 +51,7 @@ class DispatchInvoiceWebhook implements ShouldQueue
         $payload = $event->getWebhookPayload();
 
         Log::info('Dispatching invoice webhook', [
-            'organization_id' => $organizationId,
+            'org_id' => $organizationId,
             'event' => $webhookEventName,
             'invoice_id' => $event->getInvoiceId(),
             'state' => $event->getState(),
@@ -65,13 +65,13 @@ class DispatchInvoiceWebhook implements ShouldQueue
             );
 
             Log::info('Invoice webhook dispatched successfully', [
-                'organization_id' => $organizationId,
+                'org_id' => $organizationId,
                 'event' => $webhookEventName,
                 'invoice_id' => $event->getInvoiceId(),
             ]);
         } catch (\Throwable $e) {
             Log::error('Failed to dispatch invoice webhook', [
-                'organization_id' => $organizationId,
+                'org_id' => $organizationId,
                 'event' => $webhookEventName,
                 'invoice_id' => $event->getInvoiceId(),
                 'error' => $e->getMessage(),
@@ -87,7 +87,7 @@ class DispatchInvoiceWebhook implements ShouldQueue
     public function failed(BaseInvoiceEvent $event, \Throwable $exception): void
     {
         Log::error('Invoice webhook dispatch permanently failed', [
-            'organization_id' => $event->getOrganizationId(),
+            'org_id' => $event->getOrganizationId(),
             'event' => $event->getWebhookEventName(),
             'invoice_id' => $event->getInvoiceId(),
             'error' => $exception->getMessage(),

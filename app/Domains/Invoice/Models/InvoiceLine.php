@@ -20,15 +20,15 @@ class InvoiceLine extends Model
     protected $fillable = [
         'invoice_id',
         'description',
-        'item_classification_code',
+        'class_code',
         'quantity',
         'unit_code',
         'unit_price',
         'tax_rate',
         'tax_amount',
         'tax_category',
-        'tax_exemption_code',
-        'tax_exemption_reason',
+        'exempt_code',
+        'exempt_reason',
         'line_total',
     ];
 

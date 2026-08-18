@@ -204,7 +204,7 @@ class ClearanceState
         ];
 
         if (in_array($newState, self::TERMINAL_STATES, true)) {
-            $updates['clearance_confirmed_at'] = now();
+            $updates['cleared_at'] = now();
         }
 
         if ($zatcaResponse) {
@@ -240,10 +240,10 @@ class ClearanceState
             return ['scheduled' => false, 'reason' => 'submission_not_found'];
         }
 
-        $checkCount = ($submission->clearance_check_count ?? 0) + 1;
+        $checkCount = ($submission->check_count ?? 0) + 1;
 
         $updates = [
-            'clearance_check_count' => $checkCount,
+            'check_count' => $checkCount,
             'updated_at' => now(),
         ];
 
@@ -262,7 +262,7 @@ class ClearanceState
         // Check if we've exceeded max attempts
         if ($checkCount >= $this->getMaxCheckAttempts()) {
             $updates['clearance_state'] = self::STATE_TIMEOUT;
-            $updates['clearance_confirmed_at'] = now();
+            $updates['cleared_at'] = now();
 
             DB::table('invoice_submissions')
                 ->where('id', $submissionId)
@@ -318,7 +318,7 @@ class ClearanceState
                 self::STATE_PENDING_CLEARANCE,
                 self::STATE_CONDITIONALLY_ACCEPTED,
             ])
-            ->where('clearance_check_count', '<', $this->getMaxCheckAttempts())
+            ->where('check_count', '<', $this->getMaxCheckAttempts())
             ->orderBy('submitted_at', 'asc')
             ->limit($limit)
             ->get()
@@ -333,7 +333,7 @@ class ClearanceState
     {
         $counts = DB::table('invoice_submissions')
             ->join('invoices', 'invoice_submissions.invoice_id', '=', 'invoices.id')
-            ->where('invoices.organization_id', $organizationId)
+            ->where('invoices.org_id', $organizationId)
             ->selectRaw('clearance_state, count(*) as count')
             ->groupBy('clearance_state')
             ->pluck('count', 'clearance_state')
@@ -344,7 +344,7 @@ class ClearanceState
             + ($counts[self::STATE_UNKNOWN] ?? 0);
 
         return [
-            'organization_id' => $organizationId,
+            'org_id' => $organizationId,
             'states' => [
                 'cleared' => $counts[self::STATE_CLEARED] ?? 0,
                 'reported' => $counts[self::STATE_REPORTED] ?? 0,

@@ -30,7 +30,7 @@ class InvoiceController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Invoice::where('organization_id', $this->tenant->getOrganizationId());
+        $query = Invoice::where('org_id', $this->tenant->getOrganizationId());
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
@@ -51,7 +51,7 @@ class InvoiceController extends Controller
     {
         $invoice = DB::transaction(function () use ($request) {
             $invoice = Invoice::create([
-                'organization_id' => $this->tenant->getOrganizationId(),
+                'org_id' => $this->tenant->getOrganizationId(),
                 'invoice_number' => $request->invoice_number,
                 'type' => $request->type,
                 'document_type' => $request->document_type,
@@ -63,7 +63,7 @@ class InvoiceController extends Controller
                 'buyer_name' => $request->buyer_name,
                 'buyer_vat_number' => $request->buyer_vat_number,
                 'buyer_address' => $request->buyer_address,
-                'billing_reference_id' => $request->billing_reference_id,
+                'billing_ref' => $request->billing_ref,
                 'adjustment_reason' => $request->adjustment_reason,
                 'notes' => $request->notes,
             ]);
@@ -85,15 +85,15 @@ class InvoiceController extends Controller
 
                 $invoice->lines()->create([
                     'description' => $line['description'],
-                    'item_classification_code' => $line['item_classification_code'] ?? null,
+                    'class_code' => $line['class_code'] ?? null,
                     'quantity' => $quantity,
                     'unit_code' => $line['unit_code'] ?? 'PCE',
                     'unit_price' => $unitPrice,
                     'tax_rate' => $taxRate,
                     'tax_amount' => $lineTax,
                     'tax_category' => $line['tax_category'] ?? 'S',
-                    'tax_exemption_code' => $line['tax_exemption_code'] ?? null,
-                    'tax_exemption_reason' => $line['tax_exemption_reason'] ?? null,
+                    'exempt_code' => $line['exempt_code'] ?? null,
+                    'exempt_reason' => $line['exempt_reason'] ?? null,
                     'line_total' => $lineTotal,
                 ]);
 
@@ -128,7 +128,7 @@ class InvoiceController extends Controller
      */
     public function show(string $id): JsonResponse
     {
-        $invoice = Invoice::where('organization_id', $this->tenant->getOrganizationId())
+        $invoice = Invoice::where('org_id', $this->tenant->getOrganizationId())
             ->with('lines')
             ->findOrFail($id);
 
@@ -142,7 +142,7 @@ class InvoiceController extends Controller
      */
     public function update(CreateInvoiceRequest $request, string $id): JsonResponse
     {
-        $invoice = Invoice::where('organization_id', $this->tenant->getOrganizationId())
+        $invoice = Invoice::where('org_id', $this->tenant->getOrganizationId())
             ->findOrFail($id);
 
         if (! $invoice->isEditable()) {
@@ -175,7 +175,7 @@ class InvoiceController extends Controller
      */
     public function destroy(string $id): JsonResponse
     {
-        $invoice = Invoice::where('organization_id', $this->tenant->getOrganizationId())
+        $invoice = Invoice::where('org_id', $this->tenant->getOrganizationId())
             ->findOrFail($id);
 
         if (! $invoice->isEditable()) {
