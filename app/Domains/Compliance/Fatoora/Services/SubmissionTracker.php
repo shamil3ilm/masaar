@@ -44,13 +44,22 @@ class SubmissionTracker
         return (int) config('fatoora.rate_limits.max_concurrent', 10);
     }
 
+    /**
+     * Every dependency is required, none optional.
+     *
+     * The container skips optional constructor parameters, so an optional
+     * collaborator resolves to null and the guard around it — duplicate
+     * detection, VAT-period tracking, clearance-state parsing — never runs.
+     * The checks stay in the code and stop happening.
+     */
     public function __construct(
         private readonly FatooraClient $zatcaClient,
         private readonly CertificateService $certificateService,
         private readonly XadesSigner $signer,
-        private readonly ?TimestampValidator $timestampValidator = null,
-        private readonly ?DuplicateDetector $duplicateDetector = null,
-        private readonly ?VatPeriodTracker $vatPeriodTracker = null,
+        private readonly TimestampValidator $timestampValidator,
+        private readonly DuplicateDetector $duplicateDetector,
+        private readonly VatPeriodTracker $vatPeriodTracker,
+        private readonly ClearanceState $clearanceState,
     ) {}
 
     /**
@@ -183,10 +192,6 @@ class SubmissionTracker
      */
     private function validateVatPeriod(Invoice $invoice): void
     {
-        if (! $this->vatPeriodTracker) {
-            return; // Skip if tracker not injected
-        }
-
         // Only applies to credit/debit notes
         $documentType = $invoice->document_type;
         if (! $documentType?->requiresBillingReference()) {
@@ -221,10 +226,6 @@ class SubmissionTracker
      */
     private function validateInvoiceTimestamp(Invoice $invoice): void
     {
-        if (! $this->timestampValidator) {
-            return; // Skip if validator not injected
-        }
-
         $invoiceTimestamp = $invoice->issue_date instanceof \DateTimeInterface
             ? $invoice->issue_date
             : new \DateTimeImmutable($invoice->issue_date);
@@ -395,28 +396,27 @@ class SubmissionTracker
         }
 
         // Check for duplicate invoice numbers, UUIDs, or content hashes
-        if ($this->duplicateDetector) {
-            $duplicateCheck = $this->duplicateDetector->check(
-                organizationId: $invoice->org_id,
-                invoiceNumber: $invoice->invoice_number,
-                uuid: $invoice->id,
-                hash: $invoice->hash,
-                fuzzyMatchData: [
-                    'buyer_vat' => $invoice->buyer_vat_number,
-                    'buyer_name' => $invoice->buyer_name,
-                    'total' => (float) $invoice->total,
-                    'issue_date' => $invoice->issue_date?->format('Y-m-d'),
-                ]
-            );
+        $duplicateCheck = $this->duplicateDetector->check(
+            organizationId: $invoice->org_id,
+            invoiceNumber: $invoice->invoice_number,
+            uuid: $invoice->id,
+            hash: $invoice->hash,
+            fuzzyMatchData: [
+                'buyer_vat' => $invoice->buyer_vat_number,
+                'buyer_name' => $invoice->buyer_name,
+                'total' => (float) $invoice->total,
+                'issue_date' => $invoice->issue_date?->format('Y-m-d'),
+            ]
+        );
 
-            if ($duplicateCheck['is_duplicate']) {
-                $firstDuplicate = $duplicateCheck['duplicates'][0] ?? null;
-                throw new FatooraException(
-                    'Duplicate invoice detected: '.($firstDuplicate['message'] ?? 'Unknown duplicate'),
-                    ErrorCode::VAL_INVALID_FORMAT,
-                    ['duplicates' => $duplicateCheck['duplicates']]
-                );
-            }
+        if ($duplicateCheck['is_duplicate']) {
+            $firstDuplicate = $duplicateCheck['duplicates'][0] ?? null;
+
+            throw new FatooraException(
+                'Duplicate invoice detected: '.($firstDuplicate['message'] ?? 'Unknown duplicate'),
+                ErrorCode::VAL_INVALID_FORMAT,
+                ['duplicates' => $duplicateCheck['duplicates']]
+            );
         }
     }
 
@@ -549,12 +549,20 @@ class SubmissionTracker
         $success = $response->success;
         $hasWarnings = $response->hasWarnings();
 
-        // Determine final state
+        // A 200 from ZATCA does not mean the invoice is cleared. For a B2B
+        // document, "REPORTED" means received and not yet cleared, and only
+        // "CLEARED" is terminal — so the state comes from what ZATCA actually
+        // returned, never from the fact that the call succeeded.
+        $clearance = $this->clearanceState->parseResponse([
+            'clearanceStatus' => $response->clearanceStatus,
+            'reportingStatus' => $response->reportingStatus,
+            'validationResults' => $response->validationResults,
+        ], isSimplified: $submission->submission_type !== 'clearance');
+
         $newState = match (true) {
-            $success && $hasWarnings => 'warning',
-            $success && $submission->submission_type === 'clearance' => 'cleared',
-            $success => 'reported',
-            default => 'rejected',
+            ! $success => 'rejected',
+            $hasWarnings => 'warning',
+            default => $clearance['state'],
         };
 
         // Extract warnings and errors from validation results
@@ -569,10 +577,14 @@ class SubmissionTracker
             'zatca_uuid' => $response->validationResults['invoiceUuid'] ?? null,
             'invoice_hash' => $response->validationResults['invoiceHash'] ?? null,
             'clearance_status' => $response->clearanceStatus,
+            'clearance_state' => $clearance['state'],
+            // Only a terminal clearance counts as confirmed; a document still
+            // awaiting ZATCA's decision has no confirmation time.
+            'clearance_confirmed_at' => $clearance['is_terminal'] ? now() : null,
             'reporting_status' => $response->reportingStatus,
             'zatca_warnings' => ! empty($warnings) ? $warnings : null,
             'zatca_errors' => ! empty($errors) ? $errors : null,
-            'completed_at' => now(),
+            'completed_at' => $clearance['is_terminal'] ? now() : null,
         ]);
 
         // Convert response to array for idempotency storage

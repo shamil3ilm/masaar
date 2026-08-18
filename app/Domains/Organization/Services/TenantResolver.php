@@ -58,6 +58,37 @@ class TenantResolver
     }
 
     /**
+     * Run a callback acting as one organization.
+     *
+     * Commands and queue workers have no credential to derive a tenant from,
+     * so TenantScope leaves them unscoped. Work that concerns a single
+     * organization should say so and be held to it: inside this callback the
+     * scope applies exactly as it would during a request, so a query that
+     * forgets its filter returns that tenant's rows rather than everyone's.
+     *
+     *     $tenants->runAs($orgId, fn () => $this->process($orgId));
+     *
+     * The previous context is restored afterwards, so a loop over tenants
+     * cannot leak one iteration's context into the next.
+     *
+     * @template T
+     *
+     * @param  callable(): T  $callback
+     * @return T
+     */
+    public function runAs(string $organizationId, callable $callback): mixed
+    {
+        $previous = $this->context;
+        $this->context = OrganizationContext::forMachine($organizationId);
+
+        try {
+            return $callback();
+        } finally {
+            $this->context = $previous;
+        }
+    }
+
+    /**
      * Load and return the full Organization model.
      */
     public function getOrganization(): ?Organization
