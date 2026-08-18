@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Domains\Platform\Http\Controllers;
 
 use App\Domains\Auth\Models\User;
-use App\Domains\Compliance\Fatoora\Services\ClusterCircuitBreaker;
-use App\Domains\Compliance\Fatoora\Services\EnvironmentVarianceTracker;
-use App\Domains\Compliance\Fatoora\Services\FatooraConnectivityChecker;
-use App\Domains\Compliance\Fatoora\Services\OfflineQueueManager;
+use App\Domains\Compliance\Fatoora\Services\CircuitBreaker;
+use App\Domains\Compliance\Fatoora\Services\Connectivity;
+use App\Domains\Compliance\Fatoora\Services\OfflineQueue;
+use App\Domains\Compliance\Fatoora\Services\VarianceTracker;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -28,10 +28,10 @@ use Illuminate\Support\Facades\DB;
 class AdminDashboardController extends Controller
 {
     public function __construct(
-        private readonly ClusterCircuitBreaker $circuitBreaker,
-        private readonly EnvironmentVarianceTracker $varianceTracker,
-        private readonly OfflineQueueManager $offlineQueueManager,
-        private readonly FatooraConnectivityChecker $connectivityChecker,
+        private readonly CircuitBreaker $circuitBreaker,
+        private readonly VarianceTracker $varianceTracker,
+        private readonly OfflineQueue $offlineQueueManager,
+        private readonly Connectivity $connectivityChecker,
     ) {}
 
     /**
@@ -773,7 +773,7 @@ class AdminDashboardController extends Controller
 
         $result = $this->circuitBreaker->forceState(
             'zatca_api',
-            ClusterCircuitBreaker::STATE_CLOSED,
+            CircuitBreaker::STATE_CLOSED,
             'Manual reset via admin dashboard',
             $user?->email ?? 'system'
         );

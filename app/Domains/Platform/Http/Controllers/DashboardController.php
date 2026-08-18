@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Http\Controllers;
 
-use App\Domains\Compliance\Fatoora\Services\CertificateLineageService;
-use App\Domains\Compliance\Fatoora\Services\ClusterCircuitBreaker;
-use App\Domains\Compliance\Fatoora\Services\EnvironmentVarianceTracker;
+use App\Domains\Compliance\Fatoora\Services\CertificateLineage;
+use App\Domains\Compliance\Fatoora\Services\CircuitBreaker;
+use App\Domains\Compliance\Fatoora\Services\VarianceTracker;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
@@ -25,9 +25,9 @@ class DashboardController extends Controller
 {
     public function __construct(
         private readonly TenantResolver $tenant,
-        private readonly ClusterCircuitBreaker $circuitBreaker,
-        private readonly EnvironmentVarianceTracker $varianceTracker,
-        private readonly CertificateLineageService $certificateService,
+        private readonly CircuitBreaker $circuitBreaker,
+        private readonly VarianceTracker $varianceTracker,
+        private readonly CertificateLineage $certificateService,
     ) {}
 
     /**

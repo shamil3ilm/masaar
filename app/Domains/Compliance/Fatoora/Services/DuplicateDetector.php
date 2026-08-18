@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Log;
  * Per ZATCA: Each invoice must have a unique Invoice Number (BT-1)
  * within the seller's system. Duplicate submissions are rejected.
  */
-class DuplicateInvoiceDetector
+class DuplicateDetector
 {
     /**
      * Cache TTL for duplicate checks (minutes).

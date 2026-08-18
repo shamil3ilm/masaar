@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\Log;
  * - Emergency shutdowns
  * - Per-tenant blast radius containment
  */
-class KillSwitchManager
+class KillSwitch
 {
     /**
      * Kill switch types.

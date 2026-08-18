@@ -81,6 +81,11 @@ Name the outcome — `test_guest_denied`, `test_valid_login`,
 `test_duplicate_icv_rejected` — and put the *why* in the docblock above it,
 where it does not have to fit on one line.
 
+**Cap: six words**, enforced by `NamingConventionTest::test_names_stay_short`.
+Three quarters of the suite already sits at two to four. If a name needs a
+seventh word, it is describing the reasoning rather than the outcome, and the
+reasoning belongs in the docblock.
+
 ---
 
 ## Database

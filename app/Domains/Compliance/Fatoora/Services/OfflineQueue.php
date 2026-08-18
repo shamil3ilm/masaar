@@ -27,7 +27,7 @@ use Illuminate\Support\Str;
  * - Offline contingency mode
  * - Graceful degradation
  */
-class OfflineQueueManager
+class OfflineQueue
 {
     /**
      * Queue states.
@@ -51,7 +51,7 @@ class OfflineQueueManager
     private int $maxQueueSize;
 
     public function __construct(
-        private readonly KillSwitchManager $killSwitchManager,
+        private readonly KillSwitch $killSwitchManager,
     ) {
         $this->maxQueueSize = FatooraConfig::getOfflineQueueMaxSize();
     }

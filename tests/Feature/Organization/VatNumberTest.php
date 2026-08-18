@@ -34,7 +34,7 @@ class VatNumberTest extends TestCase
         $this->assertSame('300000000000003', $organization->fresh()->vat_number);
     }
 
-    public function test_vat_number_is_stored_in_its_column(): void
+    public function test_vat_number_stored(): void
     {
         $organization = Organization::create([
             'name' => 'Acme',

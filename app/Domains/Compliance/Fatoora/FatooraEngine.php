@@ -7,7 +7,7 @@ namespace App\Domains\Compliance\Fatoora;
 use App\Domains\Compliance\Contracts\ComplianceEngine;
 use App\Domains\Compliance\Contracts\SubmissionResult;
 use App\Domains\Compliance\Contracts\ValidationResult;
-use App\Domains\Compliance\Fatoora\Services\FatooraSubmissionService;
+use App\Domains\Compliance\Fatoora\Services\Submitter;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\ComplianceProfile;
 use Illuminate\Support\Facades\Log;
@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Log;
 class FatooraEngine implements ComplianceEngine
 {
     public function __construct(
-        private readonly FatooraSubmissionService $submissionService,
+        private readonly Submitter $submissionService,
     ) {}
 
     public function supports(string $jurisdiction): bool
