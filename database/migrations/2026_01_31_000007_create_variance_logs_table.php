@@ -19,8 +19,8 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (! Schema::hasTable('environment_variance_log')) {
-            Schema::create('environment_variance_log', function (Blueprint $table) {
+        if (! Schema::hasTable('variance_logs')) {
+            Schema::create('variance_logs', function (Blueprint $table) {
                 $table->uuid('id')->primary();
                 $table->uuid('organization_id')->index();
                 $table->uuid('invoice_id')->nullable()->index();
@@ -61,6 +61,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('environment_variance_log');
+        Schema::dropIfExists('variance_logs');
     }
 };

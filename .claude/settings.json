@@ -7,6 +7,9 @@
       "c:\\laragon\\www\\erp-backend\\tests\\Unit\\Core",
       "c:\\laragon\\www\\erp-backend\\database\\migrations",
       "c:\\laragon\\www\\erp-backend\\tests\\Feature\\Maintenance"
+    ],
+    "allow": [
+      "Bash([ -s \"$f\" ])"
     ]
   }
 }

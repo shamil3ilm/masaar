@@ -10,8 +10,8 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Creates the uae_fta_submissions table for UAE FTA Peppol PINT AE submissions
-        Schema::create('uae_fta_submissions', function (Blueprint $table) {
+        // Creates the fta_submissions table for UAE FTA Peppol PINT AE submissions
+        Schema::create('fta_submissions', function (Blueprint $table) {
             $table->uuid('id')->primary();
             // foreignUuid, not foreignId: invoices.id and organizations.id are
             // UUIDs, and a bigint column cannot carry a foreign key to them.
@@ -40,6 +40,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('uae_fta_submissions');
+        Schema::dropIfExists('fta_submissions');
     }
 };
