@@ -4,16 +4,20 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Http\Controllers;
 
+use App\Domains\Compliance\Fatoora\Models\ChainEntry;
+use App\Domains\Compliance\Fatoora\Models\ChainState;
+use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
+use App\Domains\Compliance\Fatoora\Models\OfflineItem;
 use App\Domains\Compliance\Fatoora\Services\CertificateLineage;
 use App\Domains\Compliance\Fatoora\Services\CircuitBreaker;
 use App\Domains\Compliance\Fatoora\Services\VarianceTracker;
+use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Dashboard API Controller.
@@ -148,8 +152,7 @@ class DashboardController extends Controller
         $limit = min((int) $request->query('limit', 20), 100);
 
         // Activity is not cached - always fresh
-        $activities = DB::table('invoice_submissions')
-            ->where('org_id', $organizationId)
+        $activities = InvoiceSubmission::query()
             ->orderByDesc('created_at')
             ->limit($limit)
             ->select([
@@ -185,8 +188,7 @@ class DashboardController extends Controller
         $lastMonth = now()->subMonth()->startOfMonth();
 
         // Single query for all counts and sum
-        $stats = DB::table('invoices')
-            ->where('org_id', $organizationId)
+        $stats = Invoice::query()
             ->selectRaw('
                 COUNT(*) as total,
                 SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as today,
@@ -197,8 +199,7 @@ class DashboardController extends Controller
             ->first();
 
         // Separate query for by_type (GROUP BY needed)
-        $byType = DB::table('invoices')
-            ->where('org_id', $organizationId)
+        $byType = Invoice::query()
             ->selectRaw('type, COUNT(*) as count')
             ->groupBy('type')
             ->pluck('count', 'type')
@@ -220,8 +221,7 @@ class DashboardController extends Controller
      */
     private function getSubmissionStats(string $organizationId): array
     {
-        $stats = DB::table('invoice_submissions')
-            ->where('org_id', $organizationId)
+        $stats = InvoiceSubmission::query()
             ->selectRaw("
                 COUNT(*) as total,
                 SUM(CASE WHEN state = 'cleared' THEN 1 ELSE 0 END) as cleared,
@@ -259,9 +259,7 @@ class DashboardController extends Controller
 
         return [
             'hash_chain_intact' => $this->isHashChainIntact($organizationId),
-            'latest_icv' => DB::table('hash_chain_state')
-                ->where('org_id', $organizationId)
-                ->value('last_icv') ?? 0,
+            'latest_icv' => ChainState::query()->value('last_icv') ?? 0,
             'variances' => $variances,
         ];
     }
@@ -299,9 +297,8 @@ class DashboardController extends Controller
     {
         $thirtyMinutesAgo = now()->subMinutes(30);
 
-        $stats = DB::table('offline_queue')
-            ->where('org_id', $organizationId)
-            ->where('state', 'pending')
+        $stats = OfflineItem::query()
+            ->where('state', OfflineItem::PENDING)
             ->selectRaw('
                 COUNT(*) as pending,
                 SUM(CASE WHEN queued_at < ? THEN 1 ELSE 0 END) as stuck
@@ -371,18 +368,13 @@ class DashboardController extends Controller
     private function isHashChainIntact(string $organizationId): bool
     {
         // Simple check - verify last entry matches state
-        $state = DB::table('hash_chain_state')
-            ->where('org_id', $organizationId)
-            ->first();
+        $state = ChainState::query()->first();
 
         if (! $state) {
             return true; // No chain yet
         }
 
-        $lastEntry = DB::table('hash_chain_history')
-            ->where('org_id', $organizationId)
-            ->orderByDesc('icv')
-            ->first();
+        $lastEntry = ChainEntry::query()->orderByDesc('icv')->first();
 
         if (! $lastEntry) {
             return false; // State exists but no history
@@ -398,8 +390,7 @@ class DashboardController extends Controller
     {
         $startDate = now()->subDays($days)->startOfDay();
 
-        $invoices = DB::table('invoices')
-            ->where('org_id', $organizationId)
+        $invoices = Invoice::query()
             ->where('created_at', '>=', $startDate)
             ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
             ->groupBy('date')
@@ -407,8 +398,7 @@ class DashboardController extends Controller
             ->pluck('count', 'date')
             ->toArray();
 
-        $submissions = DB::table('invoice_submissions')
-            ->where('org_id', $organizationId)
+        $submissions = InvoiceSubmission::query()
             ->where('created_at', '>=', $startDate)
             ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
             ->groupBy('date')
