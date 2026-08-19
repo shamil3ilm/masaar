@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Services;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Redis;
 
 /**
  * Cluster-Aware Circuit Breaker.
@@ -73,10 +73,6 @@ class CircuitBreaker
 
     private const LAST_FAILURE_KEY_PREFIX = 'circuit_breaker:last_failure:';
 
-    private const NODES_KEY_PREFIX = 'circuit_breaker:nodes:';
-
-    private const PUBSUB_CHANNEL = 'circuit_breaker:events';
-
     /**
      * Node identifier.
      */
@@ -138,8 +134,6 @@ class CircuitBreaker
             // Reset failure count on success
             $this->resetFailures($service);
         }
-
-        $this->registerNodeHealth($service, true);
     }
 
     /**
@@ -169,8 +163,6 @@ class CircuitBreaker
         if ($failures >= $this->getFailureThreshold()) {
             $this->transitionTo($service, self::STATE_OPEN);
         }
-
-        $this->registerNodeHealth($service, false);
     }
 
     /**
@@ -178,9 +170,7 @@ class CircuitBreaker
      */
     public function getState(string $service): string
     {
-        $state = Redis::get(self::STATE_KEY_PREFIX.$service);
-
-        return $state ?: self::STATE_CLOSED;
+        return (string) Cache::get(self::STATE_KEY_PREFIX.$service, self::STATE_CLOSED);
     }
 
     /**
@@ -194,18 +184,15 @@ class CircuitBreaker
             return;
         }
 
-        // Store new state
-        Redis::set(self::STATE_KEY_PREFIX.$service, $newState);
+        Cache::forever(self::STATE_KEY_PREFIX.$service, $newState);
 
         if ($newState === self::STATE_OPEN) {
-            Redis::set(
-                self::LAST_FAILURE_KEY_PREFIX.$service,
-                time()
-            );
+            // now() rather than time(): the cache TTLs beside this already
+            // use Laravel's clock, and two clocks in one mechanism means the
+            // recovery timeout can disagree with the counter expiry it is
+            // meant to outlast.
+            Cache::forever(self::LAST_FAILURE_KEY_PREFIX.$service, now()->getTimestamp());
         }
-
-        // Publish state change to all nodes
-        $this->publishStateChange($service, $oldState, $newState);
 
         Log::warning('Circuit breaker state transition', [
             'service' => $service,
@@ -216,40 +203,17 @@ class CircuitBreaker
     }
 
     /**
-     * Publish state change via Redis Pub/Sub.
-     */
-    private function publishStateChange(string $service, string $oldState, string $newState): void
-    {
-        $event = [
-            'type' => 'state_change',
-            'service' => $service,
-            'old_state' => $oldState,
-            'new_state' => $newState,
-            'node_id' => $this->nodeId,
-            'timestamp' => now()->toIso8601String(),
-        ];
-
-        try {
-            Redis::publish(self::PUBSUB_CHANNEL, json_encode($event));
-        } catch (\Exception $e) {
-            Log::error('Failed to publish circuit breaker event', [
-                'error' => $e->getMessage(),
-            ]);
-        }
-    }
-
-    /**
      * Check if timeout has passed since last failure.
      */
     private function hasTimeoutPassed(string $service): bool
     {
-        $lastFailure = Redis::get(self::LAST_FAILURE_KEY_PREFIX.$service);
+        $lastFailure = Cache::get(self::LAST_FAILURE_KEY_PREFIX.$service);
 
         if (! $lastFailure) {
             return true;
         }
 
-        return (time() - (int) $lastFailure) >= $this->getTimeoutSeconds();
+        return (now()->getTimestamp() - (int) $lastFailure) >= $this->getTimeoutSeconds();
     }
 
     /**
@@ -257,14 +221,7 @@ class CircuitBreaker
      */
     private function allowHalfOpenRequest(string $service): bool
     {
-        // Use Redis to coordinate half-open request limit across cluster
-        $key = 'circuit_breaker:half_open_count:'.$service;
-        $count = Redis::incr($key);
-
-        if ($count === 1) {
-            // First request sets expiry
-            Redis::expire($key, $this->getTimeoutSeconds());
-        }
+        $count = $this->bump('circuit_breaker:half_open_count:'.$service, $this->getTimeoutSeconds());
 
         return $count <= $this->getHalfOpenRequests();
     }
@@ -274,13 +231,7 @@ class CircuitBreaker
      */
     private function incrementFailures(string $service): int
     {
-        $key = self::FAILURES_KEY_PREFIX.$service;
-        $count = Redis::incr($key);
-
-        // Set expiry to reset after timeout
-        Redis::expire($key, $this->getTimeoutSeconds() * 2);
-
-        return (int) $count;
+        return $this->bump(self::FAILURES_KEY_PREFIX.$service, $this->getTimeoutSeconds() * 2);
     }
 
     /**
@@ -288,12 +239,22 @@ class CircuitBreaker
      */
     private function incrementSuccesses(string $service): int
     {
-        $key = self::SUCCESSES_KEY_PREFIX.$service;
-        $count = Redis::incr($key);
+        return $this->bump(self::SUCCESSES_KEY_PREFIX.$service, $this->getTimeoutSeconds() * 2);
+    }
 
-        Redis::expire($key, $this->getTimeoutSeconds() * 2);
+    /**
+     * Increment a counter that expires on its own.
+     *
+     * add() then increment(): add is a no-op when the key is present, so the
+     * TTL is set once by whichever caller gets there first and the counter is
+     * not extended by every later hit. Both are atomic on a shared store, which
+     * is what keeps two nodes from each counting the same outage separately.
+     */
+    private function bump(string $key, int $ttlSeconds): int
+    {
+        Cache::add($key, 0, $ttlSeconds);
 
-        return (int) $count;
+        return (int) Cache::increment($key);
     }
 
     /**
@@ -301,7 +262,7 @@ class CircuitBreaker
      */
     private function resetFailures(string $service): void
     {
-        Redis::del(self::FAILURES_KEY_PREFIX.$service);
+        Cache::forget(self::FAILURES_KEY_PREFIX.$service);
     }
 
     /**
@@ -309,71 +270,13 @@ class CircuitBreaker
      */
     private function resetCounters(string $service): void
     {
-        Redis::del([
+        foreach ([
             self::FAILURES_KEY_PREFIX.$service,
             self::SUCCESSES_KEY_PREFIX.$service,
             'circuit_breaker:half_open_count:'.$service,
-        ]);
-    }
-
-    /**
-     * Register node health for split-brain detection.
-     */
-    private function registerNodeHealth(string $service, bool $healthy): void
-    {
-        $key = self::NODES_KEY_PREFIX.$service;
-
-        Redis::hset($key, $this->nodeId, json_encode([
-            'healthy' => $healthy,
-            'last_seen' => time(),
-        ]));
-
-        // Expire stale node entries after 5 minutes
-        Redis::expire($key, 300);
-    }
-
-    /**
-     * Get cluster health status.
-     */
-    public function getClusterHealth(string $service): array
-    {
-        $key = self::NODES_KEY_PREFIX.$service;
-        $nodes = Redis::hgetall($key);
-
-        $healthyNodes = 0;
-        $unhealthyNodes = 0;
-        $staleNodes = 0;
-        $nodeDetails = [];
-
-        foreach ($nodes as $nodeId => $data) {
-            $nodeData = json_decode($data, true);
-            $isStale = (time() - ($nodeData['last_seen'] ?? 0)) > 60;
-
-            if ($isStale) {
-                $staleNodes++;
-            } elseif ($nodeData['healthy'] ?? false) {
-                $healthyNodes++;
-            } else {
-                $unhealthyNodes++;
-            }
-
-            $nodeDetails[$nodeId] = [
-                'healthy' => $nodeData['healthy'] ?? false,
-                'stale' => $isStale,
-                'last_seen' => $nodeData['last_seen'] ?? null,
-            ];
+        ] as $key) {
+            Cache::forget($key);
         }
-
-        return [
-            'service' => $service,
-            'state' => $this->getState($service),
-            'healthy_nodes' => $healthyNodes,
-            'unhealthy_nodes' => $unhealthyNodes,
-            'stale_nodes' => $staleNodes,
-            'total_nodes' => count($nodes),
-            'split_brain_risk' => $unhealthyNodes > 0 && $healthyNodes > 0,
-            'nodes' => $nodeDetails,
-        ];
     }
 
     /**
@@ -420,25 +323,12 @@ class CircuitBreaker
         return [
             'service' => $service,
             'state' => $this->getState($service),
-            'failures' => (int) Redis::get(self::FAILURES_KEY_PREFIX.$service),
-            'successes' => (int) Redis::get(self::SUCCESSES_KEY_PREFIX.$service),
+            'failures' => (int) Cache::get(self::FAILURES_KEY_PREFIX.$service, 0),
+            'successes' => (int) Cache::get(self::SUCCESSES_KEY_PREFIX.$service, 0),
             'failure_threshold' => $this->getFailureThreshold(),
             'success_threshold' => $this->getSuccessThreshold(),
             'timeout_seconds' => $this->getTimeoutSeconds(),
-            'last_failure' => Redis::get(self::LAST_FAILURE_KEY_PREFIX.$service),
-            'cluster_health' => $this->getClusterHealth($service),
+            'last_failure' => Cache::get(self::LAST_FAILURE_KEY_PREFIX.$service),
         ];
-    }
-
-    /**
-     * Subscribe to circuit breaker events (for monitoring).
-     * Note: This blocks and should run in a separate process.
-     */
-    public function subscribeToEvents(callable $callback): void
-    {
-        Redis::subscribe([self::PUBSUB_CHANNEL], function ($message) use ($callback) {
-            $event = json_decode($message, true);
-            $callback($event);
-        });
     }
 }
