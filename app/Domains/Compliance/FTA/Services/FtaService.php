@@ -165,21 +165,31 @@ class FtaService
      */
     public function buildInvoiceData(Invoice $invoice, Organization $organization): FtaInvoiceData
     {
+        // Every name below was wrong, and each one failed the same silent way:
+        // Eloquent answers null for an attribute a model does not have, and the
+        // ?? beside it turned that into an empty string. So the payload carried
+        // no supplier TRN, no addresses and no customer name, and the FTA — for
+        // which the supplier TRN is mandatory — could only reject it.
+        //
+        // There is no contact relation. A buyer is recorded on the invoice
+        // itself, and buyer_address is cast to an array.
+        $buyer = (array) ($invoice->buyer_address ?? []);
+
         return new FtaInvoiceData(
             invoiceNumber: $invoice->invoice_number,
             invoiceDate: $invoice->issue_date->format('Y-m-d'),
-            dueDate: ($invoice->due_date ?? $invoice->issue_date)->format('Y-m-d'),
+            dueDate: ($invoice->supply_date ?? $invoice->issue_date)->format('Y-m-d'),
             currencyCode: 'AED',
             supplierName: $organization->name,
-            supplierTrn: $organization->tax_registration_number ?? '',
-            supplierStreet: $organization->address ?? '',
+            supplierTrn: $organization->vat_number ?? '',
+            supplierStreet: $organization->street ?? '',
             supplierCity: $organization->city ?? '',
             supplierCountry: 'AE',
-            customerName: $invoice->contact->name ?? '',
-            customerTrn: $invoice->contact->tax_number ?? null,
-            customerStreet: $invoice->contact->address ?? '',
-            customerCity: $invoice->contact->city ?? '',
-            customerCountry: $invoice->contact->country_code ?? 'AE',
+            customerName: $invoice->buyer_name ?? '',
+            customerTrn: $invoice->buyer_vat_number,
+            customerStreet: $buyer['street'] ?? '',
+            customerCity: $buyer['city'] ?? '',
+            customerCountry: $buyer['country_code'] ?? 'AE',
             lineExtensionAmount: (float) $invoice->subtotal,
             taxExclusiveAmount: (float) $invoice->subtotal,
             taxInclusiveAmount: (float) $invoice->total,
@@ -195,7 +205,8 @@ class FtaService
     private function mapLines(Invoice $invoice): array
     {
         return $invoice->lines->map(fn ($line) => [
-            'description' => $line->description ?? $line->product_name ?? '',
+            // product_name is not a column; description is, and it is required.
+            'description' => $line->description ?? '',
             'quantity' => (float) ($line->quantity ?? 1),
             'unit_price' => (float) $line->unit_price,
             'net_amount' => (float) $line->line_total,

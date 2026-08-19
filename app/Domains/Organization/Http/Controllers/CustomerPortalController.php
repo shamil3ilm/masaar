@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace App\Domains\Organization\Http\Controllers;
 
 use App\Domains\Auth\Models\User;
-use App\Domains\Compliance\Fatoora\Models\Certificate;
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
+use App\Domains\Compliance\Fatoora\Services\CertificateService;
+use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Models\Organization;
@@ -32,6 +33,11 @@ use Illuminate\View\View;
  */
 class CustomerPortalController extends Controller
 {
+    public function __construct(
+        private readonly CredentialStore $credentials,
+        private readonly CertificateService $certificates,
+    ) {}
+
     /**
      * The organization the authenticated user is currently viewing.
      *
@@ -107,7 +113,7 @@ class CustomerPortalController extends Controller
             'pending' => (int) $byState->only(['pending', 'queued', 'submitted'])->sum(),
         ];
 
-        $certificate = Certificate::active()->first();
+        $certificate = $this->activeCertificate($orgId);
 
         $userActivity = InvoiceSubmission::query()
             ->leftJoin('users', 'invoice_submissions.created_by', '=', 'users.id')
@@ -198,14 +204,9 @@ class CustomerPortalController extends Controller
         }
 
         $organization = Organization::find($orgId);
-        $activeCert = Certificate::active()->first();
+        $activeCert = $this->activeCertificate($orgId);
 
-        $certHistory = Certificate::query()
-            ->latest()
-            ->limit(10)
-            ->get();
-
-        return view('portal.certificates', compact('organization', 'activeCert', 'certHistory'));
+        return view('portal.certificates', compact('organization', 'activeCert'));
     }
 
     /**
@@ -273,5 +274,26 @@ class CustomerPortalController extends Controller
             ->whereHas('activeOrganizations', fn ($q) => $q->whereKey($orgId))
             ->orderBy('name')
             ->get(['id', 'name', 'email']);
+    }
+
+    /**
+     * The certificate this organization signs with, or null before onboarding.
+     *
+     * Read from the credential store rather than a certificate_lineage row:
+     * nothing ever wrote that table, so the portal showed every tenant as
+     * having no certificate. The store holds the current certificate only, so
+     * there is no history to show.
+     */
+    private function activeCertificate(?string $organizationId): ?object
+    {
+        if ($organizationId === null) {
+            return null;
+        }
+
+        $details = $this->certificates->details(
+            $this->credentials->certificate($organizationId)
+        );
+
+        return $details === null ? null : (object) $details;
     }
 }
