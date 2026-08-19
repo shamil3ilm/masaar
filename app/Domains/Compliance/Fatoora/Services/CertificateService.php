@@ -56,12 +56,16 @@ class CertificateService
                 throw new CertificateException('Failed to generate private key: '.openssl_error_string());
             }
 
-            // Build distinguished name with ZATCA requirements
+            // The subject, in full. openssl_csr_new() uses this array and
+            // ignores the config's [dn] section entirely, so the
+            // organizationIdentifier declared there never reached the request
+            // — and ZATCA requires the VAT registration in the subject.
             $dn = [
                 'C' => 'SA',
                 'O' => $data->organizationName,
                 'OU' => $data->organizationUnit,
                 'CN' => $data->commonName,
+                'organizationIdentifier' => $data->getOrganizationIdentifier(),
             ];
 
             // CSR configuration with custom config file
@@ -78,13 +82,25 @@ class CertificateService
                 throw new CertificateException('Failed to generate CSR: '.openssl_error_string());
             }
 
-            // Export CSR
+            // Both exports take the same config the key was generated under,
+            // and both are checked. openssl_pkey_export() leaves its output
+            // untouched when it fails, so an unchecked call returns an empty
+            // string as the private key: onboarding would store nothing,
+            // receive a real CSID against it, and only fail later at the first
+            // signature.
             $csrPem = '';
-            openssl_csr_export($csr, $csrPem);
 
-            // Export private key
+            if (! openssl_csr_export($csr, $csrPem)) {
+                throw new CertificateException('Failed to export CSR: '.openssl_error_string());
+            }
+
             $privateKeyPem = '';
-            openssl_pkey_export($privateKey, $privateKeyPem);
+
+            if (! openssl_pkey_export($privateKey, $privateKeyPem, null, ['config' => $configFile])) {
+                throw new CertificateException(
+                    'Failed to export private key: '.openssl_error_string()
+                );
+            }
 
             return [
                 'csr' => $csrPem,
@@ -107,7 +123,7 @@ class CertificateService
         $orgIdentifier = $this->formatOrganizationIdentifier($data->vatNumber);
 
         // Build SAN with ZATCA-required fields
-        $sanEntries = $this->buildSubjectAltName($data);
+        $directoryName = $this->buildDirectoryName($data);
 
         $config = <<<EOL
 # ZATCA Compliant OpenSSL Configuration
@@ -142,7 +158,10 @@ subjectAltName = @alt_names
 1.3.6.1.4.1.311.20.2 = ASN1:PRINTABLESTRING:ZATCA-Code-Signing
 
 [alt_names]
-{$sanEntries}
+dirName = zatca_dir_name
+
+[zatca_dir_name]
+{$directoryName}
 EOL;
 
         $tempFile = tempnam(sys_get_temp_dir(), 'zatca_csr_');
@@ -164,32 +183,40 @@ EOL;
     }
 
     /**
-     * Build Subject Alternative Name entries for ZATCA.
+     * The directory name ZATCA reads the device's identity out of.
+     *
+     * These are attributes of one X.501 directory name, so they belong in a
+     * section that subjectAltName's `dirName` points at. They were written as
+     * `dirName.1 = SN=...`, `dirName.2 = UID=...` and so on, which OpenSSL
+     * reads as five directory names each naming a section — and none of those
+     * sections exist. alt_names then failed to load, taking the whole
+     * request-extensions section with it, so no CSR was produced at all.
      */
-    private function buildSubjectAltName(CsrData $data): string
+    private function buildDirectoryName(CsrData $data): string
     {
-        $entries = [];
+        $attributes = [
+            'SN' => $data->serialNumber,
+            'UID' => $data->vatNumber,
+            // Four digits, one per document type ZATCA recognises. Positions
+            // three and four are the standard and simplified invoices this
+            // device is being registered for.
+            'title' => '1'
+                .($data->invoiceTypesStandard ? '1' : '0')
+                .($data->invoiceTypesSimplified ? '1' : '0')
+                .'0',
+            'registeredAddress' => $data->location,
+            'businessCategory' => $data->industry,
+        ];
 
-        // Serial number (EGS serial)
-        $entries[] = "dirName.1 = SN={$data->serialNumber}";
+        $lines = [];
 
-        // UID - Unique identifier (VAT number)
-        $entries[] = "dirName.2 = UID={$data->vatNumber}";
-
-        // Title - Invoice type (1100 for all types)
-        $entries[] = 'dirName.3 = title=1100';
-
-        // Registered address
-        if (! empty($data->location)) {
-            $entries[] = "dirName.4 = registeredAddress={$data->location}";
+        foreach ($attributes as $key => $value) {
+            if ($value !== '') {
+                $lines[] = "{$key} = {$value}";
+            }
         }
 
-        // Business category
-        if (! empty($data->industry)) {
-            $entries[] = "dirName.5 = businessCategory={$data->industry}";
-        }
-
-        return implode("\n", $entries);
+        return implode("\n", $lines);
     }
 
     /**
