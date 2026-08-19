@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Domains\Auth\Http\Controllers\ApiKeyController;
 use App\Domains\Auth\Http\Controllers\AuthController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\BranchOnboardingController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\ComplianceController;
@@ -117,9 +116,6 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
     Route::post('/webhooks/{id}/test', [WebhookController::class, 'test']);
     Route::post('/webhooks/{id}/rotate-secret', [WebhookController::class, 'rotateSecret']);
     Route::get('/webhooks/{id}/logs', [WebhookController::class, 'logs']);
-
-    Route::get('/api-keys/scopes', [ApiKeyController::class, 'scopes']);
-    Route::apiResource('api-keys', ApiKeyController::class);
 
     /* Dashboard ------------------------------------------------------------ */
 

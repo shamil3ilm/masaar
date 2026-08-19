@@ -39,7 +39,6 @@ class RawTenantQueryTest extends TestCase
         'certificate_lineage',
         'variance_logs',
         'fta_submissions',
-        'api_keys',
         'webhooks',
         'branches',
         'compliance_profiles',

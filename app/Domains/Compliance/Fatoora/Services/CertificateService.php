@@ -8,6 +8,9 @@ use App\Domains\Compliance\Fatoora\DTOs\CsrData;
 use App\Domains\Compliance\Fatoora\Exceptions\CertificateException;
 use App\Domains\Compliance\Fatoora\Helpers\FatooraTime;
 use App\Support\SafeUrl;
+use Illuminate\Support\Facades\Log;
+use phpseclib3\File\X509;
+use phpseclib3\Math\BigInteger;
 
 /**
  * Certificate management service.
@@ -482,7 +485,7 @@ EOL;
                 }
             } catch (\Exception $e) {
                 // OCSP failed, fall back to CRL
-                \Log::warning('OCSP check failed, falling back to CRL', [
+                Log::warning('OCSP check failed, falling back to CRL', [
                     'error' => $e->getMessage(),
                     'ocsp_url' => $ocspUrl,
                 ]);
@@ -502,7 +505,7 @@ EOL;
                     return $crlResult;
                 }
             } catch (\Exception $e) {
-                \Log::warning('CRL check failed', [
+                Log::warning('CRL check failed', [
                     'error' => $e->getMessage(),
                     'crl_url' => $crlUrl,
                 ]);
@@ -635,61 +638,29 @@ EOL;
         if ($serialHex === null) {
             // Inconclusive, not "not revoked" — the caller must not read a
             // missing serial as a clean bill of health.
-            \Log::warning('CRL check skipped: certificate has no readable hex serial');
+            Log::warning('CRL check skipped: certificate has no readable hex serial');
 
             return null;
         }
 
-        // Create temporary files for OpenSSL CRL verification
-        $crlFile = tempnam(sys_get_temp_dir(), 'crl_');
+        $revoked = $this->revokedSerialsFrom($crlData);
+        $ours = $this->normalizeSerial($serialHex, 16);
 
-        try {
-            file_put_contents($crlFile, $crlData);
-
-            // Parse CRL using OpenSSL
-            $crlCmd = sprintf(
-                'openssl crl -in %s -inform DER -text 2>&1',
-                escapeshellarg($crlFile)
-            );
-
-            $output = shell_exec($crlCmd);
-
-            if ($output === null) {
-                // Try PEM format if DER failed
-                $crlCmd = sprintf(
-                    'openssl crl -in %s -inform PEM -text 2>&1',
-                    escapeshellarg($crlFile)
-                );
-                $output = shell_exec($crlCmd);
-            }
-
-            if ($output === null) {
-                return null;
-            }
-
-            $revoked = $this->revokedSerialsFrom($output);
-            $ours = $this->normalizeSerial($serialHex);
-
-            if (array_key_exists($ours, $revoked)) {
-                return [
-                    'revoked' => true,
-                    'method' => 'crl',
-                    'reason' => 'Certificate found in CRL',
-                    'revokedAt' => $revoked[$ours],
-                ];
-            }
-
+        if (array_key_exists($ours, $revoked)) {
             return [
-                'revoked' => false,
+                'revoked' => true,
                 'method' => 'crl',
-                'reason' => null,
-                'revokedAt' => null,
+                'reason' => 'Certificate found in CRL',
+                'revokedAt' => $revoked[$ours],
             ];
-        } finally {
-            if (file_exists($crlFile)) {
-                unlink($crlFile);
-            }
         }
+
+        return [
+            'revoked' => false,
+            'method' => 'crl',
+            'reason' => null,
+            'revokedAt' => null,
+        ];
     }
 
     /**
@@ -708,56 +679,84 @@ EOL;
             return true;
         }
 
-        \Log::warning("{$kind} endpoint refused", ['url' => $url, 'reason' => $reason]);
+        Log::warning("{$kind} endpoint refused", ['url' => $url, 'reason' => $reason]);
 
         return false;
     }
 
     /**
-     * Build a serial => revocation date map from `openssl crl -text` output.
+     * Build a serial => revocation date map from a CRL.
      *
-     * Parsed into an exact-match set rather than scanned with a regex per
-     * serial. A substring search over this output matches prefixes, so
-     * "Serial Number: 4F8A" would report a hit against an unrelated entry
-     * "4F8A2B1C..." — reporting a valid certificate as revoked.
+     * Parsed with phpseclib rather than by running `openssl crl -text` and
+     * reading its report. Whether a certificate may still sign is not a
+     * decision to take from the formatting of a command's output: that output
+     * is meant for people, and an OpenSSL upgrade or a translated locale
+     * changes it without changing anything about the certificate.
+     *
+     * DER and PEM are both accepted; loadCRL detects which it was given, so
+     * the encoding a distribution point happens to serve does not matter.
      *
      * @return array<string, string|null> Normalized serial => revocation date
      */
-    private function revokedSerialsFrom(string $opensslOutput): array
+    private function revokedSerialsFrom(string $crlData): array
     {
-        // Horizontal whitespace only between the serial and the line break:
-        // \s* would swallow the newline the Revocation Date group needs.
-        $matched = preg_match_all(
-            '/Serial Number:[ \t]*([0-9A-Fa-f]+)[ \t]*(?:\R[ \t]*Revocation Date:[ \t]*(.+))?/',
-            $opensslOutput,
-            $entries,
-            PREG_SET_ORDER
-        );
+        $crl = new X509;
 
-        if ($matched === false || $matched === 0) {
+        // loadCRL returns false for some malformed input and throws for the
+        // rest — a distribution point answering with an HTML error page raises
+        // SodiumException from the base64 decode. Either way this is
+        // "could not read the list", not "nothing is revoked", and it must not
+        // travel up as an exception from the middle of a submission.
+        try {
+            $parsed = $crl->loadCRL($crlData) !== false;
+        } catch (\Throwable $e) {
+            Log::warning('CRL could not be parsed', ['error' => $e->getMessage()]);
+
+            return [];
+        }
+
+        if (! $parsed) {
+            Log::warning('CRL could not be parsed');
+
             return [];
         }
 
         $revoked = [];
 
-        foreach ($entries as $entry) {
-            $revoked[$this->normalizeSerial($entry[1])] = isset($entry[2]) ? trim($entry[2]) : null;
+        foreach ($crl->listRevoked() ?: [] as $decimalSerial) {
+            $entry = $crl->getRevoked($decimalSerial);
+
+            $revoked[$this->normalizeSerial($decimalSerial, 10)] =
+                $entry['revocationDate']['utcTime']
+                ?? $entry['revocationDate']['generalTime']
+                ?? null;
         }
 
         return $revoked;
     }
 
     /**
-     * Reduce a serial to one comparable form.
+     * Reduce a serial to one comparable form: uppercase hex, no 0x, no
+     * leading zeros.
      *
-     * openssl_x509_parse() and `openssl crl -text` differ on the 0x prefix,
-     * on case, and on leading zero padding, so both sides are normalised
-     * before comparison.
+     * The base is a parameter rather than something to detect, because the
+     * two sides disagree and the forms overlap: openssl_x509_parse() gives the
+     * certificate's serial in hex, phpseclib gives the CRL's in decimal, and
+     * "1000" is a valid spelling in either. Guessing reads that hex serial as
+     * decimal, normalises it to 3E8, and reports a revoked certificate as
+     * good — the exact failure this check exists to prevent.
+     *
+     * @param  int  $base  16 for a certificate serial, 10 for a CRL entry
      */
-    private function normalizeSerial(string $serial): string
+    private function normalizeSerial(string $serial, int $base): string
     {
         $serial = preg_replace('/^0x/i', '', trim($serial));
-        $serial = ltrim(strtoupper($serial), '0');
+
+        if ($base === 10) {
+            $serial = (new BigInteger($serial, 10))->toHex();
+        }
+
+        $serial = ltrim(strtoupper((string) $serial), '0');
 
         return $serial === '' ? '0' : $serial;
     }
@@ -944,7 +943,7 @@ EOL;
                 }
             } catch (\Throwable $e) {
                 $warnings[] = 'CERT_REVOCATION_CHECK_FAILED: Could not verify revocation status';
-                \Log::warning('Certificate revocation check failed', ['error' => $e->getMessage()]);
+                Log::warning('Certificate revocation check failed', ['error' => $e->getMessage()]);
             }
         }
 
