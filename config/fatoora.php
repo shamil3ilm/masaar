@@ -737,23 +737,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Clearance State Management
-    |--------------------------------------------------------------------------
-    |
-    | Polling configuration for B2B clearance status checks.
-    |
-    */
-    'clearance_state' => [
-        'max_check_attempts' => env('ZATCA_CS_MAX_CHECKS', 10),
-        'initial_check_delay_seconds' => env('ZATCA_CS_INITIAL_DELAY', 30),
-        'max_check_delay_seconds' => env('ZATCA_CS_MAX_DELAY', 3600),
-        'backoff_multiplier' => env('ZATCA_CS_BACKOFF_MULTIPLIER', 2),
-        'check_job_tries' => env('ZATCA_CS_JOB_TRIES', 3),
-        'check_job_backoff' => env('ZATCA_CS_JOB_BACKOFF', 60),
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
     | Hash Chain Management
     |--------------------------------------------------------------------------
     |
