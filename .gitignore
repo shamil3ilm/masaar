@@ -1,8 +1,11 @@
 *.log
 .DS_Store
+# Every .env variant except the committed template. Listing suffixes one at a
+# time missed .env.bak, which an editor produced and git would have offered to
+# commit along with a live APP_KEY and database password.
 .env
-.env.backup
-.env.production
+.env.*
+!.env.example
 .phpactor.json
 .phpunit.result.cache
 /.fleet

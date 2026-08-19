@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Security;
 
-use App\Domains\Auth\Models\ApiKey;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Organization\ValueObjects\OrganizationContext;
@@ -75,16 +75,18 @@ class TenantIsolationTest extends TestCase
         $this->asTenant($this->acme->id, fn () => $this->assertSame(1, Invoice::count()));
     }
 
-    public function test_credentials_and_webhooks_are_scoped_too(): void
+    public function test_branches_and_webhooks_scoped(): void
     {
         $this->asSystem(function () {
-            ApiKey::create([
+            Branch::create([
                 'org_id' => $this->rival->id,
-                'name' => 'Rival key',
-                'key_prefix' => 'cpay_riv',
-                'key_hash' => hash('sha256', 'rival-secret'),
-                'scopes' => ['*'],
-                'is_active' => true,
+                'name' => 'Rival Jeddah',
+                'device_serial' => '1-Masaar|2-1.0|3-rival',
+                'street' => 'Rival Street',
+                'building_number' => '9999',
+                'district' => 'Rival District',
+                'city' => 'Jeddah',
+                'postal_code' => '54321',
             ]);
             Webhook::create([
                 'org_id' => $this->rival->id,
@@ -96,7 +98,7 @@ class TenantIsolationTest extends TestCase
         });
 
         $this->asTenant($this->acme->id, function () {
-            $this->assertSame(0, ApiKey::count(), 'API keys leaked across tenants');
+            $this->assertSame(0, Branch::count(), 'Branches leaked across tenants');
             $this->assertSame(0, Webhook::count(), 'Webhooks leaked across tenants');
         });
     }

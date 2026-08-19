@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Architecture;
 
-use App\Domains\Auth\Models\ApiKey;
 use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Compliance\Fatoora\Models\SubmissionIdempotency;
@@ -37,7 +36,6 @@ class RelationKeyTest extends TestCase
     public static function tenantModels(): array
     {
         return [
-            [ApiKey::class, 'org'],
             [Branch::class, 'org'],
             [ComplianceProfile::class, 'org'],
             [FtaSubmission::class, 'org'],

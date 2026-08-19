@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Security;
 
-use App\Domains\Auth\Http\Middleware\ApiKeyAuth;
 use App\Domains\Auth\Http\Middleware\IsPlatformAdmin;
 use App\Domains\Auth\Http\Middleware\JwtGuard;
 use App\Domains\Licensing\Http\Middleware\PlatformLicense;
@@ -38,7 +37,6 @@ class MiddlewareAliasTest extends TestCase
     private const OWNED = [
         'jwt.auth' => JwtGuard::class,
         'platform.admin' => IsPlatformAdmin::class,
-        'api.key' => ApiKeyAuth::class,
         'portal.tenant' => PortalTenant::class,
         'metrics' => MetricsAccess::class,
         'rate.api' => RateLimitApi::class,

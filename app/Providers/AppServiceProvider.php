@@ -3,7 +3,6 @@
 namespace App\Providers;
 
 use App\Domains\Auth\Contracts\Authenticator;
-use App\Domains\Auth\Http\Middleware\ApiKeyAuth;
 use App\Domains\Auth\Http\Middleware\IsPlatformAdmin;
 use App\Domains\Auth\Http\Middleware\JwtGuard;
 use App\Domains\Auth\Services\JwtAuthenticator;
@@ -36,7 +35,6 @@ class AppServiceProvider extends ServiceProvider
     public const MIDDLEWARE_ALIASES = [
         'jwt.auth' => JwtGuard::class,
         'platform.admin' => IsPlatformAdmin::class,
-        'api.key' => ApiKeyAuth::class,
         'portal.tenant' => PortalTenant::class,
         'metrics' => MetricsAccess::class,
         'rate.api' => RateLimitApi::class,
