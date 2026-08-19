@@ -30,7 +30,6 @@ Route::middleware(['jwt.auth', 'platform.admin', 'rate.api'])
         Route::get('/logs', [AdminDashboardController::class, 'logs']);
         Route::get('/top-organizations', [AdminDashboardController::class, 'topOrganizations']);
         Route::get('/error-rates', [AdminDashboardController::class, 'errorRates']);
-        Route::get('/variances', [AdminDashboardController::class, 'environmentVariances']);
         Route::get('/hash-chain-health', [AdminDashboardController::class, 'hashChainHealth']);
         Route::post('/run-health-check', [AdminDashboardController::class, 'runHealthCheck']);
 

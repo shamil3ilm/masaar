@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Domains\Compliance\Fatoora\Http\Controllers\ComplianceController;
-use App\Domains\Compliance\Fatoora\Http\Controllers\VarianceController;
 use App\Domains\Invoice\Http\Controllers\InvoiceController;
 use App\Domains\Pipeline\Http\Controllers\PipelineController;
 use App\Domains\Platform\Http\Controllers\DashboardController;
@@ -26,7 +25,7 @@ use Illuminate\Support\Facades\Route;
 |   scope:invoice.read       read invoices
 |   scope:invoice.submit     create, update, generate and submit
 |   scope:invoice.cancel     delete
-|   scope:compliance.status  read submission status and variances
+|   scope:compliance.status  read submission status
 |   scope:webhook.manage     manage webhook subscriptions
 |   license.quota            consumes the licence's invoice allowance
 |
@@ -80,16 +79,6 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
         Route::post('/webhooks', [WebhookController::class, 'store']);
         Route::put('/webhooks/{webhook}', [WebhookController::class, 'update']);
         Route::delete('/webhooks/{webhook}', [WebhookController::class, 'destroy']);
-    });
-
-    /* Variance tracking ------------------------------------------------------ */
-
-    Route::middleware(['scope:compliance.status'])->group(function () {
-        Route::get('/variances', [VarianceController::class, 'index']);
-        Route::get('/variances/statistics', [VarianceController::class, 'statistics']);
-        Route::get('/variances/{id}', [VarianceController::class, 'show']);
-        Route::post('/variances/{id}/report', [VarianceController::class, 'markReported']);
-        Route::post('/variances/{id}/resolve', [VarianceController::class, 'resolve']);
     });
 
     /* Dashboard — any valid licence ------------------------------------------ */

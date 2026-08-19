@@ -38,7 +38,6 @@ class PartitionMaintenance extends Command
     private const PARTITIONED_TABLES = [
         'audit_logs' => 'created_at',
         'hash_chain_history' => 'created_at',
-        'variance_logs' => 'created_at',
     ];
 
     /**
