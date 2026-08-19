@@ -5,13 +5,16 @@ declare(strict_types=1);
 namespace App\Domains\Platform\Http\Controllers;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Compliance\Fatoora\Services\CertificateService;
 use App\Domains\Compliance\Fatoora\Services\CircuitBreaker;
 use App\Domains\Compliance\Fatoora\Services\Connectivity;
+use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use App\Domains\Compliance\Fatoora\Services\OfflineQueue;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -28,6 +31,8 @@ class AdminDashboardController extends Controller
 {
     public function __construct(
         private readonly CircuitBreaker $circuitBreaker,
+        private readonly CredentialStore $credentials,
+        private readonly CertificateService $certificates,
         private readonly OfflineQueue $offlineQueueManager,
         private readonly Connectivity $connectivityChecker,
     ) {}
@@ -231,9 +236,9 @@ class AdminDashboardController extends Controller
             'active' => DB::table('organizations')
                 ->where('status', 'active')
                 ->count(),
-            'with_certificate' => DB::table('certificate_lineage')
-                ->distinct('org_id')
-                ->count('org_id'),
+            // Counted from the credential store, which is where certificates
+            // are. certificate_lineage was never written, so this was always 0.
+            'with_certificate' => $this->organizationsWithCertificate()->count(),
         ];
     }
 
@@ -621,9 +626,8 @@ class AdminDashboardController extends Controller
             }
 
             // Check expiring certificates
-            $expiringCerts = DB::table('certificate_lineage')
-                ->where('status', 'active')
-                ->whereRaw('expires_at <= ?', [now()->addDays(7)])
+            $expiringCerts = $this->organizationsWithCertificate()
+                ->filter(fn (array $details) => in_array($details['status'], ['critical', 'expired'], true))
                 ->count();
             if ($expiringCerts > 0) {
                 $issues[] = [
@@ -728,5 +732,26 @@ class AdminDashboardController extends Controller
             'circuit_breaker' => $result,
             'reset_at' => now()->toIso8601String(),
         ], 'Circuit breaker reset successfully');
+    }
+
+    /**
+     * Certificate details for every organization that has one, keyed by id.
+     *
+     * One decryption per organization. That is acceptable on a platform
+     * dashboard and wrong on a request path; the credential store is the only
+     * place certificates exist, so there is no index to count instead.
+     *
+     * @return Collection<string, array{serial_number: ?string, valid_from: string, valid_to: string, status: string}>
+     */
+    private function organizationsWithCertificate(): Collection
+    {
+        return DB::table('organizations')
+            ->pluck('id')
+            ->mapWithKeys(fn ($id) => [
+                (string) $id => $this->certificates->details(
+                    $this->credentials->certificate((string) $id)
+                ),
+            ])
+            ->filter();
     }
 }

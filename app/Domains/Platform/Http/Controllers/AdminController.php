@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Http\Controllers;
 
+use App\Domains\Compliance\Fatoora\Services\CertificateService;
+use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,6 +23,11 @@ use Illuminate\View\View;
  */
 class AdminController extends Controller
 {
+    public function __construct(
+        private readonly CredentialStore $credentials,
+        private readonly CertificateService $certificates,
+    ) {}
+
     /**
      * Main dashboard view.
      */
@@ -34,21 +41,30 @@ class AdminController extends Controller
      */
     public function organizations(Request $request): View
     {
+        // Expiry comes from the certificate the platform holds. This used to
+        // join certificate_lineage, a table nothing ever wrote, so the column
+        // was null for every organization and the screen showed no expiry at
+        // all. One decryption per row on a paginated admin screen.
         $organizations = DB::table('organizations')
-            ->leftJoin('certificate_lineage', function ($join) {
-                $join->on('organizations.id', '=', 'certificate_lineage.org_id')
-                    ->where('certificate_lineage.status', '=', 'active');
-            })
             ->select([
                 'organizations.id',
                 'organizations.name',
                 'organizations.vat_number',
                 'organizations.status',
                 'organizations.created_at',
-                'certificate_lineage.valid_to as cert_expires_at',
             ])
             ->orderByDesc('organizations.created_at')
             ->paginate(20);
+
+        $organizations->getCollection()->transform(function ($org) {
+            $details = $this->certificates->details(
+                $this->credentials->certificate((string) $org->id)
+            );
+
+            $org->cert_expires_at = $details['valid_to'] ?? null;
+
+            return $org;
+        });
 
         // Get submission stats per org
         $orgIds = $organizations->pluck('id');
@@ -98,10 +114,11 @@ class AdminController extends Controller
             ->limit(20)
             ->get();
 
-        $certificate = DB::table('certificate_lineage')
-            ->where('org_id', $id)
-            ->where('status', 'active')
-            ->first();
+        $details = $this->certificates->details(
+            $this->credentials->certificate((string) $id)
+        );
+
+        $certificate = $details === null ? null : (object) $details;
 
         return view('admin.organization-detail', compact('organization', 'stats', 'recentSubmissions', 'certificate'));
     }

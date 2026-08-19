@@ -45,6 +45,34 @@ class CredentialStoreTest extends TestCase
         return ['privateKey' => "-----BEGIN EC PRIVATE KEY-----{$marker}", 'pcsid' => 'CERT'];
     }
 
+    public function test_certificate_is_null_before_onboarding(): void
+    {
+        $this->assertNull($this->store->certificate(self::ORG));
+    }
+
+    public function test_certificate_falls_back_to_the_organization(): void
+    {
+        $this->store->put(self::ORG, null, CredentialStore::PCSID, $this->pcsid());
+
+        $this->assertSame('CERT', $this->store->certificate(self::ORG, self::BRANCH));
+    }
+
+    /**
+     * A branch is its own EGS unit with its own certificate, so its own is the
+     * one it signs with.
+     */
+    public function test_branch_certificate_wins_over_the_organization(): void
+    {
+        $this->store->put(self::ORG, null, CredentialStore::PCSID, $this->pcsid());
+        $this->store->put(self::ORG, self::BRANCH, CredentialStore::PCSID, [
+            'privateKey' => '-----BEGIN EC PRIVATE KEY-----BRANCH',
+            'pcsid' => 'BRANCH-CERT',
+        ]);
+
+        $this->assertSame('BRANCH-CERT', $this->store->certificate(self::ORG, self::BRANCH));
+        $this->assertSame('CERT', $this->store->certificate(self::ORG));
+    }
+
     public function test_round_trips_branch_credentials(): void
     {
         $this->store->put(self::ORG, self::BRANCH, CredentialStore::PCSID, $this->pcsid());

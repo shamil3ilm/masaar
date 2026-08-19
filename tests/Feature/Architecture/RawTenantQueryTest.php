@@ -36,7 +36,6 @@ class RawTenantQueryTest extends TestCase
         'offline_queue',
         'hash_chain_state',
         'hash_chain_history',
-        'certificate_lineage',
         'fta_submissions',
         'webhooks',
         'branches',
@@ -71,7 +70,6 @@ class RawTenantQueryTest extends TestCase
         // the arrangement runAs() exists to replace — convert when next
         // touched. Audit finding Q-5.
         'Domains/Compliance/Fatoora/Services/OfflineQueue.php' => 'queue worker, org id passed in',
-        'Domains/Compliance/Fatoora/Services/CertificateLineage.php' => 'queue worker, org id passed in',
     ];
 
     public function test_no_undeclared_raw_tenant_queries(): void

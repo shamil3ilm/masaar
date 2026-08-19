@@ -122,6 +122,29 @@ class CredentialStore
     }
 
     /**
+     * The certificate an organization signs with, or null before onboarding.
+     *
+     * A branch is its own EGS unit with its own certificate, so a branch is
+     * asked for first and the organization's is the fallback — the same order
+     * the signing code resolves in.
+     *
+     * Callers used to ask a certificate_lineage table that nothing ever wrote,
+     * so every one of them concluded there was no certificate.
+     */
+    public function certificate(string $organizationId, ?string $branchId = null): ?string
+    {
+        if ($branchId !== null) {
+            $branch = $this->get($organizationId, $branchId, self::PCSID);
+
+            if (! empty($branch['pcsid'])) {
+                return $branch['pcsid'];
+            }
+        }
+
+        return $this->get($organizationId, null, self::PCSID)['pcsid'] ?? null;
+    }
+
+    /**
      * Remove one branch's credentials, or an organization's legacy pair.
      */
     public function forget(string $organizationId, ?string $branchId = null): void
