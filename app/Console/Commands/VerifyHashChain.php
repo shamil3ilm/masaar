@@ -21,8 +21,7 @@ class VerifyHashChain extends Command
     protected $signature = 'fatoora:verify-hash-chain
                             {--organization= : Verify specific organization only}
                             {--database= : Use alternate database connection}
-                            {--fix : Attempt to fix minor issues}
-                            {--verbose : Show detailed output}';
+                            {--fix : Attempt to fix minor issues}';
 
     protected $description = 'Verify PIH (Previous Invoice Hash) chain integrity for ZATCA compliance';
 

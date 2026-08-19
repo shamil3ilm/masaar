@@ -328,4 +328,42 @@ class Invoice extends Model
             ->whereIn('state', ['queued', 'pending_submission', 'submitted'])
             ->exists();
     }
+
+    /**
+     * The hash of this tenant's preceding invoice — ZATCA's PIH.
+     *
+     * Every document carries the previous one's hash, and the authority checks
+     * the chain. There is no previous_invoice_hash column, so reading the
+     * attribute used to yield null: Eloquent answers null for an attribute it
+     * does not have rather than failing. ProcessFatooraSubmission and
+     * OfflineFallback both did exactly that, and XmlBuilder turns a null into
+     * the genesis PIH — so every invoice submitted through the queue or the
+     * offline path claimed to be the first in its chain.
+     *
+     * Defined here rather than at those call sites because they already read
+     * this attribute expecting this value, and because one implementation of
+     * the chain is the point.
+     *
+     * Ordered by ICV rather than created_at, so the chain follows ZATCA's
+     * sequential counter instead of wall-clock time, which is not deterministic
+     * under concurrent inserts. Restricted to invoices that have been hashed —
+     * an unsigned draft is not part of the chain. Null is correct for a
+     * tenant's first invoice.
+     *
+     * The tenant scope is lifted because org_id is already pinned to this
+     * invoice's own tenant. Leaving it on would make the answer depend on
+     * whether a request context happens to be present, and the way it fails —
+     * scoping to null, finding nothing, returning the genesis PIH — is silent
+     * and indistinguishable from a genuinely first invoice.
+     */
+    public function getPreviousInvoiceHashAttribute(): ?string
+    {
+        return static::withoutTenantScope(fn (): ?string => static::query()
+            ->where('org_id', $this->org_id)
+            ->where('icv', '<', $this->icv)
+            ->whereNotNull('hash')
+            ->orderByDesc('icv')
+            ->value('hash')
+        );
+    }
 }
