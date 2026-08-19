@@ -54,6 +54,7 @@ class InvoiceDrafter
                 'issue_date' => $data['issue_date'],
                 'supply_date' => $data['supply_date'] ?? null,
                 'currency' => $data['currency'] ?? 'SAR',
+                'exchange_rate' => $data['exchange_rate'] ?? null,
                 'payment_means_code' => $data['payment_means_code'] ?? '10',
                 'buyer_name' => $data['buyer_name'],
                 'buyer_vat_number' => $data['buyer_vat_number'] ?? null,

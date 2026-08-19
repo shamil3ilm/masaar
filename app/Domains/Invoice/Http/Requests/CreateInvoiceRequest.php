@@ -80,6 +80,17 @@ class CreateInvoiceRequest extends FormRequest
             'issue_date' => ['required', 'date'],
             'supply_date' => ['nullable', 'date'],
             'currency' => ['nullable', 'string', 'size:3'],
+            // BR-KSA-CU-01: VAT is reported in SAR, so a foreign-currency
+            // invoice has to say what rate it was converted at. InvoiceValidator
+            // has always enforced this, but nothing accepted or stored the
+            // value, so every non-SAR invoice was taken here and then refused at
+            // compliance with an error naming a field the caller could not send.
+            'exchange_rate' => [
+                'nullable',
+                'numeric',
+                'gt:0',
+                Rule::requiredIf(fn () => strtoupper((string) $this->input('currency', 'SAR')) !== 'SAR'),
+            ],
             'payment_means_code' => ['nullable', 'string', 'size:2'],
 
             // Buyer information
@@ -170,6 +181,7 @@ class CreateInvoiceRequest extends FormRequest
     {
         return [
             // Buyer
+            'exchange_rate.required' => 'Exchange rate to SAR is required for foreign-currency invoices (BR-KSA-CU-01).',
             'buyer_vat_number.required_if' => 'Buyer VAT number is required for B2B (standard) invoices (BT-46).',
             'buyer_address.required_if' => 'Buyer address is required for B2B (standard) invoices (BT-50).',
             'buyer_address.street.required_if' => 'Buyer street is required for B2B (standard) invoices.',

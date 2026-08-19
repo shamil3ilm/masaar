@@ -33,7 +33,9 @@ class LicenseUsageController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'company_name' => $license->company_name,
+                // The column is organization_name; company_name is not one, so
+                // this field was null in every response.
+                'organization_name' => $license->organization_name,
                 'tier' => $license->tier->value,
                 'status' => $license->status->value,
                 'expires_at' => $license->expires_at?->toIso8601String(),
