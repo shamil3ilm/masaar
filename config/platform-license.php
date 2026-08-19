@@ -87,7 +87,6 @@ return [
     | in a degraded mode (read-only, no new submissions).
     |
     */
-    'grace_period_days' => env('PLATFORM_LICENSE_GRACE_DAYS', 3),
 
     /*
     |--------------------------------------------------------------------------
