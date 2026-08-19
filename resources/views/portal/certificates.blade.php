@@ -18,24 +18,25 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div>
                 <p class="text-sm text-gray-500 mb-1">Serial Number</p>
-                <p class="font-medium text-gray-800">{{ Str::limit($activeCert->serial_number ?? $activeCert->id, 16) }}</p>
+                <p class="font-medium text-gray-800">{{ Str::limit($activeCert->serial_number ?? '-', 16) }}</p>
             </div>
             <div>
                 <p class="text-sm text-gray-500 mb-1">Environment</p>
                 <p class="font-medium text-gray-800">
-                    <span class="px-2 py-1 text-xs font-medium rounded {{ $activeCert->environment === 'production' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
-                        {{ ucfirst($activeCert->environment ?? 'sandbox') }}
+                    @php($environment = config('fatoora.environment', 'sandbox'))
+                    <span class="px-2 py-1 text-xs font-medium rounded {{ $environment === 'production' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
+                        {{ ucfirst($environment) }}
                     </span>
                 </p>
             </div>
             <div>
-                <p class="text-sm text-gray-500 mb-1">Issued At</p>
-                <p class="font-medium text-gray-800">{{ \Carbon\Carbon::parse($activeCert->created_at)->format('M d, Y H:i') }}</p>
+                <p class="text-sm text-gray-500 mb-1">Valid From</p>
+                <p class="font-medium text-gray-800">{{ \Carbon\Carbon::parse($activeCert->valid_from)->format('M d, Y H:i') }}</p>
             </div>
             <div>
                 <p class="text-sm text-gray-500 mb-1">Expires At</p>
                 @php
-                    $expiresAt = $activeCert->expires_at ?? null;
+                    $expiresAt = $activeCert->valid_to ?? null;
                     $daysLeft = $expiresAt ? now()->diffInDays($expiresAt, false) : null;
                 @endphp
                 @if($expiresAt)
@@ -90,77 +91,6 @@
         </div>
         @endif
     </div>
-</div>
-
-<!-- Certificate History -->
-<div class="bg-white rounded-lg shadow">
-    <div class="p-6 border-b">
-        <h3 class="text-lg font-semibold text-gray-800">Certificate History</h3>
-    </div>
-    <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
-            <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Certificate</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Environment</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Issued</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Expires</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
-            </tr>
-        </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
-            @forelse($certHistory as $cert)
-            <tr class="hover:bg-gray-50 {{ $cert->status === 'active' ? 'bg-green-50' : '' }}">
-                <td class="px-6 py-4">
-                    <p class="text-sm font-medium text-gray-800">{{ Str::limit($cert->serial_number ?? $cert->id, 12) }}</p>
-                    <p class="text-xs text-gray-500">Gen {{ $cert->generation ?? 1 }}</p>
-                </td>
-                <td class="px-6 py-4">
-                    <span class="px-2 py-1 text-xs font-medium rounded {{ ($cert->environment ?? 'sandbox') === 'production' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
-                        {{ ucfirst($cert->environment ?? 'sandbox') }}
-                    </span>
-                </td>
-                <td class="px-6 py-4">
-                    <span class="px-2 py-1 text-xs font-medium rounded-full
-                        {{ $cert->status === 'active' ? 'bg-green-100 text-green-800' : '' }}
-                        {{ $cert->status === 'revoked' ? 'bg-red-100 text-red-800' : '' }}
-                        {{ $cert->status === 'expired' ? 'bg-orange-100 text-orange-800' : '' }}
-                        {{ $cert->status === 'renewed' ? 'bg-blue-100 text-blue-800' : '' }}
-                        {{ !in_array($cert->status, ['active', 'revoked', 'expired', 'renewed']) ? 'bg-gray-100 text-gray-800' : '' }}">
-                        {{ ucfirst($cert->status ?? 'unknown') }}
-                    </span>
-                </td>
-                <td class="px-6 py-4 text-sm text-gray-500">
-                    {{ \Carbon\Carbon::parse($cert->created_at)->format('M d, Y') }}
-                </td>
-                <td class="px-6 py-4 text-sm text-gray-500">
-                    @if($cert->expires_at)
-                    {{ \Carbon\Carbon::parse($cert->expires_at)->format('M d, Y') }}
-                    @else
-                    <span class="text-gray-400">-</span>
-                    @endif
-                </td>
-                <td class="px-6 py-4 text-sm text-gray-500">
-                    @if($cert->revocation_reason)
-                    <span class="text-red-600" title="{{ $cert->revocation_reason }}">
-                        {{ Str::limit($cert->revocation_reason, 20) }}
-                    </span>
-                    @elseif($cert->renewal_reason)
-                    <span class="text-blue-600" title="{{ $cert->renewal_reason }}">
-                        {{ Str::limit($cert->renewal_reason, 20) }}
-                    </span>
-                    @else
-                    <span class="text-gray-400">-</span>
-                    @endif
-                </td>
-            </tr>
-            @empty
-            <tr>
-                <td colspan="6" class="px-6 py-8 text-center text-gray-500">No certificate history</td>
-            </tr>
-            @endforelse
-        </tbody>
-    </table>
 </div>
 
 <!-- Help Section -->

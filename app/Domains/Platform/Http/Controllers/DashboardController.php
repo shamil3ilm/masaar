@@ -8,8 +8,9 @@ use App\Domains\Compliance\Fatoora\Models\ChainEntry;
 use App\Domains\Compliance\Fatoora\Models\ChainState;
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Compliance\Fatoora\Models\OfflineItem;
-use App\Domains\Compliance\Fatoora\Services\CertificateLineage;
+use App\Domains\Compliance\Fatoora\Services\CertificateService;
 use App\Domains\Compliance\Fatoora\Services\CircuitBreaker;
+use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
@@ -29,7 +30,8 @@ class DashboardController extends Controller
     public function __construct(
         private readonly TenantResolver $tenant,
         private readonly CircuitBreaker $circuitBreaker,
-        private readonly CertificateLineage $certificateService,
+        private readonly CertificateService $certificates,
+        private readonly CredentialStore $credentials,
     ) {}
 
     /**
@@ -263,22 +265,16 @@ class DashboardController extends Controller
      */
     private function getCertificateStats(string $organizationId): array
     {
-        $activeCert = $this->certificateService->getActive($organizationId);
-        $history = $this->certificateService->getHistory($organizationId);
-
-        $daysUntilExpiry = null;
-        if ($activeCert && isset($activeCert['valid_to'])) {
-            $expiryDate = new \DateTimeImmutable($activeCert['valid_to']);
-            $daysUntilExpiry = max(0, (int) $expiryDate->diff(now())->format('%r%a'));
-        }
+        // total_certificates and invoices_signed came from a lineage table
+        // nothing ever wrote, so both were always zero. The platform keeps the
+        // certificate an organization signs with, not a history of them.
+        $status = $this->certificates->status(
+            $this->credentials->certificate($organizationId)
+        );
 
         return [
-            'active' => $activeCert !== null,
-            'days_until_expiry' => $daysUntilExpiry,
-            'total_certificates' => count($history),
-            'invoices_signed' => $activeCert
-                ? $this->certificateService->getInvoiceCount($activeCert['certificate_id'])
-                : 0,
+            'active' => $status['status'] !== 'missing',
+            'days_until_expiry' => $status['days_remaining'] ?? null,
         ];
     }
 
@@ -314,46 +310,9 @@ class DashboardController extends Controller
      */
     private function getCertificateHealth(string $organizationId): array
     {
-        $activeCert = $this->certificateService->getActive($organizationId);
-
-        if (! $activeCert) {
-            return [
-                'status' => 'missing',
-                'message' => 'No active certificate found',
-            ];
-        }
-
-        $expiryDate = new \DateTimeImmutable($activeCert['valid_to']);
-        $daysUntilExpiry = (int) $expiryDate->diff(now())->format('%r%a');
-
-        if ($daysUntilExpiry < 0) {
-            return [
-                'status' => 'expired',
-                'message' => 'Certificate has expired',
-                'expired_days_ago' => abs($daysUntilExpiry),
-            ];
-        }
-
-        if ($daysUntilExpiry <= 7) {
-            return [
-                'status' => 'critical',
-                'message' => "Certificate expires in {$daysUntilExpiry} days",
-                'days_remaining' => $daysUntilExpiry,
-            ];
-        }
-
-        if ($daysUntilExpiry <= 30) {
-            return [
-                'status' => 'warning',
-                'message' => "Certificate expires in {$daysUntilExpiry} days",
-                'days_remaining' => $daysUntilExpiry,
-            ];
-        }
-
-        return [
-            'status' => 'healthy',
-            'days_remaining' => $daysUntilExpiry,
-        ];
+        return $this->certificates->status(
+            $this->credentials->certificate($organizationId)
+        );
     }
 
     /**

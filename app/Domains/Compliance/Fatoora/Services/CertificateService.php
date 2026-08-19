@@ -745,6 +745,76 @@ EOL;
     }
 
     /**
+     * What the admin screens show about a certificate.
+     *
+     * Read from the certificate itself rather than from a row describing it,
+     * so the dates and serial on screen are the ones ZATCA will see.
+     *
+     * @return array{serial_number: ?string, valid_from: string, valid_to: string, status: string}|null
+     */
+    public function details(?string $certificatePem): ?array
+    {
+        if ($certificatePem === null) {
+            return null;
+        }
+
+        try {
+            $parsed = $this->parseCertificate($certificatePem);
+        } catch (CertificateException) {
+            return null;
+        }
+
+        return [
+            'serial_number' => $parsed['serialNumberHex'] ?? $parsed['serialNumber'],
+            'valid_from' => $parsed['validFrom'],
+            'valid_to' => $parsed['validTo'],
+            'status' => $this->status($certificatePem)['status'],
+        ];
+    }
+
+    /**
+     * How a certificate is doing, for the dashboards to display.
+     *
+     * One set of bands rather than one per caller: a certificate reported as
+     * healthy on one screen and critical on another is a question nobody can
+     * answer. Null means the organization has not onboarded.
+     *
+     * @return array{status: string, message?: string, days_remaining?: int, expired_days_ago?: int}
+     */
+    public function status(?string $certificatePem): array
+    {
+        if ($certificatePem === null) {
+            return ['status' => 'missing', 'message' => 'No active certificate found'];
+        }
+
+        $days = $this->getDaysUntilExpiry($certificatePem);
+
+        if ($days === null) {
+            return ['status' => 'unknown', 'message' => 'Certificate expiry could not be read'];
+        }
+
+        if ($days < 0) {
+            return [
+                'status' => 'expired',
+                'message' => 'Certificate has expired',
+                'expired_days_ago' => abs($days),
+            ];
+        }
+
+        $band = match (true) {
+            $days <= 7 => 'critical',
+            $days <= 30 => 'warning',
+            default => 'healthy',
+        };
+
+        return [
+            'status' => $band,
+            'message' => "Certificate expires in {$days} days",
+            'days_remaining' => $days,
+        ];
+    }
+
+    /**
      * Validate certificate for pre-submission checks.
      *
      * Returns detailed validation results including:
