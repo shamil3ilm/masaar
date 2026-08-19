@@ -75,7 +75,6 @@ class RawTenantQueryTest extends TestCase
         'Domains/Compliance/Fatoora/Services/ClearanceState.php' => 'queue worker, org id passed in',
         'Domains/Compliance/Fatoora/Services/CertificateLineage.php' => 'queue worker, org id passed in',
         'Domains/Compliance/Fatoora/Services/VarianceTracker.php' => 'queue worker, org id passed in',
-        'Domains/Compliance/Fatoora/Services/FallbackHandler.php' => 'queue worker, org id passed in',
     ];
 
     public function test_no_undeclared_raw_tenant_queries(): void

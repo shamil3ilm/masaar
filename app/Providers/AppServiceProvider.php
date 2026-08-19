@@ -8,7 +8,6 @@ use App\Domains\Auth\Http\Middleware\JwtGuard;
 use App\Domains\Auth\Services\JwtAuthenticator;
 use App\Domains\Compliance\Fatoora\Services\CertificateLineage;
 use App\Domains\Compliance\Fatoora\Services\CircuitBreaker;
-use App\Domains\Compliance\Fatoora\Services\FallbackHandler;
 use App\Domains\Compliance\Fatoora\Services\TimestampValidator;
 use App\Domains\Compliance\Fatoora\Services\VarianceTracker;
 use App\Domains\Licensing\Http\Middleware\CheckInvoiceQuota;
@@ -64,7 +63,6 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(VarianceTracker::class);
         $this->app->singleton(CertificateLineage::class);
         $this->app->singleton(CircuitBreaker::class);
-        $this->app->singleton(FallbackHandler::class);
         $this->app->singleton(ComplianceLogger::class);
     }
 
