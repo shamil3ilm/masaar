@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Domains\Compliance\Fatoora\Services\CertificateService;
+use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Webhook\Events\CertificateExpiring;
 use Illuminate\Console\Command;
@@ -28,6 +29,7 @@ class CheckCertificateExpiry extends Command
 
     public function __construct(
         private readonly CertificateService $certificateService,
+        private readonly CredentialStore $credentials,
     ) {
         parent::__construct();
     }
@@ -43,14 +45,19 @@ class CheckCertificateExpiry extends Command
         $organizationId = $this->option('organization');
         $shouldNotify = $this->option('notify');
 
-        $query = Organization::query()
-            ->whereNotNull('zatca_certificate');
+        // Certificates live in CredentialStore, encrypted, not on the
+        // organization. This queried a zatca_certificate column that does not
+        // exist, so the command threw before checking anything — every day
+        // since it was scheduled.
+        $query = Organization::query();
 
         if ($organizationId) {
             $query->where('id', $organizationId);
         }
 
-        $organizations = $query->get();
+        $organizations = $query->get()->filter(
+            fn (Organization $org) => $this->credentials->has((string) $org->id, null, CredentialStore::PCSID)
+        );
 
         if ($organizations->isEmpty()) {
             $this->warn('No organizations with certificates found.');
@@ -72,7 +79,11 @@ class CheckCertificateExpiry extends Command
 
     private function checkOrganization(Organization $organization, bool $shouldNotify): array
     {
-        $certificate = $organization->zatca_certificate;
+        $certificate = $this->credentials->get(
+            (string) $organization->id,
+            null,
+            CredentialStore::PCSID
+        )['pcsid'] ?? null;
 
         if (! $certificate) {
             return [
