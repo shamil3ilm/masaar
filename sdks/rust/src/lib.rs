@@ -1,12 +1,12 @@
-//! CompliPay Rust SDK for ZATCA-compliant e-invoicing.
+//! Masaar Rust SDK for ZATCA-compliant e-invoicing.
 //!
 //! # Example
 //! ```rust,no_run
-//! use complipay::{CompliPayClient, CreateInvoiceRequest, InvoiceLine};
+//! use masaar::{MasaarClient, CreateInvoiceRequest, InvoiceLine};
 //!
 //! #[tokio::main]
-//! async fn main() -> Result<(), complipay::Error> {
-//!     let client = CompliPayClient::new(
+//! async fn main() -> Result<(), masaar::Error> {
+//!     let client = MasaarClient::new(
 //!         "https://api.masaar.sa",
 //!         "your_api_key",
 //!         "your_api_secret",
@@ -176,14 +176,14 @@ impl ZatcaResult {
 
 // MARK: - Client
 
-pub struct CompliPayClient {
+pub struct MasaarClient {
     base_url: String,
     api_key: String,
     api_secret: String,
     client: Client,
 }
 
-impl CompliPayClient {
+impl MasaarClient {
     pub fn new(base_url: &str, api_key: &str, api_secret: &str) -> Self {
         let client = Client::builder()
             .timeout(Duration::from_secs(30))
@@ -279,7 +279,7 @@ impl CompliPayClient {
 // MARK: - Resources
 
 pub struct InvoicesResource<'a> {
-    client: &'a CompliPayClient,
+    client: &'a MasaarClient,
 }
 
 impl<'a> InvoicesResource<'a> {
@@ -293,7 +293,7 @@ impl<'a> InvoicesResource<'a> {
 }
 
 pub struct ComplianceResource<'a> {
-    client: &'a CompliPayClient,
+    client: &'a MasaarClient,
 }
 
 impl<'a> ComplianceResource<'a> {
@@ -316,7 +316,7 @@ impl<'a> ComplianceResource<'a> {
 
 pub struct WebhooksResource<'a> {
     #[allow(dead_code)]
-    client: &'a CompliPayClient,
+    client: &'a MasaarClient,
 }
 
 impl<'a> WebhooksResource<'a> {

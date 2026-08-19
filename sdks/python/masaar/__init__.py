@@ -1,13 +1,13 @@
 """
-CompliPay Python SDK
+Masaar Python SDK
 
 ZATCA-compliant e-invoicing API client for Python 3.7+
 """
 
 from .client import (
-    CompliPayClient,
+    MasaarClient,
     InvoiceLine,
-    CompliPayError,
+    MasaarError,
     AuthenticationError,
     ValidationError,
     ZatcaError,
@@ -15,9 +15,9 @@ from .client import (
 
 __version__ = "1.0.0"
 __all__ = [
-    "CompliPayClient",
+    "MasaarClient",
     "InvoiceLine",
-    "CompliPayError",
+    "MasaarError",
     "AuthenticationError",
     "ValidationError",
     "ZatcaError",

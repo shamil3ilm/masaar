@@ -1,19 +1,19 @@
-package com.complipay.resources;
+package com.masaar.resources;
 
-import com.complipay.CompliPayClient;
-import com.complipay.exceptions.CompliPayException;
-import com.complipay.exceptions.ZatcaException;
-import com.complipay.models.ApiResponse;
-import com.complipay.models.ZatcaResult;
+import com.masaar.MasaarClient;
+import com.masaar.exceptions.MasaarException;
+import com.masaar.exceptions.ZatcaException;
+import com.masaar.models.ApiResponse;
+import com.masaar.models.ZatcaResult;
 
 /**
  * Resource for ZATCA compliance operations.
  */
 public class ComplianceResource {
 
-    private final CompliPayClient client;
+    private final MasaarClient client;
 
-    public ComplianceResource(CompliPayClient client) {
+    public ComplianceResource(MasaarClient client) {
         this.client = client;
     }
 
@@ -24,7 +24,7 @@ public class ComplianceResource {
      * @param invoiceId The invoice UUID
      * @return The generated compliance data
      */
-    public ApiResponse<ZatcaResult> generate(String invoiceId) throws CompliPayException {
+    public ApiResponse<ZatcaResult> generate(String invoiceId) throws MasaarException {
         return client.post("/api/compliance/zatca/generate/" + invoiceId, null, ZatcaResult.class);
     }
 
@@ -35,7 +35,7 @@ public class ComplianceResource {
      * @param invoiceId The invoice UUID
      * @return Validation result with any warnings or errors
      */
-    public ApiResponse<ZatcaResult> validate(String invoiceId) throws CompliPayException {
+    public ApiResponse<ZatcaResult> validate(String invoiceId) throws MasaarException {
         return client.post("/api/compliance/zatca/validate/" + invoiceId, null, ZatcaResult.class);
     }
 
@@ -54,7 +54,7 @@ public class ComplianceResource {
      * @return The submission result with ZATCA response
      * @throws ZatcaException if ZATCA rejects the invoice
      */
-    public ApiResponse<ZatcaResult> submit(String invoiceId) throws CompliPayException {
+    public ApiResponse<ZatcaResult> submit(String invoiceId) throws MasaarException {
         ApiResponse<ZatcaResult> result = client.post(
                 "/api/compliance/zatca/submit/" + invoiceId,
                 null,
@@ -74,7 +74,7 @@ public class ComplianceResource {
      * @param invoiceId The invoice UUID
      * @return Current compliance status
      */
-    public ApiResponse<ZatcaResult> status(String invoiceId) throws CompliPayException {
+    public ApiResponse<ZatcaResult> status(String invoiceId) throws MasaarException {
         return client.get("/api/compliance/zatca/status/" + invoiceId, ZatcaResult.class);
     }
 
@@ -86,7 +86,7 @@ public class ComplianceResource {
      * @param invoiceId The invoice UUID
      * @return Submission acknowledgment with tracking ID
      */
-    public ApiResponse<ZatcaResult> submitAsync(String invoiceId) throws CompliPayException {
+    public ApiResponse<ZatcaResult> submitAsync(String invoiceId) throws MasaarException {
         return client.post("/api/compliance/zatca/submit-async/" + invoiceId, null, ZatcaResult.class);
     }
 }

@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "CompliPay",
+    name: "Masaar",
     platforms: [
         .macOS(.v12),
         .iOS(.v15),
@@ -10,10 +10,10 @@ let package = Package(
         .watchOS(.v8)
     ],
     products: [
-        .library(name: "CompliPay", targets: ["CompliPay"])
+        .library(name: "Masaar", targets: ["Masaar"])
     ],
     targets: [
-        .target(name: "CompliPay", dependencies: []),
-        .testTarget(name: "CompliPayTests", dependencies: ["CompliPay"])
+        .target(name: "Masaar", dependencies: []),
+        .testTarget(name: "MasaarTests", dependencies: ["Masaar"])
     ]
 )

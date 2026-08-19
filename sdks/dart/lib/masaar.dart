@@ -1,8 +1,8 @@
-/// CompliPay Dart/Flutter SDK for ZATCA-compliant e-invoicing.
+/// Masaar Dart/Flutter SDK for ZATCA-compliant e-invoicing.
 ///
 /// Usage:
 /// ```dart
-/// final client = CompliPayClient(
+/// final client = MasaarClient(
 ///   baseUrl: 'https://api.masaar.sa',
 ///   apiKey: 'your_api_key',
 ///   apiSecret: 'your_api_secret',
@@ -16,7 +16,7 @@
 ///
 /// final result = await client.compliance.submit(invoice.data!.id);
 /// ```
-library complipay;
+library masaar;
 
 import 'dart:convert';
 import 'dart:typed_data';
@@ -24,7 +24,7 @@ import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 
 // Client
-class CompliPayClient {
+class MasaarClient {
   final String baseUrl;
   final String apiKey;
   final String apiSecret;
@@ -35,7 +35,7 @@ class CompliPayClient {
   late final ComplianceResource compliance;
   late final WebhooksResource webhooks;
 
-  CompliPayClient({
+  MasaarClient({
     required this.baseUrl,
     required this.apiKey,
     required this.apiSecret,
@@ -86,7 +86,7 @@ class CompliPayClient {
           response = await _httpClient.delete(uri, headers: headers).timeout(timeout);
           break;
         default:
-          throw CompliPayException('Unsupported method: $method');
+          throw MasaarException('Unsupported method: $method');
       }
     } catch (e) {
       throw NetworkException('Network error: $e');
@@ -110,7 +110,7 @@ class CompliPayClient {
         case 429:
           throw RateLimitException('Rate limit exceeded');
         default:
-          throw CompliPayException(message, response.statusCode);
+          throw MasaarException(message, response.statusCode);
       }
     }
 
@@ -337,7 +337,7 @@ class ZatcaResult {
 
 // Resources
 class InvoicesResource {
-  final CompliPayClient _client;
+  final MasaarClient _client;
   InvoicesResource(this._client);
 
   Future<ApiResponse<Invoice>> get(String invoiceId) =>
@@ -348,7 +348,7 @@ class InvoicesResource {
 }
 
 class ComplianceResource {
-  final CompliPayClient _client;
+  final MasaarClient _client;
   ComplianceResource(this._client);
 
   Future<ApiResponse<ZatcaResult>> generate(String invoiceId) =>
@@ -365,7 +365,7 @@ class ComplianceResource {
 }
 
 class WebhooksResource {
-  final CompliPayClient _client;
+  final MasaarClient _client;
   WebhooksResource(this._client);
 
   static const invoiceCreated = 'invoice.created';
@@ -385,32 +385,32 @@ class WebhooksResource {
 }
 
 // Exceptions
-class CompliPayException implements Exception {
+class MasaarException implements Exception {
   final String message;
   final int? statusCode;
-  CompliPayException(this.message, [this.statusCode]);
+  MasaarException(this.message, [this.statusCode]);
   @override
-  String toString() => 'CompliPayException: $message';
+  String toString() => 'MasaarException: $message';
 }
 
-class AuthenticationException extends CompliPayException {
+class AuthenticationException extends MasaarException {
   AuthenticationException(String message) : super(message, 401);
 }
 
-class ValidationException extends CompliPayException {
+class ValidationException extends MasaarException {
   final List<String>? errors;
   ValidationException(String message, [this.errors]) : super(message, 422);
 }
 
-class RateLimitException extends CompliPayException {
+class RateLimitException extends MasaarException {
   RateLimitException(String message) : super(message, 429);
 }
 
-class NetworkException extends CompliPayException {
+class NetworkException extends MasaarException {
   NetworkException(String message) : super(message);
 }
 
-class ZatcaException extends CompliPayException {
+class ZatcaException extends MasaarException {
   final List<String>? errors;
   ZatcaException(String message, [this.errors]) : super(message);
 }

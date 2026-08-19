@@ -96,12 +96,12 @@ import { MasaarClient } from 'masaar';
 
 // Configure via environment variables
 // .env.local:
-// NEXT_PUBLIC_COMPLIPAY_URL=http://localhost:8000
-// COMPLIPAY_API_KEY=your_api_key
+// NEXT_PUBLIC_MASAAR_URL=http://localhost:8000
+// MASAAR_API_KEY=your_api_key
 
 const client = new MasaarClient({
-  baseUrl: process.env.NEXT_PUBLIC_COMPLIPAY_URL!,
-  apiKey: process.env.COMPLIPAY_API_KEY!
+  baseUrl: process.env.NEXT_PUBLIC_MASAAR_URL!,
+  apiKey: process.env.MASAAR_API_KEY!
 });
 
 export async function createInvoice(formData: FormData) {
@@ -125,12 +125,12 @@ import { MasaarClient } from 'masaar';
 
 // Configure via environment variables
 // .env:
-// VITE_COMPLIPAY_URL=http://localhost:8000
-// VITE_COMPLIPAY_API_KEY=your_api_key
+// VITE_MASAAR_URL=http://localhost:8000
+// VITE_MASAAR_API_KEY=your_api_key
 
 const client = new MasaarClient({
-  baseUrl: import.meta.env.VITE_COMPLIPAY_URL,
-  apiKey: import.meta.env.VITE_COMPLIPAY_API_KEY
+  baseUrl: import.meta.env.VITE_MASAAR_URL,
+  apiKey: import.meta.env.VITE_MASAAR_API_KEY
 });
 
 async function submitInvoice() {
@@ -149,11 +149,11 @@ const { MasaarClient } = require('masaar');
 const app = express();
 
 // Configure via environment variables
-// COMPLIPAY_URL=http://localhost:8000
-// COMPLIPAY_API_KEY=your_api_key
+// MASAAR_URL=http://localhost:8000
+// MASAAR_API_KEY=your_api_key
 const client = new MasaarClient({
-  baseUrl: process.env.COMPLIPAY_URL || 'http://localhost:8000',
-  apiKey: process.env.COMPLIPAY_API_KEY
+  baseUrl: process.env.MASAAR_URL || 'http://localhost:8000',
+  apiKey: process.env.MASAAR_API_KEY
 });
 
 app.post('/invoices', async (req, res) => {

@@ -1,15 +1,15 @@
 # frozen_string_literal: true
 
 Gem::Specification.new do |spec|
-  spec.name          = 'complipay'
+  spec.name          = 'masaar'
   spec.version       = '1.0.0'
-  spec.authors       = ['CompliPay']
-  spec.email         = ['support@complipay.com']
+  spec.authors       = ['Masaar']
+  spec.email         = ['support@masaar.sa']
 
   spec.summary       = 'ZATCA-compliant e-invoicing API client for Ruby'
-  spec.description   = 'Official Ruby SDK for CompliPay ZATCA e-invoicing API. ' \
+  spec.description   = 'Official Ruby SDK for Masaar ZATCA e-invoicing API. ' \
                        'Supports invoice creation, ZATCA compliance, and webhooks.'
-  spec.homepage      = 'https://github.com/complipay/complipay-ruby'
+  spec.homepage      = 'https://github.com/masaar/masaar-ruby'
   spec.license       = 'MIT'
   spec.required_ruby_version = '>= 2.7.0'
 

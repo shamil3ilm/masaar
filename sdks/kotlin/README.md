@@ -195,9 +195,9 @@ try {
 ```kotlin
 // In your Application class or DI module
 val compliPayClient = MasaarClient(
-    baseUrl = BuildConfig.COMPLIPAY_BASE_URL,
-    apiKey = BuildConfig.COMPLIPAY_API_KEY,
-    apiSecret = BuildConfig.COMPLIPAY_API_SECRET
+    baseUrl = BuildConfig.MASAAR_BASE_URL,
+    apiKey = BuildConfig.MASAAR_API_KEY,
+    apiSecret = BuildConfig.MASAAR_API_SECRET
 )
 
 // In your ViewModel

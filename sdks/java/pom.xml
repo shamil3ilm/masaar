@@ -4,14 +4,14 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.complipay</groupId>
-    <artifactId>complipay-sdk</artifactId>
+    <groupId>com.masaar</groupId>
+    <artifactId>masaar-sdk</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
 
-    <name>CompliPay Java SDK</name>
+    <name>Masaar Java SDK</name>
     <description>ZATCA-compliant e-invoicing API client for Java</description>
-    <url>https://github.com/complipay/complipay-java</url>
+    <url>https://github.com/masaar/masaar-java</url>
 
     <licenses>
         <license>
@@ -22,9 +22,9 @@
 
     <developers>
         <developer>
-            <name>CompliPay Team</name>
-            <email>support@complipay.com</email>
-            <organization>CompliPay</organization>
+            <name>Masaar Team</name>
+            <email>support@masaar.sa</email>
+            <organization>Masaar</organization>
         </developer>
     </developers>
 
