@@ -29,6 +29,7 @@ class OfflineFallback
         private readonly OfflineQueue $offlineQueueManager,
         private readonly Connectivity $connectivityChecker,
         private readonly DocumentBuilder $complianceService,
+        private readonly CredentialStore $credentials,
     ) {}
 
     /**
@@ -93,6 +94,7 @@ class OfflineFallback
     private function queueForOffline(Invoice $invoice, array $options): array
     {
         $organization = $invoice->org;
+        $signing = $this->credentials->get((string) $organization->id, $invoice->branch_id, CredentialStore::PCSID);
 
         // Generate signed XML if not already signed
         if (! $invoice->signed_xml || ! $invoice->hash || ! $invoice->qr_code) {
@@ -100,8 +102,11 @@ class OfflineFallback
                 invoice: $invoice,
                 organization: $organization,
                 previousInvoiceHash: $invoice->previous_invoice_hash,
-                privateKey: $organization->zatca_private_key,
-                certificate: $organization->zatca_certificate,
+                // As in ProcessFatooraSubmission: these read model attributes
+                // that do not exist, so both were null and the document was
+                // filed unsigned.
+                privateKey: $signing['privateKey'] ?? null,
+                certificate: $signing['pcsid'] ?? null,
             );
 
             // Update invoice with signed data

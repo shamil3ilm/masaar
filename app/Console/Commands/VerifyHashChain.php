@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Domains\Compliance\Fatoora\Models\ChainEntry;
 use App\Domains\Invoice\Models\Invoice;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -11,17 +12,21 @@ use Illuminate\Support\Facades\DB;
 /**
  * Verify PIH (Previous Invoice Hash) chain integrity.
  *
- * Used for:
- * - Disaster recovery verification
- * - Audit compliance checks
- * - Detecting hash chain corruption
+ * Walks each tenant's invoices in ICV order and checks that the PIH recorded
+ * for every document is the hash of the one before it. Reports only: a break
+ * means documents already went to ZATCA carrying the wrong predecessor, and no
+ * local edit undoes that. It had a --fix that wrote the corrected value onto
+ * the invoice, which repaired nothing even in principle and wrote to a column
+ * that does not exist.
+ *
+ * Used for disaster-recovery verification, audit checks, and detecting chain
+ * corruption.
  */
 class VerifyHashChain extends Command
 {
     protected $signature = 'fatoora:verify-hash-chain
                             {--organization= : Verify specific organization only}
-                            {--database= : Use alternate database connection}
-                            {--fix : Attempt to fix minor issues}';
+                            {--database= : Use alternate database connection}';
 
     protected $description = 'Verify PIH (Previous Invoice Hash) chain integrity for ZATCA compliance';
 
@@ -105,13 +110,20 @@ class VerifyHashChain extends Command
         // Get all invoices ordered by ICV
         $invoices = Invoice::where('org_id', $organizationId)
             ->orderBy('icv')
-            ->get(['id', 'invoice_number', 'icv', 'hash', 'previous_invoice_hash', 'created_at']);
+            ->get(['id', 'invoice_number', 'icv', 'hash', 'created_at']);
 
         if ($invoices->isEmpty()) {
             $this->line('  No invoices found');
 
             return;
         }
+
+        // What each document was actually built with. This is the record worth
+        // checking: the invoice itself keeps no PIH, and deriving one would
+        // only re-walk the chain and agree with itself.
+        $recorded = ChainEntry::withoutTenantScope(
+            fn () => ChainEntry::where('org_id', $organizationId)->pluck('previous_hash', 'invoice_id')
+        );
 
         // First invoice should have PIH = base64(32 zero bytes)
         $expectedFirstPih = base64_encode(str_repeat("\0", 32));
@@ -133,23 +145,22 @@ class VerifyHashChain extends Command
                 }
             }
 
-            // Check 2: PIH matches previous invoice hash
-            if ($invoice->previous_invoice_hash !== $previousHash) {
+            // Check 2: the PIH the document was built with is the hash of the
+            // one before it.
+            $carried = $recorded[$invoice->id] ?? null;
+
+            if ($carried === null) {
+                $this->error("  ❌ ICV {$invoice->icv} ({$invoice->invoice_number}): no chain entry");
+                $this->errors++;
+            } elseif ($carried !== $previousHash) {
                 $this->error("  ❌ ICV {$invoice->icv} ({$invoice->invoice_number}): PIH mismatch");
 
                 if ($this->option('verbose')) {
                     $this->line("     Expected: {$previousHash}");
-                    $this->line("     Got:      {$invoice->previous_invoice_hash}");
+                    $this->line("     Got:      {$carried}");
                 }
 
                 $this->errors++;
-
-                // Attempt fix if requested
-                if ($this->option('fix') && $this->confirm("     Attempt to fix PIH for ICV {$invoice->icv}?")) {
-                    $invoice->previous_invoice_hash = $previousHash;
-                    $invoice->save();
-                    $this->info("     ✅ Fixed PIH for ICV {$invoice->icv}");
-                }
             } elseif ($this->option('verbose')) {
                 $this->line("  ✓ ICV {$invoice->icv}: OK");
             }
