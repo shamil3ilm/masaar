@@ -23,6 +23,11 @@ class Organization extends Model
 {
     use HasUuids;
 
+    /** Named to match Branch and ComplianceProfile, which use the same values. */
+    public const STATUS_ACTIVE = 'active';
+
+    public const STATUS_SUSPENDED = 'suspended';
+
     protected $fillable = [
         'name',
         'country',
@@ -123,6 +128,20 @@ class Organization extends Model
         }
 
         return $this->branches()->where('onboarding_status', Branch::STATUS_ACTIVE)->exists();
+    }
+
+    /**
+     * Whether this organization is barred from submitting.
+     *
+     * SubmissionTracker asked for $organization->is_suspended, which is neither
+     * a column nor an accessor. Eloquent answered null, the `?? false` beside it
+     * turned that into "not suspended", and the check never once refused a
+     * submission. The column is status, as it is on Branch and
+     * ComplianceProfile.
+     */
+    public function isSuspended(): bool
+    {
+        return $this->status === self::STATUS_SUSPENDED;
     }
 
     /**
