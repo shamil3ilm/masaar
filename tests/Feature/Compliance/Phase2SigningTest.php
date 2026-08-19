@@ -128,15 +128,61 @@ class Phase2SigningTest extends TestCase
      */
     public function test_qr_carries_the_cryptographic_tags(): void
     {
-        $qr = $this->sign()['qr_code'];
+        $tags = $this->decodeTlv(base64_decode($this->sign()['qr_code']));
 
-        $this->assertNotEmpty($qr);
-
-        $tags = $this->decodeTlv(base64_decode($qr));
-
-        foreach ([1, 2, 3, 4, 5, 6, 7, 8] as $tag) {
+        foreach (range(1, 9) as $tag) {
             $this->assertArrayHasKey($tag, $tags, "QR is missing TLV tag {$tag}");
         }
+    }
+
+    /**
+     * Tags 6 and 7 have to be the hash and signature of the document beside
+     * them, not merely present.
+     *
+     * A QR built from a stale or unrelated signature satisfies "the tag
+     * exists" and fails at the authority, which validates the pair against
+     * each other. Both are compared to the document rather than recomputed the
+     * way the generator computed them, so this cannot agree with itself.
+     */
+    public function test_qr_hash_and_signature_match_the_document(): void
+    {
+        $result = $this->sign();
+        $tags = $this->decodeTlv(base64_decode($result['qr_code']));
+
+        $this->assertSame(
+            base64_decode($result['hash']),
+            $tags[6],
+            'QR tag 6 is not the invoice hash.'
+        );
+
+        preg_match('#<ds:SignatureValue>(.*?)</ds:SignatureValue>#s', $result['signed_xml'], $m);
+
+        $this->assertSame(
+            base64_decode(trim($m[1])),
+            $tags[7],
+            'QR tag 7 is not the signature in the document.'
+        );
+    }
+
+    /**
+     * Tag 8 is the signing public key, as an uncompressed secp256k1 point.
+     *
+     * Derived here from the certificate with OpenSSL rather than through the
+     * code that wrote the tag, so the two agreeing means something.
+     */
+    public function test_qr_public_key_belongs_to_the_certificate(): void
+    {
+        $tags = $this->decodeTlv(base64_decode($this->sign()['qr_code']));
+
+        $details = openssl_pkey_get_details(
+            openssl_pkey_get_public($this->credentials['certificate'])
+        );
+
+        $point = "\x04"
+            .str_pad($details['ec']['x'], 32, "\0", STR_PAD_LEFT)
+            .str_pad($details['ec']['y'], 32, "\0", STR_PAD_LEFT);
+
+        $this->assertSame($point, $tags[8], 'QR tag 8 is not the certificate public key.');
     }
 
     public function test_qr_seller_matches_the_organization(): void
