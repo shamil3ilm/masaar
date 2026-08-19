@@ -75,8 +75,8 @@ Add to your `config/services.php`:
 ```php
 // config/services.php
 'masaar' => [
-    'url' => env('COMPLIPAY_URL', 'http://localhost:8000'),
-    'key' => env('COMPLIPAY_API_KEY'),
+    'url' => env('MASAAR_URL', 'http://localhost:8000'),
+    'key' => env('MASAAR_API_KEY'),
 ],
 ```
 
@@ -84,12 +84,12 @@ Add to your `.env`:
 
 ```env
 # Local development
-COMPLIPAY_URL=http://localhost:8000
-COMPLIPAY_API_KEY=your_api_key
+MASAAR_URL=http://localhost:8000
+MASAAR_API_KEY=your_api_key
 
 # Production (update when deployed)
-# COMPLIPAY_URL=https://your-domain.com
-# COMPLIPAY_API_KEY=your_production_api_key
+# MASAAR_URL=https://your-domain.com
+# MASAAR_API_KEY=your_production_api_key
 ```
 
 ### Service Provider (Optional)

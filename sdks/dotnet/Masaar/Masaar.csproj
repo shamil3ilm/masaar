@@ -5,10 +5,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Version>1.0.0</Version>
-    <Authors>CompliPay</Authors>
-    <Company>CompliPay</Company>
+    <Authors>Masaar</Authors>
+    <Company>Masaar</Company>
     <Description>ZATCA-compliant e-invoicing API client for .NET</Description>
-    <PackageProjectUrl>https://github.com/complipay/complipay-dotnet</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/masaar/masaar-dotnet</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageTags>zatca;einvoicing;saudi;ksa;vat;invoice;compliance</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>

@@ -1,515 +1,13 @@
-openapi: 3.0.3
+openapi: 3.1.0
 info:
-  title: Masaar ZATCA E-Invoicing API
-  description: |
-    Masaar provides a comprehensive API for ZATCA-compliant e-invoicing in Saudi Arabia.
-
-    ## Features
-    - Invoice creation and management
-    - ZATCA Phase 2 compliance (clearance and reporting)
-    - Digital signatures (XAdES-BES, ECDSA)
-    - QR code generation (TLV encoding)
-    - Multi-tenant organization support
-    - Webhooks for async notifications
-
-    ## Authentication
-    Two authentication methods are supported:
-
-    ### 1. JWT Token (User Authentication)
-    ```
-    POST /api/auth/login
-    Authorization: Bearer {token}
-    ```
-
-    ### 2. API Key (Server-to-Server)
-    ```
-    X-API-Key: cpk_xxxxxxxx_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-    ```
-
-    ## Rate Limiting
-    - 60 requests per minute per user/API key
-    - Headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`
-
+  title: 'Masaar Compliance API'
   version: 1.0.0
-  contact:
-    name: Masaar Support
-    email: support@masaar.sa
-  license:
-    name: MIT
-
+  description: 'GCC e-invoicing compliance. Generated from the route table by `php artisan masaar:openapi` — edit the routes, not this file.'
 servers:
-  - url: https://api.masaar.sa
+  - url: 'https://api.masaar.sa'
     description: Production
-  - url: https://sandbox.masaar.sa
+  - url: 'https://sandbox.masaar.sa'
     description: Sandbox
-
-tags:
-  - name: Authentication
-    description: User authentication and token management
-  - name: Invoices
-    description: Invoice CRUD operations
-  - name: Compliance
-    description: ZATCA compliance operations
-  - name: Onboarding
-    description: ZATCA CSID onboarding flow
-  - name: Webhooks
-    description: Webhook subscription management
-  - name: API Keys
-    description: API key management for server-to-server auth
-
-security:
-  - bearerAuth: []
-  - apiKey: []
-
-paths:
-  /api/health:
-    get:
-      summary: Health check
-      tags: [System]
-      security: []
-      responses:
-        '200':
-          description: System is healthy
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: ok
-                  version:
-                    type: string
-                    example: "1.0.0"
-                  timestamp:
-                    type: string
-                    format: date-time
-
-  /api/auth/login:
-    post:
-      summary: Authenticate user
-      tags: [Authentication]
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [email, password]
-              properties:
-                email:
-                  type: string
-                  format: email
-                password:
-                  type: string
-                  format: password
-      responses:
-        '200':
-          description: Login successful
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TokenResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /api/auth/refresh:
-    post:
-      summary: Refresh JWT token
-      tags: [Authentication]
-      responses:
-        '200':
-          description: Token refreshed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TokenResponse'
-
-  /api/invoices:
-    get:
-      summary: List invoices
-      tags: [Invoices]
-      parameters:
-        - name: status
-          in: query
-          schema:
-            type: string
-            enum: [draft, issued, submitted, cleared, reported, rejected]
-        - name: per_page
-          in: query
-          schema:
-            type: integer
-            default: 15
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-      responses:
-        '200':
-          description: Paginated invoice list
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PaginatedInvoices'
-
-    post:
-      summary: Create invoice
-      tags: [Invoices]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateInvoice'
-      responses:
-        '201':
-          description: Invoice created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InvoiceResponse'
-        '422':
-          $ref: '#/components/responses/ValidationError'
-
-  /api/invoices/{id}:
-    get:
-      summary: Get invoice details
-      tags: [Invoices]
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Invoice details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InvoiceResponse'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-    put:
-      summary: Update draft invoice
-      tags: [Invoices]
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateInvoice'
-      responses:
-        '200':
-          description: Invoice updated
-        '422':
-          description: Invoice cannot be edited after issuance
-
-    delete:
-      summary: Delete draft invoice
-      tags: [Invoices]
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Invoice deleted
-        '422':
-          description: Cannot delete issued invoice
-
-  /api/compliance/zatca/generate/{invoiceId}:
-    post:
-      summary: Generate compliance data (hash, QR, XML)
-      tags: [Compliance]
-      parameters:
-        - name: invoiceId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Compliance data generated
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                  data:
-                    type: object
-                    properties:
-                      xml:
-                        type: string
-                        description: UBL 2.1 XML invoice
-                      hash:
-                        type: string
-                        description: SHA-256 invoice hash (base64)
-                      qr_code:
-                        type: string
-                        description: TLV-encoded QR code (base64)
-
-  /api/compliance/zatca/submit/{invoiceId}:
-    post:
-      summary: Submit invoice to ZATCA
-      tags: [Compliance]
-      parameters:
-        - name: invoiceId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Invoice submitted
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                  data:
-                    type: object
-                    properties:
-                      status:
-                        type: string
-                        enum: [CLEARED, REPORTED, REJECTED]
-                      warnings:
-                        type: array
-                        items:
-                          type: string
-        '422':
-          description: Submission failed
-
-  /api/compliance/onboarding/status:
-    get:
-      summary: Get onboarding status
-      tags: [Onboarding]
-      responses:
-        '200':
-          description: Onboarding status
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                  data:
-                    type: object
-                    properties:
-                      profile_complete:
-                        type: boolean
-                      has_ccsid:
-                        type: boolean
-                      has_pcsid:
-                        type: boolean
-                      is_onboarded:
-                        type: boolean
-
-  /api/compliance/onboarding/ccsid:
-    post:
-      summary: Request Compliance CSID (Step 1)
-      tags: [Onboarding]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [otp, common_name, serial_number]
-              properties:
-                otp:
-                  type: string
-                  minLength: 6
-                  maxLength: 6
-                  description: OTP from ZATCA portal
-                common_name:
-                  type: string
-                serial_number:
-                  type: string
-                organization_unit:
-                  type: string
-                location:
-                  type: string
-                industry:
-                  type: string
-      responses:
-        '200':
-          description: CCSID obtained
-
-  /api/compliance/onboarding/compliance-check:
-    post:
-      summary: Run compliance checks (Step 2)
-      tags: [Onboarding]
-      responses:
-        '200':
-          description: Compliance check results
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                  data:
-                    type: object
-                    properties:
-                      passed:
-                        type: boolean
-                      results:
-                        type: array
-                        items:
-                          type: object
-
-  /api/compliance/onboarding/pcsid:
-    post:
-      summary: Request Production CSID (Step 3)
-      tags: [Onboarding]
-      responses:
-        '200':
-          description: PCSID obtained - organization is now ZATCA compliant
-
-  /api/webhooks:
-    get:
-      summary: List webhooks
-      tags: [Webhooks]
-      responses:
-        '200':
-          description: Webhook list
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WebhookList'
-
-    post:
-      summary: Create webhook
-      tags: [Webhooks]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [url, events]
-              properties:
-                url:
-                  type: string
-                  format: uri
-                events:
-                  type: array
-                  items:
-                    type: string
-                    enum:
-                      - "*"
-                      - invoice.created
-                      - invoice.updated
-                      - invoice.issued
-                      - invoice.submitted
-                      - invoice.cleared
-                      - invoice.reported
-                      - invoice.rejected
-      responses:
-        '201':
-          description: Webhook created (secret shown only once)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WebhookCreated'
-
-  /api/webhooks/events:
-    get:
-      summary: List available webhook events
-      tags: [Webhooks]
-      responses:
-        '200':
-          description: Available events
-
-  /api/webhooks/{id}/test:
-    post:
-      summary: Send test webhook
-      tags: [Webhooks]
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Test webhook sent
-
-  /api/api-keys:
-    get:
-      summary: List API keys
-      tags: [API Keys]
-      responses:
-        '200':
-          description: API key list
-
-    post:
-      summary: Create API key
-      tags: [API Keys]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [name]
-              properties:
-                name:
-                  type: string
-                scopes:
-                  type: array
-                  items:
-                    type: string
-                    enum:
-                      - "*"
-                      - invoices:read
-                      - invoices:write
-                      - compliance:read
-                      - compliance:write
-                      - webhooks:manage
-                expires_at:
-                  type: string
-                  format: date-time
-      responses:
-        '201':
-          description: API key created (key shown only once)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiKeyCreated'
-
-  /api/api-keys/scopes:
-    get:
-      summary: List available API key scopes
-      tags: [API Keys]
-      responses:
-        '200':
-          description: Available scopes
-
 components:
   securitySchemes:
     bearerAuth:
@@ -520,139 +18,45 @@ components:
       type: apiKey
       in: header
       name: X-API-Key
-
+    metricsToken:
+      type: http
+      scheme: bearer
   schemas:
-    TokenResponse:
+    Success:
       type: object
+      required:
+        - success
       properties:
         success:
           type: boolean
+          const: true
+        message:
+          type: string
         data:
-          type: object
-          properties:
-            token:
-              type: object
-              properties:
-                access_token:
-                  type: string
-                token_type:
-                  type: string
-                  example: bearer
-                expires_in:
-                  type: integer
-                  example: 3600
-
-    CreateInvoice:
+          description: 'Endpoint-specific payload'
+    Paginated:
       type: object
-      required: [invoice_number, type, buyer_name, issue_date, lines]
-      properties:
-        invoice_number:
-          type: string
-          example: INV-2026-001
-        type:
-          type: string
-          enum: [standard, simplified]
-          description: standard=B2B, simplified=B2C
-        buyer_name:
-          type: string
-        buyer_vat_number:
-          type: string
-          description: Required for B2B invoices
-        buyer_address:
-          type: object
-          properties:
-            street:
-              type: string
-            city:
-              type: string
-            district:
-              type: string
-            building_number:
-              type: string
-            postal_code:
-              type: string
-        issue_date:
-          type: string
-          format: date
-        supply_date:
-          type: string
-          format: date
-        currency:
-          type: string
-          default: SAR
-        lines:
-          type: array
-          items:
-            type: object
-            required: [description, quantity, unit_price]
-            properties:
-              description:
-                type: string
-              quantity:
-                type: number
-              unit_price:
-                type: number
-              tax_rate:
-                type: number
-                default: 15
-
-    Invoice:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        invoice_number:
-          type: string
-        type:
-          type: string
-          enum: [standard, simplified]
-        status:
-          type: string
-          enum: [draft, issued, submitted, cleared, reported, rejected]
-        issue_date:
-          type: string
-          format: date
-        subtotal:
-          type: number
-        tax_amount:
-          type: number
-        total:
-          type: number
-        hash:
-          type: string
-        qr_code:
-          type: string
-        icv:
-          type: integer
-          description: Invoice Counter Value
-        lines:
-          type: array
-          items:
-            type: object
-
-    InvoiceResponse:
-      type: object
+      required:
+        - success
+        - data
+        - meta
       properties:
         success:
           type: boolean
-        data:
-          type: object
-          properties:
-            invoice:
-              $ref: '#/components/schemas/Invoice'
-
-    PaginatedInvoices:
-      type: object
-      properties:
-        success:
-          type: boolean
+          const: true
+        message:
+          type: string
         data:
           type: array
           items:
-            $ref: '#/components/schemas/Invoice'
+            description: 'Endpoint-specific item'
         meta:
           type: object
+          required:
+            - current_page
+            - last_page
+            - per_page
+            - total
           properties:
             current_page:
               type: integer
@@ -662,132 +66,3977 @@ components:
               type: integer
             total:
               type: integer
-
-    WebhookList:
-      type: object
-      properties:
-        success:
-          type: boolean
-        data:
-          type: object
-          properties:
-            webhooks:
-              type: array
-              items:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    format: uuid
-                  url:
-                    type: string
-                    format: uri
-                  events:
-                    type: array
-                    items:
-                      type: string
-                  is_active:
-                    type: boolean
-                  failure_count:
-                    type: integer
-
-    WebhookCreated:
-      type: object
-      properties:
-        success:
-          type: boolean
-        data:
-          type: object
-          properties:
-            webhook:
-              type: object
-              properties:
-                id:
-                  type: string
-                  format: uuid
-                url:
-                  type: string
-                secret:
-                  type: string
-                  description: HMAC secret (shown only once)
-                events:
-                  type: array
-                  items:
-                    type: string
-
-    ApiKeyCreated:
-      type: object
-      properties:
-        success:
-          type: boolean
-        data:
-          type: object
-          properties:
-            api_key:
-              type: object
-              properties:
-                id:
-                  type: string
-                  format: uuid
-                name:
-                  type: string
-                key:
-                  type: string
-                  description: Full API key (shown only once)
-                scopes:
-                  type: array
-                  items:
-                    type: string
-
     Error:
       type: object
+      required:
+        - success
+        - error
       properties:
         success:
           type: boolean
-          example: false
+          const: false
         error:
           type: object
+          required:
+            - message
+            - code
           properties:
             message:
               type: string
             code:
               type: string
-
-  responses:
-    Unauthorized:
-      description: Authentication required
-      content:
-        application/json:
+            details:
+              description: 'Field errors, where the failure has them'
+            category:
+              type: string
+paths:
+  /api/admin/dashboard:
+    get:
+      tags:
+        - Platform
+      operationId: adminDashboardController.index
+      summary: 'Index — Admin Dashboard Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/admin/dashboard/circuit-breaker/reset:
+    post:
+      tags:
+        - Platform
+      operationId: adminDashboardController.resetCircuitBreaker
+      summary: 'Reset Circuit Breaker — Admin Dashboard Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/admin/dashboard/connectivity:
+    get:
+      tags:
+        - Platform
+      operationId: adminDashboardController.connectivity
+      summary: 'Connectivity — Admin Dashboard Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/admin/dashboard/connectivity/refresh:
+    post:
+      tags:
+        - Platform
+      operationId: adminDashboardController.refreshConnectivity
+      summary: 'Refresh Connectivity — Admin Dashboard Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/admin/dashboard/error-rates:
+    get:
+      tags:
+        - Platform
+      operationId: adminDashboardController.errorRates
+      summary: 'Error Rates — Admin Dashboard Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/admin/dashboard/hash-chain-health:
+    get:
+      tags:
+        - Platform
+      operationId: adminDashboardController.hashChainHealth
+      summary: 'Hash Chain Health — Admin Dashboard Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/admin/dashboard/health:
+    get:
+      tags:
+        - Platform
+      operationId: adminDashboardController.health
+      summary: 'Health — Admin Dashboard Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/admin/dashboard/issues:
+    get:
+      tags:
+        - Platform
+      operationId: adminDashboardController.issues
+      summary: 'Issues — Admin Dashboard Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/admin/dashboard/logs:
+    get:
+      tags:
+        - Platform
+      operationId: adminDashboardController.logs
+      summary: 'Logs — Admin Dashboard Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/admin/dashboard/offline-queue:
+    get:
+      tags:
+        - Platform
+      operationId: adminDashboardController.offlineQueue
+      summary: 'Offline Queue — Admin Dashboard Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/admin/dashboard/offline-queue/process:
+    post:
+      tags:
+        - Platform
+      operationId: adminDashboardController.processOfflineQueue
+      summary: 'Process Offline Queue — Admin Dashboard Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/admin/dashboard/offline-queue/{organizationId}':
+    get:
+      tags:
+        - Platform
+      operationId: adminDashboardController.offlineQueueByOrg
+      summary: 'Offline Queue By Org — Admin Dashboard Controller'
+      parameters:
+        -
+          name: organizationId
+          in: path
+          required: true
           schema:
-            $ref: '#/components/schemas/Error'
-    NotFound:
-      description: Resource not found
-      content:
-        application/json:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/admin/dashboard/offline-queue/{queueId}/retry':
+    post:
+      tags:
+        - Platform
+      operationId: adminDashboardController.retryQueueItem
+      summary: 'Retry Queue Item — Admin Dashboard Controller'
+      parameters:
+        -
+          name: queueId
+          in: path
+          required: true
           schema:
-            $ref: '#/components/schemas/Error'
-    ValidationError:
-      description: Validation failed
-      content:
-        application/json:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/admin/dashboard/run-health-check:
+    post:
+      tags:
+        - Platform
+      operationId: adminDashboardController.runHealthCheck
+      summary: 'Run Health Check — Admin Dashboard Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/admin/dashboard/top-organizations:
+    get:
+      tags:
+        - Platform
+      operationId: adminDashboardController.topOrganizations
+      summary: 'Top Organizations — Admin Dashboard Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/admin/dashboard/variances:
+    get:
+      tags:
+        - Platform
+      operationId: adminDashboardController.environmentVariances
+      summary: 'Environment Variances — Admin Dashboard Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/admin/licenses:
+    get:
+      tags:
+        - Licensing
+      operationId: licenseController.index
+      summary: 'Index — License Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+    post:
+      tags:
+        - Licensing
+      operationId: licenseController.store
+      summary: 'Store — License Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/admin/licenses/cleanup:
+    post:
+      tags:
+        - Licensing
+      operationId: licenseController.cleanup
+      summary: 'Cleanup — License Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/admin/licenses/statistics:
+    get:
+      tags:
+        - Licensing
+      operationId: licenseController.statistics
+      summary: 'Statistics — License Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/admin/licenses/{id}':
+    get:
+      tags:
+        - Licensing
+      operationId: licenseController.show
+      summary: 'Show — License Controller'
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
           schema:
-            type: object
-            properties:
-              success:
-                type: boolean
-                example: false
-              error:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: Validation failed
-                  code:
-                    type: string
-                    example: VALIDATION_ERROR
-                  details:
-                    type: object
-                    additionalProperties:
-                      type: array
-                      items:
-                        type: string
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/admin/licenses/{id}/activate':
+    post:
+      tags:
+        - Licensing
+      operationId: licenseController.activate
+      summary: 'Activate — License Controller'
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/admin/licenses/{id}/audit':
+    get:
+      tags:
+        - Licensing
+      operationId: licenseController.audit
+      summary: 'Audit — License Controller'
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/admin/licenses/{id}/extend':
+    post:
+      tags:
+        - Licensing
+      operationId: licenseController.extend
+      summary: 'Extend — License Controller'
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/admin/licenses/{id}/features':
+    patch:
+      tags:
+        - Licensing
+      operationId: licenseController.updateFeatures
+      summary: 'Update Features — License Controller'
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/admin/licenses/{id}/limits':
+    patch:
+      tags:
+        - Licensing
+      operationId: licenseController.updateLimits
+      summary: 'Update Limits — License Controller'
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/admin/licenses/{id}/reactivate':
+    post:
+      tags:
+        - Licensing
+      operationId: licenseController.reactivate
+      summary: 'Reactivate — License Controller'
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/admin/licenses/{id}/regenerate-secret':
+    post:
+      tags:
+        - Licensing
+      operationId: licenseController.regenerateSecret
+      summary: 'Regenerate Secret — License Controller'
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/admin/licenses/{id}/revoke':
+    post:
+      tags:
+        - Licensing
+      operationId: licenseController.revoke
+      summary: 'Revoke — License Controller'
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/admin/licenses/{id}/suspend':
+    post:
+      tags:
+        - Licensing
+      operationId: licenseController.suspend
+      summary: 'Suspend — License Controller'
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/admin/licenses/{id}/upgrade':
+    post:
+      tags:
+        - Licensing
+      operationId: licenseController.upgrade
+      summary: 'Upgrade — License Controller'
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/admin/licenses/{id}/usage':
+    get:
+      tags:
+        - Licensing
+      operationId: licenseController.usage
+      summary: 'Usage — License Controller'
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/auth/login:
+    post:
+      tags:
+        - Auth
+      operationId: authController.login
+      summary: 'Login — Auth Controller'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+              required:
+                - email
+                - password
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        422:
+          description: 'Validation failed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security: []
+  /api/auth/logout:
+    post:
+      tags:
+        - Auth
+      operationId: authController.logout
+      summary: 'Logout — Auth Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/auth/me:
+    get:
+      tags:
+        - Auth
+      operationId: authController.me
+      summary: 'Me — Auth Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/auth/refresh:
+    post:
+      tags:
+        - Auth
+      operationId: authController.refresh
+      summary: 'Refresh — Auth Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/auth/register:
+    post:
+      tags:
+        - Auth
+      operationId: authController.register
+      summary: 'Register — Auth Controller'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+              required:
+                - name
+                - email
+                - password
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        422:
+          description: 'Validation failed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security: []
+  '/api/compliance/ae/retry/{submissionId}':
+    post:
+      tags:
+        - Compliance
+      operationId: ftaController.retry
+      summary: 'Retry — Fta Controller'
+      parameters:
+        -
+          name: submissionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/compliance/ae/status/{submissionId}':
+    get:
+      tags:
+        - Compliance
+      operationId: ftaController.status
+      summary: 'Status — Fta Controller'
+      parameters:
+        -
+          name: submissionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/compliance/ae/submissions:
+    get:
+      tags:
+        - Compliance
+      operationId: ftaController.index
+      summary: 'Index — Fta Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/compliance/ae/submit/{invoiceId}':
+    post:
+      tags:
+        - Compliance
+      operationId: ftaController.submit
+      summary: 'Submit — Fta Controller'
+      parameters:
+        -
+          name: invoiceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/compliance/onboarding/ccsid:
+    post:
+      tags:
+        - Compliance
+      operationId: onboardingController.requestCcsid
+      summary: 'Request Ccsid — Onboarding Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/compliance/onboarding/compliance-check:
+    post:
+      tags:
+        - Compliance
+      operationId: onboardingController.runComplianceCheck
+      summary: 'Run Compliance Check — Onboarding Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/compliance/onboarding/pcsid:
+    post:
+      tags:
+        - Compliance
+      operationId: onboardingController.requestPcsid
+      summary: 'Request Pcsid — Onboarding Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/compliance/onboarding/status:
+    get:
+      tags:
+        - Compliance
+      operationId: onboardingController.status
+      summary: 'Status — Onboarding Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/compliance/sa/generate/{invoiceId}':
+    post:
+      tags:
+        - Compliance
+      operationId: complianceController.generate
+      summary: 'Generate — Compliance Controller'
+      parameters:
+        -
+          name: invoiceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/compliance/sa/status/{submissionId}':
+    get:
+      tags:
+        - Compliance
+      operationId: complianceController.status
+      summary: 'Status — Compliance Controller'
+      parameters:
+        -
+          name: submissionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/compliance/sa/submit/{invoiceId}':
+    post:
+      tags:
+        - Compliance
+      operationId: complianceController.submit
+      summary: 'Submit — Compliance Controller'
+      parameters:
+        -
+          name: invoiceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/compliance/sa/validate/{invoiceId}':
+    post:
+      tags:
+        - Compliance
+      operationId: complianceController.validate
+      summary: 'Validate — Compliance Controller'
+      parameters:
+        -
+          name: invoiceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/compliance/uae-fta/{path?}':
+    get:
+      tags:
+        - Platform
+      operationId: getApiComplianceUaeFtaPath
+      summary: 'Closure route'
+      parameters:
+        -
+          name: path
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+      deprecated: true
+    post:
+      tags:
+        - Platform
+      operationId: postApiComplianceUaeFtaPath
+      summary: 'Closure route'
+      parameters:
+        -
+          name: path
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+      deprecated: true
+    put:
+      tags:
+        - Platform
+      operationId: putApiComplianceUaeFtaPath
+      summary: 'Closure route'
+      parameters:
+        -
+          name: path
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+      deprecated: true
+    patch:
+      tags:
+        - Platform
+      operationId: patchApiComplianceUaeFtaPath
+      summary: 'Closure route'
+      parameters:
+        -
+          name: path
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+      deprecated: true
+    delete:
+      tags:
+        - Platform
+      operationId: deleteApiComplianceUaeFtaPath
+      summary: 'Closure route'
+      parameters:
+        -
+          name: path
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+      deprecated: true
+  /api/compliance/variances:
+    get:
+      tags:
+        - Compliance
+      operationId: varianceController.index
+      summary: 'Index — Variance Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/compliance/variances/statistics:
+    get:
+      tags:
+        - Compliance
+      operationId: varianceController.statistics
+      summary: 'Statistics — Variance Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/compliance/variances/{id}':
+    get:
+      tags:
+        - Compliance
+      operationId: varianceController.show
+      summary: 'Show — Variance Controller'
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/compliance/variances/{id}/report':
+    post:
+      tags:
+        - Compliance
+      operationId: varianceController.markReported
+      summary: 'Mark Reported — Variance Controller'
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/compliance/variances/{id}/resolve':
+    post:
+      tags:
+        - Compliance
+      operationId: varianceController.resolve
+      summary: 'Resolve — Variance Controller'
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/compliance/zatca/{path?}':
+    get:
+      tags:
+        - Platform
+      operationId: getApiComplianceZatcaPath
+      summary: 'Closure route'
+      parameters:
+        -
+          name: path
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+      deprecated: true
+    post:
+      tags:
+        - Platform
+      operationId: postApiComplianceZatcaPath
+      summary: 'Closure route'
+      parameters:
+        -
+          name: path
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+      deprecated: true
+    put:
+      tags:
+        - Platform
+      operationId: putApiComplianceZatcaPath
+      summary: 'Closure route'
+      parameters:
+        -
+          name: path
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+      deprecated: true
+    patch:
+      tags:
+        - Platform
+      operationId: patchApiComplianceZatcaPath
+      summary: 'Closure route'
+      parameters:
+        -
+          name: path
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+      deprecated: true
+    delete:
+      tags:
+        - Platform
+      operationId: deleteApiComplianceZatcaPath
+      summary: 'Closure route'
+      parameters:
+        -
+          name: path
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+      deprecated: true
+  /api/dashboard:
+    get:
+      tags:
+        - Platform
+      operationId: dashboardController.index
+      summary: 'Index — Dashboard Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/dashboard/activity:
+    get:
+      tags:
+        - Platform
+      operationId: dashboardController.activity
+      summary: 'Activity — Dashboard Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/dashboard/health:
+    get:
+      tags:
+        - Platform
+      operationId: dashboardController.health
+      summary: 'Health — Dashboard Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/dashboard/invoices:
+    get:
+      tags:
+        - Platform
+      operationId: dashboardController.invoices
+      summary: 'Invoices — Dashboard Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/dashboard/submissions:
+    get:
+      tags:
+        - Platform
+      operationId: dashboardController.submissions
+      summary: 'Submissions — Dashboard Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/dashboard/usage:
+    get:
+      tags:
+        - Platform
+      operationId: dashboardController.usage
+      summary: 'Usage — Dashboard Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/health:
+    get:
+      tags:
+        - Platform
+      operationId: getApiHealth
+      summary: 'Closure route'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+      security: []
+  /api/invoices:
+    get:
+      tags:
+        - Invoice
+      operationId: invoiceController.index
+      summary: 'Index — Invoice Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Paginated'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+    post:
+      tags:
+        - Invoice
+      operationId: invoiceController.store
+      summary: 'Store — Invoice Controller'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                invoice_number:
+                  type: string
+                type:
+                  type: string
+                document_type:
+                  type: string
+                issue_date:
+                  type: string
+                supply_date:
+                  type: string
+                currency:
+                  type: string
+                payment_means_code:
+                  type: string
+                buyer_name:
+                  type: string
+                buyer_vat_number:
+                  type: string
+                buyer_address:
+                  type: array
+                billing_ref:
+                  type: string
+                adjustment_reason:
+                  type: string
+                discount_amount:
+                  type: number
+                notes:
+                  type: string
+                lines:
+                  type: array
+              required:
+                - invoice_number
+                - type
+                - issue_date
+                - buyer_name
+                - lines
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/invoices/{invoice}':
+    get:
+      tags:
+        - Invoice
+      operationId: invoiceController.show
+      summary: 'Show — Invoice Controller'
+      parameters:
+        -
+          name: invoice
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+    put:
+      tags:
+        - Invoice
+      operationId: invoiceController.update.put
+      summary: 'Update — Invoice Controller'
+      parameters:
+        -
+          name: invoice
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                invoice_number:
+                  type: string
+                type:
+                  type: string
+                document_type:
+                  type: string
+                issue_date:
+                  type: string
+                supply_date:
+                  type: string
+                currency:
+                  type: string
+                payment_means_code:
+                  type: string
+                buyer_name:
+                  type: string
+                buyer_vat_number:
+                  type: string
+                buyer_address:
+                  type: array
+                billing_ref:
+                  type: string
+                adjustment_reason:
+                  type: string
+                discount_amount:
+                  type: number
+                notes:
+                  type: string
+                lines:
+                  type: array
+              required:
+                - invoice_number
+                - type
+                - issue_date
+                - buyer_name
+                - lines
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+    patch:
+      tags:
+        - Invoice
+      operationId: invoiceController.update.patch
+      summary: 'Update — Invoice Controller'
+      parameters:
+        -
+          name: invoice
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                invoice_number:
+                  type: string
+                type:
+                  type: string
+                document_type:
+                  type: string
+                issue_date:
+                  type: string
+                supply_date:
+                  type: string
+                currency:
+                  type: string
+                payment_means_code:
+                  type: string
+                buyer_name:
+                  type: string
+                buyer_vat_number:
+                  type: string
+                buyer_address:
+                  type: array
+                billing_ref:
+                  type: string
+                adjustment_reason:
+                  type: string
+                discount_amount:
+                  type: number
+                notes:
+                  type: string
+                lines:
+                  type: array
+              required:
+                - invoice_number
+                - type
+                - issue_date
+                - buyer_name
+                - lines
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+    delete:
+      tags:
+        - Invoice
+      operationId: invoiceController.destroy
+      summary: 'Destroy — Invoice Controller'
+      parameters:
+        -
+          name: invoice
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/license:
+    get:
+      tags:
+        - Licensing
+      operationId: licenseUsageController.info
+      summary: 'Info — License Usage Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          apiKey: []
+  '/api/license/features/{feature}':
+    get:
+      tags:
+        - Licensing
+      operationId: licenseUsageController.checkFeature
+      summary: 'Check Feature — License Usage Controller'
+      parameters:
+        -
+          name: feature
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          apiKey: []
+  /api/license/health:
+    get:
+      tags:
+        - Licensing
+      operationId: licenseUsageController.health
+      summary: 'Health — License Usage Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          apiKey: []
+  /api/license/quotas:
+    get:
+      tags:
+        - Licensing
+      operationId: licenseUsageController.quotas
+      summary: 'Quotas — License Usage Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          apiKey: []
+  /api/license/status:
+    get:
+      tags:
+        - Platform
+      operationId: getApiLicenseStatus
+      summary: 'Closure route'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+      security: []
+  /api/license/usage:
+    get:
+      tags:
+        - Licensing
+      operationId: licenseUsageController.usage
+      summary: 'Usage — License Usage Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          apiKey: []
+  /api/metrics:
+    get:
+      tags:
+        - Platform
+      operationId: metricsController.index
+      summary: 'Index — Metrics Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          metricsToken: []
+  /api/organizations:
+    get:
+      tags:
+        - Organization
+      operationId: organizationController.index
+      summary: 'Index — Organization Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+    post:
+      tags:
+        - Organization
+      operationId: organizationController.store
+      summary: 'Store — Organization Controller'
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/organizations/branches:
+    get:
+      tags:
+        - Organization
+      operationId: branchController.index
+      summary: 'Index — Branch Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+    post:
+      tags:
+        - Organization
+      operationId: branchController.store
+      summary: 'Store — Branch Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/organizations/branches/{branch}':
+    get:
+      tags:
+        - Organization
+      operationId: branchController.show
+      summary: 'Show — Branch Controller'
+      parameters:
+        -
+          name: branch
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+    put:
+      tags:
+        - Organization
+      operationId: branchController.update
+      summary: 'Update — Branch Controller'
+      parameters:
+        -
+          name: branch
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+    delete:
+      tags:
+        - Organization
+      operationId: branchController.destroy
+      summary: 'Destroy — Branch Controller'
+      parameters:
+        -
+          name: branch
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/organizations/branches/{branch}/onboarding-status':
+    get:
+      tags:
+        - Organization
+      operationId: branchController.onboardingStatus
+      summary: 'Onboarding Status — Branch Controller'
+      parameters:
+        -
+          name: branch
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/organizations/branches/{branch}/onboarding/ccsid':
+    post:
+      tags:
+        - Compliance
+      operationId: branchOnboardingController.requestCcsid
+      summary: 'Request Ccsid — Branch Onboarding Controller'
+      parameters:
+        -
+          name: branch
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/organizations/branches/{branch}/onboarding/compliance-check':
+    post:
+      tags:
+        - Compliance
+      operationId: branchOnboardingController.runComplianceCheck
+      summary: 'Run Compliance Check — Branch Onboarding Controller'
+      parameters:
+        -
+          name: branch
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/organizations/branches/{branch}/onboarding/pcsid':
+    post:
+      tags:
+        - Compliance
+      operationId: branchOnboardingController.requestPcsid
+      summary: 'Request Pcsid — Branch Onboarding Controller'
+      parameters:
+        -
+          name: branch
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/organizations/branches/{branch}/onboarding/reset':
+    post:
+      tags:
+        - Compliance
+      operationId: branchOnboardingController.resetOnboarding
+      summary: 'Reset Onboarding — Branch Onboarding Controller'
+      parameters:
+        -
+          name: branch
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/organizations/branches/{branch}/reactivate':
+    post:
+      tags:
+        - Organization
+      operationId: branchController.reactivate
+      summary: 'Reactivate — Branch Controller'
+      parameters:
+        -
+          name: branch
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/organizations/branches/{branch}/set-default':
+    post:
+      tags:
+        - Organization
+      operationId: branchController.setDefault
+      summary: 'Set Default — Branch Controller'
+      parameters:
+        -
+          name: branch
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/organizations/branches/{branch}/suspend':
+    post:
+      tags:
+        - Organization
+      operationId: branchController.suspend
+      summary: 'Suspend — Branch Controller'
+      parameters:
+        -
+          name: branch
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/organizations/{id}/switch':
+    post:
+      tags:
+        - Organization
+      operationId: organizationController.switch
+      summary: 'Switch — Organization Controller'
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/organizations/{organization}':
+    get:
+      tags:
+        - Organization
+      operationId: organizationController.show
+      summary: 'Show — Organization Controller'
+      parameters:
+        -
+          name: organization
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+    put:
+      tags:
+        - Organization
+      operationId: organizationController.update.put
+      summary: 'Update — Organization Controller'
+      parameters:
+        -
+          name: organization
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+    patch:
+      tags:
+        - Organization
+      operationId: organizationController.update.patch
+      summary: 'Update — Organization Controller'
+      parameters:
+        -
+          name: organization
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/organizations/{organization}/compliance-profiles':
+    get:
+      tags:
+        - Organization
+      operationId: complianceProfileController.index
+      summary: 'Index — Compliance Profile Controller'
+      parameters:
+        -
+          name: organization
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+    post:
+      tags:
+        - Organization
+      operationId: complianceProfileController.store
+      summary: 'Store — Compliance Profile Controller'
+      parameters:
+        -
+          name: organization
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/organizations/{organization}/compliance-profiles/{profile}':
+    delete:
+      tags:
+        - Organization
+      operationId: complianceProfileController.destroy
+      summary: 'Destroy — Compliance Profile Controller'
+      parameters:
+        -
+          name: organization
+          in: path
+          required: true
+          schema:
+            type: string
+        -
+          name: profile
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/v1/compliance/generate/{invoiceId}':
+    post:
+      tags:
+        - Compliance
+      operationId: v1.complianceController.generate
+      summary: 'Generate — Compliance Controller'
+      parameters:
+        -
+          name: invoiceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          apiKey: []
+      description: 'Requires scope: invoice.submit'
+  '/api/v1/compliance/status/{invoiceId}':
+    get:
+      tags:
+        - Compliance
+      operationId: v1.complianceController.status
+      summary: 'Status — Compliance Controller'
+      parameters:
+        -
+          name: invoiceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          apiKey: []
+      description: 'Requires scope: compliance.status'
+  '/api/v1/compliance/submit/{invoiceId}':
+    post:
+      tags:
+        - Compliance
+      operationId: v1.complianceController.submit
+      summary: 'Submit — Compliance Controller'
+      parameters:
+        -
+          name: invoiceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          apiKey: []
+      description: 'Requires scope: invoice.submit'
+  '/api/v1/compliance/validate/{invoiceId}':
+    post:
+      tags:
+        - Compliance
+      operationId: v1.complianceController.validate
+      summary: 'Validate — Compliance Controller'
+      parameters:
+        -
+          name: invoiceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          apiKey: []
+      description: 'Requires scope: invoice.submit'
+  /api/v1/dashboard:
+    get:
+      tags:
+        - Platform
+      operationId: v1.dashboardController.index
+      summary: 'Index — Dashboard Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          apiKey: []
+  /api/v1/dashboard/health:
+    get:
+      tags:
+        - Platform
+      operationId: v1.dashboardController.health
+      summary: 'Health — Dashboard Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          apiKey: []
+  /api/v1/dashboard/usage:
+    get:
+      tags:
+        - Platform
+      operationId: v1.dashboardController.usage
+      summary: 'Usage — Dashboard Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          apiKey: []
+  /api/v1/invoices:
+    get:
+      tags:
+        - Invoice
+      operationId: v1.invoiceController.index
+      summary: 'Index — Invoice Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Paginated'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          apiKey: []
+      description: 'Requires scope: invoice.read'
+    post:
+      tags:
+        - Invoice
+      operationId: v1.invoiceController.store
+      summary: 'Store — Invoice Controller'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                invoice_number:
+                  type: string
+                type:
+                  type: string
+                document_type:
+                  type: string
+                issue_date:
+                  type: string
+                supply_date:
+                  type: string
+                currency:
+                  type: string
+                payment_means_code:
+                  type: string
+                buyer_name:
+                  type: string
+                buyer_vat_number:
+                  type: string
+                buyer_address:
+                  type: array
+                billing_ref:
+                  type: string
+                adjustment_reason:
+                  type: string
+                discount_amount:
+                  type: number
+                notes:
+                  type: string
+                lines:
+                  type: array
+              required:
+                - invoice_number
+                - type
+                - issue_date
+                - buyer_name
+                - lines
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          apiKey: []
+      description: 'Requires scope: invoice.submit'
+  '/api/v1/invoices/{invoice}':
+    get:
+      tags:
+        - Invoice
+      operationId: v1.invoiceController.show
+      summary: 'Show — Invoice Controller'
+      parameters:
+        -
+          name: invoice
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          apiKey: []
+      description: 'Requires scope: invoice.read'
+    put:
+      tags:
+        - Invoice
+      operationId: v1.invoiceController.update
+      summary: 'Update — Invoice Controller'
+      parameters:
+        -
+          name: invoice
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                invoice_number:
+                  type: string
+                type:
+                  type: string
+                document_type:
+                  type: string
+                issue_date:
+                  type: string
+                supply_date:
+                  type: string
+                currency:
+                  type: string
+                payment_means_code:
+                  type: string
+                buyer_name:
+                  type: string
+                buyer_vat_number:
+                  type: string
+                buyer_address:
+                  type: array
+                billing_ref:
+                  type: string
+                adjustment_reason:
+                  type: string
+                discount_amount:
+                  type: number
+                notes:
+                  type: string
+                lines:
+                  type: array
+              required:
+                - invoice_number
+                - type
+                - issue_date
+                - buyer_name
+                - lines
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          apiKey: []
+      description: 'Requires scope: invoice.submit'
+    delete:
+      tags:
+        - Invoice
+      operationId: v1.invoiceController.destroy
+      summary: 'Destroy — Invoice Controller'
+      parameters:
+        -
+          name: invoice
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          apiKey: []
+      description: 'Requires scope: invoice.cancel'
+  '/api/v1/pipeline/status/{invoiceId}':
+    get:
+      tags:
+        - Pipeline
+      operationId: v1.pipelineController.status
+      summary: 'Status — Pipeline Controller'
+      parameters:
+        -
+          name: invoiceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          apiKey: []
+      description: 'Requires scope: compliance.status'
+  /api/v1/pipeline/submit:
+    post:
+      tags:
+        - Pipeline
+      operationId: v1.pipelineController.submit
+      summary: 'Submit — Pipeline Controller'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                invoice_number:
+                  type: string
+                type:
+                  type: string
+                document_type:
+                  type: string
+                issue_date:
+                  type: string
+                supply_date:
+                  type: string
+                currency:
+                  type: string
+                payment_means_code:
+                  type: string
+                buyer_name:
+                  type: string
+                buyer_vat_number:
+                  type: string
+                buyer_address:
+                  type: array
+                billing_ref:
+                  type: string
+                adjustment_reason:
+                  type: string
+                discount_amount:
+                  type: number
+                notes:
+                  type: string
+                lines:
+                  type: array
+                invoice_type:
+                  type: string
+                due_date:
+                  type: string
+                org_id:
+                  type: string
+                auto_submit:
+                  type: boolean
+                branch_id:
+                  type: string
+                erp_reference_id:
+                  type: string
+              required:
+                - type
+                - issue_date
+                - buyer_name
+                - lines
+                - org_id
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          apiKey: []
+      description: 'Requires scope: invoice.submit'
+  /api/v1/variances:
+    get:
+      tags:
+        - Compliance
+      operationId: v1.varianceController.index
+      summary: 'Index — Variance Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          apiKey: []
+      description: 'Requires scope: compliance.status'
+  /api/v1/variances/statistics:
+    get:
+      tags:
+        - Compliance
+      operationId: v1.varianceController.statistics
+      summary: 'Statistics — Variance Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          apiKey: []
+      description: 'Requires scope: compliance.status'
+  '/api/v1/variances/{id}':
+    get:
+      tags:
+        - Compliance
+      operationId: v1.varianceController.show
+      summary: 'Show — Variance Controller'
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          apiKey: []
+      description: 'Requires scope: compliance.status'
+  '/api/v1/variances/{id}/report':
+    post:
+      tags:
+        - Compliance
+      operationId: v1.varianceController.markReported
+      summary: 'Mark Reported — Variance Controller'
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          apiKey: []
+      description: 'Requires scope: compliance.status'
+  '/api/v1/variances/{id}/resolve':
+    post:
+      tags:
+        - Compliance
+      operationId: v1.varianceController.resolve
+      summary: 'Resolve — Variance Controller'
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          apiKey: []
+      description: 'Requires scope: compliance.status'
+  /api/v1/webhooks:
+    get:
+      tags:
+        - Webhook
+      operationId: v1.webhookController.index
+      summary: 'Index — Webhook Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          apiKey: []
+      description: 'Requires scope: webhook.manage'
+    post:
+      tags:
+        - Webhook
+      operationId: v1.webhookController.store
+      summary: 'Store — Webhook Controller'
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          apiKey: []
+      description: 'Requires scope: webhook.manage'
+  '/api/v1/webhooks/{webhook}':
+    get:
+      tags:
+        - Webhook
+      operationId: v1.webhookController.show
+      summary: 'Show — Webhook Controller'
+      parameters:
+        -
+          name: webhook
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          apiKey: []
+      description: 'Requires scope: webhook.manage'
+    put:
+      tags:
+        - Webhook
+      operationId: v1.webhookController.update
+      summary: 'Update — Webhook Controller'
+      parameters:
+        -
+          name: webhook
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          apiKey: []
+      description: 'Requires scope: webhook.manage'
+    delete:
+      tags:
+        - Webhook
+      operationId: v1.webhookController.destroy
+      summary: 'Destroy — Webhook Controller'
+      parameters:
+        -
+          name: webhook
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          apiKey: []
+      description: 'Requires scope: webhook.manage'
+  /api/webhooks:
+    get:
+      tags:
+        - Webhook
+      operationId: webhookController.index
+      summary: 'Index — Webhook Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+    post:
+      tags:
+        - Webhook
+      operationId: webhookController.store
+      summary: 'Store — Webhook Controller'
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  /api/webhooks/events:
+    get:
+      tags:
+        - Webhook
+      operationId: webhookController.events
+      summary: 'Events — Webhook Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/webhooks/{id}/logs':
+    get:
+      tags:
+        - Webhook
+      operationId: webhookController.logs
+      summary: 'Logs — Webhook Controller'
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Paginated'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/webhooks/{id}/rotate-secret':
+    post:
+      tags:
+        - Webhook
+      operationId: webhookController.rotateSecret
+      summary: 'Rotate Secret — Webhook Controller'
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/webhooks/{id}/test':
+    post:
+      tags:
+        - Webhook
+      operationId: webhookController.test
+      summary: 'Test — Webhook Controller'
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+  '/api/webhooks/{webhook}':
+    get:
+      tags:
+        - Webhook
+      operationId: webhookController.show
+      summary: 'Show — Webhook Controller'
+      parameters:
+        -
+          name: webhook
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+    put:
+      tags:
+        - Webhook
+      operationId: webhookController.update.put
+      summary: 'Update — Webhook Controller'
+      parameters:
+        -
+          name: webhook
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+    patch:
+      tags:
+        - Webhook
+      operationId: webhookController.update.patch
+      summary: 'Update — Webhook Controller'
+      parameters:
+        -
+          name: webhook
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []
+    delete:
+      tags:
+        - Webhook
+      operationId: webhookController.destroy
+      summary: 'Destroy — Webhook Controller'
+      parameters:
+        -
+          name: webhook
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          bearerAuth: []

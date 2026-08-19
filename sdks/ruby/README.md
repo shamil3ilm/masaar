@@ -176,9 +176,9 @@ end
 ```ruby
 # config/initializers/masaar.rb
 Masaar.configure do |config|
-  config.base_url = ENV['COMPLIPAY_BASE_URL'] || 'http://localhost:8000'
-  config.api_key = ENV['COMPLIPAY_API_KEY']
-  config.api_secret = ENV['COMPLIPAY_API_SECRET']
+  config.base_url = ENV['MASAAR_BASE_URL'] || 'http://localhost:8000'
+  config.api_key = ENV['MASAAR_API_KEY']
+  config.api_secret = ENV['MASAAR_API_SECRET']
   config.timeout = 30
 end
 

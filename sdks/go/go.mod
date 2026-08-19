@@ -1,3 +1,3 @@
-module github.com/complipay/complipay-go
+module github.com/masaar/masaar-go
 
 go 1.21

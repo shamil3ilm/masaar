@@ -1,8 +1,8 @@
-package com.complipay.resources;
+package com.masaar.resources;
 
-import com.complipay.CompliPayClient;
-import com.complipay.exceptions.CompliPayException;
-import com.complipay.models.*;
+import com.masaar.MasaarClient;
+import com.masaar.exceptions.MasaarException;
+import com.masaar.models.*;
 
 import java.util.HashMap;
 import java.util.List;
@@ -13,9 +13,9 @@ import java.util.Map;
  */
 public class InvoicesResource {
 
-    private final CompliPayClient client;
+    private final MasaarClient client;
 
-    public InvoicesResource(CompliPayClient client) {
+    public InvoicesResource(MasaarClient client) {
         this.client = client;
     }
 
@@ -27,7 +27,7 @@ public class InvoicesResource {
      * @param status Filter by status (optional)
      * @return Paginated list of invoices
      */
-    public ApiResponse<List<Invoice>> list(int page, int perPage, String status) throws CompliPayException {
+    public ApiResponse<List<Invoice>> list(int page, int perPage, String status) throws MasaarException {
         String endpoint = String.format("/v1/invoices?page=%d&per_page=%d", page, perPage);
         if (status != null && !status.isEmpty()) {
             endpoint += "&status=" + status;
@@ -38,7 +38,7 @@ public class InvoicesResource {
     /**
      * List invoices with default pagination.
      */
-    public ApiResponse<List<Invoice>> list() throws CompliPayException {
+    public ApiResponse<List<Invoice>> list() throws MasaarException {
         return list(1, 15, null);
     }
 
@@ -48,7 +48,7 @@ public class InvoicesResource {
      * @param invoiceId The invoice UUID
      * @return The invoice
      */
-    public ApiResponse<Invoice> get(String invoiceId) throws CompliPayException {
+    public ApiResponse<Invoice> get(String invoiceId) throws MasaarException {
         return client.get("/v1/invoices/" + invoiceId, Invoice.class);
     }
 
@@ -58,7 +58,7 @@ public class InvoicesResource {
      * @param request The invoice creation request
      * @return The created invoice
      */
-    public ApiResponse<Invoice> create(CreateInvoiceRequest request) throws CompliPayException {
+    public ApiResponse<Invoice> create(CreateInvoiceRequest request) throws MasaarException {
         return client.post("/v1/invoices", request, Invoice.class);
     }
 
@@ -76,7 +76,7 @@ public class InvoicesResource {
             String buyerName,
             String billingReferenceId,
             List<InvoiceLine> lines
-    ) throws CompliPayException {
+    ) throws MasaarException {
         CreateInvoiceRequest request = CreateInvoiceRequest.builder()
                 .invoiceNumber(invoiceNumber)
                 .buyerName(buyerName)
@@ -101,7 +101,7 @@ public class InvoicesResource {
             String buyerName,
             String billingReferenceId,
             List<InvoiceLine> lines
-    ) throws CompliPayException {
+    ) throws MasaarException {
         CreateInvoiceRequest request = CreateInvoiceRequest.builder()
                 .invoiceNumber(invoiceNumber)
                 .buyerName(buyerName)

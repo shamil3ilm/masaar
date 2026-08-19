@@ -1,5 +1,5 @@
 """
-CompliPay Python SDK Setup
+Masaar Python SDK Setup
 """
 
 from setuptools import setup, find_packages
@@ -8,14 +8,14 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setup(
-    name="complipay",
+    name="masaar",
     version="1.0.0",
-    author="CompliPay",
-    author_email="support@complipay.com",
+    author="Masaar",
+    author_email="support@masaar.sa",
     description="ZATCA-compliant e-invoicing API client for Python",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/complipay/complipay-python",
+    url="https://github.com/masaar/masaar-python",
     packages=find_packages(),
     classifiers=[
         "Development Status :: 5 - Production/Stable",

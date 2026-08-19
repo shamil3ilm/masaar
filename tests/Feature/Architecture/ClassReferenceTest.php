@@ -16,25 +16,15 @@ use RecursiveIteratorIterator;
  * rewriter to find, and nothing fails until the line runs. A parent class or
  * a belongsTo target can sit broken for as long as nothing exercises it.
  *
- * Names that only ever appear inside strings — ASN.1 structure names, for
- * instance — are listed as known text rather than treated as references.
+ * Comments and string literals are stripped before anything is read as a
+ * reference. ASN.1 structure names, docblock examples, and the class names
+ * GenerateOpenapi greps controller source for are text rather than code, and
+ * matching them produced a failure whose verdict depended on which other
+ * tests had already run.
  */
 class ClassReferenceTest extends TestCase
 {
     private const APP = __DIR__.'/../../../app';
-
-    /**
-     * Names that appear in string literals or documentation, not as code.
-     */
-    private const NOT_CODE = [
-        'Certificate',      // ASN.1 structure name in an OpenSSL template
-        'TimeStampReq',     // RFC 3161 ASN.1 structures, referenced as text
-        'MessageImprint',
-        'TimeStampResp',
-        'PKIStatusInfo',
-        'PKIStatus',
-        'Invoice',          // usage example inside the BelongsToTenant docblock
-    ];
 
     /**
      * PHP built-ins and Laravel facade aliases, which need no import.
@@ -72,12 +62,12 @@ class ClassReferenceTest extends TestCase
      */
     private function unresolvedIn(string $path): array
     {
-        $code = file_get_contents($path);
+        $code = $this->codeOnly((string) file_get_contents($path));
 
         preg_match('/^namespace\s+([^;]+);/m', $code, $m);
         $namespace = $m[1] ?? '';
 
-        $known = array_flip(array_merge(self::GLOBALS, self::NOT_CODE));
+        $known = array_flip(self::GLOBALS);
 
         preg_match_all('/^use\s+(?:function\s+)?([^;]+);/m', $code, $uses);
         foreach ($uses[1] as $use) {
@@ -125,6 +115,41 @@ class ClassReferenceTest extends TestCase
         }
 
         return $unresolved;
+    }
+
+    /**
+     * The source with comments and string contents blanked out.
+     *
+     * Line breaks are kept so the ^namespace and ^use anchors still match,
+     * and each removed token leaves whitespace of the same length so nothing
+     * either side of it joins up into a name that was never written.
+     */
+    private function codeOnly(string $code): string
+    {
+        static $text = [
+            T_COMMENT,
+            T_DOC_COMMENT,
+            T_CONSTANT_ENCAPSED_STRING,
+            T_ENCAPSED_AND_WHITESPACE,
+            T_INLINE_HTML,
+        ];
+
+        $out = '';
+
+        foreach (token_get_all($code) as $token) {
+            if (is_string($token)) {
+                $out .= $token;
+
+                continue;
+            }
+
+            $out .= in_array($token[0], $text, true)
+                ? str_repeat(' ', strlen($token[1] ?? '') - substr_count($token[1] ?? '', "\n"))
+                    .str_repeat("\n", substr_count($token[1] ?? '', "\n"))
+                : $token[1];
+        }
+
+        return $out;
     }
 
     private function resolves(string $name, string $namespace): bool

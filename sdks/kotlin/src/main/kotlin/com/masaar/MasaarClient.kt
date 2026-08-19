@@ -1,4 +1,4 @@
-package com.complipay
+package com.masaar
 
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
@@ -11,11 +11,11 @@ import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
 /**
- * CompliPay Kotlin SDK for ZATCA-compliant e-invoicing.
+ * Masaar Kotlin SDK for ZATCA-compliant e-invoicing.
  *
  * Usage:
  * ```kotlin
- * val client = CompliPayClient(
+ * val client = MasaarClient(
  *     baseUrl = "https://api.masaar.sa",
  *     apiKey = "your_api_key",
  *     apiSecret = "your_api_secret"
@@ -30,7 +30,7 @@ import javax.crypto.spec.SecretKeySpec
  * val result = client.compliance.submit(invoice.data!!.id)
  * ```
  */
-class CompliPayClient(
+class MasaarClient(
     private val baseUrl: String,
     private val apiKey: String,
     private val apiSecret: String,
@@ -100,7 +100,7 @@ class CompliPayClient(
                 401 -> AuthenticationException(error.message ?: "Invalid credentials")
                 422 -> ValidationException(error.message ?: "Validation failed", error.errors)
                 429 -> RateLimitException("Rate limit exceeded")
-                else -> CompliPayException(error.message ?: "Request failed", statusCode)
+                else -> MasaarException(error.message ?: "Request failed", statusCode)
             }
         }
 
@@ -191,7 +191,7 @@ data class ZatcaResult(
 }
 
 // Resources
-class InvoicesResource(private val client: CompliPayClient) {
+class InvoicesResource(private val client: MasaarClient) {
     fun list(page: Int = 1, perPage: Int = 15): ApiResponse<List<Invoice>> =
         client.get("/v1/invoices?page=$page&per_page=$perPage")
 
@@ -202,7 +202,7 @@ class InvoicesResource(private val client: CompliPayClient) {
         client.post("/v1/invoices", request)
 }
 
-class ComplianceResource(private val client: CompliPayClient) {
+class ComplianceResource(private val client: MasaarClient) {
     fun generate(invoiceId: String): ApiResponse<ZatcaResult> =
         client.post("/api/compliance/zatca/generate/$invoiceId")
 
@@ -216,7 +216,7 @@ class ComplianceResource(private val client: CompliPayClient) {
         client.get("/api/compliance/zatca/status/$invoiceId")
 }
 
-class WebhooksResource(private val client: CompliPayClient) {
+class WebhooksResource(private val client: MasaarClient) {
     companion object Events {
         const val INVOICE_CREATED = "invoice.created"
         const val INVOICE_SUBMITTED = "invoice.submitted"
@@ -237,8 +237,8 @@ class WebhooksResource(private val client: CompliPayClient) {
 }
 
 // Exceptions
-open class CompliPayException(message: String, val statusCode: Int = 0) : Exception(message)
-class AuthenticationException(message: String) : CompliPayException(message, 401)
-class ValidationException(message: String, val errors: List<String>? = null) : CompliPayException(message, 422)
-class RateLimitException(message: String) : CompliPayException(message, 429)
-class ZatcaException(message: String, val errors: List<String>? = null) : CompliPayException(message)
+open class MasaarException(message: String, val statusCode: Int = 0) : Exception(message)
+class AuthenticationException(message: String) : MasaarException(message, 401)
+class ValidationException(message: String, val errors: List<String>? = null) : MasaarException(message, 422)
+class RateLimitException(message: String) : MasaarException(message, 429)
+class ZatcaException(message: String, val errors: List<String>? = null) : MasaarException(message)

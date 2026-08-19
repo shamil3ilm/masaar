@@ -1,11 +1,11 @@
 [package]
-name = "complipay"
+name = "masaar"
 version = "1.0.0"
 edition = "2021"
-authors = ["CompliPay <support@complipay.com>"]
+authors = ["Masaar <support@masaar.sa>"]
 description = "ZATCA-compliant e-invoicing API client for Rust"
 license = "MIT"
-repository = "https://github.com/complipay/complipay-rust"
+repository = "https://github.com/masaar/masaar-rust"
 keywords = ["zatca", "einvoicing", "saudi", "ksa", "vat"]
 categories = ["api-bindings", "web-programming::http-client"]
 

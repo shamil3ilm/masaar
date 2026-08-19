@@ -1,11 +1,11 @@
 import Foundation
 import CryptoKit
 
-/// CompliPay Swift SDK for ZATCA-compliant e-invoicing.
+/// Masaar Swift SDK for ZATCA-compliant e-invoicing.
 ///
 /// Usage:
 /// ```swift
-/// let client = CompliPayClient(
+/// let client = MasaarClient(
 ///     baseURL: "https://api.masaar.sa",
 ///     apiKey: "your_api_key",
 ///     apiSecret: "your_api_secret"
@@ -22,7 +22,7 @@ import CryptoKit
 
 // MARK: - Client
 
-public actor CompliPayClient {
+public actor MasaarClient {
     private let baseURL: String
     private let apiKey: String
     private let apiSecret: String
@@ -68,7 +68,7 @@ public actor CompliPayClient {
 
     private func request<T: Decodable, B: Encodable>(_ method: String, _ endpoint: String, body: B?) async throws -> ApiResponse<T> {
         guard let url = URL(string: "\(baseURL)\(endpoint)") else {
-            throw CompliPayError.invalidURL
+            throw MasaarError.invalidURL
         }
 
         var request = URLRequest(url: url)
@@ -85,7 +85,7 @@ public actor CompliPayClient {
         let (data, response) = try await session.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
-            throw CompliPayError.invalidResponse
+            throw MasaarError.invalidResponse
         }
 
         if httpResponse.statusCode >= 400 {
@@ -93,10 +93,10 @@ public actor CompliPayClient {
             let message = errorResponse?.message ?? "Request failed"
 
             switch httpResponse.statusCode {
-            case 401: throw CompliPayError.authentication(message)
-            case 422: throw CompliPayError.validation(message, errorResponse?.errors)
-            case 429: throw CompliPayError.rateLimit
-            default: throw CompliPayError.api(message, httpResponse.statusCode)
+            case 401: throw MasaarError.authentication(message)
+            case 422: throw MasaarError.validation(message, errorResponse?.errors)
+            case 429: throw MasaarError.rateLimit
+            default: throw MasaarError.api(message, httpResponse.statusCode)
             }
         }
 
@@ -220,7 +220,7 @@ public struct ZatcaResult: Codable {
 // MARK: - Resources
 
 public struct InvoicesResource {
-    let client: CompliPayClient
+    let client: MasaarClient
 
     public func get(_ invoiceId: String) async throws -> ApiResponse<Invoice> {
         try await client.get("/v1/invoices/\(invoiceId)")
@@ -232,7 +232,7 @@ public struct InvoicesResource {
 }
 
 public struct ComplianceResource {
-    let client: CompliPayClient
+    let client: MasaarClient
 
     public func generate(_ invoiceId: String) async throws -> ApiResponse<ZatcaResult> {
         try await client.post("/api/compliance/zatca/generate/\(invoiceId)", body: nil as Empty?)
@@ -252,7 +252,7 @@ public struct ComplianceResource {
 }
 
 public struct WebhooksResource {
-    let client: CompliPayClient
+    let client: MasaarClient
 
     public static let invoiceCreated = "invoice.created"
     public static let invoiceSubmitted = "invoice.submitted"
@@ -272,7 +272,7 @@ public struct WebhooksResource {
 
 // MARK: - Errors
 
-public enum CompliPayError: Error, LocalizedError {
+public enum MasaarError: Error, LocalizedError {
     case invalidURL
     case invalidResponse
     case authentication(String)
