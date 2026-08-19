@@ -12,8 +12,7 @@ use App\Domains\Compliance\Fatoora\Exceptions\SigningException;
  * Implements ECDSA signing using secp256k1 curve as required by ZATCA.
  * Used for signing invoices and generating QR code tags 7, 8, 9.
  *
- * Cryptographic settings are config-driven for flexibility.
- * See config/zatca.php 'crypto' section.
+ * Cryptographic settings come from the 'crypto' section of config/fatoora.php.
  */
 class EcdsaSigner
 {
