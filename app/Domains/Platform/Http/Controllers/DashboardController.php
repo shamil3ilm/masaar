@@ -10,7 +10,6 @@ use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Compliance\Fatoora\Models\OfflineItem;
 use App\Domains\Compliance\Fatoora\Services\CertificateLineage;
 use App\Domains\Compliance\Fatoora\Services\CircuitBreaker;
-use App\Domains\Compliance\Fatoora\Services\VarianceTracker;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
@@ -30,7 +29,6 @@ class DashboardController extends Controller
     public function __construct(
         private readonly TenantResolver $tenant,
         private readonly CircuitBreaker $circuitBreaker,
-        private readonly VarianceTracker $varianceTracker,
         private readonly CertificateLineage $certificateService,
     ) {}
 
@@ -105,7 +103,6 @@ class DashboardController extends Controller
             'circuit_breaker' => $this->circuitBreaker->getMetrics('zatca_api'),
             'queue' => $this->getQueueHealth($organizationId),
             'certificates' => $this->getCertificateHealth($organizationId),
-            'variances' => $this->varianceTracker->getStatistics($organizationId),
             'checked_at' => now()->toIso8601String(),
         ];
 
@@ -255,12 +252,9 @@ class DashboardController extends Controller
      */
     private function getComplianceStats(string $organizationId): array
     {
-        $variances = $this->varianceTracker->getStatistics($organizationId);
-
         return [
             'hash_chain_intact' => $this->isHashChainIntact($organizationId),
             'latest_icv' => ChainState::query()->value('last_icv') ?? 0,
-            'variances' => $variances,
         ];
     }
 

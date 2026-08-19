@@ -6,7 +6,6 @@ use App\Domains\Auth\Http\Controllers\AuthController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\BranchOnboardingController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\ComplianceController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\OnboardingController;
-use App\Domains\Compliance\Fatoora\Http\Controllers\VarianceController;
 use App\Domains\Compliance\FTA\Http\Controllers\FtaController;
 use App\Domains\Invoice\Http\Controllers\InvoiceController;
 use App\Domains\Organization\Http\Controllers\BranchController;
@@ -66,16 +65,6 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
         Route::post('/submit/{invoiceId}', [FtaController::class, 'submit']);
         Route::get('/status/{submissionId}', [FtaController::class, 'status']);
         Route::post('/retry/{submissionId}', [FtaController::class, 'retry']);
-    });
-
-    /* Compliance — environment variance tracking -------------------------- */
-
-    Route::prefix('compliance/variances')->group(function () {
-        Route::get('/', [VarianceController::class, 'index']);
-        Route::get('/statistics', [VarianceController::class, 'statistics']);
-        Route::get('/{id}', [VarianceController::class, 'show']);
-        Route::post('/{id}/report', [VarianceController::class, 'markReported']);
-        Route::post('/{id}/resolve', [VarianceController::class, 'resolve']);
     });
 
     /* Organizations and branches ------------------------------------------ */

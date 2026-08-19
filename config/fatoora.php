@@ -388,22 +388,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Environment Variance Tracking
-    |--------------------------------------------------------------------------
-    |
-    | Track sandbox vs production behavioral differences.
-    | See docs/COMPLIANCE-POLICIES.md Section 9: Sandbox vs Production Variance
-    |
-    */
-    'variance_tracking' => [
-        'enabled' => env('ZATCA_VARIANCE_TRACKING_ENABLED', true),
-        'async_logging' => env('ZATCA_VARIANCE_ASYNC', true), // Non-blocking on hot path
-        'cache_ttl_hours' => env('ZATCA_VARIANCE_CACHE_TTL', 24),
-        'max_retries' => env('ZATCA_VARIANCE_RETRY_MAX', 3),
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
     | Circuit Breaker
     |--------------------------------------------------------------------------
     |

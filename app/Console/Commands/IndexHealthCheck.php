@@ -39,7 +39,6 @@ class IndexHealthCheck extends Command
         'audit_logs' => 200,
         'invoices' => 150,
         'invoice_submissions' => 100,
-        'variance_logs' => 150,
     ];
 
     /**
@@ -50,7 +49,6 @@ class IndexHealthCheck extends Command
         'audit_logs' => 1000,
         'invoices' => 750,
         'invoice_submissions' => 500,
-        'variance_logs' => 750,
     ];
 
     /**
@@ -202,7 +200,6 @@ class IndexHealthCheck extends Command
             'audit_logs' => "SELECT * FROM {$table} WHERE created_at > ? LIMIT 100",
             'invoices' => "SELECT * FROM {$table} WHERE created_at > ? LIMIT 100",
             'invoice_submissions' => "SELECT * FROM {$table} WHERE created_at > ? LIMIT 100",
-            'variance_logs' => "SELECT * FROM {$table} WHERE created_at > ? LIMIT 100",
         ];
 
         $query = $queries[$table] ?? "SELECT * FROM {$table} LIMIT 100";
