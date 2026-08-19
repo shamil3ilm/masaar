@@ -9,7 +9,6 @@ use App\Domains\Auth\Services\JwtAuthenticator;
 use App\Domains\Compliance\Fatoora\Services\CertificateLineage;
 use App\Domains\Compliance\Fatoora\Services\CircuitBreaker;
 use App\Domains\Compliance\Fatoora\Services\TimestampValidator;
-use App\Domains\Compliance\Fatoora\Services\VarianceTracker;
 use App\Domains\Licensing\Http\Middleware\CheckInvoiceQuota;
 use App\Domains\Licensing\Http\Middleware\PlatformLicense;
 use App\Domains\Licensing\Http\Middleware\RequireEnvironment;
@@ -61,7 +60,6 @@ class AppServiceProvider extends ServiceProvider
 
         // ZATCA Compliance Services - Singletons for consistency
         $this->app->singleton(TimestampValidator::class);
-        $this->app->singleton(VarianceTracker::class);
         $this->app->singleton(CertificateLineage::class);
         $this->app->singleton(CircuitBreaker::class);
         $this->app->singleton(ComplianceLogger::class);

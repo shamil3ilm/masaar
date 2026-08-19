@@ -8,7 +8,6 @@ use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Fatoora\Services\CircuitBreaker;
 use App\Domains\Compliance\Fatoora\Services\Connectivity;
 use App\Domains\Compliance\Fatoora\Services\OfflineQueue;
-use App\Domains\Compliance\Fatoora\Services\VarianceTracker;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -29,7 +28,6 @@ class AdminDashboardController extends Controller
 {
     public function __construct(
         private readonly CircuitBreaker $circuitBreaker,
-        private readonly VarianceTracker $varianceTracker,
         private readonly OfflineQueue $offlineQueueManager,
         private readonly Connectivity $connectivityChecker,
     ) {}
@@ -117,60 +115,6 @@ class AdminDashboardController extends Controller
         } catch (\Exception $e) {
             return ApiResponse::error('Failed to run health check: '.$e->getMessage(), 500);
         }
-    }
-
-    /**
-     * Get environment variance comparison (sandbox vs production).
-     *
-     * GET /api/admin/dashboard/variances?limit=50
-     *
-     * Tracks cases where behavior differs between sandbox and production
-     * environments. Critical for auditing and regulatory compliance.
-     */
-    public function environmentVariances(Request $request): JsonResponse
-    {
-        $limit = min((int) $request->query('limit', 50), 200);
-
-        $variances = DB::table('variance_logs')
-            ->orderByDesc('created_at')
-            ->limit($limit)
-            ->get()
-            ->map(fn ($row) => [
-                'id' => $row->id,
-                'rule_code' => $row->rule_code,
-                'sandbox_result' => $row->sandbox_result,
-                'production_result' => $row->production_result,
-                'variance_type' => $row->variance_type,
-                'org_id' => $row->org_id,
-                'invoice_id' => $row->invoice_id ?? null,
-                'detected_at' => $row->created_at,
-                'resolved' => (bool) ($row->resolved_at ?? false),
-                'notes' => $row->notes ?? null,
-            ]);
-
-        // Aggregate statistics
-        $stats = [
-            'total_variances' => DB::table('variance_logs')->count(),
-            'unresolved' => DB::table('variance_logs')
-                ->whereNull('resolved_at')
-                ->count(),
-            'by_rule_code' => DB::table('variance_logs')
-                ->selectRaw('rule_code, COUNT(*) as count')
-                ->groupBy('rule_code')
-                ->orderByDesc('count')
-                ->limit(10)
-                ->pluck('count', 'rule_code')
-                ->toArray(),
-            'last_7_days' => DB::table('variance_logs')
-                ->where('created_at', '>=', now()->subDays(7))
-                ->count(),
-        ];
-
-        return ApiResponse::success([
-            'variances' => $variances,
-            'statistics' => $stats,
-            'generated_at' => now()->toIso8601String(),
-        ]);
     }
 
     /**
