@@ -569,7 +569,7 @@ class SubmissionTracker
         $newState = match (true) {
             ! $success => 'rejected',
             $hasWarnings => 'warning',
-            default => $clearance['state'],
+            default => ClearanceState::submissionState($clearance['state']),
         };
 
         // Extract warnings and errors from validation results

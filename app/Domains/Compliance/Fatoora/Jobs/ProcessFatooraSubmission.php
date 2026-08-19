@@ -16,6 +16,7 @@ use App\Domains\Compliance\Fatoora\Events\InvoiceWarning;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Compliance\Fatoora\Models\SubmissionIdempotency;
+use App\Domains\Compliance\Fatoora\Services\ClearanceState;
 use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use App\Domains\Compliance\Fatoora\Services\DocumentBuilder;
 use Illuminate\Bus\Queueable;
@@ -166,12 +167,27 @@ class ProcessFatooraSubmission implements ShouldQueue
         $success = $response->success;
         $hasWarnings = $response->hasWarnings();
 
-        // Determine final state
+        // A 200 from ZATCA does not mean the invoice is cleared. For a B2B
+        // document "REPORTED" means received and not yet cleared, and only
+        // "CLEARED" is terminal. This read `$success && isClearance()`, so any
+        // successful call marked the document cleared and fired the
+        // invoice.cleared webhook — telling the integrator, and the taxpayer's
+        // own records, that a document had cleared when the authority had only
+        // acknowledged it.
+        //
+        // SubmissionTracker was corrected for the synchronous path. This is the
+        // asynchronous one, which is the path the pipeline actually uses, and
+        // it kept the original behaviour.
+        $clearance = app(ClearanceState::class)->parseResponse([
+            'clearanceStatus' => $response->clearanceStatus,
+            'reportingStatus' => $response->reportingStatus,
+            'validationResults' => $response->validationResults,
+        ], isSimplified: ! $submission->isClearance());
+
         $newState = match (true) {
-            $success && $hasWarnings => 'warning',
-            $success && $submission->isClearance() => 'cleared',
-            $success => 'reported',
-            default => 'rejected',
+            ! $success => 'rejected',
+            $hasWarnings => 'warning',
+            default => ClearanceState::submissionState($clearance['state']),
         };
 
         // Update submission
@@ -180,10 +196,18 @@ class ProcessFatooraSubmission implements ShouldQueue
             'previous_state' => 'submitted',
             'state_changed_at' => now(),
             'clearance_status' => $response->clearanceStatus,
+            // What ZATCA said, kept beside where the submission is in this
+            // platform's workflow. The job recorded only the latter, so a
+            // document awaiting a decision was indistinguishable from one that
+            // never got that far.
+            'clearance_state' => $clearance['state'],
+            'cleared_at' => $clearance['is_terminal'] ? now() : null,
             'reporting_status' => $response->reportingStatus,
             'zatca_warnings' => $response->warningMessages ?: null,
             'zatca_errors' => $response->errorMessages ?: null,
-            'completed_at' => now(),
+            // Only once ZATCA has actually decided. This was set on every
+            // response, marking a document still awaiting clearance complete.
+            'completed_at' => $clearance['is_terminal'] ? now() : null,
         ]);
 
         // Update idempotency
