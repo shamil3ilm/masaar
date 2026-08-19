@@ -56,9 +56,20 @@ class DuplicateDetector
         $duplicates = [];
         $warnings = [];
 
+        // The invoice being submitted is already persisted by the time this
+        // runs, so every lookup below finds it. checkUuid() is literally
+        // Invoice::find($uuid) on its own primary key, and checkInvoiceNumber()
+        // matches the row it was called about. Both are marked critical, so
+        // SubmissionTracker refused every invoice as a duplicate of itself and
+        // no document could be submitted through it at all.
+        //
+        // $uuid is the invoice's own id — BT-124 is the primary key here — so
+        // it is what a match has to be compared against.
+        $isSelf = static fn (?Invoice $found): bool => $found === null || $found->id === $uuid;
+
         // 1. Check invoice number uniqueness (CRITICAL)
-        $numberDuplicate = $this->checkInvoiceNumber($organizationId, $invoiceNumber);
-        if ($numberDuplicate) {
+        $numberDuplicate = $this->checkInvoiceNumber($organizationId, $invoiceNumber, $uuid);
+        if (! $isSelf($numberDuplicate)) {
             $duplicates[] = [
                 'type' => 'invoice_number',
                 'severity' => 'critical',
@@ -70,7 +81,7 @@ class DuplicateDetector
 
         // 2. Check UUID uniqueness (CRITICAL)
         $uuidDuplicate = $this->checkUuid($uuid);
-        if ($uuidDuplicate) {
+        if (! $isSelf($uuidDuplicate)) {
             $duplicates[] = [
                 'type' => 'uuid',
                 'severity' => 'critical',
@@ -82,8 +93,8 @@ class DuplicateDetector
 
         // 3. Check hash uniqueness (if provided)
         if ($hash) {
-            $hashDuplicate = $this->checkHash($organizationId, $hash);
-            if ($hashDuplicate) {
+            $hashDuplicate = $this->checkHash($organizationId, $hash, $uuid);
+            if (! $isSelf($hashDuplicate)) {
                 $duplicates[] = [
                     'type' => 'hash',
                     'severity' => 'warning',
@@ -98,6 +109,10 @@ class DuplicateDetector
         if (! empty($fuzzyMatchData)) {
             $fuzzyMatches = $this->checkFuzzyMatch($organizationId, $fuzzyMatchData);
             foreach ($fuzzyMatches as $match) {
+                if ($isSelf($match)) {
+                    continue;
+                }
+
                 $warnings[] = [
                     'type' => 'fuzzy_match',
                     'severity' => 'warning',
@@ -120,14 +135,23 @@ class DuplicateDetector
 
     /**
      * Check if invoice number already exists for organization.
+     *
+     * @param  string|null  $exceptId  The invoice being checked, which must not
+     *                                 match itself. Excluded in the query rather
+     *                                 than by the caller: with two rows sharing
+     *                                 a number, first() may return either, so
+     *                                 filtering afterwards would let a real
+     *                                 duplicate through whenever it happened to
+     *                                 return the invoice under submission.
      */
-    public function checkInvoiceNumber(string $organizationId, string $invoiceNumber): ?Invoice
+    public function checkInvoiceNumber(string $organizationId, string $invoiceNumber, ?string $exceptId = null): ?Invoice
     {
-        $cacheKey = "dup_check:number:{$organizationId}:{$invoiceNumber}";
+        $cacheKey = "dup_check:number:{$organizationId}:{$invoiceNumber}:".($exceptId ?? '');
 
-        return Cache::remember($cacheKey, self::CACHE_TTL * 60, function () use ($organizationId, $invoiceNumber) {
+        return Cache::remember($cacheKey, self::CACHE_TTL * 60, function () use ($organizationId, $invoiceNumber, $exceptId) {
             return Invoice::where('org_id', $organizationId)
                 ->where('invoice_number', $invoiceNumber)
+                ->when($exceptId !== null, fn ($query) => $query->whereKeyNot($exceptId))
                 ->first();
         });
     }
@@ -150,10 +174,11 @@ class DuplicateDetector
     /**
      * Check if hash already exists for organization.
      */
-    public function checkHash(string $organizationId, string $hash): ?Invoice
+    public function checkHash(string $organizationId, string $hash, ?string $exceptId = null): ?Invoice
     {
         return Invoice::where('org_id', $organizationId)
             ->where('hash', $hash)
+            ->when($exceptId !== null, fn ($query) => $query->whereKeyNot($exceptId))
             ->first();
     }
 

@@ -61,6 +61,7 @@ class SubmissionTracker
         private readonly VatPeriodTracker $vatPeriodTracker,
         private readonly ClearanceState $clearanceState,
         private readonly CredentialStore $credentials,
+        private readonly KillSwitch $killSwitch,
     ) {}
 
     /**
@@ -154,6 +155,25 @@ class SubmissionTracker
     private function performPreSubmissionChecks(Invoice $invoice): void
     {
         $organization = $invoice->org;
+
+        // 0. The emergency stop, which nothing consulted.
+        //
+        // KillSwitch exists to halt issuance and submission during an incident —
+        // a ZATCA outage at month-end close, a bad go-live, a signing defect
+        // caught in production. It offers isSubmissionBlocked(),
+        // isClearanceBlocked(), isReportingBlocked(), isIssuanceBlocked() and
+        // emergencyStop(), and the only call anywhere was in the offline queue's
+        // batch loop. So an operator could throw the switch, watch replay stop,
+        // and conclude submissions had halted while every live submission
+        // continued to reach the authority.
+        //
+        // Per tenant as well as globally: the switch is scoped, and containing
+        // one taxpayer's blast radius is the reason it is.
+        $this->killSwitch->assertNotEnabled(KillSwitch::SWITCH_SUBMISSION, (string) $organization->id);
+        $this->killSwitch->assertNotEnabled(
+            $invoice->requiresClearance() ? KillSwitch::SWITCH_CLEARANCE : KillSwitch::SWITCH_REPORTING,
+            (string) $organization->id
+        );
 
         // 1. Check organization status
         if ($organization->isSuspended()) {
