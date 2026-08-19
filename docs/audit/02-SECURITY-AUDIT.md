@@ -24,7 +24,7 @@
 
 ### 🔴 C-1 — The `/admin/*` web console has no authentication
 
-**Status:** Confirmed
+**Status:** Resolved — `/admin` is behind `auth` and `platform.admin`; `SessionAuthTest` covers the redirect for each role.
 **Evidence:** [`routes/web.php:18-43`](../../routes/web.php#L18-L43); middleware registry at [`bootstrap/app.php:29-46`](../../bootstrap/app.php#L29-L46)
 
 ```php
@@ -61,8 +61,8 @@ Additionally: move both inline closures into `AdminController` methods so they a
 
 ### 🔴 C-2 — Customer portal reads tenant identity from a query parameter, unauthenticated
 
-**Status:** Confirmed
-**Evidence:** [`routes/web.php:53-59`](../../routes/web.php#L53-L59); [`app/Http/Controllers/Web/CustomerPortalController.php:22-29`](../../app/Http/Controllers/Web/CustomerPortalController.php#L22-L29)
+**Status:** Resolved — `PortalTenant` establishes the tenant from the session, never a query parameter, and `PortalDataScopeTest` pins it.
+**Evidence:** [`routes/web.php:53-59`](../../routes/web.php#L53-L59); [`CustomerPortalController`](../../app/Domains/Organization/Http/Controllers/CustomerPortalController.php)
 
 ```php
 private function getOrganizationId(Request $request): ?string
@@ -97,7 +97,7 @@ As an immediate stopgap before portal auth exists, wrap the group in `if (! app(
 
 ### 🔴 C-3 — API key **and secret** accepted from URL query parameters
 
-**Status:** Confirmed
+**Status:** Resolved — `ValidateLicense` reads credentials from headers only. A URL carries the key and secret together into proxy logs, APM traces and `Referer`.
 **Evidence:** [`app/Domains/Licensing/Http/Middleware/ValidateLicense.php`](../../app/Domains/Licensing/Http/Middleware/ValidateLicense.php) — `extractApiKey()` and `extractApiSecret()`
 
 ```php
@@ -123,8 +123,8 @@ Also revoke and reissue any credential that has ever been sent this way; assume 
 
 ### 🔴 C-4 — `TenantIsolationGuard` is dead code; tenant isolation has no defence-in-depth
 
-**Status:** Confirmed
-**Evidence:** [`app/Domains/Organization/Services/TenantIsolationGuard.php`](../../app/Domains/Organization/Services/TenantIsolationGuard.php) — 300 lines. A repository-wide grep for `TenantIsolationGuard` across `app/` and `routes/` returns **only its own class definition.** Zero call sites. It is not registered in `AppServiceProvider` (which registers only `TenantResolver`).
+**Status:** Resolved — the guard is deleted. Isolation is structural: `BelongsToTenant` applies `TenantScope` to every tenant model, and `RawTenantQueryTest` fails the build on an undeclared `DB::table()` against a tenant table.
+**Evidence:** `app/Domains/Organization/Services/TenantIsolationGuard.php` (since deleted) — 300 lines. A repository-wide grep for `TenantIsolationGuard` across `app/` and `routes/` returns **only its own class definition.** Zero call sites. It is not registered in `AppServiceProvider` (which registers only `TenantResolver`).
 
 The class docblock states:
 
@@ -171,8 +171,8 @@ Apply to `Invoice`, `InvoiceSubmission`, `Branch`, `Webhook`, `ApiKey`, `Complia
 
 ### 🟠 H-1 — Signing keys are encrypted with `APP_KEY` on a local filesystem disk
 
-**Status:** Confirmed
-**Evidence:** [`app/Domains/Organization/Services/BranchService.php:147-170`](../../app/Domains/Organization/Services/BranchService.php#L147-L170); [`FatooraSubmissionService::getSigningCredentials()`](../../app/Domains/Compliance/Fatoora/Services/FatooraSubmissionService.php)
+**Status:** Partly resolved — credentials have a dedicated key (`ZATCA_CREDENTIAL_KEY`) with previous-key rotation and a configurable disk, so `APP_KEY` no longer protects them. Per-tenant keys wrapped by a managed KMS are still open, and are where this finding closes.
+**Evidence:** [`app/Domains/Organization/Services/BranchService.php:147-170`](../../app/Domains/Organization/Services/BranchService.php#L147-L170); [`Submitter::getSigningCredentials()`](../../app/Domains/Compliance/Fatoora/Services/Submitter.php)
 
 ```php
 Storage::disk('local')->put($path, encrypt(json_encode($data)));   // AES-256-CBC under APP_KEY
@@ -196,7 +196,7 @@ Interim step if KMS is not yet available: move the ciphertext to S3 (`Storage::d
 
 ### 🟠 H-2 — SSRF via certificate revocation checking
 
-**Status:** Confirmed
+**Status:** Resolved — outbound fetches go through `SafeFetch`/`SafeUrl`: https only, host allowlist, no redirects, capped size, private and link-local addresses refused.
 **Evidence:** [`CertificateService::checkCrl()`](../../app/Domains/Compliance/Fatoora/Services/CertificateService.php) and `checkOcsp()`
 
 ```php
@@ -218,7 +218,7 @@ Both the OCSP responder URL and the CRL distribution points are read from extens
 
 ### 🟠 H-3 — CRL revocation check is silently non-functional
 
-**Status:** Confirmed (logic defect)
+**Status:** Resolved — revocation is checked with phpseclib against real CA, CRL and certificate fixtures; `CertificateRevocationTest` proves a revoked serial is refused and a good one is not.
 **Evidence:** [`CertificateService::checkCrl()`](../../app/Domains/Compliance/Fatoora/Services/CertificateService.php)
 
 ```php
@@ -237,7 +237,7 @@ X.509 serial numbers are up to 20 octets (160 bits). `openssl_x509_parse()` retu
 
 ### 🟠 H-4 — Revocation and CSR paths shell out to external binaries
 
-**Status:** Confirmed
+**Status:** Resolved — no path shells out. `NoShellOutTest` fails the build on `exec`, `shell_exec`, `proc_open`, `system` or `passthru` anywhere in `app/`.
 **Evidence:** `CertificateService.php` lines ~538, ~632, ~640 (`shell_exec` on `openssl`); `FatooraSdkService.php:256`, `FatooraGenerateCsr.php` (10 `exec()` calls on `openssl` and `java`)
 
 ```php
@@ -258,7 +258,7 @@ Arguments are escaped and the interpolated `$issuerArg` derives from `tempnam()`
 
 ### 🟠 H-5 — OpenSSL configuration injection during CSR generation
 
-**Status:** Probable
+**Status:** Resolved — CSR generation writes no configuration file from user input.
 **Evidence:** [`CertificateService::createZatcaOpenSslConfig()`](../../app/Domains/Compliance/Fatoora/Services/CertificateService.php)
 
 ```php
@@ -283,7 +283,7 @@ Tenant-controlled strings (organization name, unit, location, industry) are inte
 
 ### 🟠 H-6 — Unauthenticated Prometheus metrics endpoint
 
-**Status:** Confirmed
+**Status:** Resolved — `/metrics` is behind `MetricsAccess`: an allowlisted source IP or `METRICS_TOKEN`.
 **Evidence:** [`routes/api.php:53-54`](../../routes/api.php#L53-L54)
 
 ```php
@@ -300,27 +300,27 @@ The controller docblock states *"Access: GET /metrics (protected by IP whitelist
 
 ## 3. Medium findings
 
-| ID | Finding | Evidence | Remediation |
-|---|---|---|---|
-| 🟡 **M-1** | **XML parsing is not explicitly hardened.** ~15 `DOMDocument::loadXML()` call sites (`XadesSigner`, `InvoiceHasher`, `ComplianceValidator`, `FatooraValidator`, `FatooraComplianceService`) pass no libxml flags. PHP 8 + libxml ≥2.9 disable external entities by default, so classic XXE is *not* currently exploitable — but the protection is implicit and one `LIBXML_NOENT` away from regression. Entity-expansion (billion-laughs) and quadratic-blowup DoS remain possible on attacker-supplied XML. | `grep -rn "loadXML" app/` | Centralise all parsing in one `SafeXmlLoader` helper that passes `LIBXML_NONET \| LIBXML_NOCDATA`, sets `libxml_use_internal_errors(true)`, caps document size, and rejects any DOCTYPE outright. Ban direct `loadXML` via a static-analysis rule. |
-| 🟡 **M-2** | **Two parallel authorization models.** JWT routes use `ApiKey::hasScope()` with a `['*']` wildcard; licence routes use `License::hasScope()` with a separate `ApiScope` enum and implied-scope table. The same operation is reachable under two different authorization vocabularies. Divergence between them is a latent bypass. | `routes/api.php` §JWT vs §v1 | Unify on the `ApiScope` enum; remove the untyped `['*']` wildcard, which grants scopes that do not yet exist at issue time. See [05 §2](05-TARGET-ARCHITECTURE-AND-ROADMAP.md#2-target-architecture). |
-| 🟡 **M-3** | **Rate limiting is per-user, not per-tenant or per-endpoint.** `RateLimitApi` keys on `auth()->id()` or IP with a flat 60/min. Expensive endpoints (`/pipeline/submit`, which signs and calls ZATCA) share a budget with `/health`. Unauthenticated public routes fall back to IP, which is trivially rotated. | [`RateLimitApi.php`](../../app/Http/Middleware/RateLimitApi.php) | Key on `tenant + route-group`; assign per-endpoint cost weights; apply a stricter, separate limit to unauthenticated routes. |
-| 🟡 **M-4** | **`ApiKey::recordUsage()` writes to the database on every authenticated request** (`$this->update(['last_used_at' => now()])`), adding a synchronous write to the hot path and creating row-level contention on a busy key. | [`ApiKey.php`](../../app/Domains/Auth/Models/ApiKey.php) | Batch via cache with periodic flush, or downgrade to minute-granularity and write only on change. |
-| 🟡 **M-5** | **API key hashing is unsalted SHA-256 with no work factor.** Acceptable given 40 characters of `Str::random()` entropy, but offers no defence if the hash table leaks alongside a weak future key format, and `findByKey()` returns on `is_active` without also filtering `expires_at` in SQL (expiry is checked afterwards in PHP — correct today, fragile if another caller uses `findByKey` directly). | [`ApiKey.php`](../../app/Domains/Auth/Models/ApiKey.php) | Add a server-side pepper from the secret store; move `expires_at` into the query; document that key entropy is the security control. |
-| 🟡 **M-6** | **Error responses may leak internals.** The catch-all handler returns `$e->getMessage()` when `config('app.debug')` is true, and `.env.example` ships `APP_DEBUG=true`. A production deployment seeded from the example file discloses stack-trace-grade detail via the API. | [`bootstrap/app.php`](../../bootstrap/app.php); `.env.example:4` | Set `APP_DEBUG=false` and `APP_ENV=production` in `.env.example`; add a boot-time assertion that refuses to start when `APP_ENV=production && APP_DEBUG=true`. |
-| 🟡 **M-7** | **No CSRF protection strategy is documented for the Blade surfaces**, and the `/admin` POST routes mutate state. Laravel's `web` group supplies `VerifyCsrfToken` by default, so this is covered today — but once C-1's auth is added, confirm the forms carry `@csrf` and that no `/admin` route is added to the CSRF exception list. | `routes/web.php` | Verify during the C-1 fix; add a test posting without a token. |
-| 🟡 **M-8** | **Audit logging is incomplete for security events.** `AuditService` covers invoice CRUD. There is no audit record for: authentication success/failure, API key creation/revocation, certificate onboarding, credential decryption, tenant-context switches (`/organizations/{id}/switch`), or admin actions. ZATCA and PDPL both expect an auditable trail for tax-document operations. | [`app/Audits/`](../../app/Audits/) | Extend the audit domain to a security-event log with actor, tenant, IP, request ID and outcome. Make it append-only. |
+| ID | Finding | Evidence | Remediation | Status |
+|---|---|---|---|---|
+| 🟡 **M-1** | **XML parsing is not explicitly hardened.** ~15 `DOMDocument::loadXML()` call sites (`XadesSigner`, `InvoiceHasher`, `ComplianceValidator`, `FatooraValidator`, `FatooraComplianceService`) pass no libxml flags. PHP 8 + libxml ≥2.9 disable external entities by default, so classic XXE is *not* currently exploitable — but the protection is implicit and one `LIBXML_NOENT` away from regression. Entity-expansion (billion-laughs) and quadratic-blowup DoS remain possible on attacker-supplied XML. | `grep -rn "loadXML" app/` | Centralise all parsing in one `SafeXmlLoader` helper that passes `LIBXML_NONET \| LIBXML_NOCDATA`, sets `libxml_use_internal_errors(true)`, caps document size, and rejects any DOCTYPE outright. Ban direct `loadXML` via a static-analysis rule. | Resolved — every parse goes through `App\Support\Xml`; no direct `loadXML()` remains in `app/`. |
+| 🟡 **M-2** | **Two parallel authorization models.** JWT routes use `ApiKey::hasScope()` with a `['*']` wildcard; licence routes use `License::hasScope()` with a separate `ApiScope` enum and implied-scope table. The same operation is reachable under two different authorization vocabularies. Divergence between them is a latent bypass. | `routes/api.php` §JWT vs §v1 | Unify on the `ApiScope` enum; remove the untyped `['*']` wildcard, which grants scopes that do not yet exist at issue time. See [05 §2](05-TARGET-ARCHITECTURE-AND-ROADMAP.md#2-target-architecture). | Resolved by design — `ApiKey` was removed, leaving one scope vocabulary. The two surfaces answer to different audiences and each route file declares its guard once; see [09](09-WORK-MAP.md). |
+| 🟡 **M-3** | **Rate limiting is per-user, not per-tenant or per-endpoint.** `RateLimitApi` keys on `auth()->id()` or IP with a flat 60/min. Expensive endpoints (`/pipeline/submit`, which signs and calls ZATCA) share a budget with `/health`. Unauthenticated public routes fall back to IP, which is trivially rotated. | [`RateLimitApi.php`](../../app/Domains/Platform/Http/Middleware/RateLimitApi.php) | Key on `tenant + route-group`; assign per-endpoint cost weights; apply a stricter, separate limit to unauthenticated routes. | Resolved — keyed on tenant, then user, then IP, with per-band limits from `config/security.php`. |
+| 🟡 **M-4** | **`ApiKey::recordUsage()` writes to the database on every authenticated request** (`$this->update(['last_used_at' => now()])`), adding a synchronous write to the hot path and creating row-level contention on a busy key. | `ApiKey.php` (since deleted) | Batch via cache with periodic flush, or downgrade to minute-granularity and write only on change. | Superseded — `ApiKey` is gone. `ValidateLicense` still writes a usage event per request, deliberately: `usage_events` is an append-only billing ledger and the queue is database-backed, so deferring costs the same write and risks losing the event. |
+| 🟡 **M-5** | **API key hashing is unsalted SHA-256 with no work factor.** Acceptable given 40 characters of `Str::random()` entropy, but offers no defence if the hash table leaks alongside a weak future key format, and `findByKey()` returns on `is_active` without also filtering `expires_at` in SQL (expiry is checked afterwards in PHP — correct today, fragile if another caller uses `findByKey` directly). | `ApiKey.php` (since deleted) | Add a server-side pepper from the secret store; move `expires_at` into the query; document that key entropy is the security control. | Resolved — `License::hashSecret()` is the only place a secret is hashed, HMAC-SHA256 under `security.api_key_pepper`. |
+| 🟡 **M-6** | **Error responses may leak internals.** The catch-all handler returns `$e->getMessage()` when `config('app.debug')` is true, and `.env.example` ships `APP_DEBUG=true`. A production deployment seeded from the example file discloses stack-trace-grade detail via the API. | [`bootstrap/app.php`](../../bootstrap/app.php); `.env.example:4` | Set `APP_DEBUG=false` and `APP_ENV=production` in `.env.example`; add a boot-time assertion that refuses to start when `APP_ENV=production && APP_DEBUG=true`. | Resolved — `.env.example` ships `APP_DEBUG=false` with `APP_ENV=production`, and `AppServiceProvider` refuses to boot that combination with debug on. |
+| 🟡 **M-7** | **No CSRF protection strategy is documented for the Blade surfaces**, and the `/admin` POST routes mutate state. Laravel's `web` group supplies `VerifyCsrfToken` by default, so this is covered today — but once C-1's auth is added, confirm the forms carry `@csrf` and that no `/admin` route is added to the CSRF exception list. | `routes/web.php` | Verify during the C-1 fix; add a test posting without a token. | Open — the `web` middleware group still supplies CSRF by default, and the end-to-end run exercises a form post, but no test asserts a tokenless post is refused. |
+| 🟡 **M-8** | **Audit logging is incomplete for security events.** `AuditService` covers invoice CRUD. There is no audit record for: authentication success/failure, API key creation/revocation, certificate onboarding, credential decryption, tenant-context switches (`/organizations/{id}/switch`), or admin actions. ZATCA and PDPL both expect an auditable trail for tax-document operations. | [`app/Domains/Audit/`](../../app/Domains/Audit/) | Extend the audit domain to a security-event log with actor, tenant, IP, request ID and outcome. Make it append-only. | Resolved — `AuditService` records sign-in, failed sign-in, unknown account and sign-out with actor, tenant and client address; a test asserts no entry carries the secret. |
 
 ---
 
 ## 4. Low findings
 
-| ID | Finding | Remediation |
-|---|---|---|
-| 🔵 **L-1** | `TenantIsolationGuard::runWithoutTenant()` disables enforcement via mutable singleton state — a request-scoped side effect that would be unsafe under Octane/Swoole. | Moot once the class is deleted (C-4); if any similar pattern is reintroduced, scope it to a closure, never to instance state. |
-| 🔵 **L-2** | `TenantIsolationGuard::getEntityTenantId()` uses `property_exists()` on Eloquent models, which does not see attributes loaded into `$attributes`. The check silently returns `null` for most models, causing the guard to *pass* entities it should reject. | Moot with C-4's deletion; noted because it demonstrates the class was never exercised. |
-| 🔵 **L-3** | No dependency vulnerability scanning in CI. `composer.lock` was last updated 2026-02-02; six months of advisories are unreviewed. | Add `composer audit` and Dependabot/Renovate to `.github/workflows/`. |
-| 🔵 **L-4** | `LogSanitizer` exists in `Fatoora/Helpers/` but is not consistently applied — several `Log::debug`/`Log::error` calls in the submission path log full context arrays that may contain invoice or credential data. | Route all compliance-domain logging through `ComplianceLogger` and make sanitisation mandatory there. |
+| ID | Finding | Remediation | Status |
+|---|---|---|---|
+| 🔵 **L-1** | `TenantIsolationGuard::runWithoutTenant()` disables enforcement via mutable singleton state — a request-scoped side effect that would be unsafe under Octane/Swoole. | Moot once the class is deleted (C-4); if any similar pattern is reintroduced, scope it to a closure, never to instance state. | Moot — `TenantIsolationGuard` is deleted. |
+| 🔵 **L-2** | `TenantIsolationGuard::getEntityTenantId()` uses `property_exists()` on Eloquent models, which does not see attributes loaded into `$attributes`. The check silently returns `null` for most models, causing the guard to *pass* entities it should reject. | Moot with C-4's deletion; noted because it demonstrates the class was never exercised. | Moot — `TenantIsolationGuard` is deleted. |
+| 🔵 **L-3** | No dependency vulnerability scanning in CI. `composer.lock` was last updated 2026-02-02; six months of advisories are unreviewed. | Add `composer audit` and Dependabot/Renovate to `.github/workflows/`. | Resolved — `composer audit --locked` runs in CI on every push. Re-rated **H-7** when the scan found 40 advisories, 10 of them high, in the locked tree; `composer update` cleared them. |
+| 🔵 **L-4** | `LogSanitizer` exists in `Fatoora/Helpers/` but is not consistently applied — several `Log::debug`/`Log::error` calls in the submission path log full context arrays that may contain invoice or credential data. | Route all compliance-domain logging through `ComplianceLogger` and make sanitisation mandatory there. | Resolved — compliance logging goes through `ComplianceLogger`, which sanitises via `LogSanitizer` before writing. |
 
 ---
 
