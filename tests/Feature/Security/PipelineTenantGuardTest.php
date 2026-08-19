@@ -61,7 +61,7 @@ class PipelineTenantGuardTest extends TestCase
         License::create([
             'org_id' => $organization->id,
             'api_key' => 'cp_test_'.$organization->id,
-            'api_secret_hash' => hash('sha256', $secret),
+            'api_secret_hash' => License::hashSecret($secret),
             'organization_name' => $organization->name,
             'contact_email' => 'ops@masaar.test',
             'environment' => 'sandbox',
