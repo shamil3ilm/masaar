@@ -109,16 +109,20 @@ class OfflineFallback
                 certificate: $signing['pcsid'] ?? null,
             );
 
-            // Update invoice with signed data
+            // Update invoice with signed data. The key is qr_code — this read
+            // qrCode, which DocumentBuilder does not return, so the QR was null
+            // both on the invoice and in the queue. For a B2C sale that QR is
+            // what gets printed on the receipt, so an outage produced receipts
+            // with nothing on them to scan.
             $invoice->update([
                 'signed_xml' => $complianceData['xml'],
                 'hash' => $complianceData['hash'],
-                'qr_code' => $complianceData['qrCode'],
+                'qr_code' => $complianceData['qr_code'],
             ]);
 
             $signedXml = $complianceData['xml'];
             $invoiceHash = $complianceData['hash'];
-            $qrCode = $complianceData['qrCode'];
+            $qrCode = $complianceData['qr_code'];
         } else {
             $signedXml = $invoice->signed_xml;
             $invoiceHash = $invoice->hash;
@@ -166,12 +170,23 @@ class OfflineFallback
      */
     private function shouldFallbackToOffline(FatooraException $e): bool
     {
+        // Three of these named cases that do not exist —
+        // NET_CONNECTION_TIMEOUT, NET_CONNECTION_REFUSED and
+        // ZATCA_GATEWAY_TIMEOUT — and an undefined enum case is a fatal Error,
+        // not a null. So this method died the moment a FatooraException reached
+        // it, and the invoice was neither submitted nor queued. The fallback
+        // failed in exactly the outage it exists for.
+        //
+        // Not ErrorCode::isRetryable(): that also covers rate limiting, OCSP
+        // and TSA failures, which are worth retrying but are not ZATCA being
+        // unreachable. Offline mode is for the latter.
         $connectivityErrors = [
-            ErrorCode::NET_CONNECTION_TIMEOUT,
-            ErrorCode::NET_CONNECTION_REFUSED,
+            ErrorCode::NET_CONNECTION_FAILED,
+            ErrorCode::NET_TIMEOUT,
             ErrorCode::NET_DNS_RESOLUTION_FAILED,
+            ErrorCode::NET_HOST_UNREACHABLE,
             ErrorCode::ZATCA_SERVICE_UNAVAILABLE,
-            ErrorCode::ZATCA_GATEWAY_TIMEOUT,
+            ErrorCode::ZATCA_TIMEOUT,
             ErrorCode::ZATCA_MAINTENANCE,
         ];
 
