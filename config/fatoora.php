@@ -61,6 +61,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | CSID Credential Storage
+    |--------------------------------------------------------------------------
+    |
+    | Where each taxpayer's signing keys are kept. The default keeps them on
+    | the container's own filesystem, which confines the platform to a single
+    | replica: a tenant onboarded on one instance cannot sign on another.
+    |
+    | Point this at a shared disk before scaling out. Whatever it names must be
+    | private — these are the keys behind every invoice the platform stamps.
+    |
+    */
+    'credentials' => [
+        'disk' => env('ZATCA_CREDENTIAL_DISK', 'local'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Cryptographic Settings
     |--------------------------------------------------------------------------
     |
