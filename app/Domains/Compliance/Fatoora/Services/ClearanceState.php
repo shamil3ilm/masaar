@@ -38,6 +38,30 @@ class ClearanceState
     ];
 
     /**
+     * The submission state that corresponds to a clearance state.
+     *
+     * These are two vocabularies over two columns. clearance_state records what
+     * ZATCA said about the document; state records where the submission is in
+     * this platform's own workflow, and its column permits a different set of
+     * values. Writing one into the other looks harmless while the two overlap —
+     * 'cleared' and 'reported' exist in both — and violates the check
+     * constraint the moment ZATCA answers with anything else, which is when the
+     * job throws, retries, and finally records nothing at all.
+     *
+     * Anything not yet decided maps to 'submitted': the document has gone to
+     * the authority and no outcome has come back.
+     */
+    public static function submissionState(string $clearanceState): string
+    {
+        return match ($clearanceState) {
+            self::STATE_CLEARED => 'cleared',
+            self::STATE_REPORTED => 'reported',
+            self::STATE_REJECTED => 'rejected',
+            default => 'submitted',
+        };
+    }
+
+    /**
      * @param  array  $zatcaResponse  The response from the ZATCA API
      * @param  bool  $isSimplified  Whether this is a simplified (B2C) invoice
      * @return array{state: string, is_terminal: bool, warnings: array, errors: array}
