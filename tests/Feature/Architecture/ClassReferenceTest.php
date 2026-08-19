@@ -152,6 +152,86 @@ class ClassReferenceTest extends TestCase
         return $out;
     }
 
+    /**
+     * A constant or enum case named on a class must exist there.
+     *
+     * PHP resolves Foo::BAR at runtime and raises a fatal Error if it is not
+     * defined, so a wrong name sits silently until the line executes.
+     * OfflineFallback listed three ErrorCode cases that do not exist —
+     * NET_CONNECTION_TIMEOUT, NET_CONNECTION_REFUSED, ZATCA_GATEWAY_TIMEOUT —
+     * inside the method deciding whether a failure was a connectivity failure.
+     * It therefore died the moment an exception reached it, so the offline
+     * fallback never ran, and the only way to find out was to trigger an
+     * outage.
+     */
+    public function test_all_constant_references_resolve(): void
+    {
+        $unresolved = [];
+
+        foreach ($this->phpFiles() as $path) {
+            $code = $this->codeOnly((string) file_get_contents($path));
+
+            preg_match('/^namespace\s+([^;]+);/m', $code, $match);
+            $namespace = $match[1] ?? '';
+
+            $imports = $this->importsIn($code);
+
+            // Foo::BAR, but not Foo::bar() or Foo::$bar or Foo::class.
+            preg_match_all('/(?<![\\\\$>\w])([A-Z]\w+)::([A-Z][A-Z0-9_]*)\b(?!\s*\()/', $code, $matches, PREG_SET_ORDER);
+
+            foreach ($matches as [, $class, $constant]) {
+                if ($constant === 'class') {
+                    continue;
+                }
+
+                $resolved = $imports[$class]
+                    ?? ($namespace === '' ? $class : "$namespace\\$class");
+
+                if (! class_exists($resolved) && ! enum_exists($resolved) && ! interface_exists($resolved)) {
+                    // Unresolvable classes are the other test's business.
+                    continue;
+                }
+
+                if (! (new \ReflectionClass($resolved))->hasConstant($constant)) {
+                    $unresolved[] = basename($path).' -> '.$class.'::'.$constant;
+                }
+            }
+        }
+
+        $this->assertSame([], $unresolved, sprintf(
+            'These constants and enum cases do not exist on the class named. PHP raises '
+            ."a fatal Error when the line runs:\n  %s",
+            implode("\n  ", array_unique($unresolved))
+        ));
+    }
+
+    /**
+     * Short name => fully qualified, from the file's use statements.
+     *
+     * @return array<string, string>
+     */
+    private function importsIn(string $code): array
+    {
+        preg_match_all('/^use\s+([^;]+);/m', $code, $matches);
+
+        $imports = [];
+
+        foreach ($matches[1] as $use) {
+            $use = trim($use);
+
+            if (str_contains($use, ' as ')) {
+                [$fqcn, $alias] = array_map('trim', explode(' as ', $use));
+                $imports[$alias] = $fqcn;
+
+                continue;
+            }
+
+            $imports[substr(strrchr("\\$use", '\\'), 1)] = $use;
+        }
+
+        return $imports;
+    }
+
     private function resolves(string $name, string $namespace): bool
     {
         foreach ([$namespace === '' ? $name : "$namespace\\$name", $name] as $candidate) {

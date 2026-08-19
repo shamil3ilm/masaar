@@ -228,7 +228,11 @@ class FatooraException extends Exception
     {
         return new self(
             $message,
-            ErrorCode::CERT_INVALID,
+            // CERT_INVALID is not a case. Naming it made this factory fatal
+            // with "Undefined constant" instead of raising the exception, so a
+            // taxpayer with corrupted credentials got a crash rather than the
+            // message below telling them to re-run onboarding.
+            ErrorCode::CERT_INVALID_FORMAT,
             $context
         );
     }
