@@ -144,7 +144,7 @@ class Phase2SigningTest extends TestCase
      * each other. Both are compared to the document rather than recomputed the
      * way the generator computed them, so this cannot agree with itself.
      */
-    public function test_qr_hash_and_signature_match_the_document(): void
+    public function test_qr_matches_the_document(): void
     {
         $result = $this->sign();
         $tags = $this->decodeTlv(base64_decode($result['qr_code']));
@@ -170,7 +170,7 @@ class Phase2SigningTest extends TestCase
      * Derived here from the certificate with OpenSSL rather than through the
      * code that wrote the tag, so the two agreeing means something.
      */
-    public function test_qr_public_key_belongs_to_the_certificate(): void
+    public function test_qr_key_matches_the_certificate(): void
     {
         $tags = $this->decodeTlv(base64_decode($this->sign()['qr_code']));
 
