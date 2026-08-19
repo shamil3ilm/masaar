@@ -11,7 +11,7 @@
 <!-- Certificate Alert -->
 @if($certificate)
     @php
-        $daysLeft = \Carbon\Carbon::parse($certificate->expires_at)->diffInDays(now(), false) * -1;
+        $daysLeft = \Carbon\Carbon::parse($certificate->valid_to)->diffInDays(now(), false) * -1;
     @endphp
     @if($daysLeft <= 7)
     <div class="mb-6 p-4 rounded-lg {{ $daysLeft <= 0 ? 'bg-red-100 border border-red-400' : 'bg-yellow-100 border border-yellow-400' }}">

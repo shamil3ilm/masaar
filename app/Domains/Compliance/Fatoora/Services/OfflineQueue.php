@@ -52,6 +52,7 @@ class OfflineQueue
 
     public function __construct(
         private readonly KillSwitch $killSwitchManager,
+        private readonly CredentialStore $credentials,
     ) {
         $this->maxQueueSize = FatooraConfig::getOfflineQueueMaxSize();
     }
@@ -427,13 +428,15 @@ class OfflineQueue
             }
         }
 
-        // Check if the certificate used for signing is still valid
-        $certLineage = DB::table('certificate_lineage')
-            ->where('org_id', $item->org_id)
-            ->where('status', 'active')
-            ->first();
+        // The certificate the organization signs with. This asked a
+        // certificate_lineage table that nothing ever wrote, so every queued
+        // item was judged to have no certificate and the queue never drained.
+        $certificate = $this->credentials->certificate(
+            (string) $item->org_id,
+            $item->branch_id ?? null
+        );
 
-        if (! $certLineage) {
+        if ($certificate === null) {
             return [
                 'valid' => false,
                 'reason' => 'No active certificate found',
