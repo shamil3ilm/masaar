@@ -39,6 +39,15 @@ class XmlBuilder
     public function build(InvoiceXmlData $data): string
     {
         $this->initDocument();
+
+        // ZATCA looks for the signature in UBLExtensions, so the document has
+        // to carry the scaffold before it is signed. This was written and
+        // never called, so the signer found nowhere to put the signature and
+        // fell back to appending it under the root — where no verifier looks
+        // for it. The XPath transform strips UBLExtensions before the document
+        // digest is taken, so its presence does not change the invoice hash.
+        $this->addSignatureExtension();
+
         $this->addInvoiceIdentification($data);
         $this->addBillingReference($data);
         $this->addAdditionalDocumentReferences($data);
