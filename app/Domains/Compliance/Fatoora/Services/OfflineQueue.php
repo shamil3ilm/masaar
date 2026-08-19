@@ -7,11 +7,13 @@ namespace App\Domains\Compliance\Fatoora\Services;
 use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
+use App\Domains\Compliance\Fatoora\Models\ChainEntry;
+use App\Domains\Compliance\Fatoora\Models\ChainState;
+use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
+use App\Domains\Compliance\Fatoora\Models\OfflineItem;
 use App\Domains\Invoice\Models\Invoice;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 /**
  * Offline Queue Manager for ZATCA Submissions.
@@ -87,12 +89,9 @@ class OfflineQueue
             );
         }
 
-        $queueItem = [
-            'id' => Str::uuid()->toString(),
+        $item = OfflineItem::create([
             'invoice_id' => $invoice->id,
             'org_id' => $organizationId,
-            'invoice_number' => $invoice->invoice_number,
-            'invoice_type' => $invoice->type->value ?? 'standard',
             'signed_xml' => $signedXml,
             'invoice_hash' => $invoiceHash,
             'qr_code' => $qrCode,
@@ -100,31 +99,12 @@ class OfflineQueue
             'priority' => $priority,
             'attempts' => 0,
             'max_attempts' => $this->getMaxAttempts(),
-            'queued_at' => now()->toIso8601String(),
-            'next_attempt_at' => now()->toIso8601String(),
-            'last_error' => null,
-        ];
-
-        // Store in database
-        DB::table('offline_queue')->insert([
-            'id' => $queueItem['id'],
-            'invoice_id' => $queueItem['invoice_id'],
-            'org_id' => $queueItem['org_id'],
-            'signed_xml' => $queueItem['signed_xml'],
-            'invoice_hash' => $queueItem['invoice_hash'],
-            'qr_code' => $queueItem['qr_code'],
-            'state' => $queueItem['state'],
-            'priority' => $queueItem['priority'],
-            'attempts' => $queueItem['attempts'],
-            'max_attempts' => $queueItem['max_attempts'],
             'queued_at' => now(),
             'next_attempt_at' => now(),
-            'created_at' => now(),
-            'updated_at' => now(),
         ]);
 
         Log::info('Invoice queued for offline submission', [
-            'queue_id' => $queueItem['id'],
+            'queue_id' => $item->id,
             'invoice_id' => $invoice->id,
             'org_id' => $organizationId,
             'queue_size' => $currentSize + 1,
@@ -132,7 +112,7 @@ class OfflineQueue
 
         return [
             'queued' => true,
-            'queue_id' => $queueItem['id'],
+            'queue_id' => $item->id,
             'position' => $currentSize + 1,
             'estimated_wait' => $this->estimateWaitTime($organizationId),
         ];
@@ -148,7 +128,7 @@ class OfflineQueue
             return [];
         }
 
-        return DB::table('offline_queue')
+        return OfflineItem::query()
             ->where('org_id', $organizationId)
             ->where('state', self::STATE_PENDING)
             ->where('next_attempt_at', '<=', now())
@@ -156,7 +136,7 @@ class OfflineQueue
             ->orderBy('queued_at', 'asc')
             ->limit($limit)
             ->get()
-            ->toArray();
+            ->all();
     }
 
     /**
@@ -164,13 +144,10 @@ class OfflineQueue
      */
     public function markProcessing(string $queueId): void
     {
-        DB::table('offline_queue')
-            ->where('id', $queueId)
-            ->update([
-                'state' => self::STATE_PROCESSING,
-                'started_at' => now(),
-                'updated_at' => now(),
-            ]);
+        OfflineItem::query()->whereKey($queueId)->update([
+            'state' => self::STATE_PROCESSING,
+            'started_at' => now(),
+        ]);
     }
 
     /**
@@ -178,14 +155,12 @@ class OfflineQueue
      */
     public function markCompleted(string $queueId, array $zatcaResponse): void
     {
-        DB::table('offline_queue')
-            ->where('id', $queueId)
-            ->update([
-                'state' => self::STATE_COMPLETED,
-                'zatca_response' => json_encode($zatcaResponse),
-                'completed_at' => now(),
-                'updated_at' => now(),
-            ]);
+        OfflineItem::query()->whereKey($queueId)->update([
+            'state' => self::STATE_COMPLETED,
+            // The model casts this column to array, so it encodes itself.
+            'zatca_response' => $zatcaResponse,
+            'completed_at' => now(),
+        ]);
 
         Log::info('Offline queue item completed', [
             'queue_id' => $queueId,
@@ -198,7 +173,7 @@ class OfflineQueue
      */
     public function markFailed(string $queueId, string $error, bool $canRetry = true): void
     {
-        $item = DB::table('offline_queue')->where('id', $queueId)->first();
+        $item = OfflineItem::find($queueId);
 
         if (! $item) {
             return;
@@ -211,15 +186,12 @@ class OfflineQueue
             // Schedule retry with exponential backoff
             $retryDelay = pow(2, $attempts) * 60; // 2, 4, 8 minutes...
 
-            DB::table('offline_queue')
-                ->where('id', $queueId)
-                ->update([
-                    'state' => self::STATE_PENDING,
-                    'attempts' => $attempts,
-                    'next_attempt_at' => now()->addSeconds($retryDelay),
-                    'last_error' => $error,
-                    'updated_at' => now(),
-                ]);
+            $item->update([
+                'state' => self::STATE_PENDING,
+                'attempts' => $attempts,
+                'next_attempt_at' => now()->addSeconds($retryDelay),
+                'last_error' => $error,
+            ]);
 
             Log::warning('Offline queue item failed, scheduled for retry', [
                 'queue_id' => $queueId,
@@ -229,15 +201,12 @@ class OfflineQueue
             ]);
         } else {
             // Permanently failed
-            DB::table('offline_queue')
-                ->where('id', $queueId)
-                ->update([
-                    'state' => self::STATE_FAILED,
-                    'attempts' => $attempts,
-                    'last_error' => $error,
-                    'failed_at' => now(),
-                    'updated_at' => now(),
-                ]);
+            $item->update([
+                'state' => self::STATE_FAILED,
+                'attempts' => $attempts,
+                'last_error' => $error,
+                'failed_at' => now(),
+            ]);
 
             Log::error('Offline queue item permanently failed', [
                 'queue_id' => $queueId,
@@ -252,7 +221,7 @@ class OfflineQueue
      */
     public function getQueueSize(string $organizationId): int
     {
-        return DB::table('offline_queue')
+        return OfflineItem::query()
             ->where('org_id', $organizationId)
             ->whereIn('state', [self::STATE_PENDING, self::STATE_PROCESSING])
             ->count();
@@ -274,14 +243,14 @@ class OfflineQueue
      */
     public function getStatus(string $organizationId): array
     {
-        $counts = DB::table('offline_queue')
+        $counts = OfflineItem::query()
             ->where('org_id', $organizationId)
             ->selectRaw('state, count(*) as count')
             ->groupBy('state')
             ->pluck('count', 'state')
             ->toArray();
 
-        $oldestPending = DB::table('offline_queue')
+        $oldestPending = OfflineItem::query()
             ->where('org_id', $organizationId)
             ->where('state', self::STATE_PENDING)
             ->orderBy('queued_at', 'asc')
@@ -305,7 +274,7 @@ class OfflineQueue
      */
     public function getItem(string $queueId): ?object
     {
-        return DB::table('offline_queue')->where('id', $queueId)->first();
+        return OfflineItem::find($queueId);
     }
 
     /**
@@ -313,11 +282,11 @@ class OfflineQueue
      */
     public function getItemsForInvoice(string $invoiceId): array
     {
-        return DB::table('offline_queue')
+        return OfflineItem::query()
             ->where('invoice_id', $invoiceId)
             ->orderBy('queued_at', 'desc')
             ->get()
-            ->toArray();
+            ->all();
     }
 
     /**
@@ -325,20 +294,17 @@ class OfflineQueue
      */
     public function cancel(string $queueId, ?string $reason = null): bool
     {
-        $item = DB::table('offline_queue')->where('id', $queueId)->first();
+        $item = OfflineItem::find($queueId);
 
         if (! $item || $item->state !== self::STATE_PENDING) {
             return false;
         }
 
-        DB::table('offline_queue')
-            ->where('id', $queueId)
-            ->update([
-                'state' => 'cancelled',
-                'cancelled_at' => now(),
-                'cancel_reason' => $reason,
-                'updated_at' => now(),
-            ]);
+        $item->update([
+            'state' => 'cancelled',
+            'cancelled_at' => now(),
+            'cancel_reason' => $reason,
+        ]);
 
         Log::info('Offline queue item cancelled', [
             'queue_id' => $queueId,
@@ -353,7 +319,7 @@ class OfflineQueue
      */
     public function cleanup(int $olderThanDays = 7): int
     {
-        $deleted = DB::table('offline_queue')
+        $deleted = OfflineItem::query()
             ->whereIn('state', [self::STATE_COMPLETED, self::STATE_FAILED, 'cancelled'])
             ->where('updated_at', '<', now()->subDays($olderThanDays))
             ->delete();
@@ -395,9 +361,12 @@ class OfflineQueue
     public function validateQueuedItem(object $item): array
     {
         // Check if this invoice was already submitted successfully
-        $existingSubmission = DB::table('invoice_submissions')
+        // 'status' is not a column on invoice_submissions and 'accepted' is
+        // not one of its states, so this threw before judging anything and the
+        // queue never processed an item.
+        $existingSubmission = InvoiceSubmission::query()
             ->where('invoice_id', $item->invoice_id)
-            ->whereIn('status', ['accepted', 'cleared', 'reported'])
+            ->whereIn('state', ['cleared', 'reported'])
             ->first();
 
         if ($existingSubmission) {
@@ -410,9 +379,9 @@ class OfflineQueue
         }
 
         // Check if ICV was already used (race condition protection)
-        $invoice = DB::table('invoices')->where('id', $item->invoice_id)->first();
+        $invoice = Invoice::find($item->invoice_id);
         if ($invoice && $invoice->icv) {
-            $icvConflict = DB::table('hash_chain_history')
+            $icvConflict = ChainEntry::query()
                 ->where('org_id', $item->org_id)
                 ->where('icv', $invoice->icv)
                 ->where('invoice_id', '!=', $item->invoice_id)
@@ -445,7 +414,7 @@ class OfflineQueue
         }
 
         // Check if hash in queue matches current chain
-        $currentState = DB::table('hash_chain_state')
+        $currentState = ChainState::query()
             ->where('org_id', $item->org_id)
             ->first();
 
@@ -472,7 +441,7 @@ class OfflineQueue
      */
     public function handleCertificateRotation(string $organizationId): array
     {
-        $affected = DB::table('offline_queue')
+        $affected = OfflineItem::query()
             ->where('org_id', $organizationId)
             ->where('state', self::STATE_PENDING)
             ->get();
@@ -484,12 +453,9 @@ class OfflineQueue
 
             if ($validation['action'] === 'resign') {
                 // Mark item as needing re-signature
-                DB::table('offline_queue')
-                    ->where('id', $item->id)
-                    ->update([
-                        'last_error' => 'Certificate rotated - needs re-signing',
-                        'updated_at' => now(),
-                    ]);
+                $item->update([
+                    'last_error' => 'Certificate rotated - needs re-signing',
+                ]);
                 $results['marked_for_resign']++;
             } else {
                 $results['already_valid']++;
@@ -509,11 +475,11 @@ class OfflineQueue
      */
     public function getItemsNeedingResign(string $organizationId): array
     {
-        return DB::table('offline_queue')
+        return OfflineItem::query()
             ->where('org_id', $organizationId)
             ->where('state', self::STATE_PENDING)
             ->where('last_error', 'LIKE', '%needs re-signing%')
             ->get()
-            ->toArray();
+            ->all();
     }
 }

@@ -65,11 +65,6 @@ class RawTenantQueryTest extends TestCase
         // TenantResolver::runAs(), so it is scoped per organization.
         'Console/Commands/ProcessOfflineQueue.php' => 'discovers tenants with pending work, then scopes per tenant',
 
-        // Called from queue workers and scheduled commands. Each takes the
-        // organization id as an argument and filters on it by hand, which is
-        // the arrangement runAs() exists to replace — convert when next
-        // touched. Audit finding Q-5.
-        'Domains/Compliance/Fatoora/Services/OfflineQueue.php' => 'queue worker, org id passed in',
     ];
 
     public function test_no_undeclared_raw_tenant_queries(): void
