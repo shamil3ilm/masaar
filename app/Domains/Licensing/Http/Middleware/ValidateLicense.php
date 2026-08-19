@@ -85,11 +85,15 @@ class ValidateLicense
                 OrganizationContext::forMachine((string) $license->org_id)
             );
 
-            // Bind license to request for downstream use
+            // The licence itself is carried on the request because the scope,
+            // quota and environment middleware each need the model.
+            //
+            // The tenant is deliberately not: it is on the resolver above, and
+            // two places holding the same fact is how they come to disagree.
+            // license_id and request_id were set here and read nowhere —
+            // callers take the id off the licence, and the request id off the
+            // X-Request-ID header.
             $request->attributes->set('license', $license);
-            $request->attributes->set('license_id', $license->id);
-            $request->attributes->set('org_id', $license->org_id);
-            $request->attributes->set('request_id', $requestId);
 
             // Process request
             $response = $next($request);
