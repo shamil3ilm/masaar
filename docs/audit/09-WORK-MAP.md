@@ -99,7 +99,7 @@ Three items I specified were **already implemented**, and better than I specifie
 **Two deliberate deviations from the plan, both to avoid shipping a red build:**
 
 - **Pint is report-only** (`continue-on-error: true`). `pint --test` flags **~170 pre-existing files** — the codebase has never been formatted. Making it blocking would fail every build from day one; fixing it here would bury a CI addition under a 170-file reformat. The reformat belongs in its own reviewable commit, after which the flag is deleted.
-- **PHP 8.4 is not set as Laragon's global default.** That is a shared install — `erp-backend` and every other project on this machine use it. Changing it unilaterally would be a cross-project change ([debugging rules: pre-change breakage check](../../CLAUDE.md)). Developers switch Laragon's PHP per project, or invoke `C:\laragon\bin\php\php-8.4.12-nts-Win32-vs17-x64\php.exe` directly. **erp-backend should be moved to 8.4 deliberately, as its own task.**
+- **PHP 8.4 is not set as Laragon's global default.** That is a shared install — `erp-backend` and every other project on this machine use it. Changing it unilaterally would be a cross-project change (a cross-project change needs its own pre-change breakage check). Developers switch Laragon's PHP per project, or invoke `C:\laragon\bin\php\php-8.4.12-nts-Win32-vs17-x64\php.exe` directly. **erp-backend should be moved to 8.4 deliberately, as its own task.**
 
 ### 🟠 What CI found on its first run — H-7
 
