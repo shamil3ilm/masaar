@@ -315,12 +315,34 @@ try {
 }
 
 echo "\n=== scheduled commands ===\n";
-foreach (['fatoora:process-offline --limit=1', 'compliance:index-health'] as $command) {
+// Every command routes/console.php schedules, run as scheduled.
+//
+// The check is that it starts and completes without throwing, which is exactly
+// how these fail. fatoora:verify-hash-chain declared a --verbose that collides
+// with Symfony's built-in and threw before its first line, every week since it
+// was scheduled. fatoora:check-certificate queried a zatca_certificate column
+// that does not exist and threw every morning. Both were registered, so a test
+// that only checked registration saw nothing wrong.
+//
+// A non-zero exit is a report, not a crash — verify-hash-chain returns one when
+// it finds a break, which it will here, since these invoices were created
+// directly rather than through the chain manager.
+foreach ([
+    'compliance:index-health --alert',
+    'compliance:partition-maintenance --create-future --months-ahead=2',
+    'compliance:cleanup-offline-queue',
+    'fatoora:process-offline --limit=1',
+    'fatoora:check-certificate --notify',
+    'fatoora:verify-hash-chain',
+    'license:cleanup-rate-limits',
+    'license:check-expiration',
+    'license:report-usage',
+] as $command) {
     try {
         Artisan::call($command);
         check("artisan $command", true);
     } catch (Throwable $e) {
-        check("artisan $command", false, $e->getMessage());
+        check("artisan $command", false, $e::class.': '.$e->getMessage());
     }
 }
 

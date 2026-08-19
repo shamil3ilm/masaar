@@ -16,6 +16,7 @@ use App\Domains\Compliance\Fatoora\Events\InvoiceWarning;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Compliance\Fatoora\Models\SubmissionIdempotency;
+use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use App\Domains\Compliance\Fatoora\Services\DocumentBuilder;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -87,7 +88,8 @@ class ProcessFatooraSubmission implements ShouldQueue
      */
     public function handle(
         FatooraClient $zatcaClient,
-        DocumentBuilder $complianceService
+        DocumentBuilder $complianceService,
+        CredentialStore $credentials
     ): void {
         $submission = $this->submission->fresh();
 
@@ -113,14 +115,20 @@ class ProcessFatooraSubmission implements ShouldQueue
             // Load invoice and organization
             $invoice = $submission->invoice;
             $organization = $submission->org;
+            $signing = $credentials->get((string) $organization->id, $invoice->branch_id, CredentialStore::PCSID);
 
             // Generate compliance data (XML, hash, etc.)
             $complianceData = $complianceService->generateComplianceData(
                 invoice: $invoice,
                 organization: $organization,
                 previousInvoiceHash: $invoice->previous_invoice_hash,
-                privateKey: $organization->zatca_private_key,
-                certificate: $organization->zatca_certificate,
+                // Signing material lives in CredentialStore, encrypted. These
+                // were $organization->zatca_private_key and ->zatca_certificate,
+                // which are neither columns nor accessors, so both were null and
+                // DocumentBuilder skipped signing altogether — this path put
+                // unsigned documents in front of ZATCA.
+                privateKey: $signing['privateKey'] ?? null,
+                certificate: $signing['pcsid'] ?? null,
             );
 
             $invoiceXml = $complianceData['xml'];
