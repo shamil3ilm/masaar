@@ -72,7 +72,10 @@ abstract class BaseInvoiceEvent
             'invoice_number' => $invoice?->invoice_number,
             'invoice_type' => $invoice?->type,
             'issue_date' => $invoice?->issue_date?->toIso8601String(),
-            'total_amount' => $invoice?->total_with_vat,
+            // The column is total. This asked for total_with_vat, which is
+            // neither column nor accessor, so every webhook this platform has
+            // ever sent reported a null amount.
+            'total_amount' => $invoice?->total,
             'currency' => $invoice?->currency ?? 'SAR',
             'icv' => $invoice?->icv,
             'state' => $this->submission->state,

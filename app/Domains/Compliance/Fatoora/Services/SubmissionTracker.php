@@ -156,7 +156,7 @@ class SubmissionTracker
         $organization = $invoice->org;
 
         // 1. Check organization status
-        if ($organization->is_suspended ?? false) {
+        if ($organization->isSuspended()) {
             throw new FatooraException(
                 'Organization is suspended',
                 ErrorCode::AUTH_ORGANIZATION_SUSPENDED
@@ -231,19 +231,15 @@ class SubmissionTracker
             ? $invoice->issue_date
             : new \DateTimeImmutable($invoice->issue_date);
 
-        // Get ERP timestamp if available (from original import)
-        $erpTimestamp = null;
-        if (isset($invoice->erp_timestamp)) {
-            try {
-                $erpTimestamp = new \DateTimeImmutable($invoice->erp_timestamp);
-            } catch (\Exception $e) {
-                // Ignore invalid ERP timestamp
-            }
-        }
-
+        // The ERP's own timestamp would let this detect clock drift between the
+        // calling system and the platform. It is not captured: there is no
+        // erp_timestamp column and PipelineSubmitRequest accepts no such field,
+        // only erp_reference_id. This read it from the invoice behind an isset,
+        // so the drift comparison never ran and looked implemented. Passing null
+        // says so. Wiring it up is a column and an API field, not a fix here.
         $validation = $this->timestampValidator->validateTimestamps(
             $invoiceTimestamp,
-            $erpTimestamp,
+            null,
             null, // TSA timestamp added during signing
             null  // ZATCA received timestamp not yet known
         );
