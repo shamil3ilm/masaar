@@ -364,20 +364,21 @@ class InvoiceValidator
             $warnings[] = 'Invoice date is in the future';
         }
 
-        // Free goods without market value warning
-        foreach ($invoice->lines as $line) {
-            if (isset($line->is_free_item) && $line->is_free_item) {
-                if (empty($line->market_value) || $line->market_value <= 0) {
-                    $warnings[] = "Line '{$line->description}' is free but missing market value - VAT may be incorrect";
-                }
-            }
-        }
+        // Free goods carry VAT on their market value, so ZATCA wants that value
+        // stated. It is not modelled: invoice_lines has neither is_free_item nor
+        // market_value, and no request accepts them. This read both from the
+        // line behind an isset, so the check silently never ran. Marking a line
+        // as free is a column, a request field and a rule — not a fix here.
 
         // Buyer identification warning for B2B without VAT
         if ($invoice->type->value === 'standard' && empty($invoice->buyer_vat_number)) {
-            if (empty($invoice->buyer_id) || empty($invoice->buyer_id_scheme)) {
-                $warnings[] = 'B2B invoice without buyer VAT or alternative ID may be rejected';
-            }
+            // ZATCA accepts an alternative buyer identification in place of the
+            // VAT number (BT-46-1/BT-46-2). It is not modelled, so there is
+            // nothing to check for: this tested buyer_id and buyer_id_scheme,
+            // neither of which is a column, so both were always empty and the
+            // condition was always true. Stated plainly rather than dressed up
+            // as a check.
+            $warnings[] = 'B2B invoice without buyer VAT may be rejected; alternative buyer identification is not supported';
         }
 
         return $warnings;

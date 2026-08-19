@@ -379,7 +379,6 @@ class License extends Model
         ]);
 
         $this->auditLogs()->create([
-            'id' => Str::uuid()->toString(),
             'event' => 'suspended',
             'actor_type' => $actorId ? 'admin' : 'system',
             'actor_id' => $actorId,
@@ -400,7 +399,6 @@ class License extends Model
         ]);
 
         $this->auditLogs()->create([
-            'id' => Str::uuid()->toString(),
             'event' => 'reactivated',
             'actor_type' => $actorId ? 'admin' : 'system',
             'actor_id' => $actorId,
@@ -419,7 +417,6 @@ class License extends Model
         ]);
 
         $this->auditLogs()->create([
-            'id' => Str::uuid()->toString(),
             'event' => 'revoked',
             'actor_type' => $actorId ? 'admin' : 'system',
             'actor_id' => $actorId,
@@ -441,7 +438,6 @@ class License extends Model
         ]);
 
         $this->auditLogs()->create([
-            'id' => Str::uuid()->toString(),
             'event' => 'extended',
             'actor_type' => $actorId ? 'admin' : 'system',
             'actor_id' => $actorId,
@@ -465,7 +461,6 @@ class License extends Model
         ]);
 
         $this->auditLogs()->create([
-            'id' => Str::uuid()->toString(),
             'event' => 'tier_changed',
             'actor_type' => $actorId ? 'admin' : 'system',
             'actor_id' => $actorId,

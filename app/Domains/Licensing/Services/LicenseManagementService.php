@@ -7,11 +7,12 @@ namespace App\Domains\Licensing\Services;
 use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Licensing\Models\License;
+use App\Domains\Licensing\Models\LicenseAuditLog;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 /**
  * License Management Service.
@@ -46,7 +47,11 @@ class LicenseManagementService
             'calls_per_day' => $data['calls_per_day'] ?? $defaults['calls_per_day'],
             'calls_per_min' => $data['calls_per_min'] ?? $defaults['calls_per_min'],
             'max_organizations' => $data['max_organizations'] ?? $defaults['max_organizations'],
-            'features' => $data['features'] ?? $defaults['features'],
+            // getDefaults() has no 'features' key — the tier's features come
+            // from getDefaultFeatures(). Reading the missing key raised
+            // "Undefined array key", so creating a licence without an explicit
+            // feature list threw before it created anything.
+            'features' => $data['features'] ?? $tier->getDefaultFeatures(),
             'expires_at' => isset($data['expires_at']) ? new \DateTime($data['expires_at']) : null,
             'notes' => $data['notes'] ?? null,
         ]);
@@ -144,8 +149,6 @@ class LicenseManagementService
         $license = License::findOrFail($licenseId);
         $license->suspend($reason);
 
-        $this->logAudit($licenseId, 'suspended', ['reason' => $reason]);
-
         return $license->fresh();
     }
 
@@ -156,8 +159,6 @@ class LicenseManagementService
     {
         $license = License::findOrFail($licenseId);
         $license->reactivate();
-
-        $this->logAudit($licenseId, 'reactivated');
 
         return $license->fresh();
     }
@@ -170,8 +171,6 @@ class LicenseManagementService
         $license = License::findOrFail($licenseId);
         $license->revoke($reason);
 
-        $this->logAudit($licenseId, 'revoked', ['reason' => $reason]);
-
         return $license->fresh();
     }
 
@@ -181,15 +180,7 @@ class LicenseManagementService
     public function extendLicense(string $licenseId, int $days): License
     {
         $license = License::findOrFail($licenseId);
-        $oldExpiry = $license->expires_at?->toDateString();
-
         $license->extend($days);
-
-        $this->logAudit($licenseId, 'extended', [
-            'old_expiry' => $oldExpiry,
-            'new_expiry' => $license->fresh()->expires_at?->toDateString(),
-            'days_added' => $days,
-        ]);
 
         return $license->fresh();
     }
@@ -200,14 +191,7 @@ class LicenseManagementService
     public function upgradeTier(string $licenseId, string $newTier): License
     {
         $license = License::findOrFail($licenseId);
-        $oldTier = $license->tier->value;
-
         $license->upgradeTier(LicenseTier::from($newTier));
-
-        $this->logAudit($licenseId, 'tier_upgraded', [
-            'old_tier' => $oldTier,
-            'new_tier' => $newTier,
-        ]);
 
         return $license->fresh();
     }
@@ -316,9 +300,14 @@ class LicenseManagementService
             ->get()
             ->map(fn ($log) => [
                 'id' => $log->id,
-                'action' => $log->action,
-                'details' => json_decode($log->details, true),
-                'performed_by' => $log->performed_by,
+                // Named for the columns that exist. This read action, details
+                // and performed_by, so every entry came back with three nulls.
+                'event' => $log->event,
+                'actor_type' => $log->actor_type,
+                'actor_id' => $log->actor_id,
+                'old_values' => json_decode((string) $log->old_values, true),
+                'new_values' => json_decode((string) $log->new_values, true),
+                'reason' => $log->reason,
                 'ip_address' => $log->ip_address,
                 'created_at' => $log->created_at,
             ])
@@ -339,14 +328,18 @@ class LicenseManagementService
         }
 
         try {
-            DB::table('license_audit_logs')->insert([
-                'id' => Str::uuid()->toString(),
+            // Through the model, which knows the table's actual shape and
+            // enforces append-only. This inserted action, details, performed_by
+            // and user_agent — four names the table does not have — so every
+            // write threw, and the catch below turned each one into a log line.
+            // The licence audit trail has been empty since it was written.
+            LicenseAuditLog::create([
                 'license_id' => $licenseId,
-                'action' => $action,
-                'details' => json_encode($details),
-                'performed_by' => $performedBy ?? auth()->id(),
+                'event' => $action,
+                'actor_type' => $performedBy !== null ? 'user' : 'system',
+                'actor_id' => $performedBy ?? Auth::id(),
                 'ip_address' => request()->ip(),
-                'user_agent' => request()->userAgent(),
+                'new_values' => $details,
                 'created_at' => now(),
             ]);
         } catch (\Exception $e) {
