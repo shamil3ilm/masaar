@@ -45,6 +45,7 @@ class Submitter
         private readonly CertificateService $certificateService,
         private readonly BranchService $branchService,
         private readonly CredentialStore $credentials,
+        private readonly KillSwitch $killSwitch,
     ) {}
 
     /**
@@ -54,6 +55,14 @@ class Submitter
      */
     public function generate(Invoice $invoice, Organization $organization): array
     {
+        // Issuance is what this method does: it signs the document and marks
+        // the invoice Issued, which is the irreversible step. KillSwitch offers
+        // an issuance stop for a signing defect caught in production, and
+        // nothing consulted it — so the switch could be thrown while documents
+        // continued to be signed and issued.
+        $this->killSwitch->assertNotEnabled(KillSwitch::SWITCH_ISSUANCE, (string) $organization->id);
+        $this->killSwitch->assertNotEnabled(KillSwitch::SWITCH_SIGNING, (string) $organization->id);
+
         $previousHash = $invoice->previous_invoice_hash;
 
         // Get signing credentials if available
