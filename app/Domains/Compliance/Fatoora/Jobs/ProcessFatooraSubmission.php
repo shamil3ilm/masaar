@@ -19,6 +19,7 @@ use App\Domains\Compliance\Fatoora\Models\SubmissionIdempotency;
 use App\Domains\Compliance\Fatoora\Services\ClearanceState;
 use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use App\Domains\Compliance\Fatoora\Services\DocumentBuilder;
+use App\Domains\Compliance\Fatoora\Services\KillSwitch;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -90,9 +91,15 @@ class ProcessFatooraSubmission implements ShouldQueue
     public function handle(
         FatooraClient $zatcaClient,
         DocumentBuilder $complianceService,
-        CredentialStore $credentials
+        CredentialStore $credentials,
+        KillSwitch $killSwitch
     ): void {
         $submission = $this->submission->fresh();
+
+        // Checked here as well as before queueing, because the gap between the
+        // two is exactly when an operator throws the switch. A job queued
+        // before an incident would otherwise submit during it.
+        $killSwitch->assertNotEnabled(KillSwitch::SWITCH_SUBMISSION, (string) $submission->org_id);
 
         if ($submission->isTerminal()) {
             Log::info('Submission already in terminal state, skipping', [
