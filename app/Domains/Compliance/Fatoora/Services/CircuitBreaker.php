@@ -35,7 +35,7 @@ class CircuitBreaker
      */
     private function getFailureThreshold(): int
     {
-        return (int) config('fatoora.cluster_circuit_breaker.failure_threshold', 5);
+        return (int) config('fatoora.circuit_breaker.failure_threshold', 5);
     }
 
     /**
@@ -43,7 +43,7 @@ class CircuitBreaker
      */
     private function getSuccessThreshold(): int
     {
-        return (int) config('fatoora.cluster_circuit_breaker.success_threshold', 3);
+        return (int) config('fatoora.circuit_breaker.success_threshold', 3);
     }
 
     /**
@@ -51,7 +51,7 @@ class CircuitBreaker
      */
     private function getTimeoutSeconds(): int
     {
-        return (int) config('fatoora.cluster_circuit_breaker.timeout_seconds', 60);
+        return (int) config('fatoora.circuit_breaker.timeout_seconds', 60);
     }
 
     /**
@@ -59,7 +59,7 @@ class CircuitBreaker
      */
     private function getHalfOpenRequests(): int
     {
-        return (int) config('fatoora.cluster_circuit_breaker.half_open_max_requests', 3);
+        return (int) config('fatoora.circuit_breaker.half_open_max_requests', 3);
     }
 
     /**
