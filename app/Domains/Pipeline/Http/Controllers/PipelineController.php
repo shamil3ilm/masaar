@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Pipeline\Http\Controllers;
 
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Pipeline\Http\Requests\PipelineSubmitRequest;
 use App\Domains\Pipeline\Services\PipelineService;
 use App\Http\Controllers\Controller;
@@ -23,6 +24,7 @@ class PipelineController extends Controller
 {
     public function __construct(
         private readonly PipelineService $pipelineService,
+        private readonly TenantResolver $tenant,
     ) {}
 
     /**
@@ -40,9 +42,17 @@ class PipelineController extends Controller
         $organizationId = $data['org_id'];
         $branchId = $data['branch_id'] ?? null;
 
-        // Security: ensure the request org matches the authenticated API key's org
-        $authenticatedOrgId = $request->attributes->get('org_id');
-        if ($authenticatedOrgId !== null && $authenticatedOrgId !== $organizationId) {
+        // The body names an organization; the credential decides which one is
+        // allowed. Missing context is refused rather than waved through — the
+        // previous guard skipped itself when the tenant was null, so the one
+        // case where it could not tell was the one it let past.
+        $authenticatedOrgId = $this->tenant->getOrganizationId();
+
+        if ($authenticatedOrgId === null) {
+            return ApiResponse::error('Organization context is required.', 401);
+        }
+
+        if ($authenticatedOrgId !== $organizationId) {
             return ApiResponse::forbidden(
                 'org_id does not match the authenticated API key\'s organization.'
             );
@@ -92,7 +102,7 @@ class PipelineController extends Controller
      */
     public function status(Request $request, string $invoiceId): JsonResponse
     {
-        $authenticatedOrgId = $request->attributes->get('org_id');
+        $authenticatedOrgId = $this->tenant->getOrganizationId();
 
         if ($authenticatedOrgId === null) {
             return ApiResponse::error('Organization context is required.', 401);
