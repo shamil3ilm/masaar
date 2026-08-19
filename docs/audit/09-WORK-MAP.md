@@ -262,6 +262,7 @@ Then **W-2.1 (KMS)** as the next substantial item — still the top open securit
 |---|---|
 | **Format the codebase with Pint** | ~170 files. Its own isolated commit; then delete `continue-on-error` from the `formatting` job to make it blocking. |
 | **Renovate or Dependabot** | `composer audit` catches advisories but does not raise the PR. Automating updates is what stops this recurring. |
+| **Does ZATCA expect the tatweel stripped?** | `TextNormalizer` removes tashkeel and folds Alef and Yeh, and leaves U+0640 in place. The elongation is decorative and carries no meaning, so whether it must go before the seller name is hashed changes the bytes ZATCA compares. `SellerNameBytesTest` pins the current behaviour and names the question; **W-5.1**'s fixtures answer it. |
 | **Decide the Laragon PHP default** | Left untouched deliberately — it is a shared install (§2). Needs a per-project or global decision. |
 
 ---
