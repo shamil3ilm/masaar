@@ -60,6 +60,7 @@ class SubmissionTracker
         private readonly DuplicateDetector $duplicateDetector,
         private readonly VatPeriodTracker $vatPeriodTracker,
         private readonly ClearanceState $clearanceState,
+        private readonly CredentialStore $credentials,
     ) {}
 
     /**
@@ -280,7 +281,17 @@ class SubmissionTracker
      */
     private function checkCertificateHealth($organization): void
     {
-        $certificate = $organization->zatca_certificate ?? null;
+        // Read where the signing code reads. This used to be
+        // $organization->zatca_certificate, which is neither a column nor an
+        // accessor, so it was null for every organization and every submission
+        // was refused here before reaching ZATCA.
+        $credentials = $this->credentials->get(
+            (string) $organization->id,
+            null,
+            CredentialStore::PCSID
+        );
+
+        $certificate = $credentials['pcsid'] ?? null;
 
         if (! $certificate) {
             throw new FatooraException(
