@@ -580,7 +580,7 @@ class SubmissionTracker
             'clearance_state' => $clearance['state'],
             // Only a terminal clearance counts as confirmed; a document still
             // awaiting ZATCA's decision has no confirmation time.
-            'clearance_confirmed_at' => $clearance['is_terminal'] ? now() : null,
+            'cleared_at' => $clearance['is_terminal'] ? now() : null,
             'reporting_status' => $response->reportingStatus,
             'zatca_warnings' => ! empty($warnings) ? $warnings : null,
             'zatca_errors' => ! empty($errors) ? $errors : null,

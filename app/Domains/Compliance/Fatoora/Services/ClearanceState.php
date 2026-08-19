@@ -4,30 +4,18 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Services;
 
-use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
-use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-
 /**
- * Clearance State Manager - Handle ZATCA partial success scenarios.
+ * Reads a ZATCA response and decides what it says about clearance.
  *
- * PROBLEM: ZATCA returns HTTP 200 but the invoice isn't fully cleared.
- * - "REPORTED" (async) means "we received it, we'll process later"
- * - Only "CLEARED" is the terminal success state for B2B
- * - Only "REPORTED" is terminal for simplified (B2C)
- *
- * This service:
- * - Tracks clearance state separately from submission status
- * - Schedules re-checks for non-terminal states
- * - Handles timeout scenarios
- * - Provides audit trail for compliance
+ * HTTP 200 does not mean the document is cleared. For a B2B (standard)
+ * document only "CLEARED" is terminal — "REPORTED" means ZATCA has the
+ * document and has not yet decided. For a simplified (B2C) document the
+ * terminal state is "REPORTED" instead. Treating a successful call as a
+ * cleared invoice is how a document that ZATCA later rejects gets reported to
+ * the taxpayer as accepted.
  */
 class ClearanceState
 {
-    /**
-     * Clearance states.
-     */
     public const STATE_UNKNOWN = 'unknown';
 
     public const STATE_PENDING_CLEARANCE = 'pending_clearance';
@@ -40,10 +28,8 @@ class ClearanceState
 
     public const STATE_REJECTED = 'rejected';
 
-    public const STATE_TIMEOUT = 'timeout';
-
     /**
-     * Terminal states (no more checks needed).
+     * States that need no further checking.
      */
     public const TERMINAL_STATES = [
         self::STATE_CLEARED,
@@ -52,33 +38,7 @@ class ClearanceState
     ];
 
     /**
-     * Get max check attempts from config.
-     */
-    private function getMaxCheckAttempts(): int
-    {
-        return (int) config('fatoora.clearance_state.max_check_attempts', 10);
-    }
-
-    /**
-     * Get initial check delay from config.
-     */
-    private function getInitialCheckDelay(): int
-    {
-        return (int) config('fatoora.clearance_state.initial_check_delay_seconds', 30);
-    }
-
-    /**
-     * Get maximum check delay from config.
-     */
-    private function getMaxCheckDelay(): int
-    {
-        return (int) config('fatoora.clearance_state.max_check_delay_seconds', 3600);
-    }
-
-    /**
-     * Parse ZATCA response and determine clearance state.
-     *
-     * @param  array  $zatcaResponse  The response from ZATCA API
+     * @param  array  $zatcaResponse  The response from the ZATCA API
      * @param  bool  $isSimplified  Whether this is a simplified (B2C) invoice
      * @return array{state: string, is_terminal: bool, warnings: array, errors: array}
      */
@@ -88,33 +48,9 @@ class ClearanceState
         $reportingStatus = $zatcaResponse['reportingStatus'] ?? null;
         $validationResults = $zatcaResponse['validationResults'] ?? [];
 
-        // Extract warnings and errors
-        $warnings = [];
-        $errors = [];
+        $warnings = $this->messages($validationResults['warningMessages'] ?? []);
+        $errors = $this->messages($validationResults['errorMessages'] ?? []);
 
-        if (isset($validationResults['warningMessages'])) {
-            $warnings = array_map(
-                fn ($w) => [
-                    'code' => $w['code'] ?? 'UNKNOWN',
-                    'message' => $w['message'] ?? '',
-                    'category' => $w['category'] ?? 'general',
-                ],
-                $validationResults['warningMessages']
-            );
-        }
-
-        if (isset($validationResults['errorMessages'])) {
-            $errors = array_map(
-                fn ($e) => [
-                    'code' => $e['code'] ?? 'UNKNOWN',
-                    'message' => $e['message'] ?? '',
-                    'category' => $e['category'] ?? 'general',
-                ],
-                $validationResults['errorMessages']
-            );
-        }
-
-        // Determine state based on response
         $state = $this->determineState($clearanceStatus, $reportingStatus, $isSimplified, $errors);
 
         return [
@@ -129,246 +65,50 @@ class ClearanceState
     }
 
     /**
-     * Determine clearance state from ZATCA status values.
+     * @param  array  $messages  Raw warning or error entries from ZATCA
      */
+    private function messages(array $messages): array
+    {
+        return array_map(
+            fn ($message) => [
+                'code' => $message['code'] ?? 'UNKNOWN',
+                'message' => $message['message'] ?? '',
+                'category' => $message['category'] ?? 'general',
+            ],
+            $messages
+        );
+    }
+
     private function determineState(
         ?string $clearanceStatus,
         ?string $reportingStatus,
         bool $isSimplified,
         array $errors
     ): string {
-        // If there are errors, it's rejected
         if (! empty($errors)) {
             return self::STATE_REJECTED;
         }
 
-        // For B2B (standard) invoices
-        if (! $isSimplified) {
-            if ($clearanceStatus === 'CLEARED') {
-                return self::STATE_CLEARED;
-            }
-            if ($clearanceStatus === 'NOT_CLEARED') {
-                return self::STATE_REJECTED;
-            }
-            if ($clearanceStatus === 'PENDING') {
-                return self::STATE_PENDING_CLEARANCE;
-            }
+        $status = $isSimplified ? $reportingStatus : $clearanceStatus;
+
+        $terminal = $isSimplified
+            ? ['REPORTED' => self::STATE_REPORTED, 'NOT_REPORTED' => self::STATE_REJECTED]
+            : ['CLEARED' => self::STATE_CLEARED, 'NOT_CLEARED' => self::STATE_REJECTED];
+
+        if (isset($terminal[$status])) {
+            return $terminal[$status];
         }
 
-        // For B2C (simplified) invoices
-        if ($isSimplified) {
-            if ($reportingStatus === 'REPORTED') {
-                return self::STATE_REPORTED;
-            }
-            if ($reportingStatus === 'NOT_REPORTED') {
-                return self::STATE_REJECTED;
-            }
-            if ($reportingStatus === 'PENDING') {
-                return self::STATE_PENDING_CLEARANCE;
-            }
+        if ($status === 'PENDING') {
+            return self::STATE_PENDING_CLEARANCE;
         }
 
-        // If we got a 200 but unclear status, it's conditionally accepted
+        // A 200 carrying a status nobody recognises. It is not a rejection and
+        // not a clearance, so it stays open for another check.
         if ($clearanceStatus || $reportingStatus) {
             return self::STATE_CONDITIONALLY_ACCEPTED;
         }
 
         return self::STATE_UNKNOWN;
-    }
-
-    /**
-     * Update submission clearance state.
-     */
-    public function updateState(
-        string $submissionId,
-        string $newState,
-        ?array $zatcaResponse = null
-    ): void {
-        $submission = DB::table('invoice_submissions')
-            ->where('id', $submissionId)
-            ->first();
-
-        if (! $submission) {
-            throw new FatooraException(
-                'Submission not found',
-                ErrorCode::VAL_INVALID_INVOICE_ID,
-                ['submission_id' => $submissionId]
-            );
-        }
-
-        $oldState = $submission->clearance_state ?? self::STATE_UNKNOWN;
-
-        $updates = [
-            'clearance_state' => $newState,
-            'updated_at' => now(),
-        ];
-
-        if (in_array($newState, self::TERMINAL_STATES, true)) {
-            $updates['cleared_at'] = now();
-        }
-
-        if ($zatcaResponse) {
-            // Merge with existing response data
-            $existingResponse = $submission->zatca_response
-                ? json_decode($submission->zatca_response, true)
-                : [];
-            $updates['zatca_response'] = json_encode(array_merge($existingResponse, $zatcaResponse));
-        }
-
-        DB::table('invoice_submissions')
-            ->where('id', $submissionId)
-            ->update($updates);
-
-        Log::info('Clearance state updated', [
-            'submission_id' => $submissionId,
-            'old_state' => $oldState,
-            'new_state' => $newState,
-            'is_terminal' => in_array($newState, self::TERMINAL_STATES, true),
-        ]);
-    }
-
-    /**
-     * Record a check attempt and schedule next if needed.
-     */
-    public function recordCheckAttempt(string $submissionId, bool $stateResolved): array
-    {
-        $submission = DB::table('invoice_submissions')
-            ->where('id', $submissionId)
-            ->first();
-
-        if (! $submission) {
-            return ['scheduled' => false, 'reason' => 'submission_not_found'];
-        }
-
-        $checkCount = ($submission->check_count ?? 0) + 1;
-
-        $updates = [
-            'check_count' => $checkCount,
-            'updated_at' => now(),
-        ];
-
-        if ($stateResolved) {
-            DB::table('invoice_submissions')
-                ->where('id', $submissionId)
-                ->update($updates);
-
-            return [
-                'scheduled' => false,
-                'reason' => 'state_resolved',
-                'check_count' => $checkCount,
-            ];
-        }
-
-        // Check if we've exceeded max attempts
-        if ($checkCount >= $this->getMaxCheckAttempts()) {
-            $updates['clearance_state'] = self::STATE_TIMEOUT;
-            $updates['cleared_at'] = now();
-
-            DB::table('invoice_submissions')
-                ->where('id', $submissionId)
-                ->update($updates);
-
-            Log::warning('Clearance check timeout', [
-                'submission_id' => $submissionId,
-                'check_count' => $checkCount,
-                'max_attempts' => $this->getMaxCheckAttempts(),
-            ]);
-
-            return [
-                'scheduled' => false,
-                'reason' => 'max_attempts_exceeded',
-                'check_count' => $checkCount,
-            ];
-        }
-
-        // Calculate next check delay with exponential backoff
-        $delay = $this->calculateNextDelay($checkCount);
-
-        DB::table('invoice_submissions')
-            ->where('id', $submissionId)
-            ->update($updates);
-
-        return [
-            'scheduled' => true,
-            'next_check_at' => now()->addSeconds($delay)->toIso8601String(),
-            'delay_seconds' => $delay,
-            'check_count' => $checkCount,
-        ];
-    }
-
-    /**
-     * Calculate delay for next check attempt with exponential backoff.
-     */
-    private function calculateNextDelay(int $attemptNumber): int
-    {
-        // Exponential backoff: 30s, 60s, 120s, 240s, 480s, 960s, 1920s, 3600s...
-        $delay = $this->getInitialCheckDelay() * pow(2, $attemptNumber - 1);
-
-        return (int) min($delay, $this->getMaxCheckDelay());
-    }
-
-    /**
-     * Get submissions that need clearance re-check.
-     */
-    public function getSubmissionsNeedingCheck(int $limit = 50): array
-    {
-        return DB::table('invoice_submissions')
-            ->whereIn('clearance_state', [
-                self::STATE_UNKNOWN,
-                self::STATE_PENDING_CLEARANCE,
-                self::STATE_CONDITIONALLY_ACCEPTED,
-            ])
-            ->where('check_count', '<', $this->getMaxCheckAttempts())
-            ->orderBy('submitted_at', 'asc')
-            ->limit($limit)
-            ->get()
-            ->map(fn ($s) => (array) $s)
-            ->toArray();
-    }
-
-    /**
-     * Get summary of clearance states for organization.
-     */
-    public function getStateSummary(string $organizationId): array
-    {
-        $counts = DB::table('invoice_submissions')
-            ->join('invoices', 'invoice_submissions.invoice_id', '=', 'invoices.id')
-            ->where('invoices.org_id', $organizationId)
-            ->selectRaw('clearance_state, count(*) as count')
-            ->groupBy('clearance_state')
-            ->pluck('count', 'clearance_state')
-            ->toArray();
-
-        $pendingCount = ($counts[self::STATE_PENDING_CLEARANCE] ?? 0)
-            + ($counts[self::STATE_CONDITIONALLY_ACCEPTED] ?? 0)
-            + ($counts[self::STATE_UNKNOWN] ?? 0);
-
-        return [
-            'org_id' => $organizationId,
-            'states' => [
-                'cleared' => $counts[self::STATE_CLEARED] ?? 0,
-                'reported' => $counts[self::STATE_REPORTED] ?? 0,
-                'rejected' => $counts[self::STATE_REJECTED] ?? 0,
-                'pending' => $pendingCount,
-                'timeout' => $counts[self::STATE_TIMEOUT] ?? 0,
-            ],
-            'needs_attention' => $pendingCount > 0 || ($counts[self::STATE_TIMEOUT] ?? 0) > 0,
-        ];
-    }
-
-    /**
-     * Check if clearance state is terminal (final).
-     */
-    public function isTerminal(string $state): bool
-    {
-        return in_array($state, self::TERMINAL_STATES, true);
-    }
-
-    /**
-     * Check if clearance was successful.
-     */
-    public function isSuccess(string $state): bool
-    {
-        return $state === self::STATE_CLEARED || $state === self::STATE_REPORTED;
     }
 }
