@@ -43,6 +43,7 @@ class OfflineItem extends Model
         'completed_at',
         'failed_at',
         'cancelled_at',
+        'cancel_reason',
     ];
 
     protected function casts(): array

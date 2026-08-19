@@ -54,6 +54,7 @@ export interface InvoiceStoreBody {
   issue_date: string;
   supply_date?: string;
   currency?: string;
+  exchange_rate?: number;
   payment_means_code?: string;
   buyer_name: string;
   buyer_vat_number?: string;
@@ -72,6 +73,7 @@ export interface InvoiceUpdateBody {
   issue_date: string;
   supply_date?: string;
   currency?: string;
+  exchange_rate?: number;
   payment_means_code?: string;
   buyer_name: string;
   buyer_vat_number?: string;
@@ -90,6 +92,7 @@ export interface InvoiceUpdateBody {
   issue_date: string;
   supply_date?: string;
   currency?: string;
+  exchange_rate?: number;
   payment_means_code?: string;
   buyer_name: string;
   buyer_vat_number?: string;
@@ -108,6 +111,7 @@ export interface V1InvoiceControllerBody {
   issue_date: string;
   supply_date?: string;
   currency?: string;
+  exchange_rate?: number;
   payment_means_code?: string;
   buyer_name: string;
   buyer_vat_number?: string;
@@ -126,6 +130,7 @@ export interface V1InvoiceControllerBody {
   issue_date: string;
   supply_date?: string;
   currency?: string;
+  exchange_rate?: number;
   payment_means_code?: string;
   buyer_name: string;
   buyer_vat_number?: string;
@@ -144,6 +149,7 @@ export interface V1PipelineControllerBody {
   issue_date: string;
   supply_date?: string;
   currency?: string;
+  exchange_rate?: number;
   payment_means_code?: string;
   buyer_name: string;
   buyer_vat_number?: string;
