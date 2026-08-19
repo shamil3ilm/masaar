@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Compliance;
 
 use App\Domains\Compliance\Fatoora\Services\DocumentBuilder;
+use App\Domains\Compliance\Fatoora\Services\XadesSigner;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -62,16 +63,63 @@ class Phase2SigningTest extends TestCase
     }
 
     /**
-     * The signature must cover the invoice, so it belongs inside UBLExtensions
-     * where ZATCA looks for it.
+     * The signature belongs inside UBLExtensions, where ZATCA looks for it.
+     *
+     * This used to assert that the string "UBLExtensions" appeared somewhere
+     * in the document. It always did — the document reference carries an XPath
+     * transform whose text is `not(//ancestor-or-self::ext:UBLExtensions)`. So
+     * the assertion held while the signature sat directly under Invoice,
+     * because the scaffold was never built and the signer had nowhere to put
+     * it. The location is now read from the tree.
      */
     public function test_signature_is_embedded_in_ubl_extensions(): void
     {
-        $signed = $this->sign()['signed_xml'];
+        $dom = new \DOMDocument;
+        $dom->preserveWhiteSpace = false;
+        $dom->loadXML($this->sign()['signed_xml']);
 
-        $this->assertStringContainsString('UBLExtensions', $signed);
-        $this->assertStringContainsString('SignatureValue', $signed);
-        $this->assertStringContainsString('X509Certificate', $signed);
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('ds', 'http://www.w3.org/2000/09/xmldsig#');
+        $xpath->registerNamespace(
+            'ext',
+            'urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2'
+        );
+
+        $signatures = $xpath->query(
+            '/*/ext:UBLExtensions/ext:UBLExtension/ext:ExtensionContent/ds:Signature'
+        );
+
+        $this->assertSame(1, $signatures->length, 'The signature is not inside ExtensionContent.');
+
+        $signature = $signatures->item(0);
+
+        $this->assertSame(1, $xpath->query('ds:SignatureValue', $signature)->length);
+        $this->assertSame(1, $xpath->query('ds:KeyInfo/ds:X509Data/ds:X509Certificate', $signature)->length);
+    }
+
+    /**
+     * XML-DSig fixes the order of a Signature's children. A verifier that
+     * reads them positionally rejects a document that lists them otherwise.
+     */
+    public function test_signature_children_are_in_order(): void
+    {
+        $dom = new \DOMDocument;
+        $dom->preserveWhiteSpace = false;
+        $dom->loadXML($this->sign()['signed_xml']);
+
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('ds', 'http://www.w3.org/2000/09/xmldsig#');
+
+        $children = [];
+
+        foreach ($xpath->query('//ds:Signature')->item(0)->childNodes as $child) {
+            $children[] = $child->nodeName;
+        }
+
+        $this->assertSame(
+            ['ds:SignedInfo', 'ds:SignatureValue', 'ds:KeyInfo', 'ds:Object'],
+            $children
+        );
     }
 
     /**
@@ -129,18 +177,78 @@ class Phase2SigningTest extends TestCase
     /**
      * A signature is only evidence if it verifies against the certificate that
      * claims to have produced it.
+     *
+     * This used to assert that SignatureValue was present and was valid
+     * base64. Both hold for any random bytes, so the check the docblock
+     * described was never made. Verification canonicalises SignedInfo again
+     * and puts it, the signature and the embedded certificate through ECDSA —
+     * which is what a verifier at ZATCA does.
      */
     public function test_signature_verifies_against_the_certificate(): void
     {
         $signed = $this->sign()['signed_xml'];
 
-        preg_match('#<ds:SignatureValue>(.*?)</ds:SignatureValue>#s', $signed, $m);
-        $this->assertNotEmpty($m[1] ?? '', 'no SignatureValue in the signed document');
-
-        $this->assertNotFalse(
-            base64_decode(trim($m[1]), true),
-            'SignatureValue is not valid base64'
+        $this->assertTrue(
+            app(XadesSigner::class)->verify($signed),
+            'The signature does not verify against the certificate in the document.'
         );
+    }
+
+    /**
+     * Verification has to be able to fail, or the test above proves nothing —
+     * verify() swallows its own exceptions and would otherwise be satisfied by
+     * a signature over the empty string, which is what it used to receive.
+     *
+     * Altering SignedInfo is what breaks the signature specifically: it is the
+     * only element the ECDSA signature covers.
+     */
+    public function test_altering_signed_info_breaks_the_signature(): void
+    {
+        $signed = $this->sign()['signed_xml'];
+
+        $tampered = preg_replace(
+            '#(<ds:SignedInfo.*?<ds:DigestValue>)[^<]+#s',
+            '$1'.base64_encode(str_repeat("\0", 32)),
+            $signed,
+            1
+        );
+
+        $this->assertNotSame($signed, $tampered, 'the tamper did not change the document');
+
+        $this->assertFalse(
+            app(XadesSigner::class)->verify($tampered),
+            'SignedInfo was altered after signing and the signature still verified.'
+        );
+    }
+
+    /**
+     * A signature covers what its references say it covers. If a digest no
+     * longer matches, the signature is over a document that no longer exists.
+     */
+    public function test_signed_references_match_their_digests(): void
+    {
+        $result = app(XadesSigner::class)->verifyReferences($this->sign()['signed_xml']);
+
+        $this->assertTrue($result['valid'], implode('; ', $result['errors']));
+    }
+
+    /**
+     * Editing the invoice leaves the signature intact and the reference stale,
+     * which is why both checks exist: verify() answers "was SignedInfo
+     * altered", verifyReferences() answers "is this still the document that
+     * was signed". A verifier needs both to conclude anything.
+     */
+    public function test_editing_the_invoice_breaks_its_reference(): void
+    {
+        $signed = $this->sign()['signed_xml'];
+
+        $tampered = str_replace('Buyer Co', 'Rival Co', $signed);
+
+        $this->assertNotSame($signed, $tampered, 'the tamper did not change the document');
+
+        $result = app(XadesSigner::class)->verifyReferences($tampered);
+
+        $this->assertFalse($result['valid'], 'An edited invoice still matched its reference digest.');
     }
 
     /**
