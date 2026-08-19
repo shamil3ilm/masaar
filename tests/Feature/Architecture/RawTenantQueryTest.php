@@ -72,7 +72,6 @@ class RawTenantQueryTest extends TestCase
         // the arrangement runAs() exists to replace — convert when next
         // touched. Audit finding Q-5.
         'Domains/Compliance/Fatoora/Services/OfflineQueue.php' => 'queue worker, org id passed in',
-        'Domains/Compliance/Fatoora/Services/ClearanceState.php' => 'queue worker, org id passed in',
         'Domains/Compliance/Fatoora/Services/CertificateLineage.php' => 'queue worker, org id passed in',
         'Domains/Compliance/Fatoora/Services/VarianceTracker.php' => 'queue worker, org id passed in',
     ];

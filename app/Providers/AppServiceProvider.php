@@ -20,6 +20,7 @@ use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Platform\Http\Middleware\MetricsAccess;
 use App\Domains\Platform\Http\Middleware\RateLimitApi;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
 
@@ -73,6 +74,16 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->assertDebugDisabledInProduction();
         $this->reclaimMiddlewareAliases();
+
+        // Eloquent drops attributes that are not fillable without a word.
+        // SubmissionTracker wrote 'clearance_confirmed_at' on every ZATCA
+        // response for as long as the column has not existed, so the moment a
+        // document cleared was never recorded and the InvoiceCleared event
+        // reported it as null. Nothing failed, which is why it lasted.
+        //
+        // Off in production: a deployment that meets an unexpected attribute
+        // should drop it and keep serving rather than throw at the caller.
+        Model::preventSilentlyDiscardingAttributes(! $this->app->isProduction());
     }
 
     /**
