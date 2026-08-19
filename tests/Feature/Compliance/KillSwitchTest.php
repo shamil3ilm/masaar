@@ -12,6 +12,7 @@ use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use App\Domains\Compliance\Fatoora\Services\KillSwitch;
 use App\Domains\Compliance\Fatoora\Services\SubmissionTracker;
+use App\Domains\Compliance\Fatoora\Services\Submitter;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -77,6 +78,23 @@ class KillSwitchTest extends TestCase
 
         $this->assertBlockedByKillSwitch(fn () => app(SubmissionTracker::class)
             ->submit($this->invoice($this->organization, 'INV-1')));
+    }
+
+    /**
+     * Issuance is the irreversible half: the document is signed and the invoice
+     * marked Issued. A signing defect caught in production is the case this
+     * switch is for, and stopping submission alone would not stop it.
+     */
+    public function test_issuance_switch_stops_signing(): void
+    {
+        app(KillSwitch::class)->enable(KillSwitch::SWITCH_ISSUANCE, reason: 'signing defect');
+
+        $invoice = $this->invoice($this->organization, 'INV-3');
+
+        $this->assertBlockedByKillSwitch(fn () => app(Submitter::class)
+            ->generate($invoice, $this->organization));
+
+        $this->assertSame('draft', $invoice->fresh()->status->value, 'The invoice was issued anyway.');
     }
 
     /**
