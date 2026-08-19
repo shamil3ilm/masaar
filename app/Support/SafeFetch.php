@@ -88,9 +88,10 @@ final class SafeFetch
     /**
      * The stream options every outbound fetch runs under.
      *
-     * Exposed so the policy can be asserted directly. The alternative is a
-     * live server and a real redirect, which proves the same thing at the cost
-     * of a socket in the test suite.
+     * Exposed so it can be asserted directly, and so RedirectPolicyTest can
+     * apply it to a real server and a real redirect. Both are worth having: the
+     * shape assertion catches an option being dropped, and only the live one
+     * catches an option PHP ignores because it sits under the wrong key.
      *
      * @return array{http: array<string, mixed>, ssl: array<string, bool>}
      */
