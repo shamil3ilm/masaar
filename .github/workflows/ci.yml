@@ -65,6 +65,64 @@ jobs:
       - name: Run test suite
         run: php artisan test
 
+  # The suite above runs on in-memory SQLite, which is fast but permissive: it
+  # does not enforce foreign key types, and it is a console process, where the
+  # tenant scope stands down. Both have hidden real defects — submissions
+  # declared bigint against UUID keys that MySQL refused outright, and an ICV
+  # allocation that handed every invoice the same counter. This job runs the
+  # same application against MySQL over real HTTP.
+  e2e:
+    name: End-to-end (MySQL)
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_DATABASE: masaar
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP ${{ env.PHP_VERSION }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: openssl, mbstring, bcmath, dom, xml, curl, zip, fileinfo, tokenizer, pdo_mysql
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      # This job serves HTTP rather than running PHPUnit, so nothing overrides
+      # the environment the way phpunit.xml does — .env is what runs. Its
+      # database defaults already name the service above, and session, cache and
+      # queue are all database-backed, so no other service is needed.
+      #
+      # Only APP_ENV is changed: .env.example ships production, and the checks
+      # below are written against a normal application environment.
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+          php artisan jwt:secret --force
+          sed -i 's/^APP_ENV=.*/APP_ENV=local/' .env
+
+      - name: Run migrations
+        run: php artisan migrate --force
+
+      - name: Run end-to-end checks
+        run: php tests/E2e/run.php
+
   # Some Pint fixer combinations need more than one pass to converge. If
   # `pint --test` still reports files straight after running `pint`, run it
   # again — the second pass settles it.
