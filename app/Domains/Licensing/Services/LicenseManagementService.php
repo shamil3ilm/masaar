@@ -261,7 +261,7 @@ class LicenseManagementService
         // Generate new secret
         $newSecret = bin2hex(random_bytes(32));
         $license->update([
-            'api_secret_hash' => hash('sha256', $newSecret),
+            'api_secret_hash' => License::hashSecret($newSecret),
         ]);
 
         $this->logAudit($licenseId, 'secret_regenerated');

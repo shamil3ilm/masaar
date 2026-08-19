@@ -169,7 +169,7 @@ class License extends Model
 
         $license = self::create([
             'api_key' => $apiKey,
-            'api_secret_hash' => hash('sha256', $apiSecret),
+            'api_secret_hash' => self::hashSecret($apiSecret),
             'environment' => $environment,
             'tier' => $tier,
             'scopes' => $scopes,
@@ -187,13 +187,31 @@ class License extends Model
     }
 
     /**
-     * Verify API secret using SHA256 hash comparison.
+     * Hash an API secret for storage.
      *
-     * Uses hash_equals for timing-safe comparison.
+     * Keyed on a pepper held outside the database, so reading the licences
+     * table is not on its own enough to attack the hashes offline. HMAC rather
+     * than a concatenated digest because that is the construction designed for
+     * a keyed hash.
+     *
+     * This is the only place a secret is hashed. It was three, which is how
+     * the pepper came to be declared in config/security.php, described in
+     * .env.example, and read nowhere.
+     */
+    public static function hashSecret(string $secret): string
+    {
+        return hash_hmac('sha256', $secret, (string) config('security.api_key_pepper'));
+    }
+
+    /**
+     * Verify an API secret.
+     *
+     * hash_equals compares in time independent of where the two differ, so a
+     * caller cannot recover the stored hash a byte at a time by measuring.
      */
     public function verifySecret(string $secret): bool
     {
-        return hash_equals($this->api_secret_hash, hash('sha256', $secret));
+        return hash_equals($this->api_secret_hash, self::hashSecret($secret));
     }
 
     /**
