@@ -54,7 +54,7 @@ class Submitter
      */
     public function generate(Invoice $invoice, Organization $organization): array
     {
-        $previousHash = $this->getPreviousInvoiceHash($invoice);
+        $previousHash = $invoice->previous_invoice_hash;
 
         // Get signing credentials if available
         $credentials = $this->getSigningCredentials($organization->id);
@@ -87,7 +87,7 @@ class Submitter
      */
     public function validate(Invoice $invoice, Organization $organization): FatooraResponse
     {
-        $previousHash = $this->getPreviousInvoiceHash($invoice);
+        $previousHash = $invoice->previous_invoice_hash;
         $credentials = $this->getSigningCredentials($organization->id);
 
         $complianceData = $this->compliance->generateComplianceData(
@@ -148,6 +148,10 @@ class Submitter
         $complianceData = $this->compliance->generateComplianceData(
             invoice: $invoice,
             organization: $organization,
+            // Omitting this defaulted it to null, which XmlBuilder turns into
+            // the genesis PIH — so the document that actually reaches ZATCA
+            // claimed to be the first in the chain, on every submission.
+            previousInvoiceHash: $invoice->previous_invoice_hash,
             privateKey: $credentials['privateKey'] ?? null,
             certificate: $credentials['certificate'] ?? null,
         );
@@ -378,24 +382,6 @@ class Submitter
         if ($response->success) {
             $this->incrementBranchInvoiceCount($invoice);
         }
-    }
-
-    /**
-     * Get hash of previous invoice for PIH chaining.
-     *
-     * Uses the ICV (Invoice Counter Value) column rather than created_at so
-     * that the chain order matches ZATCA's sequential counter, not wall-clock
-     * time which can be non-deterministic under concurrent inserts.
-     */
-    private function getPreviousInvoiceHash(Invoice $invoice): ?string
-    {
-        $previous = Invoice::where('org_id', $invoice->org_id)
-            ->where('icv', '<', $invoice->icv)
-            ->whereNotNull('hash')
-            ->orderBy('icv', 'desc')
-            ->first();
-
-        return $previous?->hash;
     }
 
     /**

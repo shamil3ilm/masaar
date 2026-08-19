@@ -266,6 +266,35 @@ try {
     // different values would break every subsequent document.
     $second = $documents->generateComplianceData($b2c, $acme);
     check('hash deterministic', $first['hash'] === $second['hash']);
+
+    // The PIH chain, end to end. Persisting the hash is what puts this invoice
+    // into the chain; the next one must carry it.
+    $b2c->forceFill(['hash' => $first['hash']])->save();
+
+    $next = Invoice::withoutTenantScope(fn () => Invoice::create([
+        'org_id' => $acme->id, 'invoice_number' => 'ACME-B2C-2', 'type' => 'simplified',
+        'status' => 'draft', 'issue_date' => now()->toDateString(), 'currency' => 'SAR',
+        'buyer_name' => 'Walk-in', 'subtotal' => '100.00', 'tax_amount' => '15.00', 'total' => '115.00',
+    ]));
+    $next->load('lines');
+
+    check('next invoice chains to the previous',
+        $next->previous_invoice_hash === $first['hash'],
+        'got '.var_export($next->previous_invoice_hash, true));
+
+    // The genesis PIH — 32 zero bytes — is what a null previous hash becomes.
+    // Three of the five document paths were producing it for every invoice,
+    // so each document claimed to be the first in its chain.
+    $genesis = base64_encode(str_repeat("\0", 32));
+
+    $chained = $documents->generateComplianceData(
+        invoice: $next,
+        organization: $acme,
+        previousInvoiceHash: $next->previous_invoice_hash,
+    );
+
+    check('document embeds the previous hash', str_contains($chained['xml'], $first['hash']));
+    check('document is not the genesis pih', ! str_contains($chained['xml'], $genesis));
 } catch (Throwable $e) {
     check('compliance generation', false, $e::class.': '.$e->getMessage());
 }
