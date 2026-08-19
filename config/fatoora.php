@@ -72,8 +72,26 @@ return [
     | private — these are the keys behind every invoice the platform stamps.
     |
     */
-    'credentials' => [
+    'signing' => [
         'disk' => env('ZATCA_CREDENTIAL_DISK', 'local'),
+
+        /*
+        | The key these credentials are encrypted under.
+        |
+        | Empty means APP_KEY, which works but is broad: APP_KEY also protects
+        | sessions and cookies, sits in every container and worker, and is on
+        | any machine holding a production .env. A signing key is the private
+        | half of a taxpayer's non-repudiation, so it is worth a secret that
+        | fewer things hold and that routine APP_KEY rotation does not touch.
+        |
+        | Set it and run masaar:rotate-credential-key, keeping the previous
+        | value in previous_keys until that reports no failures.
+        */
+        'key' => env('ZATCA_CREDENTIAL_KEY', ''),
+
+        'previous_keys' => array_values(array_filter(
+            explode(',', (string) env('ZATCA_CREDENTIAL_PREVIOUS_KEYS', ''))
+        )),
     ],
 
     /*
@@ -393,14 +411,6 @@ return [
     | Settings for async submission queue processing.
     |
     */
-    'queue' => [
-        'connection' => env('ZATCA_QUEUE_CONNECTION', 'redis'),
-        'name' => env('ZATCA_QUEUE_NAME', 'zatca-submissions'),
-        'tries' => env('ZATCA_QUEUE_TRIES', 3),
-        'timeout' => env('ZATCA_QUEUE_TIMEOUT', 120),
-        'backoff' => [10, 60, 300], // seconds between retries
-    ],
-
     /*
     |--------------------------------------------------------------------------
     | Logging
@@ -987,6 +997,14 @@ return [
     |
     */
     'queue' => [
+        'connection' => env('ZATCA_QUEUE_CONNECTION', 'redis'),
+        'name' => env('ZATCA_QUEUE_NAME', 'zatca-submissions'),
+
+        // Read by ProcessFatooraSubmission for its retry behaviour.
+        'tries' => (int) env('ZATCA_QUEUE_TRIES', 3),
+        'timeout' => (int) env('ZATCA_QUEUE_TIMEOUT', 120),
+        'backoff' => [10, 60, 300], // seconds between retries
+
         // Queue name for ZATCA submissions (clearance/reporting)
         'submissions_queue' => env('ZATCA_QUEUE_SUBMISSIONS', 'zatca-submissions'),
 

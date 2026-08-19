@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Fatoora\Services;
 
 use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Encryption\Encrypter;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Storage;
 
@@ -17,17 +18,17 @@ use Illuminate\Support\Facades\Storage;
  * The disk is configuration, not a constant. It was Storage::disk('local') in
  * three separate files, which meant credentials landed inside the container:
  * a tenant onboarded on one replica could not sign on another, so the platform
- * could not run more than one. Pointing fatoora.credentials.disk at a shared
+ * could not run more than one. Pointing fatoora.signing.disk at a shared
  * filesystem is now the whole change.
  *
  * Reading and writing live here rather than at each call site, because
  * rotation needs to find every stored credential and re-encrypt it, and it
  * cannot do that while three files each build their own paths.
  *
- * Encryption is Laravel's, so the key is APP_KEY and one key covers every
- * tenant. That is the remaining gap — audit finding H-1 — and closing it means
- * a per-tenant data key wrapped by a KMS. This class is where that goes, and
- * nothing outside it needs to change when it does.
+ * The secret is fatoora.signing.key, falling back to APP_KEY — see cipher().
+ * One secret still covers every tenant, which is the part of audit finding H-1
+ * that remains: a per-tenant data key wrapped by a KMS. cipher() is where that
+ * goes, and nothing outside this class changes when it does.
  */
 class CredentialStore
 {
@@ -39,7 +40,49 @@ class CredentialStore
 
     public function disk(): Filesystem
     {
-        return Storage::disk(config('fatoora.credentials.disk', 'local'));
+        return Storage::disk(config('fatoora.signing.disk', 'local'));
+    }
+
+    /**
+     * The cipher these credentials are encrypted under.
+     *
+     * Separate from Crypt on purpose. APP_KEY also protects sessions and
+     * cookies, sits in every container and every queue worker, and is on any
+     * machine holding a production .env — a blast radius that should not
+     * include the private half of a taxpayer's non-repudiation. Setting
+     * fatoora.signing.key narrows it, and means routine APP_KEY rotation no
+     * longer touches signing material.
+     *
+     * With no key configured this is Crypt, so nothing breaks by default.
+     * Previous keys are accepted for decryption only, which is what lets
+     * masaar:rotate-credential-key read old files and write new ones.
+     */
+    private function cipher(): Encrypter
+    {
+        $key = (string) config('fatoora.signing.key', '');
+
+        if ($key === '') {
+            return Crypt::getFacadeRoot();
+        }
+
+        $encrypter = new Encrypter(self::binaryKey($key), config('app.cipher'));
+
+        $previous = array_map(
+            static fn (string $k): string => self::binaryKey($k),
+            (array) config('fatoora.signing.previous_keys', [])
+        );
+
+        return $previous === [] ? $encrypter : $encrypter->previousKeys($previous);
+    }
+
+    /**
+     * Accept a key written either as raw bytes or in Laravel's base64: form.
+     */
+    private static function binaryKey(string $key): string
+    {
+        return str_starts_with($key, 'base64:')
+            ? (string) base64_decode(substr($key, 7), true)
+            : $key;
     }
 
     /**
@@ -49,7 +92,7 @@ class CredentialStore
     {
         $this->disk()->put(
             $this->path($organizationId, $branchId, $type),
-            Crypt::encryptString(json_encode($data, JSON_THROW_ON_ERROR))
+            $this->cipher()->encryptString(json_encode($data, JSON_THROW_ON_ERROR))
         );
     }
 
@@ -66,7 +109,7 @@ class CredentialStore
         }
 
         return json_decode(
-            Crypt::decryptString((string) $this->disk()->get($path)),
+            $this->cipher()->decryptString((string) $this->disk()->get($path)),
             true,
             512,
             JSON_THROW_ON_ERROR
@@ -117,12 +160,12 @@ class CredentialStore
     public function reencrypt(string $path): bool
     {
         try {
-            $plain = Crypt::decryptString((string) $this->disk()->get($path));
+            $plain = $this->cipher()->decryptString((string) $this->disk()->get($path));
         } catch (\Throwable) {
             return false;
         }
 
-        $this->disk()->put($path, Crypt::encryptString($plain));
+        $this->disk()->put($path, $this->cipher()->encryptString($plain));
 
         return true;
     }
