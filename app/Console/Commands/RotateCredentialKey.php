@@ -30,7 +30,7 @@ class RotateCredentialKey extends Command
     protected $signature = 'masaar:rotate-credential-key
                             {--dry-run : Report what would be re-encrypted without writing}';
 
-    protected $description = 'Re-encrypt stored CSID credentials under the current APP_KEY';
+    protected $description = 'Re-encrypt stored CSID credentials under the current signing key';
 
     public function handle(CredentialStore $credentials): int
     {
