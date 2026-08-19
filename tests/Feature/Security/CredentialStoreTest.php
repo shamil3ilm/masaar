@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Security;
 
 use App\Domains\Compliance\Fatoora\Services\CredentialStore;
+use Illuminate\Encryption\EncryptionServiceProvider;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -26,7 +28,7 @@ class CredentialStoreTest extends TestCase
         parent::setUp();
 
         Storage::fake('credentials');
-        config(['fatoora.credentials.disk' => 'credentials']);
+        config(['fatoora.signing.disk' => 'credentials']);
 
         $this->store = new CredentialStore;
     }
@@ -72,7 +74,7 @@ class CredentialStoreTest extends TestCase
         $this->store->put(self::ORG, self::BRANCH, CredentialStore::PCSID, $this->pcsid());
 
         Storage::disk('credentials')
-            ->assertExists("zatca/".self::ORG."/branches/".self::BRANCH."/pcsid.json");
+            ->assertExists('zatca/'.self::ORG.'/branches/'.self::BRANCH.'/pcsid.json');
     }
 
     /**
@@ -84,7 +86,7 @@ class CredentialStoreTest extends TestCase
         $this->store->put(self::ORG, self::BRANCH, CredentialStore::PCSID, $this->pcsid());
 
         $raw = Storage::disk('credentials')
-            ->get("zatca/".self::ORG."/branches/".self::BRANCH."/pcsid.json");
+            ->get('zatca/'.self::ORG.'/branches/'.self::BRANCH.'/pcsid.json');
 
         $this->assertStringNotContainsString('BEGIN EC PRIVATE KEY', (string) $raw);
     }
@@ -121,7 +123,7 @@ class CredentialStoreTest extends TestCase
     public function test_reencrypt_preserves_contents(): void
     {
         $this->store->put(self::ORG, self::BRANCH, CredentialStore::PCSID, $this->pcsid());
-        $path = "zatca/".self::ORG."/branches/".self::BRANCH."/pcsid.json";
+        $path = 'zatca/'.self::ORG.'/branches/'.self::BRANCH.'/pcsid.json';
 
         $before = Storage::disk('credentials')->get($path);
 
@@ -168,7 +170,7 @@ class CredentialStoreTest extends TestCase
     public function test_dry_run_leaves_files_untouched(): void
     {
         $this->store->put(self::ORG, self::BRANCH, CredentialStore::PCSID, $this->pcsid());
-        $path = "zatca/".self::ORG."/branches/".self::BRANCH."/pcsid.json";
+        $path = 'zatca/'.self::ORG.'/branches/'.self::BRANCH.'/pcsid.json';
         $before = Storage::disk('credentials')->get($path);
 
         $this->artisan('masaar:rotate-credential-key', ['--dry-run' => true])
@@ -215,7 +217,50 @@ class CredentialStoreTest extends TestCase
         // The encrypter is resolved once at boot, so the container has to be
         // told to build a new one against the changed config.
         app()->forgetInstance('encrypter');
-        \Illuminate\Support\Facades\Crypt::clearResolvedInstances();
-        app()->register(\Illuminate\Encryption\EncryptionServiceProvider::class, true);
+        Crypt::clearResolvedInstances();
+        app()->register(EncryptionServiceProvider::class, true);
+    }
+
+    /**
+     * A dedicated signing secret means APP_KEY rotation stops being able to
+     * lock every tenant out of signing.
+     */
+    public function test_dedicated_key_is_used_when_set(): void
+    {
+        $signingKey = 'base64:'.base64_encode(random_bytes(32));
+        config(['fatoora.signing.key' => $signingKey]);
+
+        $this->store->put(self::ORG, self::BRANCH, CredentialStore::PCSID, $this->pcsid());
+
+        // APP_KEY moves; the credential was never encrypted under it.
+        config(['app.key' => 'base64:'.base64_encode(random_bytes(32))]);
+
+        $this->assertSame(
+            $this->pcsid(),
+            $this->store->get(self::ORG, self::BRANCH, CredentialStore::PCSID)
+        );
+    }
+
+    /**
+     * Withdrawing the old signing secret without rotating first is the outage
+     * this whole arrangement exists to make survivable.
+     */
+    public function test_signing_key_rotation_survives_withdrawal(): void
+    {
+        $old = 'base64:'.base64_encode(random_bytes(32));
+        $new = 'base64:'.base64_encode(random_bytes(32));
+
+        config(['fatoora.signing.key' => $old, 'fatoora.signing.previous_keys' => []]);
+        $this->store->put(self::ORG, self::BRANCH, CredentialStore::PCSID, $this->pcsid());
+
+        config(['fatoora.signing.key' => $new, 'fatoora.signing.previous_keys' => [$old]]);
+        $this->artisan('masaar:rotate-credential-key')->assertSuccessful();
+
+        config(['fatoora.signing.previous_keys' => []]);
+
+        $this->assertSame(
+            $this->pcsid(),
+            $this->store->get(self::ORG, self::BRANCH, CredentialStore::PCSID)
+        );
     }
 }
