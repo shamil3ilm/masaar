@@ -15,10 +15,10 @@ return new class extends Migration
             $table->uuid('invoice_id');
             $table->uuid('org_id');
             $table->string('status', 255)->default('draft');
-            $table->string('fta_submission_id', 255)->nullable();
-            $table->string('fta_validation_status', 255)->nullable();
-            $table->json('fta_warnings')->nullable();
-            $table->json('fta_errors')->nullable();
+            $table->string('reference', 255)->nullable();
+            $table->string('validation_status', 255)->nullable();
+            $table->json('warnings')->nullable();
+            $table->json('errors')->nullable();
             $table->string('document_type', 3)->default('380');
             $table->longText('invoice_xml')->nullable();
             $table->unsignedSmallInteger('retry_count')->default(0);
@@ -31,7 +31,7 @@ return new class extends Migration
             $table->timestamp('updated_at')->nullable();
             $table->timestamp('deleted_at')->nullable();
             $table->primary(['id']);
-            $table->unique(['fta_submission_id'], 'fta_submissions_fta_submission_id_unique');
+            $table->unique(['reference'], 'fta_submissions_reference_unique');
             $table->index(['invoice_id'], 'fta_submissions_invoice_id_index');
             $table->index(['org_id', 'status'], 'fta_submissions_organization_id_status_index');
             $table->foreign('invoice_id', 'fta_submissions_invoice_id_foreign')->references('id')->on('invoices')->restrictOnDelete();
