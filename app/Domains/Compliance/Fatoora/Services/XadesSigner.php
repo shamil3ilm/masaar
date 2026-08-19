@@ -93,38 +93,43 @@ class XadesSigner
         $signatureId = 'signature-'.bin2hex(random_bytes(8));
         $signedPropertiesId = 'signedprops-'.bin2hex(random_bytes(8));
 
-        // Create Signature element
         $signature = $this->createSignatureElement($dom, $signatureId);
 
-        // Create XAdES Object first (need SignedProperties for digest calculation)
         $xadesResult = $this->createXadesObject($dom, $signatureId, $signedPropertiesId, $certificatePem);
         $object = $xadesResult['object'];
         $signedProperties = $xadesResult['signedProperties'];
 
-        // Create SignedInfo (with SignedProperties digest)
-        $signedInfo = $this->createSignedInfo($dom, $xml, $signedPropertiesId, $signedProperties);
-        $signature->appendChild($signedInfo);
-
-        // Calculate signature value
-        $signedInfoC14n = $this->canonicalize($signedInfo);
-        $signatureValue = $this->ecdsaSigner->sign($signedInfoC14n, $privateKeyPem);
-
-        // Add SignatureValue
-        $signatureValueElement = $dom->createElementNS(self::DS_NS, 'ds:SignatureValue', $signatureValue);
-        $signature->appendChild($signatureValueElement);
-
-        // Add KeyInfo with certificate
-        $keyInfo = $this->createKeyInfo($dom, $certificatePem);
-        $signature->appendChild($keyInfo);
-
-        // Add XAdES Object (signed properties)
+        // Everything is put into the document before anything is canonicalised.
+        // DOMNode::C14N() returns the empty string for a subtree that is not
+        // attached, and says nothing about it — so building SignedInfo first
+        // and signing it before insertion signed the empty string, and the
+        // SignedProperties reference carried the digest of the empty string.
+        // Both are well-formed and neither verifies.
         $signature->appendChild($object);
+        $signature = $this->insertSignature($dom, $signature);
 
-        // Insert signature into document (after UBLExtensions)
-        $this->insertSignature($dom, $signature);
+        // XML-DSig fixes the order of a Signature's children: SignedInfo,
+        // SignatureValue, KeyInfo, then Object. Each is placed before the
+        // object rather than appended.
+        $signedInfo = $this->createSignedInfo($dom, $xml, $signedPropertiesId, $signedProperties);
+        $signature->insertBefore($signedInfo, $object);
 
-        $dom->formatOutput = true;
+        $signatureValue = $this->ecdsaSigner->sign(
+            $this->canonicalize($signedInfo),
+            $privateKeyPem
+        );
 
+        $signature->insertBefore(
+            $dom->createElementNS(self::DS_NS, 'ds:SignatureValue', $signatureValue),
+            $object
+        );
+
+        $signature->insertBefore($this->createKeyInfo($dom, $certificatePem), $object);
+
+        // Deliberately not formatOutput. Pretty-printing indents the signed
+        // subtrees after they were canonicalised; a verifier that reparses
+        // without preserving whitespace still agrees, but one that preserves
+        // it does not, and which of those ZATCA runs is not ours to assume.
         return $dom->saveXML();
     }
 
@@ -363,30 +368,40 @@ class XadesSigner
     /**
      * Insert signature into document.
      */
-    private function insertSignature(DOMDocument $dom, DOMElement $signature): void
+    /**
+     * Put the signature where ZATCA looks for it, and return the node that is
+     * now in the document.
+     *
+     * The return value is what callers must canonicalise through: C14N() on a
+     * detached subtree yields the empty string, so a handle that is not the
+     * node in the tree signs nothing. importNode() is dropped because the
+     * element was created by this document and needs no import.
+     */
+    private function insertSignature(DOMDocument $dom, DOMElement $signature): DOMElement
     {
         $xpath = new DOMXPath($dom);
         $xpath->registerNamespace('ext', 'urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2');
 
-        // Find UBLExtensions/UBLExtension/ExtensionContent
         $nodes = $xpath->query('//ext:UBLExtensions/ext:UBLExtension/ext:ExtensionContent');
 
-        if ($nodes->length > 0) {
-            // Replace comment placeholder with signature
-            $extensionContent = $nodes->item(0);
-
-            foreach ($extensionContent->childNodes as $child) {
-                if ($child->nodeType === XML_COMMENT_NODE) {
-                    $extensionContent->removeChild($child);
-                    break;
-                }
-            }
-
-            $extensionContent->appendChild($dom->importNode($signature, true));
-        } else {
-            // Append to root if UBLExtensions not found
+        if ($nodes->length === 0) {
             $dom->documentElement->appendChild($signature);
+
+            return $signature;
         }
+
+        $extensionContent = $nodes->item(0);
+
+        foreach (iterator_to_array($extensionContent->childNodes) as $child) {
+            if ($child->nodeType === XML_COMMENT_NODE) {
+                $extensionContent->removeChild($child);
+                break;
+            }
+        }
+
+        $extensionContent->appendChild($signature);
+
+        return $signature;
     }
 
     /**
