@@ -33,16 +33,11 @@ return [
     | API Credentials
     |--------------------------------------------------------------------------
     */
+    // FtaService authenticates with the API key alone. A client id and secret
+    // were configured for an OAuth exchange that was never written, so they
+    // are absent rather than dormant: a credential an operator can set and
+    // that nothing reads is worse than one that is missing.
     'api_key' => env('UAE_FTA_API_KEY'),
-    'client_id' => env('UAE_FTA_CLIENT_ID'),
-    'client_secret' => env('UAE_FTA_CLIENT_SECRET'),
-
-    /*
-    |--------------------------------------------------------------------------
-    | Webhook
-    |--------------------------------------------------------------------------
-    */
-    'webhook_secret' => env('UAE_FTA_WEBHOOK_SECRET'),
 
     /*
     |--------------------------------------------------------------------------
