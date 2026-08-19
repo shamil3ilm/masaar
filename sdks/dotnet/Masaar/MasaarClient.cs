@@ -9,13 +9,13 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace CompliPay;
+namespace Masaar;
 
 /// <summary>
-/// CompliPay .NET SDK for ZATCA-compliant e-invoicing.
+/// Masaar .NET SDK for ZATCA-compliant e-invoicing.
 /// </summary>
 /// <example>
-/// var client = new CompliPayClient("https://api.masaar.sa", "api_key", "api_secret");
+/// var client = new MasaarClient("https://api.masaar.sa", "api_key", "api_secret");
 ///
 /// var invoice = await client.Invoices.CreateAsync(new CreateInvoiceRequest
 /// {
@@ -26,7 +26,7 @@ namespace CompliPay;
 ///
 /// var result = await client.Compliance.SubmitAsync(invoice.Data.Id);
 /// </example>
-public class CompliPayClient : IDisposable
+public class MasaarClient : IDisposable
 {
     private readonly HttpClient _httpClient;
     private readonly string _apiKey;
@@ -37,7 +37,7 @@ public class CompliPayClient : IDisposable
     public ComplianceResource Compliance { get; }
     public WebhooksResource Webhooks { get; }
 
-    public CompliPayClient(string baseUrl, string apiKey, string apiSecret, HttpClient? httpClient = null)
+    public MasaarClient(string baseUrl, string apiKey, string apiSecret, HttpClient? httpClient = null)
     {
         _apiKey = apiKey ?? throw new ArgumentNullException(nameof(apiKey));
         _apiSecret = apiSecret ?? throw new ArgumentNullException(nameof(apiSecret));
@@ -93,7 +93,7 @@ public class CompliPayClient : IDisposable
                 System.Net.HttpStatusCode.Unauthorized => new AuthenticationException(error?.Message ?? "Invalid credentials"),
                 System.Net.HttpStatusCode.UnprocessableEntity => new ValidationException(error?.Message ?? "Validation failed", error?.Errors),
                 System.Net.HttpStatusCode.TooManyRequests => new RateLimitException("Rate limit exceeded"),
-                _ => new CompliPayException(error?.Message ?? $"Request failed: {response.StatusCode}", (int)response.StatusCode)
+                _ => new MasaarException(error?.Message ?? $"Request failed: {response.StatusCode}", (int)response.StatusCode)
             };
         }
 
@@ -195,8 +195,8 @@ public class ZatcaResult
 
 public class InvoicesResource
 {
-    private readonly CompliPayClient _client;
-    public InvoicesResource(CompliPayClient client) => _client = client;
+    private readonly MasaarClient _client;
+    public InvoicesResource(MasaarClient client) => _client = client;
 
     public Task<ApiResponse<List<Invoice>>> ListAsync(int page = 1, int perPage = 15, CancellationToken ct = default)
         => _client.GetAsync<List<Invoice>>($"/v1/invoices?page={page}&per_page={perPage}", ct);
@@ -210,8 +210,8 @@ public class InvoicesResource
 
 public class ComplianceResource
 {
-    private readonly CompliPayClient _client;
-    public ComplianceResource(CompliPayClient client) => _client = client;
+    private readonly MasaarClient _client;
+    public ComplianceResource(MasaarClient client) => _client = client;
 
     public Task<ApiResponse<ZatcaResult>> GenerateAsync(string invoiceId, CancellationToken ct = default)
         => _client.PostAsync<ZatcaResult>($"/api/compliance/zatca/generate/{invoiceId}", null, ct);
@@ -228,8 +228,8 @@ public class ComplianceResource
 
 public class WebhooksResource
 {
-    private readonly CompliPayClient _client;
-    public WebhooksResource(CompliPayClient client) => _client = client;
+    private readonly MasaarClient _client;
+    public WebhooksResource(MasaarClient client) => _client = client;
 
     public static class Events
     {
@@ -257,34 +257,34 @@ public class WebhooksResource
 
 #region Exceptions
 
-public class CompliPayException : Exception
+public class MasaarException : Exception
 {
     public int StatusCode { get; }
     public List<string>? Errors { get; }
 
-    public CompliPayException(string message, int statusCode = 0, List<string>? errors = null) : base(message)
+    public MasaarException(string message, int statusCode = 0, List<string>? errors = null) : base(message)
     {
         StatusCode = statusCode;
         Errors = errors;
     }
 }
 
-public class AuthenticationException : CompliPayException
+public class AuthenticationException : MasaarException
 {
     public AuthenticationException(string message) : base(message, 401) { }
 }
 
-public class ValidationException : CompliPayException
+public class ValidationException : MasaarException
 {
     public ValidationException(string message, List<string>? errors = null) : base(message, 422, errors) { }
 }
 
-public class RateLimitException : CompliPayException
+public class RateLimitException : MasaarException
 {
     public RateLimitException(string message) : base(message, 429) { }
 }
 
-public class ZatcaException : CompliPayException
+public class ZatcaException : MasaarException
 {
     public ZatcaException(string message, List<string>? errors = null) : base(message, 0, errors) { }
 }

@@ -1,9 +1,9 @@
-package com.complipay.exceptions;
+package com.masaar.exceptions;
 
 /**
  * Thrown when a network error occurs.
  */
-public class NetworkException extends CompliPayException {
+public class NetworkException extends MasaarException {
 
     public NetworkException(String message) {
         super(message);

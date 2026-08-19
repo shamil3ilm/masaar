@@ -4,7 +4,7 @@ plugins {
     `maven-publish`
 }
 
-group = "com.complipay"
+group = "com.masaar"
 version = "1.0.0"
 
 repositories {
@@ -27,8 +27,8 @@ kotlin {
 publishing {
     publications {
         create<MavenPublication>("maven") {
-            groupId = "com.complipay"
-            artifactId = "complipay-sdk"
+            groupId = "com.masaar"
+            artifactId = "masaar-sdk"
             version = "1.0.0"
             from(components["java"])
         }

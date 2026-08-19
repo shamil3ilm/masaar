@@ -73,7 +73,7 @@ the API rather than generated, so treat the HTTP API and
 | SDK | Status | Notes |
 |-----|--------|-------|
 | [Java](sdks/java/) | 🟢 Most complete | Typed models, resource classes, exception hierarchy |
-| [PHP](sdks/php-legacy/) | 🟡 Single-file client | Directory named `php-legacy`; predates the current API surface |
+| [PHP](sdks/php/) | 🟡 Single-file client | Covers a subset of the API surface |
 | [TypeScript](sdks/typescript/) | 🟡 Single-file client | Intended Tier-1 target |
 | [Python](sdks/python/) | 🟡 Single-file client | |
 | [Rust](sdks/rust/) · [Go](sdks/go/) · [Kotlin](sdks/kotlin/) · [Swift](sdks/swift/) · [.NET](sdks/dotnet/) · [Ruby](sdks/ruby/) · [Dart](sdks/dart/) | 🟠 Skeleton | One client file each; no tests, unverified against a live API |

@@ -66,8 +66,8 @@ print(f"ZATCA Status: {result['status']}")
 
 ```python
 # settings.py
-COMPLIPAY_URL = "http://localhost:8000"  # or your production URL
-COMPLIPAY_API_KEY = "your_api_key"
+MASAAR_URL = "http://localhost:8000"  # or your production URL
+MASAAR_API_KEY = "your_api_key"
 
 # views.py
 from django.conf import settings
@@ -75,8 +75,8 @@ from django.http import JsonResponse
 from masaar import MasaarClient
 
 client = MasaarClient(
-    base_url=settings.COMPLIPAY_URL,
-    api_key=settings.COMPLIPAY_API_KEY
+    base_url=settings.MASAAR_URL,
+    api_key=settings.MASAAR_API_KEY
 )
 
 def create_invoice(request):
@@ -99,8 +99,8 @@ app = Flask(__name__)
 
 # Use environment variables for configuration
 client = MasaarClient(
-    base_url=os.environ.get("COMPLIPAY_URL", "http://localhost:8000"),
-    api_key=os.environ.get("COMPLIPAY_API_KEY", "your_api_key")
+    base_url=os.environ.get("MASAAR_URL", "http://localhost:8000"),
+    api_key=os.environ.get("MASAAR_API_KEY", "your_api_key")
 )
 
 @app.route("/invoices", methods=["POST"])
@@ -121,8 +121,8 @@ app = FastAPI()
 
 # Configure with environment variables
 client = MasaarClient(
-    base_url=os.environ.get("COMPLIPAY_URL", "http://localhost:8000"),
-    api_key=os.environ.get("COMPLIPAY_API_KEY", "your_api_key")
+    base_url=os.environ.get("MASAAR_URL", "http://localhost:8000"),
+    api_key=os.environ.get("MASAAR_API_KEY", "your_api_key")
 )
 
 @app.post("/invoices")

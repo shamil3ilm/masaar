@@ -1,8 +1,8 @@
-package com.complipay;
+package com.masaar;
 
-import com.complipay.exceptions.*;
-import com.complipay.models.*;
-import com.complipay.resources.*;
+import com.masaar.exceptions.*;
+import com.masaar.models.*;
+import com.masaar.resources.*;
 
 import java.io.IOException;
 import java.net.URI;
@@ -17,13 +17,13 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 /**
- * CompliPay Java SDK
+ * Masaar Java SDK
  *
  * ZATCA-compliant e-invoicing API client for Java 11+
  * Works with Spring Boot, Jakarta EE, Micronaut, Quarkus, or any Java application.
  *
  * <pre>{@code
- * CompliPayClient client = new CompliPayClient.Builder()
+ * MasaarClient client = new MasaarClient.Builder()
  *     .baseUrl("https://api.masaar.sa")
  *     .apiKey("your_api_key")
  *     .apiSecret("your_api_secret")
@@ -46,10 +46,10 @@ import com.google.gson.GsonBuilder;
  * ZatcaResult result = client.compliance().submit(invoice.getId());
  * }</pre>
  *
- * @author CompliPay
+ * @author Masaar
  * @version 1.0.0
  */
-public class CompliPayClient {
+public class MasaarClient {
 
     private final String baseUrl;
     private final String apiKey;
@@ -63,7 +63,7 @@ public class CompliPayClient {
     private final ComplianceResource compliance;
     private final WebhooksResource webhooks;
 
-    private CompliPayClient(Builder builder) {
+    private MasaarClient(Builder builder) {
         this.baseUrl = Objects.requireNonNull(builder.baseUrl, "baseUrl is required")
                 .replaceAll("/$", "");
         this.apiKey = builder.apiKey;
@@ -112,31 +112,31 @@ public class CompliPayClient {
     /**
      * Check API health status.
      */
-    public ApiResponse<Map<String, Object>> health() throws CompliPayException {
+    public ApiResponse<Map<String, Object>> health() throws MasaarException {
         return get("/api/health", Map.class);
     }
 
     // HTTP methods for internal use
 
-    public <T> ApiResponse<T> get(String endpoint, Class<T> responseType) throws CompliPayException {
+    public <T> ApiResponse<T> get(String endpoint, Class<T> responseType) throws MasaarException {
         return request("GET", endpoint, null, responseType);
     }
 
-    public <T> ApiResponse<T> post(String endpoint, Object body, Class<T> responseType) throws CompliPayException {
+    public <T> ApiResponse<T> post(String endpoint, Object body, Class<T> responseType) throws MasaarException {
         return request("POST", endpoint, body, responseType);
     }
 
-    public <T> ApiResponse<T> put(String endpoint, Object body, Class<T> responseType) throws CompliPayException {
+    public <T> ApiResponse<T> put(String endpoint, Object body, Class<T> responseType) throws MasaarException {
         return request("PUT", endpoint, body, responseType);
     }
 
-    public <T> ApiResponse<T> delete(String endpoint, Class<T> responseType) throws CompliPayException {
+    public <T> ApiResponse<T> delete(String endpoint, Class<T> responseType) throws MasaarException {
         return request("DELETE", endpoint, null, responseType);
     }
 
     @SuppressWarnings("unchecked")
     private <T> ApiResponse<T> request(String method, String endpoint, Object body, Class<T> responseType)
-            throws CompliPayException {
+            throws MasaarException {
         try {
             HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
                     .uri(URI.create(baseUrl + endpoint))
@@ -177,7 +177,7 @@ public class CompliPayClient {
 
     @SuppressWarnings("unchecked")
     private <T> ApiResponse<T> handleResponse(HttpResponse<String> response, Class<T> responseType)
-            throws CompliPayException {
+            throws MasaarException {
         int statusCode = response.statusCode();
         String responseBody = response.body();
 
@@ -218,7 +218,7 @@ public class CompliPayClient {
         }
 
         if (statusCode >= 400) {
-            throw new CompliPayException(
+            throw new MasaarException(
                     apiResponse.getMessage() != null ? apiResponse.getMessage() : "Request failed",
                     statusCode,
                     apiResponse.getErrors()
@@ -234,7 +234,7 @@ public class CompliPayClient {
     }
 
     /**
-     * Builder for CompliPayClient.
+     * Builder for MasaarClient.
      */
     public static class Builder {
         private String baseUrl;
@@ -268,8 +268,8 @@ public class CompliPayClient {
             return this;
         }
 
-        public CompliPayClient build() {
-            return new CompliPayClient(this);
+        public MasaarClient build() {
+            return new MasaarClient(this);
         }
     }
 }

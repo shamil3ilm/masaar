@@ -25,13 +25,13 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
         Route::any('/{path?}', fn () => response()->json([
             'message' => 'This endpoint has moved. Use /api/compliance/sa/ instead.',
             'docs' => 'https://docs.masaar.sa/migration/v1-to-v2',
-        ], 301))->where('path', '.*');
+        ], 301))->where('path', '.*')->defaults('deprecated', true);
     });
 
     Route::prefix('compliance/uae-fta')->group(function () {
         Route::any('/{path?}', fn () => response()->json([
             'message' => 'This endpoint has moved. Use /api/compliance/ae/ instead.',
             'docs' => 'https://docs.masaar.sa/migration/v1-to-v2',
-        ], 301))->where('path', '.*');
+        ], 301))->where('path', '.*')->defaults('deprecated', true);
     });
 });

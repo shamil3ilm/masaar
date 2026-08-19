@@ -1,19 +1,19 @@
-// Package complipay provides a Go client for the CompliPay ZATCA e-invoicing API.
+// Package masaar provides a Go client for the Masaar ZATCA e-invoicing API.
 //
 // Example usage:
 //
-//	client := complipay.NewClient("https://api.masaar.sa", "api_key", "api_secret")
+//	client := masaar.NewClient("https://api.masaar.sa", "api_key", "api_secret")
 //
-//	invoice, err := client.Invoices.Create(context.Background(), &complipay.CreateInvoiceRequest{
+//	invoice, err := client.Invoices.Create(context.Background(), &masaar.CreateInvoiceRequest{
 //	    InvoiceNumber: "INV-001",
 //	    BuyerName:     "Acme Corp",
-//	    Lines: []complipay.InvoiceLine{
+//	    Lines: []masaar.InvoiceLine{
 //	        {Description: "Service", Quantity: 1, UnitPrice: 100},
 //	    },
 //	})
 //
 //	result, err := client.Compliance.Submit(context.Background(), invoice.ID)
-package complipay
+package masaar
 
 import (
 	"bytes"
@@ -28,7 +28,7 @@ import (
 	"time"
 )
 
-// Client is the CompliPay API client.
+// Client is the Masaar API client.
 type Client struct {
 	BaseURL    string
 	APIKey     string
@@ -40,7 +40,7 @@ type Client struct {
 	Webhooks   *WebhooksService
 }
 
-// NewClient creates a new CompliPay API client.
+// NewClient creates a new Masaar API client.
 func NewClient(baseURL, apiKey, apiSecret string) *Client {
 	c := &Client{
 		BaseURL:   baseURL,

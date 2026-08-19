@@ -5,10 +5,10 @@ require 'json'
 require 'uri'
 require 'openssl'
 
-# CompliPay Ruby SDK for ZATCA-compliant e-invoicing
+# Masaar Ruby SDK for ZATCA-compliant e-invoicing
 #
 # @example
-#   client = CompliPay::Client.new(
+#   client = Masaar::Client.new(
 #     base_url: 'https://api.masaar.sa',
 #     api_key: 'your_api_key',
 #     api_secret: 'your_api_secret'
@@ -21,7 +21,7 @@ require 'openssl'
 #   )
 #
 #   result = client.compliance.submit(invoice['id'])
-module CompliPay
+module Masaar
   VERSION = '1.0.0'
 
   class Error < StandardError; end

@@ -1,14 +1,14 @@
 /**
- * CompliPay TypeScript/JavaScript SDK
+ * Masaar TypeScript/JavaScript SDK
  *
  * ZATCA-compliant e-invoicing API client
  * Works with Node.js, React, Vue, Angular, or any JavaScript environment
  *
  * @example
  * ```typescript
- * import { CompliPayClient } from 'complipay';
+ * import { MasaarClient } from 'masaar';
  *
- * const client = new CompliPayClient({
+ * const client = new MasaarClient({
  *   baseUrl: 'https://api.masaar.sa',
  *   apiKey: 'your_api_key'
  * });
@@ -22,7 +22,7 @@
  */
 
 // Types
-export interface CompliPayConfig {
+export interface MasaarConfig {
   baseUrl: string;
   apiKey?: string;
   jwtToken?: string;
@@ -99,33 +99,33 @@ export interface ZatcaStatus {
 }
 
 // Errors
-export class CompliPayError extends Error {
+export class MasaarError extends Error {
   statusCode?: number;
   errors: string[];
 
   constructor(message: string, statusCode?: number, errors: string[] = []) {
     super(message);
-    this.name = 'CompliPayError';
+    this.name = 'MasaarError';
     this.statusCode = statusCode;
     this.errors = errors;
   }
 }
 
-export class AuthenticationError extends CompliPayError {
+export class AuthenticationError extends MasaarError {
   constructor(message = 'Invalid API key or token') {
     super(message, 401);
     this.name = 'AuthenticationError';
   }
 }
 
-export class ValidationError extends CompliPayError {
+export class ValidationError extends MasaarError {
   constructor(message: string, errors: string[] = []) {
     super(message, 422, errors);
     this.name = 'ValidationError';
   }
 }
 
-export class ZatcaError extends CompliPayError {
+export class ZatcaError extends MasaarError {
   constructor(message: string, errors: string[] = []) {
     super(message, undefined, errors);
     this.name = 'ZatcaError';
@@ -139,7 +139,7 @@ class HttpClient {
   private jwtToken?: string;
   private timeout: number;
 
-  constructor(config: CompliPayConfig) {
+  constructor(config: MasaarConfig) {
     this.baseUrl = config.baseUrl.replace(/\/$/, '');
     this.apiKey = config.apiKey;
     this.jwtToken = config.jwtToken;
@@ -182,7 +182,7 @@ class HttpClient {
     }
 
     if (!response.ok) {
-      throw new CompliPayError(
+      throw new MasaarError(
         data.message || `Request failed with status ${response.status}`,
         response.status,
         data.errors || []
@@ -401,14 +401,14 @@ class WebhooksResource {
 }
 
 // Main Client
-export class CompliPayClient {
+export class MasaarClient {
   public invoices: InvoicesResource;
   public compliance: ComplianceResource;
   public webhooks: WebhooksResource;
 
   private http: HttpClient;
 
-  constructor(config: CompliPayConfig) {
+  constructor(config: MasaarConfig) {
     if (!config.apiKey && !config.jwtToken) {
       throw new Error('Either apiKey or jwtToken must be provided');
     }
@@ -425,4 +425,4 @@ export class CompliPayClient {
 }
 
 // Default export
-export default CompliPayClient;
+export default MasaarClient;

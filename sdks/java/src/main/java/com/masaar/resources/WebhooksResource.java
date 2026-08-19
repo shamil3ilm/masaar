@@ -1,8 +1,8 @@
-package com.complipay.resources;
+package com.masaar.resources;
 
-import com.complipay.CompliPayClient;
-import com.complipay.exceptions.CompliPayException;
-import com.complipay.models.ApiResponse;
+import com.masaar.MasaarClient;
+import com.masaar.exceptions.MasaarException;
+import com.masaar.models.ApiResponse;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -18,9 +18,9 @@ import java.util.Map;
  */
 public class WebhooksResource {
 
-    private final CompliPayClient client;
+    private final MasaarClient client;
 
-    public WebhooksResource(CompliPayClient client) {
+    public WebhooksResource(MasaarClient client) {
         this.client = client;
     }
 
@@ -29,7 +29,7 @@ public class WebhooksResource {
      *
      * @return List of webhooks
      */
-    public ApiResponse<List<Map<String, Object>>> list() throws CompliPayException {
+    public ApiResponse<List<Map<String, Object>>> list() throws MasaarException {
         return client.get("/api/webhooks", List.class);
     }
 
@@ -42,7 +42,7 @@ public class WebhooksResource {
      * @return The created webhook
      */
     public ApiResponse<Map<String, Object>> create(String url, List<String> events, String secret)
-            throws CompliPayException {
+            throws MasaarException {
         Map<String, Object> body = Map.of(
                 "url", url,
                 "events", events,
@@ -54,7 +54,7 @@ public class WebhooksResource {
     /**
      * Create a webhook without a custom secret (one will be generated).
      */
-    public ApiResponse<Map<String, Object>> create(String url, List<String> events) throws CompliPayException {
+    public ApiResponse<Map<String, Object>> create(String url, List<String> events) throws MasaarException {
         return create(url, events, null);
     }
 
@@ -63,7 +63,7 @@ public class WebhooksResource {
      *
      * @param webhookId The webhook ID
      */
-    public ApiResponse<Void> delete(String webhookId) throws CompliPayException {
+    public ApiResponse<Void> delete(String webhookId) throws MasaarException {
         return client.delete("/api/webhooks/" + webhookId, Void.class);
     }
 
@@ -73,7 +73,7 @@ public class WebhooksResource {
      * Use this to verify that webhook payloads are authentic and weren't tampered with.
      *
      * @param payload The raw request body bytes
-     * @param signature The X-CompliPay-Signature header value
+     * @param signature The X-Masaar-Signature header value
      * @param secret Your webhook secret
      * @return true if the signature is valid
      */

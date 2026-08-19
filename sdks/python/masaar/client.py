@@ -1,13 +1,13 @@
 """
-CompliPay Python SDK
+Masaar Python SDK
 
 ZATCA-compliant e-invoicing API client for Python 3.7+
 Works with Django, Flask, FastAPI, or any Python application.
 
 Usage:
-    from complipay import CompliPayClient
+    from masaar import MasaarClient
 
-    client = CompliPayClient(
+    client = MasaarClient(
         base_url="https://api.masaar.sa",
         api_key="your_api_key"
     )
@@ -41,8 +41,8 @@ except ImportError:
     httpx = None
 
 
-class CompliPayError(Exception):
-    """Base exception for CompliPay SDK."""
+class MasaarError(Exception):
+    """Base exception for Masaar SDK."""
     def __init__(self, message: str, status_code: int = None, errors: List[str] = None):
         self.message = message
         self.status_code = status_code
@@ -50,17 +50,17 @@ class CompliPayError(Exception):
         super().__init__(self.message)
 
 
-class AuthenticationError(CompliPayError):
+class AuthenticationError(MasaarError):
     """Raised when authentication fails."""
     pass
 
 
-class ValidationError(CompliPayError):
+class ValidationError(MasaarError):
     """Raised when request validation fails."""
     pass
 
 
-class ZatcaError(CompliPayError):
+class ZatcaError(MasaarError):
     """Raised when ZATCA submission fails."""
     pass
 
@@ -149,7 +149,7 @@ class HttpClient:
                 data.get("errors", [])
             )
         elif status_code >= 400:
-            raise CompliPayError(
+            raise MasaarError(
                 data.get("message", f"Request failed with status {status_code}"),
                 status_code,
                 data.get("errors", [])
@@ -355,14 +355,14 @@ class WebhooksResource:
         return hmac.compare_digest(f"sha256={expected}", signature)
 
 
-class CompliPayClient:
+class MasaarClient:
     """
-    CompliPay API Client.
+    Masaar API Client.
 
     Supports Python 3.7+ with any HTTP library (requests, httpx).
 
     Usage:
-        client = CompliPayClient(
+        client = MasaarClient(
             base_url="https://api.masaar.sa",
             api_key="your_api_key"
         )
@@ -413,9 +413,9 @@ class CompliPayClient:
 
 # Convenience exports
 __all__ = [
-    "CompliPayClient",
+    "MasaarClient",
     "InvoiceLine",
-    "CompliPayError",
+    "MasaarError",
     "AuthenticationError",
     "ValidationError",
     "ZatcaError",

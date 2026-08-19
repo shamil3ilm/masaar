@@ -1,4 +1,4 @@
-package com.complipay.models;
+package com.masaar.models;
 
 import com.google.gson.annotations.SerializedName;
 import java.math.BigDecimal;
