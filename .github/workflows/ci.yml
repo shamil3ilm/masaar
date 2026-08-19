@@ -66,13 +66,14 @@ jobs:
         run: php artisan test
 
   # The suite above runs on in-memory SQLite, which is fast but permissive: it
-  # does not enforce foreign key types, and it is a console process, where the
-  # tenant scope stands down. Both have hidden real defects — submissions
-  # declared bigint against UUID keys that MySQL refused outright, and an ICV
-  # allocation that handed every invoice the same counter. This job runs the
-  # same application against MySQL over real HTTP.
+  # does not enforce foreign key types, it accepts a WHERE on a column that does
+  # not exist, and it is a console process, where the tenant scope stands down.
+  # Each has hidden real defects — submissions declared bigint against UUID keys
+  # that MySQL refused outright, an ICV allocation that handed every invoice the
+  # same counter, and four separate reads of columns no table has. This job runs
+  # the same application against MySQL, over real HTTP and through the suite.
   e2e:
-    name: End-to-end (MySQL)
+    name: MySQL (suite and end-to-end)
     runs-on: ubuntu-latest
 
     services:
@@ -122,6 +123,28 @@ jobs:
 
       - name: Run end-to-end checks
         run: php tests/E2e/run.php
+
+      # The same suite the first job runs, against the engine production uses.
+      #
+      # SQLite accepts a WHERE on a column that does not exist: it matches
+      # nothing and returns, so the query looks merely unproductive. MySQL
+      # raises SQLSTATE[42S22]. That difference hid four defects at once — a
+      # certificate read from a column no table has, a clearance timestamp
+      # written to another, a submission filtered on 'status' where the column
+      # is 'state', and an expiry read from a third. Each was invisible while
+      # the suite was green.
+      #
+      # The environment is passed inline rather than by editing phpunit.xml, so
+      # the default local run stays on SQLite and stays fast.
+      - name: Run test suite against MySQL
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: '3306'
+          DB_DATABASE: masaar
+          DB_USERNAME: root
+          DB_PASSWORD: ''
+        run: php artisan test
 
   # Some Pint fixer combinations need more than one pass to converge. If
   # `pint --test` still reports files straight after running `pint`, run it
