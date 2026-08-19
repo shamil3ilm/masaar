@@ -22,6 +22,10 @@ return new class extends Migration
             $table->date('issue_date');
             $table->date('supply_date')->nullable();
             $table->string('currency', 3)->default('SAR');
+            // BR-KSA-CU-01: a foreign-currency invoice reports VAT in SAR, so
+            // the rate it was converted at is part of the record. Null for SAR.
+            // Six decimal places because thinly-traded pairs need them.
+            $table->decimal('exchange_rate', 16, 6)->nullable();
             $table->string('buyer_name', 255);
             $table->string('buyer_vat_number', 255)->nullable();
             $table->text('buyer_address')->nullable();

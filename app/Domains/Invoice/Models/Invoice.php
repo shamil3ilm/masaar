@@ -42,6 +42,7 @@ class Invoice extends Model
         'issue_date',
         'supply_date',
         'currency',
+        'exchange_rate',
         'buyer_name',
         'buyer_vat_number',
         'buyer_address',
@@ -79,6 +80,7 @@ class Invoice extends Model
             'discount_amount' => 'decimal:2',
             'tax_amount' => 'decimal:2',
             'total' => 'decimal:2',
+            'exchange_rate' => 'decimal:6',
             'icv' => 'integer',
             'zatca_response' => 'array',
             'buyer_address' => 'array',
@@ -105,6 +107,9 @@ class Invoice extends Model
         'issue_date',
         'supply_date',
         'currency',
+        // The rate the VAT was reported in SAR at. Changing it after issue
+        // restates the tax without restating the document.
+        'exchange_rate',
         'buyer_name',
         'buyer_vat_number',
         'buyer_address',

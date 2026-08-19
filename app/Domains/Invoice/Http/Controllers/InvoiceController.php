@@ -59,6 +59,7 @@ class InvoiceController extends Controller
                 'issue_date' => $request->issue_date,
                 'supply_date' => $request->supply_date,
                 'currency' => $request->currency ?? 'SAR',
+                'exchange_rate' => $request->exchange_rate,
                 'payment_means_code' => $request->payment_means_code ?? '10',
                 'buyer_name' => $request->buyer_name,
                 'buyer_vat_number' => $request->buyer_vat_number,
