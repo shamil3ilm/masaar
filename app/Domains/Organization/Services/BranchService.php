@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Services;
 
+use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * Service for managing organization branches (EGS units).
@@ -17,6 +17,10 @@ use Illuminate\Support\Facades\Storage;
  */
 class BranchService
 {
+    public function __construct(
+        private readonly CredentialStore $credentials,
+    ) {}
+
     /**
      * Create a new branch for an organization.
      */
@@ -150,8 +154,7 @@ class BranchService
      */
     public function storeCredentials(Branch $branch, string $type, array $data): void
     {
-        $path = $this->getCredentialsPath($branch, $type);
-        Storage::disk('local')->put($path, encrypt(json_encode($data)));
+        $this->credentials->put($branch->org_id, $branch->id, $type, $data);
     }
 
     /**
@@ -159,15 +162,7 @@ class BranchService
      */
     public function getCredentials(Branch $branch, string $type): ?array
     {
-        $path = $this->getCredentialsPath($branch, $type);
-
-        if (! Storage::disk('local')->exists($path)) {
-            return null;
-        }
-
-        $content = Storage::disk('local')->get($path);
-
-        return json_decode(decrypt($content), true);
+        return $this->credentials->get($branch->org_id, $branch->id, $type);
     }
 
     /**
@@ -175,14 +170,7 @@ class BranchService
      */
     public function deleteCredentials(Branch $branch): void
     {
-        $basePath = "zatca/{$branch->org_id}/branches/{$branch->id}";
-
-        foreach (['ccsid', 'pcsid'] as $type) {
-            $path = "{$basePath}/{$type}.json";
-            if (Storage::disk('local')->exists($path)) {
-                Storage::disk('local')->delete($path);
-            }
-        }
+        $this->credentials->forget($branch->org_id, $branch->id);
     }
 
     /**
@@ -204,14 +192,6 @@ class BranchService
     }
 
     /**
-     * Get credential storage path.
-     */
-    private function getCredentialsPath(Branch $branch, string $type): string
-    {
-        return "zatca/{$branch->org_id}/branches/{$branch->id}/{$type}.json";
-    }
-
-    /**
      * Migrate legacy organization credentials to default branch.
      *
      * For backward compatibility with organizations that have credentials
@@ -219,31 +199,23 @@ class BranchService
      */
     public function migrateLegacyCredentials(Organization $organization): ?Branch
     {
-        $legacyCcsidPath = "zatca/{$organization->id}/ccsid.json";
-        $legacyPcsidPath = "zatca/{$organization->id}/pcsid.json";
+        // A null branch id addresses the pre-branch location, directly under
+        // the organization.
+        $ccsid = $this->credentials->get($organization->id, null, CredentialStore::CCSID);
+        $pcsid = $this->credentials->get($organization->id, null, CredentialStore::PCSID);
 
-        // Check if legacy credentials exist
-        $hasCcsid = Storage::disk('local')->exists($legacyCcsidPath);
-        $hasPcsid = Storage::disk('local')->exists($legacyPcsidPath);
-
-        if (! $hasCcsid && ! $hasPcsid) {
+        if ($ccsid === null && $pcsid === null) {
             return null;
         }
 
-        // Get or create default branch
         $branch = $this->getOrCreateDefault($organization);
 
-        // Copy credentials to branch location
-        if ($hasCcsid) {
-            $content = Storage::disk('local')->get($legacyCcsidPath);
-            $this->storeCredentials($branch, 'ccsid', json_decode(decrypt($content), true));
+        if ($ccsid !== null) {
+            $this->storeCredentials($branch, CredentialStore::CCSID, $ccsid);
         }
 
-        if ($hasPcsid) {
-            $content = Storage::disk('local')->get($legacyPcsidPath);
-            $this->storeCredentials($branch, 'pcsid', json_decode(decrypt($content), true));
-
-            // Mark branch as active
+        if ($pcsid !== null) {
+            $this->storeCredentials($branch, CredentialStore::PCSID, $pcsid);
             $branch->markAsActive();
         }
 

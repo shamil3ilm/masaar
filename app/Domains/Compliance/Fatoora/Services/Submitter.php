@@ -8,6 +8,7 @@ use App\Domains\Audit\Services\AuditService;
 use App\Domains\Compliance\Fatoora\Client\FatooraClient;
 use App\Domains\Compliance\Fatoora\DTOs\FatooraResponse;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
+use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Licensing\Enums\LicenseEnvironment;
@@ -15,7 +16,6 @@ use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\BranchService;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * ZATCA submission service.
@@ -45,6 +45,7 @@ class Submitter
         private readonly AuditService $audit,
         private readonly CertificateService $certificateService,
         private readonly BranchService $branchService,
+        private readonly CredentialStore $credentials,
     ) {}
 
     /**
@@ -439,8 +440,9 @@ class Submitter
 
         // Fall back to organization-level credentials (legacy path)
         $path = "zatca/{$organizationId}/pcsid.json";
+        $legacy = $this->credentials->get($organizationId, null, CredentialStore::PCSID);
 
-        if (! Storage::disk('local')->exists($path)) {
+        if ($legacy === null) {
             if ($required) {
                 $errorContext = [
                     'org_id' => $organizationId,
@@ -464,8 +466,7 @@ class Submitter
         }
 
         try {
-            $content = Storage::disk('local')->get($path);
-            $data = json_decode(decrypt($content), true);
+            $data = $legacy;
 
             $privateKey = $data['privateKey'] ?? null;
             $certificate = $data['pcsid'] ?? null;

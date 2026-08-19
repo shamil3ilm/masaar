@@ -7,7 +7,7 @@ namespace App\Domains\Compliance\Fatoora\Services;
 use App\Domains\Compliance\Fatoora\DTOs\CsrData;
 use App\Domains\Compliance\Fatoora\Exceptions\CertificateException;
 use App\Domains\Compliance\Fatoora\Helpers\FatooraTime;
-use App\Support\SafeUrl;
+use App\Support\SafeFetch;
 use Illuminate\Support\Facades\Log;
 use phpseclib3\File\X509;
 use phpseclib3\Math\BigInteger;
@@ -459,46 +459,31 @@ EOL;
     }
 
     /**
-     * Check certificate revocation status via OCSP and/or CRL.
+     * Check certificate revocation status against the issuer's CRL.
      *
-     * This method checks if a certificate has been revoked by the issuer.
-     * It attempts OCSP first (faster, real-time), then falls back to CRL.
+     * OCSP is not consulted, though certificates commonly advertise it and it
+     * carries fresher status than a list published on a schedule. Answering an
+     * OCSP query safely means verifying the responder's signature over the
+     * response, and until that exists an answer cannot be distinguished from
+     * one an attacker supplied.
+     *
+     * That is not a neutral gap. This method returned on the first OCSP answer
+     * and never reached the CRL, so an unverified "good" suppressed the check
+     * that would have found the certificate revoked. A slightly staler answer
+     * that is actually the issuer's beats a fresh one from anybody.
      *
      * @param  string  $certificatePem  PEM-encoded certificate to check
-     * @param  string|null  $issuerCertPem  PEM-encoded issuer certificate (optional, extracted if not provided)
      * @return array{revoked: bool, method: string, reason: string|null, revokedAt: string|null}
      *
      * @throws CertificateException
      */
-    public function checkRevocationStatus(string $certificatePem, ?string $issuerCertPem = null): array
+    public function checkRevocationStatus(string $certificatePem): array
     {
         $details = $this->parseCertificate($certificatePem);
         $extensions = $details['extensions'] ?? [];
 
-        // Try OCSP first (preferred - real-time status)
-        $ocspUrl = $this->extractOcspUrl($extensions);
-        if ($ocspUrl !== null && $this->mayFetch($ocspUrl, 'OCSP')) {
-            try {
-                $ocspResult = $this->checkOcsp($certificatePem, $issuerCertPem, $ocspUrl);
-                if ($ocspResult !== null) {
-                    return $ocspResult;
-                }
-            } catch (\Exception $e) {
-                // OCSP failed, fall back to CRL
-                Log::warning('OCSP check failed, falling back to CRL', [
-                    'error' => $e->getMessage(),
-                    'ocsp_url' => $ocspUrl,
-                ]);
-            }
-        }
-
-        // Fall back to CRL
         $crlUrls = $this->extractCrlUrls($extensions);
         foreach ($crlUrls as $crlUrl) {
-            if (! $this->mayFetch($crlUrl, 'CRL')) {
-                continue;
-            }
-
             try {
                 $crlResult = $this->checkCrl($certificatePem, $crlUrl);
                 if ($crlResult !== null) {
@@ -520,87 +505,8 @@ EOL;
             'method' => 'none',
             'reason' => null,
             'revokedAt' => null,
-            'warning' => 'No OCSP or CRL endpoints available for revocation checking',
+            'warning' => 'Certificate advertises no reachable CRL distribution point',
         ];
-    }
-
-    /**
-     * Check certificate revocation via OCSP (Online Certificate Status Protocol).
-     *
-     * @param  string  $certificatePem  Certificate to check
-     * @param  string|null  $issuerCertPem  Issuer certificate
-     * @param  string  $ocspUrl  OCSP responder URL
-     * @return array|null Revocation status or null if check failed
-     */
-    private function checkOcsp(string $certificatePem, ?string $issuerCertPem, string $ocspUrl): ?array
-    {
-        // Create temporary files for OpenSSL
-        $certFile = tempnam(sys_get_temp_dir(), 'cert_');
-        $issuerFile = $issuerCertPem ? tempnam(sys_get_temp_dir(), 'issuer_') : null;
-
-        try {
-            file_put_contents($certFile, $certificatePem);
-
-            if ($issuerCertPem && $issuerFile) {
-                file_put_contents($issuerFile, $issuerCertPem);
-            }
-
-            // Build OCSP request using OpenSSL
-            $issuerArg = $issuerFile ? "-issuer {$issuerFile}" : '';
-
-            // Generate OCSP request
-            $requestCmd = sprintf(
-                'openssl ocsp -cert %s %s -url %s -text 2>&1',
-                escapeshellarg($certFile),
-                $issuerArg,
-                escapeshellarg($ocspUrl)
-            );
-
-            $output = shell_exec($requestCmd);
-
-            if ($output === null) {
-                return null;
-            }
-
-            // Parse OCSP response
-            if (stripos($output, 'revoked') !== false) {
-                $revokedAt = null;
-                $reason = null;
-
-                if (preg_match('/Revocation Time:\s*(.+)/i', $output, $matches)) {
-                    $revokedAt = trim($matches[1]);
-                }
-                if (preg_match('/Reason:\s*(.+)/i', $output, $matches)) {
-                    $reason = trim($matches[1]);
-                }
-
-                return [
-                    'revoked' => true,
-                    'method' => 'ocsp',
-                    'reason' => $reason,
-                    'revokedAt' => $revokedAt,
-                ];
-            }
-
-            if (stripos($output, 'good') !== false) {
-                return [
-                    'revoked' => false,
-                    'method' => 'ocsp',
-                    'reason' => null,
-                    'revokedAt' => null,
-                ];
-            }
-
-            return null;
-        } finally {
-            // Clean up temporary files
-            if (file_exists($certFile)) {
-                unlink($certFile);
-            }
-            if ($issuerFile && file_exists($issuerFile)) {
-                unlink($issuerFile);
-            }
-        }
     }
 
     /**
@@ -612,21 +518,11 @@ EOL;
      */
     private function checkCrl(string $certificatePem, string $crlUrl): ?array
     {
-        // Download CRL
-        $context = stream_context_create([
-            'http' => [
-                'timeout' => 10,
-                'user_agent' => 'Masaar-ZATCA-Client/1.0',
-            ],
-            'ssl' => [
-                'verify_peer' => true,
-                'verify_peer_name' => true,
-            ],
-        ]);
+        // The address came out of the certificate being checked, so the fetch
+        // is bounded: allowlisted host, https, no redirects, capped size.
+        $crlData = SafeFetch::get($crlUrl, 'security.revocation_hosts');
 
-        $crlData = @file_get_contents($crlUrl, false, $context);
-
-        if ($crlData === false) {
+        if ($crlData === null) {
             return null;
         }
 
@@ -661,27 +557,6 @@ EOL;
             'reason' => null,
             'revokedAt' => null,
         ];
-    }
-
-    /**
-     * Whether a revocation endpoint taken from a certificate may be contacted.
-     *
-     * The address is chosen by whoever supplied the certificate, so it is
-     * treated as untrusted input rather than configuration. A refusal is
-     * logged: an operator needs to tell "the responder is down" apart from
-     * "we declined to call that host".
-     */
-    private function mayFetch(string $url, string $kind): bool
-    {
-        $reason = SafeUrl::reject($url, 'security.revocation_hosts');
-
-        if ($reason === null) {
-            return true;
-        }
-
-        Log::warning("{$kind} endpoint refused", ['url' => $url, 'reason' => $reason]);
-
-        return false;
     }
 
     /**
@@ -762,29 +637,6 @@ EOL;
     }
 
     /**
-     * Extract OCSP responder URL from certificate extensions.
-     *
-     * @param  array  $extensions  Certificate extensions
-     * @return string|null OCSP URL or null if not found
-     */
-    private function extractOcspUrl(array $extensions): ?string
-    {
-        // Authority Information Access (AIA) extension contains OCSP URL
-        $aia = $extensions['authorityInfoAccess'] ?? null;
-
-        if ($aia === null) {
-            return null;
-        }
-
-        // Parse AIA for OCSP URI
-        if (preg_match('/OCSP\s*-\s*URI:(\S+)/i', $aia, $matches)) {
-            return trim($matches[1]);
-        }
-
-        return null;
-    }
-
-    /**
      * Extract CRL distribution point URLs from certificate extensions.
      *
      * @param  array  $extensions  Certificate extensions
@@ -829,9 +681,8 @@ EOL;
 
         // Check revocation if requested
         if ($checkRevocation) {
-            $issuerPem = $chainPems[0] ?? null;
             try {
-                $revocationStatus = $this->checkRevocationStatus($certificatePem, $issuerPem);
+                $revocationStatus = $this->checkRevocationStatus($certificatePem);
                 if ($revocationStatus['revoked']) {
                     $errors[] = sprintf(
                         'Certificate is revoked (method: %s, reason: %s)',

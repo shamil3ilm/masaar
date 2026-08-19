@@ -5,6 +5,7 @@ namespace App\Domains\Compliance\Fatoora\Http\Controllers;
 use App\Domains\Compliance\Fatoora\DTOs\AddressData;
 use App\Domains\Compliance\Fatoora\DTOs\CsrData;
 use App\Domains\Compliance\Fatoora\DTOs\InvoiceXmlData;
+use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use App\Domains\Compliance\Fatoora\Services\CsidOnboarding;
 use App\Domains\Compliance\Fatoora\Services\XmlBuilder;
 use App\Domains\Organization\Models\Organization;
@@ -13,7 +14,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
@@ -31,6 +31,7 @@ class OnboardingController extends Controller
         private readonly TenantResolver $tenant,
         private readonly CsidOnboarding $onboarding,
         private readonly XmlBuilder $xmlBuilder,
+        private readonly CredentialStore $credentials,
     ) {}
 
     /**
@@ -198,8 +199,7 @@ class OnboardingController extends Controller
      */
     private function storeCredentials(string $organizationId, string $type, array $data): void
     {
-        $path = "zatca/{$organizationId}/{$type}.json";
-        Storage::disk('local')->put($path, encrypt(json_encode($data)));
+        $this->credentials->put($organizationId, null, $type, $data);
     }
 
     /**
@@ -207,15 +207,7 @@ class OnboardingController extends Controller
      */
     private function getCredentials(string $organizationId, string $type): ?array
     {
-        $path = "zatca/{$organizationId}/{$type}.json";
-
-        if (! Storage::disk('local')->exists($path)) {
-            return null;
-        }
-
-        $content = Storage::disk('local')->get($path);
-
-        return json_decode(decrypt($content), true);
+        return $this->credentials->get($organizationId, null, $type);
     }
 
     /**
