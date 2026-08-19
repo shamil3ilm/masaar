@@ -33,22 +33,30 @@ I re-verified every finding against the current working tree rather than trustin
 
 Also landed: **8,228 lines of unreferenced code deleted** (commits `ff375c9`, `463f2d5`), domain restructuring, naming conventions enforced in CI, five silently-broken scheduled jobs repaired, offline-queue fallback restored, pipeline routed through the tracked submission path. Test files grew 29 → **49 (+69%)**.
 
-**This is genuinely good work.** All four Criticals and four of six Highs are closed.
+**This is genuinely good work.** All four Criticals are closed. Of the seven
+Highs — H-1 to H-6 plus H-7, which L-3 became once it was measured — six are
+closed and H-1 is partly closed: the storage and rotation of signing
+credentials is fixed, the single-secret-for-every-tenant part is not.
 
 ### Still open ⏳
 
 | ID | Finding | Current state |
 |---|---|---|
-| **H-1** | Signing keys under `APP_KEY` on local disk | `BranchService.php:152` still `Storage::disk('local')->put($path, encrypt(...))`. No KMS, no rotation command. **Now the top security item.** |
-| **H-4** | Shell-outs to `openssl` / `java` | 20 calls across 5 files — but see §3 for the corrected risk distribution |
-| **M-2** | Two auth stacks, two API surfaces | `routes/api.php:76` (`jwt.auth`) and `:207` (`license` + `/v1`) both live |
-| **M-4** | Usage write on every request | Unchanged |
-| **L-3** → 🟠 **H-7** | No dependency scanning | **Upgraded from Low to High on measurement.** `composer audit --locked` reports **40 advisories across 13 packages — 10 of them HIGH, all in production dependencies** (`guzzlehttp/guzzle`, `laravel/framework`, `symfony/http-kernel`, `symfony/mime`, `league/commonmark`, **`phpseclib/phpseclib`**). The phpseclib entry matters most: it performs the X.509/ASN.1 work on the signing path. See §2. |
-| — | **Three licensing systems** | `Domains/Licensing/` + `Services/Licensing/` + `LicenseRegistration*` all still present |
-| — | **OpenAPI spec drift** | Still **16 paths** against ~119 route registrations; still documents the deprecated prefix |
-| — | **SDK stubs** | 11 of 12 directories hold ≤4 files; `javascript/` holds 1 |
-| — | **erp-backend EB-H-1, EB-H-2, Rule 2** | Untouched |
-| — | **erp-frontend FE-1** | Undecided |
+| **H-1** | Signing keys under `APP_KEY` on local disk | **Partly closed.** All reads and writes go through `Fatoora/Services/CredentialStore.php`: the disk is `fatoora.signing.disk` rather than a hardcoded `local`, the secret is `fatoora.signing.key` falling back to `APP_KEY`, previous keys decrypt during rotation, and `masaar:rotate-credential-key` re-encrypts every stored file. **What remains: one secret still covers every tenant, and there is no KMS.** `CredentialStore::cipher()` is the single place that changes; nothing outside the class does. |
+| **M-4** | Usage write on every request | Unchanged, and deliberately so. `ValidateLicense::recordUsageEvent()` inserts synchronously because `usage_events` is an append-only billing and audit ledger, and the queue is database-backed — deferring it would cost the same write plus the risk of losing revenue events. Worth revisiting only behind a durable buffer. |
+| — | **SDK stubs** | Still thin: most directories hold 3 files, `javascript/` holds 1. The generated surface (`sdks/typescript/src/generated.ts`) is produced by `masaar:sdk-types` and held to the spec by `SdkTypesDriftTest`; the hand-written ergonomics around it are not. |
+| — | **erp-backend EB-H-1, EB-H-2, Rule 2** | Untouched — a separate repository. |
+| — | **erp-frontend FE-1** | Undecided — a separate repository. |
+
+### Closed since this table was written ✅
+
+| ID | Finding | How it closed |
+|---|---|---|
+| **H-4** | Shell-outs to `openssl` / `java` | Zero remain in `app/Domains`, the request and queue paths. The 16 that remain are in `app/Console/Commands`, operator tooling run deliberately by someone who can read the failure, several of which exist to drive the ZATCA Java SDK. `NoShellOutTest` fails the build if one reappears in a domain service. |
+| **L-3** → **H-7** | No dependency scanning | `composer audit --locked` now reports **no advisories**, and runs as its own CI job on every push, so an advisory published against a pinned package surfaces there. |
+| **M-2** | Two auth stacks, two API surfaces | Resolved by design rather than removed. Two audiences genuinely need two credentials — `jwt.auth` for a signed-in person, `license` for an ERP acting for its customer. `routes/api/` is split by audience so each file declares its guard once, and `RouteAuthPostureTest` fails the build on any route carrying no guard that is not declared public. The third credential, `ApiKey`, was removed in `7a2c4fe`. |
+| — | **Three licensing systems** | Consolidated into `app/Domains/Licensing/`. `app/Services/Licensing/` no longer exists. |
+| — | **OpenAPI spec drift** | The description is generated from the route table by `masaar:openapi`, and `OpenapiDriftTest` fails the build when the committed file disagrees with the routes — in both directions, so a described path that no longer routes anywhere is caught as well. |
 
 ---
 
