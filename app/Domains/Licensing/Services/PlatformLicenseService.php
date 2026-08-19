@@ -42,9 +42,25 @@ class PlatformLicenseService
     private const CACHE_KEY = 'platform_license_validation';
 
     /**
-     * Cache duration in seconds (1 hour).
+     * How long a validation result is trusted before the licence server is
+     * asked again.
+     *
+     * Configurable because it is the lever an operator has during a licence
+     * server outage: a longer cache keeps deployments serving, a shorter one
+     * makes a revocation take effect sooner.
      */
-    private const CACHE_DURATION = 3600;
+    private function cacheDuration(): int
+    {
+        return (int) config('platform-license.cache_duration', 3600);
+    }
+
+    /**
+     * Days before expiry at which the status log escalates to a warning.
+     */
+    private function warningThreshold(): int
+    {
+        return (int) config('platform-license.warning_threshold_days', 7);
+    }
 
     public function __construct()
     {
@@ -75,7 +91,7 @@ class PlatformLicenseService
         if ($this->licenseServerUrl) {
             $result = $this->validateRemote($licenseKey);
             if ($result !== null) {
-                Cache::put(self::CACHE_KEY, $result, self::CACHE_DURATION);
+                Cache::put(self::CACHE_KEY, $result, $this->cacheDuration());
 
                 return $result;
             }
@@ -85,7 +101,7 @@ class PlatformLicenseService
 
         // Offline validation fallback
         $result = $this->validateOffline($licenseKey);
-        Cache::put(self::CACHE_KEY, $result, self::CACHE_DURATION);
+        Cache::put(self::CACHE_KEY, $result, $this->cacheDuration());
 
         return $result;
     }
@@ -325,7 +341,7 @@ class PlatformLicenseService
         ];
 
         if ($result['valid']) {
-            if ($result['days_remaining'] !== null && $result['days_remaining'] <= 7) {
+            if ($result['days_remaining'] !== null && $result['days_remaining'] <= $this->warningThreshold()) {
                 Log::warning('Platform license expiring soon', $logData);
             } else {
                 Log::info('Platform license valid', $logData);
