@@ -264,26 +264,37 @@ class VatPeriodTracker
     }
 
     /**
-     * Validate that a credit note is being reported in the correct period.
+     * Validate that an adjustment note is reported in the correct period.
      *
-     * @param  Invoice  $creditNote  The credit note to validate
+     * A credit or debit note raised after the original invoice's VAT period has
+     * closed belongs in the current period, not the original one — the closed
+     * period has already been filed.
+     *
+     * @param  Invoice  $note  The credit or debit note to validate
      * @return array{valid: bool, warning: ?string, suggested_period: ?string}
      */
-    public function validateCreditNotePeriod(Invoice $creditNote): array
+    public function validateAdjustmentPeriod(Invoice $note): array
     {
-        if ($creditNote->document_type !== DocumentType::CreditNote) {
+        // Debit notes as well as credit notes. This tested for CreditNote
+        // alone, so a debit note returned valid without being looked at —
+        // including the reference check below — while the caller applies this
+        // to anything requiring a billing reference, which is both.
+        // determineReportingPeriod() was already written for either.
+        if ($note->document_type?->requiresBillingReference() !== true) {
             return ['valid' => true, 'warning' => null, 'suggested_period' => null];
         }
 
-        if (! $creditNote->billing_ref) {
+        if (! $note->billing_ref) {
             return [
                 'valid' => false,
-                'warning' => 'Credit note must reference original invoice for VAT period validation',
+                'warning' => 'Adjustment note must reference original invoice for VAT period validation',
                 'suggested_period' => null,
             ];
         }
 
-        $originalInvoice = Invoice::find($creditNote->billing_ref);
+        $originalInvoice = Invoice::withoutTenantScope(
+            fn () => Invoice::find($note->billing_ref)
+        );
         if (! $originalInvoice) {
             return [
                 'valid' => false,
@@ -292,7 +303,7 @@ class VatPeriodTracker
             ];
         }
 
-        $reporting = $this->determineReportingPeriod($creditNote, $originalInvoice);
+        $reporting = $this->determineReportingPeriod($note, $originalInvoice);
 
         if ($reporting['is_cross_period']) {
             return [
