@@ -1,9 +1,10 @@
 <?php
 
 use App\Domains\Compliance\Fatoora\Exceptions\CertificateException;
+use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Exceptions\SigningException;
-use App\Domains\Compliance\Fatoora\Exceptions\ZatcaException;
 use App\Domains\Licensing\Exceptions\LicenseException;
+use App\Domains\Licensing\Http\Middleware\PlatformLicense;
 use App\Http\Responses\ApiResponse;
 use App\Providers\AppServiceProvider;
 use Illuminate\Foundation\Application;
@@ -44,14 +45,25 @@ return Application::configure(basePath: dirname(__DIR__))
         // Blade consoles authenticate with a session; send guests to the form.
         $middleware->redirectGuestsTo(fn () => route('login'));
 
-        // Apply CORS to API routes
+        // Apply CORS to API routes, and gate them on the platform licence.
+        //
+        // PlatformLicense was written, aliased in AppServiceProvider, and
+        // attached to nothing — so the commercial gate for the product itself
+        // never ran on a single request. It belongs on the group rather than in
+        // each audience's route file: it answers "may this deployment serve at
+        // all", which is not a question about who is calling.
+        //
+        // It self-skips when platform-license.enabled is false and for the
+        // health and licence-status paths, so a deployment that has not been
+        // issued a key is not locked out of its own health check.
         $middleware->api(prepend: [
             HandleCors::class,
+            PlatformLicense::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Handle ZATCA-specific exceptions with structured responses
-        $exceptions->render(function (ZatcaException $e, Request $request) {
+        $exceptions->render(function (FatooraException $e, Request $request) {
             if ($request->is('api/*') || $request->is('v1/*')) {
                 Log::warning('ZATCA Exception', [
                     'code' => $e->getErrorCode()?->value,

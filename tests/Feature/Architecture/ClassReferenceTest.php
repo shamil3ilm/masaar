@@ -24,7 +24,9 @@ use RecursiveIteratorIterator;
  */
 class ClassReferenceTest extends TestCase
 {
-    private const APP = __DIR__.'/../../../app';
+    private const ROOT = __DIR__.'/../../..';
+
+    private const APP = self::ROOT.'/app';
 
     /**
      * PHP built-ins and Laravel facade aliases, which need no import.
@@ -69,13 +71,32 @@ class ClassReferenceTest extends TestCase
 
         $known = array_flip(self::GLOBALS);
 
-        preg_match_all('/^use\s+(?:function\s+)?([^;]+);/m', $code, $uses);
-        foreach ($uses[1] as $use) {
+        // An import makes its short name resolvable — but only if the class it
+        // names exists. Trusting the statement is how bootstrap/app.php kept a
+        // `use ...\ZatcaException;` for a class the Fatoora rename had removed:
+        // every later mention of the short name was treated as resolved because
+        // the import vouched for it.
+        preg_match_all('/^use\s+(function|const)?\s*([^;]+);/m', $code, $uses, PREG_SET_ORDER);
+        $missingImports = [];
+
+        foreach ($uses as [, $kind, $use]) {
             $use = trim($use);
             $short = str_contains($use, ' as ')
                 ? trim(explode(' as ', $use)[1])
                 : substr(strrchr("\\$use", '\\'), 1);
             $known[$short] = true;
+
+            // Function and constant imports are not classes, and a grouped
+            // import is a different shape than this reads.
+            if ($kind !== '' || str_contains($use, '{')) {
+                continue;
+            }
+
+            $fqcn = trim(str_contains($use, ' as ') ? explode(' as ', $use)[0] : $use);
+
+            if (! $this->exists($fqcn)) {
+                $missingImports[] = $fqcn;
+            }
         }
 
         preg_match_all(
@@ -89,6 +110,14 @@ class ClassReferenceTest extends TestCase
 
         preg_match_all('/(?<![\\\\$>\w])([A-Z]\w+)\s*::/', $code, $static);
         preg_match_all('/new\s+([A-Z]\w+)\s*\(/', $code, $instantiated);
+
+        // Parameter type hints, closures included. bootstrap/app.php hinted an
+        // exception renderer on a class the Fatoora rename had removed. Laravel
+        // matches renderers by reflecting the parameter type rather than loading
+        // it, so nothing threw — the renderer simply never matched, and every
+        // compliance failure fell through to the generic handler instead of the
+        // structured error carrying its code, category and retry hints.
+        preg_match_all('/[(,]\s*\??([A-Z]\w+)\s+\$\w+/', $code, $hinted);
 
         // Parent classes and interfaces matter most: PipelineSubmitRequest
         // extended a CreateInvoiceRequest that had moved to another domain,
@@ -104,9 +133,9 @@ class ClassReferenceTest extends TestCase
             }
         }
 
-        $unresolved = [];
+        $unresolved = $missingImports;
 
-        foreach (array_unique([...$static[1], ...$instantiated[1], ...$parents]) as $name) {
+        foreach (array_unique([...$static[1], ...$instantiated[1], ...$parents, ...$hinted[1]]) as $name) {
             if (isset($known[$name]) || $this->resolves($name, $namespace)) {
                 continue;
             }
@@ -232,6 +261,17 @@ class ClassReferenceTest extends TestCase
         return $imports;
     }
 
+    /**
+     * Whether a fully qualified name names anything loadable.
+     */
+    private function exists(string $fqcn): bool
+    {
+        return class_exists($fqcn)
+            || interface_exists($fqcn)
+            || trait_exists($fqcn)
+            || enum_exists($fqcn);
+    }
+
     private function resolves(string $name, string $namespace): bool
     {
         foreach ([$namespace === '' ? $name : "$namespace\\$name", $name] as $candidate) {
@@ -247,13 +287,33 @@ class ClassReferenceTest extends TestCase
     /**
      * @return list<string>
      */
+    /**
+     * app/, plus the wiring files beside it.
+     *
+     * Scanning app/ alone missed a live defect: bootstrap/app.php type-hinted
+     * an exception renderer on ZatcaException, which the Fatoora rename had
+     * turned into FatooraException. Laravel matches renderers by reflecting the
+     * closure's parameter type rather than loading the class, so nothing threw
+     * — the renderer simply never matched, and every compliance failure fell
+     * through to the generic handler instead of the structured error with its
+     * code, category and retry hints.
+     *
+     * Wiring is exactly where this hides: it names classes from everywhere and
+     * is executed once at boot, where a mistake is quiet rather than fatal.
+     */
     private function phpFiles(): array
     {
         $files = [];
 
-        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(self::APP)) as $file) {
-            if ($file->isFile() && $file->getExtension() === 'php') {
-                $files[] = $file->getPathname();
+        foreach ([self::APP, self::ROOT.'/bootstrap', self::ROOT.'/routes', self::ROOT.'/config'] as $directory) {
+            if (! is_dir($directory)) {
+                continue;
+            }
+
+            foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($directory)) as $file) {
+                if ($file->isFile() && $file->getExtension() === 'php') {
+                    $files[] = $file->getPathname();
+                }
             }
         }
 
