@@ -20,6 +20,7 @@ use App\Domains\Compliance\Fatoora\Services\ClearanceState;
 use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use App\Domains\Compliance\Fatoora\Services\DocumentBuilder;
 use App\Domains\Compliance\Fatoora\Services\KillSwitch;
+use App\Domains\Licensing\Services\UsageMeteringService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -196,6 +197,12 @@ class ProcessFatooraSubmission implements ShouldQueue
             $hasWarnings => 'warning',
             default => ClearanceState::submissionState($clearance['state']),
         };
+
+        app(UsageMeteringService::class)->recordSubmissionOutcome(
+            (string) $submission->org_id,
+            $newState,
+            (float) ($submission->invoice?->total ?? 0)
+        );
 
         // Update submission
         $submission->update([
