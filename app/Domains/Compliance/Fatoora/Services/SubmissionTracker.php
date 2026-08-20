@@ -220,7 +220,7 @@ class SubmissionTracker
             return;
         }
 
-        $validation = $this->vatPeriodTracker->validateCreditNotePeriod($invoice);
+        $validation = $this->vatPeriodTracker->validateAdjustmentPeriod($invoice);
 
         if (! $validation['valid']) {
             throw new FatooraException(
