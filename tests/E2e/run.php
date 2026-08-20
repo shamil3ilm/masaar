@@ -57,6 +57,12 @@ $kernel->bootstrap();
 // and the isolation checks below are the point of it.
 (new ReflectionProperty($app, 'isRunningInConsole'))->setValue($app, false);
 
+// The platform licence gate runs on every API route and refuses without a key.
+// It is a commercial control rather than a property of the application, and
+// whether it is on here would otherwise depend on the operator's own .env.
+// PlatformLicenseTest covers the gate itself.
+config(['platform-license.enabled' => false]);
+
 // Laravel's handler renders an uncaught exception as a full HTML error page —
 // several hundred kilobytes of markup with the message buried in it. Replacing
 // it after bootstrap keeps a failure readable in a terminal and in CI logs.
