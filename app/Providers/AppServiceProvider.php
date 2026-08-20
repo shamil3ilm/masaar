@@ -14,6 +14,7 @@ use App\Domains\Licensing\Http\Middleware\RequireEnvironment;
 use App\Domains\Licensing\Http\Middleware\RequireScope;
 use App\Domains\Licensing\Http\Middleware\ValidateLicense;
 use App\Domains\Logging\Services\ComplianceLogger;
+use App\Domains\Organization\Http\Middleware\IsOrgAdmin;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Platform\Http\Middleware\MetricsAccess;
@@ -34,6 +35,7 @@ class AppServiceProvider extends ServiceProvider
         'jwt.auth' => JwtGuard::class,
         'platform.admin' => IsPlatformAdmin::class,
         'portal.tenant' => PortalTenant::class,
+        'org.admin' => IsOrgAdmin::class,
         'metrics' => MetricsAccess::class,
         'rate.api' => RateLimitApi::class,
         'license' => ValidateLicense::class,
