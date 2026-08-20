@@ -79,9 +79,31 @@ class User extends Authenticatable implements JWTSubject
      * Custom claims added to JWT payload.
      * Organization context is added at login time, not here.
      */
+    /**
+     * The organization this token acts for, when there is only one it could be.
+     *
+     * JwtGuard establishes the tenant from org_id and role, and this returned
+     * an empty array — so the guard's condition was never true, no tenant was
+     * ever set, and every route on the JWT surface ran unscoped.
+     *
+     * A user belonging to several organizations gets no claim, because nothing
+     * here can choose for them; they call organizations/{id}/switch and receive
+     * a token that carries the choice.
+     */
     public function getJWTCustomClaims(): array
     {
-        return [];
+        $memberships = $this->activeOrganizations()->get();
+
+        if ($memberships->count() !== 1) {
+            return [];
+        }
+
+        $organization = $memberships->first();
+
+        return [
+            'org_id' => $organization->id,
+            'role' => $organization->pivot->role,
+        ];
     }
 
     /**
