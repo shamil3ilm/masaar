@@ -32,5 +32,11 @@
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
         <env name="JWT_SECRET" value="test-secret-key-for-testing-only-at-least-32-chars"/>
+        <!--
+            The platform licence gate runs on every API route and defaults to
+            enforcing, so without a key the suite would answer 403 to everything.
+            Off here; PlatformLicenseTest turns it on where that is the subject.
+        -->
+        <env name="PLATFORM_LICENSE_ENABLED" value="false"/>
     </php>
 </phpunit>
