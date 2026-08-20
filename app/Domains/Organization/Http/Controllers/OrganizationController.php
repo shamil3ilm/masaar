@@ -121,20 +121,39 @@ class OrganizationController extends Controller
      *
      * POST /api/organizations/{id}/switch
      */
+    /**
+     * Choose which organization this session acts for.
+     *
+     * Returns a new token carrying the choice. Setting it on TenantResolver is
+     * not enough on its own — the resolver lives for one request, so the
+     * organization was forgotten the moment the response was sent and every
+     * later request arrived with no tenant at all. The claim is what survives,
+     * and it is what JwtGuard reads.
+     *
+     * findOrFail on the user's own memberships is the authorization: a caller
+     * cannot name an organization they do not belong to.
+     */
     public function switch(string $id): JsonResponse
     {
-        $membership = auth()->user()->organizations()->findOrFail($id)->pivot;
+        $user = auth()->user();
+        $membership = $user->activeOrganizations()->findOrFail($id)->pivot;
 
-        // Set tenant context
-        $resolver = app(TenantResolver::class);
-        $resolver->setContext(new OrganizationContext(
+        // The rest of this request is scoped too, so anything the response
+        // builds sees the organization that was just chosen.
+        app(TenantResolver::class)->setContext(new OrganizationContext(
             organizationId: $id,
             role: $membership->role,
         ));
 
+        $token = auth('api')->claims([
+            'org_id' => $id,
+            'role' => $membership->role,
+        ])->login($user);
+
         return ApiResponse::success([
             'org_id' => $id,
             'role' => $membership->role,
+            'token' => $token,
         ], 'Organization switched');
     }
 }
