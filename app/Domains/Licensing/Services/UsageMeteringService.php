@@ -7,6 +7,7 @@ namespace App\Domains\Licensing\Services;
 use App\Domains\Licensing\Exceptions\LicenseException;
 use App\Domains\Licensing\Models\License;
 use App\Domains\Licensing\Models\LicenseUsage;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -21,35 +22,58 @@ use Illuminate\Support\Str;
 class UsageMeteringService
 {
     /**
+     * Record the outcome of a submission against the tenant's licence.
+     *
+     * recordInvoiceSubmission() below is the only writer of
+     * license_usage.invoices_submitted, and checkInvoiceQuota() is the only
+     * reader — it sums that column for the month and refuses once the tier's
+     * invoices_per_month is reached. Nothing called the writer, so the sum was
+     * always zero: the quota never refused anything, and the usage endpoint
+     * reported a month of submissions as nothing at all. API calls were metered;
+     * invoices were not.
+     *
+     * Called where the outcome is known rather than when the request arrives,
+     * so the synchronous and queued paths record the same thing. A retry that
+     * fails never reaches here; one that succeeds is counted once.
+     *
+     * @param  string  $state  The submission state ZATCA's response produced.
+     */
+    public function recordSubmissionOutcome(string $organizationId, string $state, float $invoiceValue = 0.0): void
+    {
+        $license = License::withoutGlobalScopes()
+            ->where('org_id', $organizationId)
+            ->first();
+
+        // An organization submitting through the staff console has no licence
+        // to meter — that credential is a person, not an integrator. Nothing to
+        // record rather than nothing recorded.
+        if ($license === null) {
+            return;
+        }
+
+        $this->recordInvoiceSubmission(
+            license: $license,
+            cleared: $state === 'cleared',
+            reported: $state === 'reported',
+            failed: in_array($state, ['rejected', 'failed'], true),
+            invoiceValue: $invoiceValue,
+        );
+    }
+
+    /**
      * Record an API call.
      */
     public function recordApiCall(License $license, bool $isError = false): void
     {
-        $today = now()->toDateString();
+        $today = now()->startOfDay();
         $month = now()->format('Y-m');
 
-        // Update or create daily usage record
-        LicenseUsage::updateOrCreate(
-            [
-                'license_id' => $license->id,
-                'usage_date' => $today,
-            ],
-            [
-                'usage_month' => $month,
-            ]
-        );
+        $usage = $this->dailyUsage($license, $today, $month);
 
-        // Increment counters
-        DB::table('license_usage')
-            ->where('license_id', $license->id)
-            ->where('usage_date', $today)
-            ->increment('api_calls');
+        $usage->increment('api_calls');
 
         if ($isError) {
-            DB::table('license_usage')
-                ->where('license_id', $license->id)
-                ->where('usage_date', $today)
-                ->increment('api_errors');
+            $usage->increment('api_errors');
         }
     }
 
@@ -63,39 +87,47 @@ class UsageMeteringService
         bool $failed = false,
         float $invoiceValue = 0.0
     ): void {
-        $today = now()->toDateString();
+        $today = now()->startOfDay();
         $month = now()->format('Y-m');
 
-        // Ensure daily record exists
-        LicenseUsage::firstOrCreate(
-            [
-                'license_id' => $license->id,
-                'usage_date' => $today,
-            ],
-            [
-                'usage_month' => $month,
-            ]
-        );
+        $usage = $this->dailyUsage($license, $today, $month);
 
-        // Increment counters
-        $query = DB::table('license_usage')
-            ->where('license_id', $license->id)
-            ->where('usage_date', $today);
-
-        $query->increment('invoices_submitted');
+        $usage->increment('invoices_submitted');
 
         if ($cleared) {
-            $query->increment('invoices_cleared');
+            $usage->increment('invoices_cleared');
         }
         if ($reported) {
-            $query->increment('invoices_reported');
+            $usage->increment('invoices_reported');
         }
         if ($failed) {
-            $query->increment('invoices_failed');
+            $usage->increment('invoices_failed');
         }
         if ($invoiceValue > 0) {
-            $query->increment('total_value', $invoiceValue);
+            $usage->increment('total_value', $invoiceValue);
         }
+    }
+
+    /**
+     * The row today's counters belong to.
+     *
+     * The date is a Carbon rather than a "Y-m-d" string, and the increments go
+     * through the model rather than a second query on usage_date. Both matter
+     * for the same reason: Eloquent writes usage_date through its date cast as
+     * "2026-08-20 00:00:00", and a plain "2026-08-20" does not match that on
+     * SQLite. MySQL hides it — a DATE column truncates on insert, so the two
+     * agree there — which is why the counters worked in production and the
+     * second write of a day collided on the unique key under test.
+     *
+     * Passing a Carbon makes both the lookup and the insert go through the same
+     * conversion, so the two engines behave alike.
+     */
+    private function dailyUsage(License $license, CarbonInterface $date, string $month): LicenseUsage
+    {
+        return LicenseUsage::firstOrCreate(
+            ['license_id' => $license->id, 'usage_date' => $date],
+            ['usage_month' => $month],
+        );
     }
 
     /**

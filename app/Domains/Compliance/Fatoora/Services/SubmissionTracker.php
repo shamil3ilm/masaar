@@ -12,6 +12,7 @@ use App\Domains\Compliance\Fatoora\Jobs\ProcessFatooraSubmission;
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Compliance\Fatoora\Models\SubmissionIdempotency;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Licensing\Services\UsageMeteringService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -591,6 +592,12 @@ class SubmissionTracker
             $hasWarnings => 'warning',
             default => ClearanceState::submissionState($clearance['state']),
         };
+
+        app(UsageMeteringService::class)->recordSubmissionOutcome(
+            (string) $submission->org_id,
+            $newState,
+            (float) ($submission->invoice?->total ?? 0)
+        );
 
         // Extract warnings and errors from validation results
         $warnings = $response->validationResults['warnings'] ?? $response->warningMessages;
