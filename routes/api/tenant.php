@@ -40,7 +40,11 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
 
     /* Invoices ----------------------------------------------------------- */
 
-    Route::apiResource('invoices', InvoiceController::class);
+    // Deleting a document the authority may already hold is not a member's
+    // to do; everything else about invoicing is.
+    Route::apiResource('invoices', InvoiceController::class)->except(['destroy']);
+    Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy'])
+        ->middleware('org.admin');
 
     /* Compliance — Saudi Arabia (ZATCA Fatoora, Phase 2) ------------------ */
 
@@ -53,9 +57,14 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
 
     Route::prefix('compliance/onboarding')->group(function () {
         Route::get('/status', [OnboardingController::class, 'status']);
-        Route::post('/ccsid', [OnboardingController::class, 'requestCcsid']);
-        Route::post('/compliance-check', [OnboardingController::class, 'runComplianceCheck']);
-        Route::post('/pcsid', [OnboardingController::class, 'requestPcsid']);
+
+        // Obtaining a CSID is how the organization gets the keys every invoice
+        // is signed with, so it belongs to whoever runs it.
+        Route::middleware('org.admin')->group(function () {
+            Route::post('/ccsid', [OnboardingController::class, 'requestCcsid']);
+            Route::post('/compliance-check', [OnboardingController::class, 'runComplianceCheck']);
+            Route::post('/pcsid', [OnboardingController::class, 'requestPcsid']);
+        });
     });
 
     /* Compliance — United Arab Emirates (FTA, Peppol PINT AE) ------------- */
@@ -75,7 +84,8 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
     Route::prefix('organizations/{organization}')->group(function () {
         Route::get('/compliance-profiles', [ComplianceProfileController::class, 'index']);
         Route::post('/compliance-profiles', [ComplianceProfileController::class, 'store']);
-        Route::delete('/compliance-profiles/{profile}', [ComplianceProfileController::class, 'destroy']);
+        Route::delete('/compliance-profiles/{profile}', [ComplianceProfileController::class, 'destroy'])
+            ->middleware('org.admin');
     });
 
     // Branches are ZATCA EGS units: each signs with its own certificate.
@@ -84,16 +94,23 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
         Route::post('/', [BranchController::class, 'store']);
         Route::get('/{branch}', [BranchController::class, 'show']);
         Route::put('/{branch}', [BranchController::class, 'update']);
-        Route::delete('/{branch}', [BranchController::class, 'destroy']);
-        Route::post('/{branch}/set-default', [BranchController::class, 'setDefault']);
-        Route::post('/{branch}/suspend', [BranchController::class, 'suspend']);
-        Route::post('/{branch}/reactivate', [BranchController::class, 'reactivate']);
         Route::get('/{branch}/onboarding-status', [BranchController::class, 'onboardingStatus']);
 
-        Route::post('/{branch}/onboarding/ccsid', [BranchOnboardingController::class, 'requestCcsid']);
-        Route::post('/{branch}/onboarding/compliance-check', [BranchOnboardingController::class, 'runComplianceCheck']);
-        Route::post('/{branch}/onboarding/pcsid', [BranchOnboardingController::class, 'requestPcsid']);
-        Route::post('/{branch}/onboarding/reset', [BranchOnboardingController::class, 'resetOnboarding']);
+        // A branch's lifecycle and its credentials reach past the person
+        // changing them: suspending one stops its invoicing, and resetting an
+        // onboarding discards a CSID that cannot be re-issued without another
+        // OTP from the portal.
+        Route::middleware('org.admin')->group(function () {
+            Route::delete('/{branch}', [BranchController::class, 'destroy']);
+            Route::post('/{branch}/set-default', [BranchController::class, 'setDefault']);
+            Route::post('/{branch}/suspend', [BranchController::class, 'suspend']);
+            Route::post('/{branch}/reactivate', [BranchController::class, 'reactivate']);
+
+            Route::post('/{branch}/onboarding/ccsid', [BranchOnboardingController::class, 'requestCcsid']);
+            Route::post('/{branch}/onboarding/compliance-check', [BranchOnboardingController::class, 'runComplianceCheck']);
+            Route::post('/{branch}/onboarding/pcsid', [BranchOnboardingController::class, 'requestPcsid']);
+            Route::post('/{branch}/onboarding/reset', [BranchOnboardingController::class, 'resetOnboarding']);
+        });
     });
 
     /* Integration management ---------------------------------------------- */
@@ -101,7 +118,9 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
     // Declared before the resource so /webhooks/events is not captured by
     // /webhooks/{webhook}.
     Route::get('/webhooks/events', [WebhookController::class, 'events']);
-    Route::apiResource('webhooks', WebhookController::class);
+    Route::apiResource('webhooks', WebhookController::class)->except(['destroy']);
+    Route::delete('/webhooks/{webhook}', [WebhookController::class, 'destroy'])
+        ->middleware('org.admin');
     Route::post('/webhooks/{id}/test', [WebhookController::class, 'test']);
     Route::post('/webhooks/{id}/rotate-secret', [WebhookController::class, 'rotateSecret']);
     Route::get('/webhooks/{id}/logs', [WebhookController::class, 'logs']);
