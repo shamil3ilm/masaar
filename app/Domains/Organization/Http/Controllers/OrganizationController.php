@@ -90,9 +90,12 @@ class OrganizationController extends Controller
      */
     public function update(Request $request, string $id): JsonResponse
     {
-        $organization = auth()->user()->organizations()
-            ->wherePivot('role', 'admin')
-            ->findOrFail($id);
+        // Admin is enforced by org.admin on the route, in one place with
+        // every other action restricted the same way. Scoping the lookup to
+        // admin memberships here as well answered 404 for a member editing an
+        // organization they can plainly read, which describes the wrong
+        // problem.
+        $organization = auth()->user()->organizations()->findOrFail($id);
 
         $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
@@ -117,12 +120,9 @@ class OrganizationController extends Controller
     }
 
     /**
-     * Switch active organization context.
+     * Choose which organization this session acts for.
      *
      * POST /api/organizations/{id}/switch
-     */
-    /**
-     * Choose which organization this session acts for.
      *
      * Returns a new token carrying the choice. Setting it on TenantResolver is
      * not enough on its own — the resolver lives for one request, so the

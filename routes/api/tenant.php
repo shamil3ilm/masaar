@@ -78,7 +78,11 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
 
     /* Organizations and branches ------------------------------------------ */
 
-    Route::apiResource('organizations', OrganizationController::class)->except(['destroy']);
+    Route::apiResource('organizations', OrganizationController::class)->except(['destroy', 'update']);
+    // Both verbs, because that is what apiResource's update answers and
+    // declaring it separately must not quietly retire PATCH.
+    Route::match(['put', 'patch'], '/organizations/{organization}', [OrganizationController::class, 'update'])
+        ->middleware('org.admin');
     Route::post('/organizations/{id}/switch', [OrganizationController::class, 'switch']);
 
     Route::prefix('organizations/{organization}')->group(function () {
@@ -122,7 +126,8 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
     Route::delete('/webhooks/{webhook}', [WebhookController::class, 'destroy'])
         ->middleware('org.admin');
     Route::post('/webhooks/{id}/test', [WebhookController::class, 'test']);
-    Route::post('/webhooks/{id}/rotate-secret', [WebhookController::class, 'rotateSecret']);
+    Route::post('/webhooks/{id}/rotate-secret', [WebhookController::class, 'rotateSecret'])
+        ->middleware('org.admin');
     Route::get('/webhooks/{id}/logs', [WebhookController::class, 'logs']);
 
     /* Dashboard ------------------------------------------------------------ */

@@ -77,6 +77,35 @@ class OrgAdminTest extends TestCase
     }
 
     /**
+     * Rotating the secret is credential lifecycle, not webhook editing: it
+     * invalidates the signature the customer verifies with until they take the
+     * new one, so every delivery fails in between.
+     */
+    public function test_member_cannot_rotate_secret(): void
+    {
+        $webhook = $this->webhook();
+
+        $this->as('member')
+            ->postJson("/api/webhooks/{$webhook->id}/rotate-secret")
+            ->assertForbidden();
+    }
+
+    /**
+     * Editing the organization was already admin-only, enforced by scoping the
+     * lookup to admin memberships inside the controller — which answered 404
+     * to a member who can plainly read the same organization. It is the gate's
+     * job now, and the answer says what is actually true.
+     */
+    public function test_member_cannot_update_organization(): void
+    {
+        $this->as('member')
+            ->putJson("/api/organizations/{$this->organization->id}", ['name' => 'Renamed'])
+            ->assertForbidden();
+
+        $this->assertSame('Acme', $this->organization->fresh()->name);
+    }
+
+    /**
      * The work a member is there for stays theirs.
      */
     public function test_a_member_may_still_invoice(): void
