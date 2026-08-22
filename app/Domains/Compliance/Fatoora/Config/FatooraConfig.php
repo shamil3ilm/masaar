@@ -76,20 +76,12 @@ final class FatooraConfig
 
     public const INVOICE_TYPE_CREDIT_NOTE = '381';
 
-    // ============================================================
-    // INVOICE SUBTYPES (Bits for KSA extensions)
-    // ============================================================
-    public const SUBTYPE_STANDARD = '0100000';      // Standard tax invoice
-
-    public const SUBTYPE_SIMPLIFIED = '0200000';    // Simplified tax invoice
-
-    public const SUBTYPE_THIRD_PARTY = '0100001';   // Third party
-
-    public const SUBTYPE_NOMINAL = '0100010';       // Nominal
-
-    public const SUBTYPE_EXPORTS = '0100100';       // Exports
-
-    public const SUBTYPE_SUMMARY = '0101000';       // Summary
+    // BT-3 subtype flags are built by InvoiceXmlData::getInvoiceTypeName() from
+    // the invoice's own columns. Six constants here named the same values and
+    // disagreed with it — third party as 0100001 against 0110000, nominal and
+    // summary likewise transposed — while nothing read them. A second, wrong
+    // statement of which bit means what is how a document ends up filed as
+    // something it is not.
 
     // ============================================================
     // TAX CATEGORIES (UN/CEFACT 5305)
@@ -101,6 +93,32 @@ final class FatooraConfig
     public const TAX_CATEGORY_EXEMPT = 'E';         // Exempt
 
     public const TAX_CATEGORY_OUT_OF_SCOPE = 'O';   // Out of scope
+
+    /**
+     * The tax category a line belongs to, given its exemption code and rate.
+     *
+     * ZATCA reads the category and the exemption reason together: VATEX-SA-HEA
+     * on a line taxed at 15% is a contradiction and the document is rejected
+     * rather than reconciled. So the code decides, and the rate only answers
+     * when there is no code.
+     *
+     * Order matters — the arms short-circuit, and every code begins VATEX-SA-,
+     * so the specific prefixes have to be tried before the general one.
+     */
+    public static function taxCategoryFor(?string $exemptionCode, float $taxRate): string
+    {
+        if ($exemptionCode === null || $exemptionCode === '') {
+            return $taxRate > 0 ? self::TAX_CATEGORY_STANDARD : self::TAX_CATEGORY_ZERO_RATED;
+        }
+
+        return match (true) {
+            str_starts_with($exemptionCode, 'VATEX-SA-OOS') => self::TAX_CATEGORY_OUT_OF_SCOPE,
+            str_starts_with($exemptionCode, 'VATEX-SA-HEA') => self::TAX_CATEGORY_ZERO_RATED,
+            str_starts_with($exemptionCode, 'VATEX-SA-EDU') => self::TAX_CATEGORY_ZERO_RATED,
+            str_starts_with($exemptionCode, 'VATEX-SA-') => self::TAX_CATEGORY_EXEMPT,
+            default => $taxRate > 0 ? self::TAX_CATEGORY_STANDARD : self::TAX_CATEGORY_ZERO_RATED,
+        };
+    }
 
     // ============================================================
     // PAYMENT MEANS CODES (UN/EDIFACT 4461)
@@ -185,14 +203,11 @@ final class FatooraConfig
 
     public const REASON_PRODUCTION_ERROR = '104';
 
-    // ============================================================
-    // CIRCUIT BREAKER SETTINGS
-    // ============================================================
-    public const CIRCUIT_BREAKER_THRESHOLD = 5;     // Failures before opening
-
-    public const CIRCUIT_BREAKER_TIMEOUT = 60;      // Seconds before half-open
-
-    public const CIRCUIT_BREAKER_SAMPLE_SIZE = 10;  // Requests to sample
+    // Circuit breaker settings live in config/fatoora.php and are read by
+    // CircuitBreaker itself. Two getters here asked for circuit_breaker.threshold
+    // and .timeout, which that file does not define — it has failure_threshold
+    // and timeout_seconds — so both silently returned the constants below
+    // instead, and ZATCA_CCB_FAILURE_THRESHOLD moved nothing through this path.
 
     // ============================================================
     // OFFLINE MODE SETTINGS
@@ -268,22 +283,6 @@ final class FatooraConfig
     public static function getCertificateExpiryCriticalDays(): int
     {
         return (int) self::get('certificate.expiry_critical_days', self::CERTIFICATE_EXPIRY_CRITICAL_DAYS);
-    }
-
-    /**
-     * Get circuit breaker threshold.
-     */
-    public static function getCircuitBreakerThreshold(): int
-    {
-        return (int) self::get('circuit_breaker.threshold', self::CIRCUIT_BREAKER_THRESHOLD);
-    }
-
-    /**
-     * Get circuit breaker timeout seconds.
-     */
-    public static function getCircuitBreakerTimeout(): int
-    {
-        return (int) self::get('circuit_breaker.timeout', self::CIRCUIT_BREAKER_TIMEOUT);
     }
 
     /**
