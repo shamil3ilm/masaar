@@ -149,11 +149,12 @@ class PipelineService
             $warnings = $outcome['warnings'] ?? [];
             $errors = $outcome['errors'] ?? [];
 
-            if ($outcome['success'] ?? false) {
-                $this->notifier->accepted($invoice, $warnings);
-            } else {
-                $this->notifier->rejected($invoice, $errors);
-            }
+            // The outcome webhook is raised by SubmissionTracker as a state
+            // event, for both the inline and queued paths. It was announced
+            // here as well, under the same event names but a different payload
+            // shape — total against total_amount, type against invoice_type —
+            // so a queued submission delivered two webhooks for one outcome and
+            // an integrator could not rely on either shape.
 
             return $this->result->build($invoice, $errors, $warnings, [
                 'submission_id' => $outcome['submission_id'] ?? null,
