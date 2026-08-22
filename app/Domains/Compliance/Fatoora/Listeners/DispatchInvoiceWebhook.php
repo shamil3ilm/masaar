@@ -21,9 +21,25 @@ class DispatchInvoiceWebhook implements ShouldQueue
     use InteractsWithQueue;
 
     /**
-     * The queue this job should run on.
+     * The queue this listener runs on.
+     *
+     * From config rather than a fixed property: fatoora.queue.webhooks_queue
+     * existed and was read nowhere, so an operator who renamed it would have
+     * run a worker against a queue nothing was dispatched to. Deliveries stay
+     * off the submissions queue so a slow customer endpoint cannot delay a
+     * clearance.
      */
-    public string $queue = 'webhooks';
+    public function viaQueue(): string
+    {
+        return (string) config('fatoora.queue.webhooks_queue', 'webhooks');
+    }
+
+    public function viaConnection(): ?string
+    {
+        $connection = (string) config('fatoora.queue.connection');
+
+        return $connection === '' ? null : $connection;
+    }
 
     /**
      * The number of times the job may be attempted.

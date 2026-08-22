@@ -454,7 +454,15 @@ return [
     |
     */
     'queue' => [
-        'connection' => env('ZATCA_QUEUE_CONNECTION', 'redis'),
+        // Null means the application's own queue connection. This defaulted to
+        // 'redis' while QUEUE_CONNECTION is database, and nothing read it — so
+        // an operator who set it and ran a redis worker would have watched an
+        // empty queue while the jobs went to the database.
+        'connection' => env('ZATCA_QUEUE_CONNECTION'),
+
+        // Read by ProcessFatooraSubmission, which dispatches onto this queue.
+        // The job hardcoded 'zatca-submissions' and this key was read nowhere,
+        // so renaming the queue here moved nothing.
         'name' => env('ZATCA_QUEUE_NAME', 'zatca-submissions'),
 
         // Read by ProcessFatooraSubmission for its retry behaviour.
@@ -462,10 +470,8 @@ return [
         'timeout' => (int) env('ZATCA_QUEUE_TIMEOUT', 120),
         'backoff' => [10, 60, 300], // seconds between retries
 
-        // Queue name for ZATCA submissions (clearance/reporting)
-        'submissions_queue' => env('ZATCA_QUEUE_SUBMISSIONS', 'zatca-submissions'),
-
-        // Queue name for webhook deliveries
+        // Read by DispatchInvoiceWebhook. Separate from submissions so a slow
+        // customer endpoint cannot delay a clearance.
         'webhooks_queue' => env('ZATCA_QUEUE_WEBHOOKS', 'webhooks'),
 
         // Recommended minimum workers per queue
