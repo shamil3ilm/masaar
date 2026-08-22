@@ -200,6 +200,14 @@ class Connectivity
      */
     private function isCircuitOpen(): bool
     {
+        // fatoora.features.circuit_breaker was read nowhere, so setting
+        // ZATCA_FEATURE_CIRCUIT_BREAKER=false turned nothing off. A breaker
+        // that cannot be disabled is a problem during the incident where the
+        // breaker itself is the thing misbehaving.
+        if (! config('fatoora.features.circuit_breaker', true)) {
+            return false;
+        }
+
         return ! $this->circuitBreaker->allowRequest(self::SERVICE);
     }
 

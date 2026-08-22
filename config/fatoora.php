@@ -481,14 +481,6 @@ return [
             'default' => 1,            // Other jobs
         ],
 
-        // Maximum job attempts before failure
-        'max_attempts' => env('ZATCA_QUEUE_MAX_ATTEMPTS', 3),
-
-        // Backoff delay between retries (seconds)
-        'retry_backoff' => env('ZATCA_QUEUE_RETRY_BACKOFF', 60),
-
-        // Job timeout (seconds) - ZATCA API can be slow
-        'job_timeout' => env('ZATCA_QUEUE_JOB_TIMEOUT', 120),
     ],
 
     /*
