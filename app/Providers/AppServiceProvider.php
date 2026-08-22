@@ -10,7 +10,6 @@ use App\Domains\Compliance\Fatoora\Services\CircuitBreaker;
 use App\Domains\Compliance\Fatoora\Services\TimestampValidator;
 use App\Domains\Licensing\Http\Middleware\CheckInvoiceQuota;
 use App\Domains\Licensing\Http\Middleware\PlatformLicense;
-use App\Domains\Licensing\Http\Middleware\RequireEnvironment;
 use App\Domains\Licensing\Http\Middleware\RequireScope;
 use App\Domains\Licensing\Http\Middleware\ValidateLicense;
 use App\Domains\Logging\Services\ComplianceLogger;
@@ -41,7 +40,6 @@ class AppServiceProvider extends ServiceProvider
         'license' => ValidateLicense::class,
         'license.quota' => CheckInvoiceQuota::class,
         'scope' => RequireScope::class,
-        'env' => RequireEnvironment::class,
         'platform.license' => PlatformLicense::class,
     ];
 
