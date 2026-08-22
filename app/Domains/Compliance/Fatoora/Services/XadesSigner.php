@@ -49,6 +49,23 @@ class XadesSigner
         private readonly CertificateService $certificateService,
     ) {
         $this->tsaTimeout = $this->getDefaultTsaTimeout();
+
+        // Timestamping is fully implemented below — an RFC 3161 request, the
+        // response parsed and embedded — and nothing ever called
+        // withTimestampAuthority(), so tsaUrl stayed null and no document was
+        // ever timestamped. fatoora.tsa.enabled, .url, .username and .password
+        // were read nowhere: setting ZATCA_TSA_ENABLED=true turned nothing on.
+        //
+        // Read here rather than left to the caller, because the caller is
+        // DocumentBuilder resolving this from the container and has no reason
+        // to know about a timestamp authority.
+        if (config('fatoora.tsa.enabled', false) && ($url = config('fatoora.tsa.url')) !== null) {
+            $this->withTimestampAuthority(
+                (string) $url,
+                config('fatoora.tsa.username'),
+                config('fatoora.tsa.password'),
+            );
+        }
     }
 
     /**

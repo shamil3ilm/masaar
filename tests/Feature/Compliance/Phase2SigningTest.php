@@ -350,6 +350,42 @@ class Phase2SigningTest extends TestCase
     }
 
     /**
+     * Timestamping engages from configuration.
+     *
+     * XadesSigner implements RFC 3161 in full — the request, the response
+     * parsed and embedded — and nothing ever called withTimestampAuthority(),
+     * so the URL stayed null and no document was timestamped.
+     * fatoora.tsa.enabled, .url, .username and .password were read nowhere:
+     * ZATCA_TSA_ENABLED=true turned nothing on.
+     */
+    public function test_timestamping_engages_from_config(): void
+    {
+        config([
+            'fatoora.tsa.enabled' => true,
+            'fatoora.tsa.url' => 'https://tsa.example.test/rfc3161',
+        ]);
+
+        $url = new \ReflectionProperty(XadesSigner::class, 'tsaUrl');
+
+        $this->assertSame('https://tsa.example.test/rfc3161', $url->getValue(app(XadesSigner::class)));
+    }
+
+    /**
+     * Disabled means disabled, even with a URL configured.
+     */
+    public function test_timestamping_stays_off_when_disabled(): void
+    {
+        config([
+            'fatoora.tsa.enabled' => false,
+            'fatoora.tsa.url' => 'https://tsa.example.test/rfc3161',
+        ]);
+
+        $url = new \ReflectionProperty(XadesSigner::class, 'tsaUrl');
+
+        $this->assertNull($url->getValue(app(XadesSigner::class)));
+    }
+
+    /**
      * Split a ZATCA QR payload into its TLV tags.
      *
      * @return array<int, string>
