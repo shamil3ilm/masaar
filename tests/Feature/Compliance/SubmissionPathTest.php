@@ -12,7 +12,9 @@ use App\Domains\Compliance\Fatoora\Services\SubmissionTracker;
 use App\Domains\Compliance\Fatoora\Services\Submitter;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Webhook\Models\Webhook;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Tests\Fixtures\SigningCredentials;
 use Tests\TestCase;
@@ -110,6 +112,34 @@ class SubmissionPathTest extends TestCase
         $this->assertNotNull($submission, 'No submission was recorded.');
         $this->assertSame('cleared', $submission->state);
         $this->assertSame('CLEARED', $submission->clearance_status);
+    }
+
+    /**
+     * One outcome, one webhook, in one shape.
+     *
+     * SubmissionTracker raised no event at all, so a synchronous submission
+     * produced none from the listener, while the pipeline announced its own
+     * under the same event names with a different payload — total against
+     * total_amount, type against invoice_type. A queued submission delivered
+     * two webhooks for one outcome and an integrator could rely on neither.
+     */
+    public function test_submission_announces_once(): void
+    {
+        Http::fake(['*' => Http::response(['ok' => true], 200)]);
+
+        Webhook::withoutTenantScope(fn () => Webhook::create([
+            'org_id' => $this->organization->id,
+            'url' => 'https://erp.test/hooks',
+            'secret' => 'shhh',
+            'events' => ['invoice.cleared'],
+            'is_active' => true,
+        ]));
+
+        app(SubmissionTracker::class)->submit($this->issued('INV-1'));
+
+        Http::assertSentCount(1);
+        Http::assertSent(fn ($request) => ($request->data()['event'] ?? null) === 'invoice.cleared'
+            && ($request->data()['data']['total_amount'] ?? null) === '115.00');
     }
 
     /**

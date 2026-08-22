@@ -22,6 +22,34 @@ abstract class BaseInvoiceEvent
     use SerializesModels;
 
     /**
+     * Raise the event for a submission state, if that state has one.
+     *
+     * Defined here so the synchronous and queued paths announce an outcome the
+     * same way. The queue job had this mapping privately and SubmissionTracker
+     * had nothing, so a submission processed synchronously produced no event at
+     * all — and therefore no webhook from the listener, while the same outcome
+     * queued produced one. What an integrator received depended on which path
+     * the platform happened to take.
+     *
+     * @param  array<string, mixed>  $context
+     */
+    public static function raise(InvoiceSubmission $submission, string $state, array $context = []): void
+    {
+        $event = match ($state) {
+            'cleared' => new InvoiceCleared($submission, $context),
+            'reported' => new InvoiceReported($submission, $context),
+            'rejected' => new InvoiceRejected($submission, $context),
+            'warning' => new InvoiceWarning($submission, $context),
+            'failed' => new InvoiceFailed($submission, $context),
+            default => null,
+        };
+
+        if ($event !== null) {
+            event($event);
+        }
+    }
+
+    /**
      * The webhook event name for this event type.
      */
     abstract public function getWebhookEventName(): string;
