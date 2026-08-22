@@ -250,8 +250,10 @@ class LicenseManagementService
 
         $this->logAudit($licenseId, 'secret_regenerated');
 
-        // Clear cached license
-        Cache::forget("license:{$license->api_key}");
+        // The cache entry is dropped by the model on save. This forgot
+        // "license:{api_key}" while the cache stores the digest of the key, so
+        // it cleared nothing and the old secret kept working until the entry
+        // expired.
 
         return [
             'license' => $license->fresh(),

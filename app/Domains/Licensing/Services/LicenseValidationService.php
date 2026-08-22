@@ -206,6 +206,6 @@ class LicenseValidationService
      */
     private function getCacheKey(string $apiKey): string
     {
-        return 'license:'.hash('sha256', $apiKey);
+        return License::cacheKeyFor($apiKey);
     }
 }
