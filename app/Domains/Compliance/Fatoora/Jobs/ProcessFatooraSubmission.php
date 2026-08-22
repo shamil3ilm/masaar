@@ -62,7 +62,18 @@ class ProcessFatooraSubmission implements ShouldQueue
     ) {
         $this->tries = (int) config('fatoora.queue.tries', 3);
         $this->timeout = (int) config('fatoora.queue.timeout', 120);
-        $this->onQueue('zatca-submissions');
+        // From config rather than hardcoded. fatoora.queue.name and .connection
+        // existed and were read nowhere, so renaming the queue or pointing it at
+        // another connection moved nothing — and an operator running a worker on
+        // the name they had configured would watch an empty queue.
+        $this->onQueue((string) config('fatoora.queue.name', 'zatca-submissions'));
+
+        // Unset — null or empty — leaves the application's own connection in
+        // place. Empty matters because that is what an unset .env value reads
+        // as, and it is how .env.example documents "use the default".
+        if (($connection = (string) config('fatoora.queue.connection')) !== '') {
+            $this->onConnection($connection);
+        }
     }
 
     /**
