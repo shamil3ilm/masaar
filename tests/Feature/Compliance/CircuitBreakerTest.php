@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Compliance;
 
 use App\Domains\Compliance\Fatoora\Services\CircuitBreaker;
+use App\Domains\Compliance\Fatoora\Services\Connectivity;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
@@ -140,6 +141,28 @@ class CircuitBreakerTest extends TestCase
 
         $this->assertFalse($this->breaker->allowRequest(self::SERVICE));
         $this->assertTrue($this->breaker->allowRequest('another-service'));
+    }
+
+    /**
+     * The breaker can be turned off.
+     *
+     * fatoora.features.circuit_breaker was read nowhere, so setting
+     * ZATCA_FEATURE_CIRCUIT_BREAKER=false turned nothing off. A breaker that
+     * cannot be disabled is a problem during the one incident where the
+     * breaker itself is what is misbehaving.
+     */
+    public function test_the_breaker_can_be_disabled(): void
+    {
+        config(['fatoora.features.circuit_breaker' => false]);
+
+        $this->failTimes(3);
+
+        $connectivity = new \ReflectionMethod(Connectivity::class, 'isCircuitOpen');
+
+        $this->assertFalse(
+            $connectivity->invoke(app(Connectivity::class)),
+            'The breaker still reported open with the feature disabled.'
+        );
     }
 
     private function failTimes(int $times): void
