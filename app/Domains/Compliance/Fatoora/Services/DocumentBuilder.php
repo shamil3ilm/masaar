@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Services;
 
+use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\DTOs\AddressData;
 use App\Domains\Compliance\Fatoora\DTOs\InvoiceXmlData;
 use App\Domains\Compliance\Fatoora\DTOs\QrCodeData;
@@ -228,26 +229,7 @@ class DocumentBuilder
      */
     private function getTaxCategory(float $taxRate, ?string $exemptionCode = null): string
     {
-        // If there's an exemption code, determine category from code
-        if ($exemptionCode !== null) {
-            // Most-specific prefixes must come first — match() short-circuits on first true arm.
-            // VATEX-SA-OOS = out-of-scope (O), VATEX-SA-HEA/EDU = zero-rated (Z),
-            // all other VATEX-SA-* = exempt (E).
-            return match (true) {
-                str_starts_with($exemptionCode, 'VATEX-SA-OOS') => 'O', // Out of scope
-                str_starts_with($exemptionCode, 'VATEX-SA-HEA') => 'Z', // Zero-rated healthcare
-                str_starts_with($exemptionCode, 'VATEX-SA-EDU') => 'Z', // Zero-rated education
-                str_starts_with($exemptionCode, 'VATEX-SA-') => 'E', // All other exempt
-                default => $taxRate > 0 ? 'S' : 'Z',
-            };
-        }
-
-        // Determine from rate alone
-        return match (true) {
-            $taxRate > 0 => 'S',    // Standard rated (any positive rate)
-            $taxRate === 0.0 => 'Z', // Zero-rated (default for 0%)
-            default => 'S',
-        };
+        return FatooraConfig::taxCategoryFor($exemptionCode, $taxRate);
     }
 
     /**

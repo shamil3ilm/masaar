@@ -2,6 +2,7 @@
 
 namespace App\Domains\Invoice\Http\Requests;
 
+use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Invoice\Enums\TaxCategory;
@@ -212,13 +213,22 @@ class CreateInvoiceRequest extends FormRequest
             'payment_means_code' => $this->payment_means_code ?? '10',
         ]);
 
-        // Set default unit code for lines
+        // Fill in what the caller left out, without contradicting what they
+        // said. A line carrying an exemption code is not standard-rated, so
+        // defaulting every line to S at 15% produced documents that claimed
+        // both — which ZATCA rejects rather than reconciles. The code decides
+        // the category, and an exempt line is not taxed.
         if ($this->has('lines')) {
             $lines = collect($this->lines)->map(function ($line) {
+                $exemptionCode = $line['exempt_code'] ?? null;
+
+                $category = $line['tax_category']
+                    ?? FatooraConfig::taxCategoryFor($exemptionCode, (float) ($line['tax_rate'] ?? 15));
+
                 return array_merge([
                     'unit_code' => 'PCE',
-                    'tax_category' => 'S',
-                    'tax_rate' => 15,
+                    'tax_category' => $category,
+                    'tax_rate' => $category === FatooraConfig::TAX_CATEGORY_STANDARD ? 15 : 0,
                 ], $line);
             })->toArray();
 
