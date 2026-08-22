@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
@@ -120,6 +121,45 @@ class License extends Model
                 'This is a compliance requirement to preserve audit trails.'
             );
         });
+
+        // Validation caches the licence and reads its status off the cached
+        // copy, so a suspension that left the entry in place kept
+        // authenticating until it expired — five minutes of a credential
+        // somebody has just had taken away.
+        //
+        // Done here rather than in each mutating service so a path added later
+        // cannot forget. The original key is dropped too: rotating the key
+        // itself would otherwise leave the old one usable.
+        $forget = function (self $license): void {
+            Cache::forget($license->cacheKey());
+
+            $previous = $license->getOriginal('api_key');
+
+            if (is_string($previous) && $previous !== $license->api_key) {
+                Cache::forget(self::cacheKeyFor($previous));
+            }
+        };
+
+        static::saved($forget);
+        static::deleted($forget);
+        static::restored($forget);
+    }
+
+    /**
+     * Where validation keeps this licence.
+     *
+     * Derived in one place: the invalidation that existed forgot
+     * "license:{api_key}" while the cache stores the digest of the key, so it
+     * cleared nothing and both halves looked right on their own.
+     */
+    public function cacheKey(): string
+    {
+        return self::cacheKeyFor((string) $this->api_key);
+    }
+
+    public static function cacheKeyFor(string $apiKey): string
+    {
+        return 'license:'.hash('sha256', $apiKey);
     }
 
     /**
