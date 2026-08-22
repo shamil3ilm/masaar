@@ -7,6 +7,7 @@ namespace App\Domains\Compliance\Fatoora\Services;
 use App\Domains\Compliance\Fatoora\Client\FatooraClient;
 use App\Domains\Compliance\Fatoora\DTOs\FatooraResponse;
 use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
+use App\Domains\Compliance\Fatoora\Events\BaseInvoiceEvent;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Jobs\ProcessFatooraSubmission;
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
@@ -636,6 +637,15 @@ class SubmissionTracker
 
         // Log state transition
         $this->logStateTransition($submission, 'submitted', $newState, 'zatca');
+
+        // Announce the outcome, as the queued path does. This fired nowhere in
+        // the synchronous path, so the same result produced a webhook when
+        // queued and none when processed inline — what an integrator received
+        // depended on which path the platform happened to take.
+        BaseInvoiceEvent::raise($submission->fresh(), $newState, [
+            'clearance_status' => $response->clearanceStatus,
+            'reporting_status' => $response->reportingStatus,
+        ]);
 
         return [
             'success' => $success,

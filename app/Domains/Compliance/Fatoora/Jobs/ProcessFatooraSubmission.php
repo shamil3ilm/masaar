@@ -7,12 +7,9 @@ namespace App\Domains\Compliance\Fatoora\Jobs;
 use App\Domains\Compliance\Fatoora\Client\FatooraClient;
 use App\Domains\Compliance\Fatoora\DTOs\FatooraResponse;
 use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
-use App\Domains\Compliance\Fatoora\Events\InvoiceCleared;
+use App\Domains\Compliance\Fatoora\Events\BaseInvoiceEvent;
 use App\Domains\Compliance\Fatoora\Events\InvoiceFailed;
-use App\Domains\Compliance\Fatoora\Events\InvoiceRejected;
-use App\Domains\Compliance\Fatoora\Events\InvoiceReported;
 use App\Domains\Compliance\Fatoora\Events\InvoiceSubmitted;
-use App\Domains\Compliance\Fatoora\Events\InvoiceWarning;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Compliance\Fatoora\Models\SubmissionIdempotency;
@@ -354,18 +351,7 @@ class ProcessFatooraSubmission implements ShouldQueue
      */
     private function fireStateEvent(InvoiceSubmission $submission, string $state, array $context = []): void
     {
-        $event = match ($state) {
-            'cleared' => new InvoiceCleared($submission, $context),
-            'reported' => new InvoiceReported($submission, $context),
-            'rejected' => new InvoiceRejected($submission, $context),
-            'warning' => new InvoiceWarning($submission, $context),
-            'failed' => new InvoiceFailed($submission, $context),
-            default => null,
-        };
-
-        if ($event !== null) {
-            event($event);
-        }
+        BaseInvoiceEvent::raise($submission, $state, $context);
     }
 
     /**

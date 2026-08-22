@@ -15,6 +15,11 @@ use Illuminate\Support\Facades\Log;
  * the authority by the time these run, so a customer's unreachable webhook
  * endpoint must not turn a successful submission into a failed request. A
  * failure is logged and swallowed.
+ *
+ * Issue is the only event raised here. The submission outcomes — cleared,
+ * reported, rejected — are state events raised by SubmissionTracker, so they
+ * carry the same payload whether the submission ran inline or on the queue.
+ * This class announced them too, under the same names with a different shape.
  */
 class PipelineNotifier
 {
@@ -25,29 +30,6 @@ class PipelineNotifier
     public function issued(Invoice $invoice): void
     {
         $this->send($invoice, 'invoice.issued');
-    }
-
-    /**
-     * @param  list<string>  $errors
-     */
-    public function rejected(Invoice $invoice, array $errors): void
-    {
-        $this->send($invoice, 'invoice.rejected', ['errors' => $errors]);
-    }
-
-    /**
-     * Standard invoices are cleared before issue, simplified ones reported
-     * after, so the event name follows the document type.
-     *
-     * @param  list<string>  $warnings
-     */
-    public function accepted(Invoice $invoice, array $warnings): void
-    {
-        $this->send(
-            $invoice,
-            $invoice->requiresClearance() ? 'invoice.cleared' : 'invoice.reported',
-            ['warnings' => $warnings]
-        );
     }
 
     private function send(Invoice $invoice, string $event, array $extra = []): void
