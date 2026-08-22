@@ -116,13 +116,30 @@ class Organization extends Model
      */
     public function getZatcaOnboardedAttribute(): bool
     {
-        $profile = $this->complianceProfileFor('SA');
+        // Deliberately not complianceProfileFor(), which returns only active
+        // profiles: a suspended or revoked one then read as no profile at all,
+        // the answer fell through to the flag onboarding wrote, and stopping a
+        // jurisdiction stopped nothing.
+        $profile = $this->complianceProfiles()
+            ->where('jurisdiction', 'SA')
+            ->first();
 
         if ($profile !== null) {
-            return $profile->isActive();
+            if ($profile->isActive()) {
+                return true;
+            }
+
+            // Stopping is a decision, and it outranks anything recorded
+            // earlier. Waiting is not a decision, so it says nothing and the
+            // question falls through to what onboarding actually recorded.
+            if (in_array($profile->status, [
+                ComplianceProfile::STATUS_SUSPENDED,
+                ComplianceProfile::STATUS_REVOKED,
+            ], true)) {
+                return false;
+            }
         }
 
-        // Legacy fallback
         if ($this->compliance_profile['zatca_onboarded'] ?? false) {
             return true;
         }
