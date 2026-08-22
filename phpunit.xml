@@ -38,5 +38,11 @@
             Off here; PlatformLicenseTest turns it on where that is the subject.
         -->
         <env name="PLATFORM_LICENSE_ENABLED" value="false"/>
+        <!--
+            ZATCA work now honours its configured queue connection instead of
+            ignoring it, so an operator's own .env would otherwise decide where
+            the suite dispatches. Empty means the connection declared above.
+        -->
+        <env name="ZATCA_QUEUE_CONNECTION" value=""/>
     </php>
 </phpunit>
