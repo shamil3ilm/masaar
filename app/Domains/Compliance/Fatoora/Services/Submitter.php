@@ -133,8 +133,10 @@ class Submitter
         // Validate environment before submission
         $this->validateEnvironment();
 
-        // Get credentials - branch-level if available, otherwise organization-level.
-        // $invoice->branch may be null if Invoice has no branch_id column (use org-level credentials).
+        // A branch signs with its own credentials; an invoice that names no
+        // branch signs with the organization's. invoices.branch_id is nullable
+        // rather than absent, so isset() is asking whether this document came
+        // from a particular EGS unit, not whether the column exists.
         $branch = isset($invoice->branch_id) ? $invoice->branch : null;
         $credentials = $this->getSigningCredentials($organization->id, $branch, required: true);
 
