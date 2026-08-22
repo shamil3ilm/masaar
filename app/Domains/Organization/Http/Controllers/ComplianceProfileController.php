@@ -10,6 +10,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ComplianceProfileController extends Controller
 {
@@ -31,7 +32,15 @@ class ComplianceProfileController extends Controller
         $validated = $request->validate([
             'jurisdiction' => ['required', 'string', 'size:2'],
             'engine' => ['required', 'string', 'max:32'],
-            'status' => ['sometimes', 'string'],
+            // Any string was accepted, so a profile could be created in a
+            // state nothing recognises — neither active nor stopped, and
+            // therefore silently treated as merely waiting.
+            'status' => ['sometimes', Rule::in([
+                ComplianceProfile::STATUS_PENDING,
+                ComplianceProfile::STATUS_ACTIVE,
+                ComplianceProfile::STATUS_SUSPENDED,
+                ComplianceProfile::STATUS_REVOKED,
+            ])],
             'settings' => ['sometimes', 'array'],
         ]);
 
