@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Services;
 
+use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\DTOs\AddressData;
 use App\Domains\Compliance\Fatoora\DTOs\InvoiceXmlData;
 use DOMDocument;
@@ -460,7 +461,7 @@ class XmlBuilder
             }
         } else {
             // Aggregate tax subtotals from invoice lines by category and rate
-            $aggregated = $this->aggregateTaxSubtotals($data->lines);
+            $aggregated = $this->aggregateTaxSubtotals($data->lines, (float) $data->discount);
             foreach ($aggregated as $subtotal) {
                 $taxTotal->appendChild($this->buildTaxSubtotal($subtotal, $data->currency));
             }
@@ -489,7 +490,7 @@ class XmlBuilder
      * @param  array  $lines  Invoice lines
      * @return array Aggregated subtotals
      */
-    private function aggregateTaxSubtotals(array $lines): array
+    private function aggregateTaxSubtotals(array $lines, float $allowance = 0.0): array
     {
         $subtotals = [];
 
@@ -516,7 +517,23 @@ class XmlBuilder
             // a stated 1150 at 15%, which is arithmetic ZATCA checks first.
             $lineNet = round((float) $line['quantity'] * (float) $line['unitPrice'], 2);
             $subtotals[$key]['taxableAmount'] += $lineNet;
-            $subtotals[$key]['taxAmount'] += $line['taxAmount'] ?? 0;
+        }
+
+        // A discount on the whole invoice reduces what is taxable, so it has
+        // to reach every category in proportion to what that category
+        // contributed. Tax is then recomputed on the reduced base rather than
+        // carried over from the lines, which were priced before the discount
+        // existed.
+        $shares = FatooraConfig::apportionAllowance(
+            array_map(static fn (array $s): float => $s['taxableAmount'], $subtotals),
+            $allowance
+        );
+
+        foreach ($subtotals as $key => $subtotal) {
+            $base = round($subtotal['taxableAmount'] - ($shares[$key] ?? 0.0), 2);
+
+            $subtotals[$key]['taxableAmount'] = $base;
+            $subtotals[$key]['taxAmount'] = round($base * $subtotal['taxPercent'] / 100, 2);
         }
 
         return array_values($subtotals);
@@ -586,7 +603,13 @@ class XmlBuilder
         $total->appendChild($lineExt);
 
         // Tax exclusive amount
-        $taxExcl = $this->dom->createElementNS(self::CBC_NS, 'cbc:TaxExclusiveAmount', $this->formatAmount($data->subtotal));
+        // BR-CO-13: the taxable total is the line extension less any
+        // allowance, not the line extension itself.
+        $taxExcl = $this->dom->createElementNS(
+            self::CBC_NS,
+            'cbc:TaxExclusiveAmount',
+            $this->formatAmount($data->subtotal - $data->discount)
+        );
         $taxExcl->setAttribute('currencyID', $data->currency);
         $total->appendChild($taxExcl);
 
