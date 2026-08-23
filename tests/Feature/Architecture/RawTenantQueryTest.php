@@ -53,6 +53,7 @@ class RawTenantQueryTest extends TestCase
         // what the console is for.
         'Domains/Platform/Http/Controllers/AdminController.php' => 'platform admin, cross-tenant by design',
         'Domains/Platform/Http/Controllers/AdminDashboardController.php' => 'platform admin, cross-tenant by design',
+        'Domains/Platform/Services/PlatformStatus.php' => 'platform-wide counts, no tenant to scope to',
 
         // Prometheus scrapes one set of figures for the whole deployment.
         'Domains/Platform/Http/Controllers/MetricsController.php' => 'platform-wide metrics, no tenant to scope to',
