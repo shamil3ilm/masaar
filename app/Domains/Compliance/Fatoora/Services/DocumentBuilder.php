@@ -205,6 +205,10 @@ class DocumentBuilder
             paymentMeansCode: $invoice->payment_means_code ?? '10',
             previousInvoiceHash: $previousInvoiceHash,
             billingReferenceId: $invoice->billing_ref,
+            // Without the rate there is nothing to convert the tax with, and
+            // the document falls back to declaring Saudi VAT in a foreign
+            // currency.
+            exchangeRate: $invoice->exchange_rate !== null ? (float) $invoice->exchange_rate : null,
             // BR-KSA-17: a credit or debit note has to say why. The reason is
             // collected by the API and stored on the invoice, and this was the
             // step that carried it into the document — so every note went out

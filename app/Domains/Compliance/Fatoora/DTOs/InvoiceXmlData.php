@@ -108,7 +108,6 @@ final readonly class InvoiceXmlData
         public array $prepaymentInvoiceIds = [],
         // === NEW: Multi-currency support ===
         // VAT must be in SAR; these fields support foreign currency display
-        public ?string $originalCurrency = null,    // Original foreign currency code (e.g., USD, EUR)
         public ?float $exchangeRate = null,         // Exchange rate to SAR (e.g., 3.75 for USD)
         public ?string $exchangeRateDate = null,    // Date of exchange rate (YYYY-MM-DD)
         // === NEW: Special invoice flags ===
@@ -320,9 +319,14 @@ final readonly class InvoiceXmlData
      */
     public function isMultiCurrency(): bool
     {
-        return $this->originalCurrency !== null
-            && $this->originalCurrency !== $this->currency
-            && $this->exchangeRate !== null;
+        // Saudi VAT is owed in riyals whatever the document is written in, so
+        // the question is simply whether this one is written in something else
+        // and we have a rate to convert with.
+        //
+        // This used to ask whether originalCurrency differed from currency. The
+        // invoice has no such field and nothing ever set it, so the answer was
+        // always no and a dollar invoice declared its VAT in dollars.
+        return $this->currency !== 'SAR' && $this->exchangeRate !== null;
     }
 
     /**
