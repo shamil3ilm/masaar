@@ -509,8 +509,12 @@ class XmlBuilder
                 ];
             }
 
-            // Calculate line taxable amount (lineTotal is already net: quantity × unitPrice)
-            $lineNet = (float) ($line['lineTotal'] ?? ($line['quantity'] * $line['unitPrice']));
+            // The taxable amount is the line net. lineTotal is not it — the
+            // controller stores quantity × unitPrice plus the line's tax — and
+            // a comment here said otherwise, so every subtotal declared a base
+            // that already included the tax it was supposed to explain: 150 on
+            // a stated 1150 at 15%, which is arithmetic ZATCA checks first.
+            $lineNet = round((float) $line['quantity'] * (float) $line['unitPrice'], 2);
             $subtotals[$key]['taxableAmount'] += $lineNet;
             $subtotals[$key]['taxAmount'] += $line['taxAmount'] ?? 0;
         }
@@ -659,7 +663,8 @@ class XmlBuilder
             } else {
                 // Already tax-exclusive (or free item with market value)
                 $netUnitPrice = $unitPrice;
-                $lineNet = (float) ($line['lineTotal'] ?? ($line['quantity'] * $unitPrice)) - $lineDiscount;
+                // Quantity times price, not lineTotal: that carries the tax.
+                $lineNet = round($unitPrice * (float) $line['quantity'], 2) - $lineDiscount;
                 $lineTaxAmount = (float) ($line['taxAmount'] ?? InvoiceXmlData::calculateTaxFromNet($lineNet, $taxRate));
             }
 
