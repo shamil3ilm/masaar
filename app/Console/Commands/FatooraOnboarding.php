@@ -16,6 +16,7 @@ use App\Domains\Compliance\Fatoora\Services\XadesSigner;
 use App\Domains\Compliance\Fatoora\Services\XmlBuilder;
 use App\Support\Xml;
 use Illuminate\Console\Command;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 
@@ -47,12 +48,12 @@ class FatooraOnboarding extends Command
 
     protected $description = 'Complete ZATCA EGS onboarding with 6-invoice compliance check';
 
-    private const ENDPOINTS = [
-        'sandbox' => 'https://gw-fatoora.zatca.gov.sa/e-invoicing/developer-portal',
-        'simulation' => 'https://gw-fatoora.zatca.gov.sa/e-invoicing/simulation',
-        'production' => 'https://gw-fatoora.zatca.gov.sa/e-invoicing/core',
-        'local' => 'local', // Local test mode - no API calls, uses self-signed cert
-    ];
+    /**
+     * Local mode makes no API calls and signs against a self-signed
+     * certificate; the real environments come from config, which is where the
+     * rest of the platform reads them.
+     */
+    private const LOCAL = 'local';
 
     private InvoiceHasher $hasher;
 
@@ -76,10 +77,45 @@ class FatooraOnboarding extends Command
         $this->qrGenerator = new QrCodeGenerator(new TlvEncoder);
     }
 
+    /**
+     * A client pointed at ZATCA, verifying TLS unless told otherwise.
+     *
+     * The three calls below each opened with Http::withoutVerifying(), which
+     * is not conditional on anything. So --target=production reached the live
+     * authority with certificate verification off, carrying the OTP up and
+     * bringing the production CSID and its secret back — the two things on
+     * this path worth intercepting.
+     *
+     * FatooraClient has always gated this on fatoora.ssl_verify, which
+     * defaults to true. This reads the same setting, so turning verification
+     * off is a deliberate act in one place rather than a property of the
+     * console.
+     */
+    private function zatca(): PendingRequest
+    {
+        $client = Http::timeout(60)->withHeaders([
+            'Accept' => 'application/json',
+            'Content-Type' => 'application/json',
+            'Accept-Version' => 'V2',
+            'Accept-Language' => 'en',
+        ]);
+
+        if (! config('fatoora.ssl_verify', true)) {
+            $client->withoutVerifying();
+        }
+
+        return $client;
+    }
+
     public function handle(): int
     {
         $this->environment = $this->option('target');
-        $this->baseUrl = self::ENDPOINTS[$this->environment] ?? self::ENDPOINTS['simulation'];
+        $this->baseUrl = $this->environment === self::LOCAL
+            ? self::LOCAL
+            : (string) config(
+                "fatoora.endpoints.{$this->environment}",
+                config('fatoora.endpoints.simulation')
+            );
 
         $step = $this->option('step');
 
@@ -190,15 +226,8 @@ class FatooraOnboarding extends Command
         }
 
         try {
-            $response = Http::withoutVerifying()
-                ->timeout(60)
-                ->withHeaders([
-                    'Accept' => 'application/json',
-                    'Content-Type' => 'application/json',
-                    'Accept-Version' => 'V2',
-                    'Accept-Language' => 'en',
-                    'OTP' => $otp,
-                ])
+            $response = $this->zatca()
+                ->withHeaders(['OTP' => $otp])
                 ->post($this->baseUrl.'/compliance', [
                     'csr' => $csrBase64,
                 ]);
@@ -526,15 +555,8 @@ class FatooraOnboarding extends Command
         $this->newLine();
 
         try {
-            $response = Http::withoutVerifying()
-                ->timeout(60)
+            $response = $this->zatca()
                 ->withBasicAuth($ccsid['token'], $ccsid['secret'])
-                ->withHeaders([
-                    'Accept' => 'application/json',
-                    'Content-Type' => 'application/json',
-                    'Accept-Version' => 'V2',
-                    'Accept-Language' => 'en',
-                ])
                 ->post($this->baseUrl.'/production/csids', [
                     'compliance_request_id' => $ccsid['requestId'],
                 ]);
@@ -681,15 +703,8 @@ class FatooraOnboarding extends Command
     private function submitComplianceInvoice(string $xml, string $hash, string $uuid, array $ccsid): array
     {
         try {
-            $response = Http::withoutVerifying()
-                ->timeout(60)
+            $response = $this->zatca()
                 ->withBasicAuth($ccsid['token'], $ccsid['secret'])
-                ->withHeaders([
-                    'Accept' => 'application/json',
-                    'Content-Type' => 'application/json',
-                    'Accept-Version' => 'V2',
-                    'Accept-Language' => 'en',
-                ])
                 ->post($this->baseUrl.'/compliance/invoices', [
                     'invoiceHash' => $hash, // Already base64-encoded from InvoiceHasher
                     'uuid' => $uuid,
