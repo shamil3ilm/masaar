@@ -6,7 +6,7 @@ namespace Tests\Feature\Compliance;
 
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Services\CredentialStore;
-use App\Domains\Compliance\Fatoora\Services\SubmissionTracker;
+use App\Domains\Compliance\Fatoora\Services\SubmissionGuard;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -78,7 +78,7 @@ class CertificateHealthTest extends TestCase
 
     private function check(): void
     {
-        $method = new \ReflectionMethod(SubmissionTracker::class, 'checkCertificateHealth');
-        $method->invoke($this->app->make(SubmissionTracker::class), $this->org);
+        $method = new \ReflectionMethod(SubmissionGuard::class, 'checkCertificateHealth');
+        $method->invoke($this->app->make(SubmissionGuard::class), $this->org);
     }
 }
