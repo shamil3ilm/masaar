@@ -3,6 +3,7 @@
 namespace App\Domains\Invoice\Http\Controllers;
 
 use App\Domains\Audit\Services\AuditService;
+use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Http\Requests\CreateInvoiceRequest;
 use App\Domains\Invoice\Models\Invoice;
@@ -73,6 +74,8 @@ class InvoiceController extends Controller
             // floating-point precision errors on monetary values (P1 fix).
             $subtotal = '0';
             $taxTotal = '0';
+            $netsByCategory = [];
+            $ratesByCategory = [];
             $discountAmount = (string) ($request->discount_amount ?? '0');
 
             foreach ($request->lines as $line) {
@@ -99,10 +102,32 @@ class InvoiceController extends Controller
                 ]);
 
                 $subtotal = bcadd($subtotal, $lineSubtotal, 2);
-                $taxTotal = bcadd($taxTotal, $lineTax, 2);
+
+                // Grouped by category and rate, because the tax a document
+                // declares is its category base times that category's rate —
+                // not the sum of per-line roundings, which drifts a cent at a
+                // time and then disagrees with the base beside it.
+                $key = ($line['tax_category'] ?? 'S').'_'.$taxRate;
+                $netsByCategory[$key] = ($netsByCategory[$key] ?? 0.0) + (float) $lineSubtotal;
+                $ratesByCategory[$key] = (float) $taxRate;
             }
 
-            // Calculate final totals with discount
+            // A discount on the whole invoice reduces what is taxable, shared
+            // across categories in proportion to what each contributed. Taxing
+            // the amount before the discount overstates what is owed.
+            $shares = FatooraConfig::apportionAllowance($netsByCategory, (float) $discountAmount);
+
+            $taxTotal = '0';
+
+            foreach ($netsByCategory as $key => $net) {
+                $base = round($net - ($shares[$key] ?? 0.0), 2);
+                $taxTotal = bcadd(
+                    $taxTotal,
+                    number_format(round($base * $ratesByCategory[$key] / 100, 2), 2, '.', ''),
+                    2
+                );
+            }
+
             $total = bcadd(bcsub($subtotal, $discountAmount, 2), $taxTotal, 2);
 
             $invoice->update([

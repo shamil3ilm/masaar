@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Compliance;
 
+use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Fatoora\Services\DocumentBuilder;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
@@ -37,6 +38,8 @@ class UblTotalsTest extends TestCase
 
     private Organization $organization;
 
+    private string $token;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -51,6 +54,17 @@ class UblTotalsTest extends TestCase
             'city' => 'Riyadh',
             'postal_code' => '12345',
         ]);
+
+        $user = User::factory()->create(['email' => 'biller@masaar.test']);
+        $user->organizations()->attach($this->organization->id, [
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+
+        $this->token = $this->postJson('/api/auth/login', [
+            'email' => 'biller@masaar.test',
+            'password' => 'password',
+        ])->json('data.token.access_token');
     }
 
     public function test_a_plain_invoice_adds_up(): void
@@ -79,6 +93,41 @@ class UblTotalsTest extends TestCase
             ['qty' => 1, 'price' => '1000.00', 'rate' => '15', 'category' => 'S'],
             ['qty' => 1, 'price' => '500.00', 'rate' => '0', 'category' => 'Z'],
         ]));
+    }
+
+    /**
+     * A document-level allowance reduces what is taxable. Charging VAT on the
+     * amount before the discount overstates the tax the taxpayer owes, and
+     * leaves TaxExclusiveAmount describing money nobody is paying.
+     */
+    public function test_a_discount_reduces_the_tax(): void
+    {
+        $xml = $this->build([
+            ['qty' => 1, 'price' => '1000.00', 'rate' => '15', 'category' => 'S'],
+        ], discount: '100.00');
+
+        $this->assertConsistent($xml);
+
+        $xpath = $this->xpath($xml);
+
+        $this->assertEqualsWithDelta(
+            135.00,
+            (float) $this->one($xpath, '/*/cac:TaxTotal/cbc:TaxAmount'),
+            0.01,
+            'VAT was charged on the amount before the discount.'
+        );
+    }
+
+    /**
+     * With more than one category the allowance has to be shared out, or one
+     * category absorbs all of it and both bases are wrong.
+     */
+    public function test_a_discount_is_shared_across_categories(): void
+    {
+        $this->assertConsistent($this->build([
+            ['qty' => 1, 'price' => '1000.00', 'rate' => '15', 'category' => 'S'],
+            ['qty' => 1, 'price' => '1000.00', 'rate' => '0', 'category' => 'Z'],
+        ], discount: '200.00'));
     }
 
     /**
@@ -152,54 +201,44 @@ class UblTotalsTest extends TestCase
     }
 
     /**
+     * Build the invoice through the API, then generate its document.
+     *
+     * Through the API on purpose: the totals a document declares come from the
+     * controller, and asserting the identities against numbers the test worked
+     * out for itself would only prove the test agrees with the test.
+     *
      * @param  list<array{qty: int, price: string, rate: string, category: string}>  $lines
      */
     private function build(array $lines, string $discount = '0.00'): string
     {
-        $subtotal = '0';
-        $taxTotal = '0';
-
-        foreach ($lines as $line) {
-            $net = bcmul((string) $line['qty'], $line['price'], 2);
-            $subtotal = bcadd($subtotal, $net, 2);
-            $taxTotal = bcadd($taxTotal, bcdiv(bcmul($net, $line['rate'], 4), '100', 2), 2);
-        }
-
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
-            'org_id' => $this->organization->id,
+        $payload = [
             'invoice_number' => 'INV-'.uniqid(),
-            'type' => 'standard',
-            'status' => 'draft',
+            'type' => 'simplified',
             'issue_date' => now()->toDateString(),
-            'currency' => 'SAR',
             'buyer_name' => 'Buyer Co',
-            'buyer_vat_number' => '311111111111113',
-            'subtotal' => $subtotal,
             'discount_amount' => $discount,
-            'tax_amount' => $taxTotal,
-            'total' => bcadd(bcsub($subtotal, $discount, 2), $taxTotal, 2),
-        ]));
-
-        foreach ($lines as $line) {
-            $net = bcmul((string) $line['qty'], $line['price'], 2);
-            $tax = bcdiv(bcmul($net, $line['rate'], 4), '100', 2);
-
-            $invoice->lines()->create([
+            'lines' => array_map(static fn (array $line): array => array_filter([
                 'description' => 'Item',
-                'quantity' => (string) $line['qty'],
-                'unit_code' => 'PCE',
+                'quantity' => $line['qty'],
                 'unit_price' => $line['price'],
                 'tax_rate' => $line['rate'],
-                'tax_amount' => $tax,
                 'tax_category' => $line['category'],
-                'line_total' => bcadd($net, $tax, 2),
-            ]);
-        }
+                'exempt_code' => $line['category'] === 'S' ? null : 'VATEX-SA-HEA',
+                'exempt_reason' => $line['category'] === 'S' ? null : 'Zero-rated supply',
+            ], static fn ($value): bool => $value !== null), $lines),
+        ];
+
+        $id = $this->withToken($this->token)
+            ->postJson('/api/invoices', $payload)
+            ->assertSuccessful()
+            ->json('data.invoice.id');
+
+        $invoice = Invoice::withoutTenantScope(fn () => Invoice::with('lines')->findOrFail($id));
 
         $credentials = $this->selfSignedCredentials();
 
         return app(DocumentBuilder::class)->generateComplianceData(
-            invoice: $invoice->fresh('lines'),
+            invoice: $invoice,
             organization: $this->organization,
             previousInvoiceHash: null,
             privateKey: $credentials['privateKey'],
