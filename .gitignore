@@ -1,11 +1,20 @@
 *.log
 .DS_Store
+# Editor and tooling backups, wherever they land. The .env rule below already
+# catches .env.bak; this catches the same habit applied to any other file —
+# .claude/settings.json.bak was sitting untracked and would have been committed
+# by the next `git add -A`.
+*.bak
 # Every .env variant except the committed template. Listing suffixes one at a
 # time missed .env.bak, which an editor produced and git would have offered to
 # commit along with a live APP_KEY and database password.
 .env
 .env.*
 !.env.example
+# pnpm's lockfile. This project installs with npm — Dockerfile:34 runs `npm ci`
+# against package-lock.json — and a stray pnpm-lock.yaml from a mistyped
+# directory makes it ambiguous which one CI should believe.
+pnpm-lock.yaml
 .phpactor.json
 .phpunit.result.cache
 /.fleet
