@@ -1,6 +1,6 @@
 # 02 — Repository Inventory
 
-Three repos, not four. `c:\laragon\www\Zatca` does not exist — see [00-map.md](00-map.md).
+Three repositories. Only `Masaar` implements compliance — see [00-map.md](00-map.md).
 
 ---
 
@@ -43,7 +43,7 @@ Masaar/
 
 ### Tests, CI, Docker, env
 
-- **Tests:** 117 files. Suite result on PHP 8.4.12: **704 passed, 3 skipped, 0 failed, 1546 assertions, 30.99s.**
+- **Tests:** 123 files. Suite on PHP 8.4.12: **715 passed, 15 skipped, 0 failed, 1640 assertions, ~30s.** Twelve skips are `ZatcaConformanceTest` without `ZATCA_SDK_PATH`; three are `SecretFileTest` asserting POSIX modes Windows does not enforce.
 - **Notable:** a whole `tests/Feature/Architecture/` suite (18 files) enforcing
   structure — `NoShellOutTest`, `RawTenantQueryTest`, `OpenapiDriftTest`,
   `SdkTypesDriftTest`, `ConfigKeyTest`, `NamingConventionTest`. Rare and good.
@@ -58,34 +58,12 @@ Masaar/
 
 | | |
 |---|---|
-| Branch | `chore/security-remediation-and-cleanup` |
-| Last commit | **2026-08-23** `e83d8fe` *"docs(audit): record two conformance questions rather than guess at them"* |
-| Commits in 90 days | **107** |
-| Remote | `origin` → **`github.com/shamil3ilm/zatca.git`** |
-| Upstream tracking | **not set** for this branch (`git log @{u}..HEAD` errors) |
-| Unpushed | **135 commits ahead of `origin/main`**, 0 behind |
-| `origin/main` HEAD | `262514d`, **2026-02-03** — nearly 7 months stale |
+| Branch | `main` |
+| Remote | `github.com/shamil3ilm/masaar` |
+| Last commit | **2026-08-24** `360852e` |
+| Commits in 90 days | **117** |
+| Unpushed | none |
 | Stashes | none |
-
-> 🔎 **This is where your "`./Zatca`" memory came from.** Masaar's GitHub remote
-> is literally named **`zatca`**. There is no `Zatca` *directory*, but there is a
-> `zatca` *repository* — and it is this one. The brief's instinct was right about
-> the name and wrong only about the shape.
-
-Uncommitted (7 entries):
-```
- M .claude/settings.json          M app/Console/Commands/FatooraGenerateCsr.php
- M README.md                      M app/Console/Commands/FatooraOnboarding.php
- M docs/audit/00-EXECUTIVE-SUMMARY.md
- M app/Console/Commands/FatooraSandboxTest.php
-?? .claude/settings.json.bak      ?? app/Console/Commands/Concerns/
-?? tests/Feature/Compliance/SecretFileTest.php
-```
-This is coherent work-in-progress: a `WritesSecrets` trait being extracted into
-`Concerns/` so the onboarding commands write keys `0600` in a `0700` directory,
-with `SecretFileTest.php` as its test. Not abandoned debris.
-⚠️ `.claude/settings.json.bak` is untracked and unignored — `.gitignore` covers
-`.env.*` but not `*.bak` generally.
 
 ### Files over 1000 lines
 
@@ -114,17 +92,18 @@ is why they don't show up as markers.
 - ✅ SDK table ("None are published to a package registry yet", "🟠 Skeleton") —
   matches `sdks/`.
 - ⚠️ **One overstatement:** the status table says ZATCA is "🟢 Feature
-  complete". Item 34 (cleared XML) is a functional gap, not just an unverified
-  one. "Feature complete" is not quite true.
+  complete — conformance suite pending". The second half is exactly right; the
+  first is generous while `CustomizationID` remains unchecked against the spec
+  and its sibling constant turned out to be wrong.
 - ⚠️ **One stale structural claim:** `README.md:23-35` describes `erp/` as a
   "future git submodule" inside a `Masaar/` monorepo parent. No submodule
-  exists; the repos are independent working copies.
+  exists; the three repositories are independent working copies.
 
 **Verdict: healthy, actively developed, honestly documented.**
 
 ---
 
-## erp-backend — the ERP · **DORMANT, with a large uncommitted change**
+## masaar-erp-backend — the ERP · **DORMANT**
 
 | | |
 |---|---|
@@ -133,26 +112,26 @@ is why they don't show up as markers.
 | Tests | 189 test files; `TESTS.md` present |
 | CI | **none** — no `.github/` directory |
 | Branch | `main` |
-| Last commit | **2026-05-24** `89b055f` *"test: complete Manufacturing module coverage + fix pre-existing failures"* |
-| Commits in 90 days | **0** |
+| Remote | `github.com/shamil3ilm/masaar-erp-backend` |
+| Last commit | **2026-08-24** `86e1923` |
+| Substantive feature work | **May 2026** — the two later commits are a refactor landing and a rename |
+| Uncommitted | none |
+| Tests | **2157 passed, 5500 assertions** |
 
-### 🚩 149 uncommitted changes, 41 of them staged deletions
+### What the last commit contains
 
-```
-M  .env.example    M  .gitignore    M  CLAUDE.md
-D  analyze.php
-D  app/Actions/Accounting/CreateJournalEntryAction.php
-… 40 more staged deletions
-```
+A single large refactor: the `Actions/Commands/DTOs/Queries/UseCases` CQRS layer
+collapsed into the services and listeners already doing the work, SAP prefixes
+stripped from domain names (`PmOrder`→`CounterBasedOrder`,
+`QmDynamicModificationRule`→`DynamicModificationRule`), plus widget providers,
+MRP capacity planning and demand forecasting. 41 deletions, 34 additions, 61
+modifications and 13 git-detected renames at 61–98% similarity.
 
-Three months untouched with a large, **staged but uncommitted** refactor sitting
-in the index. Whatever the intent was, the context is gone. This is the single
-most fragile state in the portfolio: the next person to run `git checkout` or
-`git stash` here can lose work that has no commit and no upstream.
+It passes. The repository is dormant, not broken.
 
 ### Its ZATCA code — a thin client, correctly
 
-erp-backend does **not** duplicate the cryptography. What it has:
+masaar-erp-backend does **not** duplicate the cryptography. What it has:
 
 | File | LOC | What it is |
 |---|---|---|
@@ -178,58 +157,48 @@ No signer, no UBL builder, no hash chain. The boundary is drawn in the right pla
 
 ---
 
-## erp-frontend — the ERP UI · **DORMANT**
+## masaar-erp-frontend — the ERP UI · **DORMANT**
 
 | | |
 |---|---|
 | Stack | Turborepo `^2.0` + pnpm workspaces, React `^19.0`, TypeScript `^5.4` |
 | Apps | `apps/admin`, `apps/staff`, `apps/portal` |
 | Packages | `packages/api-client`, `packages/types`, `packages/ui` |
-| Last commit | **2026-05-24** `4b40835` *"feat: unify auth layout + align all apps to shared Masaar design system"* |
-| Commits in 90 days | **0** |
+| Remote | `github.com/shamil3ilm/masaar-erp-frontend` |
+| Last commit | **2026-08-24** `e2ec76f` |
+| Substantive feature work | **May 2026** — design system; later commits are a formatter consolidation and the `@masaar` scope rename |
+| Uncommitted | none |
 | CI | none found |
+| ⚠️ | Workspace scope renamed `@erp/*`→`@masaar/*`; needs one `pnpm install` to rebuild `node_modules` symlinks |
 
-Contains **no ZATCA logic**. It is the UI for erp-backend and has no independent
+Contains **no ZATCA logic**. It is the UI for masaar-erp-backend and has no independent
 meaning; the two are one product. Note the commit message says "shared Masaar
 design system" — the naming bleeds across repos even though the code does not.
 
-**Verdict: dormant. Cannot ship without erp-backend; shares its fate.**
+**Verdict: dormant. Cannot ship without masaar-erp-backend; shares its fate.**
 
 ---
 
 ## Abandonment flags
 
-| Repo | Local remote URL | **Actual GitHub repo** | Flag |
-|---|---|---|---|
-| Masaar | `shamil3ilm/zatca` | `shamil3ilm/zatca` | 🟢 Active — 107 commits/90d. **`main` 28 ahead; feature branch 135 ahead of `origin/main`.** |
-| erp-backend | `shamil3ilm/qarar` **(stale)** | **`shamil3ilm/masaar`** | 🟠 0 commits/90d · 149 uncommitted incl. 41 staged deletions · no CI |
-| erp-frontend | `shamil3ilm/masaar-frontend` | `shamil3ilm/masaar-frontend` | 🟠 0 commits/90d · `main` 1 **behind** origin · dependent on a dormant backend |
+| Repo | Flag |
+|---|---|
+| Masaar | 🟢 **Active** — 117 commits/90d, clean, pushed, CI green |
+| masaar-erp-backend | 🟠 **Dormant** — no substantive feature work since May 2026 · **no CI** · 274k LOC |
+| masaar-erp-frontend | 🟠 **Dormant** — no substantive feature work since May 2026 · no CI · cannot ship without the backend |
 
-> **Correction.** An earlier revision of this audit reported erp-backend's repo
-> as `qarar`. That is the **stale local remote URL** — `qarar` returns HTTP 301
-> and resolves to `shamil3ilm/masaar` (verified via the GitHub API; `pushed_at`
-> 2026-05-24, matching erp-backend's last commit). Git has been following the
-> redirect silently, so nothing broke and nothing surfaced the drift.
->
-> **The names are crossed:** the directory `Masaar` is the *compliance platform*
-> under repo `zatca`; the directory `erp-backend` is the *ERP* under repo
-> `masaar`. Reading either the folder name or the remote URL alone gives the
-> wrong answer, which is precisely the confusion that produced the wrong premise
-> in this audit's brief.
+Both ERP repos are clean and fully pushed, so nothing is at risk of loss. The
+flag is about attention, not fragility: **one live project, two parked ones.**
+masaar-erp-backend having no CI at 274k LOC is the more serious of the two —
+its 2157 tests only run when someone remembers to run them.
 
-The most urgent operational fact in this audit is not a compliance gap:
-**135 commits — effectively the entire ZATCA implementation and all of the
-security remediation — exist only on this Windows machine.** `origin/main` was
-last updated **2026-02-03**, almost seven months ago. A disk failure today
-costs you the project, not a sprint.
+Folder names, repository names and product identity agree across all three:
 
-**Repo naming is inconsistent across the board** and is actively causing
-confusion (it caused the premise error in this audit's brief):
-
-| Directory | GitHub repo | Product name |
+| Directory | GitHub repo | What it is |
 |---|---|---|
-| `Masaar` | `zatca` | Masaar |
-| `erp-backend` | `qarar` | — |
-| `erp-frontend` | `masaar-frontend` | — (it is the *ERP* frontend, not Masaar's) |
+| `Masaar` | `masaar` | compliance platform |
+| `masaar-erp-backend` | `masaar-erp-backend` | ERP |
+| `masaar-erp-frontend` | `masaar-erp-frontend` | ERP UI |
 
-Three names for two products, and `masaar-frontend` names the wrong parent.
+Verified by `git ls-remote` against each clone's `main`. Old names redirect.
+See [00-map.md](00-map.md).

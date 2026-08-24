@@ -9,159 +9,111 @@ blocked on verification, not construction, and verification starts here.
 
 ---
 
-## Why L2 and not "go straight to the sandbox"
+## Exit criteria for L2
 
-Tempting, because the sandbox would verify a dozen things at once. But a sandbox
-run without local schema validation gives you a rejection with a ZATCA error
-code and no local way to iterate. You would be debugging through a remote API
-with a slow feedback loop.
+- [ ] A ZATCA SDK available locally, with a Java runtime
+- [ ] `ZATCA_SDK_PATH` set so `ZatcaConformanceTest` runs instead of skipping
+- [ ] All twelve conformance cases **pass** — UBL 2.1 schema, EN16931, ZATCA
+      Schematron, PIH chain — across standard/simplified × invoice/credit/debit
+- [ ] `CustomizationID` confirmed against the SDK's sample invoices
+- [ ] The run reproducible: the SDK path documented in `.env.example` and CI
 
-**Get the XSD first.** Then every fix is a local test run, and the sandbox
-becomes a confirmation rather than a debugger.
+Deliberately **not** in scope: a live sandbox call, CCSID/PCSID onboarding, the
+six-document compliance submission. Those are L4 and they come after this.
 
 ---
 
-## Exit criteria for L2
+## The shape of the work has changed
 
-- [ ] ZATCA UBL 2.1 XSDs vendored in the repo
-- [ ] `InvoiceValidator::validateAgainstSchema()` actually calls `schemaValidate()`
-- [ ] A test that fails the build when generated XML violates the schema
-- [ ] All six document types validate — standard/simplified × invoice/credit/debit
-- [ ] Q1 and Q2 from [06-risks.md](06-risks.md) resolved and **asserted by test**
+An earlier plan here was to vendor the XSDs and wire `schemaValidate()` by hand.
+**That work is largely unnecessary now.** `ZatcaConformanceTest` and
+`ZatcaSdk.php` already drive ZATCA's own SDK, which carries the schema, the
+EN16931 rules and the Schematron together — a stricter oracle than the XSD
+alone, and the one the authority actually uses.
 
-Deliberately **not** in scope: signature verification against ZATCA's profile,
-schematron/BR-KSA rules, any live call. Those are L3/L4.
+What remains is supplying the SDK and reading what it says.
 
 ---
 
 ## Dependency order
 
 ```
-T1  Obtain + vendor the ZATCA XSDs
+T1  Obtain the SDK, set ZATCA_SDK_PATH
      │
-     ├──────────────┐
-     ▼              ▼
-T2  Wire            T3  Resolve Q1/Q2
-    schemaValidate      (CustomizationID,
-     │                   ProfileID)
-     │                   ⟵ can start now, independent
-     └──────┬───────────┘
-            ▼
-      T4  Six-type validation test  → L2 reached
+     ▼
+T2  Run the suite; fix what it reports      T3  Settle CustomizationID
+     │                                       (independent — start anytime,
+     ▼                                        though T1 answers it for free)
+T4  Make the run reproducible  →  L2
 ```
-
-T3 has no dependency on T1 — it is documentation research. **Start it in
-parallel** if you have a spare evening; it is the only task here that is not
-keyboard work.
 
 ---
 
 ## The first three tasks
 
-### T1 — Obtain and vendor the ZATCA XSDs · **2–4 h**
+### T1 — Obtain the SDK and point the harness at it · **1–3 h**
 
 The single highest-leverage action available. Everything else waits on it.
 
 **Do:**
-1. Download the ZATCA E-Invoicing SDK from the Fatoora portal (developer
-   resources / technical guidelines package).
-2. Extract the UBL 2.1 schema set. The path already referenced in the codebase
-   tells you what the tree looks like:
-   [`FatooraGenerateCsr.php:263`](../app/Console/Commands/FatooraGenerateCsr.php#L263)
-   → `.../Data/Schemas/xsds/UBL2.1/xsd/maindoc/UBL-Invoice-2.1.xsd`
-3. Vendor to `resources/zatca/xsd/` — the path `InvoiceValidator` already
-   anticipates ([`:525`](../app/Domains/Compliance/Fatoora/Services/InvoiceValidator.php#L525)
-   references `resources/zatca/Invoice.xsd`).
-4. Keep the **whole** schema tree, not just `maindoc` — UBL imports
-   `common/UBL-CommonAggregateComponents-2.1.xsd` and friends; a lone maindoc
-   file will not resolve.
-5. Commit them. They are spec artefacts, not dependencies — vendoring is correct.
+1. Download the ZATCA E-Invoicing SDK from the Fatoora portal.
+2. Confirm a Java runtime is on `PATH` — `ZatcaSdk.php:47` skips without one.
+3. Set `ZATCA_SDK_PATH` to the directory holding `Apps/` and `Data/`; the
+   fixture looks for a jar beneath it (`:43`).
+4. Run the suite and confirm the twelve cases execute rather than skip.
 
-**Watch for:** `libxml` resolving imports relative to the XSD's own path. Load by
-file path, not by string, or the imports break. Note `App\Support\Xml` sets
-`LIBXML_NONET` — good for security, and it means every import must be local.
+**Watch for:** the SDK is licensed and must not be committed — that is exactly
+why the harness takes a path. Keep it outside the repository.
 
-**Done when:** `resources/zatca/xsd/` exists and a throwaway script can
-`schemaValidate()` any well-formed UBL document without an import error.
+**Done when:** `artisan test` reports fewer than 15 skips, and the conformance
+cases show a result either way.
 
 ---
 
-### T2 — Wire schema validation into the pipeline · **4–6 h**
+### T2 — Fix what the validator reports · **4–12 h** *(genuinely unknown)*
 
-**Do:**
-1. Replace the commented-out block at
-   [`InvoiceValidator.php:519-526`](../app/Domains/Compliance/Fatoora/Services/InvoiceValidator.php#L519-L526)
-   with a real implementation:
-   - `libxml_use_internal_errors(true)`, then collect `libxml_get_errors()` into
-     the existing `ValidationResult` shape rather than throwing raw.
-   - Return line/column and the failing element — a bare "invalid" is useless.
-2. Add `fatoora.validation.schema_path` to `config/fatoora.php`.
-   ⚠️ `ConfigKeyTest` and `EnvExampleTest` will fail the build if you add a
-   config key without registering it — that is the architecture suite working.
-3. Decide where it runs. **Recommendation: validate at generation, not at
-   submission** — inside `DocumentBuilder::generateComplianceData()`, *before*
-   signing. A document that fails the schema should never be signed, because
-   signing is what makes it an issued invoice
-   ([`Submitter.php:80-86`](../app/Domains/Compliance/Fatoora/Services/Submitter.php#L80-L86)).
-4. Put it behind `config('fatoora.validation.enforce_schema', true)` so it can be
-   disabled if a schema mismatch ever blocks issuance in production.
+This is the only estimate here that could be badly wrong, and it should be read
+as a range rather than a number. The first real conformance run on a system that
+has never had one typically surfaces several findings at once.
 
-**Watch for:** schema validation is not free (~5–20 ms per document). Fine at
-current scale; note it before it is a batch of 10,000.
+`ProfileID` is the precedent: a single wrong constant that no internal test
+could have caught, because the repository did not contain the knowledge. Expect
+more of that shape — namespace declarations, element ordering, the transform set
+used for the invoice digest, `SigningCertificate` digest form.
 
-**Done when:** a deliberately malformed `InvoiceXmlData` produces a validation
-failure naming the offending element, and a valid one passes.
+**Do:** run, read the validator output, fix, re-run. Each fix should land with a
+test that pins the corrected value, in the manner of `XmlProfileTest`.
 
 ---
 
-### T3 — Resolve Q1 and Q2 · **2–3 h** *(parallelisable)* · **half already done**
+### T3 — Settle `CustomizationID` · **2–3 h** *(parallelisable)*
 
-> **Update:** the *pinning* half of this task landed during the audit.
-> `tests/Feature/Compliance/XmlProfileTest.php` now asserts both values and
-> `fatoora:validate` reads the real document rather than printing hardcoded
-> ticks. **The values themselves are unchanged, so the question is still open** —
-> what remains is step 1 and 2 below, not step 3.
+`XmlProfileTest` already pins both spec constants, so neither drifts unnoticed.
+Pinning is not verification: `CustomizationID` remains unchecked against the
+specification ([06-risks.md](06-risks.md) R-3 Q1).
 
-Two constants are probably wrong ([06-risks.md](06-risks.md) R-3):
+[`XmlBuilder.php:125`](../app/Domains/Compliance/Fatoora/Services/XmlBuilder.php#L125)
+emits `urn:oasis:names:specification:ubl:xpath:Invoice-2.0:sac-mod`, a generic
+OASIS string. ASSUMPTION: ZATCA expects `urn:sa:zatca:documents:1.0`.
 
-| | Current | Suspected correct |
-|---|---|---|
-| `CustomizationID` [`XmlBuilder.php:125`](../app/Domains/Compliance/Fatoora/Services/XmlBuilder.php#L125) | `urn:oasis:names:specification:ubl:xpath:Invoice-2.0:sac-mod` | `urn:sa:zatca:documents:1.0` |
-| `ProfileID` [`XmlBuilder.php:130`](../app/Domains/Compliance/Fatoora/Services/XmlBuilder.php#L130) | `clearance:1.0` / `reporting:1.0` | possibly `reporting:1.0` for **both** |
+**Do:** read the literal value in the SDK's sample invoices, correct
+`XmlBuilder` if it differs, and update the pinned constant at
+`XmlProfileTest:33` in the same commit — which is the deliberate act that test
+exists to force.
 
-**Do:**
-1. Open a ZATCA-published sample invoice — they ship with the SDK from T1, so
-   this lands naturally alongside it. Read the literal values.
-2. Correct `XmlBuilder.php:125,130` if they differ — and update the pinned
-   constant in `XmlProfileTest.php:28` in the same commit, which is exactly the
-   "deliberate act" that test exists to force.
-3. ~~Write the test~~ — done. `XmlProfileTest` already guards both.
-
-**Watch for:** if `ProfileID` turns out to be `reporting:1.0` for both types,
-check whether anything *else* branches on `isSimplified()` for the same reason —
-the clearance/reporting **endpoint** split at
-[`Submitter.php:171-186`](../app/Domains/Compliance/Fatoora/Services/Submitter.php#L171)
-is correct regardless and must not be "fixed" along with it.
-
-**Done when:** two tests assert the literal strings, and both fail if the values
-are changed.
+**Note:** T1 answers this for free. If you are doing T1 anyway, fold this in.
 
 ---
 
-## Then: T4 — the six-type validation test · **4–6 h**
+## Then: T4 — make the run reproducible · **2–4 h**
 
-Not one of the first three, but it is what closes the rung.
+A conformance run that only works on one machine is not a gate. Document
+`ZATCA_SDK_PATH` in `.env.example`, and decide how CI gets the SDK — a cached
+artifact, a self-hosted runner, or an accepted "conformance runs locally before
+release" policy. Any of the three is defensible; leaving it undecided is not.
 
-`OnboardingController::generateTestInvoices()`
-([`:226-250`](../app/Domains/Compliance/Fatoora/Http/Controllers/OnboardingController.php#L226-L250))
-already builds exactly the six documents ZATCA's compliance suite requires, with
-chained ICVs, a genesis PIH, and billing references on the notes. **Point that
-generator at the XSD instead of at ZATCA.** You get the entire compliance matrix
-validated locally, at build time, for a fraction of the effort of writing
-fixtures by hand.
-
-That is the last exit criterion. When it passes, you are at **L2** and the
-sandbox run becomes worth doing.
+That is the last exit criterion. When the twelve cases pass and the run is
+repeatable, you are at **L2**.
 
 ---
 
@@ -169,37 +121,28 @@ sandbox run becomes worth doing.
 
 | Task | Hours | Blocking? |
 |---|---|---|
-| T1 Vendor the XSDs | 2–4 | **Yes — blocks everything** |
-| T2 Wire `schemaValidate()` | 4–6 | Yes |
-| T3 Resolve Q1/Q2 (pinning already done) | 2–3 | No — start anytime |
-| **First three** | **8–13 h** | |
-| T4 Six-type validation test | 4–6 | Closes L2 |
-| **To reach L2** | **12–19 h** | |
+| T1 Obtain SDK, set `ZATCA_SDK_PATH` | 1–3 | **Yes — blocks everything** |
+| T2 Fix what the validator reports | 4–12 | Yes |
+| T3 Settle `CustomizationID` | 2–3 | No — T1 answers it for free |
+| T4 Make the run reproducible | 2–4 | Closes L2 |
+| **To reach L2** | **9–22 h** | |
 
-Two to three focused days. T1 answers Q1 and Q2 as a side effect — the SDK
-download that carries the XSDs also carries ZATCA's sample invoices.
+Call it two to four days. The spread is real and it lives almost entirely in T2:
+nobody knows what the first conformance run reports until it runs. T1 alone is
+an afternoon, and it converts the largest unknown in this audit into a list.
 
 ---
 
-## Two things to do before T1, because they take minutes
+## Baseline
 
-Neither is on the ladder; both protect the work that is.
+`main`, clean tree, **715 passed / 15 skipped (1640 assertions)** on PHP 8.4.12.
+Twelve of those skips are the conformance suite this document exists to switch
+on.
 
-1. **Push.** 135 commits — effectively the entire ZATCA implementation — exist
-   only on this machine, and `origin/main` is from 2026-02-03.
-   `git push -u origin chore/security-remediation-and-cleanup`. *(R-11, 5 min)*
-2. **Commit erp-backend's working tree.** 149 uncommitted changes including 41
-   staged deletions, dormant three months. One `git checkout` from gone.
-   *(R-12, ~1 h)*
-
-## The current uncommitted tree is ready to commit
-
-I flagged the `cleared_xml` work as untested; `ClearedDocumentTest.php` then
-landed and covers it well, along with `XmlProfileTest.php` and `SecretFileTest.php`.
-Suite re-run: **715 passed, 3 skipped (1589 assertions)**. R-1 is closed.
-
-Nothing blocks committing this tree. Do it before starting T1, so the audit's
-baseline and yours agree.
+⚠️ The default `php` on this machine is **8.2.28**; `composer.json` requires
+`^8.4`, so `php artisan test` aborts in `platform_check.php` **and exits 0** — a
+failure that reports success. Use
+`C:\laragonin\php\php-8.4.12-nts-Win32-vs17-x64\php.exe`.
 
 ---
 

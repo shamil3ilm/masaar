@@ -1,11 +1,10 @@
 # 06 — Risk Register
 
-Assessed against the **working tree**, not HEAD `e83d8fe` — the tree changed
-during this audit ([99-denied.md](99-denied.md)).
+Assessed against `main`.
 
 | ID | Risk | Severity | Evidence | Fix | Effort |
 |---|---|---|---|---|---|
-| **R-1** | ~~The cleared-XML fix has no test~~ **CLOSED during this audit** | ⚪ CLOSED | `tests/Feature/Compliance/ClearedDocumentTest.php` landed before I finished: asserts population from base64 (`:79`), difference from `signed_xml` (`:89`), `legal_xml` precedence (`:93`), null on reporting (`:106-107`), verbatim retention of non-base64 (`:119`), and presence in the pipeline payload (`:130`). | — | done |
+| **R-1** | The conformance suite is built but never runs | 🔴 CRITICAL | `ZatcaSdk.php:34-47` skips unless `ZATCA_SDK_PATH` is set; twelve `ZatcaConformanceTest` cases stand down. No generated document has met ZATCA’s schema, EN16931 rules or Schematron. | Set `ZATCA_SDK_PATH`, run the suite, fix what it reports. | 2–4 h |
 | **R-2** | One encryption secret covers every tenant; no KMS | 🟠 HIGH | `CredentialStore::cipher()` `:60-76`. The docblock `:29-31` names this as the open half of a prior finding. | Per-tenant data key wrapped by a KMS. `cipher()` is the only place that changes — the class was built for this. | 8–16 h |
 | **R-3** | **Four unresolved ZATCA spec questions.** Nothing in the codebase can settle them. | 🔴 CRITICAL | See table below | Read the spec / ask ZATCA. Do **not** guess. | 4–8 h research |
 | **R-4** | B2B clearance is treated as non-blocking | 🟠 HIGH | `PipelineService.php:30-32` "once an invoice is issued it stays issued"; `:143-189` catches all; issuance at `Submitter.php:80-86` precedes submission. | Split the rule by document type — see "Failure paths" below. | 6–10 h |
@@ -16,7 +15,7 @@ during this audit ([99-denied.md](99-denied.md)).
 | **R-9** | No **push** alert when submissions fail platform-wide | 🟡 MEDIUM | `MetricsController.php:221-222` exposes `queue_failed_jobs_total` (pull-only; no Prometheus configured in repo). Tenant webhooks fire; nothing pages you. Contrast `CheckCertificateExpiry` `:171-188`, which pushes on a threshold ladder. | Mirror the certificate-alert pattern for submission failure rate. | 3–5 h |
 | **R-10** | No retention policy | 🟡 MEDIUM | No `retention` config; not stated in `docs/`. ZATCA/GAZT require multi-year retention (commonly cited as 6 years for VAT — **unverified**, see R-3). | Confirm the period, then document and enforce it. Nothing currently deletes invoices, so this is a policy gap, not active data loss. | 2–3 h + research |
 | **R-11** | 135 commits unpushed; `origin/main` 7 months stale | 🟠 HIGH | `git rev-list --count origin/main..HEAD` = **135**; `origin/main` HEAD `262514d` = **2026-02-03**. | `git push -u origin chore/security-remediation-and-cleanup`. | 5 min |
-| **R-12** | erp-backend: 149 uncommitted changes incl. 41 staged deletions, dormant 3 months | 🟠 HIGH | `git status --short` in `erp-backend`; last commit `89b055f` 2026-05-24; 0 commits/90d; no CI. | Commit to a branch or stash with a message. The context is already gone; the work is one `checkout` from following it. | 1–2 h |
+| **R-12** | masaar-erp-backend: 149 uncommitted changes incl. 41 staged deletions, dormant 3 months | 🟠 HIGH | `git status --short` in `masaar-erp-backend`; last commit `89b055f` 2026-05-24; 0 commits/90d; no CI. | Commit to a branch or stash with a message. The context is already gone; the work is one `checkout` from following it. | 1–2 h |
 | **R-13** | Default `php` on this machine silently no-ops the test suite | 🟡 MEDIUM | `php -v` = 8.2.28; `composer.json` requires `^8.4`; `php artisan test` dies in `platform_check.php` **with exit code 0**. | Use the 8.4.12 binary, or make it the Laragon default. CI is already correct (`ci.yml` pins 8.4). | 15 min |
 | **R-14** | `invoice_number` not unique per tenant | 🟡 MEDIUM | `0080:62` — non-unique index only. Enforced in app code by `DuplicateDetector`. | Unique `(org_id, invoice_number)` — see [05-data-model.md](05-data-model.md). | 1 h |
 | **R-15** | Buyer-VAT lookup is a full table scan | 🟢 LOW | `invoices.buyer_vat_number` unindexed (`0080:28`). Gap item 35 asks for retrieval by VAT number. | Add index. | 30 min |
@@ -28,48 +27,31 @@ during this audit ([99-denied.md](99-denied.md)).
 
 ## R-3 in detail — the four questions only the spec can answer
 
-I am flagging these rather than guessing, which is also what the most recent
-commit did (`e83d8fe` *"record two conformance questions rather than guess at
-them"*). **Do not act on my assumptions here.**
+These are flagged rather than guessed at. **Do not act on the assumptions
+below without checking them against the specification.**
 
 | # | Question | Current code | Why it matters |
 |---|---|---|---|
 | **Q1** | Is `CustomizationID` correct? | `urn:oasis:names:specification:ubl:xpath:Invoice-2.0:sac-mod` — [`XmlBuilder.php:125`](../app/Domains/Compliance/Fatoora/Services/XmlBuilder.php#L125) | This is a **generic OASIS** string. ASSUMPTION: ZATCA expects `urn:sa:zatca:documents:1.0`. A wrong value is likely rejected at the schematron gate. **Nothing asserts it.** |
-| **Q2** | ~~Is `ProfileID` correct per document type?~~ **ANSWERED — it was wrong** | Now `reporting:1.0` for **every** document type — [`XmlBuilder.php:127-137`](../app/Domains/Compliance/Fatoora/Services/XmlBuilder.php#L127-L137) | **Resolved during this audit, and the assumption was correct.** It emitted `clearance:1.0` for standard invoices. ZATCA's validator rejects that as **`BR-KSA-EN16931-01` — "Business process (BT-23) must be reporting:1.0"**, and all nineteen SDK sample invoices carry `reporting:1.0`. As the new comment puts it: *"Clearance is chosen by the endpoint the document is sent to, not by a field inside it."* Pinned by `XmlProfileTest:66` plus a negative assertion at `:75`. **This was a real defect that would have failed every standard invoice.** |
+| **Q2** | ~~`ProfileID` per document type~~ **SETTLED** | `reporting:1.0` for every type — [`XmlBuilder.php:127-137`](../app/Domains/Compliance/Fatoora/Services/XmlBuilder.php#L127-L137) | Settled against ZATCA’s SDK samples: BT-23 is `reporting:1.0` on all nineteen, and the validator rejects anything else as `BR-KSA-EN16931-01`. Clearance is chosen by the endpoint, not by a field in the document. Pinned by `XmlProfileTest:66` and a negative assertion at `:75`. |
 | **Q3** | Is the ICV/PIH chain per **taxpayer** or per **EGS unit**? | Per taxpayer — `hash_chain_state` PK is `org_id` ([`0160:14`](../database/migrations/0160_hash_chain.php#L14)), `generateNextIcv($organizationId)` ([`Invoice.php:212`](../app/Domains/Invoice/Models/Invoice.php#L212)) | Branches are modelled as EGS units *everywhere else* — separate certificates, separate onboarding, branch-scoped credential paths. If ZATCA requires a chain per unit, this is **the most expensive defect in the codebase**, and it gets worse with every invoice issued. |
 | **Q4** | Is a separate Arabic party name mandated? | No bilingual columns; one `name` / `buyer_name` | Cheap now (a migration), expensive after data exists. |
 
 **Q3 is the one to settle first.** Q1, Q2 and Q4 are hours of work to correct.
 Q3 is a re-keying of the chain, and its cost grows monotonically.
 
-### Update — Q1/Q2 are now guarded, still unanswered
+### Why Q1 still matters
 
-`tests/Feature/Compliance/XmlProfileTest.php` landed during this audit and pins
-both values, closing the asymmetry I flagged (the UAE path pinned its equivalents
-at `FtaXmlBuilderTest.php:39,44`; the Saudi path pinned neither). The test file
-is explicit about its own limits, correctly:
+`XmlProfileTest` pins both constants, so neither can drift unnoticed — but the
+test says plainly what that is worth: *"a tripwire, not a certificate: whether
+these are the values ZATCA requires is an open question."*
 
-> *"These tests pin what is emitted today. They are a tripwire, not a
-> certificate: whether these are the values ZATCA requires is an open question
-> recorded in the audit, and answering it needs the published schema."*
+Q2 turned out to be wrong. `CustomizationID` sits in the same file, in the same
+unverified condition, and the check that settled one settles the other.
 
-**Then Q2 was answered, and it was a genuine defect.** `ProfileID` now emits
-`reporting:1.0` for every document type; the old `clearance:1.0` for standard
-invoices would have been rejected by ZATCA as `BR-KSA-EN16931-01`. The fix cites
-the validator rule and all nineteen SDK sample invoices, and is pinned by a
-positive and a negative assertion.
-
-**Q1 is still open.** `CustomizationID` at `XmlBuilder.php:125` is unchanged —
-still `urn:oasis:names:specification:ubl:xpath:Invoice-2.0:sac-mod`, and
-`XmlProfileTest:33` pins that value as a tripwire rather than as a verified one.
-Given Q2 turned out to be wrong, **Q1 deserves the same scrutiny against the
-same SDK samples** — the check that caught one is the check that would settle
-the other, and it is the same file open on screen.
-
-`FatooraValidate.php` was also reworked in the same pass — its checklist now
-reads the generated document instead of printing eighteen hardcoded ticks, so it
-can report a *missing* element (`XmlProfileTest::test_checklist_can_report_absence`).
-A self-reporting tool that could only say yes is a good thing to have fixed.
+`FatooraValidate` reads the generated document rather than printing a fixed
+checklist, so it can report a missing element instead of only confirming
+presence (`XmlProfileTest::test_checklist_can_report_absence`).
 
 ---
 

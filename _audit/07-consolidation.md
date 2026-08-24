@@ -83,8 +83,8 @@ exposes, then extract.** The seam will still be there.
 | Repo | Product | Last commit | 90d commits | State |
 |---|---|---|---|---|
 | **Masaar** (`origin: zatca`) | Compliance API | 2026-08-23 | **107** | Alive, 135 commits unpushed |
-| **erp-backend** (`origin: qarar`) | ERP | 2026-05-24 | **0** | Dormant · 149 uncommitted · 41 staged deletions · no CI · 274k LOC |
-| **erp-frontend** (`origin: masaar-frontend`) | ERP UI | 2026-05-24 | **0** | Dormant · dependent on the above |
+| **masaar-erp-backend** (`origin: qarar`) | ERP | 2026-05-24 | **0** | Dormant · 149 uncommitted · 41 staged deletions · no CI · 274k LOC |
+| **masaar-erp-frontend** (`origin: masaar-frontend`) | ERP UI | 2026-05-24 | **0** | Dormant · dependent on the above |
 
 Three repos, **two products**, **one developer**, **no client**.
 
@@ -98,7 +98,7 @@ with a coherent test suite, and the only one that is independently sellable.
 15,106 lines of ZATCA logic and 704 passing tests is a real asset. Everything in
 this audit's next-steps applies here and nowhere else.
 
-**2. erp-backend — PARK, deliberately and safely. Do not delete.**
+**2. masaar-erp-backend — PARK, deliberately and safely. Do not delete.**
 
 I am not telling you to delete 274,398 lines and 189 test files. But be honest
 about what it is: **a full ERP is not a side quest.** SAP and Odoo are ERPs;
@@ -106,7 +106,7 @@ Masaar is a compliance API. One solo developer cannot ship both, and the ERP has
 had zero commits in three months while Masaar had 107 — you have already chosen,
 you just have not said so.
 
-The urgent part is **not** the decision. It is that erp-backend holds **149
+The urgent part is **not** the decision. It is that masaar-erp-backend holds **149
 uncommitted changes including 41 staged deletions** with no commit and three
 months of lost context. That is one `git checkout` from gone. Commit it to a
 branch today, whatever state it is in.
@@ -115,7 +115,7 @@ Then leave it. It is your reference implementation of a real ERP integrating
 with Masaar, which is worth something as a demo and as proof the partner API
 works end to end.
 
-**3. erp-frontend — PARK with erp-backend.** It has no independent meaning; it
+**3. masaar-erp-frontend — PARK with masaar-erp-backend.** It has no independent meaning; it
 is the UI for a dormant backend. Same fate, same reasoning.
 
 ### Which overlaps to remove
@@ -124,10 +124,10 @@ Two things genuinely duplicate, and both should collapse **toward Masaar**:
 
 | Overlap | Where | Verdict |
 |---|---|---|
-| **Circuit breaker** | `erp-backend/app/Services/Compliance/CircuitBreaker.php` vs `Masaar/.../Fatoora/Services/CircuitBreaker.php` (334 L) | Masaar's is the real one — it guards the actual ZATCA calls. erp-backend's guards an HTTP call to Masaar, which is a different and much simpler problem; Laravel's `Http::retry()` covers it. **Delete erp-backend's.** |
-| **Qatar GTA** | `erp-backend/app/Services/Compliance/QatarGtaEInvoiceService.php` vs `Masaar/docs/qa/` (planned) | Two answers to one question, in the wrong repo. Qatar compliance belongs behind `ComplianceRouter` alongside `FatooraEngine` and `FtaEngine`. **Delete erp-backend's** when Qatar is actually built; until then it is dead weight in a dormant repo. |
+| **Circuit breaker** | `masaar-erp-backend/app/Services/Compliance/CircuitBreaker.php` vs `Masaar/.../Fatoora/Services/CircuitBreaker.php` (334 L) | Masaar's is the real one — it guards the actual ZATCA calls. masaar-erp-backend's guards an HTTP call to Masaar, which is a different and much simpler problem; Laravel's `Http::retry()` covers it. **Delete masaar-erp-backend's.** |
+| **Qatar GTA** | `masaar-erp-backend/app/Services/Compliance/QatarGtaEInvoiceService.php` vs `Masaar/docs/qa/` (planned) | Two answers to one question, in the wrong repo. Qatar compliance belongs behind `ComplianceRouter` alongside `FatooraEngine` and `FtaEngine`. **Delete masaar-erp-backend's** when Qatar is actually built; until then it is dead weight in a dormant repo. |
 
-**What is not an overlap:** erp-backend's `CompliPayClient` /
+**What is not an overlap:** masaar-erp-backend's `CompliPayClient` /
 `ZatcaInvoiceTransformer` / `ZatcaClientV1` are a thin, correct client (757 lines
 total, no cryptography). Keep them. That boundary is drawn in the right place
 and is the proof that Masaar's partner API is usable.
@@ -139,8 +139,8 @@ This actively caused the wrong premise in this audit's brief:
 | Directory | GitHub repo | Should be |
 |---|---|---|
 | `Masaar` | `zatca` | `masaar` |
-| `erp-backend` | `qarar` | `qarar-backend` (or `masaar-erp`) |
-| `erp-frontend` | `masaar-frontend` | `qarar-frontend` — it is **not** Masaar's frontend |
+| `masaar-erp-backend` | `qarar` | `qarar-backend` (or `masaar-erp`) |
+| `masaar-erp-frontend` | `masaar-frontend` | `qarar-frontend` — it is **not** Masaar's frontend |
 
 Two `gh repo rename` calls and a local `git remote set-url`. Ten minutes, and it
 stops the confusion recurring.
@@ -163,10 +163,10 @@ promises a structure the repos do not have.
 
 ### Concretely, this week
 
-1. `cd erp-backend && git checkout -b wip/2026-05-refactor && git add -A && git commit` — **stop the bleeding** (R-12)
+1. `cd masaar-erp-backend && git checkout -b wip/2026-05-refactor && git add -A && git commit` — **stop the bleeding** (R-12)
 2. `cd Masaar && git push -u origin chore/security-remediation-and-cleanup` — **135 commits off this machine** (R-11)
 3. Rename the three repos
-4. Delete `erp-backend/app/Services/Compliance/CircuitBreaker.php`
+4. Delete `masaar-erp-backend/app/Services/Compliance/CircuitBreaker.php`
 5. Correct `README.md:23-35` to describe the repos as they are
 
 Then everything else in [08-next.md](08-next.md), which concerns only Masaar.
