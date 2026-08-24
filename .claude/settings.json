@@ -96,7 +96,10 @@
     "defaultMode": "dontAsk",
     "additionalDirectories": [
       "c:\\laragon\\www\\masaar-erp-backend",
-      "c:\\laragon\\www\\masaar-erp-frontend"
+      "c:\\laragon\\www\\masaar-erp-frontend",
+      "c:\\laragon\\www\\masaar-erp-backend\\app\\Services\\Compliance",
+      "c:\\laragon\\www\\masaar-erp-backend\\.github\\workflows",
+      "c:\\laragon\\www\\masaar-erp-frontend\\.github\\workflows"
     ]
   }
 }

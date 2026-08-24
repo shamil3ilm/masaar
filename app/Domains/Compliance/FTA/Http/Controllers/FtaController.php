@@ -15,10 +15,10 @@ use Illuminate\Http\JsonResponse;
 /**
  * UAE FTA e-Invoicing Controller.
  *
- * POST /api/compliance/uae-fta/submit/{invoiceId}      — generate + submit
- * GET  /api/compliance/uae-fta/status/{submissionId}   — check status
- * POST /api/compliance/uae-fta/retry/{submissionId}    — retry failed submission
- * GET  /api/compliance/uae-fta/submissions             — list submissions
+ * POST /api/compliance/ae/submit/{invoiceId}      — generate + submit
+ * GET  /api/compliance/ae/status/{submissionId}   — check status
+ * POST /api/compliance/ae/retry/{submissionId}    — retry failed submission
+ * GET  /api/compliance/ae/submissions             — list submissions
  */
 class FtaController extends Controller
 {
