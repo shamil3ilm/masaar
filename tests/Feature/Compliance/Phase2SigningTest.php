@@ -71,6 +71,12 @@ class Phase2SigningTest extends TestCase
      * the assertion held while the signature sat directly under Invoice,
      * because the scaffold was never built and the signer had nowhere to put
      * it. The location is now read from the tree.
+     *
+     * The path is deeper than ExtensionContent. ZATCA reads the signature
+     * through the UBL signature envelope — sig:UBLDocumentSignatures wrapping
+     * a sac:SignatureInformation that carries the ID BR-KSA-28 checks for — and
+     * this asserted the bare ds:Signature the signer used to write, which the
+     * authority's own validator rejects.
      */
     public function test_signature_is_embedded_in_ubl_extensions(): void
     {
@@ -84,12 +90,31 @@ class Phase2SigningTest extends TestCase
             'ext',
             'urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2'
         );
-
-        $signatures = $xpath->query(
-            '/*/ext:UBLExtensions/ext:UBLExtension/ext:ExtensionContent/ds:Signature'
+        $xpath->registerNamespace(
+            'sig',
+            'urn:oasis:names:specification:ubl:schema:xsd:CommonSignatureComponents-2'
+        );
+        $xpath->registerNamespace(
+            'sac',
+            'urn:oasis:names:specification:ubl:schema:xsd:SignatureAggregateComponents-2'
+        );
+        $xpath->registerNamespace(
+            'cbc',
+            'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2'
         );
 
-        $this->assertSame(1, $signatures->length, 'The signature is not inside ExtensionContent.');
+        $information = '/*/ext:UBLExtensions/ext:UBLExtension/ext:ExtensionContent'
+            .'/sig:UBLDocumentSignatures/sac:SignatureInformation';
+
+        $signatures = $xpath->query($information.'/ds:Signature');
+
+        $this->assertSame(1, $signatures->length, 'The signature is not inside the UBL signature envelope.');
+
+        $this->assertSame(
+            'urn:oasis:names:specification:ubl:signature:1',
+            $xpath->evaluate("string({$information}/cbc:ID)"),
+            'BR-KSA-28 reads this ID and it is not the one ZATCA requires.'
+        );
 
         $signature = $signatures->item(0);
 

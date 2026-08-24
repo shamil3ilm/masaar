@@ -56,6 +56,7 @@ class Invoice extends Model
         'hash',
         'qr_code',
         'signed_xml',
+        'cleared_xml',
         'icv',
         'zatca_response',
         'notes',
@@ -131,6 +132,9 @@ class Invoice extends Model
         'hash',
         'qr_code',
         'signed_xml',
+        // Clearance happens after issue by definition, so the document the
+        // authority returns arrives on an already-finalized invoice.
+        'cleared_xml',
         'zatca_response',
         'notes',
         'erp_reference_id',
@@ -280,6 +284,24 @@ class Invoice extends Model
     public function requiresClearance(): bool
     {
         return $this->type->requiresClearance();
+    }
+
+    /**
+     * The document of record: what to archive, and what to hand anyone who
+     * asks for this invoice.
+     *
+     * For a standard invoice, ZATCA clears it and returns its own stamped
+     * copy. That copy is the legal invoice; the one we submitted is a
+     * proposal the authority has since signed off. For a simplified invoice
+     * there is no clearance — it is reported after the fact — so what we
+     * signed is what stands.
+     *
+     * Both are kept. signed_xml is what we sent, which is the evidence of what
+     * we asked for; cleared_xml is what came back, which is the invoice.
+     */
+    public function getLegalXmlAttribute(): ?string
+    {
+        return $this->cleared_xml ?? $this->signed_xml;
     }
 
     /**

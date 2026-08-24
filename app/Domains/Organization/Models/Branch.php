@@ -216,13 +216,27 @@ class Branch extends Model
 
     /**
      * Generate unique device serial for new branch.
+     *
+     * Segment 3 names the solution that issued the unit. It is not a label:
+     * getCsrData() passes device_serial as the CSR common name, so this string
+     * is signed into the CSID ZATCA issues and identifies the EGS unit to the
+     * authority from then on.
+     *
+     * Which is why it was renamed here and not later. It read 3-COMPLIPAY, the
+     * platform's former name, and changing it after a unit is onboarded means
+     * re-onboarding that unit — the certificate attests the old serial. Nothing
+     * has been onboarded yet, so the cost today is zero and only rises.
+     *
+     * Existing rows keep the serial they were issued under, because this
+     * generates one at creation and device_serial is stored. A branch onboarded
+     * as COMPLIPAY stays COMPLIPAY, and must, or its certificate stops matching.
      */
     public static function generateDeviceSerial(Organization $organization): string
     {
         $branchCount = $organization->branches()->withTrashed()->count() + 1;
 
         return sprintf(
-            '1-%s|2-%03d|3-COMPLIPAY',
+            '1-%s|2-%03d|3-MASAAR',
             $organization->vat_number,
             $branchCount
         );

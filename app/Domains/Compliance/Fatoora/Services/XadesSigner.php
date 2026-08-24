@@ -28,6 +28,32 @@ class XadesSigner
 
     private const C14N_NS = 'http://www.w3.org/2006/12/xml-c14n11';
 
+    /**
+     * The UBL signature envelope BR-KSA-28 reads.
+     */
+    private const SIG_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonSignatureComponents-2';
+
+    private const SAC_NS = 'urn:oasis:names:specification:ubl:schema:xsd:SignatureAggregateComponents-2';
+
+    private const SBC_NS = 'urn:oasis:names:specification:ubl:schema:xsd:SignatureBasicComponents-2';
+
+    private const CBC_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2';
+
+    private const XMLNS = 'http://www.w3.org/2000/xmlns/';
+
+    /**
+     * What the invoice signature does not cover, as XPath and as the
+     * expressions ZATCA's own documents declare in ds:Transforms.
+     *
+     * The two must agree, so they are stated once. Keys are what a verifier is
+     * told; values find the same nodes in a DOMDocument.
+     */
+    private const EXCLUDED_FROM_DIGEST = [
+        'not(//ancestor-or-self::ext:UBLExtensions)' => '//ext:UBLExtensions',
+        'not(//ancestor-or-self::cac:Signature)' => '//cac:Signature',
+        "not(//ancestor-or-self::cac:AdditionalDocumentReference[cbc:ID='QR'])" => "//cac:AdditionalDocumentReference[cbc:ID='QR']",
+    ];
+
     private ?string $tsaUrl = null;
 
     private ?string $tsaUsername = null;
@@ -204,13 +230,22 @@ class XadesSigner
         $transform1->setAttribute('Algorithm', 'http://www.w3.org/2000/09/xmldsig#enveloped-signature');
         $transforms->appendChild($transform1);
 
-        // XPath transform to exclude signature
-        $transform2 = $dom->createElementNS(self::DS_NS, 'ds:Transform');
-        $transform2->setAttribute('Algorithm', 'http://www.w3.org/TR/1999/REC-xpath-19991116');
-        $xpath = $dom->createElementNS(self::DS_NS, 'ds:XPath', 'not(//ancestor-or-self::ext:UBLExtensions)');
-        $xpath->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:ext', 'urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2');
-        $transform2->appendChild($xpath);
-        $transforms->appendChild($transform2);
+        // One XPath transform per thing the signature does not cover. Only the
+        // first was declared, so a verifier told to exclude UBLExtensions
+        // alone would digest cac:Signature and the QR — neither of which
+        // existed when the digest was taken.
+        foreach (array_keys(self::EXCLUDED_FROM_DIGEST) as $expression) {
+            $transform = $dom->createElementNS(self::DS_NS, 'ds:Transform');
+            $transform->setAttribute('Algorithm', 'http://www.w3.org/TR/1999/REC-xpath-19991116');
+
+            $xpath = $dom->createElementNS(self::DS_NS, 'ds:XPath', $expression);
+            $xpath->setAttributeNS(self::XMLNS, 'xmlns:ext', 'urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2');
+            $xpath->setAttributeNS(self::XMLNS, 'xmlns:cac', 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2');
+            $xpath->setAttributeNS(self::XMLNS, 'xmlns:cbc', self::CBC_NS);
+
+            $transform->appendChild($xpath);
+            $transforms->appendChild($transform);
+        }
 
         // Canonicalization transform
         $transform3 = $dom->createElementNS(self::DS_NS, 'ds:Transform');
@@ -247,17 +282,45 @@ class XadesSigner
         $dom->preserveWhiteSpace = false;
         Xml::load($dom, $xml);
 
-        // Apply XPath transform: exclude UBLExtensions
-        $xpath = new DOMXPath($dom);
-        $xpath->registerNamespace('ext', 'urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2');
-
-        $extensions = $xpath->query('//ext:UBLExtensions');
-        foreach ($extensions as $extension) {
-            $extension->parentNode->removeChild($extension);
-        }
+        $this->excludeFromDigest($dom);
 
         // Apply C14N canonicalization
         return $dom->documentElement->C14N(true, false);
+    }
+
+    /**
+     * Take out of a document everything the signature does not cover.
+     *
+     * Three things, and only UBLExtensions was being removed. The other two
+     * matter because both are written after the digest is taken:
+     *
+     * - cac:Signature says the invoice is signed and how, which cannot be
+     *   known while signing it.
+     * - The QR AdditionalDocumentReference carries the signature itself, so it
+     *   is added once there is one.
+     *
+     * Signing over either would mean a document that fails its own digest the
+     * moment it is finished. It did not show while the QR was never inserted
+     * and cac:Signature was never emitted; with both present, every signature
+     * this platform produced would have failed verification.
+     *
+     * Whatever is removed here must also be named in the ds:Transforms the
+     * signature declares, or a verifier applying what we declared reaches a
+     * different digest than we did.
+     */
+    private function excludeFromDigest(DOMDocument $dom): void
+    {
+        $xpath = new DOMXPath($dom);
+        $xpath->registerNamespace('ext', 'urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2');
+        $xpath->registerNamespace('cac', 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2');
+        $xpath->registerNamespace('cbc', self::CBC_NS);
+        $xpath->registerNamespace('ds', self::DS_NS);
+
+        foreach (self::EXCLUDED_FROM_DIGEST as $path) {
+            foreach (iterator_to_array($xpath->query($path)) as $node) {
+                $node->parentNode?->removeChild($node);
+            }
+        }
     }
 
     /**
@@ -416,9 +479,43 @@ class XadesSigner
             }
         }
 
-        $extensionContent->appendChild($signature);
+        $extensionContent->appendChild($this->envelope($dom, $signature));
 
         return $signature;
+    }
+
+    /**
+     * The UBL signature wrapper ZATCA requires around ds:Signature.
+     *
+     * The signature used to go straight into ext:ExtensionContent. That is a
+     * valid enveloped signature and it is not what ZATCA reads: BR-KSA-28
+     * looks for a signature information ID of
+     * "urn:oasis:names:specification:ubl:signature:1", which lives on
+     * sac:SignatureInformation inside sig:UBLDocumentSignatures. With no
+     * wrapper there was no ID, and every document carrying a cryptographic
+     * stamp — which is every simplified invoice — failed the rule.
+     *
+     * The digest is unaffected. The signed content excludes UBLExtensions by
+     * an XPath transform, so what is built here sits outside what was signed.
+     */
+    private function envelope(DOMDocument $dom, DOMElement $signature): DOMElement
+    {
+        $signatures = $dom->createElementNS(self::SIG_NS, 'sig:UBLDocumentSignatures');
+        $signatures->setAttributeNS(self::XMLNS, 'xmlns:sac', self::SAC_NS);
+        $signatures->setAttributeNS(self::XMLNS, 'xmlns:sbc', self::SBC_NS);
+
+        $information = $dom->createElementNS(self::SAC_NS, 'sac:SignatureInformation');
+        $information->appendChild(
+            $dom->createElementNS(self::CBC_NS, 'cbc:ID', XmlBuilder::SIGNATURE_ID)
+        );
+        $information->appendChild(
+            $dom->createElementNS(self::SBC_NS, 'sbc:ReferencedSignatureID', XmlBuilder::SIGNATURE_REFERENCE)
+        );
+        $information->appendChild($signature);
+
+        $signatures->appendChild($information);
+
+        return $signatures;
     }
 
     /**
@@ -630,21 +727,11 @@ class XadesSigner
         // Clone to avoid modifying original
         $clone = $dom->cloneNode(true);
 
-        $xpath = new DOMXPath($clone);
-        $xpath->registerNamespace('ds', self::DS_NS);
-        $xpath->registerNamespace('ext', 'urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2');
-
-        // Remove ds:Signature (enveloped-signature transform)
-        $signatures = $xpath->query('//ds:Signature');
-        foreach ($signatures as $sig) {
-            $sig->parentNode->removeChild($sig);
-        }
-
-        // Remove UBLExtensions (XPath transform)
-        $extensions = $xpath->query('//ext:UBLExtensions');
-        foreach ($extensions as $ext) {
-            $ext->parentNode->removeChild($ext);
-        }
+        // The same exclusions the signature declares and signing applied. This
+        // removed UBLExtensions and ds:Signature only, so once cac:Signature
+        // and the QR were in the document it reached a different digest than
+        // the signer had — a valid signature reported as invalid.
+        $this->excludeFromDigest($clone);
 
         // Canonicalize and hash
         $canonicalized = $clone->documentElement->C14N(true, false);

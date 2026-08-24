@@ -120,7 +120,9 @@ class PipelineController extends Controller
             'type' => $invoice->type->value,
             'hash' => $invoice->hash,
             'qr_code' => $invoice->qr_code,
-            'signed_xml' => $invoice->signed_xml,
+            // ZATCA's cleared copy when there is one; see PipelineResult.
+            'signed_xml' => $invoice->legal_xml,
+            'cleared_xml' => $invoice->cleared_xml,
             'zatca_response' => $invoice->zatca_response,
             'totals' => [
                 'subtotal' => $invoice->subtotal,

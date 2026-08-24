@@ -378,7 +378,7 @@ class Submitter
      */
     private function updateInvoiceStatus(Invoice $invoice, FatooraResponse $response): void
     {
-        $invoice->update([
+        $changes = [
             'status' => $response->success ? InvoiceStatus::Accepted : InvoiceStatus::Rejected,
             'zatca_response' => [
                 'clearance_status' => $response->clearanceStatus,
@@ -387,12 +387,53 @@ class Submitter
                 'warnings' => $response->warningMessages,
                 'errors' => $response->errorMessages,
             ],
-        ]);
+        ];
+
+        // Keep the document the authority cleared.
+        //
+        // ZATCA stamps the invoice it clears and returns it, and that stamped
+        // copy is the legal invoice — the one we submitted is what we asked
+        // for. FatooraResponse has always parsed it into clearedInvoice, and
+        // nothing read the field, so every B2B invoice was archived and served
+        // in its pre-clearance form. Only clearance returns a document;
+        // reporting acknowledges one.
+        if ($cleared = $this->clearedXml($response)) {
+            $changes['cleared_xml'] = $cleared;
+        }
+
+        $invoice->update($changes);
 
         // Increment branch invoice count if successful
         if ($response->success) {
             $this->incrementBranchInvoiceCount($invoice);
         }
+    }
+
+    /**
+     * The cleared document from a response, as XML.
+     *
+     * ZATCA returns it base64-encoded. Anything that does not decode to a
+     * document is kept verbatim rather than discarded — losing the authority's
+     * copy because it arrived in an unexpected shape is the worse failure, and
+     * it is visible either way.
+     */
+    private function clearedXml(FatooraResponse $response): ?string
+    {
+        if (empty($response->clearedInvoice)) {
+            return null;
+        }
+
+        $decoded = base64_decode($response->clearedInvoice, true);
+
+        if ($decoded === false || ! str_contains($decoded, '<')) {
+            Log::warning('Cleared invoice did not decode as XML; keeping it as sent.', [
+                'length' => strlen($response->clearedInvoice),
+            ]);
+
+            return $response->clearedInvoice;
+        }
+
+        return $decoded;
     }
 
     /**

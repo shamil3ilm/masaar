@@ -7,6 +7,7 @@ namespace App\Console\Commands;
 use App\Domains\Compliance\Fatoora\DTOs\AddressData;
 use App\Domains\Compliance\Fatoora\DTOs\InvoiceXmlData;
 use App\Domains\Compliance\Fatoora\Services\XmlBuilder;
+use App\Support\Xml;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 
@@ -27,6 +28,43 @@ class FatooraValidate extends Command
                             {--type=standard : Invoice type (standard or simplified)}';
 
     protected $description = 'Generate a sample ZATCA-compliant invoice XML for validation testing';
+
+    private const CBC = 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2';
+
+    private const CAC = 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2';
+
+    /**
+     * The elements worth showing, and where they live in the document.
+     *
+     * Values are read from the XML rather than restated here, so this names
+     * what to look at and nothing about what it should say.
+     */
+    private const CHECKS = [
+        'UBLVersionID' => '/*/cbc:UBLVersionID',
+        'CustomizationID' => '/*/cbc:CustomizationID',
+        'ProfileID' => '/*/cbc:ProfileID',
+        'Invoice ID' => '/*/cbc:ID',
+        'UUID' => '/*/cbc:UUID',
+        'Issue Date' => '/*/cbc:IssueDate',
+        'Issue Time' => '/*/cbc:IssueTime',
+        'Invoice Type Code' => '/*/cbc:InvoiceTypeCode',
+        'BT-3 Sub-type' => '/*/cbc:InvoiceTypeCode/@name',
+        'Currency' => '/*/cbc:DocumentCurrencyCode',
+        'ICV' => '//cac:AdditionalDocumentReference[cbc:ID="ICV"]/cbc:UUID',
+        'PIH' => '//cac:AdditionalDocumentReference[cbc:ID="PIH"]//cbc:EmbeddedDocumentBinaryObject',
+        'Seller VAT' => '//cac:AccountingSupplierParty//cac:PartyTaxScheme/cbc:CompanyID',
+        'Seller Street' => '//cac:AccountingSupplierParty//cac:PostalAddress/cbc:StreetName',
+        'Seller City' => '//cac:AccountingSupplierParty//cac:PostalAddress/cbc:CityName',
+        'Buyer VAT' => '//cac:AccountingCustomerParty//cac:PartyTaxScheme/cbc:CompanyID',
+        'Supply Date' => '//cac:Delivery/cbc:ActualDeliveryDate',
+        'Tax Total' => '/*/cac:TaxTotal/cbc:TaxAmount',
+        'Payable' => '/*/cac:LegalMonetaryTotal/cbc:PayableAmount',
+    ];
+
+    /**
+     * Absent from a simplified invoice by design, not by omission.
+     */
+    private const B2C_OPTIONAL = ['Buyer VAT', 'Supply Date'];
 
     public function handle(): int
     {
@@ -120,7 +158,7 @@ class FatooraValidate extends Command
         $this->newLine();
 
         // Display validation checklist
-        $this->displayValidationChecklist($invoiceData, $isStandard);
+        $this->displayValidationChecklist($xml, $invoiceData, $isStandard);
 
         // Display next steps
         $this->newLine();
@@ -136,32 +174,66 @@ class FatooraValidate extends Command
         return Command::SUCCESS;
     }
 
-    private function displayValidationChecklist(InvoiceXmlData $data, bool $isStandard): void
+    /**
+     * Report what the generated document actually contains.
+     *
+     * This table used to be eighteen hardcoded rows, every one of them a ✓ and
+     * most of them a literal. It restated CustomizationID and ProfileID rather
+     * than reading them, and its ProfileID said "reporting:1.0" for every
+     * invoice while XmlBuilder emits "clearance:1.0" for standard ones — so
+     * the checklist disagreed with the builder and reported a tick either way.
+     * Rows like PIH "Base64 encoded" and Seller Address "Complete with all
+     * fields" checked nothing at all.
+     *
+     * A checklist that cannot fail is worse than none: it is read as
+     * confirmation. This one reads the XML that was just written, so a missing
+     * element shows as missing and every value shown is the value emitted.
+     * What it still cannot tell you is whether those values are the ones ZATCA
+     * wants — that needs the schema and the authority, not this command.
+     */
+    private function displayValidationChecklist(string $xml, InvoiceXmlData $data, bool $isStandard): void
     {
-        $this->info('ZATCA Compliance Checklist:');
-        $this->table(
-            ['Requirement', 'Status', 'Value'],
-            [
-                ['UBLVersionID', '✓', '2.1'],
-                ['CustomizationID', '✓', 'urn:oasis:names:specification:ubl:xpath:Invoice-2.0:sac-mod'],
-                ['ProfileID', '✓', 'reporting:1.0'],
-                ['Invoice ID', '✓', $data->invoiceNumber],
-                ['UUID (UUIDv4)', '✓', $data->uuid],
-                ['Issue Date', '✓', $data->issueDate],
-                ['Issue Time', '✓', $data->issueTime],
-                ['Invoice Type Code', '✓', $data->invoiceTypeCode],
-                ['Currency', '✓', $data->currency],
-                ['ICV (Counter)', '✓', (string) $data->icv],
-                ['PIH (Previous Hash)', '✓', 'Base64 encoded'],
-                ['Seller VAT', '✓', $data->sellerVatNumber],
-                ['Seller CRN', '✓', $data->sellerCrNumber ?? 'N/A'],
-                ['Seller Address', '✓', 'Complete with all fields'],
-                ['Supply Date', $isStandard ? '✓' : 'N/A', $data->supplyDate ?? 'Not required for B2C'],
-                ['Buyer VAT', $isStandard ? '✓' : 'N/A', $data->buyerVatNumber ?? 'Not required for B2C'],
-                ['Tax Total', '✓', number_format($data->taxAmount, 2).' SAR'],
-                ['Invoice Lines', '✓', count($data->lines).' line(s)'],
-            ]
-        );
+        $document = Xml::load(new \DOMDocument, $xml);
+        $xpath = new \DOMXPath($document);
+        $xpath->registerNamespace('cbc', self::CBC);
+        $xpath->registerNamespace('cac', self::CAC);
+
+        $rows = [];
+
+        foreach (self::CHECKS as $label => $path) {
+            $found = $xpath->evaluate("string({$path})");
+            $found = is_string($found) ? trim($found) : '';
+
+            if ($found !== '') {
+                $rows[] = [$label, '✓', $found];
+
+                continue;
+            }
+
+            // A simplified invoice is B2C: there is no buyer to identify and
+            // no delivery to date, so their absence is the document being
+            // right rather than incomplete.
+            $optional = ! $isStandard && in_array($label, self::B2C_OPTIONAL, true);
+
+            $rows[] = [$label, $optional ? '–' : '✗', $optional ? 'not required for B2C' : 'missing'];
+        }
+
+        // Counted rather than located: a line the builder dropped is the
+        // failure this catches, and the count is the thing to compare.
+        $lines = $xpath->evaluate('count(//cac:InvoiceLine)');
+        $expected = count($data->lines);
+
+        $rows[] = [
+            'Invoice Lines',
+            (int) $lines === $expected ? '✓' : '✗',
+            sprintf('%d of %d', $lines, $expected),
+        ];
+
+        $this->info('What the generated document contains:');
+        $this->table(['Element', 'Present', 'Value'], $rows);
+
+        $this->newLine();
+        $this->warn('Presence is not conformance. Only the schema and ZATCA can tell you that.');
     }
 
     private function generateUuid(): string
