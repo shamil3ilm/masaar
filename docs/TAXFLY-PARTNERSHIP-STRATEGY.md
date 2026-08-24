@@ -82,8 +82,8 @@ services:
   taxfly-app:
     image: taxfly/app:latest
     environment:
-      COMPLIPAY_BASE_URL: http://masaar:8000
-      COMPLIPAY_API_KEY: ${COMPLIPAY_API_KEY}
+      MASAAR_BASE_URL: http://masaar:8000
+      MASAAR_API_KEY: ${MASAAR_API_KEY}
     depends_on:
       - masaar
     networks:
@@ -105,7 +105,7 @@ services:
     image: mysql:8.0
     environment:
       MYSQL_DATABASE: masaar
-      MYSQL_ROOT_PASSWORD: ${COMPLIPAY_DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MASAAR_DB_PASSWORD}
     volumes:
       - masaar-data:/var/lib/mysql
     networks:
@@ -457,7 +457,7 @@ Before launch, ensure:
 ┌─────────────────────────────────────────────────────────────────┐
 │                    IP OWNERSHIP MATRIX                          │
 ├─────────────────────────────────┬───────────────────────────────┤
-│          COMPLIPAY OWNS         │         TAXFLY OWNS           │
+│          MASAAR OWNS         │         TAXFLY OWNS           │
 ├─────────────────────────────────┼───────────────────────────────┤
 │ • Masaar source code         │ • TaxFly source code          │
 │ • ZATCA compliance engine       │ • TaxFly UI/UX                │
@@ -506,7 +506,7 @@ Before launch, ensure:
 ┌─────────────────────────────────────────────────────────────────┐
 │                    DATA OWNERSHIP                               │
 ├─────────────────────────────────┬───────────────────────────────┤
-│      TAXFLY DATA (Theirs)       │    COMPLIPAY DATA (Yours)     │
+│      TAXFLY DATA (Theirs)       │    MASAAR DATA (Yours)     │
 ├─────────────────────────────────┼───────────────────────────────┤
 │ • Customer account info         │ • API usage logs              │
 │ • Invoice business data         │ • Compliance audit trails     │
@@ -595,7 +595,7 @@ Tier 4: 200,001+ invoices           = 200,000 SAR/month
 ┌─────────────────────────────────────────────────────────────────┐
 │                    NON-COMPETE TERMS                            │
 ├─────────────────────────────────┬───────────────────────────────┤
-│         COMPLIPAY AGREES        │        TAXFLY AGREES          │
+│         MASAAR AGREES        │        TAXFLY AGREES          │
 ├─────────────────────────────────┼───────────────────────────────┤
 │ • Won't launch competing        │ • Won't build internal ZATCA  │
 │   invoicing platform in Saudi   │   compliance engine           │
@@ -862,7 +862,7 @@ as of [DATE] ("Effective Date")
 
 BETWEEN:
 
-(1) [COMPLIPAY ENTITY NAME]
+(1) [MASAAR ENTITY NAME]
     A company registered in [JURISDICTION]
     Registration No: [NUMBER]
     Address: [ADDRESS]
@@ -1070,7 +1070,7 @@ agreements set forth herein, the Parties agree as follows:
                     ARTICLE 4: INTELLECTUAL PROPERTY
 ═══════════════════════════════════════════════════════════════════
 
-4.1  COMPLIPAY IP
+4.1  MASAAR IP
      Masaar retains all right, title, and interest in:
 
      (a) The Masaar platform, including all source code,
@@ -1104,7 +1104,7 @@ agreements set forth herein, the Parties agree as follows:
      This license does not include rights to the source code,
      algorithms, or internal implementation of Masaar.
 
-4.4  LICENSE GRANT TO COMPLIPAY
+4.4  LICENSE GRANT TO MASAAR
      TaxFly grants Masaar a non-exclusive license to:
 
      (a) Use aggregated, anonymized usage statistics for marketing;
@@ -1334,7 +1334,7 @@ agreements set forth herein, the Parties agree as follows:
                 ARTICLE 9: WARRANTIES AND LIABILITY
 ═══════════════════════════════════════════════════════════════════
 
-9.1  COMPLIPAY WARRANTIES
+9.1  MASAAR WARRANTIES
      Masaar warrants that:
 
      (a) The Services will substantially conform to the
@@ -1357,7 +1357,7 @@ agreements set forth herein, the Parties agree as follows:
 
 9.3  DISCLAIMER
      EXCEPT AS EXPRESSLY PROVIDED HEREIN, THE SERVICES ARE
-     PROVIDED "AS IS." COMPLIPAY DISCLAIMS ALL OTHER WARRANTIES,
+     PROVIDED "AS IS." MASAAR DISCLAIMS ALL OTHER WARRANTIES,
      EXPRESS OR IMPLIED, INCLUDING WARRANTIES OF MERCHANTABILITY,
      FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
 
@@ -1365,7 +1365,7 @@ agreements set forth herein, the Parties agree as follows:
      (a) NEITHER PARTY SHALL BE LIABLE FOR INDIRECT, INCIDENTAL,
          SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES;
 
-     (b) COMPLIPAY'S TOTAL LIABILITY SHALL NOT EXCEED THE FEES
+     (b) MASAAR'S TOTAL LIABILITY SHALL NOT EXCEED THE FEES
          PAID BY TAXFLY IN THE TWELVE (12) MONTHS PRECEDING THE
          CLAIM;
 
@@ -1512,7 +1512,7 @@ IN WITNESS WHEREOF, the Parties have executed this Agreement
 as of the Effective Date.
 
 
-COMPLIPAY:                          TAXFLY:
+MASAAR:                          TAXFLY:
 
 _____________________________       _____________________________
 Signature                           Signature

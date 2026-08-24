@@ -1,18 +1,18 @@
-CompliPay Controlled Open Source License (COSL)
+Masaar Controlled Open Source License (COSL)
 Version 1.0
 
-Copyright (c) 2026 CompliPay
+Copyright (c) 2026 Masaar
 
 PREAMBLE
 
-This license governs the use of the CompliPay ZATCA e-invoicing platform
+This license governs the use of the Masaar ZATCA e-invoicing platform
 ("Software"). By using, copying, modifying, or distributing the Software,
 you agree to be bound by the terms of this license and the Terms of Use
 located in the TERMS.md file.
 
 1. DEFINITIONS
 
-   "Software" means the CompliPay source code, documentation, SDKs, APIs,
+   "Software" means the Masaar source code, documentation, SDKs, APIs,
    and all associated files in this repository.
 
    "User" means any individual or entity that uses, copies, modifies, or
@@ -45,7 +45,7 @@ located in the TERMS.md file.
 
    Before using this Software for Commercial Use, you MUST register by:
 
-   a) Creating an account at the official CompliPay portal, OR
+   a) Creating an account at the official Masaar portal, OR
    b) Sending registration details to: registration@{YOUR_DOMAIN}
 
    Registration must include:
@@ -69,7 +69,7 @@ located in the TERMS.md file.
       of the Software
 
    b) Include attribution in any derivative works:
-      "Based on CompliPay - https://github.com/{YOUR_REPO}"
+      "Based on Masaar - https://github.com/{YOUR_REPO}"
 
    c) Not remove or alter any copyright, trademark, or attribution notices
 
@@ -85,7 +85,7 @@ located in the TERMS.md file.
       - Generate false or fraudulent invoices
       - Evade taxes or regulatory requirements
       - Harm other users or the integrity of the ZATCA system
-      - Compete directly with CompliPay's commercial offerings
+      - Compete directly with Masaar's commercial offerings
 
 5. SECURITY OBLIGATIONS
 

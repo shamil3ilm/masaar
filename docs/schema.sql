@@ -1,5 +1,5 @@
 -- ============================================================================
--- CompliPay Database Schema Reference
+-- Masaar Database Schema Reference
 -- MySQL/MariaDB SQL equivalent of Laravel migrations
 -- ============================================================================
 

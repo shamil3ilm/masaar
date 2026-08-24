@@ -1,5 +1,5 @@
 /**
- * CompliPay Health Check Load Test
+ * Masaar Health Check Load Test
  *
  * Tests the /api/health endpoint under load
  * This is a baseline test - if this fails, nothing else will work
@@ -70,7 +70,7 @@ function textSummary(data, options) {
 
     return `
 ╔══════════════════════════════════════════════════════════════╗
-║           COMPLIPAY HEALTH CHECK LOAD TEST RESULTS           ║
+║           MASAAR HEALTH CHECK LOAD TEST RESULTS           ║
 ╠══════════════════════════════════════════════════════════════╣
 ║  Total Requests:     ${requests.values.count.toString().padStart(10)}                          ║
 ║  Request Rate:       ${requests.values.rate.toFixed(2).padStart(10)} req/s                    ║

@@ -219,18 +219,18 @@ builder.Services.AddMasaar(options =>
 // Usage in your service
 public class InvoiceService
 {
-    private readonly IMasaarClient _compliPay;
+    private readonly IMasaarClient _masaar;
 
-    public InvoiceService(IMasaarClient compliPay)
+    public InvoiceService(IMasaarClient masaar)
     {
-        _compliPay = compliPay;
+        _masaar = masaar;
     }
 
     public async Task<Invoice> CreateAndSubmitAsync(CreateInvoiceRequest request, CancellationToken ct)
     {
-        var invoice = await _compliPay.Invoices.CreateAsync(request, ct);
-        await _compliPay.Compliance.SubmitAsync(invoice.Id, ct);
-        return await _compliPay.Invoices.GetAsync(invoice.Id, ct);
+        var invoice = await _masaar.Invoices.CreateAsync(request, ct);
+        await _masaar.Compliance.SubmitAsync(invoice.Id, ct);
+        return await _masaar.Invoices.GetAsync(invoice.Id, ct);
     }
 }
 ```

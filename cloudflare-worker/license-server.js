@@ -1,7 +1,7 @@
 /**
- * CompliPay License Server - Cloudflare Worker
+ * Masaar License Server - Cloudflare Worker
  *
- * This worker handles phone-home license validation requests from CompliPay deployments.
+ * This worker handles phone-home license validation requests from Masaar deployments.
  * Deploy to Cloudflare Workers (free tier: 100,000 requests/day).
  *
  * Setup:
