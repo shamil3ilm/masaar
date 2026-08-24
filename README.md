@@ -6,14 +6,24 @@ A multi-jurisdiction e-invoicing compliance API platform for GCC businesses.
 
 | Country | Authority | System | Status |
 |---------|-----------|--------|--------|
-| 🇸🇦 Saudi Arabia | ZATCA | Fatoora Phase 2 | 🟢 Feature complete — conformance suite pending |
+| 🇸🇦 Saudi Arabia | ZATCA | Fatoora Phase 2 | 🟡 Feature complete — not yet validated against ZATCA |
 | 🇦🇪 UAE | FTA | Peppol PINT AE | 🚧 In development (mandate: 2027-01-01) |
 | 🇶🇦 Qatar | GTA | — | 📋 Planned |
 
 > **Production readiness.** The Saudi pipeline — UBL generation, ICV/PIH hash
-> chaining, XAdES signing, TLV QR, CSID onboarding and submission — is built and
-> covered by tests. It has **not** yet been validated against ZATCA's official
-> conformance fixtures, and signing keys are not yet held in a managed KMS.
+> chaining, XAdES signing, TLV QR, CSID onboarding and submission — is built,
+> and the parts of it that can be checked without ZATCA's own fixtures are:
+> signatures verify against the certificate in the document, the QR's tags match
+> the document beside them, and the UBL totals satisfy their own arithmetic.
+>
+> That wording used to be "built and covered by tests", which was true and
+> misleading. Tests existed; they did not check these things, and until recently
+> the signature was computed over an empty string, certificate requests could not
+> be generated, and every tax subtotal declared a base that included its own tax.
+>
+> Still outstanding: validation against ZATCA's published conformance fixtures —
+> which is what settles the encodings a self-consistency check cannot — and
+> signing keys are not yet held in a managed KMS.
 > See [`docs/audit/09-WORK-MAP.md`](docs/audit/09-WORK-MAP.md) for the current
 > gap list before deploying to production.
 

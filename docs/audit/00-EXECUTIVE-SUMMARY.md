@@ -7,6 +7,64 @@
 
 ---
 
+## 0. Where this stands now
+
+The assessment below was written against the codebase as it was found. Much of
+it has since been acted on, and one part of it was wrong.
+
+**The correction first.** The verdict said the compliance core was the sound
+part and the shell around it was not. The opposite was closer to the truth. The
+core did not work:
+
+- The XAdES signature was computed over the empty string. `sign()` canonicalised
+  `SignedInfo` before attaching it to the document, and `DOMNode::C14N()` returns
+  `""` for a detached subtree without complaining. Every invoice carried a
+  well-formed signature that verified against nothing.
+- The signature was also placed outside `UBLExtensions`, where no verifier looks
+  for it, because the scaffold that holds it was never built.
+- Certificate requests could not be generated at all — three separate defects,
+  including an unchecked `openssl_pkey_export()` that returned an empty private
+  key.
+- Every tax subtotal declared a base that already included the tax it was meant
+  to explain: 150 on a stated 1150 at 15%.
+- A document discount reduced the total but not the tax, so the taxpayer
+  overpaid and the document failed BR-CO-13.
+- Foreign-currency invoices reported Saudi VAT in the foreign currency, under-
+  reporting it by the exchange rate.
+- Credit notes carried no reason, which BR-KSA-17 requires.
+
+None of these were visible from reading the code, which is why the original
+assessment missed them. They were visible from running it and checking the
+result against the specification's own arithmetic. What the code looked like was
+a poor guide to what it did.
+
+**What has closed since.** All four Criticals and six of seven Highs; the
+authentication surface (no JWT request carried a tenant at all, so ninety routes
+ran unscoped); tenant isolation, now structural and fitness-tested; licensing
+consolidated to one domain; the OpenAPI description generated from the route
+table and drift-tested.
+
+| Then | Now |
+|---|---|
+| 4 unauthenticated entry points | 0 — `RouteAuthPostureTest` fails the build on an unguarded route |
+| 3 licensing systems | 1 — `app/Domains/Licensing/` |
+| 44 classes in `Fatoora/Services/` | 23 |
+| 29 test files | 113, running 704 tests |
+| SDKs are empty directories | 5,864 lines across eleven; the typed surface is generated |
+| Spec omits three-quarters of the API | Generated from the routes, drift-tested both ways |
+
+**What is still open.** Per-tenant signing keys under a managed KMS (H-1's
+remaining half), and the conformance questions that need ZATCA's published
+fixtures rather than a guess — the encoding of the certificate digest, whether
+the tatweel is stripped before hashing, and which invoice type carries the
+nine-tag QR. The self-consistency half of conformance is done and tested; the
+half that needs their samples is not.
+
+The scorecard below is the original one. It has not been re-scored, because a
+number would suggest more precision than re-reading deserves.
+
+---
+
 ## 1. The verdict
 
 > **Masaar is a strong compliance core wrapped in an unfinished platform shell.**
