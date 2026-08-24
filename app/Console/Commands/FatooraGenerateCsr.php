@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Console\Commands\Concerns\WritesSecrets;
+use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\DTOs\CsrData;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
@@ -298,21 +299,7 @@ EOT;
         $csrPath = $outputDir.'/taxpayer.csr';
         $configPath = $this->createFullZatcaConfig($csrData);
 
-        // Generate EC private key using shell command (secp256k1 for ZATCA)
-        $keyCmd = "\"{$opensslCmd}\" ecparam -name secp256k1 -genkey -noout -out \"{$keyPath}\" 2>&1";
-        $this->line('Generating EC key: secp256k1');
-        exec($keyCmd, $keyOutput, $keyReturnCode);
-
-        if ($keyReturnCode !== 0 || ! file_exists($keyPath)) {
-            // Try prime256v1 as fallback
-            $this->warn('secp256k1 not available, trying prime256v1...');
-            $keyCmd = "\"{$opensslCmd}\" ecparam -name prime256v1 -genkey -noout -out \"{$keyPath}\" 2>&1";
-            exec($keyCmd, $keyOutput, $keyReturnCode);
-
-            if ($keyReturnCode !== 0 || ! file_exists($keyPath)) {
-                throw new \RuntimeException('Failed to generate EC private key: '.implode("\n", $keyOutput));
-            }
-        }
+        $this->generateEcKey($opensslCmd, $keyPath);
 
         $this->info('✓ Private key generated');
 
@@ -481,21 +468,7 @@ EOT;
         $keyPath = $outputDir.'/taxpayer.key';
         $csrPath = $outputDir.'/taxpayer.csr';
 
-        // Generate EC private key using shell command (secp256k1 for ZATCA)
-        $keyCmd = "\"{$opensslCmd}\" ecparam -name secp256k1 -genkey -noout -out \"{$keyPath}\" 2>&1";
-        $this->line('Generating EC key: secp256k1');
-        exec($keyCmd, $keyOutput, $keyReturnCode);
-
-        if ($keyReturnCode !== 0 || ! file_exists($keyPath)) {
-            // Try prime256v1 as fallback
-            $this->warn('secp256k1 not available, trying prime256v1...');
-            $keyCmd = "\"{$opensslCmd}\" ecparam -name prime256v1 -genkey -noout -out \"{$keyPath}\" 2>&1";
-            exec($keyCmd, $keyOutput, $keyReturnCode);
-
-            if ($keyReturnCode !== 0 || ! file_exists($keyPath)) {
-                throw new \RuntimeException('Failed to generate EC private key: '.implode("\n", $keyOutput));
-            }
-        }
+        $this->generateEcKey($opensslCmd, $keyPath);
 
         $this->info('✓ Private key generated');
 
@@ -534,6 +507,39 @@ EOT;
             'csr' => $csrPem,
             'privateKey' => $privateKeyPem,
         ];
+    }
+
+    /**
+     * Generate the EGS private key, on the only curve ZATCA accepts.
+     *
+     * There used to be a fallback to prime256v1 here, taken whenever the local
+     * OpenSSL could not do secp256k1 — a LibreSSL build, or a distribution that
+     * omits the Koblitz curves. The fallback is worse than the failure it was
+     * avoiding, because onboarding then succeeds: the CSR is well formed, the
+     * authority issues a certificate against it, and nothing complains until an
+     * invoice signature is checked against a public key on a curve the verifier
+     * is not expecting. That failure surfaces far from the machine that quietly
+     * chose the wrong curve, and by then certificates have been issued against
+     * it.
+     *
+     * Refusing here costs one clear error before any key exists.
+     */
+    private function generateEcKey(string $opensslCmd, string $keyPath): void
+    {
+        $curve = FatooraConfig::DEFAULT_EC_CURVE;
+
+        $this->line("Generating EC key: {$curve}");
+        exec("\"{$opensslCmd}\" ecparam -name {$curve} -genkey -noout -out \"{$keyPath}\" 2>&1", $output, $code);
+
+        if ($code === 0 && file_exists($keyPath)) {
+            return;
+        }
+
+        throw new \RuntimeException(
+            "Could not generate a {$curve} key, and ZATCA accepts no other curve.\n"
+            .'OpenSSL said: '.implode("\n", $output)."\n"
+            ."Check this build supports it with: {$opensslCmd} ecparam -list_curves"
+        );
     }
 
     /**
