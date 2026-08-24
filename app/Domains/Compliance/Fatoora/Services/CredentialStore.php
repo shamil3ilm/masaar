@@ -145,7 +145,7 @@ class CredentialStore
     }
 
     /**
-     * Remove one branch's credentials, or an organization's legacy pair.
+     * Remove one branch's credentials, or the organization's own.
      */
     public function forget(string $organizationId, ?string $branchId = null): void
     {
@@ -194,9 +194,10 @@ class CredentialStore
     }
 
     /**
-     * Branch credentials sit under the branch; an organization's pre-branch
-     * pair sits directly under it. Both are still read, so onboarding done
-     * before branches existed keeps working.
+     * Branch credentials sit under the branch; an organization's own sit
+     * directly under it. path() builds both shapes, and both are written:
+     * BranchOnboardingController stores the first, OnboardingController the
+     * second.
      */
     private function path(string $organizationId, ?string $branchId, string $type): string
     {
