@@ -5,13 +5,23 @@
 exists anywhere in this system, so nothing is verified *against the authority* —
 only against the project's own tests. All paths relative to `Masaar/`.
 
-**Score: 3 ABSENT · 8 PARTIAL · 12 PRESENT-UNVERIFIED · 18 VERIFIED**
+**Score: 2 ABSENT · 8 PARTIAL · 10 PRESENT-UNVERIFIED · 21 VERIFIED**
 
-Suite backing the VERIFIED column: **715 passed, 15 skipped (1640 assertions)**
-on PHP 8.4.12. Of the skips, twelve are `ZatcaConformanceTest` standing down
-without `ZATCA_SDK_PATH` and three are `SecretFileTest` asserting POSIX file
-modes that Windows does not enforce. Both skip honestly rather than passing
-vacuously; neither counts as verification.
+Suite backing the VERIFIED column, with `ZATCA_SDK_PATH` set to the ZATCA Java
+SDK **238-R3.4.8**: **727 passed, 3 skipped (1670 assertions)** on PHP 8.4.12.
+The three skips are `SecretFileTest` asserting POSIX modes Windows does not
+enforce; they run in CI.
+
+**Twelve of those passes are conformance** — ZATCA's own validator over signed
+documents, all six document types, zero errors and zero advisories across XSD,
+EN16931 and the ZATCA Schematron.
+
+⚠️ **What conformance does not cover.** The suite asserts on business rules
+(`BR-*`) only, deliberately excluding four stages that cannot pass with a
+self-signed key: the certificate, the QR embedding it, the signature over both,
+and the PIH chain
+([`ZatcaConformanceTest.php:155-178`](../tests/Feature/Compliance/ZatcaConformanceTest.php#L155-L178)).
+**Document content is verified; the cryptographic stamp is not.**
 
 ---
 
@@ -20,11 +30,11 @@ vacuously; neither counts as verification.
 | # | Requirement | Status | Evidence | What's missing |
 |---|---|---|---|---|
 | 1 | UBL 2.1 XML generated natively | **VERIFIED** | `Fatoora/Services/XmlBuilder.php:20-35` — `DOMDocument`, correct UBL/CAC/CBC/EXT/SIG/SBC namespace constants. No string concatenation, no PDF-first. Asserted by `UblTotalsTest`, `InvoiceTypeCodeTest`, `XadesPropertiesTest` via `DOMXPath`. | — |
-| 2 | XML validates against ZATCA XSD | **PRESENT-UNVERIFIED** | `tests/Feature/Compliance/ZatcaConformanceTest.php` with `tests/Fixtures/ZatcaSdk.php` runs ZATCA’s own SDK over generated documents — UBL 2.1 schema, EN16931 rules, ZATCA Schematron and the PIH chain check. | **It does not run.** `ZatcaSdk.php:34-47` skips unless `ZATCA_SDK_PATH` names an SDK with a jar and a Java runtime, so twelve conformance tests stand down. Separately, schema validation on the request path is still commented out at `InvoiceValidator.php:519-526` and no `*.xsd` is vendored. **This is the L2 blocker** — the mechanism is built; the run is not recorded. |
+| 2 | XML validates against ZATCA XSD | **VERIFIED** | `ZatcaConformanceTest` runs the ZATCA Java SDK 238-R3.4.8 over signed documents: `XSD`, `EN` and `KSA` stages pass for all six document types, with zero errors and zero advisories. `test_the_authority_own_sample_passes` is a control — ZATCA's own sample through the same harness — so a pass means the pipeline is genuinely exercised. | Only that the run is **manual**: it needs `ZATCA_SDK_PATH` and a JRE, and CI has neither, so a regression would not fail the build. See R-19. |
 | 3 | Standard (B2B) invoice | **VERIFIED** | `InvoiceXmlData.php:169` — `'01'` drives the BT-3 transaction digits; `Enums/InvoiceType.php`; clearance chosen by endpoint at `Submitter.php:171`. Covered by `InvoiceTypeCodeTest`. `ProfileID` is `reporting:1.0` for every document type (`XmlBuilder.php:127-137`), pinned by `XmlProfileTest:66` with a negative assertion at `:75`. | — |
 | 4 | Simplified (B2C) invoice | **VERIFIED** | `InvoiceXmlData.php:169` — `'02'`; `isSimplified()` drives the reporting path (`Submitter.php:178`). `InvoiceTypeCodeTest`. | — |
-| 5 | Credit note — standard + simplified | **VERIFIED** | `Enums/DocumentType.php:18` → `381`; billing reference required (`:69`) and reason enforced (`XmlBuilder.php:147-150`, BR-KSA-17). `tests/Feature/Compliance/CreditNoteTest.php`. Both subtypes generated at `OnboardingController.php:245,248`. | — |
-| 6 | Debit note — standard + simplified | **PRESENT-UNVERIFIED** | `Enums/DocumentType.php:19` → `383`; both subtypes at `OnboardingController.php:246,249`. | No `DebitNoteTest`. The credit note has a dedicated test; the debit note does not. |
+| 5 | Credit note — standard + simplified | **VERIFIED** | Both subtypes validated against ZATCA's SDK by `ZatcaConformanceTest`. `Enums/DocumentType.php:18` → `381`; billing reference required (`:69`) and reason enforced (`XmlBuilder.php:147-150`, BR-KSA-17). `tests/Feature/Compliance/CreditNoteTest.php`. Both subtypes generated at `OnboardingController.php:245,248`. | — |
+| 6 | Debit note — standard + simplified | **VERIFIED** | `Enums/DocumentType.php:19` → `383`; both subtypes at `OnboardingController.php:246,249`. `ZatcaConformanceTest` validates the standard and simplified debit note against ZATCA's SDK — zero errors, zero advisories. | — |
 | 7 | UUID per document | **VERIFIED** | `migrations/0080_invoices.php:14` `$table->uuid('id')`; `Invoice.php:30` `use HasUuids`; emitted at `XmlBuilder.php:137` (`cbc:UUID`) and passed as the submission `uuid` (`Submitter.php:176`). | — |
 | 8 | ICV — monotonic, gapless | **VERIFIED** | `Invoice.php:212-230` `generateNextIcv()` with `lockForUpdate()` on the **organizations** row; `migrations/0080_invoices.php:66` `unique(['org_id','icv'])`. `tests/Feature/Invoice/IcvAllocationTest.php` — 5 tests: starts at 1, increments, per-org, explicit kept, duplicate rejected. | Gaplessness is *not* guaranteed: a rolled-back transaction burns an ICV. See R-6. |
 | 9 | PIH chained correctly | **VERIFIED** | `Invoice::getPreviousInvoiceHashAttribute()` (`Invoice.php:364-372`) — a **derived accessor, not a column**: `where org_id … where icv < … whereNotNull('hash') orderByDesc('icv')->value('hash')`. Ordered by ICV rather than `created_at` "because wall-clock is not deterministic under concurrent inserts", and the tenant scope is deliberately lifted (`:358-362`). Consumed at `Submitter.php:66,99,165`, `ProcessFatooraSubmission.php:141`, `OfflineFallback.php:104`. `tests/Feature/Compliance/PreviousHashTest.php` (6 assertions incl. per-org and ordering) plus `tests/Feature/Architecture/AttributeReadTest.php`, which exists specifically to catch the class of bug where a missing attribute silently returns null. Swept by `fatoora:verify-hash-chain`. | ⚠️ **Two sources of truth.** The accessor derives PIH from `invoices`, while `hash_chain_state`/`hash_chain_history` (`0160`) also record it. Nothing asserts the two agree, and `hash_chain_history`'s `(org_id, icv)` index is **not unique**. See R-6. |
