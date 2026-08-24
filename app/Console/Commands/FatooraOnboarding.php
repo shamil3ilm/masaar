@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Console\Commands\Concerns\WritesSecrets;
 use App\Domains\Compliance\Fatoora\DTOs\AddressData;
 use App\Domains\Compliance\Fatoora\DTOs\InvoiceXmlData;
 use App\Domains\Compliance\Fatoora\DTOs\QrCodeData;
@@ -39,6 +40,8 @@ use Illuminate\Support\Facades\Http;
  */
 class FatooraOnboarding extends Command
 {
+    use WritesSecrets;
+
     protected $signature = 'fatoora:onboard
                             {--step=info : Step to execute (info|ccsid|compliance|pcsid|full)}
                             {--otp= : One-Time Password from Fatoora Portal}
@@ -785,15 +788,12 @@ class FatooraOnboarding extends Command
 
     private function saveCcsidCredentials(array $data): void
     {
-        $dir = storage_path('app/zatca');
-        if (! File::isDirectory($dir)) {
-            File::makeDirectory($dir, 0755, true);
-        }
+        $dir = $this->secretDir();
 
         // Save the raw token and secret
-        File::put($dir.'/ccsid_token.txt', $data['binarySecurityToken'] ?? '');
-        File::put($dir.'/ccsid_secret.txt', $data['secret'] ?? '');
-        File::put($dir.'/ccsid_request_id.txt', $data['requestID'] ?? '');
+        $this->putSecret($dir.'/ccsid_token.txt', $data['binarySecurityToken'] ?? '');
+        $this->putSecret($dir.'/ccsid_secret.txt', $data['secret'] ?? '');
+        $this->putSecret($dir.'/ccsid_request_id.txt', $data['requestID'] ?? '');
 
         // Handle certificate - for local mode use raw cert, for API mode convert from base64
         if (! empty($data['certificate']) && str_starts_with($data['certificate'], '-----BEGIN')) {
@@ -814,7 +814,7 @@ class FatooraOnboarding extends Command
         $keyPath = $this->option('key') ?? storage_path('app/zatca/taxpayer.key');
         if (file_exists($keyPath)) {
             $privateKey = file_get_contents($keyPath);
-            File::put($dir.'/ccsid_private_key.pem', $privateKey);
+            $this->putSecret($dir.'/ccsid_private_key.pem', $privateKey);
             $this->line('Private key copied from: '.$keyPath);
         } else {
             $this->warn('Private key not found at: '.$keyPath);
@@ -848,10 +848,10 @@ class FatooraOnboarding extends Command
 
     private function savePcsidCredentials(array $data): void
     {
-        $dir = storage_path('app/zatca');
-        File::put($dir.'/pcsid_token.txt', $data['binarySecurityToken'] ?? '');
-        File::put($dir.'/pcsid_secret.txt', $data['secret'] ?? '');
-        File::put($dir.'/pcsid_request_id.txt', $data['requestID'] ?? '');
+        $dir = $this->secretDir();
+        $this->putSecret($dir.'/pcsid_token.txt', $data['binarySecurityToken'] ?? '');
+        $this->putSecret($dir.'/pcsid_secret.txt', $data['secret'] ?? '');
+        $this->putSecret($dir.'/pcsid_request_id.txt', $data['requestID'] ?? '');
 
         $this->line('Production credentials saved to storage/app/zatca/pcsid_*.txt');
     }

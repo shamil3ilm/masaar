@@ -38,7 +38,12 @@ return new class extends Migration
             $table->decimal('total', 12, 2)->default(0.00);
             $table->string('hash', 255)->nullable();
             $table->text('qr_code')->nullable();
+            // What we signed and sent.
             $table->longText('signed_xml')->nullable();
+            // What ZATCA sent back, for a standard invoice that was cleared.
+            // The authority stamps the document it clears, and that stamped
+            // document is the legal invoice — not the one we submitted.
+            $table->longText('cleared_xml')->nullable();
             $table->string('cert_id', 64)->nullable();
             $table->string('rule_version', 20)->nullable();
             $table->string('schema_version', 20)->nullable();

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Console\Commands\Concerns\WritesSecrets;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 
@@ -27,6 +28,8 @@ use Illuminate\Support\Facades\Http;
  */
 class FatooraSandboxTest extends Command
 {
+    use WritesSecrets;
+
     protected $signature = 'fatoora:sandbox-test
                             {--step=info : Step to execute (info|generate-csr|compliance-csid|compliance-check|report)}
                             {--otp= : One-Time Password for CSID request}
@@ -174,9 +177,7 @@ class FatooraSandboxTest extends Command
             $this->warn('PHP OpenSSL EC not available, trying shell command...');
 
             $keyPath = storage_path('app/zatca/private_key.pem');
-            if (! is_dir(dirname($keyPath))) {
-                mkdir(dirname($keyPath), 0755, true);
-            }
+            $this->secretDir();
 
             // Try using openssl command directly
             $opensslPaths = [
@@ -248,14 +249,12 @@ class FatooraSandboxTest extends Command
         $generatedKeyPath = storage_path('app/zatca/private_key.pem');
         $configPath = $this->getOpenSslConfig($config);
 
-        if (! is_dir(dirname($csrPath))) {
-            mkdir(dirname($csrPath), 0755, true);
-        }
+        $this->secretDir();
 
         // If we have a PHP key object but no file, export it
         if ($privateKey && ! file_exists($generatedKeyPath)) {
             openssl_pkey_export($privateKey, $privateKeyOut);
-            file_put_contents($generatedKeyPath, $privateKeyOut);
+            $this->putSecret($generatedKeyPath, $privateKeyOut);
             chmod($generatedKeyPath, 0600);
         }
 
@@ -676,9 +675,7 @@ EOT;
         $csrPath = storage_path('app/zatca/csr.pem');
         $keyPath = storage_path('app/zatca/private_key.pem');
 
-        if (! is_dir(dirname($csrPath))) {
-            mkdir(dirname($csrPath), 0755, true);
-        }
+        $this->secretDir();
 
         // Generate a demo CSR using RSA (more compatible)
         $rsaKey = openssl_pkey_new([
@@ -715,7 +712,7 @@ EOT;
         openssl_pkey_export($rsaKey, $privateKeyOut);
 
         file_put_contents($csrPath, $csrOut);
-        file_put_contents($keyPath, $privateKeyOut);
+        $this->putSecret($keyPath, $privateKeyOut);
         chmod($keyPath, 0600);
 
         $this->info('✓ DEMO CSR generated (RSA-based, for testing only)');

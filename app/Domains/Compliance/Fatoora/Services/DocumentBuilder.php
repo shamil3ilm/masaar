@@ -22,6 +22,10 @@ use App\Support\Xml;
  */
 class DocumentBuilder
 {
+    private const CAC_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2';
+
+    private const CBC_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2';
+
     public function __construct(
         private readonly XmlBuilder $xmlBuilder,
         private readonly InvoiceHasher $hasher,
@@ -87,7 +91,7 @@ class DocumentBuilder
             // must carry identical bytes.
             sellerName: $this->normalizeName($organization->name),
             vatNumber: $organization->vat_number ?? '',
-            timestamp: $invoice->issue_date->format('Y-m-d\TH:i:s\Z'),
+            timestamp: $this->issuedAt($invoice),
             invoiceTotal: number_format((float) $invoice->total, 2, '.', ''),
             vatTotal: number_format((float) $invoice->tax_amount, 2, '.', ''),
             // Tags 6-9: Decode base64 to raw bytes for TLV encoding
@@ -97,8 +101,23 @@ class DocumentBuilder
             certificateSignature: $certSignature, // Already raw bytes
         );
 
-        // Generate QR based on invoice type (Phase 1 for B2C, Phase 2 for B2B)
-        $qrCode = $invoice->requiresClearance()
+        // The full QR whenever there is a signature to put in it.
+        //
+        // This used to choose by document type — nine tags for standard, five
+        // for simplified — which is backwards where it matters. BR-KSA-60:
+        // "Cryptographic stamp (KSA-15) must exist in simplified tax invoices
+        // and associated credit notes and debit notes." A simplified invoice
+        // is reported after the fact and reaches the customer first, so its QR
+        // is the only thing standing behind it; a standard one is cleared
+        // before it is handed over. The rule binds on the one that was getting
+        // five tags.
+        //
+        // Type is the wrong question either way. ZATCA's own standard sample
+        // carries the cryptographic tags too, and what decides whether they
+        // can be written is whether this organization has credentials —
+        // generatePhase2() refuses without them, and an unsigned invoice has
+        // nothing to put in tags 6 to 9.
+        $qrCode = $canSign
             ? $this->qrGenerator->generatePhase2($qrData)
             : $this->qrGenerator->generatePhase1($qrData);
 
@@ -242,18 +261,76 @@ class DocumentBuilder
     }
 
     /**
-     * Update QR code in XML document.
+     * The instant the invoice says it was issued, as the QR states it.
+     *
+     * The XML declares this as two fields — IssueDate from issue_date and
+     * IssueTime from created_at — and ZATCA compares the QR's tag 3 against
+     * them, rejecting a document whose QR disagrees with its own header.
+     *
+     * Tag 3 used to be built from issue_date alone. That column is a date, so
+     * its time was midnight while the invoice beside it said something else,
+     * on every invoice this platform has produced. Same two values, one
+     * instant.
+     *
+     * No trailing Z. The comparison is textual — IssueDate, a T, IssueTime —
+     * and ZATCA's own sample invoices carry tag 3 exactly that way. A Z is a
+     * correct thing to write and it makes the two strings differ, which is the
+     * only thing being checked.
+     */
+    private function issuedAt(Invoice $invoice): string
+    {
+        return $invoice->issue_date->format('Y-m-d')
+            .'T'.$invoice->created_at->format('H:i:s');
+    }
+
+    /**
+     * Put the QR code into the signed document.
+     *
+     * This only ever updated an existing node, and XmlBuilder deliberately
+     * emits none: an empty QR trips BR-CL-KSA-14, so it leaves the element out
+     * and expects it to be added once the signature exists. So the query
+     * matched nothing, the method returned quietly, and no invoice this
+     * platform produced carried a QR at all — BR-KSA-27 for every simplified
+     * document, which is the one kind that cannot do without it. The QR is
+     * what the customer scans; a B2C invoice is not verifiable without it.
+     *
+     * The insert has to happen after signing, because for a simplified invoice
+     * the QR carries the signature.
      */
     private function updateQrInXml(\DOMDocument $dom, string $qrCode): void
     {
         $xpath = new \DOMXPath($dom);
-        $xpath->registerNamespace('cac', 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2');
-        $xpath->registerNamespace('cbc', 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2');
+        $xpath->registerNamespace('cac', self::CAC_NS);
+        $xpath->registerNamespace('cbc', self::CBC_NS);
 
-        $nodes = $xpath->query("//cac:AdditionalDocumentReference[cbc:ID='QR']/cac:Attachment/cbc:EmbeddedDocumentBinaryObject");
+        $existing = $xpath->query("//cac:AdditionalDocumentReference[cbc:ID='QR']/cac:Attachment/cbc:EmbeddedDocumentBinaryObject");
 
-        if ($nodes->length > 0) {
-            $nodes->item(0)->nodeValue = $qrCode;
+        if ($existing->length > 0) {
+            $existing->item(0)->nodeValue = $qrCode;
+
+            return;
         }
+
+        $reference = $dom->createElementNS(self::CAC_NS, 'cac:AdditionalDocumentReference');
+        $reference->appendChild($dom->createElementNS(self::CBC_NS, 'cbc:ID', 'QR'));
+
+        $attachment = $dom->createElementNS(self::CAC_NS, 'cac:Attachment');
+        $binary = $dom->createElementNS(self::CBC_NS, 'cbc:EmbeddedDocumentBinaryObject', $qrCode);
+        $binary->setAttribute('mimeCode', 'text/plain');
+        $attachment->appendChild($binary);
+        $reference->appendChild($attachment);
+
+        // UBL is a sequence, so position matters: the QR reference belongs
+        // beside the other AdditionalDocumentReferences, directly after PIH.
+        $pih = $xpath->query("//cac:AdditionalDocumentReference[cbc:ID='PIH']");
+        $root = $dom->documentElement;
+
+        if ($pih->length > 0 && $pih->item(0)->nextSibling !== null) {
+            $root->insertBefore($reference, $pih->item(0)->nextSibling);
+
+            return;
+        }
+
+        $root->appendChild($reference);
     }
 }

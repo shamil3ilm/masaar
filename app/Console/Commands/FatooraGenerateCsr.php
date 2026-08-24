@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Console\Commands\Concerns\WritesSecrets;
 use App\Domains\Compliance\Fatoora\DTOs\CsrData;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
@@ -22,6 +23,8 @@ use phpseclib3\File\X509;
  */
 class FatooraGenerateCsr extends Command
 {
+    use WritesSecrets;
+
     protected $signature = 'fatoora:generate-csr
                             {--vat=399999999900003 : 15-digit VAT number (starts/ends with 3)}
                             {--org=Maximum Speed Tech Supply LTD : Organization name}
@@ -98,20 +101,16 @@ class FatooraGenerateCsr extends Command
                 $result = $this->generateCsrWithPhpseclib($csrData);
             }
 
-            // Output directory
-            $outputDir = $this->option('output') ?? storage_path('app/zatca');
-            if (! File::isDirectory($outputDir)) {
-                File::makeDirectory($outputDir, 0755, true);
-            }
+            $outputDir = $this->secretDir($this->option('output'));
 
-            // Save CSR
+            // The CSR carries the public key and is not secret.
             $csrPath = $outputDir.'/taxpayer.csr';
             File::put($csrPath, $result['csr']);
             $this->info("CSR saved to: {$csrPath}");
 
-            // Save private key
+            // The key that will sign this taxpayer's invoices is.
             $keyPath = $outputDir.'/taxpayer.key';
-            File::put($keyPath, $result['privateKey']);
+            $this->putSecret($keyPath, $result['privateKey']);
             $this->info("Private key saved to: {$keyPath}");
 
             $this->newLine();
@@ -168,10 +167,7 @@ class FatooraGenerateCsr extends Command
      */
     private function generateCsrWithSdk(CsrData $csrData): array
     {
-        $outputDir = storage_path('app/zatca');
-        if (! is_dir($outputDir)) {
-            mkdir($outputDir, 0755, true);
-        }
+        $outputDir = $this->secretDir();
 
         // Create CSR config file for SDK
         $invoiceType = $csrData->getInvoiceTypeCode();
@@ -246,7 +242,7 @@ EOT;
         $csrPath = $outputDir.'/taxpayer.csr';
         $keyPath = $outputDir.'/taxpayer.key';
         file_put_contents($csrPath, $csrPem);
-        file_put_contents($keyPath, $keyPem);
+        $this->putSecret($keyPath, $keyPem);
 
         $this->line("  serialNumber: {$csrData->serialNumber}");
         $this->line("  organizationIdentifier: VATSA-{$csrData->vatNumber}");
@@ -296,11 +292,7 @@ EOT;
 
         $this->info("Using OpenSSL: {$opensslCmd}");
 
-        // Create output directory
-        $outputDir = storage_path('app/zatca');
-        if (! is_dir($outputDir)) {
-            mkdir($outputDir, 0755, true);
-        }
+        $outputDir = $this->secretDir();
 
         $keyPath = $outputDir.'/taxpayer.key';
         $csrPath = $outputDir.'/taxpayer.csr';
@@ -460,13 +452,9 @@ EOT;
         $this->line("  serialNumber: {$csrData->serialNumber}");
         $this->line("  organizationIdentifier: {$orgIdentifier}");
 
-        // Save the files
-        $outputDir = storage_path('app/zatca');
-        if (! is_dir($outputDir)) {
-            mkdir($outputDir, 0755, true);
-        }
+        $outputDir = $this->secretDir();
         file_put_contents($outputDir.'/taxpayer.csr', $csrPem);
-        file_put_contents($outputDir.'/taxpayer.key', $privateKeyPem);
+        $this->putSecret($outputDir.'/taxpayer.key', $privateKeyPem);
 
         return [
             'csr' => $csrPem,
@@ -488,11 +476,7 @@ EOT;
 
         $this->info("Using OpenSSL: {$opensslCmd}");
 
-        // Create output directory
-        $outputDir = storage_path('app/zatca');
-        if (! is_dir($outputDir)) {
-            mkdir($outputDir, 0755, true);
-        }
+        $outputDir = $this->secretDir();
 
         $keyPath = $outputDir.'/taxpayer.key';
         $csrPath = $outputDir.'/taxpayer.csr';

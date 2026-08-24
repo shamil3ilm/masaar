@@ -26,6 +26,21 @@ class XmlBuilder
 
     private const EXT_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2';
 
+    /**
+     * The enveloped-XAdES signature ZATCA expects, named in BR-KSA-30.
+     */
+    public const SIGNATURE_URI = 'urn:oasis:names:specification:ubl:dsig:enveloped:xades';
+
+    /**
+     * The one signature a ZATCA invoice carries, named in BR-KSA-28.
+     */
+    public const SIGNATURE_ID = 'urn:oasis:names:specification:ubl:signature:1';
+
+    /**
+     * What that signature refers to, per ZATCA's own samples.
+     */
+    public const SIGNATURE_REFERENCE = 'urn:oasis:names:specification:ubl:signature:Invoice';
+
     private const SIG_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonSignatureComponents-2';
 
     private const SBC_NS = 'urn:oasis:names:specification:ubl:schema:xsd:SignatureBasicComponents-2';
@@ -52,6 +67,7 @@ class XmlBuilder
         $this->addInvoiceIdentification($data);
         $this->addBillingReference($data);
         $this->addAdditionalDocumentReferences($data);
+        $this->addSignatureReference();
         $this->addSupplierParty($data);
         $this->addCustomerParty($data);
         $this->addDelivery($data);
@@ -88,6 +104,14 @@ class XmlBuilder
     {
         $extensions = $this->dom->createElementNS(self::EXT_NS, 'ext:UBLExtensions');
         $extension = $this->dom->createElementNS(self::EXT_NS, 'ext:UBLExtension');
+
+        // BR-KSA-30 wants this exact string, and the extension carried no URI
+        // at all — so every document that had a cryptographic stamp failed the
+        // rule that says which kind of stamp it is.
+        $extension->appendChild(
+            $this->dom->createElementNS(self::EXT_NS, 'ext:ExtensionURI', self::SIGNATURE_URI)
+        );
+
         $content = $this->dom->createElementNS(self::EXT_NS, 'ext:ExtensionContent');
 
         // Signature placeholder - will be filled by XAdES signer
@@ -124,11 +148,17 @@ class XmlBuilder
         // Customization ID (ZATCA-specific UBL customization)
         $this->addElement('cbc:CustomizationID', 'urn:oasis:names:specification:ubl:xpath:Invoice-2.0:sac-mod');
 
-        // Profile ID (ZATCA Phase 2 spec):
-        // - Simplified B2C invoices → "reporting:1.0"
-        // - Standard B2B invoices   → "clearance:1.0"
-        $profileId = $data->isSimplified() ? 'reporting:1.0' : 'clearance:1.0';
-        $this->addElement('cbc:ProfileID', $profileId);
+        // BT-23, the business process. One value for every document type.
+        //
+        // This used to emit "clearance:1.0" for standard invoices, on the
+        // reasoning that a standard invoice is cleared rather than reported.
+        // That reasoning is about the transaction, and BT-23 is not: ZATCA's
+        // own validator rejects it as BR-KSA-EN16931-01, "Business process
+        // (BT-23) must be reporting:1.0", and all nineteen sample invoices
+        // shipped with the SDK — standard and simplified, invoice, credit and
+        // debit — carry reporting:1.0. Clearance is chosen by the endpoint the
+        // document is sent to, not by a field inside it.
+        $this->addElement('cbc:ProfileID', 'reporting:1.0');
 
         // Invoice ID
         $this->addElement('cbc:ID', $data->invoiceNumber);
@@ -144,10 +174,12 @@ class XmlBuilder
         $typeCode = $this->addElement('cbc:InvoiceTypeCode', $data->invoiceTypeCode);
         $typeCode->setAttribute('name', $data->getInvoiceTypeName());
 
-        // Note (KSA-10: required for credit/debit notes per BR-KSA-17)
-        if ($data->creditDebitReason !== null) {
-            $this->addElement('cbc:Note', $data->creditDebitReason);
-        }
+        // KSA-10, the reason a credit or debit note was issued, is emitted in
+        // addPaymentMeans() as cbc:InstructionNote. It used to be written here
+        // as cbc:Note, which is BT-22 — a free-text remark on any invoice, and
+        // not the element BR-KSA-17 reads. The reason was carried all the way
+        // from adjustment_reason and then put somewhere the authority does not
+        // look, so every credit and debit note failed the rule.
 
         // Document currency (can be foreign currency like USD, EUR)
         $this->addElement('cbc:DocumentCurrencyCode', $data->currency);
@@ -231,6 +263,32 @@ class XmlBuilder
      * Per ZATCA specifications, use CRN as primary PartyIdentification if available,
      * VAT number goes in PartyTaxScheme/CompanyID.
      */
+    /**
+     * The invoice's own statement that it is signed, and how.
+     *
+     * BR-KSA-30 does not read the extension's URI, which is what the name
+     * "signature method" suggests. Its Schematron asks for
+     * //cac:Signature/cbc:SignatureMethod, an element in the body of the
+     * invoice sitting between the document references and the supplier — and
+     * this builder emitted none at all, so every document carrying a QR failed
+     * the rule.
+     *
+     * Both values are fixed. There is one signature on a ZATCA invoice and one
+     * method of making it.
+     */
+    private function addSignatureReference(): void
+    {
+        $signature = $this->dom->createElementNS(self::CAC_NS, 'cac:Signature');
+        $signature->appendChild(
+            $this->dom->createElementNS(self::CBC_NS, 'cbc:ID', self::SIGNATURE_REFERENCE)
+        );
+        $signature->appendChild(
+            $this->dom->createElementNS(self::CBC_NS, 'cbc:SignatureMethod', self::SIGNATURE_URI)
+        );
+
+        $this->root->appendChild($signature);
+    }
+
     private function addSupplierParty(InvoiceXmlData $data): void
     {
         $supplier = $this->dom->createElementNS(self::CAC_NS, 'cac:AccountingSupplierParty');
@@ -351,9 +409,16 @@ class XmlBuilder
             $this->dom->createElementNS(self::CBC_NS, 'cbc:PaymentMeansCode', $data->paymentMeansCode ?? '10')
         );
 
-        if ($data->paymentTerms !== null) {
+        // KSA-10. BR-KSA-17 requires a credit or debit note to say why it was
+        // issued, and this is the element it reads — ZATCA's own samples carry
+        // the reason here and nowhere else. On an ordinary invoice the same
+        // element carries the payment terms, so the reason takes precedence
+        // when there is one: a note without it is rejected, terms are optional.
+        $instruction = $data->creditDebitReason ?? $data->paymentTerms;
+
+        if ($instruction !== null) {
             $paymentMeans->appendChild(
-                $this->dom->createElementNS(self::CBC_NS, 'cbc:InstructionNote', $data->paymentTerms)
+                $this->dom->createElementNS(self::CBC_NS, 'cbc:InstructionNote', $instruction)
             );
         }
 
@@ -731,8 +796,22 @@ class XmlBuilder
             $lineTaxAmountEl->setAttribute('currencyID', $data->currency);
             $lineTax->appendChild($lineTaxAmountEl);
 
-            // Rounding amount (set to 0)
-            $rounding = $this->dom->createElementNS(self::CBC_NS, 'cbc:RoundingAmount', '0.00');
+            // KSA-12, the line amount with VAT.
+            //
+            // Inside a line's TaxTotal, cbc:RoundingAmount is not a rounding
+            // correction — ZATCA reads it as the line total including tax, and
+            // BR-KSA-51 requires it to equal the line net (BT-131) plus the
+            // line VAT (KSA-11). It was hardcoded to 0.00 under a comment
+            // calling it a rounding amount, so every line on every invoice
+            // declared its gross value as nothing. ZATCA's validator reports
+            // this as an advisory rather than an error, which is why it
+            // survived: the document cleared, and one of its stated totals was
+            // zero.
+            $rounding = $this->dom->createElementNS(
+                self::CBC_NS,
+                'cbc:RoundingAmount',
+                $this->formatAmount($displayLineNet + $lineTaxAmount)
+            );
             $rounding->setAttribute('currencyID', $data->currency);
             $lineTax->appendChild($rounding);
 
