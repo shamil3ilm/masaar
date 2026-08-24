@@ -163,16 +163,7 @@ class FatooraSandboxTest extends Command
             'curve_name' => 'secp256k1',
         ]);
 
-        // Method 2: Try prime256v1 (more widely supported, but check ZATCA accepts it)
-        if (! $privateKey) {
-            $this->warn('secp256k1 not available, trying prime256v1...');
-            $privateKey = @openssl_pkey_new([
-                'private_key_type' => OPENSSL_KEYTYPE_EC,
-                'curve_name' => 'prime256v1',
-            ]);
-        }
-
-        // Method 3: Use shell command (works on Windows with OpenSSL installed)
+        // Method 2: Use shell command (works on Windows with OpenSSL installed)
         if (! $privateKey) {
             $this->warn('PHP OpenSSL EC not available, trying shell command...');
 
@@ -215,7 +206,7 @@ class FatooraSandboxTest extends Command
             }
         }
 
-        // Method 4: Generate a simple test key for demonstration
+        // Method 3: Generate a simple test key for demonstration
         if (! $privateKey && ! $privateKeyPem) {
             $this->warn('⚠️  Could not generate EC secp256k1 key.');
             $this->newLine();
