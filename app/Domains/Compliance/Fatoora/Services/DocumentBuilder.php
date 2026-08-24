@@ -103,8 +103,7 @@ class DocumentBuilder
 
         // The full QR whenever there is a signature to put in it.
         //
-        // This used to choose by document type — nine tags for standard, five
-        // for simplified — which is backwards where it matters. BR-KSA-60:
+        // Not chosen by document type. BR-KSA-60:
         // "Cryptographic stamp (KSA-15) must exist in simplified tax invoices
         // and associated credit notes and debit notes." A simplified invoice
         // is reported after the fact and reaches the customer first, so its QR
@@ -228,10 +227,9 @@ class DocumentBuilder
             // the document falls back to declaring Saudi VAT in a foreign
             // currency.
             exchangeRate: $invoice->exchange_rate !== null ? (float) $invoice->exchange_rate : null,
-            // BR-KSA-17: a credit or debit note has to say why. The reason is
-            // collected by the API and stored on the invoice, and this was the
-            // step that carried it into the document — so every note went out
-            // without one while the field sat filled in the database.
+            // BR-KSA-17: a credit or debit note has to say why. The API
+            // collects the reason and stores it on the invoice; this is the
+            // step that carries it into the document.
             creditDebitReason: $invoice->adjustment_reason,
             // Invoice type sub-flags (bits 3-7 per ZATCA specification)
             isThirdParty: (bool) ($invoice->is_third_party ?? false),
@@ -267,10 +265,9 @@ class DocumentBuilder
      * IssueTime from created_at — and ZATCA compares the QR's tag 3 against
      * them, rejecting a document whose QR disagrees with its own header.
      *
-     * Tag 3 used to be built from issue_date alone. That column is a date, so
-     * its time was midnight while the invoice beside it said something else,
-     * on every invoice this platform has produced. Same two values, one
-     * instant.
+     * Built from the same two values the header carries, not from issue_date
+     * alone: that column is a date, so on its own it yields midnight while the
+     * header's IssueTime says something else.
      *
      * No trailing Z. The comparison is textual — IssueDate, a T, IssueTime —
      * and ZATCA's own sample invoices carry tag 3 exactly that way. A Z is a

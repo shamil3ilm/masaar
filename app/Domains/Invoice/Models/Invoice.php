@@ -360,16 +360,13 @@ class Invoice extends Model
      * The hash of this tenant's preceding invoice — ZATCA's PIH.
      *
      * Every document carries the previous one's hash, and the authority checks
-     * the chain. There is no previous_invoice_hash column, so reading the
-     * attribute used to yield null: Eloquent answers null for an attribute it
-     * does not have rather than failing. ProcessFatooraSubmission and
-     * OfflineFallback both did exactly that, and XmlBuilder turns a null into
-     * the genesis PIH — so every invoice submitted through the queue or the
-     * offline path claimed to be the first in its chain.
+     * the chain. There is no previous_invoice_hash column, so this accessor is
+     * what makes the attribute answer: Eloquent returns null for an attribute
+     * it does not have rather than failing, and XmlBuilder turns a null into
+     * the genesis PIH — a silent claim to be first in the chain.
      *
-     * Defined here rather than at those call sites because they already read
-     * this attribute expecting this value, and because one implementation of
-     * the chain is the point.
+     * Defined on the model rather than at each call site, so that the queue,
+     * the offline path and the direct path all derive the chain the same way.
      *
      * Ordered by ICV rather than created_at, so the chain follows ZATCA's
      * sequential counter instead of wall-clock time, which is not deterministic

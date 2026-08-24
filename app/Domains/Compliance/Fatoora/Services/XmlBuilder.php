@@ -56,12 +56,13 @@ class XmlBuilder
     {
         $this->initDocument();
 
-        // ZATCA looks for the signature in UBLExtensions, so the document has
-        // to carry the scaffold before it is signed. This was written and
-        // never called, so the signer found nowhere to put the signature and
-        // fell back to appending it under the root — where no verifier looks
-        // for it. The XPath transform strips UBLExtensions before the document
-        // digest is taken, so its presence does not change the invoice hash.
+        // ZATCA reads the signature from UBLExtensions, so the scaffold has to
+        // exist before the signer runs — without somewhere to put it, the
+        // signature lands under the invoice root where no verifier looks.
+        //
+        // Called before the content elements deliberately: the XPath transform
+        // strips UBLExtensions before the document digest is taken, so the
+        // scaffold does not change the invoice hash.
         $this->addSignatureExtension();
 
         $this->addInvoiceIdentification($data);
@@ -105,9 +106,8 @@ class XmlBuilder
         $extensions = $this->dom->createElementNS(self::EXT_NS, 'ext:UBLExtensions');
         $extension = $this->dom->createElementNS(self::EXT_NS, 'ext:UBLExtension');
 
-        // BR-KSA-30 wants this exact string, and the extension carried no URI
-        // at all — so every document that had a cryptographic stamp failed the
-        // rule that says which kind of stamp it is.
+        // BR-KSA-30 requires this exact URI. It is what identifies the
+        // extension as the cryptographic stamp rather than any other kind.
         $extension->appendChild(
             $this->dom->createElementNS(self::EXT_NS, 'ext:ExtensionURI', self::SIGNATURE_URI)
         );
@@ -148,16 +148,13 @@ class XmlBuilder
         // Customization ID (ZATCA-specific UBL customization)
         $this->addElement('cbc:CustomizationID', 'urn:oasis:names:specification:ubl:xpath:Invoice-2.0:sac-mod');
 
-        // BT-23, the business process. One value for every document type.
+        // BT-23, the business process: "reporting:1.0" for every document
+        // type. BR-KSA-EN16931-01 admits no other value, and every sample
+        // invoice in ZATCA's SDK carries it — standard and simplified,
+        // invoice, credit and debit alike.
         //
-        // This used to emit "clearance:1.0" for standard invoices, on the
-        // reasoning that a standard invoice is cleared rather than reported.
-        // That reasoning is about the transaction, and BT-23 is not: ZATCA's
-        // own validator rejects it as BR-KSA-EN16931-01, "Business process
-        // (BT-23) must be reporting:1.0", and all nineteen sample invoices
-        // shipped with the SDK — standard and simplified, invoice, credit and
-        // debit — carry reporting:1.0. Clearance is chosen by the endpoint the
-        // document is sent to, not by a field inside it.
+        // Not "clearance:1.0" for standard invoices: clearance is chosen by
+        // the endpoint a document is sent to, not declared inside it.
         $this->addElement('cbc:ProfileID', 'reporting:1.0');
 
         // Invoice ID
@@ -174,12 +171,10 @@ class XmlBuilder
         $typeCode = $this->addElement('cbc:InvoiceTypeCode', $data->invoiceTypeCode);
         $typeCode->setAttribute('name', $data->getInvoiceTypeName());
 
-        // KSA-10, the reason a credit or debit note was issued, is emitted in
-        // addPaymentMeans() as cbc:InstructionNote. It used to be written here
-        // as cbc:Note, which is BT-22 — a free-text remark on any invoice, and
-        // not the element BR-KSA-17 reads. The reason was carried all the way
-        // from adjustment_reason and then put somewhere the authority does not
-        // look, so every credit and debit note failed the rule.
+        // KSA-10, the reason a credit or debit note was issued, is emitted by
+        // addPaymentMeans() as cbc:InstructionNote — the element BR-KSA-17
+        // reads. Not cbc:Note here, which is BT-22, a free-text remark on any
+        // invoice and not where the authority looks for the reason.
 
         // Document currency (can be foreign currency like USD, EUR)
         $this->addElement('cbc:DocumentCurrencyCode', $data->currency);
@@ -266,12 +261,10 @@ class XmlBuilder
     /**
      * The invoice's own statement that it is signed, and how.
      *
-     * BR-KSA-30 does not read the extension's URI, which is what the name
-     * "signature method" suggests. Its Schematron asks for
-     * //cac:Signature/cbc:SignatureMethod, an element in the body of the
-     * invoice sitting between the document references and the supplier — and
-     * this builder emitted none at all, so every document carrying a QR failed
-     * the rule.
+     * BR-KSA-30's Schematron asks for //cac:Signature/cbc:SignatureMethod —
+     * an element in the body of the invoice, between the document references
+     * and the supplier. Despite the rule's name it does not read the
+     * extension's URI, so emitting that alone does not satisfy it.
      *
      * Both values are fixed. There is one signature on a ZATCA invoice and one
      * method of making it.
@@ -575,11 +568,10 @@ class XmlBuilder
                 ];
             }
 
-            // The taxable amount is the line net. lineTotal is not it — the
-            // controller stores quantity × unitPrice plus the line's tax — and
-            // a comment here said otherwise, so every subtotal declared a base
-            // that already included the tax it was supposed to explain: 150 on
-            // a stated 1150 at 15%, which is arithmetic ZATCA checks first.
+            // The taxable amount is the line net, recomputed here rather than
+            // read from lineTotal: the controller stores quantity × unitPrice
+            // plus the line's tax, so lineTotal already includes the tax this
+            // subtotal exists to explain. ZATCA checks that arithmetic first.
             $lineNet = round((float) $line['quantity'] * (float) $line['unitPrice'], 2);
             $subtotals[$key]['taxableAmount'] += $lineNet;
         }
@@ -801,12 +793,10 @@ class XmlBuilder
             // Inside a line's TaxTotal, cbc:RoundingAmount is not a rounding
             // correction — ZATCA reads it as the line total including tax, and
             // BR-KSA-51 requires it to equal the line net (BT-131) plus the
-            // line VAT (KSA-11). It was hardcoded to 0.00 under a comment
-            // calling it a rounding amount, so every line on every invoice
-            // declared its gross value as nothing. ZATCA's validator reports
-            // this as an advisory rather than an error, which is why it
-            // survived: the document cleared, and one of its stated totals was
-            // zero.
+            // line VAT (KSA-11). Zero here declares the line's gross value as
+            // nothing, and ZATCA reports that as an advisory rather than an
+            // error — the document clears with a stated total of zero, so
+            // nothing downstream objects.
             $rounding = $this->dom->createElementNS(
                 self::CBC_NS,
                 'cbc:RoundingAmount',

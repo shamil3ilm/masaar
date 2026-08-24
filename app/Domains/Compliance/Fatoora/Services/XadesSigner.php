@@ -487,13 +487,14 @@ class XadesSigner
     /**
      * The UBL signature wrapper ZATCA requires around ds:Signature.
      *
-     * The signature used to go straight into ext:ExtensionContent. That is a
-     * valid enveloped signature and it is not what ZATCA reads: BR-KSA-28
-     * looks for a signature information ID of
+     * A ds:Signature placed straight into ext:ExtensionContent is a valid
+     * enveloped signature and not what ZATCA reads. BR-KSA-28 looks for a
+     * signature information ID of
      * "urn:oasis:names:specification:ubl:signature:1", which lives on
-     * sac:SignatureInformation inside sig:UBLDocumentSignatures. With no
-     * wrapper there was no ID, and every document carrying a cryptographic
-     * stamp — which is every simplified invoice — failed the rule.
+     * sac:SignatureInformation inside sig:UBLDocumentSignatures — so the
+     * wrapper is what carries the ID the rule asks for. Without it every
+     * document bearing a cryptographic stamp fails, which is every simplified
+     * invoice.
      *
      * The digest is unaffected. The signed content excludes UBLExtensions by
      * an XPath transform, so what is built here sits outside what was signed.

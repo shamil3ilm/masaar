@@ -188,10 +188,10 @@ class SubmissionGuard
      */
     private function checkCertificateHealth(Organization $organization): void
     {
-        // Read where the signing code reads. This used to be
-        // $organization->zatca_certificate, which is neither a column nor an
-        // accessor, so it was null for every organization and every submission
-        // was refused here before reaching ZATCA.
+        // Read from the credential store, which is where the signing code
+        // reads. Organization has no zatca_certificate attribute; reading one
+        // yields null, and a null here refuses the submission before it
+        // reaches ZATCA.
         $credentials = $this->credentials->get(
             (string) $organization->id,
             null,

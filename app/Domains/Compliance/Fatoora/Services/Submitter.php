@@ -391,12 +391,10 @@ class Submitter
 
         // Keep the document the authority cleared.
         //
-        // ZATCA stamps the invoice it clears and returns it, and that stamped
-        // copy is the legal invoice — the one we submitted is what we asked
-        // for. FatooraResponse has always parsed it into clearedInvoice, and
-        // nothing read the field, so every B2B invoice was archived and served
-        // in its pre-clearance form. Only clearance returns a document;
-        // reporting acknowledges one.
+        // ZATCA stamps the invoice it clears and returns it. That stamped
+        // copy is the legal invoice; the one submitted is only what was asked
+        // for. Only clearance returns a document — reporting acknowledges one,
+        // so cleared_xml stays null for a simplified invoice.
         if ($cleared = $this->clearedXml($response)) {
             $changes['cleared_xml'] = $cleared;
         }

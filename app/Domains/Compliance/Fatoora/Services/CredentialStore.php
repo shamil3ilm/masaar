@@ -15,20 +15,17 @@ use Illuminate\Support\Facades\Storage;
  * These are the private keys behind every invoice this platform stamps, so
  * three things about them are deliberate.
  *
- * The disk is configuration, not a constant. It was Storage::disk('local') in
- * three separate files, which meant credentials landed inside the container:
- * a tenant onboarded on one replica could not sign on another, so the platform
- * could not run more than one. Pointing fatoora.signing.disk at a shared
- * filesystem is now the whole change.
+ * The disk is configuration rather than a constant, so credentials can live on
+ * shared storage. On a container-local disk a tenant onboarded on one replica
+ * cannot sign on another, which caps the platform at a single replica.
  *
  * Reading and writing live here rather than at each call site, because
- * rotation needs to find every stored credential and re-encrypt it, and it
- * cannot do that while three files each build their own paths.
+ * rotation has to find every stored credential and re-encrypt it, and it
+ * cannot do that if callers build their own paths.
  *
  * The secret is fatoora.signing.key, falling back to APP_KEY — see cipher().
- * One secret still covers every tenant, which is the part of audit finding H-1
- * that remains: a per-tenant data key wrapped by a KMS. cipher() is where that
- * goes, and nothing outside this class changes when it does.
+ * One secret covers every tenant; a per-tenant data key wrapped by a KMS is
+ * what would narrow that, and cipher() is the only place it would change.
  */
 class CredentialStore
 {
@@ -128,8 +125,7 @@ class CredentialStore
      * asked for first and the organization's is the fallback — the same order
      * the signing code resolves in.
      *
-     * Callers used to ask a certificate_lineage table that nothing ever wrote,
-     * so every one of them concluded there was no certificate.
+     * Read from the credential store, which is where onboarding writes.
      */
     public function certificate(string $organizationId, ?string $branchId = null): ?string
     {
