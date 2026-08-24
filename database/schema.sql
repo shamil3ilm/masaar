@@ -1,5 +1,5 @@
 -- =============================================================================
--- CompliPay Database Schema Reference
+-- Masaar Database Schema Reference
 -- =============================================================================
 -- Generated from Laravel migrations
 -- For reference only - use migrations for actual deployment

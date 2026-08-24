@@ -290,7 +290,7 @@ public class MasaarConfig {
     private String apiSecret;
 
     @Bean
-    public MasaarClient compliPayClient() {
+    public MasaarClient masaarClient() {
         return new MasaarClient.Builder()
             .baseUrl(baseUrl)
             .apiKey(apiKey)
@@ -303,22 +303,22 @@ public class MasaarConfig {
 @Service
 public class InvoiceService {
 
-    private final MasaarClient compliPay;
+    private final MasaarClient masaar;
 
-    public InvoiceService(MasaarClient compliPay) {
-        this.compliPay = compliPay;
+    public InvoiceService(MasaarClient masaar) {
+        this.masaar = masaar;
     }
 
     public Invoice createAndSubmit(CreateInvoiceRequest request) throws MasaarException {
         // Create invoice
-        ApiResponse<Invoice> response = compliPay.invoices().create(request);
+        ApiResponse<Invoice> response = masaar.invoices().create(request);
         Invoice invoice = response.getData();
 
         // Submit to ZATCA
-        compliPay.compliance().submit(invoice.getId());
+        masaar.compliance().submit(invoice.getId());
 
         // Return updated invoice
-        return compliPay.invoices().get(invoice.getId()).getData();
+        return masaar.invoices().get(invoice.getId()).getData();
     }
 }
 ```

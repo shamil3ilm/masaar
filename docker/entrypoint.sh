@@ -1,11 +1,11 @@
 #!/bin/sh
-# CompliPay Docker Entrypoint Script
+# Masaar Docker Entrypoint Script
 # Initializes the application for production deployment
 
 set -e
 
 echo "=============================================="
-echo "CompliPay - ZATCA E-Invoicing Platform"
+echo "Masaar - ZATCA E-Invoicing Platform"
 echo "=============================================="
 echo "Starting container initialization..."
 
@@ -103,7 +103,7 @@ setup_storage() {
 
     # Set permissions (if running as root during setup)
     if [ "$(id -u)" = "0" ]; then
-        chown -R complipay:complipay storage bootstrap/cache
+        chown -R masaar:masaar storage bootstrap/cache
         chmod -R 775 storage bootstrap/cache
     fi
 

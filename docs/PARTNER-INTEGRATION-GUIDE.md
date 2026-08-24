@@ -88,11 +88,11 @@ return [
     |--------------------------------------------------------------------------
     */
 
-    'base_url' => env('COMPLIPAY_BASE_URL', 'https://sandbox.masaar.sa'),
+    'base_url' => env('MASAAR_BASE_URL', 'https://sandbox.masaar.sa'),
 
-    'api_key' => env('COMPLIPAY_API_KEY'),
+    'api_key' => env('MASAAR_API_KEY'),
 
-    'timeout' => env('COMPLIPAY_TIMEOUT', 30),
+    'timeout' => env('MASAAR_TIMEOUT', 30),
 
     'retry' => [
         'times' => 3,
@@ -106,7 +106,7 @@ return [
     */
 
     'webhook' => [
-        'secret' => env('COMPLIPAY_WEBHOOK_SECRET'),
+        'secret' => env('MASAAR_WEBHOOK_SECRET'),
         'events' => [
             'invoice.cleared',
             'invoice.reported',
@@ -134,10 +134,10 @@ Add to `.env`:
 
 ```env
 # Masaar Configuration
-COMPLIPAY_BASE_URL=https://sandbox.masaar.sa
-COMPLIPAY_API_KEY=your_api_key_here
-COMPLIPAY_WEBHOOK_SECRET=your_webhook_secret_here
-COMPLIPAY_TIMEOUT=30
+MASAAR_BASE_URL=https://sandbox.masaar.sa
+MASAAR_API_KEY=your_api_key_here
+MASAAR_WEBHOOK_SECRET=your_webhook_secret_here
+MASAAR_TIMEOUT=30
 ```
 
 ---
@@ -530,17 +530,17 @@ class InvoiceService
     /**
      * Get invoice status from Masaar
      */
-    public function getStatus(string $compliPayId): array
+    public function getStatus(string $masaarId): array
     {
-        return $this->client->get("/api/compliance/zatca/status/{$compliPayId}");
+        return $this->client->get("/api/compliance/zatca/status/{$masaarId}");
     }
 
     /**
      * Validate invoice before submission
      */
-    public function validate(string $compliPayId): array
+    public function validate(string $masaarId): array
     {
-        return $this->client->post("/api/compliance/zatca/validate/{$compliPayId}");
+        return $this->client->post("/api/compliance/zatca/validate/{$masaarId}");
     }
 }
 ```
@@ -769,11 +769,11 @@ use Illuminate\Support\Facades\Log;
 
 class InvoiceController extends Controller
 {
-    private InvoiceService $compliPayInvoice;
+    private InvoiceService $masaarInvoice;
 
-    public function __construct(InvoiceService $compliPayInvoice)
+    public function __construct(InvoiceService $masaarInvoice)
     {
-        $this->compliPayInvoice = $compliPayInvoice;
+        $this->masaarInvoice = $masaarInvoice;
     }
 
     /**
@@ -795,7 +795,7 @@ class InvoiceController extends Controller
 
         // Submit to Masaar for ZATCA compliance
         try {
-            $result = $this->compliPayInvoice->createAndSubmit(
+            $result = $this->masaarInvoice->createAndSubmit(
                 $invoice,
                 $invoice->company
             );
@@ -861,7 +861,7 @@ class InvoiceController extends Controller
         }
 
         try {
-            $result = $this->compliPayInvoice->createAndSubmit(
+            $result = $this->masaarInvoice->createAndSubmit(
                 $invoice,
                 $invoice->company
             );
@@ -908,7 +908,7 @@ class InvoiceController extends Controller
         }
 
         try {
-            $status = $this->compliPayInvoice->getStatus($invoice->masaar_id);
+            $status = $this->masaarInvoice->getStatus($invoice->masaar_id);
 
             // Update local status if changed
             if ($status['status'] !== $invoice->zatca_status) {
@@ -1088,9 +1088,9 @@ class MasaarWebhookController extends Controller
      */
     private function handleInvoiceCleared(array $payload)
     {
-        $compliPayId = $payload['data']['invoice_id'];
+        $masaarId = $payload['data']['invoice_id'];
 
-        $invoice = Invoice::where('masaar_id', $compliPayId)->first();
+        $invoice = Invoice::where('masaar_id', $masaarId)->first();
 
         if ($invoice) {
             $invoice->update([
@@ -1112,9 +1112,9 @@ class MasaarWebhookController extends Controller
      */
     private function handleInvoiceReported(array $payload)
     {
-        $compliPayId = $payload['data']['invoice_id'];
+        $masaarId = $payload['data']['invoice_id'];
 
-        $invoice = Invoice::where('masaar_id', $compliPayId)->first();
+        $invoice = Invoice::where('masaar_id', $masaarId)->first();
 
         if ($invoice) {
             $invoice->update([
@@ -1131,9 +1131,9 @@ class MasaarWebhookController extends Controller
      */
     private function handleInvoiceRejected(array $payload)
     {
-        $compliPayId = $payload['data']['invoice_id'];
+        $masaarId = $payload['data']['invoice_id'];
 
-        $invoice = Invoice::where('masaar_id', $compliPayId)->first();
+        $invoice = Invoice::where('masaar_id', $masaarId)->first();
 
         if ($invoice) {
             $invoice->update([
@@ -1276,7 +1276,7 @@ class MasaarIntegrationTest extends TestCase
 1. **Environment Setup**
    ```bash
    # Ensure sandbox configuration
-   COMPLIPAY_BASE_URL=https://sandbox.masaar.sa
+   MASAAR_BASE_URL=https://sandbox.masaar.sa
    ```
 
 2. **Test Standard Invoice (B2B)**
