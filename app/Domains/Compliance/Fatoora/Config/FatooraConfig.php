@@ -95,17 +95,6 @@ final class FatooraConfig
     public const TAX_CATEGORY_OUT_OF_SCOPE = 'O';   // Out of scope
 
     /**
-     * The tax category a line belongs to, given its exemption code and rate.
-     *
-     * ZATCA reads the category and the exemption reason together: VATEX-SA-HEA
-     * on a line taxed at 15% is a contradiction and the document is rejected
-     * rather than reconciled. So the code decides, and the rate only answers
-     * when there is no code.
-     *
-     * Order matters — the arms short-circuit, and every code begins VATEX-SA-,
-     * so the specific prefixes have to be tried before the general one.
-     */
-    /**
      * Share a document-level allowance out across tax categories.
      *
      * A discount on the whole invoice reduces what is taxable, and the
@@ -149,6 +138,17 @@ final class FatooraConfig
         return $shares;
     }
 
+    /**
+     * The tax category a line belongs to, given its exemption code and rate.
+     *
+     * ZATCA reads the category and the exemption reason together: VATEX-SA-HEA
+     * on a line taxed at 15% is a contradiction and the document is rejected
+     * rather than reconciled. So the code decides, and the rate only answers
+     * when there is no code.
+     *
+     * Order matters — the arms short-circuit, and every code begins VATEX-SA-,
+     * so the specific prefixes have to be tried before the general one.
+     */
     public static function taxCategoryFor(?string $exemptionCode, float $taxRate): string
     {
         if ($exemptionCode === null || $exemptionCode === '') {
@@ -203,10 +203,10 @@ final class FatooraConfig
     // ============================================================
     // CRYPTOGRAPHY
     //
-    // ZATCA mandates these, so they are constants and not configuration. The
-    // curve used to be reachable from the environment while key generation was
-    // pinned in code, which meant a deployment could sign on a curve its keys
-    // were never generated for and only discover it at the authority.
+    // ZATCA mandates these, so they are constants rather than configuration.
+    // A curve settable from the environment while key generation is pinned in
+    // code lets a deployment sign on a curve its keys were not generated for,
+    // and the authority is where that surfaces.
     // ============================================================
     public const EC_CURVE = 'secp256k1';
 
