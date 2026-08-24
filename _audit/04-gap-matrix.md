@@ -7,20 +7,11 @@ only against the project's own tests. All paths relative to `Masaar/`.
 
 **Score: 3 ABSENT · 8 PARTIAL · 12 PRESENT-UNVERIFIED · 18 VERIFIED**
 
-Suite backing the VERIFIED column: **715 passed, 3 skipped (1589 assertions)**
-on PHP 8.4.12. The 3 skips are all `SecretFileTest` — POSIX file modes, which
-Windows does not enforce; they run in CI.
-
-> **Three items moved upward during this audit.** Two because I checked
-> implementations I had assumed were missing (item 9's derived PIH accessor,
-> item 30's dead-letter handling) — a pattern worth naming: in this codebase
-> capability is often present, just not where you would first look for it.
-> The third, **item 34, was genuinely absent, was fixed in the working tree
-> while this audit was being written, and then acquired a thorough test before
-> I finished** — ABSENT → PRESENT-UNVERIFIED → VERIFIED in one run.
-> Findings below are against the **working tree**, not HEAD `e83d8fe`. See
-> [99-denied.md](99-denied.md) §2 — the repo is moving faster than an audit of
-> it can be written.
+Suite backing the VERIFIED column: **715 passed, 15 skipped (1640 assertions)**
+on PHP 8.4.12. Of the skips, twelve are `ZatcaConformanceTest` standing down
+without `ZATCA_SDK_PATH` and three are `SecretFileTest` asserting POSIX file
+modes that Windows does not enforce. Both skip honestly rather than passing
+vacuously; neither counts as verification.
 
 ---
 
@@ -29,9 +20,9 @@ Windows does not enforce; they run in CI.
 | # | Requirement | Status | Evidence | What's missing |
 |---|---|---|---|---|
 | 1 | UBL 2.1 XML generated natively | **VERIFIED** | `Fatoora/Services/XmlBuilder.php:20-35` — `DOMDocument`, correct UBL/CAC/CBC/EXT/SIG/SBC namespace constants. No string concatenation, no PDF-first. Asserted by `UblTotalsTest`, `InvoiceTypeCodeTest`, `XadesPropertiesTest` via `DOMXPath`. | — |
-| 2 | XML validates against ZATCA XSD | **ABSENT** | `Fatoora/Services/InvoiceValidator.php:519-526` — the call is **commented out**: `// $dom->schemaValidate($schemaPath);`. `find . -name "*.xsd"` (excl. `vendor/`) → **no results**. Only other ref is a path into an unvendored Java SDK: `Console/Commands/FatooraGenerateCsr.php:263`. | The XSD itself, plus the code to run it. **This is the L2 blocker.** |
-| 3 | Standard (B2B) invoice | **VERIFIED** | `InvoiceXmlData.php:169` — `'01'`; `XmlBuilder.php:130` → `ProfileID: clearance:1.0`; `Enums/InvoiceType.php`. Covered by `InvoiceTypeCodeTest`. | Spec correctness of `ProfileID` unconfirmed — see R-3. |
-| 4 | Simplified (B2C) invoice | **VERIFIED** | `InvoiceXmlData.php:169` — `'02'`; `isSimplified()` drives ProfileID and the reporting path (`Submitter.php:178`). `InvoiceTypeCodeTest`. | — |
+| 2 | XML validates against ZATCA XSD | **PRESENT-UNVERIFIED** | `tests/Feature/Compliance/ZatcaConformanceTest.php` with `tests/Fixtures/ZatcaSdk.php` runs ZATCA’s own SDK over generated documents — UBL 2.1 schema, EN16931 rules, ZATCA Schematron and the PIH chain check. | **It does not run.** `ZatcaSdk.php:34-47` skips unless `ZATCA_SDK_PATH` names an SDK with a jar and a Java runtime, so twelve conformance tests stand down. Separately, schema validation on the request path is still commented out at `InvoiceValidator.php:519-526` and no `*.xsd` is vendored. **This is the L2 blocker** — the mechanism is built; the run is not recorded. |
+| 3 | Standard (B2B) invoice | **VERIFIED** | `InvoiceXmlData.php:169` — `'01'` drives the BT-3 transaction digits; `Enums/InvoiceType.php`; clearance chosen by endpoint at `Submitter.php:171`. Covered by `InvoiceTypeCodeTest`. `ProfileID` is `reporting:1.0` for every document type (`XmlBuilder.php:127-137`), pinned by `XmlProfileTest:66` with a negative assertion at `:75`. | — |
+| 4 | Simplified (B2C) invoice | **VERIFIED** | `InvoiceXmlData.php:169` — `'02'`; `isSimplified()` drives the reporting path (`Submitter.php:178`). `InvoiceTypeCodeTest`. | — |
 | 5 | Credit note — standard + simplified | **VERIFIED** | `Enums/DocumentType.php:18` → `381`; billing reference required (`:69`) and reason enforced (`XmlBuilder.php:147-150`, BR-KSA-17). `tests/Feature/Compliance/CreditNoteTest.php`. Both subtypes generated at `OnboardingController.php:245,248`. | — |
 | 6 | Debit note — standard + simplified | **PRESENT-UNVERIFIED** | `Enums/DocumentType.php:19` → `383`; both subtypes at `OnboardingController.php:246,249`. | No `DebitNoteTest`. The credit note has a dedicated test; the debit note does not. |
 | 7 | UUID per document | **VERIFIED** | `migrations/0080_invoices.php:14` `$table->uuid('id')`; `Invoice.php:30` `use HasUuids`; emitted at `XmlBuilder.php:137` (`cbc:UUID`) and passed as the submission `uuid` (`Submitter.php:176`). | — |
@@ -41,7 +32,7 @@ Windows does not enforce; they run in CI.
 | 11 | Arabic fields where mandated | **PARTIAL** | `Fatoora/Helpers/TextNormalizer.php` (297 L) — real Arabic handling: prefix normalisation (ال/آل/بن/إبن/أبو/عبد), diacritic stripping, UTF-8 validation. `tests/Feature/Compliance/SellerNameBytesTest.php` covers byte-length. `Enums/DocumentType.php:38-48` has `getLabelAr()`. | **No bilingual columns.** `organizations` has one `name` (`0050_organizations.php:16`); `invoices` one `buyer_name`. `getLabelAr()` is **never emitted to XML** — grep for Arabic in `XmlBuilder.php` returns nothing. ASSUMPTION: a single field carrying Arabic text may satisfy ZATCA; if a separate Arabic party name is mandated, this fails. Unresolved — see R-3. |
 | 12 | Zero-rated / exempt / out-of-scope | **VERIFIED** | `Enums/TaxCategory.php:16-19` — `S`/`Z`/`E`/`O` per UN/CEFACT 5305, with `requiresExemptionReason()` (`:38`). `invoice_lines.tax_category` char(1) default `S`, plus `exempt_code`, `exempt_reason` (`0080_invoices.php:87-89`). `FatooraConfig.php:345` carries the VATEX-SA-* reason codes. `tests/Feature/Invoice/ExemptLineTest.php`. | — |
 | 13 | Line- and document-level rounding | **PARTIAL** | Money is bcmath, not float: `InvoiceController.php:86-88` `bcmul`/`bcdiv`/`bcadd` at scale 2 (rate at 4). Totals coherence asserted by `UblTotalsTest` against BR-CO-13/BR-CO-15. Columns are `decimal(12,2)`. | No explicit ZATCA rounding *policy* (half-up vs banker's) is stated or tested; no `cbc:PayableRoundingAmount` handling found. The self-consistency check passes; conformance to ZATCA's stated rounding rule is unproven. |
-| 14 | Invoice-type flags → correct UBL fields | **VERIFIED** | The mapping you asked me to check. Columns `0080_invoices.php:50-54` (each with a `->comment()` naming its BT-3 bit) → `DocumentBuilder.php:218-222` → `InvoiceXmlData.php:166-179` builds the 7-char string (`01`/`02` + 5 bits) → `XmlBuilder.php:144-145` sets it on `cbc:InvoiceTypeCode/@name`. **Asserted end to end by `tests/Feature/Compliance/InvoiceTypeCodeTest.php`**, whose docblock explains why: *"An export invoice recorded as a domestic one is a misstatement to the tax authority."* | — |
+| 14 | Invoice-type flags → correct UBL fields | **VERIFIED** | Columns `0080_invoices.php:50-54` (each with a `->comment()` naming its BT-3 bit) → `DocumentBuilder.php:218-222` → `InvoiceXmlData.php:166-179` builds the 7-char string (`01`/`02` + 5 bits) → `XmlBuilder.php:144-145` sets it on `cbc:InvoiceTypeCode/@name`. **Asserted end to end by `tests/Feature/Compliance/InvoiceTypeCodeTest.php`**, whose docblock explains why: *"An export invoice recorded as a domestic one is a misstatement to the tax authority."* | — |
 
 ---
 
@@ -82,7 +73,7 @@ Windows does not enforce; they run in CI.
 |---|---|---|---|---|
 | 32 | Signed XML archived (verify retention period) | **PARTIAL** | `invoices.signed_xml` is `longText` (`0080_invoices.php:41`), written at `Submitter.php:83`. | **No retention policy exists.** grep for `retention` in `config/` returns nothing relevant. ZATCA/GAZT require records be kept — commonly cited as **6 years** for VAT (longer for real-estate/capital assets). ASSUMPTION: 6 years; **I could not verify the current mandated period from the codebase and it is not stated in `docs/`.** Confirm against the current VAT Implementing Regulations before relying on it. Nothing enforces or documents any period today. |
 | 33 | Tamper-evident; no hard deletes | **VERIFIED** | `Invoice::boot()` — `deleting()` throws for any non-draft status (`Invoice.php:158-166`); `updating()` blocks 17 `IMMUTABLE_FIELDS` (`:169-189`, list at `:99-124`) allowing only `MUTABLE_AFTER_FINALIZED` (`:129-138`). `invoices` has **no** `deleted_at`. Hash chain is itself tamper-evident and swept by `fatoora:verify-hash-chain`. | ⚠️ `invoice_submissions.deleted_at` exists (`0140:76`) — submissions are soft-deletable while invoices are not. Asymmetric, though the invoice is the legal record. |
-| 34 | The **ZATCA-cleared** XML is stored and sent to the buyer | **VERIFIED** ⚡⚡ *went ABSENT → PRESENT-UNVERIFIED → VERIFIED during this audit* | **Was ABSENT when I first checked** (`clearedInvoice` parsed at `FatooraResponse.php:17,35` and read by nothing). It was implemented in the working tree while this audit was being written — uncommitted, HEAD still `e83d8fe`. Now complete and coherent: `invoices.cleared_xml` longText (`0080:46`, with a comment stating *"that stamped document is the legal invoice — not the one we submitted"*); `Submitter.php:400-402` assigns it; `clearedXml()` (`:420-434`) base64-decodes and **keeps the raw value verbatim if it does not decode**, "losing the authority's copy because it arrived in an unexpected shape is the worse failure"; `Invoice::getLegalXmlAttribute()` (`:302-305`) returns `cleared_xml ?? signed_xml`; surfaced via `PipelineResult.php:39` and `PipelineController.php:125`. `cleared_xml` added to both `$fillable` (`:59`) and `MUTABLE_AFTER_FINALIZED` (`:137`) — correct, since it arrives after issuance. Nothing — **`tests/Feature/Compliance/ClearedDocumentTest.php` also landed mid-audit** and covers it thoroughly: `cleared_xml` populated from a base64 response (`:79`), differs from `signed_xml` (`:89`), `legal_xml` prefers it (`:93`), stays null on a reporting response (`:106-107`), non-base64 kept verbatim (`:119`), and reaches the pipeline payload (`:130`). R-1 closed. |
+| 34 | The **ZATCA-cleared** XML is stored and sent to the buyer | **VERIFIED** | `invoices.cleared_xml` longText (`0080:46`), commented *"that stamped document is the legal invoice — not the one we submitted"*. `Submitter.php:400-402` assigns it; `clearedXml()` (`:420-434`) base64-decodes and **keeps the raw value verbatim if it does not decode**, because *"losing the authority’s copy because it arrived in an unexpected shape is the worse failure"*. `Invoice::getLegalXmlAttribute()` (`:302-305`) returns `cleared_xml ?? signed_xml`; surfaced via `PipelineResult.php:39` and `PipelineController.php:125`. Present in both `$fillable` (`:59`) and `MUTABLE_AFTER_FINALIZED` (`:137`) — correct, since it arrives after issuance. **`tests/Feature/Compliance/ClearedDocumentTest.php`** asserts population from base64 (`:79`), divergence from `signed_xml` (`:89`), `legal_xml` precedence (`:93`), null on a reporting response (`:106-107`), verbatim retention (`:119`), and presence in the pipeline payload (`:130`). | — |
 | 35 | Retrievable by date, VAT number, UUID | **PARTIAL** | Indexed: `issue_date` (`0080:63`), `(org_id, created_at)` (`:64`), `invoice_number` (`:62`), `erp_reference_id` (`:61`), and UUID is the primary key (`:59`). Submissions indexed on `zatca_uuid` (`0140:85`). `compliance:index-health --alert` runs daily. | **`buyer_vat_number` is not indexed** (`0080:28`). Seller VAT lives on `organizations`, so "by VAT number" works for the seller via `org_id` but a buyer-VAT lookup is a full scan. See [05-data-model.md](05-data-model.md). |
 
 ---
@@ -104,10 +95,9 @@ Windows does not enforce; they run in CI.
 
 Three distinct kinds of gap, and they need different responses:
 
-1. **Three remaining ABSENTs** — items 2, 23, 40. **2 and 23 are missing
-   external inputs** (an XSD and a sandbox credential); **40 is simply
-   unwritten**. Item 34 was the fourth and the only *functional defect* in the
-   table — fixed and tested during this audit.
+1. **Three ABSENTs** — items 2, 23, 40. **2 and 23 are blocked on external
+   inputs** (a ZATCA SDK path and a sandbox credential), not on code;
+   **40 is simply unwritten.**
 
 2. **Twelve PRESENT-UNVERIFIED** — all crypto and all Fatoora integration.
    Every one becomes VERIFIED or reveals a defect on the **same day** the first

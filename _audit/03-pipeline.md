@@ -9,7 +9,7 @@ boundary.** This is the entire compliance surface.
 
 | Path | Route file | Caller | Controller |
 |---|---|---|---|
-| **A — ERP one-shot** | [`routes/api/partner.php`](../routes/api/partner.php) (`license` guard, `/v1`) | erp-backend, or any ERP | [`PipelineController`](../app/Domains/Pipeline/Http/Controllers/PipelineController.php) |
+| **A — ERP one-shot** | [`routes/api/partner.php`](../routes/api/partner.php) (`license` guard, `/v1`) | masaar-erp-backend, or any ERP | [`PipelineController`](../app/Domains/Pipeline/Http/Controllers/PipelineController.php) |
 | **B — direct authoring** | [`routes/api/tenant.php`](../routes/api/tenant.php) (`jwt.auth` guard) | a signed-in human | [`InvoiceController::store`](../app/Domains/Invoice/Http/Controllers/InvoiceController.php#L51) |
 
 Path B creates and persists an invoice **only** — it does not sign or submit.
@@ -20,7 +20,7 @@ Path A is the compliance pipeline proper. Everything below traces Path A.
 ## Full trace: "user saves an invoice" → "persisted and delivered"
 
 ```
-┌─ erp-backend ────────────────────────────────────────────────────────────────┐
+┌─ masaar-erp-backend ────────────────────────────────────────────────────────────────┐
 │                                                                              │
 │  user posts a sales invoice                                                  │
 │        ↓                                                                     │
@@ -128,7 +128,7 @@ Path A is the compliance pipeline proper. Everything below traces Path A.
 └──────────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
-                     erp-backend  ZatcaWebhookController
+                     masaar-erp-backend  ZatcaWebhookController
                        ← VerifyZatcaWebhook middleware
 ```
 
@@ -136,7 +136,7 @@ Path A is the compliance pipeline proper. Everything below traces Path A.
 
 ## Everything named
 
-### Repo boundary: erp-backend
+### Repo boundary: masaar-erp-backend
 | Kind | Name |
 |---|---|
 | Orchestrator | `App\Orchestrators\Sales\PostInvoiceOrchestrator` |
