@@ -84,6 +84,12 @@ class CreditNoteTest extends TestCase
     /**
      * The reason is collected by the API, stored on the invoice, and was never
      * carried into the document — the parameter existed and nothing passed it.
+     *
+     * It went into cbc:Note, which is BT-22: a free-text remark any invoice may
+     * carry. BR-KSA-17 does not read it. ZATCA's validator rejected every
+     * credit and debit note until the reason moved to KSA-10 —
+     * cac:PaymentMeans/cbc:InstructionNote — which is where the authority's own
+     * sample notes carry it, and they carry no cbc:Note at all.
      */
     public function test_it_carries_the_reason(): void
     {
@@ -91,7 +97,7 @@ class CreditNoteTest extends TestCase
 
         $this->assertSame(
             'Goods returned damaged',
-            $this->one($xpath, '/*/cbc:Note'),
+            $this->one($xpath, '/*/cac:PaymentMeans/cbc:InstructionNote'),
             'The credit note gives no reason (BR-KSA-17).'
         );
     }

@@ -31,7 +31,12 @@ class PipelineResult
             'compliance_status' => $this->complianceStatus($invoice->status, $zatcaResponse),
             'hash' => $invoice->hash,
             'qr_code' => $invoice->qr_code,
-            'signed_xml' => $invoice->signed_xml,
+            // The document of record. For a cleared standard invoice that is
+            // ZATCA's stamped copy, which is the legal invoice; otherwise it
+            // is what we signed. cleared_xml says which one arrived, so a
+            // caller that needs to tell them apart can.
+            'signed_xml' => $invoice->legal_xml,
+            'cleared_xml' => $invoice->cleared_xml,
             'zatca_response' => $zatcaResponse,
             'totals' => [
                 'subtotal' => $invoice->subtotal,
