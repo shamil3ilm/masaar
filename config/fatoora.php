@@ -96,21 +96,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Cryptographic Settings
-    |--------------------------------------------------------------------------
-    |
-    | ECDSA signing configuration per ZATCA specification.
-    | ZATCA requires secp256k1 curve with SHA-256 hash algorithm.
-    |
-    */
-    'crypto' => [
-        'curve' => env('ZATCA_CRYPTO_CURVE', 'secp256k1'),
-        'hash_algorithm' => env('ZATCA_CRYPTO_HASH', OPENSSL_ALGO_SHA256),
-        'coordinate_length' => 32, // bytes for secp256k1
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
     | Request Settings
     |--------------------------------------------------------------------------
     */

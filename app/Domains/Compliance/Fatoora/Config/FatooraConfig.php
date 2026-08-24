@@ -202,12 +202,24 @@ final class FatooraConfig
 
     // ============================================================
     // CRYPTOGRAPHY
+    //
+    // ZATCA mandates these, so they are constants and not configuration. The
+    // curve used to be reachable from the environment while key generation was
+    // pinned in code, which meant a deployment could sign on a curve its keys
+    // were never generated for and only discover it at the authority.
     // ============================================================
-    public const DEFAULT_RSA_KEY_SIZE = 2048;
+    public const EC_CURVE = 'secp256k1';
 
-    public const DEFAULT_EC_CURVE = 'secp256k1';
+    /**
+     * Field size of EC_CURVE in bytes.
+     *
+     * QR tag 8 pads both coordinates to this, so it follows the curve rather
+     * than being separately settable. It was a config value, which allowed it
+     * to disagree with the curve it describes.
+     */
+    public const EC_COORDINATE_BYTES = 32;
 
-    public const DEFAULT_HASH_ALGORITHM = 'sha256';
+    public const HASH_ALGORITHM = OPENSSL_ALGO_SHA256;
 
     // ============================================================
     // CLASSIFICATION SCHEMES
