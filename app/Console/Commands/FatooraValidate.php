@@ -177,19 +177,14 @@ class FatooraValidate extends Command
     /**
      * Report what the generated document actually contains.
      *
-     * This table used to be eighteen hardcoded rows, every one of them a ✓ and
-     * most of them a literal. It restated CustomizationID and ProfileID rather
-     * than reading them, and its ProfileID said "reporting:1.0" for every
-     * invoice while XmlBuilder emits "clearance:1.0" for standard ones — so
-     * the checklist disagreed with the builder and reported a tick either way.
-     * Rows like PIH "Base64 encoded" and Seller Address "Complete with all
-     * fields" checked nothing at all.
+     * Every row is read from the XML that was just written, never restated
+     * from what the builder is expected to emit. A checklist that cannot fail
+     * is worse than none, because it is read as confirmation: a row that
+     * hardcodes its own tick reports agreement with itself, and one phrased as
+     * "Base64 encoded" or "Complete with all fields" asserts nothing testable.
      *
-     * A checklist that cannot fail is worse than none: it is read as
-     * confirmation. This one reads the XML that was just written, so a missing
-     * element shows as missing and every value shown is the value emitted.
-     * What it still cannot tell you is whether those values are the ones ZATCA
-     * wants — that needs the schema and the authority, not this command.
+     * What it cannot tell you is whether those values are the ones ZATCA
+     * wants. That needs the schema and the authority, not this command.
      */
     private function displayValidationChecklist(string $xml, InvoiceXmlData $data, bool $isStandard): void
     {

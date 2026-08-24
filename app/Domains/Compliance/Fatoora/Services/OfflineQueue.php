@@ -397,9 +397,10 @@ class OfflineQueue
             }
         }
 
-        // The certificate the organization signs with. This asked a
-        // certificate_lineage table that nothing ever wrote, so every queued
-        // item was judged to have no certificate and the queue never drained.
+        // The certificate the organization signs with, read from the
+        // credential store — where onboarding writes. An item judged to have
+        // no certificate stays in the queue, so this has to look where the
+        // certificate actually is.
         $certificate = $this->credentials->certificate(
             (string) $item->org_id,
             $item->branch_id ?? null
