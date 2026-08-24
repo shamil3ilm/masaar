@@ -1,9 +1,8 @@
 *.log
 .DS_Store
-# Editor and tooling backups, wherever they land. The .env rule below already
-# catches .env.bak; this catches the same habit applied to any other file —
-# .claude/settings.json.bak was sitting untracked and would have been committed
-# by the next `git add -A`.
+# Editor and tooling backups. The .env rule below covers .env.bak; this covers
+# the same suffix on any other file, which is otherwise untracked and picked up
+# by `git add -A`.
 *.bak
 # Every .env variant except the committed template. Listing suffixes one at a
 # time missed .env.bak, which an editor produced and git would have offered to
@@ -11,9 +10,8 @@
 .env
 .env.*
 !.env.example
-# pnpm's lockfile. This project installs with npm — Dockerfile:34 runs `npm ci`
-# against package-lock.json — and a stray pnpm-lock.yaml from a mistyped
-# directory makes it ambiguous which one CI should believe.
+# pnpm's lockfile. This project installs with npm: Dockerfile runs `npm ci`
+# against package-lock.json. A second lockfile leaves CI two files to believe.
 pnpm-lock.yaml
 .phpactor.json
 .phpunit.result.cache

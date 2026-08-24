@@ -114,9 +114,11 @@ class BranchService
     }
 
     /**
-     * Get or create default branch for organization.
+     * The branch an invoice belongs to when it names none.
      *
-     * Creates a "Main Branch" if no branches exist (backward compatibility).
+     * Returns the branch marked default, else any active branch, else creates
+     * "Main Branch". ZATCA attributes every document to an EGS unit, including
+     * a single-site taxpayer's, so this always returns one rather than null.
      */
     public function getOrCreateDefault(Organization $organization): Branch
     {
@@ -191,34 +193,4 @@ class BranchService
             ->get();
     }
 
-    /**
-     * Migrate legacy organization credentials to default branch.
-     *
-     * For backward compatibility with organizations that have credentials
-     * stored at organization level (before branch support).
-     */
-    public function migrateLegacyCredentials(Organization $organization): ?Branch
-    {
-        // A null branch id addresses the pre-branch location, directly under
-        // the organization.
-        $ccsid = $this->credentials->get($organization->id, null, CredentialStore::CCSID);
-        $pcsid = $this->credentials->get($organization->id, null, CredentialStore::PCSID);
-
-        if ($ccsid === null && $pcsid === null) {
-            return null;
-        }
-
-        $branch = $this->getOrCreateDefault($organization);
-
-        if ($ccsid !== null) {
-            $this->storeCredentials($branch, CredentialStore::CCSID, $ccsid);
-        }
-
-        if ($pcsid !== null) {
-            $this->storeCredentials($branch, CredentialStore::PCSID, $pcsid);
-            $branch->markAsActive();
-        }
-
-        return $branch;
-    }
 }

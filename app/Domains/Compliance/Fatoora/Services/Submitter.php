@@ -437,11 +437,16 @@ class Submitter
     }
 
     /**
-     * Get signing credentials for organization or branch.
+     * The certificate this invoice is signed with.
      *
-     * Supports multi-branch architecture:
-     * 1. If branch provided, tries branch credentials first
-     * 2. Falls back to organization-level credentials (legacy)
+     * Credentials live at one of two levels. BranchOnboardingController
+     * stores them under a branch; OnboardingController stores them under the
+     * organization, with a null branch id.
+     *
+     * A branch is its own EGS unit holding its own certificate, so an invoice
+     * that names a branch signs with that branch's. An organization that has
+     * not divided itself into EGS units has a single certificate and no branch
+     * to hold it, and its invoices sign with that.
      *
      * @param  string  $organizationId  The organization ID
      * @param  Branch|null  $branch  The branch (optional)
@@ -475,11 +480,12 @@ class Submitter
             }
         }
 
-        // Fall back to organization-level credentials (legacy path)
+        // The organization's own certificate: used when the invoice names no
+        // branch, or the branch it names holds no credentials of its own.
         $path = "zatca/{$organizationId}/pcsid.json";
-        $legacy = $this->credentials->get($organizationId, null, CredentialStore::PCSID);
+        $organizationCredentials = $this->credentials->get($organizationId, null, CredentialStore::PCSID);
 
-        if ($legacy === null) {
+        if ($organizationCredentials === null) {
             if ($required) {
                 $errorContext = [
                     'org_id' => $organizationId,
@@ -503,7 +509,7 @@ class Submitter
         }
 
         try {
-            $data = $legacy;
+            $data = $organizationCredentials;
 
             $privateKey = $data['privateKey'] ?? null;
             $certificate = $data['pcsid'] ?? null;
@@ -521,7 +527,7 @@ class Submitter
                 );
             }
 
-            Log::debug('Using organization-level credentials (legacy)', [
+            Log::debug('Using organization-level credentials', [
                 'org_id' => $organizationId,
             ]);
 

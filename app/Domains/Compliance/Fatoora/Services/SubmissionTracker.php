@@ -219,11 +219,10 @@ class SubmissionTracker
             'submission_id' => $submission->id,
             'job_id' => $job->uniqueId(),
             'message' => 'Submission queued for processing',
-            // The route this points at, verbatim: routes/api/tenant.php:54
-            // declares /compliance/sa/status/{submissionId}. This read
-            // /compliance/zatca/submissions/{id}/status — the wrong prefix and
-            // the wrong shape — so the URL handed to a caller polling for an
-            // outcome had never resolved.
+            // Must match routes/api/tenant.php, which declares
+            // /compliance/sa/status/{submissionId}. A caller polls this URL for
+            // the outcome, so a shape that does not route leaves them waiting
+            // on a 404.
             'check_status_url' => "/api/compliance/sa/status/{$submission->id}",
         ];
     }

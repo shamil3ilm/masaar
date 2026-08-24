@@ -110,16 +110,23 @@ class Organization extends Model
     }
 
     /**
-     * Check if organization has completed ZATCA onboarding.
+     * Whether this organization may submit to ZATCA.
      *
-     * @deprecated Use complianceProfileFor('SA')->isActive() instead.
+     * InvoiceValidator and Submitter both consult this before a submission, so
+     * it answers from whichever of three records exists: the Saudi compliance
+     * profile, the flag onboarding writes to compliance_profile, or a branch
+     * that finished onboarding.
+     *
+     * Suspension and revocation are decisions and outrank the other two. A
+     * profile in any other state is silent rather than negative, so the answer
+     * falls through to what onboarding recorded.
      */
     public function getZatcaOnboardedAttribute(): bool
     {
-        // Deliberately not complianceProfileFor(), which returns only active
-        // profiles: a suspended or revoked one then read as no profile at all,
-        // the answer fell through to the flag onboarding wrote, and stopping a
-        // jurisdiction stopped nothing.
+        // complianceProfiles() rather than complianceProfileFor(), which
+        // filters to active profiles. A suspended profile has to be visible
+        // here to refuse below; filtered out, it is indistinguishable from an
+        // organization that has no profile at all.
         $profile = $this->complianceProfiles()
             ->where('jurisdiction', 'SA')
             ->first();
