@@ -4,7 +4,7 @@ Assessed against `main`.
 
 | ID | Risk | Severity | Evidence | Fix | Effort |
 |---|---|---|---|---|---|
-| **R-1** | The conformance suite is built but never runs | 🔴 CRITICAL | `ZatcaSdk.php:34-47` skips unless `ZATCA_SDK_PATH` is set; twelve `ZatcaConformanceTest` cases stand down. No generated document has met ZATCA’s schema, EN16931 rules or Schematron. | Set `ZATCA_SDK_PATH`, run the suite, fix what it reports. | 2–4 h |
+| **R-1** | Conformance passes but only when run by hand | 🟠 HIGH | `ZatcaSdk.php:34-47` skips without `ZATCA_SDK_PATH`; CI has no Java. A regression in document generation would not fail the build — the same exposure that let `ProfileID` stay wrong. | Cache the SDK as a CI artifact, use a self-hosted runner, or make conformance a documented pre-release gate. | 2–4 h |
 | **R-2** | One encryption secret covers every tenant; no KMS | 🟠 HIGH | `CredentialStore::cipher()` `:60-76`. The docblock `:29-31` names this as the open half of a prior finding. | Per-tenant data key wrapped by a KMS. `cipher()` is the only place that changes — the class was built for this. | 8–16 h |
 | **R-3** | **Four unresolved ZATCA spec questions.** Nothing in the codebase can settle them. | 🔴 CRITICAL | See table below | Read the spec / ask ZATCA. Do **not** guess. | 4–8 h research |
 | **R-4** | B2B clearance is treated as non-blocking | 🟠 HIGH | `PipelineService.php:30-32` "once an invoice is issued it stays issued"; `:143-189` catches all; issuance at `Submitter.php:80-86` precedes submission. | Split the rule by document type — see "Failure paths" below. | 6–10 h |
@@ -32,7 +32,7 @@ below without checking them against the specification.**
 
 | # | Question | Current code | Why it matters |
 |---|---|---|---|
-| **Q1** | Is `CustomizationID` correct? | `urn:oasis:names:specification:ubl:xpath:Invoice-2.0:sac-mod` — [`XmlBuilder.php:125`](../app/Domains/Compliance/Fatoora/Services/XmlBuilder.php#L125) | This is a **generic OASIS** string. ASSUMPTION: ZATCA expects `urn:sa:zatca:documents:1.0`. A wrong value is likely rejected at the schematron gate. **Nothing asserts it.** |
+| **Q1** | Correct `CustomizationID`? | `urn:oasis:names:specification:ubl:xpath:Invoice-2.0:sac-mod` — a generic OASIS string — at [`XmlBuilder.php:125`](../app/Domains/Compliance/Fatoora/Services/XmlBuilder.php#L125) | **The conformance run does not settle this**: the SDK’s Schematron and XSLT contain no `CustomizationID` rule, so a green run is silent on it. ASSUMPTION: ZATCA expects `urn:sa:zatca:documents:1.0`. Needs reading against the XML Implementation Standard directly. |
 | **Q2** | ~~`ProfileID` per document type~~ **SETTLED** | `reporting:1.0` for every type — [`XmlBuilder.php:127-137`](../app/Domains/Compliance/Fatoora/Services/XmlBuilder.php#L127-L137) | Settled against ZATCA’s SDK samples: BT-23 is `reporting:1.0` on all nineteen, and the validator rejects anything else as `BR-KSA-EN16931-01`. Clearance is chosen by the endpoint, not by a field in the document. Pinned by `XmlProfileTest:66` and a negative assertion at `:75`. |
 | **Q3** | Is the ICV/PIH chain per **taxpayer** or per **EGS unit**? | Per taxpayer — `hash_chain_state` PK is `org_id` ([`0160:14`](../database/migrations/0160_hash_chain.php#L14)), `generateNextIcv($organizationId)` ([`Invoice.php:212`](../app/Domains/Invoice/Models/Invoice.php#L212)) | Branches are modelled as EGS units *everywhere else* — separate certificates, separate onboarding, branch-scoped credential paths. If ZATCA requires a chain per unit, this is **the most expensive defect in the codebase**, and it gets worse with every invoice issued. |
 | **Q4** | Is a separate Arabic party name mandated? | No bilingual columns; one `name` / `buyer_name` | Cheap now (a migration), expensive after data exists. |
@@ -42,12 +42,13 @@ Q3 is a re-keying of the chain, and its cost grows monotonically.
 
 ### Why Q1 still matters
 
-`XmlProfileTest` pins both constants, so neither can drift unnoticed — but the
-test says plainly what that is worth: *"a tripwire, not a certificate: whether
-these are the values ZATCA requires is an open question."*
+`XmlProfileTest` pins both constants, so neither drifts unnoticed — but the test
+says plainly what that is worth: *"a tripwire, not a certificate."*
 
-Q2 turned out to be wrong. `CustomizationID` sits in the same file, in the same
-unverified condition, and the check that settled one settles the other.
+Q2 turned out to be wrong, and the SDK caught it because ZATCA enforces BT-23 as
+`BR-KSA-EN16931-01`. **`CustomizationID` has no such rule**, so the validator
+will never object to a wrong value. An unenforced field can still be wrong, and
+this one has to be read from the specification rather than tested for.
 
 `FatooraValidate` reads the generated document rather than printing a fixed
 checklist, so it can report a missing element instead of only confirming

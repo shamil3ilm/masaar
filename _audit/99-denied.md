@@ -4,17 +4,24 @@ Everything that bounds a finding elsewhere in this audit.
 
 ---
 
-## 1. The conformance suite was not run
+## 1. The cryptographic stamp is not verified
 
-**This is the largest gap in the audit, and it is not a permission problem.**
+Conformance **ran** — ZATCA SDK 238-R3.4.8, all six document types, zero errors
+and zero advisories. But the suite asserts on business rules (`BR-*`) only, and
+deliberately filters four stages that cannot pass with a self-signed key:
+the certificate, the QR that embeds it, the signature over both, and the PIH
+chain ([`ZatcaConformanceTest.php:155-178`](../tests/Feature/Compliance/ZatcaConformanceTest.php#L155-L178)).
 
-`ZatcaConformanceTest` skips unless `ZATCA_SDK_PATH` names a ZATCA SDK with a
-Java runtime available. No SDK is present on this machine, so twelve conformance
-cases stood down and **no generated document was put in front of ZATCA's schema,
-EN16931 rules or Schematron.**
+**What the documents say is verified. Who signed them is not.** That is the
+bound on gap items 15–18 and on rung L3.
 
-Everything in the CRYPTOGRAPHY and FATOORA INTEGRATION sections of
-[04-gap-matrix.md](04-gap-matrix.md) is PRESENT-UNVERIFIED for this one reason.
+---
+
+## 1b. `CustomizationID` is outside the validator's reach
+
+The SDK's Schematron and XSLT contain **no `CustomizationID` rule**, so the
+green run neither endorses nor rejects the value at `XmlBuilder.php:125`. A
+passing conformance run is not evidence about this field.
 
 ---
 

@@ -6,72 +6,89 @@
 
 ## Ladder placement
 
-# **L1 — fully satisfied. L2 is one command away.**
+# **L2 — fully satisfied and verified against ZATCA's own validator.**
 
-That number will look harsh next to the code, so read the next two sections
-before reacting to it.
+### Why L2
 
-### Why L1 and not higher
+**L2 requires "UBL 2.1 XML generated and validating against the ZATCA XSD."**
+Both halves now hold, demonstrated rather than argued.
 
-The ladder is cumulative and the brief asked me to err downward. **L2 requires
-"UBL 2.1 XML generated **and** validating against the ZATCA XSD."** The first
-half is comfortably true. The second half is not yet demonstrated.
-
-The conformance harness exists and is correct.
-[`tests/Feature/Compliance/ZatcaConformanceTest.php`](../tests/Feature/Compliance/ZatcaConformanceTest.php)
-with [`tests/Fixtures/ZatcaSdk.php`](../tests/Fixtures/ZatcaSdk.php) runs
-**ZATCA's own SDK** over generated documents — four validators: the UBL 2.1
-schema, EN16931 rules, ZATCA's Schematron, and the PIH chain check.
-
-**But it skips.** The SDK is a licensed download that cannot be committed and
-needs a Java runtime, so the tests stand down unless `ZATCA_SDK_PATH` is set.
-The suite reports **15 skipped**, twelve of them conformance:
+`ZatcaConformanceTest` runs the ZATCA Java SDK (**238-R3.4.8**) over documents
+this platform generates and signs. With `ZATCA_SDK_PATH` set:
 
 ```
-Tests:  15 skipped, 715 passed (1640 assertions)
+Tests:  12 passed (77 assertions)   — conformance only
+Tests:  3 skipped, 727 passed (1670 assertions)   — full suite
 ```
 
-There is also no vendored XSD and no schema validation on the request path —
-`schemaValidate()` remains commented out at
-[`InvoiceValidator.php:519-526`](../app/Domains/Compliance/Fatoora/Services/InvoiceValidator.php#L519-L526).
+Verified across **all six ZATCA document types** — standard and simplified ×
+invoice, credit note, debit note:
 
-So **no invoice this system produces has been checked against the schema it must
-conform to.** Everything downstream — signature, QR, submission — rests on a
-document whose structural correctness is assumed. A skip is an honest report of
-that; it is not proof. Gap item 2 is therefore PRESENT-UNVERIFIED, not VERIFIED.
+| Stage | What it checks | Result |
+|---|---|---|
+| `XSD` | UBL 2.1 schema | ✅ |
+| `EN` | CEN EN16931 rules | ✅ |
+| `KSA` | ZATCA Schematron (BR-KSA-*) | ✅ zero errors |
+| — | advisories/warnings | ✅ **zero** |
 
-**To reach L2:** set `ZATCA_SDK_PATH`, run the suite, confirm the twelve
-conformance tests pass rather than skip. That is the whole of
-[08-next.md](08-next.md) — the hard part is already built.
+Two details that make this credible rather than self-congratulatory:
 
-### Why that number is misleading on its own
+- **A control test.** `test_the_authority_own_sample_passes` runs ZATCA's own
+  sample invoice through the same harness. If the harness were misconfigured,
+  that fails too — so a pass means the pipeline is genuinely being exercised.
+- **Advisories are asserted, not ignored.** `test_no_advisories` fails on any
+  warning. Its docblock explains why: BR-KSA-51 once reported every line's
+  amount-with-VAT as zero and the document cleared anyway. *"A rule ZATCA is
+  willing to overlook is still a rule about what the invoice says."*
+
+### Why not L3
+
+L3 asks for the cryptography to be right: secp256k1 keys, a CSR with correct
+OIDs, an embedded XAdES signature, a TLV Phase-2 QR, and the invoice hash and
+PIH chain.
+
+The code for all of it exists and the documents are genuinely signed before
+validation — `Submitter::generate()` runs, and the suite asserts the XML came
+back signed. But the conformance run **explicitly excludes** the four checks
+that would prove the crypto, because they cannot pass with a self-signed key
+([`ZatcaConformanceTest.php:155-178`](../tests/Feature/Compliance/ZatcaConformanceTest.php#L155-L178)):
+
+> *"Four of the SDK's checks — the certificate, the QR that embeds it, the
+> signature over both, and the PIH chain it compares against its own configured
+> file — cannot pass with the self-signed key these tests generate."*
+
+That is the right call for a test suite that must run without a production
+certificate. It also means **what the conformance run proves is the document's
+content, not its cryptographic stamp.**
+
+So L3 stays PRESENT-UNVERIFIED, and the thing blocking it is now identical to
+the thing blocking L4: **a real CSID.** One item, not two.
+
+### Where the rungs stand
 
 **The implementation is not linear.** Most of L3, and a real share of L4 and L5,
-is already written and covered by passing tests. This is not a project that
-stopped at L1; it is a project that built L3–L5 and skipped the L2 gate.
+is written and covered by passing tests. This is not a project that stopped at
+L2; it is a project that built L3–L5 and is now proving them from the bottom up.
 
 | Rung | Code exists? | Validated? |
 |---|---|---|
-| L1 Phase-1 invoice + QR | ✅ | ✅ VERIFIED — `QrCodeGenerator::generatePhase1`, 5 tags |
-| L2 UBL 2.1 + **XSD validation** | ✅ / ❌ | **❌ XSD absent — the blocker** |
-| L3 ECDSA · CSR OIDs · XAdES · TLV QR · hash+PIH | ✅ | 🟡 VERIFIED against *its own* tests, never against ZATCA |
-| L4 CCSID · 6-doc compliance suite | ✅ | ❌ never executed against ZATCA |
-| L5 PCSID · clearance/reporting split · retry · EGS units · renewal · archive | ✅ mostly | ❌ |
+| L1 Phase-1 invoice + QR | ✅ | ✅ VERIFIED |
+| L2 UBL 2.1 + XSD/EN/KSA validation | ✅ | ✅ **VERIFIED against ZATCA's SDK, six document types, zero advisories** |
+| L3 ECDSA · CSR OIDs · XAdES · TLV QR · hash+PIH | ✅ | 🟡 documents are signed and structurally sound; the four crypto stages are excluded from the run pending a real CSID |
+| L4 CCSID · 6-doc compliance submission | ✅ | ❌ never submitted |
+| L5 PCSID · clearance/reporting · retry · EGS units · renewal · archive | ✅ mostly | ❌ |
 
-So: **L1 by the rung test; L3-shaped by volume; unproven above L1.**
+### The single fact that bounds everything above L2
 
-### The single fact that changes the whole picture
+**Nothing has ever been sent to ZATCA — not even the sandbox.** No CCSID, no
+PCSID, no stored authority response. `CsidOnboarding::onboard()`
+([`:165-198`](../app/Domains/Compliance/Fatoora/Services/CsidOnboarding.php#L165-L198))
+runs all four onboarding steps and `OnboardingController` generates the six
+required documents ([`:243-250`](../app/Domains/Compliance/Fatoora/Http/Controllers/OnboardingController.php#L243-L250));
+neither has met a live endpoint.
 
-Everything above L1 is unproven for the same reason: **no invoice from this
-system has ever been sent to ZATCA, not even the sandbox.** There is no stored
-ZATCA response, no CCSID, no PCSID, no conformance run. `runComplianceChecks()`
-([`CsidOnboarding.php:82`](../app/Domains/Compliance/Fatoora/Services/CsidOnboarding.php#L82))
-is fully written and generates all six document types
-([`OnboardingController.php:243-250`](../app/Domains/Compliance/Fatoora/Http/Controllers/OnboardingController.php#L243-L250))
-— it has simply never been run against a live endpoint.
-
-Per your own status vocabulary, that makes essentially the entire ZATCA surface
-**PRESENT-UNVERIFIED**, however complete it looks. And it looks very complete.
+Local conformance closed the question of **what the documents say**. It cannot
+close the question of **who signed them**.
 
 ---
 
@@ -80,13 +97,13 @@ Per your own status vocabulary, that makes essentially the entire ZATCA surface
 The suite is real and it is green — this is not a repo of aspirational code.
 
 ```
-Tests:    3 skipped, 715 passed (1589 assertions)
-Duration: 28.00s
+Tests:    3 skipped, 727 passed (1670 assertions)
+Duration: 51.63s        (with ZATCA_SDK_PATH set)
 ```
 
 The 3 skips are all `SecretFileTest` — POSIX file modes, which Windows does not
 enforce. They run in CI (`ubuntu-latest`). Worth knowing that this class of
-check is **unverifiable on your dev machine** and only ever proven by CI.
+check is **unverifiable on this machine** and only ever proven by CI.
 
 ⚠️ **You cannot run it with the default `php` on this machine.** `php -v` is
 **8.2.28**; `composer.json` requires `^8.4`. `php artisan test` dies in
@@ -110,6 +127,7 @@ Genuinely verified by that run, among others:
   `is_summary`→bit6, `is_self_billed`→bit7
   ([`InvoiceXmlData.php:166-179`](../app/Domains/Compliance/Fatoora/DTOs/InvoiceXmlData.php#L166-L179)).
 - **XAdES signature verifies** — `XadesPropertiesTest`, `Phase2SigningTest`.
+- **All six document types satisfy ZATCA's own rules** — `ZatcaConformanceTest`, 12 cases, zero errors and zero advisories, with the authority's own sample as a control.
 - **PIH chaining** — `PreviousHashTest`.
 - **The ZATCA-cleared document is kept and preferred** — `ClearedDocumentTest`:
   `cleared_xml` populated from the response, distinct from `signed_xml`,
@@ -125,20 +143,22 @@ name past bugs rather than hide them.
 
 ---
 
-## Top 5 blockers
+## Top blockers
 
-### 1. The conformance suite skips — the L2 gate
-**Severity: CRITICAL.** Blocks L2, and by dependency the verification of L3–L5.
+### 1. No CSID — the L3/L4 gate
+**Severity: CRITICAL.** Now the single blocker for everything above L2.
 
-The harness is built and correct; it does not run.
-`ZatcaConformanceTest` stands down unless `ZATCA_SDK_PATH` names a ZATCA SDK
-with a Java runtime available, so **twelve conformance tests skip** and no
-generated document has been put in front of ZATCA's schema, EN16931 rules or
-Schematron. Separately, schema validation on the request path is still commented
-out at [`InvoiceValidator.php:519-526`](../app/Domains/Compliance/Fatoora/Services/InvoiceValidator.php#L519-L526)
-and no `*.xsd` is vendored.
+No CCSID, no PCSID, no stored authority response. The onboarding code is
+complete — `CsidOnboarding::onboard()` runs all four steps and
+`OnboardingController` generates the six required documents — and has never been
+executed against a live endpoint.
 
-Until a document is checked against the schema, every rung above L1 is inference.
+Until a certificate is issued, four things stay unproven: the CSR's OIDs and
+template name, the cryptographic stamp, the Phase-2 QR that embeds the
+certificate, and the PIH chain as ZATCA computes it. The conformance harness
+excludes exactly these, by design, because a self-signed key cannot satisfy them.
+
+**One action resolves all four.** See [08-next.md](08-next.md).
 
 ### 2. `CustomizationID` is unverified against the specification
 **Severity: HIGH.**
@@ -156,14 +176,20 @@ question (Q1) in [06-risks.md](06-risks.md).
 does not make it right — the test is explicit that it is *"a tripwire, not a
 certificate."*
 
-**The reason this ranks HIGH:** its sibling constant was wrong. `ProfileID`
+**The conformance run does not settle this.** Searching the SDK's Schematron and
+XSLT for `CustomizationID` returns **no rule**, so the green run is silent on
+this element rather than endorsing it. An unenforced field can still be wrong,
+and a validator that does not check it will never say so.
+
+**The reason this ranks HIGH:** its sibling constant *was* wrong. `ProfileID`
 emitted `clearance:1.0` on standard invoices, which ZATCA rejects as
 `BR-KSA-EN16931-01` — every standard B2B invoice would have been refused. That
-was invisible to 715 passing tests and took minutes to settle once an external
-reference was consulted. The same check settles `CustomizationID`, in the same
-file.
+one the SDK does enforce, which is how it surfaced. `CustomizationID` has no
+such safety net, so it needs reading against the specification directly. The
+[XML Implementation Standard PDF](file:///C:/Users/Shamil/Personal/Zatca/) sits
+beside the SDK.
 
-### 4. B2B clearance is treated as non-blocking
+### 3. B2B clearance is treated as non-blocking
 **Severity: HIGH.**
 [`PipelineService.php:30-32`](../app/Domains/Pipeline/Services/PipelineService.php#L30-L32)
 states the rule plainly: *"once an invoice is issued it stays issued."*
@@ -179,7 +205,7 @@ report*. For B2B, clearance is pre-issuance and blocking: an uncleared standard
 invoice is not legally issuable. Nothing is silently swallowed — it is logged
 and returned in `errors` — but the caller gets an invoice object either way.
 
-### 5. One encryption key covers every tenant; no KMS
+### 4. One encryption key covers every tenant; no KMS
 **Severity: HIGH.**
 [`CredentialStore.php:60-76`](../app/Domains/Compliance/Fatoora/Services/CredentialStore.php#L60-L76).
 Keys *are* encrypted at rest, the disk *is* configurable, previous-key rotation

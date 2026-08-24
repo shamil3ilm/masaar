@@ -1,119 +1,94 @@
 # 08 — The Next Rung Only
 
-**Current: L1** (fully satisfied)
-**Target: L2** — *UBL 2.1 XML generated and validating against the ZATCA XSD*
+**Current: L2** — verified against ZATCA's SDK 238-R3.4.8
+**Target: L3** — *ECDSA secp256k1 keys, CSR with correct OIDs, XAdES embedded,
+TLV Phase-2 QR, invoice hash + PIH chain*
 
-This document covers **that rung and nothing else.** No roadmap to L3–L5. Those
-rungs are already largely built ([01-summary.md](01-summary.md)) — they are
-blocked on verification, not construction, and verification starts here.
-
----
-
-## Exit criteria for L2
-
-- [ ] A ZATCA SDK available locally, with a Java runtime
-- [ ] `ZATCA_SDK_PATH` set so `ZatcaConformanceTest` runs instead of skipping
-- [ ] All twelve conformance cases **pass** — UBL 2.1 schema, EN16931, ZATCA
-      Schematron, PIH chain — across standard/simplified × invoice/credit/debit
-- [ ] `CustomizationID` confirmed against the SDK's sample invoices
-- [ ] The run reproducible: the SDK path documented in `.env.example` and CI
-
-Deliberately **not** in scope: a live sandbox call, CCSID/PCSID onboarding, the
-six-document compliance submission. Those are L4 and they come after this.
+This document covers that rung and nothing else.
 
 ---
 
-## The shape of the work has changed
+## The whole of L3 is one thing: get a CSID
 
-An earlier plan here was to vendor the XSDs and wire `schemaValidate()` by hand.
-**That work is largely unnecessary now.** `ZatcaConformanceTest` and
-`ZatcaSdk.php` already drive ZATCA's own SDK, which carries the schema, the
-EN16931 rules and the Schematron together — a stricter oracle than the XSD
-alone, and the one the authority actually uses.
+Local conformance proved what the documents **say** — XSD, EN16931 and the ZATCA
+Schematron pass for all six document types with zero advisories. It cannot prove
+who **signed** them, because the four stages that would (certificate, QR,
+signature, PIH) are excluded by design: a self-signed key cannot satisfy them
+([`ZatcaConformanceTest.php:155-178`](../tests/Feature/Compliance/ZatcaConformanceTest.php#L155-L178)).
 
-What remains is supplying the SDK and reading what it says.
+A compliance CSID turns all four green at once. There is no partial credit
+available and no cheaper substitute.
 
 ---
 
-## Dependency order
+## Exit criteria for L3
 
-```
-T1  Obtain the SDK, set ZATCA_SDK_PATH
-     │
-     ▼
-T2  Run the suite; fix what it reports      T3  Settle CustomizationID
-     │                                       (independent — start anytime,
-     ▼                                        though T1 answers it for free)
-T4  Make the run reproducible  →  L2
-```
+- [ ] A CCSID issued against a CSR this platform generated
+- [ ] The four excluded stages assert instead of filtering — certificate, QR,
+      signature, PIH — against that certificate
+- [ ] `secp256k1` confirmed as the curve actually used (see T2)
+- [ ] `CustomizationID` settled against the specification
+
+Not in scope: PCSID, clearance/reporting submission, renewal. Those are L4–L5.
 
 ---
 
 ## The first three tasks
 
-### T1 — Obtain the SDK and point the harness at it · **1–3 h**
-
-The single highest-leverage action available. Everything else waits on it.
+### T1 — Obtain a compliance CSID · **3–6 h**
 
 **Do:**
-1. Download the ZATCA E-Invoicing SDK from the Fatoora portal.
-2. Confirm a Java runtime is on `PATH` — `ZatcaSdk.php:47` skips without one.
-3. Set `ZATCA_SDK_PATH` to the directory holding `Apps/` and `Data/`; the
-   fixture looks for a jar beneath it (`:43`).
-4. Run the suite and confirm the twelve cases execute rather than skip.
+1. Register on the Fatoora **simulation** portal and obtain an OTP.
+2. Run `fatoora:generate-csr`, then `fatoora:onboard` with the OTP.
+   `CsidOnboarding::requestComplianceCsid()`
+   ([`:33-71`](../app/Domains/Compliance/Fatoora/Services/CsidOnboarding.php#L33-L71))
+   already implements the exchange; `CredentialStore` already encrypts what
+   comes back.
+3. Submit the six compliance documents —
+   `OnboardingController::runComplianceCheck()` builds them already.
 
-**Watch for:** the SDK is licensed and must not be committed — that is exactly
-why the harness takes a path. Keep it outside the repository.
+**Watch for:** this is the first time the CSR meets a real authority. Expect the
+OIDs, the template name and the `organizationIdentifier` to be scrutinised. If
+it is rejected, the rejection text names the field.
 
-**Done when:** `artisan test` reports fewer than 15 skips, and the conformance
-cases show a result either way.
-
----
-
-### T2 — Fix what the validator reports · **4–12 h** *(genuinely unknown)*
-
-This is the only estimate here that could be badly wrong, and it should be read
-as a range rather than a number. The first real conformance run on a system that
-has never had one typically surfaces several findings at once.
-
-`ProfileID` is the precedent: a single wrong constant that no internal test
-could have caught, because the repository did not contain the knowledge. Expect
-more of that shape — namespace declarations, element ordering, the transform set
-used for the invoice digest, `SigningCertificate` digest form.
-
-**Do:** run, read the validator output, fix, re-run. Each fix should land with a
-test that pins the corrected value, in the manner of `XmlProfileTest`.
+**Done when:** a CCSID is stored and the six compliance documents are accepted.
 
 ---
 
-### T3 — Settle `CustomizationID` · **2–3 h** *(parallelisable)*
+### T2 — Make the curve fallback fatal · **30 min** · *do before T1*
 
-`XmlProfileTest` already pins both spec constants, so neither drifts unnoticed.
-Pinning is not verification: `CustomizationID` remains unchecked against the
-specification ([06-risks.md](06-risks.md) R-3 Q1).
+[`FatooraGenerateCsr.php:307-309`](../app/Console/Commands/FatooraGenerateCsr.php#L307-L309)
+and `:490-491` fall back to `prime256v1` behind a `warn()` when `secp256k1` is
+unavailable. **`prime256v1` is the wrong curve for ZATCA.** A key generated that
+way onboards and then fails cryptographically, far from the cause.
+
+Thirty minutes now saves a confusing failure during T1. Make it throw.
+
+---
+
+### T3 — Settle `CustomizationID` · **1–2 h** *(independent)*
+
+The conformance run is **silent** on this: searching the SDK's Schematron and
+XSLT for `CustomizationID` returns no rule, so a green run neither endorses nor
+rejects the current value.
 
 [`XmlBuilder.php:125`](../app/Domains/Compliance/Fatoora/Services/XmlBuilder.php#L125)
 emits `urn:oasis:names:specification:ubl:xpath:Invoice-2.0:sac-mod`, a generic
 OASIS string. ASSUMPTION: ZATCA expects `urn:sa:zatca:documents:1.0`.
 
-**Do:** read the literal value in the SDK's sample invoices, correct
-`XmlBuilder` if it differs, and update the pinned constant at
-`XmlProfileTest:33` in the same commit — which is the deliberate act that test
-exists to force.
-
-**Note:** T1 answers this for free. If you are doing T1 anyway, fold this in.
+**Do:** read the XML Implementation Standard PDF sitting beside the SDK, or a
+ZATCA sample invoice under `Data/`. Correct `XmlBuilder` if it differs, updating
+the pinned constant at `XmlProfileTest:33` in the same commit.
 
 ---
 
-## Then: T4 — make the run reproducible · **2–4 h**
+## Then: T4 — put conformance in CI · **2–4 h**
 
-A conformance run that only works on one machine is not a gate. Document
-`ZATCA_SDK_PATH` in `.env.example`, and decide how CI gets the SDK — a cached
-artifact, a self-hosted runner, or an accepted "conformance runs locally before
-release" policy. Any of the three is defensible; leaving it undecided is not.
-
-That is the last exit criterion. When the twelve cases pass and the run is
-repeatable, you are at **L2**.
+Right now the run is manual and CI has no Java, so a regression in document
+generation would not fail the build — the same exposure that let `ProfileID`
+stay wrong. Options: cache the SDK as a CI artifact, use a self-hosted runner,
+or make conformance a documented pre-release gate. Any is defensible; leaving it
+undecided is not. Tracked as R-19.
 
 ---
 
@@ -121,28 +96,27 @@ repeatable, you are at **L2**.
 
 | Task | Hours | Blocking? |
 |---|---|---|
-| T1 Obtain SDK, set `ZATCA_SDK_PATH` | 1–3 | **Yes — blocks everything** |
-| T2 Fix what the validator reports | 4–12 | Yes |
-| T3 Settle `CustomizationID` | 2–3 | No — T1 answers it for free |
-| T4 Make the run reproducible | 2–4 | Closes L2 |
-| **To reach L2** | **9–22 h** | |
-
-Call it two to four days. The spread is real and it lives almost entirely in T2:
-nobody knows what the first conformance run reports until it runs. T1 alone is
-an afternoon, and it converts the largest unknown in this audit into a list.
+| T2 Make the curve fallback fatal | 0.5 | Do first — it protects T1 |
+| T1 Obtain a compliance CSID | 3–6 | **Yes — this is L3** |
+| T3 Settle `CustomizationID` | 1–2 | No — independent |
+| T4 Conformance in CI | 2–4 | Not for L3; prevents regression |
+| **To reach L3** | **5–13 h** | |
 
 ---
 
 ## Baseline
 
-`main`, clean tree, **715 passed / 15 skipped (1640 assertions)** on PHP 8.4.12.
-Twelve of those skips are the conformance suite this document exists to switch
-on.
+`main`, clean tree. With `ZATCA_SDK_PATH` set to SDK 238-R3.4.8:
+**727 passed / 3 skipped (1670 assertions)**.
 
-⚠️ The default `php` on this machine is **8.2.28**; `composer.json` requires
-`^8.4`, so `php artisan test` aborts in `platform_check.php` **and exits 0** — a
-failure that reports success. Use
-`C:\laragonin\php\php-8.4.12-nts-Win32-vs17-x64\php.exe`.
+⚠️ The default `php` here is **8.2.28**; `composer.json` requires `^8.4`, so
+`php artisan test` aborts in `platform_check.php` **and exits 0** — a failure
+that reports success. Use
+`C:/laragon/bin/php/php-8.4.12-nts-Win32-vs17-x64/php.exe`.
+
+⚠️ Use SDK **238-R3.4.8**, not `zatca-envoice-sdk-203` — the latter is release
+**3.0.8**, an older build despite the more recent download, and its jar is named
+`cli-*.jar`, which `ZatcaSdk::jar()` does not glob.
 
 ---
 
