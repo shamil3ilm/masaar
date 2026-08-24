@@ -80,17 +80,20 @@ exposes, then extract.** The seam will still be there.
 
 ### The situation, stated plainly
 
-| Repo | Product | Last commit | 90d commits | State |
-|---|---|---|---|---|
-| **Masaar** (`origin: zatca`) | Compliance API | 2026-08-23 | **107** | Alive, 135 commits unpushed |
-| **masaar-erp-backend** (`origin: qarar`) | ERP | 2026-05-24 | **0** | Dormant · 149 uncommitted · 41 staged deletions · no CI · 274k LOC |
-| **masaar-erp-frontend** (`origin: masaar-frontend`) | ERP UI | 2026-05-24 | **0** | Dormant · dependent on the above |
+| Repo | Product | Substantive feature work | State |
+|---|---|---|---|
+| **Masaar** | Compliance API | ongoing | Alive · 117 commits/90d · CI · clean, pushed |
+| **masaar-erp-backend** | ERP | May 2026 | Dormant · CI · 2121 tests · 274k LOC · clean, pushed |
+| **masaar-erp-frontend** | ERP UI | May 2026 | Dormant · CI · dependent on the above · clean, pushed |
 
 Three repos, **two products**, **one developer**, **no client**.
 
+All three are clean and fully pushed, so nothing is at risk of loss. The
+dormancy flag is about attention, not fragility.
+
 ### Verdict
 
-## Keep Masaar. Park the ERP. Delete nothing yet.
+## Keep Masaar. Park the ERP. Compliance lives in Masaar only.
 
 **1. Masaar — KEEP. This is the product.**
 It is the only thing being worked on, the only thing with CI, the only thing
@@ -98,52 +101,89 @@ with a coherent test suite, and the only one that is independently sellable.
 15,106 lines of ZATCA logic and 704 passing tests is a real asset. Everything in
 this audit's next-steps applies here and nowhere else.
 
-**2. masaar-erp-backend — PARK, deliberately and safely. Do not delete.**
+**2. masaar-erp-backend — PARK. Do not delete.**
 
-I am not telling you to delete 274,398 lines and 189 test files. But be honest
-about what it is: **a full ERP is not a side quest.** SAP and Odoo are ERPs;
-Masaar is a compliance API. One solo developer cannot ship both, and the ERP has
-had zero commits in three months while Masaar had 107 — you have already chosen,
-you just have not said so.
+I am not telling you to delete 274,398 lines and 2121 passing tests. But be
+honest about what it is: **a full ERP is not a side quest.** SAP and Odoo are
+ERPs; Masaar is a compliance API. One solo developer cannot ship both, and the
+ERP had zero commits in the ninety days before this audit while Masaar had 117.
+You have already chosen; you just had not said so.
 
-The urgent part is **not** the decision. It is that masaar-erp-backend holds **149
-uncommitted changes including 41 staged deletions** with no commit and three
-months of lost context. That is one `git checkout` from gone. Commit it to a
-branch today, whatever state it is in.
-
-Then leave it. It is your reference implementation of a real ERP integrating
-with Masaar, which is worth something as a demo and as proof the partner API
-works end to end.
+It is now in a safe state to leave: committed, pushed, and under CI, so the
+suite runs without anyone remembering to run it. It remains a working reference
+implementation of an ERP integrating with Masaar, which is worth something as a
+demo and as proof the partner API works end to end.
 
 **3. masaar-erp-frontend — PARK with masaar-erp-backend.** It has no independent meaning; it
 is the UI for a dormant backend. Same fate, same reasoning.
 
-### Which overlaps to remove
+### Compliance ownership
 
-Two things genuinely duplicate, and both should collapse **toward Masaar**:
+**The ERP files invoices through the platform and holds no compliance logic of
+its own.** It carried a UAE FTA UBL builder and service, and a Qatar GTA
+service — 11 files and ~1,100 lines including 478 lines of tests. All of it was
+unreachable: no controller, route, job, orchestrator or provider referenced any
+of it, and neither service imported an HTTP client, so neither could have
+transmitted anything. They generated XML into a local table. Deleted.
 
-| Overlap | Where | Verdict |
+Deleting them was not the whole fix. `Organization::requiresCompliance()`
+listed `['SA', 'AE', 'IN']` while the submission path carries no jurisdiction —
+`PostInvoiceOrchestrator` calls `MasaarClient::submitInvoice()`, which posts to
+`/pipeline/submit` with no country and a circuit breaker keyed `'zatca'`.
+**An Emirati or Indian organization's invoice was filed with ZATCA as a Saudi
+document.** The list is Saudi only now, with a test naming every country that
+must stay off it until the platform can file for that jurisdiction.
+
+**What is correctly kept in the ERP:**
+
+| File | Why |
+|---|---|
+| `Services/Compliance/MasaarClient.php` | the one HTTP client to the platform |
+| `Services/Compliance/ZatcaInvoiceTransformer.php` | ERP model → platform payload |
+| `Services/Compliance/ZatcaClientV1.php` | adapter onto `ExternalApiClient` |
+| `Services/Compliance/CircuitBreaker.php` | **not a duplicate.** Bound at `AppServiceProvider:27`, resolved by `MasaarClient:522`. It guards the ERP→platform call; Masaar's guards the platform→ZATCA call. Different failure domains, both needed. |
+
+### What the platform still needs before it can serve all jurisdictions
+
+Removing the ERP's copies makes Masaar the only path. It is not yet able to be
+that path beyond Saudi Arabia:
+
+1. **`ComplianceRouter` has no production consumer.** Bound in
+   `ComplianceServiceProvider`, used only by its own test.
+   `Pipeline/Services/PipelineService.php:7-9` imports `Fatoora\...` directly
+   and catches `FatooraException`. The jurisdiction dispatcher is never on the
+   request path.
+2. **The FTA controller is on the wrong surface.** `routes/api/tenant.php:72-76`
+   behind `jwt.auth` — not the partner/licence API an ERP calls.
+3. **UAE transport assumes the wrong model.** `FTA/Services/FtaService.php:123-127`
+   does a bearer-token REST `POST {base}/invoices`. The UAE mandate is a
+   five-corner DCTCE model over Peppol, reaching the FTA through an Accredited
+   Service Provider. There is no endpoint to POST to. This is an accreditation
+   question before it is a coding one, and it decides whether the UAE path is
+   viable in its current shape at all.
+
+Items 1 and 2 are ordinary work. Item 3 should be settled before more is built
+on that path.
+
+**Qatar should not be built.** The GTA approved a draft law in May 2026; it
+still requires the Shura Council, the Amir's assent and Gazette publication,
+and **no technical specification has been published.** There is nothing to
+build against.
+
+### Naming
+
+Resolved. Folder names, repository names and product identity agree:
+
+| Directory | GitHub repo | What it is |
 |---|---|---|
-| **Circuit breaker** | `masaar-erp-backend/app/Services/Compliance/CircuitBreaker.php` vs `Masaar/.../Fatoora/Services/CircuitBreaker.php` (334 L) | Masaar's is the real one — it guards the actual ZATCA calls. masaar-erp-backend's guards an HTTP call to Masaar, which is a different and much simpler problem; Laravel's `Http::retry()` covers it. **Delete masaar-erp-backend's.** |
-| **Qatar GTA** | `masaar-erp-backend/app/Services/Compliance/QatarGtaEInvoiceService.php` vs `Masaar/docs/qa/` (planned) | Two answers to one question, in the wrong repo. Qatar compliance belongs behind `ComplianceRouter` alongside `FatooraEngine` and `FtaEngine`. **Delete masaar-erp-backend's** when Qatar is actually built; until then it is dead weight in a dormant repo. |
+| `Masaar` | `masaar` | compliance platform |
+| `masaar-erp-backend` | `masaar-erp-backend` | ERP |
+| `masaar-erp-frontend` | `masaar-erp-frontend` | ERP UI |
 
-**What is not an overlap:** masaar-erp-backend's `CompliPayClient` /
-`ZatcaInvoiceTransformer` / `ZatcaClientV1` are a thin, correct client (757 lines
-total, no cryptography). Keep them. That boundary is drawn in the right place
-and is the proof that Masaar's partner API is usable.
-
-### Fix the naming
-
-This actively caused the wrong premise in this audit's brief:
-
-| Directory | GitHub repo | Should be |
-|---|---|---|
-| `Masaar` | `zatca` | `masaar` |
-| `masaar-erp-backend` | `qarar` | `qarar-backend` (or `masaar-erp`) |
-| `masaar-erp-frontend` | `masaar-frontend` | `qarar-frontend` — it is **not** Masaar's frontend |
-
-Two `gh repo rename` calls and a local `git remote set-url`. Ten minutes, and it
-stops the confusion recurring.
+Verified by `git ls-remote` against each clone's `main`. Old names redirect,
+with one exception worth knowing: `github.com/shamil3ilm/masaar` addressed the
+ERP before and addresses the platform now, because that name was deliberately
+re-claimed. An external link using it resolves somewhere new.
 
 ### The smallest structure that ships a ZATCA-compliant product
 
@@ -161,12 +201,24 @@ that shape (`README.md:23-35`) — but note it describes a submodule that **does
 not exist**, so either build it or correct the README. Right now the README
 promises a structure the repos do not have.
 
-### Concretely, this week
+### What is done, and what is next
 
-1. `cd masaar-erp-backend && git checkout -b wip/2026-05-refactor && git add -A && git commit` — **stop the bleeding** (R-12)
-2. `cd Masaar && git push -u origin chore/security-remediation-and-cleanup` — **135 commits off this machine** (R-11)
-3. Rename the three repos
-4. Delete `masaar-erp-backend/app/Services/Compliance/CircuitBreaker.php`
-5. Correct `README.md:23-35` to describe the repos as they are
+Done: repositories and folders renamed and verified; all three clean, on `main`
+and pushed; CI added to both ERP repositories; the ERP's dead UAE and Qatar
+compliance removed and its jurisdiction list corrected; the platform's dead
+`fta.peppol` config deleted.
 
-Then everything else in [08-next.md](08-next.md), which concerns only Masaar.
+Next, in order:
+
+1. **A compliance CSID** — the single item blocking ladder L3 and L4.
+   See [08-next.md](08-next.md).
+2. **Settle the UAE transport question** — ASP accreditation, or integrating
+   with an accredited provider. Decides whether the current FTA path is viable.
+3. **Wire `ComplianceRouter` into `PipelineService`** and expose the FTA path on
+   the partner API, so jurisdiction dispatch is real rather than bound-and-unused.
+4. **Correct `README.md:23-35`**, which still describes `erp/` as a future git
+   submodule inside a monorepo parent that does not exist.
+
+Item 1 comes first because it converts the largest unknown in this audit into a
+list. Item 2 should precede item 3: there is no point routing traffic to a
+transport that cannot deliver.
