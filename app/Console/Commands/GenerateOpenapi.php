@@ -218,13 +218,6 @@ class GenerateOpenapi extends Command
         $operation['responses'] = $this->responses($route);
         $operation['security'] = $this->security($route);
 
-        // Routes registered in deprecated.php still answer, with a redirect.
-        // Describing them as ordinary endpoints is how integrators end up
-        // building against a prefix that is on its way out.
-        if ($this->isDeprecated($route)) {
-            $operation['deprecated'] = true;
-        }
-
         // Which scopes the credential needs is the question integrators
         // actually hit, and it is enforced by middleware rather than stated
         // anywhere a reader would find it.
@@ -233,19 +226,6 @@ class GenerateOpenapi extends Command
         }
 
         return $operation;
-    }
-
-    /**
-     * Whether the route declares itself deprecated.
-     *
-     * Read from the route's own defaults rather than inferred, so a route
-     * says what it is at the point it is defined. Nothing else distinguishes
-     * these: they are closures returning a redirect, with no controller to
-     * inspect and no file recorded on the action.
-     */
-    private function isDeprecated(Route $route): bool
-    {
-        return (bool) ($route->defaults['deprecated'] ?? false);
     }
 
     /**

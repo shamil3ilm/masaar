@@ -90,7 +90,7 @@ export default function (data) {
             const startTime = Date.now();
 
             const response = http.post(
-                `${BASE_URL}/v1/compliance/zatca/generate/${invoiceId}`,
+                `${BASE_URL}/v1/compliance/generate/${invoiceId}`,
                 null,
                 { headers }
             );
@@ -125,7 +125,7 @@ export default function (data) {
             const startTime = Date.now();
 
             const response = http.post(
-                `${BASE_URL}/v1/compliance/zatca/validate/${invoiceId}`,
+                `${BASE_URL}/v1/compliance/validate/${invoiceId}`,
                 null,
                 { headers }
             );
@@ -144,7 +144,7 @@ export default function (data) {
             const startTime = Date.now();
 
             const response = http.post(
-                `${BASE_URL}/v1/compliance/zatca/submit/${invoiceId}`,
+                `${BASE_URL}/v1/compliance/submit/${invoiceId}`,
                 null,
                 { headers, timeout: '30s' }
             );

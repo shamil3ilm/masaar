@@ -185,7 +185,6 @@ class GenerateSdkTypes extends Command
             ."  path: string;\n"
             ."  security: Security[];\n"
             ."  scopes: string[];\n"
-            ."  deprecated: boolean;\n"
             ."}\n\n"
             ."export const operations = {\n";
 
@@ -210,13 +209,12 @@ class GenerateSdkTypes extends Command
             }
 
             $out .= sprintf(
-                "  %s: { method: '%s', path: '%s', security: [%s], scopes: [%s], deprecated: %s },\n",
+                "  %s: { method: '%s', path: '%s', security: [%s], scopes: [%s] },\n",
                 $this->key($id),
                 $method,
                 $path,
                 $this->quoted($security),
-                $this->quoted($scopes),
-                ($operation['deprecated'] ?? false) ? 'true' : 'false'
+                $this->quoted($scopes)
             );
         }
 
