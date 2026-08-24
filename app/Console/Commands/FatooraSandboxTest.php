@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Console\Commands\Concerns\FindsOpenSsl;
 use App\Console\Commands\Concerns\WritesSecrets;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
@@ -28,6 +29,7 @@ use Illuminate\Support\Facades\Http;
  */
 class FatooraSandboxTest extends Command
 {
+    use FindsOpenSsl;
     use WritesSecrets;
 
     protected $signature = 'fatoora:sandbox-test
@@ -170,28 +172,11 @@ class FatooraSandboxTest extends Command
             $keyPath = storage_path('app/zatca/private_key.pem');
             $this->secretDir();
 
-            // Try using openssl command directly
-            $opensslPaths = [
-                'openssl',
-                'C:\\laragon\\bin\\git\\usr\\bin\\openssl.exe',
-                'C:\\Program Files\\Git\\usr\\bin\\openssl.exe',
-                'C:\\Program Files\\Git\\mingw64\\bin\\openssl.exe',
-                'C:\\laragon\\bin\\openssl\\openssl.exe',
-                'C:\\Program Files\\OpenSSL-Win64\\bin\\openssl.exe',
-                'C:\\OpenSSL-Win64\\bin\\openssl.exe',
-            ];
-
-            $opensslCmd = null;
-            foreach ($opensslPaths as $path) {
-                exec("{$path} version 2>&1", $output, $code);
-                if ($code === 0) {
-                    $opensslCmd = $path;
-                    $this->line("Found OpenSSL: {$path}");
-                    break;
-                }
-            }
+            $opensslCmd = $this->findOpenSsl();
 
             if ($opensslCmd) {
+                $this->line("Found OpenSSL: {$opensslCmd}");
+
                 // Generate EC key with secp256k1
                 $cmd = "\"{$opensslCmd}\" ecparam -name secp256k1 -genkey -noout -out \"{$keyPath}\" 2>&1";
                 exec($cmd, $output, $returnCode);
@@ -304,31 +289,6 @@ class FatooraSandboxTest extends Command
         $this->line('  3. Run: php artisan fatoora:sandbox-test --step=compliance-csid --otp=123456');
 
         return Command::SUCCESS;
-    }
-
-    /**
-     * Find OpenSSL executable.
-     */
-    private function findOpenSsl(): ?string
-    {
-        $opensslPaths = [
-            'openssl',
-            'C:\\laragon\\bin\\git\\usr\\bin\\openssl.exe',
-            'C:\\Program Files\\Git\\usr\\bin\\openssl.exe',
-            'C:\\Program Files\\Git\\mingw64\\bin\\openssl.exe',
-            'C:\\laragon\\bin\\openssl\\openssl.exe',
-            'C:\\Program Files\\OpenSSL-Win64\\bin\\openssl.exe',
-            'C:\\OpenSSL-Win64\\bin\\openssl.exe',
-        ];
-
-        foreach ($opensslPaths as $path) {
-            exec("\"{$path}\" version 2>&1", $output, $code);
-            if ($code === 0) {
-                return $path;
-            }
-        }
-
-        return null;
     }
 
     /**
