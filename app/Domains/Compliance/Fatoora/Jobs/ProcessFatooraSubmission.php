@@ -95,6 +95,24 @@ class ProcessFatooraSubmission implements ShouldQueue
     }
 
     /**
+     * How long until the next attempt, for the column that reports it.
+     *
+     * The queue applies backoff() itself. next_retry_at exists so an operator
+     * reading invoice_submissions sees the same answer, which means deriving
+     * it from the same list rather than a second constant.
+     *
+     * Past the end of the list the queue repeats its final value, so this does
+     * too.
+     */
+    private function retryDelay(): int
+    {
+        $backoff = $this->backoff();
+        $index = max(0, $this->attempts() - 1);
+
+        return (int) ($backoff[$index] ?? end($backoff) ?: 300);
+    }
+
+    /**
      * Execute the job.
      */
     public function handle(
@@ -268,8 +286,12 @@ class ProcessFatooraSubmission implements ShouldQueue
             'last_error_code' => $errorCode->value,
             'last_error' => $e->getMessage(),
             'retry_count' => $submission->retry_count + 1,
+            // backoff() is a method, not a property. Reading $this->backoff
+            // yields null, null[$i] yields null, and the coalesce then pins
+            // every retry at 300s — so the column reports a delay the queue is
+            // not using.
             'next_retry_at' => $isRetryable && $this->attempts() < $this->tries
-                ? now()->addSeconds($this->backoff[$this->attempts() - 1] ?? 300)
+                ? now()->addSeconds($this->retryDelay())
                 : null,
         ]);
 
