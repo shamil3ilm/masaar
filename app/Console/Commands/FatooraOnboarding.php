@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Console\Commands\Concerns\FindsOpenSsl;
 use App\Console\Commands\Concerns\WritesSecrets;
 use App\Domains\Compliance\Fatoora\DTOs\AddressData;
 use App\Domains\Compliance\Fatoora\DTOs\InvoiceXmlData;
@@ -40,6 +41,7 @@ use Illuminate\Support\Facades\Http;
  */
 class FatooraOnboarding extends Command
 {
+    use FindsOpenSsl;
     use WritesSecrets;
 
     protected $signature = 'fatoora:onboard
@@ -986,31 +988,5 @@ class FatooraOnboarding extends Command
         $data[8] = chr(ord($data[8]) & 0x3F | 0x80);
 
         return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
-    }
-
-    /**
-     * Find OpenSSL executable on the system.
-     */
-    private function findOpenSsl(): ?string
-    {
-        $paths = [
-            'openssl',
-            'C:\\laragon\\bin\\git\\usr\\bin\\openssl.exe',
-            'C:\\Program Files\\Git\\usr\\bin\\openssl.exe',
-            'C:\\Program Files\\Git\\mingw64\\bin\\openssl.exe',
-            'C:\\laragon\\bin\\openssl\\openssl.exe',
-            'C:\\Program Files\\OpenSSL-Win64\\bin\\openssl.exe',
-            'C:\\OpenSSL-Win64\\bin\\openssl.exe',
-        ];
-
-        foreach ($paths as $path) {
-            exec("\"{$path}\" version 2>&1", $output, $code);
-            if ($code === 0) {
-                return $path;
-            }
-            $output = [];
-        }
-
-        return null;
     }
 }
