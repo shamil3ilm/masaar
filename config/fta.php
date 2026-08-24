@@ -43,14 +43,22 @@ return [
     |--------------------------------------------------------------------------
     | Peppol Settings
     |--------------------------------------------------------------------------
+    |
+    | Deliberately absent. There was a 'peppol' block here declaring
+    | profile_id and customization_id as generic Peppol BIS Billing 3.0, plus
+    | a country code, currency and VAT rate. Nothing read any of it —
+    | config('fta.peppol') had no callers — and the two identifiers were wrong:
+    | the UAE requires PINT AE, its own national profile, not generic BIS.
+    |
+    | FtaXmlBuilder holds the correct values as constants
+    | (CUSTOMIZATION = urn:peppol:pint:billing-1@ae-1) and FtaComplianceSpecTest
+    | asserts them by value. Configuration that is never read is worse than
+    | absent: it invites someone to correct an identifier here and watch the
+    | document keep emitting the old one.
+    |
+    | If these become configurable, the builder has to read them and the spec
+    | test has to move with them.
     */
-    'peppol' => [
-        'profile_id' => 'urn:fdc:peppol.eu:2017:poacc:billing:01:1.0',
-        'customization_id' => 'urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0',
-        'country_code' => 'AE',
-        'currency' => 'AED',
-        'vat_rate' => 0.05,     // 5% UAE VAT
-    ],
 
     /*
     |--------------------------------------------------------------------------
