@@ -68,40 +68,6 @@ class EcdsaSigner
     }
 
     /**
-     * Generate new ECDSA key pair.
-     *
-     * @return array{privateKey: string, publicKey: string}
-     *
-     * @throws SigningException
-     */
-    public function generateKeyPair(): array
-    {
-        $config = [
-            'curve_name' => FatooraConfig::EC_CURVE,
-            'private_key_type' => OPENSSL_KEYTYPE_EC,
-        ];
-
-        $keyPair = openssl_pkey_new($config);
-
-        if ($keyPair === false) {
-            throw new SigningException('Key generation failed: '.openssl_error_string());
-        }
-
-        // Export private key
-        $privateKeyPem = '';
-        openssl_pkey_export($keyPair, $privateKeyPem);
-
-        // Export public key
-        $keyDetails = openssl_pkey_get_details($keyPair);
-        $publicKeyPem = $keyDetails['key'];
-
-        return [
-            'privateKey' => $privateKeyPem,
-            'publicKey' => $publicKeyPem,
-        ];
-    }
-
-    /**
      * Extract public key from certificate.
      *
      * @param  string  $certificatePem  PEM-encoded certificate
@@ -171,52 +137,5 @@ class EcdsaSigner
         $rawKey = chr(0x04).$x.$y;
 
         return base64_encode($rawKey);
-    }
-
-    /**
-     * Validate that a public key is suitable for ZATCA signing.
-     *
-     * @param  string  $publicKeyPem  PEM-encoded public key
-     * @return array{valid: bool, curve: string|null, error: string|null}
-     */
-    public function validatePublicKey(string $publicKeyPem): array
-    {
-        $publicKey = openssl_pkey_get_public($publicKeyPem);
-
-        if ($publicKey === false) {
-            return [
-                'valid' => false,
-                'curve' => null,
-                'error' => 'Invalid public key format',
-            ];
-        }
-
-        $details = openssl_pkey_get_details($publicKey);
-
-        $requiredCurve = $this->getCurveName();
-
-        if (($details['type'] ?? null) !== OPENSSL_KEYTYPE_EC) {
-            return [
-                'valid' => false,
-                'curve' => null,
-                'error' => "Key is not an EC key (ZATCA requires {$requiredCurve})",
-            ];
-        }
-
-        $curve = $details['ec']['curve_name'] ?? 'unknown';
-
-        if ($curve !== $requiredCurve) {
-            return [
-                'valid' => false,
-                'curve' => $curve,
-                'error' => "Wrong curve: {$curve} (ZATCA requires {$requiredCurve})",
-            ];
-        }
-
-        return [
-            'valid' => true,
-            'curve' => $curve,
-            'error' => null,
-        ];
     }
 }
