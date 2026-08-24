@@ -3,9 +3,8 @@
   "permissions": {
     "defaultMode": "dontAsk",
     "additionalDirectories": [
-      "c:\\laragon\\www\\erp-backend",
-      "c:\\laragon\\www\\erp-frontend",
-      "c:\\laragon\\www\\Zatca"
+      "c:\\laragon\\www\\masaar-erp-backend",
+      "c:\\laragon\\www\\masaar-erp-frontend"
     ],
     "allow": [
       "Read",
