@@ -7,16 +7,10 @@ namespace App\Console\Commands\Concerns;
 /**
  * Locate the OpenSSL binary the onboarding commands shell out to.
  *
- * This was written three times: twice as a private findOpenSsl and once inline,
- * and the copies had drifted in two different directions. One reset $output
- * between probes and one did not, so exec appended and the failure text grew
- * with every candidate tried. The inline one did not quote the path, which
- * means the two candidates under "C:\Program Files" could never match — the
- * space split the command, and OpenSSL installed in its default Windows
- * location was reported as absent.
- *
- * Console commands only. Nothing under app/Domains shells out, and
- * NoShellOutTest keeps it that way.
+ * One implementation, because the failure modes are easy to get subtly wrong:
+ * $output has to be reset between probes or exec appends and the failure text
+ * accumulates every candidate tried, and the path has to be quoted or the
+ * candidates under "C:\Program Files" can never match.
  */
 trait FindsOpenSsl
 {

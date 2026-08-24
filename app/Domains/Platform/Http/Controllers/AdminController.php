@@ -41,10 +41,9 @@ class AdminController extends Controller
      */
     public function organizations(Request $request): View
     {
-        // Expiry comes from the certificate the platform holds. This used to
-        // join certificate_lineage, a table nothing ever wrote, so the column
-        // was null for every organization and the screen showed no expiry at
-        // all. One decryption per row on a paginated admin screen.
+        // Expiry is read from the certificate the platform holds, which costs
+        // one decryption per row. Acceptable on a paginated admin screen and
+        // not somewhere it would run per invoice.
         $organizations = DB::table('organizations')
             ->select([
                 'organizations.id',

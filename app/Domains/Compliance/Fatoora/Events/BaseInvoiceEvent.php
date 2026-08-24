@@ -100,9 +100,9 @@ abstract class BaseInvoiceEvent
             'invoice_number' => $invoice?->invoice_number,
             'invoice_type' => $invoice?->type,
             'issue_date' => $invoice?->issue_date?->toIso8601String(),
-            // The column is total. This asked for total_with_vat, which is
-            // neither column nor accessor, so every webhook this platform has
-            // ever sent reported a null amount.
+            // The column is total. There is no total_with_vat on Invoice, and
+            // Eloquent answers null for an attribute it does not have rather
+            // than failing — a webhook would report no amount at all.
             'total_amount' => $invoice?->total,
             'currency' => $invoice?->currency ?? 'SAR',
             'icv' => $invoice?->icv,

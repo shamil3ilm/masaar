@@ -265,9 +265,9 @@ class DashboardController extends Controller
      */
     private function getCertificateStats(string $organizationId): array
     {
-        // total_certificates and invoices_signed came from a lineage table
-        // nothing ever wrote, so both were always zero. The platform keeps the
-        // certificate an organization signs with, not a history of them.
+        // The platform keeps the certificate an organization signs with, not
+        // a history of them, so there is no count of certificates held or
+        // invoices signed per certificate to report.
         $status = $this->certificates->status(
             $this->credentials->certificate($organizationId)
         );

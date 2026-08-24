@@ -83,9 +83,9 @@ class CreateInvoiceRequest extends FormRequest
             'currency' => ['nullable', 'string', 'size:3'],
             // BR-KSA-CU-01: VAT is reported in SAR, so a foreign-currency
             // invoice has to say what rate it was converted at. InvoiceValidator
-            // has always enforced this, but nothing accepted or stored the
-            // value, so every non-SAR invoice was taken here and then refused at
-            // compliance with an error naming a field the caller could not send.
+            // enforces this at compliance, so it has to be accepted here —
+            // otherwise a non-SAR invoice is taken and then refused for a field
+            // the caller had no way to send.
             'exchange_rate' => [
                 'nullable',
                 'numeric',

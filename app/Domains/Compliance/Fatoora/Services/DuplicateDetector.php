@@ -57,11 +57,11 @@ class DuplicateDetector
         $warnings = [];
 
         // The invoice being submitted is already persisted by the time this
-        // runs, so every lookup below finds it. checkUuid() is literally
-        // Invoice::find($uuid) on its own primary key, and checkInvoiceNumber()
-        // matches the row it was called about. Both are marked critical, so
-        // SubmissionTracker refused every invoice as a duplicate of itself and
-        // no document could be submitted through it at all.
+        // runs, so every lookup below finds it: checkUuid() is Invoice::find()
+        // on its own primary key, and checkInvoiceNumber() matches the row it
+        // was called about. Both are critical, so each has to exclude the
+        // subject invoice or SubmissionTracker refuses it as a duplicate of
+        // itself and nothing can be submitted.
         //
         // $uuid is the invoice's own id — BT-124 is the primary key here — so
         // it is what a match has to be compared against.

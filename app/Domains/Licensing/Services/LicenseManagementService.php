@@ -302,8 +302,8 @@ class LicenseManagementService
             ->get()
             ->map(fn ($log) => [
                 'id' => $log->id,
-                // Named for the columns that exist. This read action, details
-                // and performed_by, so every entry came back with three nulls.
+                // Named for the columns the table has: event, actor_type and
+                // actor_id. Reading action, details or performed_by yields null.
                 'event' => $log->event,
                 'actor_type' => $log->actor_type,
                 'actor_id' => $log->actor_id,
@@ -330,11 +330,11 @@ class LicenseManagementService
         }
 
         try {
-            // Through the model, which knows the table's actual shape and
-            // enforces append-only. This inserted action, details, performed_by
-            // and user_agent — four names the table does not have — so every
-            // write threw, and the catch below turned each one into a log line.
-            // The licence audit trail has been empty since it was written.
+            // Through the model, which knows the table's shape and enforces
+            // append-only. A raw insert naming action, details, performed_by or
+            // user_agent throws — the table has none of them — and the catch
+            // below would turn each failure into a log line and an empty audit
+            // trail.
             LicenseAuditLog::create([
                 'license_id' => $licenseId,
                 'event' => $action,

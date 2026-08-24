@@ -279,10 +279,9 @@ class CustomerPortalController extends Controller
     /**
      * The certificate this organization signs with, or null before onboarding.
      *
-     * Read from the credential store rather than a certificate_lineage row:
-     * nothing ever wrote that table, so the portal showed every tenant as
-     * having no certificate. The store holds the current certificate only, so
-     * there is no history to show.
+     * Read from the credential store, which is where onboarding writes. The
+     * store holds the certificate an organization currently signs with and no
+     * history of previous ones, so there is nothing further to show.
      */
     private function activeCertificate(?string $organizationId): ?object
     {

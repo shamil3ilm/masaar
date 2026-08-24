@@ -320,12 +320,9 @@ final readonly class InvoiceXmlData
     public function isMultiCurrency(): bool
     {
         // Saudi VAT is owed in riyals whatever the document is written in, so
-        // the question is simply whether this one is written in something else
-        // and we have a rate to convert with.
-        //
-        // This used to ask whether originalCurrency differed from currency. The
-        // invoice has no such field and nothing ever set it, so the answer was
-        // always no and a dollar invoice declared its VAT in dollars.
+        // the question is whether this one is written in something else and
+        // there is a rate to convert with. Both conditions, from fields the
+        // invoice actually carries.
         return $this->currency !== 'SAR' && $this->exchangeRate !== null;
     }
 
