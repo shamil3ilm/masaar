@@ -14,6 +14,7 @@ use App\Domains\Licensing\Enums\LicenseEnvironment;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\BranchService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -46,6 +47,7 @@ class Submitter
         private readonly BranchService $branchService,
         private readonly CredentialStore $credentials,
         private readonly KillSwitch $killSwitch,
+        private readonly ChainRecorder $chain,
     ) {}
 
     /**
@@ -76,13 +78,24 @@ class Submitter
             certificate: $credentials['certificate'] ?? null,
         );
 
-        // Update invoice with compliance data (including signed_xml when available)
-        $invoice->update([
-            'hash' => $complianceData['hash'],
-            'qr_code' => $complianceData['qr_code'],
-            'signed_xml' => $complianceData['signed_xml'] ?? null,
-            'status' => InvoiceStatus::Issued,
-        ]);
+        // The document and its chain entry are written together: an invoice
+        // that exists without one is the break VerifyHashChain looks for, so
+        // it must not be possible to produce one by failing halfway.
+        DB::transaction(function () use ($invoice, $complianceData, $previousHash, $credentials): void {
+            $invoice->update([
+                'hash' => $complianceData['hash'],
+                'qr_code' => $complianceData['qr_code'],
+                'signed_xml' => $complianceData['signed_xml'] ?? null,
+                'status' => InvoiceStatus::Issued,
+            ]);
+
+            $this->chain->record(
+                invoice: $invoice,
+                invoiceHash: $complianceData['hash'],
+                previousHash: $previousHash,
+                certificate: $credentials['certificate'] ?? null,
+            );
+        });
 
         return [
             'hash' => $complianceData['hash'],
@@ -159,9 +172,9 @@ class Submitter
         $complianceData = $this->compliance->generateComplianceData(
             invoice: $invoice,
             organization: $organization,
-            // Omitting this defaulted it to null, which XmlBuilder turns into
-            // the genesis PIH — so the document that actually reaches ZATCA
-            // claimed to be the first in the chain, on every submission.
+            // Passed explicitly: the parameter defaults to null and XmlBuilder
+            // reads a null as the genesis PIH, so omitting it makes every
+            // document claim to be the first in its chain.
             previousInvoiceHash: $invoice->previous_invoice_hash,
             privateKey: $credentials['privateKey'] ?? null,
             certificate: $credentials['certificate'] ?? null,

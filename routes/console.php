@@ -76,7 +76,10 @@ Schedule::command('fatoora:process-offline --limit=50')
     ->everyFiveMinutes()
     ->withoutOverlapping()
     ->runInBackground()
-    ->when(fn () => config('zatca.offline.auto_recovery.enabled', true))
+    // The file is config/fatoora.php. A config() call naming a file that does
+    // not exist returns its default rather than failing, so a wrong namespace
+    // here reads as "always enabled" and the setting silently does nothing.
+    ->when(fn () => config('fatoora.offline.auto_recovery.enabled', true))
     ->appendOutputTo(storage_path('logs/zatca-offline-queue.log'));
 
 // Check certificate expiry - runs daily at 8 AM with notifications
