@@ -1,0 +1,122 @@
+# 04 — Gap Matrix
+
+**Status vocabulary:** ABSENT · PARTIAL · PRESENT-UNVERIFIED · VERIFIED
+**VERIFIED requires a passing test or a real ZATCA response.** No ZATCA response
+exists anywhere in this system, so nothing is verified *against the authority* —
+only against the project's own tests. All paths relative to `Masaar/`.
+
+**Score: 3 ABSENT · 8 PARTIAL · 12 PRESENT-UNVERIFIED · 18 VERIFIED**
+
+Suite backing the VERIFIED column: **715 passed, 3 skipped (1589 assertions)**
+on PHP 8.4.12. The 3 skips are all `SecretFileTest` — POSIX file modes, which
+Windows does not enforce; they run in CI.
+
+> **Three items moved upward during this audit.** Two because I checked
+> implementations I had assumed were missing (item 9's derived PIH accessor,
+> item 30's dead-letter handling) — a pattern worth naming: in this codebase
+> capability is often present, just not where you would first look for it.
+> The third, **item 34, was genuinely absent, was fixed in the working tree
+> while this audit was being written, and then acquired a thorough test before
+> I finished** — ABSENT → PRESENT-UNVERIFIED → VERIFIED in one run.
+> Findings below are against the **working tree**, not HEAD `e83d8fe`. See
+> [99-denied.md](99-denied.md) §2 — the repo is moving faster than an audit of
+> it can be written.
+
+---
+
+## GENERATION
+
+| # | Requirement | Status | Evidence | What's missing |
+|---|---|---|---|---|
+| 1 | UBL 2.1 XML generated natively | **VERIFIED** | `Fatoora/Services/XmlBuilder.php:20-35` — `DOMDocument`, correct UBL/CAC/CBC/EXT/SIG/SBC namespace constants. No string concatenation, no PDF-first. Asserted by `UblTotalsTest`, `InvoiceTypeCodeTest`, `XadesPropertiesTest` via `DOMXPath`. | — |
+| 2 | XML validates against ZATCA XSD | **ABSENT** | `Fatoora/Services/InvoiceValidator.php:519-526` — the call is **commented out**: `// $dom->schemaValidate($schemaPath);`. `find . -name "*.xsd"` (excl. `vendor/`) → **no results**. Only other ref is a path into an unvendored Java SDK: `Console/Commands/FatooraGenerateCsr.php:263`. | The XSD itself, plus the code to run it. **This is the L2 blocker.** |
+| 3 | Standard (B2B) invoice | **VERIFIED** | `InvoiceXmlData.php:169` — `'01'`; `XmlBuilder.php:130` → `ProfileID: clearance:1.0`; `Enums/InvoiceType.php`. Covered by `InvoiceTypeCodeTest`. | Spec correctness of `ProfileID` unconfirmed — see R-3. |
+| 4 | Simplified (B2C) invoice | **VERIFIED** | `InvoiceXmlData.php:169` — `'02'`; `isSimplified()` drives ProfileID and the reporting path (`Submitter.php:178`). `InvoiceTypeCodeTest`. | — |
+| 5 | Credit note — standard + simplified | **VERIFIED** | `Enums/DocumentType.php:18` → `381`; billing reference required (`:69`) and reason enforced (`XmlBuilder.php:147-150`, BR-KSA-17). `tests/Feature/Compliance/CreditNoteTest.php`. Both subtypes generated at `OnboardingController.php:245,248`. | — |
+| 6 | Debit note — standard + simplified | **PRESENT-UNVERIFIED** | `Enums/DocumentType.php:19` → `383`; both subtypes at `OnboardingController.php:246,249`. | No `DebitNoteTest`. The credit note has a dedicated test; the debit note does not. |
+| 7 | UUID per document | **VERIFIED** | `migrations/0080_invoices.php:14` `$table->uuid('id')`; `Invoice.php:30` `use HasUuids`; emitted at `XmlBuilder.php:137` (`cbc:UUID`) and passed as the submission `uuid` (`Submitter.php:176`). | — |
+| 8 | ICV — monotonic, gapless | **VERIFIED** | `Invoice.php:212-230` `generateNextIcv()` with `lockForUpdate()` on the **organizations** row; `migrations/0080_invoices.php:66` `unique(['org_id','icv'])`. `tests/Feature/Invoice/IcvAllocationTest.php` — 5 tests: starts at 1, increments, per-org, explicit kept, duplicate rejected. | Gaplessness is *not* guaranteed: a rolled-back transaction burns an ICV. See R-6. |
+| 9 | PIH chained correctly | **VERIFIED** | `Invoice::getPreviousInvoiceHashAttribute()` (`Invoice.php:364-372`) — a **derived accessor, not a column**: `where org_id … where icv < … whereNotNull('hash') orderByDesc('icv')->value('hash')`. Ordered by ICV rather than `created_at` "because wall-clock is not deterministic under concurrent inserts", and the tenant scope is deliberately lifted (`:358-362`). Consumed at `Submitter.php:66,99,165`, `ProcessFatooraSubmission.php:141`, `OfflineFallback.php:104`. `tests/Feature/Compliance/PreviousHashTest.php` (6 assertions incl. per-org and ordering) plus `tests/Feature/Architecture/AttributeReadTest.php`, which exists specifically to catch the class of bug where a missing attribute silently returns null. Swept by `fatoora:verify-hash-chain`. | ⚠️ **Two sources of truth.** The accessor derives PIH from `invoices`, while `hash_chain_state`/`hash_chain_history` (`0160`) also record it. Nothing asserts the two agree, and `hash_chain_history`'s `(org_id, icv)` index is **not unique**. See R-6. |
+| 10 | Invoice hash computed per spec | **PRESENT-UNVERIFIED** | `Fatoora/Services/InvoiceHasher.php` (142 L); XPath transform strips `UBLExtensions` before digest (`XmlBuilder.php:44-50`). | "Per spec" is exactly what cannot be shown without ZATCA fixtures. The transform *set* and canonicalisation method are unasserted against an official sample. |
+| 11 | Arabic fields where mandated | **PARTIAL** | `Fatoora/Helpers/TextNormalizer.php` (297 L) — real Arabic handling: prefix normalisation (ال/آل/بن/إبن/أبو/عبد), diacritic stripping, UTF-8 validation. `tests/Feature/Compliance/SellerNameBytesTest.php` covers byte-length. `Enums/DocumentType.php:38-48` has `getLabelAr()`. | **No bilingual columns.** `organizations` has one `name` (`0050_organizations.php:16`); `invoices` one `buyer_name`. `getLabelAr()` is **never emitted to XML** — grep for Arabic in `XmlBuilder.php` returns nothing. ASSUMPTION: a single field carrying Arabic text may satisfy ZATCA; if a separate Arabic party name is mandated, this fails. Unresolved — see R-3. |
+| 12 | Zero-rated / exempt / out-of-scope | **VERIFIED** | `Enums/TaxCategory.php:16-19` — `S`/`Z`/`E`/`O` per UN/CEFACT 5305, with `requiresExemptionReason()` (`:38`). `invoice_lines.tax_category` char(1) default `S`, plus `exempt_code`, `exempt_reason` (`0080_invoices.php:87-89`). `FatooraConfig.php:345` carries the VATEX-SA-* reason codes. `tests/Feature/Invoice/ExemptLineTest.php`. | — |
+| 13 | Line- and document-level rounding | **PARTIAL** | Money is bcmath, not float: `InvoiceController.php:86-88` `bcmul`/`bcdiv`/`bcadd` at scale 2 (rate at 4). Totals coherence asserted by `UblTotalsTest` against BR-CO-13/BR-CO-15. Columns are `decimal(12,2)`. | No explicit ZATCA rounding *policy* (half-up vs banker's) is stated or tested; no `cbc:PayableRoundingAmount` handling found. The self-consistency check passes; conformance to ZATCA's stated rounding rule is unproven. |
+| 14 | Invoice-type flags → correct UBL fields | **VERIFIED** | The mapping you asked me to check. Columns `0080_invoices.php:50-54` (each with a `->comment()` naming its BT-3 bit) → `DocumentBuilder.php:218-222` → `InvoiceXmlData.php:166-179` builds the 7-char string (`01`/`02` + 5 bits) → `XmlBuilder.php:144-145` sets it on `cbc:InvoiceTypeCode/@name`. **Asserted end to end by `tests/Feature/Compliance/InvoiceTypeCodeTest.php`**, whose docblock explains why: *"An export invoice recorded as a domestic one is a misstatement to the tax authority."* | — |
+
+---
+
+## CRYPTOGRAPHY
+
+| # | Requirement | Status | Evidence | What's missing |
+|---|---|---|---|---|
+| 15 | ECDSA secp256k1 keypair | **PRESENT-UNVERIFIED** | `Console/Commands/FatooraGenerateCsr.php:420` `EC::createKey('secp256k1')` (phpseclib); shell path at `:302`. | ⚠️ **Silent fallback to `prime256v1`** at `:307-309` and `:490-491` if secp256k1 is unavailable. `prime256v1` is the wrong curve for ZATCA — it would produce a key that onboards and then fails, with only a `warn()`. Should be fatal. See R-7. |
+| 16 | CSR with correct OIDs + template name | **PRESENT-UNVERIFIED** | `Fatoora/Services/CertificateService.php:26` `OID_INVOICE_TYPE = '1.3.6.1.4.1.311.20.2'`; `:158` `= ASN1:PRINTABLESTRING:ZATCA-Code-Signing`. Same in `FatooraGenerateCsr.php:372,394`. `tests/Feature/Compliance/CsrGenerationTest.php`. Prior defects (SAN `dirName`, unchecked `openssl_pkey_export`, missing `organizationIdentifier`) are documented as fixed. | Never accepted by ZATCA. A CSR is only correct when the authority issues a CSID against it. |
+| 17 | XAdES signature embedded | **VERIFIED** *(structurally)* | `Fatoora/Services/XadesSigner.php` (1,021 L); scaffold at `XmlBuilder.php:49` `addSignatureExtension()` with a docblock recording that it previously had no callers so the signature landed under the root. `tests/Feature/Compliance/XadesPropertiesTest.php`, `Phase2SigningTest.php` — the signature verifies against the certificate in the document, and reverting the fix fails the test. | Verified as *a* valid XAdES; not verified as *ZATCA's* XAdES profile (required properties, transform set, `SigningCertificate` digest form). |
+| 18 | Cryptographic stamp applied | **PRESENT-UNVERIFIED** | `Fatoora/Services/EcdsaSigner.php` (249 L) invoked via `DocumentBuilder::generateComplianceData`. | Same as 17 — no authority confirmation. |
+| 19 | TLV base64 QR, Phase-2 tag set | **VERIFIED** | `Fatoora/Services/TlvEncoder.php` — correct `chr(tag).chr(len).value`, 255-byte guard, `base64_encode`. `QrCodeGenerator.php:56-70` `generatePhase2()` emits all **9** tags (1-5 base, 6 hash, 7 signature, 8 public key, 9 CA signature) with mandatory-field validation at `:104-127`. `generatePhase1()` at `:36-46` for the 5-tag B2C form. | — |
+| 20 | Private keys outside repo, encrypted at rest | **VERIFIED** | `Fatoora/Services/CredentialStore.php` — every read/write encrypted via `cipher()` (`:60-76`), disk from `config('fatoora.signing.disk')` (`:43`), path `zatca/{org}/[branches/{branch}/]{type}.json` (`:201-206`). `storage/app/.gitignore` = `*`. `tests/Feature/Security/CredentialStoreTest.php`, `CredentialKeyTest.php`. WIP `SecretFileTest.php` adds `0700`/`0600` enforcement for the CLI paths. | **One secret covers every tenant; no KMS** (`CredentialStore.php:29-31`, the code's own admission). See R-2. |
+| 21 | No keys/OTPs/CSIDs committed | **VERIFIED** | `.gitignore:5-8` ignores `.env` **and** `.env.*` with `!.env.example`, plus `/storage/*.key`. `git ls-files` matching `\.pem$\|\.key$\|\.p12$\|csid\|\.env$` returns **only** `tests/Fixtures/Certificates/{ca,crl,good,revoked}.pem` — deliberate test fixtures for revocation testing, not live material. **No secret values printed in this audit.** | ⚠️ `.claude/settings.json.bak` is untracked and unignored — `*.bak` is not covered generally. Low risk, but the `.gitignore` comment says a `.env.bak` was the reason `.env.*` was added; the same class of file elsewhere is still uncovered. |
+
+---
+
+## FATOORA INTEGRATION
+
+| # | Requirement | Status | Evidence | What's missing |
+|---|---|---|---|---|
+| 22 | Compliance CSID (CCSID) flow | **PRESENT-UNVERIFIED** | `Fatoora/Services/CsidOnboarding.php:33-71` `requestComplianceCsid()`; `FatooraClient.php:229` `POST /compliance`; `OnboardingController.php` step 1; `tests/Feature/Compliance/OnboardingFlowTest.php`, `OnboardingTlsTest.php` (TLS verification against the live authority was recently fixed — commit `cb8a643`). | **Never executed.** No CCSID exists. |
+| 23 | Compliance suite passes for all six doc types | **ABSENT** | The *code* is complete: `OnboardingController.php:243-250` defines exactly the six — standard/simplified × invoice/credit/debit — with billing refs and reasons for the notes (`:256-262`), chained ICVs and a genesis PIH (`:239-240`); `CsidOnboarding.php:82-115` submits each and aggregates pass/fail. | **It has never been run.** "Passes" requires a ZATCA response; there is none. This is the L4 gate and, after the XSD, the highest-value action available. |
+| 24 | Production CSID (PCSID) onboarding | **PRESENT-UNVERIFIED** | `CsidOnboarding.php:127-157`; `FatooraClient.php:277-291` `POST /production/csids`; `OnboardingController::requestPcsid` (`:131`); stored via `CredentialStore::PCSID`. Full 4-step orchestration at `CsidOnboarding.php:165-198`. | Never executed. |
+| 25 | PCSID renewal | **PRESENT-UNVERIFIED** | `FatooraClient.php:303-321` `renewProductionCsid()` — `PATCH /production/csids` with CSR + OTP. | No scheduled or automated trigger found — `fatoora:check-certificate` **alerts** on expiry but does not renew. Renewal is a manual call. |
+| 26 | Clearance API (B2B), blocking | **PARTIAL** | Routing is correct: `Submitter.php:171-177` → `FatooraClient::clearInvoice()` → `POST /invoices/clearance/single` (`Client:84`), chosen by `$invoice->requiresClearance()`. | **Not blocking.** `PipelineService.php:30-32` states *"once an invoice is issued it stays issued"*; `submit()` (`:143-189`) catches everything and returns an issued invoice with errors attached. Issuance happens at `Submitter.php:80-86`, *before* submission. See R-4. |
+| 27 | Reporting API (B2C), 24h | **VERIFIED** | `Submitter.php:178-186` → `POST /invoices/reporting/single`; deadline enforced at `:254-298` with `config('fatoora.reporting.deadline_hours', 24)`, an approaching-deadline warning at `:298`, and an `enforce_deadline` escape hatch at `:267`. Offline queue + `fatoora:process-offline` drain it. | — |
+| 28 | Environment separation | **PRESENT-UNVERIFIED** | `config/fatoora.php` drives `FatooraClient::$baseUrl`; `Submitter::submit()` docblock: *"Validates license environment matches ZATCA environment"*; `tests/Feature/Security/LicenseCredentialSourceTest.php`. `Console/Commands/FatooraSandboxTest.php` (sandbox driver). | Cannot confirm all three of sandbox/simulation/production are distinctly configured without exercising them. |
+| 29 | CLEARED / REPORTED / WARNING / ERROR distinct | **VERIFIED** | `migrations/0140_submissions.php:50` — 10-value `state` enum incl. `cleared`, `reported`, `warning`, `rejected`, `failed`; `:57` separate `clearance_state` enum (incl. `conditionally_accepted`, `timeout`); `:60-61` **separate** `zatca_warnings` and `zatca_errors` JSON columns. Six distinct events (`Fatoora/Events/`). `Fatoora/Enums/ErrorCode.php` is 485 lines of mapped codes. | — |
+| 30 | Retry + dead-letter queue | **VERIFIED** | Retry: `ProcessFatooraSubmission.php:50` `$tries`, `:92` `backoff() = [10,60,300]`; `invoice_submissions.retry_count`/`max_retries`/`next_retry_at` (`0140:65-67`) indexed `(state, next_retry_at)`; `offline_queue` + scheduled drain; `CircuitBreaker` (334 L); `SubmissionTracker::retry()` (`:376`). **DLQ: yes** — `failed_jobs` table (`0030_jobs.php:38-46`), and `ProcessFatooraSubmission::failed()` (`:385-418`) is a proper terminal handler: sets `state='failed'`, clears `next_retry_at`, marks the idempotency row failed, writes a state-log entry with `reason: max_retries_exceeded`, logs at error level, and fires `InvoiceFailed(… 'permanent' => true)`. `DispatchInvoiceWebhook::failed()` (`:103`) covers the notification leg. `tests/Feature/Compliance/SubmissionJobTest.php`. | — |
+| 31 | Full request/response audit log | **VERIFIED** | Three layers: `submission_idempotency` stores `response_body`, `response_headers`, `http_status_code`, `zatca_request_id` (`0140:22-27`); `submission_state_logs` records every transition with `trigger`, `context`, `actor_type`, `actor_id`, `ip_address` (`0140:96-112`); `AuditService::logZatcaSubmission()` (`Submitter.php:192`). `Fatoora/Helpers/LogSanitizer.php` (253 L) keeps secrets out. `audit_logs` table (`0090`). | — |
+
+---
+
+## STORAGE & AUDIT
+
+| # | Requirement | Status | Evidence | What's missing |
+|---|---|---|---|---|
+| 32 | Signed XML archived (verify retention period) | **PARTIAL** | `invoices.signed_xml` is `longText` (`0080_invoices.php:41`), written at `Submitter.php:83`. | **No retention policy exists.** grep for `retention` in `config/` returns nothing relevant. ZATCA/GAZT require records be kept — commonly cited as **6 years** for VAT (longer for real-estate/capital assets). ASSUMPTION: 6 years; **I could not verify the current mandated period from the codebase and it is not stated in `docs/`.** Confirm against the current VAT Implementing Regulations before relying on it. Nothing enforces or documents any period today. |
+| 33 | Tamper-evident; no hard deletes | **VERIFIED** | `Invoice::boot()` — `deleting()` throws for any non-draft status (`Invoice.php:158-166`); `updating()` blocks 17 `IMMUTABLE_FIELDS` (`:169-189`, list at `:99-124`) allowing only `MUTABLE_AFTER_FINALIZED` (`:129-138`). `invoices` has **no** `deleted_at`. Hash chain is itself tamper-evident and swept by `fatoora:verify-hash-chain`. | ⚠️ `invoice_submissions.deleted_at` exists (`0140:76`) — submissions are soft-deletable while invoices are not. Asymmetric, though the invoice is the legal record. |
+| 34 | The **ZATCA-cleared** XML is stored and sent to the buyer | **VERIFIED** ⚡⚡ *went ABSENT → PRESENT-UNVERIFIED → VERIFIED during this audit* | **Was ABSENT when I first checked** (`clearedInvoice` parsed at `FatooraResponse.php:17,35` and read by nothing). It was implemented in the working tree while this audit was being written — uncommitted, HEAD still `e83d8fe`. Now complete and coherent: `invoices.cleared_xml` longText (`0080:46`, with a comment stating *"that stamped document is the legal invoice — not the one we submitted"*); `Submitter.php:400-402` assigns it; `clearedXml()` (`:420-434`) base64-decodes and **keeps the raw value verbatim if it does not decode**, "losing the authority's copy because it arrived in an unexpected shape is the worse failure"; `Invoice::getLegalXmlAttribute()` (`:302-305`) returns `cleared_xml ?? signed_xml`; surfaced via `PipelineResult.php:39` and `PipelineController.php:125`. `cleared_xml` added to both `$fillable` (`:59`) and `MUTABLE_AFTER_FINALIZED` (`:137`) — correct, since it arrives after issuance. Nothing — **`tests/Feature/Compliance/ClearedDocumentTest.php` also landed mid-audit** and covers it thoroughly: `cleared_xml` populated from a base64 response (`:79`), differs from `signed_xml` (`:89`), `legal_xml` prefers it (`:93`), stays null on a reporting response (`:106-107`), non-base64 kept verbatim (`:119`), and reaches the pipeline payload (`:130`). R-1 closed. |
+| 35 | Retrievable by date, VAT number, UUID | **PARTIAL** | Indexed: `issue_date` (`0080:63`), `(org_id, created_at)` (`:64`), `invoice_number` (`:62`), `erp_reference_id` (`:61`), and UUID is the primary key (`:59`). Submissions indexed on `zatca_uuid` (`0140:85`). `compliance:index-health --alert` runs daily. | **`buyer_vat_number` is not indexed** (`0080:28`). Seller VAT lives on `organizations`, so "by VAT number" works for the seller via `org_id` but a buyer-VAT lookup is a full scan. See [05-data-model.md](05-data-model.md). |
+
+---
+
+## OPERATIONS
+
+| # | Requirement | Status | Evidence | What's missing |
+|---|---|---|---|---|
+| 36 | EGS units modelled per device/branch | **VERIFIED** | `branches` table (`migrations/0070_branches.php`); `invoices.branch_id` FK + index (`0080:17,60`); `Invoice::branch()` documented as deciding signing credentials (`Invoice.php:238-247`); `CredentialStore` stores per-branch CSIDs under `zatca/{org}/branches/{branch}/` (`:201-206`) and resolves branch-before-org (`:134-145`); dedicated `BranchOnboardingController` (343 L). `tests/Feature/Pipeline/BranchRoutingTest.php`, `BranchOnboardingTest.php`, `BranchReadinessTest.php`. Cross-tenant branch use blocked at `PipelineService.php:85-102`. | ⚠️ The hash chain is keyed on **`org_id` only** (`0160_hash_chain.php:14`, `ChainState::$primaryKey = 'org_id'`). If ZATCA requires one ICV/PIH chain **per EGS unit**, this is a structural defect. Unresolved spec question — R-3. |
+| 37 | Repeatable per-unit onboarding | **VERIFIED** *(as a flow)* | `BranchOnboardingController` (343 L) — a parameterised HTTP flow, not a one-off script; `CsidOnboarding::onboard()` orchestrates all four steps (`:165-198`); CLI equivalents `fatoora:generate-csr`, `fatoora:onboard`. `BranchOnboardingTest`, `OnboardedStateTest`. | Repeatable in shape; never executed once, so "repeatable" is untested in practice. |
+| 38 | Certificate expiry monitoring + alerting | **VERIFIED** | `Console/Commands/CheckCertificateExpiry.php` — thresholds `config('fatoora.certificate_notifications.notify_at_days', [30,14,7,3,1])` (`:171`), mail **and** webhook channels (`:187-188`), cache-key dedupe so one alert per threshold (`:178`). Scheduled daily: `routes/console.php:83` `fatoora:check-certificate --notify`. `tests/Feature/Compliance/CertificateHealthTest.php`. | Alerts only — no auto-renewal (see 25). |
+| 39 | Submission failure alerting | **PARTIAL** | Recorded thoroughly (`last_error`, `last_error_code`, state log with actor/IP); `InvoiceFailed`/`InvoiceRejected` → `DispatchInvoiceWebhook` notifies **the tenant**; permanent failure logged at error level (`ProcessFatooraSubmission.php:406`). Operator signal exists as a **metric**: `Platform/Http/Controllers/MetricsController.php:221-222` exports `queue_failed_jobs_total` on the guarded `/metrics` endpoint. `compliance:index-health --alert` scheduled. | The metric is a **pull** signal — it requires a Prometheus/Alertmanager stack that is not configured in this repo. No **push** alert (mail/webhook/pager) fires to *you* when platform-wide submissions start failing, and no aggregate threshold is defined anywhere. Contrast item 38, where certificate expiry does push on a threshold ladder. |
+| 40 | Reconciliation: issued vs cleared vs reported | **ABSENT** | Nothing found. `grep -rln "reconcil"` over `app/` matches only incidental prose in unrelated docblocks. `Fatoora/Services/VatPeriodTracker.php` (319 L) tracks VAT periods and is the natural host, but performs no issued-vs-filed reconciliation. `Platform/Http/Controllers/DashboardController.php:259,324-330` shows `latest_icv` and last chain entry — a health readout, not a reconciliation. | A periodic job answering "which issued invoices have no terminal ZATCA outcome?". The data to build it is all present (`invoice_submissions.state` + `invoices.status`); the query does not exist. |
+| 41 | Runbook for ZATCA downtime | **PARTIAL** | The *mechanism* is strong: `Connectivity` (258 L), `CircuitBreaker` (334 L), `OfflineFallback` (276 L), `OfflineQueue` (485 L), `KillSwitch` (702 L, with per-org issuance/signing switches), `fatoora:process-offline` scheduled. Docs exist: `docs/PRODUCTION-READINESS.md`, `docs/DEPLOYMENT-GUIDE.md`, `docs/sa/COMPLIANCE-RULES.md`, `docs/COMPLIANCE-POLICIES.md`. | No document is a **downtime runbook** — no "ZATCA is down, do this" procedure naming the kill switches, the queue depth to watch, or the 24h B2C deadline interaction. The tooling is better than the documentation of it. |
+
+---
+
+## The pattern in this table
+
+Three distinct kinds of gap, and they need different responses:
+
+1. **Three remaining ABSENTs** — items 2, 23, 40. **2 and 23 are missing
+   external inputs** (an XSD and a sandbox credential); **40 is simply
+   unwritten**. Item 34 was the fourth and the only *functional defect* in the
+   table — fixed and tested during this audit.
+
+2. **Twelve PRESENT-UNVERIFIED** — all crypto and all Fatoora integration.
+   Every one becomes VERIFIED or reveals a defect on the **same day** the first
+   sandbox submission succeeds. They are not twelve problems; they are one.
+
+3. **Eight PARTIAL** — mostly operational maturity (push alerting, retention
+   policy, runbook, buyer-VAT index, rounding policy) plus two spec questions
+   (Arabic modelling, per-branch chaining) that only the specification can
+   settle.
+
+The ordering that follows from this is in [08-next.md](08-next.md): the XSD
+first, because it is the only item that unblocks a whole category.
