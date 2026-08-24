@@ -1,4 +1,4 @@
-# CompliPay Production Dockerfile
+# Masaar Production Dockerfile
 # ZATCA E-Invoicing Compliance Platform
 # Laravel 12 / PHP 8.2+
 
@@ -48,8 +48,8 @@ RUN if [ -f vite.config.js ]; then npm run build; else mkdir -p public/build; fi
 FROM php:8.2-fpm-alpine AS production
 
 # Labels
-LABEL maintainer="CompliPay Team"
-LABEL description="CompliPay ZATCA E-Invoicing Compliance Platform"
+LABEL maintainer="Masaar Team"
+LABEL description="Masaar ZATCA E-Invoicing Compliance Platform"
 LABEL version="1.0.0"
 
 # Environment variables
@@ -133,8 +133,8 @@ RUN echo "memory_limit=512M" >> /usr/local/etc/php/conf.d/custom.ini \
     && echo "log_errors=On" >> /usr/local/etc/php/conf.d/custom.ini
 
 # Create application user
-RUN addgroup -g 1000 -S complipay \
-    && adduser -u 1000 -S complipay -G complipay
+RUN addgroup -g 1000 -S masaar \
+    && adduser -u 1000 -S masaar -G masaar
 
 # Set working directory
 WORKDIR /var/www/html
@@ -170,7 +170,7 @@ RUN mkdir -p storage/framework/cache/data \
     bootstrap/cache
 
 # Set ownership to application user
-RUN chown -R complipay:complipay /var/www/html
+RUN chown -R masaar:masaar /var/www/html
 
 # Set proper permissions
 RUN chmod -R 775 storage bootstrap/cache
@@ -208,7 +208,7 @@ RUN chmod +x /entrypoint.sh
 
 # Switch to non-root user for PHP-FPM
 # Note: Nginx will run as root initially, then drop privileges
-USER complipay
+USER masaar
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

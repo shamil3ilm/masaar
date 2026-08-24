@@ -194,14 +194,14 @@ try {
 
 ```kotlin
 // In your Application class or DI module
-val compliPayClient = MasaarClient(
+val masaarClient = MasaarClient(
     baseUrl = BuildConfig.MASAAR_BASE_URL,
     apiKey = BuildConfig.MASAAR_API_KEY,
     apiSecret = BuildConfig.MASAAR_API_SECRET
 )
 
 // In your ViewModel
-class InvoiceViewModel(private val compliPay: MasaarClient) : ViewModel() {
+class InvoiceViewModel(private val masaar: MasaarClient) : ViewModel() {
 
     private val _invoiceState = MutableStateFlow<InvoiceState>(InvoiceState.Idle)
     val invoiceState: StateFlow<InvoiceState> = _invoiceState
@@ -210,7 +210,7 @@ class InvoiceViewModel(private val compliPay: MasaarClient) : ViewModel() {
         viewModelScope.launch {
             _invoiceState.value = InvoiceState.Loading
             try {
-                val invoice = compliPay.invoices.create(request)
+                val invoice = masaar.invoices.create(request)
                 _invoiceState.value = InvoiceState.Success(invoice)
             } catch (e: MasaarException) {
                 _invoiceState.value = InvoiceState.Error(e.message)

@@ -1,5 +1,5 @@
 /**
- * CompliPay k6 Load Testing Configuration
+ * Masaar k6 Load Testing Configuration
  *
  * Shared configuration for all load tests
  */
