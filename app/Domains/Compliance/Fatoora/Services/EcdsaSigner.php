@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Services;
 
+use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\Exceptions\SigningException;
 
 /**
@@ -12,37 +13,12 @@ use App\Domains\Compliance\Fatoora\Exceptions\SigningException;
  * Implements ECDSA signing using secp256k1 curve as required by ZATCA.
  * Used for signing invoices and generating QR code tags 7, 8, 9.
  *
- * Cryptographic settings come from the 'crypto' section of config/fatoora.php.
+ * The curve, its coordinate size and the hash are constants on FatooraConfig
+ * rather than configuration, because the authority mandates all three and a
+ * deployment that changes one produces signatures nothing can verify.
  */
 class EcdsaSigner
 {
-    /**
-     * Get the hash algorithm for signing.
-     * Default: OPENSSL_ALGO_SHA256 per ZATCA specification.
-     */
-    private function getHashAlgorithm(): int
-    {
-        return config('fatoora.crypto.hash_algorithm', OPENSSL_ALGO_SHA256);
-    }
-
-    /**
-     * Get the EC curve name.
-     * Default: secp256k1 per ZATCA specification.
-     */
-    private function getCurveName(): string
-    {
-        return config('fatoora.crypto.curve', 'secp256k1');
-    }
-
-    /**
-     * Get the coordinate length in bytes.
-     * Default: 32 bytes for secp256k1.
-     */
-    private function getCoordinateLength(): int
-    {
-        return (int) config('fatoora.crypto.coordinate_length', 32);
-    }
-
     /**
      * Sign data with private key.
      *
@@ -61,7 +37,7 @@ class EcdsaSigner
         }
 
         $signature = '';
-        $success = openssl_sign($data, $signature, $privateKey, $this->getHashAlgorithm());
+        $success = openssl_sign($data, $signature, $privateKey, FatooraConfig::HASH_ALGORITHM);
 
         if (! $success) {
             throw new SigningException('Signing failed: '.openssl_error_string());
@@ -88,7 +64,7 @@ class EcdsaSigner
 
         $signature = base64_decode($signatureBase64);
 
-        return openssl_verify($data, $signature, $publicKey, $this->getHashAlgorithm()) === 1;
+        return openssl_verify($data, $signature, $publicKey, FatooraConfig::HASH_ALGORITHM) === 1;
     }
 
     /**
@@ -101,7 +77,7 @@ class EcdsaSigner
     public function generateKeyPair(): array
     {
         $config = [
-            'curve_name' => $this->getCurveName(),
+            'curve_name' => FatooraConfig::EC_CURVE,
             'private_key_type' => OPENSSL_KEYTYPE_EC,
         ];
 
@@ -157,11 +133,10 @@ class EcdsaSigner
      *
      * ZATCA requires the uncompressed EC point format:
      * - 0x04 prefix (uncompressed point indicator)
-     * - X coordinate (coordinate_length bytes per config)
-     * - Y coordinate (coordinate_length bytes per config)
+     * - X coordinate, left-padded to the curve's field size
+     * - Y coordinate, left-padded to the curve's field size
      *
-     * Total: 1 + (2 * coordinate_length) bytes, base64-encoded for QR code.
-     * Default: 65 bytes for secp256k1 (32-byte coordinates).
+     * 65 bytes for secp256k1, base64-encoded for the QR code.
      *
      * @param  string  $publicKeyPem  PEM-encoded public key or certificate
      * @return string Base64-encoded raw public key
@@ -180,8 +155,7 @@ class EcdsaSigner
 
         // Verify this is an EC key
         if (($details['type'] ?? null) !== OPENSSL_KEYTYPE_EC) {
-            $curve = $this->getCurveName();
-            throw new SigningException("ZATCA requires ECDSA key ({$curve}), got non-EC key type");
+            throw new SigningException('ZATCA requires an ECDSA key on '.FatooraConfig::EC_CURVE.', got a non-EC key');
         }
 
         // Extract the raw EC point (uncompressed format per ZATCA spec)
@@ -189,10 +163,9 @@ class EcdsaSigner
             throw new SigningException('Could not extract EC point coordinates from key');
         }
 
-        // Pad coordinates to configured length (32 bytes for secp256k1)
-        $coordLength = $this->getCoordinateLength();
-        $x = str_pad($details['ec']['x'], $coordLength, "\x00", STR_PAD_LEFT);
-        $y = str_pad($details['ec']['y'], $coordLength, "\x00", STR_PAD_LEFT);
+        // Pad both coordinates to the curve's field size.
+        $x = str_pad($details['ec']['x'], FatooraConfig::EC_COORDINATE_BYTES, "\x00", STR_PAD_LEFT);
+        $y = str_pad($details['ec']['y'], FatooraConfig::EC_COORDINATE_BYTES, "\x00", STR_PAD_LEFT);
 
         // Build uncompressed EC point: 0x04 + X + Y
         $rawKey = chr(0x04).$x.$y;

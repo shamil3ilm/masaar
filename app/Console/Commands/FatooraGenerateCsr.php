@@ -526,7 +526,7 @@ EOT;
      */
     private function generateEcKey(string $opensslCmd, string $keyPath): void
     {
-        $curve = FatooraConfig::DEFAULT_EC_CURVE;
+        $curve = FatooraConfig::EC_CURVE;
 
         $this->line("Generating EC key: {$curve}");
         exec("\"{$opensslCmd}\" ecparam -name {$curve} -genkey -noout -out \"{$keyPath}\" 2>&1", $output, $code);
