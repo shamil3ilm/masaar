@@ -169,6 +169,100 @@ jobs:
       - name: Check formatting
         run: vendor/bin/pint --test
 
+  # The conformance suite runs ZATCA's own validator — the XSD, the EN 16931
+  # rules and the KSA Schematron — over documents this platform generated. It is
+  # the only check here whose verdict comes from the authority rather than from
+  # our reading of the specification.
+  #
+  # It needs the SDK, which is a licensed download that cannot be committed, so
+  # the tests skip when it is absent. That is honest and it is also silent: 25
+  # tests reported "OK" on every push while checking nothing. This job makes the
+  # absence visible, and turns the checks on the moment the SDK is available.
+  #
+  # To enable: set the ZATCA_SDK_URL secret to somewhere the runner can fetch
+  # the unpacked SDK as a .zip or .tar.gz (a private release asset works), and
+  # ZATCA_SDK_TOKEN if that location needs a bearer token.
+  conformance:
+    name: ZATCA conformance
+    runs-on: ubuntu-latest
+
+    env:
+      SDK_URL: ${{ secrets.ZATCA_SDK_URL }}
+      SDK_TOKEN: ${{ secrets.ZATCA_SDK_TOKEN }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Report that conformance is unverified
+        if: env.SDK_URL == ''
+        run: |
+          echo "::warning title=ZATCA conformance not verified::ZATCA_SDK_URL is not set, so the SDK conformance suite did not run. The documents this build produces have not been checked against the authority's own validator."
+
+      - name: Set up PHP ${{ env.PHP_VERSION }}
+        if: env.SDK_URL != ''
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: openssl, mbstring, bcmath, dom, xml, curl, zip, fileinfo, tokenizer, sqlite3, pdo_sqlite
+          coverage: none
+
+      # The SDK is a Java application; without a runtime the suite skips for a
+      # second reason and the job would look configured when it is not.
+      - name: Set up Java
+        if: env.SDK_URL != ''
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install dependencies
+        if: env.SDK_URL != ''
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Prepare environment
+        if: env.SDK_URL != ''
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+          php artisan jwt:secret --force
+
+      - name: Fetch the ZATCA SDK
+        if: env.SDK_URL != ''
+        run: |
+          mkdir -p "$RUNNER_TEMP/zatca"
+          if [ -n "$SDK_TOKEN" ]; then
+            curl -fsSL -H "Authorization: Bearer $SDK_TOKEN" -o "$RUNNER_TEMP/sdk.archive" "$SDK_URL"
+          else
+            curl -fsSL -o "$RUNNER_TEMP/sdk.archive" "$SDK_URL"
+          fi
+          case "$SDK_URL" in
+            *.zip) unzip -q "$RUNNER_TEMP/sdk.archive" -d "$RUNNER_TEMP/zatca" ;;
+            *)     tar -xzf "$RUNNER_TEMP/sdk.archive" -C "$RUNNER_TEMP/zatca" ;;
+          esac
+          # The archive may wrap the SDK in one or more directories. Find the
+          # root by the jar, which is what the tests actually look for.
+          jar=$(find "$RUNNER_TEMP/zatca" -name 'zatca-einvoicing-sdk-*.jar' | head -1)
+          if [ -z "$jar" ]; then
+            echo "::error title=SDK not found::No zatca-einvoicing-sdk jar in the archive at ZATCA_SDK_URL."
+            exit 1
+          fi
+          echo "ZATCA_SDK_PATH=$(dirname "$(dirname "$jar")")" >> "$GITHUB_ENV"
+
+      # --do-not-cache-result keeps a skip from being reported as a pass on a
+      # rerun. The grep is the point of the job: a skipped conformance test is
+      # the failure this whole job exists to stop being invisible.
+      - name: Run the conformance suite
+        if: env.SDK_URL != ''
+        run: |
+          php artisan test --filter ZatcaConformance | tee conformance.log
+          # The summary line, not the body: two test names elsewhere in this
+          # suite end in "is skipped" and would match anything looser.
+          if grep -qE '^[[:space:]]*Tests:.*skipped' conformance.log; then
+            echo "::error title=Conformance skipped::The SDK was configured but the suite still skipped. Check the jar path and the Java runtime."
+            exit 1
+          fi
+
   security:
     name: Dependency audit
     runs-on: ubuntu-latest
