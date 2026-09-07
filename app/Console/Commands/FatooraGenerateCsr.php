@@ -6,10 +6,10 @@ namespace App\Console\Commands;
 
 use App\Console\Commands\Concerns\WritesSecrets;
 use App\Domains\Compliance\Fatoora\DTOs\CsrData;
+use App\Domains\Compliance\Fatoora\Services\CsrBuilder;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use phpseclib3\Crypt\EC;
-use phpseclib3\File\X509;
 
 /**
  * Generate CSR and Private Key for ZATCA onboarding.
@@ -35,7 +35,8 @@ class FatooraGenerateCsr extends Command
                             {--industry=Information Technology : Business category}
                             {--standard : Support standard invoices (B2B)}
                             {--simplified : Support simplified invoices (B2C)}
-                            {--output= : Output directory (default: storage/app/zatca)}';
+                            {--output= : Output directory (default: storage/app/zatca)}
+                            {--template= : Certificate template: TSTZATCA-Code-Signing, PREZATCA-Code-Signing or ZATCA-Code-Signing}';
 
     protected $description = 'Generate ZATCA-compliant CSR and private key using PHP OpenSSL';
 
@@ -323,48 +324,31 @@ EOT;
     }
 
     /**
-     * Generate CSR using phpseclib for ZATCA compliance.
-     * This method properly includes serialNumber and organizationIdentifier in subject DN
-     * with UTF8String encoding that supports pipe characters (|).
-     * Note: This is a fallback - the SDK method is recommended for production use.
+     * Generate the request without the SDK.
+     *
+     * This used to build a CSR with no extensions and say so — "use SDK for
+     * full compliance" — and the authority refuses that request with "Invalid
+     * Request" three steps later, by which point the message names neither the
+     * missing extensions nor this command. CsrBuilder writes them, and its
+     * output is byte-identical to the SDK's for the same key.
      */
     private function generateCsrWithPhpseclib(CsrData $csrData): array
     {
-        // Generate EC private key with secp256k1 curve (ZATCA requirement)
+        // secp256k1 is ZATCA's curve and not negotiable.
         $privateKey = EC::createKey('secp256k1');
+        $privateKeyPem = $privateKey->toString('PKCS8');
 
         $this->info('✓ EC private key generated (secp256k1)');
 
-        // Organization identifier in ZATCA format: VATSA-{VAT number}
-        $orgIdentifier = 'VATSA-'.$csrData->vatNumber;
+        $csrPem = app(CsrBuilder::class)->build(
+            $csrData,
+            $privateKeyPem,
+            $this->option('template') ?: CsrBuilder::TEMPLATE_SIMULATION,
+        );
 
-        // Create X509 CSR
-        $x509 = new X509;
-        $x509->setPrivateKey($privateKey);
-
-        // Set Distinguished Name with ZATCA-required fields
-        // phpseclib handles UTF8String encoding properly for pipe characters
-        $x509->setDN([
-            'rdnSequence' => [
-                [['type' => 'id-at-countryName', 'value' => ['printableString' => 'SA']]],
-                [['type' => 'id-at-organizationName', 'value' => ['utf8String' => $csrData->organizationName]]],
-                [['type' => 'id-at-organizationalUnitName', 'value' => ['utf8String' => $csrData->organizationUnit]]],
-                [['type' => 'id-at-commonName', 'value' => ['utf8String' => $csrData->commonName]]],
-                [['type' => 'id-at-serialNumber', 'value' => ['utf8String' => $csrData->serialNumber]]],
-                [['type' => '2.5.4.97', 'value' => ['utf8String' => $orgIdentifier]]],
-            ],
-        ]);
-
-        // Generate CSR with ECDSA signature
-        // Note: Extensions are not included as phpseclib CSR doesn't support them easily
-        // For full ZATCA compliance with extensions, use the SDK method
-        $csr = $x509->signCSR();
-        $csrPem = $x509->saveCSR($csr);
-        $privateKeyPem = $privateKey->toString('PKCS8');
-
-        $this->info('✓ CSR generated (without extensions - use SDK for full compliance)');
+        $this->info('✓ CSR generated with ZATCA extensions');
         $this->line("  serialNumber: {$csrData->serialNumber}");
-        $this->line("  organizationIdentifier: {$orgIdentifier}");
+        $this->line('  invoice types: '.$csrData->getInvoiceTypeCode());
 
         $outputDir = $this->secretDir();
         file_put_contents($outputDir.'/taxpayer.csr', $csrPem);
