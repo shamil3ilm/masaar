@@ -44,7 +44,7 @@ jobs:
         run: composer validate --strict --no-check-publish
 
       - name: Cache Composer packages
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.composer/cache/files
           key: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock') }}
@@ -211,7 +211,7 @@ jobs:
       # second reason and the job would look configured when it is not.
       - name: Set up Java
         if: env.SDK_URL != ''
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
