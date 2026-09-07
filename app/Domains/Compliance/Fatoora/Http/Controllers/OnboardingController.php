@@ -7,6 +7,7 @@ use App\Domains\Compliance\Fatoora\DTOs\CsrData;
 use App\Domains\Compliance\Fatoora\DTOs\InvoiceXmlData;
 use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use App\Domains\Compliance\Fatoora\Services\CsidOnboarding;
+use App\Domains\Compliance\Fatoora\Services\InvoiceHasher;
 use App\Domains\Compliance\Fatoora\Services\XmlBuilder;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\TenantResolver;
@@ -32,6 +33,7 @@ class OnboardingController extends Controller
         private readonly CsidOnboarding $onboarding,
         private readonly XmlBuilder $xmlBuilder,
         private readonly CredentialStore $credentials,
+        private readonly InvoiceHasher $hasher,
     ) {}
 
     /**
@@ -301,8 +303,12 @@ class OnboardingController extends Controller
             $xml = $this->xmlBuilder->build($invoiceData);
             $invoices[$type['key']] = $xml;
 
-            // Update PIH for next invoice (simplified hash calculation for test)
-            $previousHash = base64_encode(hash('sha256', $xml, true));
+            // The previous document's invoice hash, which is not a hash of its
+            // bytes: canonicalized, with the extensions, signature and QR taken
+            // out. Hashing the raw XML — "simplified hash calculation for test"
+            // — produces a chain ZATCA cannot follow, and the compliance
+            // endpoint checks it.
+            $previousHash = $this->hasher->hash($xml);
         }
 
         return $invoices;
