@@ -14,6 +14,9 @@ on:
     branches: ['**']
   pull_request:
   workflow_dispatch:
+  schedule:
+    # The sandbox round trip, nightly. Nothing else here needs a clock.
+    - cron: '0 3 * * *'
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -262,6 +265,65 @@ jobs:
             echo "::error title=Conformance skipped::The SDK was configured but the suite still skipped. Check the jar path and the Java runtime."
             exit 1
           fi
+
+  # Onboarding, end to end, against ZATCA's developer sandbox.
+  #
+  # Nine defects sat between generating a CSR and holding a certificate, and
+  # not one was reachable from a test that did not talk to the authority: the
+  # SDK validates a document you hand it, while ZATCA recomputes the hash and
+  # verifies the QR itself. Every one of them could return with this suite
+  # green, so the round trip runs here.
+  #
+  # No credentials. The developer portal accepts a fixed OTP, and the CSR is
+  # built in-process now rather than by the licensed SDK, so there is nothing
+  # to configure and nothing to keep secret.
+  #
+  # On a schedule and on request rather than on every push: it depends on a
+  # service outside this repository, and a failure means either a regression
+  # here or ZATCA being down. Blocking merges on the second would be wrong.
+  sandbox:
+    name: ZATCA sandbox round trip
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up PHP ${{ env.PHP_VERSION }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: openssl, mbstring, bcmath, dom, xml, curl, zip, fileinfo, tokenizer, sqlite3, pdo_sqlite
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+          php artisan jwt:secret --force
+
+      - name: Generate a certificate request
+        run: php artisan fatoora:generate-csr --standard --simplified
+
+      # --step=full is CCSID, the six compliance documents, then PCSID. The
+      # command exits non-zero if any document is refused, and the grep is
+      # belt and braces: a future change that reports failure on stdout while
+      # exiting 0 is exactly the shape of bug this job exists to catch.
+      - name: Onboard against the sandbox
+        run: |
+          php artisan fatoora:onboard --step=full --otp=123345 --target=sandbox | tee onboard.log
+          if grep -q 'FAILED' onboard.log; then
+            echo "::error title=Sandbox round trip failed::ZATCA refused a document. See the table above."
+            exit 1
+          fi
+          grep -q 'All 6 invoices passed' onboard.log || {
+            echo "::error title=Sandbox round trip incomplete::The compliance check did not report six passes."
+            exit 1
+          }
 
   security:
     name: Dependency audit
