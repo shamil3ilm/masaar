@@ -174,8 +174,12 @@ class Phase2SigningTest extends TestCase
         $result = $this->sign();
         $tags = $this->decodeTlv(base64_decode($result['qr_code']));
 
+        // Base64 text, not the bytes behind it. Tags 6 and 7 carry the string
+        // as it stands while 8 and 9 carry raw DER — ZATCA's split, confirmed
+        // against the QR its own SDK generates for the same document. This
+        // asserted the decoded bytes, and a QR built that way is refused.
         $this->assertSame(
-            base64_decode($result['hash']),
+            $result['hash'],
             $tags[6],
             'QR tag 6 is not the invoice hash.'
         );
@@ -183,7 +187,7 @@ class Phase2SigningTest extends TestCase
         preg_match('#<ds:SignatureValue>(.*?)</ds:SignatureValue>#s', $result['signed_xml'], $m);
 
         $this->assertSame(
-            base64_decode(trim($m[1])),
+            trim($m[1]),
             $tags[7],
             'QR tag 7 is not the signature in the document.'
         );
@@ -199,15 +203,22 @@ class Phase2SigningTest extends TestCase
     {
         $tags = $this->decodeTlv(base64_decode($this->sign()['qr_code']));
 
+        // The SubjectPublicKeyInfo as the certificate carries it. This built
+        // the bare EC point instead and asserted the tag equalled it, which
+        // is the shape ZATCA refuses.
         $details = openssl_pkey_get_details(
             openssl_pkey_get_public($this->credentials['certificate'])
         );
 
-        $point = "\x04"
-            .str_pad($details['ec']['x'], 32, "\0", STR_PAD_LEFT)
-            .str_pad($details['ec']['y'], 32, "\0", STR_PAD_LEFT);
+        $der = base64_decode(str_replace(
+            ['-----BEGIN PUBLIC KEY-----', '-----END PUBLIC KEY-----', '
+', '
+'],
+            '',
+            $details['key']
+        ));
 
-        $this->assertSame($point, $tags[8], 'QR tag 8 is not the certificate public key.');
+        $this->assertSame($der, $tags[8], 'QR tag 8 is not the certificate public key.');
     }
 
     public function test_qr_seller_matches_the_organization(): void
@@ -255,6 +266,44 @@ class Phase2SigningTest extends TestCase
      * and puts it, the signature and the embedded certificate through ECDSA —
      * which is what a verifier at ZATCA does.
      */
+    /**
+     * Which QR tags are text and which are bytes.
+     *
+     * ZATCA splits them: 6 and 7 carry base64 strings, 8 and 9 carry raw DER.
+     * Both halves were wrong here at once and in opposite directions — the
+     * onboarding path encoded 8 and 9 that were already bytes, and the
+     * document builder decoded 6 and 7 that were already text. Each produces a
+     * QR the authority refuses, with a different message, and neither is
+     * visible without asking it.
+     *
+     * Verified against the QR ZATCA's own SDK generates for the same document:
+     * all nine tags agree byte for byte.
+     */
+    public function test_qr_tag_encoding_is_split(): void
+    {
+        $tags = $this->decodeTlv(base64_decode($this->sign()['qr_code']));
+
+        foreach ([6, 7] as $tag) {
+            $this->assertMatchesRegularExpression(
+                '#^[A-Za-z0-9+/]+={0,2}$#',
+                $tags[$tag],
+                "QR tag {$tag} should be base64 text, not the bytes behind it."
+            );
+        }
+
+        foreach ([8, 9] as $tag) {
+            $this->assertNotSame(
+                base64_encode(base64_decode($tags[$tag], true) ?: ''),
+                $tags[$tag],
+                "QR tag {$tag} should be raw DER, not base64 of it."
+            );
+        }
+
+        // A DER SEQUENCE, which is what both of those tags hold.
+        $this->assertSame(0x30, ord($tags[8][0]), 'Tag 8 is not DER.');
+        $this->assertSame(0x30, ord($tags[9][0]), 'Tag 9 is not DER.');
+    }
+
     public function test_signature_verifies_against_the_certificate(): void
     {
         $signed = $this->sign()['signed_xml'];

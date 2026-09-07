@@ -124,18 +124,30 @@ class EcdsaSigner
             throw new SigningException('ZATCA requires an ECDSA key on '.FatooraConfig::EC_CURVE.', got a non-EC key');
         }
 
-        // Extract the raw EC point (uncompressed format per ZATCA spec)
-        if (! isset($details['ec']['x']) || ! isset($details['ec']['y'])) {
-            throw new SigningException('Could not extract EC point coordinates from key');
+        // SubjectPublicKeyInfo, not the bare EC point.
+        //
+        // This built 0x04 + X + Y and called it "uncompressed format per
+        // ZATCA spec". QR tag 8 holds the DER structure instead - 88 bytes
+        // against the point's 65 - and the authority answers "ECDSA Public
+        // Key does not match with qr code ECDSA public key" for the shorter
+        // one. Checked against the QR ZATCA's own SDK produces.
+        $pem = $details['key'] ?? '';
+
+        if ($pem === '') {
+            throw new SigningException('Certificate carries no public key.');
         }
 
-        // Pad both coordinates to the curve's field size.
-        $x = str_pad($details['ec']['x'], FatooraConfig::EC_COORDINATE_BYTES, "\x00", STR_PAD_LEFT);
-        $y = str_pad($details['ec']['y'], FatooraConfig::EC_COORDINATE_BYTES, "\x00", STR_PAD_LEFT);
+        $der = base64_decode(str_replace(
+            ['-----BEGIN PUBLIC KEY-----', '-----END PUBLIC KEY-----', '', '
+'],
+            '',
+            $pem
+        ), true);
 
-        // Build uncompressed EC point: 0x04 + X + Y
-        $rawKey = chr(0x04).$x.$y;
+        if ($der === false) {
+            throw new SigningException('Public key is not valid base64.');
+        }
 
-        return base64_encode($rawKey);
+        return base64_encode($der);
     }
 }

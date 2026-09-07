@@ -85,7 +85,13 @@ class DocumentBuilder
 
         // Generate QR code
         // ZATCA TLV encoding requires raw bytes for tags 6-9, not base64
-        // The services return base64 for storage/display, so we decode here
+        // Tags 6 and 7 carry base64 text; tags 8 and 9 carry raw DER.
+        //
+        // It is an odd split and it is ZATCA's: the hash and the signature go
+        // in as the base64 strings they already are, while the public key and
+        // the certificate signature go in as bytes. Decoding all four made a
+        // QR the authority refuses — verified against the QR its own SDK
+        // generates for the same document, which agrees tag for tag.
         $qrData = new QrCodeData(
             // Same normalisation as the XML: TLV tag 1 and the XML seller name
             // must carry identical bytes.
@@ -94,11 +100,10 @@ class DocumentBuilder
             timestamp: $this->issuedAt($invoice),
             invoiceTotal: number_format((float) $invoice->total, 2, '.', ''),
             vatTotal: number_format((float) $invoice->tax_amount, 2, '.', ''),
-            // Tags 6-9: Decode base64 to raw bytes for TLV encoding
-            invoiceHash: $hash !== null ? base64_decode($hash) : null,
-            signature: $signature !== null ? base64_decode($signature) : null,
+            invoiceHash: $hash,
+            signature: $signature,
             publicKey: $publicKey !== null ? base64_decode($publicKey) : null,
-            certificateSignature: $certSignature, // Already raw bytes
+            certificateSignature: $certSignature, // already raw bytes
         );
 
         // The full QR whenever there is a signature to put in it.
