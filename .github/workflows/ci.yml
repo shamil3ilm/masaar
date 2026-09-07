@@ -234,14 +234,28 @@ jobs:
         if: env.SDK_URL != ''
         run: |
           mkdir -p "$RUNNER_TEMP/zatca"
+
+          # Accept: application/octet-stream matters for a GitHub release
+          # asset, which is the easiest place to put this: without it the API
+          # answers with the asset's JSON metadata and the download "succeeds"
+          # as a few hundred bytes that unzip cannot read. Harmless anywhere
+          # else.
           if [ -n "$SDK_TOKEN" ]; then
-            curl -fsSL -H "Authorization: Bearer $SDK_TOKEN" -o "$RUNNER_TEMP/sdk.archive" "$SDK_URL"
+            curl -fsSL               -H "Authorization: Bearer $SDK_TOKEN"               -H "Accept: application/octet-stream"               -o "$RUNNER_TEMP/sdk.archive" "$SDK_URL"
           else
             curl -fsSL -o "$RUNNER_TEMP/sdk.archive" "$SDK_URL"
           fi
-          case "$SDK_URL" in
-            *.zip) unzip -q "$RUNNER_TEMP/sdk.archive" -d "$RUNNER_TEMP/zatca" ;;
-            *)     tar -xzf "$RUNNER_TEMP/sdk.archive" -C "$RUNNER_TEMP/zatca" ;;
+
+          # Read the type off the bytes rather than the URL. A release asset
+          # URL ends in an id, not a file name, so switching on the extension
+          # picks the wrong unpacker for the most likely way of hosting it.
+          case "$(file -b --mime-type "$RUNNER_TEMP/sdk.archive")" in
+            application/zip)  unzip -q "$RUNNER_TEMP/sdk.archive" -d "$RUNNER_TEMP/zatca" ;;
+            application/gzip) tar -xzf "$RUNNER_TEMP/sdk.archive" -C "$RUNNER_TEMP/zatca" ;;
+            *)
+              echo "::error title=SDK archive unreadable::ZATCA_SDK_URL returned $(file -b "$RUNNER_TEMP/sdk.archive"). Expected a zip or a gzipped tar; check the token and that the URL points at the asset rather than its page."
+              exit 1
+              ;;
           esac
           # The archive may wrap the SDK in one or more directories. Find the
           # root by the jar, which is what the tests actually look for.
