@@ -21,6 +21,10 @@ class InvoiceHasher
 
     private const SIG_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonSignatureComponents-2';
 
+    private const CAC_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2';
+
+    private const CBC_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2';
+
     /**
      * Generate SHA-256 hash of invoice XML per ZATCA specification.
      *
@@ -35,22 +39,48 @@ class InvoiceHasher
     public function hash(string $xml): string
     {
         $dom = new DOMDocument('1.0', 'UTF-8');
-        $dom->preserveWhiteSpace = false;
+
+        // Whitespace is content to C14N, and dropping it changes the digest.
+        // This was false, which is one of the two reasons ZATCA answered "the
+        // invoice hash API body does not match the (calculated) Hash of the
+        // XML" for every document ever sent.
+        $dom->preserveWhiteSpace = true;
         Xml::load($dom, $xml);
 
-        // Remove UBLExtensions element (contains signature) before hashing
+        // Removed before hashing: the signature the hash goes on to protect,
+        // and the QR, which carries that same hash. ZATCA removes all three
+        // when it recomputes, so a document keeping any of them hashes to
+        // something the authority will not arrive at.
         $this->removeUblExtensions($dom);
-
-        // Remove Signature element if present at root level
         $this->removeSignature($dom);
+        $this->removeQrReference($dom);
 
-        // Canonicalize (C14N) the document
-        $canonicalized = $dom->documentElement->C14N(true, false);
+        // Inclusive C14N 1.1, not exclusive. The second reason for the
+        // mismatch: exclusive canonicalization drops namespace declarations
+        // the document does not visibly use, and ZATCA hashes with them.
+        $canonicalized = $dom->documentElement->C14N(false, false);
 
-        // SHA-256 hash, then base64 encode
         $hash = hash('sha256', $canonicalized, true);
 
         return base64_encode($hash);
+    }
+
+    /**
+     * Remove the QR AdditionalDocumentReference.
+     *
+     * It carries the hash being computed, so leaving it in makes the digest
+     * depend on itself. Absent before signing, present afterwards, and
+     * excluded either way.
+     */
+    private function removeQrReference(DOMDocument $dom): void
+    {
+        $xpath = new DOMXPath($dom);
+        $xpath->registerNamespace('cac', self::CAC_NS);
+        $xpath->registerNamespace('cbc', self::CBC_NS);
+
+        foreach ($xpath->query('//cac:AdditionalDocumentReference[cbc:ID="QR"]') ?: [] as $node) {
+            $node->parentNode?->removeChild($node);
+        }
     }
 
     /**
@@ -65,12 +95,12 @@ class InvoiceHasher
     public function hashForPih(string $signedXml): string
     {
         $dom = new DOMDocument('1.0', 'UTF-8');
-        $dom->preserveWhiteSpace = false;
+        $dom->preserveWhiteSpace = true;
         Xml::load($dom, $signedXml);
 
-        // For PIH, we hash the entire document including signature
-        // but still use canonicalization for consistency
-        $canonicalized = $dom->documentElement->C14N(true, false);
+        // Same canonicalization as hash(): inclusive, whitespace preserved.
+        // What differs is the subject — the whole signed document.
+        $canonicalized = $dom->documentElement->C14N(false, false);
 
         $hash = hash('sha256', $canonicalized, true);
 
@@ -126,6 +156,14 @@ class InvoiceHasher
         $xpath = new DOMXPath($dom);
         $xpath->registerNamespace('ds', 'http://www.w3.org/2000/09/xmldsig#');
         $xpath->registerNamespace('sig', self::SIG_NS);
+        $xpath->registerNamespace('cac', self::CAC_NS);
+
+        // cac:Signature, the UBL element, is the one ZATCA excludes. This
+        // removed ds:Signature and UBLDocumentSignatures and left it in place,
+        // so the digest covered an element the authority had already taken out.
+        foreach ($xpath->query('//cac:Signature') ?: [] as $signature) {
+            $signature->parentNode?->removeChild($signature);
+        }
 
         // Remove any Signature elements
         $signatures = $xpath->query('//ds:Signature');
