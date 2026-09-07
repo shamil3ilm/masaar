@@ -970,11 +970,11 @@ class FatooraOnboarding extends Command
             '',
             $certificate
         ));
-        // Read it out of the structure rather than taking the last 72 bytes.
-        // An ECDSA signature is 70 to 72 bytes depending on whether r and s
-        // need a leading zero, so a fixed slice is right sometimes and
-        // silently wrong the rest of the time.
-        $certSignature = $this->certificateSignature($certDer);
+        // CertificateService already walks the DER for this. A second copy
+        // of the walk lived here and produced the same 71 bytes, which is
+        // the good case: two implementations of one rule agree until one of
+        // them is fixed.
+        $certSignature = $this->certificateService->getCertificateSignature($certificate);
 
         // Build QR code data
         $qrData = new QrCodeData(
@@ -1017,59 +1017,6 @@ class FatooraOnboarding extends Command
     /**
      * Insert QR code element into XML string.
      */
-    /**
-     * The signature bytes of a DER-encoded certificate.
-     *
-     * Certificate ::= SEQUENCE { tbsCertificate, signatureAlgorithm,
-     * signatureValue BIT STRING }, so this walks to the third element and
-     * drops the BIT STRING's unused-bits byte.
-     */
-    private function certificateSignature(string $der): string
-    {
-        $offset = 0;
-        [, $certificate] = $this->readDer($der, $offset);
-
-        $inner = 0;
-        $this->readDer($certificate, $inner);
-        $this->readDer($certificate, $inner);
-        [$tag, $signature] = $this->readDer($certificate, $inner);
-
-        if ($tag !== 0x03) {
-            throw new RuntimeException('Certificate does not end in a signature BIT STRING.');
-        }
-
-        // the first byte counts unused bits and is not part of the signature
-        return substr($signature, 1);
-    }
-
-    /**
-     * One DER element from $buf, advancing $pos past it.
-     *
-     * @return array{int, string} tag and value
-     */
-    private function readDer(string $buf, int &$pos): array
-    {
-        $tag = ord($buf[$pos]);
-        $length = ord($buf[$pos + 1]);
-        $pos += 2;
-
-        if ($length > 0x80) {
-            $count = $length - 0x80;
-            $length = 0;
-
-            for ($i = 0; $i < $count; $i++) {
-                $length = ($length << 8) | ord($buf[$pos + $i]);
-            }
-
-            $pos += $count;
-        }
-
-        $value = substr($buf, $pos, $length);
-        $pos += $length;
-
-        return [$tag, $value];
-    }
-
     private function insertQrCodeIntoXml(string $xml, string $qrCode): string
     {
         $dom = new \DOMDocument('1.0', 'UTF-8');
