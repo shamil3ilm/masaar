@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Compliance;
 
-use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\Services\EcdsaSigner;
 use Tests\Fixtures\SigningCredentials;
 use Tests\TestCase;
@@ -42,24 +41,30 @@ class SigningKeyTest extends TestCase
     }
 
     /**
-     * Tag 8 is an uncompressed EC point: a 0x04 prefix and two coordinates,
-     * each left-padded to the curve's field size. ZATCA reads it by offset, so
-     * the length is part of the format rather than an artefact of it.
+     * Tag 8 is a SubjectPublicKeyInfo, not a bare EC point.
+     *
+     * This asserted the point — 0x04 and two coordinates, 65 bytes — because
+     * that is what the signer built and the comment claimed ZATCA wanted. The
+     * authority wants the DER structure around it, 88 bytes for secp256k1, and
+     * refuses the shorter form with "ECDSA Public Key does not match with qr
+     * code ECDSA public key". The QR ZATCA's own SDK generates carries the DER.
      */
-    public function test_tag_eight_is_an_uncompressed_point(): void
+    public function test_tag_eight_is_der(): void
     {
         $raw = base64_decode($this->signer->getPublicKeyBytes($this->credentials['certificate']));
 
-        $this->assertSame(1 + 2 * FatooraConfig::EC_COORDINATE_BYTES, strlen($raw));
-        $this->assertSame(65, strlen($raw));
-        $this->assertSame(0x04, ord($raw[0]));
+        $this->assertSame(0x30, ord($raw[0]), 'Tag 8 should be a DER SEQUENCE.');
+        $this->assertSame(88, strlen($raw));
+
+        // the point is still in there, at the end
+        $this->assertSame(0x04, ord($raw[-65]));
     }
 
     /**
      * The regression this file exists for.
      *
-     * The coordinate size describes the curve; it is not a choice. Setting the
-     * key that used to carry it proves the signer no longer consults it.
+     * The key's shape comes from the certificate, not from configuration.
+     * Setting the keys that used to steer it proves the signer ignores them.
      */
     public function test_config_cannot_resize_tag_eight(): void
     {
@@ -68,7 +73,7 @@ class SigningKeyTest extends TestCase
 
         $raw = base64_decode($this->signer->getPublicKeyBytes($this->credentials['certificate']));
 
-        $this->assertSame(65, strlen($raw), 'Configuration changed the size of QR tag 8.');
+        $this->assertSame(88, strlen($raw), 'Configuration changed the size of QR tag 8.');
     }
 
     public function test_a_signature_verifies(): void
