@@ -104,7 +104,7 @@ class RouteSmokeTest extends TestCase
         sort($broken);
 
         $this->assertSame(self::ACCEPTED, $broken, sprintf(
-            "These endpoints answered 5xx. The request reached them and the code "
+            'These endpoints answered 5xx. The request reached them and the code '
             ."behind them failed.\n%s",
             implode("\n", $broken)
         ));
