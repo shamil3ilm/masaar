@@ -22,6 +22,7 @@ use Illuminate\Console\Command;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
+use RuntimeException;
 
 /**
  * ZATCA EGS Onboarding Command
@@ -483,6 +484,7 @@ class FatooraOnboarding extends Command
                 // Calculate hash from final XML (signed or unsigned)
                 // Note: hasher->hash() already returns base64-encoded hash
                 $invoiceHash = $this->hasher->hash($xml);
+
                 $previousHash = $invoiceHash;
 
                 // Submit to compliance API or validate locally
@@ -893,7 +895,23 @@ class FatooraOnboarding extends Command
         $dir = $this->secretDir();
         $this->putSecret($dir.'/pcsid_token.txt', $data['binarySecurityToken'] ?? '');
         $this->putSecret($dir.'/pcsid_secret.txt', $data['secret'] ?? '');
-        $this->putSecret($dir.'/pcsid_request_id.txt', $data['requestID'] ?? '');
+
+        // A JSON number, as in the CCSID response, and putSecret takes a string
+        // under strict_types.
+        $this->putSecret($dir.'/pcsid_request_id.txt', (string) ($data['requestID'] ?? ''));
+
+        // The CCSID path writes a usable certificate and this one did not, so
+        // the step that finishes onboarding left nothing behind to sign with.
+        $body = $this->certificateBodyFrom((string) ($data['binarySecurityToken'] ?? ''));
+
+        if ($body !== '') {
+            File::put(
+                $dir.'/pcsid_certificate.pem',
+                '-----BEGIN CERTIFICATE-----
+'.chunk_split($body, 64, '
+').'-----END CERTIFICATE-----'
+            );
+        }
 
         $this->line('Production credentials saved to storage/app/zatca/pcsid_*.txt');
     }
@@ -913,7 +931,18 @@ class FatooraOnboarding extends Command
      */
     private function injectQrCode(string $signedXml, InvoiceXmlData $invoiceData, string $certificate): string
     {
-        // Calculate invoice hash
+        // Put the QR element in place before hashing, empty for now.
+        //
+        // Inserting it is a DOM round trip, and re-serializing changes bytes
+        // the hash covers — self-closing tags, entity escapes — so a hash taken
+        // before it does not describe the document that gets sent. ZATCA
+        // recomputes from what it receives and answered "invoice xml hash does
+        // not match with qr code invoice xml hash" for every simplified
+        // document. Hashing the settled shape, with the QR excluded as the
+        // specification requires, is what makes tag 6 true of the document
+        // carrying it.
+        $signedXml = $this->insertQrCodeIntoXml($signedXml, '');
+
         $invoiceHash = $this->hasher->hash($signedXml);
 
         // Extract signature from signed XML
@@ -922,7 +951,7 @@ class FatooraOnboarding extends Command
         // Extract public key from certificate
         $certResource = openssl_x509_read($certificate);
         if ($certResource === false) {
-            throw new \RuntimeException('Failed to parse certificate');
+            throw new RuntimeException('Failed to parse certificate');
         }
         $pubKeyResource = openssl_pkey_get_public($certResource);
         $pubKeyDetails = openssl_pkey_get_details($pubKeyResource);
@@ -941,11 +970,11 @@ class FatooraOnboarding extends Command
             '',
             $certificate
         ));
-        // For ECDSA P-256, signature is typically 64-72 bytes at the end
-        $certSignature = substr($certDer, -72);
-
-        // Determine if this is a standard (B2B) or simplified (B2C) invoice
-        $isStandard = $invoiceData->invoiceSubtype === '01';
+        // Read it out of the structure rather than taking the last 72 bytes.
+        // An ECDSA signature is 70 to 72 bytes depending on whether r and s
+        // need a leading zero, so a fixed slice is right sometimes and
+        // silently wrong the rest of the time.
+        $certSignature = $this->certificateSignature($certDer);
 
         // Build QR code data
         $qrData = new QrCodeData(
@@ -954,19 +983,30 @@ class FatooraOnboarding extends Command
             timestamp: $invoiceData->issueDate.'T'.$invoiceData->issueTime,
             invoiceTotal: number_format($invoiceData->total, 2, '.', ''),
             vatTotal: number_format($invoiceData->taxAmount, 2, '.', ''),
-            invoiceHash: base64_encode($invoiceHash),
+            // hash() already returns base64. Encoding it again put base64 of
+            // base64 in tag 6, which is not the hash ZATCA recomputes.
+            invoiceHash: $invoiceHash,
             signature: $signature ?? '',
-            publicKey: base64_encode($publicKeyDer),
-            certificateSignature: base64_encode($certSignature),
+            // Raw bytes, not base64. Tags 6 and 7 carry base64 text and these
+            // two carry DER; encoding them made the QR a third longer than
+            // ZATCA's, and the authority answered "ECDSA Public Key does not
+            // match with qr code ECDSA public key".
+            publicKey: $publicKeyDer,
+            certificateSignature: $certSignature,
         );
 
-        // Generate QR code (Phase 2 for B2B, Phase 1 for B2C)
+        // Nine tags whenever the cryptographic material exists, which after
+        // signing it does. This chose by document type and chose the wrong way
+        // round: the stamp belongs on simplified invoices, which ZATCA verifies
+        // from the QR because it never sees them before they are issued. A
+        // five-tag QR on a simplified invoice is refused with "Failed to
+        // validate QR code", and every one of ours was refused.
         try {
-            $qrCode = $isStandard
-                ? $this->qrGenerator->generatePhase2($qrData)
-                : $this->qrGenerator->generatePhase1($qrData);
+            $qrCode = $this->qrGenerator->generatePhase2($qrData);
         } catch (\Exception $e) {
-            // Fall back to Phase 1 QR if Phase 2 fails
+            // Falling back silently produced a QR the authority rejects and
+            // said nothing about why, so say it.
+            $this->warn('Phase 2 QR unavailable ('.$e->getMessage().'); falling back to five tags.');
             $qrCode = $this->qrGenerator->generatePhase1($qrData);
         }
 
@@ -977,10 +1017,67 @@ class FatooraOnboarding extends Command
     /**
      * Insert QR code element into XML string.
      */
+    /**
+     * The signature bytes of a DER-encoded certificate.
+     *
+     * Certificate ::= SEQUENCE { tbsCertificate, signatureAlgorithm,
+     * signatureValue BIT STRING }, so this walks to the third element and
+     * drops the BIT STRING's unused-bits byte.
+     */
+    private function certificateSignature(string $der): string
+    {
+        $offset = 0;
+        [, $certificate] = $this->readDer($der, $offset);
+
+        $inner = 0;
+        $this->readDer($certificate, $inner);
+        $this->readDer($certificate, $inner);
+        [$tag, $signature] = $this->readDer($certificate, $inner);
+
+        if ($tag !== 0x03) {
+            throw new RuntimeException('Certificate does not end in a signature BIT STRING.');
+        }
+
+        // the first byte counts unused bits and is not part of the signature
+        return substr($signature, 1);
+    }
+
+    /**
+     * One DER element from $buf, advancing $pos past it.
+     *
+     * @return array{int, string} tag and value
+     */
+    private function readDer(string $buf, int &$pos): array
+    {
+        $tag = ord($buf[$pos]);
+        $length = ord($buf[$pos + 1]);
+        $pos += 2;
+
+        if ($length > 0x80) {
+            $count = $length - 0x80;
+            $length = 0;
+
+            for ($i = 0; $i < $count; $i++) {
+                $length = ($length << 8) | ord($buf[$pos + $i]);
+            }
+
+            $pos += $count;
+        }
+
+        $value = substr($buf, $pos, $length);
+        $pos += $length;
+
+        return [$tag, $value];
+    }
+
     private function insertQrCodeIntoXml(string $xml, string $qrCode): string
     {
         $dom = new \DOMDocument('1.0', 'UTF-8');
-        $dom->preserveWhiteSpace = false;
+        // The QR goes in after the hash has been taken, so this must not
+        // reformat the document. Loading with whitespace stripped rewrote
+        // every line of it, and ZATCA recomputing the hash from what it
+        // received got a different answer from the one in tag 6.
+        $dom->preserveWhiteSpace = true;
         Xml::load($dom, $xml);
 
         $xpath = new \DOMXPath($dom);
