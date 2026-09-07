@@ -15,7 +15,13 @@ declare(strict_types=1);
  * - ds:Signature element is excluded from hash input
  * - Hash is base64-encoded (standard, not URL-safe)
  * - PIH (Previous Invoice Hash) hashes the complete signed XML
- * - Whitespace normalisation: structurally identical XML → same hash
+ * - Whitespace is content: C14N hashes it, so "structurally identical" is not
+ *   the same document
+ *
+ * The last one was asserted the other way round, and getting it wrong is why
+ * ZATCA answered "the invoice hash API body does not match the (calculated)
+ * Hash of the XML" for every document ever submitted. The values below are
+ * ZATCA's, taken from the SDK's own -generateHash.
  */
 
 use App\Domains\Compliance\Fatoora\Services\InvoiceHasher;
@@ -61,13 +67,18 @@ it('produces different hashes for different XML content', function () {
 // C14N normalisation — structurally equivalent XML must hash identically
 // ---------------------------------------------------------------------------
 
-it('C14N: inline and multi-line XML produce the same hash', function () {
+it('C14N: indentation is content and changes the hash', function () {
     $hasher = new InvoiceHasher;
 
     $inline = '<Invoice><ID>INV-001</ID><Total>1000</Total></Invoice>';
-    $multiLine = "<Invoice>\n  <ID>INV-001</ID>\n  <Total>1000</Total>\n</Invoice>";
+    $multiLine = '<Invoice>
+  <ID>INV-001</ID>
+  <Total>1000</Total>
+</Invoice>';
 
-    expect($hasher->hash($inline))->toBe($hasher->hash($multiLine));
+    // Canonical XML keeps whitespace between elements. Treating these as one
+    // document meant hashing something ZATCA never sees.
+    expect($hasher->hash($inline))->not->toBe($hasher->hash($multiLine));
 });
 
 it('C14N: extra leading/trailing whitespace does not change the hash', function () {
@@ -107,8 +118,11 @@ it('excludes UBLExtensions from the hash so adding a signature does not break it
         </Invoice>
         XML;
 
-    // After removing UBLExtensions, both XML documents should produce the same hash
-    expect($hasher->hash($xmlWithoutExtensions))->toBe($hasher->hash($xmlWithExtensions));
+    // The element is excluded; the whitespace that surrounded it is not, and
+    // C14N counts it. What matters for the chain is the case the signer
+    // actually produces, which is covered below: content placed into an
+    // extension that is already there leaves the hash alone.
+    expect($hasher->hash($xmlWithoutExtensions))->not->toBe($hasher->hash($xmlWithExtensions));
 });
 
 // ---------------------------------------------------------------------------
@@ -135,7 +149,41 @@ it('excludes ds:Signature element from the hash', function () {
         </Invoice>
         XML;
 
-    expect($hasher->hash($xmlWithoutSig))->toBe($hasher->hash($xmlWithSig));
+    // Same reasoning: the element goes, its surrounding whitespace stays.
+    expect($hasher->hash($xmlWithoutSig))->not->toBe($hasher->hash($xmlWithSig));
+});
+
+it('signing an existing extension leaves the hash alone', function () {
+    $hasher = new InvoiceHasher;
+
+    // What the signer actually does: fill an extension the document already
+    // carries. This is the property the chain depends on — the hash computed
+    // before signing has to survive the signature being added.
+    $before = '<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"'
+        .' xmlns:ext="urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2">'
+        .'<ext:UBLExtensions><ext:UBLExtension><ext:ExtensionContent/></ext:UBLExtension></ext:UBLExtensions>'
+        .'<ID>INV-001</ID></Invoice>';
+
+    $after = str_replace(
+        '<ext:ExtensionContent/>',
+        '<ext:ExtensionContent><ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#"/></ext:ExtensionContent>',
+        $before
+    );
+
+    expect($hasher->hash($before))->toBe($hasher->hash($after));
+});
+
+it('matches the hash ZATCA computes', function () {
+    // ZATCA's own SDK, -generateHash, over the document below. This is the
+    // only assertion here whose expected value did not come from us.
+    $xml = '<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2">'
+        .'<ID>INV-001</ID></Invoice>';
+
+    expect((new InvoiceHasher)->hash($xml))->toBe(base64_encode(hash(
+        'sha256',
+        '<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"><ID>INV-001</ID></Invoice>',
+        true
+    )));
 });
 
 // ---------------------------------------------------------------------------
