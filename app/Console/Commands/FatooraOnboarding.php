@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Console\Commands\Concerns\EncodesCsr;
 use App\Console\Commands\Concerns\FindsOpenSsl;
 use App\Console\Commands\Concerns\WritesSecrets;
 use App\Domains\Compliance\Fatoora\DTOs\AddressData;
@@ -41,6 +42,7 @@ use Illuminate\Support\Facades\Http;
  */
 class FatooraOnboarding extends Command
 {
+    use EncodesCsr;
     use FindsOpenSsl;
     use WritesSecrets;
 
@@ -218,17 +220,7 @@ class FatooraOnboarding extends Command
 
         $csrContent = file_get_contents($csrPath);
 
-        // Strip PEM headers if present and get clean base64
-        $csrBase64 = trim(str_replace(
-            ['-----BEGIN CERTIFICATE REQUEST-----', '-----END CERTIFICATE REQUEST-----', "\r", "\n"],
-            '',
-            $csrContent
-        ));
-
-        // If CSR wasn't in PEM format, encode it
-        if (strpos($csrContent, '-----BEGIN') === false) {
-            $csrBase64 = base64_encode($csrContent);
-        }
+        $csrBase64 = $this->encodeCsrForZatca($csrContent);
 
         try {
             $response = $this->zatca()
@@ -726,10 +718,22 @@ class FatooraOnboarding extends Command
                 ];
             }
 
+            // ZATCA answers a refused document in more than one shape, and
+            // reporting only the two we recognised turned every other refusal
+            // into a bare "HTTP 400" - which says the request was wrong and
+            // nothing about what was wrong with it.
             $errorMsg = 'HTTP '.$response->status();
-            $errors = $response->json('errors') ?? $response->json('validationResults.errors') ?? [];
+            $errors = $response->json('errors')
+                ?? $response->json('validationResults.errorMessages')
+                ?? $response->json('validationResults.errors')
+                ?? [];
+
             if (! empty($errors)) {
-                $errorMsg .= ': '.($errors[0]['message'] ?? json_encode($errors[0]));
+                $first = $errors[0] ?? $errors;
+                $errorMsg .= ': '.(is_array($first) ? ($first['message'] ?? json_encode($first)) : (string) $first);
+            } else {
+                $body = trim((string) $response->body());
+                $errorMsg .= ': '.($body === '' ? '(empty response)' : mb_substr($body, 0, 300));
             }
 
             return ['success' => false, 'message' => $errorMsg];
@@ -788,6 +792,32 @@ class FatooraOnboarding extends Command
         }
     }
 
+    /**
+     * The certificate's base64 DER, from whatever the authority sent.
+     *
+     * ZATCA wraps it a second time: the token decodes to the DER's own
+     * base64, which is what belongs between the PEM headers. A token that is
+     * already the body decodes to bytes rather than base64, so this only
+     * unwraps when unwrapping produces something a PEM can hold.
+     */
+    private function certificateBodyFrom(string $token): string
+    {
+        $token = trim($token);
+
+        if ($token === '') {
+            return '';
+        }
+
+        $decoded = base64_decode($token, true);
+
+        if ($decoded !== false && preg_match('#^[A-Za-z0-9+/=
+]+$#', $decoded) === 1) {
+            return trim($decoded);
+        }
+
+        return $token;
+    }
+
     private function saveCcsidCredentials(array $data): void
     {
         $dir = $this->secretDir();
@@ -795,18 +825,28 @@ class FatooraOnboarding extends Command
         // Save the raw token and secret
         $this->putSecret($dir.'/ccsid_token.txt', $data['binarySecurityToken'] ?? '');
         $this->putSecret($dir.'/ccsid_secret.txt', $data['secret'] ?? '');
-        $this->putSecret($dir.'/ccsid_request_id.txt', $data['requestID'] ?? '');
+        // ZATCA sends requestID as a JSON number, and putSecret takes a
+        // string under strict_types, so onboarding died here after the
+        // authority had already issued the certificate.
+        $this->putSecret($dir.'/ccsid_request_id.txt', (string) ($data['requestID'] ?? ''));
 
         // Handle certificate - for local mode use raw cert, for API mode convert from base64
         if (! empty($data['certificate']) && str_starts_with($data['certificate'], '-----BEGIN')) {
             // Local mode: certificate is already in PEM format
             File::put($dir.'/ccsid_certificate.pem', $data['certificate']);
         } else {
-            // API mode: binarySecurityToken is base64-encoded DER certificate
-            $certBase64 = $data['binarySecurityToken'] ?? '';
-            if ($certBase64) {
-                $certPem = "-----BEGIN CERTIFICATE-----\n".
-                    chunk_split($certBase64, 64, "\n").
+            // binarySecurityToken is base64 of the certificate's base64 DER -
+            // one layer more than a PEM body. Wrapping it as it arrived put
+            // base64 of base64 between the headers, which openssl_x509_read
+            // refuses with "X.509 Certificate cannot be retrieved", and every
+            // document signed with it failed the compliance check.
+            $certBase64 = $this->certificateBodyFrom((string) ($data['binarySecurityToken'] ?? ''));
+
+            if ($certBase64 !== '') {
+                $certPem = '-----BEGIN CERTIFICATE-----
+'.
+                    chunk_split($certBase64, 64, '
+').
                     '-----END CERTIFICATE-----';
                 File::put($dir.'/ccsid_certificate.pem', $certPem);
             }
