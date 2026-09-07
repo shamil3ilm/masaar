@@ -285,7 +285,7 @@ class XadesSigner
         $this->excludeFromDigest($dom);
 
         // Apply C14N canonicalization
-        return $dom->documentElement->C14N(true, false);
+        return $dom->documentElement->C14N(false, false);
     }
 
     /**
@@ -338,7 +338,7 @@ class XadesSigner
         $reference->appendChild($digestMethod);
 
         // Calculate digest of SignedProperties element (canonicalized)
-        $signedPropsC14n = $signedProperties->C14N(true, false);
+        $signedPropsC14n = $signedProperties->C14N(false, false);
         $digest = base64_encode(hash('sha256', $signedPropsC14n, true));
         $digestValue = $dom->createElementNS(self::DS_NS, 'ds:DigestValue', $digest);
         $reference->appendChild($digestValue);
@@ -524,7 +524,7 @@ class XadesSigner
      */
     private function canonicalize(DOMElement $element): string
     {
-        return $element->C14N(true, false);
+        return $element->C14N(false, false);
     }
 
     /**
@@ -633,7 +633,7 @@ class XadesSigner
                 '-----END CERTIFICATE-----';
 
             // Canonicalize SignedInfo
-            $signedInfoC14n = $signedInfo->C14N(true, false);
+            $signedInfoC14n = $signedInfo->C14N(false, false);
 
             // Verify the signature
             return $this->ecdsaSigner->verify(
@@ -691,7 +691,7 @@ class XadesSigner
                         continue;
                     }
                     $target = $targetNodes->item(0);
-                    $targetC14n = $target->C14N(true, false);
+                    $targetC14n = $target->C14N(false, false);
                     $actualDigest = base64_encode(hash('sha256', $targetC14n, true));
                 } elseif (empty($uri)) {
                     // Reference to document (enveloped signature)
@@ -735,7 +735,7 @@ class XadesSigner
         $this->excludeFromDigest($clone);
 
         // Canonicalize and hash
-        $canonicalized = $clone->documentElement->C14N(true, false);
+        $canonicalized = $clone->documentElement->C14N(false, false);
 
         return base64_encode(hash('sha256', $canonicalized, true));
     }
@@ -795,7 +795,7 @@ class XadesSigner
         }
 
         $signatureValue = $signatureValueNodes->item(0);
-        $signatureValueC14n = $signatureValue->C14N(true, false);
+        $signatureValueC14n = $signatureValue->C14N(false, false);
 
         // Request timestamp from TSA
         $timestampToken = $this->requestTimestamp($signatureValueC14n);

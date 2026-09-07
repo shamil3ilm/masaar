@@ -7,6 +7,7 @@ namespace App\Domains\Compliance\Fatoora\Http\Controllers;
 use App\Domains\Compliance\Fatoora\DTOs\AddressData;
 use App\Domains\Compliance\Fatoora\DTOs\InvoiceXmlData;
 use App\Domains\Compliance\Fatoora\Services\CsidOnboarding;
+use App\Domains\Compliance\Fatoora\Services\InvoiceHasher;
 use App\Domains\Compliance\Fatoora\Services\XmlBuilder;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Services\BranchService;
@@ -30,6 +31,7 @@ class BranchOnboardingController extends Controller
         private readonly BranchService $branchService,
         private readonly CsidOnboarding $onboarding,
         private readonly XmlBuilder $xmlBuilder,
+        private readonly InvoiceHasher $hasher,
     ) {}
 
     /**
@@ -313,7 +315,11 @@ class BranchOnboardingController extends Controller
             $xml = $this->xmlBuilder->build($invoiceData);
             $invoices[$type['key']] = $xml;
 
-            $previousHash = base64_encode(hash('sha256', $xml, true));
+            // The previous document's invoice hash, which is not a hash of its
+            // bytes: canonicalized, with the extensions, signature and QR taken
+            // out. Hashing the raw XML produces a chain ZATCA cannot follow,
+            // and the compliance endpoint checks it.
+            $previousHash = $this->hasher->hash($xml);
         }
 
         return $invoices;
