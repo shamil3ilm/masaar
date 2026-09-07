@@ -106,20 +106,20 @@ final readonly class CsrData
     }
 
     /**
-     * Get invoice type code for CSR.
-     * Bit flags: Standard=1, Simplified=2
+     * The invoice types this certificate may sign, as csr.invoice.type.
+     *
+     * Four positions, each a flag: standard, simplified, and two ZATCA
+     * reserves. Both is 1100, standard alone 1000, simplified alone 0100 —
+     * the values in ZATCA's own sample configs.
+     *
+     * This was summing bit flags into a number and zero-padding it, so it
+     * produced 0001, 0002 and 0003. The SDK answers "invalid invoice type" and
+     * exits 0, which is how CSR generation could never have worked through it.
      */
     public function getInvoiceTypeCode(): string
     {
-        $code = 0;
-
-        if ($this->invoiceTypesStandard) {
-            $code |= 1;
-        }
-        if ($this->invoiceTypesSimplified) {
-            $code |= 2;
-        }
-
-        return str_pad((string) $code, 4, '0', STR_PAD_LEFT);
+        return ($this->invoiceTypesStandard ? '1' : '0')
+            .($this->invoiceTypesSimplified ? '1' : '0')
+            .'00';
     }
 }
