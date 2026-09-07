@@ -42,12 +42,16 @@ it('verifies hash correctly', function () {
     expect($hasher->verify($xml, 'wronghash'))->toBeFalse();
 });
 
-it('normalizes XML whitespace for consistent hashing', function () {
+it('does not normalize whitespace away', function () {
     $hasher = new InvoiceHasher;
 
     $xml1 = '<Invoice><ID>INV-001</ID></Invoice>';
-    $xml2 = "<Invoice>\n  <ID>INV-001</ID>\n</Invoice>";
+    $xml2 = '<Invoice>
+  <ID>INV-001</ID>
+</Invoice>';
 
-    // After normalization, should produce same hash
-    expect($hasher->hash($xml1))->toBe($hasher->hash($xml2));
+    // Canonical XML preserves whitespace between elements, so these are two
+    // documents. Normalising it away is what made our hash disagree with the
+    // one ZATCA calculates from the same bytes.
+    expect($hasher->hash($xml1))->not->toBe($hasher->hash($xml2));
 });
