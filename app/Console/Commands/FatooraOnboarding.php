@@ -101,12 +101,25 @@ class FatooraOnboarding extends Command
      */
     private function zatca(): PendingRequest
     {
-        $client = Http::timeout(60)->withHeaders([
-            'Accept' => 'application/json',
-            'Content-Type' => 'application/json',
-            'Accept-Version' => 'V2',
-            'Accept-Language' => 'en',
-        ]);
+        $client = Http::timeout(60)
+            ->connectTimeout((int) config('fatoora.connect_timeout', 10))
+            ->retry(
+                (int) config('fatoora.retry_attempts', 3),
+                (int) config('fatoora.retry_delay', 1000),
+                // Only retry a gateway that failed to answer. A refusal is an
+                // answer, and repeating it three times delays the report
+                // without changing it. throw: false keeps the response so the
+                // caller's error classification still runs.
+                fn (\Throwable $e) => ! $e instanceof \Illuminate\Http\Client\RequestException
+                    || $e->response->serverError(),
+                throw: false,
+            )
+            ->withHeaders([
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json',
+                'Accept-Version' => 'V2',
+                'Accept-Language' => 'en',
+            ]);
 
         if (! config('fatoora.ssl_verify', true)) {
             $client->withoutVerifying();
@@ -724,7 +737,10 @@ class FatooraOnboarding extends Command
             // reporting only the two we recognised turned every other refusal
             // into a bare "HTTP 400" - which says the request was wrong and
             // nothing about what was wrong with it.
-            $errorMsg = 'HTTP '.$response->status();
+            // A 5xx is not a refusal: the gateway failed to answer and the
+            // document was never judged. Calling it one sends the reader after
+            // a payload bug that is not there.
+            $errorMsg = ($response->serverError() ? 'GATEWAY ' : '').'HTTP '.$response->status();
             $errors = $response->json('errors')
                 ?? $response->json('validationResults.errorMessages')
                 ?? $response->json('validationResults.errors')

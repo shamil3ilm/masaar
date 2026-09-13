@@ -331,7 +331,7 @@ jobs:
         run: |
           php artisan fatoora:onboard --step=full --otp=123345 --target=sandbox | tee onboard.log
           if grep -q 'FAILED' onboard.log; then
-            echo "::error title=Sandbox round trip failed::ZATCA refused a document. See the table above."
+            echo "::error title=Sandbox round trip failed::A document did not pass. A GATEWAY line is ZATCA's gateway timing out, not a refusal - re-run. See the table above."
             exit 1
           fi
           grep -q 'All 6 invoices passed' onboard.log || {
