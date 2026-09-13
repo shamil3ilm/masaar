@@ -20,6 +20,7 @@ use App\Domains\Compliance\Fatoora\Services\XmlBuilder;
 use App\Support\Xml;
 use Illuminate\Console\Command;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -110,7 +111,7 @@ class FatooraOnboarding extends Command
                 // answer, and repeating it three times delays the report
                 // without changing it. throw: false keeps the response so the
                 // caller's error classification still runs.
-                fn (\Throwable $e) => ! $e instanceof \Illuminate\Http\Client\RequestException
+                fn (\Throwable $e) => ! $e instanceof RequestException
                     || $e->response->serverError(),
                 throw: false,
             )
