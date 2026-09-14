@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Branch model for multi-EGS support.
@@ -245,8 +246,9 @@ class Branch extends Model
      */
     public function incrementInvoiceCount(): void
     {
-        $this->increment('invoice_count');
-        $this->update(['last_invoice_at' => now()]);
+        // One statement, so the count and the time of the latest invoice
+        // cannot disagree.
+        $this->increment('invoice_count', 1, ['last_invoice_at' => now()]);
     }
 
     /**
@@ -285,15 +287,38 @@ class Branch extends Model
 
     /**
      * Set as default branch for organization.
+     *
+     * Clearing the other branches and marking this one happen in one
+     * transaction holding the organization row. Apart, a failure between the
+     * two leaves the organization with no default; unserialised, two branches
+     * made default at the same time can both end up marked.
      */
     public function setAsDefault(): void
     {
-        // Remove default from other branches
-        static::where('org_id', $this->org_id)
-            ->where('id', '!=', $this->id)
-            ->update(['is_default' => false]);
+        DB::transaction(function (): void {
+            static::lockOrganization($this->org_id);
 
-        $this->update(['is_default' => true]);
+            static::where('org_id', $this->org_id)
+                ->where('id', '!=', $this->id)
+                ->update(['is_default' => false]);
+
+            $this->update(['is_default' => true]);
+        });
+    }
+
+    /**
+     * Serialise decisions about an organization's branches.
+     *
+     * Which branch is default, and whether the organization has a branch at
+     * all, are read and then written; holding the organization row makes a
+     * concurrent request wait for this one's answer. Call inside a
+     * transaction: the lock lasts until it commits. The organization row is
+     * locked rather than branch rows because an organization with no branches
+     * has none to lock.
+     */
+    public static function lockOrganization(string $organizationId): void
+    {
+        DB::table('organizations')->where('id', $organizationId)->lockForUpdate()->first();
     }
 
     /**
