@@ -13,6 +13,7 @@ use App\Domains\Compliance\FTA\Models\FtaSubmission;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -64,16 +65,36 @@ class FtaService
      */
     public function retry(FtaSubmission $submission): FtaSubmission
     {
-        if (! $submission->canRetry()) {
-            throw FtaException::invalidState($submission->status->value, 'queued');
-        }
+        return $this->dispatch($this->claimRetry($submission));
+    }
 
-        $submission->update([
-            'status' => FtaStatus::Queued,
-            'retry_count' => $submission->retry_count + 1,
-        ]);
+    /**
+     * Move a failed or rejected submission back to queued and count the attempt.
+     *
+     * The row is locked and read again, so two retries holding stale copies
+     * cannot both pass canRetry(): the second sees the status the first set
+     * and stops, and neither increment is lost. The authority is called by
+     * dispatch() after this commits, never while the lock is held.
+     */
+    private function claimRetry(FtaSubmission $submission): FtaSubmission
+    {
+        return DB::transaction(function () use ($submission): FtaSubmission {
+            $locked = FtaSubmission::query()
+                ->whereKey($submission->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        return $this->dispatch($submission);
+            if (! $locked->canRetry()) {
+                throw FtaException::invalidState($locked->status->value, 'queued');
+            }
+
+            $locked->update([
+                'status' => FtaStatus::Queued,
+                'retry_count' => $locked->retry_count + 1,
+            ]);
+
+            return $locked;
+        });
     }
 
     /**
