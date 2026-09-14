@@ -48,6 +48,7 @@ class Submitter
         private readonly CredentialStore $credentials,
         private readonly KillSwitch $killSwitch,
         private readonly ChainRecorder $chain,
+        private readonly InvoiceVerdict $verdict,
     ) {}
 
     /**
@@ -244,15 +245,17 @@ class Submitter
             );
         }
 
-        // Update invoice status based on response
-        $this->updateInvoiceStatus($invoice, $response);
+        // The invoice's status, its branch's count and the audit entry describe
+        // one answer, so they commit together or not at all.
+        DB::transaction(function () use ($invoice, $response): void {
+            $this->verdict->record($invoice, $response);
 
-        // Audit log the ZATCA submission
-        $this->audit->logZatcaSubmission($invoice, $response->success, [
-            'clearance_status' => $response->clearanceStatus,
-            'reporting_status' => $response->reportingStatus,
-            'errors' => $response->errorMessages,
-        ]);
+            $this->audit->logZatcaSubmission($invoice, $response->success, [
+                'clearance_status' => $response->clearanceStatus,
+                'reporting_status' => $response->reportingStatus,
+                'errors' => $response->errorMessages,
+            ]);
+        });
 
         return $response;
     }
@@ -433,67 +436,6 @@ class Submitter
     }
 
     /**
-     * Update invoice status after ZATCA response.
-     */
-    private function updateInvoiceStatus(Invoice $invoice, FatooraResponse $response): void
-    {
-        $changes = [
-            'status' => $response->success ? InvoiceStatus::Accepted : InvoiceStatus::Rejected,
-            'zatca_response' => [
-                'clearance_status' => $response->clearanceStatus,
-                'reporting_status' => $response->reportingStatus,
-                'validation_status' => $response->validationStatus,
-                'warnings' => $response->warningMessages,
-                'errors' => $response->errorMessages,
-            ],
-        ];
-
-        // Keep the document the authority cleared.
-        //
-        // ZATCA stamps the invoice it clears and returns it. That stamped
-        // copy is the legal invoice; the one submitted is only what was asked
-        // for. Only clearance returns a document — reporting acknowledges one,
-        // so cleared_xml stays null for a simplified invoice.
-        if ($cleared = $this->clearedXml($response)) {
-            $changes['cleared_xml'] = $cleared;
-        }
-
-        $invoice->update($changes);
-
-        // Increment branch invoice count if successful
-        if ($response->success) {
-            $this->incrementBranchInvoiceCount($invoice);
-        }
-    }
-
-    /**
-     * The cleared document from a response, as XML.
-     *
-     * ZATCA returns it base64-encoded. Anything that does not decode to a
-     * document is kept verbatim rather than discarded — losing the authority's
-     * copy because it arrived in an unexpected shape is the worse failure, and
-     * it is visible either way.
-     */
-    private function clearedXml(FatooraResponse $response): ?string
-    {
-        if (empty($response->clearedInvoice)) {
-            return null;
-        }
-
-        $decoded = base64_decode($response->clearedInvoice, true);
-
-        if ($decoded === false || ! str_contains($decoded, '<')) {
-            Log::warning('Cleared invoice did not decode as XML; keeping it as sent.', [
-                'length' => strlen($response->clearedInvoice),
-            ]);
-
-            return $response->clearedInvoice;
-        }
-
-        return $decoded;
-    }
-
-    /**
      * The certificate this invoice is signed with.
      *
      * Credentials live at one of two levels. BranchOnboardingController
@@ -607,16 +549,6 @@ class Submitter
             }
 
             return ['privateKey' => null, 'certificate' => null];
-        }
-    }
-
-    /**
-     * Increment branch invoice count after successful submission.
-     */
-    private function incrementBranchInvoiceCount(Invoice $invoice): void
-    {
-        if ($invoice->branch_id && $invoice->branch) {
-            $invoice->branch->incrementInvoiceCount();
         }
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Domains\Compliance\Fatoora\Client\FatooraClient;
+use App\Domains\Compliance\Fatoora\DTOs\FatooraResponse;
 use App\Domains\Compliance\Fatoora\Services\Connectivity;
 use App\Domains\Compliance\Fatoora\Services\OfflineQueue;
 use App\Domains\Invoice\Models\Invoice;
@@ -193,7 +194,7 @@ class ProcessOfflineQueue extends Command
             return;
         }
 
-        $this->line("  Processing {count($batch)} items...");
+        $this->line('  Processing '.count($batch).' items...');
         $this->info('');
 
         $progressBar = $this->output->createProgressBar(count($batch));
@@ -226,7 +227,6 @@ class ProcessOfflineQueue extends Command
         $this->queueManager->markProcessing($item->id);
 
         try {
-            // Get invoice
             $invoice = Invoice::find($item->invoice_id);
 
             if (! $invoice) {
@@ -236,49 +236,7 @@ class ProcessOfflineQueue extends Command
                 return;
             }
 
-            // Submit to ZATCA
-            $response = $invoice->isB2B()
-                ? $this->zatcaClient->clearInvoice(
-                    $item->signed_xml,
-                    $item->invoice_hash,
-                    $invoice->id
-                )
-                : $this->zatcaClient->reportInvoice(
-                    $item->signed_xml,
-                    $item->invoice_hash,
-                    $invoice->id
-                );
-
-            if ($response->success) {
-                $this->queueManager->markCompleted($item->id, [
-                    'clearanceStatus' => $response->clearanceStatus,
-                    'reportingStatus' => $response->reportingStatus,
-                    'invoiceUuid' => $response->validationResults['invoiceUuid'] ?? null,
-                ]);
-
-                // Update invoice status
-                $invoice->update([
-                    'zatca_status' => $invoice->isB2B() ? 'cleared' : 'reported',
-                    'zatca_cleared_at' => now(),
-                ]);
-
-                $this->succeeded++;
-
-                Log::info('Offline queue item submitted successfully', [
-                    'queue_id' => $item->id,
-                    'invoice_id' => $invoice->id,
-                ]);
-            } else {
-                $errorMessage = implode('; ', $response->errorMessages ?? ['Unknown error']);
-                $this->queueManager->markFailed($item->id, $errorMessage, true);
-                $this->failed++;
-
-                Log::warning('Offline queue item submission failed', [
-                    'queue_id' => $item->id,
-                    'invoice_id' => $invoice->id,
-                    'error' => $errorMessage,
-                ]);
-            }
+            $response = $this->send($item, $invoice);
         } catch (\Throwable $e) {
             $this->queueManager->markFailed($item->id, $e->getMessage(), true);
             $this->failed++;
@@ -287,7 +245,63 @@ class ProcessOfflineQueue extends Command
                 'queue_id' => $item->id,
                 'error' => $e->getMessage(),
             ]);
+
+            return;
         }
+
+        if (! $response->success) {
+            $errorMessage = implode('; ', $response->errorMessages ?? ['Unknown error']);
+            $this->queueManager->markFailed($item->id, $errorMessage, true);
+            $this->failed++;
+
+            Log::warning('Offline queue item submission failed', [
+                'queue_id' => $item->id,
+                'invoice_id' => $invoice->id,
+                'error' => $errorMessage,
+            ]);
+
+            return;
+        }
+
+        $this->recordAcceptance($item, $invoice, $response);
+    }
+
+    private function send(object $item, Invoice $invoice): FatooraResponse
+    {
+        return $invoice->isB2B()
+            ? $this->zatcaClient->clearInvoice($item->signed_xml, $item->invoice_hash, $invoice->id)
+            : $this->zatcaClient->reportInvoice($item->signed_xml, $item->invoice_hash, $invoice->id);
+    }
+
+    /**
+     * Record an accepted item, outside processItem()'s retrying error handling.
+     *
+     * The authority holds the document, so a local failure must not requeue
+     * it for a second submission. The item stays processing, a state the queue
+     * never picks up again, and the failure is logged for reconciliation.
+     */
+    private function recordAcceptance(object $item, Invoice $invoice, FatooraResponse $response): void
+    {
+        try {
+            $this->queueManager->complete($item->id, $invoice, $response);
+        } catch (\Throwable $e) {
+            $this->failed++;
+
+            Log::critical('ZATCA accepted an offline queue item but it could not be recorded', [
+                'queue_id' => $item->id,
+                'invoice_id' => $invoice->id,
+                'exception' => $e,
+            ]);
+
+            return;
+        }
+
+        $this->succeeded++;
+
+        Log::info('Offline queue item submitted successfully', [
+            'queue_id' => $item->id,
+            'invoice_id' => $invoice->id,
+        ]);
     }
 
     private function handleInvalidItem(object $item, array $validation): void
