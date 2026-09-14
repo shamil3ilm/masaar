@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\FTA\Services;
 
+use App\Domains\Compliance\FTA\Client\FtaClient;
 use App\Domains\Compliance\FTA\DTOs\FtaInvoiceData;
 use App\Domains\Compliance\FTA\DTOs\FtaResponse;
 use App\Domains\Compliance\FTA\Enums\FtaStatus;
@@ -12,7 +13,6 @@ use App\Domains\Compliance\FTA\Models\FtaSubmission;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -32,6 +32,7 @@ class FtaService
     public function __construct(
         private readonly FtaXmlBuilder $xmlBuilder,
         private readonly FtaValidator $validator,
+        private readonly FtaClient $client,
     ) {}
 
     /**
@@ -84,29 +85,28 @@ class FtaService
             return $submission;
         }
 
-        try {
-            $response = Http::withToken($this->getApiKey())
-                ->timeout(config('fta.timeout', 30))
-                ->get($this->getBaseUrl()."/submissions/{$submission->reference}/status");
+        $response = $this->client->status($submission->reference);
 
-            if ($response->successful()) {
-                $ftaStatus = $response->json('status');
+        if ($response->status === 'failed') {
+            Log::warning('UAE FTA status check failed', [
+                'submission_id' => $submission->id,
+                'error' => $response->errors[0] ?? null,
+            ]);
 
-                $newStatus = match ($ftaStatus) {
-                    'accepted' => FtaStatus::Accepted,
-                    'rejected' => FtaStatus::Rejected,
-                    default => FtaStatus::PendingReview,
-                };
-
-                $submission->update([
-                    'status' => $newStatus,
-                    'errors' => $response->json('errors', []),
-                    'accepted_at' => $newStatus === FtaStatus::Accepted ? now() : null,
-                ]);
-            }
-        } catch (\Throwable $e) {
-            Log::warning('UAE FTA status check failed', ['submission_id' => $submission->id, 'error' => $e->getMessage()]);
+            return $submission;
         }
+
+        $newStatus = match ($response->status) {
+            'accepted' => FtaStatus::Accepted,
+            'rejected' => FtaStatus::Rejected,
+            default => FtaStatus::PendingReview,
+        };
+
+        $submission->update([
+            'status' => $newStatus,
+            'errors' => $response->errors,
+            'accepted_at' => $newStatus === FtaStatus::Accepted ? now() : null,
+        ]);
 
         return $submission->fresh();
     }
@@ -117,44 +117,45 @@ class FtaService
 
     private function dispatch(FtaSubmission $submission): FtaSubmission
     {
+        $submission->update(['status' => FtaStatus::Submitted, 'submitted_at' => now()]);
+
         try {
-            $submission->update(['status' => FtaStatus::Submitted, 'submitted_at' => now()]);
-
-            $response = Http::withToken($this->getApiKey())
-                ->timeout(config('fta.timeout', 30))
-                ->withHeaders(['Content-Type' => 'application/xml', 'Accept' => 'application/json'])
-                ->withBody($submission->invoice_xml, 'application/xml')
-                ->post($this->getBaseUrl().'/invoices');
-
-            $ftaResponse = FtaResponse::fromApiResponse($response->json() ?? []);
-
-            $newStatus = match (true) {
-                $ftaResponse->success => FtaStatus::Accepted,
-                $ftaResponse->status === 'pending_review' => FtaStatus::PendingReview,
-                default => FtaStatus::Rejected,
-            };
-
-            $submission->update([
-                'status' => $newStatus,
-                'reference' => $ftaResponse->submissionId,
-                'validation_status' => $ftaResponse->validationStatus,
-                'warnings' => $ftaResponse->warnings,
-                'errors' => $ftaResponse->errors,
-                'accepted_at' => $newStatus === FtaStatus::Accepted ? now() : null,
-            ]);
-
+            $response = $this->client->submit($submission->invoice_xml);
         } catch (\Throwable $e) {
+            $response = FtaResponse::failed($e->getMessage());
+        }
+
+        // No verdict was reached, so the document is neither accepted nor
+        // rejected: record why and when to try again.
+        if ($response->status === 'failed') {
             Log::error('UAE FTA submission failed', [
                 'submission_id' => $submission->id,
-                'error' => $e->getMessage(),
+                'error' => $response->errors[0] ?? null,
             ]);
 
             $submission->update([
                 'status' => FtaStatus::Failed,
-                'last_error' => $e->getMessage(),
+                'last_error' => $response->errors[0] ?? 'UAE FTA submission failed',
                 'next_retry_at' => $this->nextRetryAt($submission->retry_count),
             ]);
+
+            return $submission->fresh();
         }
+
+        $newStatus = match (true) {
+            $response->success => FtaStatus::Accepted,
+            $response->status === 'pending_review' => FtaStatus::PendingReview,
+            default => FtaStatus::Rejected,
+        };
+
+        $submission->update([
+            'status' => $newStatus,
+            'reference' => $response->submissionId,
+            'validation_status' => $response->validationStatus,
+            'warnings' => $response->warnings,
+            'errors' => $response->errors,
+            'accepted_at' => $newStatus === FtaStatus::Accepted ? now() : null,
+        ]);
 
         return $submission->fresh();
     }
@@ -213,18 +214,6 @@ class FtaService
             'tax_amount' => (float) ($line->tax_amount ?? 0),
             'unit_code' => 'PCE',
         ])->toArray();
-    }
-
-    private function getBaseUrl(): string
-    {
-        $env = config('fta.environment', 'sandbox');
-
-        return config("fta.endpoints.{$env}");
-    }
-
-    private function getApiKey(): string
-    {
-        return config('fta.api_key', '');
     }
 
     private function nextRetryAt(int $retryCount): Carbon
