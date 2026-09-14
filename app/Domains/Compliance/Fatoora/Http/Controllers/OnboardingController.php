@@ -2,6 +2,7 @@
 
 namespace App\Domains\Compliance\Fatoora\Http\Controllers;
 
+use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\DTOs\AddressData;
 use App\Domains\Compliance\Fatoora\DTOs\CsrData;
 use App\Domains\Compliance\Fatoora\DTOs\InvoiceXmlData;
@@ -239,7 +240,9 @@ class OnboardingController extends Controller
 
         $invoices = [];
         $icv = 0;
-        $previousHash = base64_encode(hash('sha256', '0', true)); // Initial PIH
+        // ZATCA's initial PIH is the base64 of SHA-256("0") as hex text, not of
+        // the raw digest; the chain the authority checks starts from this.
+        $previousHash = FatooraConfig::DEFAULT_FIRST_INVOICE_PIH;
 
         // Define the 6 required invoice types
         $invoiceTypes = [
