@@ -142,6 +142,16 @@ class InvoiceSubmission extends Model
     public const TERMINAL_STATES = ['cleared', 'reported', 'warning', 'cancelled'];
 
     /**
+     * States in which a submission is on its way to ZATCA.
+     */
+    public const IN_FLIGHT_STATES = ['queued', 'pending_submission', 'submitted'];
+
+    /**
+     * States in which ZATCA has accepted the document.
+     */
+    public const ACCEPTED_STATES = ['cleared', 'reported', 'warning'];
+
+    /**
      * Get the invoice being submitted.
      */
     public function invoice(): BelongsTo
