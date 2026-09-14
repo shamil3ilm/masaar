@@ -21,9 +21,11 @@ namespace Tests\Fixtures;
 trait SigningCredentials
 {
     /**
+     * @param  int  $serial  OpenSSL prints a serial of 32 bits or more as hex,
+     *                       as it does for every ZATCA-issued certificate.
      * @return array{privateKey: string, certificate: string}
      */
-    private function selfSignedCredentials(): array
+    private function selfSignedCredentials(int $serial = 0): array
     {
         // An explicit config path is required: without one, OpenSSL looks for
         // openssl.cnf at a build-time location that does not exist on Windows,
@@ -47,7 +49,7 @@ trait SigningCredentials
 
         $this->assertNotFalse($csr, 'could not build a CSR: '.openssl_error_string());
 
-        $cert = openssl_csr_sign($csr, null, $key, 365, $config);
+        $cert = openssl_csr_sign($csr, null, $key, 365, $config, $serial);
         $this->assertNotFalse($cert, 'could not self-sign: '.openssl_error_string());
 
         openssl_x509_export($cert, $certificatePem);

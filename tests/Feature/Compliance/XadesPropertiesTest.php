@@ -7,6 +7,7 @@ namespace Tests\Feature\Compliance;
 use App\Domains\Compliance\Fatoora\Services\XadesSigner;
 use DOMDocument;
 use DOMXPath;
+use phpseclib3\Math\BigInteger;
 use Tests\Fixtures\SigningCredentials;
 use Tests\TestCase;
 
@@ -30,13 +31,19 @@ class XadesPropertiesTest extends TestCase
 
     private const XADES = 'http://uri.etsi.org/01903/v1.3.2#';
 
+    /**
+     * Past 32 bits, which a ZATCA-issued serial always is, OpenSSL prints the
+     * serial as hex.
+     */
+    private const SERIAL = 5_000_000_000;
+
     private DOMXPath $xpath;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $credentials = $this->selfSignedCredentials();
+        $credentials = $this->selfSignedCredentials(self::SERIAL);
 
         $signed = app(XadesSigner::class)->sign(
             $this->invoiceXml(),
@@ -78,7 +85,7 @@ class XadesPropertiesTest extends TestCase
         $parsed = openssl_x509_parse($certificate);
 
         $this->assertSame(
-            (string) $parsed['serialNumber'],
+            (new BigInteger($parsed['serialNumberHex'], 16))->toString(),
             $this->text('//xades:IssuerSerial/ds:X509SerialNumber'),
             'The signed properties name a different serial than the certificate.'
         );
@@ -87,6 +94,16 @@ class XadesPropertiesTest extends TestCase
             'CN='.$parsed['issuer']['CN'],
             $this->text('//xades:IssuerSerial/ds:X509IssuerName')
         );
+    }
+
+    /**
+     * The schema types X509SerialNumber as an integer. OpenSSL's 0x-prefixed
+     * hex failed ZATCA's schema check for every document signed with a
+     * certificate whose serial passes 32 bits.
+     */
+    public function test_serial_is_decimal(): void
+    {
+        $this->assertSame((string) self::SERIAL, $this->text('//xades:IssuerSerial/ds:X509SerialNumber'));
     }
 
     /**
