@@ -45,19 +45,7 @@ class ConfigReaderTest extends TestCase
      * An entry is a statement that the block is deliberately waiting on work
      * in progress. If the reason is "it was easier", wire it up or delete it.
      */
-    private const PENDING = [
-        // The UAE mandate is 2027-01-01 and the FTA engine is part-built. The
-        // client authenticates and submits with an API key today; this
-        // describes the transport that is not finished. README marks the
-        // jurisdiction as in development.
-        //
-        // fta.peppol was here too, and has been deleted rather than waited on:
-        // its identifiers were generic Peppol BIS Billing 3.0, and the UAE
-        // requires PINT AE. FtaXmlBuilder already emits the right ones as
-        // constants. A pending key describes work not yet done; that one
-        // described work that would have been wrong.
-        'fta.connect_timeout' => 'UAE FTA transport, engine in development',
-    ];
+    private const PENDING = [];
 
     public function test_every_config_block_has_a_reader(): void
     {
