@@ -5,18 +5,20 @@ declare(strict_types=1);
 namespace Tests\Feature\Compliance;
 
 use App\Domains\Compliance\Fatoora\DTOs\CsrData;
-use App\Domains\Compliance\Fatoora\Services\CertificateService;
+use App\Domains\Compliance\Fatoora\Services\CsrBuilder;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * The certificate request a taxpayer's onboarding stands on.
+ * The key and certificate request a taxpayer's onboarding stands on.
  *
  * ZATCA issues a CSID against this CSR, and everything afterwards — signing,
  * the QR's tags 7 to 9, clearance — depends on the key it was made with and
  * the identity it asserts. A CSR that is well-formed but wrong is rejected at
  * the portal, by a person, with an OTP that expires in an hour.
  *
- * CsrDataTest covers what may go into the request. This covers what comes out.
+ * CsrBuilderTest covers the request's structure. This covers the key generated
+ * with it and the template chosen for it.
  */
 class CsrGenerationTest extends TestCase
 {
@@ -26,7 +28,7 @@ class CsrGenerationTest extends TestCase
     {
         parent::setUp();
 
-        $this->result = app(CertificateService::class)->generateCsr($this->csrData());
+        $this->result = app(CsrBuilder::class)->generate($this->csrData(), CsrBuilder::TEMPLATE_SANDBOX);
     }
 
     public function test_subject_carries_the_taxpayer(): void
@@ -85,44 +87,16 @@ class CsrGenerationTest extends TestCase
     }
 
     /**
-     * The identity ZATCA reads out of the request: the VAT registration as an
-     * organizationIdentifier, and the device and invoice types in the subject
-     * alternative name.
-     *
-     * Read with phpseclib because PHP's own CSR functions expose the subject
-     * and the public key but not the extensions, which is where these live.
+     * The identity ZATCA reads out of the subject alternative name: the
+     * device's serial, the VAT registration and the invoice types.
      */
-    public function test_request_carries_the_zatca_extensions(): void
+    public function test_request_carries_the_registration(): void
     {
         $der = $this->der();
 
-        // organizationIdentifier in the subject, per ZATCA's VATSA- form.
-        $this->assertStringContainsString(
-            'VATSA-300000000000003',
-            $der,
-            'The CSR does not carry the VAT registration.'
-        );
-
-        // The directory name inside subjectAltName: the device's serial, the
-        // VAT registration again as UID, and the document types it is being
-        // registered for.
-        $this->assertStringContainsString(
-            '1-Masaar|2-1.0|3-abc123',
-            $der,
-            'The CSR does not carry the solution serial number.'
-        );
-
-        $this->assertStringContainsString(
-            '1110',
-            $der,
-            'The CSR does not declare the invoice types.'
-        );
-
-        $this->assertStringNotContainsString(
-            '1010',
-            $der,
-            'The CSR declares invoice types it was not asked for.'
-        );
+        $this->assertStringContainsString('1-Masaar|2-1.0|3-abc123', $der, 'The CSR does not carry the solution serial number.');
+        $this->assertStringContainsString('300000000000003', $der, 'The CSR does not carry the VAT registration.');
+        $this->assertStringContainsString('1100', $der, 'The CSR does not declare the invoice types.');
     }
 
     /**
@@ -132,17 +106,33 @@ class CsrGenerationTest extends TestCase
      */
     public function test_invoice_types_follow_the_request(): void
     {
-        $simplifiedOnly = app(CertificateService::class)->generateCsr(
-            $this->csrData(standard: false, simplified: true)
+        $simplifiedOnly = app(CsrBuilder::class)->generate(
+            $this->csrData(standard: false, simplified: true),
+            CsrBuilder::TEMPLATE_SANDBOX
         );
 
         $der = $this->der($simplifiedOnly['csr']);
 
-        $this->assertStringContainsString('1010', $der, 'A simplified-only device did not declare 1010.');
+        $this->assertStringContainsString('0100', $der, 'A simplified-only device did not declare 0100.');
+        $this->assertStringNotContainsString('1100', $der, 'A simplified-only device still declared standard invoices.');
+    }
 
-        // Both directions, so neither assertion can be satisfied by a byte
-        // sequence that happens to appear elsewhere in the encoding.
-        $this->assertStringNotContainsString('1110', $der, 'A simplified-only device still declared standard invoices.');
+    public static function environments(): iterable
+    {
+        yield 'production' => ['production', 'ZATCA-Code-Signing'];
+        yield 'simulation' => ['simulation', 'PREZATCA-Code-Signing'];
+        yield 'sandbox' => ['sandbox', 'TSTZATCA-Code-Signing'];
+        yield 'unknown falls back to sandbox' => ['staging', 'TSTZATCA-Code-Signing'];
+    }
+
+    /**
+     * The template selects ZATCA's environment. A request sent to one
+     * environment carrying another's template is refused.
+     */
+    #[DataProvider('environments')]
+    public function test_template_follows_the_environment(string $environment, string $template): void
+    {
+        $this->assertSame($template, CsrBuilder::templateFor($environment));
     }
 
     /**

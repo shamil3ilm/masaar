@@ -97,15 +97,6 @@ final readonly class CsrData
     }
 
     /**
-     * Get organization identifier in ZATCA format.
-     * Format: VATSA-{15-digit VAT number}
-     */
-    public function getOrganizationIdentifier(): string
-    {
-        return 'VATSA-'.$this->vatNumber;
-    }
-
-    /**
      * The invoice types this certificate may sign, as csr.invoice.type.
      *
      * Four positions, each a flag: standard, simplified, and two ZATCA

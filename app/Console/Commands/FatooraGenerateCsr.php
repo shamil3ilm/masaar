@@ -9,7 +9,6 @@ use App\Domains\Compliance\Fatoora\DTOs\CsrData;
 use App\Domains\Compliance\Fatoora\Services\CsrBuilder;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
-use phpseclib3\Crypt\EC;
 
 /**
  * Generate CSR and Private Key for ZATCA onboarding.
@@ -334,18 +333,12 @@ EOT;
      */
     private function generateCsrWithPhpseclib(CsrData $csrData): array
     {
-        // secp256k1 is ZATCA's curve and not negotiable.
-        $privateKey = EC::createKey('secp256k1');
-        $privateKeyPem = $privateKey->toString('PKCS8');
-
-        $this->info('✓ EC private key generated (secp256k1)');
-
-        $csrPem = app(CsrBuilder::class)->build(
+        ['csr' => $csrPem, 'privateKey' => $privateKeyPem] = app(CsrBuilder::class)->generate(
             $csrData,
-            $privateKeyPem,
             $this->option('template') ?: CsrBuilder::TEMPLATE_SIMULATION,
         );
 
+        $this->info('✓ EC private key generated (secp256k1)');
         $this->info('✓ CSR generated with ZATCA extensions');
         $this->line("  serialNumber: {$csrData->serialNumber}");
         $this->line('  invoice types: '.$csrData->getInvoiceTypeCode());
