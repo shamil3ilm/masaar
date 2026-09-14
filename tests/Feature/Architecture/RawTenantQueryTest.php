@@ -51,12 +51,14 @@ class RawTenantQueryTest extends TestCase
     private const ALLOWED = [
         // Platform operators look across every tenant by definition; that is
         // what the console is for.
-        'Domains/Platform/Http/Controllers/AdminController.php' => 'platform admin, cross-tenant by design',
-        'Domains/Platform/Http/Controllers/AdminDashboardController.php' => 'platform admin, cross-tenant by design',
+        'Domains/Platform/Services/ChainHealth.php' => 'platform admin, samples the chain across tenants',
+        'Domains/Platform/Services/OrganizationReport.php' => 'platform admin, cross-tenant by design',
         'Domains/Platform/Services/PlatformStatus.php' => 'platform-wide counts, no tenant to scope to',
+        'Domains/Platform/Services/QueueReport.php' => 'platform admin, cross-tenant by design',
+        'Domains/Platform/Services/SubmissionLog.php' => 'platform admin, cross-tenant by design',
 
         // Prometheus scrapes one set of figures for the whole deployment.
-        'Domains/Platform/Http/Controllers/MetricsController.php' => 'platform-wide metrics, no tenant to scope to',
+        'Domains/Platform/Services/MetricsCollector.php' => 'platform-wide metrics, no tenant to scope to',
 
         // Billing totals a licence across the organizations it covers.
         'Domains/Licensing/Services/UsageReportingService.php' => 'licence-wide usage rollup, spans organizations',

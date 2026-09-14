@@ -4,7 +4,7 @@ namespace App\Domains\Compliance\Fatoora\Http\Controllers;
 
 use App\Domains\Compliance\Fatoora\Services\Submitter;
 use App\Domains\Invoice\Enums\InvoiceStatus;
-use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
@@ -20,6 +20,7 @@ class ComplianceController extends Controller
     public function __construct(
         private readonly TenantResolver $tenant,
         private readonly Submitter $submission,
+        private readonly InvoiceFinder $invoices,
     ) {}
 
     /**
@@ -29,7 +30,7 @@ class ComplianceController extends Controller
      */
     public function generate(string $invoiceId): JsonResponse
     {
-        $invoice = $this->getInvoice($invoiceId);
+        $invoice = $this->invoices->findWithLines($this->tenant->getOrganizationId(), $invoiceId);
         $organization = $this->tenant->getOrganization();
 
         $result = $this->submission->generate($invoice, $organization);
@@ -44,7 +45,7 @@ class ComplianceController extends Controller
      */
     public function validate(string $invoiceId): JsonResponse
     {
-        $invoice = $this->getInvoice($invoiceId);
+        $invoice = $this->invoices->findWithLines($this->tenant->getOrganizationId(), $invoiceId);
         $organization = $this->tenant->getOrganization();
 
         $response = $this->submission->validate($invoice, $organization);
@@ -64,7 +65,7 @@ class ComplianceController extends Controller
      */
     public function submit(string $invoiceId): JsonResponse
     {
-        $invoice = $this->getInvoice($invoiceId);
+        $invoice = $this->invoices->findWithLines($this->tenant->getOrganizationId(), $invoiceId);
 
         if ($invoice->status !== InvoiceStatus::Issued) {
             return ApiResponse::error('Invoice must be issued before submission', 422);
@@ -95,7 +96,7 @@ class ComplianceController extends Controller
      */
     public function status(string $invoiceId): JsonResponse
     {
-        $invoice = $this->getInvoice($invoiceId);
+        $invoice = $this->invoices->findWithLines($this->tenant->getOrganizationId(), $invoiceId);
 
         return ApiResponse::success([
             'invoice_id' => $invoice->id,
@@ -104,15 +105,5 @@ class ComplianceController extends Controller
             'qr_code' => $invoice->qr_code,
             'zatca_response' => $invoice->zatca_response,
         ]);
-    }
-
-    /**
-     * Get invoice scoped to current organization.
-     */
-    private function getInvoice(string $id): Invoice
-    {
-        return Invoice::where('org_id', $this->tenant->getOrganizationId())
-            ->with('lines')
-            ->findOrFail($id);
     }
 }

@@ -5,13 +5,13 @@ namespace App\Domains\Auth\Http\Controllers;
 use App\Domains\Audit\Services\AuditService;
 use App\Domains\Auth\Contracts\Authenticator;
 use App\Domains\Auth\DTOs\LoginData;
+use App\Domains\Auth\DTOs\RegistrationData;
 use App\Domains\Auth\Http\Requests\LoginRequest;
 use App\Domains\Auth\Http\Requests\RegisterRequest;
-use App\Domains\Auth\Models\User;
+use App\Domains\Auth\Services\AccountRegistrar;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Hash;
 
 /**
  * Authentication API controller.
@@ -21,6 +21,7 @@ class AuthController extends Controller
     public function __construct(
         private readonly Authenticator $auth,
         private readonly AuditService $audit,
+        private readonly AccountRegistrar $registrar,
     ) {}
 
     /**
@@ -30,12 +31,7 @@ class AuthController extends Controller
      */
     public function register(RegisterRequest $request): JsonResponse
     {
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'status' => 'active',
-        ]);
+        $user = $this->registrar->register(RegistrationData::from($request->validated()));
 
         $token = $this->auth->attempt(
             LoginData::from([
@@ -43,8 +39,6 @@ class AuthController extends Controller
                 'password' => $request->password,
             ])
         );
-
-        $this->audit->logAuth('register', $user->id);
 
         return ApiResponse::created([
             'user' => [

@@ -40,12 +40,10 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/ComplianceRouter.php' => 'Invoice, Organization',
         'Domains/Compliance/Contracts/ComplianceEngine.php' => 'Invoice, Organization',
         'Domains/Compliance/FTA/FtaEngine.php' => 'Invoice, Organization',
-        'Domains/Compliance/FTA/Http/Controllers/FtaController.php' => 'Invoice',
         'Domains/Compliance/FTA/Models/FtaSubmission.php' => 'Invoice',
         'Domains/Compliance/FTA/Services/FtaService.php' => 'Invoice',
         'Domains/Compliance/Fatoora/FatooraEngine.php' => 'Invoice, Organization',
         'Domains/Compliance/Fatoora/Http/Controllers/BranchOnboardingController.php' => 'Organization',
-        'Domains/Compliance/Fatoora/Http/Controllers/ComplianceController.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Models/ChainEntry.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Models/InvoiceSubmission.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Models/OfflineItem.php' => 'Invoice',
@@ -61,15 +59,12 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Fatoora/Services/Submitter.php' => 'Invoice, Organization',
         'Domains/Compliance/Fatoora/Services/VatPeriodTracker.php' => 'Invoice',
         'Domains/Invoice/Models/Invoice.php' => 'Organization',
-        'Domains/Organization/Http/Controllers/CustomerPortalController.php' => 'Invoice',
         'Domains/Organization/Models/Branch.php' => 'Invoice',
         'Domains/Organization/Models/ComplianceProfile.php' => 'Invoice',
         'Domains/Organization/Models/Organization.php' => 'Invoice',
-        'Domains/Pipeline/Http/Controllers/PipelineController.php' => 'Invoice',
         'Domains/Pipeline/Services/PipelineNotifier.php' => 'Invoice',
         'Domains/Pipeline/Services/PipelineResult.php' => 'Invoice',
         'Domains/Pipeline/Services/PipelineService.php' => 'Invoice, Organization',
-        'Domains/Platform/Http/Controllers/DashboardController.php' => 'Invoice',
     ];
 
     public function test_domains_keep_their_models_to_themselves(): void

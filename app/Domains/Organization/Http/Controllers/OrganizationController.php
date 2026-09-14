@@ -2,8 +2,10 @@
 
 namespace App\Domains\Organization\Http\Controllers;
 
-use App\Domains\Audit\Services\AuditService;
-use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\DTOs\OrganizationChangesData;
+use App\Domains\Organization\DTOs\OrganizationData;
+use App\Domains\Organization\Services\Membership;
+use App\Domains\Organization\Services\Registrar;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Organization\ValueObjects\OrganizationContext;
 use App\Http\Controllers\Controller;
@@ -17,7 +19,9 @@ use Illuminate\Http\Request;
 class OrganizationController extends Controller
 {
     public function __construct(
-        private readonly AuditService $audit,
+        private readonly TenantResolver $tenant,
+        private readonly Membership $membership,
+        private readonly Registrar $registrar,
     ) {}
 
     /**
@@ -27,10 +31,8 @@ class OrganizationController extends Controller
      */
     public function index(): JsonResponse
     {
-        $organizations = auth()->user()->organizations;
-
         return ApiResponse::success([
-            'organizations' => $organizations,
+            'organizations' => $this->membership->memberships(auth()->user()),
         ]);
     }
 
@@ -47,22 +49,11 @@ class OrganizationController extends Controller
             'vat_number' => ['nullable', 'string', 'max:50'],
         ]);
 
-        $organization = Organization::create([
-            'name' => $request->name,
-            'country' => $request->country ?? 'SA',
-            'status' => 'active',
-            'compliance_profile' => [
-                'vat_number' => $request->vat_number,
-            ],
-        ]);
-
-        // Attach user as admin
-        auth()->user()->organizations()->attach($organization->id, [
-            'role' => 'admin',
-            'status' => 'active',
-        ]);
-
-        $this->audit->logCreated($organization);
+        $organization = $this->registrar->register(auth()->user(), new OrganizationData(
+            name: $request->name,
+            country: $request->country ?? 'SA',
+            vatNumber: $request->vat_number,
+        ));
 
         return ApiResponse::created([
             'organization' => $organization,
@@ -76,7 +67,7 @@ class OrganizationController extends Controller
      */
     public function show(string $id): JsonResponse
     {
-        $organization = auth()->user()->organizations()->findOrFail($id);
+        $organization = $this->membership->organization(auth()->user(), $id);
 
         return ApiResponse::success([
             'organization' => $organization,
@@ -90,29 +81,25 @@ class OrganizationController extends Controller
      */
     public function update(Request $request, string $id): JsonResponse
     {
-        // Admin is enforced by org.admin on the route, in one place with
-        // every other action restricted the same way. Scoping the lookup to
-        // admin memberships here as well answered 404 for a member editing an
-        // organization they can plainly read, which describes the wrong
-        // problem.
-        $organization = auth()->user()->organizations()->findOrFail($id);
+        // Admin is enforced by org.admin on the route, in one place with every
+        // other action restricted the same way. That gate reads the role in
+        // the organization this session acts for, so only that organization
+        // may be changed here; any other would pass on someone else's role.
+        if ($id !== $this->tenant->getOrganizationId()) {
+            return ApiResponse::forbidden('Switch to this organization before changing it.');
+        }
+
+        $organization = $this->membership->organization(auth()->user(), $id);
 
         $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
             'vat_number' => ['nullable', 'string', 'max:50'],
         ]);
 
-        $oldValues = $organization->toArray();
-
-        $organization->update([
-            'name' => $request->name ?? $organization->name,
-            'compliance_profile' => array_merge(
-                $organization->compliance_profile ?? [],
-                array_filter(['vat_number' => $request->vat_number])
-            ),
-        ]);
-
-        $this->audit->logUpdated($organization, $oldValues);
+        $organization = $this->registrar->amend($organization, new OrganizationChangesData(
+            name: $request->name,
+            vatNumber: $request->vat_number,
+        ));
 
         return ApiResponse::success([
             'organization' => $organization->fresh(),
@@ -130,17 +117,17 @@ class OrganizationController extends Controller
      * later request arrived with no tenant at all. The claim is what survives,
      * and it is what JwtGuard reads.
      *
-     * findOrFail on the user's own memberships is the authorization: a caller
-     * cannot name an organization they do not belong to.
+     * The lookup among the user's active memberships is the authorization: a
+     * caller cannot name an organization they do not belong to.
      */
     public function switch(string $id): JsonResponse
     {
         $user = auth()->user();
-        $membership = $user->activeOrganizations()->findOrFail($id)->pivot;
+        $membership = $this->membership->organization($user, $id)->pivot;
 
         // The rest of this request is scoped too, so anything the response
         // builds sees the organization that was just chosen.
-        app(TenantResolver::class)->setContext(new OrganizationContext(
+        $this->tenant->setContext(new OrganizationContext(
             organizationId: $id,
             role: $membership->role,
         ));
