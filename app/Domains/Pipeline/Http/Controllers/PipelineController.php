@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Pipeline\Http\Controllers;
 
-use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Pipeline\Http\Requests\PipelineSubmitRequest;
 use App\Domains\Pipeline\Services\PipelineService;
@@ -25,6 +25,7 @@ class PipelineController extends Controller
     public function __construct(
         private readonly PipelineService $pipelineService,
         private readonly TenantResolver $tenant,
+        private readonly InvoiceFinder $invoices,
     ) {}
 
     /**
@@ -108,9 +109,7 @@ class PipelineController extends Controller
             return ApiResponse::error('Organization context is required.', 401);
         }
 
-        $invoice = Invoice::with('lines')
-            ->where('org_id', $authenticatedOrgId)
-            ->findOrFail($invoiceId);
+        $invoice = $this->invoices->findWithLines($authenticatedOrgId, $invoiceId);
 
         return ApiResponse::success([
             'invoice_id' => $invoice->id,

@@ -5,17 +5,23 @@ declare(strict_types=1);
 namespace App\Domains\Platform\Http\Controllers;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Compliance\Fatoora\Enums\RequeueOutcome;
 use App\Domains\Compliance\Fatoora\Services\CircuitBreaker;
 use App\Domains\Compliance\Fatoora\Services\Connectivity;
-use App\Domains\Compliance\Fatoora\Services\OfflineQueue;
+use App\Domains\Compliance\Fatoora\Services\Requeuer;
+use App\Domains\Platform\DTOs\FilterData;
+use App\Domains\Platform\Services\ChainHealth;
+use App\Domains\Platform\Services\IssueDetector;
+use App\Domains\Platform\Services\OrganizationReport;
 use App\Domains\Platform\Services\PlatformStatus;
+use App\Domains\Platform\Services\QueueReport;
+use App\Domains\Platform\Services\SubmissionLog;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Admin Dashboard Controller.
@@ -30,8 +36,13 @@ class AdminDashboardController extends Controller
     public function __construct(
         private readonly PlatformStatus $status,
         private readonly CircuitBreaker $circuitBreaker,
-        private readonly OfflineQueue $offlineQueueManager,
         private readonly Connectivity $connectivityChecker,
+        private readonly OrganizationReport $organizations,
+        private readonly SubmissionLog $submissionLog,
+        private readonly QueueReport $queue,
+        private readonly ChainHealth $chainHealth,
+        private readonly IssueDetector $issueDetector,
+        private readonly Requeuer $requeuer,
     ) {}
 
     /**
@@ -69,15 +80,11 @@ class AdminDashboardController extends Controller
     {
         $limit = min((int) $request->query('limit', 10), 50);
 
-        $organizations = Cache::remember("admin:top_orgs:{$limit}", 300, function () use ($limit) {
-            return DB::table('invoices')
-                ->join('organizations', 'invoices.org_id', '=', 'organizations.id')
-                ->selectRaw('organizations.id, organizations.name, COUNT(invoices.id) as invoice_count, SUM(invoices.total) as total_amount')
-                ->groupBy('organizations.id', 'organizations.name')
-                ->orderByDesc('invoice_count')
-                ->limit($limit)
-                ->get();
-        });
+        $organizations = Cache::remember(
+            "admin:top_orgs:{$limit}",
+            300,
+            fn () => $this->organizations->topByInvoices($limit)
+        );
 
         return ApiResponse::success([
             'organizations' => $organizations,
@@ -115,53 +122,13 @@ class AdminDashboardController extends Controller
      */
     public function hashChainHealth(): JsonResponse
     {
-        $metrics = Cache::remember('admin:hash_chain_health', 60, function () {
-            // Sample hash chain query performance
-            $samples = [];
-            for ($i = 0; $i < 5; $i++) {
-                $start = microtime(true);
-                DB::table('hash_chain_history')
-                    ->orderByDesc('icv')
-                    ->limit(1)
-                    ->first();
-                $samples[] = (microtime(true) - $start) * 1000;
-            }
-
-            sort($samples);
-            $p95Index = (int) floor(count($samples) * 0.95);
-            $p99Index = (int) floor(count($samples) * 0.99);
-
-            $thresholds = config('fatoora.hash_chain_monitoring');
-
-            return [
-                'samples' => count($samples),
-                'avg_ms' => round(array_sum($samples) / count($samples), 2),
-                'p95_ms' => round($samples[$p95Index] ?? end($samples), 2),
-                'p99_ms' => round($samples[$p99Index] ?? end($samples), 2),
-                'thresholds' => [
-                    'p95_warning' => $thresholds['p95_warning_ms'] ?? 50,
-                    'p99_critical' => $thresholds['p99_critical_ms'] ?? 200,
-                ],
-                'row_count' => DB::table('hash_chain_history')->count(),
-                'oldest_entry' => DB::table('hash_chain_history')
-                    ->orderBy('created_at')
-                    ->value('created_at'),
-            ];
-        });
-
-        $status = 'healthy';
-        if ($metrics['p99_ms'] > ($metrics['thresholds']['p99_critical'] ?? 200)) {
-            $status = 'critical';
-        } elseif ($metrics['p95_ms'] > ($metrics['thresholds']['p95_warning'] ?? 50)) {
-            $status = 'warning';
-        }
+        $metrics = Cache::remember('admin:hash_chain_health', 60, fn () => $this->chainHealth->measure());
+        $status = $this->chainHealth->status($metrics);
 
         return ApiResponse::success([
             'metrics' => $metrics,
             'status' => $status,
-            'recommendation' => $status !== 'healthy'
-                ? 'Consider partitioning hash_chain_history table or adding indexes'
-                : null,
+            'recommendation' => $this->chainHealth->recommendation($status),
             'checked_at' => now()->toIso8601String(),
         ]);
     }
@@ -182,30 +149,9 @@ class AdminDashboardController extends Controller
             default => 24,
         };
 
-        $startTime = now()->subHours($hours);
-
-        $data = DB::table('invoice_submissions')
-            ->where('created_at', '>=', $startTime)
-            ->selectRaw("
-                DATE_FORMAT(created_at, '%Y-%m-%d %H:00:00') as hour,
-                COUNT(*) as total,
-                SUM(CASE WHEN state = 'rejected' THEN 1 ELSE 0 END) as rejected,
-                SUM(CASE WHEN state IN ('cleared', 'reported') THEN 1 ELSE 0 END) as successful
-            ")
-            ->groupBy('hour')
-            ->orderBy('hour')
-            ->get()
-            ->map(fn ($row) => [
-                'hour' => $row->hour,
-                'total' => $row->total,
-                'rejected' => $row->rejected,
-                'successful' => $row->successful,
-                'error_rate' => $row->total > 0 ? round(($row->rejected / $row->total) * 100, 2) : 0,
-            ]);
-
         return ApiResponse::success([
             'period' => $period,
-            'data' => $data,
+            'data' => $this->submissionLog->errorRates($hours),
         ]);
     }
 
@@ -248,43 +194,7 @@ class AdminDashboardController extends Controller
      */
     public function offlineQueue(): JsonResponse
     {
-        $data = Cache::remember('admin:offline_queue', 30, function () {
-            $stats = DB::table('offline_queue')
-                ->selectRaw('
-                    state,
-                    COUNT(*) as count,
-                    COUNT(DISTINCT org_id) as organizations
-                ')
-                ->groupBy('state')
-                ->get()
-                ->keyBy('state');
-
-            $oldestPending = DB::table('offline_queue')
-                ->where('state', 'pending')
-                ->orderBy('queued_at')
-                ->value('queued_at');
-
-            $recentFailures = DB::table('offline_queue')
-                ->where('state', 'failed')
-                ->orderByDesc('updated_at')
-                ->limit(10)
-                ->get(['id', 'invoice_id', 'org_id', 'last_error', 'attempts', 'updated_at']);
-
-            return [
-                'summary' => [
-                    'pending' => $stats->get('pending')?->count ?? 0,
-                    'processing' => $stats->get('processing')?->count ?? 0,
-                    'completed' => $stats->get('completed')?->count ?? 0,
-                    'failed' => $stats->get('failed')?->count ?? 0,
-                ],
-                'organizations_affected' => [
-                    'pending' => $stats->get('pending')?->organizations ?? 0,
-                    'failed' => $stats->get('failed')?->organizations ?? 0,
-                ],
-                'oldest_pending_at' => $oldestPending,
-                'recent_failures' => $recentFailures,
-            ];
-        });
+        $data = Cache::remember('admin:offline_queue', 30, fn () => $this->queue->summary());
 
         return ApiResponse::success($data);
     }
@@ -296,18 +206,9 @@ class AdminDashboardController extends Controller
      */
     public function offlineQueueByOrg(string $organizationId): JsonResponse
     {
-        $status = $this->offlineQueueManager->getStatus($organizationId);
-
-        $items = DB::table('offline_queue')
-            ->where('org_id', $organizationId)
-            ->whereIn('state', ['pending', 'processing', 'failed'])
-            ->orderByDesc('queued_at')
-            ->limit(50)
-            ->get();
-
         return ApiResponse::success([
-            'status' => $status,
-            'items' => $items,
+            'status' => $this->queue->statusOf($organizationId),
+            'items' => $this->queue->openItems($organizationId, 50),
         ]);
     }
 
@@ -348,31 +249,14 @@ class AdminDashboardController extends Controller
      */
     public function retryQueueItem(string $queueId): JsonResponse
     {
-        $item = $this->offlineQueueManager->getItem($queueId);
-
-        if (! $item) {
-            return ApiResponse::error('Queue item not found', 404);
-        }
-
-        if ($item->state !== 'failed') {
-            return ApiResponse::error('Only failed items can be retried', 400);
-        }
-
-        // Reset to pending
-        DB::table('offline_queue')
-            ->where('id', $queueId)
-            ->update([
-                'state' => 'pending',
-                'attempts' => 0,
-                'next_attempt_at' => now(),
-                'last_error' => null,
-                'updated_at' => now(),
-            ]);
-
-        return ApiResponse::success([
-            'queue_id' => $queueId,
-            'new_state' => 'pending',
-        ], 'Queue item reset for retry');
+        return match ($this->requeuer->requeue($queueId)) {
+            RequeueOutcome::NotFound => ApiResponse::error('Queue item not found', 404),
+            RequeueOutcome::NotFailed => ApiResponse::error('Only failed items can be retried', 400),
+            RequeueOutcome::Requeued => ApiResponse::success([
+                'queue_id' => $queueId,
+                'new_state' => 'pending',
+            ], 'Queue item reset for retry'),
+        };
     }
 
     /**
@@ -382,81 +266,7 @@ class AdminDashboardController extends Controller
      */
     public function issues(): JsonResponse
     {
-        $data = Cache::remember('admin:issues', 60, function () {
-            $issues = [];
-
-            // Check connectivity
-            $connectivity = $this->connectivityChecker->check();
-            if (! $connectivity['available']) {
-                $issues[] = [
-                    'type' => 'connectivity',
-                    'severity' => 'critical',
-                    'message' => 'ZATCA API is unavailable',
-                    'details' => $connectivity['reason'],
-                ];
-            }
-
-            // Check circuit breaker
-            $cbState = $this->circuitBreaker->getState('zatca_api');
-            if ($cbState === 'open') {
-                $issues[] = [
-                    'type' => 'circuit_breaker',
-                    'severity' => 'critical',
-                    'message' => 'Circuit breaker is open due to repeated failures',
-                ];
-            }
-
-            // Check offline queue backlog
-            $pendingCount = DB::table('offline_queue')
-                ->where('state', 'pending')
-                ->count();
-            if ($pendingCount > 100) {
-                $issues[] = [
-                    'type' => 'offline_queue',
-                    'severity' => $pendingCount > 500 ? 'critical' : 'warning',
-                    'message' => "Offline queue has {$pendingCount} pending items",
-                ];
-            }
-
-            // Check failed items
-            $failedCount = DB::table('offline_queue')
-                ->where('state', 'failed')
-                ->count();
-            if ($failedCount > 0) {
-                $issues[] = [
-                    'type' => 'failed_submissions',
-                    'severity' => $failedCount > 50 ? 'critical' : 'warning',
-                    'message' => "{$failedCount} failed items in offline queue",
-                ];
-            }
-
-            // Check expiring certificates
-            $expiringCerts = $this->status->organizationsWithCertificate()
-                ->filter(fn (array $details) => in_array($details['status'], ['critical', 'expired'], true))
-                ->count();
-            if ($expiringCerts > 0) {
-                $issues[] = [
-                    'type' => 'certificate_expiry',
-                    'severity' => 'critical',
-                    'message' => "{$expiringCerts} certificate(s) expiring within 7 days",
-                ];
-            }
-
-            // Check recent rejections
-            $recentRejections = DB::table('invoice_submissions')
-                ->where('state', 'rejected')
-                ->where('created_at', '>=', now()->subHours(24))
-                ->count();
-            if ($recentRejections > 10) {
-                $issues[] = [
-                    'type' => 'rejections',
-                    'severity' => 'warning',
-                    'message' => "{$recentRejections} rejections in the last 24 hours",
-                ];
-            }
-
-            return $issues;
-        });
+        $data = Cache::remember('admin:issues', 60, fn () => $this->issueDetector->detect());
 
         return ApiResponse::success([
             'issues' => $data,
@@ -477,32 +287,7 @@ class AdminDashboardController extends Controller
         $state = $request->query('state');
         $organizationId = $request->query('org_id');
 
-        $query = DB::table('invoice_submissions')
-            ->orderByDesc('created_at')
-            ->limit($limit);
-
-        if ($state) {
-            $query->where('state', $state);
-        }
-
-        if ($organizationId) {
-            $query->where('org_id', $organizationId);
-        }
-
-        $logs = $query->get([
-            'id',
-            'invoice_id',
-            'org_id',
-            'state',
-            'submission_type',
-            'clearance_status',
-            'reporting_status',
-            'last_error_code',
-            'last_error',
-            'retry_count',
-            'created_at',
-            'completed_at',
-        ]);
+        $logs = $this->submissionLog->latest(FilterData::fromQuery($state, $organizationId), $limit);
 
         return ApiResponse::success([
             'logs' => $logs,

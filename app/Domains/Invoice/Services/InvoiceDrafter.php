@@ -6,14 +6,19 @@ namespace App\Domains\Invoice\Services;
 
 use App\Domains\Audit\Services\AuditService;
 use App\Domains\Invoice\Enums\InvoiceStatus;
+use App\Domains\Invoice\Exceptions\InvoiceNotEditableException;
 use App\Domains\Invoice\Models\Invoice;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Turns a validated payload into a draft invoice with priced lines.
+ * Creates, revises and discards draft invoices.
  *
  * The API and the ERP pipeline both create invoices through this, so there is
  * one set of totals for ZATCA to reconcile. The arithmetic is InvoiceTotals'.
+ *
+ * Every change to a draft is written together with its audit entry: an edit
+ * with no record of it, or a record of an edit that did not happen, is what an
+ * auditor cannot accept.
  */
 class InvoiceDrafter
 {
@@ -88,5 +93,60 @@ class InvoiceDrafter
 
             return $invoice;
         });
+    }
+
+    /**
+     * Change a draft's header fields and record the change.
+     *
+     * @param  array<string, mixed>  $changes  Header columns to set
+     *
+     * @throws InvoiceNotEditableException when the invoice is no longer a draft
+     */
+    public function revise(Invoice $invoice, array $changes): Invoice
+    {
+        return DB::transaction(function () use ($invoice, $changes): Invoice {
+            $draft = $this->lockDraft($invoice);
+            $oldValues = $draft->toArray();
+
+            $draft->update($changes);
+            $this->audit->logUpdated($draft, $oldValues);
+
+            return $draft;
+        });
+    }
+
+    /**
+     * Delete a draft and record its deletion.
+     *
+     * @throws InvoiceNotEditableException when the invoice is no longer a draft
+     */
+    public function discard(Invoice $invoice): void
+    {
+        DB::transaction(function () use ($invoice): void {
+            $draft = $this->lockDraft($invoice);
+
+            $this->audit->logDeleted($draft);
+            $draft->delete();
+        });
+    }
+
+    /**
+     * Re-read the invoice under lock and confirm it is still a draft.
+     *
+     * Issuance could otherwise land between the check and the write, and the
+     * edit would change a document that had already been signed.
+     */
+    private function lockDraft(Invoice $invoice): Invoice
+    {
+        $locked = Invoice::query()
+            ->whereKey($invoice->getKey())
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        if (! $locked->isEditable()) {
+            throw InvoiceNotEditableException::for($locked);
+        }
+
+        return $locked;
     }
 }

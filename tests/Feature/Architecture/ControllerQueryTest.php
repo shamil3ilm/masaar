@@ -30,19 +30,9 @@ class ControllerQueryTest extends TestCase
      * Controllers that still query persistence directly.
      */
     private const DECLARED = [
-        'Domains/Auth/Http/Controllers/AuthController.php',
-        'Domains/Compliance/FTA/Http/Controllers/FtaController.php',
-        'Domains/Compliance/Fatoora/Http/Controllers/ComplianceController.php',
-        'Domains/Invoice/Http/Controllers/InvoiceController.php',
+        // One findOrFail by id, handed straight to the metering service: the
+        // route-model lookup the pattern matches, not a query to move.
         'Domains/Licensing/Http/Controllers/LicenseController.php',
-        'Domains/Organization/Http/Controllers/CustomerPortalController.php',
-        'Domains/Organization/Http/Controllers/OrganizationController.php',
-        'Domains/Pipeline/Http/Controllers/PipelineController.php',
-        'Domains/Platform/Http/Controllers/AdminController.php',
-        'Domains/Platform/Http/Controllers/AdminDashboardController.php',
-        'Domains/Platform/Http/Controllers/DashboardController.php',
-        'Domains/Platform/Http/Controllers/MetricsController.php',
-        'Domains/Webhook/Http/Controllers/WebhookController.php',
     ];
 
     public function test_controllers_do_not_query_directly(): void

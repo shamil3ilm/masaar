@@ -58,7 +58,7 @@ class MetricsAccessTest extends TestCase
     | Admit paths
     |--------------------------------------------------------------------------
     |
-    | Exercised against the middleware rather than the route: MetricsController
+    | Exercised against the middleware rather than the route: MetricsCollector
     | reads queue depth through the Redis facade, so a full request needs the
     | phpredis extension present. Coupling an access-control test to that would
     | make it fail for reasons that have nothing to do with access control.
