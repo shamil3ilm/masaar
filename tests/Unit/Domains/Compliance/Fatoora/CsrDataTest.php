@@ -22,7 +22,7 @@ class CsrDataTest extends TestCase
         $csr = $this->make();
 
         $this->assertSame('Acme Trading Co', $csr->organizationName);
-        $this->assertSame('VATSA-300000000000003', $csr->getOrganizationIdentifier());
+        $this->assertSame('300000000000003', $csr->vatNumber);
     }
 
     #[DataProvider('injectionProvider')]

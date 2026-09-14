@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Fatoora\Services;
 
 use App\Domains\Compliance\Fatoora\DTOs\CsrData;
 use App\Domains\Compliance\Fatoora\Support\Der;
+use phpseclib3\Crypt\EC;
 use RuntimeException;
 
 /**
@@ -46,6 +47,35 @@ class CsrBuilder
     private const OID_EXTENSION_REQUEST = '1.2.840.113549.1.9.14';
 
     private const OID_ECDSA_SHA256 = '1.2.840.10045.4.3.2';
+
+    /**
+     * The template for an environment as config('fatoora.environment') names
+     * it. An unknown name is the sandbox, as FatooraConfig::getBaseUrl()
+     * treats it, so the request matches the endpoint it is sent to.
+     */
+    public static function templateFor(string $environment): string
+    {
+        return match ($environment) {
+            'production' => self::TEMPLATE_PRODUCTION,
+            'simulation' => self::TEMPLATE_SIMULATION,
+            default => self::TEMPLATE_SANDBOX,
+        };
+    }
+
+    /**
+     * A new secp256k1 key and a request signed with it.
+     *
+     * @return array{csr: string, privateKey: string} both PEM encoded
+     */
+    public function generate(CsrData $data, string $template): array
+    {
+        $privateKey = EC::createKey('secp256k1')->toString('PKCS8');
+
+        return [
+            'csr' => $this->build($data, $privateKey, $template),
+            'privateKey' => $privateKey,
+        ];
+    }
 
     /**
      * @param  string  $privateKeyPem  an EC key on secp256k1

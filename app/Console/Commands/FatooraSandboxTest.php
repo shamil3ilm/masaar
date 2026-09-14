@@ -11,7 +11,6 @@ use App\Domains\Compliance\Fatoora\DTOs\CsrData;
 use App\Domains\Compliance\Fatoora\Services\CsrBuilder;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
-use phpseclib3\Crypt\EC;
 
 /**
  * ZATCA Integration Sandbox Testing Command
@@ -160,8 +159,7 @@ class FatooraSandboxTest extends Command
             invoiceTypesSimplified: true,
         );
 
-        $privateKeyPem = EC::createKey('secp256k1')->toString('PKCS8');
-        $csrPem = app(CsrBuilder::class)->build($data, $privateKeyPem, CsrBuilder::TEMPLATE_SANDBOX);
+        ['csr' => $csrPem, 'privateKey' => $privateKeyPem] = app(CsrBuilder::class)->generate($data, CsrBuilder::TEMPLATE_SANDBOX);
 
         $dir = storage_path('app/zatca');
 
