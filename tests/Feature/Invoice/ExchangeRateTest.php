@@ -7,8 +7,8 @@ namespace Tests\Feature\Invoice;
 use App\Domains\Compliance\Fatoora\Services\InvoiceValidator;
 use App\Domains\Invoice\Http\Requests\CreateInvoiceRequest;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Organization\Models\Organization;
-use App\Domains\Pipeline\Services\InvoiceDrafter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
