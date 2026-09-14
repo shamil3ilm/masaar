@@ -10,6 +10,7 @@ use App\Support\Xml;
 use DOMDocument;
 use DOMElement;
 use DOMXPath;
+use phpseclib3\Math\BigInteger;
 
 /**
  * XAdES-BES/XAdES-T digital signature service.
@@ -436,7 +437,14 @@ class XadesSigner
         $issuerName = $dom->createElementNS(self::DS_NS, 'ds:X509IssuerName', $this->formatIssuerName($certInfo['issuer'] ?? []));
         $issuerSerial->appendChild($issuerName);
 
-        $serialNumber = $dom->createElementNS(self::DS_NS, 'ds:X509SerialNumber', $certInfo['serialNumber'] ?? '');
+        // The schema types X509SerialNumber as an integer, but OpenSSL prints a
+        // serial of 32 bits or more as 0x-prefixed hex, and every ZATCA-issued
+        // certificate's serial is that long. The hex form is always present,
+        // so the decimal is built from it.
+        $serial = isset($certInfo['serialNumberHex'])
+            ? (new BigInteger($certInfo['serialNumberHex'], 16))->toString()
+            : '';
+        $serialNumber = $dom->createElementNS(self::DS_NS, 'ds:X509SerialNumber', $serial);
         $issuerSerial->appendChild($serialNumber);
 
         $cert->appendChild($issuerSerial);
