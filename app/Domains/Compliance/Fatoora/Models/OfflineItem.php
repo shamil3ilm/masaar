@@ -91,4 +91,32 @@ class OfflineItem extends Model
             ->where(fn (Builder $q) => $q->whereNull('next_attempt_at')
                 ->orWhere('next_attempt_at', '<=', now()));
     }
+
+    /**
+     * Whether the item gave up after its last attempt.
+     */
+    public function isFailed(): bool
+    {
+        return $this->state === self::FAILED;
+    }
+
+    /**
+     * Send a failed item round again: pending, due now, attempts reset.
+     *
+     * Only a failed item may go back. A completed one carries an invoice the
+     * authority has already accepted, and resending it would file it twice.
+     */
+    public function requeue(): void
+    {
+        if (! $this->isFailed()) {
+            throw new \LogicException("Offline item {$this->id} is {$this->state}; only a failed item can be requeued.");
+        }
+
+        $this->update([
+            'state' => self::PENDING,
+            'attempts' => 0,
+            'next_attempt_at' => now(),
+            'last_error' => null,
+        ]);
+    }
 }

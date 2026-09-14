@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\FTA\Http\Controllers;
 
-use App\Domains\Compliance\FTA\Models\FtaSubmission;
 use App\Domains\Compliance\FTA\Services\FtaService;
-use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Compliance\FTA\Services\SubmissionFinder;
+use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
@@ -25,11 +25,13 @@ class FtaController extends Controller
     public function __construct(
         private readonly TenantResolver $tenant,
         private readonly FtaService $ftaService,
+        private readonly SubmissionFinder $submissions,
+        private readonly InvoiceFinder $invoices,
     ) {}
 
     public function submit(string $invoiceId): JsonResponse
     {
-        $invoice = $this->getInvoice($invoiceId);
+        $invoice = $this->invoices->find($this->tenant->getOrganizationId(), $invoiceId);
         $organization = $this->tenant->getOrganization();
 
         $submission = $this->ftaService->submit($invoice, $organization);
@@ -43,7 +45,7 @@ class FtaController extends Controller
 
     public function status(string $submissionId): JsonResponse
     {
-        $submission = FtaSubmission::findOrFail($submissionId);
+        $submission = $this->submissions->find($submissionId);
         $updated = $this->ftaService->checkStatus($submission);
 
         return ApiResponse::success([
@@ -60,7 +62,7 @@ class FtaController extends Controller
 
     public function retry(string $submissionId): JsonResponse
     {
-        $submission = FtaSubmission::findOrFail($submissionId);
+        $submission = $this->submissions->find($submissionId);
         $updated = $this->ftaService->retry($submission);
 
         return ApiResponse::success([
@@ -74,18 +76,6 @@ class FtaController extends Controller
     {
         $organization = $this->tenant->getOrganization();
 
-        $submissions = FtaSubmission::where('org_id', $organization->id)
-            ->with('invoice:id,invoice_number')
-            ->latest()
-            ->paginate(25);
-
-        return ApiResponse::success($submissions);
-    }
-
-    // ----------------------------------------------------------------
-
-    private function getInvoice(string $id): Invoice
-    {
-        return Invoice::findOrFail($id);
+        return ApiResponse::success($this->submissions->paginate($organization->id, 25));
     }
 }

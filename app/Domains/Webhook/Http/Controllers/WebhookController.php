@@ -4,12 +4,12 @@ namespace App\Domains\Webhook\Http\Controllers;
 
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Webhook\Models\Webhook;
+use App\Domains\Webhook\Services\Subscriptions;
 use App\Domains\Webhook\Services\WebhookService;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 /**
  * Webhook management API controller.
@@ -22,6 +22,7 @@ class WebhookController extends Controller
     public function __construct(
         private readonly TenantResolver $tenant,
         private readonly WebhookService $webhookService,
+        private readonly Subscriptions $subscriptions,
     ) {}
 
     /**
@@ -31,9 +32,7 @@ class WebhookController extends Controller
      */
     public function index(): JsonResponse
     {
-        $webhooks = Webhook::where('org_id', $this->tenant->getOrganizationId())
-            ->orderBy('created_at', 'desc')
-            ->get()
+        $webhooks = $this->subscriptions->list($this->tenant->getOrganizationId())
             ->map(fn (Webhook $w) => [
                 'id' => $w->id,
                 'url' => $w->url,
@@ -60,7 +59,7 @@ class WebhookController extends Controller
             'events.*' => ['string', 'in:'.implode(',', WebhookService::EVENTS).',*'],
         ]);
 
-        $webhook = $this->webhookService->create(
+        $webhook = $this->subscriptions->create(
             $this->tenant->getOrganizationId(),
             $request->url,
             $request->events
@@ -116,12 +115,7 @@ class WebhookController extends Controller
             'is_active' => ['sometimes', 'boolean'],
         ]);
 
-        $webhook->update($request->only(['url', 'events', 'is_active']));
-
-        // Reset failure count when re-enabling
-        if ($request->is_active === true) {
-            $webhook->update(['failure_count' => 0]);
-        }
+        $webhook = $this->subscriptions->update($webhook, $request->only(['url', 'events', 'is_active']));
 
         return ApiResponse::success([
             'webhook' => [
@@ -140,8 +134,7 @@ class WebhookController extends Controller
      */
     public function destroy(string $id): JsonResponse
     {
-        $webhook = $this->getWebhook($id);
-        $webhook->delete();
+        $this->subscriptions->delete($this->getWebhook($id));
 
         return ApiResponse::success(null, 'Webhook deleted');
     }
@@ -185,9 +178,7 @@ class WebhookController extends Controller
     {
         $webhook = $this->getWebhook($id);
 
-        $logs = $webhook->logs()
-            ->orderBy('created_at', 'desc')
-            ->paginate($request->get('per_page', 20));
+        $logs = $this->subscriptions->deliveries($webhook, (int) $request->get('per_page', 20));
 
         return ApiResponse::paginated($logs);
     }
@@ -199,10 +190,7 @@ class WebhookController extends Controller
      */
     public function rotateSecret(string $id): JsonResponse
     {
-        $webhook = $this->getWebhook($id);
-
-        $newSecret = Str::random(64);
-        $webhook->update(['secret' => $newSecret]);
+        $newSecret = $this->subscriptions->rotateSecret($this->getWebhook($id));
 
         return ApiResponse::success([
             'secret' => $newSecret,
@@ -215,7 +203,6 @@ class WebhookController extends Controller
      */
     private function getWebhook(string $id): Webhook
     {
-        return Webhook::where('org_id', $this->tenant->getOrganizationId())
-            ->findOrFail($id);
+        return $this->subscriptions->find($this->tenant->getOrganizationId(), $id);
     }
 }

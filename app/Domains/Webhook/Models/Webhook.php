@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 /**
  * Webhook subscription model.
@@ -64,6 +65,40 @@ class Webhook extends Model
     public function isSubscribedTo(string $event): bool
     {
         return in_array($event, $this->events ?? [], true) || in_array('*', $this->events ?? [], true);
+    }
+
+    /**
+     * Apply subscription changes.
+     *
+     * Switching the endpoint back on clears its failure count, or the next
+     * failed delivery would disable it again at once. Only a literal true
+     * counts as switching it on.
+     *
+     * @param  array{url?: string, events?: list<string>, is_active?: mixed}  $changes
+     */
+    public function revise(array $changes): void
+    {
+        $reactivated = ($changes['is_active'] ?? null) === true;
+
+        $this->update([
+            ...$changes,
+            ...($reactivated ? ['failure_count' => 0] : []),
+        ]);
+    }
+
+    /**
+     * Replace the signing secret and return the new one.
+     *
+     * Receivers verify deliveries with it, so the value is returned once and
+     * never read back.
+     */
+    public function rotateSecret(): string
+    {
+        $secret = Str::random(64);
+
+        $this->update(['secret' => $secret]);
+
+        return $secret;
     }
 
     /**

@@ -2,10 +2,10 @@
 
 namespace App\Domains\Invoice\Http\Controllers;
 
-use App\Domains\Audit\Services\AuditService;
+use App\Domains\Invoice\Exceptions\InvoiceNotEditableException;
 use App\Domains\Invoice\Http\Requests\CreateInvoiceRequest;
-use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\InvoiceDrafter;
+use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
@@ -17,10 +17,23 @@ use Illuminate\Http\Request;
  */
 class InvoiceController extends Controller
 {
+    /**
+     * Header fields a draft may change through the API.
+     */
+    private const REVISABLE = [
+        'invoice_number',
+        'issue_date',
+        'supply_date',
+        'buyer_name',
+        'buyer_vat_number',
+        'buyer_address',
+        'notes',
+    ];
+
     public function __construct(
         private readonly TenantResolver $tenant,
-        private readonly AuditService $audit,
         private readonly InvoiceDrafter $drafter,
+        private readonly InvoiceFinder $invoices,
     ) {}
 
     /**
@@ -30,14 +43,11 @@ class InvoiceController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Invoice::where('org_id', $this->tenant->getOrganizationId());
-
-        if ($request->has('status')) {
-            $query->where('status', $request->status);
-        }
-
-        $invoices = $query->orderBy('created_at', 'desc')
-            ->paginate($request->get('per_page', 15));
+        $invoices = $this->invoices->paginate(
+            $this->tenant->getOrganizationId(),
+            $this->statusFilter($request),
+            (int) $request->get('per_page', 15)
+        );
 
         return ApiResponse::paginated($invoices);
     }
@@ -63,9 +73,7 @@ class InvoiceController extends Controller
      */
     public function show(string $id): JsonResponse
     {
-        $invoice = Invoice::where('org_id', $this->tenant->getOrganizationId())
-            ->with('lines')
-            ->findOrFail($id);
+        $invoice = $this->invoices->findWithLines($this->tenant->getOrganizationId(), $id);
 
         return ApiResponse::success(['invoice' => $invoice]);
     }
@@ -77,26 +85,13 @@ class InvoiceController extends Controller
      */
     public function update(CreateInvoiceRequest $request, string $id): JsonResponse
     {
-        $invoice = Invoice::where('org_id', $this->tenant->getOrganizationId())
-            ->findOrFail($id);
+        $invoice = $this->invoices->find($this->tenant->getOrganizationId(), $id);
 
-        if (! $invoice->isEditable()) {
+        try {
+            $invoice = $this->drafter->revise($invoice, $request->only(self::REVISABLE));
+        } catch (InvoiceNotEditableException) {
             return ApiResponse::error('Invoice cannot be edited after issuance', 422);
         }
-
-        $oldValues = $invoice->toArray();
-
-        $invoice->update($request->only([
-            'invoice_number',
-            'issue_date',
-            'supply_date',
-            'buyer_name',
-            'buyer_vat_number',
-            'buyer_address',
-            'notes',
-        ]));
-
-        $this->audit->logUpdated($invoice, $oldValues);
 
         return ApiResponse::success([
             'invoice' => $invoice->fresh('lines'),
@@ -110,16 +105,31 @@ class InvoiceController extends Controller
      */
     public function destroy(string $id): JsonResponse
     {
-        $invoice = Invoice::where('org_id', $this->tenant->getOrganizationId())
-            ->findOrFail($id);
+        $invoice = $this->invoices->find($this->tenant->getOrganizationId(), $id);
 
-        if (! $invoice->isEditable()) {
+        try {
+            $this->drafter->discard($invoice);
+        } catch (InvoiceNotEditableException) {
             return ApiResponse::error('Cannot delete issued invoice', 422);
         }
 
-        $this->audit->logDeleted($invoice);
-        $invoice->delete();
-
         return ApiResponse::success(null, 'Invoice deleted');
+    }
+
+    /**
+     * The status to list, or null for every status.
+     *
+     * A status parameter that is present filters even when blank, which then
+     * matches nothing; one that is not a string is treated as blank.
+     */
+    private function statusFilter(Request $request): ?string
+    {
+        if (! $request->has('status')) {
+            return null;
+        }
+
+        $status = $request->input('status');
+
+        return is_string($status) ? $status : '';
     }
 }
