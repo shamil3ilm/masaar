@@ -50,22 +50,4 @@ class InvoiceLine extends Model
     {
         return $this->belongsTo(Invoice::class);
     }
-
-    /**
-     * Calculate line total (quantity × unit_price).
-     */
-    public function calculateSubtotal(): string
-    {
-        return bcmul($this->quantity, $this->unit_price, 2);
-    }
-
-    /**
-     * Calculate tax amount based on tax rate.
-     */
-    public function calculateTax(): string
-    {
-        $subtotal = $this->calculateSubtotal();
-
-        return bcmul($subtotal, bcdiv($this->tax_rate, '100', 4), 2);
-    }
 }

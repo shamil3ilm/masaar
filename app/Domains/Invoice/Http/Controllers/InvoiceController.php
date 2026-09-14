@@ -3,16 +3,14 @@
 namespace App\Domains\Invoice\Http\Controllers;
 
 use App\Domains\Audit\Services\AuditService;
-use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
-use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Http\Requests\CreateInvoiceRequest;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Invoice API controller.
@@ -22,6 +20,7 @@ class InvoiceController extends Controller
     public function __construct(
         private readonly TenantResolver $tenant,
         private readonly AuditService $audit,
+        private readonly InvoiceDrafter $drafter,
     ) {}
 
     /**
@@ -50,97 +49,7 @@ class InvoiceController extends Controller
      */
     public function store(CreateInvoiceRequest $request): JsonResponse
     {
-        $invoice = DB::transaction(function () use ($request) {
-            $invoice = Invoice::create([
-                'org_id' => $this->tenant->getOrganizationId(),
-                'invoice_number' => $request->invoice_number,
-                'type' => $request->type,
-                'document_type' => $request->document_type,
-                'status' => InvoiceStatus::Draft,
-                'issue_date' => $request->issue_date,
-                'supply_date' => $request->supply_date,
-                'currency' => $request->currency ?? 'SAR',
-                'exchange_rate' => $request->exchange_rate,
-                'payment_means_code' => $request->payment_means_code ?? '10',
-                'buyer_name' => $request->buyer_name,
-                'buyer_vat_number' => $request->buyer_vat_number,
-                'buyer_address' => $request->buyer_address,
-                'billing_ref' => $request->billing_ref,
-                'adjustment_reason' => $request->adjustment_reason,
-                'notes' => $request->notes,
-            ]);
-
-            // Create invoice lines and calculate totals using bcmath to avoid
-            // floating-point precision errors on monetary values (P1 fix).
-            $subtotal = '0';
-            $taxTotal = '0';
-            $netsByCategory = [];
-            $ratesByCategory = [];
-            $discountAmount = (string) ($request->discount_amount ?? '0');
-
-            foreach ($request->lines as $line) {
-                $quantity = (string) $line['quantity'];
-                $unitPrice = (string) $line['unit_price'];
-                $taxRate = (string) ($line['tax_rate'] ?? 15);
-
-                $lineSubtotal = bcmul($quantity, $unitPrice, 2);
-                $lineTax = bcdiv(bcmul($lineSubtotal, $taxRate, 4), '100', 2);
-                $lineTotal = bcadd($lineSubtotal, $lineTax, 2);
-
-                $invoice->lines()->create([
-                    'description' => $line['description'],
-                    'class_code' => $line['class_code'] ?? null,
-                    'quantity' => $quantity,
-                    'unit_code' => $line['unit_code'] ?? 'PCE',
-                    'unit_price' => $unitPrice,
-                    'tax_rate' => $taxRate,
-                    'tax_amount' => $lineTax,
-                    'tax_category' => $line['tax_category'] ?? 'S',
-                    'exempt_code' => $line['exempt_code'] ?? null,
-                    'exempt_reason' => $line['exempt_reason'] ?? null,
-                    'line_total' => $lineTotal,
-                ]);
-
-                $subtotal = bcadd($subtotal, $lineSubtotal, 2);
-
-                // Grouped by category and rate, because the tax a document
-                // declares is its category base times that category's rate —
-                // not the sum of per-line roundings, which drifts a cent at a
-                // time and then disagrees with the base beside it.
-                $key = ($line['tax_category'] ?? 'S').'_'.$taxRate;
-                $netsByCategory[$key] = ($netsByCategory[$key] ?? 0.0) + (float) $lineSubtotal;
-                $ratesByCategory[$key] = (float) $taxRate;
-            }
-
-            // A discount on the whole invoice reduces what is taxable, shared
-            // across categories in proportion to what each contributed. Taxing
-            // the amount before the discount overstates what is owed.
-            $shares = FatooraConfig::apportionAllowance($netsByCategory, (float) $discountAmount);
-
-            $taxTotal = '0';
-
-            foreach ($netsByCategory as $key => $net) {
-                $base = round($net - ($shares[$key] ?? 0.0), 2);
-                $taxTotal = bcadd(
-                    $taxTotal,
-                    number_format(round($base * $ratesByCategory[$key] / 100, 2), 2, '.', ''),
-                    2
-                );
-            }
-
-            $total = bcadd(bcsub($subtotal, $discountAmount, 2), $taxTotal, 2);
-
-            $invoice->update([
-                'subtotal' => $subtotal,
-                'discount_amount' => $discountAmount,
-                'tax_amount' => $taxTotal,
-                'total' => $total,
-            ]);
-
-            $this->audit->logCreated($invoice);
-
-            return $invoice;
-        });
+        $invoice = $this->drafter->draft($request->validated(), $this->tenant->getOrganizationId());
 
         return ApiResponse::created([
             'invoice' => $invoice->load('lines'),

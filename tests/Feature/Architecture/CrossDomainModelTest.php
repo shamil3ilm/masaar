@@ -66,7 +66,6 @@ class CrossDomainModelTest extends TestCase
         'Domains/Organization/Models/ComplianceProfile.php' => 'Invoice',
         'Domains/Organization/Models/Organization.php' => 'Invoice',
         'Domains/Pipeline/Http/Controllers/PipelineController.php' => 'Invoice',
-        'Domains/Pipeline/Services/InvoiceDrafter.php' => 'Invoice',
         'Domains/Pipeline/Services/PipelineNotifier.php' => 'Invoice',
         'Domains/Pipeline/Services/PipelineResult.php' => 'Invoice',
         'Domains/Pipeline/Services/PipelineService.php' => 'Invoice, Organization',

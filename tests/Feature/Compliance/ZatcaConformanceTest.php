@@ -7,6 +7,7 @@ namespace Tests\Feature\Compliance;
 use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use App\Domains\Compliance\Fatoora\Services\Submitter;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -278,6 +279,62 @@ class ZatcaConformanceTest extends TestCase
         );
 
         $this->assertSame([], $result['warnings'], 'an advisory fired on a mixed-category invoice.');
+    }
+
+    /**
+     * An invoice priced by the pipeline rather than written out by hand.
+     *
+     * The other cases here state their own totals, so they prove the XML is
+     * right for totals that are right. This one lets InvoiceDrafter compute
+     * them, with a discount across two categories and lines whose VAT rounds.
+     */
+    public function test_drafted_discounted_invoice_validates(): void
+    {
+        $invoice = app(InvoiceDrafter::class)->draft([
+            'invoice_number' => 'DRAFTED-1',
+            'type' => 'standard',
+            'document_type' => 'invoice',
+            'issue_date' => now()->toDateString(),
+            'supply_date' => now()->toDateString(),
+            'buyer_name' => 'Beta Industries',
+            'buyer_vat_number' => '399999999800003',
+            'buyer_address' => [
+                'street' => 'Olaya Street',
+                'building_number' => '4321',
+                'district' => 'Al Murooj',
+                'city' => 'Riyadh',
+                'postal_code' => '11564',
+                'country_code' => 'SA',
+            ],
+            'discount_amount' => '10.00',
+            'lines' => [
+                ['description' => 'Widget', 'quantity' => 3, 'unit_price' => '19.99'],
+                ['description' => 'Bolt', 'quantity' => 7, 'unit_price' => '4.33'],
+                [
+                    'description' => 'Exported goods',
+                    'quantity' => 1,
+                    'unit_price' => '50.00',
+                    'tax_rate' => 0,
+                    'tax_category' => 'Z',
+                    'exempt_code' => 'VATEX-SA-34-3',
+                    'exempt_reason' => 'Exported goods',
+                ],
+            ],
+        ], $this->organization->id);
+
+        $result = app(Submitter::class)->generate($invoice->fresh(['lines']), $this->organization);
+
+        $this->assertNotEmpty($result['signed_xml'], 'the invoice was not signed');
+
+        $result = $this->validate($result['signed_xml']);
+
+        $this->assertSame(
+            [],
+            $this->businessRules($result['errors']),
+            'ZATCA rejected totals computed by the pipeline.'
+        );
+
+        $this->assertSame([], $result['warnings'], 'an advisory fired on a drafted invoice.');
     }
 
     #[DataProvider('taxCategories')]
