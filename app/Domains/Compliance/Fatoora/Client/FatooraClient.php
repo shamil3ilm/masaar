@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Client;
 
+use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\DTOs\CsidResponse;
 use App\Domains\Compliance\Fatoora\DTOs\FatooraResponse;
 use App\Domains\Compliance\Fatoora\Services\InvoiceHasher;
@@ -70,8 +71,7 @@ class FatooraClient
     public function __construct(?InvoiceHasher $hasher = null)
     {
         $this->hasher = $hasher ?? new InvoiceHasher;
-        $environment = config('fatoora.environment', 'sandbox');
-        $this->baseUrl = config("fatoora.endpoints.{$environment}");
+        $this->baseUrl = FatooraConfig::getBaseUrl();
         $this->username = config('fatoora.credentials.username');
         $this->password = config('fatoora.credentials.password');
     }
