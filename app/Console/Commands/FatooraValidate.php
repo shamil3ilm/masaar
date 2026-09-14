@@ -162,17 +162,22 @@ class FatooraValidate extends Command
 
         // Display next steps
         $this->newLine();
-        $sdk = getenv('ZATCA_SDK_PATH') ?: null;
+        $sdk = config('fatoora.validation.sdk_path');
+        $fatoora = $sdk ? rtrim(str_replace('\\', '/', $sdk), '/').'/Apps/fatoora' : 'fatoora';
+        $signedPath = preg_replace('/\.xml$/i', '', $outputPath).'-signed.xml';
 
-        if ($sdk === null) {
-            $this->info('To check this against the ZATCA validator:');
-            $this->line('  Set ZATCA_SDK_PATH to the unpacked SDK (the directory holding Apps/ and Data/),');
-            $this->line('  then run: fatoora -validate -invoice '.$outputPath);
-            $this->line('  It also turns on the conformance suite, which skips without it.');
-        } else {
-            $this->info('Check it against the ZATCA validator:');
-            $this->line('  '.rtrim(str_replace('\\', '/', $sdk), '/').'/Apps/fatoora -validate -invoice '.$outputPath);
-            $this->line('  Expected: GLOBALVALIDATIONRESULT = PASSED');
+        // The file is unsigned, and the SDK's schema stage rejects an empty
+        // signature extension, so validating it as written always fails.
+        $this->info('To check it against the ZATCA validator, sign it with the SDK and validate the signed copy:');
+        $this->line("  {$fatoora} -sign -invoice {$outputPath} -signedInvoice {$signedPath}");
+        $this->line("  {$fatoora} -validate -invoice {$signedPath}");
+        $this->line('  XSD, EN and KSA should pass. A simplified document fails SIGNATURE with the');
+        $this->line("  SDK's bundled test key, as ZATCA's own simplified samples do; that check needs a");
+        $this->line('  ZATCA-issued certificate.');
+
+        if (! $sdk) {
+            $this->line('  Set ZATCA_SDK_PATH to the unpacked SDK (the directory holding Apps/ and Data/);');
+            $this->line('  it also turns on the conformance suite, which skips without it.');
         }
 
         return Command::SUCCESS;

@@ -282,6 +282,10 @@ return [
     |
     */
     'validation' => [
+        // ZATCA's Java SDK, unpacked: the directory holding Apps/ and Data/.
+        // SdkValidator runs its validator when this is set and Java is present.
+        'sdk_path' => env('ZATCA_SDK_PATH') ?: null,
+
         // Where the ZATCA UBL 2.1 schema set is installed, relative to the
         // project root or absolute. It ships inside ZATCA's SDK, a licensed
         // download that cannot live in this repository, so with nothing here

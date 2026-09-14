@@ -7,6 +7,7 @@ namespace App\Console\Commands;
 use App\Console\Commands\Concerns\EncodesCsr;
 use App\Console\Commands\Concerns\FindsOpenSsl;
 use App\Console\Commands\Concerns\WritesSecrets;
+use App\Console\SdkValidator;
 use App\Domains\Compliance\Fatoora\DTOs\AddressData;
 use App\Domains\Compliance\Fatoora\DTOs\InvoiceXmlData;
 use App\Domains\Compliance\Fatoora\DTOs\QrCodeData;
@@ -451,10 +452,18 @@ class FatooraOnboarding extends Command
         }
 
         $isLocalMode = $this->environment === 'local';
+        $sdk = new SdkValidator;
         if ($isLocalMode) {
             $this->info('Running LOCAL 6-Invoice Compliance Check...');
-            $this->warn('NOTE: Local mode validates XML structure only (no signing/cryptography).');
-            $this->line('      For full validation with signing, use --target=sandbox with a valid OTP.');
+
+            if ($sdk->available()) {
+                $this->line('Each document is signed with the local certificate and checked by the ZATCA SDK.');
+                $this->line('Its certificate, QR, signature and PIH checks need a ZATCA-issued certificate,');
+                $this->line('so the schema (XSD), EN16931 and KSA rules decide the result.');
+            } else {
+                $this->warn('NOTE: Without the ZATCA SDK, local mode checks XML structure only.');
+                $this->line('      Set ZATCA_SDK_PATH to validate against ZATCA\'s schema and rules.');
+            }
         } else {
             $this->info("Running 6-Invoice Compliance Check on {$this->environment}...");
         }
@@ -487,8 +496,10 @@ class FatooraOnboarding extends Command
                 $builder = new XmlBuilder;
                 $xml = $builder->build($invoiceData);
 
-                // Sign invoice if credentials are available (skip in local mode for structure validation)
-                if ($canSign && ! $isLocalMode) {
+                // Sign whenever there is a certificate, locally too: an unsigned
+                // document fails the SDK's schema stage on its empty signature
+                // extension, which says nothing about the invoice.
+                if ($canSign) {
                     $xml = $this->signer->sign($xml, $ccsid['privateKey'], $ccsid['certificate']);
 
                     // Generate and inject QR code for signed invoice
@@ -503,7 +514,7 @@ class FatooraOnboarding extends Command
 
                 // Submit to compliance API or validate locally
                 if ($isLocalMode) {
-                    $result = $this->validateInvoiceLocally($xml, $invoiceHash, $invoiceData->uuid);
+                    $result = $this->validateInvoiceLocally($xml, $invoiceData->uuid, $sdk);
                 } else {
                     $result = $this->submitComplianceInvoice($xml, $invoiceHash, $invoiceData->uuid, $ccsid);
                 }
@@ -763,21 +774,39 @@ class FatooraOnboarding extends Command
     }
 
     /**
-     * Validate invoice locally using basic XML validation.
+     * Check a document locally, through ZATCA's SDK when it is installed.
      *
-     * In local mode, we skip SDK validation because:
-     * 1. SDK requires signed invoices with valid QR codes
-     * 2. SDK checks cryptographic elements (certificate, signature, PIH)
-     * 3. These elements aren't available without real ZATCA credentials
+     * The SDK's schema, EN16931 and KSA stages judge what the document says,
+     * and they decide the result. Its certificate, QR, signature and PIH checks
+     * need a ZATCA-issued certificate, so with the local one they fail for
+     * reasons that are not about the document, and they are not counted.
      *
-     * Instead, we do structural validation to ensure XML is well-formed
-     * and contains all required UBL elements.
+     * Without the SDK this can only confirm the XML is well formed and carries
+     * the elements every invoice needs, and the message says which it was.
      */
-    private function validateInvoiceLocally(string $xml, string $hash, string $uuid): array
+    private function validateInvoiceLocally(string $xml, string $uuid, SdkValidator $sdk): array
     {
         // Save XML for debugging
         $debugPath = storage_path("app/zatca/debug_{$uuid}.xml");
         file_put_contents($debugPath, $xml);
+
+        if ($sdk->available()) {
+            $result = $sdk->validate($xml);
+
+            if ($sdk->contentPassed($result)) {
+                return ['success' => true, 'message' => 'SDK: XSD, EN and KSA passed'];
+            }
+
+            $failed = array_values(array_filter(
+                SdkValidator::CONTENT_STAGES,
+                fn (string $stage): bool => ($result['stages'][$stage] ?? null) !== 'PASSED'
+            ));
+
+            return [
+                'success' => false,
+                'message' => 'SDK: '.implode(', ', $failed).' failed. '.($result['errors'][0] ?? "See {$debugPath}"),
+            ];
+        }
 
         // Basic XML structure validation
         try {
