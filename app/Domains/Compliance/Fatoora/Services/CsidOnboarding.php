@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Fatoora\Services;
 
 use App\Domains\Compliance\Fatoora\Client\FatooraClient;
+use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\DTOs\CsrData;
 use App\Domains\Compliance\Fatoora\Exceptions\CertificateException;
 use Illuminate\Support\Facades\Log;
@@ -21,7 +22,7 @@ use Illuminate\Support\Facades\Log;
 class CsidOnboarding
 {
     public function __construct(
-        private readonly CertificateService $certificateService,
+        private readonly CsrBuilder $csr,
         private readonly FatooraClient $client,
     ) {}
 
@@ -36,8 +37,12 @@ class CsidOnboarding
      */
     public function requestComplianceCsid(CsrData $csrData, string $otp): array
     {
-        // Generate CSR
-        $csrResult = $this->certificateService->generateCsr($csrData);
+        // The template names the environment; ZATCA refuses a request whose
+        // template does not match the endpoint it was sent to.
+        $csrResult = $this->csr->generate(
+            $csrData,
+            CsrBuilder::templateFor((string) FatooraConfig::get('environment', 'sandbox'))
+        );
 
         try {
             // Call ZATCA compliance CSID endpoint
