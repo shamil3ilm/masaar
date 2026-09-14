@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Licensing;
 
+use App\Domains\Licensing\Models\License;
 use App\Domains\Licensing\Models\LicenseAuditLog;
 use App\Domains\Licensing\Services\LicenseManagementService;
+use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -27,13 +29,7 @@ class LicenseAuditTest extends TestCase
 
     public function test_administration_is_recorded(): void
     {
-        $service = app(LicenseManagementService::class);
-
-        $issued = $service->createLicense([
-            'organization_name' => 'Acme',
-            'contact_email' => 'ops@acme.test',
-            'tier' => 'starter',
-        ]);
+        $issued = $this->issue();
 
         $entry = LicenseAuditLog::where('license_id', $issued['license']->id)->first();
 
@@ -49,13 +45,7 @@ class LicenseAuditTest extends TestCase
     public function test_each_action_appends(): void
     {
         $service = app(LicenseManagementService::class);
-
-        $license = $service->createLicense([
-            'organization_name' => 'Acme',
-            'contact_email' => 'ops@acme.test',
-            'tier' => 'starter',
-            'status' => 'active',
-        ])['license'];
+        $license = $this->issue(['status' => 'active'])['license'];
 
         $service->suspendLicense($license->id, 'non-payment');
 
@@ -74,13 +64,7 @@ class LicenseAuditTest extends TestCase
     public function test_reason_is_kept(): void
     {
         $service = app(LicenseManagementService::class);
-
-        $license = $service->createLicense([
-            'organization_name' => 'Acme',
-            'contact_email' => 'ops@acme.test',
-            'tier' => 'starter',
-            'status' => 'active',
-        ])['license'];
+        $license = $this->issue(['status' => 'active'])['license'];
 
         $service->suspendLicense($license->id, 'non-payment');
 
@@ -97,18 +81,26 @@ class LicenseAuditTest extends TestCase
      */
     public function test_audit_log_reads_back(): void
     {
-        $service = app(LicenseManagementService::class);
+        $license = $this->issue()['license'];
 
-        $license = $service->createLicense([
-            'organization_name' => 'Acme',
-            'contact_email' => 'ops@acme.test',
-            'tier' => 'starter',
-        ])['license'];
-
-        $log = $service->getAuditLog($license->id);
+        $log = app(LicenseManagementService::class)->getAuditLog($license->id);
 
         $this->assertNotEmpty($log);
         $this->assertSame('created', $log[0]['event']);
         $this->assertArrayNotHasKey('action', $log[0]);
+    }
+
+    /**
+     * @return array{license: License, api_key: string, api_secret: string}
+     */
+    private function issue(array $overrides = []): array
+    {
+        return app(LicenseManagementService::class)->createLicense([
+            'org_id' => Organization::create(['name' => 'Acme', 'country' => 'SA'])->id,
+            'organization_name' => 'Acme',
+            'contact_email' => 'ops@acme.test',
+            'tier' => 'starter',
+            ...$overrides,
+        ]);
     }
 }

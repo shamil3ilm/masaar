@@ -60,6 +60,8 @@ class LicenseController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
+            // The organization every partner call on this licence acts for.
+            'org_id' => 'required|uuid|exists:organizations,id',
             'organization_name' => 'required|string|max:255',
             'contact_email' => 'required|email|max:255',
             'organization_vat' => 'sometimes|nullable|string|max:15',
