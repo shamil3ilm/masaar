@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
@@ -412,19 +413,11 @@ class License extends Model
      */
     public function suspend(?string $reason = null, ?string $actorId = null): void
     {
-        $this->update([
+        $this->changeWithAudit([
             'status' => LicenseStatus::Suspended,
             'suspended_at' => now(),
             'suspension_reason' => $reason,
-        ]);
-
-        $this->auditLogs()->create([
-            'event' => 'suspended',
-            'actor_type' => $actorId ? 'admin' : 'system',
-            'actor_id' => $actorId,
-            'new_values' => ['reason' => $reason],
-            'created_at' => now(),
-        ]);
+        ], 'suspended', $actorId, new: ['reason' => $reason]);
     }
 
     /**
@@ -432,18 +425,11 @@ class License extends Model
      */
     public function reactivate(?string $actorId = null): void
     {
-        $this->update([
+        $this->changeWithAudit([
             'status' => LicenseStatus::Active,
             'suspended_at' => null,
             'suspension_reason' => null,
-        ]);
-
-        $this->auditLogs()->create([
-            'event' => 'reactivated',
-            'actor_type' => $actorId ? 'admin' : 'system',
-            'actor_id' => $actorId,
-            'created_at' => now(),
-        ]);
+        ], 'reactivated', $actorId);
     }
 
     /**
@@ -451,18 +437,10 @@ class License extends Model
      */
     public function revoke(?string $reason = null, ?string $actorId = null): void
     {
-        $this->update([
+        $this->changeWithAudit([
             'status' => LicenseStatus::Revoked,
             'suspension_reason' => $reason,
-        ]);
-
-        $this->auditLogs()->create([
-            'event' => 'revoked',
-            'actor_type' => $actorId ? 'admin' : 'system',
-            'actor_id' => $actorId,
-            'new_values' => ['reason' => $reason],
-            'created_at' => now(),
-        ]);
+        ], 'revoked', $actorId, new: ['reason' => $reason]);
     }
 
     /**
@@ -473,18 +451,13 @@ class License extends Model
         $oldExpiry = $this->expires_at;
         $newExpiry = ($this->expires_at ?? now())->addDays($days);
 
-        $this->update([
-            'expires_at' => $newExpiry,
-        ]);
-
-        $this->auditLogs()->create([
-            'event' => 'extended',
-            'actor_type' => $actorId ? 'admin' : 'system',
-            'actor_id' => $actorId,
-            'old_values' => ['expires_at' => $oldExpiry?->toIso8601String()],
-            'new_values' => ['expires_at' => $newExpiry->toIso8601String(), 'days_added' => $days],
-            'created_at' => now(),
-        ]);
+        $this->changeWithAudit(
+            ['expires_at' => $newExpiry],
+            'extended',
+            $actorId,
+            old: ['expires_at' => $oldExpiry?->toIso8601String()],
+            new: ['expires_at' => $newExpiry->toIso8601String(), 'days_added' => $days],
+        );
     }
 
     /**
@@ -493,21 +466,46 @@ class License extends Model
     public function upgradeTier(LicenseTier $newTier, ?string $actorId = null): void
     {
         $oldTier = $this->tier;
-        $defaults = $newTier->getDefaults();
 
-        $this->update([
-            'tier' => $newTier,
-            ...$defaults,
-        ]);
+        $this->changeWithAudit(
+            ['tier' => $newTier, ...$newTier->getDefaults()],
+            'tier_changed',
+            $actorId,
+            old: ['tier' => $oldTier->value],
+            new: ['tier' => $newTier->value],
+        );
+    }
 
-        $this->auditLogs()->create([
-            'event' => 'tier_changed',
-            'actor_type' => $actorId ? 'admin' : 'system',
-            'actor_id' => $actorId,
-            'old_values' => ['tier' => $oldTier->value],
-            'new_values' => ['tier' => $newTier->value],
-            'created_at' => now(),
-        ]);
+    /**
+     * Apply a change and append its audit entry in one transaction.
+     *
+     * The entry records who changed the licence and why, so the change must
+     * not persist without it, and the entry must not persist for a change
+     * that did not.
+     *
+     * @param  array<string, mixed>  $changes
+     * @param  array<string, mixed>|null  $old
+     * @param  array<string, mixed>|null  $new
+     */
+    private function changeWithAudit(
+        array $changes,
+        string $event,
+        ?string $actorId,
+        ?array $old = null,
+        ?array $new = null,
+    ): void {
+        DB::transaction(function () use ($changes, $event, $actorId, $old, $new): void {
+            $this->update($changes);
+
+            $this->auditLogs()->create([
+                'event' => $event,
+                'actor_type' => $actorId ? 'admin' : 'system',
+                'actor_id' => $actorId,
+                'old_values' => $old,
+                'new_values' => $new,
+                'created_at' => now(),
+            ]);
+        });
     }
 
     // Relationships

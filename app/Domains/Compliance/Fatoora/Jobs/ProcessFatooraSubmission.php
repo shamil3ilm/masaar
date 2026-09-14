@@ -7,16 +7,14 @@ namespace App\Domains\Compliance\Fatoora\Jobs;
 use App\Domains\Compliance\Fatoora\Client\FatooraClient;
 use App\Domains\Compliance\Fatoora\DTOs\FatooraResponse;
 use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
-use App\Domains\Compliance\Fatoora\Events\BaseInvoiceEvent;
 use App\Domains\Compliance\Fatoora\Events\InvoiceFailed;
 use App\Domains\Compliance\Fatoora\Events\InvoiceSubmitted;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Compliance\Fatoora\Models\SubmissionIdempotency;
-use App\Domains\Compliance\Fatoora\Services\ClearanceState;
 use App\Domains\Compliance\Fatoora\Services\KillSwitch;
+use App\Domains\Compliance\Fatoora\Services\SubmissionLedger;
 use App\Domains\Compliance\Fatoora\Services\Submitter;
-use App\Domains\Licensing\Services\UsageMeteringService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -42,6 +40,12 @@ class ProcessFatooraSubmission implements ShouldQueue
     use InteractsWithQueue;
     use Queueable;
     use SerializesModels;
+
+    /**
+     * States the job sends from. A submission pending or submitted is being
+     * sent by another worker, or was answered and awaits reconciliation.
+     */
+    private const SENDABLE_STATES = ['draft', 'queued', 'failed', 'rejected'];
 
     /**
      * Number of times the job may be attempted.
@@ -76,7 +80,11 @@ class ProcessFatooraSubmission implements ShouldQueue
     }
 
     /**
-     * Get unique job ID.
+     * Identifies this submission's job in invoice_submissions.queue_job_id.
+     *
+     * The job is not ShouldBeUnique. What stops a duplicate job from sending
+     * is SubmissionLedger::claim(), which holds the submission row, so it
+     * still holds when the queue's cache loses a uniqueness lock.
      */
     public function uniqueId(): string
     {
@@ -117,19 +125,20 @@ class ProcessFatooraSubmission implements ShouldQueue
     public function handle(
         FatooraClient $zatcaClient,
         KillSwitch $killSwitch,
-        Submitter $submitter
+        Submitter $submitter,
+        SubmissionLedger $ledger
     ): void {
-        $submission = $this->submission->fresh();
-
         // Checked here as well as before queueing, because the gap between the
         // two is exactly when an operator throws the switch. A job queued
         // before an incident would otherwise submit during it.
-        $killSwitch->assertNotEnabled(KillSwitch::SWITCH_SUBMISSION, (string) $submission->org_id);
+        $killSwitch->assertNotEnabled(KillSwitch::SWITCH_SUBMISSION, (string) $this->submission->org_id);
 
-        if ($submission->isTerminal()) {
-            Log::info('Submission already in terminal state, skipping', [
-                'submission_id' => $submission->id,
-                'state' => $submission->state,
+        $submission = $ledger->claim($this->submission, self::SENDABLE_STATES, 'queue_job');
+
+        if ($submission === null) {
+            Log::info('Submission is not waiting to be sent, skipping', [
+                'submission_id' => $this->submission->id,
+                'state' => $this->submission->fresh()?->state,
             ]);
 
             return;
@@ -142,131 +151,58 @@ class ProcessFatooraSubmission implements ShouldQueue
         ]);
 
         try {
-            // Transition to pending
-            $this->transitionState($submission, 'pending_submission', 'queue_job');
-
-            // Load invoice and organization
-            $invoice = $submission->invoice;
-            $organization = $submission->org;
-
-            // Issue the document first if it has not been issued.
-            //
-            // This path builds its own document and never went through
-            // Submitter, so nothing here allocated a counter or fixed a
-            // predecessor: queued documents reached the authority carrying
-            // ICV 0 and the genesis PIH, each claiming to be first in its
-            // chain. Submitter::generate() is the one place that allocates,
-            // under the organization-row lock that also reads the
-            // predecessor, and it leaves an already-issued document alone.
-            if ($invoice->icv === null || $invoice->hash === null) {
-                $submitter->generate($invoice, $organization);
-                $invoice->refresh();
-            }
-            // The document that was issued, not a new one.
-            //
-            // This built its own with DocumentBuilder, which made it the third
-            // place a document was produced and the only one that produced a
-            // different one each time it ran: signing again moves the XAdES
-            // SigningTime, so a retry sent bytes the archive had never held.
-            // Issuance is where a document is made; this is transport.
-            $invoiceXml = (string) $invoice->signed_xml;
-            $invoiceHash = (string) $invoice->hash;
-            $invoiceUuid = $invoice->id;
-
-            // Submit to ZATCA
-            $this->transitionState($submission, 'submitted', 'queue_job');
-
-            // Fire submitted event for real-time tracking
-            event(new InvoiceSubmitted($submission->fresh()));
-
-            $result = $submission->isClearance()
-                ? $zatcaClient->clearInvoice($invoiceXml, $invoiceHash, $invoiceUuid)
-                : $zatcaClient->reportInvoice($invoiceXml, $invoiceHash, $invoiceUuid);
-
-            // Handle response
-            $this->handleZatcaResponse($submission, $result);
-
-            Log::info('ZATCA submission processed successfully', [
-                'submission_id' => $submission->id,
-                'state' => $submission->fresh()->state,
-            ]);
+            $response = $this->send($submission, $zatcaClient, $submitter, $ledger);
         } catch (Throwable $e) {
             $this->handleError($submission, $e);
             throw $e; // Re-throw for queue retry mechanism
         }
+
+        // Outside the error handling above: ZATCA has answered, so nothing from
+        // here may mark the submission failed and have the queue send it again.
+        // recordResponse() logs its own failures and leaves it 'submitted'.
+        $state = $ledger->recordResponse($submission, $response);
+
+        Log::info('ZATCA submission processed', [
+            'submission_id' => $submission->id,
+            'state' => $state,
+            'recorded' => $state !== null,
+        ]);
     }
 
     /**
-     * Handle ZATCA API response.
+     * Issue the document if needed and put it in front of ZATCA.
      */
-    private function handleZatcaResponse(InvoiceSubmission $submission, FatooraResponse $response): void
-    {
-        $success = $response->success;
-        $hasWarnings = $response->hasWarnings();
+    private function send(
+        InvoiceSubmission $submission,
+        FatooraClient $zatcaClient,
+        Submitter $submitter,
+        SubmissionLedger $ledger
+    ): FatooraResponse {
+        $invoice = $submission->invoice;
 
-        // A 200 from ZATCA does not mean the invoice is cleared. For a B2B
-        // document "REPORTED" means received and not yet cleared, and only
-        // "CLEARED" is terminal. This read `$success && isClearance()`, so any
-        // successful call marked the document cleared and fired the
-        // invoice.cleared webhook — telling the integrator, and the taxpayer's
-        // own records, that a document had cleared when the authority had only
-        // acknowledged it.
+        // Issue the document first if it has not been issued.
         //
-        // SubmissionTracker was corrected for the synchronous path. This is the
-        // asynchronous one, which is the path the pipeline actually uses, and
-        // it kept the original behaviour.
-        $clearance = app(ClearanceState::class)->parseResponse([
-            'clearanceStatus' => $response->clearanceStatus,
-            'reportingStatus' => $response->reportingStatus,
-            'validationResults' => $response->validationResults,
-        ], isSimplified: ! $submission->isClearance());
+        // Submitter::generate() is the one place that allocates a counter and
+        // fixes a predecessor, under the organization-row lock that also reads
+        // the predecessor, and it leaves an already-issued document alone.
+        if ($invoice->icv === null || $invoice->hash === null) {
+            $submitter->generate($invoice, $submission->org);
+            $invoice->refresh();
+        }
 
-        $newState = match (true) {
-            ! $success => 'rejected',
-            $hasWarnings => 'warning',
-            default => ClearanceState::submissionState($clearance['state']),
-        };
+        // The document that was issued, not a new one: signing again moves the
+        // XAdES SigningTime, so a retry would send bytes the archive never held.
+        $invoiceXml = (string) $invoice->signed_xml;
+        $invoiceHash = (string) $invoice->hash;
 
-        app(UsageMeteringService::class)->recordSubmissionOutcome(
-            (string) $submission->org_id,
-            $newState,
-            (float) ($submission->invoice?->total ?? 0)
-        );
+        $ledger->transition($submission, 'submitted', 'queue_job');
 
-        // Update submission
-        $submission->update([
-            'state' => $newState,
-            'previous_state' => 'submitted',
-            'state_changed_at' => now(),
-            'clearance_status' => $response->clearanceStatus,
-            // What ZATCA said, kept beside where the submission is in this
-            // platform's workflow. The job recorded only the latter, so a
-            // document awaiting a decision was indistinguishable from one that
-            // never got that far.
-            'clearance_state' => $clearance['state'],
-            'cleared_at' => $clearance['is_terminal'] ? now() : null,
-            'reporting_status' => $response->reportingStatus,
-            'zatca_warnings' => $response->warningMessages ?: null,
-            'zatca_errors' => $response->errorMessages ?: null,
-            // Only once ZATCA has actually decided. This was set on every
-            // response, marking a document still awaiting clearance complete.
-            'completed_at' => $clearance['is_terminal'] ? now() : null,
-        ]);
+        // Fire submitted event for real-time tracking
+        event(new InvoiceSubmitted($submission->fresh()));
 
-        // Update idempotency
-        $this->updateIdempotency($submission, $success, $response);
-
-        // Log transition
-        $this->logStateTransition($submission, 'submitted', $newState, 'zatca', [
-            'clearance_status' => $response->clearanceStatus,
-            'reporting_status' => $response->reportingStatus,
-        ]);
-
-        // Fire appropriate event for real-time notifications
-        $this->fireStateEvent($submission->fresh(), $newState, [
-            'clearance_status' => $response->clearanceStatus,
-            'reporting_status' => $response->reportingStatus,
-        ]);
+        return $submission->isClearance()
+            ? $zatcaClient->clearInvoice($invoiceXml, $invoiceHash, $invoice->id)
+            : $zatcaClient->reportInvoice($invoiceXml, $invoiceHash, $invoice->id);
     }
 
     /**
@@ -279,7 +215,6 @@ class ProcessFatooraSubmission implements ShouldQueue
             : ErrorCode::SYS_INTERNAL_ERROR;
 
         $isRetryable = $errorCode->isRetryable();
-        $maxRetries = $errorCode->getMaxRetries();
 
         // Update submission
         $submission->update([
@@ -337,28 +272,10 @@ class ProcessFatooraSubmission implements ShouldQueue
     }
 
     /**
-     * Transition state with logging.
-     */
-    private function transitionState(
-        InvoiceSubmission $submission,
-        string $newState,
-        string $trigger,
-        array $context = []
-    ): void {
-        $oldState = $submission->state;
-
-        $submission->update([
-            'state' => $newState,
-            'previous_state' => $oldState,
-            'state_changed_at' => now(),
-            'submitted_at' => $newState === 'submitted' ? now() : $submission->submitted_at,
-        ]);
-
-        $this->logStateTransition($submission, $oldState, $newState, $trigger, $context);
-    }
-
-    /**
      * Log state transition for audit.
+     *
+     * failed() is called by the queue without dependency injection, so the
+     * job keeps its own writer for the two error paths.
      */
     private function logStateTransition(
         InvoiceSubmission $submission,
@@ -379,28 +296,6 @@ class ProcessFatooraSubmission implements ShouldQueue
             'ip_address' => null,
             'created_at' => now(),
             'updated_at' => now(),
-        ]);
-    }
-
-    /**
-     * Fire the appropriate event based on state.
-     */
-    private function fireStateEvent(InvoiceSubmission $submission, string $state, array $context = []): void
-    {
-        BaseInvoiceEvent::raise($submission, $state, $context);
-    }
-
-    /**
-     * Update idempotency record with response.
-     */
-    private function updateIdempotency(InvoiceSubmission $submission, bool $success, FatooraResponse $response): void
-    {
-        SubmissionIdempotency::where('id', $submission->idempotency_id)->update([
-            'status' => $success ? 'completed' : 'failed',
-            'http_status_code' => $success ? 200 : 422,
-            'response_body' => $response->rawResponse,
-            'clearance_status' => $response->clearanceStatus,
-            'completed_at' => now(),
         ]);
     }
 

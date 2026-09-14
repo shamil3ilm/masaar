@@ -28,7 +28,6 @@ class ServiceLocatorTest extends TestCase
      */
     private const DECLARED = [
         'Domains/Audit/Services/AuditService.php',
-        'Domains/Compliance/Fatoora/Services/SubmissionTracker.php',
         'Domains/Logging/Services/ComplianceLogger.php',
     ];
 
