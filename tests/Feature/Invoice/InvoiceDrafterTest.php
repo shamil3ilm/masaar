@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Pipeline;
+namespace Tests\Feature\Invoice;
 
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Organization\Models\Organization;
-use App\Domains\Pipeline\Services\InvoiceDrafter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -82,10 +82,10 @@ class InvoiceDrafterTest extends TestCase
             ['discount_amount' => '10.00']
         );
 
-        // Discount reduces the net, tax is charged on the gross line amount.
+        // VAT is charged on what the buyer pays for, after the discount.
         $this->assertSame('100.00', $invoice->subtotal);
-        $this->assertSame('15.00', $invoice->tax_amount);
-        $this->assertSame('105.00', $invoice->total);
+        $this->assertSame('13.50', $invoice->tax_amount);
+        $this->assertSame('103.50', $invoice->total);
     }
 
     public function test_zero_rated_line_carries_no_tax(): void
@@ -116,21 +116,20 @@ class InvoiceDrafterTest extends TestCase
     }
 
     /**
-     * The invoice total must equal the sum of its lines, or ZATCA rejects it.
+     * Document VAT is the category base times the rate, not the sum of line
+     * VAT. Line VAT here is 9.00 and 4.55; 90.28 at 15% is 13.542, so 13.54.
+     * BR-CO-14 compares the document VAT with the category amount.
      */
-    public function test_lines_reconcile_to_the_total(): void
+    public function test_vat_is_taxed_per_category(): void
     {
         $invoice = $this->draft([
             ['description' => 'A', 'quantity' => 3, 'unit_price' => '19.99'],
             ['description' => 'B', 'quantity' => 7, 'unit_price' => '4.33'],
         ]);
 
-        $lineSum = '0';
-        foreach ($invoice->lines as $line) {
-            $lineSum = bcadd($lineSum, (string) $line->line_total, 2);
-        }
-
-        $this->assertSame($lineSum, $invoice->total);
+        $this->assertSame(['9.00', '4.55'], $invoice->lines->pluck('tax_amount')->all());
+        $this->assertSame('13.54', $invoice->tax_amount);
+        $this->assertSame('103.82', $invoice->total);
     }
 
     public function test_lines_are_persisted(): void

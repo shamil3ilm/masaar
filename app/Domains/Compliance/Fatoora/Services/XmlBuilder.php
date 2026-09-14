@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Services;
 
-use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\DTOs\AddressData;
 use App\Domains\Compliance\Fatoora\DTOs\InvoiceXmlData;
+use App\Domains\Invoice\Services\InvoiceTotals;
 use DOMDocument;
 use DOMElement;
 
@@ -632,19 +632,16 @@ class XmlBuilder
         // to what that category contributed. Tax is then recomputed on the
         // reduced base rather than carried over from the lines, which were
         // priced before the discount existed.
-        $shares = FatooraConfig::apportionAllowance(
+        $categories = InvoiceTotals::categories(
             array_map(static fn (array $g): float => $g['net'], $groups),
+            array_map(static fn (array $g): float => $g['rate'], $groups),
             $allowance
         );
 
-        foreach ($groups as $key => $group) {
-            $share = $shares[$key] ?? 0.0;
-            $base = round($group['net'] - $share, 2);
-
-            $groups[$key]['share'] = $share;
-            $groups[$key]['taxableAmount'] = $base;
-            $groups[$key]['taxAmount'] = round($base * $group['rate'] / 100, 2);
-
+        foreach ($categories as $key => $category) {
+            $groups[$key]['share'] = $category['share'];
+            $groups[$key]['taxableAmount'] = $category['base'];
+            $groups[$key]['taxAmount'] = $category['tax'];
         }
 
         return $groups;
