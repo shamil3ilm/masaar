@@ -4,12 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Http\Controllers;
 
-use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
-use App\Domains\Compliance\Fatoora\DTOs\AddressData;
-use App\Domains\Compliance\Fatoora\DTOs\InvoiceXmlData;
+use App\Domains\Compliance\Fatoora\Services\ComplianceSampleSet;
 use App\Domains\Compliance\Fatoora\Services\CsidOnboarding;
-use App\Domains\Compliance\Fatoora\Services\InvoiceHasher;
-use App\Domains\Compliance\Fatoora\Services\XmlBuilder;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Services\BranchService;
 use App\Domains\Organization\Services\TenantResolver;
@@ -17,7 +13,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 /**
  * Branch ZATCA Onboarding API controller.
@@ -31,8 +26,7 @@ class BranchOnboardingController extends Controller
         private readonly TenantResolver $tenant,
         private readonly BranchService $branchService,
         private readonly CsidOnboarding $onboarding,
-        private readonly XmlBuilder $xmlBuilder,
-        private readonly InvoiceHasher $hasher,
+        private readonly ComplianceSampleSet $samples,
     ) {}
 
     /**
@@ -242,90 +236,15 @@ class BranchOnboardingController extends Controller
      */
     private function generateTestInvoices($organization, Branch $branch): array
     {
-        $sellerAddress = $branch->getAddressData();
-        $buyerAddress = new AddressData(
-            street: 'Test Street',
-            city: 'Riyadh',
-            postalCode: '12345',
-            district: 'Test District',
-            buildingNumber: '1234',
-            countryCode: 'SA',
+        $documents = $this->samples->build(
+            sellerName: $organization->name,
+            sellerVatNumber: $organization->vat_number ?? '',
+            sellerCrNumber: $organization->cr_number,
+            sellerAddress: $branch->getAddressData(),
+            numberPrefix: 'TEST-'.$branch->id,
         );
 
-        $invoices = [];
-        $icv = 0;
-        // ZATCA's initial PIH is the base64 of SHA-256("0") as hex text, not of
-        // the raw digest; the chain the authority checks starts from this.
-        $previousHash = FatooraConfig::DEFAULT_FIRST_INVOICE_PIH;
-
-        $invoiceTypes = [
-            ['key' => 'standard_invoice', 'typeCode' => '388', 'subtype' => '01', 'isCredit' => false, 'isDebit' => false],
-            ['key' => 'standard_credit_note', 'typeCode' => '381', 'subtype' => '01', 'isCredit' => true, 'isDebit' => false],
-            ['key' => 'standard_debit_note', 'typeCode' => '383', 'subtype' => '01', 'isCredit' => false, 'isDebit' => true],
-            ['key' => 'simplified_invoice', 'typeCode' => '388', 'subtype' => '02', 'isCredit' => false, 'isDebit' => false],
-            ['key' => 'simplified_credit_note', 'typeCode' => '381', 'subtype' => '02', 'isCredit' => true, 'isDebit' => false],
-            ['key' => 'simplified_debit_note', 'typeCode' => '383', 'subtype' => '02', 'isCredit' => false, 'isDebit' => true],
-        ];
-
-        foreach ($invoiceTypes as $type) {
-            $icv++;
-            $isStandard = $type['subtype'] === '01';
-
-            $billingReferenceId = null;
-            $creditDebitReason = null;
-            if ($type['isCredit'] || $type['isDebit']) {
-                $billingReferenceId = 'INV-REF-001';
-                $creditDebitReason = $type['isCredit'] ? 'Return of goods' : 'Price adjustment';
-            }
-
-            $invoiceData = new InvoiceXmlData(
-                uuid: Str::uuid()->toString(),
-                invoiceNumber: 'TEST-'.$branch->id.'-'.strtoupper(substr($type['key'], 0, 3)).'-'.$icv,
-                icv: $icv,
-                issueDate: now()->format('Y-m-d'),
-                issueTime: now()->format('H:i:s'),
-                invoiceTypeCode: $type['typeCode'],
-                invoiceSubtype: $type['subtype'],
-                currency: 'SAR',
-                sellerName: $organization->name,
-                sellerVatNumber: $organization->vat_number ?? '',
-                sellerAddress: $sellerAddress,
-                buyerName: $isStandard ? 'Test Buyer Company' : 'Cash Customer',
-                subtotal: 100.00,
-                taxAmount: 15.00,
-                total: 115.00,
-                lines: [
-                    [
-                        'description' => 'Test Product',
-                        'quantity' => 1.0,
-                        'unitPrice' => 100.00,
-                        'taxRate' => 15.0,
-                        'taxAmount' => 15.00,
-                        'lineTotal' => 100.00,
-                        'taxCategory' => 'S',
-                        'unitCode' => 'PCE',
-                    ],
-                ],
-                sellerCrNumber: $organization->cr_number,
-                buyerVatNumber: $isStandard ? '300000000000003' : null,
-                buyerAddress: $isStandard ? $buyerAddress : null,
-                paymentMeansCode: '10',
-                previousInvoiceHash: $previousHash,
-                billingReferenceId: $billingReferenceId,
-                creditDebitReason: $creditDebitReason,
-            );
-
-            $xml = $this->xmlBuilder->build($invoiceData);
-            $invoices[$type['key']] = $xml;
-
-            // The previous document's invoice hash, which is not a hash of its
-            // bytes: canonicalized, with the extensions, signature and QR taken
-            // out. Hashing the raw XML produces a chain ZATCA cannot follow,
-            // and the compliance endpoint checks it.
-            $previousHash = $this->hasher->hash($xml);
-        }
-
-        return $invoices;
+        return array_map(fn (array $document): string => $document['xml'], $documents);
     }
 
     /**

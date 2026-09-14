@@ -12,12 +12,12 @@ use App\Domains\Compliance\Fatoora\DTOs\AddressData;
 use App\Domains\Compliance\Fatoora\DTOs\InvoiceXmlData;
 use App\Domains\Compliance\Fatoora\DTOs\QrCodeData;
 use App\Domains\Compliance\Fatoora\Services\CertificateService;
+use App\Domains\Compliance\Fatoora\Services\ComplianceSampleSet;
 use App\Domains\Compliance\Fatoora\Services\EcdsaSigner;
 use App\Domains\Compliance\Fatoora\Services\InvoiceHasher;
 use App\Domains\Compliance\Fatoora\Services\QrCodeGenerator;
 use App\Domains\Compliance\Fatoora\Services\TlvEncoder;
 use App\Domains\Compliance\Fatoora\Services\XadesSigner;
-use App\Domains\Compliance\Fatoora\Services\XmlBuilder;
 use App\Support\Xml;
 use Illuminate\Console\Command;
 use Illuminate\Http\Client\PendingRequest;
@@ -75,6 +75,8 @@ class FatooraOnboarding extends Command
 
     private string $environment;
 
+    private ComplianceSampleSet $samples;
+
     private string $baseUrl;
 
     public function __construct()
@@ -130,8 +132,9 @@ class FatooraOnboarding extends Command
         return $client;
     }
 
-    public function handle(): int
+    public function handle(ComplianceSampleSet $samples): int
     {
+        $this->samples = $samples;
         $this->environment = $this->option('target');
         $this->baseUrl = $this->environment === self::LOCAL
             ? self::LOCAL
@@ -470,69 +473,69 @@ class FatooraOnboarding extends Command
         $this->info('Note: ICV is sequential across ALL types (1-6), PIH chains all documents');
         $this->newLine();
 
-        // Define the 6 required invoice types
-        // IMPORTANT: ICV counter is SHARED across all types (per ZATCA specification)
-        // Each document gets the next ICV in sequence regardless of type
-        $invoiceTypes = [
-            ['name' => 'Standard Invoice', 'typeCode' => '388', 'subtype' => '01', 'isCredit' => false, 'isDebit' => false],
-            ['name' => 'Standard Credit Note', 'typeCode' => '381', 'subtype' => '01', 'isCredit' => true, 'isDebit' => false],
-            ['name' => 'Standard Debit Note', 'typeCode' => '383', 'subtype' => '01', 'isCredit' => false, 'isDebit' => true],
-            ['name' => 'Simplified Invoice', 'typeCode' => '388', 'subtype' => '02', 'isCredit' => false, 'isDebit' => false],
-            ['name' => 'Simplified Credit Note', 'typeCode' => '381', 'subtype' => '02', 'isCredit' => true, 'isDebit' => false],
-            ['name' => 'Simplified Debit Note', 'typeCode' => '383', 'subtype' => '02', 'isCredit' => false, 'isDebit' => true],
-        ];
-
         $results = [];
         $allPassed = true;
-        $previousHash = $this->getDefaultPih();
 
-        foreach ($invoiceTypes as $index => $type) {
-            $num = $index + 1;
-            $this->line("[{$num}/6] Submitting {$type['name']}...");
+        // Sign whenever there is a certificate, locally too: an unsigned
+        // document fails the SDK's schema stage on its empty signature
+        // extension, which says nothing about the invoice. The chain then
+        // follows the signed, QR-stamped bytes that are submitted.
+        $finalize = $canSign
+            ? fn (string $xml, InvoiceXmlData $data): string => $this->injectQrCode(
+                $this->signer->sign($xml, $ccsid['privateKey'], $ccsid['certificate']),
+                $data,
+                $ccsid['certificate']
+            )
+            : null;
+
+        try {
+            $documents = $this->samples->build(
+                sellerName: 'Maximum Speed Tech Supply LTD',
+                sellerVatNumber: '399999999900003',
+                sellerCrNumber: '1010010000',
+                sellerAddress: new AddressData(
+                    street: 'King Fahd Road',
+                    buildingNumber: '1234',
+                    plotIdentification: '5678',
+                    district: 'Al Olaya',
+                    city: 'Riyadh',
+                    postalCode: '12345',
+                    countrySubentity: 'Riyadh Region',
+                    countryCode: 'SA',
+                ),
+                numberPrefix: 'COMP-'.date('Ymd'),
+                finalize: $finalize,
+            );
+        } catch (\Exception $e) {
+            $this->error('Could not build the compliance documents: '.$e->getMessage());
+
+            return Command::FAILURE;
+        }
+
+        $num = 0;
+
+        foreach ($documents as $key => $document) {
+            $name = ucwords(str_replace('_', ' ', $key));
+            $this->line('['.(++$num)."/6] Submitting {$name}...");
 
             try {
-                // Generate invoice XML
-                $invoiceData = $this->createComplianceInvoice($type, $index + 1, $previousHash);
-                $builder = new XmlBuilder;
-                $xml = $builder->build($invoiceData);
+                $result = $isLocalMode
+                    ? $this->validateInvoiceLocally($document['xml'], $document['data']->uuid, $sdk)
+                    : $this->submitComplianceInvoice($document['xml'], $document['hash'], $document['data']->uuid, $ccsid);
 
-                // Sign whenever there is a certificate, locally too: an unsigned
-                // document fails the SDK's schema stage on its empty signature
-                // extension, which says nothing about the invoice.
-                if ($canSign) {
-                    $xml = $this->signer->sign($xml, $ccsid['privateKey'], $ccsid['certificate']);
-
-                    // Generate and inject QR code for signed invoice
-                    $xml = $this->injectQrCode($xml, $invoiceData, $ccsid['certificate']);
-                }
-
-                // Calculate hash from final XML (signed or unsigned)
-                // Note: hasher->hash() already returns base64-encoded hash
-                $invoiceHash = $this->hasher->hash($xml);
-
-                $previousHash = $invoiceHash;
-
-                // Submit to compliance API or validate locally
-                if ($isLocalMode) {
-                    $result = $this->validateInvoiceLocally($xml, $invoiceData->uuid, $sdk);
-                } else {
-                    $result = $this->submitComplianceInvoice($xml, $invoiceHash, $invoiceData->uuid, $ccsid);
-                }
-
-                $status = $result['success'] ? '✓ PASSED' : '✗ FAILED';
                 if (! $result['success']) {
                     $allPassed = false;
                 }
 
                 $results[] = [
-                    'Invoice' => $type['name'],
-                    'Status' => $status,
+                    'Invoice' => $name,
+                    'Status' => $result['success'] ? '✓ PASSED' : '✗ FAILED',
                     'Message' => $result['message'] ?? '',
                 ];
             } catch (\Exception $e) {
                 $allPassed = false;
                 $results[] = [
-                    'Invoice' => $type['name'],
+                    'Invoice' => $name,
                     'Status' => '✗ ERROR',
                     'Message' => $e->getMessage(),
                 ];
@@ -655,73 +658,6 @@ class FatooraOnboarding extends Command
         $this->info('═══ Step 3/3: Request Production CSID ═══');
 
         return $this->requestProductionCsid();
-    }
-
-    private function createComplianceInvoice(array $type, int $icv, string $previousHash): InvoiceXmlData
-    {
-        $isStandard = $type['subtype'] === '01';
-        $uuid = $this->generateUuid();
-        $invoiceNumber = 'COMP-'.date('Ymd').'-'.str_pad((string) $icv, 3, '0', STR_PAD_LEFT);
-
-        // For credit/debit notes, reference a previous invoice and add reason (BR-KSA-17)
-        $billingReferenceId = null;
-        $creditDebitReason = null;
-        if ($type['isCredit'] || $type['isDebit']) {
-            $billingReferenceId = 'INV-REF-001';
-            $creditDebitReason = $type['isCredit'] ? 'Return of goods' : 'Price adjustment';
-        }
-
-        return new InvoiceXmlData(
-            uuid: $uuid,
-            invoiceNumber: $invoiceNumber,
-            icv: $icv,
-            issueDate: date('Y-m-d'),
-            issueTime: date('H:i:s'),
-            invoiceTypeCode: $type['typeCode'],
-            invoiceSubtype: $type['subtype'],
-            currency: 'SAR',
-            sellerName: 'Maximum Speed Tech Supply LTD',
-            sellerVatNumber: '399999999900003',
-            sellerAddress: new AddressData(
-                street: 'King Fahd Road',
-                buildingNumber: '1234',
-                plotIdentification: '5678',
-                district: 'Al Olaya',
-                city: 'Riyadh',
-                postalCode: '12345',
-                countrySubentity: 'Riyadh Region',
-                countryCode: 'SA',
-            ),
-            buyerName: 'Test Buyer Company',
-            subtotal: 100.00,
-            taxAmount: 15.00,
-            total: 115.00,
-            lines: [
-                [
-                    'description' => 'Test Product',
-                    'quantity' => 1,
-                    'unitPrice' => 100.00,
-                    'taxRate' => 15.0,
-                    'taxCategory' => 'S',
-                    'lineTotal' => 100.00,
-                    'taxAmount' => 15.00,
-                ],
-            ],
-            supplyDate: $isStandard ? date('Y-m-d') : null,
-            sellerCrNumber: '1010010000',
-            buyerVatNumber: $isStandard ? '399999999800003' : null,
-            buyerAddress: $isStandard ? new AddressData(
-                street: 'Prince Sultan Road',
-                buildingNumber: '5678',
-                district: 'Al Malaz',
-                city: 'Riyadh',
-                postalCode: '54321',
-                countryCode: 'SA',
-            ) : null,
-            previousInvoiceHash: $previousHash,
-            billingReferenceId: $billingReferenceId,
-            creditDebitReason: $creditDebitReason,
-        );
     }
 
     private function submitComplianceInvoice(string $xml, string $hash, string $uuid, array $ccsid): array
@@ -962,12 +898,6 @@ class FatooraOnboarding extends Command
         $this->line('Production credentials saved to storage/app/zatca/pcsid_*.txt');
     }
 
-    private function getDefaultPih(): string
-    {
-        // ZATCA SDK default PIH for first invoice in chain
-        return 'NWZlY2ViNjZmZmM4NmYzOGQ5NTI3ODZjNmQ2OTZjNzljMmRiYzIzOWRkNGU5MWI0NjcyOWQ3M2EyN2ZiNTdlOQ==';
-    }
-
     /**
      * Inject QR code into signed invoice XML.
      *
@@ -1109,14 +1039,5 @@ class FatooraOnboarding extends Command
         $dom->formatOutput = true;
 
         return $dom->saveXML();
-    }
-
-    private function generateUuid(): string
-    {
-        $data = random_bytes(16);
-        $data[6] = chr(ord($data[6]) & 0x0F | 0x40);
-        $data[8] = chr(ord($data[8]) & 0x3F | 0x80);
-
-        return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
     }
 }
