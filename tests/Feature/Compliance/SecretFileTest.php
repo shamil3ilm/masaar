@@ -27,6 +27,12 @@ class SecretFileTest extends TestCase
     {
         parent::setUp();
 
+        // storage/app/zatca is where a developer's real taxpayer key and CSIDs
+        // live, and emptying it before and after every run deleted them. The
+        // commands resolve it through storage_path(), so a scratch storage path
+        // puts the same directory somewhere disposable.
+        $this->app->useStoragePath(sys_get_temp_dir().'/masaar-secret-file-test');
+
         $this->dir = storage_path('app/zatca');
         File::deleteDirectory($this->dir);
     }
