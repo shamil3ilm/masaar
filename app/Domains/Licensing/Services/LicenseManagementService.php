@@ -37,6 +37,9 @@ class LicenseManagementService
 
         // Generate credentials
         $result = License::createWithCredentials([
+            // ValidateLicense scopes each partner call to this organization, so
+            // a licence without one authenticates but reaches no tenant.
+            'org_id' => $data['org_id'],
             'organization_name' => $data['organization_name'],
             'contact_email' => $data['contact_email'],
             'organization_vat' => $data['organization_vat'] ?? null,
