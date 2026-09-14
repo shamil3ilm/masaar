@@ -57,15 +57,6 @@ final class FatooraConfig
     public const ALGO_XPATH = 'http://www.w3.org/TR/1999/REC-xpath-19991116';
 
     // ============================================================
-    // ZATCA API ENDPOINTS
-    // ============================================================
-    public const SANDBOX_BASE_URL = 'https://gw-fatoora.zatca.gov.sa/e-invoicing/developer-portal';
-
-    public const SIMULATION_BASE_URL = 'https://gw-fatoora.zatca.gov.sa/e-invoicing/simulation';
-
-    public const PRODUCTION_BASE_URL = 'https://gw-fatoora.zatca.gov.sa/e-invoicing/core';
-
-    // ============================================================
     // INVOICE TYPE CODES (KSA-specific per ZATCA)
     // ============================================================
     public const INVOICE_TYPE_STANDARD = '388';     // Standard (B2B)
@@ -359,16 +350,15 @@ final class FatooraConfig
 
     /**
      * Get ZATCA base URL for current environment.
+     *
+     * From config('fatoora.endpoints'), which FatooraClient submits to, so a
+     * connectivity check probes the host documents are actually sent to.
      */
     public static function getBaseUrl(): string
     {
         $env = self::get('environment', 'sandbox');
 
-        return match ($env) {
-            'production' => self::PRODUCTION_BASE_URL,
-            'simulation' => self::SIMULATION_BASE_URL,
-            default => self::SANDBOX_BASE_URL,
-        };
+        return (string) (self::get("endpoints.{$env}") ?? self::get('endpoints.sandbox'));
     }
 
     /**

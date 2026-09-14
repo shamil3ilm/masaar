@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\DTOs\AddressData;
 use App\Domains\Compliance\Fatoora\DTOs\InvoiceXmlData;
 use App\Domains\Compliance\Fatoora\Services\XmlBuilder;
@@ -74,8 +75,7 @@ class FatooraValidate extends Command
         $type = $this->option('type');
         $isStandard = $type === 'standard';
 
-        // ZATCA SDK default PIH for testing (hex hash base64 encoded)
-        $defaultPih = 'NWZlY2ViNjZmZmM4NmYzOGQ5NTI3ODZjNmQ2OTZjNzljMmRiYzIzOWRkNGU5MWI0NjcyOWQ3M2EyN2ZiNTdlOQ==';
+        $defaultPih = FatooraConfig::DEFAULT_FIRST_INVOICE_PIH;
 
         // Create sample invoice data matching the updated DTO structure
         $invoiceData = new InvoiceXmlData(
