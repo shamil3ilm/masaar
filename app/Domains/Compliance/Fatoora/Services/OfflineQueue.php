@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Fatoora\Services;
 
 use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
+use App\Domains\Compliance\Fatoora\DTOs\FatooraResponse;
 use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Models\ChainEntry;
@@ -13,6 +14,7 @@ use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Compliance\Fatoora\Models\OfflineItem;
 use App\Domains\Invoice\Models\Invoice;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -55,8 +57,31 @@ class OfflineQueue
     public function __construct(
         private readonly KillSwitch $killSwitchManager,
         private readonly CredentialStore $credentials,
+        private readonly InvoiceVerdict $verdict,
     ) {
         $this->maxQueueSize = FatooraConfig::getOfflineQueueMaxSize();
+    }
+
+    /**
+     * Record an item the authority accepted: the invoice updated and the item
+     * completed, in one transaction.
+     *
+     * Together, an item is never completed for an invoice that still reads
+     * unaccepted, nor the reverse. A caller must not treat a failure here as a
+     * failed submission: ZATCA already holds the document, so the item must
+     * not go back into the queue.
+     */
+    public function complete(string $queueId, Invoice $invoice, FatooraResponse $response): void
+    {
+        DB::transaction(function () use ($queueId, $invoice, $response): void {
+            $this->verdict->record($invoice, $response);
+
+            $this->markCompleted($queueId, [
+                'clearanceStatus' => $response->clearanceStatus,
+                'reportingStatus' => $response->reportingStatus,
+                'invoiceUuid' => $response->validationResults['invoiceUuid'] ?? null,
+            ]);
+        });
     }
 
     /**
