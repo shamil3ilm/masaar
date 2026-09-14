@@ -225,6 +225,13 @@ class UsageMeteringService
 
     /**
      * Database fallback for rate limiting.
+     *
+     * Two statements, each atomic by itself. The first creates the window's
+     * row unless it exists; the unique key on (license_id, window_type,
+     * window_key) lets concurrent first requests race it safely. The second
+     * takes a slot only while one is left, with the limit inside the UPDATE,
+     * so two requests cannot both take the last slot as they could after
+     * reading the count and then writing it.
      */
     private function checkWindowLimitDb(
         License $license,
@@ -233,31 +240,27 @@ class UsageMeteringService
         int $limit,
         int $windowSeconds
     ): void {
-        $record = DB::table('license_rate_limits')
-            ->where('license_id', $license->id)
-            ->where('window_type', $windowType)
-            ->where('window_key', $windowKey)
-            ->first();
+        $window = [
+            'license_id' => $license->id,
+            'window_type' => $windowType,
+            'window_key' => $windowKey,
+        ];
 
-        if ($record) {
-            if ($record->request_count >= $limit) {
-                $retryAfter = $this->getRetryAfter($windowType);
-                throw LicenseException::rateLimited($windowType, $limit, $retryAfter);
-            }
+        DB::table('license_rate_limits')->insertOrIgnore([
+            'id' => Str::uuid()->toString(),
+            ...$window,
+            'request_count' => 0,
+            'window_start' => now(),
+            'window_expires' => now()->addSeconds($windowSeconds),
+        ]);
 
-            DB::table('license_rate_limits')
-                ->where('id', $record->id)
-                ->increment('request_count');
-        } else {
-            DB::table('license_rate_limits')->insert([
-                'id' => Str::uuid()->toString(),
-                'license_id' => $license->id,
-                'window_type' => $windowType,
-                'window_key' => $windowKey,
-                'request_count' => 1,
-                'window_start' => now(),
-                'window_expires' => now()->addSeconds($windowSeconds),
-            ]);
+        $admitted = DB::table('license_rate_limits')
+            ->where($window)
+            ->where('request_count', '<', $limit)
+            ->increment('request_count');
+
+        if ($admitted === 0) {
+            throw LicenseException::rateLimited($windowType, $limit, $this->getRetryAfter($windowType));
         }
     }
 

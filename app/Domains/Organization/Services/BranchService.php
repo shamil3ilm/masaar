@@ -27,6 +27,11 @@ class BranchService
     public function create(Organization $organization, array $data): Branch
     {
         return DB::transaction(function () use ($organization, $data) {
+            // The serial is numbered from the branch count and the first
+            // branch becomes default, so concurrent creates would share a
+            // serial or both skip the default without this lock.
+            Branch::lockOrganization($organization->id);
+
             // Generate device serial if not provided
             $deviceSerial = $data['device_serial'] ?? Branch::generateDeviceSerial($organization);
 
@@ -95,22 +100,28 @@ class BranchService
             throw new \Exception('Cannot delete branch with existing invoices. Suspend instead.');
         }
 
-        // Check if default and other branches exist
-        if ($branch->is_default) {
-            $otherBranch = Branch::where('org_id', $branch->org_id)
-                ->where('id', '!=', $branch->id)
-                ->active()
-                ->first();
-
-            if ($otherBranch) {
-                $otherBranch->setAsDefault();
+        // Handing the default to another branch and removing this one commit
+        // together, so a failed delete leaves the default where it was.
+        $deleted = DB::transaction(function () use ($branch): bool {
+            if ($branch->is_default) {
+                Branch::where('org_id', $branch->org_id)
+                    ->where('id', '!=', $branch->id)
+                    ->active()
+                    ->first()
+                    ?->setAsDefault();
             }
+
+            return (bool) $branch->delete();
+        });
+
+        // Credentials are files outside the transaction, so they go only once
+        // the row is gone. In the other order a failed delete leaves a branch
+        // that can no longer sign.
+        if ($deleted) {
+            $this->deleteCredentials($branch);
         }
 
-        // Delete credentials
-        $this->deleteCredentials($branch);
-
-        return $branch->delete();
+        return $deleted;
     }
 
     /**
@@ -119,36 +130,45 @@ class BranchService
      * Returns the branch marked default, else any active branch, else creates
      * "Main Branch". ZATCA attributes every document to an EGS unit, including
      * a single-site taxpayer's, so this always returns one rather than null.
+     *
+     * Creation happens under the organization lock after looking again, so
+     * concurrent first calls create one "Main Branch" between them. The first
+     * look is unlocked because an existing default is the common case.
      */
     public function getOrCreateDefault(Organization $organization): Branch
     {
-        $defaultBranch = $organization->branches()
-            ->where('is_default', true)
-            ->first();
+        return $this->findDefault($organization)
+            ?? DB::transaction(function () use ($organization): Branch {
+                Branch::lockOrganization($organization->id);
 
-        if ($defaultBranch) {
-            return $defaultBranch;
+                return $this->findDefault($organization) ?? $this->create($organization, [
+                    'name' => 'Main Branch',
+                    'name_ar' => 'الفرع الرئيسي',
+                    'street' => $organization->street ?? 'Main Street',
+                    'building_number' => $organization->building_number ?? '0001',
+                    'additional_number' => $organization->additional_street,
+                    'district' => $organization->district ?? 'Central',
+                    'city' => $organization->city ?? 'Riyadh',
+                    'postal_code' => $organization->postal_code ?? '00000',
+                ]);
+            });
+    }
+
+    /**
+     * The default branch, promoting an active branch when none is marked.
+     */
+    private function findDefault(Organization $organization): ?Branch
+    {
+        $default = $organization->branches()->where('is_default', true)->first();
+
+        if ($default) {
+            return $default;
         }
 
-        // Check for any active branch
-        $anyBranch = $organization->branches()->active()->first();
-        if ($anyBranch) {
-            $anyBranch->setAsDefault();
+        $active = $organization->branches()->active()->first();
+        $active?->setAsDefault();
 
-            return $anyBranch;
-        }
-
-        // Create default branch using organization address
-        return $this->create($organization, [
-            'name' => 'Main Branch',
-            'name_ar' => 'الفرع الرئيسي',
-            'street' => $organization->street ?? 'Main Street',
-            'building_number' => $organization->building_number ?? '0001',
-            'additional_number' => $organization->additional_street,
-            'district' => $organization->district ?? 'Central',
-            'city' => $organization->city ?? 'Riyadh',
-            'postal_code' => $organization->postal_code ?? '00000',
-        ]);
+        return $active;
     }
 
     /**

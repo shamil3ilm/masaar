@@ -6,7 +6,7 @@ namespace Tests\Feature\Compliance;
 
 use App\Domains\Compliance\Fatoora\DTOs\FatooraResponse;
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
-use App\Domains\Compliance\Fatoora\Services\SubmissionTracker;
+use App\Domains\Compliance\Fatoora\Services\SubmissionLedger;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -25,9 +25,9 @@ use Tests\TestCase;
  * InvoiceCleared event, which reads it, reported null for every cleared
  * invoice.
  *
- * Reflection is used because handleZatcaResponse() is private and the public
- * route to it needs a live ZATCA client. The mapping from response to stored
- * row is the thing under test, and this reaches it without mocking the API.
+ * The response goes straight to SubmissionLedger::recordResponse(), the one
+ * place both submission paths record an answer. The mapping from response to
+ * stored row is the thing under test, and this reaches it without an API call.
  */
 class ClearanceTimestampTest extends TestCase
 {
@@ -95,8 +95,7 @@ class ClearanceTimestampTest extends TestCase
             'submission_type' => 'clearance',
         ]);
 
-        $method = new \ReflectionMethod(SubmissionTracker::class, 'handleZatcaResponse');
-        $method->invoke($this->app->make(SubmissionTracker::class), $submission, $response);
+        $this->app->make(SubmissionLedger::class)->recordResponse($submission, $response);
 
         return $submission->fresh();
     }

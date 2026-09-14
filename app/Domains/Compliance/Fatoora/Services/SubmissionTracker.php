@@ -7,16 +7,13 @@ namespace App\Domains\Compliance\Fatoora\Services;
 use App\Domains\Compliance\Fatoora\Client\FatooraClient;
 use App\Domains\Compliance\Fatoora\DTOs\FatooraResponse;
 use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
-use App\Domains\Compliance\Fatoora\Events\BaseInvoiceEvent;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Jobs\ProcessFatooraSubmission;
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Compliance\Fatoora\Models\SubmissionIdempotency;
 use App\Domains\Invoice\Models\Invoice;
-use App\Domains\Licensing\Services\UsageMeteringService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 /**
  * Sends an invoice to ZATCA once, and remembers what happened.
@@ -24,7 +21,8 @@ use Illuminate\Support\Str;
  * Idempotency keys make a retry safe, the state machine records where a
  * submission got to, and a repeated request replays the first answer rather
  * than sending a second document. What must be true before any of that is
- * SubmissionGuard's decision.
+ * SubmissionGuard's decision; how a submission moves between states and how
+ * an answer is recorded is SubmissionLedger's.
  */
 class SubmissionTracker
 {
@@ -41,8 +39,8 @@ class SubmissionTracker
      */
     public function __construct(
         private readonly FatooraClient $zatcaClient,
-        private readonly ClearanceState $clearanceState,
         private readonly SubmissionGuard $guard,
+        private readonly SubmissionLedger $ledger,
     ) {}
 
     /**
@@ -77,10 +75,14 @@ class SubmissionTracker
                 return $this->queueSubmission($submission);
             }
 
-            return $this->processSynchronously($submission, $invoice);
+            $response = $this->send($submission, $invoice);
         } catch (\Throwable $e) {
             return $this->handleSubmissionError($submission, $e);
         }
+
+        // Outside the error handling above: ZATCA has answered, so a local
+        // failure must not mark the submission failed and invite a retry.
+        return $this->recordResponse($submission, $response);
     }
 
     /**
@@ -132,10 +134,19 @@ class SubmissionTracker
 
     /**
      * Create submission and idempotency records.
+     *
+     * The invoice row is locked and the invoice checked again for a submission
+     * in flight or accepted. The guard's look happens before this transaction,
+     * so a second request — under another idempotency key, such as the default
+     * key after midnight — could pass it too and send the invoice twice.
      */
     private function createSubmission(Invoice $invoice, string $idempotencyKey, bool $async): InvoiceSubmission
     {
         return DB::transaction(function () use ($invoice, $idempotencyKey, $async) {
+            Invoice::query()->whereKey($invoice->getKey())->lockForUpdate()->first();
+
+            $this->guard->assertNotSubmitted($invoice);
+
             // Create idempotency record
             $idempotency = SubmissionIdempotency::create([
                 'idempotency_key' => $idempotencyKey,
@@ -161,35 +172,45 @@ class SubmissionTracker
                 'state_changed_at' => now(),
             ]);
 
-            // Log state transition
-            $this->logStateTransition($submission, null, $submission->state, 'api_call');
+            $this->ledger->log($submission, null, $submission->state, 'api_call');
 
             return $submission;
         });
     }
 
     /**
-     * Process submission synchronously.
+     * Put the issued document in front of ZATCA.
      */
-    private function processSynchronously(InvoiceSubmission $submission, Invoice $invoice): array
+    private function send(InvoiceSubmission $submission, Invoice $invoice): FatooraResponse
     {
-        $this->transitionState($submission, 'submitted', 'api_call');
+        $this->ledger->transition($submission, 'submitted', 'api_call');
 
-        try {
-            // Extract required data from invoice
-            $invoiceXml = $invoice->signed_xml;
-            $invoiceHash = $invoice->hash;
-            $invoiceUuid = $invoice->id;
+        return $invoice->isB2B()
+            ? $this->zatcaClient->clearInvoice($invoice->signed_xml, $invoice->hash, $invoice->id)
+            : $this->zatcaClient->reportInvoice($invoice->signed_xml, $invoice->hash, $invoice->id);
+    }
 
-            // Determine submission type and call ZATCA API
-            $response = $invoice->isB2B()
-                ? $this->zatcaClient->clearInvoice($invoiceXml, $invoiceHash, $invoiceUuid)
-                : $this->zatcaClient->reportInvoice($invoiceXml, $invoiceHash, $invoiceUuid);
+    /**
+     * Record ZATCA's answer and describe it to the caller.
+     *
+     * 'recorded' is false when the answer could not be written locally. The
+     * submission then stays 'submitted' for reconciliation and is not retried.
+     */
+    private function recordResponse(InvoiceSubmission $submission, FatooraResponse $response): array
+    {
+        $state = $this->ledger->recordResponse($submission, $response);
 
-            return $this->handleZatcaResponse($submission, $response);
-        } catch (\Exception $e) {
-            throw $e;
-        }
+        return [
+            'success' => $response->success,
+            'state' => $state ?? $submission->state,
+            'recorded' => $state !== null,
+            'submission_id' => $submission->id,
+            'zatca_uuid' => $submission->zatca_uuid,
+            'clearance_status' => $response->clearanceStatus,
+            'reporting_status' => $response->reportingStatus,
+            'warnings' => $submission->zatca_warnings,
+            'errors' => $submission->zatca_errors,
+        ];
     }
 
     /**
@@ -228,95 +249,6 @@ class SubmissionTracker
     }
 
     /**
-     * Handle ZATCA API response.
-     */
-    private function handleZatcaResponse(InvoiceSubmission $submission, FatooraResponse $response): array
-    {
-        $success = $response->success;
-        $hasWarnings = $response->hasWarnings();
-
-        // A 200 from ZATCA does not mean the invoice is cleared. For a B2B
-        // document, "REPORTED" means received and not yet cleared, and only
-        // "CLEARED" is terminal — so the state comes from what ZATCA actually
-        // returned, never from the fact that the call succeeded.
-        $clearance = $this->clearanceState->parseResponse([
-            'clearanceStatus' => $response->clearanceStatus,
-            'reportingStatus' => $response->reportingStatus,
-            'validationResults' => $response->validationResults,
-        ], isSimplified: $submission->submission_type !== 'clearance');
-
-        $newState = match (true) {
-            ! $success => 'rejected',
-            $hasWarnings => 'warning',
-            default => ClearanceState::submissionState($clearance['state']),
-        };
-
-        app(UsageMeteringService::class)->recordSubmissionOutcome(
-            (string) $submission->org_id,
-            $newState,
-            (float) ($submission->invoice?->total ?? 0)
-        );
-
-        // Extract warnings and errors from validation results
-        $warnings = $response->validationResults['warnings'] ?? $response->warningMessages;
-        $errors = $response->validationResults['errors'] ?? $response->errorMessages;
-
-        // Update submission
-        $submission->update([
-            'state' => $newState,
-            'previous_state' => $submission->state,
-            'state_changed_at' => now(),
-            'zatca_uuid' => $response->validationResults['invoiceUuid'] ?? null,
-            'invoice_hash' => $response->validationResults['invoiceHash'] ?? null,
-            'clearance_status' => $response->clearanceStatus,
-            'clearance_state' => $clearance['state'],
-            // Only a terminal clearance counts as confirmed; a document still
-            // awaiting ZATCA's decision has no confirmation time.
-            'cleared_at' => $clearance['is_terminal'] ? now() : null,
-            'reporting_status' => $response->reportingStatus,
-            'zatca_warnings' => ! empty($warnings) ? $warnings : null,
-            'zatca_errors' => ! empty($errors) ? $errors : null,
-            'completed_at' => $clearance['is_terminal'] ? now() : null,
-        ]);
-
-        // Convert response to array for idempotency storage
-        $responseArray = [
-            'clearanceStatus' => $response->clearanceStatus,
-            'reportingStatus' => $response->reportingStatus,
-            'validationStatus' => $response->validationStatus,
-            'validationResults' => $response->validationResults,
-            'warningMessages' => $response->warningMessages,
-            'errorMessages' => $response->errorMessages,
-        ];
-
-        // Update idempotency record
-        $this->updateIdempotency($submission, $success, $responseArray);
-
-        // Log state transition
-        $this->logStateTransition($submission, 'submitted', $newState, 'zatca');
-
-        // Announce the outcome, as the queued path does. This fired nowhere in
-        // the synchronous path, so the same result produced a webhook when
-        // queued and none when processed inline — what an integrator received
-        // depended on which path the platform happened to take.
-        BaseInvoiceEvent::raise($submission->fresh(), $newState, [
-            'clearance_status' => $response->clearanceStatus,
-            'reporting_status' => $response->reportingStatus,
-        ]);
-
-        return [
-            'success' => $success,
-            'state' => $newState,
-            'submission_id' => $submission->id,
-            'zatca_uuid' => $submission->zatca_uuid,
-            'clearance_status' => $submission->clearance_status,
-            'reporting_status' => $submission->reporting_status,
-            'warnings' => $submission->zatca_warnings,
-            'errors' => $submission->zatca_errors,
-        ];
-    }
-
-    /**
      * Handle submission error.
      */
     private function handleSubmissionError(InvoiceSubmission $submission, \Throwable $e): array
@@ -351,7 +283,7 @@ class SubmissionTracker
         }
 
         // Log
-        $this->logStateTransition($submission, $submission->previous_state, 'failed', 'error', [
+        $this->ledger->log($submission, $submission->previous_state, 'failed', 'error', [
             'error_code' => $errorCode->value,
             'error_message' => $e->getMessage(),
             'retryable' => $isRetryable,
@@ -376,17 +308,38 @@ class SubmissionTracker
 
     /**
      * Retry a failed submission.
+     *
+     * The submission is claimed under a row lock before anything is sent, so
+     * two retries of the same submission send it once: the second finds the
+     * state the first moved it to and is refused.
      */
     public function retry(InvoiceSubmission $submission): array
     {
-        if (! in_array($submission->state, ['failed', 'rejected'])) {
+        $claimed = $this->ledger->claim(
+            $submission,
+            ['failed', 'rejected'],
+            'retry',
+            $this->assertRetryable(...)
+        );
+
+        if ($claimed === null) {
             throw new FatooraException(
                 'Only failed or rejected submissions can be retried',
                 ErrorCode::VAL_INVALID_FORMAT
             );
         }
 
-        $errorCode = ErrorCode::tryFrom($submission->last_error_code);
+        return $this->recordResponse($claimed, $this->send($claimed, $claimed->invoice));
+    }
+
+    /**
+     * Refuse a retry the error or the attempt count does not allow.
+     *
+     * @throws FatooraException
+     */
+    private function assertRetryable(InvoiceSubmission $submission): void
+    {
+        $errorCode = ErrorCode::tryFrom((string) $submission->last_error_code);
         if ($errorCode && ! $errorCode->isRetryable()) {
             throw new FatooraException(
                 'This error is not retryable',
@@ -400,13 +353,6 @@ class SubmissionTracker
                 ErrorCode::RATE_QUOTA_EXCEEDED
             );
         }
-
-        $invoice = $submission->invoice;
-
-        // Reset state
-        $this->transitionState($submission, 'pending_submission', 'retry');
-
-        return $this->processSynchronously($submission, $invoice);
     }
 
     /**
@@ -418,73 +364,13 @@ class SubmissionTracker
             return false;
         }
 
-        $this->transitionState($submission, 'cancelled', 'manual', ['reason' => $reason]);
+        $this->ledger->transition($submission, 'cancelled', 'manual', ['reason' => $reason]);
 
         // Expire idempotency
         SubmissionIdempotency::where('id', $submission->idempotency_id)
             ->update(['status' => 'expired', 'expires_at' => now()]);
 
         return true;
-    }
-
-    /**
-     * Transition submission state.
-     */
-    private function transitionState(
-        InvoiceSubmission $submission,
-        string $newState,
-        string $trigger,
-        array $context = []
-    ): void {
-        $oldState = $submission->state;
-
-        $submission->update([
-            'state' => $newState,
-            'previous_state' => $oldState,
-            'state_changed_at' => now(),
-        ]);
-
-        $this->logStateTransition($submission, $oldState, $newState, $trigger, $context);
-    }
-
-    /**
-     * Log state transition for audit.
-     */
-    private function logStateTransition(
-        InvoiceSubmission $submission,
-        ?string $fromState,
-        string $toState,
-        string $trigger,
-        array $context = []
-    ): void {
-        DB::table('submission_state_logs')->insert([
-            'id' => Str::uuid()->toString(),
-            'submission_id' => $submission->id,
-            'from_state' => $fromState,
-            'to_state' => $toState,
-            'trigger' => $trigger,
-            'context' => ! empty($context) ? json_encode($context) : null,
-            'actor_type' => auth()->check() ? 'user' : 'system',
-            'actor_id' => auth()->id(),
-            'ip_address' => request()->ip(),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-    }
-
-    /**
-     * Update idempotency record with response.
-     */
-    private function updateIdempotency(InvoiceSubmission $submission, bool $success, array $response): void
-    {
-        SubmissionIdempotency::where('id', $submission->idempotency_id)->update([
-            'status' => $success ? 'completed' : 'failed',
-            'http_status_code' => $success ? 200 : 422,
-            'response_body' => $response,
-            'zatca_request_id' => $response['requestId'] ?? null,
-            'clearance_status' => $response['clearanceStatus'] ?? null,
-            'completed_at' => now(),
-        ]);
     }
 
     /**

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Compliance\FTA;
 
 use App\Domains\Compliance\FTA\Enums\FtaStatus;
+use App\Domains\Compliance\FTA\Exceptions\FtaException;
 use App\Domains\Compliance\FTA\Models\FtaSubmission;
 use App\Domains\Compliance\FTA\Services\FtaService;
 use App\Domains\Invoice\Models\Invoice;
@@ -141,6 +142,28 @@ class FtaSubmissionTest extends TestCase
         $this->resubmit();
 
         Http::assertSent(fn (Request $request) => str_starts_with($request->url(), 'https://fta.test/api/v1/'));
+    }
+
+    /**
+     * Two retries of one failed submission, each holding a copy read before
+     * the other ran, submit once and count once.
+     */
+    public function test_concurrent_retries_submit_once(): void
+    {
+        Http::fake(['fta.test/*' => Http::response(['status' => 'accepted', 'submissionId' => 'FTA-1'])]);
+
+        $submission = $this->submission(FtaStatus::Failed);
+        $stale = FtaSubmission::withoutTenantScope(fn () => FtaSubmission::find($submission->id));
+
+        app(FtaService::class)->retry($submission);
+
+        try {
+            app(FtaService::class)->retry($stale);
+            $this->fail('A retry of an accepted submission was sent.');
+        } catch (FtaException) {
+            Http::assertSentCount(1);
+            $this->assertSame(1, $submission->fresh()->retry_count);
+        }
     }
 
     private function resubmit(): FtaSubmission

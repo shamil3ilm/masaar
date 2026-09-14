@@ -296,22 +296,40 @@ class SubmissionGuard
     }
 
     /**
+     * Throw if the invoice has a submission on its way to ZATCA or accepted.
+     *
+     * SubmissionTracker calls this a second time with the invoice row locked,
+     * immediately before writing its own submission, because the look made
+     * from check() comes before that lock and a concurrent request can pass it
+     * as well.
+     *
+     * @throws FatooraException
+     */
+    public function assertNotSubmitted(Invoice $invoice): void
+    {
+        $existing = InvoiceSubmission::where('invoice_id', $invoice->id)
+            ->whereIn('state', [...InvoiceSubmission::IN_FLIGHT_STATES, ...InvoiceSubmission::ACCEPTED_STATES])
+            ->first();
+
+        if ($existing === null) {
+            return;
+        }
+
+        $errorCode = match (true) {
+            in_array($existing->state, InvoiceSubmission::IN_FLIGHT_STATES, true) => ErrorCode::IDEM_PROCESSING_IN_PROGRESS,
+            $existing->state === 'cleared', $existing->state === 'warning' && $existing->isClearance() => ErrorCode::ZATCA_INVOICE_ALREADY_CLEARED,
+            default => ErrorCode::ZATCA_INVOICE_ALREADY_REPORTED,
+        };
+
+        throw new FatooraException($errorCode->getMessage(), $errorCode);
+    }
+
+    /**
      * Check for duplicate submission.
      */
     private function checkDuplicateSubmission(Invoice $invoice): void
     {
-        // Check if this exact invoice ID has already been submitted
-        $existingSubmission = InvoiceSubmission::where('invoice_id', $invoice->id)
-            ->whereIn('state', ['cleared', 'reported'])
-            ->first();
-
-        if ($existingSubmission) {
-            $errorCode = $existingSubmission->state === 'cleared'
-                ? ErrorCode::ZATCA_INVOICE_ALREADY_CLEARED
-                : ErrorCode::ZATCA_INVOICE_ALREADY_REPORTED;
-
-            throw new FatooraException($errorCode->getMessage(), $errorCode);
-        }
+        $this->assertNotSubmitted($invoice);
 
         // Check for duplicate invoice numbers, UUIDs, or content hashes
         $duplicateCheck = $this->duplicateDetector->check(
