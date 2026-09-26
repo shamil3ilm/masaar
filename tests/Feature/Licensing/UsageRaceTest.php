@@ -88,8 +88,14 @@ class UsageRaceTest extends TestCase
     {
         $fired = false;
 
-        DB::listen(function (QueryExecuted $query) use (&$fired, $table, $competitor): void {
-            if ($fired || ! str_contains($query->sql, "\"{$table}\"")) {
+        // Each driver quotes an identifier its own way - "t" on SQLite and
+        // `t` on MySQL - so matching one spelling meant the competitor never
+        // ran on the other, and the race this test exists for did not happen
+        // there at all while the test still passed.
+        $names = '/(?<![a-z0-9_])'.preg_quote($table, '/').'(?![a-z0-9_])/i';
+
+        DB::listen(function (QueryExecuted $query) use (&$fired, $names, $competitor): void {
+            if ($fired || preg_match($names, $query->sql) !== 1) {
                 return;
             }
 
