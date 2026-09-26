@@ -111,7 +111,11 @@ class OrganizationApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('message', 'Organization updated')
             ->assertJsonPath('data.organization.name', 'Acme Renamed')
-            ->assertJsonPath('data.organization.compliance_profile', ['vat_number' => '399999999900003', 'regime' => 'standard']);
+            // Compared by content: compliance_profile is a json column, and
+            // MySQL stores a json object with its keys reordered, so the two
+            // drivers hand back the same profile in a different order.
+            ->assertJsonPath('data.organization.compliance_profile.vat_number', '399999999900003')
+            ->assertJsonPath('data.organization.compliance_profile.regime', 'standard');
 
         $this->assertDatabaseHas('audit_logs', ['action' => 'Organization.updated', 'entity_id' => $this->acme->id]);
     }
