@@ -13,8 +13,10 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 |
 | Reachable without a credential. Everything here is deliberately public, and
-| RouteAuthPostureTest fails the build if an unguarded route appears anywhere
-| else, so this file is the whole of the unauthenticated surface.
+| ApiRouteAuthPostureTest fails the build if an API route asks for no
+| credential without being listed there as well, so this file is the whole of
+| the unauthenticated API surface. RouteAuthPostureTest does the same for the
+| routes served as pages.
 |
 */
 
