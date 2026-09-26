@@ -209,9 +209,13 @@ class SubmissionReport
      */
     private function groupByState(Builder $query): Collection
     {
+        // Ordered because the result is rendered as it comes: without it the
+        // states appear in whatever order the driver returns them, which is
+        // not the same on every database and need not be the same twice.
         return $query
             ->selectRaw('state, COUNT(*) as total')
             ->groupBy('state')
+            ->orderBy('state')
             ->pluck('total', 'state');
     }
 }
