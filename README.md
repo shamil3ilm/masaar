@@ -6,7 +6,7 @@ A multi-jurisdiction e-invoicing compliance API platform for GCC businesses.
 
 | Country | Authority | System | Status |
 |---------|-----------|--------|--------|
-| 🇸🇦 Saudi Arabia | ZATCA | Fatoora Phase 2 | 🟡 Feature complete — not yet validated against ZATCA |
+| 🇸🇦 Saudi Arabia | ZATCA | Fatoora Phase 2 | 🟡 Passes ZATCA's SDK validator (schema, EN 16931, Schematron) — certificate checks and live submission pending, see [Conformance](#conformance) |
 | 🇦🇪 UAE | FTA | Peppol PINT AE | 🚧 In development (mandate: 2027-01-01) |
 | 🇶🇦 Qatar | GTA | — | 📋 Planned |
 
