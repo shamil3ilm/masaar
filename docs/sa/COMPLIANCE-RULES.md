@@ -51,5 +51,7 @@ Set via `FATOORA_ENV=sandbox|simulation|production` in `.env`.
 ## Known Limitations
 
 - Clearance is synchronous — the API blocks until ZATCA stamps or rejects the invoice.
-- CSID certificates expire. Use `fatoora:renew-certificate` before expiry.
+- CSID certificates expire. `fatoora:check-certificate` reports how long is
+  left and can notify; there is no renewal command, so a new CSID means
+  onboarding again with a fresh OTP.
 - Offline mode queues submissions locally when ZATCA is unreachable. Queued invoices are processed by the `ProcessFatooraSubmission` job.
