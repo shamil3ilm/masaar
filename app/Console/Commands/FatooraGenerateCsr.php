@@ -121,15 +121,20 @@ class FatooraGenerateCsr extends Command
             $apps = $this->sdkApps();
             $sdkJar = $apps === null ? null : $apps.'/zatca-einvoicing-sdk-238-R3.4.8.jar';
 
+            // One template for both generators: the certificate template is
+            // what tells ZATCA which environment the request is for, and a
+            // request carrying another environment's template is refused.
+            $template = $this->option('template') ?: CsrBuilder::TEMPLATE_SIMULATION;
+
             if ($sdkJar !== null && file_exists($sdkJar)) {
                 $this->info('Using ZATCA SDK for CSR generation (recommended)...');
-                $result = $this->generateCsrWithSdk($csrData);
+                $result = $this->generateCsrWithSdk($csrData, $template);
             } else {
                 $this->warn('ZATCA SDK not found, falling back to phpseclib...');
                 $this->line($apps === null
                     ? 'Set ZATCA_SDK_PATH to the unpacked SDK to use it instead.'
                     : "No SDK jar under {$apps}.");
-                $result = $this->generateCsrWithPhpseclib($csrData);
+                $result = $this->generateCsrWithPhpseclib($csrData, $template);
             }
 
             $outputDir = $this->secretDir($this->option('output'));
@@ -196,15 +201,15 @@ class FatooraGenerateCsr extends Command
      * Generate CSR using the official ZATCA SDK.
      * This is the recommended approach as it produces CSRs that are guaranteed to be accepted.
      */
-    private function generateCsrWithSdk(CsrData $csrData): array
+    private function generateCsrWithSdk(CsrData $csrData, string $template): array
     {
-        $outputDir = $this->secretDir();
+        $outputDir = $this->secretDir($this->option('output'));
 
         // Create CSR config file for SDK
         $invoiceType = $csrData->getInvoiceTypeCode();
         $configPath = $outputDir.'/csr-config.properties';
         $configContent = <<<EOT
-csr.common.name=TST-886431145-{$csrData->vatNumber}
+csr.common.name={$csrData->commonName}
 csr.serial.number={$csrData->serialNumber}
 csr.organization.identifier={$csrData->vatNumber}
 csr.organization.unit.name={$csrData->organizationUnit}
@@ -231,12 +236,23 @@ EOT;
         $csrOutput = $outputDir.'/taxpayer-sdk.csr';
         $keyOutput = $outputDir.'/taxpayer-sdk.key';
 
+        // Cleared before the run, because the check below is "did a file
+        // appear" and the SDK can refuse a config while still exiting 0. With
+        // last run's files still there the refusal reads as a success and the
+        // previous taxpayer's CSR is handed back as this one's.
+        foreach ([$csrOutput, $keyOutput] as $stale) {
+            if (is_file($stale)) {
+                unlink($stale);
+            }
+        }
+
         $cmd = sprintf(
-            'java -Djdk.module.illegalAccess=deny -Dfile.encoding=UTF-8 -jar "%s" --globalVersion 238-R3.4.8 -csr -csrConfig "%s" -generatedCsr "%s" -privateKey "%s" -sim 2>&1',
+            'java -Djdk.module.illegalAccess=deny -Dfile.encoding=UTF-8 -jar "%s" --globalVersion 238-R3.4.8 -csr -csrConfig "%s" -generatedCsr "%s" -privateKey "%s"%s 2>&1',
             $sdkJar,
             $configPath,
             basename($csrOutput),
-            basename($keyOutput)
+            basename($keyOutput),
+            $this->sdkTemplateFlag($template)
         );
 
         // Change to output directory and run
@@ -276,6 +292,8 @@ EOT;
         $keyPem = "-----BEGIN EC PRIVATE KEY-----\n".
             chunk_split($keyBase64, 64, "\n").
             '-----END EC PRIVATE KEY-----';
+
+        $this->assertTemplate($csrPem, $template);
 
         // Save PEM files
         $csrPath = $outputDir.'/taxpayer.csr';
@@ -331,11 +349,57 @@ EOT;
      * missing extensions nor this command. CsrBuilder writes them, and its
      * output is byte-identical to the SDK's for the same key.
      */
-    private function generateCsrWithPhpseclib(CsrData $csrData): array
+    /**
+     * Which flag asks the SDK for which certificate template.
+     *
+     * The SDK takes the environment as a flag and not from the config file,
+     * so a config naming one template and a flag naming another produce the
+     * flag's. Verified afterwards by assertTemplate() rather than trusted.
+     */
+    private function sdkTemplateFlag(string $template): string
+    {
+        return match ($template) {
+            // The SDK's own default, with no flag, is the production template.
+            CsrBuilder::TEMPLATE_PRODUCTION => '',
+            CsrBuilder::TEMPLATE_SANDBOX => ' -nonprod',
+            default => ' -sim',
+        };
+    }
+
+    /**
+     * Refuse a CSR that does not carry the template that was asked for.
+     *
+     * The template rides in the request as a plain string under
+     * 1.3.6.1.4.1.311.20.2, so this reads what was actually produced. Without
+     * it a wrong flag is invisible until ZATCA refuses the onboarding - by
+     * which time the OTP behind it is spent and another has to be fetched.
+     */
+    private function assertTemplate(string $csrPem, string $template): void
+    {
+        $der = base64_decode(preg_replace('/-----[^-]+-----|\s+/', '', $csrPem) ?? '', true);
+
+        // Matched as the whole UTF8String it is - tag, length, bytes - and not
+        // as a substring: "ZATCA-Code-Signing" is the tail of
+        // "PREZATCA-Code-Signing", so a simulation CSR would otherwise pass
+        // for a production one.
+        $encoded = "\x0c".chr(strlen($template)).$template;
+
+        if ($der === false || ! str_contains($der, $encoded)) {
+            throw new \RuntimeException(
+                "The CSR does not carry the {$template} template. ".
+                'The SDK was asked for it with "'.trim($this->sdkTemplateFlag($template)).'"; '.
+                'check that flag against the SDK\'s own help before onboarding with this CSR.'
+            );
+        }
+
+        $this->info("✓ CSR carries the {$template} template");
+    }
+
+    private function generateCsrWithPhpseclib(CsrData $csrData, string $template): array
     {
         ['csr' => $csrPem, 'privateKey' => $privateKeyPem] = app(CsrBuilder::class)->generate(
             $csrData,
-            $this->option('template') ?: CsrBuilder::TEMPLATE_SIMULATION,
+            $template,
         );
 
         $this->info('✓ EC private key generated (secp256k1)');
