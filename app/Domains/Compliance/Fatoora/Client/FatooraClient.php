@@ -7,8 +7,11 @@ namespace App\Domains\Compliance\Fatoora\Client;
 use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\DTOs\CsidResponse;
 use App\Domains\Compliance\Fatoora\DTOs\FatooraResponse;
+use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
 use App\Domains\Compliance\Fatoora\Services\InvoiceHasher;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -155,6 +158,23 @@ class FatooraClient
                 return FatooraResponse::fromApiResponse($response->json());
             }
 
+            // Being throttled is not being refused.
+            //
+            // Every unsuccessful response became a generic failure, and
+            // SubmissionLedger turns any unsuccessful response into
+            // 'rejected' - so a device ZATCA was rate limiting looked exactly
+            // like a document ZATCA had refused, in the one state an operator
+            // reads. ErrorCode::ZATCA_RATE_LIMITED existed for this and was
+            // never assigned to anything.
+            if ($throttle = $this->throttle($response)) {
+                Log::warning('ZATCA is rate limiting this device', [
+                    'status' => $response->status(),
+                    'retry_after' => $throttle,
+                ]);
+
+                return FatooraResponse::throttled($throttle, $response->body());
+            }
+
             Log::warning('ZATCA API request failed', [
                 'status' => $response->status(),
                 'body' => $response->body(),
@@ -176,6 +196,39 @@ class FatooraClient
     }
 
     /**
+     * How long to wait, if this response is the authority declining to look.
+     *
+     * Null when it is not. 429 is the documented refusal; 503 is treated the
+     * same way, because a gateway shedding load is the same instruction with a
+     * different number, and both are safe to retry - a submission is
+     * idempotent, so retrying cannot double-report a document.
+     *
+     * Retry-After is honoured when present, in either form the HTTP
+     * specification allows, so the wait is the authority's own figure rather
+     * than a guess at its rate limit. Falls back to the delay the error code
+     * carries when the header is absent or unreadable.
+     */
+    private function throttle(Response $response): ?int
+    {
+        if (! in_array($response->status(), [429, 503], true)) {
+            return null;
+        }
+
+        $header = trim((string) $response->header('Retry-After'));
+
+        if ($header !== '' && ctype_digit($header)) {
+            return max(1, (int) $header);
+        }
+
+        // Or an HTTP date, which is how a gateway often phrases it.
+        if ($header !== '' && ($at = strtotime($header)) !== false) {
+            return max(1, $at - time());
+        }
+
+        return ErrorCode::ZATCA_RATE_LIMITED->getRetryDelay();
+    }
+
+    /**
      * Create base HTTP client with config-driven settings.
      * Used as foundation for all API requests.
      */
@@ -183,7 +236,27 @@ class FatooraClient
     {
         $client = Http::timeout($this->getTimeout())
             ->connectTimeout($this->getConnectTimeout())
-            ->retry($this->getRetryAttempts(), $this->getRetryDelay())
+            // Retry the transport, never the answer.
+            //
+            // Http::retry() throws on a failed status when more than one
+            // attempt is configured, so every non-2xx reply from ZATCA was
+            // retried at a fixed delay inside the caller's request and then
+            // left this method as an exception message - which made the
+            // structured response handling below unreachable for every
+            // failing status, including a 429 carrying the authority's own
+            // Retry-After.
+            //
+            // A connection that never opened is worth retrying here; an
+            // answer is not. Retrying an answer is the queue's job, which has
+            // backoff, an idempotency key and a record of each attempt, and
+            // for a 429 it can wait exactly as long as the authority asked.
+            // throw: false returns the response rather than raising it.
+            ->retry(
+                $this->getRetryAttempts(),
+                $this->getRetryDelay(),
+                fn (\Throwable $e): bool => $e instanceof ConnectionException,
+                throw: false,
+            )
             ->withHeaders([
                 'Accept' => 'application/json',
                 'Content-Type' => 'application/json',
