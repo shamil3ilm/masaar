@@ -6,6 +6,7 @@ use App\Domains\Auth\Contracts\Authenticator;
 use App\Domains\Auth\Http\Middleware\IsPlatformAdmin;
 use App\Domains\Auth\Http\Middleware\JwtGuard;
 use App\Domains\Auth\Services\JwtAuthenticator;
+use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\Services\CircuitBreaker;
 use App\Domains\Compliance\Fatoora\Services\TimestampValidator;
 use App\Domains\Licensing\Http\Middleware\CheckInvoiceQuota;
@@ -20,6 +21,7 @@ use App\Domains\Platform\Http\Middleware\MetricsAccess;
 use App\Domains\Platform\Http\Middleware\RateLimitApi;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -69,6 +71,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->assertDebugDisabledInProduction();
+        $this->assertSubmissionLimitsAgree();
         $this->reclaimMiddlewareAliases();
 
         // Eloquent drops attributes that are not fillable without a word.
@@ -122,5 +125,40 @@ class AppServiceProvider extends ServiceProvider
                 .'Debug mode exposes internal error detail through the API.'
             );
         }
+    }
+
+    /**
+     * Two keys throttle submissions and the lower one silently decides.
+     *
+     * RateLimitApi throttles at the edge from security.rate_limits.submission;
+     * SubmissionGuard throttles inside from fatoora.rate_limits.per_minute.
+     * Set apart, the looser of the two is documentation for a limit that is
+     * not in force, and the symptom is a 429 at a rate nobody configured.
+     *
+     * A deployment invariant rather than a test, because it is the .env that
+     * drifts: the shipped .env.example has them equal, and a copy edited six
+     * months later does not. Refused at boot in production, where a wrong
+     * throughput ceiling costs submissions against the twenty-four hour
+     * reporting deadline; logged elsewhere, so a developer's local override
+     * does not stop the application starting.
+     */
+    private function assertSubmissionLimitsAgree(): void
+    {
+        $edge = (int) config('security.rate_limits.submission');
+        $guard = FatooraConfig::getRateLimitPerMinute();
+
+        if ($edge === $guard) {
+            return;
+        }
+
+        $message = 'RATE_LIMIT_SUBMISSION and ZATCA_RATE_LIMIT_PER_MINUTE throttle '
+            ."the same traffic and disagree: {$edge} at the edge against {$guard} in "
+            .'SubmissionGuard. The lower one is the real limit. Set them equal.';
+
+        if ($this->app->environment('production')) {
+            throw new \RuntimeException($message);
+        }
+
+        Log::warning($message, ['edge' => $edge, 'guard' => $guard]);
     }
 }

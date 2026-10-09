@@ -287,16 +287,46 @@ config already runs php-fpm, nginx, two default workers, three
       `config/security.php`. It was aliased and attached to nothing until
       2026-10-09, so the whole policy was inert and `/api/auth/login` had no
       limit at all; `tests/Feature/Security/AuthThrottleTest.php` holds that
-      shut. **Two numbers need your decision before go-live:**
-      `RATE_LIMIT_DEFAULT` is 60 a minute per tenant for every endpoint outside
-      a cost band, which a busy integration will exceed; and
-      `RATE_LIMIT_SUBMISSION` must stay in step with
-      `fatoora.rate_limits.per_minute`, which governs the same traffic. Section
-      1.1's target of 1000 invoices a minute across 10 organizations is ~100
-      each, which exceeds both.
-- [ ] **Error tracking (Sentry/similar) configured** — nothing is wired. No
-      Sentry, Bugsnag or Flare package is installed, so an unhandled exception
-      reaches the log and nowhere else.
+      shut.
+
+      The bands are ordered by what a request costs - onboarding 5, anonymous
+      20, submission 120, default 300, read 600 - so a band is never tighter
+      than the fallback its traffic would otherwise drop through to, which
+      `RateLimitConfigTest` asserts. `RATE_LIMIT_SUBMISSION` is 120 to make
+      section 1.1's thousand-a-minute target reachable across ten
+      organizations, and it is a platform ceiling rather than an ambition: a
+      limit above what ZATCA's API accepts does not buy throughput, it moves
+      the refusal from a cheap local 429 to a failed submission against the
+      24-hour reporting deadline. **Confirm the authority's published figure
+      and keep this under it.**
+
+      **An existing deployment needs two lines changed in its `.env`**, because
+      the values there override these defaults and the old ones were
+      incoherent: `RATE_LIMIT_SUBMISSION=120` and
+      `ZATCA_RATE_LIMIT_PER_MINUTE=120`. They throttle the same traffic and the
+      lower one silently decides, so `AppServiceProvider` refuses to boot in
+      production while they disagree and logs a warning elsewhere.
+- [x] **Errors are identifiable** — `LogContext` shares a correlation id, the
+      organization, the user and the matched route with every log line written
+      during a request, and returns the id as `X-Request-Id` so a customer
+      reporting a problem can quote it. Until 2026-10-09 an unhandled exception
+      reached the log as a message and a stack trace with no tenant on it,
+      which on a deployment serving several taxpayers is close to
+      unactionable - and no aggregator fixes that, since it can only group what
+      it is given. Identifiers only, deliberately: a VAT or invoice number
+      would make the log a copy of the data it describes (see `LogSanitizer`).
+- [ ] **Errors are aggregated and alert someone** — still open, and it is a
+      procurement decision rather than a code one. The `slack` and
+      `papertrail` channels already exist in `config/logging.php` and need only
+      to be named in `LOG_STACK`; a hosted tracker (Sentry, Bugsnag) would be
+      a new dependency.
+
+      **Weigh data residency before choosing.** An exception payload from this
+      platform can carry invoice context, which is Saudi tax data. Shipping it
+      to a tracker outside the Kingdom is a question for whoever owns your
+      ZATCA and data-protection obligations, not a default. A self-hosted
+      collector, or the existing channels pointed at infrastructure you
+      control, avoids the question entirely.
 
 ### 5.3 Monitoring
 
