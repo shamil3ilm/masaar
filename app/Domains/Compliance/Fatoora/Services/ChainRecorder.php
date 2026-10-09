@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Services;
 
+use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\Models\ChainEntry;
 use App\Domains\Compliance\Fatoora\Models\ChainState;
 use App\Domains\Invoice\Models\Invoice;
@@ -53,7 +54,7 @@ final class ChainRecorder
         // The genesis PIH, for the first document in a chain. XmlBuilder emits
         // this same value when it is handed a null, so the recorded entry says
         // what the document says.
-        $previousHash ??= base64_encode(str_repeat("\0", 32));
+        $previousHash ??= FatooraConfig::GENESIS_PIH;
 
         DB::transaction(function () use ($invoice, $invoiceHash, $previousHash, $certificateId, $organizationId): void {
             // org_id is given explicitly, so the scope would only decide

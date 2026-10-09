@@ -116,9 +116,13 @@ class QueueReport
      */
     public function countByState(): Collection
     {
+        // Ordered because the view renders these as they come: without it the
+        // states arrive in whatever order the driver returns them, which is
+        // not the same on MySQL as on SQLite and need not be the same twice.
         return DB::table('offline_queue')
             ->selectRaw('state, COUNT(*) as count')
             ->groupBy('state')
+            ->orderBy('state')
             ->pluck('count', 'state');
     }
 

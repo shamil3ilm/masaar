@@ -69,8 +69,13 @@ class XadesPropertiesTest extends TestCase
     {
         $embedded = $this->text('//ds:KeyInfo/ds:X509Data/ds:X509Certificate');
 
+        // Taken over the base64 text rather than the bytes it encodes, and
+        // written as hex before being base64'd. Both are what ZATCA's own
+        // signed samples carry: the value in Data/Samples decodes to
+        // sixty-four hex characters and matches the digest of the sample's
+        // certificate text, not of its DER.
         $this->assertSame(
-            base64_encode(hash('sha256', (string) base64_decode($embedded), true)),
+            base64_encode(hash('sha256', $embedded)),
             $this->text('//xades:CertDigest/ds:DigestValue'),
             'CertDigest is not the digest of the certificate in KeyInfo.'
         );
@@ -116,7 +121,9 @@ class XadesPropertiesTest extends TestCase
         $id = $this->xpath->query('//xades:SignedProperties')->item(0)->getAttribute('Id');
 
         $uri = $this->xpath
-            ->query('//ds:Reference[@Type="http://uri.etsi.org/01903#SignedProperties"]')
+            // The type ZATCA's own signed samples carry for this
+            // reference, which is not the XAdES one for signed properties.
+            ->query('//ds:Reference[@Type="http://www.w3.org/2000/09/xmldsig#SignatureProperties"]')
             ->item(0)
             ->getAttribute('URI');
 

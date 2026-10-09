@@ -135,7 +135,11 @@ class XadesSigner
 
         // Generate signature ID
         $signatureId = 'signature-'.bin2hex(random_bytes(8));
-        $signedPropertiesId = 'signedprops-'.bin2hex(random_bytes(8));
+        // Fixed, not generated: ZATCA rebuilds this block from a template of
+        // its own to check the digest, and that template carries this Id. A
+        // unique one per signature changes the bytes it hashes and nothing
+        // else, so the digest never agrees.
+        $signedPropertiesId = 'xadesSignedProperties';
 
         $signature = $this->createSignatureElement($dom, $signatureId);
 
@@ -330,7 +334,10 @@ class XadesSigner
     private function createSignedPropertiesReference(DOMDocument $dom, string $signedPropertiesId, DOMElement $signedProperties): DOMElement
     {
         $reference = $dom->createElementNS(self::DS_NS, 'ds:Reference');
-        $reference->setAttribute('Type', 'http://uri.etsi.org/01903#SignedProperties');
+        // The type ZATCA's own signed samples carry for this reference. The
+        // XAdES type for signed properties is http://uri.etsi.org/01903#
+        // SignedProperties, and ZATCA does not use it here.
+        $reference->setAttribute('Type', 'http://www.w3.org/2000/09/xmldsig#SignatureProperties');
         $reference->setAttribute('URI', '#'.$signedPropertiesId);
 
         // DigestMethod
@@ -338,9 +345,12 @@ class XadesSigner
         $digestMethod->setAttribute('Algorithm', 'http://www.w3.org/2001/04/xmlenc#sha256');
         $reference->appendChild($digestMethod);
 
-        // Calculate digest of SignedProperties element (canonicalized)
-        $signedPropsC14n = $signedProperties->C14N(false, false);
-        $digest = base64_encode(hash('sha256', $signedPropsC14n, true));
+        // Hex then base64, the way ZATCA's own signed samples carry this one
+        // reference: its value decodes to sixty-four hex characters where the
+        // invoice's own reference, a few lines above, decodes to thirty-two
+        // bytes. The two references in one signature do not agree with each
+        // other, and this is the one that differs.
+        $digest = base64_encode(hash('sha256', $this->signedPropertiesDigestInput($signedProperties)));
         $digestValue = $dom->createElementNS(self::DS_NS, 'ds:DigestValue', $digest);
         $reference->appendChild($digestValue);
 
@@ -424,8 +434,23 @@ class XadesSigner
         $digestMethod->setAttribute('Algorithm', 'http://www.w3.org/2001/04/xmlenc#sha256');
         $certDigest->appendChild($digestMethod);
 
-        $certDer = $this->pemToDer($certificatePem);
-        $digestValue = $dom->createElementNS(self::DS_NS, 'ds:DigestValue', base64_encode(hash('sha256', $certDer, true)));
+        // Two things about this digest, both of them unlike every other digest
+        // in this signature, and both taken from what ZATCA's own signed
+        // samples carry rather than from what XML-DSig would suggest.
+        //
+        // It is taken over the certificate's base64 text and not over the
+        // bytes that text encodes; and it is written as hex and then base64'd,
+        // so the value decodes to sixty-four hex characters rather than to
+        // thirty-two bytes.
+        //
+        // Sent either other way the certificate reads as the wrong one, and
+        // the signed properties digest and the signature over them are wrong
+        // with it, because this value sits inside them.
+        $digestValue = $dom->createElementNS(
+            self::DS_NS,
+            'ds:DigestValue',
+            base64_encode(hash('sha256', $this->extractCertificateValue($certificatePem)))
+        );
         $certDigest->appendChild($digestValue);
 
         $cert->appendChild($certDigest);
@@ -561,23 +586,77 @@ class XadesSigner
     }
 
     /**
-     * Format issuer name for X509IssuerName.
+     * The bytes ZATCA digests for the SignedProperties reference.
+     *
+     * The element exactly as this document carries it, and nothing else. The
+     * validator pulls the element out of the document and digests what it
+     * finds, which was established by compacting that element in one of the
+     * authority's own samples, recomputing the digest over the compacted
+     * bytes, and watching the check still pass: the formatting is the
+     * document's to choose, and the digest has to describe it.
+     *
+     * Nothing is added here because nothing is missing. Building these
+     * elements with createElementNS declares xmlns:ds on each one that needs
+     * it rather than once on an ancestor, so the subtree is already
+     * self-contained and serialising it alone changes none of its bytes.
+     * Stripping those declarations and putting them back where ZATCA's own
+     * samples carry them produced a digest of a document nobody had.
+     */
+    private function signedPropertiesDigestInput(DOMElement $signedProperties): string
+    {
+        $xml = (string) $signedProperties->ownerDocument?->saveXML($signedProperties);
+
+        // Whatever the document declared on an ancestor has to be written out
+        // for this element to stand alone, which is what a validator reading
+        // it does. Established against the authority's own sample: compacting
+        // that element and recomputing the digest over these bytes leaves its
+        // check passing, so the formatting is the document's to choose and the
+        // declarations are not.
+        if (! str_contains((string) strstr($xml, '>', true), 'xmlns:xades=')) {
+            $xml = (string) preg_replace(
+                '#^<xades:SignedProperties#',
+                '<xades:SignedProperties xmlns:xades="'.self::XADES_NS.'"',
+                $xml,
+                1
+            );
+        }
+
+        return (string) preg_replace(
+            '#<ds:([A-Za-z0-9]+)(?![^>]*xmlns:ds=)#',
+            '<ds:$1 xmlns:ds="'.self::DS_NS.'"',
+            $xml
+        );
+    }
+
+    /**
+     * The issuer's whole distinguished name, as X509IssuerName must carry it.
+     *
+     * This named CN, O and C and dropped everything else, which is every
+     * field a self-signed certificate made here happens to have and not the
+     * ones a real CSID has: ZATCA's own CA is CN plus three DC components and
+     * no O or C at all, so the name came out as the CN alone. The name is
+     * inside the signed properties, so a short one takes their digest and the
+     * signature over them with it - which is why a document refused for
+     * "wrong X509IssuerName" is refused three more times for the digests
+     * computed over it.
+     *
+     * Written most specific first, which is the order the string form of a
+     * distinguished name reverses the certificate into, and every component
+     * is kept including the repeated ones.
+     *
+     * @param  array<string, string|list<string>>  $issuer
      */
     private function formatIssuerName(array $issuer): string
     {
         $parts = [];
 
-        if (isset($issuer['CN'])) {
-            $parts[] = 'CN='.$issuer['CN'];
-        }
-        if (isset($issuer['O'])) {
-            $parts[] = 'O='.$issuer['O'];
-        }
-        if (isset($issuer['C'])) {
-            $parts[] = 'C='.$issuer['C'];
+        foreach ($issuer as $field => $value) {
+            foreach ((array) $value as $component) {
+                $parts[] = $field.'='.$component;
+            }
         }
 
-        return implode(', ', $parts);
+        return implode(', ', array_reverse($parts));
     }
 
     /**
@@ -689,7 +768,9 @@ class XadesSigner
                 $expectedDigest = $digestValueNodes->item(0)->textContent;
 
                 // Calculate actual digest based on reference type
-                if ($type === 'http://uri.etsi.org/01903#SignedProperties') {
+                // Matched on what the reference points at: the type for this
+                // one is not the XAdES type and has been spelt both ways.
+                if (str_ends_with($uri, 'xadesSignedProperties') || str_contains($type, 'SignedProperties')) {
                     // Reference to SignedProperties
                     $targetId = ltrim($uri, '#');
                     $targetNodes = $xpath->query("//*[@Id='{$targetId}']");
@@ -700,7 +781,11 @@ class XadesSigner
                     }
                     $target = $targetNodes->item(0);
                     $targetC14n = $target->C14N(false, false);
-                    $actualDigest = base64_encode(hash('sha256', $targetC14n, true));
+                    // Hex then base64, matching how this one reference is
+                    // written, and over the same reconstruction the signer
+                    // digests. The document's own reference below is the
+                    // base64 of the digest's bytes, and stays that way.
+                    $actualDigest = base64_encode(hash('sha256', $this->signedPropertiesDigestInput($target)));
                 } elseif (empty($uri)) {
                     // Reference to document (enveloped signature)
                     // Apply transforms: remove signature, remove UBLExtensions, canonicalize
