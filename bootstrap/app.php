@@ -6,7 +6,6 @@ use App\Domains\Compliance\Fatoora\Exceptions\SigningException;
 use App\Domains\Licensing\Exceptions\LicenseException;
 use App\Domains\Licensing\Http\Middleware\PlatformLicense;
 use App\Domains\Platform\Http\Middleware\LogContext;
-use App\Domains\Platform\Http\Middleware\RateLimitApi;
 use App\Http\Responses\ApiResponse;
 use App\Providers\AppServiceProvider;
 use Illuminate\Foundation\Application;
@@ -63,10 +62,20 @@ return Application::configure(basePath: dirname(__DIR__))
             // First, so a request refused by anything after it is still
             // identifiable in the log - including a 429 from the limiter and a
             // licence refusal, which are the two a customer is most likely to
-            // ask about.
+            // ask about. Safe here, unlike a limiter: it counts nothing.
+            //
+            // RateLimitApi is deliberately NOT in this group. It was, briefly,
+            // and that was wrong twice over. routes/api.php splits the API by
+            // audience so each file declares its own stack once at the top,
+            // and rate.api was already on tenant.php, partner.php and
+            // platform.php - so a group entry ran it a second time per
+            // request. Worse, the group runs before jwt.auth, so that second
+            // run saw no user, drew on the anonymous budget of twenty a
+            // minute, and would have capped the whole authenticated API at
+            // twenty requests a minute per address. public.php was the one
+            // file that lacked it, and that is where it belongs.
             LogContext::class,
             PlatformLicense::class,
-            RateLimitApi::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
