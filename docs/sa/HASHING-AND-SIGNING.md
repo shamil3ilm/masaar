@@ -61,28 +61,42 @@ the quickest way to tell which one a sample is using.
 
 ## SignedProperties reference digest
 
-- **Over:** a **reconstruction** of the `xades:SignedProperties` element - not
-  the element as the document writes it, and not a canonical form of it. ZATCA
-  rebuilds the block from a template and digests that. The template carries:
-  - `Id="xadesSignedProperties"`, fixed rather than generated per signature;
-  - `xmlns:xades` on the element and `xmlns:ds` on each `ds:` child, and
-    nowhere else;
-  - indentation of 36, 40, 44, 48 and 52 spaces by depth, and 32 before the
-    closing tag;
-  - LF line endings.
+- **Over:** the `xades:SignedProperties` element as the document writes it,
+  with two declarations written out on top and nothing removed:
+  `xmlns:xades` on the element, and `xmlns:ds` on **each** `ds:` child that
+  does not already carry one - including the children that inherit the prefix
+  from an ancestor.
 - **Written as:** base64-of-hex. The invoice reference in the same
   `ds:SignedInfo` is base64-of-bytes. **The two references in one signature are
   encoded differently.**
-- **Established by:** built from the four values in ZATCA's own signed sample,
-  that template hashes byte for byte to the digest the sample records, where
-  neither inclusive nor exclusive canonicalisation of the same element does.
-- **Status: not satisfied for documents generated here.** The template is
-  proven against the sample, and this platform's recorded digest is that
-  template over its own values, and the SDK still answers
-  `xadesSignedPropertiesDigestValue: wrong`. Two checks stay excluded in
-  `ZatcaConformanceTest::businessRules()` because of it - that one, and the
-  `signatureValue` taken over it. The authority's Security Features
-  Implementation Standards is where to settle it.
+- **Established by:** having the SDK sign one of this platform's own documents
+  (`-sign -invoice <file> -signedInvoice <out>`) and asking which
+  serialisation of the block it produced hashes to the digest it recorded.
+  Neither the block alone nor the block with only `xmlns:xades` does; that one
+  does. The same reconstruction of the authority's own sample reproduces the
+  sample's digest, and compacting that element and recomputing leaves its
+  check passing - so the indentation is the document's to choose and the
+  declarations are not.
+- **Status: not satisfied for documents generated here**, and the reason is
+  known. Two things differ from what the SDK writes for the same invoice:
+
+  | | the SDK | here |
+  |---|---|---|
+  | `xmlns:ds` inside the block | none; inherited from an ancestor | repeated on every element |
+  | `SigningTime` | `2026-10-09T13:55:47` | the same with a trailing `Z` |
+
+  `DOMDocument::createElementNS` writes a declaration onto each element it
+  creates, so the block carries eight redundant `xmlns:ds` attributes that the
+  SDK's does not, and the validator's reading of the block cannot come to the
+  same bytes. Fixing it means building this subtree so the prefixes are
+  declared once on an ancestor and nowhere inside - which is a change to how
+  the signature is assembled rather than to how it is digested, and is the
+  work left before a simplified document passes.
+
+  Two checks stay excluded in `ZatcaConformanceTest::businessRules()` until
+  then: this digest, and the `signatureValue` taken over it. They are named
+  individually rather than filtered by prefix, so a third cannot join them
+  unnoticed.
 
 ## Signature
 

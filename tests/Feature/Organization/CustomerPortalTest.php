@@ -10,6 +10,7 @@ use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Tests\TestCase;
 
 /**
@@ -114,7 +115,8 @@ class CustomerPortalTest extends TestCase
                     && $row->user_name === 'Member Person'
                     && $row->user_email === $this->member->email;
             })
-            ->assertViewHas('stateCounts', fn ($counts) => $counts->map(fn ($n) => (int) $n)->all() === ['cleared' => 1, 'rejected' => 2])
+            // Compared by content: an enum's order is the driver's to choose.
+            ->assertViewHas('stateCounts', fn ($counts) => $this->counts($counts) === ['cleared' => 1, 'rejected' => 2])
             ->assertViewHas('userId', $this->member->id)
             ->assertViewHas('state', 'rejected'));
     }
@@ -244,5 +246,19 @@ class CustomerPortalTest extends TestCase
 
             return $submission;
         });
+    }
+
+    /**
+     * State counts as integers, keyed and ordered by state name.
+     *
+     * @param  Collection<string, int|string>  $counts
+     * @return array<string, int>
+     */
+    private function counts($counts): array
+    {
+        $values = $counts->map(fn ($n) => (int) $n)->all();
+        ksort($values);
+
+        return $values;
     }
 }
