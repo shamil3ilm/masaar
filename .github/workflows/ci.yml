@@ -567,29 +567,38 @@ jobs:
 
       # Served rather than containerised, so the scan reaches the application
       # as the application rather than through a reverse proxy's own headers.
-      - name: Serve the application
+      # Served and scanned in one step, deliberately.
+      #
+      # php artisan serve was backgrounded in a step of its own, and the
+      # shell that owns a background process exits when its step does. The
+      # server was gone by the time the scanner looked, so the scan had
+      # nothing to scan - and reported success, because the failure was
+      # swallowed by a `|| true` meant for findings. One step keeps the
+      # server alive as long as the thing that needs it.
+      - name: Scan the running application
         run: |
-          php artisan serve --host=127.0.0.1 --port=8000 &
-          for i in $(seq 1 30); do
+          nohup php artisan serve --host=127.0.0.1 --port=8000 > serve.log 2>&1 &
+          server=$!
+
+          up=0
+          for _ in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:8000/api/health >/dev/null 2>&1; then
-              echo "up"; exit 0
+              up=1
+              break
             fi
             sleep 2
           done
-          echo "::error title=Application did not start::Nothing answered /api/health in 60s."
-          exit 1
 
-      # Run directly rather than through the action, so --network host is
-      # explicit: the scanner is in a container and the application is on the
-      # runner, and without it the target is unreachable and the scan passes
-      # having examined nothing.
-      - name: Baseline scan
-        run: |
-          # Same two-path pull as the image scan, for the same reason: the
-          # project renamed its images and the old owasp/zap2docker-* names
-          # are retired, so a single hardcoded path is a guess that fails
-          # whenever this job is first run - which, being on a schedule, is
-          # long after it was written.
+          if [ "$up" -ne 1 ]; then
+            echo "::error title=Application did not start::Nothing answered /api/health in 60s."
+            cat serve.log
+            exit 1
+          fi
+
+          # Published to GHCR under the project name and to Docker Hub under
+          # another; the old owasp/zap2docker-* names are retired. Both are
+          # tried so a renamed image is not discovered months later, this job
+          # being on a schedule.
           scanner=""
           for candidate in ghcr.io/zaproxy/zaproxy:stable zaproxy/zap-stable:latest; do
             if docker pull -q "$candidate" >/dev/null 2>&1; then
@@ -606,10 +615,25 @@ jobs:
           fi
 
           # --network host because the scanner is in a container and the
-          # application is on the runner; without it the target is
-          # unreachable and the scan passes having examined nothing.
-          docker run --network host -v "$PWD:/zap/wrk/:rw" "$scanner" zap-baseline.py -t http://127.0.0.1:8000 -r zap-report.html -I || true
+          # application is on the runner. Without it the target is
+          # unreachable and the scan examines nothing.
+          status=0
+          docker run --network host -v "$PWD:/zap/wrk/:rw" "$scanner" zap-baseline.py -t http://127.0.0.1:8000 -r zap-report.html -I || status=$?
 
+          kill "$server" 2>/dev/null || true
+          echo "Scanner exit status: $status"
+
+          # Findings do not fail this job - that is what -I is for, and why
+          # it runs on a schedule rather than as a gate. A scan that produced
+          # no report did not run, which is a different thing and has to be
+          # visible: that was the previous failure, reported as a pass with
+          # the truth in an artifact-upload warning nobody reads.
+          if [ ! -s zap-report.html ]; then
+            echo "::error title=Nothing was scanned::ZAP wrote no report (exit $status), so the scan did not run. A pass here would mean nothing."
+            exit 1
+          fi
+
+          echo "Report written: $(wc -c < zap-report.html) bytes"
       - name: Keep the report
         if: always()
         uses: actions/upload-artifact@v4
