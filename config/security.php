@@ -81,7 +81,13 @@ return [
         'default' => (int) env('RATE_LIMIT_DEFAULT', 60),
 
         // Signing and an outbound call to the authority.
-        'submission' => (int) env('RATE_LIMIT_SUBMISSION', 30),
+        //
+        // Sixty to agree with fatoora.rate_limits.per_minute, which
+        // SubmissionGuard already enforces per organization. This band was
+        // thirty while nothing read it; attaching the middleware at thirty
+        // would have halved a throughput nobody asked to change. The two
+        // numbers govern the same traffic and have to be set together.
+        'submission' => (int) env('RATE_LIMIT_SUBMISSION', 60),
 
         // Certificate issuance: rare, expensive, and security sensitive.
         'onboarding' => (int) env('RATE_LIMIT_ONBOARDING', 5),
