@@ -77,32 +77,25 @@ the quickest way to tell which one a sample is using.
   sample's digest, and compacting that element and recomputing leaves its
   check passing - so the indentation is the document's to choose and the
   declarations are not.
-- **Status: not satisfied for documents generated here**, and the reason is
-  known. Two things differ from what the SDK writes for the same invoice:
+- **Status: satisfied.** It was not, until 2026-10-09, and the reason was the
+  block rather than the rule. `DOMDocument::createElementNS` attaches a
+  namespace declaration to each element it creates and libxml keeps them when
+  the subtree is assembled, so the block this platform built carried ten
+  `xmlns:ds` declarations - on the apex and on every `xades:` element - where
+  the authority's own block carries none and inherits both prefixes from
+  ancestors. The digest was computed over the right rule and the wrong bytes.
 
-  | | the SDK | here |
-  |---|---|---|
-  | `xmlns:ds` inside the block | none; inherited from an ancestor | repeated on every element |
-  | `SigningTime` | local time, no zone marker | UTC with a trailing `Z` |
+  Established by having the SDK sign one of this platform's own invoices and
+  comparing the two blocks directly: theirs, zero declarations; ours, ten.
+  Building the block with `createElement` and a literal prefixed name - both
+  prefixes are already in scope from `ds:Signature` and
+  `xades:QualifyingProperties` - declares nothing and matches. Reverting that
+  one change brings the failure back on all four simplified documents, which
+  is how the fix was checked.
 
-  The `Z` stays. The SDK writes the signing machine's local time, so its
-  format says nothing about which instant ZATCA reads a bare stamp as, and
-  dropping the marker while still writing UTC would leave a reader three
-  hours out for Riyadh. Matching it was tried and does not make the digest
-  agree either.
-
-  `DOMDocument::createElementNS` writes a declaration onto each element it
-  creates, so the block carries eight redundant `xmlns:ds` attributes that the
-  SDK's does not, and the validator's reading of the block cannot come to the
-  same bytes. Fixing it means building this subtree so the prefixes are
-  declared once on an ancestor and nowhere inside - which is a change to how
-  the signature is assembled rather than to how it is digested, and is the
-  work left before a simplified document passes.
-
-  Two checks stay excluded in `ZatcaConformanceTest::businessRules()` until
-  then: this digest, and the `signatureValue` taken over it. They are named
-  individually rather than filtered by prefix, so a third cannot join them
-  unnoticed.
+  Indentation is not part of it: the authority's block is pretty-printed and
+  this platform's is compact, and both digest correctly, because the digest is
+  taken over the element as that document carries it.
 
 ## Signature
 
@@ -110,8 +103,23 @@ the quickest way to tell which one a sample is using.
 - **Over:** the canonicalised `ds:SignedInfo`.
 - **Written as:** base64 of the raw signature.
 - **Note:** ZATCA's own shipped samples fail their validator's `signatureValue`
-  check, because the files were pretty-printed after they were signed. A sample
-  is an oracle for the digests above, and not for this one.
+  check. `Data/Samples/Simplified/Invoice/Simplified_Invoice.xml` passes XSD,
+  EN, KSA and PIH and then reports `signatureValue: wrong signature Value`,
+  because the files were pretty-printed after they were signed, so the
+  `SignedInfo` in the file is not the `SignedInfo` that was signed. A sample is
+  an oracle for the digests above and not for this one, and a check that
+  rejects the authority's own reference documents cannot say anything about
+  ours.
+- **So it is checked another way.** `SignatureVerifiesTest` verifies the
+  signature with OpenSSL over the canonicalised `ds:SignedInfo` using the
+  certificate the document itself carries - which is what a verifier does - on
+  the document as finally emitted, after the QR is injected and the whole
+  thing re-serialised, because that round trip is what would silently
+  invalidate a signature that was right when it was made. It needs no SDK and
+  no Java, so it runs on every push. A document whose digest is altered must
+  fail it, and that is asserted too.
+- **This is the one check `ZatcaConformanceTest` still excludes**, named
+  individually so a second cannot join it unnoticed.
 
 ## X509IssuerName
 

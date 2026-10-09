@@ -420,21 +420,29 @@ class ZatcaConformanceTest extends TestCase
      */
     private function businessRules(array $errors): array
     {
-        // Signed by the authority's own certificate, two of its four signature
-        // checks are answered and two are not. The certificate and the QR that
-        // embeds it pass. What is left is the digest over the signed
-        // properties, and the signature taken over that digest: ZATCA hashes
-        // that element in a serialisation of its own that C14N does not
-        // produce, so the value differs while everything inside it is right.
-        // Simplified documents are the ones that carry it to be checked.
+        // Signed by the authority's own certificate, three of its four
+        // signature checks are answered: the certificate, the QR that embeds
+        // it, and the digest over the signed properties.
         //
-        // Named rather than filtered by prefix, so a third failure appears
-        // here instead of joining them.
+        // One is excluded, and not because this platform cannot satisfy it.
+        // The SDK's signatureValue check fails on ZATCA's own shipped samples
+        // with this same message - Data/Samples/Simplified/Invoice/
+        // Simplified_Invoice.xml validates XSD, EN, KSA and PIH and then
+        // reports "signatureValue: wrong signature Value" - because those
+        // files were pretty-printed after they were signed, so the SignedInfo
+        // in the file is not the SignedInfo that was signed. A check that
+        // rejects the authority's own reference documents cannot say anything
+        // about ours.
+        //
+        // What does say something is SignatureVerifiesTest, which verifies the
+        // signature with OpenSSL over the canonicalised SignedInfo using the
+        // certificate the document itself carries. That is the property this
+        // check is meant to establish, established independently.
+        //
+        // Named rather than filtered by prefix, so a second failure appears
+        // here instead of joining it.
         if ($this->signedByAuthority) {
-            $pending = [
-                'xadesSignedPropertiesDigestValue: wrong xadesSignedPropertiesDigestValue',
-                'signatureValue: wrong signature Value',
-            ];
+            $pending = ['signatureValue: wrong signature Value'];
 
             return array_values(array_diff($errors, $pending));
         }

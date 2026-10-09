@@ -6,7 +6,7 @@ A multi-jurisdiction e-invoicing compliance API platform for GCC businesses.
 
 | Country | Authority | System | Status |
 |---------|-----------|--------|--------|
-| 🇸🇦 Saudi Arabia | ZATCA | Fatoora Phase 2 | 🟡 Passes ZATCA's SDK validator — schema, EN 16931, Schematron, and, signed with the authority's own certificate, its certificate, QR and PIH checks. One signature digest on simplified documents and live submission outstanding, see [Conformance](#conformance) |
+| 🇸🇦 Saudi Arabia | ZATCA | Fatoora Phase 2 | 🟡 Passes ZATCA's SDK validator — schema, EN 16931, Schematron and, signed with the authority's own certificate, its certificate, QR, signed-properties digest and PIH checks. Live submission outstanding, see [Conformance](#conformance) |
 | 🇦🇪 UAE | FTA | Peppol PINT AE | 🚧 In development (mandate: 2027-01-01) |
 | 🇶🇦 Qatar | GTA | — | 📋 Planned |
 
@@ -114,12 +114,19 @@ certificate and its matching key - the pair the SDK ships for sample taxpayer
 PIH chain are all checked and all pass. Without it the suite falls back to a
 self-signed pair, and those three cannot be checked either way.
 
-Two checks stay excluded, both on simplified documents: the digest over
-`xades:SignedProperties` and the signature taken over that digest. ZATCA hashes
-that element in a serialisation C14N does not produce, and the cause is known -
-see [docs/sa/HASHING-AND-SIGNING.md](docs/sa/HASHING-AND-SIGNING.md). They are
-named individually in `businessRules()` rather than filtered by prefix, so a
-third cannot join them unnoticed.
+One check stays excluded: `signatureValue`. Not because this platform cannot
+satisfy it - the SDK fails its own shipped samples on it, because those files
+were pretty-printed after they were signed, so the `SignedInfo` in the file is
+not the one that was signed. A check that rejects the authority's reference
+documents says nothing about ours, so `SignatureVerifiesTest` establishes the
+same property with OpenSSL instead: the signature verifies over the
+canonicalised `SignedInfo` with the certificate the document carries, on the
+document as finally emitted. That needs no SDK, so it runs on every push.
+
+It is named individually in `businessRules()` rather than filtered by prefix,
+so a second cannot join it unnoticed. See
+[docs/sa/HASHING-AND-SIGNING.md](docs/sa/HASHING-AND-SIGNING.md) for every
+digest and how each was established.
 
 What no conformance run can establish: that the Fatoora portal will issue a
 CSID for a certificate request, and that ZATCA's API will clear or report a

@@ -394,12 +394,31 @@ class XadesSigner
         $qualifyingProps = $dom->createElementNS(self::XADES_NS, 'xades:QualifyingProperties');
         $qualifyingProps->setAttribute('Target', '#'.$signatureId);
 
-        // SignedProperties
-        $signedProps = $dom->createElementNS(self::XADES_NS, 'xades:SignedProperties');
+        // From here down, createElement with the prefix written into the name
+        // rather than createElementNS - which looks like a mistake and is not.
+        //
+        // This element's bytes are digested, and ZATCA digests it as the
+        // document carries it. createElementNS attaches a namespace
+        // declaration to each element it makes, and libxml keeps them when the
+        // subtree is assembled, so every element here carried an xmlns:ds that
+        // the authority's own block does not: ten declarations against none.
+        // The digest was computed over the right rule and the wrong bytes, and
+        // every simplified document was refused for it.
+        //
+        // Both prefixes are already in scope - ds from ds:Signature, xades
+        // from xades:QualifyingProperties above - so a literal prefixed name
+        // serialises correctly and declares nothing. The XPath queries in this
+        // class all target QualifyingProperties and above, which are still
+        // built namespace-aware, so nothing looks for these by namespace.
+        //
+        // Checked against the authority: its SDK signing this platform's own
+        // invoice produces a block with no declarations inside it, and with
+        // this change ours matches, so xadesSignedPropertiesDigestValue passes.
+        $signedProps = $dom->createElement('xades:SignedProperties');
         $signedProps->setAttribute('Id', $signedPropertiesId);
 
         // SignedSignatureProperties
-        $signedSigProps = $dom->createElementNS(self::XADES_NS, 'xades:SignedSignatureProperties');
+        $signedSigProps = $dom->createElement('xades:SignedSignatureProperties');
 
         // SigningTime (must be UTC per ZATCA requirements)
         //
@@ -411,7 +430,7 @@ class XadesSigner
         // which is outside the tolerance the authority allows between a
         // document and its submission - and it does not make the signed
         // properties digest agree, so it buys nothing for the risk.
-        $signingTime = $dom->createElementNS(self::XADES_NS, 'xades:SigningTime', FatooraTime::nowFormatted());
+        $signingTime = $dom->createElement('xades:SigningTime', FatooraTime::nowFormatted());
         $signedSigProps->appendChild($signingTime);
 
         // SigningCertificate
@@ -433,13 +452,13 @@ class XadesSigner
      */
     private function createSigningCertificate(DOMDocument $dom, string $certificatePem): DOMElement
     {
-        $signingCert = $dom->createElementNS(self::XADES_NS, 'xades:SigningCertificate');
-        $cert = $dom->createElementNS(self::XADES_NS, 'xades:Cert');
+        $signingCert = $dom->createElement('xades:SigningCertificate');
+        $cert = $dom->createElement('xades:Cert');
 
         // CertDigest
-        $certDigest = $dom->createElementNS(self::XADES_NS, 'xades:CertDigest');
+        $certDigest = $dom->createElement('xades:CertDigest');
 
-        $digestMethod = $dom->createElementNS(self::DS_NS, 'ds:DigestMethod');
+        $digestMethod = $dom->createElement('ds:DigestMethod');
         $digestMethod->setAttribute('Algorithm', 'http://www.w3.org/2001/04/xmlenc#sha256');
         $certDigest->appendChild($digestMethod);
 
@@ -455,8 +474,7 @@ class XadesSigner
         // Sent either other way the certificate reads as the wrong one, and
         // the signed properties digest and the signature over them are wrong
         // with it, because this value sits inside them.
-        $digestValue = $dom->createElementNS(
-            self::DS_NS,
+        $digestValue = $dom->createElement(
             'ds:DigestValue',
             base64_encode(hash('sha256', $this->extractCertificateValue($certificatePem)))
         );
@@ -465,10 +483,10 @@ class XadesSigner
         $cert->appendChild($certDigest);
 
         // IssuerSerial
-        $issuerSerial = $dom->createElementNS(self::XADES_NS, 'xades:IssuerSerial');
+        $issuerSerial = $dom->createElement('xades:IssuerSerial');
 
         $certInfo = openssl_x509_parse($certificatePem);
-        $issuerName = $dom->createElementNS(self::DS_NS, 'ds:X509IssuerName', $this->formatIssuerName($certInfo['issuer'] ?? []));
+        $issuerName = $dom->createElement('ds:X509IssuerName', $this->formatIssuerName($certInfo['issuer'] ?? []));
         $issuerSerial->appendChild($issuerName);
 
         // The schema types X509SerialNumber as an integer, but OpenSSL prints a
@@ -478,7 +496,7 @@ class XadesSigner
         $serial = isset($certInfo['serialNumberHex'])
             ? (new BigInteger($certInfo['serialNumberHex'], 16))->toString()
             : '';
-        $serialNumber = $dom->createElementNS(self::DS_NS, 'ds:X509SerialNumber', $serial);
+        $serialNumber = $dom->createElement('ds:X509SerialNumber', $serial);
         $issuerSerial->appendChild($serialNumber);
 
         $cert->appendChild($issuerSerial);
@@ -624,13 +642,12 @@ class XadesSigner
         // this reconstruction of that sample's block, and so is the digest it
         // records when its SDK signs a document generated here.
         //
-        // It does not yet agree for the documents this signer produces, and
-        // the reason is in the block rather than here - see the table in
-        // docs/sa/HASHING-AND-SIGNING.md. Every element built by
-        // createElementNS carries its own xmlns:ds where the SDK's carries
-        // none, and a namespace declaration is not data a reader keeps: it
-        // puts the prefix in scope and writes the declaration back where it is
-        // needed, so the bytes it digests are neither these nor a fragment's.
+        // It agrees for the documents this signer produces, since the block
+        // stopped carrying a namespace declaration on every element - see
+        // createXadesObject. A declaration is not data a reader keeps: it puts
+        // the prefix in scope and writes it back where it is needed, which is
+        // why the block has to be built with none inside it and why these two
+        // are added back here rather than left to the serialiser.
         if (! str_contains((string) strstr($xml, '>', true), 'xmlns:xades=')) {
             $xml = (string) preg_replace(
                 '#^<xades:SignedProperties#',
