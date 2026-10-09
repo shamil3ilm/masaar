@@ -264,7 +264,37 @@ jobs:
             echo "::error title=SDK not found::No zatca-einvoicing-sdk jar in the archive at ZATCA_SDK_URL."
             exit 1
           fi
-          echo "ZATCA_SDK_PATH=$(dirname "$(dirname "$jar")")" >> "$GITHUB_ENV"
+          root=$(dirname "$(dirname "$jar")")
+
+          # Repoint the SDK at where it actually landed.
+          #
+          # install.sh writes absolute paths into Configuration/config.json
+          # from the machine it is run on, so an archive made from an
+          # installed copy carries that machine's paths - C:/Users/... from a
+          # Windows checkout. SdkValidator points SDK_CONFIG at this file but
+          # cannot fix what is inside it, and the SDK does not report an
+          # unreadable schema as a configuration problem: it reports every
+          # document as invalid. Regenerated here from defaults.json, the
+          # relative template the SDK ships for exactly this, so the archive
+          # can be pristine or installed and either works.
+          defaults="$root/Configuration/defaults.json"
+          if [ ! -f "$defaults" ]; then
+            echo "::error title=SDK incomplete::No Configuration/defaults.json beside the jar at $root."
+            exit 1
+          fi
+
+          jq --arg root "$root" 'map_values($root + "/" + ltrimstr("../"))' "$defaults" > "$root/Configuration/config.json"
+
+          # A rewritten path that does not exist would surface as every
+          # document failing its schema check, so it fails here instead.
+          xsd=$(jq -r '.xsdPath' "$root/Configuration/config.json")
+          if [ ! -f "$xsd" ]; then
+            echo "::error title=SDK paths wrong::config.json points xsdPath at $xsd, which does not exist."
+            cat "$root/Configuration/config.json"
+            exit 1
+          fi
+
+          echo "ZATCA_SDK_PATH=$root" >> "$GITHUB_ENV"
 
       # --do-not-cache-result keeps a skip from being reported as a pass on a
       # rerun. The grep is the point of the job: a skipped conformance test is
