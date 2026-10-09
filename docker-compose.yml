@@ -54,12 +54,38 @@ services:
       ZATCA_USERNAME: ${ZATCA_USERNAME}
       ZATCA_PASSWORD: ${ZATCA_PASSWORD}
 
+      # Signing credentials.
+      #
+      # This block is an allow-list: a variable set in the host .env and not
+      # named here never reaches the container, and the application reads its
+      # default instead. Nothing fails - the credential key falls back to
+      # APP_KEY and the rate limits to their config defaults - so a setting
+      # that was made deliberately is quietly not in force. Anything added to
+      # config/ that a deployment is meant to set has to be added here too.
+      ZATCA_CREDENTIAL_DISK: ${ZATCA_CREDENTIAL_DISK:-local}
+      ZATCA_CREDENTIAL_KEY: ${ZATCA_CREDENTIAL_KEY}
+      ZATCA_CREDENTIAL_PREVIOUS_KEYS: ${ZATCA_CREDENTIAL_PREVIOUS_KEYS}
+
+      # Rate limits. RATE_LIMIT_SUBMISSION and ZATCA_RATE_LIMIT_PER_MINUTE
+      # throttle the same traffic and the application refuses to boot in
+      # production while they disagree, so both are passed or neither is.
+      RATE_LIMIT_DEFAULT: ${RATE_LIMIT_DEFAULT:-300}
+      RATE_LIMIT_READ: ${RATE_LIMIT_READ:-600}
+      RATE_LIMIT_SUBMISSION: ${RATE_LIMIT_SUBMISSION:-120}
+      RATE_LIMIT_ONBOARDING: ${RATE_LIMIT_ONBOARDING:-5}
+      RATE_LIMIT_ANONYMOUS: ${RATE_LIMIT_ANONYMOUS:-20}
+      ZATCA_RATE_LIMIT_PER_MINUTE: ${ZATCA_RATE_LIMIT_PER_MINUTE:-120}
+      ZATCA_RATE_LIMIT_PER_DAY: ${ZATCA_RATE_LIMIT_PER_DAY:-10000}
+
       # Auto-migration (set to true for initial deployment)
       AUTO_MIGRATE: ${AUTO_MIGRATE:-false}
 
-      # Logging
+      # Logging. LOG_STACK names the channels the stack writes to, so an
+      # alerting channel added there without being passed here goes nowhere.
       LOG_CHANNEL: ${LOG_CHANNEL:-stack}
+      LOG_STACK: ${LOG_STACK:-daily}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_SLACK_WEBHOOK_URL: ${LOG_SLACK_WEBHOOK_URL}
     volumes:
       # Persistent storage for logs and uploads
       - masaar-storage:/var/www/html/storage
