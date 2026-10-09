@@ -257,7 +257,14 @@ Two things to tell an auditor before handing over the repository:
 ### 4.4 Penetration Testing Requirements
 
 Before production:
-- [ ] External penetration test (API endpoints) — yours
+- [ ] **External penetration test (API endpoints)** — yours, and worth money
+      only once someone else's tax data is at stake. Until then the `image`
+      job scans the built container on every push and gates on a fixable
+      CRITICAL, and the `zap` job scans the running API on a schedule. The ZAP
+      job deliberately does not gate: a scanner whose first report nobody has
+      read can only block everything or nothing. Read its report, commit the
+      rules you care about to `.zap/rules.tsv`, drop `-I`, and it becomes a
+      gate that means something.
 - [ ] **Internal security review (key storage, certificate handling)** — one
       finding is already known and recorded in `CredentialStore`'s own
       docblock: one secret covers every tenant, and on a container-local disk a
@@ -314,12 +321,21 @@ config already runs php-fpm, nginx, two default workers, three
       24-hour reporting deadline. **Confirm the authority's published figure
       and keep this under it.**
 
-      **An existing deployment needs two lines changed in its `.env`**, because
-      the values there override these defaults and the old ones were
-      incoherent: `RATE_LIMIT_SUBMISSION=120` and
-      `ZATCA_RATE_LIMIT_PER_MINUTE=120`. They throttle the same traffic and the
-      lower one silently decides, so `AppServiceProvider` refuses to boot in
-      production while they disagree and logs a warning elsewhere.
+      **An existing deployment needs all four of these in its `.env`**, because
+      the values there override the config defaults. Changing only the
+      submission pair leaves submissions throttled more loosely than ordinary
+      reads, which `RateLimitConfigTest` fails on:
+
+      ```
+      RATE_LIMIT_DEFAULT=300
+      RATE_LIMIT_READ=600
+      RATE_LIMIT_SUBMISSION=120
+      ZATCA_RATE_LIMIT_PER_MINUTE=120
+      ```
+
+      The last two throttle the same traffic and the lower silently decides, so
+      `AppServiceProvider` refuses to boot in production while they disagree
+      and logs a warning elsewhere.
 - [x] **Errors are identifiable** — `LogContext` shares a correlation id, the
       organization, the user and the matched route with every log line written
       during a request, and returns the id as `X-Request-Id` so a customer

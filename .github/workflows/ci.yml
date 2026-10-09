@@ -391,3 +391,149 @@ jobs:
       # advisory published against a pinned package surfaces here.
       - name: Audit dependencies
         run: composer audit --locked
+
+  # The container, not the dependency tree.
+  #
+  # composer audit above covers the PHP packages. It says nothing about the
+  # base image: the OS packages, the PHP build and everything else apt put
+  # there, which is where a platform handling tax data is most likely to be
+  # carrying a known remote hole it never chose.
+  #
+  # Gated, not advisory, but narrowly: CRITICAL only, and only where a fixed
+  # version exists. A gate that fires on every unfixable HIGH in a base image
+  # teaches people to ignore it, which is worse than not having it.
+  image:
+    name: Container image scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Build the image
+        run: docker build -t masaar:ci .
+
+      - name: Scan it
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: masaar:ci
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          format: table
+
+      # Everything, including what the gate let through, so the full picture is
+      # readable without rerunning anything.
+      - name: Record the full findings
+        if: always()
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: masaar:ci
+          severity: CRITICAL,HIGH,MEDIUM
+          exit-code: '0'
+          format: json
+          output: trivy.json
+
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report
+          path: trivy.json
+          retention-days: 30
+
+  # A dynamic scan of the running API.
+  #
+  # On a schedule and on request, and it does not gate. That is deliberate and
+  # it is not timidity: a scanner whose first report nobody has read can only
+  # be set to block everything or to block nothing, and the second dressed up
+  # as a gate is the worse of the two. Read the first report, decide which
+  # rules matter here, commit them to .zap/rules.tsv as FAIL or IGNORE, and
+  # then drop -I below to make it a gate that means something.
+  #
+  # What it is worth meanwhile: response headers, debug surfaces left exposed,
+  # cookie attributes, directory listings - the things a configuration mistake
+  # produces rather than a logic error, which the test suite is poor at seeing.
+  # It is an API with no browser UI, so expect findings about headers rather
+  # than about forms.
+  zap:
+    name: Dynamic scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_DATABASE: masaar_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: masaar_test
+      DB_USERNAME: root
+      DB_PASSWORD: ''
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      TELESCOPE_ENABLED: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up PHP ${{ env.PHP_VERSION }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: openssl, mbstring, bcmath, dom, xml, curl, zip, fileinfo, tokenizer, pdo_mysql
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+          php artisan jwt:secret --force
+          php artisan migrate --force
+
+      # Served rather than containerised, so the scan reaches the application
+      # as the application rather than through a reverse proxy's own headers.
+      - name: Serve the application
+        run: |
+          php artisan serve --host=127.0.0.1 --port=8000 &
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/api/health >/dev/null 2>&1; then
+              echo "up"; exit 0
+            fi
+            sleep 2
+          done
+          echo "::error title=Application did not start::Nothing answered /api/health in 60s."
+          exit 1
+
+      # Run directly rather than through the action, so --network host is
+      # explicit: the scanner is in a container and the application is on the
+      # runner, and without it the target is unreachable and the scan passes
+      # having examined nothing.
+      - name: Baseline scan
+        run: |
+          docker run --network host -v "$PWD:/zap/wrk/:rw" ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://127.0.0.1:8000 -r zap-report.html -I || true
+
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: zap-report.html
+          retention-days: 30

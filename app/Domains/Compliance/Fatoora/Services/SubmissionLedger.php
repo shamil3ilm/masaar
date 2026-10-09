@@ -194,6 +194,11 @@ class SubmissionLedger
         ], isSimplified: ! $submission->isClearance());
 
         $state = match (true) {
+            // Before the general failure case: a retryable failure is the
+            // authority declining to look at the document, not refusing it.
+            // Recorded as 'failed', which is re-sendable and says what
+            // happened; 'rejected' would say the document was wrong.
+            $response->isRetryable() => 'failed',
             ! $response->success => 'rejected',
             $response->hasWarnings() => 'warning',
             default => ClearanceState::submissionState($clearance['state']),

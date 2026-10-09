@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\DTOs;
 
+use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
+
 /**
  * ZATCA API response wrapper.
  */
@@ -19,6 +21,16 @@ final readonly class FatooraResponse
         public array $warningMessages,
         public array $errorMessages,
         public ?string $rawResponse,
+        /**
+         * Why it failed, where that is known.
+         *
+         * A failure was a string in errorMessages and nothing else, so a
+         * caller could not tell the authority refusing a document from the
+         * authority declining to look at it yet.
+         */
+        public ?ErrorCode $errorCode = null,
+        /** Seconds to wait before retrying, when the authority said. */
+        public ?int $retryAfterSeconds = null,
     ) {}
 
     /**
@@ -43,8 +55,12 @@ final readonly class FatooraResponse
     /**
      * Create failed response.
      */
-    public static function failed(string $error, ?string $rawResponse = null): self
-    {
+    public static function failed(
+        string $error,
+        ?string $rawResponse = null,
+        ?ErrorCode $errorCode = null,
+        ?int $retryAfterSeconds = null,
+    ): self {
         return new self(
             success: false,
             clearanceStatus: 'NOT_CLEARED',
@@ -55,7 +71,32 @@ final readonly class FatooraResponse
             warningMessages: [],
             errorMessages: [$error],
             rawResponse: $rawResponse,
+            errorCode: $errorCode,
+            retryAfterSeconds: $retryAfterSeconds,
         );
+    }
+
+    /**
+     * The authority declined to look at this document yet.
+     *
+     * Distinct from a refusal: nothing about the document is wrong, and
+     * recording it as rejected would say the opposite in the one place an
+     * operator looks.
+     */
+    public static function throttled(int $retryAfterSeconds, ?string $rawResponse = null): self
+    {
+        return self::failed(
+            "ZATCA is rate limiting this device; retry in {$retryAfterSeconds}s",
+            $rawResponse,
+            ErrorCode::ZATCA_RATE_LIMITED,
+            $retryAfterSeconds,
+        );
+    }
+
+    /** Whether waiting and trying again is the right response. */
+    public function isRetryable(): bool
+    {
+        return $this->errorCode?->isRetryable() ?? false;
     }
 
     public function hasWarnings(): bool
