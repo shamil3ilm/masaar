@@ -212,12 +212,30 @@ jobs:
 
       # The SDK is a Java application; without a runtime the suite skips for a
       # second reason and the job would look configured when it is not.
-      - name: Set up Java
+      # Temurin is preinstalled on GitHub's Ubuntu images, so the runner's own
+      # JDK is used rather than an action.
+      #
+      # Not a preference: this job only runs once ZATCA_SDK_URL is set, so a
+      # wrong action version here surfaces at the moment conformance is first
+      # enabled and looks like a problem with the SDK. The sibling image-scan
+      # job failed exactly that way on a pinned scanner action that did not
+      # exist. Fewer versions to be wrong about on a path that runs rarely.
+      - name: Use the runner's JDK
         if: env.SDK_URL != ''
-        uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: '17'
+        run: |
+          # 17 by preference, because that is what the SDK is tested against
+          # here; whatever is default otherwise, and the version is printed so
+          # a failure downstream can be read against it.
+          if [ -n "$JAVA_HOME_17_X64" ]; then
+            echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
+            echo "$JAVA_HOME_17_X64/bin" >> "$GITHUB_PATH"
+            "$JAVA_HOME_17_X64/bin/java" -version
+          elif command -v java >/dev/null 2>&1; then
+            java -version
+          else
+            echo "::error title=No Java on the runner::The ZATCA SDK is a Java application and no JDK was found."
+            exit 1
+          fi
 
       - name: Install dependencies
         if: env.SDK_URL != ''
@@ -413,26 +431,39 @@ jobs:
       - name: Build the image
         run: docker build -t masaar:ci .
 
-      - name: Scan it
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          image-ref: masaar:ci
-          severity: CRITICAL
-          ignore-unfixed: true
-          exit-code: '1'
-          format: table
+      # The scanner is run directly rather than through aquasecurity's action.
+      #
+      # The action is versioned independently of Trivy itself and a tag that
+      # does not exist fails the job before anything is scanned - which is how
+      # this job first failed, on a pinned 0.28.0 that is not a release. The
+      # container image has no such ambiguity, and a scanner is one of the few
+      # things that should track latest anyway: a pinned scanner finds the
+      # vulnerabilities that were known when it was pinned.
+      #
+      # The image is handed over as a tar rather than by name so the scanner
+      # needs no access to the Docker socket.
+      - name: Scan the image
+        run: |
+          docker save masaar:ci -o image.tar
+          docker run --rm -v "$PWD:/work" -w /work aquasecurity/trivy:latest image --input image.tar --scanners vuln --format json --output trivy.json --severity CRITICAL,HIGH,MEDIUM --exit-code 0 --no-progress
 
-      # Everything, including what the gate let through, so the full picture is
-      # readable without rerunning anything.
-      - name: Record the full findings
-        if: always()
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          image-ref: masaar:ci
-          severity: CRITICAL,HIGH,MEDIUM
-          exit-code: '0'
-          format: json
-          output: trivy.json
+      # The gate is written here rather than passed to the scanner so the
+      # criterion is readable: a CRITICAL that something can be done about.
+      # Firing on an unfixable one would make the job noise, and a gate people
+      # route around is worse than none.
+      - name: Fail on a fixable critical
+        run: |
+          jq -r '[.Results[]?.Vulnerabilities[]?
+                  | select(.Severity == "CRITICAL" and (.FixedVersion // "") != "")]' trivy.json > critical.json
+
+          count=$(jq 'length' critical.json)
+          echo "Fixable CRITICAL findings: $count"
+
+          if [ "$count" -gt 0 ]; then
+            jq -r '.[] | "  " + .VulnerabilityID + "  " + .PkgName + " " + (.InstalledVersion // "?") + " -> " + .FixedVersion' critical.json
+            echo "::error title=Fixable critical vulnerabilities in the image::$count package(s) have a fixed version available. Rebuild on an updated base image."
+            exit 1
+          fi
 
       - name: Keep the report
         if: always()
