@@ -75,7 +75,7 @@ class FatooraValidate extends Command
         $type = $this->option('type');
         $isStandard = $type === 'standard';
 
-        $defaultPih = FatooraConfig::DEFAULT_FIRST_INVOICE_PIH;
+        $defaultPih = FatooraConfig::GENESIS_PIH;
 
         // Create sample invoice data matching the updated DTO structure
         $invoiceData = new InvoiceXmlData(

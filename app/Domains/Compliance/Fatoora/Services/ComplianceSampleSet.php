@@ -55,7 +55,7 @@ final class ComplianceSampleSet
         ?Closure $finalize = null,
     ): array {
         $documents = [];
-        $previousHash = FatooraConfig::DEFAULT_FIRST_INVOICE_PIH;
+        $previousHash = FatooraConfig::GENESIS_PIH;
         $icv = 0;
 
         foreach (self::DOCUMENTS as $key => [$typeCode, $subtype, $note]) {

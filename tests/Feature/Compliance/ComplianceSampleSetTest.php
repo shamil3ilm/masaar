@@ -22,7 +22,7 @@ class ComplianceSampleSetTest extends TestCase
 
         $this->assertSame(array_keys(ComplianceSampleSet::DOCUMENTS), array_keys($documents));
 
-        $previous = FatooraConfig::DEFAULT_FIRST_INVOICE_PIH;
+        $previous = FatooraConfig::GENESIS_PIH;
         $icv = 0;
 
         foreach ($documents as $document) {

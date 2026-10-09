@@ -223,4 +223,45 @@ class ChainRecordTest extends TestCase
             'previous_hash is declared too narrow for the genesis PIH.'
         );
     }
+
+    /**
+     * One name for one figure.
+     *
+     * This value was spelled out twice under two names - GENESIS_PIH and
+     * DEFAULT_FIRST_INVOICE_PIH - in one file, each with its own callers and
+     * one of them carrying a comment describing the wrong rule entirely
+     * ("SHA256 of zeros"), which is the belief that produced the original
+     * bug. Two copies of a figure the authority fixes are two things to
+     * correct, and correcting one of them is worse than correcting neither:
+     * the halves of the chain disagree and ZATCA reports it as "PIH is
+     * inValid", which says nothing about where to look.
+     *
+     * Documentation is excluded. Prose quoting the figure is the point of it.
+     */
+    public function test_the_genesis_pih_is_declared_once(): void
+    {
+        $found = [];
+
+        foreach ([app_path(), base_path('tests'), database_path()] as $root) {
+            $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root));
+
+            foreach ($files as $file) {
+                if ($file->isDir() || $file->getExtension() !== 'php') {
+                    continue;
+                }
+
+                if (str_contains((string) file_get_contents($file->getPathname()), FatooraConfig::GENESIS_PIH)) {
+                    $found[] = str_replace(base_path().DIRECTORY_SEPARATOR, '', $file->getPathname());
+                }
+            }
+        }
+
+        $this->assertSame(
+            ['app'.DIRECTORY_SEPARATOR.'Domains'.DIRECTORY_SEPARATOR.'Compliance'.DIRECTORY_SEPARATOR
+                .'Fatoora'.DIRECTORY_SEPARATOR.'Config'.DIRECTORY_SEPARATOR.'FatooraConfig.php'],
+            $found,
+            'The genesis PIH is written out somewhere other than FatooraConfig. '
+                ."Refer to FatooraConfig::GENESIS_PIH instead:\n".implode("\n", $found)
+        );
+    }
 }

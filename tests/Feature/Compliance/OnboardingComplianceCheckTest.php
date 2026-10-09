@@ -18,7 +18,7 @@ use Tests\TestCase;
  * starts.
  *
  * The first document's PIH is the base64 of SHA-256("0") written as hex text,
- * which is FatooraConfig::DEFAULT_FIRST_INVOICE_PIH. The onboarding endpoints
+ * which is FatooraConfig::GENESIS_PIH. The onboarding endpoints
  * encoded the raw digest instead, so the chain they submitted began from a
  * hash the authority does not expect.
  */
@@ -63,7 +63,7 @@ class OnboardingComplianceCheckTest extends TestCase
 
         $this->assertCount(6, $sent, 'The six compliance documents were not submitted.');
         $this->assertStringContainsString(
-            FatooraConfig::DEFAULT_FIRST_INVOICE_PIH,
+            FatooraConfig::GENESIS_PIH,
             (string) base64_decode($sent[0][0]['invoice']),
             'The first document does not start the chain from ZATCA\'s initial hash.'
         );
