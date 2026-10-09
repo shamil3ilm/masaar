@@ -25,6 +25,58 @@ trait SigningCredentials
      *                       as it does for every ZATCA-issued certificate.
      * @return array{privateKey: string, certificate: string}
      */
+    /**
+     * ZATCA's own test credentials, shipped inside the SDK.
+     *
+     * The certificate is issued by the authority's pre-production CA -
+     * PRZEINVOICESCA4-CA - rather than by this test run, and for the same
+     * taxpayer the conformance documents name. Signing with it is what lets
+     * the SDK check the certificate, the QR that embeds it, the signature
+     * over both and the PIH chain: four checks a key signed by nobody can
+     * only ever be excluded from.
+     *
+     * The key ships as bare base64 DER, the shape the SDK writes rather than
+     * one OpenSSL reads, so it is wrapped before use.
+     *
+     * @return array{privateKey: string, certificate: string}|null
+     */
+    private function authorityCredentials(?string $sdk): ?array
+    {
+        if ($sdk === null) {
+            return null;
+        }
+
+        $certPath = $sdk.'/Data/Certificates/cert.pem';
+        $keyPath = $sdk.'/Data/Certificates/ec-secp256k1-priv-key.pem';
+
+        if (! is_file($certPath) || ! is_file($keyPath)) {
+            return null;
+        }
+
+        $key = trim((string) file_get_contents($keyPath));
+
+        if (! str_contains($key, 'BEGIN')) {
+            $key = '-----BEGIN EC PRIVATE KEY-----'.PHP_EOL
+                .chunk_split($key, 64, PHP_EOL)
+                .'-----END EC PRIVATE KEY-----'.PHP_EOL;
+        }
+
+        // The certificate ships the same way: base64 DER, where the rest of
+        // the platform passes PEM around.
+        $certificate = trim((string) file_get_contents($certPath));
+
+        if (! str_contains($certificate, 'BEGIN CERTIFICATE')) {
+            $certificate = '-----BEGIN CERTIFICATE-----'.PHP_EOL
+                .chunk_split($certificate, 64, PHP_EOL)
+                .'-----END CERTIFICATE-----'.PHP_EOL;
+        }
+
+        return [
+            'privateKey' => $key,
+            'certificate' => $certificate,
+        ];
+    }
+
     private function selfSignedCredentials(int $serial = 0): array
     {
         // An explicit config path is required: without one, OpenSSL looks for

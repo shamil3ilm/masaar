@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Services;
 
+use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\DTOs\AddressData;
 use App\Domains\Compliance\Fatoora\DTOs\InvoiceXmlData;
 use App\Domains\Invoice\Services\InvoiceTotals;
@@ -1038,7 +1039,7 @@ class XmlBuilder
      */
     private function getDefaultPih(): string
     {
-        return base64_encode(str_repeat("\0", 32));
+        return FatooraConfig::GENESIS_PIH;
     }
 
     /**

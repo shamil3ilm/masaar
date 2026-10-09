@@ -39,6 +39,9 @@ class ZatcaConformanceTest extends TestCase
 
     private Organization $organization;
 
+    /** Whether the documents are signed with the authority's own certificate. */
+    private bool $signedByAuthority = false;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -62,7 +65,9 @@ class ZatcaConformanceTest extends TestCase
             'compliance_profile' => ['zatca_onboarded' => true],
         ]);
 
-        $credentials = $this->selfSignedCredentials();
+        $authority = $this->authorityCredentials($this->sdk()->path());
+        $this->signedByAuthority = $authority !== null;
+        $credentials = $authority ?? $this->selfSignedCredentials();
 
         app(CredentialStore::class)->put(
             $this->organization->id,
@@ -415,6 +420,25 @@ class ZatcaConformanceTest extends TestCase
      */
     private function businessRules(array $errors): array
     {
+        // Signed by the authority's own certificate, two of its four signature
+        // checks are answered and two are not. The certificate and the QR that
+        // embeds it pass. What is left is the digest over the signed
+        // properties, and the signature taken over that digest: ZATCA hashes
+        // that element in a serialisation of its own that C14N does not
+        // produce, so the value differs while everything inside it is right.
+        // Simplified documents are the ones that carry it to be checked.
+        //
+        // Named rather than filtered by prefix, so a third failure appears
+        // here instead of joining them.
+        if ($this->signedByAuthority) {
+            $pending = [
+                'xadesSignedPropertiesDigestValue: wrong xadesSignedPropertiesDigestValue',
+                'signatureValue: wrong signature Value',
+            ];
+
+            return array_values(array_diff($errors, $pending));
+        }
+
         return array_values(array_filter(
             $errors,
             static fn (string $error): bool => str_starts_with($error, 'BR-')

@@ -20,6 +20,17 @@ final class FatooraConfig
     // ============================================================
     // XML NAMESPACES (ZATCA UBL 2.1 Specification)
     // ============================================================
+    /**
+     * The PIH a document carries when it is the first in its chain.
+     *
+     * ZATCA's value is the SHA-256 of the string "0" written as hex and then
+     * base64'd, which is the figure its SDK ships in Data/PIH/pih.txt and
+     * validates KSA-13 against. It is not the base64 of the digest's own
+     * bytes, and it is not thirty-two zero bytes: a document carrying either
+     * is refused with "PIH is inValid".
+     */
+    public const GENESIS_PIH = 'NWZlY2ViNjZmZmM4NmYzOGQ5NTI3ODZjNmQ2OTZjNzljMmRiYzIzOWRkNGU5MWI0NjcyOWQ3M2EyN2ZiNTdlOQ==';
+
     public const UBL_NS = 'urn:oasis:names:specification:ubl:schema:xsd:Invoice-2';
 
     public const CAC_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2';

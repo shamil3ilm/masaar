@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Compliance;
 
+use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\Models\ChainEntry;
 use App\Domains\Compliance\Fatoora\Models\ChainState;
 use App\Domains\Compliance\Fatoora\Services\CredentialStore;
@@ -81,7 +82,9 @@ class ChainRecordTest extends TestCase
             fn () => ChainEntry::where('invoice_id', $invoice->id)->first()
         );
 
-        $this->assertSame(base64_encode(str_repeat("\0", 32)), $entry->previous_hash);
+        // ZATCA's genesis value: the base64 of the hex digest of "0", and
+        // not the base64 of any bytes. See FatooraConfig::GENESIS_PIH.
+        $this->assertSame(FatooraConfig::GENESIS_PIH, $entry->previous_hash);
     }
 
     /**
