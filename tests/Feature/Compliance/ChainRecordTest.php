@@ -12,6 +12,7 @@ use App\Domains\Compliance\Fatoora\Services\Submitter;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\Fixtures\SigningCredentials;
 use Tests\TestCase;
 
@@ -191,5 +192,35 @@ class ChainRecordTest extends TestCase
         app(Submitter::class)->generate($invoice->fresh(['lines']), $this->organization);
 
         return $invoice;
+    }
+
+    /**
+     * The column has to hold the value the chain actually writes into it.
+     *
+     * A PIH is normally forty-four characters and the first in a chain is
+     * eighty-eight. SQLite does not enforce a varchar's length and does not
+     * report it either, so neither writing a row nor reading the live schema
+     * says anything here - while MySQL refuses what will not fit, and a column
+     * too narrow for the genesis value fails every submission. The declared
+     * length is read from the migrations, which both drivers are built from.
+     */
+    public function test_the_pih_column_fits_the_genesis(): void
+    {
+        $declared = null;
+
+        foreach (glob(database_path('migrations/*.php')) ?: [] as $migration) {
+            if (preg_match_all('/previous_hash.{0,4}, (\d+)\)/', (string) file_get_contents($migration), $matches)) {
+                // The first match in each file: up() comes before down(),
+                // and down() declares the width being moved away from.
+                $declared = (int) $matches[1][0];
+            }
+        }
+
+        $this->assertNotNull($declared, 'No migration declares a length for previous_hash.');
+        $this->assertGreaterThanOrEqual(
+            strlen(FatooraConfig::GENESIS_PIH),
+            $declared,
+            'previous_hash is declared too narrow for the genesis PIH.'
+        );
     }
 }
