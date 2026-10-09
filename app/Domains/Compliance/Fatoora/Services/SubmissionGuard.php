@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Fatoora\Services;
 
 use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
+use App\Domains\Compliance\Fatoora\Helpers\FatooraTime;
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
@@ -265,9 +266,15 @@ class SubmissionGuard
             );
         }
 
-        // Check daily limit
+        // Check daily limit, where the day is the Kingdom's.
+        //
+        // created_at is stored in UTC, so the Kingdom's midnight has to be
+        // handed over as the instant it is - utc() - and not as a Riyadh-zoned
+        // Carbon, which the query grammar formats in its own timezone and so
+        // would send as though Riyadh midnight were UTC midnight, moving the
+        // window three hours the wrong way instead of fixing it.
         $dailySubmissions = InvoiceSubmission::where('org_id', $organization->id)
-            ->where('created_at', '>=', now()->startOfDay())
+            ->where('created_at', '>=', FatooraTime::saudiNow()->startOfDay()->utc())
             ->count();
 
         if ($dailySubmissions >= 10000) {

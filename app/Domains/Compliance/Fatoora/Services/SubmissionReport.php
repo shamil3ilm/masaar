@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Fatoora\Services;
 
 use App\Domains\Compliance\Fatoora\DTOs\SubmissionFilterData;
+use App\Domains\Compliance\Fatoora\Helpers\FatooraTime;
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -89,8 +90,11 @@ class SubmissionReport
             'total' => (int) $byState->sum(),
             'cleared' => (int) $byState->get('cleared', 0),
             'rejected' => (int) $byState->get('rejected', 0),
+            // Today on the Kingdom's clock, handed to the query as the UTC
+            // instant that midnight is - created_at is stored in UTC, and a
+            // Riyadh-zoned Carbon would be formatted in its own timezone.
             'today' => InvoiceSubmission::where('created_by', $userId)
-                ->where('created_at', '>=', now()->startOfDay())
+                ->where('created_at', '>=', FatooraTime::saudiNow()->startOfDay()->utc())
                 ->count(),
         ];
     }

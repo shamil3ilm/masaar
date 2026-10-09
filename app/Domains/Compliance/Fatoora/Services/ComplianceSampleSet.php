@@ -7,6 +7,7 @@ namespace App\Domains\Compliance\Fatoora\Services;
 use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\DTOs\AddressData;
 use App\Domains\Compliance\Fatoora\DTOs\InvoiceXmlData;
+use App\Domains\Compliance\Fatoora\Helpers\FatooraTime;
 use Closure;
 use Illuminate\Support\Str;
 
@@ -92,12 +93,21 @@ final class ComplianceSampleSet
     ): InvoiceXmlData {
         $isStandard = $subtype === '01';
 
+        // One reading of the Kingdom's clock, used for every date and time
+        // below. The Kingdom's because these are civil statements about when
+        // the document was issued, and the documents this platform really
+        // sends state them that way - a sample that disagrees is not a sample
+        // of anything. One reading because three separate calls a hundredth
+        // of a second before midnight would date the document one day and
+        // time it the next.
+        $issuedAt = FatooraTime::saudiNow();
+
         return new InvoiceXmlData(
             uuid: (string) Str::uuid(),
             invoiceNumber: "{$numberPrefix}-{$icv}",
             icv: $icv,
-            issueDate: now()->format('Y-m-d'),
-            issueTime: now()->format('H:i:s'),
+            issueDate: $issuedAt->format('Y-m-d'),
+            issueTime: $issuedAt->format('H:i:s'),
             invoiceTypeCode: $typeCode,
             invoiceSubtype: $subtype,
             currency: 'SAR',
@@ -120,7 +130,7 @@ final class ComplianceSampleSet
             ]],
             // A standard invoice is B2B: it carries the supply date and the
             // buyer's VAT number and address, which a simplified one does not.
-            supplyDate: $isStandard ? now()->format('Y-m-d') : null,
+            supplyDate: $isStandard ? $issuedAt->format('Y-m-d') : null,
             sellerCrNumber: $sellerCrNumber,
             buyerVatNumber: $isStandard ? '399999999800003' : null,
             buyerAddress: $isStandard ? new AddressData(

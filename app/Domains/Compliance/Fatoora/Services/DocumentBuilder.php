@@ -8,6 +8,7 @@ use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\DTOs\AddressData;
 use App\Domains\Compliance\Fatoora\DTOs\InvoiceXmlData;
 use App\Domains\Compliance\Fatoora\DTOs\QrCodeData;
+use App\Domains\Compliance\Fatoora\Helpers\FatooraTime;
 use App\Domains\Compliance\Fatoora\Helpers\TextNormalizer;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Models\Invoice;
@@ -208,7 +209,14 @@ class DocumentBuilder
             invoiceNumber: $invoice->invoice_number,
             icv: (int) $invoice->icv,
             issueDate: $invoice->issue_date->format('Y-m-d'),
-            issueTime: $invoice->created_at->format('H:i:s'),
+            // The document's own civil time, which is the Kingdom's and not the
+            // application's. created_at is held in UTC, and the date beside
+            // this is the business date, so reading the time off the one and
+            // the date off the other puts them on different clocks: an
+            // invoice issued at 01:30 in Riyadh went out carrying 22:30 of
+            // the same date, a time twenty-one hours from when it was
+            // issued, and so did every invoice issued before 03:00.
+            issueTime: FatooraTime::toSaudiTime($invoice->created_at)->format('H:i:s'),
             invoiceTypeCode: $documentType->getTypeCode(),
             invoiceSubtype: $invoiceSubtype,
             currency: $invoice->currency,
@@ -286,11 +294,20 @@ class DocumentBuilder
      * and ZATCA's own sample invoices carry tag 3 exactly that way. A Z is a
      * correct thing to write and it makes the two strings differ, which is the
      * only thing being checked.
+     *
+     * On the Kingdom's clock, like the two fields it is compared against.
+     * The date here is the business date and the time was read off created_at,
+     * which is held in UTC, so the two sat on different clocks: an invoice
+     * issued at 01:30 in Riyadh showed 22:30 of the same date in its QR, and a
+     * consumer scanning it saw a time twenty-one hours away. The three
+     * statements a document makes about when it was issued - IssueDate,
+     * IssueTime and this - have to agree, so all three read the Kingdom's
+     * clock.
      */
     private function issuedAt(Invoice $invoice): string
     {
         return $invoice->issue_date->format('Y-m-d')
-            .'T'.$invoice->created_at->format('H:i:s');
+            .'T'.FatooraTime::toSaudiTime($invoice->created_at)->format('H:i:s');
     }
 
     /**
