@@ -6,7 +6,7 @@ A multi-jurisdiction e-invoicing compliance API platform for GCC businesses.
 
 | Country | Authority | System | Status |
 |---------|-----------|--------|--------|
-| 🇸🇦 Saudi Arabia | ZATCA | Fatoora Phase 2 | 🟡 Passes ZATCA's SDK validator (schema, EN 16931, Schematron) — certificate checks and live submission pending, see [Conformance](#conformance) |
+| 🇸🇦 Saudi Arabia | ZATCA | Fatoora Phase 2 | 🟡 Passes ZATCA's SDK validator — schema, EN 16931, Schematron, and, signed with the authority's own certificate, its certificate, QR and PIH checks. One signature digest on simplified documents and live submission outstanding, see [Conformance](#conformance) |
 | 🇦🇪 UAE | FTA | Peppol PINT AE | 🚧 In development (mandate: 2027-01-01) |
 | 🇶🇦 Qatar | GTA | — | 📋 Planned |
 
@@ -108,9 +108,22 @@ Two things about the SDK itself, both of which cost an afternoon:
   `Configuration/config.json` pointing at the old location. Repoint them or the
   validator fails on every document.
 
-What the conformance run does **not** establish: it signs with a self-signed
-certificate, so the SDK's certificate, QR-signature and PIH-chain checks cannot
-pass and are excluded. Those need a real CSID from the Fatoora portal.
+With `ZATCA_SDK_PATH` set the suite signs with ZATCA's own pre-production
+certificate and its matching key - the pair the SDK ships for sample taxpayer
+`399999999900003` - so the certificate check, the QR that embeds it and the
+PIH chain are all checked and all pass. Without it the suite falls back to a
+self-signed pair, and those three cannot be checked either way.
+
+Two checks stay excluded, both on simplified documents: the digest over
+`xades:SignedProperties` and the signature taken over that digest. ZATCA hashes
+that element in a serialisation C14N does not produce, and the cause is known -
+see [docs/sa/HASHING-AND-SIGNING.md](docs/sa/HASHING-AND-SIGNING.md). They are
+named individually in `businessRules()` rather than filtered by prefix, so a
+third cannot join them unnoticed.
+
+What no conformance run can establish: that the Fatoora portal will issue a
+CSID for a certificate request, and that ZATCA's API will clear or report a
+document. Both need a real taxpayer.
 
 ## Scheduled Tasks
 

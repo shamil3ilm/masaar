@@ -320,8 +320,12 @@ jobs:
           php artisan key:generate --force
           php artisan jwt:secret --force
 
+      # --target on both commands, and the same one: the template inside the
+      # request is what tells ZATCA which environment it is for, so a request
+      # built for one and sent to another is refused before anything this job
+      # exists to check is reached.
       - name: Generate a certificate request
-        run: php artisan fatoora:generate-csr --standard --simplified
+        run: php artisan fatoora:generate-csr --standard --simplified --target=sandbox
 
       # --step=full is CCSID, the six compliance documents, then PCSID. The
       # command exits non-zero if any document is refused, and the grep is
