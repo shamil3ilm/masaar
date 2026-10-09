@@ -7,6 +7,7 @@ namespace Tests\Feature\Platform;
 use App\Domains\Auth\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -92,7 +93,11 @@ class AdminConsoleTest extends TestCase
                 && $page->total() === 1
                 && $page->first()->id === $mine->id
                 && $page->first()->organization_name === 'Acme')
-            ->assertViewHas('stats', fn ($stats) => $stats->map(fn ($n) => (int) $n)->all() === ['failed' => 2, 'pending' => 1])
+            // Compared by content. state is an enum, and MySQL orders an enum
+            // by the order its values were declared while SQLite orders the
+            // text, so the two drivers hand these counts back in different
+            // orders and an identical-array check pins whichever ran last.
+            ->assertViewHas('stats', fn ($stats) => $this->counts($stats) === ['failed' => 2, 'pending' => 1])
             ->assertViewHas('state', 'failed')
             ->assertViewHas('orgId', $acme->id);
 
@@ -118,7 +123,7 @@ class AdminConsoleTest extends TestCase
                 && $page->total() === 1
                 && $page->first()->id === $mine->id
                 && $page->first()->organization_name === 'Acme')
-            ->assertViewHas('stateCounts', fn ($counts) => $counts->map(fn ($n) => (int) $n)->all() === ['cleared' => 1, 'rejected' => 2])
+            ->assertViewHas('stateCounts', fn ($counts) => $this->counts($counts) === ['cleared' => 1, 'rejected' => 2])
             ->assertViewHas('state', 'rejected')
             ->assertViewHas('orgId', $acme->id);
     }
@@ -169,5 +174,19 @@ class AdminConsoleTest extends TestCase
     private function admin(): self
     {
         return $this->actingAs(User::factory()->platformAdmin()->create());
+    }
+
+    /**
+     * State counts as integers, keyed and ordered by state name.
+     *
+     * @param  Collection<string, int|string>  $counts
+     * @return array<string, int>
+     */
+    private function counts($counts): array
+    {
+        $values = $counts->map(fn ($n) => (int) $n)->all();
+        ksort($values);
+
+        return $values;
     }
 }
