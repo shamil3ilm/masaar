@@ -44,8 +44,17 @@ class RateLimitApi
     public function handle(Request $request, Closure $next, ?int $maxAttempts = null): Response
     {
         $band = $this->band($request);
-        $limit = $maxAttempts ?? $this->limitFor($band);
         $key = $this->key($request, $band);
+
+        // Unauthenticated traffic is held to the tighter of its own budget and
+        // the band's. The key already put it in its own bucket, but the limit
+        // was read from the band alone, so anonymous - the budget written for
+        // the most abused surface - was never the number anything was measured
+        // against. /auth/login and /auth/register fall in no cost band, so
+        // they were allowed the default sixty attempts a minute.
+        $limit = $maxAttempts ?? ($this->isAnonymous()
+            ? min($this->limitFor($band), $this->limitFor('anonymous'))
+            : $this->limitFor($band));
 
         if ($this->limiter->tooManyAttempts($key, $limit)) {
             return ApiResponse::error(
@@ -110,6 +119,12 @@ class RateLimitApi
         return $userId !== null
             ? "rate:user:{$userId}:{$band}"
             : "rate:ip:{$request->ip()}:anonymous";
+    }
+
+    /** No tenant and no user: nothing to attribute the traffic to. */
+    private function isAnonymous(): bool
+    {
+        return $this->tenant->getOrganizationId() === null && auth()->id() === null;
     }
 
     private function addHeaders(Response $response, int $limit, int $remaining): Response

@@ -47,16 +47,27 @@ tc qdisc add dev eth0 root netem delay 500ms 200ms
 redis-cli -p 26379 SENTINEL failover mymaster
 ```
 
-**Checklist:**
-- [ ] ICV allocation continues during failover (DB fallback)
-- [ ] Circuit breaker state persists after failover
-- [ ] Offline queue processing resumes correctly
-- [ ] No duplicate ICVs issued during failover window
+**Checklist** — these need a real failover drill against infrastructure, which
+no test in this repository can stand in for. What the suite does establish
+beforehand is listed against each, so a drill that fails tells you it is the
+infrastructure and not the logic:
+
+- [ ] ICV allocation continues during failover (DB fallback) — allocation under
+      contention is covered by `tests/Feature/Invoice/IcvAllocationTest.php`
+- [ ] Circuit breaker state persists after failover — state transitions by
+      `tests/Feature/Compliance/CircuitBreakerTest.php`
+- [ ] Offline queue processing resumes correctly — drain and retry by
+      `tests/Feature/Compliance/OfflineFallbackTest.php`
+- [ ] No duplicate ICVs issued during failover window — uniqueness under
+      concurrent allocation by `IcvAllocationTest` and
+      `tests/Feature/Compliance/SubmissionRaceTest.php`
 
 ### 1.4 Database Failover Testing
 
-**Test Cases:**
-- [ ] Read replica promotion maintains hash chain integrity
+**Test Cases** — again a drill, with the logic covered beforehand:
+
+- [ ] Read replica promotion maintains hash chain integrity — a fork in the
+      chain is detected by `tests/Feature/Compliance/ChainForkTest.php`
 - [ ] Pending transactions rollback cleanly
 - [ ] Lock ownership tokens invalidate correctly
 
@@ -192,9 +203,19 @@ Each alert should link to a runbook:
 
 ### 4.1 Pre-Production ZATCA Validation
 
-- [ ] **Sandbox Testing**: Submit 100+ test invoices to ZATCA sandbox
-- [ ] **Error Handling**: Verify all ZATCA error codes handled correctly
-- [ ] **QR Code Validation**: Use ZATCA mobile app to scan generated QR codes
+- [ ] **Sandbox Testing**: Submit 100+ test invoices to ZATCA sandbox. The
+      `sandbox` job in `.github/workflows/ci.yml` runs the round trip nightly
+      and on request - CSR, CCSID, the six compliance documents, PCSID - and
+      needs no credentials, so this can start today. It is six documents, not a
+      hundred, so volume is still to do.
+- [ ] **Error Handling**: Verify all ZATCA error codes handled correctly.
+      `ErrorCode` enumerates 99 of them with a retryable flag and a category,
+      and `SubmissionTracker` schedules the next attempt from its retry delay. What is not
+      established is that the codes the authority actually returns are the ones
+      enumerated, which only live traffic shows.
+- [ ] **QR Code Validation**: Use ZATCA mobile app to scan generated QR codes.
+      Yours - the TLV and its tags are checked by the SDK and by
+      `ZatcaConformanceTest`, but only a phone proves the app reads it.
 - [x] **XML Schema Validation**: ZATCA's own SDK validator runs over generated
       documents in `ZatcaConformanceTest` - UBL 2.1 schema, EN 16931, Schematron.
       Standard documents pass outright; simplified documents have one signature
@@ -222,10 +243,18 @@ Prepare the following for regulatory audits:
 ### 4.4 Penetration Testing Requirements
 
 Before production:
-- [ ] External penetration test (API endpoints)
-- [ ] Internal security review (key storage, certificate handling)
-- [ ] Dependency vulnerability scan
-- [ ] OWASP Top 10 validation
+- [ ] External penetration test (API endpoints) — yours
+- [ ] **Internal security review (key storage, certificate handling)** — one
+      finding is already known and recorded in `CredentialStore`'s own
+      docblock: one secret covers every tenant, and on a container-local disk a
+      tenant onboarded on one replica cannot be signed for by another. Adequate
+      for a single taxpayer; a blocker before a second one is onboarded.
+- [x] **Dependency vulnerability scan** — `composer audit --locked` runs as the
+      `security` job in CI on every push, and is currently clean.
+- [ ] **OWASP Top 10 validation** — partly covered: `tests/Feature/Security`
+      sweeps the router for unguarded routes and proves tenant scoping holds,
+      and rate limiting is now enforced (5.2). Not a substitute for the
+      external test above.
 
 ---
 
@@ -233,19 +262,41 @@ Before production:
 
 ### 5.1 Infrastructure
 
+Yours — none of it lives in this repository. `docker-compose.prod.yml`,
+`docker/nginx` and `docker/supervisor` are the starting point; the supervisor
+config already runs php-fpm, nginx, two default workers, three
+`zatca-submissions` workers, one `webhooks` worker and the scheduler.
+
 - [ ] Redis Sentinel/Cluster configured for HA
 - [ ] Database replication configured
-- [ ] Load balancer health checks configured
+- [ ] Load balancer health checks configured — the endpoint exists and is
+      exempt from the platform licence gate, so it answers before a key is issued
 - [ ] SSL/TLS certificates valid and auto-renewing
 - [ ] Backup verification completed
 
 ### 5.2 Application
 
-- [ ] All migrations run successfully
+- [x] **All migrations run successfully** — CI runs the suite against SQLite
+      and again against MySQL 8.4, so a migration that only works on one driver
+      fails the build. See the `mysql` job in `.github/workflows/ci.yml`.
 - [ ] Feature flags set for production
-- [ ] Kill switch tested and documented
-- [ ] Rate limits configured appropriately
-- [ ] Error tracking (Sentry/similar) configured
+- [x] **Kill switch tested** — `tests/Feature/Compliance/KillSwitchTest.php`.
+      Still to do: a runbook entry saying who may throw it and what it stops.
+- [x] **Rate limits configured and enforced** — `RateLimitApi` is attached to
+      the api middleware group in `bootstrap/app.php` and reads
+      `config/security.php`. It was aliased and attached to nothing until
+      2026-10-09, so the whole policy was inert and `/api/auth/login` had no
+      limit at all; `tests/Feature/Security/AuthThrottleTest.php` holds that
+      shut. **Two numbers need your decision before go-live:**
+      `RATE_LIMIT_DEFAULT` is 60 a minute per tenant for every endpoint outside
+      a cost band, which a busy integration will exceed; and
+      `RATE_LIMIT_SUBMISSION` must stay in step with
+      `fatoora.rate_limits.per_minute`, which governs the same traffic. Section
+      1.1's target of 1000 invoices a minute across 10 organizations is ~100
+      each, which exceeds both.
+- [ ] **Error tracking (Sentry/similar) configured** — nothing is wired. No
+      Sentry, Bugsnag or Flare package is installed, so an unhandled exception
+      reaches the log and nowhere else.
 
 ### 5.3 Monitoring
 
@@ -257,11 +308,21 @@ Before production:
 
 ### 5.4 Compliance
 
-- [ ] ZATCA production credentials configured
+- [ ] **ZATCA production credentials configured** — the hard blocker, and it
+      needs a registered taxpayer: a 15-digit VAT number, the legal
+      organization name, the 10-digit TIN for the certificate request's
+      organization unit, and an OTP from the Fatoora portal. Run the sandbox
+      round trip first (`.github/workflows/ci.yml`, job `sandbox`, no
+      credentials needed), then simulation, then production.
 - [ ] Certificate lineage tracking initialized
-- [ ] Hash chain state initialized
-- [ ] Audit logging verified
-- [ ] Data retention policies configured
+- [x] **Hash chain state initialized** — the genesis PIH is
+      `FatooraConfig::GENESIS_PIH`, asserted to be declared exactly once, and
+      the chain is covered by `ChainRecordTest` and `ChainForkTest`.
+- [x] **Audit logging verified** — `tests/Feature/Security/SecurityAuditTest.php`.
+- [x] **Data retention policies configured** — `PartitionMaintenance` creates
+      partitions ahead and detaches those past seven years;
+      `CleanupOfflineQueue` prunes the offline queue. Both are scheduled in
+      `routes/console.php`.
 
 ---
 
