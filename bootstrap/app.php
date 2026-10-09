@@ -6,6 +6,7 @@ use App\Domains\Compliance\Fatoora\Exceptions\SigningException;
 use App\Domains\Licensing\Exceptions\LicenseException;
 use App\Domains\Licensing\Http\Middleware\PlatformLicense;
 use App\Domains\Platform\Http\Middleware\LogContext;
+use App\Domains\Platform\Http\Middleware\SecurityHeaders;
 use App\Http\Responses\ApiResponse;
 use App\Providers\AppServiceProvider;
 use Illuminate\Foundation\Application;
@@ -57,6 +58,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // It self-skips when platform-license.enabled is false and for the
         // health and licence-status paths, so a deployment that has not been
         // issued a key is not locked out of its own health check.
+        // Every response, web and API alike: a PHP version is announced on
+        // both, and the rest cost nothing on a JSON response.
+        $middleware->append(SecurityHeaders::class);
+
         $middleware->api(prepend: [
             HandleCors::class,
             // First, so a request refused by anything after it is still

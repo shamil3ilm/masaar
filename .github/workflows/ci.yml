@@ -614,11 +614,23 @@ jobs:
             exit 1
           fi
 
+          # A directory of its own, world-writable.
+          #
+          # The scanner runs as its own unprivileged user inside the
+          # container, and the runner's workspace belongs to a different one,
+          # so mounting $PWD gave it nowhere to write: it could not place its
+          # own configuration ("Permission denied: /zap/wrk/zap.yaml") and
+          # then could not write the report, while still completing the scan
+          # and exiting 0. Which is how a scan that found thirteen things
+          # reported nothing at all.
+          mkdir -p zap-out
+          chmod 777 zap-out
+
           # --network host because the scanner is in a container and the
           # application is on the runner. Without it the target is
           # unreachable and the scan examines nothing.
           status=0
-          docker run --network host -v "$PWD:/zap/wrk/:rw" "$scanner" zap-baseline.py -t http://127.0.0.1:8000 -r zap-report.html -I || status=$?
+          docker run --network host -v "$PWD/zap-out:/zap/wrk/:rw" "$scanner" zap-baseline.py -t http://127.0.0.1:8000 -r zap-report.html -I || status=$?
 
           kill "$server" 2>/dev/null || true
           echo "Scanner exit status: $status"
@@ -628,16 +640,16 @@ jobs:
           # no report did not run, which is a different thing and has to be
           # visible: that was the previous failure, reported as a pass with
           # the truth in an artifact-upload warning nobody reads.
-          if [ ! -s zap-report.html ]; then
-            echo "::error title=Nothing was scanned::ZAP wrote no report (exit $status), so the scan did not run. A pass here would mean nothing."
+          if [ ! -s zap-out/zap-report.html ]; then
+            echo "::error title=No report::ZAP wrote no report (exit $status). Either the scan did not run, or it could not write - check for a permission error above. A pass here would mean nothing."
             exit 1
           fi
 
-          echo "Report written: $(wc -c < zap-report.html) bytes"
+          echo "Report written: $(wc -c < zap-out/zap-report.html) bytes"
       - name: Keep the report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: zap-report
-          path: zap-report.html
+          path: zap-out/zap-report.html
           retention-days: 30
