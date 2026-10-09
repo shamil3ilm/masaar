@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Services;
 
+use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Helpers\FatooraTime;
@@ -259,9 +260,16 @@ class SubmissionGuard
             ->where('created_at', '>=', now()->subMinute())
             ->count();
 
-        if ($recentSubmissions >= 60) {
+        // From config, not a literal. FatooraConfig has had getters for both
+        // of these for as long as the keys have existed and this read neither,
+        // so ZATCA_RATE_LIMIT_PER_MINUTE and ZATCA_RATE_LIMIT_PER_DAY changed
+        // nothing and the figure in the error message was the only place the
+        // real limit was written down.
+        $perMinute = FatooraConfig::getRateLimitPerMinute();
+
+        if ($recentSubmissions >= $perMinute) {
             throw new FatooraException(
-                'Rate limit exceeded (60/minute)',
+                "Rate limit exceeded ({$perMinute}/minute)",
                 ErrorCode::RATE_LIMIT_EXCEEDED
             );
         }
@@ -277,9 +285,11 @@ class SubmissionGuard
             ->where('created_at', '>=', FatooraTime::saudiNow()->startOfDay()->utc())
             ->count();
 
-        if ($dailySubmissions >= 10000) {
+        $perDay = FatooraConfig::getRateLimitPerDay();
+
+        if ($dailySubmissions >= $perDay) {
             throw new FatooraException(
-                'Daily submission limit exceeded',
+                "Daily submission limit exceeded ({$perDay}/day)",
                 ErrorCode::RATE_DAILY_LIMIT
             );
         }

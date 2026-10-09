@@ -5,6 +5,7 @@ use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Exceptions\SigningException;
 use App\Domains\Licensing\Exceptions\LicenseException;
 use App\Domains\Licensing\Http\Middleware\PlatformLicense;
+use App\Domains\Platform\Http\Middleware\LogContext;
 use App\Domains\Platform\Http\Middleware\RateLimitApi;
 use App\Http\Responses\ApiResponse;
 use App\Providers\AppServiceProvider;
@@ -59,6 +60,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // issued a key is not locked out of its own health check.
         $middleware->api(prepend: [
             HandleCors::class,
+            // First, so a request refused by anything after it is still
+            // identifiable in the log - including a 429 from the limiter and a
+            // licence refusal, which are the two a customer is most likely to
+            // ask about.
+            LogContext::class,
             PlatformLicense::class,
             RateLimitApi::class,
         ]);

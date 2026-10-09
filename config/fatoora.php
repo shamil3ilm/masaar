@@ -114,7 +114,9 @@ return [
     |
     */
     'rate_limits' => [
-        'per_minute' => env('ZATCA_RATE_LIMIT_PER_MINUTE', 60),
+        // Must agree with security.rate_limits.submission, which throttles the
+        // same traffic at the edge. Two keys, one thing.
+        'per_minute' => env('ZATCA_RATE_LIMIT_PER_MINUTE', 120),
         'per_day' => env('ZATCA_RATE_LIMIT_PER_DAY', 10000),
         'max_concurrent' => env('ZATCA_MAX_CONCURRENT', 10),
     ],

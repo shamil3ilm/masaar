@@ -78,26 +78,50 @@ return [
 
     'rate_limits' => [
 
-        'default' => (int) env('RATE_LIMIT_DEFAULT', 60),
+        // The ladder below is ordered by what a request costs, so a band is
+        // never tighter than the fallback it would otherwise drop through to.
+        // Requests a minute, per tenant, per band.
+
+        // Ordinary API traffic. This platform is built to be integrated with,
+        // and sixty a minute is one request a second, which an ERP sync loop
+        // exceeds immediately - and a 429 drawn from a shared bucket is hard
+        // for a client to attribute to anything.
+        'default' => (int) env('RATE_LIMIT_DEFAULT', 300),
 
         // Signing and an outbound call to the authority.
         //
-        // Sixty to agree with fatoora.rate_limits.per_minute, which
-        // SubmissionGuard already enforces per organization. This band was
-        // thirty while nothing read it; attaching the middleware at thirty
-        // would have halved a throughput nobody asked to change. The two
-        // numbers govern the same traffic and have to be set together.
-        'submission' => (int) env('RATE_LIMIT_SUBMISSION', 60),
+        // Must agree with fatoora.rate_limits.per_minute, which
+        // SubmissionGuard enforces on the same traffic per organization: two
+        // keys, one thing, set together or the tighter one silently wins.
+        //
+        // A hundred and twenty makes the thousand-invoices-a-minute target in
+        // PRODUCTION-READINESS.md section 1.1 reachable across ten
+        // organizations. It is deliberately a platform ceiling and not an
+        // ambition: a limit set above what ZATCA's own API accepts does not
+        // buy throughput, it moves the refusal from a cheap local 429 to a
+        // failed submission against the twenty-four hour reporting deadline.
+        // Confirm the authority's published figure before production and keep
+        // this under it.
+        'submission' => (int) env('RATE_LIMIT_SUBMISSION', 120),
 
-        // Certificate issuance: rare, expensive, and security sensitive.
+        // Certificate issuance: rare, expensive, and security sensitive. The
+        // tightest band on purpose - an OTP is spent whether the request
+        // succeeds or not.
         'onboarding' => (int) env('RATE_LIMIT_ONBOARDING', 5),
 
-        // Cheap reads.
-        'read' => (int) env('RATE_LIMIT_READ', 120),
+        // Cheap reads: a status poll or a health check costs almost nothing,
+        // so this is the most generous band rather than a mid-range one.
+        'read' => (int) env('RATE_LIMIT_READ', 600),
 
-        // No tenant to attribute the traffic to, and the most abused surface.
+        // No tenant to attribute the traffic to, and the most abused surface:
+        // login and register fall here. Applied as the tighter of this and the
+        // band, see RateLimitApi::handle().
         'anonymous' => (int) env('RATE_LIMIT_ANONYMOUS', 20),
 
+        // Matched against the route's URI, which carries no method - so a
+        // pattern that caught GET /invoices would hand POST /invoices the same
+        // budget. Patterns stay narrow for that reason; anything they do not
+        // match draws on 'default'.
         'bands' => [
             'submission' => ['pipeline/submit', 'compliance/sa/submit', 'compliance/ae/submit'],
             'onboarding' => ['onboarding', 'ccsid', 'pcsid'],
