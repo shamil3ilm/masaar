@@ -232,13 +232,27 @@ Each alert should link to a runbook:
 
 Prepare the following for regulatory audits:
 
+All five exist and are written for an auditor rather than an engineer - they
+say where the evidence is and how to verify it, not how the code is arranged.
+
 | Document | Location | Purpose |
 |----------|----------|---------|
-| System Architecture | `docs/ARCHITECTURE.md` | Technical overview |
+| System Architecture | `docs/ARCHITECTURE.md` | What the parts are, where keys live, what is stored |
 | Compliance Policies | `docs/COMPLIANCE-POLICIES.md` | Policy decisions |
-| Data Flow Diagrams | `docs/DATA-FLOW.md` | Invoice lifecycle |
+| Data Flow Diagrams | `docs/DATA-FLOW.md` | The life of an invoice, and the queries that verify it |
 | Security Controls | `SECURITY.md` | Security measures |
-| Audit Log Schema | `docs/AUDIT-SCHEMA.md` | Log interpretation |
+| Audit Log Schema | `docs/AUDIT-SCHEMA.md` | Reading the activity records |
+
+Two things to tell an auditor before handing over the repository:
+
+- **`docs/audit/` is not what its name suggests.** It is an engineering audit
+  of the source code, not a record of invoicing activity. The records are the
+  tables and channels in `docs/AUDIT-SCHEMA.md`.
+- **`audit_logs` is an application record, not cryptographic proof.** Someone
+  with direct database access could alter it. The tamper-evidence is the hash
+  chain over the documents; `docs/DATA-FLOW.md` section 3 gives the queries.
+  An audit should use both - the chain for whether the documents are intact
+  and complete, the log for who acted.
 
 ### 4.4 Penetration Testing Requirements
 
@@ -349,10 +363,16 @@ config already runs php-fpm, nginx, two default workers, three
       `FatooraConfig::GENESIS_PIH`, asserted to be declared exactly once, and
       the chain is covered by `ChainRecordTest` and `ChainForkTest`.
 - [x] **Audit logging verified** — `tests/Feature/Security/SecurityAuditTest.php`.
-- [x] **Data retention policies configured** — `PartitionMaintenance` creates
-      partitions ahead and detaches those past seven years;
-      `CleanupOfflineQueue` prunes the offline queue. Both are scheduled in
-      `routes/console.php`.
+- [x] **Data retention policies configured** — and the configured policy is to
+      delete nothing. `PartitionMaintenance` is scheduled monthly with
+      `--create-future` only, so partitions are created ahead of need and none
+      is ever detached; its `--archive-threshold=84` (seven years) exists but
+      is not passed. Compliance records therefore accumulate indefinitely,
+      which meets the retention requirement by never reaching it, at the cost
+      of storage. `CleanupOfflineQueue` prunes the offline queue, which holds
+      pending work rather than records. **If you later enable archiving, keep
+      the threshold at or beyond the retention period**, and decide where
+      detached partitions go - detaching without an export loses them.
 
 ---
 
