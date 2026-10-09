@@ -445,7 +445,33 @@ jobs:
       - name: Scan the image
         run: |
           docker save masaar:ci -o image.tar
-          docker run --rm -v "$PWD:/work" -w /work aquasecurity/trivy:latest image --input image.tar --scanners vuln --format json --output trivy.json --severity CRITICAL,HIGH,MEDIUM --exit-code 0 --no-progress
+          # Pulled explicitly, from either official path.
+          #
+          # The scanner is published to GitHub Container Registry under the
+          # project name and to Docker Hub under the company name, which are
+          # not the same word: ghcr.io/aquasecurity/trivy and aquasec/trivy.
+          # aquasecurity/trivy on Docker Hub does not exist, and asking for
+          # it fails as a denied pull rather than as a missing image, which
+          # reads like an authentication problem and is not one.
+          #
+          # GHCR first: it is not subject to the anonymous pull limits that
+          # Docker Hub applies per source address, which CI runners share.
+          scanner=""
+          for candidate in ghcr.io/aquasecurity/trivy:latest aquasec/trivy:latest; do
+            if docker pull -q "$candidate" >/dev/null 2>&1; then
+              scanner="$candidate"
+              echo "Scanner: $scanner"
+              break
+            fi
+            echo "Could not pull $candidate"
+          done
+
+          if [ -z "$scanner" ]; then
+            echo "::error title=Scanner unavailable::Neither ghcr.io/aquasecurity/trivy nor aquasec/trivy could be pulled."
+            exit 1
+          fi
+
+          docker run --rm -v "$PWD:/work" -w /work "$scanner" image --input image.tar --scanners vuln --format json --output trivy.json --severity CRITICAL,HIGH,MEDIUM --exit-code 0 --no-progress
 
       # The gate is written here rather than passed to the scanner so the
       # criterion is readable: a CRITICAL that something can be done about.
@@ -559,7 +585,30 @@ jobs:
       # having examined nothing.
       - name: Baseline scan
         run: |
-          docker run --network host -v "$PWD:/zap/wrk/:rw" ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://127.0.0.1:8000 -r zap-report.html -I || true
+          # Same two-path pull as the image scan, for the same reason: the
+          # project renamed its images and the old owasp/zap2docker-* names
+          # are retired, so a single hardcoded path is a guess that fails
+          # whenever this job is first run - which, being on a schedule, is
+          # long after it was written.
+          scanner=""
+          for candidate in ghcr.io/zaproxy/zaproxy:stable zaproxy/zap-stable:latest; do
+            if docker pull -q "$candidate" >/dev/null 2>&1; then
+              scanner="$candidate"
+              echo "Scanner: $scanner"
+              break
+            fi
+            echo "Could not pull $candidate"
+          done
+
+          if [ -z "$scanner" ]; then
+            echo "::error title=Scanner unavailable::Neither ghcr.io/zaproxy/zaproxy nor zaproxy/zap-stable could be pulled."
+            exit 1
+          fi
+
+          # --network host because the scanner is in a container and the
+          # application is on the runner; without it the target is
+          # unreachable and the scan passes having examined nothing.
+          docker run --network host -v "$PWD:/zap/wrk/:rw" "$scanner" zap-baseline.py -t http://127.0.0.1:8000 -r zap-report.html -I || true
 
       - name: Keep the report
         if: always()
