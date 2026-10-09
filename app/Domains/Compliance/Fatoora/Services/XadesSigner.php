@@ -402,6 +402,15 @@ class XadesSigner
         $signedSigProps = $dom->createElementNS(self::XADES_NS, 'xades:SignedSignatureProperties');
 
         // SigningTime (must be UTC per ZATCA requirements)
+        //
+        // The trailing Z stays. ZATCA's own samples and its SDK write this
+        // field without one, but the SDK writes the signing machine's local
+        // time rather than UTC, so its format is not evidence of which
+        // instant ZATCA reads a bare stamp as. Dropping the marker while
+        // still writing UTC would leave a reader three hours out for Riyadh,
+        // which is outside the tolerance the authority allows between a
+        // document and its submission - and it does not make the signed
+        // properties digest agree, so it buys nothing for the risk.
         $signingTime = $dom->createElementNS(self::XADES_NS, 'xades:SigningTime', FatooraTime::nowFormatted());
         $signedSigProps->appendChild($signingTime);
 
@@ -606,12 +615,22 @@ class XadesSigner
     {
         $xml = (string) $signedProperties->ownerDocument?->saveXML($signedProperties);
 
-        // Whatever the document declared on an ancestor has to be written out
-        // for this element to stand alone, which is what a validator reading
-        // it does. Established against the authority's own sample: compacting
-        // that element and recomputing the digest over these bytes leaves its
-        // check passing, so the formatting is the document's to choose and the
-        // declarations are not.
+        // The element as the document carries it, with xmlns:xades written on
+        // it and xmlns:ds written on each ds: child that lacks one, and
+        // nothing removed.
+        //
+        // This is the rule the authority's validator uses, confirmed twice:
+        // the digest it records for its own sample is the SHA-256 of exactly
+        // this reconstruction of that sample's block, and so is the digest it
+        // records when its SDK signs a document generated here.
+        //
+        // It does not yet agree for the documents this signer produces, and
+        // the reason is in the block rather than here - see the table in
+        // docs/sa/HASHING-AND-SIGNING.md. Every element built by
+        // createElementNS carries its own xmlns:ds where the SDK's carries
+        // none, and a namespace declaration is not data a reader keeps: it
+        // puts the prefix in scope and writes the declaration back where it is
+        // needed, so the bytes it digests are neither these nor a fragment's.
         if (! str_contains((string) strstr($xml, '>', true), 'xmlns:xades=')) {
             $xml = (string) preg_replace(
                 '#^<xades:SignedProperties#',

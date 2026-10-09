@@ -83,7 +83,13 @@ the quickest way to tell which one a sample is using.
   | | the SDK | here |
   |---|---|---|
   | `xmlns:ds` inside the block | none; inherited from an ancestor | repeated on every element |
-  | `SigningTime` | `2026-10-09T13:55:47` | the same with a trailing `Z` |
+  | `SigningTime` | local time, no zone marker | UTC with a trailing `Z` |
+
+  The `Z` stays. The SDK writes the signing machine's local time, so its
+  format says nothing about which instant ZATCA reads a bare stamp as, and
+  dropping the marker while still writing UTC would leave a reader three
+  hours out for Riyadh. Matching it was tried and does not make the digest
+  agree either.
 
   `DOMDocument::createElementNS` writes a declaration onto each element it
   creates, so the block carries eight redundant `xmlns:ds` attributes that the
