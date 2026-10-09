@@ -645,11 +645,40 @@ jobs:
             exit 1
           fi
 
-          echo "Report written: $(wc -c < zap-out/zap-report.html) bytes"
+          echo "Baseline report: $(wc -c < zap-out/zap-report.html) bytes"
+
+          # The baseline spider found four URLs: /, /login, /robots.txt and
+          # /sitemap.xml. That is the whole of what it can reach by following
+          # links, because every endpoint of substance needs a token and
+          # nothing links to it - so a scan of this application was a scan of
+          # its login page.
+          #
+          # The documented surface is 97 paths and 119 operations, and ZAP
+          # reads an OpenAPI definition directly. Unauthenticated: it exercises
+          # every operation and checks what comes back, which also confirms
+          # they refuse without a credential. Scanning behind the token would
+          # need a context and a credential in CI and is a separate decision.
+          cp docs/openapi.yaml zap-out/openapi.yaml
+
+          api_status=0
+          docker run --network host -v "$PWD/zap-out:/zap/wrk/:rw" "$scanner" zap-api-scan.py -t /zap/wrk/openapi.yaml -f openapi -O http://127.0.0.1:8000 -r zap-api-report.html -I || api_status=$?
+
+          echo "API scanner exit status: $api_status"
+
+          # The spec is OpenAPI 3.1. If the add-on cannot read it, nothing is
+          # scanned and that must not read as a pass - the same rule as above.
+          if [ ! -s zap-out/zap-api-report.html ]; then
+            echo "::error title=No API report::The API scan wrote no report (exit $api_status). Check whether the OpenAPI 3.1 definition was parsed."
+            exit 1
+          fi
+
+          echo "API report: $(wc -c < zap-out/zap-api-report.html) bytes"
       - name: Keep the report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: zap-report
-          path: zap-out/zap-report.html
+          path: |
+            zap-out/zap-report.html
+            zap-out/zap-api-report.html
           retention-days: 30
