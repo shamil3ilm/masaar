@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Services;
 
+use App\Domains\Compliance\Fatoora\Helpers\FatooraTime;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Models\Invoice;
 use Illuminate\Support\Carbon;
@@ -77,7 +78,15 @@ class VatPeriodTracker
         // Filing deadline is typically 28th of the month following period end
         $filingDeadline = $periodEnd->copy()->addMonth()->setDay($filingDeadlineDay);
 
-        return now()->lte($filingDeadline);
+        // Compared as dates on the Kingdom's calendar, which is what a filing
+        // deadline is. Two things were wrong with comparing instants against a
+        // parsed midnight: for the three hours after midnight in Riyadh the
+        // application's clock still named the previous day, so a period read
+        // as open after the deadline had passed; and a deadline at 00:00 on
+        // its own day closed the period before that day began, which is not
+        // what a deadline of the 28th means. A period is open through the end
+        // of the deadline day.
+        return FatooraTime::saudiNow()->toDateString() <= $filingDeadline->toDateString();
     }
 
     /**

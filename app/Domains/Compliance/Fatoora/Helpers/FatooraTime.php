@@ -11,13 +11,20 @@ use DateTimeZone;
 /**
  * ZATCA Time Helper.
  *
- * All ZATCA timestamps must be in UTC.
- * This helper ensures consistent timezone handling.
+ * Two clocks, and which one a value belongs on depends on what the value is
+ * for. An instant - when a document was signed, when a retry is due, when a
+ * token expires - is UTC, and comparing two of those is comparing instants.
+ * A civil statement - the date and time a document says it was issued, the
+ * day a filing deadline falls on, what "today" means for a daily count - is
+ * the Kingdom's, because that is the clock the taxpayer, the consumer reading
+ * a QR and the authority all keep.
  *
- * This addresses:
- * - Timezone issues (invoice time vs clearance time)
- * - Daylight savings bugs
- * - Sequence reconciliation
+ * Writing a civil statement in UTC does not make it three hours early. It
+ * makes it wrong, and for the three hours after midnight in Riyadh it names
+ * the previous day: an invoice issued at 01:30 said 22:30 of the day before.
+ * Use now()/format() for an instant and saudiNow()/toSaudiTime() for a civil
+ * statement; the names are the only thing that distinguishes them, so say
+ * which you mean.
  */
 final class FatooraTime
 {
@@ -164,11 +171,28 @@ final class FatooraTime
     }
 
     /**
-     * Convert to Saudi Arabia time (for display).
+     * Convert to the Kingdom's clock.
+     *
+     * Not "for display". A document's IssueTime and the timestamp in its QR
+     * are civil statements about when it was issued, so they are read off
+     * this and not off the application's clock.
      */
     public static function toSaudiTime(\DateTimeInterface $dateTime): DateTimeImmutable
     {
         return self::toUtc($dateTime)->setTimezone(new DateTimeZone(self::SAUDI_TIMEZONE));
+    }
+
+    /**
+     * Now, on the Kingdom's clock.
+     *
+     * For the civil date or wall-clock time a document or a deadline states.
+     * Carbon, not DateTimeImmutable, because the callers want startOfDay()
+     * and lte() - and Carbon so a frozen test clock reaches it, which a bare
+     * new DateTime would not.
+     */
+    public static function saudiNow(): Carbon
+    {
+        return Carbon::now(self::SAUDI_TIMEZONE);
     }
 
     /**
