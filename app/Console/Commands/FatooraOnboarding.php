@@ -52,7 +52,7 @@ class FatooraOnboarding extends Command
     protected $signature = 'fatoora:onboard
                             {--step=info : Step to execute (info|ccsid|compliance|pcsid|full)}
                             {--otp= : One-Time Password from Fatoora Portal}
-                            {--target=simulation : Target environment (sandbox|simulation|production|local)}
+                            {--target= : Target environment (sandbox|simulation|production|local); default config fatoora.environment}
                             {--csr= : Path to CSR file (default: storage/app/zatca/taxpayer.csr)}
                             {--key= : Path to private key file (default: storage/app/zatca/taxpayer.key)}';
 
@@ -135,7 +135,13 @@ class FatooraOnboarding extends Command
     public function handle(ComplianceSampleSet $samples): int
     {
         $this->samples = $samples;
-        $this->environment = $this->option('target');
+
+        // No hardcoded default: the environment comes from the configuration
+        // that fatoora:generate-csr reads too, so with no flags the request's
+        // template and the endpoint it is sent to name the same environment.
+        // This defaulted to simulation while the configuration defaulted to
+        // sandbox, which is two answers to one question.
+        $this->environment = (string) ($this->option('target') ?: config('fatoora.environment'));
         $this->baseUrl = $this->environment === self::LOCAL
             ? self::LOCAL
             : (string) config(

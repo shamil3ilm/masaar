@@ -195,7 +195,10 @@ Each alert should link to a runbook:
 - [ ] **Sandbox Testing**: Submit 100+ test invoices to ZATCA sandbox
 - [ ] **Error Handling**: Verify all ZATCA error codes handled correctly
 - [ ] **QR Code Validation**: Use ZATCA mobile app to scan generated QR codes
-- [ ] **XML Schema Validation**: Run invoices through ZATCA's XML validator
+- [x] **XML Schema Validation**: ZATCA's own SDK validator runs over generated
+      documents in `ZatcaConformanceTest` - UBL 2.1 schema, EN 16931, Schematron.
+      Standard documents pass outright; simplified documents have one signature
+      digest outstanding, see `docs/sa/HASHING-AND-SIGNING.md`.
 
 ### 4.2 Production Onboarding
 

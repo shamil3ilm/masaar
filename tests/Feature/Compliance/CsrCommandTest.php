@@ -74,7 +74,54 @@ class CsrCommandTest extends TestCase
         ];
     }
 
-    private function generate(string $commonName, string $template): void
+    /**
+     * The environment the request is for decides the template, and it has to
+     * be the environment the request will be sent to.
+     *
+     * This defaulted to the simulation template whatever was configured, so
+     * the sandbox round trip built a simulation request and onboarded against
+     * the sandbox - refused on its own configuration, before reaching
+     * anything it was meant to be testing.
+     */
+    #[DataProvider('targets')]
+    public function test_the_target_picks_the_template(string $target, string $template): void
+    {
+        $this->generate('EGS-UNIT-7421', target: $target);
+
+        $this->assertStringContainsString($this->utf8($template), $this->der());
+    }
+
+    /**
+     * And with no target named, the configured environment decides - the same
+     * value FatooraConfig::getBaseUrl() picks the endpoint from, so the
+     * request and the URL it goes to cannot name different environments.
+     */
+    public function test_the_configured_environment_is_default(): void
+    {
+        // Production, which is neither the configured default nor the
+        // template this used to hand back regardless - so a request carrying
+        // it can only have come from reading the configuration.
+        config(['fatoora.environment' => 'production']);
+
+        $this->generate('EGS-UNIT-7421');
+
+        $this->assertStringContainsString($this->utf8(CsrBuilder::TEMPLATE_PRODUCTION), $this->der());
+    }
+
+    /** @return list<array{0: string, 1: string}> */
+    public static function targets(): array
+    {
+        return [
+            ['sandbox', CsrBuilder::TEMPLATE_SANDBOX],
+            ['simulation', CsrBuilder::TEMPLATE_SIMULATION],
+            ['production', CsrBuilder::TEMPLATE_PRODUCTION],
+            // Local testing talks to the sandbox endpoint, so it carries the
+            // sandbox template.
+            ['local', CsrBuilder::TEMPLATE_SANDBOX],
+        ];
+    }
+
+    private function generate(string $commonName, ?string $template = null, ?string $target = null): void
     {
         $this->artisan('fatoora:generate-csr', [
             '--vat' => '311111111111113',
@@ -83,10 +130,12 @@ class CsrCommandTest extends TestCase
             // member's ten-digit TIN rather than a department name.
             '--unit' => '3111111111',
             '--cn' => $commonName,
-            '--template' => $template,
             '--standard' => true,
             '--output' => $this->output,
-        ])->assertSuccessful();
+        ] + array_filter([
+            '--template' => $template,
+            '--target' => $target,
+        ]))->assertSuccessful();
     }
 
     private function der(): string

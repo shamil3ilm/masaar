@@ -35,7 +35,8 @@ class FatooraGenerateCsr extends Command
                             {--standard : Support standard invoices (B2B)}
                             {--simplified : Support simplified invoices (B2C)}
                             {--output= : Output directory (default: storage/app/zatca)}
-                            {--template= : Certificate template: TSTZATCA-Code-Signing, PREZATCA-Code-Signing or ZATCA-Code-Signing}';
+                            {--target= : Environment the request is for (sandbox|simulation|production|local); default config fatoora.environment}
+                            {--template= : Override the template outright: TSTZATCA-Code-Signing, PREZATCA-Code-Signing or ZATCA-Code-Signing}';
 
     protected $description = 'Generate ZATCA-compliant CSR and private key using PHP OpenSSL';
 
@@ -124,7 +125,20 @@ class FatooraGenerateCsr extends Command
             // One template for both generators: the certificate template is
             // what tells ZATCA which environment the request is for, and a
             // request carrying another environment's template is refused.
-            $template = $this->option('template') ?: CsrBuilder::TEMPLATE_SIMULATION;
+            //
+            // Which environment comes from the same place the endpoint does,
+            // so the request and the URL it is sent to cannot disagree. This
+            // defaulted to the simulation template whatever the configured
+            // environment was, so the sandbox round trip generated a
+            // simulation request and then onboarded against the sandbox - it
+            // would have been refused on its own configuration rather than on
+            // anything it was meant to be testing. --target names the
+            // environment for one run; --template overrides the figure itself,
+            // for asking ZATCA a question about a template deliberately.
+            $template = $this->option('template')
+                ?: CsrBuilder::templateFor((string) ($this->option('target') ?: config('fatoora.environment')));
+
+            $this->line("Template: {$template}");
 
             if ($sdkJar !== null && file_exists($sdkJar)) {
                 $this->info('Using ZATCA SDK for CSR generation (recommended)...');
