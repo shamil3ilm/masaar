@@ -391,6 +391,30 @@ jobs:
             exit 1
           }
 
+      # Onboarding ends at a production CSID, and until now so did this job -
+      # so whether the authority accepts a signed invoice, and whether a
+      # stamped copy comes back, had never been observed. It needs no
+      # taxpayer: the developer portal issues the PCSID this step uses and
+      # serves clearance and reporting as well.
+      #
+      # Standard documents are cleared, simplified are reported, which is
+      # what makes this different from the compliance check above - a
+      # different endpoint with different rules, and the one real invoices go
+      # to.
+      - name: Clear and report with the production certificate
+        run: |
+          php artisan fatoora:onboard --step=submit --target=sandbox | tee submit.log
+
+          if grep -q 'REFUSED' submit.log; then
+            echo "::error title=A document was refused::The authority rejected a document submitted with the production certificate. The outcome column says why; a GATEWAY line is a timeout rather than a refusal."
+            exit 1
+          fi
+
+          grep -q 'All 6 documents were accepted' submit.log || {
+            echo "::error title=Submission incomplete::The step did not report six acceptances."
+            exit 1
+          }
+
   security:
     name: Dependency audit
     runs-on: ubuntu-latest

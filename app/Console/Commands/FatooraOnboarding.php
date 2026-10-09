@@ -50,7 +50,7 @@ class FatooraOnboarding extends Command
     use WritesSecrets;
 
     protected $signature = 'fatoora:onboard
-                            {--step=info : Step to execute (info|ccsid|compliance|pcsid|full)}
+                            {--step=info : Step to execute (info|ccsid|compliance|pcsid|submit|full)}
                             {--otp= : One-Time Password from Fatoora Portal}
                             {--target= : Target environment (sandbox|simulation|production|local); default config fatoora.environment}
                             {--csr= : Path to CSR file (default: storage/app/zatca/taxpayer.csr)}
@@ -156,6 +156,7 @@ class FatooraOnboarding extends Command
             'ccsid' => $this->requestComplianceCsid(),
             'compliance' => $this->runComplianceCheck(),
             'pcsid' => $this->requestProductionCsid(),
+            'submit' => $this->submitWithProductionCsid(),
             'full' => $this->runFullOnboarding(),
             default => $this->showInfo(),
         };
@@ -666,6 +667,179 @@ class FatooraOnboarding extends Command
         return $this->requestProductionCsid();
     }
 
+    /**
+     * Clear and report real documents with the production certificate.
+     *
+     * The step that was missing, and the gap it left is the largest in this
+     * platform's verification. Onboarding ends at a production CSID;
+     * everything after that - whether the authority accepts a signed invoice,
+     * what it returns, whether a stamped copy comes back - had been
+     * established only against the SDK offline, or against the compliance
+     * endpoint, which is a different endpoint with different rules.
+     *
+     * It needs no taxpayer. The compliance check already obtains a PCSID from
+     * the developer portal, and clearance and reporting are served there too.
+     * This was described as needing a real taxpayer because nobody had tried.
+     *
+     * The same six documents, sent somewhere else. They are already a valid
+     * chain - ICV one to six, each PIH the previous hash - so they are reused
+     * rather than invented, signed this time with the production certificate
+     * rather than the compliance one. Standard documents go to clearance,
+     * because B2B must be cleared before it is issued; simplified go to
+     * reporting, where B2C is sent within twenty-four hours. Which endpoint a
+     * document belongs to is its subtype's answer, not a setting.
+     */
+    private function submitWithProductionCsid(): int
+    {
+        $this->info('Submitting documents with the production certificate');
+        $this->newLine();
+
+        $pcsid = $this->loadPcsidCredentials();
+
+        if ($pcsid === null) {
+            $this->error('No production credentials. Run --step=pcsid first.');
+
+            return Command::FAILURE;
+        }
+
+        if (empty($pcsid['certificate']) || empty($pcsid['privateKey'])) {
+            $this->error('The production certificate or its key is missing, so nothing can be signed.');
+
+            return Command::FAILURE;
+        }
+
+        $this->line("Endpoint: {$this->baseUrl}");
+        $this->newLine();
+
+        try {
+            $documents = $this->samples->build(
+                sellerName: 'Maximum Speed Tech Supply LTD',
+                sellerVatNumber: '399999999900003',
+                sellerCrNumber: '1010010000',
+                sellerAddress: new AddressData(
+                    street: 'King Fahd Road',
+                    buildingNumber: '1234',
+                    plotIdentification: '5678',
+                    district: 'Al Olaya',
+                    city: 'Riyadh',
+                    postalCode: '12345',
+                    countrySubentity: 'Riyadh Region',
+                    countryCode: 'SA',
+                ),
+                numberPrefix: 'LIVE-'.date('YmdHis'),
+                finalize: fn (string $xml, InvoiceXmlData $data): string => $this->injectQrCode(
+                    $this->signer->sign($xml, $pcsid['privateKey'], $pcsid['certificate']),
+                    $data,
+                    $pcsid['certificate']
+                ),
+            );
+        } catch (\Exception $e) {
+            $this->error('Could not build the documents: '.$e->getMessage());
+
+            return Command::FAILURE;
+        }
+
+        $results = [];
+        $allPassed = true;
+
+        foreach ($documents as $key => $document) {
+            $standard = $document['data']->invoiceSubtype === '01';
+            $route = $standard ? 'clearance' : 'reporting';
+            $name = ucwords(str_replace('_', ' ', $key));
+
+            $this->line("Submitting {$name} for {$route}...");
+
+            $result = $this->submitForOutcome($document, $pcsid, $standard);
+
+            if (! $result['success']) {
+                $allPassed = false;
+            }
+
+            $results[] = [
+                'Document' => $name,
+                'Route' => $route,
+                'Status' => $result['success'] ? 'ACCEPTED' : 'REFUSED',
+                'Outcome' => $result['message'],
+            ];
+
+            // The authority rate limits, and a tight loop is how a device
+            // finds that out the expensive way.
+            usleep(500000);
+        }
+
+        $this->newLine();
+        $this->table(['Document', 'Route', 'Status', 'Outcome'], $results);
+        $this->newLine();
+
+        if (! $allPassed) {
+            $this->error('A document was refused. The outcome column carries what the authority said.');
+
+            return Command::FAILURE;
+        }
+
+        $this->info('All 6 documents were accepted by the production endpoints!');
+
+        return Command::SUCCESS;
+    }
+
+    /**
+     * One document, to the endpoint its subtype belongs to.
+     *
+     * @param  array{xml: string, hash: string, data: InvoiceXmlData}  $document
+     * @param  array<string, string|null>  $pcsid
+     * @return array{success: bool, message: string}
+     */
+    private function submitForOutcome(array $document, array $pcsid, bool $standard): array
+    {
+        $path = $standard ? '/invoices/clearance/single' : '/invoices/reporting/single';
+
+        try {
+            $request = $this->zatca()
+                ->withBasicAuth((string) $pcsid['token'], (string) $pcsid['secret']);
+
+            // Clearance is the only one that takes this, and it is what asks
+            // the authority to stamp the document rather than merely accept a
+            // report of it.
+            if ($standard) {
+                $request = $request->withHeaders(['Clearance-Status' => '1']);
+            }
+
+            $response = $request->post($this->baseUrl.$path, [
+                'invoiceHash' => $document['hash'],
+                'uuid' => $document['data']->uuid,
+                'invoice' => base64_encode($document['xml']),
+            ]);
+
+            $body = (array) $response->json();
+
+            if ($response->successful()) {
+                $status = (string) ($body['clearanceStatus'] ?? $body['reportingStatus'] ?? 'ACCEPTED');
+                $cleared = ! empty($body['clearedInvoice']);
+
+                return [
+                    'success' => true,
+                    'message' => $status.($cleared ? ' (stamped copy returned)' : ''),
+                ];
+            }
+
+            // The reasons, not a status code: a refusal names the rule, and
+            // that is the only part worth reading.
+            $reasons = array_merge(
+                array_column((array) ($body['errorMessages'] ?? []), 'message'),
+                array_column((array) ($body['validationResults']['errorMessages'] ?? []), 'message'),
+            );
+
+            return [
+                'success' => false,
+                'message' => $reasons === []
+                    ? 'HTTP '.$response->status()
+                    : implode('; ', array_slice($reasons, 0, 3)),
+            ];
+        } catch (\Exception $e) {
+            return ['success' => false, 'message' => 'GATEWAY: '.$e->getMessage()];
+        }
+    }
+
     private function submitComplianceInvoice(string $xml, string $hash, string $uuid, array $ccsid): array
     {
         try {
@@ -854,6 +1028,35 @@ class FatooraOnboarding extends Command
         }
 
         $this->line('Credentials saved to storage/app/zatca/ccsid_*.txt');
+    }
+
+    /**
+     * The production credentials, with the key the request was made with.
+     *
+     * There was no loader for these. The PCSID was obtained, written to disk
+     * and never read back, so the certificate that actually clears invoices
+     * had never signed one. The private key is the CCSID's: a production
+     * certificate is issued against the same key the certificate request
+     * carried, and only the certificate changes.
+     */
+    private function loadPcsidCredentials(): ?array
+    {
+        $dir = storage_path('app/zatca');
+        $tokenPath = $dir.'/pcsid_token.txt';
+        $secretPath = $dir.'/pcsid_secret.txt';
+        $certPath = $dir.'/pcsid_certificate.pem';
+        $keyPath = $dir.'/ccsid_private_key.pem';
+
+        if (! file_exists($tokenPath) || ! file_exists($secretPath)) {
+            return null;
+        }
+
+        return [
+            'token' => trim((string) file_get_contents($tokenPath)),
+            'secret' => trim((string) file_get_contents($secretPath)),
+            'certificate' => file_exists($certPath) ? trim((string) file_get_contents($certPath)) : null,
+            'privateKey' => file_exists($keyPath) ? trim((string) file_get_contents($keyPath)) : null,
+        ];
     }
 
     private function loadCcsidCredentials(): ?array
