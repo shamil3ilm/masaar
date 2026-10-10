@@ -331,11 +331,43 @@ jobs:
 
           jq --arg root "$root" 'map_values($root + "/" + ltrimstr("../"))' "$defaults" > "$root/Configuration/config.json"
 
-          # A rewritten path that does not exist would surface as every
-          # document failing its schema check, so it fails here instead.
-          xsd=$(jq -r '.xsdPath' "$root/Configuration/config.json")
-          if [ ! -f "$xsd" ]; then
-            echo "::error title=SDK paths wrong::config.json points xsdPath at $xsd, which does not exist."
+          # Every rewritten path is checked, and its case repaired, because a
+          # path that does not exist surfaces as every document failing
+          # validation rather than as a configuration problem.
+          #
+          # This is not hypothetical and not ours: the SDK's own defaults.json
+          # names Data/Rules/schematrons while the archive ships
+          # Data/Rules/Schematrons. On any Windows or macOS checkout the
+          # difference is invisible, so the SDK is shipped that way; on this
+          # Ubuntu runner the two Schematron files are simply not found, and
+          # the EN 16931 and ZATCA rule checks would report every document
+          # invalid with nothing pointing at the cause.
+          #
+          # Checking only xsdPath - which does exist - cleared this silently.
+          missing=()
+
+          for key in $(jq -r 'keys[]' "$root/Configuration/config.json"); do
+            path=$(jq -r --arg k "$key" '.[$k]' "$root/Configuration/config.json")
+
+            if [ -e "$path" ]; then
+              continue
+            fi
+
+            # -ipath matches the whole path ignoring case, which is exactly
+            # the class of difference being repaired.
+            actual=$(find "$root" -ipath "$path" -print -quit 2>/dev/null)
+
+            if [ -n "$actual" ]; then
+              jq --arg k "$key" --arg v "$actual" '.[$k] = $v'                 "$root/Configuration/config.json" > "$root/Configuration/config.next"
+              mv "$root/Configuration/config.next" "$root/Configuration/config.json"
+              echo "Repaired the case of $key: $actual"
+            else
+              missing+=("$key=$path")
+            fi
+          done
+
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error title=SDK paths wrong::config.json names paths that do not exist in the archive: ${missing[*]}"
             cat "$root/Configuration/config.json"
             exit 1
           fi
