@@ -3,10 +3,45 @@
 namespace Tests;
 
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\Storage;
 use ReflectionProperty;
 
 abstract class TestCase extends BaseTestCase
 {
+    /**
+     * No test writes a credential to the real disk.
+     *
+     * CredentialStore encrypts each tenant's ZATCA certificate and key onto
+     * the signing disk, and the local disk's root is resolved from
+     * storage_path() when config loads - so every test that submits an invoice
+     * wrote real files into storage/app/private/zatca and left them there.
+     * There were 1,970 such directories, 793 of them from two days of runs,
+     * and sixteen more arrived from a single partial suite.
+     *
+     * They are unreadable litter: encrypted under whichever APP_KEY was
+     * current when they were written. The damage is not the disk space. A test
+     * that writes to the same place a developer keeps working credentials can
+     * also delete them, and one did - an earlier version of
+     * ProductionSubmissionTest removed four real files it had not created,
+     * which had to be recovered by re-running onboarding against the
+     * authority.
+     *
+     * Faking the disk rather than redirecting storage_path() because that is
+     * the path this actually travels: useStoragePath does not rewrite
+     * filesystems.disks.local.root, which has already been resolved, so a
+     * redirected storage path leaves Storage::disk('local') pointing at the
+     * real directory and fixes nothing.
+     *
+     * Named from config rather than hard-coded 'local', so a deployment that
+     * moves signing to another disk is still isolated here.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Storage::fake(config('fatoora.signing.disk', 'local'));
+    }
+
     /**
      * Run a callback with the app reporting itself as handling a request.
      *
