@@ -54,7 +54,8 @@ class FatooraOnboarding extends Command
                             {--otp= : One-Time Password from Fatoora Portal}
                             {--target= : Target environment (sandbox|simulation|production|local); default config fatoora.environment}
                             {--csr= : Path to CSR file (default: storage/app/zatca/taxpayer.csr)}
-                            {--key= : Path to private key file (default: storage/app/zatca/taxpayer.key)}';
+                            {--key= : Path to private key file (default: storage/app/zatca/taxpayer.key)}
+                            {--digest= : Signed-properties digest strategy for this run (sdk|c14n|c14n-hex|sdk-bytes)}';
 
     protected $description = 'Complete ZATCA EGS onboarding with 6-invoice compliance check';
 
@@ -692,6 +693,17 @@ class FatooraOnboarding extends Command
     private function submitWithProductionCsid(): int
     {
         $this->info('Submitting documents with the production certificate');
+        $this->newLine();
+
+        // The authority is the only thing that can decide which
+        // signed-properties digest it wants - its own SDK accepts a value the
+        // live API refuses - so the strategy is selectable for a run and the
+        // outcome column is the answer. See config/fatoora.php.
+        if ($digest = (string) $this->option('digest')) {
+            config(['fatoora.signing.signed_properties_digest' => $digest]);
+        }
+
+        $this->line('Signed-properties digest: '.config('fatoora.signing.signed_properties_digest'));
         $this->newLine();
 
         $pcsid = $this->loadPcsidCredentials();
