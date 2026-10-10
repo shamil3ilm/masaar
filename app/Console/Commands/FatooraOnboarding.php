@@ -54,8 +54,7 @@ class FatooraOnboarding extends Command
                             {--otp= : One-Time Password from Fatoora Portal}
                             {--target= : Target environment (sandbox|simulation|production|local); default config fatoora.environment}
                             {--csr= : Path to CSR file (default: storage/app/zatca/taxpayer.csr)}
-                            {--key= : Path to private key file (default: storage/app/zatca/taxpayer.key)}
-                            {--digest= : Signed-properties digest strategy for this run (sdk|c14n|c14n-hex|sdk-bytes)}';
+                            {--key= : Path to private key file (default: storage/app/zatca/taxpayer.key)}';
 
     protected $description = 'Complete ZATCA EGS onboarding with 6-invoice compliance check';
 
@@ -695,17 +694,6 @@ class FatooraOnboarding extends Command
         $this->info('Submitting documents with the production certificate');
         $this->newLine();
 
-        // The authority is the only thing that can decide which
-        // signed-properties digest it wants - its own SDK accepts a value the
-        // live API refuses - so the strategy is selectable for a run and the
-        // outcome column is the answer. See config/fatoora.php.
-        if ($digest = (string) $this->option('digest')) {
-            config(['fatoora.signing.signed_properties_digest' => $digest]);
-        }
-
-        $this->line('Signed-properties digest: '.config('fatoora.signing.signed_properties_digest'));
-        $this->newLine();
-
         $pcsid = $this->loadPcsidCredentials();
 
         if ($pcsid === null) {
@@ -1257,8 +1245,20 @@ class FatooraOnboarding extends Command
             }
         }
 
-        $dom->formatOutput = true;
-
+        // Emphatically not formatOutput. This runs after the document is
+        // signed, and pretty-printing re-indents the signature: the
+        // SignedProperties block went from 726 bytes to 1130, so the digest
+        // recorded in SignedInfo described a block the document no longer
+        // carried. The authority refused every simplified document for it
+        // while clearing every standard one, because it stamps a standard
+        // document itself and only verifies the seller's signature on a
+        // simplified one - which is reported after the customer already holds
+        // it.
+        //
+        // The invoice hash was fixed earlier by taking it after this round
+        // trip rather than before, and that fix is what hid this: tag 6 then
+        // described the reformatted document, so the only thing still
+        // describing the unformatted one was the signature.
         return $dom->saveXML();
     }
 }
