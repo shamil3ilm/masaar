@@ -89,37 +89,6 @@ return [
         */
         'key' => env('ZATCA_CREDENTIAL_KEY', ''),
 
-        /*
-        | How the xades:SignedProperties reference digest is computed.
-        |
-        | The authority and its own SDK disagree, which is why this is a
-        | setting rather than a constant. Our block is byte-identical to the
-        | one ZATCA's signer produces for the same invoice - verified by
-        | diffing them - and our digest rule reproduces the digest the SDK
-        | records. All 26 SDK conformance checks pass. The live API still
-        | refuses every simplified document with "Invalid signed properties
-        | hashing".
-        |
-        | XML-DSig settles what a verifier should do: the reference carries no
-        | ds:Transforms, so the referenced data is the element's canonical
-        | form. The SDK does not canonicalise; the live API appears to.
-        |
-        |   sdk            the SDK's form - the element as the document writes
-        |                  it, with xmlns:xades on the apex and xmlns:ds on
-        |                  each ds: child - hashed and written as hex, then
-        |                  base64. What ZATCA's samples carry.
-        |   c14n           canonical form, base64 of the digest's bytes. What
-        |                  XML-DSig requires, and what the invoice reference in
-        |                  the same signature already uses - and that one the
-        |                  authority accepts.
-        |   c14n-hex       canonical form, hex then base64.
-        |   sdk-bytes      the SDK's form, base64 of the bytes.
-        |
-        | Only the authority can decide between them, so change this and
-        | submit: php artisan fatoora:onboard --step=submit --digest=c14n
-        */
-        'signed_properties_digest' => env('ZATCA_SIGNED_PROPERTIES_DIGEST', 'sdk'),
-
         'previous_keys' => array_values(array_filter(
             explode(',', (string) env('ZATCA_CREDENTIAL_PREVIOUS_KEYS', ''))
         )),

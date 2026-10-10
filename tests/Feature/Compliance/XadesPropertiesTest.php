@@ -132,15 +132,30 @@ class XadesPropertiesTest extends TestCase
     }
 
     /**
-     * QualifyingProperties names the signature it qualifies.
+     * QualifyingProperties names the signature it qualifies, and names it the
+     * way the authority does: the bare Id, with no leading '#'.
+     *
+     * This asserted '#'.$id first, which is what XML-DSig says - Target is a
+     * URI reference. The authority's validator compares Target against the
+     * signature's Id literally, so the conformant form matches nothing it
+     * looks for, and it reports that as "Invalid signed properties hashing".
+     * Its own accepted documents carry Target="signature".
+     *
+     * Asserted against the literal rather than against the element's own Id,
+     * because reading the Id back and prefixing it is how the wrong form
+     * passed for months: the assertion agreed with whatever the signer did.
      */
     public function test_properties_target_the_signature(): void
     {
-        $signatureId = $this->xpath->query('//ds:Signature')->item(0)->getAttribute('Id');
+        $this->assertSame(
+            'signature',
+            $this->xpath->query('//xades:QualifyingProperties')->item(0)->getAttribute('Target')
+        );
 
         $this->assertSame(
-            '#'.$signatureId,
-            $this->xpath->query('//xades:QualifyingProperties')->item(0)->getAttribute('Target')
+            'signature',
+            $this->xpath->query('//ds:Signature')->item(0)->getAttribute('Id'),
+            'The authority rebuilds this block from a template carrying Id="signature".'
         );
     }
 

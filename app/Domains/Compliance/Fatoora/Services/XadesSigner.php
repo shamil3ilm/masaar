@@ -133,12 +133,18 @@ class XadesSigner
         $dom->preserveWhiteSpace = false;
         Xml::load($dom, $xml);
 
-        // Generate signature ID
-        $signatureId = 'signature-'.bin2hex(random_bytes(8));
-        // Fixed, not generated: ZATCA rebuilds this block from a template of
-        // its own to check the digest, and that template carries this Id. A
-        // unique one per signature changes the bytes it hashes and nothing
-        // else, so the digest never agrees.
+        // Both fixed, not generated, for the same reason: ZATCA rebuilds this
+        // block from a template of its own to check the digest, and that
+        // template carries these two values. A unique Id per signature changes
+        // the bytes it hashes and nothing else, so the digest never agrees.
+        //
+        // The signature's own Id was generated for some time. Fixing it did
+        // not make the authority accept anything - that was formatOutput on
+        // the QR round trip, see insertQrCodeIntoXml - so this is not the
+        // cure for a refusal, and nobody should read it as one. It is here
+        // because the authority's own accepted documents carry
+        // Id="signature", and a value it reconstructs is not ours to choose.
+        $signatureId = 'signature';
         $signedPropertiesId = 'xadesSignedProperties';
 
         $signature = $this->createSignatureElement($dom, $signatureId);
@@ -350,7 +356,7 @@ class XadesSigner
         // invoice's own reference, a few lines above, decodes to thirty-two
         // bytes. The two references in one signature do not agree with each
         // other, and this is the one that differs.
-        $digest = $this->signedPropertiesDigest($signedProperties);
+        $digest = base64_encode(hash('sha256', $this->signedPropertiesDigestInput($signedProperties)));
         $digestValue = $dom->createElementNS(self::DS_NS, 'ds:DigestValue', $digest);
         $reference->appendChild($digestValue);
 
@@ -390,9 +396,18 @@ class XadesSigner
     {
         $object = $dom->createElementNS(self::DS_NS, 'ds:Object');
 
-        // QualifyingProperties - Target must reference the actual signature ID
+        // Target names the signature without a leading '#'.
+        //
+        // XML-DSig defines Target as a URI reference, so '#'+Id is the correct
+        // reading and is what this wrote first. The authority's own documents
+        // write the bare Id and its validator compares the two literally, so a
+        // conformant '#signature' matches nothing it looks for. Established by
+        // submitting ZATCA's own sample simplified invoice, which the live API
+        // accepts, and diffing it against ours: Target="signature" there,
+        // Target="#signature-<random>" here. Like the Id above, this was not
+        // what the authority was refusing - it is simply what it writes.
         $qualifyingProps = $dom->createElementNS(self::XADES_NS, 'xades:QualifyingProperties');
-        $qualifyingProps->setAttribute('Target', '#'.$signatureId);
+        $qualifyingProps->setAttribute('Target', $signatureId);
 
         // From here down, createElement with the prefix written into the name
         // rather than createElementNS - which looks like a mistake and is not.
@@ -670,50 +685,6 @@ class XadesSigner
             '<ds:$1 xmlns:ds="'.self::DS_NS.'"',
             $xml
         );
-    }
-
-    /**
-     * The digest recorded for the signed-properties reference.
-     *
-     * The authority and its own SDK disagree about this value, which is why
-     * the strategy is a setting. Established by experiment rather than
-     * reasoning, because reasoning got it wrong twice:
-     *
-     *   This platform's block is byte-identical to the one ZATCA's own signer
-     *   produces for the same invoice with the same certificate - diffed, 717
-     *   bytes each, no difference but the signing instant. The 'sdk' rule
-     *   below reproduces the digest the SDK records for its own output. All 26
-     *   SDK conformance checks pass.
-     *
-     *   The live API refuses every simplified document for this digest
-     *   regardless. Standard documents clear, because ZATCA stamps those
-     *   itself and does not check the seller's signature the way it must for a
-     *   simplified one.
-     *
-     * XML-DSig says what a verifier should do: the reference carries no
-     * ds:Transforms, so the referenced data is the element's canonical form.
-     * The SDK does not canonicalise. The invoice reference in this same
-     * signature is base64 of the digest's bytes and the authority accepts it,
-     * which is the strongest hint about the encoding.
-     *
-     * @see config/fatoora.php for what each strategy means
-     */
-    private function signedPropertiesDigest(DOMElement $signedProperties): string
-    {
-        $strategy = (string) config('fatoora.signing.signed_properties_digest', 'sdk');
-
-        // C14N here rather than in the branches because the element has to be
-        // in the document for it to mean anything - a detached subtree
-        // canonicalises to the empty string and says nothing about it.
-        $canonical = (string) $signedProperties->C14N();
-        $asWritten = $this->signedPropertiesDigestInput($signedProperties);
-
-        return match ($strategy) {
-            'c14n' => base64_encode(hash('sha256', $canonical, true)),
-            'c14n-hex' => base64_encode(hash('sha256', $canonical)),
-            'sdk-bytes' => base64_encode(hash('sha256', $asWritten, true)),
-            default => base64_encode(hash('sha256', $asWritten)),
-        };
     }
 
     /**
@@ -1016,8 +987,10 @@ class XadesSigner
 
         $unsignedSigProps->appendChild($sigTimeStamp);
 
-        $dom->formatOutput = true;
-
+        // Not formatOutput, for the reason sign() gives: this document is
+        // already signed, and indenting it moves the bytes the recorded
+        // digests describe. A timestamp is added to a signature, not to a
+        // document that may then be reformatted.
         return $dom->saveXML();
     }
 
