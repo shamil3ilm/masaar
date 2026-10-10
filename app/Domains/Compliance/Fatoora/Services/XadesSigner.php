@@ -140,7 +140,7 @@ class XadesSigner
         //
         // The signature's own Id was generated for some time. Fixing it did
         // not make the authority accept anything - that was formatOutput on
-        // the QR round trip, see insertQrCodeIntoXml - so this is not the
+        // the QR round trip, see QrCodeInjector - so this is not the
         // cure for a refusal, and nobody should read it as one. It is here
         // because the authority's own accepted documents carry
         // Id="signature", and a value it reconstructs is not ours to choose.
