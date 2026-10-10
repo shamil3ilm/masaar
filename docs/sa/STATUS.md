@@ -141,6 +141,40 @@ failed, not the thing that was wrong. Four digest encodings were tried against
 the authority - the SDK's form and the canonical form, each as hex and as bytes
 - and all four were refused, which is what finally ruled out the hashing.
 
+### What the authority says when it refuses, and when it does not
+
+Collected from the sandbox on 2026-10-10 by submitting deliberate faults,
+because the readiness checklist asked whether the codes the authority returns
+are the ones handled, and only the authority can answer that.
+
+**A resubmission is accepted, not refused.** The same simplified document was
+reported twice, byte for byte, and both times the answer was HTTP 200
+`REPORTED` with validation `PASS`. This is the property every retry in the
+platform rests on - a retry after a timeout cannot know whether the first
+attempt landed - and it was previously assumed in a comment. It is now
+observed. Re-check it against simulation when a taxpayer exists.
+
+**The codes are not `BR-KSA-*`.** The rules are written as BR-KSA-nn; the API
+answers with something else entirely, and in three different spellings:
+
+| Fault submitted | HTTP | Code | Category |
+|---|---|---|---|
+| `invoiceHash` not matching the document | 400 | `invoiceHash_QRCODE_INVALID` | `QRCODE_VALIDATION` |
+| A simplified document sent for clearance | 400 | `XML-INVOICE-ERROR` | `INVOICETYPE_ERRORS` |
+| Not an invoice at all | 400 | `XSD_ZATCA_INVALID`, `QRCODE_INVALID`, `invalid-certificate` | `XSD validation`, `QRCODE_VALIDATION`, `CERTIFICATE_ERRORS` |
+
+Three things follow. Nothing in `ErrorCode`'s 99 cases corresponds to these,
+and that is correct rather than a gap: every one is a document-level fault,
+which must not be retried, and they are carried to the operator verbatim. Any
+future mapping must not assume a format, since the authority mixes
+`snake_Case`, `UPPER-KEBAB` and `lower-kebab` in one response. And **the first
+code is not necessarily the cause** - a document that was not an invoice drew
+`invalid-certificate` alongside the real reason, with a perfectly good
+certificate - which is why the refusal carries the first three messages rather
+than one.
+
+---
+
 ### What settled it, and the facts worth keeping
 
 Submitting **the authority's own published sample** simplified invoice, which

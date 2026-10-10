@@ -220,8 +220,16 @@ Each alert should link to a runbook:
       spends a simplified invoice's twenty-four hour window on a gateway blip.
       Fixed and held by `TransientRefusalTest`; a refusal's own reasons are now
       carried into `errorMessages` rather than left in the raw body.
-      What is still not established is that the *document-level* codes the
-      authority returns are the ones enumerated, which only live traffic shows.
+      The document-level codes the authority returns were then collected from
+      the sandbox by submitting deliberate faults. They are **not** the
+      `BR-KSA-*` identifiers the rules are written as, and nothing in
+      `ErrorCode` corresponds to them - see `docs/sa/STATUS.md` section 3 for
+      the observed set. That is correct rather than a gap: every one of them is
+      a document-level fault, which must not be retried, and they are carried
+      to the operator verbatim. A mapping would only matter for a code that
+      should change behaviour, and none of the observed ones do.
+      Still unestablished: codes reachable only with a real taxpayer, and
+      whether any of them should be retried.
 - [ ] **QR Code Validation**: Use ZATCA mobile app to scan generated QR codes.
       Yours - the TLV and its tags are checked by the SDK and by
       `ZatcaConformanceTest`, but only a phone proves the app reads it.
