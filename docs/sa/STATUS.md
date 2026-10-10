@@ -142,10 +142,31 @@ of the refusals, and is right regardless.
 ## 4. Outstanding, and reachable without a taxpayer
 
 - **`ZATCA_SDK_URL` / `ZATCA_SDK_TOKEN`.** The 26 conformance tests skip in CI
-  without them, and the job says so rather than passing quietly. The SDK is a
-  licensed download that cannot be committed; host it as a release asset in a
-  **private** repository and point the secret at the asset's API URL. See the
-  `conformance` job in `.github/workflows/ci.yml`.
+  without them, and the job says so with a warning rather than passing
+  quietly. The SDK is a licensed download that cannot be committed, so it is
+  hosted as a release asset in the **private** repository
+  `shamil3ilm/zatca-sdk`, and the two secrets are set on this repository:
+
+  | Secret | Value |
+  |---|---|
+  | `ZATCA_SDK_URL` | `https://api.github.com/repos/shamil3ilm/zatca-sdk/releases/latest` |
+  | `ZATCA_SDK_TOKEN` | A fine-grained token with **Contents: Read-only** on that repository, and nothing else |
+
+  The URL is the *release*, not the asset. The `conformance` job resolves the
+  release to whichever asset is named for the SDK, which matters because a
+  private repository's asset id appears nowhere in the GitHub web UI - so
+  pointing at the asset means using the API with a token merely to configure
+  the thing. Naming the release instead also survives the SDK being replaced:
+  publish a newer release and CI follows it.
+
+  Not a `releases/download/...` link. Those need a browser session and answer
+  a token with HTML, which arrives as "SDK archive unreadable".
+
+  The archive may be pristine or installed; the job regenerates
+  `Configuration/config.json` from `defaults.json` either way, because
+  `install.sh` writes the absolute paths of the machine it ran on and the SDK
+  reports an unreadable schema as *every document being invalid*.
+
 - **Scan a generated QR with ZATCA's mobile app.** Needs a phone, not a
   taxpayer, and it is the one thing neither the SDK nor the API can tell you:
   whether a consumer's scanner reads the TLV. Open on the readiness checklist.

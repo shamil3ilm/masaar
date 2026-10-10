@@ -253,16 +253,44 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/zatca"
 
-          # Accept: application/octet-stream matters for a GitHub release
-          # asset, which is the easiest place to put this: without it the API
-          # answers with the asset's JSON metadata and the download "succeeds"
-          # as a few hundred bytes that unzip cannot read. Harmless anywhere
-          # else.
+          auth=()
           if [ -n "$SDK_TOKEN" ]; then
-            curl -fsSL               -H "Authorization: Bearer $SDK_TOKEN"               -H "Accept: application/octet-stream"               -o "$RUNNER_TEMP/sdk.archive" "$SDK_URL"
-          else
-            curl -fsSL -o "$RUNNER_TEMP/sdk.archive" "$SDK_URL"
+            auth=(-H "Authorization: Bearer $SDK_TOKEN")
           fi
+
+          url="$SDK_URL"
+
+          # Resolve a release endpoint to the asset hanging off it.
+          #
+          # The secret is far easier to set correctly as a release URL than as
+          # an asset URL: a private repository's asset id appears nowhere in
+          # the GitHub web UI, so pointing at the asset directly means reaching
+          # for the API with a token just to configure the thing. A URL ending
+          # /releases/latest can be read off the address bar, and it keeps
+          # working when the SDK is replaced by a newer release.
+          #
+          # An asset URL still works and is matched first, because it carries
+          # no .assets of its own and must not be probed as though it did.
+          case "$url" in
+            https://api.github.com/repos/*/releases/assets/*) ;;
+            https://api.github.com/repos/*/releases/*)
+              release=$(curl -fsSL "${auth[@]}" -H "Accept: application/vnd.github+json" "$url")
+              url=$(printf '%s' "$release" | jq -r '([.assets[]? | select((.name // "") | test("zatca"; "i")) | .url] + [.assets[]? | .url])[0] // empty')
+
+              if [ -z "$url" ]; then
+                echo "::error title=No SDK asset::The release at ZATCA_SDK_URL carries no asset. Attach the SDK archive to the release, or point the secret at the asset itself."
+                exit 1
+              fi
+
+              echo "Resolved the release to asset $url"
+              ;;
+          esac
+
+          # Accept: application/octet-stream matters for a GitHub release
+          # asset: without it the API answers with the asset's JSON metadata
+          # and the download "succeeds" as a few hundred bytes that no
+          # unpacker can read. Harmless anywhere else.
+          curl -fsSL "${auth[@]}" -H "Accept: application/octet-stream" -o "$RUNNER_TEMP/sdk.archive" "$url"
 
           # Read the type off the bytes rather than the URL. A release asset
           # URL ends in an id, not a file name, so switching on the extension
@@ -271,7 +299,7 @@ jobs:
             application/zip)  unzip -q "$RUNNER_TEMP/sdk.archive" -d "$RUNNER_TEMP/zatca" ;;
             application/gzip) tar -xzf "$RUNNER_TEMP/sdk.archive" -C "$RUNNER_TEMP/zatca" ;;
             *)
-              echo "::error title=SDK archive unreadable::ZATCA_SDK_URL returned $(file -b "$RUNNER_TEMP/sdk.archive"). Expected a zip or a gzipped tar; check the token and that the URL points at the asset rather than its page."
+              echo "::error title=SDK archive unreadable::ZATCA_SDK_URL returned $(file -b "$RUNNER_TEMP/sdk.archive"). Expected a zip or a gzipped tar. Set it to https://api.github.com/repos/OWNER/REPO/releases/latest and give ZATCA_SDK_TOKEN read access to that repository - a releases/download/ link needs a browser session and answers HTML to a token."
               exit 1
               ;;
           esac
