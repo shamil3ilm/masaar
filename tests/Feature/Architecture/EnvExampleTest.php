@@ -69,6 +69,57 @@ class EnvExampleTest extends TestCase
     }
 
     /**
+     * No setting that names a secret carries a value here.
+     *
+     * This file is tracked and published; .env is not. On 2026-10-10 a real
+     * ZATCA_CREDENTIAL_KEY was pasted into this file instead of .env, swept up
+     * by a blanket `git add -A`, committed and pushed to a public repository.
+     * The key had to be treated as compromised and rotated.
+     *
+     * Nothing failed at the time, which is the point of asserting it: a
+     * populated placeholder looks exactly like a documented default, and the
+     * difference is only visible if you know which of the two files you are
+     * reading.
+     *
+     * Matched on the name rather than the shape of the value, because a secret
+     * can be any shape. An example value that is genuinely an example - a
+     * localhost URL, a port - does not name itself a key or a password.
+     */
+    public function test_no_secret_carries_a_value(): void
+    {
+        $populated = [];
+
+        foreach (file(self::ROOT.'/.env.example', FILE_IGNORE_NEW_LINES) ?: [] as $number => $line) {
+            if (! str_contains($line, '=') || str_starts_with(trim($line), '#')) {
+                continue;
+            }
+
+            [$key, $value] = array_pad(explode('=', $line, 2), 2, '');
+            $key = trim($key);
+            $value = trim($value);
+
+            if ($value === '' || $key === '') {
+                continue;
+            }
+
+            $namesASecret = preg_match('/(_KEY|_SECRET|_PASSWORD|_TOKEN|_DSN|_PEPPER|_PRIVATE)$/', $key) === 1;
+
+            // A placeholder that obviously is one. Anything else with a
+            // secret's name is a secret until someone says otherwise.
+            $isPlaceholder = preg_match('/^(null|true|false|changeme|your[-_]|example|placeholder|<)/i', $value) === 1;
+
+            if ($namesASecret && ! $isPlaceholder) {
+                $populated[] = sprintf('line %d: %s', $number + 1, $key);
+            }
+        }
+
+        $this->assertSame([], $populated, implode("\n", $populated)."\n\n"
+            .'.env.example is published. A setting whose name ends in _KEY, _SECRET, '
+            .'_PASSWORD, _TOKEN and so on must be left empty here and set in .env. '
+            .'If this is genuinely a placeholder, make it look like one.');
+    }
+
+    /**
      * The reverse: .env.example must not advertise a setting nothing reads.
      *
      * UAE_FTA_WEBHOOK_SECRET was configured for a callback endpoint that does
