@@ -169,6 +169,9 @@ The remaining commands are operator tools rather than scheduled work:
 ## Documentation
 
 - [Saudi Arabia (Fatoora)](docs/sa/README.md)
+- [Saudi Arabia - implementation status](docs/sa/STATUS.md) - what has been
+  established against the authority, what has not, and what is blocked on a
+  registered taxpayer
 - [UAE (FTA)](docs/ae/README.md)
 - [Qatar (GTA)](docs/qa/README.md)
 - [Adding a Jurisdiction](docs/architecture/ADDING-A-JURISDICTION.md)

@@ -31,6 +31,11 @@ Wave 24 (SAR 375K threshold) deadline: **2026-06-30**.
 4. Request Production CSID (PCSID)
 5. All production invoices signed with PCSID private key
 
+The sandbox accepts the fixed OTP `123345`, so steps 1-4 need no taxpayer.
+Simulation and production need an OTP from the Fatoora portal, which is issued
+only against TIN credentials. See [STATUS.md](STATUS.md) for what has actually
+been run and what has not.
+
 ## Environment URLs
 | Environment | Base URL |
 |-------------|----------|
@@ -43,7 +48,8 @@ Wave 24 (SAR 375K threshold) deadline: **2026-06-30**.
 |---------|-------------|
 | `fatoora:generate-csr` | Generate CSR for onboarding |
 | `fatoora:onboard` | Full onboarding wizard (CCSID → PCSID) |
-| `fatoora:sandbox-test` | Submit test invoice to sandbox |
+| `fatoora:onboard --step=submit` | Clear and report the six documents with the production certificate |
+| `fatoora:sandbox-test` | Prints the sandbox endpoints and walks the steps. Its `--step=report` submits nothing; use `fatoora:onboard --step=submit` |
 | `fatoora:validate` | Validate invoices against BR-KSA-* rules |
 | `fatoora:check-certificate` | Check certificate expiry |
 | `fatoora:verify-hash-chain` | Verify ICV hash chain integrity |
