@@ -77,7 +77,27 @@ the quickest way to tell which one a sample is using.
   sample's digest, and compacting that element and recomputing leaves its
   check passing - so the indentation is the document's to choose and the
   declarations are not.
-- **Status: satisfied.** It was not, until 2026-10-09, and the reason was the
+- **Status: satisfied by the SDK on 2026-10-09, and by the authority on
+  2026-10-10 - and the gap between those two dates is the lesson.** The
+  namespace fix below made the SDK's digest check pass, and the live API went
+  on refusing every simplified document with "Invalid signed properties
+  hashing". The remaining difference was `xades:SigningTime`: this platform
+  wrote `2026-10-09T11:45:56Z` where ZATCA's own signer writes
+  `2026-10-09T17:14:20` - local time, no designator.
+
+  The SDK could not have found it. It recomputes the digest from the bytes it
+  is handed, so either form hashes consistently to it; all 26 conformance
+  tests passed while the authority refused the documents. **A validator that
+  reads what you wrote cannot catch a disagreement about what to write.** Only
+  submitting can, which is what `fatoora:onboard --step=submit` is for.
+
+  The `Z` is gone, and the stamp is on the Kingdom's clock so that reading it
+  as local time is right - the same clock as `IssueTime` and the QR, for the
+  same reason. The earlier note here argued the `Z` should stay because a bare
+  stamp is ambiguous. It is the authority's format, and that settles it.
+
+- **The namespace shape, which was the other half.** It was wrong until
+  2026-10-09, and the reason was the
   block rather than the rule. `DOMDocument::createElementNS` attaches a
   namespace declaration to each element it creates and libxml keeps them when
   the subtree is assembled, so the block this platform built carried ten
