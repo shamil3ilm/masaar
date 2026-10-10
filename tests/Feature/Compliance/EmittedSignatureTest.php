@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Compliance;
 
-use App\Console\Commands\FatooraOnboarding;
+use App\Domains\Compliance\Fatoora\Services\QrCodeInjector;
 use App\Domains\Compliance\Fatoora\Services\XadesSigner;
 use DOMDocument;
 use DOMXPath;
-use ReflectionMethod;
 use Tests\Fixtures\SigningCredentials;
 use Tests\TestCase;
 
@@ -55,6 +54,7 @@ class EmittedSignatureTest extends TestCase
         'app/Console/Commands/FatooraOnboarding.php',
         'app/Domains/Compliance/Fatoora/Services/XadesSigner.php',
         'app/Domains/Compliance/Fatoora/Services/DocumentBuilder.php',
+        'app/Domains/Compliance/Fatoora/Services/QrCodeInjector.php',
     ];
 
     public function test_the_digest_describes_the_emitted_block(): void
@@ -119,10 +119,11 @@ class EmittedSignatureTest extends TestCase
     /**
      * Sign a document and insert the QR, which is what submission sends.
      *
-     * Reached through the command because that is where this QR insertion
-     * lives. It is a duplicate of DocumentBuilder's own insertion, and the two
-     * should become one service; until they do, this covers the path that is
-     * exercised against the authority.
+     * Both insertions are now one service, so this reaches it directly rather
+     * than reflecting into the onboarding command. The two used to be separate
+     * copies with different bugs - which is why there are two tests: this one
+     * on the injector, and EmittedDigestsTest end to end through the path that
+     * signs real invoices.
      */
     private function signAndInjectQr(): string
     {
@@ -134,10 +135,7 @@ class EmittedSignatureTest extends TestCase
             $credentials['certificate'],
         );
 
-        $insert = new ReflectionMethod(FatooraOnboarding::class, 'insertQrCodeIntoXml');
-        $insert->setAccessible(true);
-
-        return (string) $insert->invoke(app(FatooraOnboarding::class), $signed, 'QR-PLACEHOLDER');
+        return app(QrCodeInjector::class)->inject($signed, 'QR-PLACEHOLDER');
     }
 
     /**

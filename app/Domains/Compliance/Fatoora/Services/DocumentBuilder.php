@@ -13,7 +13,6 @@ use App\Domains\Compliance\Fatoora\Helpers\TextNormalizer;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
-use App\Support\Xml;
 
 /**
  * Main ZATCA compliance service.
@@ -23,10 +22,6 @@ use App\Support\Xml;
  */
 class DocumentBuilder
 {
-    private const CAC_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2';
-
-    private const CBC_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2';
-
     public function __construct(
         private readonly XmlBuilder $xmlBuilder,
         private readonly InvoiceHasher $hasher,
@@ -35,6 +30,7 @@ class DocumentBuilder
         private readonly XadesSigner $xadesSigner,
         private readonly CertificateService $certificateService,
         private readonly InvoiceValidator $validator,
+        private readonly QrCodeInjector $qrInjector,
     ) {}
 
     /**
@@ -126,12 +122,11 @@ class DocumentBuilder
             ? $this->qrGenerator->generatePhase2($qrData)
             : $this->qrGenerator->generatePhase1($qrData);
 
-        // Update QR in XML if signed
+        // Put the QR in, if there is a signature to sit beside. The injector
+        // owns the load and the save, because that round trip is where a
+        // signature gets damaged - see its docblock.
         if ($signedXml !== null) {
-            $dom = new \DOMDocument;
-            Xml::load($dom, $signedXml);
-            $this->updateQrInXml($dom, $qrCode);
-            $signedXml = $dom->saveXML();
+            $signedXml = $this->qrInjector->inject($signedXml, $qrCode);
         }
 
         return [
@@ -308,56 +303,5 @@ class DocumentBuilder
     {
         return $invoice->issue_date->format('Y-m-d')
             .'T'.FatooraTime::toSaudiTime($invoice->created_at)->format('H:i:s');
-    }
-
-    /**
-     * Put the QR code into the signed document.
-     *
-     * This only ever updated an existing node, and XmlBuilder deliberately
-     * emits none: an empty QR trips BR-CL-KSA-14, so it leaves the element out
-     * and expects it to be added once the signature exists. So the query
-     * matched nothing, the method returned quietly, and no invoice this
-     * platform produced carried a QR at all — BR-KSA-27 for every simplified
-     * document, which is the one kind that cannot do without it. The QR is
-     * what the customer scans; a B2C invoice is not verifiable without it.
-     *
-     * The insert has to happen after signing, because for a simplified invoice
-     * the QR carries the signature.
-     */
-    private function updateQrInXml(\DOMDocument $dom, string $qrCode): void
-    {
-        $xpath = new \DOMXPath($dom);
-        $xpath->registerNamespace('cac', self::CAC_NS);
-        $xpath->registerNamespace('cbc', self::CBC_NS);
-
-        $existing = $xpath->query("//cac:AdditionalDocumentReference[cbc:ID='QR']/cac:Attachment/cbc:EmbeddedDocumentBinaryObject");
-
-        if ($existing->length > 0) {
-            $existing->item(0)->nodeValue = $qrCode;
-
-            return;
-        }
-
-        $reference = $dom->createElementNS(self::CAC_NS, 'cac:AdditionalDocumentReference');
-        $reference->appendChild($dom->createElementNS(self::CBC_NS, 'cbc:ID', 'QR'));
-
-        $attachment = $dom->createElementNS(self::CAC_NS, 'cac:Attachment');
-        $binary = $dom->createElementNS(self::CBC_NS, 'cbc:EmbeddedDocumentBinaryObject', $qrCode);
-        $binary->setAttribute('mimeCode', 'text/plain');
-        $attachment->appendChild($binary);
-        $reference->appendChild($attachment);
-
-        // UBL is a sequence, so position matters: the QR reference belongs
-        // beside the other AdditionalDocumentReferences, directly after PIH.
-        $pih = $xpath->query("//cac:AdditionalDocumentReference[cbc:ID='PIH']");
-        $root = $dom->documentElement;
-
-        if ($pih->length > 0 && $pih->item(0)->nextSibling !== null) {
-            $root->insertBefore($reference, $pih->item(0)->nextSibling);
-
-            return;
-        }
-
-        $root->appendChild($reference);
     }
 }

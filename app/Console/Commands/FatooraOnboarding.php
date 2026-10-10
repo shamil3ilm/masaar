@@ -16,6 +16,7 @@ use App\Domains\Compliance\Fatoora\Services\ComplianceSampleSet;
 use App\Domains\Compliance\Fatoora\Services\EcdsaSigner;
 use App\Domains\Compliance\Fatoora\Services\InvoiceHasher;
 use App\Domains\Compliance\Fatoora\Services\QrCodeGenerator;
+use App\Domains\Compliance\Fatoora\Services\QrCodeInjector;
 use App\Domains\Compliance\Fatoora\Services\TlvEncoder;
 use App\Domains\Compliance\Fatoora\Services\XadesSigner;
 use App\Support\Xml;
@@ -71,6 +72,8 @@ class FatooraOnboarding extends Command
 
     private QrCodeGenerator $qrGenerator;
 
+    private QrCodeInjector $qrInjector;
+
     private CertificateService $certificateService;
 
     private string $environment;
@@ -87,6 +90,7 @@ class FatooraOnboarding extends Command
         $this->certificateService = new CertificateService;
         $this->signer = new XadesSigner($ecdsaSigner, $this->certificateService);
         $this->qrGenerator = new QrCodeGenerator(new TlvEncoder);
+        $this->qrInjector = new QrCodeInjector;
     }
 
     /**
@@ -1126,7 +1130,7 @@ class FatooraOnboarding extends Command
         // document. Hashing the settled shape, with the QR excluded as the
         // specification requires, is what makes tag 6 true of the document
         // carrying it.
-        $signedXml = $this->insertQrCodeIntoXml($signedXml, '');
+        $signedXml = $this->qrInjector->inject($signedXml, '');
 
         $invoiceHash = $this->hasher->hash($signedXml);
 
@@ -1196,69 +1200,6 @@ class FatooraOnboarding extends Command
         }
 
         // Inject QR code into the XML
-        return $this->insertQrCodeIntoXml($signedXml, $qrCode);
-    }
-
-    /**
-     * Insert QR code element into XML string.
-     */
-    private function insertQrCodeIntoXml(string $xml, string $qrCode): string
-    {
-        $dom = new \DOMDocument('1.0', 'UTF-8');
-        // The QR goes in after the hash has been taken, so this must not
-        // reformat the document. Loading with whitespace stripped rewrote
-        // every line of it, and ZATCA recomputing the hash from what it
-        // received got a different answer from the one in tag 6.
-        $dom->preserveWhiteSpace = true;
-        Xml::load($dom, $xml);
-
-        $xpath = new \DOMXPath($dom);
-        $xpath->registerNamespace('cac', 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2');
-        $xpath->registerNamespace('cbc', 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2');
-
-        // Check if QR already exists
-        $existingQr = $xpath->query("//cac:AdditionalDocumentReference[cbc:ID='QR']/cac:Attachment/cbc:EmbeddedDocumentBinaryObject");
-        if ($existingQr->length > 0) {
-            $existingQr->item(0)->nodeValue = $qrCode;
-        } else {
-            // Create new QR element
-            $qrRef = $dom->createElementNS('urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2', 'cac:AdditionalDocumentReference');
-            $qrRef->appendChild($dom->createElementNS('urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2', 'cbc:ID', 'QR'));
-
-            $attachment = $dom->createElementNS('urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2', 'cac:Attachment');
-            $binary = $dom->createElementNS('urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2', 'cbc:EmbeddedDocumentBinaryObject', $qrCode);
-            $binary->setAttribute('mimeCode', 'text/plain');
-            $attachment->appendChild($binary);
-            $qrRef->appendChild($attachment);
-
-            // Insert after PIH
-            $pihNodes = $xpath->query("//cac:AdditionalDocumentReference[cbc:ID='PIH']");
-            if ($pihNodes->length > 0) {
-                $pihNode = $pihNodes->item(0);
-                if ($pihNode->nextSibling) {
-                    $pihNode->parentNode->insertBefore($qrRef, $pihNode->nextSibling);
-                } else {
-                    $pihNode->parentNode->appendChild($qrRef);
-                }
-            } else {
-                $dom->documentElement->appendChild($qrRef);
-            }
-        }
-
-        // Emphatically not formatOutput. This runs after the document is
-        // signed, and pretty-printing re-indents the signature: the
-        // SignedProperties block went from 726 bytes to 1130, so the digest
-        // recorded in SignedInfo described a block the document no longer
-        // carried. The authority refused every simplified document for it
-        // while clearing every standard one, because it stamps a standard
-        // document itself and only verifies the seller's signature on a
-        // simplified one - which is reported after the customer already holds
-        // it.
-        //
-        // The invoice hash was fixed earlier by taking it after this round
-        // trip rather than before, and that fix is what hid this: tag 6 then
-        // described the reformatted document, so the only thing still
-        // describing the unformatted one was the signature.
-        return $dom->saveXML();
+        return $this->qrInjector->inject($signedXml, $qrCode);
     }
 }
