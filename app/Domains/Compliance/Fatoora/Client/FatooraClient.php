@@ -181,8 +181,9 @@ class FatooraClient
             ]);
 
             return FatooraResponse::failed(
-                'ZATCA API returned status: '.$response->status(),
-                $response->body()
+                $this->refusal($response),
+                $response->body(),
+                $this->transient($response),
             );
 
         } catch (\Exception $e) {
@@ -226,6 +227,63 @@ class FatooraClient
         }
 
         return ErrorCode::ZATCA_RATE_LIMITED->getRetryDelay();
+    }
+
+    /**
+     * The code for a response that is the authority faltering, not refusing.
+     *
+     * Null when the status says something about the document. This is the
+     * same omission ZATCA_RATE_LIMITED had: these three cases exist, are
+     * already listed as retryable, and were assigned by nothing - so a 500
+     * from ZATCA arrived with no code at all, isRetryable() answered false,
+     * and SubmissionLedger recorded the submission as 'rejected'.
+     *
+     * 'rejected' asserts the document was wrong. For a simplified invoice
+     * that is reported within twenty-four hours, spending that window on a
+     * gateway blip - and telling the operator the invoice was bad - is the
+     * failure this distinction exists to prevent. The ledger already says so
+     * in as many words; only the predicate feeding it was incomplete.
+     *
+     * 503 does not appear here because throttle() claims it first, with the
+     * authority's own Retry-After. Retrying is safe either way: a submission
+     * is idempotent, so it cannot double-report a document.
+     */
+    private function transient(Response $response): ?ErrorCode
+    {
+        return match ($response->status()) {
+            408, 504 => ErrorCode::ZATCA_TIMEOUT,
+            500, 502 => ErrorCode::ZATCA_SERVICE_UNAVAILABLE,
+            default => null,
+        };
+    }
+
+    /**
+     * What the authority said, in preference to what HTTP said.
+     *
+     * A refusal names the rule it broke - "PIH is inValid", "Invalid signed
+     * properties hashing" - and errorMessages is the one field an operator
+     * reads. This reported 'ZATCA API returned status: 400' and left the
+     * reasons in the raw body, where they are only found by someone who
+     * already suspects they are there.
+     */
+    private function refusal(Response $response): string
+    {
+        $body = (array) $response->json();
+
+        $reasons = array_filter(array_merge(
+            array_column((array) ($body['errorMessages'] ?? []), 'message'),
+            array_column((array) ($body['validationResults']['errorMessages'] ?? []), 'message'),
+        ));
+
+        if ($reasons === []) {
+            return 'ZATCA API returned status: '.$response->status();
+        }
+
+        return sprintf(
+            'ZATCA returned status %d: %s',
+            $response->status(),
+            implode('; ', array_slice($reasons, 0, 3))
+        );
     }
 
     /**
