@@ -245,8 +245,16 @@ class FatooraClient
      * in as many words; only the predicate feeding it was incomplete.
      *
      * 503 does not appear here because throttle() claims it first, with the
-     * authority's own Retry-After. Retrying is safe either way: a submission
-     * is idempotent, so it cannot double-report a document.
+     * authority's own Retry-After.
+     *
+     * Retrying is safe, and that is observed rather than assumed: on
+     * 2026-10-10 the same simplified document was reported to the sandbox
+     * twice, byte for byte, and the authority answered HTTP 200 REPORTED with
+     * validation PASS both times. So a retry after a timeout - where the
+     * outcome of the first attempt is unknown by definition - cannot turn an
+     * accepted document into a refused one. That property is what makes this
+     * method safe to widen, and it is the one worth re-checking against
+     * simulation when a taxpayer exists.
      */
     private function transient(Response $response): ?ErrorCode
     {
