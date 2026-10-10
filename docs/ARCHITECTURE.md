@@ -149,6 +149,7 @@ grows.
 | `docs/COMPLIANCE-POLICIES.md` | Auditor | Policy decisions taken |
 | `SECURITY.md` | Auditor, engineer | Security controls |
 | `docs/PRODUCTION-READINESS.md` | Operator | Go-live state and open items |
+| `docs/sa/STATUS.md` | Engineer, operator | What has been verified against the authority, and what has not |
 | `docs/sa/COMPLIANCE-RULES.md` | Engineer | The Saudi rules as implemented |
 | `docs/sa/HASHING-AND-SIGNING.md` | Engineer | Every hash and encoding, and how each was established |
 | `docs/architecture/` | Engineer | Jurisdiction model and routing |
