@@ -66,7 +66,7 @@ so a second cannot join it unnoticed.
 
 ---
 
-## 3. Built, not yet observed against the authority
+## 3. Submitted to the authority: standard cleared, simplified refused
 
 `fatoora:onboard --step=submit` clears and reports the six documents with the
 **production** certificate, against `/invoices/clearance/single` and
@@ -83,18 +83,36 @@ serves both endpoints. All three standard documents were **CLEARED and a
 stamped copy returned** - the authority accepted documents generated and
 signed here, over the real protocol, and sent back its own signed version.
 
-All three simplified documents were **REFUSED**: "Invalid signed properties
-hashing, SignedProperties with id='xadesSignedProperties'". The cause was
-`xades:SigningTime` carrying a trailing `Z` where the authority writes local
-time with no designator, and it is fixed - but **the fix has not yet been put
-back to the authority.** Re-run the step to confirm it.
+All three simplified documents were **REFUSED**: "Invalid signed
+properties hashing, SignedProperties with id='xadesSignedProperties'".
+**That is still refused, and it is the one thing standing between this
+platform and a simplified invoice the authority will accept.**
 
-Why that matters beyond the bug: all 26 SDK conformance tests passed while the
-live API refused those documents. The SDK recomputes the digest from the bytes
-it is given, so it cannot catch a disagreement about what to write - only
-submitting can. Standard documents cleared throughout, because ZATCA stamps
-those itself and does not check the seller's signature the way it must for a
-simplified document, which is reported after the customer already has it.
+What has been ruled out, each by a submission:
+
+| Hypothesis | Outcome |
+|---|---|
+| `xades:SigningTime` carried a trailing `Z` where the authority writes local time with no designator | Wrong about the cause. Fixed anyway in `1ef334a`, because it is what the authority writes. Still refused |
+| The digest is of the element as the document writes it, hex then base64 - the SDK's rule (`--digest=sdk`) | Refused |
+| The digest is of the element's canonical form, base64 of the bytes - what XML-DSig requires (`--digest=c14n`) | Refused |
+| `--digest=sdk-bytes`, `--digest=c14n-hex` | **Not yet tried. Do these next.** |
+
+What is established, and is the reason this is hard: **this platform's
+signed-properties block is byte-identical to the one ZATCA's own signer
+produces** for the same invoice with the same certificate - both diffed at 717
+bytes, differing only in the signing instant - and our default rule reproduces
+the digest the SDK records for its own output. So the authority computes this
+digest differently from the SDK it publishes, and no offline check can find the
+difference. `config/fatoora.php` carries the four candidates and why each is
+plausible; `--step=submit --digest=` tries one per run and the outcome column is
+the answer.
+
+Why all 26 SDK conformance tests passed while the live API refused: the SDK
+recomputes the digest from the bytes it is handed, so it cannot catch a
+disagreement about what to write - only submitting can. Standard documents
+cleared throughout, because ZATCA stamps those itself and does not check the
+seller's signature the way it must for a simplified document, which is reported
+after the customer already holds it.
 
 This was described for some time as needing a real taxpayer. It does not. That
 was wrong, and `fatoora:sandbox-test --step=report` — which exists for exactly
@@ -139,7 +157,7 @@ none.
 | Question | Answer | Why |
 |---|---|---|
 | Which clock do `IssueDate`, `IssueTime` and QR tag 3 use? | The Kingdom's | They are civil statements about when a document was issued. Read off UTC, an invoice issued 01:30 in Riyadh declared 22:30 — twenty-one hours out, for every invoice before 03:00 |
-| Does `xades:SigningTime` keep its `Z`? | Yes, UTC | It is a signing instant with an explicit marker, not a civil statement, and dropping the marker makes it guessable |
+| Does `xades:SigningTime` keep its `Z`? | No, Saudi local, no designator | Reasoned the other way first - a signing instant with an explicit marker - and the authority's own samples and SDK write it without one. Changing it did not make the live API accept the digest either, so it was not the cause of that; it is simply what the authority writes |
 | Where does a document discount reduce? | The taxable amount | EN 16931 and BR-CO-14 read a document-level allowance that way; VAT on the undiscounted base overstates the tax |
 | Which certificate template? | From `config('fatoora.environment')` | The template tells ZATCA which environment a request is for, and one carrying another's is refused. Both commands read the same value so they cannot disagree |
 | Submission rate ceiling | 120/min per organization, under ZATCA's | A limit above the authority's does not buy throughput; it moves the refusal from a cheap local 429 to a failed submission against the 24-hour deadline. **Confirm their published figure and stay under it** |
@@ -155,6 +173,10 @@ php artisan fatoora:onboard --step=full --otp=123345 --target=sandbox
 
 # Then clear and report the six documents with the production certificate.
 php artisan fatoora:onboard --step=submit --target=sandbox
+
+# The open question, one candidate per run. The outcome column is the answer.
+php artisan fatoora:onboard --step=submit --target=sandbox --digest=sdk-bytes
+php artisan fatoora:onboard --step=submit --target=sandbox --digest=c14n-hex
 
 # The authority's own validator over generated documents, if the SDK is here.
 ZATCA_SDK_PATH=/path/to/zatca-einvoicing-sdk-Java-238-R3.4.8 php artisan test --filter ZatcaConformance
