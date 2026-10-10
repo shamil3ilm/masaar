@@ -81,20 +81,49 @@ the quickest way to tell which one a sample is using.
   2026-10-10 - and the gap between those two dates is the lesson.** The
   namespace fix below made the SDK's digest check pass, and the live API went
   on refusing every simplified document with "Invalid signed properties
-  hashing". The remaining difference was `xades:SigningTime`: this platform
-  wrote `2026-10-09T11:45:56Z` where ZATCA's own signer writes
-  `2026-10-09T17:14:20` - local time, no designator.
+  hashing" while clearing every standard one.
 
-  The SDK could not have found it. It recomputes the digest from the bytes it
-  is handed, so either form hashes consistently to it; all 26 conformance
-  tests passed while the authority refused the documents. **A validator that
-  reads what you wrote cannot catch a disagreement about what to write.** Only
-  submitting can, which is what `fatoora:onboard --step=submit` is for.
+  **The cause was not the digest at all.** `formatOutput` was set on the DOM
+  round trip that inserts the QR code, which runs *after* the document is
+  signed: pretty-printing re-indented the signature block from 726 bytes to
+  1130, so the digest recorded in `ds:SignedInfo` described a block the
+  document no longer carried. Removing it had all six documents accepted.
 
-  The `Z` is gone, and the stamp is on the Kingdom's clock so that reading it
-  as local time is right - the same clock as `IssueTime` and the QR, for the
-  same reason. The earlier note here argued the `Z` should stay because a bare
-  stamp is ambiguous. It is the authority's format, and that settles it.
+  Two hypotheses were wrong first, and are recorded because the next person
+  will reach for them. `xades:SigningTime` did carry a trailing `Z` where
+  ZATCA's own signer writes local time with no designator - that was fixed, it
+  is what the authority writes, and it changed nothing about the refusal. Then
+  four digest encodings were tried against the authority - the SDK's form and
+  the canonical form, each as hex and as bytes - and all four were refused,
+  which is what finally ruled out the hashing and sent the search elsewhere.
+
+  What settled it was submitting **ZATCA's own published sample** simplified
+  invoice, which the live API accepts, and bisecting from there. That
+  established the rule in this section is the authority's own (it reproduces
+  the digest recorded in three of ZATCA's samples), that indentation of the
+  block is irrelevant *when the digest describes it*, that the live API does
+  not verify `ds:SignatureValue`, and that the authority's sample carrying
+  this platform's block is accepted - so the block was never the problem.
+
+  The SDK could not have found any of it. It recomputes the digest from the
+  bytes it is handed, so a document that contradicts itself still passes; all
+  26 conformance tests did while the authority refused the documents. **A
+  validator that reads what you wrote cannot catch a disagreement about what
+  you wrote it over.** Only submitting can, which is what
+  `fatoora:onboard --step=submit` is for.
+
+  What now holds it: `EmittedSignatureTest` and `EmittedDigestsTest` assert
+  that the recorded digest still describes the block in the document **as
+  finally emitted**, on the onboarding path and the production path
+  respectively, and the first names the files that must never pretty-print a
+  signed document. `QrCodeInjector` owns the load and the save so no caller
+  chooses them.
+
+  The `Z` is gone regardless, and the stamp is on the Kingdom's clock so that
+  reading it as local time is right - the same clock as `IssueTime` and the
+  QR, for the same reason. The earlier note here argued the `Z` should stay
+  because a bare stamp is ambiguous. It is the authority's format, and that
+  settles it.
 
 - **The namespace shape, which was the other half.** It was wrong until
   2026-10-09, and the reason was the

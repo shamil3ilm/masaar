@@ -206,20 +206,31 @@ Each alert should link to a runbook:
 - [ ] **Sandbox Testing**: Submit 100+ test invoices to ZATCA sandbox. The
       `sandbox` job in `.github/workflows/ci.yml` runs the round trip nightly
       and on request - CSR, CCSID, the six compliance documents, PCSID - and
-      needs no credentials, so this can start today. It is six documents, not a
-      hundred, so volume is still to do.
+      needs no credentials. As of 2026-10-10 it also clears and reports all six
+      with the production certificate, against the real clearance and reporting
+      endpoints, and all six are accepted. It is six documents, not a hundred,
+      so volume is still to do.
 - [ ] **Error Handling**: Verify all ZATCA error codes handled correctly.
       `ErrorCode` enumerates 99 of them with a retryable flag and a category,
-      and `SubmissionTracker` schedules the next attempt from its retry delay. What is not
-      established is that the codes the authority actually returns are the ones
-      enumerated, which only live traffic shows.
+      and `SubmissionTracker` schedules the next attempt from its retry delay.
+      Auditing this found that three of the retryable cases were assigned by
+      nothing: a 500, 502, 504 or 408 from ZATCA arrived with no code, so
+      `isRetryable()` answered false and `SubmissionLedger` recorded the
+      submission as **rejected** - which asserts the document was wrong and
+      spends a simplified invoice's twenty-four hour window on a gateway blip.
+      Fixed and held by `TransientRefusalTest`; a refusal's own reasons are now
+      carried into `errorMessages` rather than left in the raw body.
+      What is still not established is that the *document-level* codes the
+      authority returns are the ones enumerated, which only live traffic shows.
 - [ ] **QR Code Validation**: Use ZATCA mobile app to scan generated QR codes.
       Yours - the TLV and its tags are checked by the SDK and by
       `ZatcaConformanceTest`, but only a phone proves the app reads it.
 - [x] **XML Schema Validation**: ZATCA's own SDK validator runs over generated
-      documents in `ZatcaConformanceTest` - UBL 2.1 schema, EN 16931, Schematron.
-      Standard documents pass outright; simplified documents have one signature
-      digest outstanding, see `docs/sa/HASHING-AND-SIGNING.md`.
+      documents in `ZatcaConformanceTest` - UBL 2.1 schema, EN 16931, Schematron -
+      and runs in CI on every push as of 2026-10-10. All 26 checks pass for both
+      document kinds. The signature digest that was outstanding here is resolved:
+      it was never the digest, but `formatOutput` re-indenting the document after
+      it was signed. See `docs/sa/STATUS.md` section 3.
 
 ### 4.2 Production Onboarding
 
