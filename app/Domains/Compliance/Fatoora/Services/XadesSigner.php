@@ -420,17 +420,25 @@ class XadesSigner
         // SignedSignatureProperties
         $signedSigProps = $dom->createElement('xades:SignedSignatureProperties');
 
-        // SigningTime (must be UTC per ZATCA requirements)
+        // SigningTime, in the form the authority signs with: local time, no
+        // timezone designator.
         //
-        // The trailing Z stays. ZATCA's own samples and its SDK write this
-        // field without one, but the SDK writes the signing machine's local
-        // time rather than UTC, so its format is not evidence of which
-        // instant ZATCA reads a bare stamp as. Dropping the marker while
-        // still writing UTC would leave a reader three hours out for Riyadh,
-        // which is outside the tolerance the authority allows between a
-        // document and its submission - and it does not make the signed
-        // properties digest agree, so it buys nothing for the risk.
-        $signingTime = $dom->createElement('xades:SigningTime', FatooraTime::nowFormatted());
+        // This carried a trailing Z, and a comment here defended it on the
+        // grounds that a bare stamp is ambiguous and the SDK's format was not
+        // evidence of what ZATCA reads. The authority settled it: every
+        // simplified document was refused with "Invalid signed properties
+        // hashing", and the Z was the last difference between this block and
+        // the one the SDK produces for the same invoice.
+        //
+        // The SDK could not have told us. It recomputes the digest from the
+        // bytes it is handed, so both forms hash consistently to it - which is
+        // why all 26 conformance tests passed while the live API refused the
+        // documents. A validator that reads what you wrote cannot catch a
+        // disagreement about what to write.
+        //
+        // The Kingdom's clock, so that an unmarked stamp read as local time is
+        // right, and so this agrees with IssueTime and the QR.
+        $signingTime = $dom->createElement('xades:SigningTime', FatooraTime::signingTime());
         $signedSigProps->appendChild($signingTime);
 
         // SigningCertificate

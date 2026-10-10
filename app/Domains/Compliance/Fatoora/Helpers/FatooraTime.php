@@ -183,6 +183,31 @@ final class FatooraTime
     }
 
     /**
+     * The signing instant, in the form ZATCA signs with.
+     *
+     * Local time, no timezone designator - which is what the authority's own
+     * signer writes. Its sample reads 2026-10-09T17:14:20 where this platform
+     * wrote 2026-10-09T11:45:56Z, and that Z was the last difference between
+     * the two signed-properties blocks.
+     *
+     * It mattered. The SDK accepted the Z, because it recomputes the digest
+     * from the bytes it is given, so both forms hash consistently to it. The
+     * live API does not: it refused every simplified document with "Invalid
+     * signed properties hashing", which means it normalises the timestamp
+     * before hashing and a marker it does not expect changes the result.
+     *
+     * The Kingdom's clock rather than the machine's, so an unmarked stamp is
+     * read correctly by a reader who assumes local time - and so this agrees
+     * with IssueTime and the QR, which are on the same clock for the same
+     * reason. The authority signs on whatever clock its own machine keeps;
+     * for a Saudi taxpayer that is this one.
+     */
+    public static function signingTime(): string
+    {
+        return self::saudiNow()->format('Y-m-d\TH:i:s');
+    }
+
+    /**
      * Now, on the Kingdom's clock.
      *
      * For the civil date or wall-clock time a document or a deadline states.

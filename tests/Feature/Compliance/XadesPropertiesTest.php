@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Compliance;
 
 use App\Domains\Compliance\Fatoora\Services\XadesSigner;
+use Carbon\Carbon;
 use DOMDocument;
 use DOMXPath;
 use phpseclib3\Math\BigInteger;
@@ -144,25 +145,47 @@ class XadesPropertiesTest extends TestCase
     }
 
     /**
-     * ZATCA reads the signing time as UTC. A local-time stamp is off by the
-     * offset, which for Riyadh is three hours — well outside the tolerance the
-     * authority allows between a document and its submission.
+     * The signing time is written the way the authority writes it: local time
+     * on the Kingdom's clock, with no timezone designator.
+     *
+     * This asserted the opposite - UTC with a trailing Z - and the reasoning
+     * was that a bare stamp is ambiguous and three hours out for a reader who
+     * assumes Riyadh. The authority disagreed, and it is the authority's
+     * format: every simplified document was refused by the live API with
+     * "Invalid signed properties hashing", and that Z was the last difference
+     * between this block and the one ZATCA's own signer produces for the same
+     * invoice.
+     *
+     * The SDK could not have caught it. It recomputes the digest from the
+     * bytes it is handed, so either form hashes consistently to it - all 26
+     * conformance tests passed while the live API refused the documents. A
+     * validator that reads what you wrote cannot catch a disagreement about
+     * what to write; only the authority can.
      */
-    public function test_signing_time_is_utc_and_current(): void
+    public function test_signing_time_matches_the_authority(): void
     {
         $signingTime = $this->text('//xades:SigningTime');
 
         $this->assertMatchesRegularExpression(
-            '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/',
+            '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/',
             $signingTime,
-            'SigningTime is not a UTC instant in ZATCA form.'
+            'SigningTime is not local time without a designator, which is the form ZATCA signs with.'
         );
+
+        // Read on the Kingdom's clock, because that is what it is. Read as
+        // UTC it would be three hours ahead, which is the ambiguity the Z was
+        // there to remove and the reason the rest of the document moved to
+        // this clock too.
+        $signedAt = Carbon::createFromFormat('Y-m-d\TH:i:s', $signingTime, 'Asia/Riyadh');
+
+        $this->assertNotFalse($signedAt, 'SigningTime could not be read as an instant.');
 
         $this->assertLessThan(
             120,
-            abs(strtotime($signingTime) - time()),
+            abs($signedAt->getTimestamp() - time()),
             'SigningTime is not the moment the document was signed.'
         );
+
     }
 
     private function text(string $query): string

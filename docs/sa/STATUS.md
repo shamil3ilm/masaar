@@ -78,10 +78,23 @@ twenty-four hours.
 go each way, that `Clearance-Status: 1` rides only on clearance, that a
 refusal ends the command non-zero — with the exchange faked.
 
-**What is unknown:** whether the developer portal serves those two endpoints.
-It issues the PCSID they need, so it is likely, but nobody has run it. The
-scheduled `sandbox` job in CI now does; a refusal arrives with the authority's
-own reason.
+**Run on 2026-10-10, and it answered more than it was asked.** The portal
+serves both endpoints. All three standard documents were **CLEARED and a
+stamped copy returned** - the authority accepted documents generated and
+signed here, over the real protocol, and sent back its own signed version.
+
+All three simplified documents were **REFUSED**: "Invalid signed properties
+hashing, SignedProperties with id='xadesSignedProperties'". The cause was
+`xades:SigningTime` carrying a trailing `Z` where the authority writes local
+time with no designator, and it is fixed - but **the fix has not yet been put
+back to the authority.** Re-run the step to confirm it.
+
+Why that matters beyond the bug: all 26 SDK conformance tests passed while the
+live API refused those documents. The SDK recomputes the digest from the bytes
+it is given, so it cannot catch a disagreement about what to write - only
+submitting can. Standard documents cleared throughout, because ZATCA stamps
+those itself and does not check the seller's signature the way it must for a
+simplified document, which is reported after the customer already has it.
 
 This was described for some time as needing a real taxpayer. It does not. That
 was wrong, and `fatoora:sandbox-test --step=report` — which exists for exactly
