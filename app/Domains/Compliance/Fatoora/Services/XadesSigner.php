@@ -350,7 +350,7 @@ class XadesSigner
         // invoice's own reference, a few lines above, decodes to thirty-two
         // bytes. The two references in one signature do not agree with each
         // other, and this is the one that differs.
-        $digest = base64_encode(hash('sha256', $this->signedPropertiesDigestInput($signedProperties)));
+        $digest = $this->signedPropertiesDigest($signedProperties);
         $digestValue = $dom->createElementNS(self::DS_NS, 'ds:DigestValue', $digest);
         $reference->appendChild($digestValue);
 
@@ -670,6 +670,50 @@ class XadesSigner
             '<ds:$1 xmlns:ds="'.self::DS_NS.'"',
             $xml
         );
+    }
+
+    /**
+     * The digest recorded for the signed-properties reference.
+     *
+     * The authority and its own SDK disagree about this value, which is why
+     * the strategy is a setting. Established by experiment rather than
+     * reasoning, because reasoning got it wrong twice:
+     *
+     *   This platform's block is byte-identical to the one ZATCA's own signer
+     *   produces for the same invoice with the same certificate - diffed, 717
+     *   bytes each, no difference but the signing instant. The 'sdk' rule
+     *   below reproduces the digest the SDK records for its own output. All 26
+     *   SDK conformance checks pass.
+     *
+     *   The live API refuses every simplified document for this digest
+     *   regardless. Standard documents clear, because ZATCA stamps those
+     *   itself and does not check the seller's signature the way it must for a
+     *   simplified one.
+     *
+     * XML-DSig says what a verifier should do: the reference carries no
+     * ds:Transforms, so the referenced data is the element's canonical form.
+     * The SDK does not canonicalise. The invoice reference in this same
+     * signature is base64 of the digest's bytes and the authority accepts it,
+     * which is the strongest hint about the encoding.
+     *
+     * @see config/fatoora.php for what each strategy means
+     */
+    private function signedPropertiesDigest(DOMElement $signedProperties): string
+    {
+        $strategy = (string) config('fatoora.signing.signed_properties_digest', 'sdk');
+
+        // C14N here rather than in the branches because the element has to be
+        // in the document for it to mean anything - a detached subtree
+        // canonicalises to the empty string and says nothing about it.
+        $canonical = (string) $signedProperties->C14N();
+        $asWritten = $this->signedPropertiesDigestInput($signedProperties);
+
+        return match ($strategy) {
+            'c14n' => base64_encode(hash('sha256', $canonical, true)),
+            'c14n-hex' => base64_encode(hash('sha256', $canonical)),
+            'sdk-bytes' => base64_encode(hash('sha256', $asWritten, true)),
+            default => base64_encode(hash('sha256', $asWritten)),
+        };
     }
 
     /**
