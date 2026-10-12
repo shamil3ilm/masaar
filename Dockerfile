@@ -242,9 +242,38 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Switch to non-root user for PHP-FPM
-# Note: Nginx will run as root initially, then drop privileges
-USER masaar
+# No USER directive, deliberately.
+#
+# `USER masaar` stood here with a comment saying nginx would run as root and
+# drop privileges - which that line made impossible. A process cannot acquire
+# a privilege it was not started with, and everything in this image is built
+# on supervisord having it:
+#
+#   supervisord.conf declares [supervisord] user=root, and supervisord started
+#   as a non-root user refuses to run at all rather than pretend it dropped;
+#   nginx and php-fpm are declared with no user= because their masters are
+#   meant to be root - nginx to bind :80 and open /var/log/nginx, php-fpm to
+#   hand its pool to www-data;
+#   the four queue workers carry user=masaar, which is the per-program drop
+#   that only works when supervisord is root;
+#   entrypoint.sh guards its chown with `if [ "$(id -u)" = "0" ]`, written for
+#   a root start.
+#
+# So the container could not have served a request, and nothing noticed
+# because no job and no procedure has ever run this image - the deployment
+# guide installs onto a host directly, and the image job only builds and scans.
+# The `nginx -t` step added in the same change as this comment is what found
+# it: nginx could not open its error log as uid 1000.
+#
+# Privileges are still dropped, by the thing designed to drop them: nginx
+# workers run as `user nginx` from nginx.conf, php-fpm hands work to its pool
+# user, and the queue workers run as masaar. Only the supervisord and master
+# processes are root.
+#
+# Running the whole container rootless is the better end state - nginx on 8080
+# with no user directive, no user=root in supervisord, the published port
+# remapped - and it is a change that has to be verified by running the
+# container, not by reading it.
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
