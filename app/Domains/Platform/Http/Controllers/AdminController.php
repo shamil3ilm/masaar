@@ -8,6 +8,7 @@ use App\Domains\Compliance\Fatoora\Enums\RequeueOutcome;
 use App\Domains\Compliance\Fatoora\Services\Requeuer;
 use App\Domains\Platform\DTOs\FilterData;
 use App\Domains\Platform\Services\OrganizationReport;
+use App\Domains\Platform\Services\PlatformStatus;
 use App\Domains\Platform\Services\QueueReport;
 use App\Domains\Platform\Services\SubmissionLog;
 use App\Http\Controllers\Controller;
@@ -31,14 +32,23 @@ class AdminController extends Controller
         private readonly QueueReport $queue,
         private readonly SubmissionLog $submissionLog,
         private readonly Requeuer $requeuer,
+        private readonly PlatformStatus $status,
     ) {}
 
     /**
      * Main dashboard view.
+     *
+     * Rendered from the same service the JSON endpoints read. The page used to
+     * fetch five /api/admin/* routes from the browser; those are behind
+     * jwt.auth, a session cookie is not a JWT, and every `|| {}` fallback drew
+     * the resulting 401 as a zero.
      */
     public function dashboard(): View
     {
-        return view('admin.dashboard');
+        return view('admin.dashboard', [
+            'overview' => $this->status->overview(),
+            'health' => $this->status->health(),
+        ]);
     }
 
     /**
