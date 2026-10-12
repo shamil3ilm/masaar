@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
+use App\Domains\Compliance\Fatoora\Services\DeadlineReport;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -45,15 +46,15 @@ class ReportOverdueSubmissions extends Command
 
     protected $description = 'Find simplified submissions that have missed, or are about to miss, the reporting deadline';
 
-    public function handle(): int
+    public function handle(DeadlineReport $deadlines): int
     {
         $deadlineHours = (float) config('fatoora.reporting.deadline_hours', 24);
         $warnAfter = $this->option('warn-after') !== null
             ? (float) $this->option('warn-after')
             : $deadlineHours * 0.75;
 
-        $overdue = $this->unreported($deadlineHours);
-        $atRisk = $this->unreported($warnAfter)->diffKeys($overdue);
+        $overdue = $deadlines->unreportedOlderThan($deadlineHours);
+        $atRisk = $deadlines->unreportedOlderThan($warnAfter)->diffKeys($overdue);
 
         $this->report('Overdue', $overdue, $deadlineHours);
         $this->report('At risk', $atRisk, $warnAfter);
@@ -80,25 +81,6 @@ class ReportOverdueSubmissions extends Command
         // Non-zero so a scheduled run is visibly failing rather than quietly
         // printing into a log nobody opens.
         return $overdue->isEmpty() ? self::SUCCESS : self::FAILURE;
-    }
-
-    /**
-     * Simplified submissions older than the given age that never reached the
-     * authority.
-     *
-     * Keyed by id so the two populations can be subtracted from each other.
-     *
-     * @return Collection<int|string, InvoiceSubmission>
-     */
-    private function unreported(float $hours): Collection
-    {
-        return InvoiceSubmission::query()
-            ->where('submission_type', 'reporting')
-            ->whereNotIn('state', ['reported', 'cleared', 'warning'])
-            ->where('created_at', '<=', Carbon::now()->subMinutes((int) round($hours * 60)))
-            ->orderBy('created_at')
-            ->get()
-            ->keyBy('id');
     }
 
     /**

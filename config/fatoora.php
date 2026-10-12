@@ -72,6 +72,31 @@ return [
     | private — these are the keys behind every invoice the platform stamps.
     |
     */
+    /*
+    |--------------------------------------------------------------------------
+    | Reporting deadline
+    |--------------------------------------------------------------------------
+    |
+    | ZATCA gives a simplified (B2C) invoice twenty-four hours from issuance to
+    | be reported. It is a legal obligation, and until now it was not
+    | configurable: three places read fatoora.reporting.deadline_hours and this
+    | file declared no 'reporting' key at all, so each ran on its own hard-coded
+    | fallback of 24 - Submitter, which refuses a late submission; the hourly
+    | fatoora:overdue-submissions sweep; and the admin console's deadline
+    | screen. Three independent defaults for one legal figure is how they
+    | eventually disagree, and the one that matters would be the one that let a
+    | document through.
+    |
+    | enforce_deadline exists so a test or a backfill can submit an old document
+    | deliberately. Leaving it off in production means the platform will try to
+    | report an invoice the authority will refuse.
+    |
+    */
+    'reporting' => [
+        'deadline_hours' => (float) env('ZATCA_REPORTING_DEADLINE_HOURS', 24),
+        'enforce_deadline' => (bool) env('ZATCA_ENFORCE_REPORTING_DEADLINE', true),
+    ],
+
     'signing' => [
         'disk' => env('ZATCA_CREDENTIAL_DISK', 'local'),
 

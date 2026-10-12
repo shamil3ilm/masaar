@@ -86,6 +86,25 @@ class DeadlineReport
      *
      * @return Collection<string, InvoiceSubmission>
      */
+    /**
+     * Submissions older than the given age that never reached the authority.
+     *
+     * Public because fatoora:overdue-submissions needs exactly this set, and
+     * had its own copy of the query. Two definitions of "late" in a compliance
+     * platform is one too many: the hourly alert and the console screen must
+     * never be able to disagree about which invoices have missed a legal
+     * deadline.
+     *
+     * Returns the models, keyed by id, because the command prints their state,
+     * retries and last error - the mapped rows below are for the view.
+     *
+     * @return Collection<string, InvoiceSubmission>
+     */
+    public function unreportedOlderThan(float $hours): Collection
+    {
+        return $this->unreported($hours);
+    }
+
     private function unreported(float $hours): Collection
     {
         return InvoiceSubmission::query()
