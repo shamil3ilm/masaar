@@ -1,6 +1,7 @@
 <?php
 
 use App\Domains\Auth\Http\Controllers\SessionAuthController;
+use App\Domains\Compliance\Fatoora\Http\Controllers\AdminAlertController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceController;
 use App\Domains\Licensing\Http\Controllers\AdminLicenceController;
 use App\Domains\Organization\Http\Controllers\CustomerPortalController;
@@ -54,6 +55,7 @@ Route::prefix('admin')->name('admin.')
         Route::post('/licences/{licenceId}/reactivate', [AdminLicenceController::class, 'reactivate'])->name('licences.reactivate');
         Route::post('/licences/{licenceId}/revoke', [AdminLicenceController::class, 'revoke'])->name('licences.revoke');
         Route::post('/licences/{licenceId}/rotate', [AdminLicenceController::class, 'rotate'])->name('licences.rotate');
+        Route::get('/alerts', [AdminAlertController::class, 'index'])->name('alerts');
         Route::get('/queue', [AdminController::class, 'queue'])->name('queue');
         Route::get('/logs', [AdminController::class, 'logs'])->name('logs');
 
