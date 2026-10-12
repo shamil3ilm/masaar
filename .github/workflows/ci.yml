@@ -533,6 +533,17 @@ jobs:
       - name: Build the image
         run: docker build -t masaar:ci .
 
+      # The virtual host had never been parsed by nginx anywhere - not in CI,
+      # not locally, since nothing in the development environment runs it.
+      # Two faults lived in it undetected: every deny rule was written below
+      # the regex locations that answer first, and the static-file block set
+      # Cache-Control, which discards the inherited security headers rather
+      # than adding to them. NginxPostureTest holds both of those lines by
+      # reading the file; this one is the part only nginx can answer, which is
+      # whether it parses at all.
+      - name: Check the nginx configuration
+        run: docker run --rm --entrypoint nginx masaar:ci -t
+
       # The scanner is run directly rather than through aquasecurity's action.
       #
       # The action is versioned independently of Trivy itself and a tag that

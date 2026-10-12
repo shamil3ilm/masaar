@@ -22,6 +22,12 @@ use PHPUnit\Framework\TestCase;
  * `.env.example`; the container templates had no such check and are the ones
  * that describe production.
  *
+ * Not the same check as `ComposeEnvTest`, which reads the boundary the other
+ * way: that one names the settings a deployment is told to set and fails if
+ * compose does not pass them through. This one fails if compose passes
+ * something through that nothing reads. Both are needed - a key can be absent
+ * when it should be present, or present under a name nobody reads.
+ *
  * Infrastructure keys are allowed by name. Compose legitimately carries values
  * that are nothing to do with Laravel - which port to publish, what to call
  * the MySQL database, which image tag to pull - and a test that demanded the
