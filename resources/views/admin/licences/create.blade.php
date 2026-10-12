@@ -1,0 +1,127 @@
+@extends('layouts.admin')
+
+@section('title', 'Issue a licence - Masaar Admin')
+
+@section('content')
+<div class="mb-6">
+    <a href="{{ route('admin.licences.index') }}" class="text-sm text-blue-600 hover:text-blue-800">&larr; All licences</a>
+    <h2 class="mt-1 text-2xl font-bold text-gray-800">Issue a licence</h2>
+    <p class="text-gray-500">
+        Creates the API key and secret for a partner. The secret is shown once, on the
+        next page, and is never recoverable afterwards.
+    </p>
+</div>
+
+<form method="POST" action="{{ route('admin.licences.store') }}" class="max-w-3xl space-y-6">
+    @csrf
+
+    <div class="rounded-lg bg-white shadow">
+        <h3 class="border-b px-6 py-4 text-sm font-semibold uppercase text-gray-500">Partner</h3>
+        <div class="grid gap-4 px-6 py-4 sm:grid-cols-2">
+            <div class="sm:col-span-2">
+                <label for="organization_name" class="block text-xs font-medium uppercase text-gray-500">Organization name</label>
+                <input id="organization_name" name="organization_name" type="text" maxlength="255" required
+                       value="{{ old('organization_name') }}"
+                       class="mt-1 w-full rounded-md border-gray-300 text-sm">
+                @error('organization_name')
+                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
+            <div>
+                <label for="contact_email" class="block text-xs font-medium uppercase text-gray-500">Contact email</label>
+                <input id="contact_email" name="contact_email" type="email" maxlength="255" required
+                       value="{{ old('contact_email') }}"
+                       class="mt-1 w-full rounded-md border-gray-300 text-sm">
+                @error('contact_email')
+                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
+            <div>
+                <label for="contact_phone" class="block text-xs font-medium uppercase text-gray-500">Contact phone</label>
+                <input id="contact_phone" name="contact_phone" type="text" maxlength="50"
+                       value="{{ old('contact_phone') }}"
+                       class="mt-1 w-full rounded-md border-gray-300 text-sm">
+                @error('contact_phone')
+                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
+            <div>
+                <label for="organization_vat" class="block text-xs font-medium uppercase text-gray-500">VAT number</label>
+                <input id="organization_vat" name="organization_vat" type="text" maxlength="50"
+                       value="{{ old('organization_vat') }}"
+                       class="mt-1 w-full rounded-md border-gray-300 text-sm">
+                @error('organization_vat')
+                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
+            <div>
+                <label for="org_id" class="block text-xs font-medium uppercase text-gray-500">Organization id</label>
+                <input id="org_id" name="org_id" type="text" maxlength="36"
+                       value="{{ old('org_id') }}" placeholder="Leave blank if the tenant does not exist yet"
+                       class="mt-1 w-full rounded-md border-gray-300 font-mono text-xs">
+                {{-- Every partner call is scoped to this organization, so a licence
+                     without one authenticates and then reaches no tenant. --}}
+                <p class="mt-1 text-xs text-gray-500">
+                    The tenant this key may act for. Until it is set the key authenticates but reaches no data.
+                </p>
+                @error('org_id')
+                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
+        </div>
+    </div>
+
+    <div class="rounded-lg bg-white shadow">
+        <h3 class="border-b px-6 py-4 text-sm font-semibold uppercase text-gray-500">Plan</h3>
+        <div class="grid gap-4 px-6 py-4 sm:grid-cols-2">
+            <div>
+                <label for="tier" class="block text-xs font-medium uppercase text-gray-500">Tier</label>
+                <select id="tier" name="tier" required class="mt-1 w-full rounded-md border-gray-300 text-sm">
+                    @foreach (\App\Domains\Licensing\Enums\LicenseTier::cases() as $case)
+                        @php
+                            // The Unlimited tier's quota is PHP_INT_MAX, which
+                            // number_format renders as a 19-digit number.
+                            $quota = (int) $case->getDefaults()['invoices_per_month'];
+                            $label = $quota === PHP_INT_MAX ? 'no invoice limit' : number_format($quota).' invoices / month';
+                        @endphp
+                        <option value="{{ $case->value }}" @selected(old('tier') === $case->value)>
+                            {{ $case->getDisplayName() }} ({{ $label }})
+                        </option>
+                    @endforeach
+                </select>
+                {{-- The tier decides the quotas, scopes and features; nothing here
+                     overrides them, so a bespoke limit is still a service call. --}}
+                <p class="mt-1 text-xs text-gray-500">Sets the quotas, scopes and features for this licence.</p>
+                @error('tier')
+                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
+            <div>
+                <label for="expires_at" class="block text-xs font-medium uppercase text-gray-500">Expires</label>
+                <input id="expires_at" name="expires_at" type="date" value="{{ old('expires_at') }}"
+                       class="mt-1 w-full rounded-md border-gray-300 text-sm">
+                <p class="mt-1 text-xs text-gray-500">Leave blank for a licence that never expires.</p>
+                @error('expires_at')
+                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
+            <div class="sm:col-span-2">
+                <label for="notes" class="block text-xs font-medium uppercase text-gray-500">Notes</label>
+                <textarea id="notes" name="notes" rows="3" maxlength="2000"
+                          class="mt-1 w-full rounded-md border-gray-300 text-sm">{{ old('notes') }}</textarea>
+                @error('notes')
+                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
+        </div>
+    </div>
+
+    <div class="flex items-center gap-3">
+        <button type="submit" class="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700">
+            Issue licence
+        </button>
+        <a href="{{ route('admin.licences.index') }}" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancel</a>
+        <p class="text-xs text-gray-500">The licence starts active and the partner can call the API immediately.</p>
+    </div>
+</form>
+@endsection

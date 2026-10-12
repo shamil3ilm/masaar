@@ -26,6 +26,9 @@
     $canRevoke = $status !== \App\Domains\Licensing\Enums\LicenseStatus::Revoked;
 @endphp
 
+{{-- Only ever populated by store(), and only for the one request after it. --}}
+@include('admin.licences.partials.secret-once')
+
 <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
     <div>
         <a href="{{ route('admin.licences.index') }}" class="text-sm text-blue-600 hover:text-blue-800">&larr; All licences</a>

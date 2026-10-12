@@ -76,6 +76,9 @@ class LicenceLifecycleTest extends TestCase
      * bookmark, or a row somebody removed — which findOrFail raises. Without the
      * catch the admin gets the framework's error page; with it, a redirect
      * carrying the reason.
+     *
+     * That redirect goes to the list, not to the detail page for the id that
+     * does not resolve: see LicenceIssueTest for why.
      */
     public function test_a_failure_becomes_a_message(): void
     {
@@ -84,7 +87,7 @@ class LicenceLifecycleTest extends TestCase
         $response = $this->actingAs($this->admin())
             ->post("/admin/licences/{$missing}/suspend", ['reason' => 'Non-payment']);
 
-        $response->assertRedirect(route('admin.licences.show', $missing));
+        $response->assertRedirect(route('admin.licences.index'));
         $response->assertSessionHas('error');
 
         $this->assertStringContainsString($missing, (string) session('error'));

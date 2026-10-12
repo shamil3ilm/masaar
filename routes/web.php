@@ -45,6 +45,10 @@ Route::prefix('admin')->name('admin.')
         Route::get('/organizations', [AdminController::class, 'organizations'])->name('organizations');
         Route::get('/organizations/{id}', [AdminController::class, 'organizationDetail'])->name('organization.detail');
         Route::get('/licences', [AdminLicenceController::class, 'index'])->name('licences.index');
+        // Before the {licenceId} route below, or "create" is taken for an id
+        // and the form never renders.
+        Route::get('/licences/create', [AdminLicenceController::class, 'create'])->name('licences.create');
+        Route::post('/licences', [AdminLicenceController::class, 'store'])->name('licences.store');
         Route::get('/licences/{licenceId}', [AdminLicenceController::class, 'show'])->name('licences.show');
         Route::post('/licences/{licenceId}/suspend', [AdminLicenceController::class, 'suspend'])->name('licences.suspend');
         Route::post('/licences/{licenceId}/reactivate', [AdminLicenceController::class, 'reactivate'])->name('licences.reactivate');

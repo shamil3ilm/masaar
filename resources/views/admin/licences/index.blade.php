@@ -3,9 +3,13 @@
 @section('title', 'Licences - Masaar Admin')
 
 @section('content')
-<div class="mb-6">
-    <h2 class="text-2xl font-bold text-gray-800">Licences</h2>
-    <p class="text-gray-500">Partner API keys, their tier and their quota</p>
+<div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+    <div>
+        <h2 class="text-2xl font-bold text-gray-800">Licences</h2>
+        <p class="text-gray-500">Partner API keys, their tier and their quota</p>
+    </div>
+    <a href="{{ route('admin.licences.create') }}"
+       class="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700">Issue licence</a>
 </div>
 
 <form method="GET" action="{{ route('admin.licences.index') }}" class="mb-6 bg-white rounded-lg shadow p-4 flex flex-wrap items-end gap-4">
