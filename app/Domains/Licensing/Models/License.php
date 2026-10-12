@@ -199,10 +199,20 @@ class License extends Model
         $apiKey = self::generateApiKey($environment);
         $apiSecret = self::generateApiSecret();
 
-        // Apply tier defaults if not specified
-        $tier = $attributes['tier'] instanceof LicenseTier
-            ? $attributes['tier']
-            : (LicenseTier::tryFrom($attributes['tier'] ?? 'starter') ?? LicenseTier::Starter);
+        // Apply tier defaults if not specified.
+        //
+        // The key is read through ?? on both branches. It was read directly on
+        // the first, so omitting it - which the comment above says is allowed -
+        // raised "Undefined array key 'tier'". The ?? that looked like the
+        // guard only ever protected the branch that is not reached when the
+        // key is missing. PHPUnit turned that warning into a failure while
+        // production logged it and carried on, so the suite and the deployment
+        // disagreed about what this does.
+        $given = $attributes['tier'] ?? null;
+
+        $tier = $given instanceof LicenseTier
+            ? $given
+            : (LicenseTier::tryFrom((string) ($given ?? 'starter')) ?? LicenseTier::Starter);
         $defaults = $tier->getDefaults();
 
         // Get default scopes for tier if not provided
