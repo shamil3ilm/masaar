@@ -134,6 +134,14 @@ jobs:
       - name: Run migrations
         run: php artisan migrate --force
 
+      # public/build is gitignored, and the consoles render @vite - which throws
+      # without a manifest. See the note in the test job. Before the end-to-end checks, not after:
+      # those drive the consoles over real HTTP and render the same views.
+      - name: Build front-end assets
+        run: |
+          npm ci
+          npm run build
+
       - name: Run end-to-end checks
         run: php tests/E2e/run.php
 
@@ -147,13 +155,6 @@ jobs:
       # is 'state', and an expiry read from a third. Each was invisible while
       # the suite was green.
       #
-      # public/build is gitignored, and the consoles render @vite - which throws
-      # without a manifest. See the note in the test job.
-      - name: Build front-end assets
-        run: |
-          npm ci
-          npm run build
-
       # The environment is passed inline rather than by editing phpunit.xml, so
       # the default local run stays on SQLite and stays fast.
       - name: Run test suite against MySQL
