@@ -9,42 +9,42 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-gray-100 min-h-screen">
-    <div x-data="{ sidebarOpen: true }" class="flex">
+    <div x-data="sidebar" class="flex">
         <!-- Sidebar -->
-        <aside :class="sidebarOpen ? 'w-64' : 'w-20'" class="bg-ink-900 min-h-screen transition-all duration-300">
+        <aside :class="width" class="bg-ink-900 min-h-screen transition-all duration-300">
             <div class="flex items-center gap-2.5 p-4 text-white">
                 {{-- No tile: the sidebar is already the navy the tile would be. --}}
                 <x-logo :tile="false" :size="32" class="gap-0" />
-                <span class="text-lg font-semibold tracking-tight" x-show="sidebarOpen">Masaar</span>
+                <span class="text-lg font-semibold tracking-tight" x-show="open">Masaar</span>
             </div>
             <nav class="mt-4">
                 <a href="{{ route('admin.dashboard') }}" class="flex items-center border-l-2 px-4 py-3 text-white/70 transition-colors hover:bg-ink-800 hover:text-white {{ request()->routeIs('admin.dashboard') ? 'border-teal-400 bg-ink-800 text-white' : 'border-transparent' }}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
-                    <span class="ml-3" x-show="sidebarOpen">Dashboard</span>
+                    <span class="ml-3" x-show="open">Dashboard</span>
                 </a>
                 <a href="{{ route('admin.organizations') }}" class="flex items-center border-l-2 px-4 py-3 text-white/70 transition-colors hover:bg-ink-800 hover:text-white {{ request()->routeIs('admin.organizations*') ? 'border-teal-400 bg-ink-800 text-white' : 'border-transparent' }}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
-                    <span class="ml-3" x-show="sidebarOpen">Organizations</span>
+                    <span class="ml-3" x-show="open">Organizations</span>
                 </a>
                 <a href="{{ route('admin.queue') }}" class="flex items-center border-l-2 px-4 py-3 text-white/70 transition-colors hover:bg-ink-800 hover:text-white {{ request()->routeIs('admin.queue') ? 'border-teal-400 bg-ink-800 text-white' : 'border-transparent' }}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
-                    <span class="ml-3" x-show="sidebarOpen">Offline Queue</span>
+                    <span class="ml-3" x-show="open">Offline Queue</span>
                 </a>
                 <a href="{{ route('admin.logs') }}" class="flex items-center border-l-2 px-4 py-3 text-white/70 transition-colors hover:bg-ink-800 hover:text-white {{ request()->routeIs('admin.logs') ? 'border-teal-400 bg-ink-800 text-white' : 'border-transparent' }}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                    <span class="ml-3" x-show="sidebarOpen">Logs</span>
+                    <span class="ml-3" x-show="open">Logs</span>
                 </a>
                 <a href="{{ route('admin.licences.index') }}" class="flex items-center border-l-2 px-4 py-3 text-white/70 transition-colors hover:bg-ink-800 hover:text-white {{ request()->routeIs('admin.licences.*') ? 'border-teal-400 bg-ink-800 text-white' : 'border-transparent' }}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
-                    <span class="ml-3" x-show="sidebarOpen">Licences</span>
+                    <span class="ml-3" x-show="open">Licences</span>
                 </a>
                 <a href="{{ route('admin.alerts') }}" class="flex items-center border-l-2 px-4 py-3 text-white/70 transition-colors hover:bg-ink-800 hover:text-white {{ request()->routeIs('admin.alerts') ? 'border-teal-400 bg-ink-800 text-white' : 'border-transparent' }}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                    <span class="ml-3" x-show="sidebarOpen">Alerts</span>
+                    <span class="ml-3" x-show="open">Alerts</span>
                 </a>
                 <a href="{{ route('admin.webhooks.index') }}" class="flex items-center border-l-2 px-4 py-3 text-white/70 transition-colors hover:bg-ink-800 hover:text-white {{ request()->routeIs('admin.webhooks.*') ? 'border-teal-400 bg-ink-800 text-white' : 'border-transparent' }}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                    <span class="ml-3" x-show="sidebarOpen">Webhooks</span>
+                    <span class="ml-3" x-show="open">Webhooks</span>
                 </a>
             </nav>
         </aside>
@@ -54,7 +54,7 @@
             <!-- Top Bar -->
             <header class="bg-white shadow-sm border-b">
                 <div class="flex items-center justify-between px-6 py-4">
-                    <button @click="sidebarOpen = !sidebarOpen" class="text-gray-500 hover:text-gray-700">
+                    <button @click="toggle" class="text-gray-500 hover:text-gray-700">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                     </button>
                     <div class="flex items-center space-x-4">

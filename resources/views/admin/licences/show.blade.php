@@ -191,7 +191,7 @@
             <div class="space-y-6 px-6 py-4">
                 @if($canSuspend)
                     <form method="POST" action="{{ route('admin.licences.suspend', $row['id']) }}"
-                          onsubmit="return confirm('Suspend this licence? The partner stops being able to call the API the moment you confirm.')">
+                          data-confirm="Suspend this licence? The partner stops being able to call the API the moment you confirm.">
                         @csrf
                         <label for="suspend-reason" class="block text-xs font-medium uppercase text-gray-500">Reason</label>
                         <input id="suspend-reason" name="reason" type="text" maxlength="255" required
@@ -218,7 +218,7 @@
 
                 @if($canRevoke)
                     <form method="POST" action="{{ route('admin.licences.revoke', $row['id']) }}"
-                          onsubmit="return confirm('Revoke this licence? This is permanent and the partner integration stops working now.')">
+                          data-confirm="Revoke this licence? This is permanent and the partner integration stops working now.">
                         @csrf
                         <label for="revoke-reason" class="block text-xs font-medium uppercase text-gray-500">Reason</label>
                         <input id="revoke-reason" name="reason" type="text" maxlength="255" required
@@ -235,7 +235,7 @@
                 {{-- Rotating is offered whatever the status: a leaked secret
                      on a suspended licence still wants replacing. --}}
                 <form method="POST" action="{{ route('admin.licences.rotate', $row['id']) }}"
-                      onsubmit="return confirm('Regenerate this secret? The current secret stops working immediately, with no grace period for the partner to update it.')">
+                      data-confirm="Regenerate this secret? The current secret stops working immediately, with no grace period for the partner to update it.">
                     @csrf
                     <button type="submit"
                             class="mt-2 w-full rounded-md border border-amber-400 bg-amber-50 px-4 py-2 text-sm text-amber-900 hover:bg-amber-100">
