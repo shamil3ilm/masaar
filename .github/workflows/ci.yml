@@ -65,6 +65,16 @@ jobs:
           php artisan key:generate --force
           php artisan jwt:secret --force
 
+      # The consoles render @vite, which throws ViteManifestNotFoundException
+      # without public/build - and that directory is gitignored, so it exists
+      # only where something built it. Four views load their stylesheet and
+      # Alpine from the bundle rather than from a CDN, so the suite cannot
+      # render a page without this.
+      - name: Build front-end assets
+        run: |
+          npm ci
+          npm run build
+
       - name: Run test suite
         run: php artisan test
 
@@ -137,6 +147,13 @@ jobs:
       # is 'state', and an expiry read from a third. Each was invisible while
       # the suite was green.
       #
+      # public/build is gitignored, and the consoles render @vite - which throws
+      # without a manifest. See the note in the test job.
+      - name: Build front-end assets
+        run: |
+          npm ci
+          npm run build
+
       # The environment is passed inline rather than by editing phpunit.xml, so
       # the default local run stays on SQLite and stays fast.
       - name: Run test suite against MySQL
@@ -648,6 +665,13 @@ jobs:
           php artisan key:generate --force
           php artisan jwt:secret --force
           php artisan migrate --force
+
+      # public/build is gitignored, and the consoles render @vite - which throws
+      # without a manifest. See the note in the test job.
+      - name: Build front-end assets
+        run: |
+          npm ci
+          npm run build
 
       # Served rather than containerised, so the scan reaches the application
       # as the application rather than through a reverse proxy's own headers.

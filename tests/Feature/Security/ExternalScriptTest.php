@@ -9,47 +9,64 @@ use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 
 /**
- * What the consoles execute from somewhere else.
+ * The consoles execute no third-party code.
  *
  * A script tag pointing at a third party is that third party's code running
  * with the session of whoever is looking at the page - and these pages are an
- * authenticated admin console and a taxpayer portal. Two things make that
- * worse than it needs to be, and both are present:
+ * authenticated admin console and a taxpayer portal.
  *
- *   unpkg.com/alpinejs@3.x.x is a floating version. It resolves to whatever
- *   the registry serves for 3.x today, so the code can change without
- *   anything here changing, and a bad release reaches an operator's browser
- *   with no deployment.
+ * Two such tags were here until 2026-10-12, and both were worse than they had
+ * to be. `unpkg.com/alpinejs@3.x.x` was a floating version: it resolved to
+ * whatever the registry served for 3.x that day, so the code could change
+ * without anything here changing, and a bad release would reach an operator's
+ * browser with no deployment. Neither tag carried an integrity attribute, so a
+ * substituted file would have been executed rather than refused. And
+ * `cdn.tailwindcss.com` is the Play CDN, which compiles stylesheets in the
+ * browser and is documented as unsuitable for production.
  *
- *   Neither tag carries an integrity attribute, so a substituted file is
- *   executed rather than refused.
+ * They are gone, and not by vendoring or by pinning with a hash: this project
+ * already had a Vite and Tailwind 4 pipeline, with `resources/css/app.css`
+ * scanning the Blade files. Four views were simply bypassing it. Alpine is now
+ * a locked dependency in the bundle and the stylesheet is built from the
+ * classes actually used, so there is nothing to pin a hash to and nothing
+ * fetched at render time.
  *
- * cdn.tailwindcss.com is the Play CDN as well, which compiles stylesheets in
- * the browser and is documented as unsuitable for production. It is also why
- * SecurityHeaders sets no Content-Security-Policy: a policy allowing the
- * unsafe-eval and unsafe-inline it needs protects against little, and one
- * without them breaks every page.
+ * What this test does is hold that: no absolute script or stylesheet URL in
+ * any view, and the bundle still wired up - because a view that quietly drops
+ * `@vite` loses its styling rather than failing, and the quickest fix anyone
+ * reaches for is the CDN tag that used to be there.
  *
- * Fixing it means pinning a version and adding an integrity hash, or
- * vendoring the files and building the stylesheet. Both need the files
- * fetched, so neither was attempted here.
- *
- * What this test does is hold the line: these two, in these four files, and
- * no more. A third is a build failure rather than something discovered by a
- * scanner months later - which is how these two were found. Named
- * individually rather than counted, so swapping one for another is also
- * caught.
+ * It also removes the reason SecurityHeaders set no Content-Security-Policy.
+ * The Play CDN needed unsafe-eval, which made a policy pointless; the bundle
+ * needs neither. A policy is now worth adding, and the inline <script> blocks
+ * in these layouts are what it has to account for.
  */
 class ExternalScriptTest extends TestCase
 {
     private const VIEWS = __DIR__.'/../../../resources/views';
 
     /**
-     * Known, outstanding, and not to be added to.
+     * Nothing. Kept as a list so adding one is a visible, argued change
+     * rather than an edit to a condition.
+     *
+     * @var list<string>
      */
-    private const ALLOWED = [
-        'https://cdn.tailwindcss.com',
-        'https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js',
+    private const ALLOWED = [];
+
+    /**
+     * The views that carried the CDN tags and now carry @vite.
+     *
+     * Named individually rather than globbed: a view that never had them does
+     * not need the bundle, and asserting over every file would make adding a
+     * plain one a failure.
+     *
+     * @var list<string>
+     */
+    private const BUNDLED = [
+        'auth/login.blade.php',
+        'layouts/admin.blade.php',
+        'layouts/portal.blade.php',
+        'portal/select-org.blade.php',
     ];
 
     public function test_no_new_third_party_script(): void
@@ -78,28 +95,44 @@ class ExternalScriptTest extends TestCase
     }
 
     /**
-     * And the two that are allowed are still there, so this does not quietly
-     * become a test of nothing once they are fixed - at which point the
-     * entries come out and the assertion above covers everything.
+     * The views that used to load a CDN now load the bundle.
+     *
+     * This replaces an assertion that the two CDN URLs were still present,
+     * which existed so the check above could not become a test of nothing.
+     * Now that they are gone, the thing worth asserting is the replacement: a
+     * layout that loses @vite renders unstyled rather than failing, and the
+     * quickest fix anyone reaches for is the script tag that used to be there.
+     *
+     * The stylesheet is named as well as the script, because Tailwind is only
+     * in the page through the bundle now - there is no CDN fallback behind it.
      */
-    public function test_the_allowed_list_is_not_stale(): void
+    public function test_the_consoles_load_the_bundle(): void
     {
-        $all = '';
+        $missing = [];
 
-        foreach ($this->views() as $path) {
-            $all .= (string) file_get_contents($path);
-        }
+        foreach (self::BUNDLED as $view) {
+            $source = (string) file_get_contents(self::VIEWS.'/'.$view);
 
-        $gone = [];
+            if (! str_contains($source, '@vite')) {
+                $missing[] = $view.' does not reference the bundle';
 
-        foreach (self::ALLOWED as $src) {
-            if (! str_contains($all, $src)) {
-                $gone[] = $src;
+                continue;
+            }
+
+            foreach (['resources/css/app.css', 'resources/js/app.js'] as $entry) {
+                if (! str_contains($source, $entry)) {
+                    $missing[] = $view.' omits '.$entry;
+                }
             }
         }
 
-        $this->assertSame([], $gone, 'No longer loaded anywhere, so remove from ALLOWED: '
-            .implode(', ', $gone));
+        $this->assertSame([], $missing, implode('
+', $missing).'
+
+'
+            .'These views are styled and scripted entirely from the Vite bundle '
+            .'since the CDN tags were removed. Without @vite they render '
+            .'unstyled, which invites putting the CDN tag back.');
     }
 
     /**
