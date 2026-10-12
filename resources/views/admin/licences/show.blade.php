@@ -232,6 +232,20 @@
                     </form>
                 @endif
 
+                {{-- Rotating is offered whatever the status: a leaked secret
+                     on a suspended licence still wants replacing. --}}
+                <form method="POST" action="{{ route('admin.licences.rotate', $row['id']) }}"
+                      onsubmit="return confirm('Regenerate this secret? The partner's current secret stops working immediately, with no grace period.')">
+                    @csrf
+                    <button type="submit"
+                            class="mt-2 w-full rounded-md border border-amber-400 bg-amber-50 px-4 py-2 text-sm text-amber-900 hover:bg-amber-100">
+                        Regenerate secret
+                    </button>
+                    <p class="mt-1 text-xs text-gray-500">
+                        Shown once, here, and never again. The partner must update their integration before their next call.
+                    </p>
+                </form>
+
                 @if(! $canSuspend && ! $canReactivate && ! $canRevoke)
                     <p class="text-sm text-gray-500">
                         This licence is revoked, which is final. Issue the partner a new one instead.

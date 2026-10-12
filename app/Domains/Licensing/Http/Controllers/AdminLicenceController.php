@@ -116,6 +116,38 @@ class AdminLicenceController extends Controller
             ->with('api_secret', $issued['api_secret']);
     }
 
+    /**
+     * Issue a new secret for an existing licence.
+     *
+     * Not routed through attempt(), because this one has something to hand
+     * back: the new plaintext, which exists only in the returned array and is
+     * never stored. Flashed for the same single request the issue form uses,
+     * and shown by the same partial.
+     *
+     * Destructive in a way the word "regenerate" understates - the partner's
+     * current secret stops working the instant this returns, so the button
+     * confirms first.
+     */
+    public function rotate(string $licenceId): RedirectResponse
+    {
+        try {
+            $rotated = $this->licences->regenerateSecret($licenceId);
+        } catch (ModelNotFoundException) {
+            return redirect()
+                ->route('admin.licences.index')
+                ->with('error', 'That licence no longer exists.');
+        } catch (\Throwable $e) {
+            return redirect()
+                ->route('admin.licences.show', $licenceId)
+                ->with('error', $e->getMessage());
+        }
+
+        return redirect()
+            ->route('admin.licences.show', $licenceId)
+            ->with('success', 'Secret regenerated. The partner must update their integration before their next call.')
+            ->with('api_secret', $rotated['api_secret']);
+    }
+
     public function suspend(Request $request, string $licenceId): RedirectResponse
     {
         $reason = (string) $request->validate([
