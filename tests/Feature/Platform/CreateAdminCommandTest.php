@@ -98,6 +98,49 @@ class CreateAdminCommandTest extends TestCase
         $this->assertTrue($user->fresh()->is_platform_admin);
     }
 
+    /**
+     * A grant to an account that cannot sign in is not a grant.
+     *
+     * isPlatformAdmin() requires status === 'active', and so does logging in.
+     * Promoting a suspended account reported success and changed nothing an
+     * operator could see - then handed that account every taxpayer's data the
+     * day somebody reactivated it.
+     */
+    public function test_a_suspended_user_is_refused(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'ex@masaar.test',
+            'status' => 'suspended',
+            'is_platform_admin' => false,
+        ]);
+
+        $this->artisan('masaar:create-admin', ['email' => 'ex@masaar.test', '--promote' => true])
+            ->assertFailed();
+
+        $this->assertFalse($user->fresh()->is_platform_admin);
+    }
+
+    /**
+     * And the grant leaves a record. Logins are audited; the action that hands
+     * somebody cross-tenant access was not, so the only evidence was a shell
+     * history.
+     */
+    public function test_a_grant_is_audited(): void
+    {
+        User::factory()->create([
+            'email' => 'member@masaar.test',
+            'status' => 'active',
+            'is_platform_admin' => false,
+        ]);
+
+        $this->artisan('masaar:create-admin', ['email' => 'member@masaar.test', '--promote' => true])
+            ->assertSuccessful();
+
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'security.platform_admin.granted',
+        ]);
+    }
+
     public function test_a_bad_address_is_refused(): void
     {
         $this->artisan('masaar:create-admin', ['email' => 'not-an-address'])

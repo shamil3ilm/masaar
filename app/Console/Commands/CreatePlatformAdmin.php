@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Domains\Audit\Services\AuditService;
 use App\Domains\Auth\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
@@ -68,6 +69,22 @@ class CreatePlatformAdmin extends Command
      */
     private function promote(User $user): int
     {
+        // isPlatformAdmin() requires status === 'active', and so does signing
+        // in. Granting the flag to a suspended account reports success and
+        // changes nothing the operator can see - and worse, the account
+        // carries cross-tenant access silently the day somebody reactivates
+        // it. Refused rather than warned: the intent was to create an
+        // administrator, and this would not have.
+        if ($user->status !== 'active') {
+            $this->error(
+                $user->email.' is '.$user->status.', not active. Granting platform '
+                .'administrator would have no effect now and would take effect '
+                .'unannounced if the account is reactivated. Reactivate it first.'
+            );
+
+            return self::FAILURE;
+        }
+
         if ($user->is_platform_admin) {
             $this->info($user->email.' is already a platform administrator.');
 
@@ -85,9 +102,36 @@ class CreatePlatformAdmin extends Command
 
         $user->forceFill(['is_platform_admin' => true])->save();
 
+        $this->record('platform_admin.granted', $user);
+
         $this->info('Promoted '.$user->email.' to platform administrator.');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Leave a record that cross-tenant access was granted.
+     *
+     * Logins are audited; this was not, which made the most privileged action
+     * in the system the only one whose evidence was the operator's shell
+     * history. There is no authenticated user on a console run, so the audit
+     * row carries no actor - the OS user is recorded instead, which is the
+     * only thing the process actually knows.
+     */
+    private function record(string $action, User $user): void
+    {
+        try {
+            app(AuditService::class)->logSecurity($action, 'User', (string) $user->id, [
+                'email' => $user->email,
+                'granted_by_os_user' => get_current_user(),
+                'command' => $this->signature !== '' ? 'masaar:create-admin' : null,
+            ]);
+        } catch (\Throwable $e) {
+            // The grant has already happened. Failing the command now would
+            // say it had not, which is worse than an unaudited grant the
+            // operator is told about.
+            $this->warn('The grant was not audited: '.$e->getMessage());
+        }
     }
 
     private function create(string $email): int
@@ -126,6 +170,8 @@ class CreatePlatformAdmin extends Command
         ]);
 
         $user->forceFill(['is_platform_admin' => true])->save();
+
+        $this->record('platform_admin.created', $user);
 
         $this->info('Created '.$user->email.' as a platform administrator.');
         $this->line('Sign in at /login, then the console is at /admin.');

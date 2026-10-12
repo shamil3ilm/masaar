@@ -45,7 +45,7 @@ services:
       REDIS_PORT: ${REDIS_PORT:-6379}
 
       # Cache & Session
-      CACHE_DRIVER: ${CACHE_DRIVER:-redis}
+      CACHE_STORE: ${CACHE_STORE:-redis}
       SESSION_DRIVER: ${SESSION_DRIVER:-redis}
       QUEUE_CONNECTION: ${QUEUE_CONNECTION:-redis}
 
