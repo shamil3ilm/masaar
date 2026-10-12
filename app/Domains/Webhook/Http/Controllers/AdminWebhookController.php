@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Domains\Webhook\Http\Controllers;
 
 use App\Domains\Webhook\Services\WebhookReport;
+use App\Domains\Webhook\Services\WebhookService;
 use App\Http\Controllers\Controller;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
 /**
@@ -17,8 +19,10 @@ use Illuminate\View\View;
  * answered by guesswork - usually by asking the customer to check their own
  * logs.
  *
- * Read-only. The screen renders no delivery of its own: a page that posts to a
- * customer's live endpoint when someone refreshes it is a page nobody can use.
+ * Rendering is read-only. The screen sends nothing of its own: a page that
+ * posts to a customer's live endpoint when someone refreshes it is a page
+ * nobody can use. Resending is replay(), which is a POST behind a confirm for
+ * that reason.
  *
  * Reachable only behind platform.admin, which checks users.is_platform_admin
  * and is deliberately not the per-organization admin role.
@@ -27,6 +31,7 @@ class AdminWebhookController extends Controller
 {
     public function __construct(
         private readonly WebhookReport $webhooks,
+        private readonly WebhookService $deliveries,
     ) {}
 
     public function index(): View
@@ -50,5 +55,59 @@ class AdminWebhookController extends Controller
             'endpoint' => $this->webhooks->endpoint($webhookId),
             'deliveries' => $this->webhooks->deliveries($webhookId),
         ]);
+    }
+
+    /**
+     * Send a logged delivery to the endpoint again.
+     *
+     * The log row already holds the event and the payload and deliver() is
+     * public, so this needs no delivery machinery of its own - which also means
+     * the replay records itself as another webhook_logs row, updates the
+     * endpoint's failure count, and is visible on the page it redirects back
+     * to, exactly like the delivery it repeats.
+     *
+     * Three things this is careful about, because unlike everything else in the
+     * console it makes a real request to a customer's live server:
+     *
+     *   The lookups sit outside the try. An id that names no endpoint, or a log
+     *   that belongs to a different one, has to stay a 404 - catching it here
+     *   would turn a refusal into a friendly message and lose the only signal
+     *   that the pairing was wrong.
+     *
+     *   deliver() answers false for a status the receiver did not accept, and
+     *   swallows the connection failure itself, so the boolean is the usual
+     *   failure path - not the catch below.
+     *
+     *   \Throwable is still caught, because an endpoint nobody can reach must
+     *   not be a 500 page: the admin needs to be told the customer's server is
+     *   down, which is not the same as the console being broken.
+     */
+    public function replay(string $webhookId, string $logId): RedirectResponse
+    {
+        $endpoint = $this->webhooks->endpoint($webhookId);
+        $delivery = $this->webhooks->delivery($webhookId, $logId);
+
+        try {
+            $accepted = $this->deliveries->deliver($endpoint, $delivery->event, $delivery->sentPayload());
+        } catch (\Throwable $e) {
+            return $this->backTo($webhookId)->with('error', 'Replay failed: '.$e->getMessage());
+        }
+
+        if (! $accepted) {
+            return $this->backTo($webhookId)->with(
+                'error',
+                'Replayed, and the endpoint did not accept it. The attempt is the newest row below, with the status and body it answered.'
+            );
+        }
+
+        return $this->backTo($webhookId)->with(
+            'success',
+            'Replayed, and the endpoint accepted it. The receiver may process this event a second time - it has now been delivered twice.'
+        );
+    }
+
+    private function backTo(string $webhookId): RedirectResponse
+    {
+        return redirect()->route('admin.webhooks.show', $webhookId);
     }
 }

@@ -44,4 +44,27 @@ class WebhookLog extends Model
     {
         return $this->belongsTo(Webhook::class);
     }
+
+    /**
+     * The event data, as the receiver's handler saw it.
+     *
+     * The payload column holds the whole envelope WebhookService posted - its
+     * delivery id, the event name, a timestamp, and the event data nested under
+     * `data` - and not the data on its own. That matters when a delivery is
+     * replayed: handing the stored envelope back to deliver() would wrap it a
+     * second time, and the invoice would arrive at data.data, two levels down
+     * from where any customer's handler looks. A replay has to look like the
+     * delivery it repeats, carrying its own fresh id and timestamp.
+     *
+     * Falls back to the whole column, so a row written by anything that stored
+     * a bare payload still replays as itself rather than as nothing.
+     *
+     * @return array<string, mixed>
+     */
+    public function sentPayload(): array
+    {
+        $stored = $this->payload ?? [];
+
+        return is_array($stored['data'] ?? null) ? $stored['data'] : $stored;
+    }
 }

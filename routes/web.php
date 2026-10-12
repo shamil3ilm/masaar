@@ -63,6 +63,13 @@ Route::prefix('admin')->name('admin.')
         // endpoint would be a 404. WebhookReport steps past the scope
         // deliberately instead.
         Route::get('/webhooks/{webhookId}', [AdminWebhookController::class, 'show'])->name('webhooks.show');
+        // Posts the stored payload to a customer's live endpoint, so it is a
+        // POST behind a confirm rather than anything a browser or a crawler can
+        // follow. The log id is nested under the endpoint because the endpoint
+        // is what authorizes it: AdminWebhookController refuses a log that
+        // belongs to another one.
+        Route::post('/webhooks/{webhookId}/replay/{logId}', [AdminWebhookController::class, 'replay'])
+            ->name('webhooks.replay');
         Route::get('/queue', [AdminController::class, 'queue'])->name('queue');
         Route::get('/logs', [AdminController::class, 'logs'])->name('logs');
 

@@ -46,6 +46,10 @@
     <h3 class="text-lg font-semibold text-gray-800">Recent deliveries</h3>
     <span class="text-sm text-gray-500">{{ $deliveries->count() }} most recent {{ Str::plural('attempt', $deliveries->count()) }}</span>
 </div>
+<p class="mb-3 text-sm text-gray-500">
+    Replaying sends the stored event to this endpoint again, for real. The attempt is logged as its own row below,
+    and the receiver may end up processing the event twice.
+</p>
 
 <div class="bg-white rounded-lg shadow overflow-hidden">
     <table class="min-w-full divide-y divide-gray-200">
@@ -56,6 +60,7 @@
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Took</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Response</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Replay</th>
             </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
@@ -78,10 +83,24 @@
                 <td class="px-6 py-4 text-sm break-all text-gray-500">
                     {{ $delivery['response_body'] === null ? '-' : Str::limit($delivery['response_body'], 160) }}
                 </td>
+                <td class="px-6 py-4 text-right">
+                    {{-- A POST behind a confirm, not a link: this sends the
+                         stored event to the customer's live server the moment
+                         it is pressed, and nothing a browser prefetches or a
+                         crawler follows should be able to do that. --}}
+                    <form method="POST" action="{{ route('admin.webhooks.replay', [$endpoint->id, $delivery['id']]) }}"
+                          onsubmit="return confirm('Replay this delivery? It posts the stored event to the live endpoint now, and the receiver may process it a second time.')">
+                        @csrf
+                        <button type="submit"
+                                class="rounded-md border border-amber-400 bg-amber-50 px-3 py-1 text-xs text-amber-900 hover:bg-amber-100">
+                            Replay
+                        </button>
+                    </form>
+                </td>
             </tr>
             @empty
             <tr>
-                <td colspan="5" class="px-6 py-10 text-center text-gray-500">
+                <td colspan="6" class="px-6 py-10 text-center text-gray-500">
                     Nothing has been delivered to this endpoint yet.
                 </td>
             </tr>

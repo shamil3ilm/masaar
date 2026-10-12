@@ -116,4 +116,23 @@ class WebhookReport
                 'attempted_at' => $log->created_at,
             ]);
     }
+
+    /**
+     * One delivery attempt, reached through the endpoint that made it.
+     *
+     * The webhook_id condition is the authorization, not an optimisation.
+     * Replaying posts the stored payload to whichever endpoint the URL names,
+     * so a log id that is accepted against any endpoint is a way to send one
+     * customer's invoice data to another customer's server by editing two ids
+     * in an address bar. A log that does not belong to this endpoint is
+     * unfindable, which is a 404.
+     *
+     * @throws ModelNotFoundException
+     */
+    public function delivery(string $webhookId, string $logId): WebhookLog
+    {
+        return WebhookLog::query()
+            ->where('webhook_id', $webhookId)
+            ->findOrFail($logId);
+    }
 }
