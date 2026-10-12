@@ -49,7 +49,16 @@ return [
     |
     */
 
-    'encrypt' => env('SESSION_ENCRYPT', env('APP_ENV') === 'production'),
+    // The default mirrors config/app.php, which reads env('APP_ENV',
+    // 'production'). Asking env('APP_ENV') without that fallback is not the
+    // same question: with no .env at all - a fresh checkout, a CI job before
+    // it writes one, the Docker build - env() returns null while the
+    // application still considers itself production. So this defaulted to
+    // false in exactly the environment that reports itself as production, and
+    // the boot guard that refuses production with unencrypted sessions threw
+    // during `composer install`, which runs package:discover before any .env
+    // exists. Four CI jobs and the image build failed on it.
+    'encrypt' => env('SESSION_ENCRYPT', env('APP_ENV', 'production') === 'production'),
 
     /*
     |--------------------------------------------------------------------------
@@ -173,7 +182,7 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE', env('APP_ENV') === 'production'),
+    'secure' => env('SESSION_SECURE_COOKIE', env('APP_ENV', 'production') === 'production'),
 
     /*
     |--------------------------------------------------------------------------

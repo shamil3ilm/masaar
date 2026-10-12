@@ -67,6 +67,26 @@ class AppServiceProvider extends ServiceProvider
 
     /**
      * Bootstrap any application services.
+     *
+     * The three assertions below refuse to start a misconfigured production
+     * deployment. Anything added beside them has to survive one case that is
+     * easy to miss: boot() runs during `composer install`, because
+     * post-autoload-dump calls `artisan package:discover` - and at that point
+     * there is no .env. config/app.php reads env('APP_ENV', 'production'), so
+     * the application considers itself production, while every setting the
+     * guard looks at is whatever its config file defaults to.
+     *
+     * assertSessionsAreEncrypted did not survive it. config/session.php
+     * computed its default from env('APP_ENV') without that fallback, which
+     * is null rather than 'production', so sessions defaulted to unencrypted
+     * in the one environment that calls itself production. The guard threw,
+     * `composer install` failed, and four CI jobs and the image build went
+     * down on a branch whose tests were green locally - because locally there
+     * is a .env.
+     *
+     * So: a new guard must pass with no .env present. The cheap way to check
+     * is to run `composer install` against a clean export of the tree.
+     * EnvFallbackTest holds the specific trap that caused it.
      */
     public function boot(): void
     {
