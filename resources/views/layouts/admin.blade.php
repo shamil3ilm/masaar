@@ -62,6 +62,7 @@
 
             <!-- Page Content -->
             <div class="p-6">
+                @include('admin.partials.flash')
                 @yield('content')
             </div>
         </main>
