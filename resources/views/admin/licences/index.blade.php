@@ -38,13 +38,16 @@
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoices / month</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Expires</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
             @forelse($licences as $licence)
             <tr class="hover:bg-gray-50">
                 <td class="px-6 py-4">
-                    <div class="font-medium text-gray-900">{{ $licence->organization_name }}</div>
+                    <a href="{{ route('admin.licences.show', $licence->id) }}" class="font-medium text-blue-600 hover:text-blue-800">
+                        {{ $licence->organization_name }}
+                    </a>
                     <div class="text-xs text-gray-500">{{ $licence->contact_email }}</div>
                 </td>
                 <td class="px-6 py-4 text-sm text-gray-500">{{ $licence->tier->getDisplayName() }}</td>
@@ -63,10 +66,13 @@
                 <td class="px-6 py-4 text-sm text-gray-500">
                     {{ $licence->expires_at ? $licence->expires_at->toDateString() : 'Never' }}
                 </td>
+                <td class="px-6 py-4 text-right text-sm">
+                    <a href="{{ route('admin.licences.show', $licence->id) }}" class="text-blue-600 hover:text-blue-800">Manage</a>
+                </td>
             </tr>
             @empty
             <tr>
-                <td colspan="5" class="px-6 py-4 text-center text-gray-500">No licences match these filters</td>
+                <td colspan="6" class="px-6 py-4 text-center text-gray-500">No licences match these filters</td>
             </tr>
             @endforelse
         </tbody>

@@ -6,6 +6,7 @@ namespace App\Domains\Licensing\Http\Controllers;
 
 use App\Domains\Licensing\Services\LicenseManagementService;
 use App\Http\Controllers\Controller;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -40,6 +41,71 @@ class AdminLicenceController extends Controller
             'status' => $filters['status'] ?? null,
             'search' => $filters['search'] ?? null,
         ]);
+    }
+
+    public function show(string $licenceId): View
+    {
+        return view('admin.licences.show', [
+            'licence' => $this->licences->getLicenseDetails($licenceId),
+        ]);
+    }
+
+    public function suspend(Request $request, string $licenceId): RedirectResponse
+    {
+        $reason = (string) $request->validate([
+            'reason' => ['required', 'string', 'max:255'],
+        ])['reason'];
+
+        return $this->attempt(
+            fn () => $this->licences->suspendLicense($licenceId, $reason),
+            'Licence suspended. The partner can no longer call the API.',
+            $licenceId,
+        );
+    }
+
+    public function reactivate(string $licenceId): RedirectResponse
+    {
+        return $this->attempt(
+            fn () => $this->licences->reactivateLicense($licenceId),
+            'Licence reactivated.',
+            $licenceId,
+        );
+    }
+
+    public function revoke(Request $request, string $licenceId): RedirectResponse
+    {
+        $reason = (string) $request->validate([
+            'reason' => ['required', 'string', 'max:255'],
+        ])['reason'];
+
+        return $this->attempt(
+            fn () => $this->licences->revokeLicense($licenceId, $reason),
+            'Licence revoked.',
+            $licenceId,
+        );
+    }
+
+    /**
+     * Run one lifecycle call and report it.
+     *
+     * A LicenseException reaching a web route is a 500: the renderer in
+     * bootstrap/app.php is gated on api/* and v1/*. Catching here is what
+     * turns "this licence is already revoked" into a sentence rather than a
+     * stack trace.
+     */
+    private function attempt(callable $action, string $success, string $licenceId): RedirectResponse
+    {
+        try {
+            $action();
+        } catch (\Throwable $e) {
+            return redirect()
+                ->route('admin.licences.show', $licenceId)
+                ->with('error', $e->getMessage());
+        }
+
+        return redirect()
+            ->route('admin.licences.show', $licenceId)
+            ->with('success', $success);
     }
 
     /**
