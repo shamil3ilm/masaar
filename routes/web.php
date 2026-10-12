@@ -6,6 +6,7 @@ use App\Domains\Invoice\Http\Controllers\PortalInvoiceController;
 use App\Domains\Licensing\Http\Controllers\AdminLicenceController;
 use App\Domains\Organization\Http\Controllers\CustomerPortalController;
 use App\Domains\Platform\Http\Controllers\AdminController;
+use App\Domains\Webhook\Http\Controllers\AdminWebhookController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -56,6 +57,12 @@ Route::prefix('admin')->name('admin.')
         Route::post('/licences/{licenceId}/revoke', [AdminLicenceController::class, 'revoke'])->name('licences.revoke');
         Route::post('/licences/{licenceId}/rotate', [AdminLicenceController::class, 'rotate'])->name('licences.rotate');
         Route::get('/alerts', [AdminAlertController::class, 'index'])->name('alerts');
+        Route::get('/webhooks', [AdminWebhookController::class, 'index'])->name('webhooks.index');
+        // {webhookId} rather than {webhook}: route model binding would resolve
+        // through TenantScope, and a platform admin holds no tenant, so every
+        // endpoint would be a 404. WebhookReport steps past the scope
+        // deliberately instead.
+        Route::get('/webhooks/{webhookId}', [AdminWebhookController::class, 'show'])->name('webhooks.show');
         Route::get('/queue', [AdminController::class, 'queue'])->name('queue');
         Route::get('/logs', [AdminController::class, 'logs'])->name('logs');
 
