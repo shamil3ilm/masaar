@@ -31,6 +31,16 @@ class AdminConsoleAccessTest extends TestCase
             'organization detail' => ['/admin/organizations/00000000-0000-0000-0000-000000000000'],
             'queue' => ['/admin/queue'],
             'logs' => ['/admin/logs'],
+            // Added with the console's new screens. Each one reads across
+            // every tenant - licences, missed deadlines, other people's
+            // webhook endpoints - so a gap here is a cross-tenant leak, not
+            // an inconvenience.
+            'licences' => ['/admin/licences'],
+            'licence detail' => ['/admin/licences/00000000-0000-0000-0000-000000000000'],
+            'issue licence' => ['/admin/licences/create'],
+            'alerts' => ['/admin/alerts'],
+            'webhooks' => ['/admin/webhooks'],
+            'webhook detail' => ['/admin/webhooks/00000000-0000-0000-0000-000000000000'],
         ];
     }
 
