@@ -432,9 +432,30 @@ class License extends Model
 
     /**
      * Reactivate the license.
+     *
+     * Only from a status that may come back. LicenseStatus::canReactivate()
+     * has encoded that rule - Suspended or Expired, never Revoked - since it
+     * was written, and nothing called it: this method set Active
+     * unconditionally, so a licence revoked for fraud, breach or non-payment
+     * could be restored by anyone who could reach the admin console or
+     * POST /licensing/{id}/reactivate.
+     *
+     * Revocation is the decision you do not want undone by a misclick.
+     * Suspension is the reversible one and exists for that. The remedy for a
+     * revoked partner is a new licence, which leaves a record that one was
+     * issued.
+     *
+     * @throws \RuntimeException
      */
     public function reactivate(?string $actorId = null): void
     {
+        if (! $this->status->canReactivate()) {
+            throw new \RuntimeException(
+                'A licence that is '.$this->status->value.' cannot be reactivated. '
+                .'Revocation is permanent; issue a new licence instead.'
+            );
+        }
+
         $this->changeWithAudit([
             'status' => LicenseStatus::Active,
             'suspended_at' => null,
