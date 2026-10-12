@@ -107,8 +107,22 @@ class VerifyHashChain extends Command
         $this->info("Organization: {$organizationId}");
         $this->info(str_repeat('-', 40));
 
-        // Get all invoices ordered by ICV
+        // Only the documents that are actually in the chain.
+        //
+        // An invoice joins the chain when it is issued: that is when it is
+        // allocated an ICV and hashed. Before then it is a draft with neither,
+        // by design. This selected every invoice regardless, so each draft was
+        // read as a chain member with a missing hash and an out-of-sequence
+        // counter, and one draft was enough to make the whole check report
+        // FAILED.
+        //
+        // That matters because this runs on a schedule and its failures now
+        // reach a human. A daily job that always fails is worse than no job -
+        // it teaches people to ignore the one check that would tell them the
+        // chain has genuinely forked, which is the fault that cannot be
+        // repaired afterwards.
         $invoices = Invoice::where('org_id', $organizationId)
+            ->whereNotNull('icv')
             ->orderBy('icv')
             ->get(['id', 'invoice_number', 'icv', 'hash', 'created_at']);
 
