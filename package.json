@@ -3,6 +3,9 @@
     "name": "masaar",
     "private": true,
     "type": "module",
+    "engines": {
+        "node": ">=24"
+    },
     "scripts": {
         "build": "vite build",
         "dev": "vite"

@@ -24,6 +24,11 @@ concurrency:
 
 env:
   PHP_VERSION: '8.4'
+  # Pinned for the same reason as PHP. Three jobs run `npm ci && npm run
+  # build`, and with no setup-node step they used whichever Node the runner
+  # image happened to ship - so the asset build was never reproducible and
+  # never matched the Dockerfile, which was still on the end-of-life 20.
+  NODE_VERSION: '24'
 
 jobs:
   test:
@@ -70,6 +75,11 @@ jobs:
       # only where something built it. Four views load their stylesheet and
       # Alpine from the bundle rather than from a CDN, so the suite cannot
       # render a page without this.
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
       - name: Build front-end assets
         run: |
           npm ci
@@ -137,6 +147,11 @@ jobs:
       # public/build is gitignored, and the consoles render @vite - which throws
       # without a manifest. See the note in the test job. Before the end-to-end checks, not after:
       # those drive the consoles over real HTTP and render the same views.
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
       - name: Build front-end assets
         run: |
           npm ci
@@ -680,6 +695,11 @@ jobs:
 
       # public/build is gitignored, and the consoles render @vite - which throws
       # without a manifest. See the note in the test job.
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
       - name: Build front-end assets
         run: |
           npm ci

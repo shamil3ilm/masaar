@@ -23,7 +23,11 @@ RUN composer install \
 # =============================================================================
 # Stage 2: Frontend Assets (if needed)
 # =============================================================================
-FROM node:20-alpine AS node-build
+# Node 20 left support in April 2026, so this stage compiled the assets a
+# deployment serves on an unsupported runtime. 24 is the current LTS and the
+# version the build is actually exercised on - locally and, since this change,
+# in CI. DockerRuntimeVersionTest pins the three together.
+FROM node:24-alpine AS node-build
 
 WORKDIR /app
 

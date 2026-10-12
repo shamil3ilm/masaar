@@ -38,11 +38,26 @@ class VerifyHashChain extends Command
 
     public function handle(): int
     {
-        // Switch database if specified
+        // Switch database if specified.
+        //
+        // The connection name comes from config rather than being written
+        // here. It said 'pgsql', and this application runs on mysql - so
+        // --database rewrote the configuration of a connection nothing uses,
+        // purged it, and then verified the default database anyway while
+        // reporting the name it had been given.
+        //
+        // That is the disaster-recovery path in docs/DEPLOYMENT-GUIDE.md: the
+        // monthly test restores a backup into masaar_dr_test and runs this to
+        // prove the chain survived. It was reading production, so the test
+        // passed without the restored copy being looked at once - and passing
+        // was the outcome that stopped anybody asking.
         if ($database = $this->option('database')) {
-            $this->info("Using database: {$database}");
-            config(['database.connections.pgsql.database' => $database]);
-            DB::purge('pgsql');
+            $connection = (string) config('database.default');
+
+            $this->info("Using database: {$database} (on the {$connection} connection)");
+
+            config(["database.connections.{$connection}.database" => $database]);
+            DB::purge($connection);
         }
 
         $this->info('');

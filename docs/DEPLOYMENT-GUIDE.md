@@ -16,6 +16,7 @@ Complete deployment guide for production-ready ZATCA e-invoicing infrastructure.
 10. [Pre-Launch Verification](#10-pre-launch-verification)
 11. [Disaster Recovery Testing](#11-disaster-recovery-testing)
 12. [Monitoring & Alerting](#12-monitoring--alerting)
+13. [Oracle Cloud (containers)](#13-oracle-cloud-containers)
 
 ---
 
@@ -34,7 +35,7 @@ Complete deployment guide for production-ready ZATCA e-invoicing infrastructure.
 
 | Service | Purpose | Critical |
 |---------|---------|----------|
-| PostgreSQL 15+ | Primary database | ✅ YES |
+| MySQL 8.4+ | Primary database | ✅ YES |
 | Redis 7+ | Cache, queues, ICV locks | ✅ YES |
 | Nginx | Web server | ✅ YES |
 | PHP 8.4-FPM | Application runtime | ✅ YES |
@@ -57,7 +58,7 @@ sudo apt install -y \
     nginx \
     php8.4-fpm \
     php8.4-cli \
-    php8.4-pgsql \
+    php8.4-mysql \
     php8.4-redis \
     php8.4-xml \
     php8.4-curl \
@@ -70,12 +71,16 @@ sudo apt install -y \
     certbot \
     python3-certbot-nginx
 
-# Install PostgreSQL 15
-sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
-sudo apt update
-sudo apt install -y postgresql-15
+# Install MySQL 8.4
+sudo apt install -y mysql-server
+sudo mysql_secure_installation
 ```
+
+> This guide described a PostgreSQL deployment until 2026-10-12, and the
+> application has never run on one. `.env.example` sets `DB_CONNECTION=mysql`,
+> the container image installs `pdo_mysql` and `mysqli` and no `pdo_pgsql` at
+> all, and CI runs its suite against `mysql:8.4`. Following the old text
+> produced a carefully tuned database the application could not open.
 
 ### PHP Configuration
 
@@ -103,16 +108,20 @@ extension=openssl
 
 ## 3. Database Configuration
 
-### PostgreSQL Setup
+### MySQL Setup
 
 ```bash
 # Create database and user
-sudo -u postgres psql << EOF
-CREATE USER masaar WITH PASSWORD 'your-strong-password-here';
-CREATE DATABASE masaar_prod OWNER masaar;
-GRANT ALL PRIVILEGES ON DATABASE masaar_prod TO masaar;
+sudo mysql << EOF
+CREATE DATABASE masaar_prod CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'masaar'@'localhost' IDENTIFIED BY 'your-strong-password-here';
+GRANT ALL PRIVILEGES ON masaar_prod.* TO 'masaar'@'localhost';
+FLUSH PRIVILEGES;
 EOF
 ```
+
+`utf8mb4` is not optional. Buyer and seller names are Arabic, and the
+four-byte form is the one that stores them.
 
 ### Transaction Isolation (CRITICAL)
 
@@ -120,37 +129,48 @@ Verify isolation level:
 
 ```sql
 -- Connect to database
-psql -U masaar -d masaar_prod
+mysql -u masaar -p masaar_prod
 
--- Check isolation level (MUST be READ COMMITTED or higher)
-SHOW default_transaction_isolation;
--- Expected: read committed
-
--- If needed, set in postgresql.conf:
--- default_transaction_isolation = 'read committed'
+-- Check isolation level
+SELECT @@global.transaction_isolation, @@session.transaction_isolation;
+-- Expected: REPEATABLE-READ, which is MySQL's default
 ```
 
-**WARNING**: Never use `READ UNCOMMITTED`. It will cause ICV race conditions.
+MySQL's default of `REPEATABLE READ` is stronger than the minimum, and it is
+the right one to leave alone here. Under it `SELECT ... FOR UPDATE` takes gap
+locks, which is what stops a second transaction inserting the same ICV
+between the read and the write, and ICV allocation relies on that lock.
 
-### PostgreSQL Tuning
+**WARNING**: Never use `READ UNCOMMITTED`. It will cause ICV race
+conditions.
 
-Edit `/etc/postgresql/15/main/postgresql.conf`:
+### MySQL Tuning
+
+Edit `/etc/mysql/mysql.conf.d/mysqld.cnf`:
 
 ```ini
+[mysqld]
 # Connection settings
 max_connections = 100
-shared_buffers = 2GB
-effective_cache_size = 6GB
-work_mem = 32MB
 
-# WAL for point-in-time recovery
-wal_level = replica
-max_wal_senders = 3
-wal_keep_size = 1GB
+# Roughly 60-70% of available memory on a dedicated database host
+innodb_buffer_pool_size = 2G
+
+# Durability. 1 flushes and fsyncs the redo log at every commit, which is the
+# only setting under which a committed invoice survives losing power. The
+# faster values trade away the guarantee a hash chain exists to provide.
+innodb_flush_log_at_trx_commit = 1
+sync_binlog = 1
+
+# Binary log, for point-in-time recovery. On by default in 8.0+; the
+# retention is what needs choosing.
+log_bin = /var/log/mysql/mysql-bin.log
+binlog_format = ROW
+binlog_expire_logs_seconds = 604800
 
 # Logging
-log_statement = 'mod'
-log_min_duration_statement = 1000
+slow_query_log = ON
+long_query_time = 1
 ```
 
 ---
@@ -524,9 +544,9 @@ APP_URL=https://api.masaar.sa
 #--------------------------------------------
 # Database (CRITICAL)
 #--------------------------------------------
-DB_CONNECTION=pgsql
+DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
-DB_PORT=5432
+DB_PORT=3306
 DB_DATABASE=masaar_prod
 DB_USERNAME=masaar
 DB_PASSWORD=your-strong-password
@@ -785,17 +805,17 @@ echo "  Latest Hash: $PRE_LATEST_HASH"
 # 2. Create backup
 echo "Step 2: Creating backup..."
 BACKUP_FILE="/tmp/dr-test-$(date +%Y%m%d-%H%M%S).sql"
-pg_dump -U masaar masaar_prod > "$BACKUP_FILE"
+mysqldump -u masaar -p --single-transaction --routines masaar_prod > "$BACKUP_FILE"
 echo "  Backup: $BACKUP_FILE ($(du -h $BACKUP_FILE | cut -f1))"
 
 # 3. Simulate disaster (create test database)
 echo "Step 3: Simulating disaster..."
-sudo -u postgres psql -c "CREATE DATABASE masaar_dr_test;"
+sudo mysql -e "CREATE DATABASE masaar_dr_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
 # 4. Restore from backup
 echo "Step 4: Restoring from backup..."
 RESTORE_START=$(date +%s)
-psql -U masaar masaar_dr_test < "$BACKUP_FILE"
+mysql -u masaar -p masaar_dr_test < "$BACKUP_FILE"
 RESTORE_END=$(date +%s)
 RESTORE_TIME=$((RESTORE_END - RESTORE_START))
 echo "  Restore time: ${RESTORE_TIME}s"
@@ -807,7 +827,7 @@ php artisan fatoora:verify-hash-chain --database=masaar_dr_test
 
 # 6. Compare counts
 echo "Step 6: Comparing invoice counts..."
-POST_INVOICE_COUNT=$(psql -U masaar -d masaar_dr_test -t -c "SELECT COUNT(*) FROM invoices;")
+POST_INVOICE_COUNT=$(mysql -u masaar -p -N -B -D masaar_dr_test -e "SELECT COUNT(*) FROM invoices;")
 if [[ "$PRE_INVOICE_COUNT" == "$POST_INVOICE_COUNT" ]]; then
     echo "  ✅ Invoice count matches: $POST_INVOICE_COUNT"
 else
@@ -816,7 +836,7 @@ fi
 
 # 7. Cleanup
 echo "Step 7: Cleaning up..."
-sudo -u postgres psql -c "DROP DATABASE masaar_dr_test;"
+sudo mysql -e "DROP DATABASE masaar_dr_test;"
 rm "$BACKUP_FILE"
 
 echo "=========================================="
@@ -827,56 +847,32 @@ echo "=========================================="
 
 ### Hash Chain Verification Command
 
-Create `app/Console/Commands/VerifyHashChain.php`:
+The command already exists: `app/Console/Commands/VerifyHashChain.php`.
 
-```php
-<?php
+```bash
+# Every organization
+php artisan fatoora:verify-hash-chain
 
-namespace App\Console\Commands;
+# One organization
+php artisan fatoora:verify-hash-chain --organization=<uuid>
 
-use App\Domains\Invoice\Models\Invoice;
-use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
-
-class VerifyHashChain extends Command
-{
-    protected $signature = 'fatoora:verify-hash-chain {--database=}';
-    protected $description = 'Verify PIH (Previous Invoice Hash) chain integrity';
-
-    public function handle(): int
-    {
-        if ($database = $this->option('database')) {
-            config(['database.connections.pgsql.database' => $database]);
-            DB::purge('pgsql');
-        }
-
-        $this->info('Verifying hash chain integrity...');
-
-        $invoices = Invoice::orderBy('icv')->get(['id', 'icv', 'hash', 'previous_invoice_hash']);
-
-        $errors = 0;
-        $previousHash = base64_encode(str_repeat("\0", 32)); // First invoice PIH
-
-        foreach ($invoices as $invoice) {
-            if ($invoice->previous_invoice_hash !== $previousHash) {
-                $this->error("ICV {$invoice->icv}: PIH mismatch");
-                $this->line("  Expected: {$previousHash}");
-                $this->line("  Got: {$invoice->previous_invoice_hash}");
-                $errors++;
-            }
-            $previousHash = $invoice->hash;
-        }
-
-        if ($errors === 0) {
-            $this->info("✅ Hash chain verified. {$invoices->count()} invoices checked.");
-            return Command::SUCCESS;
-        }
-
-        $this->error("❌ {$errors} hash chain errors found.");
-        return Command::FAILURE;
-    }
-}
+# A restored copy, for the procedure above
+php artisan fatoora:verify-hash-chain --database=masaar_dr_test
 ```
+
+It reports three things, and the last two are the ones worth knowing
+about: a hash that does not match the chain entry built on it, a gap in
+the ICV sequence, and an invoice that reached a non-draft status while
+holding no counter at all - which is outside the chain rather than wrong
+within it. A draft is not a chain member and is not checked.
+
+> Until 2026-10-12 this section printed an implementation of the command
+> instead of pointing at it, and the two had diverged. The printed version
+> read a `previous_invoice_hash` column the `invoices` table does not have,
+> and it wrote `database.connections.pgsql.database` - so `--database` on a
+> MySQL deployment reconfigured an unused connection and verified the live
+> database while printing the name it had been given. The monthly test
+> above therefore passed without reading the restored copy once.
 
 ---
 
@@ -915,6 +911,101 @@ if ($clockDrift > 1.0) {
         ->notify(new ClockDriftAlert($clockDrift));
 }
 ```
+
+---
+
+---
+
+## 13. Oracle Cloud (containers)
+
+Sections 2 to 9 install each piece onto a host directly. This section is the
+other way to run the same arrangement: `docker-compose.prod.yml` and the
+`Dockerfile` in this repository, on one Oracle Cloud instance. It is how
+staging is deployed.
+
+### Why this shape
+
+The application needs a writable filesystem for `CredentialStore`, six
+supervisor-managed queue workers and ten scheduled commands. That rules out
+the serverless platforms - a function with a read-only filesystem and no
+resident process cannot hold any of the three - and makes a single instance
+running containers the smallest thing that actually fits.
+
+### The instance
+
+Oracle's Always Free tier offers two shapes. Take the ARM one:
+
+| | VM.Standard.A1.Flex (ARM) | VM.Standard.E2.1.Micro (AMD) |
+|---|---|---|
+| CPU | up to 4 cores | 1 core |
+| Memory | up to 24 GB | 1 GB |
+| Suitable | yes | no - MySQL and six workers will not fit |
+
+**The images are multi-architecture.** `php:8.4-fpm-alpine` publishes
+`linux/arm64` alongside amd64, as do the `node` and `composer` images the
+build stages use, and the PHP extensions compiled during the build
+(`docker-php-ext-install`, `pecl install redis`) compile on ARM from the
+source the image already fetches. Nothing in this repository pins an
+architecture, and nothing needs a `--platform` flag.
+
+Ubuntu 22.04 or 24.04 as the instance image.
+
+### Setup
+
+```bash
+# 1. Docker, on the instance
+sudo apt update && sudo apt install -y docker.io docker-compose-plugin
+sudo usermod -aG docker "$USER"   # log out and back in
+
+# 2. The application
+git clone <your-remote> masaar && cd masaar
+
+# 3. Configuration. Fill it in before starting anything - the application
+#    refuses to boot in production with APP_DEBUG on, with sessions
+#    unencrypted, or with the two submission rate limits disagreeing.
+cp docker/.env.template .env
+php -r "echo 'APP_KEY=base64:'.base64_encode(random_bytes(32)).PHP_EOL;" >> .env
+
+# 4. Build and start
+docker compose -f docker-compose.prod.yml up -d --build
+
+# 5. Schema, and somebody who can sign in
+docker compose -f docker-compose.prod.yml exec app php artisan migrate --force
+docker compose -f docker-compose.prod.yml exec app php artisan masaar:create-admin ops@your-domain
+```
+
+### Ports
+
+Oracle instances have two firewalls and both are closed by default. Opening
+one without the other is the usual reason a deployment appears to be running
+and answers nothing:
+
+```bash
+# The instance's own firewall
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT
+sudo netfilter-persistent save
+```
+
+The second is the Virtual Cloud Network's security list, in the Oracle
+console: add ingress rules for 80 and 443 from `0.0.0.0/0`.
+
+### Afterwards
+
+Work through [section 10](#10-pre-launch-verification) as written - it does
+not assume a particular host - and then:
+
+```bash
+# The chain, which is the check that cannot be repaired after the fact
+docker compose -f docker-compose.prod.yml exec app php artisan fatoora:verify-hash-chain
+
+# Nothing should be overdue on a new deployment
+docker compose -f docker-compose.prod.yml exec app php artisan fatoora:overdue-submissions
+```
+
+Certificates are handled by the Traefik service in `docker-compose.prod.yml`,
+so [section 7](#7-ssltls-configuration) applies only to a host running nginx
+directly.
 
 ---
 
@@ -964,7 +1055,7 @@ sudo supervisorctl start masaar-zatca-submissions:*
 sudo supervisorctl stop all
 
 # Restore from backup
-pg_restore -U masaar -d masaar_prod backup.dump
+mysql -u masaar -p masaar_prod < backup.sql
 
 # Verify hash chain
 php artisan fatoora:verify-hash-chain

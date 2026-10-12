@@ -7,7 +7,7 @@ namespace Tests\Feature\Architecture;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The PHP version is declared in three places and they have to agree.
+ * The runtime versions are declared in several places and have to agree.
  *
  * composer.json requires ^8.4. CI installs 8.4. The production image was
  * built on php:8.2-fpm-alpine, and had been for as long as the Dockerfile
@@ -30,10 +30,18 @@ use PHPUnit\Framework\TestCase;
  *   been in a deployment.
  *
  * The Dockerfile now runs platform_check.php during the build, which fails it
- * at 255. This test is the cheaper half: it reads the three files and compares
- * them, so the mismatch is a red test rather than a failed build.
+ * at 255. This test is the cheaper half: it reads the files and compares them,
+ * so a mismatch is a red test rather than a failed build.
+ *
+ * Node had the same shape and worse. The build stage was node:20-alpine, which
+ * left support in April 2026, so the assets a deployment serves were compiled
+ * on an unsupported runtime. CI had no setup-node step at all, so the three
+ * jobs that run `npm ci && npm run build` used whichever Node their runner
+ * image shipped - unpinned, and therefore never the Dockerfile's. package.json
+ * declared no engines field, so nothing in the repository said which Node this
+ * is built with. Development was on 24. All three say 24 now.
  */
-class DockerPhpVersionTest extends TestCase
+class DockerRuntimeVersionTest extends TestCase
 {
     private const ROOT = __DIR__.'/../../..';
 
@@ -70,6 +78,42 @@ class DockerPhpVersionTest extends TestCase
 
         $this->assertSame($imageMajor.'.'.$imageMinor, $m[1],
             'CI tests on PHP '.$m[1].' and the image runs '.$imageMajor.'.'.$imageMinor.'.');
+    }
+
+    public function test_the_node_versions_agree(): void
+    {
+        $image = $this->nodeMajorIn(
+            '/^FROM node:(\d+)[^\s]*\s+AS node-build/m',
+            (string) file_get_contents(self::ROOT.'/Dockerfile'),
+            'The Dockerfile has no `FROM node:<version> AS node-build` line.'
+        );
+
+        $ci = $this->nodeMajorIn(
+            "/NODE_VERSION:\s*'(\d+)/",
+            (string) file_get_contents(self::ROOT.'/.github/workflows/ci.yml'),
+            'ci.yml declares no NODE_VERSION, so the asset build takes whichever '
+            .'Node the runner image ships.'
+        );
+
+        $declared = $this->nodeMajorIn(
+            '/"node"\s*:\s*"[^0-9]*(\d+)/',
+            (string) file_get_contents(self::ROOT.'/package.json'),
+            'package.json declares no engines.node, so nothing here says which '
+            .'Node this is built with.'
+        );
+
+        $this->assertSame($image, $ci,
+            'The build stage is Node '.$image.' and CI builds the assets on '.$ci.'.');
+
+        $this->assertSame($image, $declared,
+            'The build stage is Node '.$image.' and package.json asks for '.$declared.'.');
+    }
+
+    private function nodeMajorIn(string $pattern, string $subject, string $missing): int
+    {
+        $this->assertSame(1, preg_match($pattern, $subject, $m), $missing);
+
+        return (int) $m[1];
     }
 
     /**
