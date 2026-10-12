@@ -3,6 +3,7 @@
 use App\Domains\Auth\Http\Controllers\SessionAuthController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\AdminAlertController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceController;
+use App\Domains\Invoice\Http\Controllers\PortalInvoiceDraftController;
 use App\Domains\Licensing\Http\Controllers\AdminLicenceController;
 use App\Domains\Organization\Http\Controllers\CustomerPortalController;
 use App\Domains\Platform\Http\Controllers\AdminController;
@@ -119,6 +120,11 @@ Route::prefix('portal')->name('portal.')
         // the query instead, so a foreign id is unfindable rather than merely
         // unscoped.
         Route::get('/invoices', [PortalInvoiceController::class, 'index'])->name('invoices.index');
+        // Before the {invoiceId} route. The group constrains that parameter to
+        // a UUID so "create" could not be swallowed as one, but the reading
+        // order should not depend on knowing that.
+        Route::get('/invoices/create', [PortalInvoiceDraftController::class, 'create'])->name('invoices.create');
+        Route::post('/invoices', [PortalInvoiceDraftController::class, 'store'])->name('invoices.store');
         Route::get('/invoices/{invoiceId}', [PortalInvoiceController::class, 'show'])->name('invoices.show');
 
         Route::get('/submissions', [CustomerPortalController::class, 'submissions'])->name('submissions');

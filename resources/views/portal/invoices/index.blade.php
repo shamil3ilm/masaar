@@ -8,6 +8,11 @@
         <h2 class="text-2xl font-bold text-gray-800">Invoices</h2>
         <p class="text-gray-500">Everything issued under {{ $organization->name }}</p>
     </div>
+
+    <a href="{{ route('portal.invoices.create') }}"
+       class="rounded bg-teal-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-teal-700">
+        New invoice
+    </a>
 </div>
 
 @include('portal.partials.flash')

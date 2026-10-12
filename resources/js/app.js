@@ -1,6 +1,7 @@
 import Alpine from '@alpinejs/csp';
 
 import { registerConfirmations } from './confirm.js';
+import { registerInvoiceLines } from './invoice-lines.js';
 import sidebar from './sidebar.js';
 
 /*
@@ -20,5 +21,6 @@ import sidebar from './sidebar.js';
 Alpine.data('sidebar', sidebar);
 
 registerConfirmations();
+registerInvoiceLines();
 
 Alpine.start();
