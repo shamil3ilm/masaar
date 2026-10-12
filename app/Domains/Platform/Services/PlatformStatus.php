@@ -28,6 +28,15 @@ class PlatformStatus
     ) {}
 
     /**
+     * How long the certificate count may lag.
+     *
+     * A certificate is issued during onboarding, which is a deliberate act
+     * someone is watching; a minute of staleness in a count of them costs
+     * nothing, and a decryption per organization per page load does.
+     */
+    private const CERTIFICATE_COUNT_TTL = 60;
+
+    /**
      * Platform-wide counts, for the dashboard overview.
      */
     public function overview(): array
@@ -92,7 +101,23 @@ class PlatformStatus
                 ->count(),
             // Counted from the credential store, which is where certificates
             // are. certificate_lineage was never written, so this was always 0.
-            'with_certificate' => $this->organizationsWithCertificate()->count(),
+            //
+            // Cached, because it is the one figure on this page that costs
+            // real work: a decryption and an X.509 parse for every
+            // organization, every load. The JSON endpoint this dashboard
+            // replaced cached its whole payload for sixty seconds; rendering
+            // server-side dropped that, which is invisible at three
+            // organizations and the slowest page in the console at three
+            // thousand.
+            //
+            // Only this figure is cached. The counts beside it are plain
+            // aggregates and stay live, so a stale number here cannot make
+            // the page as a whole look quieter than the platform is.
+            'with_certificate' => Cache::remember(
+                'platform:organizations-with-certificate',
+                self::CERTIFICATE_COUNT_TTL,
+                fn (): int => $this->organizationsWithCertificate()->count(),
+            ),
         ];
     }
 
