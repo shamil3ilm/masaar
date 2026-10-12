@@ -47,8 +47,6 @@
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                     </button>
                     <div class="flex items-center space-x-4">
-                        <span id="system-status" class="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">Online</span>
-                        <span class="text-sm text-gray-500">Last updated: <span id="last-updated">-</span></span>
                         @auth
                         <span class="text-sm text-gray-600 border-l pl-4">{{ auth()->user()->email }}</span>
                         <form method="POST" action="{{ route('logout') }}">
@@ -67,20 +65,6 @@
             </div>
         </main>
     </div>
-
-    <script>
-        // Auto-refresh dashboard data every 30 seconds
-        function refreshDashboard() {
-            const event = new CustomEvent('refresh-dashboard');
-            document.dispatchEvent(event);
-            document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
-        }
-
-        setInterval(refreshDashboard, 30000);
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
-        });
-    </script>
     @stack('scripts')
 </body>
 </html>
