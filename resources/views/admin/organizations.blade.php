@@ -49,7 +49,7 @@
                     {{ $submissionStats[$org->id] ?? 0 }} successful
                 </td>
                 <td class="px-6 py-4">
-                    <a href="{{ route('admin.organization.detail', $org->id) }}" class="text-blue-600 hover:text-blue-800 text-sm">View</a>
+                    <a href="{{ route('admin.organization.detail', $org->id) }}" class="text-teal-700 hover:text-teal-900 text-sm">View</a>
                 </td>
             </tr>
             @empty

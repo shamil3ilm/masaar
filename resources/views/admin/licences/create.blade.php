@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="mb-6">
-    <a href="{{ route('admin.licences.index') }}" class="text-sm text-blue-600 hover:text-blue-800">&larr; All licences</a>
+    <a href="{{ route('admin.licences.index') }}" class="text-sm text-teal-700 hover:text-teal-900">&larr; All licences</a>
     <h2 class="mt-1 text-2xl font-bold text-gray-800">Issue a licence</h2>
     <p class="text-gray-500">
         Creates the API key and secret for a partner. The secret is shown once, on the
@@ -117,7 +117,7 @@
     </div>
 
     <div class="flex items-center gap-3">
-        <button type="submit" class="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700">
+        <button type="submit" class="rounded-md bg-teal-600 px-4 py-2 text-sm text-white hover:bg-teal-700">
             Issue licence
         </button>
         <a href="{{ route('admin.licences.index') }}" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancel</a>

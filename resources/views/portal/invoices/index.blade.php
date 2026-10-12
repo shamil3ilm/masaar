@@ -32,7 +32,7 @@
         </div>
 
         <div class="flex items-end gap-2">
-            <button type="submit" class="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+            <button type="submit" class="rounded bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700">
                 Filter
             </button>
             @if ($status || $search)
@@ -60,7 +60,7 @@
                 <tr class="hover:bg-gray-50">
                     <td class="px-4 py-3">
                         <a href="{{ route('portal.invoices.show', $invoice->id) }}"
-                           class="font-medium text-blue-600 hover:underline">
+                           class="font-medium text-teal-700 hover:underline">
                             {{ $invoice->invoice_number }}
                         </a>
                         <p class="text-xs text-gray-400">{{ ucfirst($invoice->type instanceof \BackedEnum ? $invoice->type->value : (string) $invoice->type) }}</p>

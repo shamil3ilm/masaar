@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="mb-6">
-    <a href="{{ route('portal.invoices.index') }}" class="text-sm text-blue-600 hover:underline">&larr; All invoices</a>
+    <a href="{{ route('portal.invoices.index') }}" class="text-sm text-teal-700 hover:underline">&larr; All invoices</a>
 </div>
 
 <div class="mb-8 flex flex-wrap items-start justify-between gap-4">

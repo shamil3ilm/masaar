@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="mb-6">
-    <a href="{{ route('admin.webhooks.index') }}" class="text-sm text-blue-600 hover:text-blue-800">&larr; All endpoints</a>
+    <a href="{{ route('admin.webhooks.index') }}" class="text-sm text-teal-700 hover:text-teal-900">&larr; All endpoints</a>
     <h2 class="mt-1 text-2xl font-bold break-all text-gray-800">{{ $endpoint->url }}</h2>
     <p class="text-gray-500">{{ $endpoint->org?->name ?? 'Organization no longer exists' }}</p>
 </div>

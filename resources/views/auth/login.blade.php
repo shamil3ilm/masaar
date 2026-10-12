@@ -4,14 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign in - Masaar</title>
+    <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center">
     <div class="max-w-md w-full mx-4">
         <div class="bg-white rounded-lg shadow-lg p-8">
-            <div class="text-center mb-8">
-                <h1 class="text-2xl font-bold text-gray-800">Masaar</h1>
-                <p class="text-gray-500 mt-2">Sign in to continue</p>
+            <div class="mb-8 flex flex-col items-center text-center">
+                <x-logo :size="44" />
+                <h1 class="mt-4 text-2xl font-semibold tracking-tight text-ink-900">Masaar</h1>
+                <p class="mt-1 text-gray-500">Sign in to continue</p>
             </div>
 
             @if ($errors->any())
@@ -33,23 +35,23 @@
                     <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
                     <input id="email" name="email" type="email" required autofocus
                            value="{{ old('email') }}" autocomplete="username"
-                           class="w-full border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                           class="w-full border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
                 </div>
 
                 <div>
                     <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
                     <input id="password" name="password" type="password" required
                            autocomplete="current-password"
-                           class="w-full border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                           class="w-full border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
                 </div>
 
                 <label class="flex items-center text-sm text-gray-600">
-                    <input type="checkbox" name="remember" value="1" class="mr-2 text-blue-600">
+                    <input type="checkbox" name="remember" value="1" class="mr-2 text-teal-600">
                     Remember me
                 </label>
 
                 <button type="submit"
-                        class="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors">
+                        class="w-full py-3 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 transition-colors">
                     Sign in
                 </button>
             </form>

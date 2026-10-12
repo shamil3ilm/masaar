@@ -10,7 +10,7 @@
     </div>
     <form action="{{ route('admin.queue.process') }}" method="POST" class="inline">
         @csrf
-        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+        <button type="submit" class="px-4 py-2 bg-teal-600 text-white rounded hover:bg-teal-700">
             Process Queue
         </button>
     </form>
@@ -87,7 +87,7 @@
                     @if($item->state === 'failed')
                     <form action="{{ route('admin.queue.retry', $item->id) }}" method="POST" class="inline">
                         @csrf
-                        <button type="submit" class="text-blue-600 hover:text-blue-800 text-sm">Retry</button>
+                        <button type="submit" class="text-teal-700 hover:text-teal-900 text-sm">Retry</button>
                     </form>
                     @endif
                 </td>

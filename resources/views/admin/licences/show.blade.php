@@ -31,7 +31,7 @@
 
 <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
     <div>
-        <a href="{{ route('admin.licences.index') }}" class="text-sm text-blue-600 hover:text-blue-800">&larr; All licences</a>
+        <a href="{{ route('admin.licences.index') }}" class="text-sm text-teal-700 hover:text-teal-900">&larr; All licences</a>
         <h2 class="mt-1 text-2xl font-bold text-gray-800">{{ $row['organization_name'] }}</h2>
         <p class="text-gray-500">{{ $row['contact_email'] }}</p>
     </div>

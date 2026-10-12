@@ -10,7 +10,7 @@
 
 <!-- State Summary -->
 <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-    <a href="{{ route('admin.logs') }}" class="bg-white rounded-lg shadow p-4 text-center hover:bg-gray-50 {{ !$state ? 'ring-2 ring-blue-500' : '' }}">
+    <a href="{{ route('admin.logs') }}" class="bg-white rounded-lg shadow p-4 text-center hover:bg-gray-50 {{ !$state ? 'ring-2 ring-teal-500' : '' }}">
         <p class="text-2xl font-bold">{{ array_sum($stateCounts->toArray()) }}</p>
         <p class="text-sm text-gray-500">All</p>
     </a>
@@ -18,7 +18,7 @@
         <p class="text-2xl font-bold text-green-600">{{ $stateCounts['cleared'] ?? 0 }}</p>
         <p class="text-sm text-gray-500">Cleared</p>
     </a>
-    <a href="{{ route('admin.logs', ['state' => 'reported']) }}" class="bg-white rounded-lg shadow p-4 text-center hover:bg-gray-50 {{ $state === 'reported' ? 'ring-2 ring-blue-500' : '' }}">
+    <a href="{{ route('admin.logs', ['state' => 'reported']) }}" class="bg-white rounded-lg shadow p-4 text-center hover:bg-gray-50 {{ $state === 'reported' ? 'ring-2 ring-teal-500' : '' }}">
         <p class="text-2xl font-bold text-blue-600">{{ $stateCounts['reported'] ?? 0 }}</p>
         <p class="text-sm text-gray-500">Reported</p>
     </a>

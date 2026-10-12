@@ -40,6 +40,16 @@ use RecursiveIteratorIterator;
  * The Play CDN needed unsafe-eval, which made a policy pointless; the bundle
  * needs neither. A policy is now worth adding, and the inline <script> blocks
  * in these layouts are what it has to account for.
+ *
+ * Stylesheets are checked as well as scripts, and were not at first. That gap
+ * had a tenant: the welcome page fetched a typeface from fonts.bunny.net with
+ * a preconnect to match, and the check read right past it because it looked
+ * only for <script src>. A stylesheet is not as dangerous as a script - it
+ * cannot execute - but it can read as much of the page as a selector reaches,
+ * it puts every visitor's address in front of a third party, it holds the
+ * first paint hostage to someone else's uptime, and it is an origin the
+ * content policy then has to allow. The nightly scan reported it as a missing
+ * integrity attribute, which is how it was found.
  */
 class ExternalScriptTest extends TestCase
 {
@@ -52,6 +62,19 @@ class ExternalScriptTest extends TestCase
      * @var list<string>
      */
     private const ALLOWED = [];
+
+    /**
+     * What counts as fetching from somewhere else, and what to call it.
+     *
+     * <link> covers the stylesheet and the preconnect that warms it up. Both
+     * name an origin this application would otherwise not talk to.
+     *
+     * @var array<string, string>
+     */
+    private const REMOTE = [
+        'executes' => '/<script[^>]+src=["\'](https?:\/\/[^"\']+)["\']/i',
+        'fetches' => '/<link[^>]+href=["\'](https?:\/\/[^"\']+)["\']/i',
+    ];
 
     /**
      * The views that carried the CDN tags and now carry @vite.
@@ -67,31 +90,32 @@ class ExternalScriptTest extends TestCase
         'layouts/admin.blade.php',
         'layouts/portal.blade.php',
         'portal/select-org.blade.php',
+        'welcome.blade.php',
     ];
 
-    public function test_no_new_third_party_script(): void
+    public function test_no_new_third_party_asset(): void
     {
         $found = [];
 
         foreach ($this->views() as $path) {
-            preg_match_all(
-                '/<script[^>]+src=["\'](https?:\/\/[^"\']+)["\']/i',
-                (string) file_get_contents($path),
-                $matches
-            );
+            $source = (string) file_get_contents($path);
 
-            foreach ($matches[1] as $src) {
-                if (! in_array($src, self::ALLOWED, true)) {
-                    $found[] = basename($path).' loads '.$src;
+            foreach (self::REMOTE as $verb => $pattern) {
+                preg_match_all($pattern, $source, $matches);
+
+                foreach ($matches[1] as $url) {
+                    if (! in_array($url, self::ALLOWED, true)) {
+                        $found[] = basename($path).' '.$verb.' '.$url;
+                    }
                 }
             }
         }
 
         $this->assertSame([], $found, implode("\n", $found)."\n\n"
-            .'A page here executes third-party code with the session of whoever '
-            .'is looking at it. Vendor the file, or pin a version and add an '
-            .'integrity attribute. If it genuinely has to be remote and '
-            .'unpinned, add it to ALLOWED and say why.');
+            .'A page here depends on a third party at render time, with the '
+            .'session of whoever is looking at it. Build it into the bundle, or '
+            .'pin a version and add an integrity attribute. If it genuinely has '
+            .'to be remote and unpinned, add it to ALLOWED and say why.');
     }
 
     /**

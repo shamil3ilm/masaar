@@ -5,7 +5,7 @@
 @section('content')
 <div class="mb-6">
     <div class="flex items-center space-x-2 text-sm text-gray-500 mb-2">
-        <a href="{{ route('admin.organizations') }}" class="hover:text-blue-600">Organizations</a>
+        <a href="{{ route('admin.organizations') }}" class="hover:text-teal-700">Organizations</a>
         <span>/</span>
         <span>{{ $organization->name }}</span>
     </div>
@@ -141,7 +141,7 @@
 <div class="bg-white rounded-lg shadow">
     <div class="p-6 border-b flex justify-between items-center">
         <h3 class="text-lg font-semibold text-gray-800">Recent Submissions</h3>
-        <a href="{{ route('admin.logs', ['org_id' => $organization->id]) }}" class="text-sm text-blue-600 hover:text-blue-800">View All</a>
+        <a href="{{ route('admin.logs', ['org_id' => $organization->id]) }}" class="text-sm text-teal-700 hover:text-teal-900">View All</a>
     </div>
     <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">

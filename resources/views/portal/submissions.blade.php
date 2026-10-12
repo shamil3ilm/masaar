@@ -11,7 +11,7 @@
 <!-- Stats -->
 <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
     <a href="{{ route('portal.submissions', ['org_id' => request('org_id')]) }}"
-       class="bg-white rounded-lg shadow p-4 text-center hover:bg-gray-50 {{ !$state ? 'ring-2 ring-blue-500' : '' }}">
+       class="bg-white rounded-lg shadow p-4 text-center hover:bg-gray-50 {{ !$state ? 'ring-2 ring-teal-500' : '' }}">
         <p class="text-2xl font-bold">{{ array_sum($stateCounts->toArray()) }}</p>
         <p class="text-xs text-gray-500">All</p>
     </a>
@@ -21,7 +21,7 @@
         <p class="text-xs text-gray-500">Cleared</p>
     </a>
     <a href="{{ route('portal.submissions', ['org_id' => request('org_id'), 'state' => 'reported']) }}"
-       class="bg-white rounded-lg shadow p-4 text-center hover:bg-gray-50 {{ $state === 'reported' ? 'ring-2 ring-blue-500' : '' }}">
+       class="bg-white rounded-lg shadow p-4 text-center hover:bg-gray-50 {{ $state === 'reported' ? 'ring-2 ring-teal-500' : '' }}">
         <p class="text-2xl font-bold text-blue-600">{{ $stateCounts['reported'] ?? 0 }}</p>
         <p class="text-xs text-gray-500">Reported</p>
     </a>
@@ -65,7 +65,7 @@
             <input type="date" name="date_to" value="{{ $dateTo }}" class="border rounded px-3 py-2 text-sm">
         </div>
 
-        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">Filter</button>
+        <button type="submit" class="px-4 py-2 bg-teal-600 text-white rounded text-sm hover:bg-teal-700">Filter</button>
         <a href="{{ route('portal.submissions', ['org_id' => request('org_id')]) }}"
            class="px-4 py-2 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300">Clear</a>
     </form>
@@ -95,7 +95,7 @@
                 <td class="px-6 py-4">
                     @if($sub->user_name || $sub->user_email)
                     <a href="{{ route('portal.user.activity', ['userId' => $sub->created_by, 'org_id' => request('org_id')]) }}"
-                       class="text-sm text-blue-600 hover:text-blue-800">
+                       class="text-sm text-teal-700 hover:text-teal-900">
                         {{ $sub->user_name ?? $sub->user_email }}
                     </a>
                     @else

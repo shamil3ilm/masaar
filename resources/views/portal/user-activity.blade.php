@@ -5,10 +5,10 @@
 @section('content')
 <div class="mb-8">
     <a href="{{ route('portal.submissions', ['org_id' => request('org_id')]) }}"
-       class="text-blue-600 hover:text-blue-800 text-sm mb-2 inline-block">&larr; Back to Submissions</a>
+       class="text-teal-700 hover:text-teal-900 text-sm mb-2 inline-block">&larr; Back to Submissions</a>
     <div class="flex items-center">
-        <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mr-4">
-            <span class="text-blue-600 font-bold text-xl">{{ strtoupper(substr($user->name ?? $user->email, 0, 2)) }}</span>
+        <div class="w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center mr-4">
+            <span class="text-teal-700 font-bold text-xl">{{ strtoupper(substr($user->name ?? $user->email, 0, 2)) }}</span>
         </div>
         <div>
             <h2 class="text-2xl font-bold text-gray-800">{{ $user->name ?? 'User' }}</h2>

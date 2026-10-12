@@ -5,7 +5,49 @@
 @source '../**/*.blade.php';
 @source '../**/*.js';
 
+/*
+ * The Masaar palette, taken from the logo rather than invented here.
+ *
+ * The mark is a deep navy tile with a teal path looping through a sand
+ * coloured node - masaar (مسار) is a path, and the path through a node is
+ * what this product does to an invoice. Those three colours are the brand,
+ * and until now they existed only as hard-coded hex in the ERP front-end's
+ * Logo.tsx while this application used stock Tailwind grey and blue.
+ *
+ * Only two are declared. The teal is #14B8A6 exactly, which is Tailwind's own
+ * teal-500, so the accent uses the built-in teal-* ramp and gets every shade
+ * for hover, focus and tinted backgrounds for free. Navy and sand have no
+ * built-in equivalent, so they are declared with the few steps the interface
+ * actually uses - not a full ramp nobody would reference.
+ *
+ * The type stack is deliberately the system one. 'Instrument Sans' came from
+ * the Laravel starter kit, not from Masaar, and the only thing that ever
+ * requested it was the stock welcome page - from fonts.bunny.net, which put
+ * every visitor's address in front of a third party, made the first paint
+ * wait on someone else's uptime and was the one external resource standing
+ * between this application and a Content-Security-Policy worth setting.
+ */
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+        sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+
+    /* The logo tile. Navigation, headings, dark surfaces. */
+    --color-ink-950: #10131f;
+    --color-ink-900: #1a1f36;
+    --color-ink-800: #252c48;
+    --color-ink-700: #333c5c;
+
+    /* The node. A highlight, used sparingly - it is one dot in the mark. */
+    --color-sand-200: #eadbc8;
+    --color-sand-100: #f5ece1;
+}
+
+/*
+ * Alpine hides elements marked x-cloak until it has initialised, which needs
+ * a rule to exist before the stylesheet's own cascade. It lived in an inline
+ * <style> in the admin layout, which is one of the two things that would have
+ * forced style-src 'unsafe-inline' into the policy.
+ */
+[x-cloak] {
+    display: none !important;
 }

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Select Organization - ZATCA Portal</title>
+    <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center">
@@ -26,7 +27,7 @@
                 <div class="space-y-3 mb-6">
                     @foreach($organizations as $org)
                     <label class="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                        <input type="radio" name="org_id" value="{{ $org->id }}" class="mr-4 text-blue-600" required>
+                        <input type="radio" name="org_id" value="{{ $org->id }}" class="mr-4 text-teal-600" required>
                         <div class="flex-1 min-w-0">
                             <p class="font-medium text-gray-800 truncate">{{ $org->name }}</p>
                             <p class="text-sm text-gray-500">{{ $org->vat_number ?? 'No VAT' }}</p>
@@ -37,7 +38,7 @@
                     </label>
                     @endforeach
                 </div>
-                <button type="submit" class="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors">
+                <button type="submit" class="w-full py-3 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 transition-colors">
                     View Portal
                 </button>
             </form>

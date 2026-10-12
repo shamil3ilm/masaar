@@ -72,8 +72,8 @@
                 @foreach($userActivity as $activity)
                 <div class="flex items-center justify-between">
                     <div class="flex items-center">
-                        <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                            <span class="text-blue-600 font-medium">{{ strtoupper(substr($activity->user_name, 0, 2)) }}</span>
+                        <div class="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center mr-3">
+                            <span class="text-teal-700 font-medium">{{ strtoupper(substr($activity->user_name, 0, 2)) }}</span>
                         </div>
                         <div>
                             <p class="font-medium text-gray-800">{{ $activity->user_name }}</p>
@@ -82,7 +82,7 @@
                     </div>
                     @if($activity->user_id)
                     <a href="{{ route('portal.user.activity', ['userId' => $activity->user_id, 'org_id' => request('org_id')]) }}"
-                       class="text-blue-600 hover:text-blue-800 text-sm">View</a>
+                       class="text-teal-700 hover:text-teal-900 text-sm">View</a>
                     @endif
                 </div>
                 @endforeach
@@ -98,7 +98,7 @@
         <div class="p-6 border-b flex justify-between items-center">
             <h3 class="text-lg font-semibold text-gray-800">Recent Submissions</h3>
             <a href="{{ route('portal.submissions', ['org_id' => request('org_id')]) }}"
-               class="text-blue-600 hover:text-blue-800 text-sm">View All</a>
+               class="text-teal-700 hover:text-teal-900 text-sm">View All</a>
         </div>
         <div class="divide-y">
             @forelse($recentSubmissions as $submission)

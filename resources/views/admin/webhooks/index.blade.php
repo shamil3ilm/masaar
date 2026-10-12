@@ -28,7 +28,7 @@
             <tr class="hover:bg-gray-50">
                 <td class="px-6 py-4">
                     <a href="{{ route('admin.webhooks.show', $endpoint['id']) }}"
-                       class="font-medium break-all text-blue-600 hover:text-blue-800">{{ $endpoint['url'] }}</a>
+                       class="font-medium break-all text-teal-700 hover:text-teal-900">{{ $endpoint['url'] }}</a>
                     <div class="mt-1 flex flex-wrap gap-1">
                         @foreach($endpoint['events'] as $event)
                             <span class="rounded bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-700">{{ $event }}</span>
