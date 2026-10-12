@@ -1,6 +1,7 @@
 <?php
 
 use App\Domains\Auth\Http\Controllers\SessionAuthController;
+use App\Domains\Invoice\Http\Controllers\PortalInvoiceController;
 use App\Domains\Organization\Http\Controllers\CustomerPortalController;
 use App\Domains\Platform\Http\Controllers\AdminController;
 use Illuminate\Support\Facades\Route;
@@ -70,6 +71,14 @@ Route::prefix('portal')->name('portal.')
     ->middleware(['auth', 'portal.tenant'])
     ->group(function () {
         Route::get('/', [CustomerPortalController::class, 'dashboard'])->name('dashboard');
+        // Invoices. {invoiceId} rather than {invoice}: route model binding
+        // would lean on TenantScope alone, and the scope stands down in
+        // console context - PortalInvoiceController names the organization in
+        // the query instead, so a foreign id is unfindable rather than merely
+        // unscoped.
+        Route::get('/invoices', [PortalInvoiceController::class, 'index'])->name('invoices.index');
+        Route::get('/invoices/{invoiceId}', [PortalInvoiceController::class, 'show'])->name('invoices.show');
+
         Route::get('/submissions', [CustomerPortalController::class, 'submissions'])->name('submissions');
         Route::get('/certificates', [CustomerPortalController::class, 'certificates'])->name('certificates');
         Route::get('/users/{userId}/activity', [CustomerPortalController::class, 'userActivity'])->name('user.activity');

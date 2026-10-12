@@ -47,6 +47,38 @@ class InvoiceFinder
             ->paginate($perPage);
     }
 
+    /**
+     * The portal's list: newest first, narrowed by status and a text search.
+     *
+     * Separate from paginate() rather than adding arguments to it, because
+     * that one is the API's and its signature is a contract.
+     *
+     * The search is deliberately two columns. An invoice number is what a
+     * taxpayer has in front of them when they come looking, and a buyer name
+     * is what they have when they do not. Searching anything else - totals,
+     * the hash, the XML - costs an index scan for a question nobody asks.
+     */
+    public function search(
+        ?string $organizationId,
+        ?string $status,
+        ?string $query,
+        int $perPage,
+    ): LengthAwarePaginator {
+        $term = is_string($query) ? trim($query) : '';
+
+        return $this->ofOrganization($organizationId)
+            ->when($status !== null && $status !== '', fn (Builder $q) => $q->where('status', $status))
+            ->when($term !== '', fn (Builder $q) => $q->where(
+                // Grouped, or the status filter above would be ORed away and
+                // the list would show every tenant status at once.
+                fn (Builder $inner) => $inner
+                    ->where('invoice_number', 'like', '%'.$term.'%')
+                    ->orWhere('buyer_name', 'like', '%'.$term.'%')
+            ))
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage);
+    }
+
     private function ofOrganization(?string $organizationId): Builder
     {
         return Invoice::where('org_id', $organizationId);
