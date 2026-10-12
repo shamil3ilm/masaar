@@ -2,6 +2,7 @@
 
 use App\Domains\Auth\Http\Controllers\SessionAuthController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceController;
+use App\Domains\Licensing\Http\Controllers\AdminLicenceController;
 use App\Domains\Organization\Http\Controllers\CustomerPortalController;
 use App\Domains\Platform\Http\Controllers\AdminController;
 use Illuminate\Support\Facades\Route;
@@ -43,6 +44,7 @@ Route::prefix('admin')->name('admin.')
         Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
         Route::get('/organizations', [AdminController::class, 'organizations'])->name('organizations');
         Route::get('/organizations/{id}', [AdminController::class, 'organizationDetail'])->name('organization.detail');
+        Route::get('/licences', [AdminLicenceController::class, 'index'])->name('licences.index');
         Route::get('/queue', [AdminController::class, 'queue'])->name('queue');
         Route::get('/logs', [AdminController::class, 'logs'])->name('logs');
 
