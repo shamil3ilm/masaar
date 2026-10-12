@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Fatoora\Services;
 
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -57,6 +58,9 @@ class DeadlineReport
      * @return array{
      *     overdue: Collection<int, array<string, mixed>>,
      *     at_risk: Collection<int, array<string, mixed>>,
+     *     overdue_total: int,
+     *     at_risk_total: int,
+     *     listing_capped_at: int,
      *     deadline_hours: float,
      *     warning_hours: float,
      * }
@@ -74,6 +78,11 @@ class DeadlineReport
                 // diffKeys, so a row past the deadline is reported as overdue
                 // and not a second time as merely at risk.
                 'at_risk' => $this->rows($this->unreported($warningHours)->diffKeys($overdue)),
+                // The real totals, so a capped list cannot understate how
+                // much is wrong.
+                'overdue_total' => $this->countLate($deadlineHours),
+                'at_risk_total' => max(0, $this->countLate($warningHours) - $this->countLate($deadlineHours)),
+                'listing_capped_at' => self::MOST_URGENT,
                 'deadline_hours' => $deadlineHours,
                 'warning_hours' => $warningHours,
             ];
@@ -107,14 +116,46 @@ class DeadlineReport
 
     private function unreported(float $hours): Collection
     {
-        return InvoiceSubmission::query()
+        return $this->late($hours)
             ->with(['invoice', 'org'])
-            ->where('submission_type', 'reporting')
-            ->whereNotIn('state', self::ACCEPTED)
-            ->where('created_at', '<=', Carbon::now()->subMinutes((int) round($hours * 60)))
             ->orderBy('created_at')
+            // Oldest first and capped. A row in a terminal state stays overdue
+            // for ever, so this set only grows: unbounded, the page that is
+            // meant to be read during an incident is the one that times out
+            // during an incident. The count beside it is unlimited, so the
+            // cap hides rows, never the scale of the problem.
+            ->limit(self::MOST_URGENT)
             ->get()
             ->keyBy('id');
+    }
+
+    /**
+     * How many rows, at most, are listed. The total is counted separately.
+     */
+    private const MOST_URGENT = 200;
+
+    /**
+     * How many there actually are, however many are shown.
+     */
+    private function countLate(float $hours): int
+    {
+        return $this->late($hours)->count();
+    }
+
+    /**
+     * Reporting submissions older than the given age that never arrived.
+     *
+     * One definition, used by the listing and by the count, so the two cannot
+     * disagree about what "late" means.
+     *
+     * @return Builder<InvoiceSubmission>
+     */
+    private function late(float $hours): Builder
+    {
+        return InvoiceSubmission::query()
+            ->where('submission_type', 'reporting')
+            ->whereNotIn('state', self::ACCEPTED)
+            ->where('created_at', '<=', Carbon::now()->subMinutes((int) round($hours * 60)));
     }
 
     /**

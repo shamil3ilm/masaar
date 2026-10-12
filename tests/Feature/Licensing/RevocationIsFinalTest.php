@@ -109,7 +109,7 @@ class RevocationIsFinalTest extends TestCase
         $this->assertDatabaseHas('license_audit_logs', [
             'license_id' => $licence->id,
             'event' => 'suspended',
-            'actor_type' => 'admin',
+            'actor_type' => 'user',
             'actor_id' => $user->id,
         ]);
     }

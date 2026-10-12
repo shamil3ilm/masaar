@@ -25,7 +25,9 @@
             <h3 class="text-lg font-semibold text-red-700">
                 Overdue &mdash; past {{ (int) $deadlineHours }}h and not reported
             </h3>
-            <span class="text-sm text-gray-500">{{ $overdue->count() }} {{ Str::plural('invoice', $overdue->count()) }}</span>
+            <span class="text-sm text-gray-500">
+                {{ $overdueTotal }} {{ Str::plural('invoice', $overdueTotal) }}{{ $overdueTotal > $cappedAt ? ', showing the '.$cappedAt.' oldest' : '' }}
+            </span>
         </div>
         <p class="mb-3 text-sm text-gray-500">The deadline has passed. What is left is to report late and to know which invoices were affected.</p>
 
@@ -37,7 +39,9 @@
             <h3 class="text-lg font-semibold text-yellow-700">
                 At risk &mdash; past {{ rtrim(rtrim(number_format($warningHours, 1), '0'), '.') }}h, deadline not yet passed
             </h3>
-            <span class="text-sm text-gray-500">{{ $atRisk->count() }} {{ Str::plural('invoice', $atRisk->count()) }}</span>
+            <span class="text-sm text-gray-500">
+                {{ $atRiskTotal }} {{ Str::plural('invoice', $atRiskTotal) }}{{ $atRiskTotal > $cappedAt ? ', showing the '.$cappedAt.' oldest' : '' }}
+            </span>
         </div>
         <p class="mb-3 text-sm text-gray-500">Still recoverable &mdash; the only case where seeing it early changes the outcome.</p>
 

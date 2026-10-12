@@ -428,18 +428,18 @@ class License extends Model
         // would move the licence into a status canReactivate() accepts, so
         // revoke -> suspend -> reactivate walks a revoked partner back to
         // Active in three clicks. Guarding reactivate() alone left that open.
-        if ($this->status === LicenseStatus::Revoked) {
-            throw new \RuntimeException(
-                'A revoked licence cannot be suspended. Revocation is permanent; '
-                .'issue a new licence instead.'
-            );
-        }
-
         $this->changeWithAudit([
             'status' => LicenseStatus::Suspended,
             'suspended_at' => now(),
             'suspension_reason' => $reason,
-        ], 'suspended', $actorId, new: ['reason' => $reason]);
+        ], 'suspended', $actorId, new: ['reason' => $reason], guard: function (LicenseStatus $status): void {
+            if ($status === LicenseStatus::Revoked) {
+                throw new \RuntimeException(
+                    'A revoked licence cannot be suspended. Revocation is permanent; '
+                    .'issue a new licence instead.'
+                );
+            }
+        });
     }
 
     /**
@@ -461,18 +461,18 @@ class License extends Model
      */
     public function reactivate(?string $actorId = null): void
     {
-        if (! $this->status->canReactivate()) {
-            throw new \RuntimeException(
-                'A licence that is '.$this->status->value.' cannot be reactivated. '
-                .'Revocation is permanent; issue a new licence instead.'
-            );
-        }
-
         $this->changeWithAudit([
             'status' => LicenseStatus::Active,
             'suspended_at' => null,
             'suspension_reason' => null,
-        ], 'reactivated', $actorId);
+        ], 'reactivated', $actorId, guard: function (LicenseStatus $status): void {
+            if (! $status->canReactivate()) {
+                throw new \RuntimeException(
+                    'A licence that is '.$status->value.' cannot be reactivated. '
+                    .'Revocation is permanent; issue a new licence instead.'
+                );
+            }
+        });
     }
 
     /**
@@ -536,8 +536,32 @@ class License extends Model
         ?string $actorId,
         ?array $old = null,
         ?array $new = null,
+        ?callable $guard = null,
     ): void {
-        DB::transaction(function () use ($changes, $event, $actorId, $old, $new): void {
+        DB::transaction(function () use ($changes, $event, $actorId, $old, $new, $guard): void {
+            if ($guard !== null) {
+                // Re-read under a row lock before deciding.
+                //
+                // The status a guard was checked against was loaded before
+                // this transaction, and another administrator may have moved
+                // it since. Two people with the same licence open, one
+                // revoking and one suspending, could otherwise have the
+                // suspend overwrite the revoke - putting the licence back
+                // into a status canReactivate() accepts, which is precisely
+                // the invariant the guard exists to hold.
+                //
+                // lockForUpdate is a no-op on SQLite, so the unit suite does
+                // not exercise this; MySQL and Postgres hold the row.
+                $current = static::query()
+                    ->whereKey($this->getKey())
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                $guard($current->status);
+
+                $this->setAttribute('status', $current->status);
+            }
+
             $this->update($changes);
 
             $this->auditLogs()->create([
@@ -549,7 +573,13 @@ class License extends Model
                 // create and rotate were attributed because logAudit() has
                 // always fallen back this way. Resolved here so every caller
                 // gets it, including the API.
-                'actor_type' => ($actorId ??= Auth::id()) ? 'admin' : 'system',
+                //
+                // 'user', not 'admin': SubmissionLedger and
+                // ProcessFatooraSubmission already write user/system, and one
+                // population of actors under two labels is a filter that
+                // silently misses half of them. Which user it was is the
+                // actor_id; what they are is on the user.
+                'actor_type' => ($actorId ??= Auth::id()) ? 'user' : 'system',
                 'actor_id' => $actorId,
                 'old_values' => $old,
                 'new_values' => $new,

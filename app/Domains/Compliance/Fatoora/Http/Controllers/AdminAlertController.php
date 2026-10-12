@@ -38,6 +38,12 @@ class AdminAlertController extends Controller
         return view('admin.alerts.index', [
             'overdue' => $breakdown['overdue'],
             'atRisk' => $breakdown['at_risk'],
+            // The totals, not the size of the list. The listing is capped so
+            // the page stays readable during an incident; the counts must not
+            // be, or the page would understate the incident.
+            'overdueTotal' => $breakdown['overdue_total'],
+            'atRiskTotal' => $breakdown['at_risk_total'],
+            'cappedAt' => $breakdown['listing_capped_at'],
             'deadlineHours' => $breakdown['deadline_hours'],
             'warningHours' => $breakdown['warning_hours'],
         ]);

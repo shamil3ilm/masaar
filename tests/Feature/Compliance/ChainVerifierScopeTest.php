@@ -68,6 +68,30 @@ class ChainVerifierScopeTest extends TestCase
     }
 
     /**
+     * An issued invoice with no counter is reported, not skipped.
+     *
+     * This is what filtering on icv costs, paid back. Excluding drafts by
+     * their missing counter also excludes anything else missing one - and an
+     * invoice that reached Issued without a counter has been given to a
+     * customer while being absent from the record that proves the sequence.
+     *
+     * Not reachable through normal issuance, which writes status, icv and
+     * hash in one transaction. Reachable through an import, a backfill or a
+     * manual repair, which are the circumstances where nobody is watching.
+     */
+    public function test_issued_without_a_counter_is_caught(): void
+    {
+        $org = Organization::create(['name' => 'Acme', 'country' => 'SA']);
+
+        $this->issued($org, 'ISSUED-1', 1, FatooraConfig::GENESIS_PIH);
+        $this->makeInvoice($org, 'ORPHAN-1', ['status' => 'issued']);
+
+        $this->artisan('fatoora:verify-hash-chain')
+            ->expectsOutputToContain('ORPHAN-1')
+            ->assertFailed();
+    }
+
+    /**
      * An issued invoice as issuance actually leaves it: a counter, a hash,
      * and the chain entry recording what it was built on.
      */

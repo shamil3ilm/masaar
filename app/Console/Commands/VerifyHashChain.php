@@ -102,6 +102,46 @@ class VerifyHashChain extends Command
         }
     }
 
+    /**
+     * Documents that should be in the chain and are not.
+     *
+     * The walk follows the counter, so anything without one sits outside it. A
+     * draft belongs outside. An invoice that reached Issued without a counter
+     * does not: it has been given to a customer and is missing from the record
+     * that proves the sequence.
+     *
+     * Issuance writes status, icv and hash in one transaction, so this is not
+     * reachable through the normal path - it would come from an import, a
+     * backfill, a manual repair, or a second issuance path somebody adds
+     * later. Those are exactly the circumstances where nobody is watching,
+     * which is why it is worth checking rather than assuming.
+     *
+     * The mirror case - a chain entry whose invoice is gone - is not checked,
+     * because it cannot happen: hash_chain_history.invoice_id is a foreign key
+     * with cascadeOnDelete, so the entry goes with the invoice. A check for a
+     * state the schema already forbids is a query on every scheduled run that
+     * can never fire, and a reader who finds it reasonably concludes the state
+     * is reachable.
+     */
+    private function strays(string $organizationId): void
+    {
+        $issuedWithoutCounter = Invoice::where('org_id', $organizationId)
+            ->where('status', '!=', 'draft')
+            ->whereNull('icv')
+            ->get(['id', 'invoice_number', 'status']);
+
+        foreach ($issuedWithoutCounter as $invoice) {
+            $this->errors++;
+            $this->error(
+                // status is cast to InvoiceStatus; interpolating the enum
+                // itself is a fatal, not an empty string.
+                "  {$invoice->invoice_number} is {$invoice->status->value} but holds no counter, "
+                .'so it is outside the chain entirely'
+            );
+        }
+
+    }
+
     private function verifyOrganization(string $organizationId): void
     {
         $this->info("Organization: {$organizationId}");
@@ -116,15 +156,21 @@ class VerifyHashChain extends Command
         // counter, and one draft was enough to make the whole check report
         // FAILED.
         //
-        // That matters because this runs on a schedule and its failures now
-        // reach a human. A daily job that always fails is worse than no job -
-        // it teaches people to ignore the one check that would tell them the
-        // chain has genuinely forked, which is the fault that cannot be
-        // repaired afterwards.
+        // That matters because this runs on a schedule - weekly, see
+        // routes/console.php - and its failures now reach a human. A scheduled
+        // job that always fails is worse than no job: it teaches people to
+        // ignore the one check that would tell them the chain has genuinely
+        // forked, which is the fault that cannot be repaired afterwards.
+        //
+        // Filtering on icv costs something, and strays() pays it back: an
+        // invoice that is issued but holds no counter is now outside this
+        // walk, so it is looked for separately rather than silently skipped.
         $invoices = Invoice::where('org_id', $organizationId)
             ->whereNotNull('icv')
             ->orderBy('icv')
             ->get(['id', 'invoice_number', 'icv', 'hash', 'created_at']);
+
+        $this->strays($organizationId);
 
         if ($invoices->isEmpty()) {
             $this->line('  No invoices found');
