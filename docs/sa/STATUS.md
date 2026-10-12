@@ -222,6 +222,39 @@ be reached by a developer without a VAT registration:
 - Production onboarding, and the first cleared live invoice.
 - Any confirmation that a real VAT registration is accepted.
 
+### What simulation will take, when there is a taxpayer
+
+The sequence, so it is not researched again on the day. Everything here is
+already built; what is missing is the OTP, and the OTP needs the registration.
+
+1. Sign in to the Fatoora portal as the taxpayer, switch to the **Simulation**
+   environment, and generate an OTP. This is the step a developer cannot do:
+   the portal authenticates a VAT-registered entity, not a person.
+2. `ZATCA_ENVIRONMENT=simulation`, then
+   `php artisan fatoora:onboard --step=full --otp=<otp> --target=simulation`.
+   The CSR template switches itself - `CsrBuilder::TEMPLATE_SIMULATION`,
+   `PREZATCA-Code-Signing` - because both commands read the environment from
+   one place. A CSR carrying another environment's template is refused.
+3. The six compliance documents go up as they do against the sandbox, and a
+   **production CSID is issued on passing**. Note the name: in simulation that
+   certificate is still scoped to simulation. It is not the production
+   credential and does not shorten production onboarding.
+4. Then `--step=submit --target=simulation` to clear and report with it.
+
+Two things to expect that differ from the sandbox, and one to re-check:
+
+- The certificate will be **issued against the CSR actually sent**, so the
+  private key and the certificate will finally be a matching pair. In the
+  sandbox they are not, and cannot be - see section 3. `XadesSigner` refuses
+  to sign a mismatched pair outside the sandbox, so a mismatch here will stop
+  the run rather than produce unverifiable invoices.
+- `ds:SignatureValue` becomes verifiable for the first time. Verify one with
+  OpenSSL over the canonicalised `ds:SignedInfo` before reporting anything in
+  volume; `SignatureVerifiesTest` does exactly that and can be pointed at a
+  real document.
+- Re-check that a resubmission is still idempotent. It is in the sandbox
+  (section 3), and every retry in the platform depends on it.
+
 Everything else above is reachable today. Run the sandbox round trip, then
 simulation when a taxpayer exists, then production — in that order, skipping
 none.
