@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -423,6 +424,17 @@ class License extends Model
      */
     public function suspend(?string $reason = null, ?string $actorId = null): void
     {
+        // Revoked is terminal, and suspending it would not be a no-op: it
+        // would move the licence into a status canReactivate() accepts, so
+        // revoke -> suspend -> reactivate walks a revoked partner back to
+        // Active in three clicks. Guarding reactivate() alone left that open.
+        if ($this->status === LicenseStatus::Revoked) {
+            throw new \RuntimeException(
+                'A revoked licence cannot be suspended. Revocation is permanent; '
+                .'issue a new licence instead.'
+            );
+        }
+
         $this->changeWithAudit([
             'status' => LicenseStatus::Suspended,
             'suspended_at' => now(),
@@ -530,7 +542,14 @@ class License extends Model
 
             $this->auditLogs()->create([
                 'event' => $event,
-                'actor_type' => $actorId ? 'admin' : 'system',
+                // Falls back to the signed-in user rather than recording
+                // 'system'. Nothing in the console passed an actor, so
+                // suspend, revoke and reactivate - the actions worth asking
+                // "who did this" about - were the unattributed ones, while
+                // create and rotate were attributed because logAudit() has
+                // always fallen back this way. Resolved here so every caller
+                // gets it, including the API.
+                'actor_type' => ($actorId ??= Auth::id()) ? 'admin' : 'system',
                 'actor_id' => $actorId,
                 'old_values' => $old,
                 'new_values' => $new,

@@ -235,7 +235,7 @@
                 {{-- Rotating is offered whatever the status: a leaked secret
                      on a suspended licence still wants replacing. --}}
                 <form method="POST" action="{{ route('admin.licences.rotate', $row['id']) }}"
-                      onsubmit="return confirm('Regenerate this secret? The partner's current secret stops working immediately, with no grace period.')">
+                      onsubmit="return confirm('Regenerate this secret? The current secret stops working immediately, with no grace period for the partner to update it.')">
                     @csrf
                     <button type="submit"
                             class="mt-2 w-full rounded-md border border-amber-400 bg-amber-50 px-4 py-2 text-sm text-amber-900 hover:bg-amber-100">
