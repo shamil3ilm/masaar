@@ -10,6 +10,7 @@ use App\Support\Xml;
 use DOMDocument;
 use DOMElement;
 use DOMXPath;
+use Illuminate\Support\Facades\Log;
 use phpseclib3\Math\BigInteger;
 
 /**
@@ -129,6 +130,8 @@ class XadesSigner
      */
     public function sign(string $xml, string $privateKeyPem, string $certificatePem): string
     {
+        $this->assertKeyMatchesCertificate($privateKeyPem, $certificatePem);
+
         $dom = new DOMDocument('1.0', 'UTF-8');
         $dom->preserveWhiteSpace = false;
         Xml::load($dom, $xml);
@@ -625,6 +628,59 @@ class XadesSigner
         }
 
         return $value;
+    }
+
+    /**
+     * The key that signs must be the key the certificate names.
+     *
+     * Nothing checked this, and nothing downstream would: the authority does
+     * not verify ds:SignatureValue - established on 2026-10-10 by submitting
+     * documents whose signatures had been invalidated and watching them be
+     * accepted - so a mismatched pair produces invoices that are accepted at
+     * submission and unverifiable ever after. That is the worst shape for a
+     * defect in a compliance system: discovered by an auditor, years of
+     * documents later, with nothing in the logs.
+     *
+     * The sandbox is exempt because it cannot comply. ZATCA's developer
+     * portal issues every caller the same production certificate - byte for
+     * byte the one in its own SDK sample, Data/Samples/Simplified/Invoice -
+     * whose private key nobody outside the authority has. So a sandbox
+     * document is signed with the taxpayer's compliance key while carrying a
+     * certificate belonging to no one, and that is the sandbox working as
+     * designed rather than this platform misbehaving. The warning is still
+     * logged, because the fact is worth seeing in context.
+     *
+     * Simulation and production issue a certificate against the CSR actually
+     * submitted, so there the pair must match and a mismatch is fatal.
+     *
+     * @throws SigningException
+     */
+    private function assertKeyMatchesCertificate(string $privateKeyPem, string $certificatePem): void
+    {
+        if (openssl_x509_check_private_key($certificatePem, $privateKeyPem)) {
+            return;
+        }
+
+        $environment = (string) config('fatoora.environment', 'sandbox');
+
+        if ($environment === 'sandbox') {
+            Log::warning('Signing with a key that does not match the certificate', [
+                'environment' => $environment,
+                'reason' => "ZATCA's developer sandbox issues a shared certificate whose "
+                    ."private key is not the taxpayer's, so the signature in a sandbox "
+                    .'document cannot be verified by anyone. Expected here; fatal elsewhere.',
+            ]);
+
+            return;
+        }
+
+        throw new SigningException(
+            'The private key does not match the certificate it would be signing under, so '
+            .'every invoice signed with this pair would be unverifiable. The authority does 
+'
+            .'not check this and would accept them. Re-run onboarding so the certificate is '
+            .'issued against the key in use ('.$environment.').'
+        );
     }
 
     /**
