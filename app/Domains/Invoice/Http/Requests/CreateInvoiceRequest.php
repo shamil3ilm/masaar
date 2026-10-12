@@ -128,6 +128,14 @@ class CreateInvoiceRequest extends FormRequest
 
             // Buyer information
             'buyer_name' => ['required', 'string', 'max:255'],
+            // The buyer's name in Arabic, where they have one. Optional,
+            // and not a compliance gap when absent: ZATCA's Guideline for Tax
+            // Invoicing and Records (v3, May 2026) 4.2.1 approves Latin
+            // characters for proper names, which is what a buyer name is. It
+            // is offered because ZATCA's own illustrative invoices print
+            // names bilingually, and a buyer with an Arabic registered name
+            // should be able to show it.
+            'buyer_name_ar' => ['nullable', 'string', 'max:255'],
             'buyer_vat_number' => [
                 'nullable',
                 'string',
@@ -176,6 +184,7 @@ class CreateInvoiceRequest extends FormRequest
             // Invoice lines
             'lines' => ['required', 'array', 'min:1'],
             'lines.*.description' => ['required', 'string', 'max:255'],
+            'lines.*.description_ar' => ['nullable', 'string', 'max:255'],
             'lines.*.class_code' => ['nullable', 'string', 'max:50'],
             'lines.*.quantity' => ['required', 'numeric', 'min:0.001'],
             'lines.*.unit_code' => ['nullable', 'string', Rule::in(self::VALID_UNIT_CODES)],

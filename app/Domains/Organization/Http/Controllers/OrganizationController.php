@@ -45,12 +45,14 @@ class OrganizationController extends Controller
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'name_ar' => ['nullable', 'string', 'max:255'],
             'country' => ['nullable', 'string', 'size:2'],
             'vat_number' => ['nullable', 'string', 'max:50'],
         ]);
 
         $organization = $this->registrar->register(auth()->user(), new OrganizationData(
             name: $request->name,
+            nameAr: $request->name_ar,
             country: $request->country ?? 'SA',
             vatNumber: $request->vat_number,
         ));
@@ -93,11 +95,17 @@ class OrganizationController extends Controller
 
         $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
+            // The name the invoice is issued under. Settable after the fact
+            // because the column is new: every organization registered before
+            // it existed needs a way to acquire one, and without this there
+            // was none.
+            'name_ar' => ['sometimes', 'nullable', 'string', 'max:255'],
             'vat_number' => ['nullable', 'string', 'max:50'],
         ]);
 
         $organization = $this->registrar->amend($organization, new OrganizationChangesData(
             name: $request->name,
+            nameAr: $request->name_ar,
             vatNumber: $request->vat_number,
         ));
 

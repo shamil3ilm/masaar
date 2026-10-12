@@ -38,6 +38,14 @@
                    class="mt-1 w-full rounded border-gray-300 text-sm font-normal text-gray-900 shadow-sm">
         </label>
 
+        <label class="block text-xs font-medium text-gray-600 lg:col-span-2">
+            Description in Arabic
+            <input type="text" name="lines[{{ $index }}][description_ar]"
+                   value="{{ $row['description_ar'] ?? '' }}"
+                   dir="rtl" lang="ar"
+                   class="mt-1 w-full rounded border-gray-300 text-sm font-normal text-gray-900 shadow-sm">
+        </label>
+
         <label class="block text-xs font-medium text-gray-600">
             Quantity
             <input type="number" step="0.001" min="0" name="lines[{{ $index }}][quantity]"

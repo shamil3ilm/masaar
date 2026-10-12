@@ -34,6 +34,7 @@ class Registrar
         return DB::transaction(function () use ($founder, $data): Organization {
             $organization = Organization::create([
                 'name' => $data->name,
+                'name_ar' => $data->nameAr,
                 'country' => $data->country,
                 'status' => Organization::STATUS_ACTIVE,
                 'compliance_profile' => [
@@ -71,6 +72,7 @@ class Registrar
 
             $locked->update([
                 'name' => $changes->name ?? $locked->name,
+                'name_ar' => $changes->nameAr ?? $locked->name_ar,
                 'compliance_profile' => array_merge(
                     $locked->compliance_profile ?? [],
                     array_filter(['vat_number' => $changes->vatNumber])

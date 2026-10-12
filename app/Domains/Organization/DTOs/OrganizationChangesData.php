@@ -14,6 +14,7 @@ final readonly class OrganizationChangesData
 {
     public function __construct(
         public ?string $name = null,
+        public ?string $nameAr = null,
         public ?string $vatNumber = null,
     ) {}
 }

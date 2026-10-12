@@ -56,6 +56,7 @@ class InvoiceDrafter
                 'exchange_rate' => $data['exchange_rate'] ?? null,
                 'payment_means_code' => $data['payment_means_code'] ?? '10',
                 'buyer_name' => $data['buyer_name'],
+                'buyer_name_ar' => $data['buyer_name_ar'] ?? null,
                 'buyer_vat_number' => $data['buyer_vat_number'] ?? null,
                 'buyer_address' => $data['buyer_address'] ?? null,
                 'billing_ref' => $data['billing_ref'] ?? null,
@@ -69,6 +70,7 @@ class InvoiceDrafter
 
                 $invoice->lines()->create([
                     'description' => $line['description'],
+                    'description_ar' => $line['description_ar'] ?? null,
                     'class_code' => $line['class_code'] ?? null,
                     'quantity' => (string) $line['quantity'],
                     'unit_code' => $line['unit_code'] ?? 'PCE',

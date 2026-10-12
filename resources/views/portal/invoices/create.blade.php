@@ -15,6 +15,11 @@
     <p class="text-gray-500">
         Saved as a draft. It has no counter, no hash and no QR until it is issued, and a draft can be changed.
     </p>
+    <p class="mt-2 text-sm text-gray-500">
+        The Arabic fields are optional. ZATCA accepts Latin characters for names of people, places and products, so a
+        buyer or a product named in English is already compliant &mdash; fill these in when the buyer or the product
+        has an Arabic name of its own, and it will appear on the invoice and in the QR code.
+    </p>
 </div>
 
 @if ($errors->any())
@@ -112,6 +117,16 @@
                 <label for="buyer_name" class="block text-sm font-medium text-gray-700">Name</label>
                 <input type="text" name="buyer_name" id="buyer_name" value="{{ old('buyer_name') }}"
                        class="mt-1 w-full rounded border-gray-300 text-sm shadow-sm" required>
+            </div>
+
+            <div>
+                <label for="buyer_name_ar" class="block text-sm font-medium text-gray-700">
+                    Name in Arabic
+                </label>
+                <input type="text" name="buyer_name_ar" id="buyer_name_ar" value="{{ old('buyer_name_ar') }}"
+                       dir="rtl" lang="ar"
+                       class="mt-1 w-full rounded border-gray-300 text-sm shadow-sm">
+                <p class="mt-1 text-xs text-gray-500">Optional &mdash; a Latin name is accepted for a proper name.</p>
             </div>
 
             <div>

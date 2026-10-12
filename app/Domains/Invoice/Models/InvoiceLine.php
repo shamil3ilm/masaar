@@ -20,6 +20,7 @@ class InvoiceLine extends Model
     protected $fillable = [
         'invoice_id',
         'description',
+        'description_ar',
         'class_code',
         'quantity',
         'unit_code',
@@ -49,5 +50,18 @@ class InvoiceLine extends Model
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);
+    }
+
+    /**
+     * The line description this document carries, preferring Arabic.
+     *
+     * The Arabic requirement is about the fields a person reads, and a line
+     * description is one of them.
+     */
+    public function documentDescription(): string
+    {
+        $arabic = trim((string) $this->description_ar);
+
+        return $arabic !== '' ? $arabic : (string) $this->description;
     }
 }

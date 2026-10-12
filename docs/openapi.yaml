@@ -1517,6 +1517,8 @@ paths:
                   type: string
                 buyer_name:
                   type: string
+                buyer_name_ar:
+                  type: string
                 buyer_vat_number:
                   type: string
                 buyer_id:
@@ -1629,6 +1631,8 @@ paths:
                   type: string
                 buyer_name:
                   type: string
+                buyer_name_ar:
+                  type: string
                 buyer_vat_number:
                   type: string
                 buyer_id:
@@ -1711,6 +1715,8 @@ paths:
                 payment_means_code:
                   type: string
                 buyer_name:
+                  type: string
+                buyer_name_ar:
                   type: string
                 buyer_vat_number:
                   type: string
@@ -2787,6 +2793,8 @@ paths:
                   type: string
                 buyer_name:
                   type: string
+                buyer_name_ar:
+                  type: string
                 buyer_vat_number:
                   type: string
                 buyer_id:
@@ -2900,6 +2908,8 @@ paths:
                 payment_means_code:
                   type: string
                 buyer_name:
+                  type: string
+                buyer_name_ar:
                   type: string
                 buyer_vat_number:
                   type: string
@@ -3037,6 +3047,8 @@ paths:
                 payment_means_code:
                   type: string
                 buyer_name:
+                  type: string
+                buyer_name_ar:
                   type: string
                 buyer_vat_number:
                   type: string

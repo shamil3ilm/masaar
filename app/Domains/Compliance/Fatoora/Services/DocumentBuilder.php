@@ -92,7 +92,7 @@ class DocumentBuilder
         $qrData = new QrCodeData(
             // Same normalisation as the XML: TLV tag 1 and the XML seller name
             // must carry identical bytes.
-            sellerName: $this->normalizeName($organization->name),
+            sellerName: $this->normalizeName($organization->documentName()),
             vatNumber: $organization->vat_number ?? '',
             timestamp: $this->issuedAt($invoice),
             invoiceTotal: number_format((float) $invoice->total, 2, '.', ''),
@@ -182,7 +182,7 @@ class DocumentBuilder
 
         // Format invoice lines with full tax category data from database
         $lines = $invoice->lines->map(fn ($line) => [
-            'description' => $line->description,
+            'description' => $line->documentDescription(),
             'itemClassificationCode' => $line->class_code,
             'quantity' => (float) $line->quantity,
             'unitCode' => $line->unit_code ?? 'PCE',
@@ -215,10 +215,10 @@ class DocumentBuilder
             invoiceTypeCode: $documentType->getTypeCode(),
             invoiceSubtype: $invoiceSubtype,
             currency: $invoice->currency,
-            sellerName: $this->normalizeName($organization->name),
+            sellerName: $this->normalizeName($organization->documentName()),
             sellerVatNumber: $organization->vat_number ?? '',
             sellerAddress: $organization->getAddressData(),
-            buyerName: $this->normalizeName((string) $invoice->buyer_name),
+            buyerName: $this->normalizeName($invoice->documentBuyerName()),
             subtotal: (float) $invoice->subtotal,
             taxAmount: (float) $invoice->tax_amount,
             total: (float) $invoice->total,

@@ -44,6 +44,7 @@ class Invoice extends Model
         'currency',
         'exchange_rate',
         'buyer_name',
+        'buyer_name_ar',
         'buyer_vat_number',
         'buyer_id',
         'buyer_id_scheme',
@@ -114,6 +115,7 @@ class Invoice extends Model
         // restates the tax without restating the document.
         'exchange_rate',
         'buyer_name',
+        'buyer_name_ar',
         'buyer_vat_number',
         'buyer_id',
         'buyer_id_scheme',
@@ -416,5 +418,19 @@ class Invoice extends Model
             ->orderByDesc('icv')
             ->value('hash')
         );
+    }
+
+    /**
+     * The buyer name this document carries, preferring Arabic.
+     *
+     * Same rule as Organization::documentName(): Arabic is what the invoice
+     * is required to be issued in, the Latin name is the fallback while the
+     * column is being filled in, and an empty string is not a name.
+     */
+    public function documentBuyerName(): string
+    {
+        $arabic = trim((string) $this->buyer_name_ar);
+
+        return $arabic !== '' ? $arabic : (string) $this->buyer_name;
     }
 }

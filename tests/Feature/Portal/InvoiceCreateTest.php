@@ -173,6 +173,48 @@ class InvoiceCreateTest extends TestCase
     }
 
     /**
+     * The Arabic fields reach the database.
+     *
+     * A Saudi tax invoice must be issued in Arabic, and these are where it
+     * comes from: the buyer name and the line descriptions. The seller's own
+     * Arabic name lives on the organization, not here.
+     */
+    public function test_the_arabic_fields_are_saved(): void
+    {
+        $response = $this->submit($this->simplified([
+            'buyer_name_ar' => 'مشتري',
+            'lines' => [
+                [
+                    'description' => 'Consulting',
+                    'description_ar' => 'استشارات',
+                    'quantity' => '1',
+                    'unit_price' => '100',
+                    'tax_rate' => '15',
+                    'unit_code' => 'PCE',
+                ],
+            ],
+        ]));
+
+        $response->assertSessionHasNoErrors();
+
+        $invoice = Invoice::withoutTenantScope(
+            fn () => Invoice::with('lines')->where('invoice_number', 'PORTAL-1')->firstOrFail()
+        );
+
+        $this->assertSame('مشتري', $invoice->buyer_name_ar);
+        $this->assertSame('استشارات', $invoice->lines->first()?->description_ar);
+    }
+
+    /**
+     * And they stay optional, because the columns are new and nothing has
+     * been backfilled. InvoiceValidator warns instead.
+     */
+    public function test_arabic_is_not_required(): void
+    {
+        $this->submit($this->simplified())->assertSessionHasNoErrors();
+    }
+
+    /**
      * The portal request adds no rules of its own.
      *
      * It overrides prepareForValidation and nothing else, so a ZATCA rule

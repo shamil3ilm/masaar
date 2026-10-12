@@ -30,6 +30,7 @@ class Organization extends Model
 
     protected $fillable = [
         'name',
+        'name_ar',
         'country',
         'status',
         'group_id',
@@ -262,5 +263,40 @@ class Organization extends Model
             && ctype_digit($vat)
             && str_starts_with($vat, '3')
             && str_ends_with($vat, '3');
+    }
+
+    /**
+     * The seller name a document carries.
+     *
+     * This name reaches two places: the signed XML, and tag 1 of the ZATCA
+     * QR. DocumentBuilder reads it for both, and its own comment explains why
+     * they have to be byte-identical - so there is one method rather than two
+     * expressions that could drift.
+     *
+     * Falls back to the Latin name, and that fallback is compliant rather than
+     * merely tolerated. ZATCA's Guideline for Tax Invoicing and Records (v3,
+     * May 2026) 4.2.1 requires every field to be completed in Arabic and then
+     * exempts proper names: "ZATCA approves the use of Latin characters for
+     * writing such names as part of the Arabic language requirements in the
+     * tax invoice." A seller name is a proper name.
+     *
+     * The Arabic name is offered because the authority's own illustrative
+     * invoices print the seller bilingually, and a seller registered under an
+     * Arabic name should be able to put it on the document and in the QR.
+     */
+    public function documentName(): string
+    {
+        return $this->filledOr($this->name_ar, (string) $this->name);
+    }
+
+    /**
+     * The first of these that actually has something in it.
+     *
+     * An empty string is not a name. A column that exists and holds '' would
+     * otherwise pass a null check and put nothing on the invoice.
+     */
+    private function filledOr(?string $preferred, string $fallback): string
+    {
+        return trim((string) $preferred) !== '' ? (string) $preferred : $fallback;
     }
 }

@@ -341,6 +341,33 @@ class InvoiceValidator
     {
         $warnings = [];
 
+        // No warning about Latin names here, deliberately, and this is a
+        // correction rather than an omission.
+        //
+        // Article 66(2) of the VAT Implementing Regulations requires invoices
+        // to be issued in Arabic, and ZATCA's Guideline for Tax Invoicing and
+        // Records (v3, May 2026) section 4.2.1 says all fields must be
+        // completed in Arabic. The same section then sets out what that means
+        // field by field, and exempts the ones this application stores:
+        //
+        //   "Proper names include the names of persons and places, the
+        //   registered branch, and product names ... ZATCA approves the use of
+        //   Latin characters for writing such names as part of the Arabic
+        //   language requirements in the tax invoice."
+        //
+        // Numerals, currency codes and symbols, dates and invoice numbers are
+        // exempted in the same way. So a seller name, a buyer name and a line
+        // description written in Latin satisfy the requirement, and an earlier
+        // version of this method warned that they did not - which would have
+        // told every organization in the Kingdom it was non-compliant for
+        // something the authority explicitly approves.
+        //
+        // Where the requirement does bite is the rendition: the document
+        // title and the field captions on the human-readable invoice, which
+        // ZATCA's own illustrative invoices print bilingually. That is a
+        // template concern, not a validation one, and it lives in
+        // resources/views/portal/invoices.
+
         // BR-KSA-80: Organization compliance status check
         if (! $organization->zatca_onboarded) {
             $warnings[] = 'Organization has not completed ZATCA onboarding - invoice may be rejected';
