@@ -291,6 +291,53 @@ Before production:
       for a single taxpayer; a blocker before a second one is onboarded.
 - [x] **Dependency vulnerability scan** — `composer audit --locked` runs as the
       `security` job in CI on every push, and is currently clean.
+#### What the nightly scan reported, and what was done
+
+Read 2026-10-12: `PASS 56`, `WARN-NEW 11`, `FAIL-NEW 0` from the baseline
+scan. The API scan had never run at all - the step killed the application
+before it, so it imported zero URLs and died on `NoUrlsException`, and the
+job's failure read as a missing report rather than as a dead server.
+
+Fixed, with the finding as the reason:
+
+| Finding | What it actually was |
+|---|---|
+| CSP header not set | Genuinely absent, and genuinely blocked until the Tailwind Play CDN went. `SecurityHeaders` now sets a policy with no `unsafe-` of any kind, which needed the four inline `onsubmit` handlers and the inline `[x-cloak]` style gone and Alpine on its CSP build. |
+| `X-Powered-By` leak | The middleware removed it from Symfony's header bag, and PHP emits this one from the SAPI where it is not in the bag. `header_remove()` reaches it. The image sets `expose_php=Off`, so only the dev server leaked - but the removal had never worked anywhere. |
+| `X-Content-Type-Options` missing on `/build/assets` | True of the deployment too, for a different reason: nginx's `add_header` replaces the inherited set rather than adding to it, so the static-file block setting `Cache-Control` dropped all four security headers. |
+| Permissions-Policy missing on an asset | Same cause, same fix. |
+| Sub Resource Integrity missing | The welcome page fetched a typeface from `fonts.bunny.net`. `ExternalScriptTest` had read past it for two years' worth of edits because its pattern matched `<script src>` and not `<link href>`. |
+
+Accepted, and why:
+
+- **Cookie without HttpOnly** — this is `XSRF-TOKEN`, which Laravel sets
+  readable by design so a JavaScript client can echo it in `X-XSRF-TOKEN`.
+  It carries a CSRF token, not a credential, and an attacker able to read
+  it already has script execution and therefore the session. Nothing in
+  this application reads it - there is no `fetch` or `axios` anywhere in
+  the bundle - so it could be suppressed, but overriding framework
+  behaviour to quiet a scanner is the wrong trade. The session cookie
+  itself is `http_only`, `secure` and `same_site=lax` under production.
+- **Cross-Origin-Embedder-Policy not set** — COEP exists to earn
+  cross-origin isolation, which buys `SharedArrayBuffer` and
+  high-resolution timers. Nothing here uses either. Setting it would
+  break any future embed for no present gain, and the attack it mitigates
+  is already addressed by `frame-ancestors 'none'` and
+  `X-Frame-Options: DENY`.
+
+Informational, needing nothing: Non-Storable Content, Modern Web
+Application, Authentication Request Identified, Session Management
+Response Identified. These record what the scanner recognised, not a
+defect.
+
+**The remaining step for this job** is the one 4.4 already describes:
+commit the rules worth gating on to `.zap/rules.tsv` - `IGNORE` for the two
+accepted above, `FAIL` for the five fixed, so a regression breaks the
+build - and then drop `-I`. The scanner is now asked for a JSON report and
+the job prints one line per rule with the plugin id that file is keyed by,
+because an id written wrongly matches nothing and leaves the rules file
+looking applied when it is not.
+
 - [ ] **OWASP Top 10 validation** — partly covered: `tests/Feature/Security`
       sweeps the router for unguarded routes and proves tenant scoping holds,
       and rate limiting is now enforced (5.2). Not a substitute for the

@@ -769,8 +769,21 @@ jobs:
           # --network host because the scanner is in a container and the
           # application is on the runner. Without it the target is
           # unreachable and the scan examines nothing.
+
+          # A committed rules file is passed when there is one. It is keyed by
+          # rule id, which is why the summary below prints them: an id written
+          # wrongly matches nothing and leaves the file looking applied.
+          rules=""
+          if [ -s .zap/rules.tsv ]; then
+            cp .zap/rules.tsv zap-out/rules.tsv
+            rules="-c rules.tsv"
+            echo "Applying .zap/rules.tsv"
+          else
+            echo "No .zap/rules.tsv - every finding is a warning."
+          fi
+
           status=0
-          docker run --network host -v "$PWD/zap-out:/zap/wrk/:rw" "$scanner" zap-baseline.py -t http://127.0.0.1:8000 -r zap-report.html -I || status=$?
+          docker run --network host -v "$PWD/zap-out:/zap/wrk/:rw" "$scanner" zap-baseline.py -t http://127.0.0.1:8000 -r zap-report.html -J zap-report.json $rules -I || status=$?
 
           echo "Baseline scanner exit status: $status"
 
@@ -786,6 +799,18 @@ jobs:
 
           echo "Baseline report: $(wc -c < zap-out/zap-report.html) bytes"
 
+          # One line per rule, with the id .zap/rules.tsv needs. Without this
+          # the only way to triage a finding is to download the HTML and read
+          # it in a browser, and the id is the part you actually need.
+          if [ -s zap-out/zap-report.json ]; then
+            echo "Baseline findings by rule:"
+            jq -r '[.site[]?.alerts[]?]
+                   | sort_by(.riskcode | tonumber) | reverse
+                   | .[]
+                   | "  " + .pluginid + "  " + .riskdesc + "  (" + (.instances | length | tostring) + ")  " + .alert' \
+              zap-out/zap-report.json || echo "  (could not read the JSON report)"
+          fi
+
           # The baseline spider found four URLs: /, /login, /robots.txt and
           # /sitemap.xml. That is the whole of what it can reach by following
           # links, because every endpoint of substance needs a token and
@@ -800,7 +825,7 @@ jobs:
           cp docs/openapi.yaml zap-out/openapi.yaml
 
           api_status=0
-          docker run --network host -v "$PWD/zap-out:/zap/wrk/:rw" "$scanner" zap-api-scan.py -t /zap/wrk/openapi.yaml -f openapi -O http://127.0.0.1:8000 -r zap-api-report.html -I || api_status=$?
+          docker run --network host -v "$PWD/zap-out:/zap/wrk/:rw" "$scanner" zap-api-scan.py -t /zap/wrk/openapi.yaml -f openapi -O http://127.0.0.1:8000 -r zap-api-report.html -J zap-api-report.json $rules -I || api_status=$?
 
           # Only now is the server no longer needed. It used to be killed
           # straight after the baseline scan, two steps above - so the API
@@ -828,4 +853,6 @@ jobs:
           path: |
             zap-out/zap-report.html
             zap-out/zap-api-report.html
+            zap-out/zap-report.json
+            zap-out/zap-api-report.json
           retention-days: 30
