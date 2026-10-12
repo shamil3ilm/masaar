@@ -741,8 +741,7 @@ jobs:
           status=0
           docker run --network host -v "$PWD/zap-out:/zap/wrk/:rw" "$scanner" zap-baseline.py -t http://127.0.0.1:8000 -r zap-report.html -I || status=$?
 
-          kill "$server" 2>/dev/null || true
-          echo "Scanner exit status: $status"
+          echo "Baseline scanner exit status: $status"
 
           # Findings do not fail this job - that is what -I is for, and why
           # it runs on a schedule rather than as a gate. A scan that produced
@@ -772,12 +771,20 @@ jobs:
           api_status=0
           docker run --network host -v "$PWD/zap-out:/zap/wrk/:rw" "$scanner" zap-api-scan.py -t /zap/wrk/openapi.yaml -f openapi -O http://127.0.0.1:8000 -r zap-api-report.html -I || api_status=$?
 
+          # Only now is the server no longer needed. It used to be killed
+          # straight after the baseline scan, two steps above - so the API
+          # scan that follows always met a closed port, imported zero URLs
+          # and died with NoUrlsException. The job failed every night on the
+          # missing report, and the real message was eighty lines of
+          # "Connection refused" further down.
+          kill "$server" 2>/dev/null || true
+
           echo "API scanner exit status: $api_status"
 
           # The spec is OpenAPI 3.1. If the add-on cannot read it, nothing is
           # scanned and that must not read as a pass - the same rule as above.
           if [ ! -s zap-out/zap-api-report.html ]; then
-            echo "::error title=No API report::The API scan wrote no report (exit $api_status). Check whether the OpenAPI 3.1 definition was parsed."
+            echo "::error title=No API report::The API scan wrote no report (exit $api_status). Either the application was not listening - check for 'Connection refused' and 'Number of Imported URLs: 0' above - or the OpenAPI 3.1 definition could not be parsed."
             exit 1
           fi
 
