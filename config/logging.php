@@ -52,10 +52,56 @@ return [
 
     'channels' => [
 
+        /*
+         * The alert channel is appended rather than configured in.
+         *
+         * Whether a critical event reaches a human is not a thing a
+         * deployment should be able to switch off by forgetting an entry in
+         * LOG_STACK - and it would be forgotten, because a .env copied six
+         * months ago does not grow new keys. The readiness guide already
+         * records that exact failure for the rate-limit pair.
+         *
+         * Appended and de-duplicated, so naming it explicitly is harmless.
+         */
         'stack' => [
             'driver' => 'stack',
-            'channels' => explode(',', (string) env('LOG_STACK', 'single')),
+            'channels' => array_values(array_unique(array_merge(
+                array_filter(array_map('trim', explode(',', (string) env('LOG_STACK', 'single')))),
+                ['alerts'],
+            ))),
             'ignore_exceptions' => false,
+        ],
+
+        /*
+         * Where a critical event goes.
+         *
+         * Nothing told anyone when a submission failed. Seven places already
+         * raise Log::critical - a kill switch thrown, ZATCA answering a
+         * submission the database then failed to record, an offline item
+         * accepted but not written down - and every one of them went to a
+         * file on a server nobody reads.
+         *
+         * Always a file of its own first, so an alert survives the webhook
+         * being wrong, expired or rate limited: a dropped alert about a
+         * dropped submission is the worst of both. Slack is added only when
+         * a URL is configured, because naming an unconfigured slack channel
+         * in a stack makes every write throw.
+         */
+        'alerts' => [
+            'driver' => 'stack',
+            'channels' => array_values(array_filter([
+                'alert-file',
+                env('LOG_SLACK_WEBHOOK_URL') ? 'slack' : null,
+            ])),
+            'ignore_exceptions' => true,
+        ],
+
+        'alert-file' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/alerts.log'),
+            'level' => env('LOG_ALERT_LEVEL', 'critical'),
+            'days' => env('LOG_ALERT_DAYS', 90),
+            'replace_placeholders' => true,
         ],
 
         'single' => [
@@ -78,7 +124,7 @@ return [
             'url' => env('LOG_SLACK_WEBHOOK_URL'),
             'username' => env('LOG_SLACK_USERNAME', 'Laravel Log'),
             'emoji' => env('LOG_SLACK_EMOJI', ':boom:'),
-            'level' => env('LOG_LEVEL', 'critical'),
+            'level' => env('LOG_ALERT_LEVEL', 'critical'),
             'replace_placeholders' => true,
         ],
 

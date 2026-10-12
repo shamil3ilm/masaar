@@ -89,6 +89,15 @@ Schedule::command('fatoora:check-certificate --notify')
     ->appendOutputTo(storage_path('logs/zatca-certificate.log'));
 
 // Verify hash chain integrity - runs weekly on Sunday at 2 AM
+// A deadline passes in silence. Every other alert here fires from the code
+// path that failed, which covers the failures that happen and not the ones
+// that stop happening - a worker that died, retries exhausted overnight, a
+// submission left in flight. ZATCA gives a simplified invoice twenty-four
+// hours, so this goes looking every hour and fails the run if any are past it.
+Schedule::command('fatoora:overdue-submissions --alert')
+    ->hourly()
+    ->withoutOverlapping();
+
 Schedule::command('fatoora:verify-hash-chain')
     ->weeklyOn(0, '02:00')
     ->withoutOverlapping()
