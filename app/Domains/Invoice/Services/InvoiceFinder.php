@@ -44,6 +44,10 @@ class InvoiceFinder
         return $this->ofOrganization($organizationId)
             ->when($status !== null, fn (Builder $q) => $q->where('status', $status))
             ->orderBy('created_at', 'desc')
+            // Tiebreaker - see InvoicePagingTest. created_at is a
+            // second-precision timestamp, so a batch issued in one second
+            // ties and the planner may order the tie differently per page.
+            ->orderByDesc('id')
             ->paginate($perPage);
     }
 
@@ -76,6 +80,10 @@ class InvoiceFinder
                     ->orWhere('buyer_name', 'like', '%'.$term.'%')
             ))
             ->orderBy('created_at', 'desc')
+            // Tiebreaker - see InvoicePagingTest. created_at is a
+            // second-precision timestamp, so a batch issued in one second
+            // ties and the planner may order the tie differently per page.
+            ->orderByDesc('id')
             ->paginate($perPage);
     }
 

@@ -42,6 +42,20 @@ Route::post('/logout', [SessionAuthController::class, 'logout'])
 */
 Route::prefix('admin')->name('admin.')
     ->middleware(['auth', 'platform.admin'])
+    // Every identifier in this group names a HasUuids model, so anything that
+    // is not a UUID is a mistyped URL and is a 404 at the router, before a
+    // query is built from it. Two reasons beyond tidiness:
+    //
+    // MySQL compares a malformed id against a char column and simply finds
+    // nothing, but Postgres rejects it as invalid input syntax for type uuid -
+    // an unhandled driver error carrying the statement, which with APP_DEBUG
+    // on is the query echoed back to whoever typed it. Staging is MySQL and
+    // nothing says it has to stay that way.
+    //
+    // It also makes the ordering of /licences/create above /licences/{id}
+    // a convenience rather than a requirement: "create" is not a UUID, so it
+    // can no longer be swallowed as one if the lines are ever reordered.
+    ->whereUuid(['id', 'licenceId', 'webhookId', 'logId'])
     ->group(function () {
         Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
         Route::get('/organizations', [AdminController::class, 'organizations'])->name('organizations');
@@ -96,6 +110,7 @@ Route::prefix('portal')->name('portal.')->middleware('auth')->group(function () 
 
 Route::prefix('portal')->name('portal.')
     ->middleware(['auth', 'portal.tenant'])
+    ->whereUuid(['invoiceId', 'userId'])
     ->group(function () {
         Route::get('/', [CustomerPortalController::class, 'dashboard'])->name('dashboard');
         // Invoices. {invoiceId} rather than {invoice}: route model binding

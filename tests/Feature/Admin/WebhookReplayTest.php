@@ -147,6 +147,46 @@ class WebhookReplayTest extends TestCase
      * token is a 419, so this is the one place in the suite where the console's
      * CSRF protection is actually exercised rather than asserted as posture.
      */
+    /**
+     * A disabled endpoint receives nothing, including a replay.
+     *
+     * is_active is the one gate that says "do not deliver here", and
+     * WebhookService::deliveriesFor() honours it on every ordinary dispatch.
+     * Replay called deliver() directly and so went around it - the only path
+     * in the system that could post to an endpoint a customer had switched
+     * off.
+     *
+     * Worse for the case that matters: recordFailure() sets is_active to
+     * false after ten consecutive failures, so the endpoints a replay would
+     * most plausibly be aimed at are exactly the ones the system had already
+     * given up on. Each replay would have added another failure to the count.
+     */
+    public function test_a_disabled_endpoint_is_not_replayed(): void
+    {
+        Http::fake(['acme.test/*' => Http::response('{"received":true}', 200)]);
+
+        $webhook = $this->endpoint(
+            $this->organization('Acme Trading'),
+            'https://acme.test/hooks/masaar',
+            active: false,
+            failures: 10,
+        );
+        $delivery = $this->delivery($webhook, ['response_status' => 503, 'success' => false]);
+
+        $response = $this->replay($webhook, $delivery);
+
+        $response->assertRedirect('/admin/webhooks/'.$webhook->id);
+        $response->assertSessionHas(
+            'error',
+            fn (string $message): bool => str_contains($message, 'disabled')
+        );
+
+        // Nothing left the building, and nothing was written as though it had.
+        Http::assertNothingSent();
+        $this->assertSame(1, WebhookLog::query()->where('webhook_id', $webhook->id)->count());
+        $this->assertSame(10, (int) $webhook->fresh()?->failure_count);
+    }
+
     private function replay(Webhook $webhook, WebhookLog $delivery): TestResponse
     {
         return $this->asRequest(fn (): TestResponse => $this->actingAs($this->admin())
@@ -167,15 +207,15 @@ class WebhookReplayTest extends TestCase
         return Organization::create(['name' => $name, 'country' => 'SA']);
     }
 
-    private function endpoint(Organization $organization, string $url): Webhook
+    private function endpoint(Organization $organization, string $url, bool $active = true, int $failures = 0): Webhook
     {
         return Webhook::create([
             'org_id' => $organization->id,
             'url' => $url,
             'secret' => str_repeat('s', 64),
             'events' => ['invoice.cleared', 'invoice.rejected'],
-            'is_active' => true,
-            'failure_count' => 0,
+            'is_active' => $active,
+            'failure_count' => $failures,
         ]);
     }
 

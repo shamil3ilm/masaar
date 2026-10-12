@@ -43,6 +43,7 @@ class OrganizationReport
                 'organizations.created_at',
             ])
             ->orderByDesc('organizations.created_at')
+            ->orderByDesc('organizations.id')
             ->paginate($perPage);
 
         $organizations->setCollection(

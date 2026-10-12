@@ -102,7 +102,7 @@ class LicenseManagementService
             }
         }
 
-        return $query->orderBy('created_at', 'desc')->paginate($perPage);
+        return $query->orderBy('created_at', 'desc')->orderByDesc('id')->paginate($perPage);
     }
 
     /**

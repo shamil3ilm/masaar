@@ -91,7 +91,7 @@
 
 @if ($invoices->hasPages())
     <div class="mt-4">
-        {{ $invoices->links() }}
+        {{ $invoices->appends(request()->query())->links() }}
     </div>
 @endif
 @endsection

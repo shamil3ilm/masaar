@@ -54,6 +54,8 @@ class AdminWebhookController extends Controller
         return view('admin.webhooks.show', [
             'endpoint' => $this->webhooks->endpoint($webhookId),
             'deliveries' => $this->webhooks->deliveries($webhookId),
+            'deliveryTotal' => $this->webhooks->deliveryCount($webhookId),
+            'deliveryCap' => $this->webhooks->deliveryCap(),
         ]);
     }
 
@@ -86,6 +88,19 @@ class AdminWebhookController extends Controller
     {
         $endpoint = $this->webhooks->endpoint($webhookId);
         $delivery = $this->webhooks->delivery($webhookId, $logId);
+
+        // WebhookService::deliver() refuses a disabled endpoint on its own,
+        // and would return false - which this method reports as "the endpoint
+        // did not accept it". That reads as the receiver answering, which it
+        // did not. Checked here so the reason given is the real one.
+        if (! $endpoint->is_active) {
+            return $this->backTo($webhookId)->with(
+                'error',
+                'This endpoint is disabled, so nothing was sent. Either the customer '
+                .'turned it off or ten consecutive failures turned it off for them. '
+                .'Re-enable it before replaying.'
+            );
+        }
 
         try {
             $accepted = $this->deliveries->deliver($endpoint, $delivery->event, $delivery->sentPayload());

@@ -8,6 +8,7 @@ use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
+use App\Http\Pagination\PageSize;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -46,7 +47,7 @@ class InvoiceController extends Controller
         $invoices = $this->invoices->paginate(
             $this->tenant->getOrganizationId(),
             $this->statusFilter($request),
-            (int) $request->get('per_page', 15)
+            PageSize::fromRequest($request, 15)
         );
 
         return ApiResponse::paginated($invoices);

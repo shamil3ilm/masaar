@@ -145,11 +145,20 @@ class AdminConsoleTest extends TestCase
         $this->assertNull($row->last_error);
     }
 
+    /**
+     * A well-formed id that names nothing, rather than a malformed one.
+     *
+     * The route group constrains these identifiers to UUIDs, so 'missing'
+     * never reaches the controller - it is a 404 from the router, which is
+     * the right answer for a mistyped URL but not what this test is about.
+     * The case worth holding is an id that is shaped correctly and names no
+     * row, which is what a stale browser tab sends.
+     */
     public function test_retry_unknown_item_errors(): void
     {
         $this->admin()
             ->from('/admin/queue')
-            ->post('/admin/queue/missing/retry')
+            ->post('/admin/queue/00000000-0000-0000-0000-000000000000/retry')
             ->assertRedirect('/admin/queue')
             ->assertSessionHas('error', 'Queue item not found');
     }

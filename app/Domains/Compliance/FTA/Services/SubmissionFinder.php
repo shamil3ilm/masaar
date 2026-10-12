@@ -33,6 +33,7 @@ class SubmissionFinder
         return FtaSubmission::where('org_id', $organizationId)
             ->with('invoice:id,invoice_number')
             ->latest()
+            ->orderByDesc('id')
             ->paginate($perPage);
     }
 }

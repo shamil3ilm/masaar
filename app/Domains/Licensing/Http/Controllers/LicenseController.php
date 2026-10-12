@@ -9,6 +9,7 @@ use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Licensing\Models\License;
 use App\Domains\Licensing\Services\LicenseManagementService;
 use App\Domains\Licensing\Services\UsageMeteringService;
+use App\Http\Pagination\PageSize;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -36,7 +37,7 @@ class LicenseController extends Controller
     public function index(Request $request): JsonResponse
     {
         $filters = $request->only(['status', 'tier', 'search', 'expired']);
-        $perPage = min((int) $request->get('per_page', 20), 100);
+        $perPage = PageSize::fromRequest($request, 20);
 
         $licenses = $this->managementService->listLicenses($filters, $perPage);
 
@@ -367,7 +368,7 @@ class LicenseController extends Controller
      */
     public function audit(Request $request, string $id): JsonResponse
     {
-        $limit = min((int) $request->get('limit', 50), 200);
+        $limit = PageSize::fromRequest($request, 50, 200, 'limit');
         $logs = $this->managementService->getAuditLog($id, $limit);
 
         return response()->json([

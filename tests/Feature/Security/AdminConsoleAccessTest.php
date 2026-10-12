@@ -111,7 +111,7 @@ class AdminConsoleAccessTest extends TestCase
 
     public function test_guest_cannot_retry_item(): void
     {
-        $this->post('/admin/queue/any-id/retry')->assertRedirect('/login');
+        $this->post('/admin/queue/00000000-0000-0000-0000-000000000000/retry')->assertRedirect('/login');
 
         $this->assertDatabaseCount('offline_queue', 0);
     }
@@ -119,7 +119,7 @@ class AdminConsoleAccessTest extends TestCase
     public function test_non_admin_cannot_retry_item(): void
     {
         $this->actingAs(User::factory()->create())
-            ->post('/admin/queue/any-id/retry')
+            ->post('/admin/queue/00000000-0000-0000-0000-000000000000/retry')
             ->assertForbidden();
 
         $this->assertDatabaseCount('offline_queue', 0);

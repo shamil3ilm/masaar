@@ -85,7 +85,7 @@
 
 @if($licences->hasPages())
 <div class="mt-4">
-    {{ $licences->links() }}
+    {{ $licences->appends(request()->query())->links() }}
 </div>
 @endif
 @endsection

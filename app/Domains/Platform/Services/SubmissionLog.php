@@ -65,6 +65,7 @@ class SubmissionLog
             ->when($filter->state !== null, fn (Builder $q) => $q->where('invoice_submissions.state', $filter->state))
             ->when($filter->organizationId !== null, fn (Builder $q) => $q->where('invoice_submissions.org_id', $filter->organizationId))
             ->orderByDesc('invoice_submissions.created_at')
+            ->orderByDesc('invoice_submissions.id')
             ->paginate($perPage);
     }
 

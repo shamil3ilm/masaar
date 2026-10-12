@@ -71,6 +71,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->assertDebugDisabledInProduction();
+        $this->assertSessionsAreEncrypted();
         $this->assertSubmissionLimitsAgree();
         $this->reclaimMiddlewareAliases();
 
@@ -123,6 +124,38 @@ class AppServiceProvider extends ServiceProvider
             throw new \RuntimeException(
                 'APP_DEBUG must be false when APP_ENV=production. '
                 .'Debug mode exposes internal error detail through the API.'
+            );
+        }
+    }
+
+    /**
+     * Refuse to run a production deployment that stores sessions in the clear.
+     *
+     * The console shows a licence's API secret exactly once, after issuing or
+     * rotating it, by flashing it to the next request. A flash is session
+     * data, and the shipped .env.example sets SESSION_DRIVER=database with
+     * SESSION_ENCRYPT=false and APP_ENV=production - so a deployment that
+     * copied it wrote that secret, in the clear, into a row of the sessions
+     * table, where it stayed until the session was collected.
+     *
+     * config/session.php already defaults encrypt to true under production.
+     * The example overrode the default to false, which is the worst kind of
+     * wrong: the safe behaviour was there and the file everyone copies turned
+     * it off.
+     *
+     * At boot rather than in a test, for the same reason as the limits below:
+     * the code is right and the .env is what drifts. No driver makes this
+     * acceptable - database and file leave it at rest, cookie hands it to the
+     * client - so the check is on the flag alone.
+     */
+    private function assertSessionsAreEncrypted(): void
+    {
+        if ($this->app->environment('production') && config('session.encrypt') !== true) {
+            throw new \RuntimeException(
+                'SESSION_ENCRYPT must be true when APP_ENV=production. The console '
+                .'flashes a licence API secret through the session, and with '
+                .'SESSION_DRIVER='.(string) config('session.driver').' that would '
+                .'be stored in the clear.'
             );
         }
     }

@@ -7,6 +7,7 @@ use App\Domains\Webhook\Models\Webhook;
 use App\Domains\Webhook\Services\Subscriptions;
 use App\Domains\Webhook\Services\WebhookService;
 use App\Http\Controllers\Controller;
+use App\Http\Pagination\PageSize;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -178,7 +179,7 @@ class WebhookController extends Controller
     {
         $webhook = $this->getWebhook($id);
 
-        $logs = $this->subscriptions->deliveries($webhook, (int) $request->get('per_page', 20));
+        $logs = $this->subscriptions->deliveries($webhook, PageSize::fromRequest($request, 20));
 
         return ApiResponse::paginated($logs);
     }

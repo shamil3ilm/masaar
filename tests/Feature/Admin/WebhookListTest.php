@@ -87,6 +87,66 @@ class WebhookListTest extends TestCase
             ->assertSee('upstream connect error'));
     }
 
+    /**
+     * A truncated log says that it is truncated.
+     *
+     * The report returns the newest fifty attempts and the heading read "50
+     * most recent attempts" whether the endpoint had had fifty or five
+     * thousand. This is the screen opened to answer "our webhook stopped
+     * working", so a reader who takes the list for the whole history
+     * concludes the endpoint was tried fifty times and stopped - when the
+     * truth may be that it has been failing for weeks.
+     *
+     * The same shape as the alerts screen, which caps at two hundred and
+     * shows the real total beside it.
+     */
+    public function test_a_truncated_log_says_so(): void
+    {
+        $webhook = $this->endpoint($this->organization('Acme Trading'), 'https://acme.test/hooks/masaar');
+
+        foreach (range(1, 51) as $n) {
+            WebhookLog::create([
+                'webhook_id' => $webhook->id,
+                'event' => 'invoice.cleared',
+                'payload' => ['event' => 'invoice.cleared', 'data' => ['invoice_number' => 'INV-'.$n]],
+                'response_status' => 503,
+                'response_body' => 'upstream connect error',
+                'duration_ms' => 10,
+                'success' => false,
+            ]);
+        }
+
+        $this->asRequest(fn () => $this->actingAs($this->admin())
+            ->get('/admin/webhooks/'.$webhook->id)
+            ->assertOk()
+            ->assertSee('51 attempts')
+            ->assertSee('showing the 50 most recent'));
+    }
+
+    /**
+     * And a log shorter than the cap claims no truncation.
+     */
+    public function test_a_complete_log_claims_nothing(): void
+    {
+        $webhook = $this->endpoint($this->organization('Acme Trading'), 'https://acme.test/hooks/masaar');
+
+        WebhookLog::create([
+            'webhook_id' => $webhook->id,
+            'event' => 'invoice.cleared',
+            'payload' => ['event' => 'invoice.cleared', 'data' => []],
+            'response_status' => 200,
+            'response_body' => 'ok',
+            'duration_ms' => 10,
+            'success' => true,
+        ]);
+
+        $this->asRequest(fn () => $this->actingAs($this->admin())
+            ->get('/admin/webhooks/'.$webhook->id)
+            ->assertOk()
+            ->assertSee('1 attempt')
+            ->assertDontSee('showing the'));
+    }
+
     private function admin(): User
     {
         return User::factory()->create(['is_platform_admin' => true]);

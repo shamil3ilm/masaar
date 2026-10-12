@@ -17,6 +17,7 @@ use App\Domains\Platform\Services\PlatformStatus;
 use App\Domains\Platform\Services\QueueReport;
 use App\Domains\Platform\Services\SubmissionLog;
 use App\Http\Controllers\Controller;
+use App\Http\Pagination\PageSize;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -78,7 +79,7 @@ class AdminDashboardController extends Controller
      */
     public function topOrganizations(Request $request): JsonResponse
     {
-        $limit = min((int) $request->query('limit', 10), 50);
+        $limit = PageSize::fromRequest($request, 10, 50, 'limit');
 
         $organizations = Cache::remember(
             "admin:top_orgs:{$limit}",

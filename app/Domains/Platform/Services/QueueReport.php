@@ -106,6 +106,7 @@ class QueueReport
             ->when($filter->state !== null, fn (Builder $q) => $q->where('offline_queue.state', $filter->state))
             ->when($filter->organizationId !== null, fn (Builder $q) => $q->where('offline_queue.org_id', $filter->organizationId))
             ->orderByDesc('offline_queue.queued_at')
+            ->orderByDesc('offline_queue.id')
             ->paginate($perPage);
     }
 

@@ -44,7 +44,9 @@
 
 <div class="mb-2 flex items-baseline justify-between">
     <h3 class="text-lg font-semibold text-gray-800">Recent deliveries</h3>
-    <span class="text-sm text-gray-500">{{ $deliveries->count() }} most recent {{ Str::plural('attempt', $deliveries->count()) }}</span>
+    <span class="text-sm text-gray-500">
+        {{ $deliveryTotal }} {{ Str::plural('attempt', $deliveryTotal) }}{{ $deliveryTotal > $deliveryCap ? ', showing the '.$deliveryCap.' most recent' : '' }}
+    </span>
 </div>
 <p class="mb-3 text-sm text-gray-500">
     Replaying sends the stored event to this endpoint again, for real. The attempt is logged as its own row below,

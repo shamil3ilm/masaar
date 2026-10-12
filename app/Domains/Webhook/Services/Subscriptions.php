@@ -98,6 +98,7 @@ class Subscriptions
     {
         return $webhook->logs()
             ->orderBy('created_at', 'desc')
+            ->orderByDesc('id')
             ->paginate($perPage);
     }
 }

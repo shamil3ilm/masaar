@@ -188,6 +188,7 @@ class SubmissionReport
             ->when($filter->dateFrom !== null, fn ($q) => $q->where('invoice_submissions.created_at', '>=', $filter->dateFrom))
             ->when($filter->dateTo !== null, fn ($q) => $q->where('invoice_submissions.created_at', '<=', $filter->dateTo.' 23:59:59'))
             ->orderByDesc('invoice_submissions.created_at')
+            ->orderByDesc('invoice_submissions.id')
             ->paginate($perPage);
     }
 
@@ -205,6 +206,7 @@ class SubmissionReport
                 'invoices.total as invoice_total',
             ])
             ->orderByDesc('invoice_submissions.created_at')
+            ->orderByDesc('invoice_submissions.id')
             ->paginate($perPage);
     }
 

@@ -89,6 +89,28 @@ class WebhookReport
     }
 
     /**
+     * How many attempts this endpoint has had in total.
+     *
+     * deliveries() returns the newest fifty, and the screen said "50 most
+     * recent attempts" whether the endpoint had fifty or five thousand. This
+     * is the screen somebody opens to answer "our webhook stopped working",
+     * and a truncated log that reads as a complete one is how a reader
+     * concludes an endpoint was only ever tried fifty times.
+     */
+    public function deliveryCount(string $webhookId): int
+    {
+        return WebhookLog::query()->where('webhook_id', $webhookId)->count();
+    }
+
+    /**
+     * The number of attempts one page of this report will show.
+     */
+    public function deliveryCap(): int
+    {
+        return self::DELIVERIES;
+    }
+
+    /**
      * The recent delivery attempts for one endpoint, newest first.
      *
      * webhook_logs carries no org_id and no tenant scope - it is reached
@@ -101,6 +123,7 @@ class WebhookReport
         return WebhookLog::query()
             ->where('webhook_id', $webhookId)
             ->orderByDesc('created_at')
+            ->orderByDesc('id')
             ->limit(self::DELIVERIES)
             ->get()
             ->map(fn (WebhookLog $log): array => [

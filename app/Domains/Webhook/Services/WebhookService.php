@@ -61,9 +61,25 @@ class WebhookService
      *
      * The HTTP call is made before anything is written, so no transaction is
      * held open while the receiver answers.
+     *
+     * A disabled endpoint is refused here rather than only by the caller.
+     * The dispatch loop above selects on is_active, so for a long time that
+     * looked like enough - until the console grew a replay button, which
+     * calls this method directly with an endpoint it loaded by id. That was
+     * the one path in the system able to post to an endpoint a customer had
+     * switched off, and the endpoints a replay is aimed at are the failing
+     * ones, which is exactly what recordFailure() disables after ten
+     * consecutive failures.
+     *
+     * Nothing is recorded when it is refused. A log row means an attempt was
+     * made, and reading one that was never sent is worse than reading none.
      */
     public function deliver(Webhook $webhook, string $event, array $payload): bool
     {
+        if (! $webhook->is_active) {
+            return false;
+        }
+
         $deliveryId = Str::uuid()->toString();
         $timestamp = now()->toISOString();
 
