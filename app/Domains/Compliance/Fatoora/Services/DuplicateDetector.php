@@ -146,14 +146,18 @@ class DuplicateDetector
      */
     public function checkInvoiceNumber(string $organizationId, string $invoiceNumber, ?string $exceptId = null): ?Invoice
     {
-        $cacheKey = "dup_check:number:{$organizationId}:{$invoiceNumber}:".($exceptId ?? '');
-
-        return Cache::remember($cacheKey, self::CACHE_TTL * 60, function () use ($organizationId, $invoiceNumber, $exceptId) {
-            return Invoice::where('org_id', $organizationId)
-                ->where('invoice_number', $invoiceNumber)
-                ->when($exceptId !== null, fn ($query) => $query->whereKeyNot($exceptId))
-                ->first();
-        });
+        // Not cached. The entry held an Eloquent model for an hour, so a
+        // duplicate found once was reported for an hour after the colliding
+        // row had been deleted - and the key embedded $exceptId, making it
+        // per invoice, so it bought almost nothing in exchange. Since
+        // migration 0230 added the unique index on (org_id, invoice_number)
+        // this can only ever return null for a same-tenant reuse anyway: the
+        // second row cannot be written. It stays as the check the submission
+        // path calls, now answering from the database every time.
+        return Invoice::where('org_id', $organizationId)
+            ->where('invoice_number', $invoiceNumber)
+            ->when($exceptId !== null, fn ($query) => $query->whereKeyNot($exceptId))
+            ->first();
     }
 
     /**
@@ -231,11 +235,14 @@ class DuplicateDetector
         $errors = [];
         $warnings = [];
 
-        // Check invoice number uniqueness
-        $existingByNumber = Invoice::where('org_id', $invoice->org_id)
-            ->where('invoice_number', $invoice->invoice_number)
-            ->when($excludeId, fn ($q) => $q->where('id', '!=', $excludeId))
-            ->first();
+        // Through checkInvoiceNumber() rather than a second copy of its
+        // query. The two had drifted apart already: that one excludes by
+        // whereKeyNot and this one by a string comparison on 'id'.
+        $existingByNumber = $this->checkInvoiceNumber(
+            (string) $invoice->org_id,
+            (string) $invoice->invoice_number,
+            $excludeId,
+        );
 
         if ($existingByNumber) {
             $errors[] = [
@@ -383,14 +390,5 @@ class DuplicateDetector
         }
 
         return $conflicts;
-    }
-
-    /**
-     * Clear duplicate check cache for an organization.
-     */
-    public function clearCache(string $organizationId): void
-    {
-        // Note: In production, use tagged cache or pattern-based clearing
-        Cache::flush();
     }
 }

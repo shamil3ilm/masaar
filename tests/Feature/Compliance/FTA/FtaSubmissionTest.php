@@ -166,12 +166,53 @@ class FtaSubmissionTest extends TestCase
         }
     }
 
+    /**
+     * Submitting the same invoice twice files it with the authority once.
+     *
+     * test_concurrent_retries_submit_once covers the retry path, which has
+     * always claimed the row under lockForUpdate. The create path had no
+     * guard at all - no check, no lock, no idempotency key - so a
+     * double-clicked button inserted two rows and sent the same Peppol
+     * document to the FTA twice. The table's only unique index was on
+     * `reference`, which the authority assigns later and which is NULL until
+     * it does, and MySQL permits unlimited NULLs in a unique index, so it
+     * constrained nothing at the moment it needed to.
+     */
+    public function test_a_second_submission_is_refused(): void
+    {
+        Http::fake(['fta.test/*' => Http::response(['status' => 'accepted', 'submissionId' => 'FTA-1'])]);
+
+        [$organization, $invoice] = $this->taxpayerInvoice();
+
+        app(FtaService::class)->submit($invoice, $organization);
+
+        try {
+            app(FtaService::class)->submit($invoice, $organization);
+            $this->fail('The same invoice was filed with the FTA twice.');
+        } catch (FtaException) {
+            Http::assertSentCount(1);
+
+            $this->assertSame(
+                1,
+                FtaSubmission::withoutTenantScope(
+                    fn () => FtaSubmission::where('invoice_id', $invoice->id)->count()
+                ),
+                'a second submission row was written'
+            );
+        }
+    }
+
     private function resubmit(): FtaSubmission
     {
         return app(FtaService::class)->retry($this->submission(FtaStatus::Failed));
     }
 
-    private function submission(FtaStatus $status, ?string $reference = null): FtaSubmission
+    /**
+     * A taxpayer and one invoice of theirs, with no submission yet.
+     *
+     * @return array{0: Organization, 1: Invoice}
+     */
+    private function taxpayerInvoice(): array
     {
         $organization = Organization::create([
             'name' => 'Acme FZE',
@@ -191,6 +232,13 @@ class FtaSubmissionTest extends TestCase
             'tax_amount' => '5.00',
             'total' => '105.00',
         ]));
+
+        return [$organization, $invoice];
+    }
+
+    private function submission(FtaStatus $status, ?string $reference = null): FtaSubmission
+    {
+        [$organization, $invoice] = $this->taxpayerInvoice();
 
         return FtaSubmission::withoutTenantScope(fn () => FtaSubmission::create([
             'invoice_id' => $invoice->id,

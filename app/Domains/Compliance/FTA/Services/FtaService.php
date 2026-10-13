@@ -47,16 +47,40 @@ class FtaService
 
         $xml = $this->xmlBuilder->build($data);
 
-        $submission = FtaSubmission::create([
-            'invoice_id' => $invoice->id,
-            'org_id' => $organization->id,
-            'status' => FtaStatus::Queued,
-            'document_type' => $data->documentType,
-            'invoice_xml' => $xml,
-            'max_retries' => config('fta.retry.max_attempts', 5),
-            'retry_count' => 0,
-        ]);
+        // There was no guard here at all. Two concurrent requests - or one
+        // double-clicked button - both inserted, and both filed the same
+        // document with the FTA. The only unique index on the table was on
+        // `reference`, which the authority assigns later and which is NULL
+        // until it does, and MySQL permits unlimited NULLs in a unique index,
+        // so it constrained nothing at the moment it was needed.
+        //
+        // The invoice row is locked rather than the submission: until the
+        // insert there is no submission to lock, and the invoice is what two
+        // concurrent callers share. Same shape as claimRetry() below and as
+        // SubmissionTracker's guard on the ZATCA side. The unique index added
+        // in 0230 is the backstop if a caller ever reaches here without it.
+        $submission = DB::transaction(function () use ($invoice, $organization, $data, $xml): FtaSubmission {
+            Invoice::query()->whereKey($invoice->getKey())->lockForUpdate()->first();
 
+            $existing = FtaSubmission::query()->where('invoice_id', $invoice->id)->first();
+
+            if ($existing !== null) {
+                throw FtaException::alreadySubmitted($invoice->invoice_number, $existing->status->value);
+            }
+
+            return FtaSubmission::create([
+                'invoice_id' => $invoice->id,
+                'org_id' => $organization->id,
+                'status' => FtaStatus::Queued,
+                'document_type' => $data->documentType,
+                'invoice_xml' => $xml,
+                'max_retries' => config('fta.retry.max_attempts', 5),
+                'retry_count' => 0,
+            ]);
+        });
+
+        // The authority is called after that commits, never while the lock is
+        // held - the same ordering claimRetry() documents.
         return $this->dispatch($submission);
     }
 

@@ -7,6 +7,7 @@ namespace Tests\Feature\Compliance;
 use App\Domains\Compliance\Fatoora\Services\DuplicateDetector;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -51,15 +52,30 @@ class DuplicateDetectionTest extends TestCase
      * The check still has to do its job: a second invoice reusing a number is
      * what ZATCA rejects, and catching it here is the point of the service.
      */
-    public function test_a_reused_number_is_a_duplicate(): void
+    /**
+     * Reusing a number is refused when it is written, not detected later.
+     *
+     * This used to write two invoices sharing a number and assert that
+     * validateForSubmission reported the second. Migration 0230 added the
+     * unique index on (org_id, invoice_number), so the second row cannot be
+     * written at all and the detector cannot see a same-tenant reuse - which
+     * is the position BT-124 has always been in, and which this class already
+     * says of it: the primary key guarantees the UUID, so no application
+     * check is needed there.
+     *
+     * Detecting it at submission was the wrong moment anyway. Nothing checked
+     * at creation, so both invoices were accepted and the collision surfaced
+     * later, against a document that may already have been given to a buyer.
+     *
+     * The rule itself is covered by Tests\Feature\Invoice\InvoiceNumberUniqueTest.
+     */
+    public function test_a_reused_number_is_refused(): void
     {
         $this->invoice('INV-1');
-        $second = $this->invoice('INV-1');
 
-        $result = $this->check($second);
+        $this->expectException(UniqueConstraintViolationException::class);
 
-        $this->assertTrue($result['is_duplicate']);
-        $this->assertSame('invoice_number', $result['duplicates'][0]['type']);
+        $this->invoice('INV-1');
     }
 
     /**
