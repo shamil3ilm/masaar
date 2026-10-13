@@ -36,14 +36,14 @@
     </div>
 
     @if ($status['is_fully_operational'])
-        <form method="POST" action="{{ route('admin.kill-switches.stop') }}" class="flex items-end gap-2"
+        <form method="POST" action="{{ route('admin.kill-switches.stop') }}" class="flex flex-wrap items-end gap-2"
               data-confirm="Stop everything? No invoice will be issued, signed or filed for any taxpayer until you resume.">
             @csrf
             <div>
                 <label for="stop-reason" class="mb-1 block text-xs font-medium text-gray-600">Reason</label>
                 <input id="stop-reason" name="reason" type="text" required minlength="5" maxlength="500"
                        value="{{ old('reason') }}" placeholder="Why everything is stopping"
-                       class="w-72 rounded border border-gray-300 px-3 py-2 text-sm focus:border-teal-600 focus:ring-1 focus:ring-teal-600">
+                       class="w-full rounded border border-gray-300 sm:w-72 px-3 py-2 text-sm focus:border-teal-600 focus:ring-1 focus:ring-teal-600">
             </div>
             <x-ui.button variant="danger">Stop everything</x-ui.button>
         </form>
@@ -118,7 +118,11 @@
                     @endif
                 </div>
 
-                <div class="shrink-0">
+                {{-- shrink-0 unconditionally kept this at its 398px intrinsic
+                     width inside a flex row, so the whole page scrolled
+                     sideways on a phone. It only needs to hold its width once
+                     there is room beside the switch's name. --}}
+                <div class="w-full sm:w-auto sm:shrink-0">
                     @if ($state['enabled'])
                         <form method="POST" action="{{ route('admin.kill-switches.disable') }}"
                               data-confirm="Resume {{ strtolower($name) }}? Taxpayers will be able to do this again immediately.">
@@ -148,7 +152,7 @@
                                 </label>
                                 <input id="minutes-{{ $switch }}" name="minutes" type="number" min="1"
                                        max="{{ $maxMinutes }}" placeholder="optional"
-                                       class="w-28 rounded border border-gray-300 px-3 py-2 text-sm focus:border-teal-600 focus:ring-1 focus:ring-teal-600">
+                                       class="w-full rounded border border-gray-300 sm:w-28 px-3 py-2 text-sm focus:border-teal-600 focus:ring-1 focus:ring-teal-600">
                             </div>
 
                             <x-ui.button variant="danger">Stop</x-ui.button>

@@ -8,9 +8,13 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-gray-50 min-h-screen">
-    <div class="flex">
+    <div x-data="drawer" class="flex">
+        <div x-show="covering" @click="close" x-cloak
+             class="fixed inset-0 z-30 bg-ink-950/50" aria-hidden="true"></div>
+
         <!-- Sidebar -->
-        <aside class="flex min-h-screen w-64 flex-col border-r bg-white">
+        <aside id="sidebar" :class="panel"
+               class="fixed inset-y-0 left-0 z-40 flex flex-col overflow-y-auto border-r bg-white transition-transform duration-300 md:static md:z-auto md:min-h-screen">
             <div class="border-b p-6">
                 <x-logo :size="30" name name-class="text-base font-semibold tracking-tight text-ink-900" />
                 <p class="mt-2 text-xs tracking-wide text-gray-400 uppercase">ZATCA Portal</p>
@@ -57,12 +61,27 @@
         </aside>
 
         <!-- Main Content -->
-        <main class="flex-1 p-8">
+        <main class="min-w-0 flex-1">
+            {{-- The portal had no way to reach its navigation on a phone: the
+                 sidebar was a fixed 256px column of a 390px screen and there
+                 was no toggle anywhere. This bar carries one, and disappears
+                 at md where the sidebar is a column again. --}}
+            <div class="flex items-center gap-3 border-b bg-white px-4 py-3 md:hidden">
+                <button type="button" @click="toggle" :aria-expanded="expanded"
+                        aria-controls="sidebar" aria-label="Navigation"
+                        class="-ml-2 inline-flex min-h-11 min-w-11 items-center justify-center rounded text-gray-500 transition-colors hover:text-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-900">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <x-logo :size="26" name name-class="text-sm font-semibold tracking-tight text-ink-900" />
+            </div>
+
+            <div class="p-4 md:p-8">
             {{-- In the layout, not in each page. Included by hand it reached
                  two of eleven portal views, and the pages that redirect with a
                  message were mostly not among them. --}}
-            @include('portal.partials.flash')
-            @yield('content')
+                @include('portal.partials.flash')
+                @yield('content')
+            </div>
         </main>
     </div>
 </body>

@@ -2,7 +2,8 @@ import Alpine from '@alpinejs/csp';
 
 import { registerConfirmations } from './confirm.js';
 import { registerInvoiceLines } from './invoice-lines.js';
-import sidebar from './sidebar.js';
+import { registerValidation } from './validate.js';
+import { drawer, sidebar } from './sidebar.js';
 
 /*
  * The CSP build of Alpine, deliberately.
@@ -19,8 +20,10 @@ import sidebar from './sidebar.js';
  * in a file beside this one and is registered below.
  */
 Alpine.data('sidebar', sidebar);
+Alpine.data('drawer', drawer);
 
 registerConfirmations();
 registerInvoiceLines();
+registerValidation();
 
 Alpine.start();
