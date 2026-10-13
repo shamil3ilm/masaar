@@ -129,15 +129,32 @@ class CredentialStore
      */
     public function certificate(string $organizationId, ?string $branchId = null): ?string
     {
+        return $this->signing($organizationId, $branchId)['pcsid'] ?? null;
+    }
+
+    /**
+     * The credentials to sign with: the branch's own, or the organization's.
+     *
+     * The same resolution order certificate() describes, returning the whole
+     * credential rather than just the certificate, because signing needs the
+     * private key with it. Extracted because OfflineFallback was resolving
+     * credentials with a plain get() on the branch and no fallback, so a
+     * branch holding none of its own re-signed the document unsigned while
+     * the organization had a PCSID the signing path would have used.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function signing(string $organizationId, ?string $branchId = null): ?array
+    {
         if ($branchId !== null) {
             $branch = $this->get($organizationId, $branchId, self::PCSID);
 
             if (! empty($branch['pcsid'])) {
-                return $branch['pcsid'];
+                return $branch;
             }
         }
 
-        return $this->get($organizationId, null, self::PCSID)['pcsid'] ?? null;
+        return $this->get($organizationId, null, self::PCSID);
     }
 
     /**

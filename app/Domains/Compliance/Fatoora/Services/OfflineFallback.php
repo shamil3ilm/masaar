@@ -7,6 +7,7 @@ namespace App\Domains\Compliance\Fatoora\Services;
 use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Invoice\Models\Invoice;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -94,10 +95,50 @@ class OfflineFallback
     private function queueForOffline(Invoice $invoice, array $options): array
     {
         $organization = $invoice->org;
-        $signing = $this->credentials->get((string) $organization->id, $invoice->branch_id, CredentialStore::PCSID);
 
-        // Generate signed XML if not already signed
-        if (! $invoice->signed_xml || ! $invoice->hash || ! $invoice->qr_code) {
+        // signing(), not get(): a branch holding no credentials of its own
+        // falls back to the organization's certificate, which is what the
+        // signing path has always done and this did not - so a branch invoice
+        // was re-signed unsigned while a usable PCSID sat one level up.
+        $signing = $this->credentials->signing((string) $organization->id, $invoice->branch_id);
+
+        // Only an invoice that was never issued is signed here.
+        //
+        // This used to read "no signed_xml OR no hash OR no qr_code". A Phase
+        // 1 invoice issued without a certificate legitimately has signed_xml
+        // null, so the guard fired on an invoice that was already issued,
+        // already hashed and already recorded in hash_chain_history - and
+        // overwrote invoices.hash with a freshly computed one. The next
+        // invoice derives its PIH from invoices.hash
+        // (Invoice::getPreviousInvoiceHashAttribute), so its recorded
+        // predecessor and its derived predecessor stopped agreeing and
+        // fatoora:verify-hash-chain reported a mismatch on a chain nobody had
+        // touched. hash is in MUTABLE_AFTER_FINALIZED, so the immutability
+        // guard did not stop it.
+        //
+        // Re-signing an issued document is not a repair in any case: the
+        // signing timestamp is part of the document, so the hash necessarily
+        // changes, and the remedy for a document that needs to change is a
+        // credit note.
+        // An issued document that was never signed cannot be filed at all.
+        //
+        // Signing it now would give it a different hash - the signing
+        // timestamp is part of the document - and hash_chain_history already
+        // holds the original, so the successor's recorded predecessor and its
+        // derived one would stop agreeing. Re-signing is what the old guard
+        // did here, silently. Refusing is the honest answer, and the remedy
+        // is a credit note and a fresh invoice rather than a second version
+        // of this one.
+        if ($invoice->hash !== null && $invoice->signed_xml === null) {
+            throw new FatooraException(
+                "Invoice {$invoice->invoice_number} was issued without a signature and cannot be filed now. "
+                .'Signing it would change the hash the chain already records. Issue a credit note and a new invoice instead.',
+                ErrorCode::VAL_INVOICE_ALREADY_ISSUED,
+                ['invoice_id' => $invoice->id, 'icv' => $invoice->icv],
+            );
+        }
+
+        if ($invoice->hash === null) {
             $complianceData = $this->complianceService->generateComplianceData(
                 invoice: $invoice,
                 organization: $organization,
@@ -114,16 +155,11 @@ class OfflineFallback
             // both on the invoice and in the queue. For a B2C sale that QR is
             // what gets printed on the receipt, so an outage produced receipts
             // with nothing on them to scan.
-            $invoice->update([
-                'signed_xml' => $complianceData['xml'],
-                'hash' => $complianceData['hash'],
-                'qr_code' => $complianceData['qr_code'],
-            ]);
-
             $signedXml = $complianceData['xml'];
             $invoiceHash = $complianceData['hash'];
             $qrCode = $complianceData['qr_code'];
         } else {
+            $complianceData = null;
             $signedXml = $invoice->signed_xml;
             $invoiceHash = $invoice->hash;
             $qrCode = $invoice->qr_code;
@@ -132,14 +168,31 @@ class OfflineFallback
         // Determine priority
         $priority = $options['priority'] ?? $this->determinePriority($invoice);
 
-        // Queue for later submission
-        $queueResult = $this->offlineQueueManager->queue(
-            invoice: $invoice,
-            signedXml: $signedXml,
-            invoiceHash: $invoiceHash,
-            qrCode: $qrCode,
-            priority: $priority
-        );
+        // Signing the invoice and queueing it are one change.
+        //
+        // They were two writes with no transaction. Dying between them left an
+        // invoice carrying a hash and a QR with no queue row - so nothing
+        // would ever file it, and nothing would report it overdue either,
+        // because ReportOverdueSubmissions reads invoice_submissions and this
+        // path never writes one. For a simplified invoice that is the
+        // twenty-four hour reporting deadline passing in silence.
+        $queueResult = DB::transaction(function () use ($invoice, $complianceData, $signedXml, $invoiceHash, $qrCode, $priority): array {
+            if ($complianceData !== null) {
+                $invoice->update([
+                    'signed_xml' => $complianceData['xml'],
+                    'hash' => $complianceData['hash'],
+                    'qr_code' => $complianceData['qr_code'],
+                ]);
+            }
+
+            return $this->offlineQueueManager->queue(
+                invoice: $invoice,
+                signedXml: $signedXml,
+                invoiceHash: $invoiceHash,
+                qrCode: $qrCode,
+                priority: $priority
+            );
+        });
 
         Log::info('Invoice queued for offline submission', [
             'invoice_id' => $invoice->id,

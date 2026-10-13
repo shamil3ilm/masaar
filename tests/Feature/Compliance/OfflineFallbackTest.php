@@ -6,6 +6,7 @@ namespace Tests\Feature\Compliance;
 
 use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
+use App\Domains\Compliance\Fatoora\Models\OfflineItem;
 use App\Domains\Compliance\Fatoora\Services\Connectivity;
 use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use App\Domains\Compliance\Fatoora\Services\OfflineFallback;
@@ -15,6 +16,7 @@ use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 use Tests\Fixtures\SigningCredentials;
 use Tests\TestCase;
 
@@ -135,6 +137,87 @@ class OfflineFallbackTest extends TestCase
         app(OfflineFallback::class)->submit($this->invoice());
 
         $this->assertSame(1, DB::table('offline_queue')->count());
+    }
+
+    /**
+     * Queueing an already-issued invoice leaves its hash alone.
+     *
+     * The guard here read "no signed_xml OR no hash OR no qr_code", and a
+     * Phase 1 invoice issued without a certificate legitimately has
+     * signed_xml null. So it fired on an invoice that was already issued,
+     * already hashed and already recorded in hash_chain_history, and
+     * overwrote invoices.hash with a freshly computed one - the signing
+     * timestamp is part of the document, so the new hash necessarily differs.
+     *
+     * The next invoice derives its predecessor hash from invoices.hash, while
+     * its chain entry records the old one, so the two stopped agreeing and
+     * fatoora:verify-hash-chain reported a mismatch on a chain nobody had
+     * touched. hash is in MUTABLE_AFTER_FINALIZED, so the immutability guard
+     * allowed it.
+     */
+    public function test_an_issued_hash_is_not_rewritten(): void
+    {
+        $this->submissionFails(ErrorCode::NET_TIMEOUT);
+
+        $invoice = $this->invoice();
+        $hash = base64_encode(hash('sha256', 'the document the chain recorded', true));
+
+        Invoice::withoutTenantScope(fn () => $invoice->update([
+            'status' => 'issued',
+            'icv' => 1,
+            'hash' => $hash,
+            'qr_code' => base64_encode('AQVTZWxsZXI='),
+            'signed_xml' => null,
+        ]));
+
+        try {
+            app(OfflineFallback::class)->submit($invoice->fresh(['lines']));
+            $this->fail('An invoice issued without a signature was queued for filing.');
+        } catch (FatooraException $e) {
+            $this->assertSame(ErrorCode::VAL_INVOICE_ALREADY_ISSUED, $e->getErrorCode());
+        }
+
+        $this->assertSame(
+            $hash,
+            $invoice->fresh()->hash,
+            'the hash hash_chain_history recorded was overwritten, so the next invoice derives a predecessor the chain never held'
+        );
+
+        $this->assertSame(0, DB::table('offline_queue')->count(), 'an unfilable document was queued');
+    }
+
+    /**
+     * And a queue insert that fails leaves no hash behind either.
+     *
+     * The invoice update and the queue insert were two writes with no
+     * transaction. Dying between them left an invoice carrying a hash and a
+     * QR with no queue row - nothing would file it, and nothing would report
+     * it overdue, because ReportOverdueSubmissions reads invoice_submissions
+     * and this path never writes one. For a simplified invoice that is the
+     * twenty-four hour reporting deadline passing in silence.
+     */
+    public function test_a_failed_queue_writes_no_hash(): void
+    {
+        $this->submissionFails(ErrorCode::NET_TIMEOUT);
+
+        OfflineItem::creating(function (): void {
+            throw new RuntimeException('the queue insert failed');
+        });
+
+        $invoice = $this->invoice();
+
+        try {
+            app(OfflineFallback::class)->submit($invoice);
+        } catch (RuntimeException) {
+            // The failure propagates; what matters is what it left behind.
+        }
+
+        $this->assertNull(
+            $invoice->fresh()->hash,
+            'the invoice was hashed for a queue row that was never written, so nothing will ever file it'
+        );
+
+        $this->assertSame(0, DB::table('offline_queue')->count());
     }
 
     private function submissionFails(ErrorCode $code): void
