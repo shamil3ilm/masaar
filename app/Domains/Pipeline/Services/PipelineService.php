@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Pipeline\Services;
 
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
+use App\Domains\Compliance\Fatoora\Services\IssuanceNotifier;
 use App\Domains\Compliance\Fatoora\Services\OfflineFallback;
 use App\Domains\Compliance\Fatoora\Services\Submitter;
 use App\Domains\Invoice\Models\Invoice;
@@ -25,7 +26,7 @@ use Illuminate\Support\Facades\Log;
  *   OfflineFallback   files it, or queues it when ZATCA is unreachable
  *     SubmissionTracker  idempotency, submission record, state machine
  *       FatooraClient    the call to ZATCA
- *   PipelineNotifier  tells the ERP what happened
+ *   IssuanceNotifier  tells the ERP what happened
  *   PipelineResult    shapes the reply
  *
  * The failure rule throughout: once an invoice is issued it stays issued. A
@@ -38,7 +39,7 @@ class PipelineService
         private readonly InvoiceDrafter $drafter,
         private readonly Submitter $compliance,
         private readonly OfflineFallback $submissions,
-        private readonly PipelineNotifier $notifier,
+        private readonly IssuanceNotifier $notifier,
         private readonly PipelineResult $result,
     ) {}
 

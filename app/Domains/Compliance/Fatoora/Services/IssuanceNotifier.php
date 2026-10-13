@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Domains\Pipeline\Services;
+namespace App\Domains\Compliance\Fatoora\Services;
 
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Webhook\Services\WebhookService;
@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Log;
  * carry the same payload whether the submission ran inline or on the queue.
  * This class announced them too, under the same names with a different shape.
  */
-class PipelineNotifier
+class IssuanceNotifier
 {
     public function __construct(
         private readonly WebhookService $webhooks,

@@ -53,6 +53,7 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Fatoora/Services/DuplicateDetector.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Services/InvoiceValidator.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Services/InvoiceVerdict.php' => 'Invoice',
+        'Domains/Compliance/Fatoora/Services/IssuanceNotifier.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Services/OfflineFallback.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Services/OfflineQueue.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Services/SubmissionGuard.php' => 'Invoice',
@@ -63,7 +64,6 @@ class CrossDomainModelTest extends TestCase
         'Domains/Organization/Models/Branch.php' => 'Invoice',
         'Domains/Organization/Models/ComplianceProfile.php' => 'Invoice',
         'Domains/Organization/Models/Organization.php' => 'Invoice',
-        'Domains/Pipeline/Services/PipelineNotifier.php' => 'Invoice',
         'Domains/Pipeline/Services/PipelineResult.php' => 'Invoice',
         'Domains/Pipeline/Services/PipelineService.php' => 'Invoice, Organization',
     ];
