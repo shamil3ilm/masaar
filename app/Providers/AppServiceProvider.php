@@ -91,6 +91,7 @@ class AppServiceProvider extends ServiceProvider
         $this->assertDebugDisabledInProduction();
         $this->assertSessionsAreEncrypted();
         $this->assertSubmissionLimitsAgree();
+        $this->assertAuthorityIsNotSandbox();
         $this->reclaimMiddlewareAliases();
 
         // Eloquent drops attributes that are not fillable without a word.
@@ -136,6 +137,42 @@ class AppServiceProvider extends ServiceProvider
      * Failing at boot is deliberate: a misconfigured deployment should be
      * obviously broken rather than quietly leaking.
      */
+    /**
+     * A production platform does not file against a developer portal.
+     *
+     * config/fatoora.php and config/fta.php both fall back to 'sandbox', and
+     * .env.example ships APP_ENV=production beside ZATCA_ENVIRONMENT=sandbox
+     * and UAE_FTA_ENVIRONMENT=sandbox - so a deployment that copied it, which
+     * the deployment guide says to do, submitted every invoice to ZATCA's
+     * developer portal. Every submission succeeded. Nothing was legally
+     * filed, no deadline was met, and no part of the platform could tell,
+     * because a sandbox acceptance looks exactly like a real one.
+     *
+     * Simulation is allowed through on purpose. ZATCA's onboarding has a
+     * simulation stage, and a production deployment genuinely passes through
+     * it before going live; refusing it would make the guard the thing people
+     * work around. The developer portal is the one that cannot be right.
+     */
+    private function assertAuthorityIsNotSandbox(): void
+    {
+        if (! $this->app->environment('production')) {
+            return;
+        }
+
+        foreach ([
+            'ZATCA_ENVIRONMENT' => 'fatoora.environment',
+            'UAE_FTA_ENVIRONMENT' => 'fta.environment',
+        ] as $variable => $key) {
+            if (config($key) === 'sandbox') {
+                throw new \RuntimeException(
+                    $variable.' must not be sandbox when APP_ENV=production. '
+                    .'The sandbox is the authority\'s developer portal: submissions to it '
+                    .'succeed and file nothing, which no later check can detect.'
+                );
+            }
+        }
+    }
+
     private function assertDebugDisabledInProduction(): void
     {
         if ($this->app->environment('production') && config('app.debug') === true) {

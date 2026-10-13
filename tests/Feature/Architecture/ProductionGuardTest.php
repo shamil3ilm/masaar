@@ -75,6 +75,19 @@ class ProductionGuardTest extends TestCase
                 .', and the application refuses to boot like that.');
         }
 
+        // assertAuthorityIsNotSandbox: the sandbox is the authority's
+        // developer portal. A submission to it succeeds and files nothing,
+        // and no later check can tell the difference - which is why this
+        // template shipping APP_ENV=production beside
+        // ZATCA_ENVIRONMENT=sandbox was worth a boot failure.
+        foreach (['ZATCA_ENVIRONMENT', 'UAE_FTA_ENVIRONMENT'] as $authority) {
+            if (array_key_exists($authority, $env)) {
+                $this->assertNotSame('sandbox', $env[$authority],
+                    $template.' sets '.$authority.'=sandbox for a production deployment, '
+                    .'so every invoice would be filed against a developer portal.');
+            }
+        }
+
         // assertSessionsAreEncrypted: the console flashes a one-time API
         // secret through the session.
         if (array_key_exists('SESSION_ENCRYPT', $env)) {
@@ -117,6 +130,7 @@ class ProductionGuardTest extends TestCase
         sort($guards);
 
         $this->assertSame([
+            'assertAuthorityIsNotSandbox',
             'assertDebugDisabledInProduction',
             'assertSessionsAreEncrypted',
             'assertSubmissionLimitsAgree',
