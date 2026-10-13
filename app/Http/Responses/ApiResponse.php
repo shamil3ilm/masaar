@@ -165,7 +165,7 @@ class ApiResponse
         return self::error(
             $e->getMessage(),
             $e->getHttpStatusCode(),
-            $e->getContext(),
+            self::callerSafeContext($e->getContext()),
             $code?->value ?? 'ZATCA_ERROR',
             $e->getCategory(),
             $e->isRetryable() ? $e->getRetryDelay() : null,
@@ -184,6 +184,44 @@ class ApiResponse
     public static function fromCertificate(CertificateException $e): JsonResponse
     {
         return self::error($e->getMessage(), 422, [], 'CERTIFICATE_ERROR', 'certificate');
+    }
+
+    /**
+     * The part of an exception's context a caller may see.
+     *
+     * FatooraException context was returned here verbatim and logged at the
+     * same time, with nothing between arbitrary context and a partner ERP.
+     * One value in use was the on-disk path of the taxpayer's signing key.
+     * There are fourteen construction sites across Submitter, SubmissionGuard,
+     * KillSwitch, OfflineFallback and PipelineService, so the next key added
+     * to any of them would have been published by default.
+     *
+     * An allow-list rather than a deny-list, for that reason: a new context
+     * key is invisible to the caller until someone decides it should not be.
+     * Everything dropped here is still in the log, where the operator is.
+     *
+     * @param  array<string, mixed>  $context
+     * @return array<string, mixed>
+     */
+    private static function callerSafeContext(array $context): array
+    {
+        return array_intersect_key($context, array_flip([
+            // Identifiers the caller already has, or sent.
+            'invoice_id',
+            'invoice_number',
+            'org_id',
+            'branch_id',
+            'submission_id',
+            'idempotency_key',
+            'icv',
+            // What the authority said, which is the whole point of answering.
+            'zatca_code',
+            'validation_errors',
+            'warnings',
+            // How to proceed.
+            'retry_after',
+            'switch',
+        ]));
     }
 
     /**

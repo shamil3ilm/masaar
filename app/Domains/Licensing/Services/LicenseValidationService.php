@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Licensing\Services;
 
+use App\Domains\Compliance\Fatoora\Helpers\LogSanitizer;
 use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Exceptions\LicenseException;
 use App\Domains\Licensing\Models\License;
@@ -53,8 +54,19 @@ class LicenseValidationService
             $license = License::where('api_key', $apiKey)->first();
 
             if (! $license) {
+                // A hash, not the first twelve characters.
+                //
+                // The key is cp_live_ or cp_test_ plus 48 random characters,
+                // so twelve of them is the environment prefix and four bytes
+                // of entropy - written at warning level on every failed
+                // attempt, which an unauthenticated caller controls, and
+                // written from a real key whenever a legitimate one is
+                // mistyped or has just been rotated out. The hash still
+                // correlates repeated attempts, which is the only reason to
+                // log anything here. LogSanitizer::hashForLog exists for
+                // exactly this and had no callers.
                 Log::warning('Invalid API key attempted', [
-                    'api_key_prefix' => substr($apiKey, 0, 12).'...',
+                    'api_key_hash' => LogSanitizer::hashForLog($apiKey),
                 ]);
                 throw LicenseException::invalidApiKey();
             }

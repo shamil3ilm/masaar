@@ -27,6 +27,26 @@ class LogSanitizer
         '/bearer\s+[a-zA-Z0-9._-]+/i',
         '/authorization["\']?\s*[:=]\s*["\']?[^"\'\s,}]+/i',
 
+        // This platform's own API key, by its shape rather than by the name
+        // of whichever field it arrives in. License::generateApiKey emits
+        // cp_live_ or cp_test_ followed by 48 random characters, and that is
+        // distinctive enough to catch wherever it appears: echoed back inside
+        // a licence server's error body, embedded in a Guzzle exception
+        // message alongside the URI, or written twelve characters at a time
+        // by a failed-authentication warning.
+        '/\bcp_(live|test)_[A-Za-z0-9]{8,}/',
+
+        // The licence key, which api[_-]?key above does not match. This is
+        // the one UsageReportingService sends in a POST body and then logs
+        // the response to, hourly, so a licence server that echoes the
+        // request on a validation error persists it into every rotation.
+        '/licen[cs]e[_-]?key["\']?\s*[:=]\s*["\']?[^"\'\s,}]+/i',
+
+        // The one-time password onboarding is given from the ZATCA Fatoora
+        // portal. It buys a production certificate, so it is a credential for
+        // as long as it is unused.
+        '/\botp["\']?\s*[:=]\s*["\']?[^"\'\s,}]+/i',
+
         // JWT tokens
         '/eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/i',
 
@@ -63,12 +83,31 @@ class LogSanitizer
         'key_content',
         'private_key_content',
         'signed_xml', // May contain embedded signatures
+        'api_secret',
+        'apiSecret',
+        'license_key',
+        'licenseKey',
+        'licence_key',
+        'otp',
+        'csr', // Carries the public key and the subject, and pairs with a key
     ];
 
     /**
      * Redaction placeholder.
      */
     private const REDACTED = '[REDACTED]';
+
+    /**
+     * How deep to walk a context before giving up on it.
+     *
+     * Eight is past anything a log line is read for. This exists because the
+     * sanitiser now runs on every record through a channel tap, so a context
+     * holding a model with relations, or an exception, is no longer somebody
+     * else's problem.
+     */
+    private const MAX_DEPTH = 8;
+
+    private const TRUNCATED = '[TRUNCATED]';
 
     /**
      * Partial redaction (shows first/last chars).
@@ -81,18 +120,33 @@ class LogSanitizer
      * @param  mixed  $data  Data to sanitize (string, array, or object)
      * @return mixed Sanitized data
      */
-    public static function sanitize(mixed $data): mixed
+    public static function sanitize(mixed $data, int $depth = 0): mixed
     {
         if (is_string($data)) {
             return self::sanitizeString($data);
         }
 
+        // Deep enough. A log line is read by a person, and anything past this
+        // is structure rather than information.
+        if ($depth >= self::MAX_DEPTH) {
+            return is_scalar($data) || $data === null ? $data : self::TRUNCATED;
+        }
+
         if (is_array($data)) {
-            return self::sanitizeArray($data);
+            return self::sanitizeArray($data, $depth + 1);
+        }
+
+        if ($data instanceof \Throwable) {
+            // Its own method, which returns a bounded summary. Casting a
+            // Throwable to an array exposes the trace, and a trace frame
+            // holds the arguments the call was made with - objects included -
+            // along with the previous-exception chain. Walking that is what
+            // exhausted the process once this ran on every record.
+            return self::sanitizeException($data);
         }
 
         if (is_object($data)) {
-            return self::sanitizeObject($data);
+            return self::sanitizeObject($data, $depth + 1);
         }
 
         return $data;
@@ -114,7 +168,7 @@ class LogSanitizer
     /**
      * Sanitize an array recursively.
      */
-    public static function sanitizeArray(array $data): array
+    public static function sanitizeArray(array $data, int $depth = 0): array
     {
         $sanitized = [];
 
@@ -129,7 +183,7 @@ class LogSanitizer
             }
 
             // Recursively sanitize nested data
-            $sanitized[$key] = self::sanitize($value);
+            $sanitized[$key] = self::sanitize($value, $depth);
         }
 
         return $sanitized;
@@ -138,13 +192,17 @@ class LogSanitizer
     /**
      * Sanitize an object by converting to array first.
      */
-    public static function sanitizeObject(object $data): array
+    public static function sanitizeObject(object $data, int $depth = 0): array
     {
         if (method_exists($data, 'toArray')) {
-            return self::sanitizeArray($data->toArray());
+            return self::sanitizeArray($data->toArray(), $depth);
         }
 
-        return self::sanitizeArray((array) $data);
+        // Named rather than cast. (array) on an arbitrary object walks every
+        // property it happens to hold, which for a connection, a container or
+        // a closure binding is the whole application. A class name is what a
+        // person reading the line can act on anyway.
+        return ['object' => $data::class];
     }
 
     /**

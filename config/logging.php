@@ -1,5 +1,6 @@
 <?php
 
+use App\Logging\RedactSecrets;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
@@ -88,6 +89,7 @@ return [
          * in a stack makes every write throw.
          */
         'alerts' => [
+            'tap' => [RedactSecrets::class],
             'driver' => 'stack',
             'channels' => array_values(array_filter([
                 'alert-file',
@@ -97,6 +99,7 @@ return [
         ],
 
         'alert-file' => [
+            'tap' => [RedactSecrets::class],
             'driver' => 'daily',
             'path' => storage_path('logs/alerts.log'),
             'level' => env('LOG_ALERT_LEVEL', 'critical'),
@@ -105,6 +108,7 @@ return [
         ],
 
         'single' => [
+            'tap' => [RedactSecrets::class],
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
@@ -112,6 +116,7 @@ return [
         ],
 
         'daily' => [
+            'tap' => [RedactSecrets::class],
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
@@ -120,6 +125,7 @@ return [
         ],
 
         'slack' => [
+            'tap' => [RedactSecrets::class],
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),
             'username' => env('LOG_SLACK_USERNAME', 'Laravel Log'),
@@ -129,6 +135,7 @@ return [
         ],
 
         'papertrail' => [
+            'tap' => [RedactSecrets::class],
             'driver' => 'monolog',
             'level' => env('LOG_LEVEL', 'debug'),
             'handler' => env('LOG_PAPERTRAIL_HANDLER', SyslogUdpHandler::class),
@@ -141,6 +148,7 @@ return [
         ],
 
         'stderr' => [
+            'tap' => [RedactSecrets::class],
             'driver' => 'monolog',
             'level' => env('LOG_LEVEL', 'debug'),
             'handler' => StreamHandler::class,
@@ -152,6 +160,7 @@ return [
         ],
 
         'syslog' => [
+            'tap' => [RedactSecrets::class],
             'driver' => 'syslog',
             'level' => env('LOG_LEVEL', 'debug'),
             'facility' => env('LOG_SYSLOG_FACILITY', LOG_USER),
@@ -159,6 +168,7 @@ return [
         ],
 
         'errorlog' => [
+            'tap' => [RedactSecrets::class],
             'driver' => 'errorlog',
             'level' => env('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
@@ -184,6 +194,7 @@ return [
         */
 
         'zatca-submissions' => [
+            'tap' => [RedactSecrets::class],
             'driver' => 'daily',
             'path' => storage_path('logs/zatca/submissions.log'),
             'level' => env('LOG_LEVEL', 'debug'),
@@ -192,6 +203,7 @@ return [
         ],
 
         'zatca-compliance' => [
+            'tap' => [RedactSecrets::class],
             'driver' => 'daily',
             'path' => storage_path('logs/zatca/compliance.log'),
             'level' => env('LOG_LEVEL', 'debug'),
@@ -200,6 +212,7 @@ return [
         ],
 
         'zatca-webhooks' => [
+            'tap' => [RedactSecrets::class],
             'driver' => 'daily',
             'path' => storage_path('logs/zatca/webhooks.log'),
             'level' => env('LOG_LEVEL', 'debug'),
@@ -208,6 +221,7 @@ return [
         ],
 
         'zatca-audit' => [
+            'tap' => [RedactSecrets::class],
             'driver' => 'daily',
             'path' => storage_path('logs/zatca/audit.log'),
             'level' => 'info',
@@ -216,6 +230,7 @@ return [
         ],
 
         'zatca-errors' => [
+            'tap' => [RedactSecrets::class],
             'driver' => 'daily',
             'path' => storage_path('logs/zatca/errors.log'),
             'level' => 'error',

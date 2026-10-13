@@ -517,9 +517,13 @@ class Submitter
 
         if ($organizationCredentials === null) {
             if ($required) {
+                // Not the path. FatooraException context is returned to the
+                // API caller as well as written to the log, so this disclosed
+                // where the taxpayer's signing key is kept on disk to a
+                // partner ERP. Which organization has no credential is the
+                // actionable part; where it would have been is not.
                 $errorContext = [
                     'org_id' => $organizationId,
-                    'expected_path' => $path,
                 ];
 
                 if ($branch) {
