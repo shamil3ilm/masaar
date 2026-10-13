@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Services;
 
+use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
@@ -30,12 +31,19 @@ class InvoiceValidator
     }
 
     /**
-     * Get valid exemption codes from config.
-     * Returns array of code keys (e.g., VATEX-SA-29).
+     * The exemption codes ZATCA accepts.
+     *
+     * Was array_keys(config('fatoora.validation.exemption_codes')) - a second,
+     * 19-code list that still carried VATEX-SA-31 after the request layer had
+     * been corrected against ZATCA's Schematron for accepting exactly that.
+     * So this validator admitted a code the authority refuses while the API
+     * in front of it rejected the same code.
+     *
+     * @return list<string>
      */
     private function getValidExemptionCodes(): array
     {
-        return array_keys(config('fatoora.validation.exemption_codes', []));
+        return FatooraConfig::EXEMPTION_CODES;
     }
 
     /**

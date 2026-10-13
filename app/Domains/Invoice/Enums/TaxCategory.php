@@ -52,35 +52,4 @@ enum TaxCategory: string
             self::ZeroRated, self::Exempt, self::OutOfScope => 0.0,
         };
     }
-
-    /**
-     * Determine category from exemption code.
-     */
-    public static function fromExemptionCode(string $code): self
-    {
-        return match (true) {
-            // Out of scope - services outside KSA
-            str_starts_with($code, 'VATEX-SA-OOS') => self::OutOfScope,
-
-            // Zero-rated categories
-            str_starts_with($code, 'VATEX-SA-29-7'),  // International transport
-            str_starts_with($code, 'VATEX-SA-36'),    // Qualifying metals
-            str_starts_with($code, 'VATEX-SA-HEA'),   // Healthcare
-            str_starts_with($code, 'VATEX-SA-EDU')    // Education
-                => self::ZeroRated,
-
-            // Exempt categories
-            str_starts_with($code, 'VATEX-SA-32'),    // Life insurance
-            str_starts_with($code, 'VATEX-SA-33'),    // Real estate
-            str_starts_with($code, 'VATEX-SA-34-1'),  // Financial services
-            str_starts_with($code, 'VATEX-SA-34-2'),  // Employee benefits
-            str_starts_with($code, 'VATEX-SA-34-3'),  // Local passenger transport
-            str_starts_with($code, 'VATEX-SA-34-4'),  // Property rental
-            str_starts_with($code, 'VATEX-SA-34-5'),  // Qualifying education
-            str_starts_with($code, 'VATEX-SA-')       // Other exemptions
-                => self::Exempt,
-
-            default => self::Standard,
-        };
-    }
 }

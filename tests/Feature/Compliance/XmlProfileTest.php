@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Compliance;
 
-use App\Domains\Invoice\Http\Requests\CreateInvoiceRequest;
+use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
@@ -95,10 +95,41 @@ class XmlProfileTest extends TestCase
      * kind of thing that is copied from prose once and never checked against
      * the rule file that decides.
      */
+    /**
+     * Every code on the list resolves to a category, and never to standard.
+     *
+     * The list and the mapper were separately stated and drifted apart: a
+     * second, callerless mapper on TaxCategory returned ZeroRated for
+     * VATEX-SA-29-7 and VATEX-SA-36 where taxCategoryFor returns Exempt, and
+     * three files disagreed about what those codes even are. Tying the two
+     * together here means a code added to the list without a home in the
+     * mapper fails, rather than being filed as a standard-rate line.
+     */
+    public function test_every_code_maps_to_a_category(): void
+    {
+        foreach (FatooraConfig::EXEMPTION_CODES as $code) {
+            $category = FatooraConfig::taxCategoryFor($code, 0.0);
+
+            $this->assertContains($category, [
+                FatooraConfig::TAX_CATEGORY_ZERO_RATED,
+                FatooraConfig::TAX_CATEGORY_EXEMPT,
+                FatooraConfig::TAX_CATEGORY_OUT_OF_SCOPE,
+            ], $code.' resolved to '.$category.', but a line carrying an exemption code is not standard-rated');
+        }
+    }
+
     public function test_exemption_codes_match_the_authority(): void
     {
-        $codes = (new \ReflectionClass(CreateInvoiceRequest::class))
-            ->getConstant('VALID_EXEMPTION_CODES');
+        // Read directly rather than by reflection: the list moved from a
+        // private const on CreateInvoiceRequest to FatooraConfig, so that the
+        // compliance validator could stop keeping its own 19-code copy.
+        $codes = FatooraConfig::EXEMPTION_CODES;
+
+        $this->assertNotContains(
+            'VATEX-SA-31',
+            $codes,
+            'VATEX-SA-31 is the code the Schematron does not recognise, and the copy this list replaced carried it'
+        );
 
         sort($codes);
 

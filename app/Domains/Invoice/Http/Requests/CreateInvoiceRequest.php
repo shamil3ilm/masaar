@@ -12,46 +12,6 @@ use Illuminate\Validation\Rule;
 class CreateInvoiceRequest extends FormRequest
 {
     /**
-     * BT-121, the exemption reason codes ZATCA accepts.
-     *
-     * Taken from the BR-KSA-CL-04 assertion in ZATCA's own Schematron rather
-     * than from the prose, because that assertion is what decides. The list
-     * this replaced differed from it in both directions: it accepted
-     * VATEX-SA-31, VATEX-SA-OOS-1 and VATEX-SA-OOS-2, which the authority does
-     * not recognise, so an invoice carrying one passed this validator and drew
-     * a rule violation from ZATCA; and it rejected VATEX-SA-29 and
-     * VATEX-SA-MLTRY, which are valid, so a legitimate exemption could not be
-     * filed at all.
-     *
-     * The suffixed variants — VATEX-SA-29F, -33E, -34-4S and the rest — belong
-     * to a second list in the same rule, for exceptions rather than
-     * exemptions. They are deliberately not here until something needs them.
-     */
-    private const VALID_EXEMPTION_CODES = [
-        // Financial services and insurance
-        'VATEX-SA-29',     // Financial services
-        'VATEX-SA-29-7',   // Life insurance
-        'VATEX-SA-30',     // International transport of goods and passengers
-        'VATEX-SA-32',     // Supplies within customs suspension
-        'VATEX-SA-33',     // Supplies of qualifying metals
-        'VATEX-SA-34-1',   // Medicines and medical equipment
-        'VATEX-SA-34-2',   // Qualifying means of transport
-        'VATEX-SA-34-3',   // Exported goods
-        'VATEX-SA-34-4',   // Exported services
-        'VATEX-SA-34-5',   // Services to non-GCC residents
-        'VATEX-SA-35',     // Real estate
-        'VATEX-SA-36',     // Local passenger transport
-
-        // Out of scope
-        'VATEX-SA-OOS',    // Out of scope
-
-        // Zero-rated
-        'VATEX-SA-HEA',    // Private healthcare to citizens
-        'VATEX-SA-EDU',    // Private education to citizens
-        'VATEX-SA-MLTRY',  // Supplies to the military
-    ];
-
-    /**
      * BT-46-1, the registers a buyer identifier can come from.
      *
      * From the same Schematron that carries the exemption codes. NAT is the
@@ -194,7 +154,7 @@ class CreateInvoiceRequest extends FormRequest
             'lines.*.exempt_code' => [
                 'nullable',
                 'string',
-                Rule::in(self::VALID_EXEMPTION_CODES),
+                Rule::in(FatooraConfig::EXEMPTION_CODES),
             ],
             'lines.*.exempt_reason' => [
                 'nullable',
