@@ -46,6 +46,51 @@ return [
 
         'mysql' => [
             'driver' => 'mysql',
+
+            /*
+             * A read replica, when there is one.
+             *
+             * Laravel splits a connection only when a 'read' key is present,
+             * so with DB_READ_HOST unset everything below collapses to the
+             * single-host connection this has always been. Several hosts may
+             * be given comma-separated; one is picked per request.
+             *
+             * sticky is not optional here, and it is set rather than exposed.
+             * Illuminate\Database\Connection::getReadPdo already sends every
+             * read inside a transaction to the write connection, and
+             * Query\Builder::lock() sets useWritePdo, so the locked
+             * read-modify-write sequences this application depends on - the
+             * ICV allocation, License::changeWithAudit, SubmissionLedger::claim,
+             * FtaService::claimRetry - are safe on a replica without any help.
+             *
+             * What is not safe is read-after-write outside a transaction, and
+             * this codebase does that deliberately and often: Submitter's
+             * caller refreshes the invoice once issuance has committed, and
+             * the licence services return fresh() after changeWithAudit. By
+             * then the transaction is closed, so without sticky those reads
+             * can land on a replica that has not caught up and report the row
+             * as it was before the write. ReplicaPostureTest holds this.
+             *
+             * Still to decide when a replica actually appears: cache, queue
+             * and session all default to the database driver on this same
+             * connection. The queue is fine - DatabaseQueue::pop reserves
+             * under lockForUpdate - but Cache::get is not, and the kill-switch
+             * registry is a cache read taken on every issuance and every
+             * submission. A lagging replica there means an operator's kill
+             * switch takes effect late, during an incident. Point
+             * DB_CACHE_CONNECTION and SESSION_CONNECTION at an unsplit
+             * connection, or move them to Redis.
+             */
+            ...(env('DB_READ_HOST') ? [
+                'read' => [
+                    'host' => array_map('trim', explode(',', (string) env('DB_READ_HOST'))),
+                ],
+                'write' => [
+                    'host' => [env('DB_HOST', '127.0.0.1')],
+                ],
+                'sticky' => true,
+            ] : []),
+
             'url' => env('DB_URL'),
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '3306'),
