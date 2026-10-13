@@ -4,6 +4,7 @@ namespace App\Domains\Compliance\Fatoora\Http\Controllers;
 
 use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
+use App\Domains\Compliance\Fatoora\Services\SubmissionTracker;
 use App\Domains\Compliance\Fatoora\Services\Submitter;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Services\InvoiceFinder;
@@ -22,6 +23,7 @@ class ComplianceController extends Controller
     public function __construct(
         private readonly TenantResolver $tenant,
         private readonly Submitter $submission,
+        private readonly SubmissionTracker $tracker,
         private readonly InvoiceFinder $invoices,
     ) {}
 
@@ -97,29 +99,49 @@ class ComplianceController extends Controller
             return ApiResponse::error('Invoice must be issued before submission', 422);
         }
 
-        $organization = $this->tenant->getOrganization();
+        // SubmissionTracker, not Submitter. Everything that guards a
+        // submission lives in the tracker - the idempotency key, the
+        // duplicate check, SubmissionGuard, the quota reservation, and the
+        // invoice_submissions row that records the attempt. This route called
+        // Submitter directly, which checks that the invoice has a counter and
+        // a hash and that the branch is onboarded, and then sends.
+        //
+        // The visible cost was the missing row. A submission filed through
+        // here appeared nowhere: not on /portal/submissions, not in the admin
+        // logs, not in the deadline report. The platform had no record that
+        // it had happened, so nothing could chase it, retry it or count it
+        // against the taxpayer's quota.
+        //
+        // Re-posting was already refused, but incidentally: the status check
+        // above sees the state the first submission moved the invoice to.
+        // That holds only when the first one answered. A request that timed
+        // out after ZATCA had accepted the document left the invoice Issued,
+        // and the retry filed it again - which is the case the tracker's
+        // idempotency key exists for.
+        $result = $this->tracker->submit($invoice);
 
-        $response = $this->submission->submit($invoice, $organization);
+        if (! ($result['success'] ?? false)) {
+            $failure = $result['error'] ?? [];
+            $code = ErrorCode::tryFrom((string) ($failure['code'] ?? ''));
 
-        if (! $response->success) {
-            // The status comes off the code the response carries rather
-            // than being hardcoded. A flat 422 flattened every submission
-            // failure into a non-retryable client error - a kill switch, an
+            // The status comes off the code the failure carries rather than
+            // being hardcoded. A flat 422 flattened every submission failure
+            // into a non-retryable client error - a kill switch, an
             // unreachable authority and a timeout all told the caller to stop
             // trying and go fix its invoice.
             return ApiResponse::error(
                 'Fatoora submission failed',
-                $response->errorCode?->getHttpStatus() ?? 422,
-                $response->errorMessages,
-                $response->errorCode?->value,
-                $response->errorCode?->getCategory(),
-                $response->isRetryable() ? $response->errorCode?->getRetryDelay() : null,
+                $code?->getHttpStatus() ?? 422,
+                $result['errors'] ?? [],
+                $code?->value,
+                $code?->getCategory(),
+                $result['retry_after'] ?? null,
             );
         }
 
         return ApiResponse::success([
-            'status' => $response->clearanceStatus ?? $response->reportingStatus,
-            'warnings' => $response->warningMessages,
+            'status' => $result['clearance_status'] ?? $result['reporting_status'],
+            'warnings' => $result['warnings'] ?? [],
         ], 'Invoice submitted');
     }
 

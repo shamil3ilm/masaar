@@ -206,6 +206,13 @@ class SubmissionTracker
      *
      * 'recorded' is false when the answer could not be written locally. The
      * submission then stays 'submitted' for reconciliation and is not retried.
+     *
+     * 'error' carries the code on a refusal, in the same shape
+     * handleSubmissionError uses. Without it the two failure paths describe
+     * themselves differently: a thrown error arrives with a code and an
+     * answered-but-refused one arrives with nothing, so a caller deciding an
+     * HTTP status from it has to treat a 503 from the authority as a
+     * malformed invoice.
      */
     private function recordResponse(InvoiceSubmission $submission, FatooraResponse $response): array
     {
@@ -221,6 +228,8 @@ class SubmissionTracker
             'reporting_status' => $response->reportingStatus,
             'warnings' => $submission->zatca_warnings,
             'errors' => $submission->zatca_errors,
+            'error' => $response->success ? null : $response->errorCode?->toArray(),
+            'retry_after' => $response->isRetryable() ? $response->errorCode?->getRetryDelay() : null,
         ];
     }
 
