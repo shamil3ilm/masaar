@@ -36,9 +36,7 @@
                     </label>
                     @endforeach
                 </div>
-                <button type="submit" class="w-full py-3 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 transition-colors">
-                    View Portal
-                </button>
+                <x-ui.button class="w-full">View Portal</x-ui.button>
             </form>
             @else
             <div class="text-center py-8">

@@ -45,19 +45,13 @@
                        value="{{ old('reason') }}" placeholder="Why everything is stopping"
                        class="w-72 rounded border border-gray-300 px-3 py-2 text-sm focus:border-teal-600 focus:ring-1 focus:ring-teal-600">
             </div>
-            <button type="submit"
-                    class="min-h-11 rounded bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700">
-                Stop everything
-            </button>
+            <x-ui.button variant="danger">Stop everything</x-ui.button>
         </form>
     @else
         <form method="POST" action="{{ route('admin.kill-switches.resume') }}"
               data-confirm="Resume everything? Every switch currently on will be turned off.">
             @csrf
-            <button type="submit"
-                    class="min-h-11 rounded bg-teal-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-teal-700">
-                Resume everything
-            </button>
+            <x-ui.button>Resume everything</x-ui.button>
         </form>
     @endif
 </div>
@@ -130,10 +124,7 @@
                               data-confirm="Resume {{ strtolower($name) }}? Taxpayers will be able to do this again immediately.">
                             @csrf
                             <input type="hidden" name="switch" value="{{ $switch }}">
-                            <button type="submit"
-                                    class="min-h-11 rounded border border-teal-700 px-4 py-2 text-sm font-semibold text-teal-700 transition-colors hover:bg-teal-50">
-                                Resume
-                            </button>
+                            <x-ui.button variant="outline">Resume</x-ui.button>
                         </form>
                     @else
                         <form method="POST" action="{{ route('admin.kill-switches.enable') }}"
@@ -160,10 +151,7 @@
                                        class="w-28 rounded border border-gray-300 px-3 py-2 text-sm focus:border-teal-600 focus:ring-1 focus:ring-teal-600">
                             </div>
 
-                            <button type="submit"
-                                    class="min-h-11 rounded bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700">
-                                Stop
-                            </button>
+                            <x-ui.button variant="danger">Stop</x-ui.button>
                         </form>
 
                         <p class="mt-1 text-right text-xs text-gray-400">

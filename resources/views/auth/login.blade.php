@@ -50,10 +50,7 @@
                     Remember me
                 </label>
 
-                <button type="submit"
-                        class="w-full py-3 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 transition-colors">
-                    Sign in
-                </button>
+                <x-ui.button class="w-full">Sign in</x-ui.button>
             </form>
         </div>
 

@@ -9,10 +9,7 @@
         <p class="text-gray-500">Everything issued under {{ $organization->name }}</p>
     </div>
 
-    <a href="{{ route('portal.invoices.create') }}"
-       class="rounded bg-teal-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-teal-700">
-        New invoice
-    </a>
+    <x-ui.button :href="route('portal.invoices.create')">New invoice</x-ui.button>
 </div>
 
 <form method="GET" action="{{ route('portal.invoices.index') }}" class="mb-6 rounded-lg bg-white p-4 shadow">
@@ -35,9 +32,7 @@
         </div>
 
         <div class="flex items-end gap-2">
-            <button type="submit" class="rounded bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700">
-                Filter
-            </button>
+            <x-ui.button variant="secondary">Filter</x-ui.button>
             @if ($status || $search)
                 <a href="{{ route('portal.invoices.index') }}" class="px-3 py-2 text-sm text-gray-600 hover:text-gray-900">
                     Clear

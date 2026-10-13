@@ -36,9 +36,16 @@
 <div class="bg-white rounded-lg shadow p-4 mb-6">
     <form method="GET" class="flex flex-wrap gap-4">
         <input type="hidden" name="state" value="{{ $state }}">
-        <input type="text" name="org_id" value="{{ $orgId }}" placeholder="Organization ID" class="border rounded px-3 py-2 text-sm">
-        <button type="submit" class="px-4 py-2 bg-gray-600 text-white rounded text-sm">Filter</button>
-        <a href="{{ route('admin.logs', $state ? ['state' => $state] : []) }}" class="px-4 py-2 bg-gray-200 text-gray-700 rounded text-sm">Clear Org Filter</a>
+        <x-ui.field label="Organization ID">
+            <input type="text" name="org_id" value="{{ $orgId }}"
+                   class="mt-1 w-full rounded border-gray-300 text-sm font-normal text-gray-900 shadow-sm">
+        </x-ui.field>
+        <div class="flex items-end gap-2">
+            <x-ui.button variant="secondary">Filter</x-ui.button>
+            <x-ui.button variant="quiet" :href="route('admin.logs', $state ? ['state' => $state] : [])">
+                Clear
+            </x-ui.button>
+        </div>
     </form>
 </div>
 

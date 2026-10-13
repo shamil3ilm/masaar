@@ -8,8 +8,7 @@
         <h2 class="text-2xl font-bold text-gray-800">Licences</h2>
         <p class="text-gray-500">Partner API keys, their tier and their quota</p>
     </div>
-    <a href="{{ route('admin.licences.create') }}"
-       class="rounded-md bg-teal-600 px-4 py-2 text-sm text-white hover:bg-teal-700">Issue licence</a>
+    <x-ui.button :href="route('admin.licences.create')">Issue licence</x-ui.button>
 </div>
 
 <form method="GET" action="{{ route('admin.licences.index') }}" class="mb-6 bg-white rounded-lg shadow p-4 flex flex-wrap items-end gap-4">
@@ -28,8 +27,8 @@
                class="w-full rounded-md border-gray-300 text-sm">
     </div>
     <div class="flex items-center gap-2">
-        <button type="submit" class="px-4 py-2 bg-teal-600 text-white text-sm rounded-md hover:bg-teal-700">Filter</button>
-        <a href="{{ route('admin.licences.index') }}" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Reset</a>
+        <x-ui.button variant="secondary">Filter</x-ui.button>
+        <x-ui.button variant="quiet" :href="route('admin.licences.index')">Reset</x-ui.button>
     </div>
 </form>
 

@@ -44,8 +44,8 @@
         <input type="hidden" name="state" value="{{ $state }}">
 
         <div class="flex-1 min-w-[200px]">
-            <label class="block text-xs text-gray-500 mb-1">User</label>
-            <select name="user_id" class="w-full border rounded px-3 py-2 text-sm">
+            <x-ui.field label="User">
+            <select name="user_id" class="mt-1 w-full rounded border-gray-300 text-sm font-normal text-gray-900 shadow-sm">
                 <option value="">All Users</option>
                 @foreach($users as $user)
                 <option value="{{ $user->id }}" {{ $userId == $user->id ? 'selected' : '' }}>
@@ -53,21 +53,25 @@
                 </option>
                 @endforeach
             </select>
+            </x-ui.field>
         </div>
 
-        <div>
-            <label class="block text-xs text-gray-500 mb-1">From</label>
-            <input type="date" name="date_from" value="{{ $dateFrom }}" class="border rounded px-3 py-2 text-sm">
-        </div>
+        <x-ui.field label="From">
+            <input type="date" name="date_from" value="{{ $dateFrom }}"
+                   class="mt-1 rounded border-gray-300 text-sm font-normal text-gray-900 shadow-sm">
+        </x-ui.field>
 
-        <div>
-            <label class="block text-xs text-gray-500 mb-1">To</label>
-            <input type="date" name="date_to" value="{{ $dateTo }}" class="border rounded px-3 py-2 text-sm">
-        </div>
+        <x-ui.field label="To">
+            <input type="date" name="date_to" value="{{ $dateTo }}"
+                   class="mt-1 rounded border-gray-300 text-sm font-normal text-gray-900 shadow-sm">
+        </x-ui.field>
 
-        <button type="submit" class="px-4 py-2 bg-teal-600 text-white rounded text-sm hover:bg-teal-700">Filter</button>
-        <a href="{{ route('portal.submissions', ['org_id' => request('org_id')]) }}"
-           class="px-4 py-2 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300">Clear</a>
+        <div class="flex items-end gap-2">
+            <x-ui.button variant="secondary">Filter</x-ui.button>
+            <x-ui.button variant="quiet" :href="route('portal.submissions', ['org_id' => request('org_id')])">
+                Clear
+            </x-ui.button>
+        </div>
     </form>
 </div>
 

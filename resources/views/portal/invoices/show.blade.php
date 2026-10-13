@@ -33,16 +33,12 @@
             <form method="POST" action="{{ route('portal.invoices.issue', $invoice->id) }}"
                   data-confirm="Issue this invoice? It gets a counter and a hash, joins the chain, and cannot be issued again.">
                 @csrf
-                <button type="submit"
-                        class="rounded bg-teal-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-teal-700">
-                    Issue
-                </button>
+                <x-ui.button>Issue</x-ui.button>
             </form>
         @else
-            <a href="{{ route('portal.invoices.print', $invoice->id) }}"
-               class="rounded border border-teal-700 px-4 py-2 text-sm font-semibold text-teal-700 transition-colors hover:bg-teal-50">
+            <x-ui.button variant="outline" :href="route('portal.invoices.print', $invoice->id)">
                 Print
-            </a>
+            </x-ui.button>
         @endif
     </div>
 </div>

@@ -216,16 +216,12 @@
         <div class="flex flex-wrap items-center gap-3">
             <form method="POST" action="{{ route('admin.queue.process') }}">
                 @csrf
-                <button type="submit" class="px-4 py-2 bg-teal-600 text-white rounded hover:bg-teal-700 text-sm">
-                    Process Offline Queue
-                </button>
+                <x-ui.button>Process Offline Queue</x-ui.button>
             </form>
-            <a href="{{ route('admin.dashboard') }}" class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-sm">
-                Refresh
-            </a>
-            <a href="{{ route('admin.logs') }}?state=failed" class="px-4 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm">
+            <x-ui.button variant="secondary" :href="route('admin.dashboard')">Refresh</x-ui.button>
+            <x-ui.button variant="secondary" :href="route('admin.logs', ['state' => 'failed'])">
                 View Failed Submissions
-            </a>
+            </x-ui.button>
         </div>
     </div>
 

@@ -222,11 +222,8 @@
     </div>
 
     <div class="flex items-center gap-4">
-        <button type="submit"
-                class="rounded bg-teal-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-teal-700">
-            Save as draft
-        </button>
-        <a href="{{ route('portal.invoices.index') }}" class="text-sm text-gray-500 hover:text-gray-700">Cancel</a>
+        <x-ui.button>Save as draft</x-ui.button>
+        <x-ui.button variant="quiet" :href="route('portal.invoices.index')">Cancel</x-ui.button>
     </div>
 </form>
 @endsection

@@ -216,10 +216,7 @@
                         <input id="revoke-reason" name="reason" type="text" maxlength="255" required
                                placeholder="Why the licence is being withdrawn"
                                class="mt-1 w-full rounded-md border-gray-300 text-sm">
-                        <button type="submit"
-                                class="mt-2 w-full rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700">
-                            Revoke licence
-                        </button>
+                        <x-ui.button variant="danger" class="mt-2 w-full">Revoke licence</x-ui.button>
                         <p class="mt-1 text-xs text-gray-500">Permanent. This key can never be used again.</p>
                     </form>
                 @endif

@@ -117,10 +117,8 @@
     </div>
 
     <div class="flex items-center gap-3">
-        <button type="submit" class="rounded-md bg-teal-600 px-4 py-2 text-sm text-white hover:bg-teal-700">
-            Issue licence
-        </button>
-        <a href="{{ route('admin.licences.index') }}" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancel</a>
+        <x-ui.button>Issue licence</x-ui.button>
+        <x-ui.button variant="quiet" :href="route('admin.licences.index')">Cancel</x-ui.button>
         <p class="text-xs text-gray-500">The licence starts active and the partner can call the API immediately.</p>
     </div>
 </form>
