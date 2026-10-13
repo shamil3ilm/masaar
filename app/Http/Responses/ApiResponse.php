@@ -1,17 +1,57 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Responses;
 
+use App\Domains\Compliance\Fatoora\Exceptions\CertificateException;
+use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 /**
- * Standardized API response builder.
+ * The one shape every API response takes.
  *
- * Ensures consistent response format across all endpoints.
+ * Errors used to arrive in eight shapes, one per handler in bootstrap/app.php,
+ * and they disagreed about which keys exist. `category` appeared on four of
+ * the eight. `retryable` appeared on exactly one - the FatooraException
+ * handler - so a client written against it ("if the error is retryable, try
+ * again") silently never retried anything that arrived by the other seven
+ * paths, including every 503 rendered from an HttpException. Extra detail
+ * landed under `error.details` on one path and `error.context` on two.
+ *
+ * So the shape is fixed here, once, and the handlers all build through it:
+ *
+ *   {"success": false, "error": {
+ *       "code": "...", "message": "...", "category": "...",
+ *       "retryable": bool, ["retry_after": int, "max_retries": int,]
+ *       ["details": {...}]
+ *   }}
+ *
+ * `retryable` is derived from the HTTP status rather than passed in. That is
+ * the point: it makes every path correct without each handler having to
+ * remember, which is how seven of them came to omit it.
+ *
+ * Two vocabularies live in `code`, and `category` says which one is being
+ * read. Compliance failures carry the ErrorCode taxonomy - VAL_025, ZATCA_003
+ * - and reach here only from a FatooraException, through fromFatoora().
+ * Everything else carries a platform code naming the transport failure:
+ * NOT_FOUND, VALIDATION_ERROR, SERVER_ERROR. A licence endpoint has no
+ * business answering an invoice error code, so the two are not merged.
  */
 class ApiResponse
 {
+    /**
+     * Statuses that invite the caller to repeat the request.
+     *
+     * 408 and 429 are the client-side two that mean "again, later"; the rest
+     * are the gateway and availability failures. A 500 is excluded on purpose:
+     * it is a defect on this side and repeating it achieves nothing.
+     *
+     * @var list<int>
+     */
+    private const RETRYABLE_STATUSES = [408, 429, 502, 503, 504];
+
     /**
      * Success response.
      */
@@ -63,26 +103,93 @@ class ApiResponse
 
     /**
      * Error response.
+     *
+     * @param  array<string, mixed>  $details  Field errors, or the context an
+     *                                         exception carried. One key, not
+     *                                         the two names this used to have.
      */
-    public static function error(string $message, int $status = 400, array $errors = []): JsonResponse
-    {
-        $response = [
-            'success' => false,
-            'error' => [
-                'message' => $message,
-                'code' => self::getErrorCode($status),
-            ],
+    public static function error(
+        string $message,
+        int $status = 400,
+        array $details = [],
+        ?string $code = null,
+        ?string $category = null,
+        ?int $retryAfter = null,
+        ?int $maxRetries = null,
+    ): JsonResponse {
+        $retryable = in_array($status, self::RETRYABLE_STATUSES, true);
+
+        $error = [
+            'code' => $code ?? self::codeForStatus($status),
+            'message' => $message,
+            'category' => $category ?? self::categoryForStatus($status),
+            'retryable' => $retryable,
         ];
 
-        if (! empty($errors)) {
-            $response['error']['details'] = $errors;
+        if ($retryable && $retryAfter !== null) {
+            $error['retry_after'] = $retryAfter;
         }
 
-        return response()->json($response, $status);
+        if ($retryable && $maxRetries !== null) {
+            $error['max_retries'] = $maxRetries;
+        }
+
+        if ($details !== []) {
+            $error['details'] = $details;
+        }
+
+        $response = response()->json(['success' => false, 'error' => $error], $status);
+
+        // A client that honours Retry-After needs it on the response, not only
+        // in the body. The licence handler was the only one that set it.
+        if ($retryable && $retryAfter !== null) {
+            $response->header('Retry-After', (string) $retryAfter);
+        }
+
+        return $response;
+    }
+
+    /**
+     * A compliance failure, with the taxonomy it already carries.
+     *
+     * The status, the category and the retry advice all come off the
+     * ErrorCode, so a caller cannot answer 422 for a code the taxonomy says
+     * is a 503. ComplianceController used to catch a FatooraException and pass
+     * on only getMessage() with a hardcoded 422, which threw away the code the
+     * enum exists to publish.
+     */
+    public static function fromFatoora(FatooraException $e): JsonResponse
+    {
+        $code = $e->getErrorCode();
+
+        return self::error(
+            $e->getMessage(),
+            $e->getHttpStatusCode(),
+            $e->getContext(),
+            $code?->value ?? 'ZATCA_ERROR',
+            $e->getCategory(),
+            $e->isRetryable() ? $e->getRetryDelay() : null,
+            $e->isRetryable() ? $e->getMaxRetries() : null,
+        );
+    }
+
+    /**
+     * A certificate or credential failure.
+     *
+     * One place decides the status, the code and the category, because seven
+     * onboarding actions used to decide it themselves by catching the
+     * exception and answering 422 with code VALIDATION_ERROR - describing an
+     * expired or refused credential as a problem with the request body.
+     */
+    public static function fromCertificate(CertificateException $e): JsonResponse
+    {
+        return self::error($e->getMessage(), 422, [], 'CERTIFICATE_ERROR', 'certificate');
     }
 
     /**
      * Validation error response (422).
+     *
+     * @param  array<string, mixed>  $errors
      */
     public static function validationError(array $errors): JsonResponse
     {
@@ -114,19 +221,44 @@ class ApiResponse
     }
 
     /**
-     * Map HTTP status to error code.
+     * Map HTTP status to a platform error code.
+     *
+     * Every status the handlers can produce is named. The old map stopped at
+     * 500 and sent everything else to 'ERROR', so a 503 rendered from an
+     * HttpException described itself as 'ERROR' and told the client nothing.
      */
-    private static function getErrorCode(int $status): string
+    private static function codeForStatus(int $status): string
     {
         return match ($status) {
             400 => 'BAD_REQUEST',
             401 => 'UNAUTHORIZED',
             403 => 'FORBIDDEN',
             404 => 'NOT_FOUND',
+            405 => 'METHOD_NOT_ALLOWED',
+            408 => 'REQUEST_TIMEOUT',
+            409 => 'CONFLICT',
+            413 => 'PAYLOAD_TOO_LARGE',
             422 => 'VALIDATION_ERROR',
             429 => 'RATE_LIMITED',
             500 => 'SERVER_ERROR',
-            default => 'ERROR',
+            502 => 'UPSTREAM_ERROR',
+            503 => 'SERVICE_UNAVAILABLE',
+            504 => 'UPSTREAM_TIMEOUT',
+            default => $status >= 500 ? 'SERVER_ERROR' : 'BAD_REQUEST',
+        };
+    }
+
+    /**
+     * The half of the response that says which vocabulary `code` is from.
+     */
+    private static function categoryForStatus(int $status): string
+    {
+        return match (true) {
+            $status === 401, $status === 403 => 'authentication',
+            $status === 422 => 'validation',
+            $status === 429 => 'rate_limit',
+            $status >= 500 => 'system',
+            default => 'request',
         };
     }
 }

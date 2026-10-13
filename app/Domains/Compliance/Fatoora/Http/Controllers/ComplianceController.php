@@ -52,7 +52,13 @@ class ComplianceController extends Controller
                 throw $e;
             }
 
-            return ApiResponse::error($e->getMessage(), 422);
+            // Through fromFatoora so this refusal carries the same code,
+            // category and retry guidance the bootstrap handler gives the
+            // rethrown ones. It used to pass getMessage() alone, which read
+            // the ErrorCode on the line above and then discarded it, so one
+            // ZATCA condition answered in two shapes depending on which
+            // branch fired.
+            return ApiResponse::fromFatoora($e);
         }
 
         return ApiResponse::success($result, 'Compliance data generated');
@@ -96,10 +102,18 @@ class ComplianceController extends Controller
         $response = $this->submission->submit($invoice, $organization);
 
         if (! $response->success) {
+            // The status comes off the code the response carries rather
+            // than being hardcoded. A flat 422 flattened every submission
+            // failure into a non-retryable client error - a kill switch, an
+            // unreachable authority and a timeout all told the caller to stop
+            // trying and go fix its invoice.
             return ApiResponse::error(
                 'Fatoora submission failed',
-                422,
-                $response->errorMessages
+                $response->errorCode?->getHttpStatus() ?? 422,
+                $response->errorMessages,
+                $response->errorCode?->value,
+                $response->errorCode?->getCategory(),
+                $response->isRetryable() ? $response->errorCode?->getRetryDelay() : null,
             );
         }
 

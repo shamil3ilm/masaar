@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Http\Controllers;
 
+use App\Domains\Compliance\Fatoora\Exceptions\CertificateException;
 use App\Domains\Compliance\Fatoora\Services\ComplianceSampleSet;
 use App\Domains\Compliance\Fatoora\Services\CsidOnboarding;
 use App\Domains\Organization\Models\Branch;
@@ -86,6 +87,13 @@ class BranchOnboardingController extends Controller
                 'next_step' => 'POST /api/organizations/branches/'.$branch->id.'/onboarding/compliance-check',
             ]);
 
+        } catch (CertificateException $e) {
+            // Its own code and category, from the one place that knows them.
+            // This used to fall through to the broad catch below and answer
+            // VALIDATION_ERROR, and the prefix added there duplicated the
+            // exception's own message - CsidOnboarding already throws
+            // 'Failed to obtain CCSID: ...'.
+            return ApiResponse::fromCertificate($e);
         } catch (\Exception $e) {
             return ApiResponse::error('Failed to obtain CCSID: '.$e->getMessage(), 422);
         }
@@ -140,6 +148,13 @@ class BranchOnboardingController extends Controller
                     : 'Fix errors and retry compliance check',
             ]);
 
+        } catch (CertificateException $e) {
+            // Its own code and category, from the one place that knows them.
+            // This used to fall through to the broad catch below and answer
+            // VALIDATION_ERROR, and the prefix added there duplicated the
+            // exception's own message - CsidOnboarding already throws
+            // 'Failed to obtain CCSID: ...'.
+            return ApiResponse::fromCertificate($e);
         } catch (\Exception $e) {
             return ApiResponse::error('Compliance check failed: '.$e->getMessage(), 422);
         }
@@ -194,6 +209,13 @@ class BranchOnboardingController extends Controller
                 'message' => 'Production CSID obtained. Branch is now ZATCA compliant and ready for invoicing.',
             ]);
 
+        } catch (CertificateException $e) {
+            // Its own code and category, from the one place that knows them.
+            // This used to fall through to the broad catch below and answer
+            // VALIDATION_ERROR, and the prefix added there duplicated the
+            // exception's own message - CsidOnboarding already throws
+            // 'Failed to obtain CCSID: ...'.
+            return ApiResponse::fromCertificate($e);
         } catch (\Exception $e) {
             return ApiResponse::error('Failed to obtain PCSID: '.$e->getMessage(), 422);
         }
@@ -264,6 +286,13 @@ class BranchOnboardingController extends Controller
             }
 
             return (new \DateTime)->setTimestamp($certInfo['validTo_time_t']);
+        } catch (CertificateException $e) {
+            // Its own code and category, from the one place that knows them.
+            // This used to fall through to the broad catch below and answer
+            // VALIDATION_ERROR, and the prefix added there duplicated the
+            // exception's own message - CsidOnboarding already throws
+            // 'Failed to obtain CCSID: ...'.
+            return ApiResponse::fromCertificate($e);
         } catch (\Exception $e) {
             return null;
         }

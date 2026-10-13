@@ -94,26 +94,7 @@ return Application::configure(basePath: dirname(__DIR__))
                     'retryable' => $e->isRetryable(),
                 ]);
 
-                $response = [
-                    'success' => false,
-                    'error' => [
-                        'code' => $e->getErrorCode()?->value ?? 'ZATCA_ERROR',
-                        'message' => $e->getMessage(),
-                        'category' => $e->getCategory(),
-                        'retryable' => $e->isRetryable(),
-                    ],
-                ];
-
-                if ($e->isRetryable()) {
-                    $response['error']['retry_after'] = $e->getRetryDelay();
-                    $response['error']['max_retries'] = $e->getMaxRetries();
-                }
-
-                if (! empty($e->getContext())) {
-                    $response['error']['context'] = $e->getContext();
-                }
-
-                return response()->json($response, $e->getHttpStatusCode());
+                return ApiResponse::fromFatoora($e);
             }
         });
 
@@ -124,14 +105,12 @@ return Application::configure(basePath: dirname(__DIR__))
                     'message' => $e->getMessage(),
                 ]);
 
-                return response()->json([
-                    'success' => false,
-                    'error' => [
-                        'code' => 'CERTIFICATE_ERROR',
-                        'message' => $e->getMessage(),
-                        'category' => 'certificate',
-                    ],
-                ], 400);
+                // 422, not the 400 this answered. A certificate that is
+                // expired, revoked or mismatched is a well-formed request
+                // refused by its credential, which is what the taxonomy says
+                // too: every CERT_* content failure is a 422 and the missing
+                // ones are 404. A 400 described it as unreadable syntax.
+                return ApiResponse::fromCertificate($e);
             }
         });
 
@@ -142,14 +121,12 @@ return Application::configure(basePath: dirname(__DIR__))
                     'message' => $e->getMessage(),
                 ]);
 
-                return response()->json([
-                    'success' => false,
-                    'error' => [
-                        'code' => 'SIGNING_ERROR',
-                        'message' => $e->getMessage(),
-                        'category' => 'signing',
-                    ],
-                ], 400);
+                // 500, not the 400 this answered. Signing happens entirely
+                // on this side, after the request has been accepted and
+                // validated, so there is no request the caller could send
+                // that avoids it. Telling them it was a bad request sends
+                // them to look at their own payload for our defect.
+                return ApiResponse::error($e->getMessage(), 500, [], 'SIGNING_ERROR', 'signing');
             }
         });
 
@@ -162,27 +139,18 @@ return Application::configure(basePath: dirname(__DIR__))
                     'context' => $e->context,
                 ]);
 
-                $response = [
-                    'success' => false,
-                    'error' => [
-                        'code' => $e->errorCode,
-                        'message' => $e->getMessage(),
-                        'category' => 'license',
-                    ],
-                ];
-
-                if (! empty($e->context)) {
-                    $response['error']['context'] = $e->context;
-                }
-
-                $httpResponse = response()->json($response, $e->getCode() ?: 403);
-
-                // Add Retry-After header for rate limiting
-                if ($e->errorCode === 'LICENSE_RATE_LIMITED' && isset($e->context['retry_after'])) {
-                    $httpResponse->header('Retry-After', $e->context['retry_after']);
-                }
-
-                return $httpResponse;
+                // Retry-After is no longer conditional on one error code
+                // string. The envelope attaches it whenever the status is one
+                // that invites a retry, so a licence failure that starts
+                // answering 503 gets the header without anyone remembering.
+                return ApiResponse::error(
+                    $e->getMessage(),
+                    $e->getCode() ?: 403,
+                    is_array($e->context) ? $e->context : [],
+                    $e->errorCode,
+                    'license',
+                    isset($e->context['retry_after']) ? (int) $e->context['retry_after'] : null,
+                );
             }
         });
 
@@ -202,7 +170,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (HttpException $e, Request $request) {
             if ($request->is('api/*') || $request->is('v1/*')) {
                 return ApiResponse::error(
-                    $e->getMessage() ?: 'An error occurred',
+                    $e->getMessage() ?: 'The request could not be completed',
                     $e->getStatusCode()
                 );
             }

@@ -86,10 +86,19 @@ class BranchController extends Controller
         try {
             $branch = $this->branchService->create($organization, $validated);
 
-            return ApiResponse::success([
-                'branch' => $this->formatBranch($branch),
-                'message' => 'Branch created successfully. Complete ZATCA onboarding to start issuing invoices.',
-            ], 201);
+            // created(), not success(..., 201). The 201 was landing in the
+            // $message parameter, and this file declares strict_types, so the
+            // int-into-?string raised a TypeError - which is an Error, not an
+            // Exception, so the catch below never saw it and the request
+            // answered 500 with the branch already written. No HTTP test
+            // covered this route, which is why it stood.
+            //
+            // The message also moves out of the data payload: it was a second
+            // message alongside the envelope's own.
+            return ApiResponse::created(
+                ['branch' => $this->formatBranch($branch)],
+                'Branch created. Complete ZATCA onboarding to start issuing invoices.',
+            );
 
         } catch (\Exception $e) {
             return ApiResponse::error('Failed to create branch: '.$e->getMessage(), 422);
