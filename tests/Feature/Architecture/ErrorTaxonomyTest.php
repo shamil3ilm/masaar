@@ -89,6 +89,35 @@ class ErrorTaxonomyTest extends TestCase
         ));
     }
 
+    /**
+     * No code is answered twice in the same expression.
+     *
+     * PHP takes the first matching arm and ignores the rest without
+     * complaining, so a second arm for a case is unreachable - and invisible.
+     * getMessage() had eight, added when the already-mapped set was read from
+     * too narrow a range of the file while the sixty missing ones were being
+     * filled in. The duplicate carried the better wording and never ran, and
+     * test_every_code_has_a_message passed throughout because the arm that
+     * did run was not blank.
+     */
+    public function test_no_code_is_answered_twice(): void
+    {
+        foreach (['getHttpStatus', 'getMessage', 'isRetryable', 'getRetryDelay', 'getMaxRetries'] as $method) {
+            $mentions = $this->casesNamedIn($method, unique: false);
+
+            $duplicates = array_keys(array_filter(
+                array_count_values($mentions),
+                static fn (int $times): bool => $times > 1
+            ));
+
+            $this->assertSame([], $duplicates, sprintf(
+                '%s names these codes more than once, so all but the first arm is dead: %s',
+                $method,
+                implode(', ', $duplicates)
+            ));
+        }
+    }
+
     public function test_every_code_states_its_category(): void
     {
         foreach (ErrorCode::cases() as $case) {
@@ -208,7 +237,7 @@ class ErrorTaxonomyTest extends TestCase
      *
      * @return list<string>
      */
-    private function casesNamedIn(string $method): array
+    private function casesNamedIn(string $method, bool $unique = true): array
     {
         $source = file_get_contents(self::ENUM);
         $this->assertNotFalse($source, 'the enum source is unreadable');
@@ -222,6 +251,6 @@ class ErrorTaxonomyTest extends TestCase
 
         preg_match_all('/self::([A-Z][A-Z_0-9]*)/', $body, $matches);
 
-        return array_values(array_unique($matches[1]));
+        return $unique ? array_values(array_unique($matches[1])) : $matches[1];
     }
 }

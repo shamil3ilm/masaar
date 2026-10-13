@@ -454,10 +454,6 @@ enum ErrorCode: string
             self::VAL_MISSING_REQUIRED_FIELD => 'Required field is missing',
             self::VAL_INVALID_FORMAT => 'Invalid data format',
             self::VAL_INVALID_VAT_NUMBER => 'Invalid VAT registration number format',
-            self::VAL_INVALID_INVOICE_TYPE => 'Invalid invoice type',
-            self::VAL_INVALID_TAX_CATEGORY => 'Invalid tax category code',
-            self::VAL_MISSING_EXEMPTION_REASON => 'Tax exemption reason is required for this category',
-            self::VAL_INVALID_EXEMPTION_CODE => 'Invalid tax exemption reason code',
             self::VAL_CALCULATION_MISMATCH => 'Calculated totals do not match provided values',
             self::VAL_DUPLICATE_INVOICE_NUMBER => 'Invoice number already exists',
             self::VAL_INVOICE_ALREADY_ISSUED => 'Invoice has already been issued and cannot be issued again',
@@ -472,13 +468,11 @@ enum ErrorCode: string
             self::ZATCA_MAINTENANCE => 'ZATCA service is under maintenance',
 
             // Certificate
-            self::CERT_EXPIRED => 'Certificate has expired',
             self::CERT_REVOKED => 'Certificate has been revoked',
             self::CERT_NOT_FOUND => 'Certificate not found',
             self::CERT_EXPIRING_SOON => 'Certificate is expiring soon',
 
             // Network
-            self::NET_CONNECTION_FAILED => 'Failed to connect to remote service',
             self::NET_TIMEOUT => 'Connection timed out',
 
             // Rate limiting
@@ -532,8 +526,6 @@ enum ErrorCode: string
             self::CERT_INVALID_FORMAT => 'Certificate could not be read; expected PEM or base64 DER',
             self::CERT_EXPIRED => 'Certificate has expired and must be renewed',
             self::CERT_NOT_YET_VALID => 'Certificate is not valid yet',
-            self::CERT_REVOKED => 'Certificate has been revoked',
-            self::CERT_EXPIRING_SOON => 'Certificate is expiring soon',
             self::CERT_CHAIN_INVALID => 'Certificate chain could not be verified',
             self::CERT_PRIVATE_KEY_INVALID => 'Private key could not be read',
             self::CERT_PRIVATE_KEY_MISMATCH => 'Private key does not match the certificate',

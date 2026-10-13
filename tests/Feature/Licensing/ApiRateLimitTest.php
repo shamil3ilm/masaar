@@ -48,7 +48,7 @@ use Tests\TestCase;
  * implementation rather than the fallback. These tests run on both stores to
  * say that the answer does not depend on which one is configured.
  */
-class RateLimitFiresTest extends TestCase
+class ApiRateLimitTest extends TestCase
 {
     use RefreshDatabase;
 
