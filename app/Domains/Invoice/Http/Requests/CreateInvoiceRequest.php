@@ -6,6 +6,7 @@ use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Invoice\Enums\TaxCategory;
+use App\Domains\Invoice\Support\UnitCode;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -29,30 +30,6 @@ class CreateInvoiceRequest extends FormRequest
         'IQA',   // Iqama
         'PAS',   // Passport
         'OTH',   // Other
-    ];
-
-    /**
-     * Valid UN/ECE Rec 20 unit codes.
-     */
-    private const VALID_UNIT_CODES = [
-        'PCE',  // Piece
-        'EA',   // Each
-        'KGM',  // Kilogram
-        'GRM',  // Gram
-        'MTR',  // Metre
-        'CMT',  // Centimetre
-        'LTR',  // Litre
-        'MLT',  // Millilitre
-        'MTK',  // Square metre
-        'MTQ',  // Cubic metre
-        'HUR',  // Hour
-        'DAY',  // Day
-        'MON',  // Month
-        'ANN',  // Year
-        'SET',  // Set
-        'BX',   // Box
-        'PK',   // Pack
-        'CT',   // Carton
     ];
 
     public function authorize(): bool
@@ -147,7 +124,7 @@ class CreateInvoiceRequest extends FormRequest
             'lines.*.description_ar' => ['nullable', 'string', 'max:255'],
             'lines.*.class_code' => ['nullable', 'string', 'max:50'],
             'lines.*.quantity' => ['required', 'numeric', 'min:0.001'],
-            'lines.*.unit_code' => ['nullable', 'string', Rule::in(self::VALID_UNIT_CODES)],
+            'lines.*.unit_code' => ['nullable', 'string', Rule::in(UnitCode::accepted())],
             'lines.*.unit_price' => ['required', 'numeric', 'min:0'],
             'lines.*.tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'lines.*.tax_category' => ['nullable', Rule::enum(TaxCategory::class)],
@@ -210,7 +187,7 @@ class CreateInvoiceRequest extends FormRequest
             'lines.*.exempt_code.in' => 'Invalid ZATCA exemption code. Must be a valid VATEX-SA-* code.',
             'lines.*.exempt_reason.required_with' => 'Exemption reason is required when exemption code is provided.',
             // Units
-            'lines.*.unit_code.in' => 'Invalid unit code. Must be a valid UN/ECE Rec 20 code.',
+            'lines.*.unit_code.in' => 'Invalid unit code. Must be a UN/ECE Recommendation 20 code, or a Recommendation 21 packaging code written with an X prefix.',
         ];
     }
 
@@ -239,7 +216,7 @@ class CreateInvoiceRequest extends FormRequest
                     ?? FatooraConfig::taxCategoryFor($exemptionCode, (float) ($line['tax_rate'] ?? 15));
 
                 return array_merge([
-                    'unit_code' => 'PCE',
+                    'unit_code' => UnitCode::DEFAULT,
                     'tax_category' => $category,
                     'tax_rate' => $category === FatooraConfig::TAX_CATEGORY_STANDARD ? 15 : 0,
                 ], $line);

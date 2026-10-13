@@ -8,6 +8,7 @@ use App\Domains\Audit\Services\AuditService;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Exceptions\InvoiceNotEditableException;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Support\UnitCode;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -73,7 +74,7 @@ class InvoiceDrafter
                     'description_ar' => $line['description_ar'] ?? null,
                     'class_code' => $line['class_code'] ?? null,
                     'quantity' => (string) $line['quantity'],
-                    'unit_code' => $line['unit_code'] ?? 'PCE',
+                    'unit_code' => UnitCode::normalise($line['unit_code'] ?? null),
                     'unit_price' => (string) $line['unit_price'],
                     'tax_rate' => $priced['rate'],
                     'tax_amount' => $priced['tax'],

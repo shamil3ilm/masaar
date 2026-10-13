@@ -69,10 +69,25 @@
 
         <label class="block text-xs font-medium text-gray-600">
             Unit
+            {{-- Grouped, and read from App\Domains\Invoice\Support\UnitCode.
+
+                 This list used to be written out here: eleven codes against
+                 the eighteen the API accepted, so a seller pricing by the
+                 gram could file through the API and not from the portal. Four
+                 of the eleven - PCE, BX, PK, CT - are in neither UN/ECE
+                 Recommendation 20 nor Peppol's Recommendation 21 extension.
+
+                 normalise() maps a stored legacy code onto its replacement,
+                 so an older draft still opens with the right option on. --}}
             <select name="lines[{{ $index }}][unit_code]"
                     class="mt-1 w-full rounded border-gray-300 text-sm font-normal text-gray-900 shadow-sm">
-                @foreach (['PCE' => 'Piece', 'KGM' => 'Kilogram', 'LTR' => 'Litre', 'MTR' => 'Metre', 'HUR' => 'Hour', 'DAY' => 'Day', 'MON' => 'Month', 'SET' => 'Set', 'BX' => 'Box', 'PK' => 'Pack', 'CT' => 'Carton'] as $code => $label)
-                    <option value="{{ $code }}" @selected(($row['unit_code'] ?? 'PCE') === $code)>{{ $label }}</option>
+                @php($selected = \App\Domains\Invoice\Support\UnitCode::normalise($row['unit_code'] ?? null))
+                @foreach (\App\Domains\Invoice\Support\UnitCode::GROUPS as $group => $codes)
+                    <optgroup label="{{ $group }}">
+                        @foreach ($codes as $code => $label)
+                            <option value="{{ $code }}" @selected($selected === $code)>{{ $label }}</option>
+                        @endforeach
+                    </optgroup>
                 @endforeach
             </select>
         </label>

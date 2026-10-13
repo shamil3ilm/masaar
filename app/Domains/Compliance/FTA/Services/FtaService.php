@@ -11,6 +11,7 @@ use App\Domains\Compliance\FTA\Enums\FtaStatus;
 use App\Domains\Compliance\FTA\Exceptions\FtaException;
 use App\Domains\Compliance\FTA\Models\FtaSubmission;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Support\UnitCode;
 use App\Domains\Organization\Models\Organization;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -257,7 +258,7 @@ class FtaService
             'unit_price' => (float) $line->unit_price,
             'net_amount' => (float) $line->line_total,
             'tax_amount' => (float) ($line->tax_amount ?? 0),
-            'unit_code' => 'PCE',
+            'unit_code' => UnitCode::DEFAULT,
         ])->toArray();
     }
 

@@ -8,6 +8,7 @@ use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\DTOs\AddressData;
 use App\Domains\Compliance\Fatoora\DTOs\InvoiceXmlData;
 use App\Domains\Compliance\Fatoora\Helpers\FatooraTime;
+use App\Domains\Invoice\Support\UnitCode;
 use Closure;
 use Illuminate\Support\Str;
 
@@ -126,7 +127,7 @@ final class ComplianceSampleSet
                 'taxAmount' => 15.00,
                 'lineTotal' => 100.00,
                 'taxCategory' => 'S',
-                'unitCode' => 'PCE',
+                'unitCode' => UnitCode::DEFAULT,
             ]],
             // A standard invoice is B2B: it carries the supply date and the
             // buyer's VAT number and address, which a simplified one does not.

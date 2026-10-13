@@ -90,6 +90,12 @@ class ActionMarkupTest extends TestCase
         $offenders = [];
 
         foreach ($this->views() as $relative => $contents) {
+            // A component declares a control; the name belongs to the call
+            // site, which this same check covers where that call site lives.
+            if (str_starts_with($relative, 'components/ui/')) {
+                continue;
+            }
+
             foreach ($this->unnamedControls($contents) as $control) {
                 $offenders[] = $relative.': '.$control;
             }

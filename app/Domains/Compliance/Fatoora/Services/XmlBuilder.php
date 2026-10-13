@@ -8,6 +8,7 @@ use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\DTOs\AddressData;
 use App\Domains\Compliance\Fatoora\DTOs\InvoiceXmlData;
 use App\Domains\Invoice\Services\InvoiceTotals;
+use App\Domains\Invoice\Support\UnitCode;
 use DOMDocument;
 use DOMElement;
 
@@ -777,7 +778,7 @@ class XmlBuilder
 
             // Invoiced quantity
             $quantity = $this->dom->createElementNS(self::CBC_NS, 'cbc:InvoicedQuantity', $this->formatQuantity($line['quantity']));
-            $quantity->setAttribute('unitCode', $line['unitCode'] ?? 'PCE');
+            $quantity->setAttribute('unitCode', UnitCode::normalise($line['unitCode'] ?? null));
             $invoiceLine->appendChild($quantity);
 
             // Calculate net amounts (handle tax-inclusive pricing and free goods)
@@ -900,7 +901,7 @@ class XmlBuilder
 
             // BaseQuantity (optional but good for clarity)
             $baseQty = $this->dom->createElementNS(self::CBC_NS, 'cbc:BaseQuantity', '1');
-            $baseQty->setAttribute('unitCode', $line['unitCode'] ?? 'PCE');
+            $baseQty->setAttribute('unitCode', UnitCode::normalise($line['unitCode'] ?? null));
             $price->appendChild($baseQty);
 
             $invoiceLine->appendChild($price);

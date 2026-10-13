@@ -12,6 +12,7 @@ use App\Domains\Compliance\Fatoora\Helpers\FatooraTime;
 use App\Domains\Compliance\Fatoora\Helpers\TextNormalizer;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Support\UnitCode;
 use App\Domains\Organization\Models\Organization;
 
 /**
@@ -185,7 +186,7 @@ class DocumentBuilder
             'description' => $line->documentDescription(),
             'itemClassificationCode' => $line->class_code,
             'quantity' => (float) $line->quantity,
-            'unitCode' => $line->unit_code ?? 'PCE',
+            'unitCode' => UnitCode::normalise($line->unit_code),
             'unitPrice' => (float) $line->unit_price,
             'taxRate' => (float) $line->tax_rate,
             'taxAmount' => (float) $line->tax_amount,

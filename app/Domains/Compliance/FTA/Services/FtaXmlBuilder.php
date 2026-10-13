@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\FTA\Services;
 
 use App\Domains\Compliance\FTA\DTOs\FtaInvoiceData;
+use App\Domains\Invoice\Support\UnitCode;
 use DOMDocument;
 use DOMElement;
 
@@ -137,7 +138,7 @@ class FtaXmlBuilder
         foreach ($lines as $i => $line) {
             $il = $this->addCac($parent, 'InvoiceLine');
             $this->addCbc($il, 'ID', (string) ($i + 1));
-            $this->addCbc($il, 'InvoicedQuantity', (string) ($line['quantity'] ?? 1), ['unitCode' => $line['unit_code'] ?? 'PCE']);
+            $this->addCbc($il, 'InvoicedQuantity', (string) ($line['quantity'] ?? 1), ['unitCode' => UnitCode::normalise($line['unit_code'] ?? null)]);
             $this->addCbc($il, 'LineExtensionAmount', number_format((float) ($line['net_amount'] ?? 0), 2, '.', ''), ['currencyID' => 'AED']);
 
             // Tax
