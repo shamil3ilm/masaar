@@ -108,6 +108,38 @@ class OfflineReplayTest extends TestCase
         $this->assertCount(1, Http::recorded(fn (Request $request) => str_contains($request->url(), '/invoices/')));
     }
 
+    /**
+     * A read timeout after the authority accepted does not re-file it.
+     *
+     * validateQueuedItem asked invoice_submissions whether this invoice had
+     * already been filed, and the offline path writes no row there -
+     * queueForOffline creates the queue item and the signed document and
+     * stops. So the guard found nothing however many times the document had
+     * been sent.
+     *
+     * A read timeout is indistinguishable from non-delivery, so the catch in
+     * ProcessOfflineQueue calls markFailed with canRetry true and the item
+     * goes back to pending. The next run then sent a document ZATCA had
+     * already cleared. What this path does record is the verdict, on the
+     * invoice itself, and the guard now reads that.
+     */
+    public function test_an_accepted_invoice_is_not_resent(): void
+    {
+        // The verdict, as InvoiceVerdict::record would have written it.
+        Invoice::withoutTenantScope(fn () => $this->invoice->update(['status' => InvoiceStatus::Accepted]));
+
+        // And the item back in the queue, which is what the timeout left.
+        OfflineItem::withoutTenantScope(fn () => $this->item->update(['state' => OfflineQueue::STATE_PENDING]));
+
+        $this->replay();
+
+        $this->assertCount(
+            0,
+            Http::recorded(fn (Request $request) => str_contains($request->url(), '/invoices/')),
+            'a document the authority had already accepted was sent again'
+        );
+    }
+
     private function replay(): void
     {
         $this->artisan('fatoora:process-offline', [

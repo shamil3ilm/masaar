@@ -12,6 +12,7 @@ use App\Domains\Compliance\Fatoora\Models\ChainEntry;
 use App\Domains\Compliance\Fatoora\Models\ChainState;
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Compliance\Fatoora\Models\OfflineItem;
+use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -385,7 +386,43 @@ class OfflineQueue
      */
     public function validateQueuedItem(object $item): array
     {
-        // Check if this invoice was already submitted successfully
+        // The invoice's own verdict, first.
+        //
+        // This used to ask invoice_submissions only, and the offline path
+        // writes no row there - queueForOffline creates the queue item and
+        // the signed document and stops. So for an invoice filed purely
+        // offline the guard found nothing however many times it had already
+        // been sent, and a read timeout is indistinguishable from
+        // non-delivery: ProcessOfflineQueue's catch calls markFailed with
+        // canRetry true, the item goes back to pending, and five minutes
+        // later it re-files a document the authority has already cleared.
+        //
+        // What this path does record is the verdict, on the invoice:
+        // InvoiceVerdict::record writes Accepted or Rejected and stores
+        // cleared_xml when clearance returned one. Read without the tenant
+        // scope because the drain runs from the scheduler and from a queued
+        // job, and that scope answers differently in a request.
+        $invoice = Invoice::withoutTenantScope(fn () => Invoice::find($item->invoice_id));
+
+        if ($invoice?->status === InvoiceStatus::Accepted) {
+            return [
+                'valid' => false,
+                'reason' => 'The authority has already accepted this invoice',
+                'action' => 'skip',
+            ];
+        }
+
+        if ($invoice?->status === InvoiceStatus::Rejected) {
+            // Refused, not undelivered. The same bytes would be refused
+            // again; the remedy is a credit note and a new invoice.
+            return [
+                'valid' => false,
+                'reason' => 'The authority rejected this invoice',
+                'action' => 'skip',
+            ];
+        }
+
+        // And the submission ledger, for the invoices that have a row in it.
         // 'status' is not a column on invoice_submissions and 'accepted' is
         // not one of its states, so this threw before judging anything and the
         // queue never processed an item.
@@ -404,7 +441,6 @@ class OfflineQueue
         }
 
         // Check if ICV was already used (race condition protection)
-        $invoice = Invoice::find($item->invoice_id);
         if ($invoice && $invoice->icv) {
             $icvConflict = ChainEntry::query()
                 ->where('org_id', $item->org_id)
