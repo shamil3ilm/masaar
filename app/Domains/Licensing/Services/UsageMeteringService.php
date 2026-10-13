@@ -49,6 +49,13 @@ class UsageMeteringService
             return;
         }
 
+        // No verdict means nothing was filed, so the slot
+        // reserveInvoiceQuota took goes back. A rejection keeps its slot: the
+        // authority processed the document and answered.
+        if ($state === 'failed') {
+            $this->releaseInvoiceQuota($license);
+        }
+
         $this->recordInvoiceSubmission(
             license: $license,
             cleared: $state === 'cleared',
@@ -90,8 +97,10 @@ class UsageMeteringService
 
         $usage = $this->dailyUsage($license, $today, $month);
 
-        $usage->increment('invoices_submitted');
-
+        // Not invoices_submitted. reserveInvoiceQuota takes that slot at the
+        // gate, before the authority is called, because a limit cannot be
+        // enforced afterwards. Counting it again here would spend the
+        // taxpayer's allowance twice for one invoice.
         if ($cleared) {
             $usage->increment('invoices_cleared');
         }
@@ -167,6 +176,88 @@ class UsageMeteringService
      *
      * @throws LicenseException
      */
+    /**
+     * Take a slot against the month's allowance, or refuse.
+     *
+     * checkInvoiceQuota below only reads, and is what the license.quota
+     * middleware calls to refuse early with a clear answer before any work is
+     * done. This is the one that decides, and it is called from inside
+     * SubmissionTracker::createSubmission's transaction - the one place every
+     * submission path passes through, which is why enforcement moved here
+     * from a middleware that only two partner routes carry.
+     *
+     * The licence row is locked for the duration. The limit is a sum across
+     * the month's daily rows, so there is no single-row conditional update
+     * that can express it; locking serialises quota decisions for one
+     * taxpayer and nobody else, for the two queries this takes.
+     *
+     * The slot is taken now rather than when the authority answers, because a
+     * limit enforced after the document is filed is not a limit.
+     * releaseInvoiceQuota gives it back when no answer came.
+     */
+    public function reserveInvoiceQuota(License $license): void
+    {
+        DB::transaction(function () use ($license): void {
+            License::query()->whereKey($license->getKey())->lockForUpdate()->firstOrFail();
+
+            $month = now()->format('Y-m');
+
+            $monthlyCount = LicenseUsage::where('license_id', $license->id)
+                ->where('usage_month', $month)
+                ->sum('invoices_submitted');
+
+            if ($monthlyCount >= $license->invoices_per_month) {
+                throw LicenseException::quotaExceeded(
+                    'invoices_per_month',
+                    $license->invoices_per_month,
+                    (int) $monthlyCount
+                );
+            }
+
+            $this->dailyUsage($license, now()->startOfDay(), $month)->increment('invoices_submitted');
+        });
+    }
+
+    /**
+     * Reserve against whichever licence meters this organization.
+     *
+     * The same lookup recordSubmissionOutcome makes, and the same answer when
+     * there is none: an organization submitting through the staff console has
+     * no licence to meter, because that credential is a person rather than an
+     * integrator. Nothing to reserve rather than a refusal.
+     */
+    public function reserveInvoiceQuotaFor(string $organizationId): void
+    {
+        $license = License::withoutGlobalScopes()
+            ->where('org_id', $organizationId)
+            ->first();
+
+        if ($license === null) {
+            return;
+        }
+
+        $this->reserveInvoiceQuota($license);
+    }
+
+    /**
+     * Give back a slot for a submission that reached no verdict.
+     *
+     * Only for 'failed' - no answer from the authority, so nothing was filed
+     * and the allowance should not have been spent. A rejection is not
+     * released: ZATCA processed the document and answered, which is an
+     * attempt against the allowance however unwelcome the answer.
+     *
+     * Never below zero. A release with no matching reservation means the gate
+     * was never passed, and there is nothing to return.
+     */
+    public function releaseInvoiceQuota(License $license): void
+    {
+        LicenseUsage::where('license_id', $license->id)
+            ->where('usage_date', now()->startOfDay())
+            ->where('invoices_submitted', '>', 0)
+            ->decrement('invoices_submitted');
+    }
+
     public function checkInvoiceQuota(License $license): void
     {
         $month = now()->format('Y-m');

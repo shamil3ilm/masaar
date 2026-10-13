@@ -93,6 +93,49 @@ class InvoiceQuotaTest extends TestCase
         $this->app->instance(FatooraClient::class, $client);
     }
 
+    /**
+     * The allowance binds the submission itself, not only two routes.
+     *
+     * It was enforced by the license.quota middleware, which routes/api/partner.php
+     * puts on /compliance/submit and /pipeline/submit. The tenant API, the
+     * UAE FTA route and portal issuance all reached SubmissionTracker without
+     * it, so a taxpayer past their tier kept filing from any of them. The
+     * reservation is inside createSubmission's transaction now, which every
+     * path goes through - including this one, which calls the service
+     * directly and carries no middleware at all.
+     */
+    public function test_the_quota_binds_every_path(): void
+    {
+        app(SubmissionTracker::class)->submit($this->issued('INV-1'));
+        app(SubmissionTracker::class)->submit($this->issued('INV-2'));
+
+        $this->expectExceptionMessageMatches('/quota|limit/i');
+
+        app(SubmissionTracker::class)->submit($this->issued('INV-3'));
+    }
+
+    /**
+     * A submission that reached no verdict gives its slot back.
+     *
+     * The slot has to be taken before the authority is called, because a
+     * limit enforced afterwards is not a limit. So when no answer came,
+     * nothing was filed and the allowance should not have been spent.
+     */
+    public function test_a_failed_submission_returns_its_slot(): void
+    {
+        app(SubmissionTracker::class)->submit($this->issued('INV-1'));
+
+        $this->assertSame(1, (int) LicenseUsage::where('license_id', $this->license->id)->sum('invoices_submitted'));
+
+        app(UsageMeteringService::class)->recordSubmissionOutcome($this->organization->id, 'failed');
+
+        $this->assertSame(
+            0,
+            (int) LicenseUsage::where('license_id', $this->license->id)->sum('invoices_submitted'),
+            'a submission that never reached the authority kept the allowance it reserved'
+        );
+    }
+
     public function test_a_submission_is_metered(): void
     {
         app(SubmissionTracker::class)->submit($this->issued('INV-1'));

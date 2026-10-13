@@ -170,6 +170,11 @@ class SubmissionRaceTest extends TestCase
     {
         $usage = \Mockery::mock(UsageMeteringService::class);
         $usage->shouldReceive('recordSubmissionOutcome')->andThrow(new \RuntimeException('usage store down'));
+
+        // The quota reservation SubmissionTracker::createSubmission now makes
+        // before the authority is called. This test is about the usage write
+        // failing *after* ZATCA has answered, so the gate simply admits.
+        $usage->shouldReceive('reserveInvoiceQuotaFor');
         $this->app->instance(UsageMeteringService::class, $usage);
     }
 

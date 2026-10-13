@@ -12,6 +12,7 @@ use App\Domains\Compliance\Fatoora\Jobs\ProcessFatooraSubmission;
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Compliance\Fatoora\Models\SubmissionIdempotency;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Licensing\Services\UsageMeteringService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -41,6 +42,7 @@ class SubmissionTracker
         private readonly FatooraClient $zatcaClient,
         private readonly SubmissionGuard $guard,
         private readonly SubmissionLedger $ledger,
+        private readonly UsageMeteringService $usage,
     ) {}
 
     /**
@@ -146,6 +148,15 @@ class SubmissionTracker
             Invoice::query()->whereKey($invoice->getKey())->lockForUpdate()->first();
 
             $this->guard->assertNotSubmitted($invoice);
+
+            // The invoice allowance, here rather than in middleware.
+            //
+            // license.quota is on two partner routes, so the tenant API, the
+            // UAE FTA route and portal issuance all filed without ever
+            // checking it. This is the one place every submission path
+            // passes, and it is already a transaction, so the slot is taken
+            // under the same commit as the row that uses it.
+            $this->usage->reserveInvoiceQuotaFor((string) $invoice->org_id);
 
             // Create idempotency record
             $idempotency = SubmissionIdempotency::create([
