@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Fatoora\Services;
 
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
+use App\Domains\Invoice\Models\Invoice;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -80,6 +81,9 @@ class DeadlineReport
                 'at_risk' => $this->rows($this->unreported($warningHours)->diffKeys($overdue)),
                 // The real totals, so a capped list cannot understate how
                 // much is wrong.
+                // Invoices with no submission row at all - see unrecorded().
+                'unrecorded' => $this->unrecordedRows($deadlineHours),
+                'unrecorded_total' => $this->countUnrecorded($deadlineHours),
                 'overdue_total' => $this->countLate($deadlineHours),
                 'at_risk_total' => max(0, $this->countLate($warningHours) - $this->countLate($deadlineHours)),
                 'listing_capped_at' => self::MOST_URGENT,
@@ -112,6 +116,73 @@ class DeadlineReport
     public function unreportedOlderThan(float $hours): Collection
     {
         return $this->unreported($hours);
+    }
+
+    /**
+     * Issued simplified invoices past the deadline with no submission row.
+     *
+     * Everything else here reads invoice_submissions, and the offline path
+     * writes none: OfflineFallback::queueForOffline creates the queue item
+     * and the signed document and stops. So an invoice filed during an
+     * outage was invisible to this report, to the hourly alert and to
+     * /portal/submissions - the three places anyone would look.
+     *
+     * ZATCA's Detailed E-Invoicing Guidelines make that a compliance problem
+     * rather than a display one. Where the authority cannot be reached the
+     * seller is to keep retrying at intervals, and if it still cannot report
+     * within twenty-four hours it must notify ZATCA through the form on their
+     * website. That obligation fell due in silence.
+     *
+     * No submission row at all, rather than no accepted one: an invoice that
+     * has a row is already counted by the populations above, and counting it
+     * twice would overstate the breach.
+     *
+     * @return Collection<string, Invoice>
+     */
+    private function unrecorded(float $hours): Collection
+    {
+        return $this->lateInvoices($hours)
+            ->with('org')
+            ->orderBy('created_at')
+            ->limit(self::MOST_URGENT)
+            ->get()
+            ->keyBy('id');
+    }
+
+    /**
+     * @return Builder<Invoice>
+     */
+    private function lateInvoices(float $hours): Builder
+    {
+        return Invoice::query()
+            // A standard invoice is cleared before it is issued, so an
+            // unsubmitted one has reached nobody and no clock is running.
+            ->where('type', 'simplified')
+            // Issued, so there is a document the authority is owed. A draft
+            // owes nothing, and accepted means they have it.
+            ->whereNotNull('hash')
+            ->whereIn('status', ['issued', 'submitted'])
+            ->where('created_at', '<=', now()->subMinutes((int) round($hours * 60)))
+            ->whereDoesntHave('submissions');
+    }
+
+    /**
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function unrecordedRows(float $hours): Collection
+    {
+        return $this->unrecorded($hours)->values()->map(fn (Invoice $invoice): array => [
+            'invoice_id' => $invoice->id,
+            'invoice_number' => $invoice->invoice_number,
+            'organization' => $invoice->org?->name,
+            'issued_at' => $invoice->created_at,
+            'age_hours' => $invoice->created_at?->diffInMinutes(now()) / 60,
+        ]);
+    }
+
+    private function countUnrecorded(float $hours): int
+    {
+        return $this->lateInvoices($hours)->count();
     }
 
     private function unreported(float $hours): Collection

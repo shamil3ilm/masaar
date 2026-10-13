@@ -49,6 +49,7 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Fatoora/Models/OfflineItem.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Models/SubmissionIdempotency.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Services/ChainRecorder.php' => 'Invoice',
+        'Domains/Compliance/Fatoora/Services/DeadlineReport.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Services/DocumentBuilder.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Services/DuplicateDetector.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Services/InvoiceIssuer.php' => 'Invoice',
