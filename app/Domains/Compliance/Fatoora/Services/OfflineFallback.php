@@ -168,14 +168,18 @@ class OfflineFallback
         // Determine priority
         $priority = $options['priority'] ?? $this->determinePriority($invoice);
 
-        // Signing the invoice and queueing it are one change.
+        // Signing the invoice, recording the submission and queueing it are
+        // one change.
         //
         // They were two writes with no transaction. Dying between them left an
-        // invoice carrying a hash and a QR with no queue row - so nothing
-        // would ever file it, and nothing would report it overdue either,
-        // because ReportOverdueSubmissions reads invoice_submissions and this
-        // path never writes one. For a simplified invoice that is the
-        // twenty-four hour reporting deadline passing in silence.
+        // invoice carrying a hash and a QR with no queue row, so nothing would
+        // ever file it.
+        //
+        // The submission row is the third. This path wrote none, so an invoice
+        // queued during an outage reserved no licence allowance and appeared
+        // on no submissions screen - the portal and the admin logs both read
+        // invoice_submissions. recordOffline reuses the row an online attempt
+        // already created, so falling back does not charge the slot twice.
         $queueResult = DB::transaction(function () use ($invoice, $complianceData, $signedXml, $invoiceHash, $qrCode, $priority): array {
             if ($complianceData !== null) {
                 $invoice->update([
@@ -184,6 +188,8 @@ class OfflineFallback
                     'qr_code' => $complianceData['qr_code'],
                 ]);
             }
+
+            $this->submissionService->recordOffline($invoice);
 
             return $this->offlineQueueManager->queue(
                 invoice: $invoice,

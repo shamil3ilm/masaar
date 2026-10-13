@@ -6,7 +6,9 @@ namespace Tests\Feature\Licensing;
 
 use App\Domains\Compliance\Fatoora\Client\FatooraClient;
 use App\Domains\Compliance\Fatoora\DTOs\FatooraResponse;
+use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Compliance\Fatoora\Services\CredentialStore;
+use App\Domains\Compliance\Fatoora\Services\OfflineFallback;
 use App\Domains\Compliance\Fatoora\Services\SubmissionTracker;
 use App\Domains\Compliance\Fatoora\Services\Submitter;
 use App\Domains\Invoice\Models\Invoice;
@@ -133,6 +135,72 @@ class InvoiceQuotaTest extends TestCase
             0,
             (int) LicenseUsage::where('license_id', $this->license->id)->sum('invoices_submitted'),
             'a submission that never reached the authority kept the allowance it reserved'
+        );
+    }
+
+    /**
+     * An invoice queued during an outage is metered too.
+     *
+     * The allowance is reserved in SubmissionTracker::createSubmission, whose
+     * own comment calls it "the one place every submission path passes". It
+     * was not: OfflineFallback::queueForOffline writes the signed document
+     * and the queue item and returns, without going through the tracker at
+     * all. So an invoice filed while the authority was unreachable cost
+     * nothing against the licence - and forcing offline mode is a switch on
+     * the admin screen, which makes the whole allowance optional.
+     *
+     * It is also why a queued invoice appeared on no submissions screen: the
+     * portal and the admin logs both read invoice_submissions, and this path
+     * wrote no row there.
+     */
+    public function test_an_offline_invoice_is_metered(): void
+    {
+        $invoice = $this->issued('INV-OFF');
+
+        app(OfflineFallback::class)->submit($invoice, ['force_offline' => true]);
+
+        $this->assertSame(
+            1,
+            (int) LicenseUsage::where('license_id', $this->license->id)->sum('invoices_submitted'),
+            'an invoice queued offline cost nothing against the licence'
+        );
+
+        $this->assertSame(
+            1,
+            InvoiceSubmission::withoutTenantScope(
+                fn () => InvoiceSubmission::where('invoice_id', $invoice->id)->count()
+            ),
+            'a queued invoice is invisible on every submissions screen'
+        );
+    }
+
+    /**
+     * Falling back after a failed attempt charges one slot, not two.
+     *
+     * This is the ordinary way into the offline queue: the online attempt
+     * throws a connectivity error, handleSubmissionError leaves a row in
+     * 'failed' having already taken a slot, and OfflineFallback then queues
+     * the invoice. A fresh row there would charge the taxpayer twice for one
+     * invoice - and 'failed' is neither in-flight nor accepted, so
+     * assertNotSubmitted would not have stopped it.
+     */
+    public function test_a_fallback_charges_one_slot(): void
+    {
+        $invoice = $this->issued('INV-FB');
+        $tracker = app(SubmissionTracker::class);
+
+        $first = $tracker->recordOffline($invoice);
+        // As handleSubmissionError leaves it after a connectivity error.
+        $first->update(['state' => 'failed']);
+
+        $second = $tracker->recordOffline($invoice->fresh());
+
+        $this->assertSame($first->id, $second->id, 'the fallback opened a second submission');
+
+        $this->assertSame(
+            1,
+            (int) LicenseUsage::where('license_id', $this->license->id)->sum('invoices_submitted'),
+            'one invoice cost two slots'
         );
     }
 

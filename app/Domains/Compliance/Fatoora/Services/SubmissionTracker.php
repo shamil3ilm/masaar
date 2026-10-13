@@ -88,6 +88,42 @@ class SubmissionTracker
     }
 
     /**
+     * Record an invoice going into the offline queue.
+     *
+     * createSubmission's own comment calls itself "the one place every
+     * submission path passes", and it was not: OfflineFallback wrote the
+     * signed document and the queue item and returned. So an invoice filed
+     * during an outage reserved no allowance - and forcing offline mode is a
+     * switch on the admin screen, which made the whole monthly quota optional
+     * - and appeared on no submissions screen, because the portal and the
+     * admin logs both read invoice_submissions.
+     *
+     * An existing row is reused rather than added to. The ordinary way into
+     * the offline queue is an online attempt that failed on connectivity,
+     * which has already created a row and already taken a slot; a second row
+     * would charge the taxpayer twice for one invoice. assertNotSubmitted
+     * still runs first, so an invoice the authority already holds is refused
+     * rather than quietly queued again.
+     */
+    public function recordOffline(Invoice $invoice): InvoiceSubmission
+    {
+        return DB::transaction(function () use ($invoice): InvoiceSubmission {
+            $existing = InvoiceSubmission::withoutTenantScope(
+                fn () => InvoiceSubmission::where('invoice_id', $invoice->id)->latest('created_at')->first()
+            );
+
+            if ($existing !== null) {
+                $this->guard->assertNotSubmitted($invoice);
+                $this->ledger->transition($existing, 'queued', 'offline_fallback');
+
+                return $existing;
+            }
+
+            return $this->createSubmission($invoice, $this->generateIdempotencyKey($invoice), async: true);
+        });
+    }
+
+    /**
      * Check idempotency and return cached response if available.
      */
     private function checkIdempotency(string $idempotencyKey, Invoice $invoice): ?array
@@ -154,8 +190,9 @@ class SubmissionTracker
             // license.quota is on two partner routes, so the tenant API, the
             // UAE FTA route and portal issuance all filed without ever
             // checking it. This is the one place every submission path
-            // passes, and it is already a transaction, so the slot is taken
-            // under the same commit as the row that uses it.
+            // passes - the offline queue reaches it through recordOffline -
+            // and it is already a transaction, so the slot is taken under the
+            // same commit as the row that uses it.
             $this->usage->reserveInvoiceQuotaFor((string) $invoice->org_id);
 
             // Create idempotency record

@@ -127,6 +127,12 @@ class OfflineFallbackTest extends TestCase
     public function test_known_outage_skips_the_attempt(): void
     {
         $tracker = \Mockery::mock(SubmissionTracker::class);
+        // Queueing records a submission now, so the invoice is metered
+        // and visible on the submissions screens. Allowed rather than
+        // required here: two of the paths through this mock refuse to
+        // queue at all. That the row is actually written is asserted in
+        // InvoiceQuotaTest, against a real tracker.
+        $tracker->shouldReceive('recordOffline');
         $tracker->shouldNotReceive('submit');
         $this->app->instance(SubmissionTracker::class, $tracker);
 
@@ -227,6 +233,12 @@ class OfflineFallbackTest extends TestCase
         $this->app->instance(Connectivity::class, $connectivity);
 
         $tracker = \Mockery::mock(SubmissionTracker::class);
+        // Queueing records a submission now, so the invoice is metered
+        // and visible on the submissions screens. Allowed rather than
+        // required here: two of the paths through this mock refuse to
+        // queue at all. That the row is actually written is asserted in
+        // InvoiceQuotaTest, against a real tracker.
+        $tracker->shouldReceive('recordOffline');
         $tracker->shouldReceive('submit')->andThrow(new FatooraException('ZATCA unreachable', $code));
         $this->app->instance(SubmissionTracker::class, $tracker);
     }
