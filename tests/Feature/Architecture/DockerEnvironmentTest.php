@@ -62,6 +62,44 @@ class DockerEnvironmentTest extends TestCase
         'IMAGE_TAG', 'SSL_EMAIL',
     ];
 
+    /**
+     * Starting a container does not empty the application cache.
+     *
+     * entrypoint.sh cleared config, routes, views and the application cache
+     * together, as if all four were build artefacts. The first three are. The
+     * fourth is shared state on this deployment: the kill switch registry
+     * lives in the cache and nowhere else, so a deploy - or a restart of
+     * either replica, and docker-compose.prod.yml runs two - silently
+     * re-armed ZATCA submission and signing after an operator had thrown the
+     * emergency stop. Nothing logged it, because the auto-expiry path only
+     * sees entries that are still there.
+     *
+     * It also discarded the ZATCA circuit breaker, every rate-limit window
+     * and the platform licence cache, so the next request paid to rebuild all
+     * three.
+     */
+    public function test_the_entrypoint_keeps_the_cache(): void
+    {
+        $entrypoint = file_get_contents(__DIR__.'/../../../docker/entrypoint.sh');
+
+        $this->assertNotFalse($entrypoint);
+
+        $this->assertStringNotContainsString(
+            'artisan cache:clear',
+            $entrypoint,
+            'the entrypoint empties the application cache on start, which is where the kill switch lives'
+        );
+
+        // The three that are build artefacts should still go.
+        foreach (['config:clear', 'route:clear', 'view:clear'] as $expected) {
+            $this->assertStringContainsString(
+                'artisan '.$expected,
+                $entrypoint,
+                'the entrypoint no longer drops stale '.$expected.' output'
+            );
+        }
+    }
+
     public function test_every_container_setting_is_read(): void
     {
         $read = $this->settingsTheApplicationReads();

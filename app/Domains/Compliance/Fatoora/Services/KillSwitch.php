@@ -685,9 +685,28 @@ class KillSwitch
     /**
      * Save switches to cache.
      */
+    /**
+     * Write the registry, with no expiry of its own.
+     *
+     * This used to put it with a one-hour TTL, so the cache entry's lifetime
+     * overrode every switch's. An indefinite switch - the branch that leaves
+     * expires_at null, which the console shows as "turned off by hand" -
+     * released an hour after the last write and logged nothing. And
+     * max_duration_seconds is four hours, four times that TTL, so even a
+     * deliberately time-boxed four-hour stop released after one. The cap on
+     * how long a switch may be set for was unenforceable in the direction
+     * that mattered.
+     *
+     * There is nothing to reclaim by expiring this: it holds one entry per
+     * switch per scope, a dozen at most, and each entry carries the expiry
+     * that getAllSwitches enforces. resumeAll empties it.
+     *
+     * getCacheTtl is still used, for how long the long-running alert
+     * remembers it has already fired.
+     */
     private function saveSwitches(array $switches): void
     {
-        Cache::put(self::CACHE_KEY, $switches, now()->addSeconds($this->getCacheTtl()));
+        Cache::forever(self::CACHE_KEY, $switches);
     }
 
     /**

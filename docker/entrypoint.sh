@@ -55,7 +55,16 @@ cache_config() {
 # Clear old caches (useful for updates)
 clear_old_caches() {
     echo "Clearing old caches..."
-    php artisan cache:clear 2>/dev/null || true
+    # Deliberately not cache:clear.
+    #
+    # The three below drop build artefacts - compiled config, routes and
+    # views - which is what a new image wants. cache:clear empties the
+    # application cache, which on this deployment is shared state: the kill
+    # switch registry lives there and nowhere else, so a deploy or a restart
+    # of either replica silently re-armed ZATCA submission and signing after
+    # an operator had thrown the emergency stop, with nothing logged. It also
+    # discarded the ZATCA circuit breaker, the rate-limit windows and the
+    # platform licence cache, so the next request paid for all three again.
     php artisan config:clear 2>/dev/null || true
     php artisan route:clear 2>/dev/null || true
     php artisan view:clear 2>/dev/null || true

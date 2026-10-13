@@ -70,6 +70,52 @@ class KillSwitchTest extends TestCase
      * whether it could proceed. Submitter and SubmissionGuard call it on
      * every issuance and every submission, so the window was hit constantly.
      */
+    /**
+     * A switch set with no end date is still on hours later.
+     *
+     * The registry was written with a one-hour TTL, so the cache entry's
+     * lifetime overrode every switch's own. An indefinite switch - the one
+     * the console shows as "turned off by hand" - released an hour after the
+     * last write, and nothing logged it: the auto-expiry path only ever saw
+     * entries that were still in the cache.
+     *
+     * Worse in the other direction: max_duration_seconds is four hours, four
+     * times that TTL, so even a deliberately time-boxed four-hour stop
+     * released after one. The cap on how long a switch may be set for could
+     * not be enforced in the direction that mattered.
+     */
+    public function test_an_indefinite_switch_persists(): void
+    {
+        app(KillSwitch::class)->enable(KillSwitch::SWITCH_SUBMISSION, reason: 'the authority is down');
+
+        // Past the registry's old TTL, and past max_duration_seconds too.
+        $this->travel(5)->hours();
+
+        $this->assertTrue(
+            app(KillSwitch::class)->isEnabled(KillSwitch::SWITCH_SUBMISSION),
+            'a switch set with no end date released on its own'
+        );
+    }
+
+    /**
+     * And one that was given an end date still honours it.
+     */
+    public function test_a_time_boxed_switch_still_lapses(): void
+    {
+        app(KillSwitch::class)->enable(
+            KillSwitch::SWITCH_SUBMISSION,
+            reason: 'a short outage',
+            durationSeconds: 600,
+        );
+
+        $this->travel(11)->minutes();
+
+        $this->assertFalse(
+            app(KillSwitch::class)->isEnabled(KillSwitch::SWITCH_SUBMISSION),
+            'a switch outlived the duration it was given'
+        );
+    }
+
     public function test_a_read_does_not_write(): void
     {
         $switches = app(KillSwitch::class);
