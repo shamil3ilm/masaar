@@ -5,14 +5,10 @@ declare(strict_types=1);
 namespace App\Domains\Pipeline\Services;
 
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
-use App\Domains\Compliance\Fatoora\Services\IssuanceNotifier;
-use App\Domains\Compliance\Fatoora\Services\OfflineFallback;
-use App\Domains\Compliance\Fatoora\Services\Submitter;
-use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Compliance\Fatoora\Services\InvoiceIssuer;
 use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
-use Illuminate\Support\Facades\Log;
 
 /**
  * One ERP call: create the invoice, sign it, file it with the authority.
@@ -22,11 +18,12 @@ use Illuminate\Support\Facades\Log;
  * belongs to a collaborator:
  *
  *   InvoiceDrafter    payload -> draft invoice with priced lines
- *   Submitter         compliance documents: XML, hash, QR, signature
- *   OfflineFallback   files it, or queues it when ZATCA is unreachable
- *     SubmissionTracker  idempotency, submission record, state machine
- *       FatooraClient    the call to ZATCA
- *   IssuanceNotifier  tells the ERP what happened
+ *   InvoiceIssuer     signs the draft, then files it with the authority
+ *     Submitter          compliance documents: XML, hash, QR, signature
+ *     OfflineFallback    files it, or queues it when ZATCA is unreachable
+ *       SubmissionTracker  idempotency, submission record, state machine
+ *         FatooraClient      the call to ZATCA
+ *     IssuanceNotifier   tells the ERP what happened
  *   PipelineResult    shapes the reply
  *
  * The failure rule throughout: once an invoice is issued it stays issued. A
@@ -37,9 +34,7 @@ class PipelineService
 {
     public function __construct(
         private readonly InvoiceDrafter $drafter,
-        private readonly Submitter $compliance,
-        private readonly OfflineFallback $submissions,
-        private readonly IssuanceNotifier $notifier,
+        private readonly InvoiceIssuer $issuer,
         private readonly PipelineResult $result,
     ) {}
 
@@ -61,17 +56,38 @@ class PipelineService
             $this->resolveBranch($branchId, $organizationId)
         );
 
-        $compliance = $this->generate($invoice, $organization);
+        $outcome = $this->issuer->issue(
+            $invoice,
+            $organization,
+            // The gate an ERP sets to take the invoice now and file it later.
+            // It lives here rather than in the issuer because it is a property
+            // of this request, not of issuance.
+            file: (bool) ($data['auto_submit'] ?? true),
+            idempotencyKey: $idempotencyKey,
+        );
 
-        if ($compliance !== []) {
-            return $this->result->build($invoice, $compliance, [], null);
+        if (! $outcome->issued) {
+            return $this->result->build($invoice, $outcome->errors, $outcome->warnings, null);
         }
 
-        if (! (bool) ($data['auto_submit'] ?? true)) {
+        if (! $outcome->attemptedFiling) {
             return $this->result->build($invoice, [], [], null);
         }
 
-        return $this->submit($invoice, $idempotencyKey);
+        return $this->result->build(
+            $invoice,
+            $outcome->errors,
+            $outcome->warnings,
+            // No submission means the filing threw, so the authority never
+            // answered. A four-key block of nulls would read as an answer that
+            // said nothing, where the contract says there was no answer at all.
+            $outcome->submission === null ? null : [
+                'submission_id' => $outcome->submission['submission_id'] ?? null,
+                'state' => $outcome->submission['state'] ?? null,
+                'clearance_status' => $outcome->submission['clearance_status'] ?? null,
+                'reporting_status' => $outcome->submission['reporting_status'] ?? null,
+            ]
+        );
     }
 
     /**
@@ -101,93 +117,5 @@ class PipelineService
         }
 
         return $branchId;
-    }
-
-    /**
-     * Produce the compliance documents.
-     *
-     * @return list<string> Errors; empty when the invoice was signed.
-     */
-    private function generate(Invoice $invoice, Organization $organization): array
-    {
-        try {
-            $this->compliance->generate($invoice, $organization);
-            $invoice->refresh();
-
-            $this->notifier->issued($invoice);
-
-            return [];
-        } catch (FatooraException $e) {
-            Log::error('Pipeline: compliance generation failed', [
-                'invoice_id' => $invoice->id,
-                'org_id' => $organization->id,
-                'error' => $e->getMessage(),
-            ]);
-
-            return ['Compliance generation failed: '.$e->getMessage()];
-        } catch (\Throwable $e) {
-            Log::error('Pipeline: unexpected error during compliance generation', [
-                'invoice_id' => $invoice->id,
-                'error' => $e->getMessage(),
-            ]);
-
-            return ['Unexpected error during compliance generation: '.$e->getMessage()];
-        }
-    }
-
-    /**
-     * File the signed invoice, or queue it if the authority is unreachable.
-     *
-     * A submission failure leaves the invoice issued. It holds a valid hash and
-     * QR, so the offline queue or a later retry can still file it; discarding
-     * it would break the hash chain that the next invoice builds on.
-     */
-    private function submit(Invoice $invoice, ?string $idempotencyKey): array
-    {
-        try {
-            $outcome = $this->submissions->submit($invoice, ['idempotency_key' => $idempotencyKey]);
-            $invoice->refresh();
-
-            $warnings = $outcome['warnings'] ?? [];
-            $errors = $outcome['errors'] ?? [];
-
-            // The outcome webhook is raised by SubmissionTracker as a state
-            // event, for both the inline and queued paths. It was announced
-            // here as well, under the same event names but a different payload
-            // shape — total against total_amount, type against invoice_type —
-            // so a queued submission delivered two webhooks for one outcome and
-            // an integrator could not rely on either shape.
-
-            return $this->result->build($invoice, $errors, $warnings, [
-                'submission_id' => $outcome['submission_id'] ?? null,
-                'state' => $outcome['state'] ?? null,
-                'clearance_status' => $outcome['clearance_status'] ?? null,
-                'reporting_status' => $outcome['reporting_status'] ?? null,
-            ]);
-        } catch (FatooraException $e) {
-            Log::warning('Pipeline: ZATCA submission failed, invoice remains issued', [
-                'invoice_id' => $invoice->id,
-                'error' => $e->getMessage(),
-                'retryable' => $e->isRetryable(),
-            ]);
-
-            $invoice->refresh();
-
-            return $this->result->build($invoice, ['ZATCA submission failed: '.$e->getMessage()], [], null);
-        } catch (\Throwable $e) {
-            Log::error('Pipeline: unexpected error during ZATCA submission', [
-                'invoice_id' => $invoice->id,
-                'error' => $e->getMessage(),
-            ]);
-
-            $invoice->refresh();
-
-            return $this->result->build(
-                $invoice,
-                ['Unexpected error during ZATCA submission: '.$e->getMessage()],
-                [],
-                null
-            );
-        }
     }
 }

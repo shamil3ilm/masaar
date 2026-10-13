@@ -51,6 +51,7 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Fatoora/Services/ChainRecorder.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Services/DocumentBuilder.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Services/DuplicateDetector.php' => 'Invoice',
+        'Domains/Compliance/Fatoora/Services/InvoiceIssuer.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Services/InvoiceValidator.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Services/InvoiceVerdict.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Services/IssuanceNotifier.php' => 'Invoice',
@@ -65,7 +66,7 @@ class CrossDomainModelTest extends TestCase
         'Domains/Organization/Models/ComplianceProfile.php' => 'Invoice',
         'Domains/Organization/Models/Organization.php' => 'Invoice',
         'Domains/Pipeline/Services/PipelineResult.php' => 'Invoice',
-        'Domains/Pipeline/Services/PipelineService.php' => 'Invoice, Organization',
+        'Domains/Pipeline/Services/PipelineService.php' => 'Organization',
     ];
 
     public function test_domains_keep_their_models_to_themselves(): void
