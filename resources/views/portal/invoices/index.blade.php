@@ -15,8 +15,6 @@
     </a>
 </div>
 
-@include('portal.partials.flash')
-
 <form method="GET" action="{{ route('portal.invoices.index') }}" class="mb-6 rounded-lg bg-white p-4 shadow">
     <div class="grid gap-4 md:grid-cols-4">
         <div class="md:col-span-2">

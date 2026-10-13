@@ -58,6 +58,10 @@
 
         <!-- Main Content -->
         <main class="flex-1 p-8">
+            {{-- In the layout, not in each page. Included by hand it reached
+                 two of eleven portal views, and the pages that redirect with a
+                 message were mostly not among them. --}}
+            @include('portal.partials.flash')
             @yield('content')
         </main>
     </div>

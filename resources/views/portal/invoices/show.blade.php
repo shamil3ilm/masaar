@@ -47,8 +47,6 @@
     </div>
 </div>
 
-@include('portal.partials.flash')
-
 <div class="grid gap-6 lg:grid-cols-3">
     <div class="space-y-6 lg:col-span-2">
         <div class="rounded-lg bg-white p-6 shadow">

@@ -1,9 +1,11 @@
 {{--
     Flash messages.
 
-    Nothing in resources/views rendered these before: AdminController::processQueue
-    has flashed 'success' for as long as it has existed and no page has ever
-    shown it. Every portal action that redirects depends on this being here.
+    Included from layouts/portal.blade.php, so every page that extends it
+    can show one. This sat in two views for a while, which is how
+    PortalInvoiceDraftController's 'error' came to be written, redirected
+    with, and never rendered: back() from a failed draft save lands on the
+    create form, which was not one of the two.
 --}}
 @if (session('success'))
     <div class="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
