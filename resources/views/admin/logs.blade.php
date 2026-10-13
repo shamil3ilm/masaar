@@ -65,19 +65,10 @@
                 </td>
                 <td class="px-6 py-4 text-sm">{{ $log->organization_name ?? Str::limit($log->org_id, 8) }}</td>
                 <td class="px-6 py-4">
-                    <span class="px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-800">
-                        {{ $log->submission_type }}
-                    </span>
+                    <x-ui.badge tone="neutral" :label="ucfirst($log->submission_type)" />
                 </td>
                 <td class="px-6 py-4">
-                    <span class="px-2 py-1 text-xs font-medium rounded-full
-                        {{ $log->state === 'cleared' ? 'bg-green-100 text-green-800' : '' }}
-                        {{ $log->state === 'reported' ? 'bg-blue-100 text-blue-800' : '' }}
-                        {{ $log->state === 'rejected' ? 'bg-red-100 text-red-800' : '' }}
-                        {{ $log->state === 'failed' ? 'bg-orange-100 text-orange-800' : '' }}
-                        {{ in_array($log->state, ['pending', 'queued', 'submitted']) ? 'bg-yellow-100 text-yellow-800' : '' }}">
-                        {{ $log->state }}
-                    </span>
+                    <x-ui.badge :state="$log->state" />
                 </td>
                 <td class="px-6 py-4 text-sm">
                     @if($log->clearance_status)

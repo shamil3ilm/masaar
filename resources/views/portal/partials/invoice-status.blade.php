@@ -1,6 +1,16 @@
 {{--
     An invoice status pill.
 
+    The colours are decided by x-ui.badge now, which is the one place a state
+    becomes a colour. This partial kept its own copy of the map - draft grey,
+    issued blue, accepted green, rejected red - and agreed with the badge
+    exactly, which is luck rather than design: four other screens kept copies
+    too and one of them painted `failed` red where the others painted it
+    orange.
+
+    Kept as a partial rather than replaced at its twelve call sites, because
+    what it says is specific to an invoice and worth saying once:
+
     Only four states are rendered. InvoiceStatus documents a fifth, Submitted,
     and nothing ever writes it: Submitter::generate() writes Issued and
     InvoiceVerdict jumps straight to Accepted or Rejected. A badge for a state
@@ -12,18 +22,4 @@
 
     @param $status  \App\Domains\Invoice\Enums\InvoiceStatus|string|null
 --}}
-@php
-    $value = $status instanceof \BackedEnum ? $status->value : (string) $status;
-
-    $tone = match ($value) {
-        'draft' => 'bg-gray-100 text-gray-700',
-        'issued' => 'bg-blue-100 text-blue-800',
-        'accepted' => 'bg-green-100 text-green-800',
-        'rejected' => 'bg-red-100 text-red-800',
-        default => 'bg-gray-100 text-gray-700',
-    };
-@endphp
-
-<span class="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold {{ $tone }}">
-    {{ ucfirst($value ?: 'unknown') }}
-</span>
+<x-ui.badge :state="$status" />

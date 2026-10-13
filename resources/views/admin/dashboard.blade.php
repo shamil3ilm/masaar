@@ -151,7 +151,12 @@
                 @foreach ($dependencies as $label => $status)
                     <div class="flex items-center justify-between">
                         <span class="text-sm text-gray-600">{{ $label }}</span>
-                        <span class="px-2 py-1 rounded text-xs font-medium {{ in_array($status, $good, true) ? 'bg-green-100 text-green-800' : ($status === 'warning' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">{{ $status }}</span>
+                        @php
+                            $healthTone = in_array($status, $good, true)
+                                ? 'success'
+                                : ($status === 'warning' ? 'warning' : 'danger');
+                        @endphp
+                        <x-ui.badge :tone="$healthTone" :label="$status" />
                     </div>
                 @endforeach
                 @if (isset($health['database']['latency_ms']))

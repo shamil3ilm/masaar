@@ -47,9 +47,7 @@
                 <div>
                     <dt class="text-sm font-medium text-gray-500">Status</dt>
                     <dd class="mt-1">
-                        <span class="px-2 py-1 text-xs font-medium rounded-full {{ $organization->status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
-                            {{ $organization->status ?? 'unknown' }}
-                        </span>
+                        <x-ui.badge :state="$organization->status" />
                     </dd>
                 </div>
                 <div>
@@ -121,7 +119,7 @@
                     <div class="flex justify-between">
                         <dt class="text-gray-500">Status</dt>
                         <dd>
-                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">{{ $certificate->status }}</span>
+                            <x-ui.badge :state="$certificate->status" />
                         </dd>
                     </div>
                 </dl>
@@ -158,20 +156,7 @@
                 <tr class="hover:bg-gray-50">
                     <td class="px-6 py-4 text-sm font-mono text-gray-900">{{ Str::limit($submission->invoice_id, 12) }}</td>
                     <td class="px-6 py-4">
-                        @php
-                            $stateColors = [
-                                'cleared' => 'bg-green-100 text-green-800',
-                                'reported' => 'bg-blue-100 text-blue-800',
-                                'rejected' => 'bg-red-100 text-red-800',
-                                'pending_submission' => 'bg-yellow-100 text-yellow-800',
-                                'submitted' => 'bg-indigo-100 text-indigo-800',
-                                'queued' => 'bg-gray-100 text-gray-800',
-                            ];
-                            $colorClass = $stateColors[$submission->state] ?? 'bg-gray-100 text-gray-800';
-                        @endphp
-                        <span class="px-2 py-1 text-xs font-medium rounded-full {{ $colorClass }}">
-                            {{ $submission->state ?? 'unknown' }}
-                        </span>
+                        <x-ui.badge :state="$submission->state" />
                     </td>
                     <td class="px-6 py-4 text-sm text-gray-500">{{ $submission->submission_type ?? '-' }}</td>
                     <td class="px-6 py-4 text-sm text-gray-500">{{ $submission->created_at ? \Carbon\Carbon::parse($submission->created_at)->format('M d, Y H:i') : '-' }}</td>

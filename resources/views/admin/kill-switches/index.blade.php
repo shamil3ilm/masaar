@@ -92,15 +92,8 @@
                     <div class="flex items-center gap-3">
                         <h3 class="text-lg font-semibold text-gray-800">{{ $name }}</h3>
 
-                        @if ($state['enabled'])
-                            <span class="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">
-                                Stopped
-                            </span>
-                        @else
-                            <span class="inline-flex rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">
-                                Running
-                            </span>
-                        @endif
+                        <x-ui.badge :tone="$state['enabled'] ? 'danger' : 'success'"
+                            :label="$state['enabled'] ? 'Stopped' : 'Running'" />
                     </div>
 
                     <p class="mt-1 text-sm text-gray-500">{{ $description }}</p>

@@ -32,9 +32,7 @@
                             <p class="font-medium text-gray-800 truncate">{{ $org->name }}</p>
                             <p class="text-sm text-gray-500">{{ $org->vat_number ?? 'No VAT' }}</p>
                         </div>
-                        <span class="px-2 py-1 text-xs font-medium rounded-full {{ $org->status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600' }}">
-                            {{ ucfirst($org->status ?? 'unknown') }}
-                        </span>
+                        <x-ui.badge :state="$org->status" />
                     </label>
                     @endforeach
                 </div>

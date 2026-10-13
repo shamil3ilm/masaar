@@ -1,0 +1,268 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature\Architecture;
+
+use App\Domains\Auth\Models\User;
+use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
+use App\Domains\Compliance\Fatoora\Models\OfflineItem;
+use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Licensing\Enums\LicenseStatus;
+use App\Domains\Licensing\Enums\LicenseTier;
+use App\Domains\Licensing\Models\License;
+use App\Domains\Organization\Models\Organization;
+use App\Domains\Webhook\Models\Webhook;
+use App\Domains\Webhook\Models\WebhookLog;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
+use Tests\TestCase;
+
+/**
+ * Every screen opens, with rows in it.
+ *
+ * AttributeReadTest reads app/ and not Blade, and that gap has a cost: a name
+ * a view gets wrong renders as empty space, and a suite that never opens the
+ * page passes over it. Of the twenty-one admin and portal screens, several had
+ * no test that rendered them at all - admin/organizations,
+ * admin/organization-detail, admin/logs, admin/queue and portal/user-activity
+ * among them - so the eighteen-view badge change could have broken any of them
+ * in silence.
+ *
+ * Driven off the router rather than a list, so a new screen is covered the day
+ * it is added. A screen whose URI needs a parameter must say here what to put
+ * in it, which is the one thing that cannot be derived.
+ *
+ * Every screen is opened with rows to show, because an empty screen renders
+ * the empty-state branch and that is not the branch that reads a column.
+ *
+ * Inside asRequest(), because TenantScope stands down in console context and
+ * PHPUnit is console: a plain feature test would exercise the unscoped path
+ * and say nothing about what a browser gets.
+ */
+class ScreenRenderTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private Organization $org;
+
+    private User $admin;
+
+    private User $member;
+
+    private License $licence;
+
+    private Webhook $webhook;
+
+    private Invoice $invoice;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->org = Organization::create([
+            'name' => 'Acme Trading',
+            'country' => 'SA',
+            'vat_number' => '300000000000003',
+            'status' => 'active',
+        ]);
+
+        $this->admin = User::factory()->create(['is_platform_admin' => true]);
+
+        $this->member = User::factory()->create();
+        $this->member->organizations()->attach($this->org->id, ['role' => 'member', 'status' => 'active']);
+
+        $this->licence = License::createWithCredentials([
+            'organization_name' => 'Acme Trading',
+            'contact_email' => 'ops@acme.test',
+            'tier' => LicenseTier::Professional,
+            'status' => LicenseStatus::Active,
+            'expires_at' => now()->addYear(),
+        ])['license'];
+
+        $this->webhook = Webhook::create([
+            'org_id' => $this->org->id,
+            'url' => 'https://acme.test/hooks/masaar',
+            'events' => ['invoice.cleared'],
+            'secret' => 'whsec_'.str_repeat('a', 32),
+            'is_active' => true,
+        ]);
+
+        WebhookLog::create([
+            'webhook_id' => $this->webhook->id,
+            'event' => 'invoice.cleared',
+            'payload' => ['event' => 'invoice.cleared', 'data' => []],
+            'response_status' => 0,
+            'response_body' => '',
+            'duration_ms' => 4201,
+            'success' => false,
+        ]);
+
+        $this->invoice = Invoice::create([
+            'org_id' => $this->org->id,
+            'invoice_number' => 'ACME-1',
+            'type' => 'simplified',
+            'status' => 'issued',
+            'issue_date' => now()->toDateString(),
+            'currency' => 'SAR',
+            'buyer_name' => 'Walk-in customer',
+            'subtotal' => '100.00',
+            'tax_amount' => '15.00',
+            'total' => '115.00',
+            'icv' => 1,
+            'hash' => base64_encode(hash('sha256', 'acme', true)),
+            'qr_code' => base64_encode('AQVTZWxsZXI='),
+        ]);
+
+        // One of each state the pills have to colour, so the screens that list
+        // submissions render the lookup and not the empty state.
+        foreach (['cleared', 'failed', 'rejected', 'queued'] as $index => $state) {
+            // forceFill on a new row, not an update afterwards: the model
+            // refuses to modify a submission already in a terminal state,
+            // which is the guard that keeps a cleared document cleared.
+            //
+            // created_by is not fillable - the model takes it from the
+            // authenticated user - and the activity screens join on it, so
+            // without it they render their empty state and read no column.
+            (new InvoiceSubmission)->forceFill([
+                'invoice_id' => $this->invoice->id,
+                'org_id' => $this->org->id,
+                'state' => $state,
+                'submission_type' => $index % 2 === 0 ? 'clearance' : 'reporting',
+                'submission_mode' => 'sync',
+                'created_by' => $this->member->id,
+            ])->save();
+        }
+
+        // admin/queue reads offline_queue, not invoice_submissions, so it
+        // needs its own row - and its states are the ones that disagreed:
+        // `failed` was red there and amber everywhere else.
+        foreach (['pending', 'processing', 'completed', 'failed'] as $state) {
+            OfflineItem::create([
+                'org_id' => $this->org->id,
+                'invoice_id' => $this->invoice->id,
+                'signed_xml' => '<Invoice/>',
+                'invoice_hash' => base64_encode(hash('sha256', $state, true)),
+                'qr_code' => base64_encode('AQVTZWxsZXI='),
+                'state' => $state,
+                'queued_at' => now(),
+            ]);
+        }
+    }
+
+    public function test_every_admin_screen_renders(): void
+    {
+        foreach ($this->screens('admin.') as $name => $uri) {
+            $this->assertRenders($this->admin, $name, $uri);
+        }
+    }
+
+    public function test_every_portal_screen_renders(): void
+    {
+        foreach ($this->screens('portal.') as $name => $uri) {
+            $this->assertRenders($this->member, $name, $uri);
+        }
+    }
+
+    /**
+     * A view that throws arrives here as the exception, with the Blade file
+     * named in its trace. A redirect arrives as a status, which needs saying -
+     * otherwise a screen quietly bouncing to the organization picker would
+     * count as rendered.
+     */
+    private function assertRenders(User $as, string $name, string $uri): void
+    {
+        $status = $this->asRequest(
+            fn (): int => $this->actingAs($as)->get($uri)->status()
+        );
+
+        $this->assertSame(200, $status, $name.' answered '.$status.' at '.$uri);
+    }
+
+    /**
+     * No pill renders with a state and no colour.
+     *
+     * This is the shape the inline maps failed in: a state they had not listed
+     * produced a pill with no background at all, which reads as a rendering
+     * fault rather than as a state. Asserted against the real HTML.
+     */
+    public function test_no_pill_renders_without_colour(): void
+    {
+        foreach ($this->screens('admin.') as $name => $uri) {
+            $this->assertColouredPills($this->html($this->admin, $uri), $name);
+        }
+
+        foreach ($this->screens('portal.') as $name => $uri) {
+            $this->assertColouredPills($this->html($this->member, $uri), $name);
+        }
+    }
+
+    private function html(User $as, string $uri): string
+    {
+        return $this->asRequest(fn (): string => (string) $this->actingAs($as)->get($uri)->getContent());
+    }
+
+    private function assertColouredPills(string $html, string $name): void
+    {
+        $pill = '/<span[^>]*class="[^"]*rounded-full[^"]*"[^>]*>(.*?)<\/span>/s';
+
+        preg_match_all($pill, $html, $matches, PREG_SET_ORDER);
+
+        foreach ($matches as $match) {
+            // A tinted circle behind an icon carries no text, and is not a pill.
+            if (trim(strip_tags($match[1])) === '') {
+                continue;
+            }
+
+            $this->assertMatchesRegularExpression(
+                '/bg-[a-z]+-[0-9]+/',
+                $match[0],
+                $name.' renders a pill with no background: '.trim(strip_tags($match[1]))
+            );
+        }
+    }
+
+    /**
+     * The screens the router knows about, with their parameters filled in.
+     *
+     * @return array<string, string> route name => URI to open
+     */
+    private function screens(string $prefix): array
+    {
+        $values = [
+            'id' => $this->org->id,
+            'licenceId' => $this->licence->id,
+            'webhookId' => $this->webhook->id,
+            'invoiceId' => $this->invoice->id,
+            'userId' => $this->member->id,
+        ];
+
+        $screens = [];
+
+        foreach (Route::getRoutes() as $route) {
+            $name = (string) $route->getName();
+
+            if (! str_starts_with($name, $prefix) || ! in_array('GET', $route->methods(), true)) {
+                continue;
+            }
+
+            $uri = $route->uri();
+
+            foreach ($route->parameterNames() as $parameter) {
+                $this->assertArrayHasKey(
+                    $parameter,
+                    $values,
+                    $name.' takes {'.$parameter.'}. Add a value for it in '.self::class.'::screens().'
+                );
+
+                $uri = str_replace('{'.$parameter.'}', (string) $values[$parameter], $uri);
+            }
+
+            $screens[$name] = '/'.$uri;
+        }
+
+        $this->assertNotSame([], $screens, 'No '.$prefix.' screens were found.');
+
+        return $screens;
+    }
+}

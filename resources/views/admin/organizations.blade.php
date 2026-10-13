@@ -29,20 +29,18 @@
                 </td>
                 <td class="px-6 py-4 text-sm text-gray-500">{{ $org->vat_number ?? '-' }}</td>
                 <td class="px-6 py-4">
-                    <span class="px-2 py-1 text-xs font-medium rounded-full {{ $org->status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
-                        {{ $org->status ?? 'unknown' }}
-                    </span>
+                    <x-ui.badge :state="$org->status" />
                 </td>
                 <td class="px-6 py-4">
                     @if($org->cert_expires_at)
                         @php
                             $daysLeft = now()->diffInDays($org->cert_expires_at, false);
+                            $expiryTone = $daysLeft <= 7 ? 'danger' : ($daysLeft <= 30 ? 'warning' : 'success');
+                            $expiryLabel = $daysLeft > 0 ? $daysLeft.' days' : 'Expired';
                         @endphp
-                        <span class="px-2 py-1 text-xs font-medium rounded-full {{ $daysLeft <= 7 ? 'bg-red-100 text-red-800' : ($daysLeft <= 30 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800') }}">
-                            {{ $daysLeft > 0 ? $daysLeft . ' days' : 'Expired' }}
-                        </span>
+                        <x-ui.badge :tone="$expiryTone" :label="$expiryLabel" />
                     @else
-                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">No cert</span>
+                        <x-ui.badge label="No cert" />
                     @endif
                 </td>
                 <td class="px-6 py-4 text-sm text-gray-500">

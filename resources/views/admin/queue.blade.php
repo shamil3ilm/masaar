@@ -72,13 +72,10 @@
                 <td class="px-6 py-4 text-sm">{{ Str::limit($item->invoice_id, 8) }}</td>
                 <td class="px-6 py-4 text-sm">{{ $item->organization_name ?? Str::limit($item->org_id, 8) }}</td>
                 <td class="px-6 py-4">
-                    <span class="px-2 py-1 text-xs font-medium rounded-full
-                        {{ $item->state === 'pending' ? 'bg-yellow-100 text-yellow-800' : '' }}
-                        {{ $item->state === 'processing' ? 'bg-blue-100 text-blue-800' : '' }}
-                        {{ $item->state === 'completed' ? 'bg-green-100 text-green-800' : '' }}
-                        {{ $item->state === 'failed' ? 'bg-red-100 text-red-800' : '' }}">
-                        {{ $item->state }}
-                    </span>
+                    {{-- failed was red here and orange on the submissions and
+                         logs screens, where red means the authority refused the
+                         document. An unanswered item is not a refused one. --}}
+                    <x-ui.badge :state="$item->state" />
                 </td>
                 <td class="px-6 py-4 text-sm">{{ $item->attempts }}/{{ $item->max_attempts }}</td>
                 <td class="px-6 py-4 text-sm text-gray-500">{{ \Carbon\Carbon::parse($item->queued_at)->diffForHumans() }}</td>

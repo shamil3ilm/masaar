@@ -24,9 +24,8 @@
                 <p class="text-sm text-gray-500 mb-1">Environment</p>
                 <p class="font-medium text-gray-800">
                     @php($environment = config('fatoora.environment', 'sandbox'))
-                    <span class="px-2 py-1 text-xs font-medium rounded {{ $environment === 'production' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
-                        {{ ucfirst($environment) }}
-                    </span>
+                    <x-ui.badge :tone="$environment === 'production' ? 'success' : 'warning'"
+                        :label="ucfirst($environment)" />
                 </p>
             </div>
             <div>

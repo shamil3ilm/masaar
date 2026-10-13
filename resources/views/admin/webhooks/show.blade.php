@@ -73,13 +73,15 @@
                 </td>
                 <td class="px-6 py-4 font-mono text-sm text-gray-900">{{ $delivery['event'] }}</td>
                 <td class="px-6 py-4">
-                    <span class="rounded-full px-2 py-1 text-xs font-medium
-                        {{ $delivery['success'] ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
-                        {{-- 0 is recorded when the request never got an answer
-                             at all: refused, unresolvable or timed out. Printing
-                             it as a status code would read as a real response. --}}
-                        {{ $delivery['response_status'] === 0 ? 'No response' : $delivery['response_status'] }}
-                    </span>
+                    {{-- 0 is recorded when the request never got an answer at all:
+                         refused, unresolvable or timed out. Printing it as a status
+                         code would read as a real response. --}}
+                    @php
+                        $deliveryLabel = $delivery['response_status'] === 0
+                            ? 'No response'
+                            : $delivery['response_status'];
+                    @endphp
+                    <x-ui.badge :tone="$delivery['success'] ? 'success' : 'danger'" :label="$deliveryLabel" />
                 </td>
                 <td class="px-6 py-4 text-sm text-gray-500">{{ number_format($delivery['duration_ms']) }} ms</td>
                 <td class="px-6 py-4 text-sm break-all text-gray-500">

@@ -37,10 +37,8 @@
                 </td>
                 <td class="px-6 py-4 text-sm text-gray-500">{{ $endpoint['organization'] ?? '-' }}</td>
                 <td class="px-6 py-4">
-                    <span class="rounded-full px-2 py-1 text-xs font-medium
-                        {{ $endpoint['is_active'] ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
-                        {{ $endpoint['is_active'] ? 'Active' : 'Disabled' }}
-                    </span>
+                    <x-ui.badge :tone="$endpoint['is_active'] ? 'success' : 'danger'"
+                        :label="$endpoint['is_active'] ? 'Active' : 'Disabled'" />
                 </td>
                 <td class="px-6 py-4 text-sm text-gray-500">{{ number_format($endpoint['deliveries']) }}</td>
                 <td class="px-6 py-4 text-sm {{ $endpoint['failures'] > 0 ? 'text-red-700' : 'text-gray-500' }}">

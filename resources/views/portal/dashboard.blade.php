@@ -107,13 +107,7 @@
                     <p class="text-sm font-medium text-gray-800">{{ Str::limit($submission->invoice_id, 8) }}</p>
                     <p class="text-xs text-gray-500">{{ \Carbon\Carbon::parse($submission->created_at)->diffForHumans() }}</p>
                 </div>
-                <span class="px-2 py-1 text-xs font-medium rounded-full
-                    {{ $submission->state === 'cleared' ? 'bg-green-100 text-green-800' : '' }}
-                    {{ $submission->state === 'reported' ? 'bg-blue-100 text-blue-800' : '' }}
-                    {{ $submission->state === 'rejected' ? 'bg-red-100 text-red-800' : '' }}
-                    {{ in_array($submission->state, ['pending', 'queued', 'submitted']) ? 'bg-yellow-100 text-yellow-800' : '' }}">
-                    {{ $submission->state }}
-                </span>
+                <x-ui.badge :state="$submission->state" />
             </div>
             @empty
             <div class="p-6 text-center text-gray-500">No submissions yet</div>

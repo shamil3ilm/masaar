@@ -36,15 +36,7 @@
         <p class="text-gray-500">{{ $row['contact_email'] }}</p>
     </div>
     <div class="flex items-center gap-3">
-        <span class="rounded-full px-3 py-1 text-xs font-medium
-            @switch($status)
-                @case(\App\Domains\Licensing\Enums\LicenseStatus::Active) bg-green-100 text-green-800 @break
-                @case(\App\Domains\Licensing\Enums\LicenseStatus::Suspended) bg-yellow-100 text-yellow-800 @break
-                @case(\App\Domains\Licensing\Enums\LicenseStatus::PendingActivation) bg-blue-100 text-blue-800 @break
-                @default bg-red-100 text-red-800
-            @endswitch">
-            {{ $status?->getLabel() ?? $row['status'] }}
-        </span>
+        <x-ui.badge :state="$status ?? $row['status']" :label="$status?->getLabel()" />
         <span class="text-xs text-gray-500">
             {{ $licence['is_valid'] ? 'Serving API traffic' : 'Not serving API traffic' }}
         </span>

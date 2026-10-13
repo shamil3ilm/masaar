@@ -108,14 +108,7 @@
                     </span>
                 </td>
                 <td class="px-6 py-4">
-                    <span class="px-2 py-1 text-xs font-medium rounded-full
-                        {{ $sub->state === 'cleared' ? 'bg-green-100 text-green-800' : '' }}
-                        {{ $sub->state === 'reported' ? 'bg-blue-100 text-blue-800' : '' }}
-                        {{ $sub->state === 'rejected' ? 'bg-red-100 text-red-800' : '' }}
-                        {{ $sub->state === 'failed' ? 'bg-orange-100 text-orange-800' : '' }}
-                        {{ in_array($sub->state, ['pending', 'queued', 'submitted']) ? 'bg-yellow-100 text-yellow-800' : '' }}">
-                        {{ $sub->state }}
-                    </span>
+                    <x-ui.badge :state="$sub->state" />
                 </td>
                 <td class="px-6 py-4 text-sm text-gray-600">
                     @if($sub->invoice_total)

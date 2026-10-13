@@ -29,9 +29,7 @@
                 <td class="px-6 py-4 text-sm text-gray-500">{{ $row['organization'] ?? '-' }}</td>
                 <td class="px-6 py-4 text-sm text-gray-500">{{ number_format($row['age_hours'], 1) }}h</td>
                 <td class="px-6 py-4">
-                    <span class="px-2 py-1 text-xs font-medium rounded-full {{ $row['state'] === 'failed' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800' }}">
-                        {{ $row['state'] ?? 'unknown' }}
-                    </span>
+                    <x-ui.badge :state="$row['state']" />
                 </td>
                 <td class="px-6 py-4 text-sm text-gray-500">{{ $row['retry_count'] }}</td>
                 <td class="px-6 py-4 text-sm text-gray-500">
