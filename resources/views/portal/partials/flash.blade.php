@@ -17,6 +17,18 @@
     </div>
 @endif
 
+{{--
+    Amber rather than green or red: the action succeeded but the outcome is
+    partial. Issuing without a certificate writes a valid invoice and files
+    nothing, and a taxpayer reading only a green banner would believe the
+    authority has it.
+--}}
+@if (session('warning'))
+    <div class="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        {{ session('warning') }}
+    </div>
+@endif
+
 @if ($errors->any())
     <div class="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
         <p class="font-semibold">Please correct the following:</p>

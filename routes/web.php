@@ -4,6 +4,7 @@ use App\Domains\Auth\Http\Controllers\SessionAuthController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\AdminAlertController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceDraftController;
+use App\Domains\Invoice\Http\Controllers\PortalInvoiceFilingController;
 use App\Domains\Licensing\Http\Controllers\AdminLicenceController;
 use App\Domains\Organization\Http\Controllers\CustomerPortalController;
 use App\Domains\Platform\Http\Controllers\AdminController;
@@ -126,6 +127,8 @@ Route::prefix('portal')->name('portal.')
         Route::get('/invoices/create', [PortalInvoiceDraftController::class, 'create'])->name('invoices.create');
         Route::post('/invoices', [PortalInvoiceDraftController::class, 'store'])->name('invoices.store');
         Route::get('/invoices/{invoiceId}', [PortalInvoiceController::class, 'show'])->name('invoices.show');
+        Route::post('/invoices/{invoiceId}/issue', [PortalInvoiceFilingController::class, 'issue'])->name('invoices.issue');
+        Route::get('/invoices/{invoiceId}/print', [PortalInvoiceFilingController::class, 'print'])->name('invoices.print');
 
         Route::get('/submissions', [CustomerPortalController::class, 'submissions'])->name('submissions');
         Route::get('/certificates', [CustomerPortalController::class, 'certificates'])->name('certificates');

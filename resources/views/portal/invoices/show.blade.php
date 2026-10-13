@@ -26,7 +26,25 @@
             <span lang="ar" dir="rtl">تاريخ الفاتورة</span> &middot; issued {{ $invoice->issue_date }}
         </p>
     </div>
-    <div>@include('portal.partials.invoice-status', ['status' => $invoice->status])</div>
+    <div class="flex items-center gap-3">
+        @include('portal.partials.invoice-status', ['status' => $invoice->status])
+
+        @if ($invoice->status === \App\Domains\Invoice\Enums\InvoiceStatus::Draft)
+            <form method="POST" action="{{ route('portal.invoices.issue', $invoice->id) }}"
+                  data-confirm="Issue this invoice? It gets a counter and a hash, joins the chain, and cannot be issued again.">
+                @csrf
+                <button type="submit"
+                        class="rounded bg-teal-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-teal-700">
+                    Issue
+                </button>
+            </form>
+        @else
+            <a href="{{ route('portal.invoices.print', $invoice->id) }}"
+               class="rounded border border-teal-700 px-4 py-2 text-sm font-semibold text-teal-700 transition-colors hover:bg-teal-50">
+                Print
+            </a>
+        @endif
+    </div>
 </div>
 
 @include('portal.partials.flash')
