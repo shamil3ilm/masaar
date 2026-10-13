@@ -48,48 +48,37 @@
 </form>
 
 <div class="overflow-hidden rounded-lg bg-white shadow">
-    <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
-            <tr>
-                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Invoice</th>
-                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Buyer</th>
-                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Issued</th>
-                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
-                <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Total</th>
+    <x-ui.table>
+        <x-slot:head>
+            <x-ui.th>Invoice</x-ui.th>
+            <x-ui.th>Buyer</x-ui.th>
+            <x-ui.th>Issued</x-ui.th>
+            <x-ui.th>Status</x-ui.th>
+            <x-ui.th align="right">Total</x-ui.th>
+        </x-slot:head>
+
+        @forelse ($invoices as $invoice)
+            <tr class="hover:bg-gray-50">
+                <td class="px-4 py-3">
+                    <a href="{{ route('portal.invoices.show', $invoice->id) }}"
+                       class="font-medium text-teal-700 hover:underline">
+                        {{ $invoice->invoice_number }}
+                    </a>
+                    <p class="text-xs text-gray-400">{{ ucfirst($invoice->type instanceof \BackedEnum ? $invoice->type->value : (string) $invoice->type) }}</p>
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-700">{{ $invoice->buyer_name ?: '—' }}</td>
+                <td class="px-4 py-3 text-sm text-gray-500">{{ $invoice->issue_date }}</td>
+                <td class="px-4 py-3">
+                    @include('portal.partials.invoice-status', ['status' => $invoice->status])
+                </td>
+                <td class="px-4 py-3 text-right text-sm tabular-nums text-gray-900">
+                    @include('portal.partials.money', ['amount' => $invoice->total, 'currency' => $invoice->currency])
+                </td>
             </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-200">
-            @forelse ($invoices as $invoice)
-                <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-3">
-                        <a href="{{ route('portal.invoices.show', $invoice->id) }}"
-                           class="font-medium text-teal-700 hover:underline">
-                            {{ $invoice->invoice_number }}
-                        </a>
-                        <p class="text-xs text-gray-400">{{ ucfirst($invoice->type instanceof \BackedEnum ? $invoice->type->value : (string) $invoice->type) }}</p>
-                    </td>
-                    <td class="px-4 py-3 text-sm text-gray-700">{{ $invoice->buyer_name ?: '—' }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-500">{{ $invoice->issue_date }}</td>
-                    <td class="px-4 py-3">
-                        @include('portal.partials.invoice-status', ['status' => $invoice->status])
-                    </td>
-                    <td class="px-4 py-3 text-right text-sm tabular-nums text-gray-900">
-                        @include('portal.partials.money', ['amount' => $invoice->total, 'currency' => $invoice->currency])
-                    </td>
-                </tr>
-            @empty
-                <tr>
-                    <td colspan="5" class="px-4 py-12 text-center text-sm text-gray-500">
-                        @if ($status || $search)
-                            No invoice matches that filter.
-                        @else
-                            No invoices yet.
-                        @endif
-                    </td>
-                </tr>
-            @endforelse
-        </tbody>
-    </table>
+        @empty
+            <x-ui.empty :columns="5">@if ($status || $search) No invoice matches that filter. @else No invoices yet. @endif</x-ui.empty>
+        @endforelse
+    </x-ui.table>
 </div>
 
 @if ($invoices->hasPages())

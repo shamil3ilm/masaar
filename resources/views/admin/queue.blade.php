@@ -54,48 +54,43 @@
 
 <!-- Queue Items -->
 <div class="bg-white rounded-lg shadow overflow-hidden">
-    <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
-            <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Organization</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">State</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Attempts</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Queued At</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Error</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-            </tr>
-        </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
-            @forelse($items as $item)
-            <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4 text-sm">{{ Str::limit($item->invoice_id, 8) }}</td>
-                <td class="px-6 py-4 text-sm">{{ $item->organization_name ?? Str::limit($item->org_id, 8) }}</td>
-                <td class="px-6 py-4">
-                    {{-- failed was red here and orange on the submissions and
-                         logs screens, where red means the authority refused the
-                         document. An unanswered item is not a refused one. --}}
-                    <x-ui.badge :state="$item->state" />
-                </td>
-                <td class="px-6 py-4 text-sm">{{ $item->attempts }}/{{ $item->max_attempts }}</td>
-                <td class="px-6 py-4 text-sm text-gray-500">{{ \Carbon\Carbon::parse($item->queued_at)->diffForHumans() }}</td>
-                <td class="px-6 py-4 text-sm text-red-600">{{ Str::limit($item->last_error, 50) }}</td>
-                <td class="px-6 py-4">
-                    @if($item->state === 'failed')
-                    <form action="{{ route('admin.queue.retry', $item->id) }}" method="POST" class="inline">
-                        @csrf
-                        <button type="submit" class="text-teal-700 hover:text-teal-900 text-sm">Retry</button>
-                    </form>
-                    @endif
-                </td>
-            </tr>
-            @empty
-            <tr>
-                <td colspan="7" class="px-6 py-4 text-center text-gray-500">No queue items found</td>
-            </tr>
-            @endforelse
-        </tbody>
-    </table>
+    <x-ui.table>
+        <x-slot:head>
+            <x-ui.th>Invoice</x-ui.th>
+            <x-ui.th>Organization</x-ui.th>
+            <x-ui.th>State</x-ui.th>
+            <x-ui.th>Attempts</x-ui.th>
+            <x-ui.th>Queued At</x-ui.th>
+            <x-ui.th>Error</x-ui.th>
+            <x-ui.th>Actions</x-ui.th>
+        </x-slot:head>
+
+        @forelse($items as $item)
+        <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4 text-sm">{{ Str::limit($item->invoice_id, 8) }}</td>
+            <td class="px-6 py-4 text-sm">{{ $item->organization_name ?? Str::limit($item->org_id, 8) }}</td>
+            <td class="px-6 py-4">
+                {{-- failed was red here and orange on the submissions and
+                     logs screens, where red means the authority refused the
+                     document. An unanswered item is not a refused one. --}}
+                <x-ui.badge :state="$item->state" />
+            </td>
+            <td class="px-6 py-4 text-sm">{{ $item->attempts }}/{{ $item->max_attempts }}</td>
+            <td class="px-6 py-4 text-sm text-gray-500">{{ \Carbon\Carbon::parse($item->queued_at)->diffForHumans() }}</td>
+            <td class="px-6 py-4 text-sm text-red-600">{{ Str::limit($item->last_error, 50) }}</td>
+            <td class="px-6 py-4">
+                @if($item->state === 'failed')
+                <form action="{{ route('admin.queue.retry', $item->id) }}" method="POST" class="inline">
+                    @csrf
+                    <button type="submit" class="text-teal-700 hover:text-teal-900 text-sm">Retry</button>
+                </form>
+                @endif
+            </td>
+        </tr>
+        @empty
+        <x-ui.empty :columns="7">No queue items found</x-ui.empty>
+        @endforelse
+    </x-ui.table>
 </div>
 
 <div class="mt-4">

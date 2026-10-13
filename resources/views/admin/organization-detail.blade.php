@@ -141,33 +141,26 @@
         <h3 class="text-lg font-semibold text-gray-800">Recent Submissions</h3>
         <a href="{{ route('admin.logs', ['org_id' => $organization->id]) }}" class="text-sm text-teal-700 hover:text-teal-900">View All</a>
     </div>
-    <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice ID</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">State</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Submission Type</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
-                </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-                @forelse($recentSubmissions as $submission)
-                <tr class="hover:bg-gray-50">
-                    <td class="px-6 py-4 text-sm font-mono text-gray-900">{{ Str::limit($submission->invoice_id, 12) }}</td>
-                    <td class="px-6 py-4">
-                        <x-ui.badge :state="$submission->state" />
-                    </td>
-                    <td class="px-6 py-4 text-sm text-gray-500">{{ $submission->submission_type ?? '-' }}</td>
-                    <td class="px-6 py-4 text-sm text-gray-500">{{ $submission->created_at ? \Carbon\Carbon::parse($submission->created_at)->format('M d, Y H:i') : '-' }}</td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="4" class="px-6 py-4 text-center text-gray-500">No submissions found</td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
+    <x-ui.table>
+        <x-slot:head>
+            <x-ui.th>Invoice ID</x-ui.th>
+            <x-ui.th>State</x-ui.th>
+            <x-ui.th>Submission Type</x-ui.th>
+            <x-ui.th>Created</x-ui.th>
+        </x-slot:head>
+
+        @forelse($recentSubmissions as $submission)
+        <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4 text-sm font-mono text-gray-900">{{ Str::limit($submission->invoice_id, 12) }}</td>
+            <td class="px-6 py-4">
+                <x-ui.badge :state="$submission->state" />
+            </td>
+            <td class="px-6 py-4 text-sm text-gray-500">{{ $submission->submission_type ?? '-' }}</td>
+            <td class="px-6 py-4 text-sm text-gray-500">{{ $submission->created_at ? \Carbon\Carbon::parse($submission->created_at)->format('M d, Y H:i') : '-' }}</td>
+        </tr>
+        @empty
+        <x-ui.empty :columns="4">No submissions found</x-ui.empty>
+        @endforelse
+    </x-ui.table>
 </div>
 @endsection

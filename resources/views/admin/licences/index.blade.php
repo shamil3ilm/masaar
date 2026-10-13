@@ -34,45 +34,40 @@
 </form>
 
 <div class="bg-white rounded-lg shadow overflow-hidden">
-    <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
-            <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Organization</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tier</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoices / month</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Expires</th>
-                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-            </tr>
-        </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
-            @forelse($licences as $licence)
-            <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4">
-                    <a href="{{ route('admin.licences.show', $licence->id) }}" class="font-medium text-teal-700 hover:text-teal-900">
-                        {{ $licence->organization_name }}
-                    </a>
-                    <div class="text-xs text-gray-500">{{ $licence->contact_email }}</div>
-                </td>
-                <td class="px-6 py-4 text-sm text-gray-500">{{ $licence->tier->getDisplayName() }}</td>
-                <td class="px-6 py-4">
-                    <x-ui.badge :state="$licence->status" :label="$licence->status->getLabel()" />
-                </td>
-                <td class="px-6 py-4 text-sm text-gray-500">{{ number_format($licence->invoices_per_month) }}</td>
-                <td class="px-6 py-4 text-sm text-gray-500">
-                    {{ $licence->expires_at ? $licence->expires_at->toDateString() : 'Never' }}
-                </td>
-                <td class="px-6 py-4 text-right text-sm">
-                    <a href="{{ route('admin.licences.show', $licence->id) }}" class="text-teal-700 hover:text-teal-900">Manage</a>
-                </td>
-            </tr>
-            @empty
-            <tr>
-                <td colspan="6" class="px-6 py-4 text-center text-gray-500">No licences match these filters</td>
-            </tr>
-            @endforelse
-        </tbody>
-    </table>
+    <x-ui.table>
+        <x-slot:head>
+            <x-ui.th>Organization</x-ui.th>
+            <x-ui.th>Tier</x-ui.th>
+            <x-ui.th>Status</x-ui.th>
+            <x-ui.th>Invoices / month</x-ui.th>
+            <x-ui.th>Expires</x-ui.th>
+            <x-ui.th align="right">Actions</x-ui.th>
+        </x-slot:head>
+
+        @forelse($licences as $licence)
+        <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4">
+                <a href="{{ route('admin.licences.show', $licence->id) }}" class="font-medium text-teal-700 hover:text-teal-900">
+                    {{ $licence->organization_name }}
+                </a>
+                <div class="text-xs text-gray-500">{{ $licence->contact_email }}</div>
+            </td>
+            <td class="px-6 py-4 text-sm text-gray-500">{{ $licence->tier->getDisplayName() }}</td>
+            <td class="px-6 py-4">
+                <x-ui.badge :state="$licence->status" :label="$licence->status->getLabel()" />
+            </td>
+            <td class="px-6 py-4 text-sm text-gray-500">{{ number_format($licence->invoices_per_month) }}</td>
+            <td class="px-6 py-4 text-sm text-gray-500">
+                {{ $licence->expires_at ? $licence->expires_at->toDateString() : 'Never' }}
+            </td>
+            <td class="px-6 py-4 text-right text-sm">
+                <a href="{{ route('admin.licences.show', $licence->id) }}" class="text-teal-700 hover:text-teal-900">Manage</a>
+            </td>
+        </tr>
+        @empty
+        <x-ui.empty :columns="6">No licences match these filters</x-ui.empty>
+        @endforelse
+    </x-ui.table>
 </div>
 
 @if($licences->hasPages())

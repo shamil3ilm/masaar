@@ -42,58 +42,51 @@
     <div class="p-6 border-b">
         <h3 class="text-lg font-semibold text-gray-800">Submission History</h3>
     </div>
-    <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
-            <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">State</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Error</th>
-            </tr>
-        </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
-            @forelse($submissions as $sub)
-            <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4">
-                    <p class="text-sm font-medium text-gray-800">{{ $sub->invoice_number ?? Str::limit($sub->invoice_id, 8) }}</p>
-                </td>
-                <td class="px-6 py-4">
-                    <span class="px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-700">
-                        {{ $sub->submission_type ?? '-' }}
-                    </span>
-                </td>
-                <td class="px-6 py-4">
-                    <x-ui.badge :state="$sub->state" />
-                </td>
-                <td class="px-6 py-4 text-sm text-gray-600">
-                    @if($sub->invoice_total)
-                    {{ number_format($sub->invoice_total, 2) }} SAR
-                    @else
-                    -
-                    @endif
-                </td>
-                <td class="px-6 py-4 text-sm text-gray-500">
-                    {{ \Carbon\Carbon::parse($sub->created_at)->format('M d, H:i') }}
-                </td>
-                <td class="px-6 py-4">
-                    @if($sub->last_error)
-                    <span class="text-xs text-red-600" title="{{ $sub->last_error }}">
-                        {{ Str::limit($sub->last_error, 30) }}
-                    </span>
-                    @else
-                    <span class="text-gray-400">-</span>
-                    @endif
-                </td>
-            </tr>
-            @empty
-            <tr>
-                <td colspan="6" class="px-6 py-8 text-center text-gray-500">No submissions by this user</td>
-            </tr>
-            @endforelse
-        </tbody>
-    </table>
+    <x-ui.table>
+        <x-slot:head>
+            <x-ui.th>Invoice</x-ui.th>
+            <x-ui.th>Type</x-ui.th>
+            <x-ui.th>State</x-ui.th>
+            <x-ui.th>Amount</x-ui.th>
+            <x-ui.th>Date</x-ui.th>
+            <x-ui.th>Error</x-ui.th>
+        </x-slot:head>
+
+        @forelse($submissions as $sub)
+        <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4">
+                <p class="text-sm font-medium text-gray-800">{{ $sub->invoice_number ?? Str::limit($sub->invoice_id, 8) }}</p>
+            </td>
+            <td class="px-6 py-4">
+                <x-ui.badge tone="neutral" :label="ucfirst($sub->submission_type ?? '-')" />
+            </td>
+            <td class="px-6 py-4">
+                <x-ui.badge :state="$sub->state" />
+            </td>
+            <td class="px-6 py-4 text-sm text-gray-600">
+                @if($sub->invoice_total)
+                {{ number_format($sub->invoice_total, 2) }} SAR
+                @else
+                -
+                @endif
+            </td>
+            <td class="px-6 py-4 text-sm text-gray-500">
+                {{ \Carbon\Carbon::parse($sub->created_at)->format('M d, H:i') }}
+            </td>
+            <td class="px-6 py-4">
+                @if($sub->last_error)
+                <span class="text-xs text-red-600" title="{{ $sub->last_error }}">
+                    {{ Str::limit($sub->last_error, 30) }}
+                </span>
+                @else
+                <span class="text-gray-400">-</span>
+                @endif
+            </td>
+        </tr>
+        @empty
+        <x-ui.empty :columns="6">No submissions by this user</x-ui.empty>
+        @endforelse
+    </x-ui.table>
 </div>
 
 <div class="mt-4">

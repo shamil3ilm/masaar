@@ -68,46 +68,43 @@
             <h3 class="border-b border-gray-200 px-6 py-4 text-xs font-semibold uppercase tracking-wider text-gray-500">
                 Lines
             </h3>
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
+            <x-ui.table>
+                <x-slot:head>
+                    <x-ui.th><x-caption en="Description" ar="تفاصيل السلع أو الخدمات" /></x-ui.th>
+                    <x-ui.th align="right"><x-caption en="Qty" ar="الكمية" /></x-ui.th>
+                    <x-ui.th align="right"><x-caption en="Unit" ar="سعر الوحدة" /></x-ui.th>
+                    <x-ui.th align="right"><x-caption en="VAT" ar="نسبة الضريبة" /></x-ui.th>
+                    <x-ui.th align="right"><x-caption en="Line total" ar="المجموع" /></x-ui.th>
+                </x-slot:head>
+
+                @foreach ($invoice->lines as $line)
                     <tr>
-                        <th class="px-6 py-2 text-left text-xs font-medium uppercase text-gray-500"><x-caption en="Description" ar="تفاصيل السلع أو الخدمات" /></th>
-                        <th class="px-6 py-2 text-right text-xs font-medium uppercase text-gray-500"><x-caption en="Qty" ar="الكمية" /></th>
-                        <th class="px-6 py-2 text-right text-xs font-medium uppercase text-gray-500"><x-caption en="Unit" ar="سعر الوحدة" /></th>
-                        <th class="px-6 py-2 text-right text-xs font-medium uppercase text-gray-500"><x-caption en="VAT" ar="نسبة الضريبة" /></th>
-                        <th class="px-6 py-2 text-right text-xs font-medium uppercase text-gray-500"><x-caption en="Line total" ar="المجموع" /></th>
+                        <td class="px-6 py-3 text-sm text-gray-900">
+                            @if ($line->description_ar)
+                                <span class="block" dir="rtl" lang="ar">{{ $line->description_ar }}</span>
+                                <span class="block text-xs text-gray-500">{{ $line->description }}</span>
+                            @else
+                                {{ $line->description }}
+                            @endif
+                            @if ($line->exempt_code)
+                                <span class="ml-1 text-xs text-gray-400">({{ $line->exempt_code }})</span>
+                            @endif
+                        </td>
+                        <td class="px-6 py-3 text-right text-sm tabular-nums text-gray-700">
+                            {{ rtrim(rtrim((string) $line->quantity, '0'), '.') }}
+                        </td>
+                        <td class="px-6 py-3 text-right text-sm tabular-nums text-gray-700">
+                            @include('portal.partials.money', ['amount' => $line->unit_price, 'currency' => $invoice->currency])
+                        </td>
+                        <td class="px-6 py-3 text-right text-sm tabular-nums text-gray-700">
+                            @include('portal.partials.money', ['amount' => $line->tax_amount, 'currency' => $invoice->currency])
+                        </td>
+                        <td class="px-6 py-3 text-right text-sm tabular-nums text-gray-900">
+                            @include('portal.partials.money', ['amount' => $line->line_total, 'currency' => $invoice->currency])
+                        </td>
                     </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200">
-                    @foreach ($invoice->lines as $line)
-                        <tr>
-                            <td class="px-6 py-3 text-sm text-gray-900">
-                                @if ($line->description_ar)
-                                    <span class="block" dir="rtl" lang="ar">{{ $line->description_ar }}</span>
-                                    <span class="block text-xs text-gray-500">{{ $line->description }}</span>
-                                @else
-                                    {{ $line->description }}
-                                @endif
-                                @if ($line->exempt_code)
-                                    <span class="ml-1 text-xs text-gray-400">({{ $line->exempt_code }})</span>
-                                @endif
-                            </td>
-                            <td class="px-6 py-3 text-right text-sm tabular-nums text-gray-700">
-                                {{ rtrim(rtrim((string) $line->quantity, '0'), '.') }}
-                            </td>
-                            <td class="px-6 py-3 text-right text-sm tabular-nums text-gray-700">
-                                @include('portal.partials.money', ['amount' => $line->unit_price, 'currency' => $invoice->currency])
-                            </td>
-                            <td class="px-6 py-3 text-right text-sm tabular-nums text-gray-700">
-                                @include('portal.partials.money', ['amount' => $line->tax_amount, 'currency' => $invoice->currency])
-                            </td>
-                            <td class="px-6 py-3 text-right text-sm tabular-nums text-gray-900">
-                                @include('portal.partials.money', ['amount' => $line->line_total, 'currency' => $invoice->currency])
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
+                @endforeach
+            </x-ui.table>
 
             {{--
                 Stored totals, never recomputed. The document's VAT is not the

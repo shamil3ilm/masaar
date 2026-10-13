@@ -44,61 +44,56 @@
 
 <!-- Logs Table -->
 <div class="bg-white rounded-lg shadow overflow-hidden">
-    <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
-            <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Submission</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Organization</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">State</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ZATCA Status</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Error</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
-            </tr>
-        </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
-            @forelse($logs as $log)
-            <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4 text-sm">
-                    <div class="font-medium">{{ Str::limit($log->id, 8) }}</div>
-                    <div class="text-xs text-gray-500">Inv: {{ Str::limit($log->invoice_id, 8) }}</div>
-                </td>
-                <td class="px-6 py-4 text-sm">{{ $log->organization_name ?? Str::limit($log->org_id, 8) }}</td>
-                <td class="px-6 py-4">
-                    <x-ui.badge tone="neutral" :label="ucfirst($log->submission_type)" />
-                </td>
-                <td class="px-6 py-4">
-                    <x-ui.badge :state="$log->state" />
-                </td>
-                <td class="px-6 py-4 text-sm">
-                    @if($log->clearance_status)
-                        <span class="text-green-600">{{ $log->clearance_status }}</span>
-                    @elseif($log->reporting_status)
-                        <span class="text-blue-600">{{ $log->reporting_status }}</span>
-                    @else
-                        <span class="text-gray-400">-</span>
-                    @endif
-                </td>
-                <td class="px-6 py-4 text-sm">
-                    @if($log->last_error)
-                        <span class="text-red-600" title="{{ $log->last_error }}">
-                            {{ $log->last_error_code }}: {{ Str::limit($log->last_error, 30) }}
-                        </span>
-                    @else
-                        <span class="text-gray-400">-</span>
-                    @endif
-                </td>
-                <td class="px-6 py-4 text-sm text-gray-500">
-                    {{ \Carbon\Carbon::parse($log->created_at)->diffForHumans() }}
-                </td>
-            </tr>
-            @empty
-            <tr>
-                <td colspan="7" class="px-6 py-4 text-center text-gray-500">No logs found</td>
-            </tr>
-            @endforelse
-        </tbody>
-    </table>
+    <x-ui.table>
+        <x-slot:head>
+            <x-ui.th>Submission</x-ui.th>
+            <x-ui.th>Organization</x-ui.th>
+            <x-ui.th>Type</x-ui.th>
+            <x-ui.th>State</x-ui.th>
+            <x-ui.th>ZATCA Status</x-ui.th>
+            <x-ui.th>Error</x-ui.th>
+            <x-ui.th>Created</x-ui.th>
+        </x-slot:head>
+
+        @forelse($logs as $log)
+        <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4 text-sm">
+                <div class="font-medium">{{ Str::limit($log->id, 8) }}</div>
+                <div class="text-xs text-gray-500">Inv: {{ Str::limit($log->invoice_id, 8) }}</div>
+            </td>
+            <td class="px-6 py-4 text-sm">{{ $log->organization_name ?? Str::limit($log->org_id, 8) }}</td>
+            <td class="px-6 py-4">
+                <x-ui.badge tone="neutral" :label="ucfirst($log->submission_type)" />
+            </td>
+            <td class="px-6 py-4">
+                <x-ui.badge :state="$log->state" />
+            </td>
+            <td class="px-6 py-4 text-sm">
+                @if($log->clearance_status)
+                    <span class="text-green-600">{{ $log->clearance_status }}</span>
+                @elseif($log->reporting_status)
+                    <span class="text-blue-600">{{ $log->reporting_status }}</span>
+                @else
+                    <span class="text-gray-400">-</span>
+                @endif
+            </td>
+            <td class="px-6 py-4 text-sm">
+                @if($log->last_error)
+                    <span class="text-red-600" title="{{ $log->last_error }}">
+                        {{ $log->last_error_code }}: {{ Str::limit($log->last_error, 30) }}
+                    </span>
+                @else
+                    <span class="text-gray-400">-</span>
+                @endif
+            </td>
+            <td class="px-6 py-4 text-sm text-gray-500">
+                {{ \Carbon\Carbon::parse($log->created_at)->diffForHumans() }}
+            </td>
+        </tr>
+        @empty
+        <x-ui.empty :columns="7">No logs found</x-ui.empty>
+        @endforelse
+    </x-ui.table>
 </div>
 
 <div class="mt-4">

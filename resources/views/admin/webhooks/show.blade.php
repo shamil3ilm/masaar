@@ -54,62 +54,55 @@
 </p>
 
 <div class="bg-white rounded-lg shadow overflow-hidden">
-    <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
-            <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Attempted</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Event</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Took</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Response</th>
-                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Replay</th>
-            </tr>
-        </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
-            @forelse($deliveries as $delivery)
-            <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4 text-sm text-gray-500">
-                    {{ $delivery['attempted_at']?->toDayDateTimeString() ?? '-' }}
-                </td>
-                <td class="px-6 py-4 font-mono text-sm text-gray-900">{{ $delivery['event'] }}</td>
-                <td class="px-6 py-4">
-                    {{-- 0 is recorded when the request never got an answer at all:
-                         refused, unresolvable or timed out. Printing it as a status
-                         code would read as a real response. --}}
-                    @php
-                        $deliveryLabel = $delivery['response_status'] === 0
-                            ? 'No response'
-                            : $delivery['response_status'];
-                    @endphp
-                    <x-ui.badge :tone="$delivery['success'] ? 'success' : 'danger'" :label="$deliveryLabel" />
-                </td>
-                <td class="px-6 py-4 text-sm text-gray-500">{{ number_format($delivery['duration_ms']) }} ms</td>
-                <td class="px-6 py-4 text-sm break-all text-gray-500">
-                    {{ $delivery['response_body'] === null ? '-' : Str::limit($delivery['response_body'], 160) }}
-                </td>
-                <td class="px-6 py-4 text-right">
-                    {{-- A POST behind a confirm, not a link: this sends the
-                         stored event to the customer's live server the moment
-                         it is pressed, and nothing a browser prefetches or a
-                         crawler follows should be able to do that. --}}
-                    <form method="POST" action="{{ route('admin.webhooks.replay', [$endpoint->id, $delivery['id']]) }}"
-                          data-confirm="Replay this delivery? It posts the stored event to the live endpoint now, and the receiver may process it a second time.">
-                        @csrf
-                        <button type="submit"
-                                class="rounded-md border border-amber-400 bg-amber-50 px-3 py-1 text-xs text-amber-900 hover:bg-amber-100">
-                            Replay
-                        </button>
-                    </form>
-                </td>
-            </tr>
-            @empty
-            <tr>
-                <td colspan="6" class="px-6 py-10 text-center text-gray-500">
-                    Nothing has been delivered to this endpoint yet.
-                </td>
-            </tr>
-            @endforelse
-        </tbody>
-    </table>
+    <x-ui.table>
+        <x-slot:head>
+            <x-ui.th>Attempted</x-ui.th>
+            <x-ui.th>Event</x-ui.th>
+            <x-ui.th>Status</x-ui.th>
+            <x-ui.th>Took</x-ui.th>
+            <x-ui.th>Response</x-ui.th>
+            <x-ui.th align="right">Replay</x-ui.th>
+        </x-slot:head>
+
+        @forelse($deliveries as $delivery)
+        <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4 text-sm text-gray-500">
+                {{ $delivery['attempted_at']?->toDayDateTimeString() ?? '-' }}
+            </td>
+            <td class="px-6 py-4 font-mono text-sm text-gray-900">{{ $delivery['event'] }}</td>
+            <td class="px-6 py-4">
+                {{-- 0 is recorded when the request never got an answer at all:
+                     refused, unresolvable or timed out. Printing it as a status
+                     code would read as a real response. --}}
+                @php
+                    $deliveryLabel = $delivery['response_status'] === 0
+                        ? 'No response'
+                        : $delivery['response_status'];
+                @endphp
+                <x-ui.badge :tone="$delivery['success'] ? 'success' : 'danger'" :label="$deliveryLabel" />
+            </td>
+            <td class="px-6 py-4 text-sm text-gray-500">{{ number_format($delivery['duration_ms']) }} ms</td>
+            <td class="px-6 py-4 text-sm break-all text-gray-500">
+                {{ $delivery['response_body'] === null ? '-' : Str::limit($delivery['response_body'], 160) }}
+            </td>
+            <td class="px-6 py-4 text-right">
+                {{-- A POST behind a confirm, not a link: this sends the
+                     stored event to the customer's live server the moment
+                     it is pressed, and nothing a browser prefetches or a
+                     crawler follows should be able to do that. --}}
+                <form method="POST" action="{{ route('admin.webhooks.replay', [$endpoint->id, $delivery['id']]) }}"
+                      data-confirm="Replay this delivery? It posts the stored event to the live endpoint now, and the receiver may process it a second time.">
+                    @csrf
+                    <button type="submit"
+                            class="rounded-md border border-amber-400 bg-amber-50 px-3 py-1 text-xs text-amber-900 hover:bg-amber-100">
+                        Replay
+                    </button>
+                </form>
+            </td>
+        </tr>
+        @empty
+        <x-ui.empty :columns="6">Nothing has been delivered to this endpoint yet.</x-ui.empty>
+        @endforelse
+    </x-ui.table>
 </div>
 @endsection

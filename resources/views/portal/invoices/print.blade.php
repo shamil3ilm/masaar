@@ -46,10 +46,10 @@
     <table class="mb-6 w-full text-sm">
         <thead class="border-y border-gray-300">
             <tr>
-                <th class="py-2 text-left"><x-caption en="Description" ar="تفاصيل السلع أو الخدمات" /></th>
-                <th class="py-2 text-right"><x-caption en="Qty" ar="الكمية" /></th>
-                <th class="py-2 text-right"><x-caption en="Unit" ar="سعر الوحدة" /></th>
-                <th class="py-2 text-right"><x-caption en="Total" ar="المجموع" /></th>
+                <th scope="col" class="py-2 text-left"><x-caption en="Description" ar="تفاصيل السلع أو الخدمات" /></th>
+                <th scope="col" class="py-2 text-right"><x-caption en="Qty" ar="الكمية" /></th>
+                <th scope="col" class="py-2 text-right"><x-caption en="Unit" ar="سعر الوحدة" /></th>
+                <th scope="col" class="py-2 text-right"><x-caption en="Total" ar="المجموع" /></th>
             </tr>
         </thead>
         <tbody>
