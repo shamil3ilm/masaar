@@ -120,7 +120,7 @@ class ComplianceController extends Controller
         return ApiResponse::success([
             'status' => $response->clearanceStatus ?? $response->reportingStatus,
             'warnings' => $response->warningMessages,
-        ], 'Invoice submitted successfully');
+        ], 'Invoice submitted');
     }
 
     /**

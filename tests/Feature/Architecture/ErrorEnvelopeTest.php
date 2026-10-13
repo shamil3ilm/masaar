@@ -7,6 +7,7 @@ namespace Tests\Feature\Architecture;
 use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Http\Responses\ApiResponse;
+use Tests\Fixtures\ReadsSourceCalls;
 use Tests\TestCase;
 
 /**
@@ -34,6 +35,8 @@ use Tests\TestCase;
  */
 class ErrorEnvelopeTest extends TestCase
 {
+    use ReadsSourceCalls;
+
     /**
      * The keys every error body carries, and no others by default.
      */
@@ -186,7 +189,7 @@ class ErrorEnvelopeTest extends TestCase
     {
         $offenders = [];
 
-        foreach ($this->phpFiles(__DIR__.'/../../../app') as $file) {
+        foreach ($this->phpFilesIn(__DIR__.'/../../../app') as $file) {
             $source = (string) file_get_contents($file);
 
             foreach (['success', 'created'] as $method) {
@@ -199,70 +202,5 @@ class ErrorEnvelopeTest extends TestCase
         }
 
         $this->assertSame([], $offenders, implode("\n  ", $offenders));
-    }
-
-    /**
-     * The top-level arguments of every call to $needle in $source.
-     *
-     * @return list<list<string>>
-     */
-    private function argumentsOf(string $source, string $needle): array
-    {
-        $calls = [];
-        $offset = 0;
-
-        while (($start = strpos($source, $needle, $offset)) !== false) {
-            $i = $start + strlen($needle);
-            $depth = 1;
-            $argument = '';
-            $arguments = [];
-
-            for ($length = strlen($source); $i < $length; $i++) {
-                $char = $source[$i];
-
-                if (in_array($char, ['(', '[', '{'], true)) {
-                    $depth++;
-                } elseif (in_array($char, [')', ']', '}'], true)) {
-                    $depth--;
-
-                    if ($depth === 0) {
-                        break;
-                    }
-                } elseif ($char === ',' && $depth === 1) {
-                    $arguments[] = $argument;
-                    $argument = '';
-
-                    continue;
-                }
-
-                $argument .= $char;
-            }
-
-            if (trim($argument) !== '') {
-                $arguments[] = $argument;
-            }
-
-            $calls[] = $arguments;
-            $offset = $start + strlen($needle);
-        }
-
-        return $calls;
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function phpFiles(string $directory): array
-    {
-        $files = [];
-        $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($directory));
-
-        foreach ($iterator as $file) {
-            if ($file->isFile() && $file->getExtension() === 'php') {
-                $files[] = $file->getPathname();
-            }
-        }
-
-        return $files;
     }
 }

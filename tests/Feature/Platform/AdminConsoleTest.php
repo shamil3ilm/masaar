@@ -136,7 +136,7 @@ class AdminConsoleTest extends TestCase
             ->from('/admin/queue')
             ->post("/admin/queue/{$item->id}/retry")
             ->assertRedirect('/admin/queue')
-            ->assertSessionHas('success', 'Item queued for retry');
+            ->assertSessionHas('success', 'Item queued for retry.');
 
         $row = DB::table('offline_queue')->where('id', $item->id)->first();
 
@@ -160,7 +160,7 @@ class AdminConsoleTest extends TestCase
             ->from('/admin/queue')
             ->post('/admin/queue/00000000-0000-0000-0000-000000000000/retry')
             ->assertRedirect('/admin/queue')
-            ->assertSessionHas('error', 'Queue item not found');
+            ->assertSessionHas('error', 'Queue item not found.');
     }
 
     /**
@@ -175,7 +175,7 @@ class AdminConsoleTest extends TestCase
             ->from('/admin/queue')
             ->post("/admin/queue/{$item->id}/retry")
             ->assertRedirect('/admin/queue')
-            ->assertSessionHas('error', 'Only failed items can be retried');
+            ->assertSessionHas('error', 'Only failed items can be retried.');
 
         $this->assertSame('completed', DB::table('offline_queue')->where('id', $item->id)->value('state'));
     }

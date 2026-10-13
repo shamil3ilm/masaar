@@ -322,6 +322,6 @@ class AdminDashboardController extends Controller
         return ApiResponse::success([
             'circuit_breaker' => $result,
             'reset_at' => now()->toIso8601String(),
-        ], 'Circuit breaker reset successfully');
+        ], 'Circuit breaker reset');
     }
 }

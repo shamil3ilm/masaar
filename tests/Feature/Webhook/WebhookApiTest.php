@@ -67,7 +67,7 @@ class WebhookApiTest extends TestCase
             ->assertJsonPath('data.webhook.url', 'https://erp.test/hooks')
             ->assertJsonPath('data.webhook.events', ['invoice.cleared'])
             ->assertJsonPath('data.webhook.is_active', true)
-            ->assertJsonPath('data.message', 'Webhook created. Save the secret - it will not be shown again.');
+            ->assertJsonPath('message', 'Webhook created. Save the secret - it will not be shown again.');
 
         $this->assertSame(['id', 'url', 'secret', 'events', 'is_active'], array_keys($response->json('data.webhook')));
         $this->assertSame(64, strlen($response->json('data.webhook.secret')));
@@ -141,7 +141,7 @@ class WebhookApiTest extends TestCase
 
         $response = $this->api()->postJson("/api/webhooks/{$webhook->id}/rotate-secret")
             ->assertOk()
-            ->assertJsonPath('data.message', 'Secret rotated. Save the new secret - it will not be shown again.');
+            ->assertJsonPath('message', 'Secret rotated. Save the new secret - it will not be shown again.');
 
         $secret = $response->json('data.secret');
 

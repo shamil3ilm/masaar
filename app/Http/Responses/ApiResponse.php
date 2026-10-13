@@ -73,7 +73,7 @@ class ApiResponse
     /**
      * Created response (201).
      */
-    public static function created(mixed $data = null, string $message = 'Created successfully'): JsonResponse
+    public static function created(mixed $data, string $message): JsonResponse
     {
         return self::success($data, $message, 201);
     }

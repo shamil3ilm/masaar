@@ -75,8 +75,7 @@ class OnboardingController extends Controller
             return ApiResponse::success([
                 'ccsid' => substr($result['ccsid'], 0, 50).'...', // Truncate for display
                 'request_id' => $result['requestId'],
-                'message' => 'Compliance CSID obtained. Proceed with compliance checks.',
-            ]);
+            ], 'Compliance CSID obtained. Proceed with compliance checks.');
 
         } catch (CertificateException $e) {
             // Its own code and category, from the one place that knows them.
@@ -118,10 +117,9 @@ class OnboardingController extends Controller
             return ApiResponse::success([
                 'passed' => $result['passed'],
                 'results' => $result['results'],
-                'message' => $result['passed']
-                    ? 'Compliance checks passed. Proceed to request PCSID.'
-                    : 'Compliance checks failed. Fix errors and retry.',
-            ]);
+            ], $result['passed']
+                ? 'Compliance checks passed. Proceed to request PCSID.'
+                : 'Compliance checks failed. Fix errors and retry.');
 
         } catch (CertificateException $e) {
             // Its own code and category, from the one place that knows them.
@@ -170,10 +168,10 @@ class OnboardingController extends Controller
                 ]),
             ]);
 
-            return ApiResponse::success([
-                'message' => 'Production CSID obtained. Organization is now ZATCA compliant.',
-                'onboarded' => true,
-            ]);
+            return ApiResponse::success(
+                ['onboarded' => true],
+                'Production CSID obtained. Organization is now ZATCA compliant.',
+            );
 
         } catch (CertificateException $e) {
             // Its own code and category, from the one place that knows them.

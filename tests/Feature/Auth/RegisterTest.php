@@ -37,7 +37,7 @@ class RegisterTest extends TestCase
     {
         $response = $this->register()
             ->assertCreated()
-            ->assertJsonPath('message', 'User registered successfully')
+            ->assertJsonPath('message', 'User registered')
             ->assertJsonPath('data.user.name', 'New Person')
             ->assertJsonPath('data.user.email', 'new@masaar.test');
 

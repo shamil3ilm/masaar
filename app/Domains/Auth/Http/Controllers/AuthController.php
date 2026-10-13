@@ -47,7 +47,7 @@ class AuthController extends Controller
                 'email' => $user->email,
             ],
             'token' => $token?->toArray(),
-        ], 'User registered successfully');
+        ], 'User registered');
     }
 
     /**
@@ -85,7 +85,7 @@ class AuthController extends Controller
         $this->audit->logAuth('logout');
         $this->auth->logout();
 
-        return ApiResponse::success(null, 'Logged out successfully');
+        return ApiResponse::success(null, 'Signed out');
     }
 
     /**

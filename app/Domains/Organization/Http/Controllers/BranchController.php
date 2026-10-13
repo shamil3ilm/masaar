@@ -155,10 +155,10 @@ class BranchController extends Controller
         try {
             $branch = $this->branchService->update($branch, $validated);
 
-            return ApiResponse::success([
-                'branch' => $this->formatBranch($branch),
-                'message' => 'Branch updated successfully.',
-            ]);
+            return ApiResponse::success(
+                ['branch' => $this->formatBranch($branch)],
+                'Branch updated',
+            );
 
         } catch (\Exception $e) {
             return ApiResponse::error('Failed to update branch: '.$e->getMessage(), 422);
@@ -183,9 +183,7 @@ class BranchController extends Controller
         try {
             $this->branchService->delete($branch);
 
-            return ApiResponse::success([
-                'message' => 'Branch deleted successfully.',
-            ]);
+            return ApiResponse::success(null, 'Branch deleted');
 
         } catch (\Exception $e) {
             return ApiResponse::error($e->getMessage(), 422);
@@ -209,10 +207,10 @@ class BranchController extends Controller
 
         $branch->setAsDefault();
 
-        return ApiResponse::success([
-            'branch' => $this->formatBranch($branch),
-            'message' => 'Branch set as default.',
-        ]);
+        return ApiResponse::success(
+            ['branch' => $this->formatBranch($branch)],
+            'Branch set as default',
+        );
     }
 
     /**
@@ -232,10 +230,10 @@ class BranchController extends Controller
 
         $branch->suspend();
 
-        return ApiResponse::success([
-            'branch' => $this->formatBranch($branch),
-            'message' => 'Branch suspended.',
-        ]);
+        return ApiResponse::success(
+            ['branch' => $this->formatBranch($branch)],
+            'Branch suspended',
+        );
     }
 
     /**
@@ -266,10 +264,10 @@ class BranchController extends Controller
             'is_active' => true,
         ]);
 
-        return ApiResponse::success([
-            'branch' => $this->formatBranch($branch),
-            'message' => 'Branch reactivated.',
-        ]);
+        return ApiResponse::success(
+            ['branch' => $this->formatBranch($branch)],
+            'Branch reactivated',
+        );
     }
 
     /**

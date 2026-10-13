@@ -90,7 +90,7 @@ class LicenseController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'License created successfully',
+            'message' => 'License created',
             'data' => [
                 'license' => $result['license']->toArray(),
                 'credentials' => [
@@ -137,7 +137,7 @@ class LicenseController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'License activated successfully',
+                'message' => 'License activated',
                 'data' => $license->toArray(),
             ]);
         } catch (\RuntimeException $e) {
@@ -161,7 +161,7 @@ class LicenseController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'License suspended successfully',
+            'message' => 'License suspended',
             'data' => $license->toArray(),
         ]);
     }
@@ -178,7 +178,7 @@ class LicenseController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'License reactivated successfully',
+                'message' => 'License reactivated',
                 'data' => $license->toArray(),
             ]);
         } catch (\RuntimeException $e) {
@@ -202,7 +202,7 @@ class LicenseController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'License revoked successfully',
+            'message' => 'License revoked',
             'data' => $license->toArray(),
         ]);
     }
@@ -230,7 +230,7 @@ class LicenseController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'License extended successfully',
+            'message' => 'License extended',
             'data' => $license->toArray(),
         ]);
     }
@@ -258,7 +258,7 @@ class LicenseController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'License tier upgraded successfully',
+            'message' => 'License tier upgraded',
             'data' => $license->toArray(),
         ]);
     }
@@ -289,7 +289,7 @@ class LicenseController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'License limits updated successfully',
+            'message' => 'License limits updated',
             'data' => $license->toArray(),
         ]);
     }
@@ -318,7 +318,7 @@ class LicenseController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'License features updated successfully',
+            'message' => 'License features updated',
             'data' => $license->toArray(),
         ]);
     }
@@ -334,7 +334,7 @@ class LicenseController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'API secret regenerated successfully',
+            'message' => 'API secret regenerated',
             'data' => [
                 'license' => $result['license']->toArray(),
                 'api_secret' => $result['api_secret'],

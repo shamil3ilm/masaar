@@ -83,9 +83,8 @@ class BranchOnboardingController extends Controller
                 'request_id' => $result['requestId'],
                 'branch_id' => $branch->id,
                 'branch_name' => $branch->name,
-                'message' => 'Compliance CSID obtained. Proceed with compliance checks.',
                 'next_step' => 'POST /api/organizations/branches/'.$branch->id.'/onboarding/compliance-check',
-            ]);
+            ], 'Compliance CSID obtained. Proceed with compliance checks.');
 
         } catch (CertificateException $e) {
             // Its own code and category, from the one place that knows them.
@@ -140,13 +139,12 @@ class BranchOnboardingController extends Controller
                 'results' => $result['results'],
                 'branch_id' => $branch->id,
                 'branch_name' => $branch->name,
-                'message' => $result['passed']
-                    ? 'Compliance checks passed. Proceed to request PCSID.'
-                    : 'Compliance checks failed. Fix errors and retry.',
                 'next_step' => $result['passed']
                     ? 'POST /api/organizations/branches/'.$branch->id.'/onboarding/pcsid'
                     : 'Fix errors and retry compliance check',
-            ]);
+            ], $result['passed']
+                ? 'Compliance checks passed. Proceed to request PCSID.'
+                : 'Compliance checks failed. Fix errors and retry.');
 
         } catch (CertificateException $e) {
             // Its own code and category, from the one place that knows them.
@@ -206,8 +204,7 @@ class BranchOnboardingController extends Controller
                 'branch_name' => $branch->name,
                 'onboarded' => true,
                 'cert_expires_at' => $certificateExpiry?->toIso8601String(),
-                'message' => 'Production CSID obtained. Branch is now ZATCA compliant and ready for invoicing.',
-            ]);
+            ], 'Production CSID obtained. Branch is now ZATCA compliant and ready for invoicing.');
 
         } catch (CertificateException $e) {
             // Its own code and category, from the one place that knows them.
@@ -248,9 +245,8 @@ class BranchOnboardingController extends Controller
 
         return ApiResponse::success([
             'branch_id' => $branch->id,
-            'message' => 'Onboarding reset. Obtain new OTP from ZATCA Fatoora Portal to start fresh.',
             'next_step' => 'POST /api/organizations/branches/'.$branch->id.'/onboarding/ccsid',
-        ]);
+        ], 'Onboarding reset. Obtain a new OTP from the ZATCA Fatoora Portal to start fresh.');
     }
 
     /**

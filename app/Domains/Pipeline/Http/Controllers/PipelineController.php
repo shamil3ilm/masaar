@@ -92,7 +92,7 @@ class PipelineController extends Controller
 
         return ApiResponse::created(
             data: $result,
-            message: 'Invoice submitted successfully through pipeline',
+            message: 'Invoice submitted through the pipeline',
         );
     }
 

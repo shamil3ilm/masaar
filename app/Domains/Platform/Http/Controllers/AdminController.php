@@ -122,7 +122,7 @@ class AdminController extends Controller
 
         Artisan::call('fatoora:process-offline', ['--limit' => 50]);
 
-        return back()->with('success', 'Queue processing started');
+        return back()->with('success', 'Queue processing started.');
     }
 
     /**
@@ -133,11 +133,11 @@ class AdminController extends Controller
         $outcome = $this->requeuer->requeue($id);
 
         if ($outcome === RequeueOutcome::NotFound) {
-            return back()->with('error', 'Queue item not found');
+            return back()->with('error', 'Queue item not found.');
         }
 
         if ($outcome === RequeueOutcome::NotFailed) {
-            return back()->with('error', 'Only failed items can be retried');
+            return back()->with('error', 'Only failed items can be retried.');
         }
 
         Log::info('Offline queue item requeued from admin console', [
@@ -145,6 +145,6 @@ class AdminController extends Controller
             'queue_item_id' => $id,
         ]);
 
-        return back()->with('success', 'Item queued for retry');
+        return back()->with('success', 'Item queued for retry.');
     }
 }

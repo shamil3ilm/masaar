@@ -74,8 +74,7 @@ class WebhookController extends Controller
                 'events' => $webhook->events,
                 'is_active' => $webhook->is_active,
             ],
-            'message' => 'Webhook created. Save the secret - it will not be shown again.',
-        ]);
+        ], 'Webhook created. Save the secret - it will not be shown again.');
     }
 
     /**
@@ -152,7 +151,7 @@ class WebhookController extends Controller
         $success = $this->webhookService->test($webhook);
 
         if ($success) {
-            return ApiResponse::success(null, 'Test webhook delivered successfully');
+            return ApiResponse::success(null, 'Test webhook delivered');
         }
 
         return ApiResponse::error('Test webhook delivery failed', 422);
@@ -193,10 +192,10 @@ class WebhookController extends Controller
     {
         $newSecret = $this->subscriptions->rotateSecret($this->getWebhook($id));
 
-        return ApiResponse::success([
-            'secret' => $newSecret,
-            'message' => 'Secret rotated. Save the new secret - it will not be shown again.',
-        ]);
+        return ApiResponse::success(
+            ['secret' => $newSecret],
+            'Secret rotated. Save the new secret - it will not be shown again.',
+        );
     }
 
     /**
