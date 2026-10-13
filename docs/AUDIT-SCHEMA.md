@@ -16,17 +16,29 @@ activity and is not what this document describes.
 **`audit_logs`** — a table. Who acted, on what, and what changed. Queryable,
 retained with the rest of the compliance data, and the place to start.
 
-**Log channels** — files. What the platform did, in sequence, including the
-exchanges with the authority. Use these when the table says something happened
-and you need the detail of it.
+**`submission_state_logs`** — also a table. Every state an invoice's
+submission passed through on its way to the authority, and what moved it.
+Use this when `audit_logs` says a submission happened and you need the
+sequence of it: the attempts, the retries, and what the authority answered
+each time.
 
-| Channel | What it carries |
+| Column | Meaning |
 |---|---|
-| `zatca-submissions` | Each submission attempt and the authority's reply |
-| `zatca-compliance` | Onboarding and the compliance checks |
-| `zatca-webhooks` | Notifications sent onward to the taxpayer's systems |
-| `zatca-audit` | Security-relevant events |
-| `zatca-errors` | Failures |
+| `submission_id` | Which submission, joining to `invoice_submissions` |
+| `from_state`, `to_state` | The transition. Null `from_state` is the first entry |
+| `trigger` | What caused it — an API call, a queue worker, a scheduled retry |
+| `context` | The authority's reply, or the error, as JSON |
+| `actor_type`, `actor_id` | A user, or the system |
+| `ip_address` | Where the request came from, when there was one |
+| `created_at` | When, in UTC |
+
+Earlier versions of this document named five log *files* here —
+`zatca-submissions`, `zatca-compliance`, `zatca-webhooks`, `zatca-audit` and
+`zatca-errors`. They were configured and never written to: nothing in the
+application ever opened them, so an auditor sent to read them would have
+found nothing at all. The table above is what was actually being recorded,
+and the configuration that promised the files has been removed rather than
+left to be believed.
 
 ---
 

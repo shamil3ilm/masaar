@@ -13,7 +13,6 @@ use App\Domains\Licensing\Http\Middleware\CheckInvoiceQuota;
 use App\Domains\Licensing\Http\Middleware\PlatformLicense;
 use App\Domains\Licensing\Http\Middleware\RequireScope;
 use App\Domains\Licensing\Http\Middleware\ValidateLicense;
-use App\Domains\Logging\Services\ComplianceLogger;
 use App\Domains\Organization\Http\Middleware\IsOrgAdmin;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Services\TenantResolver;
@@ -62,7 +61,6 @@ class AppServiceProvider extends ServiceProvider
         // ZATCA Compliance Services - Singletons for consistency
         $this->app->singleton(TimestampValidator::class);
         $this->app->singleton(CircuitBreaker::class);
-        $this->app->singleton(ComplianceLogger::class);
     }
 
     /**

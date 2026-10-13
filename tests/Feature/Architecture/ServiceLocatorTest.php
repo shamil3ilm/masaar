@@ -28,7 +28,6 @@ class ServiceLocatorTest extends TestCase
      */
     private const DECLARED = [
         'Domains/Audit/Services/AuditService.php',
-        'Domains/Logging/Services/ComplianceLogger.php',
     ];
 
     public function test_services_take_dependencies_by_injection(): void

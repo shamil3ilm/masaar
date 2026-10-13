@@ -193,51 +193,6 @@ return [
         |
         */
 
-        'zatca-submissions' => [
-            'tap' => [RedactSecrets::class],
-            'driver' => 'daily',
-            'path' => storage_path('logs/zatca/submissions.log'),
-            'level' => env('LOG_LEVEL', 'debug'),
-            'days' => 90,
-            'replace_placeholders' => true,
-        ],
-
-        'zatca-compliance' => [
-            'tap' => [RedactSecrets::class],
-            'driver' => 'daily',
-            'path' => storage_path('logs/zatca/compliance.log'),
-            'level' => env('LOG_LEVEL', 'debug'),
-            'days' => 90,
-            'replace_placeholders' => true,
-        ],
-
-        'zatca-webhooks' => [
-            'tap' => [RedactSecrets::class],
-            'driver' => 'daily',
-            'path' => storage_path('logs/zatca/webhooks.log'),
-            'level' => env('LOG_LEVEL', 'debug'),
-            'days' => 30,
-            'replace_placeholders' => true,
-        ],
-
-        'zatca-audit' => [
-            'tap' => [RedactSecrets::class],
-            'driver' => 'daily',
-            'path' => storage_path('logs/zatca/audit.log'),
-            'level' => 'info',
-            'days' => 365,
-            'replace_placeholders' => true,
-        ],
-
-        'zatca-errors' => [
-            'tap' => [RedactSecrets::class],
-            'driver' => 'daily',
-            'path' => storage_path('logs/zatca/errors.log'),
-            'level' => 'error',
-            'days' => 90,
-            'replace_placeholders' => true,
-        ],
-
     ],
 
 ];
