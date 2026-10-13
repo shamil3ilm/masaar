@@ -60,6 +60,43 @@ class Registrar
      * current compliance profile: a concurrent change to that profile must not
      * be overwritten by a value read before it.
      */
+    /**
+     * Record that the organization completed ZATCA onboarding.
+     *
+     * Locked and re-read for the same reason amend() is, and it is the same
+     * column: compliance_profile holds several unrelated keys, so a read,
+     * merge and write built from a copy loaded earlier discards whatever
+     * else was written in between. The onboarding controller did precisely
+     * that, and amend() taking a lock does not help a path that never asks
+     * for one - a VAT number changed mid-onboarding was lost without a trace.
+     *
+     * Idempotent, because the step it finishes is retried: the certificate is
+     * a file and this flag is a row, and when only the row failed the way
+     * back is to run the step again.
+     */
+    public function markOnboarded(Organization $organization): Organization
+    {
+        return DB::transaction(function () use ($organization): Organization {
+            $locked = Organization::query()
+                ->whereKey($organization->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $oldValues = $locked->toArray();
+
+            $locked->update([
+                'compliance_profile' => array_merge($locked->compliance_profile ?? [], [
+                    'zatca_onboarded' => true,
+                    'onboarded_at' => now()->toISOString(),
+                ]),
+            ]);
+
+            $this->audit->logUpdated($locked, $oldValues);
+
+            return $locked;
+        });
+    }
+
     public function amend(Organization $organization, OrganizationChangesData $changes): Organization
     {
         return DB::transaction(function () use ($organization, $changes): Organization {

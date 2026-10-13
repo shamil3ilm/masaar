@@ -8,6 +8,7 @@ use App\Domains\Compliance\Fatoora\Services\ComplianceSampleSet;
 use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use App\Domains\Compliance\Fatoora\Services\CsidOnboarding;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\Registrar;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
@@ -29,6 +30,7 @@ class OnboardingController extends Controller
         private readonly TenantResolver $tenant,
         private readonly CsidOnboarding $onboarding,
         private readonly CredentialStore $credentials,
+        private readonly Registrar $registrar,
         private readonly ComplianceSampleSet $samples,
     ) {}
 
@@ -149,24 +151,35 @@ class OnboardingController extends Controller
         }
 
         try {
-            $result = $this->onboarding->requestProductionCsid(
-                $credentials['ccsid'],
-                $credentials['secret'],
-                $credentials['requestId']
-            );
+            // Already have one? Then this step ran and only its last write
+            // did not. See the branch controller for the whole reasoning: the
+            // credential is a file and the flag is a row, so they cannot be
+            // one transaction, and the OTP that bought the certificate is
+            // spent. Finishing the row is the recovery; asking ZATCA for a
+            // second certificate is not.
+            $existing = $this->credentials->get((string) $organization->id, null, CredentialStore::PCSID);
 
-            // Store production credentials
-            $this->storeCredentials($organization->id, 'pcsid', array_merge($result, [
-                'privateKey' => $credentials['privateKey'],
-            ]));
+            if (empty($existing['pcsid'])) {
+                $result = $this->onboarding->requestProductionCsid(
+                    $credentials['ccsid'],
+                    $credentials['secret'],
+                    $credentials['requestId']
+                );
 
-            // Update organization status
-            $organization->update([
-                'compliance_profile' => array_merge($organization->compliance_profile ?? [], [
-                    'zatca_onboarded' => true,
-                    'onboarded_at' => now()->toISOString(),
-                ]),
-            ]);
+                // Store production credentials
+                $this->storeCredentials($organization->id, 'pcsid', array_merge($result, [
+                    'privateKey' => $credentials['privateKey'],
+                ]));
+            }
+
+            // Through the service that owns organization writes, which
+            // locks the row and re-reads it. compliance_profile holds several
+            // unrelated keys, so a read, merge and write built from a copy
+            // loaded earlier discards anything written in between - and
+            // Registrar::amend writes the VAT number into that same column.
+            // ControllerQueryTest refused the version of this that queried
+            // from here, which is the rule doing its job.
+            $this->registrar->markOnboarded($organization);
 
             return ApiResponse::success(
                 ['onboarded' => true],

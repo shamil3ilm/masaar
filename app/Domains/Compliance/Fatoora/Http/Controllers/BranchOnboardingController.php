@@ -179,6 +179,34 @@ class BranchOnboardingController extends Controller
         }
 
         try {
+            // A certificate already on disk means this step has run and only
+            // its last write did not.
+            //
+            // The file and the row cannot be one transaction - one is a file
+            // and one is a row - so the failure is made recoverable instead.
+            // Writing the credential and then marking the branch active left
+            // a branch holding a valid production certificate while
+            // onboarding_status stayed compliance_passed, so isFatooraReady()
+            // was false and Submitter refused every invoice from it. Running
+            // the step again meant another OTP from the ZATCA Fatoora portal,
+            // because the first one was spent buying the certificate that was
+            // already sitting there unused.
+            //
+            // So: if the credential is present, finish the row and do not ask
+            // the authority for a second certificate.
+            $existing = $this->branchService->getCredentials($branch, 'pcsid');
+
+            if (! empty($existing['pcsid'])) {
+                $branch->markAsActive($this->parseCertificateExpiry($existing['pcsid']));
+
+                return ApiResponse::success([
+                    'branch_id' => $branch->id,
+                    'branch_name' => $branch->name,
+                    'onboarded' => true,
+                    'cert_expires_at' => $branch->fresh()->cert_expires_at?->toIso8601String(),
+                ], 'Production CSID was already obtained. The branch is now marked ready.');
+            }
+
             $result = $this->onboarding->requestProductionCsid(
                 $credentials['ccsid'],
                 $credentials['secret'],
@@ -234,14 +262,25 @@ class BranchOnboardingController extends Controller
             return ApiResponse::error('Branch not found', 404);
         }
 
-        // Delete existing credentials
-        $this->branchService->deleteCredentials($branch);
-
-        // Reset status
+        // The row first, the files second.
+        //
+        // This was the other way round, and the two cannot be one transaction.
+        // Deleting the credentials first and then dying left a branch whose
+        // status still said active with a future cert_expires_at - so
+        // isFatooraReady() was true and the admin console reported it as
+        // onboarded - while its private key was gone from disk. Every
+        // submission from it then failed with missingCredentials, and nothing
+        // on the branch said why.
+        //
+        // In this order the same failure leaves a branch marked pending with
+        // its credentials still present, which signs nothing because the
+        // status gates it, and which running the reset again cleans up.
         $branch->update([
             'onboarding_status' => Branch::STATUS_PENDING,
             'cert_expires_at' => null,
         ]);
+
+        $this->branchService->deleteCredentials($branch);
 
         return ApiResponse::success([
             'branch_id' => $branch->id,
@@ -282,14 +321,14 @@ class BranchOnboardingController extends Controller
             }
 
             return (new \DateTime)->setTimestamp($certInfo['validTo_time_t']);
-        } catch (CertificateException $e) {
-            // Its own code and category, from the one place that knows them.
-            // This used to fall through to the broad catch below and answer
-            // VALIDATION_ERROR, and the prefix added there duplicated the
-            // exception's own message - CsidOnboarding already throws
-            // 'Failed to obtain CCSID: ...'.
-            return ApiResponse::fromCertificate($e);
         } catch (\Exception $e) {
+            // A certificate this cannot read has no expiry to report, which
+            // the caller handles. There was a CertificateException arm here
+            // returning ApiResponse::fromCertificate - added by a replace
+            // across this file that assumed every catch in it belonged to a
+            // controller action. This one does not: the method is declared
+            // ?\DateTime, so that arm was a TypeError waiting for a
+            // certificate bad enough to reach it.
             return null;
         }
     }
