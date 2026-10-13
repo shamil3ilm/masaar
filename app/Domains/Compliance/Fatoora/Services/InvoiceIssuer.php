@@ -118,7 +118,32 @@ class InvoiceIssuer
     private function file(Invoice $invoice, ?string $idempotencyKey): IssueOutcome
     {
         try {
-            $outcome = $this->submissions->submit($invoice, ['idempotency_key' => $idempotencyKey]);
+            // A simplified invoice is queued. A standard one is not.
+            //
+            // This is the Implementation Resolution's distinction, not a
+            // performance choice. Clause Second has the authority stamp a
+            // standard invoice and notify the issuer "prior to sharing them
+            // with the customers", so until clearance returns the seller may
+            // not hand the document over - and the caller has nothing to hand
+            // over, because cleared_xml is what print.blade.php checks before
+            // it will render the copy. Queueing that would make every B2B
+            // invoice unshareable until a worker drained the queue, with
+            // polling as the only way to find out.
+            //
+            // A simplified invoice is the opposite case. Clause Third has the
+            // seller present the printed copy immediately and the same clause
+            // allows twenty-four hours to report it. The receipt is complete
+            // the moment it is issued; the authority hearing about it later is
+            // the shape the rule describes, and that window is exactly the
+            // latitude a queue needs.
+            //
+            // So the three zatca-submissions workers now have the B2C traffic
+            // to do, and with them the job's retries - which never ran,
+            // because the job was never dispatched.
+            $outcome = $this->submissions->submit($invoice, [
+                'idempotency_key' => $idempotencyKey,
+                'async' => ! $invoice->requiresClearance(),
+            ]);
             $invoice->refresh();
 
             // The outcome webhook is raised by SubmissionTracker as a state
