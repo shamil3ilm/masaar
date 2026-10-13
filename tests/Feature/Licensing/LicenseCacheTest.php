@@ -8,7 +8,10 @@ use App\Domains\Licensing\Exceptions\LicenseException;
 use App\Domains\Licensing\Models\License;
 use App\Domains\Licensing\Services\LicenseValidationService;
 use App\Domains\Organization\Models\Organization;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -97,6 +100,66 @@ class LicenseCacheTest extends TestCase
         $this->expectException(LicenseException::class);
 
         $this->authenticate();
+    }
+
+    /**
+     * The entry is dropped after the commit, not during the transaction.
+     *
+     * The tests above pass either way, because nothing reads the licence
+     * between the UPDATE and the COMMIT. That gap is the whole defect.
+     * suspend() wraps its UPDATE and its audit INSERT in one transaction, and
+     * the forget fired from the saved() hook ran inside it - so a request
+     * arriving in the gap, on another connection that cannot see the
+     * uncommitted row, read the licence as Active and cached that copy for
+     * the full TTL. The credential that had just been revoked kept working.
+     *
+     * Two connections with real isolation are needed to reproduce that, which
+     * this suite cannot do: it runs one connection against an in-memory
+     * SQLite database, and a second connection would be a different database
+     * entirely. So what is asserted here is the ordering the fix changes, and
+     * which is observable on one connection - at the moment the UPDATE runs
+     * the entry is still there, and once suspend() returns it is gone. Before
+     * the fix the first of those was false.
+     */
+    public function test_the_entry_outlives_the_transaction(): void
+    {
+        $this->authenticate();
+
+        $key = $this->license->cacheKey();
+        $presentDuringUpdate = null;
+
+        $this->duringTheAuditWrite(function () use ($key, &$presentDuringUpdate): void {
+            $presentDuringUpdate = Cache::has($key);
+        });
+
+        $this->license->suspend('non-payment');
+
+        $this->assertTrue(
+            $presentDuringUpdate,
+            'the entry was dropped while the transaction was still open, so a read in that gap could refill it from the pre-commit row'
+        );
+
+        $this->assertFalse(Cache::has($key), 'the entry survived the commit');
+    }
+
+    private function duringTheAuditWrite(\Closure $competitor): void
+    {
+        $fired = false;
+
+        DB::listen(function (QueryExecuted $query) use (&$fired, $competitor): void {
+            // The audit INSERT, which is the last statement inside the
+            // transaction and runs after update() has fired the saved() hook.
+            // Probing the UPDATE instead would see the cache before the hook
+            // had run at all, which is true in either version and proves
+            // nothing. Matched without a quoting style so it holds on SQLite
+            // and MySQL alike.
+            if ($fired || ! preg_match('/^insert\s+into\s+.?license_audit_logs.?/i', trim($query->sql))) {
+                return;
+            }
+
+            $fired = true;
+            $competitor();
+        });
     }
 
     private function authenticate(): License

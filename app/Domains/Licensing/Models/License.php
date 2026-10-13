@@ -133,13 +133,32 @@ class License extends Model
         // cannot forget. The original key is dropped too: rotating the key
         // itself would otherwise leave the old one usable.
         $forget = function (self $license): void {
-            Cache::forget($license->cacheKey());
+            // Which keys to drop is decided now, while the model still knows
+            // what its api_key was before this save.
+            $keys = [$license->cacheKey()];
 
             $previous = $license->getOriginal('api_key');
 
             if (is_string($previous) && $previous !== $license->api_key) {
-                Cache::forget(self::cacheKeyFor($previous));
+                $keys[] = self::cacheKeyFor($previous);
             }
+
+            // Dropped after the commit, not before it. Registered on saved(),
+            // this runs inside changeWithAudit's transaction, and the commit
+            // only happens once that closure returns - an audit INSERT later.
+            // Forgetting the entry in that gap achieves nothing: another
+            // connection still reads the pre-commit row, finds it Active, and
+            // caches that copy for the whole TTL. The revoked credential then
+            // kept authenticating for five more minutes, which is the exact
+            // thing this hook was added to prevent.
+            //
+            // afterCommit runs the callback immediately when no transaction is
+            // open, so the callers that mutate outside one are unaffected.
+            DB::afterCommit(function () use ($keys): void {
+                foreach ($keys as $key) {
+                    Cache::forget($key);
+                }
+            });
         };
 
         static::saved($forget);
