@@ -86,50 +86,67 @@ final class FatooraConfig
     public const TAX_CATEGORY_OUT_OF_SCOPE = 'O';   // Out of scope
 
     /**
-     * BT-121, the exemption reason codes ZATCA accepts.
+     * BT-121, the exemption reason codes ZATCA accepts, by the category each
+     * one puts the line in.
      *
-     * Taken from the BR-KSA-CL-04 assertion in ZATCA's own Schematron rather
-     * than from the prose, because that assertion is what decides. The list
-     * this replaced differed from it in both directions: it accepted
-     * VATEX-SA-31, VATEX-SA-OOS-1 and VATEX-SA-OOS-2, which the authority does
-     * not recognise, so an invoice carrying one passed validation and drew a
-     * rule violation from ZATCA; and it rejected VATEX-SA-29 and
-     * VATEX-SA-MLTRY, which are valid, so a legitimate exemption could not be
-     * filed at all.
+     * Read out of the BR-KSA-CL-04 assertion in
+     * Data/Rules/Schematrons/20210819_ZATCA_E-invoice_Validation_Rules.xsl of
+     * ZATCA's own e-invoicing SDK (Java 238, R3.4.8), which does not publish
+     * one list of codes. It publishes a list per category and refuses a code
+     * used under the wrong one:
      *
-     * The suffixed variants - VATEX-SA-29F, -33E, -34-4S and the rest - belong
-     * to a second list in the same rule, for exceptions rather than
-     * exemptions. They are deliberately not here until something needs them.
+     *   'Z'  VATEX-SA-32, -33, -34-1 .. -34-5, -35, -36, EDU, HEA, MLTRY,
+     *        DIPLOMAT, DUTYFREE  (and ROYALDECREE, see below)
+     *   'E'  VATEX-SA-29, -29-7, -30
+     *   'O'  VATEX-SA-OOS
      *
-     * Here rather than on CreateInvoiceRequest, where it was, because the
-     * compliance validator needs the same list and had its own: a 19-code
-     * copy in config/fatoora.php that still carried VATEX-SA-31. One list,
-     * beside the mapper that turns these into a tax category.
+     * A code => category map rather than a flat list plus a separate mapper,
+     * because the partition is what the authority actually publishes, and
+     * keeping the two apart is what let them disagree.
      *
-     * @var list<string>
+     * Not here, deliberately:
+     *
+     * VATEX-SA-ROYALDECREE is in the 'Z' list of the invoice-level assertion
+     * and absent from the otherwise identical line-level one, within the same
+     * rule file. DocumentBuilder writes the code on the line, so including it
+     * would draw the very warning this map exists to avoid. That same list
+     * also carries a literal 'VATEX-SA-32(bis)', which is a typo in the rule
+     * rather than a code.
+     *
+     * VATEX-SA-31, which an earlier copy of this list accepted, appears in no
+     * assertion at all - the authority does not recognise it.
+     *
+     * The suffixed variants - VATEX-SA-29F, -30R, -32E, -33E, -34-1T, -34-4S,
+     * -34-5A, -35M, -36Q, -29-7L, EDUP, HEAP - are in a separate list in the
+     * rule file, for exceptions rather than exemptions, with their own
+     * category rules. They stay out until something needs them.
+     *
+     * @var array<string, string>
      */
-    public const EXEMPTION_CODES = [
-        // Financial services and insurance
-        'VATEX-SA-29',     // Financial services
-        'VATEX-SA-29-7',   // Life insurance
-        'VATEX-SA-30',     // International transport of goods and passengers
-        'VATEX-SA-32',     // Supplies within customs suspension
-        'VATEX-SA-33',     // Supplies of qualifying metals
-        'VATEX-SA-34-1',   // Medicines and medical equipment
-        'VATEX-SA-34-2',   // Qualifying means of transport
-        'VATEX-SA-34-3',   // Exported goods
-        'VATEX-SA-34-4',   // Exported services
-        'VATEX-SA-34-5',   // Services to non-GCC residents
-        'VATEX-SA-35',     // Real estate
-        'VATEX-SA-36',     // Local passenger transport
+    public const CODE_CATEGORIES = [
+        // Zero-rated ('Z')
+        'VATEX-SA-32' => self::TAX_CATEGORY_ZERO_RATED,       // Supplies within customs suspension
+        'VATEX-SA-33' => self::TAX_CATEGORY_ZERO_RATED,       // Supplies of qualifying metals
+        'VATEX-SA-34-1' => self::TAX_CATEGORY_ZERO_RATED,     // Medicines and medical equipment
+        'VATEX-SA-34-2' => self::TAX_CATEGORY_ZERO_RATED,     // Qualifying means of transport
+        'VATEX-SA-34-3' => self::TAX_CATEGORY_ZERO_RATED,     // Exported goods
+        'VATEX-SA-34-4' => self::TAX_CATEGORY_ZERO_RATED,     // Exported services
+        'VATEX-SA-34-5' => self::TAX_CATEGORY_ZERO_RATED,     // Services to non-GCC residents
+        'VATEX-SA-35' => self::TAX_CATEGORY_ZERO_RATED,       // Real estate
+        'VATEX-SA-36' => self::TAX_CATEGORY_ZERO_RATED,       // Local passenger transport
+        'VATEX-SA-EDU' => self::TAX_CATEGORY_ZERO_RATED,      // Private education to citizens
+        'VATEX-SA-HEA' => self::TAX_CATEGORY_ZERO_RATED,      // Private healthcare to citizens
+        'VATEX-SA-MLTRY' => self::TAX_CATEGORY_ZERO_RATED,    // Supplies to the military
+        'VATEX-SA-DIPLOMAT' => self::TAX_CATEGORY_ZERO_RATED, // Diplomatic exemption
+        'VATEX-SA-DUTYFREE' => self::TAX_CATEGORY_ZERO_RATED, // Duty-free shops
 
-        // Out of scope
-        'VATEX-SA-OOS',    // Out of scope
+        // Exempt ('E')
+        'VATEX-SA-29' => self::TAX_CATEGORY_EXEMPT,           // Financial services
+        'VATEX-SA-29-7' => self::TAX_CATEGORY_EXEMPT,         // Life insurance
+        'VATEX-SA-30' => self::TAX_CATEGORY_EXEMPT,           // International transport
 
-        // Zero-rated
-        'VATEX-SA-HEA',    // Private healthcare to citizens
-        'VATEX-SA-EDU',    // Private education to citizens
-        'VATEX-SA-MLTRY',  // Supplies to the military
+        // Out of scope ('O')
+        'VATEX-SA-OOS' => self::TAX_CATEGORY_OUT_OF_SCOPE,
     ];
 
     /**
@@ -180,12 +197,22 @@ final class FatooraConfig
      * The tax category a line belongs to, given its exemption code and rate.
      *
      * ZATCA reads the category and the exemption reason together: VATEX-SA-HEA
-     * on a line taxed at 15% is a contradiction and the document is rejected
+     * on a line taxed at 15% is a contradiction and the document is refused
      * rather than reconciled. So the code decides, and the rate only answers
      * when there is no code.
      *
-     * Order matters — the arms short-circuit, and every code begins VATEX-SA-,
-     * so the specific prefixes have to be tried before the general one.
+     * A lookup in CODE_CATEGORIES, which is ZATCA's own partition. This used
+     * to test three prefixes - OOS, HEA, EDU - and send every other
+     * VATEX-SA- code to 'E'. BR-KSA-CL-04 puts ten of the codes this accepts
+     * in 'Z': VATEX-SA-32, -33, -34-1 through -34-5, -35, -36 and MLTRY were
+     * all filed as exempt where the authority requires zero-rated. That is
+     * the wrong figure in the taxpayer's return as well as a rule violation.
+     * The three the rule does place in 'E' - 29, 29-7 and 30 - were right by
+     * accident, because everything landed there.
+     *
+     * An unrecognised VATEX-SA- code still answers 'E', as before. Validation
+     * decides whether a code is acceptable; inventing a category for one this
+     * map does not know would be a second opinion with nothing behind it.
      */
     public static function taxCategoryFor(?string $exemptionCode, float $taxRate): string
     {
@@ -193,13 +220,25 @@ final class FatooraConfig
             return $taxRate > 0 ? self::TAX_CATEGORY_STANDARD : self::TAX_CATEGORY_ZERO_RATED;
         }
 
-        return match (true) {
-            str_starts_with($exemptionCode, 'VATEX-SA-OOS') => self::TAX_CATEGORY_OUT_OF_SCOPE,
-            str_starts_with($exemptionCode, 'VATEX-SA-HEA') => self::TAX_CATEGORY_ZERO_RATED,
-            str_starts_with($exemptionCode, 'VATEX-SA-EDU') => self::TAX_CATEGORY_ZERO_RATED,
-            str_starts_with($exemptionCode, 'VATEX-SA-') => self::TAX_CATEGORY_EXEMPT,
-            default => $taxRate > 0 ? self::TAX_CATEGORY_STANDARD : self::TAX_CATEGORY_ZERO_RATED,
-        };
+        if (isset(self::CODE_CATEGORIES[$exemptionCode])) {
+            return self::CODE_CATEGORIES[$exemptionCode];
+        }
+
+        if (str_starts_with($exemptionCode, 'VATEX-SA-')) {
+            return self::TAX_CATEGORY_EXEMPT;
+        }
+
+        return $taxRate > 0 ? self::TAX_CATEGORY_STANDARD : self::TAX_CATEGORY_ZERO_RATED;
+    }
+
+    /**
+     * The codes BT-121 accepts, for validation.
+     *
+     * @return list<string>
+     */
+    public static function exemptionCodes(): array
+    {
+        return array_keys(self::CODE_CATEGORIES);
     }
 
     // ============================================================

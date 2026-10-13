@@ -43,7 +43,7 @@ class InvoiceValidator
      */
     private function getValidExemptionCodes(): array
     {
-        return FatooraConfig::EXEMPTION_CODES;
+        return FatooraConfig::exemptionCodes();
     }
 
     /**

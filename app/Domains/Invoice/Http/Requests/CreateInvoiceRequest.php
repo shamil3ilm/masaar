@@ -154,7 +154,7 @@ class CreateInvoiceRequest extends FormRequest
             'lines.*.exempt_code' => [
                 'nullable',
                 'string',
-                Rule::in(FatooraConfig::EXEMPTION_CODES),
+                Rule::in(FatooraConfig::exemptionCodes()),
             ],
             'lines.*.exempt_reason' => [
                 'nullable',

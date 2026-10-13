@@ -66,9 +66,21 @@ class ExemptLineTest extends TestCase
             // never have been filed. Export is billed under VATEX-SA-34-3,
             // which is zero-rated rather than out of scope.
             'out of scope' => ['VATEX-SA-OOS', 'O'],
-            'exported goods are zero-rated' => ['VATEX-SA-34-3', 'E'],
-            'financial services are exempt' => ['VATEX-SA-33', 'E'],
-            'qualifying metals are exempt' => ['VATEX-SA-36', 'E'],
+            // These three said 'E' under names that said otherwise, and two
+            // named the wrong code: VATEX-SA-33 is qualifying metals, not
+            // financial services, and VATEX-SA-36 is local passenger
+            // transport, not metals. The labels came from
+            // TaxCategory::fromExemptionCode, a mapper with no callers whose
+            // comments were shifted against the real list. BR-KSA-CL-04 puts
+            // all three in 'Z'; the comment above already said as much about
+            // VATEX-SA-34-3 while the expectation below it said 'E'.
+            'exported goods are zero-rated' => ['VATEX-SA-34-3', 'Z'],
+            'qualifying metals are zero-rated' => ['VATEX-SA-33', 'Z'],
+            'local transport is zero-rated' => ['VATEX-SA-36', 'Z'],
+
+            // The 'E' branch, with the code that is actually in it.
+            'financial services are exempt' => ['VATEX-SA-29', 'E'],
+            'life insurance is exempt' => ['VATEX-SA-29-7', 'E'],
         ];
     }
 

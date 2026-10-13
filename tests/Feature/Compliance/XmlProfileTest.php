@@ -90,45 +90,23 @@ class XmlProfileTest extends TestCase
     /**
      * BT-121, pinned to what ZATCA's BR-KSA-CL-04 assertion accepts.
      *
-     * The allowlist had drifted both ways: three codes the authority does not
-     * recognise, and two valid ones it refused. A code list is exactly the
-     * kind of thing that is copied from prose once and never checked against
-     * the rule file that decides.
-     */
-    /**
-     * Every code on the list resolves to a category, and never to standard.
+     * Read out of Data/Rules/Schematrons/20210819_ZATCA_E-invoice_Validation_Rules.xsl
+     * in ZATCA's own e-invoicing SDK rather than from a guide. The list had
+     * drifted both ways before - codes the authority does not recognise, and
+     * valid ones it refused - which is what a code list copied from prose and
+     * never checked against the rule that decides tends to do.
      *
-     * The list and the mapper were separately stated and drifted apart: a
-     * second, callerless mapper on TaxCategory returned ZeroRated for
-     * VATEX-SA-29-7 and VATEX-SA-36 where taxCategoryFor returns Exempt, and
-     * three files disagreed about what those codes even are. Tying the two
-     * together here means a code added to the list without a home in the
-     * mapper fails, rather than being filed as a standard-rate line.
+     * DIPLOMAT and DUTYFREE were missing, so a diplomatic or duty-free
+     * exemption could not be filed at all.
      */
-    public function test_every_code_maps_to_a_category(): void
-    {
-        foreach (FatooraConfig::EXEMPTION_CODES as $code) {
-            $category = FatooraConfig::taxCategoryFor($code, 0.0);
-
-            $this->assertContains($category, [
-                FatooraConfig::TAX_CATEGORY_ZERO_RATED,
-                FatooraConfig::TAX_CATEGORY_EXEMPT,
-                FatooraConfig::TAX_CATEGORY_OUT_OF_SCOPE,
-            ], $code.' resolved to '.$category.', but a line carrying an exemption code is not standard-rated');
-        }
-    }
-
     public function test_exemption_codes_match_the_authority(): void
     {
-        // Read directly rather than by reflection: the list moved from a
-        // private const on CreateInvoiceRequest to FatooraConfig, so that the
-        // compliance validator could stop keeping its own 19-code copy.
-        $codes = FatooraConfig::EXEMPTION_CODES;
+        $codes = FatooraConfig::exemptionCodes();
 
         $this->assertNotContains(
             'VATEX-SA-31',
             $codes,
-            'VATEX-SA-31 is the code the Schematron does not recognise, and the copy this list replaced carried it'
+            'VATEX-SA-31 appears in no BR-KSA-CL-04 assertion, and the list this replaced carried it'
         );
 
         sort($codes);
@@ -146,11 +124,65 @@ class XmlProfileTest extends TestCase
             'VATEX-SA-34-5',
             'VATEX-SA-35',
             'VATEX-SA-36',
+            'VATEX-SA-DIPLOMAT',
+            'VATEX-SA-DUTYFREE',
             'VATEX-SA-EDU',
             'VATEX-SA-HEA',
             'VATEX-SA-MLTRY',
             'VATEX-SA-OOS',
         ], $codes, 'The exemption allowlist no longer matches BR-KSA-CL-04.');
+    }
+
+    /**
+     * And each one is filed under the category that rule puts it in.
+     *
+     * BR-KSA-CL-04 does not publish one list of codes. It publishes a list
+     * per category and refuses a code used under the wrong one. taxCategoryFor
+     * tested three prefixes - OOS, HEA, EDU - and sent every other VATEX-SA-
+     * code to 'E', so ten of the codes below were filed exempt where the
+     * authority requires zero-rated: the wrong figure in the taxpayer's
+     * return as well as a rule violation.
+     */
+    public function test_each_code_files_under_its_category(): void
+    {
+        $expected = [
+            'VATEX-SA-32' => FatooraConfig::TAX_CATEGORY_ZERO_RATED,
+            'VATEX-SA-33' => FatooraConfig::TAX_CATEGORY_ZERO_RATED,
+            'VATEX-SA-34-1' => FatooraConfig::TAX_CATEGORY_ZERO_RATED,
+            'VATEX-SA-34-2' => FatooraConfig::TAX_CATEGORY_ZERO_RATED,
+            'VATEX-SA-34-3' => FatooraConfig::TAX_CATEGORY_ZERO_RATED,
+            'VATEX-SA-34-4' => FatooraConfig::TAX_CATEGORY_ZERO_RATED,
+            'VATEX-SA-34-5' => FatooraConfig::TAX_CATEGORY_ZERO_RATED,
+            'VATEX-SA-35' => FatooraConfig::TAX_CATEGORY_ZERO_RATED,
+            'VATEX-SA-36' => FatooraConfig::TAX_CATEGORY_ZERO_RATED,
+            'VATEX-SA-EDU' => FatooraConfig::TAX_CATEGORY_ZERO_RATED,
+            'VATEX-SA-HEA' => FatooraConfig::TAX_CATEGORY_ZERO_RATED,
+            'VATEX-SA-MLTRY' => FatooraConfig::TAX_CATEGORY_ZERO_RATED,
+            'VATEX-SA-DIPLOMAT' => FatooraConfig::TAX_CATEGORY_ZERO_RATED,
+            'VATEX-SA-DUTYFREE' => FatooraConfig::TAX_CATEGORY_ZERO_RATED,
+
+            'VATEX-SA-29' => FatooraConfig::TAX_CATEGORY_EXEMPT,
+            'VATEX-SA-29-7' => FatooraConfig::TAX_CATEGORY_EXEMPT,
+            'VATEX-SA-30' => FatooraConfig::TAX_CATEGORY_EXEMPT,
+
+            'VATEX-SA-OOS' => FatooraConfig::TAX_CATEGORY_OUT_OF_SCOPE,
+        ];
+
+        foreach ($expected as $code => $category) {
+            $this->assertSame(
+                $category,
+                FatooraConfig::taxCategoryFor($code, 0.0),
+                $code.' is filed under the wrong VAT category for BR-KSA-CL-04'
+            );
+        }
+
+        // Every accepted code is covered above, so a code added to the list
+        // without a decision about its category fails here.
+        $this->assertSame(
+            [],
+            array_diff(FatooraConfig::exemptionCodes(), array_keys($expected)),
+            'an accepted code has no category pinned'
+        );
     }
 
     public function test_ubl_version_is_pinned(): void
