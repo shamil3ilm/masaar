@@ -11,6 +11,7 @@ use App\Domains\Licensing\Services\LicenseValidationService;
 use App\Domains\Licensing\Services\UsageMeteringService;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Organization\ValueObjects\OrganizationContext;
+use App\Http\Responses\ApiResponse;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -144,11 +145,13 @@ class ValidateLicense
                 $this->meteringService->recordApiCall($license, true);
             }
 
-            return response()->json([
-                'error' => true,
-                'error_code' => 'LICENSE_SYSTEM_ERROR',
-                'message' => 'License validation system error',
-            ], 500);
+            return ApiResponse::error(
+                'License validation system error',
+                500,
+                [],
+                'LICENSE_SYSTEM_ERROR',
+                'licensing',
+            );
         }
     }
 
@@ -304,25 +307,16 @@ class ValidateLicense
      */
     private function handleLicenseError(LicenseException $e): JsonResponse
     {
-        $response = [
-            'error' => true,
-            'error_code' => $e->errorCode,
-            'message' => $e->getMessage(),
-        ];
-
-        if (! empty($e->context)) {
-            $response['context'] = $e->context;
-        }
-
-        $httpStatus = $e->getCode() ?: 403;
-
-        $jsonResponse = response()->json($response, $httpStatus);
-
-        // Add Retry-After header for rate limiting
-        if ($e->errorCode === 'LICENSE_RATE_LIMITED' && isset($e->context['retry_after'])) {
-            $jsonResponse->header('Retry-After', $e->context['retry_after']);
-        }
-
-        return $jsonResponse;
+        // ApiResponse sets Retry-After itself for a retryable status, so
+        // the header this used to add by hand for LICENSE_RATE_LIMITED now
+        // comes from the same place as every other one.
+        return ApiResponse::error(
+            $e->getMessage(),
+            $e->getCode() ?: 403,
+            $e->context ?? [],
+            $e->errorCode,
+            'licensing',
+            $e->context['retry_after'] ?? null,
+        );
     }
 }

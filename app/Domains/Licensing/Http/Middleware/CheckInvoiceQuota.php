@@ -7,6 +7,7 @@ namespace App\Domains\Licensing\Http\Middleware;
 use App\Domains\Licensing\Exceptions\LicenseException;
 use App\Domains\Licensing\Models\License;
 use App\Domains\Licensing\Services\UsageMeteringService;
+use App\Http\Responses\ApiResponse;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -56,11 +57,13 @@ class CheckInvoiceQuota
      */
     private function handleQuotaError(LicenseException $e): JsonResponse
     {
-        return response()->json([
-            'error' => true,
-            'error_code' => $e->errorCode,
-            'message' => $e->getMessage(),
-            'context' => $e->context,
-        ], 429);
+        return ApiResponse::error(
+            $e->getMessage(),
+            429,
+            $e->context,
+            $e->errorCode,
+            'licensing',
+            $e->context['retry_after'] ?? null,
+        );
     }
 }

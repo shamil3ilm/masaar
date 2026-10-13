@@ -59,7 +59,7 @@ class PlatformLicenseTest extends TestCase
 
         $this->getJson('/api/v1/invoices')
             ->assertStatus(403)
-            ->assertJsonPath('error', 'license_invalid');
+            ->assertJsonPath('error.code', 'LICENSE_INVALID');
     }
 
     /**
@@ -115,6 +115,6 @@ class PlatformLicenseTest extends TestCase
 
         $this->getJson('/api/v1/invoices')
             ->assertStatus(403)
-            ->assertJsonPath('error', 'license_invalid');
+            ->assertJsonPath('error.code', 'LICENSE_INVALID');
     }
 }

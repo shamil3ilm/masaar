@@ -38,6 +38,65 @@ class ErrorEnvelopeTest extends TestCase
     use ReadsSourceCalls;
 
     /**
+     * And middleware does not build its own.
+     *
+     * The licensing middleware refused requests in three shapes that agreed
+     * with nothing, including each other:
+     *
+     *   CheckInvoiceQuota   {error: true, error_code, message, context}
+     *   PlatformLicense     {error: "license_invalid", message, support}
+     *   ValidateLicense     {error: true, error_code, message, context?}
+     *
+     * against the envelope everything else uses,
+     * {success: false, error: {code, message, category, retryable}}. So
+     * `error` was a boolean, a string code and an object depending on which
+     * middleware turned the request away - and a client reading error.code,
+     * as the documented shape says to, got nothing from any of them.
+     *
+     * Middleware is where this matters most: it answers before any controller
+     * runs, so these were the first errors an integrator met.
+     */
+    public function test_no_middleware_builds_an_envelope(): void
+    {
+        $offenders = [];
+
+        foreach ($this->middleware() as $relative => $source) {
+            if (preg_match('/response\(\)->json\(/', $source) === 1) {
+                $offenders[] = $relative;
+            }
+        }
+
+        $this->assertSame([], $offenders,
+            'These build an error body by hand. Use ApiResponse::error(), so `error` is an object '
+            .'with a code, a category and a retryable flag wherever a request is refused.');
+    }
+
+    /** @return array<string, string> relative path => source */
+    private function middleware(): array
+    {
+        $found = [];
+        $app = __DIR__.'/../../../app';
+
+        $files = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($app, \FilesystemIterator::SKIP_DOTS)
+        );
+
+        foreach ($files as $file) {
+            $path = str_replace(DIRECTORY_SEPARATOR, '/', $file->getPathname());
+
+            if ($file->getExtension() !== 'php' || ! str_contains($path, '/Http/Middleware/')) {
+                continue;
+            }
+
+            $found[basename($path)] = (string) file_get_contents($path);
+        }
+
+        ksort($found);
+
+        return $found;
+    }
+
+    /**
      * The keys every error body carries, and no others by default.
      */
     public function test_every_error_has_one_shape(): void

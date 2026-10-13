@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Licensing\Http\Middleware;
 
 use App\Domains\Licensing\Services\PlatformLicenseService;
+use App\Http\Responses\ApiResponse;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -46,11 +47,13 @@ class PlatformLicense
         $validation = $this->licenseService->validate();
 
         if (! $validation['valid']) {
-            return response()->json([
-                'error' => 'license_invalid',
-                'message' => $validation['message'],
-                'support' => 'Contact sales@masaar.com for licensing inquiries.',
-            ], 403);
+            return ApiResponse::error(
+                $validation['message'],
+                403,
+                ['support' => 'Contact sales@masaar.com for licensing inquiries.'],
+                'LICENSE_INVALID',
+                'licensing',
+            );
         }
 
         // Add license info to request for use in controllers
