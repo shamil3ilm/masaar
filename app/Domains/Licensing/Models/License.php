@@ -9,6 +9,7 @@ use App\Domains\Licensing\Enums\LicenseEnvironment;
 use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Enums\LicenseTier;
 use Carbon\Carbon;
+use Closure;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -510,15 +511,22 @@ class License extends Model
      */
     public function extend(int $days, ?string $actorId = null): void
     {
-        $oldExpiry = $this->expires_at;
-        $newExpiry = ($this->expires_at ?? now())->addDays($days);
-
+        // Computed inside the transaction, from the locked row.
+        //
+        // This read $this->expires_at first and handed changeWithAudit a
+        // fixed date, so two administrators each adding thirty days both
+        // started from the same expiry and the second write replaced the
+        // first. Adding days to whatever the row currently holds makes two
+        // extensions add up, which is what was asked for both times.
         $this->changeWithAudit(
-            ['expires_at' => $newExpiry],
+            fn (self $locked): array => ['expires_at' => ($locked->expires_at ?? now())->addDays($days)],
             'extended',
             $actorId,
-            old: ['expires_at' => $oldExpiry?->toIso8601String()],
-            new: ['expires_at' => $newExpiry->toIso8601String(), 'days_added' => $days],
+            old: fn (self $locked): array => ['expires_at' => $locked->expires_at?->toIso8601String()],
+            new: fn (self $locked, array $changes): array => [
+                'expires_at' => $changes['expires_at']->toIso8601String(),
+                'days_added' => $days,
+            ],
         );
     }
 
@@ -527,13 +535,14 @@ class License extends Model
      */
     public function upgradeTier(LicenseTier $newTier, ?string $actorId = null): void
     {
-        $oldTier = $this->tier;
-
+        // The tier it was actually on, read under the lock. $this->tier was
+        // loaded before the transaction, so a concurrent change made the
+        // old_values of this entry describe a transition that never happened.
         $this->changeWithAudit(
             ['tier' => $newTier, ...$newTier->getDefaults()],
             'tier_changed',
             $actorId,
-            old: ['tier' => $oldTier->value],
+            old: fn (self $locked): array => ['tier' => $locked->tier->value],
             new: ['tier' => $newTier->value],
         );
     }
@@ -549,18 +558,52 @@ class License extends Model
      * @param  array<string, mixed>|null  $old
      * @param  array<string, mixed>|null  $new
      */
+    /**
+     * Apply a change and record it, deciding from the row under lock.
+     *
+     * $changes, $old and $new may each be a closure instead of an array, and
+     * are then called with the locked row and the resolved changes. That is
+     * not a convenience: extend() computed its new expiry from a copy of the
+     * licence loaded before this transaction opened, so two administrators
+     * each adding thirty days both read the same expiry, both computed the
+     * same result, and the second write silently replaced the first. The
+     * customer paid for sixty days and got thirty, with two audit rows each
+     * claiming thirty had been added.
+     *
+     * The re-read is unconditional. It used to happen only when a caller
+     * passed a $guard, and revoke(), extend() and upgradeTier() did not -
+     * which made the lock an opt-in for the callers least likely to think of
+     * it. No caller benefits from deciding on a stale copy.
+     *
+     * @param  array<string, mixed>|Closure(self, array<string, mixed>): array<string, mixed>  $changes
+     * @param  array<string, mixed>|Closure(self, array<string, mixed>): array<string, mixed>|null  $old
+     * @param  array<string, mixed>|Closure(self, array<string, mixed>): array<string, mixed>|null  $new
+     */
     private function changeWithAudit(
-        array $changes,
+        array|Closure $changes,
         string $event,
         ?string $actorId,
-        ?array $old = null,
-        ?array $new = null,
+        array|Closure|null $old = null,
+        array|Closure|null $new = null,
         ?callable $guard = null,
     ): void {
         DB::transaction(function () use ($changes, $event, $actorId, $old, $new, $guard): void {
+            // Re-read under a row lock before deciding anything.
+            //
+            // lockForUpdate is a no-op on SQLite, so the unit suite does not
+            // exercise the lock itself; MySQL and Postgres hold the row.
+            $current = static::query()
+                ->whereKey($this->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $this->setAttribute('status', $current->status);
+
+            $changes = $changes instanceof Closure ? $changes($current, []) : $changes;
+            $old = $old instanceof Closure ? $old($current, $changes) : $old;
+            $new = $new instanceof Closure ? $new($current, $changes) : $new;
+
             if ($guard !== null) {
-                // Re-read under a row lock before deciding.
-                //
                 // The status a guard was checked against was loaded before
                 // this transaction, and another administrator may have moved
                 // it since. Two people with the same licence open, one
@@ -568,17 +611,7 @@ class License extends Model
                 // suspend overwrite the revoke - putting the licence back
                 // into a status canReactivate() accepts, which is precisely
                 // the invariant the guard exists to hold.
-                //
-                // lockForUpdate is a no-op on SQLite, so the unit suite does
-                // not exercise this; MySQL and Postgres hold the row.
-                $current = static::query()
-                    ->whereKey($this->getKey())
-                    ->lockForUpdate()
-                    ->firstOrFail();
-
                 $guard($current->status);
-
-                $this->setAttribute('status', $current->status);
             }
 
             $this->update($changes);
