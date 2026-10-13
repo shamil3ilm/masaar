@@ -98,11 +98,15 @@ class ScreenRenderTest extends TestCase
             'success' => false,
         ]);
 
+        // Draft, not issued: the Issue button is the only confirmation on any
+        // portal screen and it renders only for a draft, so an issued fixture
+        // left the whole portal half of test_a_screen_that_asks_can_ask
+        // asserting nothing.
         $this->invoice = Invoice::create([
             'org_id' => $this->org->id,
             'invoice_number' => 'ACME-1',
             'type' => 'simplified',
-            'status' => 'issued',
+            'status' => 'draft',
             'issue_date' => now()->toDateString(),
             'currency' => 'SAR',
             'buyer_name' => 'Walk-in customer',
@@ -195,6 +199,38 @@ class ScreenRenderTest extends TestCase
         foreach ($this->screens('portal.') as $name => $uri) {
             $this->assertColouredPills($this->html($this->member, $uri), $name);
         }
+    }
+
+    /**
+     * A screen that asks before something irreversible can ask it.
+     *
+     * The nine confirmations used window.confirm(), which is always
+     * available. Ours is a component that a layout has to render, so a layout
+     * that forgets it leaves every destructive button on its screens
+     * unguarded - and confirm.js falls back to the browser's dialog rather
+     * than silently not asking, which means the failure looks like nothing at
+     * all except the wrong font.
+     */
+    public function test_a_screen_that_asks_can_ask(): void
+    {
+        foreach ($this->screens('admin.') as $name => $uri) {
+            $this->assertCanConfirm($this->html($this->admin, $uri), $name);
+        }
+
+        foreach ($this->screens('portal.') as $name => $uri) {
+            $this->assertCanConfirm($this->html($this->member, $uri), $name);
+        }
+    }
+
+    private function assertCanConfirm(string $html, string $name): void
+    {
+        if (! str_contains($html, 'data-confirm=')) {
+            return;
+        }
+
+        $this->assertStringContainsString('data-confirm-dialog', $html,
+            $name.' has a form behind a confirmation and no dialog to ask in. '
+            .'Its layout needs <x-ui.confirm-dialog />.');
     }
 
     private function html(User $as, string $uri): string

@@ -91,6 +91,7 @@
                      it is pressed, and nothing a browser prefetches or a
                      crawler follows should be able to do that. --}}
                 <form method="POST" action="{{ route('admin.webhooks.replay', [$endpoint->id, $delivery['id']]) }}"
+                      data-confirm-action="Replay"
                       data-confirm="Replay this delivery? It posts the stored event to the live endpoint now, and the receiver may process it a second time.">
                     @csrf
                     <button type="submit"

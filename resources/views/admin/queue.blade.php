@@ -38,17 +38,16 @@
 <div class="bg-white rounded-lg shadow p-4 mb-6">
     <form method="GET" class="flex flex-wrap gap-4">
         <x-ui.field label="State">
-        <select name="state" class="mt-1 w-full rounded border-gray-300 text-sm font-normal text-gray-900 shadow-sm">
+        <x-ui.select name="state">
             <option value="">All States</option>
             <option value="pending" {{ $state === 'pending' ? 'selected' : '' }}>Pending</option>
             <option value="processing" {{ $state === 'processing' ? 'selected' : '' }}>Processing</option>
             <option value="completed" {{ $state === 'completed' ? 'selected' : '' }}>Completed</option>
             <option value="failed" {{ $state === 'failed' ? 'selected' : '' }}>Failed</option>
-        </select>
+        </x-ui.select>
         </x-ui.field>
         <x-ui.field label="Organization ID">
-            <input type="text" name="org_id" value="{{ $orgId }}"
-                   class="mt-1 w-full rounded border-gray-300 text-sm font-normal text-gray-900 shadow-sm">
+            <x-ui.input type="text" name="org_id" value="{{ $orgId }}" />
         </x-ui.field>
         <div class="flex items-end gap-2">
             <x-ui.button variant="secondary">Filter</x-ui.button>

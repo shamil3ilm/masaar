@@ -78,6 +78,44 @@ class ActionMarkupTest extends TestCase
     }
 
     /**
+     * One control shell, like the action shell above it.
+     *
+     * Fifty controls were written by hand in thirteen class strings - rounded
+     * against rounded-md, with and without shadow-sm, four different focus
+     * treatments including two with none - and every one of them was between
+     * thirty-six and thirty-eight pixels tall against a minimum of
+     * forty-four. A date filter is harder to hit accurately than a button.
+     *
+     * hidden, checkbox and radio are left out: a hidden field is not drawn at
+     * all, and the other two are drawn by the browser rather than by these
+     * classes.
+     */
+    public function test_one_control_shell(): void
+    {
+        $offenders = [];
+
+        foreach ($this->views() as $relative => $contents) {
+            if (str_starts_with($relative, 'components/ui/')) {
+                continue;
+            }
+
+            preg_match_all('/<(?:input|select|textarea)\b[^>]*/s', $contents, $matches);
+
+            foreach ($matches[0] as $control) {
+                if (preg_match('/type="(?:hidden|checkbox|radio)"/', $control) === 1) {
+                    continue;
+                }
+
+                $offenders[] = $relative.': '.preg_replace('/\s+/', ' ', substr($control, 0, 60)).'...';
+            }
+        }
+
+        $this->assertSame([], $offenders,
+            'Use <x-ui.input>, <x-ui.select> or <x-ui.textarea>. A control written by hand is '
+            .'under 44px tall and picks its own focus ring.');
+    }
+
+    /**
      * Every control a person types into has a name something can read.
      *
      * Three ways count, and the codebase uses all three for good reasons:

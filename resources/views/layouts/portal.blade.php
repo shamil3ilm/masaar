@@ -84,5 +84,7 @@
             </div>
         </main>
     </div>
+
+    <x-ui.confirm-dialog />
 </body>
 </html>

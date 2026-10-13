@@ -45,25 +45,23 @@
 
         <div class="flex-1 min-w-[200px]">
             <x-ui.field label="User">
-            <select name="user_id" class="mt-1 w-full rounded border-gray-300 text-sm font-normal text-gray-900 shadow-sm">
+            <x-ui.select name="user_id">
                 <option value="">All Users</option>
                 @foreach($users as $user)
                 <option value="{{ $user->id }}" {{ $userId == $user->id ? 'selected' : '' }}>
                     {{ $user->name ?? $user->email }}
                 </option>
                 @endforeach
-            </select>
+            </x-ui.select>
             </x-ui.field>
         </div>
 
         <x-ui.field label="From">
-            <input type="date" name="date_from" value="{{ $dateFrom }}"
-                   class="mt-1 rounded border-gray-300 text-sm font-normal text-gray-900 shadow-sm">
+            <x-ui.input type="date" name="date_from" value="{{ $dateFrom }}" />
         </x-ui.field>
 
         <x-ui.field label="To">
-            <input type="date" name="date_to" value="{{ $dateTo }}"
-                   class="mt-1 rounded border-gray-300 text-sm font-normal text-gray-900 shadow-sm">
+            <x-ui.input type="date" name="date_to" value="{{ $dateTo }}" />
         </x-ui.field>
 
         <div class="flex items-end gap-2">

@@ -37,18 +37,19 @@
 
     @if ($status['is_fully_operational'])
         <form method="POST" action="{{ route('admin.kill-switches.stop') }}" class="flex flex-wrap items-end gap-2"
+              data-confirm-tone="danger" data-confirm-action="Stop everything"
               data-confirm="Stop everything? No invoice will be issued, signed or filed for any taxpayer until you resume.">
             @csrf
             <div>
                 <label for="stop-reason" class="mb-1 block text-xs font-medium text-gray-600">Reason</label>
-                <input id="stop-reason" name="reason" type="text" required minlength="5" maxlength="500"
-                       value="{{ old('reason') }}" placeholder="Why everything is stopping"
-                       class="w-full rounded border border-gray-300 sm:w-72 px-3 py-2 text-sm focus:border-teal-600 focus:ring-1 focus:ring-teal-600">
+                <x-ui.input id="stop-reason" name="reason" type="text" required minlength="5" maxlength="500"
+                       value="{{ old('reason') }}" placeholder="Why everything is stopping" class="sm:w-72" />
             </div>
             <x-ui.button variant="danger">Stop everything</x-ui.button>
         </form>
     @else
         <form method="POST" action="{{ route('admin.kill-switches.resume') }}"
+              data-confirm-action="Resume everything"
               data-confirm="Resume everything? Every switch currently on will be turned off.">
             @csrf
             <x-ui.button>Resume everything</x-ui.button>
@@ -125,6 +126,7 @@
                 <div class="w-full sm:w-auto sm:shrink-0">
                     @if ($state['enabled'])
                         <form method="POST" action="{{ route('admin.kill-switches.disable') }}"
+                              data-confirm-action="Resume"
                               data-confirm="Resume {{ strtolower($name) }}? Taxpayers will be able to do this again immediately.">
                             @csrf
                             <input type="hidden" name="switch" value="{{ $switch }}">
@@ -133,6 +135,7 @@
                     @else
                         <form method="POST" action="{{ route('admin.kill-switches.enable') }}"
                               class="flex flex-wrap items-end justify-end gap-2"
+                              data-confirm-tone="danger" data-confirm-action="Stop"
                               data-confirm="Stop {{ strtolower($name) }} for every taxpayer?">
                             @csrf
                             <input type="hidden" name="switch" value="{{ $switch }}">
@@ -141,18 +144,16 @@
                                 <label for="reason-{{ $switch }}" class="mb-1 block text-xs font-medium text-gray-600">
                                     Reason
                                 </label>
-                                <input id="reason-{{ $switch }}" name="reason" type="text" required
-                                       minlength="5" maxlength="500" placeholder="Why this is stopping"
-                                       class="w-56 rounded border border-gray-300 px-3 py-2 text-sm focus:border-teal-600 focus:ring-1 focus:ring-teal-600">
+                                <x-ui.input id="reason-{{ $switch }}" name="reason" type="text" required
+                                       minlength="5" maxlength="500" placeholder="Why this is stopping" class="sm:w-56" />
                             </div>
 
                             <div>
                                 <label for="minutes-{{ $switch }}" class="mb-1 block text-xs font-medium text-gray-600">
                                     Minutes
                                 </label>
-                                <input id="minutes-{{ $switch }}" name="minutes" type="number" min="1"
-                                       max="{{ $maxMinutes }}" placeholder="optional"
-                                       class="w-full rounded border border-gray-300 sm:w-28 px-3 py-2 text-sm focus:border-teal-600 focus:ring-1 focus:ring-teal-600">
+                                <x-ui.input id="minutes-{{ $switch }}" name="minutes" type="number" min="1"
+                                       max="{{ $maxMinutes }}" placeholder="optional" class="sm:w-28" />
                             </div>
 
                             <x-ui.button variant="danger">Stop</x-ui.button>

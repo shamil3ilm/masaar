@@ -37,8 +37,7 @@
     <form method="GET" class="flex flex-wrap gap-4">
         <input type="hidden" name="state" value="{{ $state }}">
         <x-ui.field label="Organization ID">
-            <input type="text" name="org_id" value="{{ $orgId }}"
-                   class="mt-1 w-full rounded border-gray-300 text-sm font-normal text-gray-900 shadow-sm">
+            <x-ui.input type="text" name="org_id" value="{{ $orgId }}" />
         </x-ui.field>
         <div class="flex items-end gap-2">
             <x-ui.button variant="secondary">Filter</x-ui.button>

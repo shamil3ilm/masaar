@@ -14,17 +14,16 @@
 <form method="GET" action="{{ route('admin.licences.index') }}" class="mb-6 bg-white rounded-lg shadow p-4 flex flex-wrap items-end gap-4">
     <div>
         <label for="status" class="block text-xs font-medium text-gray-500 uppercase mb-1">Status</label>
-        <select id="status" name="status" class="rounded-md border-gray-300 text-sm">
+        <x-ui.select id="status" name="status">
             <option value="">Any status</option>
             @foreach (\App\Domains\Licensing\Enums\LicenseStatus::cases() as $case)
                 <option value="{{ $case->value }}" @selected($status === $case->value)>{{ $case->getLabel() }}</option>
             @endforeach
-        </select>
+        </x-ui.select>
     </div>
     <div class="flex-1 min-w-48">
         <label for="q" class="block text-xs font-medium text-gray-500 uppercase mb-1">Search</label>
-        <input id="q" name="q" type="text" value="{{ $search }}" placeholder="Organization, contact email or API key"
-               class="w-full rounded-md border-gray-300 text-sm">
+        <x-ui.input id="q" name="q" type="text" value="{{ $search }}" placeholder="Organization, contact email or API key" />
     </div>
     <div class="flex items-center gap-2">
         <x-ui.button variant="secondary">Filter</x-ui.button>

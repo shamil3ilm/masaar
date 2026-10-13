@@ -183,12 +183,12 @@
             <div class="space-y-6 px-6 py-4">
                 @if($canSuspend)
                     <form method="POST" action="{{ route('admin.licences.suspend', $row['id']) }}"
+                          data-confirm-tone="danger" data-confirm-action="Suspend"
                           data-confirm="Suspend this licence? The partner stops being able to call the API the moment you confirm.">
                         @csrf
                         <label for="suspend-reason" class="block text-xs font-medium uppercase text-gray-500">Reason</label>
-                        <input id="suspend-reason" name="reason" type="text" maxlength="255" required
-                               placeholder="Why the partner is being cut off"
-                               class="mt-1 w-full rounded-md border-gray-300 text-sm">
+                        <x-ui.input id="suspend-reason" name="reason" type="text" maxlength="255" required
+                               placeholder="Why the partner is being cut off" />
                         <button type="submit"
                                 class="mt-2 w-full rounded-md bg-yellow-600 px-4 py-2 text-sm text-white hover:bg-yellow-700">
                             Suspend licence
@@ -210,12 +210,12 @@
 
                 @if($canRevoke)
                     <form method="POST" action="{{ route('admin.licences.revoke', $row['id']) }}"
+                          data-confirm-tone="danger" data-confirm-action="Revoke"
                           data-confirm="Revoke this licence? This is permanent and the partner integration stops working now.">
                         @csrf
                         <label for="revoke-reason" class="block text-xs font-medium uppercase text-gray-500">Reason</label>
-                        <input id="revoke-reason" name="reason" type="text" maxlength="255" required
-                               placeholder="Why the licence is being withdrawn"
-                               class="mt-1 w-full rounded-md border-gray-300 text-sm">
+                        <x-ui.input id="revoke-reason" name="reason" type="text" maxlength="255" required
+                               placeholder="Why the licence is being withdrawn" />
                         <x-ui.button variant="danger" class="mt-2 w-full">Revoke licence</x-ui.button>
                         <p class="mt-1 text-xs text-gray-500">Permanent. This key can never be used again.</p>
                     </form>
@@ -224,6 +224,7 @@
                 {{-- Rotating is offered whatever the status: a leaked secret
                      on a suspended licence still wants replacing. --}}
                 <form method="POST" action="{{ route('admin.licences.rotate', $row['id']) }}"
+                      data-confirm-tone="danger" data-confirm-action="Regenerate"
                       data-confirm="Regenerate this secret? The current secret stops working immediately, with no grace period for the partner to update it.">
                     @csrf
                     <button type="submit"

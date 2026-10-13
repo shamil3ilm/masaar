@@ -16,19 +16,18 @@
     <div class="grid gap-4 md:grid-cols-4">
         <div class="md:col-span-2">
             <label for="q" class="mb-1 block text-xs font-medium text-gray-600">Search</label>
-            <input type="text" name="q" id="q" value="{{ $search }}"
-                   placeholder="Invoice number or buyer"
-                   class="w-full rounded border-gray-300 text-sm shadow-sm">
+            <x-ui.input type="text" name="q" id="q" value="{{ $search }}"
+                   placeholder="Invoice number or buyer" />
         </div>
 
         <div>
             <label for="status" class="mb-1 block text-xs font-medium text-gray-600">Status</label>
-            <select name="status" id="status" class="w-full rounded border-gray-300 text-sm shadow-sm">
+            <x-ui.select name="status" id="status">
                 <option value="">Any status</option>
                 @foreach (['draft' => 'Draft', 'issued' => 'Issued', 'accepted' => 'Accepted', 'rejected' => 'Rejected'] as $value => $label)
                     <option value="{{ $value }}" @selected($status === $value)>{{ $label }}</option>
                 @endforeach
-            </select>
+            </x-ui.select>
         </div>
 
         <div class="flex items-end gap-2">

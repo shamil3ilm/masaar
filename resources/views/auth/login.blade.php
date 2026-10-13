@@ -33,16 +33,14 @@
 
                 <div>
                     <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <input id="email" name="email" type="email" required autofocus
-                           value="{{ old('email') }}" autocomplete="username"
-                           class="w-full border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                    <x-ui.input id="email" name="email" type="email" required autofocus
+                           value="{{ old('email') }}" autocomplete="username" />
                 </div>
 
                 <div>
                     <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                    <input id="password" name="password" type="password" required
-                           autocomplete="current-password"
-                           class="w-full border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                    <x-ui.input id="password" name="password" type="password" required
+                           autocomplete="current-password" />
                 </div>
 
                 <label class="flex items-center text-sm text-gray-600">

@@ -144,9 +144,22 @@ class AdminKillSwitchController extends Controller
      * Who to record. The service falls back to 'system' for null, which is
      * not what anyone wants to read in an audit trail.
      */
+    /**
+     * Who to record, in a form the next person can read.
+     *
+     * This recorded Auth::id(), so the screen that answers "who stopped
+     * issuance, and why" said 01a071e9-a21e-7158-ac0e-704f4e606031. The same
+     * value goes into the Slack alert for a long-running switch, where a UUID
+     * is worse still: nobody is going to look it up at two in the morning.
+     *
+     * The field is only ever displayed or logged - nothing keys off it - so
+     * it can hold the email the admin bar already shows.
+     */
     private function actor(): string
     {
-        return (string) (Auth::id() ?? 'system');
+        $user = Auth::user();
+
+        return $user?->email ?? (string) (Auth::id() ?? 'system');
     }
 
     private function label(string $switch): string

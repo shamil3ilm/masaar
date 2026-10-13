@@ -33,38 +33,33 @@
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <label class="block text-xs font-medium text-gray-600 lg:col-span-2">
             Description
-            <input type="text" name="lines[{{ $index }}][description]"
-                   value="{{ $row['description'] ?? '' }}"
-                   class="mt-1 w-full rounded border-gray-300 text-sm font-normal text-gray-900 shadow-sm">
+            <x-ui.input type="text" name="lines[{{ $index }}][description]"
+                   value="{{ $row['description'] ?? '' }}" />
         </label>
 
         <label class="block text-xs font-medium text-gray-600 lg:col-span-2">
             Description in Arabic
-            <input type="text" name="lines[{{ $index }}][description_ar]"
+            <x-ui.input type="text" name="lines[{{ $index }}][description_ar]"
                    value="{{ $row['description_ar'] ?? '' }}"
-                   dir="rtl" lang="ar"
-                   class="mt-1 w-full rounded border-gray-300 text-sm font-normal text-gray-900 shadow-sm">
+                   dir="rtl" lang="ar" />
         </label>
 
         <label class="block text-xs font-medium text-gray-600">
             Quantity
-            <input type="number" step="0.001" min="0" name="lines[{{ $index }}][quantity]"
-                   value="{{ $row['quantity'] ?? '' }}"
-                   class="mt-1 w-full rounded border-gray-300 text-sm font-normal text-gray-900 shadow-sm">
+            <x-ui.input type="number" step="0.001" min="0" name="lines[{{ $index }}][quantity]"
+                   value="{{ $row['quantity'] ?? '' }}" />
         </label>
 
         <label class="block text-xs font-medium text-gray-600">
             Unit price
-            <input type="number" step="0.01" min="0" name="lines[{{ $index }}][unit_price]"
-                   value="{{ $row['unit_price'] ?? '' }}"
-                   class="mt-1 w-full rounded border-gray-300 text-sm font-normal text-gray-900 shadow-sm">
+            <x-ui.input type="number" step="0.01" min="0" name="lines[{{ $index }}][unit_price]"
+                   value="{{ $row['unit_price'] ?? '' }}" />
         </label>
 
         <label class="block text-xs font-medium text-gray-600">
             VAT %
-            <input type="number" step="0.01" min="0" max="100" name="lines[{{ $index }}][tax_rate]"
-                   value="{{ $row['tax_rate'] ?? '15' }}"
-                   class="mt-1 w-full rounded border-gray-300 text-sm font-normal text-gray-900 shadow-sm">
+            <x-ui.input type="number" step="0.01" min="0" max="100" name="lines[{{ $index }}][tax_rate]"
+                   value="{{ $row['tax_rate'] ?? '15' }}" />
         </label>
 
         <label class="block text-xs font-medium text-gray-600">
@@ -79,8 +74,7 @@
 
                  normalise() maps a stored legacy code onto its replacement,
                  so an older draft still opens with the right option on. --}}
-            <select name="lines[{{ $index }}][unit_code]"
-                    class="mt-1 w-full rounded border-gray-300 text-sm font-normal text-gray-900 shadow-sm">
+            <x-ui.select name="lines[{{ $index }}][unit_code]">
                 @php($selected = \App\Domains\Invoice\Support\UnitCode::normalise($row['unit_code'] ?? null))
                 @foreach (\App\Domains\Invoice\Support\UnitCode::GROUPS as $group => $codes)
                     <optgroup label="{{ $group }}">
@@ -89,7 +83,7 @@
                         @endforeach
                     </optgroup>
                 @endforeach
-            </select>
+            </x-ui.select>
         </label>
     </div>
 </div>

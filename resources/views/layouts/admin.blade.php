@@ -95,6 +95,8 @@
             </div>
         </main>
     </div>
+    <x-ui.confirm-dialog />
+
     @stack('scripts')
 </body>
 </html>
