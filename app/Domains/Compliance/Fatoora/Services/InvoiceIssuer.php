@@ -82,6 +82,8 @@ class InvoiceIssuer
                 'error' => $e->getMessage(),
             ]);
 
+            $this->discardRolledBackValues($invoice);
+
             return 'Compliance generation failed: '.$e->getMessage();
         } catch (\Throwable $e) {
             Log::error('Issuance: unexpected error during compliance generation', [
@@ -89,8 +91,28 @@ class InvoiceIssuer
                 'error' => $e->getMessage(),
             ]);
 
+            $this->discardRolledBackValues($invoice);
+
             return 'Unexpected error during compliance generation: '.$e->getMessage();
         }
+    }
+
+    /**
+     * Put the caller's invoice back to what the database holds.
+     *
+     * Submitter::generate sets icv, hash, qr_code, signed_xml and status on
+     * the model inside its transaction. A throw after that rolls the database
+     * back and leaves the object holding values that were never kept - and
+     * the caller reads this same instance: PipelineService hands it to
+     * PipelineResult::build, which would report status "issued" and a hash
+     * that exists nowhere to an ERP whose invoice is still a draft here.
+     *
+     * rescue() because a failure to refresh must not replace the error that
+     * brought us here. Same reasoning as SubmissionLedger::reportUnrecorded.
+     */
+    private function discardRolledBackValues(Invoice $invoice): void
+    {
+        rescue(fn () => $invoice->refresh(), report: false);
     }
 
     private function file(Invoice $invoice, ?string $idempotencyKey): IssueOutcome
