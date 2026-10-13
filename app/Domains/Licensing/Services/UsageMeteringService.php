@@ -8,9 +8,7 @@ use App\Domains\Licensing\Exceptions\LicenseException;
 use App\Domains\Licensing\Models\License;
 use App\Domains\Licensing\Models\LicenseUsage;
 use Carbon\CarbonInterface;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
@@ -189,51 +187,30 @@ class UsageMeteringService
     /**
      * Check rate limit for a specific time window.
      *
-     * @throws LicenseException
-     */
-    private function checkWindowLimit(
-        License $license,
-        string $windowType,
-        string $windowKey,
-        int $limit,
-        int $windowSeconds
-    ): void {
-        $cacheKey = "rate_limit:{$license->id}:{$windowType}:{$windowKey}";
-
-        // Try Redis first
-        try {
-            $current = Cache::increment($cacheKey);
-
-            if ($current === 1) {
-                Cache::put($cacheKey, 1, $windowSeconds);
-            }
-
-            if ($current > $limit) {
-                $retryAfter = $this->getRetryAfter($windowType);
-                throw LicenseException::rateLimited($windowType, $limit, $retryAfter);
-            }
-        } catch (LicenseException $e) {
-            throw $e;
-        } catch (\Exception $e) {
-            // Redis unavailable, fall back to DB
-            Log::debug('Rate limit cache failed, using DB fallback', [
-                'error' => $e->getMessage(),
-            ]);
-            $this->checkWindowLimitDb($license, $windowType, $windowKey, $limit, $windowSeconds);
-        }
-    }
-
-    /**
-     * Database fallback for rate limiting.
-     *
      * Two statements, each atomic by itself. The first creates the window's
      * row unless it exists; the unique key on (license_id, window_type,
      * window_key) lets concurrent first requests race it safely. The second
      * takes a slot only while one is left, with the limit inside the UPDATE,
      * so two requests cannot both take the last slot as they could after
      * reading the count and then writing it.
+     *
+     * This was the fallback. In front of it sat a cache fast path that could
+     * not work on the store this application configures: config/cache.php
+     * defaults to `database` and DatabaseStore::incrementOrDecrement returns
+     * false when the key's row does not exist, so `$current === 1` never
+     * created the row and `false > $limit` never threw. The limit admitted
+     * every call, and because nothing threw, the catch that was meant to
+     * reach this method never ran. On Redis it failed the other way: INCR
+     * created the key, then the Cache::put that gave it a TTL reset the
+     * counter to 1 and a burst counted as one request.
+     *
+     * So there is no fast path now. One implementation, the same answer on
+     * every store, and one round trip either way - the database cache driver
+     * would itself have taken a transaction and a lockForUpdate to do this.
+     *
+     * @throws LicenseException
      */
-    private function checkWindowLimitDb(
+    private function checkWindowLimit(
         License $license,
         string $windowType,
         string $windowKey,

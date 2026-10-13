@@ -159,27 +159,25 @@ class UsageReportingService
     }
 
     /**
-     * Get API call count (from cache/logs).
+     * Today's API calls, across every licence.
+     *
+     * Read from license_rate_limits, which the rate limiter writes a row to
+     * per licence per day with the count in it.
+     *
+     * This used to read a cache key, 'api_calls_count_<date>', that only
+     * incrementApiCalls() wrote - and nothing called incrementApiCalls().
+     * Its docblock said "call from middleware"; no middleware did. So this
+     * returned the default for every report ever sent, and the licence
+     * server has been told api_calls: 0 since the method was written. That
+     * method is gone rather than wired up: it carried the same
+     * Cache::increment defect as the rate limiter it was named after, so on
+     * the configured store it would have counted nothing anyway.
      */
     private function getApiCallCount(): int
     {
-        // Get from rate limiter cache or return 0
-        $cacheKey = 'api_calls_count_'.now()->format('Y-m-d');
-
-        return (int) Cache::get($cacheKey, 0);
-    }
-
-    /**
-     * Increment API call counter (call from middleware).
-     */
-    public static function incrementApiCalls(): void
-    {
-        $cacheKey = 'api_calls_count_'.now()->format('Y-m-d');
-        Cache::increment($cacheKey);
-
-        // Ensure it expires at end of day
-        if (Cache::get($cacheKey) === 1) {
-            Cache::put($cacheKey, 1, now()->endOfDay());
-        }
+        return (int) DB::table('license_rate_limits')
+            ->where('window_type', 'day')
+            ->where('window_key', now()->format('Y-m-d'))
+            ->sum('request_count');
     }
 }
