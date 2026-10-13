@@ -64,6 +64,7 @@ enum ErrorCode: string
     case VAL_SELLER_INFO_INCOMPLETE = 'VAL_022';
     case VAL_ADDRESS_INCOMPLETE = 'VAL_023';
     case VAL_TIMESTAMP_INVALID = 'VAL_024';
+    case VAL_INVOICE_ALREADY_ISSUED = 'VAL_025';
     case VALIDATION_FAILED = 'VAL_099';        // Generic validation failure
 
     // ============================================================
@@ -314,7 +315,14 @@ enum ErrorCode: string
             self::ZATCA_CLEARANCE_REJECTED,
             self::ZATCA_REPORTING_REJECTED,
             self::ZATCA_BUSINESS_RULE_VIOLATION,
-            self::ZATCA_COMPLIANCE_CHECK_FAILED => 422,
+            self::ZATCA_COMPLIANCE_CHECK_FAILED,
+
+            // 422 rather than the 409 the other "already" codes carry: this
+            // one is raised before any call to the authority, by the same
+            // invoice-state rule ComplianceController::submit() already
+            // answers 422 for, and the bootstrap handler renders it on routes
+            // the controller does not wrap. One status for one refusal.
+            self::VAL_INVOICE_ALREADY_ISSUED => 422,
 
             // 429 Too Many Requests
             self::RATE_LIMIT_EXCEEDED,
@@ -374,6 +382,7 @@ enum ErrorCode: string
             self::VAL_INVALID_EXEMPTION_CODE => 'Invalid tax exemption reason code',
             self::VAL_CALCULATION_MISMATCH => 'Calculated totals do not match provided values',
             self::VAL_DUPLICATE_INVOICE_NUMBER => 'Invoice number already exists',
+            self::VAL_INVOICE_ALREADY_ISSUED => 'Invoice has already been issued and cannot be issued again',
 
             // ZATCA
             self::ZATCA_CLEARANCE_REJECTED => 'Invoice clearance was rejected by ZATCA',

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Compliance;
 
+use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use App\Domains\Compliance\Fatoora\Services\Submitter;
 use App\Domains\Invoice\Models\Invoice;
@@ -139,15 +140,48 @@ class ChainForkTest extends TestCase
     }
 
     /**
-     * A document already numbered keeps its number, so re-issuing one does not
-     * move it in the chain.
+     * Re-issuing a document is refused, and the refusal is the point.
+     *
+     * This test used to assert that generate() could be called again and would
+     * keep the counter. That was true, and it was not enough: the counter held
+     * while hash, qr_code and signed_xml were rewritten, and ChainRecorder's
+     * updateOrCreate rewrote the chain entry with them. The next invoice's
+     * entry still named the old hash, so the chain forked silently and the
+     * stored document stopped matching what ZATCA holds.
+     *
+     * Internal callers that legitimately re-enter - the submission job
+     * retrying, and Submitter's own submit() - pass reissue: true, and they
+     * only reach it when the hash is missing.
      */
-    public function test_reissuing_does_not_move_a_document(): void
+    public function test_reissuing_a_document_is_refused(): void
+    {
+        $invoice = $this->issue('INV-1');
+        $before = $invoice->fresh();
+
+        try {
+            app(Submitter::class)->generate($invoice->fresh(['lines']), $this->organization);
+            $this->fail('Re-issuing was allowed.');
+        } catch (FatooraException) {
+            // Expected. The assertions below are the point: refusing is only
+            // useful if nothing was written on the way out.
+        }
+
+        $after = $invoice->fresh();
+
+        $this->assertSame($before->hash, $after->hash, 'the hash was rewritten');
+        $this->assertSame($before->icv, $after->icv);
+        $this->assertSame($before->qr_code, $after->qr_code);
+    }
+
+    /**
+     * And the explicit opt-in still works, for the callers that need it.
+     */
+    public function test_reissue_is_allowed_when_asked(): void
     {
         $invoice = $this->issue('INV-1');
         $allocated = $invoice->fresh()->icv;
 
-        app(Submitter::class)->generate($invoice->fresh(['lines']), $this->organization);
+        app(Submitter::class)->generate($invoice->fresh(['lines']), $this->organization, reissue: true);
 
         $this->assertSame($allocated, $invoice->fresh()->icv);
     }

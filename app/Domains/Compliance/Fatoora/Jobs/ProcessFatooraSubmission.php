@@ -184,9 +184,14 @@ class ProcessFatooraSubmission implements ShouldQueue
         //
         // Submitter::generate() is the one place that allocates a counter and
         // fixes a predecessor, under the organization-row lock that also reads
-        // the predecessor, and it leaves an already-issued document alone.
+        // the predecessor.
+        //
+        // It refuses a non-draft, because re-signing forks the chain. The
+        // opt-in is passed because the condition below is only true when the
+        // counter or the hash is missing: a retry of this job finishes an
+        // issuance that did not complete rather than repeating one that did.
         if ($invoice->icv === null || $invoice->hash === null) {
-            $submitter->generate($invoice, $submission->org);
+            $submitter->generate($invoice, $submission->org, reissue: true);
             $invoice->refresh();
         }
 

@@ -2,6 +2,8 @@
 
 namespace App\Domains\Compliance\Fatoora\Http\Controllers;
 
+use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
+use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Services\Submitter;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Services\InvoiceFinder;
@@ -33,7 +35,25 @@ class ComplianceController extends Controller
         $invoice = $this->invoices->findWithLines($this->tenant->getOrganizationId(), $invoiceId);
         $organization = $this->tenant->getOrganization();
 
-        $result = $this->submission->generate($invoice, $organization);
+        // No reissue opt-in here: this route is the vector. A client retrying
+        // after a failed submit() calls this on an already-issued invoice, and
+        // re-signing would fork the chain. The refusal is a client error about
+        // the invoice's state, so it reads like submit()'s below rather than
+        // like a crash.
+        try {
+            $result = $this->submission->generate($invoice, $organization);
+        } catch (FatooraException $e) {
+            // Only this refusal is answered here. Everything else generate()
+            // throws goes to the bootstrap handler, which carries the error
+            // code, category and retry guidance - a kill switch is a
+            // retryable 503, and flattening it to 422 would tell a client to
+            // stop retrying something that will succeed in a minute.
+            if ($e->getErrorCode() !== ErrorCode::VAL_INVOICE_ALREADY_ISSUED) {
+                throw $e;
+            }
+
+            return ApiResponse::error($e->getMessage(), 422);
+        }
 
         return ApiResponse::success($result, 'Compliance data generated');
     }

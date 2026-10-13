@@ -7,6 +7,7 @@ namespace App\Domains\Compliance\Fatoora\Services;
 use App\Domains\Audit\Services\AuditService;
 use App\Domains\Compliance\Fatoora\Client\FatooraClient;
 use App\Domains\Compliance\Fatoora\DTOs\FatooraResponse;
+use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
@@ -54,10 +55,37 @@ class Submitter
     /**
      * Generate compliance data and issue invoice.
      *
+     * @param  bool  $reissue  Allow a document that is no longer a draft to be
+     *                         signed again. Only for a caller completing an
+     *                         issuance that did not finish.
      * @return array{hash: string, qr_code: string}
+     *
+     * @throws FatooraException If the invoice is already issued and $reissue is false
      */
-    public function generate(Invoice $invoice, Organization $organization): array
+    public function generate(Invoice $invoice, Organization $organization, bool $reissue = false): array
     {
+        // Re-issuing rewrites the hash and, through ChainRecorder's
+        // updateOrCreate, the chain entry built from it - while the next
+        // invoice's entry still names the old hash. The chain forks, nothing
+        // errors, and the stored document stops matching what the authority
+        // holds. A double-clicked button is enough.
+        //
+        // The opt-in exists for two internal callers that re-enter only when
+        // the hash is missing, which is finishing an issuance rather than
+        // repeating one.
+        if (! $reissue && $invoice->status !== InvoiceStatus::Draft) {
+            throw new FatooraException(
+                "Invoice {$invoice->invoice_number} is {$invoice->status->value} and cannot be issued again. "
+                .'Re-issuing rewrites its hash and forks the chain.',
+                ErrorCode::VAL_INVOICE_ALREADY_ISSUED,
+                [
+                    'invoice_id' => $invoice->id,
+                    'invoice_number' => $invoice->invoice_number,
+                    'status' => $invoice->status->value,
+                ],
+            );
+        }
+
         // Issuance is what this method does: it signs the document and marks
         // the invoice Issued, which is the irreversible step. KillSwitch offers
         // an issuance stop for a signing defect caught in production, and
@@ -184,10 +212,13 @@ class Submitter
         //
         // Calling it here rather than throwing keeps the direct submit path
         // working for callers that never asked for a separate issuance step.
-        // Already-issued documents are left alone: generate() keeps a counter
-        // it finds, so this does not move anything in the chain.
+        //
+        // The opt-in is passed because this reaches generate() only when the
+        // counter or the hash is missing, so the document was never fully
+        // issued - a half-finished issuance is being completed, not repeated,
+        // and there is no hash for a second one to overwrite.
         if ($invoice->icv === null || $invoice->hash === null) {
-            $this->generate($invoice, $organization);
+            $this->generate($invoice, $organization, reissue: true);
             $invoice->refresh();
         }
 
