@@ -16,6 +16,7 @@ use App\Domains\Compliance\Fatoora\Services\Submitter;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Tests\Fixtures\SigningCredentials;
 use Tests\TestCase;
@@ -58,6 +59,37 @@ class KillSwitchTest extends TestCase
         $client->shouldNotReceive('clearInvoice');
         $client->shouldNotReceive('reportInvoice');
         $this->app->instance(FatooraClient::class, $client);
+    }
+
+    /**
+     * Asking whether a switch is on does not rewrite the registry.
+     *
+     * isEnabled read the whole registry and, on noticing a lapsed switch,
+     * wrote the array back - so a switch an operator enabled between that
+     * read and that write was erased by a request that was only asking
+     * whether it could proceed. Submitter and SubmissionGuard call it on
+     * every issuance and every submission, so the window was hit constantly.
+     */
+    public function test_a_read_does_not_write(): void
+    {
+        $switches = app(KillSwitch::class);
+
+        // One switch that lapses and one that does not. The lapsed entry is
+        // what used to trigger the housekeeping write.
+        $switches->enable(KillSwitch::SWITCH_SUBMISSION, reason: 'outage', durationSeconds: 60);
+        $switches->enable(KillSwitch::SWITCH_SIGNING, reason: 'maintenance');
+
+        $this->travel(120)->seconds();
+
+        // 'zatca:kill_switches' is KillSwitch::CACHE_KEY, which is private.
+        $before = Cache::get('zatca:kill_switches');
+
+        $switches->isEnabled(KillSwitch::SWITCH_SUBMISSION);
+        $switches->isEnabled(KillSwitch::SWITCH_SIGNING);
+
+        $this->assertEquals($before, Cache::get('zatca:kill_switches'), 'a read rewrote the registry');
+        $this->assertTrue($switches->isEnabled(KillSwitch::SWITCH_SIGNING), 'the switch that had not lapsed is gone');
+        $this->assertFalse($switches->isEnabled(KillSwitch::SWITCH_SUBMISSION), 'a lapsed switch still reads as on');
     }
 
     public function test_submission_switch_stops_submission(): void

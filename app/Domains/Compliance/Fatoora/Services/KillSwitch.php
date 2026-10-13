@@ -120,22 +120,24 @@ class KillSwitch
         }
 
         $key = $this->buildKey($switch, $scope, $tenantId);
-        $switches = $this->getAllSwitches();
 
-        $switches[$key] = [
-            'switch' => $switch,
-            'scope' => $scope,
-            'tenant_id' => $tenantId,
-            'enabled' => true,
-            'enabled_at' => now()->toIso8601String(),
-            'enabled_by' => $enabledBy ?? 'system',
-            'reason' => $reason,
-            'duration_seconds' => $durationSeconds,
-            'expires_at' => $expiresAt,
-            'alert_sent' => false,
-        ];
+        $this->mutate(function (array $switches) use (
+            $key, $switch, $scope, $tenantId, $reason, $enabledBy, $durationSeconds, $expiresAt
+        ): array {
+            $switches[$key] = [
+                'switch' => $switch,
+                'scope' => $scope,
+                'tenant_id' => $tenantId,
+                'enabled' => true,
+                'enabled_at' => now()->toIso8601String(),
+                'enabled_by' => $enabledBy ?? 'system',
+                'reason' => $reason,
+                'duration_seconds' => $durationSeconds,
+                'expires_at' => $expiresAt,
+            ];
 
-        $this->saveSwitches($switches);
+            return $switches;
+        });
 
         Log::critical('Kill switch ENABLED', [
             'switch' => $switch,
@@ -158,158 +160,122 @@ class KillSwitch
         ?string $disabledBy = null
     ): void {
         $key = $this->buildKey($switch, $scope, $tenantId);
-        $switches = $this->getAllSwitches();
+        $removed = null;
 
-        if (isset($switches[$key])) {
-            $enabledAt = $switches[$key]['enabled_at'] ?? 'unknown';
-            $enabledBy = $switches[$key]['enabled_by'] ?? 'unknown';
-            $reason = $switches[$key]['reason'] ?? null;
-
+        $this->mutate(function (array $switches) use ($key, &$removed): array {
+            $removed = $switches[$key] ?? null;
             unset($switches[$key]);
-            $this->saveSwitches($switches);
 
+            return $switches;
+        });
+
+        // Logged outside the lock: what was there is read inside it, so the
+        // record is of the entry this call actually removed rather than
+        // whatever a concurrent operator left behind.
+        if ($removed !== null) {
             Log::info('Kill switch DISABLED', [
                 'switch' => $switch,
                 'scope' => $scope,
                 'tenant_id' => $tenantId,
-                'was_enabled_at' => $enabledAt,
-                'was_enabled_by' => $enabledBy,
-                'was_reason' => $reason,
+                'was_enabled_at' => $removed['enabled_at'] ?? 'unknown',
+                'was_enabled_by' => $removed['enabled_by'] ?? 'unknown',
+                'was_reason' => $removed['reason'] ?? null,
                 'disabled_by' => $disabledBy,
             ]);
         }
     }
 
     /**
-     * Check if a kill switch is enabled.
-     * Automatically handles expiry and alerting.
+     * Whether a switch is on, for the whole platform or for one tenant.
+     *
+     * This asks a question and writes nothing, which it did not used to do.
+     * It read the registry and, whenever it noticed an expired switch, wrote
+     * the whole array back - so a switch an operator enabled between that
+     * read and that write was erased by a request that was only asking
+     * whether it could proceed. Submitter and SubmissionGuard call this on
+     * every issuance and every submission, so on a busy tenant the window was
+     * hit constantly, and the operator was left reading a 'Kill switch
+     * ENABLED' log line for a switch that was no longer on.
+     *
+     * Expiry is dropped on read now, in getAllSwitches, so an entry that is
+     * present is an entry that is live.
      */
     public function isEnabled(
         string $switch,
         ?string $tenantId = null
     ): bool {
         $switches = $this->getAllSwitches();
-        $modified = false;
 
-        // Check global switch first
-        $globalKey = $this->buildKey($switch, self::SCOPE_GLOBAL);
-        if (isset($switches[$globalKey]) && $switches[$globalKey]['enabled']) {
-            $result = $this->checkSwitchExpiry($switches, $globalKey);
-            if ($result['expired']) {
-                $modified = true;
-            } elseif ($result['enabled']) {
-                $this->checkAndSendAlert($switches, $globalKey);
-                if ($modified) {
-                    $this->saveSwitches($switches);
-                }
-
-                return true;
+        foreach ($this->keysFor($switch, $tenantId) as $key) {
+            if (empty($switches[$key]['enabled'])) {
+                continue;
             }
-        }
 
-        // Check tenant-specific switch
-        if ($tenantId !== null) {
-            $tenantKey = $this->buildKey($switch, self::SCOPE_TENANT, $tenantId);
-            if (isset($switches[$tenantKey]) && $switches[$tenantKey]['enabled']) {
-                $result = $this->checkSwitchExpiry($switches, $tenantKey);
-                if ($result['expired']) {
-                    $modified = true;
-                } elseif ($result['enabled']) {
-                    $this->checkAndSendAlert($switches, $tenantKey);
-                    if ($modified) {
-                        $this->saveSwitches($switches);
-                    }
+            $this->alertIfLongRunning($switches[$key], $key);
 
-                    return true;
-                }
-            }
-        }
-
-        if ($modified) {
-            $this->saveSwitches($switches);
+            return true;
         }
 
         return false;
     }
 
     /**
-     * Check if a switch has expired and auto-disable if so.
+     * The registry keys that can answer for this switch, most general first.
      *
-     * @return array{expired: bool, enabled: bool}
+     * @return list<string>
      */
-    private function checkSwitchExpiry(array &$switches, string $key): array
+    private function keysFor(string $switch, ?string $tenantId): array
     {
-        if (! isset($switches[$key])) {
-            return ['expired' => false, 'enabled' => false];
+        $keys = [$this->buildKey($switch, self::SCOPE_GLOBAL)];
+
+        if ($tenantId !== null) {
+            $keys[] = $this->buildKey($switch, self::SCOPE_TENANT, $tenantId);
         }
 
-        $switchData = $switches[$key];
-
-        // No expiry set - permanently enabled
-        if (empty($switchData['expires_at'])) {
-            return ['expired' => false, 'enabled' => true];
-        }
-
-        $expiresAt = new \DateTimeImmutable($switchData['expires_at']);
-        if ($expiresAt <= now()) {
-            // Auto-disable expired switch
-            Log::info('Kill switch auto-expired', [
-                'switch' => $switchData['switch'],
-                'scope' => $switchData['scope'],
-                'tenant_id' => $switchData['tenant_id'] ?? null,
-                'was_enabled_at' => $switchData['enabled_at'],
-                'expired_at' => $switchData['expires_at'],
-                'duration' => $switchData['duration_seconds'] ?? 'unknown',
-            ]);
-
-            unset($switches[$key]);
-
-            return ['expired' => true, 'enabled' => false];
-        }
-
-        return ['expired' => false, 'enabled' => true];
+        return $keys;
     }
 
     /**
-     * Check and send alert if switch has been enabled too long.
+     * Warn once when a switch has been on for longer than the threshold.
+     *
+     * The flag recording that the warning had been sent used to live on the
+     * switch itself, which made sending it a write to the registry from a
+     * read path. Worse, that write was guarded by a $modified flag this
+     * method never set, so the flag was never persisted at all and the alert
+     * re-fired on every single check.
+     *
+     * Cache::add is the whole mechanism now. It succeeds only when the key is
+     * absent, so exactly one caller sends the alert, and the registry is not
+     * touched. CircuitBreaker uses the same primitive for the same reason.
+     *
+     * @param  array<string, mixed>  $switchData
      */
-    private function checkAndSendAlert(array &$switches, string $key): void
+    private function alertIfLongRunning(array $switchData, string $key): void
     {
-        if (! isset($switches[$key])) {
-            return;
-        }
-
-        $switchData = &$switches[$key];
-
-        // Already sent alert
-        if (! empty($switchData['alert_sent'])) {
-            return;
-        }
-
         $enabledAt = new \DateTimeImmutable($switchData['enabled_at']);
         $enabledDuration = now()->getTimestamp() - $enabledAt->getTimestamp();
 
-        if ($enabledDuration >= $this->getAlertThresholdSeconds()) {
-            // Mark alert as sent
-            $switchData['alert_sent'] = true;
-            $switches[$key] = $switchData;
-
-            Log::warning('ALERT: Kill switch enabled for extended period', [
-                'switch' => $switchData['switch'],
-                'scope' => $switchData['scope'],
-                'tenant_id' => $switchData['tenant_id'] ?? null,
-                'enabled_at' => $switchData['enabled_at'],
-                'enabled_by' => $switchData['enabled_by'],
-                'reason' => $switchData['reason'],
-                'duration_seconds' => $enabledDuration,
-                'threshold_seconds' => $this->getAlertThresholdSeconds(),
-                'expires_at' => $switchData['expires_at'] ?? 'never',
-            ]);
-
-            // Here you would typically dispatch to your alerting system
-            // e.g., Slack, PagerDuty, email, etc.
-            $this->dispatchAlert($switchData, $enabledDuration);
+        if ($enabledDuration < $this->getAlertThresholdSeconds()) {
+            return;
         }
+
+        if (! Cache::add(self::CACHE_KEY.':alerted:'.$key, true, $this->getCacheTtl())) {
+            return;
+        }
+
+        Log::warning('ALERT: Kill switch enabled for extended period', [
+            'switch' => $switchData['switch'],
+            'scope' => $switchData['scope'],
+            'tenant_id' => $switchData['tenant_id'] ?? null,
+            'enabled_at' => $switchData['enabled_at'],
+            'enabled_by' => $switchData['enabled_by'],
+            'reason' => $switchData['reason'] ?? null,
+            'duration_seconds' => $enabledDuration,
+            'threshold_seconds' => $this->getAlertThresholdSeconds(),
+            'expires_at' => $switchData['expires_at'] ?? 'never',
+        ]);
+
+        $this->dispatchAlert($switchData, $enabledDuration);
     }
 
     /**
@@ -636,25 +602,72 @@ class KillSwitch
      */
     public function resumeAll(?string $disabledBy = null): void
     {
-        $switches = $this->getAllSwitches();
+        $resumed = 0;
 
-        foreach (array_keys($switches) as $key) {
-            unset($switches[$key]);
-        }
+        $this->mutate(function (array $switches) use (&$resumed): array {
+            $resumed = count($switches);
 
-        $this->saveSwitches($switches);
+            return [];
+        });
 
         Log::info('All kill switches DISABLED - operations resumed', [
             'disabled_by' => $disabledBy,
+            'switches_cleared' => $resumed,
         ]);
     }
 
     /**
      * Get all switches from cache.
      */
+    /**
+     * Apply a change to the registry under a lock.
+     *
+     * The registry is one cache entry holding every switch, so a mutation is
+     * read-all, change-one, write-all. Two operators acting at once both read
+     * the same array and the second write dropped the first one's switch -
+     * during exactly the kind of incident when two people are both reaching
+     * for the controls. Each of them saw a 'Kill switch ENABLED' line for it.
+     *
+     * The lock is held for the read and the write together, which is the only
+     * way the sequence is safe. Ten seconds is the lease, five the wait: long
+     * enough for a cache round trip, short enough that an operator gets an
+     * error rather than a hang if the lock is stuck.
+     *
+     * @param  callable(array<string, array<string, mixed>>): array<string, array<string, mixed>>  $change
+     */
+    private function mutate(callable $change): void
+    {
+        Cache::lock(self::CACHE_KEY.':lock', 10)->block(5, function () use ($change): void {
+            $this->saveSwitches($change($this->getAllSwitches()));
+        });
+    }
+
+    /**
+     * The switches that are on, with expired ones left out.
+     *
+     * Left out rather than deleted, because answering whether a switch is on
+     * must not modify the registry - the read-modify-write that used to do
+     * that housekeeping is what erased switches enabled in between. An
+     * expired entry simply is not on; it leaves the cache the next time the
+     * registry is written, or when its own TTL passes.
+     *
+     * The 'Kill switch auto-expired' line that the old housekeeping logged is
+     * gone with it. It was emitted from a read path, so keeping it here would
+     * mean logging it on every request for as long as the entry lingered.
+     *
+     * @return array<string, array<string, mixed>>
+     */
     private function getAllSwitches(): array
     {
-        return Cache::get(self::CACHE_KEY, []);
+        $switches = Cache::get(self::CACHE_KEY, []);
+
+        return array_filter($switches, static function (array $switch): bool {
+            if (empty($switch['expires_at'])) {
+                return true;
+            }
+
+            return new \DateTimeImmutable($switch['expires_at']) > now();
+        });
     }
 
     /**
