@@ -44,6 +44,24 @@ class KillSwitch
     /**
      * Scope types.
      */
+    /**
+     * Every switch there is, in the order an operator reads them.
+     *
+     * validateSwitch and getStatus each wrote this list out, so adding a
+     * switch meant remembering both - and the console needs the same list
+     * again to render one control per switch.
+     *
+     * @var list<string>
+     */
+    public const SWITCHES = [
+        self::SWITCH_ISSUANCE,
+        self::SWITCH_SUBMISSION,
+        self::SWITCH_CLEARANCE,
+        self::SWITCH_REPORTING,
+        self::SWITCH_SIGNING,
+        self::SWITCH_OFFLINE_MODE,
+    ];
+
     public const SCOPE_GLOBAL = 'global';
 
     public const SCOPE_TENANT = 'tenant';
@@ -425,18 +443,9 @@ class KillSwitch
      */
     public function getStatus(?string $tenantId = null): array
     {
-        $allSwitches = [
-            self::SWITCH_ISSUANCE,
-            self::SWITCH_SUBMISSION,
-            self::SWITCH_CLEARANCE,
-            self::SWITCH_REPORTING,
-            self::SWITCH_SIGNING,
-            self::SWITCH_OFFLINE_MODE,
-        ];
-
         $status = [];
 
-        foreach ($allSwitches as $switch) {
+        foreach (self::SWITCHES as $switch) {
             $info = $this->getSwitchInfo($switch, $tenantId);
             $enabled = $this->isEnabled($switch, $tenantId);
             $status[$switch] = [
@@ -573,15 +582,18 @@ class KillSwitch
      */
     public function emergencyStop(?string $reason = null, ?string $enabledBy = null): void
     {
-        $allSwitches = [
-            self::SWITCH_ISSUANCE,
-            self::SWITCH_SUBMISSION,
-            self::SWITCH_CLEARANCE,
-            self::SWITCH_REPORTING,
-            self::SWITCH_SIGNING,
-        ];
+        // Everything except forcing offline mode, which is not a stop.
+        //
+        // The other five refuse the step. offline_mode makes submission queue
+        // instead of attempting the authority, so enabling it here would start
+        // accepting work during an emergency stop rather than stopping it.
+        //
+        // Derived from SWITCHES rather than listed again: this was a third
+        // copy of that list, and nothing said the one missing entry was
+        // deliberate.
+        $stoppable = array_diff(self::SWITCHES, [self::SWITCH_OFFLINE_MODE]);
 
-        foreach ($allSwitches as $switch) {
+        foreach ($stoppable as $switch) {
             $this->enable(
                 $switch,
                 self::SCOPE_GLOBAL,
@@ -697,18 +709,9 @@ class KillSwitch
      */
     private function validateSwitch(string $switch): void
     {
-        $validSwitches = [
-            self::SWITCH_ISSUANCE,
-            self::SWITCH_SUBMISSION,
-            self::SWITCH_CLEARANCE,
-            self::SWITCH_REPORTING,
-            self::SWITCH_SIGNING,
-            self::SWITCH_OFFLINE_MODE,
-        ];
-
-        if (! in_array($switch, $validSwitches, true)) {
+        if (! in_array($switch, self::SWITCHES, true)) {
             throw new \InvalidArgumentException(
-                "Invalid kill switch: {$switch}. Valid switches: ".implode(', ', $validSwitches)
+                "Invalid kill switch: {$switch}. Valid switches: ".implode(', ', self::SWITCHES)
             );
         }
     }

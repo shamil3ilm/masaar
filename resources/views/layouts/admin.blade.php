@@ -46,6 +46,10 @@
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                     <span class="ml-3" x-show="open">Webhooks</span>
                 </a>
+                <a href="{{ route('admin.kill-switches') }}" class="flex items-center border-l-2 px-4 py-3 text-white/70 transition-colors hover:bg-ink-800 hover:text-white {{ request()->routeIs('admin.kill-switches*') ? 'border-teal-400 bg-ink-800 text-white' : 'border-transparent' }}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 11-12.728 0M12 3v9"></path></svg>
+                    <span class="ml-3" x-show="open">Kill switches</span>
+                </a>
             </nav>
         </aside>
 

@@ -2,6 +2,7 @@
 
 use App\Domains\Auth\Http\Controllers\SessionAuthController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\AdminAlertController;
+use App\Domains\Compliance\Fatoora\Http\Controllers\AdminKillSwitchController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceDraftController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceFilingController;
@@ -73,6 +74,15 @@ Route::prefix('admin')->name('admin.')
         Route::post('/licences/{licenceId}/revoke', [AdminLicenceController::class, 'revoke'])->name('licences.revoke');
         Route::post('/licences/{licenceId}/rotate', [AdminLicenceController::class, 'rotate'])->name('licences.rotate');
         Route::get('/alerts', [AdminAlertController::class, 'index'])->name('alerts');
+
+        // The kill switches. Every one of these is a POST: they change what
+        // the platform will do for every taxpayer on it, so none of them is
+        // something a crawler or a prefetch should be able to follow.
+        Route::get('/kill-switches', [AdminKillSwitchController::class, 'index'])->name('kill-switches');
+        Route::post('/kill-switches/enable', [AdminKillSwitchController::class, 'enable'])->name('kill-switches.enable');
+        Route::post('/kill-switches/disable', [AdminKillSwitchController::class, 'disable'])->name('kill-switches.disable');
+        Route::post('/kill-switches/stop', [AdminKillSwitchController::class, 'stop'])->name('kill-switches.stop');
+        Route::post('/kill-switches/resume', [AdminKillSwitchController::class, 'resume'])->name('kill-switches.resume');
         Route::get('/webhooks', [AdminWebhookController::class, 'index'])->name('webhooks.index');
         // {webhookId} rather than {webhook}: route model binding would resolve
         // through TenantScope, and a platform admin holds no tenant, so every
