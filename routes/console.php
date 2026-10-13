@@ -21,14 +21,14 @@ Artisan::command('inspire', function () {
 // Index health check - runs every 15 minutes
 Schedule::command('compliance:index-health --alert')
     ->everyFifteenMinutes()
-    ->withoutOverlapping()
+    ->withoutOverlapping(10)
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/index-health.log'));
 
 // Partition maintenance - runs monthly on the 1st at 3 AM
 Schedule::command('compliance:partition-maintenance --create-future --months-ahead=2')
     ->monthlyOn(1, '03:00')
-    ->withoutOverlapping()
+    ->withoutOverlapping(60)
     ->appendOutputTo(storage_path('logs/partition-maintenance.log'));
 
 /*
@@ -43,20 +43,20 @@ Schedule::command('compliance:partition-maintenance --create-future --months-ahe
 // Clean up expired rate limits - runs hourly
 Schedule::command('license:cleanup-rate-limits')
     ->hourly()
-    ->withoutOverlapping()
+    ->withoutOverlapping(30)
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/license-cleanup.log'));
 
 // Check license expirations - runs daily at midnight
 Schedule::command('license:check-expiration')
     ->dailyAt('00:00')
-    ->withoutOverlapping()
+    ->withoutOverlapping(60)
     ->appendOutputTo(storage_path('logs/license-expiration.log'));
 
 // Report usage metrics to license server - runs hourly
 Schedule::command('license:report-usage')
     ->hourly()
-    ->withoutOverlapping()
+    ->withoutOverlapping(30)
     ->runInBackground()
     ->when(fn () => config('platform-license.enabled', false))
     ->appendOutputTo(storage_path('logs/license-usage.log'));
@@ -74,7 +74,18 @@ Schedule::command('license:report-usage')
 // Process offline queue - runs every 5 minutes when auto-recovery enabled
 Schedule::command('fatoora:process-offline --limit=50')
     ->everyFiveMinutes()
-    ->withoutOverlapping()
+    // Ten minutes, not the default.
+    //
+    // withoutOverlapping() defaults to a 1440 minute expiry, so a
+    // runInBackground() child killed by OOM, a docker stop or a deploy leaves
+    // the mutex held and this drain blocked for twenty-four hours, with
+    // nothing logged. Simplified invoices have twenty-four hours to be
+    // reported, so that is precisely one deadline's worth of silence.
+    //
+    // Two ticks' worth of grace: the task runs every five minutes, and a run
+    // that is genuinely still going at ten is one this should not start a
+    // second copy of anyway.
+    ->withoutOverlapping(10)
     ->runInBackground()
     // The file is config/fatoora.php. A config() call naming a file that does
     // not exist returns its default rather than failing, so a wrong namespace
@@ -85,7 +96,7 @@ Schedule::command('fatoora:process-offline --limit=50')
 // Check certificate expiry - runs daily at 8 AM with notifications
 Schedule::command('fatoora:check-certificate --notify')
     ->dailyAt('08:00')
-    ->withoutOverlapping()
+    ->withoutOverlapping(60)
     ->appendOutputTo(storage_path('logs/zatca-certificate.log'));
 
 // Verify hash chain integrity - runs weekly on Sunday at 2 AM
@@ -96,16 +107,16 @@ Schedule::command('fatoora:check-certificate --notify')
 // hours, so this goes looking every hour and fails the run if any are past it.
 Schedule::command('fatoora:overdue-submissions --alert')
     ->hourly()
-    ->withoutOverlapping();
+    ->withoutOverlapping(30);
 
 Schedule::command('fatoora:verify-hash-chain')
     ->weeklyOn(0, '02:00')
-    ->withoutOverlapping()
+    ->withoutOverlapping(120)
     ->appendOutputTo(storage_path('logs/zatca-hash-chain.log'));
 
 // Clean up old offline queue items - runs daily at 4 AM
 Schedule::command('compliance:cleanup-offline-queue')
     ->dailyAt('04:00')
-    ->withoutOverlapping()
+    ->withoutOverlapping(30)
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/zatca-queue-cleanup.log'));

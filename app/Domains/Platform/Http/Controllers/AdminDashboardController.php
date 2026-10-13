@@ -229,17 +229,33 @@ class AdminDashboardController extends Controller
                 $params['--organization'] = $organizationId;
             }
 
-            Artisan::call('fatoora:process-offline', $params);
-            $output = Artisan::output();
+            // Queued, not called.
+            //
+            // Artisan::call ran the whole drain inside this request. The
+            // command walks every organization with pending items and submits
+            // up to --limit invoices one at a time, and FatooraClient gives
+            // each ZATCA call a 30 second timeout with retry(3, 1000) - and
+            // Guzzle maps a read timeout to a ConnectException, so a read
+            // timeout is retried too. That is about 92 seconds per invoice at
+            // worst, against a limit this endpoint allows up to 200. The
+            // request could not have returned, and the operator pressing the
+            // button would have had a gateway timeout and no idea whether any
+            // of it had happened.
+            //
+            // There is nothing to wait for: the same command runs on a
+            // schedule every five minutes, and this endpoint only means "go
+            // now". The two default-queue workers pick it up.
+            Artisan::queue('fatoora:process-offline', $params);
 
             Cache::forget('admin:offline_queue');
 
             return ApiResponse::success([
-                'output' => $output,
-                'processed_at' => now()->toIso8601String(),
-            ], 'Offline queue processing triggered');
+                'limit' => $limit,
+                'org_id' => $organizationId,
+                'queued_at' => now()->toIso8601String(),
+            ], 'Offline queue processing queued', 202);
         } catch (\Exception $e) {
-            return ApiResponse::error('Failed to process offline queue: '.$e->getMessage(), 500);
+            return ApiResponse::error('Failed to queue offline queue processing: '.$e->getMessage(), 500);
         }
     }
 

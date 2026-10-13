@@ -6,9 +6,11 @@ namespace Tests\Feature\Platform;
 
 use App\Domains\Compliance\Fatoora\Services\CircuitBreaker;
 use App\Domains\Compliance\Fatoora\Services\Connectivity;
+use Illuminate\Foundation\Console\QueuedCommand;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use ReflectionClassConstant;
 use Tests\TestCase;
 
@@ -328,6 +330,34 @@ class AdminDashboardTest extends TestCase
             ->assertJsonPath('data.count', 4)
             ->assertJsonPath('data.logs.0.org_id', $globex->id)
             ->assertJsonPath('data.filters', ['state' => null, 'org_id' => null]);
+    }
+
+    /**
+     * Draining the offline queue is handed to a worker, not done here.
+     *
+     * This ran Artisan::call inside the request. The command walks every
+     * organization with pending items and submits up to --limit invoices one
+     * at a time, and FatooraClient gives each ZATCA call a 30 second timeout
+     * with retry(3, 1000) - and Guzzle maps a read timeout to a
+     * ConnectException, so a read timeout is retried too. That is roughly 92
+     * seconds per invoice at worst, against a limit this endpoint allows up
+     * to 200. The request could not have returned, and the operator who
+     * pressed the button would have had a gateway timeout and no idea whether
+     * any of it had happened.
+     *
+     * There is nothing to wait for: the same command runs every five minutes
+     * on the schedule, and this endpoint only means 'go now'.
+     */
+    public function test_draining_the_queue_is_queued(): void
+    {
+        Queue::fake();
+
+        $this->api()
+            ->postJson('/api/admin/dashboard/offline-queue/process', ['limit' => 200])
+            ->assertStatus(202)
+            ->assertJsonPath('data.limit', 200);
+
+        Queue::assertPushed(QueuedCommand::class);
     }
 
     private function api(): self

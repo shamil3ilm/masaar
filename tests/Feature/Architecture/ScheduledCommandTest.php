@@ -33,6 +33,39 @@ class ScheduledCommandTest extends TestCase
         'compliance:index-health',
     ];
 
+    /**
+     * A task that guards against overlapping says for how long.
+     *
+     * withoutOverlapping() defaults to a 1440 minute expiry. A
+     * runInBackground() child killed by OOM, a docker stop or a deploy leaves
+     * the mutex held, and the task is then blocked for twenty-four hours with
+     * nothing logged. fatoora:process-offline runs every five minutes and
+     * drains the offline queue, and simplified invoices have twenty-four
+     * hours to be reported - so the default is precisely one reporting
+     * deadline of silence.
+     *
+     * Asserted on the schedule rather than the source, because the default is
+     * invisible there: the absence of an argument is what causes it.
+     */
+    public function test_an_overlap_guard_states_its_expiry(): void
+    {
+        $defaulted = [];
+
+        foreach (app(Schedule::class)->events() as $event) {
+            // Only the tasks that actually take the mutex.
+            if ($event->withoutOverlapping !== true) {
+                continue;
+            }
+
+            if ($event->expiresAt === 1440) {
+                $defaulted[] = $this->commandName($event->command ?? '') ?? $event->description ?? 'a closure';
+            }
+        }
+
+        $this->assertSame([], $defaulted, 'these hold the overlap mutex for 24 hours if their run dies: '
+            .implode(', ', $defaulted));
+    }
+
     public function test_scheduled_commands_exist(): void
     {
         $registered = array_keys(Artisan::all());
