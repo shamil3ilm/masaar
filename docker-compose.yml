@@ -1,7 +1,7 @@
 # Masaar Docker Compose Configuration
 # ZATCA E-Invoicing Compliance Platform
 #
-# For Northwind Infrastructure Deployment:
+# To deploy:
 # 1. Copy this file to your server
 # 2. Create .env file with required variables
 # 3. Run: docker-compose up -d
@@ -41,23 +41,23 @@ services:
       DB_USERNAME: ${DB_USERNAME:-masaar}
       DB_PASSWORD: ${DB_PASSWORD}
 
-      # Redis (for queues and cache)
+      # Redis, when the redis profile runs it. The same variable the server
+      # below is started with, so the two cannot disagree; the server refuses
+      # to start without it. Unused while the drivers are on the database.
       REDIS_HOST: ${REDIS_HOST:-redis}
-      # Required, and the same value the server below is started with. The
-      # two defaults disagreed - null here, masaar_redis there - so a stack
-      # started without one ran Redis under a published password the app
-      # could not use.
-      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
 
       # Reverse proxies whose X-Forwarded-* headers are believed. Empty trusts
       # none; docker-compose.prod.yml sets it for Traefik.
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
       REDIS_PORT: ${REDIS_PORT:-6379}
 
-      # Cache & Session
-      CACHE_STORE: ${CACHE_STORE:-redis}
-      SESSION_DRIVER: ${SESSION_DRIVER:-redis}
-      QUEUE_CONNECTION: ${QUEUE_CONNECTION:-redis}
+      # Cache, sessions and queues. The database by default: no extra service,
+      # and locks (onOneServer, overlap guards) work across replicas through
+      # the cache_locks table. Set all three to redis with the redis profile.
+      CACHE_STORE: ${CACHE_STORE:-database}
+      SESSION_DRIVER: ${SESSION_DRIVER:-database}
+      QUEUE_CONNECTION: ${QUEUE_CONNECTION:-database}
 
       # ZATCA Configuration
       ZATCA_ENVIRONMENT: ${ZATCA_ENVIRONMENT:-sandbox}
@@ -127,8 +127,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      # Waited for when the redis profile runs it, ignored when it does not.
       redis:
         condition: service_healthy
+        required: false
     networks:
       - masaar-network
     healthcheck:
@@ -173,19 +175,33 @@ services:
   # ==========================================================================
   # Redis (Cache, Sessions, Queues)
   # ==========================================================================
+  #
+  # Optional. Cache, sessions and queues run on the database by default, so
+  # the stack needs no Redis. To use it: COMPOSE_PROFILES=redis, a
+  # REDIS_PASSWORD, and CACHE_STORE / SESSION_DRIVER / QUEUE_CONNECTION=redis.
+  #
+  # The password is required inside the container rather than by ${VAR:?}:
+  # compose checks required variables across the whole file, profile or not,
+  # so the stack would demand a password for a service it is not running.
   redis:
     image: redis:7-alpine
     container_name: masaar-redis
+    profiles: ["redis"]
     restart: unless-stopped
     ports:
       - "127.0.0.1:${REDIS_EXTERNAL_PORT:-6379}:6379"
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    command:
+      - sh
+      - -c
+      - test -n "$$REDIS_PASSWORD" || { echo 'Set REDIS_PASSWORD in .env' >&2; exit 1; }; exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"
     volumes:
       - masaar-redis:/data
     networks:
       - masaar-network
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping"]
       interval: 10s
       timeout: 5s
       retries: 5

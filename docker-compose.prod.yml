@@ -101,7 +101,10 @@ services:
   # policy drops whatever was touched least recently once memory is full - a
   # filing job waiting its turn is exactly that, and it vanishes without an
   # error. noeviction refuses the write instead, where it is seen.
+  #
+  # Only under the redis profile; see docker-compose.yml.
   redis:
+    profiles: ["redis"]
     deploy:
       resources:
         limits:
@@ -110,12 +113,10 @@ services:
         reservations:
           cpus: '0.25'
           memory: 256M
-    command: >
-      redis-server
-      --appendonly yes
-      --requirepass ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
-      --maxmemory 256mb
-      --maxmemory-policy noeviction
+    command:
+      - sh
+      - -c
+      - test -n "$$REDIS_PASSWORD" || { echo 'Set REDIS_PASSWORD in .env' >&2; exit 1; }; exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD" --maxmemory 256mb --maxmemory-policy noeviction
     logging:
       driver: "json-file"
       options:

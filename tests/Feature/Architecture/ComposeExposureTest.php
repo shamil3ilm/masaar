@@ -88,30 +88,58 @@ class ComposeExposureTest extends TestCase
     }
 
     /**
-     * Redis has no password unless one is given, and then both sides use it.
+     * Redis never starts without a password, and both sides read one variable.
      *
      * The server fell back to masaar_redis and the app to null, so a stack
      * started without one ran Redis under a published default - and the app
-     * could not authenticate to it anyway. Required on both sides, compose
-     * refuses to start without it and says why.
+     * could not authenticate to it anyway. Redis is optional now, so the
+     * requirement lives in the container: compose checks ${VAR:?} across the
+     * whole file and would demand a password for a service it is not running.
      */
     public function test_redis_has_no_default_password(): void
     {
         foreach ([self::BASE, self::PROD] as $file) {
-            $services = $this->services($file);
+            $command = $this->redisCommand($file);
 
-            if (! isset($services['redis']['command'])) {
+            if ($command === '') {
                 continue;
             }
 
-            $this->assertStringContainsString('${REDIS_PASSWORD:?', (string) $services['redis']['command'],
+            $this->assertStringContainsString('test -n "$$REDIS_PASSWORD" ||', $command,
                 basename($file).' starts Redis without requiring a password.');
+            $this->assertStringContainsString('--requirepass "$$REDIS_PASSWORD"', $command,
+                basename($file).' starts Redis under a password other than REDIS_PASSWORD.');
         }
 
-        $app = (string) ($this->services(self::BASE)['app']['environment']['REDIS_PASSWORD'] ?? '');
+        $base = $this->services(self::BASE);
 
-        $this->assertStringStartsWith('${REDIS_PASSWORD:?', $app,
-            'The app container must take the same required password the server does.');
+        $this->assertSame('${REDIS_PASSWORD:-}', $base['redis']['environment']['REDIS_PASSWORD'] ?? null,
+            'The server must read REDIS_PASSWORD, with no default to fall back on.');
+        $this->assertSame('${REDIS_PASSWORD:-}', $base['app']['environment']['REDIS_PASSWORD'] ?? null,
+            'The app must read the same REDIS_PASSWORD the server does.');
+    }
+
+    /**
+     * The stack runs without Redis: it is a profile, and the drivers default
+     * to the database. A deployment with no Redis to give it must not have
+     * the app waiting on one, or writing its cache to one that is not there.
+     */
+    public function test_redis_is_optional(): void
+    {
+        foreach ([self::BASE, self::PROD] as $file) {
+            $this->assertSame(['redis'], $this->services($file)['redis']['profiles'] ?? null,
+                basename($file).' runs Redis whether it is wanted or not.');
+        }
+
+        $app = $this->services(self::BASE)['app'];
+
+        $this->assertFalse($app['depends_on']['redis']['required'] ?? true,
+            'The app would refuse to start without a Redis that is optional.');
+
+        foreach (['CACHE_STORE', 'SESSION_DRIVER', 'QUEUE_CONNECTION'] as $variable) {
+            $this->assertSame('${'.$variable.':-database}', $app['environment'][$variable] ?? null,
+                "$variable does not default to the database.");
+        }
     }
 
     /**
@@ -125,7 +153,7 @@ class ComposeExposureTest extends TestCase
     public function test_redis_never_evicts(): void
     {
         foreach ([self::BASE, self::PROD] as $file) {
-            $command = (string) ($this->services($file)['redis']['command'] ?? '');
+            $command = $this->redisCommand($file);
 
             if (! str_contains($command, 'maxmemory-policy')) {
                 continue;
@@ -134,6 +162,16 @@ class ComposeExposureTest extends TestCase
             $this->assertStringContainsString('--maxmemory-policy noeviction', $command,
                 basename($file).' lets Redis evict keys, and the queue lives there.');
         }
+    }
+
+    /**
+     * The Redis command as one string, whether written as a string or a list.
+     */
+    private function redisCommand(string $file): string
+    {
+        $command = $this->services($file)['redis']['command'] ?? '';
+
+        return is_array($command) ? implode(' ', $command) : (string) $command;
     }
 
     /** @return array<string, array<string, mixed>> */
