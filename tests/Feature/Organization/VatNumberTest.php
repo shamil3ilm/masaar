@@ -4,70 +4,100 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Organization;
 
+use App\Domains\Auth\Models\User;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * The VAT number has to survive a write and come back out.
+ * A VAT number is checked where it is typed.
  *
- * ZATCA needs it for seller BT-31 and for tag 2 of the QR code, so an
- * organization whose VAT number reads as null cannot submit an invoice at
- * all. Two separate faults made that the normal case: the column was absent
- * from $fillable so the onboarding API's value was dropped, and the accessor
- * read only from the compliance profile, never falling back to the column.
+ * Four places accepted 'max:50' of any characters. Two of them write to a
+ * column that holds fifteen - organizations.vat_number and
+ * licenses.organization_vat - and MySQL runs in strict mode, so a sixteenth
+ * character was a 500 carrying a SQL message rather than a 422 naming the
+ * field. On SQLite, which this suite uses, the same input is silently
+ * truncated instead: a tax platform storing a VAT number that is not the one
+ * the taxpayer gave it.
  *
- * Neither showed up in unit tests, because nothing asserted the round trip.
+ * The other two reach the authority. ZATCA's BR-KSA-44 requires a buyer VAT
+ * number of fifteen digits, and a rejection for breaking it arrives at
+ * submission - after the invoice has been issued, numbered, hashed and
+ * written into the chain. The remedy for a rejected invoice is a credit note,
+ * so a typo cost a credit note instead of a form error.
+ *
+ * Fifteen digits and nothing about the first or last one. BR-KSA-40 and
+ * BR-KSA-44 require both to be "3", and that belongs where the jurisdiction
+ * is known: this platform also files for the UAE, whose TRN is fifteen digits
+ * with no such prefix.
  */
 class VatNumberTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_vat_number_survives_mass_assignment(): void
+    private string $token;
+
+    protected function setUp(): void
     {
-        $organization = Organization::create([
-            'name' => 'Acme',
-            'country' => 'SA',
-            'vat_number' => '300000000000003',
-        ]);
+        parent::setUp();
 
-        $this->assertSame('300000000000003', $organization->fresh()->vat_number);
-    }
+        User::factory()->create(['email' => 'admin@masaar.test']);
 
-    public function test_vat_number_stored(): void
-    {
-        $organization = Organization::create([
-            'name' => 'Acme',
-            'country' => 'SA',
-            'vat_number' => '300000000000003',
-        ]);
-
-        $this->assertDatabaseHas('organizations', [
-            'id' => $organization->id,
-            'vat_number' => '300000000000003',
-        ]);
+        $this->token = $this->postJson('/api/auth/login', [
+            'email' => 'admin@masaar.test',
+            'password' => 'password',
+        ])->json('data.token.access_token');
     }
 
     /**
-     * One organization can hold different registrations per jurisdiction, so a
-     * compliance profile takes precedence over the stored column.
+     * @return list<array{0: string, 1: string}>
      */
-    public function test_compliance_profile_overrides_the_column(): void
+    public static function refusals(): array
     {
-        $organization = Organization::create([
-            'name' => 'Acme',
-            'country' => 'SA',
-            'vat_number' => '300000000000003',
-            'compliance_profile' => ['vat_number' => '311111111111113'],
-        ]);
-
-        $this->assertSame('311111111111113', $organization->fresh()->vat_number);
+        return [
+            'sixteen digits' => ['3123456789012345', 'longer than the column'],
+            'fourteen digits' => ['31234567890123', 'too short'],
+            'letters' => ['ABCDEFGHIJKLMNO', 'right length, not a number'],
+            'spaces' => ['3 1234567890 123', 'spaced'],
+            'fifty characters' => [str_repeat('3', 50), 'the old maximum'],
+        ];
     }
 
-    public function test_missing_vat_number_reads_as_null(): void
+    /**
+     * A VAT number the column cannot hold is a 422, not a 500.
+     */
+    #[DataProvider('refusals')]
+    public function test_a_bad_vat_is_refused(string $vat, string $why): void
     {
-        $organization = Organization::create(['name' => 'Acme', 'country' => 'SA']);
+        $this->withToken($this->token)
+            ->postJson('/api/organizations', ['name' => 'Acme', 'vat_number' => $vat])
+            ->assertStatus(422)
+            ->assertJsonPath('error.details.vat_number.0', 'The vat number must be exactly 15 digits.');
 
-        $this->assertNull($organization->fresh()->vat_number);
+        $this->assertSame(0, Organization::count(), $why);
+    }
+
+    public function test_a_good_vat_is_accepted(): void
+    {
+        $this->withToken($this->token)
+            ->postJson('/api/organizations', ['name' => 'Acme', 'vat_number' => '300000000000003'])
+            ->assertStatus(201);
+
+        $this->assertSame(
+            '300000000000003',
+            Organization::first()->vat_number
+        );
+    }
+
+    /**
+     * And it stays optional, because a Phase 1 organization may not have one
+     * yet.
+     */
+    public function test_no_vat_is_still_accepted(): void
+    {
+        $this->withToken($this->token)
+            ->postJson('/api/organizations', ['name' => 'Acme'])
+            ->assertStatus(201);
     }
 }

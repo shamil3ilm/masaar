@@ -7,6 +7,7 @@ namespace App\Domains\Licensing\Http\Controllers;
 use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Licensing\Services\LicenseManagementService;
+use App\Domains\Organization\Rules\VatNumber;
 use App\Http\Controllers\Controller;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\RedirectResponse;
@@ -81,7 +82,8 @@ class AdminLicenceController extends Controller
             // table because the foreign key would otherwise reject it as a
             // 500 rather than a field error.
             'org_id' => ['nullable', 'uuid', 'exists:organizations,id'],
-            'organization_vat' => ['nullable', 'string', 'max:50'],
+            // licenses.organization_vat holds fifteen, and MySQL is strict.
+            'organization_vat' => ['nullable', 'string', new VatNumber],
             'contact_phone' => ['nullable', 'string', 'max:50'],
             'expires_at' => ['nullable', 'date', 'after:today'],
             'notes' => ['nullable', 'string', 'max:2000'],

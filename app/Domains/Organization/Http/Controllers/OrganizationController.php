@@ -4,6 +4,7 @@ namespace App\Domains\Organization\Http\Controllers;
 
 use App\Domains\Organization\DTOs\OrganizationChangesData;
 use App\Domains\Organization\DTOs\OrganizationData;
+use App\Domains\Organization\Rules\VatNumber;
 use App\Domains\Organization\Services\Membership;
 use App\Domains\Organization\Services\Registrar;
 use App\Domains\Organization\Services\TenantResolver;
@@ -47,7 +48,7 @@ class OrganizationController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'name_ar' => ['nullable', 'string', 'max:255'],
             'country' => ['nullable', 'string', 'size:2'],
-            'vat_number' => ['nullable', 'string', 'max:50'],
+            'vat_number' => ['nullable', 'string', new VatNumber],
         ]);
 
         $organization = $this->registrar->register(auth()->user(), new OrganizationData(
@@ -100,7 +101,7 @@ class OrganizationController extends Controller
             // it existed needs a way to acquire one, and without this there
             // was none.
             'name_ar' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'vat_number' => ['nullable', 'string', 'max:50'],
+            'vat_number' => ['nullable', 'string', new VatNumber],
         ]);
 
         $organization = $this->registrar->amend($organization, new OrganizationChangesData(

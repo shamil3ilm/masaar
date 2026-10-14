@@ -7,6 +7,7 @@ use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Invoice\Enums\TaxCategory;
 use App\Domains\Invoice\Support\UnitCode;
+use App\Domains\Organization\Rules\VatNumber;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -40,6 +41,10 @@ class CreateInvoiceRequest extends FormRequest
     public function rules(): array
     {
         $isB2B = fn () => $this->input('type') === 'standard';
+
+        // BR-KSA-67 applies only to a Saudi buyer. A postal code
+        // elsewhere is not five digits, and most are not digits at all.
+        $buyerIsSaudi = ($this->input('buyer_address.country_code') ?? 'SA') === 'SA';
 
         return [
             // Invoice header
@@ -76,7 +81,11 @@ class CreateInvoiceRequest extends FormRequest
             'buyer_vat_number' => [
                 'nullable',
                 'string',
-                'max:50',
+                // BR-KSA-44. Checked here rather than left to the authority:
+                // a rejection arrives after the invoice has been issued,
+                // numbered and written into the chain, and the remedy for a
+                // rejected invoice is a credit note.
+                new VatNumber,
                 // BT-46: Required for B2B (Standard) invoices
                 Rule::requiredIf($isB2B),
             ],
@@ -98,7 +107,13 @@ class CreateInvoiceRequest extends FormRequest
             'buyer_address.city' => ['nullable', 'string', 'max:100', Rule::requiredIf($isB2B)],
             'buyer_address.district' => ['nullable', 'string', 'max:100'],
             'buyer_address.building_number' => ['nullable', 'string', 'max:20', Rule::requiredIf($isB2B)],
-            'buyer_address.postal_code' => ['nullable', 'string', 'max:10'],
+            // BR-KSA-67: a Saudi buyer's postal code must be 5 digits.
+            // Checked here because the authority checks it at submission,
+            // which is after the invoice has been issued and chained - and
+            // the remedy for a rejected invoice is a credit note.
+            'buyer_address.postal_code' => $buyerIsSaudi
+                ? ['nullable', 'digits:5']
+                : ['nullable', 'string', 'max:10'],
             // BT-55: Must be valid ISO 3166-1 alpha-2 uppercase code (e.g. SA, AE, GB)
             'buyer_address.country_code' => ['nullable', 'string', 'size:2', 'regex:/^[A-Z]{2}$/'],
 
