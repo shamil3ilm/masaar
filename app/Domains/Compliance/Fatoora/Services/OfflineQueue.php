@@ -76,23 +76,7 @@ class OfflineQueue
     public function complete(string $queueId, Invoice $invoice, FatooraResponse $response): void
     {
         DB::transaction(function () use ($queueId, $invoice, $response): void {
-            // Queueing offline also writes the invoice a submission row, and
-            // the answer belongs on it as it does on every other path. Left
-            // queued, the row was resent by fatoora:recover-submissions once
-            // it went stale - a second filing of an invoice already filed.
-            // The ledger records the invoice's verdict too, so it is one or
-            // the other, never both: the verdict counts the branch's invoice.
-            $submission = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()
-                ->where('invoice_id', $invoice->id)
-                ->whereIn('state', InvoiceSubmission::IN_FLIGHT_STATES)
-                ->latest('created_at')
-                ->first());
-
-            if ($submission !== null) {
-                $this->ledger->recordResponse($submission, $response);
-            } else {
-                $this->verdict->record($invoice, $response);
-            }
+            $this->recordAnswer($invoice, $response);
 
             $this->markCompleted($queueId, [
                 'clearanceStatus' => $response->clearanceStatus,
@@ -100,6 +84,52 @@ class OfflineQueue
                 'invoiceUuid' => $response->validationResults['invoiceUuid'] ?? null,
             ]);
         });
+    }
+
+    /**
+     * Record the authority's refusal of an item, and take it out of the queue.
+     *
+     * A refusal is final: sending the same signed document again earns the
+     * same answer. It is recorded the way complete() records an acceptance -
+     * on the submission row and the invoice's verdict - so the invoice reads
+     * rejected and no recovery job later mistakes its in-flight row for one
+     * still waiting to be sent.
+     */
+    public function reject(string $queueId, Invoice $invoice, FatooraResponse $response): void
+    {
+        DB::transaction(function () use ($queueId, $invoice, $response): void {
+            $this->recordAnswer($invoice, $response);
+
+            $this->markFailed(
+                $queueId,
+                'Rejected by ZATCA: '.implode('; ', $response->errorMessages ?: ['no reason given']),
+                canRetry: false
+            );
+        });
+    }
+
+    /**
+     * Put the authority's answer where every other path puts it.
+     *
+     * Queueing offline also writes the invoice a submission row, and the
+     * answer belongs on it. Left in flight, the row was resent by
+     * fatoora:recover-submissions once it went stale - a second filing. The
+     * ledger records the invoice's verdict too, so it is one or the other,
+     * never both: the verdict counts the branch's invoice.
+     */
+    private function recordAnswer(Invoice $invoice, FatooraResponse $response): void
+    {
+        $submission = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()
+            ->where('invoice_id', $invoice->id)
+            ->whereIn('state', InvoiceSubmission::IN_FLIGHT_STATES)
+            ->latest('created_at')
+            ->first());
+
+        if ($submission !== null) {
+            $this->ledger->recordResponse($submission, $response);
+        } else {
+            $this->verdict->record($invoice, $response);
+        }
     }
 
     /**
