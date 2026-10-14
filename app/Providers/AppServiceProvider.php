@@ -88,10 +88,29 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        $this->assertDebugDisabledInProduction();
-        $this->assertSessionsAreEncrypted();
-        $this->assertSubmissionLimitsAgree();
-        $this->assertAuthorityIsNotSandbox();
+        // The guards protect a platform that serves requests and files
+        // invoices. Package discovery does neither: Composer runs it from
+        // post-autoload-dump, before any .env exists, to read package metadata.
+        //
+        // With no .env the defaults apply - APP_ENV is 'production' and
+        // ZATCA_ENVIRONMENT is 'sandbox' - which is exactly the pairing
+        // assertAuthorityIsNotSandbox refuses. So the guard broke
+        // `composer install` itself, on every machine that ran it before
+        // writing an environment. CI does, and failed at "Install
+        // dependencies" on every push from the commit that added the guard:
+        // thirty-two runs in which no test ran at all, while the suite was
+        // being reported green from a local SQLite run.
+        //
+        // Every other command still checks, including the ones a deploy runs
+        // - migrate, config:cache, queue:work - because those are where a
+        // misconfigured platform should be stopped.
+        if (! $this->app->runningConsoleCommand('package:discover')) {
+            $this->assertDebugDisabledInProduction();
+            $this->assertSessionsAreEncrypted();
+            $this->assertSubmissionLimitsAgree();
+            $this->assertAuthorityIsNotSandbox();
+        }
+
         $this->reclaimMiddlewareAliases();
 
         // Eloquent drops attributes that are not fillable without a word.
