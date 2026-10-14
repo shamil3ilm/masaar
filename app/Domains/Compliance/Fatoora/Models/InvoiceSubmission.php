@@ -7,11 +7,13 @@ namespace App\Domains\Compliance\Fatoora\Models;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Concerns\BelongsToTenant;
 use App\Domains\Organization\Models\Organization;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
  * Invoice Submission with State Machine.
@@ -262,6 +264,40 @@ class InvoiceSubmission extends Model
     public function scopeInProgress($query)
     {
         return $query->whereIn('state', ['queued', 'pending_submission', 'submitted']);
+    }
+
+    /**
+     * In flight and not moved for longer than a submission takes: a worker
+     * died, a job was lost, a request was killed. Nothing is coming back for
+     * it, so fatoora:recover-submissions has to.
+     */
+    public function scopeStale(Builder $query): Builder
+    {
+        $cutoff = self::staleBefore();
+
+        return $query->whereIn('state', self::IN_FLIGHT_STATES)
+            ->where(fn (Builder $q) => $q->where('state_changed_at', '<', $cutoff)
+                ->orWhere(fn (Builder $q) => $q->whereNull('state_changed_at')->where('created_at', '<', $cutoff)));
+    }
+
+    /**
+     * In flight and recently moved: genuinely under way.
+     */
+    public function scopeLive(Builder $query): Builder
+    {
+        $cutoff = self::staleBefore();
+
+        return $query->whereIn('state', self::IN_FLIGHT_STATES)
+            ->where(fn (Builder $q) => $q->where('state_changed_at', '>=', $cutoff)
+                ->orWhere(fn (Builder $q) => $q->whereNull('state_changed_at')->where('created_at', '>=', $cutoff)));
+    }
+
+    /**
+     * Before this, an in-flight submission is stale.
+     */
+    public static function staleBefore(): Carbon
+    {
+        return now()->subMinutes((int) config('fatoora.recovery.stale_minutes', 15));
     }
 
     /**

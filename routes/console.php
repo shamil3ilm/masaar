@@ -109,6 +109,13 @@ Schedule::command('fatoora:overdue-submissions --alert')
     ->hourly()
     ->withoutOverlapping(30);
 
+// Submissions left in flight with nothing coming back for them - a dead
+// worker, a lost job. Every ten minutes, so an invoice is not blocked from
+// filing for longer than the stale window plus this.
+Schedule::command('fatoora:recover-submissions')
+    ->everyTenMinutes()
+    ->withoutOverlapping(10);
+
 Schedule::command('fatoora:verify-hash-chain')
     ->weeklyOn(0, '02:00')
     ->withoutOverlapping(120)

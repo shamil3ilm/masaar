@@ -300,8 +300,11 @@ class SubmissionGuard
      */
     private function checkConcurrentSubmissions(Organization $organization): void
     {
+        // Live ones only. A submission stuck in flight is not concurrent with
+        // anything, and counted it filled the allowance for ever: enough of
+        // them and the tenant could not file at all.
         $inProgress = InvoiceSubmission::where('org_id', $organization->id)
-            ->whereIn('state', ['queued', 'pending_submission', 'submitted'])
+            ->live()
             ->count();
 
         if ($inProgress >= $this->getMaxConcurrentSubmissions()) {

@@ -136,6 +136,15 @@ return [
     ],
 
     /*
+    | How long a submission may sit in flight - queued, claimed, or sent and
+    | awaiting the answer - before fatoora:recover-submissions treats it as
+    | lost. Longer than any real round trip, retries included.
+    */
+    'recovery' => [
+        'stale_minutes' => (int) env('ZATCA_STALE_SUBMISSION_MINUTES', 15),
+    ],
+
+    /*
     |--------------------------------------------------------------------------
     | Idempotency
     |--------------------------------------------------------------------------
