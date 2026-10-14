@@ -20,8 +20,14 @@ class PublicDocsTest extends TestCase
 
     /**
      * Partners and customers are not named anywhere in the documentation.
+     *
+     * Held as SHA-256 of each lowercased name rather than as the names: a
+     * pattern spelling them out would be the one place left that published
+     * them. Matched against every word of a line.
      */
-    private const PARTNER_NAMES = '/example/i';
+    private const PARTNER_NAMES = [
+        '1307868534e100e7b2295fcca50a234f448bceec33c27d3270a31bade303af0b',
+    ];
 
     /**
      * Names and places that only make sense inside the project - and hosts
@@ -43,7 +49,7 @@ class PublicDocsTest extends TestCase
 
         foreach ($this->readmes() as $file) {
             foreach (file($file) ?: [] as $number => $line) {
-                if (preg_match(self::DATED, $line) || preg_match(self::INTERNAL, $line) || preg_match(self::PARTNER_NAMES, $line)) {
+                if (preg_match(self::DATED, $line) || preg_match(self::INTERNAL, $line) || $this->namesPartner($line)) {
                     $offending[] = $this->relative($file).':'.($number + 1).': '.trim($line);
                 }
             }
@@ -58,13 +64,35 @@ class PublicDocsTest extends TestCase
 
         foreach ($this->docs() as $file) {
             foreach (file($file) ?: [] as $number => $line) {
-                if (preg_match(self::PARTNER_NAMES, $line) || preg_match(self::INTERNAL, $line)) {
+                if ($this->namesPartner($line) || preg_match(self::INTERNAL, $line)) {
                     $offending[] = $this->relative($file).':'.($number + 1).': '.trim($line);
                 }
             }
         }
 
         $this->assertSame([], $offending, "Documentation names a partner or an internal resource:\n  ".implode("\n  ", $offending));
+    }
+
+    /**
+     * The hashed check has to fire on a real name; a typo in a hash would
+     * otherwise pass every document forever. The probe is assembled so the
+     * name never appears in this file whole.
+     */
+    public function test_the_partner_check_fires(): void
+    {
+        $this->assertTrue($this->namesPartner('ops@'.strrev('ylfxat').'.test'));
+        $this->assertFalse($this->namesPartner('api.example.com'));
+    }
+
+    private function namesPartner(string $line): bool
+    {
+        foreach (preg_split('/[^a-z0-9]+/', strtolower($line), -1, PREG_SPLIT_NO_EMPTY) ?: [] as $word) {
+            if (in_array(hash('sha256', $word), self::PARTNER_NAMES, true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
