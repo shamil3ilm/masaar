@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Licensing\Enums;
 
+use App\Domains\Licensing\Models\License;
+
 /**
  * License tiers with their limits and features.
  */
@@ -48,10 +50,10 @@ enum LicenseTier: string
                 'webhook_enabled' => true,
             ],
             self::Unlimited => [
-                'invoices_per_month' => PHP_INT_MAX,
-                'max_organizations' => PHP_INT_MAX,
+                'invoices_per_month' => License::UNLIMITED,
+                'max_organizations' => License::UNLIMITED,
                 'calls_per_min' => 300,
-                'calls_per_day' => PHP_INT_MAX,
+                'calls_per_day' => License::UNLIMITED,
                 'offline_mode' => true,
                 'multi_tenant' => true,
                 'webhook_enabled' => true,

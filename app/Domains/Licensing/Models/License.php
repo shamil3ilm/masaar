@@ -10,6 +10,7 @@ use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Enums\LicenseTier;
 use Carbon\Carbon;
 use Closure;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -59,6 +60,22 @@ class License extends Model
     use HasUuids;
     use SoftDeletes;
 
+    /**
+     * What "unlimited" is stored as: the ceiling of the unsigned INT columns
+     * the limits live in.
+     *
+     * It was written two ways and neither fit. The API took -1 and the
+     * Unlimited tier used PHP_INT_MAX; MySQL in strict mode refuses both for
+     * an unsigned INT, so making a licence unlimited was a 500. SQLite, which
+     * the suite runs on, stored -1 as given, and the quota check read
+     * 0 >= -1 as exhausted. -1 is still accepted on the way in - the API
+     * documents it - and becomes this.
+     */
+    public const UNLIMITED = 4294967295;
+
+    /** The limits that can be unlimited. */
+    public const LIMITS = ['invoices_per_month', 'calls_per_day', 'max_organizations'];
+
     protected $table = 'licenses';
 
     protected $fillable = [
@@ -101,11 +118,48 @@ class License extends Model
         'activated_at' => 'datetime',
         'expires_at' => 'datetime',
         'suspended_at' => 'datetime',
+        'invoices_per_month' => 'integer',
+        'calls_per_day' => 'integer',
+        'max_organizations' => 'integer',
     ];
 
     protected $hidden = [
         'api_secret_hash',
     ];
+
+    /**
+     * Whether a limit is unlimited.
+     */
+    public function isUnlimited(string $limit): bool
+    {
+        return (int) $this->getAttribute($limit) >= self::UNLIMITED;
+    }
+
+    protected function invoicesPerMonth(): Attribute
+    {
+        return Attribute::set(fn (mixed $value): int => self::limit($value));
+    }
+
+    protected function callsPerDay(): Attribute
+    {
+        return Attribute::set(fn (mixed $value): int => self::limit($value));
+    }
+
+    protected function maxOrganizations(): Attribute
+    {
+        return Attribute::set(fn (mixed $value): int => self::limit($value));
+    }
+
+    /**
+     * A limit as the column can hold it: -1, or anything past the ceiling,
+     * is unlimited.
+     */
+    private static function limit(mixed $value): int
+    {
+        $value = (int) $value;
+
+        return $value < 0 || $value > self::UNLIMITED ? self::UNLIMITED : $value;
+    }
 
     /**
      * Boot method - prevent hard deletion.

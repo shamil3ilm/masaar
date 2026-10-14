@@ -78,7 +78,12 @@ class LicenseUsageController extends Controller
         $license = $this->getLicenseFromRequest($request);
         $usage = $this->meteringService->getUsageSummary($license);
 
-        $invoicesRemaining = $license->invoices_per_month === -1
+        // -1 is what this endpoint has always said for unlimited, so it still
+        // does - the column holds License::UNLIMITED, which no client knows.
+        $unlimitedInvoices = $license->isUnlimited('invoices_per_month');
+        $unlimitedOrganizations = $license->isUnlimited('max_organizations');
+
+        $invoicesRemaining = $unlimitedInvoices
             ? -1
             : max(0, $license->invoices_per_month - $usage['totals']['invoices_submitted']);
 
@@ -87,19 +92,19 @@ class LicenseUsageController extends Controller
             'data' => [
                 'invoices' => [
                     'used' => $usage['totals']['invoices_submitted'],
-                    'limit' => $license->invoices_per_month,
+                    'limit' => $unlimitedInvoices ? -1 : $license->invoices_per_month,
                     'remaining' => $invoicesRemaining,
                     'percent_used' => $usage['utilization']['invoices_percent'],
-                    'is_unlimited' => $license->invoices_per_month === -1,
+                    'is_unlimited' => $unlimitedInvoices,
                 ],
                 'api_calls' => [
-                    'daily_limit' => $license->calls_per_day,
+                    'daily_limit' => $license->isUnlimited('calls_per_day') ? -1 : $license->calls_per_day,
                     'minute_limit' => $license->calls_per_min,
                     'today_used' => $usage['totals']['api_calls'],
                 ],
                 'organizations' => [
-                    'limit' => $license->max_organizations,
-                    'is_unlimited' => $license->max_organizations === -1,
+                    'limit' => $unlimitedOrganizations ? -1 : $license->max_organizations,
+                    'is_unlimited' => $unlimitedOrganizations,
                 ],
                 'success_rate' => $usage['utilization']['success_rate'],
             ],

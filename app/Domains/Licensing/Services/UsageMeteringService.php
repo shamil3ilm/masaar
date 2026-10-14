@@ -206,7 +206,7 @@ class UsageMeteringService
                 ->where('usage_month', $month)
                 ->sum('invoices_submitted');
 
-            if ($monthlyCount >= $license->invoices_per_month) {
+            if (! $license->isUnlimited('invoices_per_month') && $monthlyCount >= $license->invoices_per_month) {
                 throw LicenseException::quotaExceeded(
                     'invoices_per_month',
                     $license->invoices_per_month,
@@ -266,7 +266,7 @@ class UsageMeteringService
             ->where('usage_month', $month)
             ->sum('invoices_submitted');
 
-        if ($monthlyCount >= $license->invoices_per_month) {
+        if (! $license->isUnlimited('invoices_per_month') && $monthlyCount >= $license->invoices_per_month) {
             throw LicenseException::quotaExceeded(
                 'invoices_per_month',
                 $license->invoices_per_month,
@@ -370,13 +370,16 @@ class UsageMeteringService
             'month' => $month,
             'totals' => $totals,
             'limits' => [
-                'invoices_per_month' => $license->invoices_per_month,
-                'invoices_remaining' => max(0, $license->invoices_per_month - $totals['invoices_submitted']),
-                'api_calls_per_day' => $license->calls_per_day,
+                // -1 for unlimited, as the quota endpoint reports it.
+                'invoices_per_month' => $license->isUnlimited('invoices_per_month') ? -1 : $license->invoices_per_month,
+                'invoices_remaining' => $license->isUnlimited('invoices_per_month')
+                    ? -1
+                    : max(0, $license->invoices_per_month - $totals['invoices_submitted']),
+                'api_calls_per_day' => $license->isUnlimited('calls_per_day') ? -1 : $license->calls_per_day,
                 'api_calls_per_minute' => $license->calls_per_min,
             ],
             'utilization' => [
-                'invoices_percent' => $license->invoices_per_month > 0
+                'invoices_percent' => $license->invoices_per_month > 0 && ! $license->isUnlimited('invoices_per_month')
                     ? round(($totals['invoices_submitted'] / $license->invoices_per_month) * 100, 2)
                     : 0,
                 'success_rate' => $totals['invoices_submitted'] > 0
