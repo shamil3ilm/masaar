@@ -67,6 +67,12 @@ class ProcessOfflineQueue extends Command
         $isDryRun = $this->option('dry-run');
         $force = $this->option('force');
 
+        // What a drain that died left processing goes back to pending first,
+        // or nothing would ever pick it up. A dry run changes nothing.
+        if (! $isDryRun && ($released = $this->queueManager->releaseStranded()) > 0) {
+            $this->warn("Released {$released} item(s) a previous run left processing.");
+        }
+
         // Step 1: Check ZATCA connectivity
         if (! $force) {
             $this->info('Checking ZATCA API connectivity...');
@@ -225,8 +231,13 @@ class ProcessOfflineQueue extends Command
             return;
         }
 
-        // Mark as processing
-        $this->queueManager->markProcessing($item->id);
+        // Taken, or already taken by another drain - in which case it is
+        // that drain's to send.
+        if (! $this->queueManager->claim($item->id)) {
+            $this->skipped++;
+
+            return;
+        }
 
         try {
             $invoice = Invoice::find($item->invoice_id);

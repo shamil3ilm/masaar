@@ -8,6 +8,7 @@ use App\Domains\Compliance\Fatoora\Jobs\ProcessFatooraSubmission;
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Compliance\Fatoora\Services\SubmissionLedger;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -42,6 +43,18 @@ class RecoverSubmissions extends Command
     {
         $stale = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()
             ->stale()
+            // The offline drain owns an invoice while it holds a live queue
+            // item for it. Recovering the row as well would file it twice.
+            ->whereNotExists(fn ($query) => $query->select(DB::raw(1))
+                ->from('offline_queue')
+                ->whereColumn('offline_queue.invoice_id', 'invoice_submissions.invoice_id')
+                ->whereIn('offline_queue.state', ['pending', 'processing']))
+            // And an invoice the authority has accepted is done, whatever its
+            // submission row says.
+            ->whereNotExists(fn ($query) => $query->select(DB::raw(1))
+                ->from('invoices')
+                ->whereColumn('invoices.id', 'invoice_submissions.invoice_id')
+                ->where('invoices.status', 'accepted'))
             ->orderBy('created_at')
             ->limit((int) $this->option('limit'))
             ->get());

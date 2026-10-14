@@ -59,6 +59,7 @@ class OfflineQueue
         private readonly KillSwitch $killSwitchManager,
         private readonly CredentialStore $credentials,
         private readonly InvoiceVerdict $verdict,
+        private readonly SubmissionLedger $ledger,
     ) {
         $this->maxQueueSize = FatooraConfig::getOfflineQueueMaxSize();
     }
@@ -75,7 +76,23 @@ class OfflineQueue
     public function complete(string $queueId, Invoice $invoice, FatooraResponse $response): void
     {
         DB::transaction(function () use ($queueId, $invoice, $response): void {
-            $this->verdict->record($invoice, $response);
+            // Queueing offline also writes the invoice a submission row, and
+            // the answer belongs on it as it does on every other path. Left
+            // queued, the row was resent by fatoora:recover-submissions once
+            // it went stale - a second filing of an invoice already filed.
+            // The ledger records the invoice's verdict too, so it is one or
+            // the other, never both: the verdict counts the branch's invoice.
+            $submission = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()
+                ->where('invoice_id', $invoice->id)
+                ->whereIn('state', InvoiceSubmission::IN_FLIGHT_STATES)
+                ->latest('created_at')
+                ->first());
+
+            if ($submission !== null) {
+                $this->ledger->recordResponse($submission, $response);
+            } else {
+                $this->verdict->record($invoice, $response);
+            }
 
             $this->markCompleted($queueId, [
                 'clearanceStatus' => $response->clearanceStatus,
@@ -168,12 +185,67 @@ class OfflineQueue
     /**
      * Mark item as processing.
      */
-    public function markProcessing(string $queueId): void
+    /**
+     * Take an item for sending, or false when another drain already has.
+     *
+     * Conditional on it still being pending, so it is one statement deciding
+     * between two drains. It was an unconditional update: the drain fetches
+     * a batch, its overlap lock lapses after ten minutes, and a second drain
+     * fetching the same still-pending items sent them too.
+     */
+    public function claim(string $queueId): bool
     {
-        OfflineItem::query()->whereKey($queueId)->update([
-            'state' => self::STATE_PROCESSING,
-            'started_at' => now(),
-        ]);
+        return OfflineItem::query()
+            ->whereKey($queueId)
+            ->where('state', self::STATE_PENDING)
+            ->update([
+                'state' => self::STATE_PROCESSING,
+                'started_at' => now(),
+            ]) === 1;
+    }
+
+    /**
+     * Put back what a drain that died left processing.
+     *
+     * Nothing else picks up a processing item, and submission recovery leaves
+     * offline invoices to the drain, so an item stranded here was never
+     * filed. A report goes back to pending - ZATCA has been observed accepting
+     * the same report twice. A clearance may already be cleared, and clearing
+     * it twice is not something to find out in production, so it is held and
+     * logged for reconciliation, as submission recovery holds one.
+     *
+     * @return int How many were released
+     */
+    public function releaseStranded(): int
+    {
+        $stranded = OfflineItem::withoutTenantScope(fn () => OfflineItem::query()
+            ->where('state', self::STATE_PROCESSING)
+            ->where('started_at', '<', InvoiceSubmission::staleBefore())
+            ->get());
+
+        $released = 0;
+
+        foreach ($stranded as $item) {
+            $standard = (bool) Invoice::withoutTenantScope(
+                fn () => Invoice::query()->find($item->invoice_id)
+            )?->isB2B();
+
+            if ($standard) {
+                Log::critical('An offline clearance was left processing with no answer recorded; reconcile it before resending', [
+                    'queue_id' => $item->id,
+                    'invoice_id' => $item->invoice_id,
+                ]);
+
+                continue;
+            }
+
+            $released += OfflineItem::query()
+                ->whereKey($item->id)
+                ->where('state', self::STATE_PROCESSING)
+                ->update(['state' => self::STATE_PENDING, 'started_at' => null]);
+        }
+
+        return $released;
     }
 
     /**

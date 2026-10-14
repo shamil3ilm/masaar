@@ -16,6 +16,7 @@ use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use App\Domains\Compliance\Fatoora\Services\KillSwitch;
 use App\Domains\Compliance\Fatoora\Services\SubmissionLedger;
 use App\Domains\Compliance\Fatoora\Services\Submitter;
+use App\Domains\Invoice\Enums\InvoiceStatus;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -143,6 +144,18 @@ class ProcessFatooraSubmission implements ShouldQueue
         if ($killSwitch->isEnabled(KillSwitch::SWITCH_SUBMISSION, (string) $this->submission->org_id)) {
             Log::info('Submission held by the kill switch; it stays queued', [
                 'submission_id' => $this->submission->id,
+            ]);
+
+            return;
+        }
+
+        // Accepted is final. Whatever left this job queued - the offline drain
+        // filing it, a recovery racing an answer - sending it again files the
+        // same invoice twice.
+        if ($this->submission->invoice?->status === InvoiceStatus::Accepted) {
+            Log::info('Invoice already accepted; not sending it again', [
+                'submission_id' => $this->submission->id,
+                'invoice_id' => $this->submission->invoice_id,
             ]);
 
             return;
