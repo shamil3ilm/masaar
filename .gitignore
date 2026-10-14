@@ -36,3 +36,6 @@ Thumbs.db
 # Claude Code settings contain machine-specific paths
 .claude/settings.json
 .claude/settings.local.json
+
+# Python bytecode, e.g. from importing sdks/python locally
+__pycache__/

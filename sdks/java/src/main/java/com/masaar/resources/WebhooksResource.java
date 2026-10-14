@@ -1,5 +1,6 @@
 package com.masaar.resources;
 
+import com.google.gson.reflect.TypeToken;
 import com.masaar.MasaarClient;
 import com.masaar.exceptions.MasaarException;
 import com.masaar.models.ApiResponse;
@@ -30,7 +31,7 @@ public class WebhooksResource {
      * @return List of webhooks
      */
     public ApiResponse<List<Map<String, Object>>> list() throws MasaarException {
-        return client.get("/api/webhooks", List.class);
+        return client.get("/webhooks", new TypeToken<List<Map<String, Object>>>() {});
     }
 
     /**
@@ -48,7 +49,7 @@ public class WebhooksResource {
                 "events", events,
                 "secret", secret != null ? secret : ""
         );
-        return client.post("/api/webhooks", body, Map.class);
+        return client.post("/webhooks", body, new TypeToken<Map<String, Object>>() {});
     }
 
     /**
@@ -64,7 +65,7 @@ public class WebhooksResource {
      * @param webhookId The webhook ID
      */
     public ApiResponse<Void> delete(String webhookId) throws MasaarException {
-        return client.delete("/api/webhooks/" + webhookId, Void.class);
+        return client.delete("/webhooks/" + webhookId, Void.class);
     }
 
     /**

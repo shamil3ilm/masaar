@@ -205,7 +205,7 @@ type InvoicesService struct {
 // List retrieves invoices with pagination.
 func (s *InvoicesService) List(ctx context.Context, page, perPage int) (*APIResponse[[]Invoice], error) {
 	var result APIResponse[[]Invoice]
-	endpoint := fmt.Sprintf("/v1/invoices?page=%d&per_page=%d", page, perPage)
+	endpoint := fmt.Sprintf("/api/v1/invoices?page=%d&per_page=%d", page, perPage)
 	err := s.client.doRequest(ctx, http.MethodGet, endpoint, nil, &result)
 	return &result, err
 }
@@ -213,14 +213,14 @@ func (s *InvoicesService) List(ctx context.Context, page, perPage int) (*APIResp
 // Get retrieves a single invoice.
 func (s *InvoicesService) Get(ctx context.Context, invoiceID string) (*APIResponse[Invoice], error) {
 	var result APIResponse[Invoice]
-	err := s.client.doRequest(ctx, http.MethodGet, "/v1/invoices/"+invoiceID, nil, &result)
+	err := s.client.doRequest(ctx, http.MethodGet, "/api/v1/invoices/"+invoiceID, nil, &result)
 	return &result, err
 }
 
 // Create creates a new invoice.
 func (s *InvoicesService) Create(ctx context.Context, req *CreateInvoiceRequest) (*APIResponse[Invoice], error) {
 	var result APIResponse[Invoice]
-	err := s.client.doRequest(ctx, http.MethodPost, "/v1/invoices", req, &result)
+	err := s.client.doRequest(ctx, http.MethodPost, "/api/v1/invoices", req, &result)
 	return &result, err
 }
 
@@ -232,28 +232,28 @@ type ComplianceService struct {
 // Generate generates compliance data for an invoice.
 func (s *ComplianceService) Generate(ctx context.Context, invoiceID string) (*APIResponse[ZATCAResult], error) {
 	var result APIResponse[ZATCAResult]
-	err := s.client.doRequest(ctx, http.MethodPost, "/api/compliance/zatca/generate/"+invoiceID, nil, &result)
+	err := s.client.doRequest(ctx, http.MethodPost, "/api/v1/compliance/generate/"+invoiceID, nil, &result)
 	return &result, err
 }
 
 // Validate validates an invoice without submitting.
 func (s *ComplianceService) Validate(ctx context.Context, invoiceID string) (*APIResponse[ZATCAResult], error) {
 	var result APIResponse[ZATCAResult]
-	err := s.client.doRequest(ctx, http.MethodPost, "/api/compliance/zatca/validate/"+invoiceID, nil, &result)
+	err := s.client.doRequest(ctx, http.MethodPost, "/api/v1/compliance/validate/"+invoiceID, nil, &result)
 	return &result, err
 }
 
 // Submit submits an invoice to ZATCA.
 func (s *ComplianceService) Submit(ctx context.Context, invoiceID string) (*APIResponse[ZATCAResult], error) {
 	var result APIResponse[ZATCAResult]
-	err := s.client.doRequest(ctx, http.MethodPost, "/api/compliance/zatca/submit/"+invoiceID, nil, &result)
+	err := s.client.doRequest(ctx, http.MethodPost, "/api/v1/compliance/submit/"+invoiceID, nil, &result)
 	return &result, err
 }
 
 // Status gets ZATCA compliance status.
 func (s *ComplianceService) Status(ctx context.Context, invoiceID string) (*APIResponse[ZATCAResult], error) {
 	var result APIResponse[ZATCAResult]
-	err := s.client.doRequest(ctx, http.MethodGet, "/api/compliance/zatca/status/"+invoiceID, nil, &result)
+	err := s.client.doRequest(ctx, http.MethodGet, "/api/v1/compliance/status/"+invoiceID, nil, &result)
 	return &result, err
 }
 

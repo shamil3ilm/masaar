@@ -117,6 +117,24 @@ class HttpClient:
         else:
             raise ImportError("Please install 'requests' or 'httpx': pip install requests")
 
+    def _route(self, endpoint: str) -> str:
+        """A logical path - /invoices, /compliance/submit/{id}, /webhooks - as
+        the API serves it to this client's credential: the partner API under
+        /api/v1 for a key and secret, the tenant API under /api for a JWT,
+        where Saudi compliance sits under /compliance/sa. Paths already under
+        /api/ are left alone.
+
+        The resources called /v1/invoices and /compliance/...,
+        neither of which exists, so no invoice could be created or filed.
+        """
+        if endpoint.startswith("/api/"):
+            return endpoint
+        if self.api_key:
+            return "/api/v1" + endpoint
+        if endpoint.startswith("/compliance/"):
+            return "/api/compliance/sa/" + endpoint[len("/compliance/"):]
+        return "/api" + endpoint
+
     def _headers(self) -> Dict[str, str]:
         headers = {
             "Content-Type": "application/json",
@@ -162,7 +180,7 @@ class HttpClient:
         return data
 
     def get(self, endpoint: str, params: Dict = None) -> Dict[str, Any]:
-        url = f"{self.base_url}{endpoint}"
+        url = f"{self.base_url}{self._route(endpoint)}"
         if self._client == "requests":
             response = requests.get(url, headers=self._headers(), params=params, timeout=self.timeout)
         else:
@@ -170,7 +188,7 @@ class HttpClient:
         return self._handle_response(response)
 
     def post(self, endpoint: str, data: Dict = None) -> Dict[str, Any]:
-        url = f"{self.base_url}{endpoint}"
+        url = f"{self.base_url}{self._route(endpoint)}"
         if self._client == "requests":
             response = requests.post(url, headers=self._headers(), json=data, timeout=self.timeout)
         else:
@@ -178,7 +196,7 @@ class HttpClient:
         return self._handle_response(response)
 
     def put(self, endpoint: str, data: Dict = None) -> Dict[str, Any]:
-        url = f"{self.base_url}{endpoint}"
+        url = f"{self.base_url}{self._route(endpoint)}"
         if self._client == "requests":
             response = requests.put(url, headers=self._headers(), json=data, timeout=self.timeout)
         else:
@@ -186,7 +204,7 @@ class HttpClient:
         return self._handle_response(response)
 
     def delete(self, endpoint: str) -> Dict[str, Any]:
-        url = f"{self.base_url}{endpoint}"
+        url = f"{self.base_url}{self._route(endpoint)}"
         if self._client == "requests":
             response = requests.delete(url, headers=self._headers(), timeout=self.timeout)
         else:
@@ -205,11 +223,11 @@ class InvoicesResource:
         params = {"page": page, "per_page": per_page}
         if status:
             params["status"] = status
-        return self._client.get("/v1/invoices", params)
+        return self._client.get("/invoices", params)
 
     def get(self, invoice_id: str) -> Dict[str, Any]:
         """Get invoice by ID."""
-        return self._client.get(f"/v1/invoices/{invoice_id}")
+        return self._client.get(f"/invoices/{invoice_id}")
 
     def create(
         self,
@@ -252,7 +270,7 @@ class InvoicesResource:
         if billing_reference_id:
             data["billing_reference_id"] = billing_reference_id
 
-        return self._client.post("/v1/invoices", data)
+        return self._client.post("/invoices", data)
 
     def create_credit_note(
         self,
@@ -301,15 +319,15 @@ class ComplianceResource:
 
     def generate(self, invoice_id: str) -> Dict[str, Any]:
         """Generate compliance data (hash, QR code) for invoice."""
-        return self._client.post(f"/api/compliance/zatca/generate/{invoice_id}")
+        return self._client.post(f"/compliance/generate/{invoice_id}")
 
     def validate(self, invoice_id: str) -> Dict[str, Any]:
         """Validate invoice with ZATCA without submission."""
-        return self._client.post(f"/api/compliance/zatca/validate/{invoice_id}")
+        return self._client.post(f"/compliance/validate/{invoice_id}")
 
     def submit(self, invoice_id: str) -> Dict[str, Any]:
         """Submit invoice to ZATCA (clearance or reporting)."""
-        result = self._client.post(f"/api/compliance/zatca/submit/{invoice_id}")
+        result = self._client.post(f"/compliance/submit/{invoice_id}")
         if not result.get("success", True):
             raise ZatcaError(
                 "ZATCA submission failed",
@@ -319,7 +337,7 @@ class ComplianceResource:
 
     def status(self, invoice_id: str) -> Dict[str, Any]:
         """Get ZATCA compliance status for invoice."""
-        return self._client.get(f"/api/compliance/zatca/status/{invoice_id}")
+        return self._client.get(f"/compliance/status/{invoice_id}")
 
 
 class WebhooksResource:
@@ -330,7 +348,7 @@ class WebhooksResource:
 
     def list(self) -> Dict[str, Any]:
         """List all webhooks."""
-        return self._client.get("/api/webhooks")
+        return self._client.get("/webhooks")
 
     def create(
         self,
@@ -342,11 +360,11 @@ class WebhooksResource:
         data = {"url": url, "events": events}
         if secret:
             data["secret"] = secret
-        return self._client.post("/api/webhooks", data)
+        return self._client.post("/webhooks", data)
 
     def delete(self, webhook_id: str) -> Dict[str, Any]:
         """Delete a webhook."""
-        return self._client.delete(f"/api/webhooks/{webhook_id}")
+        return self._client.delete(f"/webhooks/{webhook_id}")
 
     @staticmethod
     def verify_signature(payload: bytes, signature: str, secret: str) -> bool:

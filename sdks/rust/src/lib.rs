@@ -284,11 +284,11 @@ pub struct InvoicesResource<'a> {
 
 impl<'a> InvoicesResource<'a> {
     pub async fn get(&self, invoice_id: &str) -> Result<ApiResponse<Invoice>, Error> {
-        self.client.get(&format!("/v1/invoices/{}", invoice_id)).await
+        self.client.get(&format!("/api/v1/invoices/{}", invoice_id)).await
     }
 
     pub async fn create(&self, request: &CreateInvoiceRequest) -> Result<ApiResponse<Invoice>, Error> {
-        self.client.post("/v1/invoices", Some(request)).await
+        self.client.post("/api/v1/invoices", Some(request)).await
     }
 }
 
@@ -298,19 +298,19 @@ pub struct ComplianceResource<'a> {
 
 impl<'a> ComplianceResource<'a> {
     pub async fn generate(&self, invoice_id: &str) -> Result<ApiResponse<ZatcaResult>, Error> {
-        self.client.post::<ZatcaResult, ()>(&format!("/api/compliance/zatca/generate/{}", invoice_id), None).await
+        self.client.post::<ZatcaResult, ()>(&format!("/api/v1/compliance/generate/{}", invoice_id), None).await
     }
 
     pub async fn validate(&self, invoice_id: &str) -> Result<ApiResponse<ZatcaResult>, Error> {
-        self.client.post::<ZatcaResult, ()>(&format!("/api/compliance/zatca/validate/{}", invoice_id), None).await
+        self.client.post::<ZatcaResult, ()>(&format!("/api/v1/compliance/validate/{}", invoice_id), None).await
     }
 
     pub async fn submit(&self, invoice_id: &str) -> Result<ApiResponse<ZatcaResult>, Error> {
-        self.client.post::<ZatcaResult, ()>(&format!("/api/compliance/zatca/submit/{}", invoice_id), None).await
+        self.client.post::<ZatcaResult, ()>(&format!("/api/v1/compliance/submit/{}", invoice_id), None).await
     }
 
     pub async fn status(&self, invoice_id: &str) -> Result<ApiResponse<ZatcaResult>, Error> {
-        self.client.get(&format!("/api/compliance/zatca/status/{}", invoice_id)).await
+        self.client.get(&format!("/api/v1/compliance/status/{}", invoice_id)).await
     }
 }
 

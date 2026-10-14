@@ -15,6 +15,8 @@ import java.util.Objects;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
+import java.lang.reflect.Type;
 
 /**
  * Masaar Java SDK
@@ -54,6 +56,7 @@ public class MasaarClient {
     private final String baseUrl;
     private final String apiKey;
     private final String apiSecret;
+    private final String jwtToken;
     private final HttpClient httpClient;
     private final Gson gson;
     private final Duration timeout;
@@ -68,10 +71,15 @@ public class MasaarClient {
                 .replaceAll("/$", "");
         this.apiKey = builder.apiKey;
         this.apiSecret = builder.apiSecret;
+        this.jwtToken = builder.jwtToken;
         this.timeout = builder.timeout != null ? builder.timeout : Duration.ofSeconds(30);
 
         if (apiKey == null && builder.jwtToken == null) {
-            throw new IllegalArgumentException("Either apiKey or jwtToken must be provided");
+            throw new IllegalArgumentException("Either apiKey and apiSecret, or jwtToken, must be provided");
+        }
+
+        if (apiKey != null && apiSecret == null) {
+            throw new IllegalArgumentException("apiSecret is required with apiKey: the API refuses a key sent without its secret");
         }
 
         this.httpClient = HttpClient.newBuilder()
@@ -113,7 +121,29 @@ public class MasaarClient {
      * Check API health status.
      */
     public ApiResponse<Map<String, Object>> health() throws MasaarException {
-        return get("/api/health", Map.class);
+        return get("/api/health", new TypeToken<Map<String, Object>>() {});
+    }
+
+    /**
+     * A logical path - /invoices, /compliance/submit/{id}, /webhooks - as the
+     * API serves it to this client's credential: the partner API under /api/v1
+     * for a key and secret, the tenant API under /api for a JWT, where Saudi
+     * compliance sits under /compliance/sa. Paths already under /api/ are
+     * left alone.
+     *
+     * The resources called /v1/invoices and /api/compliance/zatca/..., neither
+     * of which exists, so no invoice could be created or filed.
+     */
+    private String route(String endpoint) {
+        if (endpoint.startsWith("/api/")) {
+            return endpoint;
+        }
+
+        if (apiKey != null) {
+            return "/api/v1" + endpoint;
+        }
+
+        return "/api" + endpoint.replaceFirst("^/compliance/", "/compliance/sa/");
     }
 
     // HTTP methods for internal use
@@ -122,8 +152,21 @@ public class MasaarClient {
         return request("GET", endpoint, null, responseType);
     }
 
+    /**
+     * For a generic response - a list of invoices, a map - which a Class
+     * cannot name. Class literals made these calls fail to compile, and
+     * List.class would have parsed invoices into plain maps.
+     */
+    public <T> ApiResponse<T> get(String endpoint, TypeToken<T> responseType) throws MasaarException {
+        return request("GET", endpoint, null, responseType.getType());
+    }
+
     public <T> ApiResponse<T> post(String endpoint, Object body, Class<T> responseType) throws MasaarException {
         return request("POST", endpoint, body, responseType);
+    }
+
+    public <T> ApiResponse<T> post(String endpoint, Object body, TypeToken<T> responseType) throws MasaarException {
+        return request("POST", endpoint, body, responseType.getType());
     }
 
     public <T> ApiResponse<T> put(String endpoint, Object body, Class<T> responseType) throws MasaarException {
@@ -135,21 +178,23 @@ public class MasaarClient {
     }
 
     @SuppressWarnings("unchecked")
-    private <T> ApiResponse<T> request(String method, String endpoint, Object body, Class<T> responseType)
+    private <T> ApiResponse<T> request(String method, String endpoint, Object body, Type responseType)
             throws MasaarException {
         try {
             HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
-                    .uri(URI.create(baseUrl + endpoint))
+                    .uri(URI.create(baseUrl + route(endpoint)))
                     .timeout(timeout)
                     .header("Content-Type", "application/json")
                     .header("Accept", "application/json");
 
-            // Add authentication headers
+            // Add authentication headers: the key and its secret together,
+            // or the JWT. The token was accepted by the builder and never
+            // sent, so a JWT client made every call with no credentials.
             if (apiKey != null) {
                 requestBuilder.header("X-Api-Key", apiKey);
-            }
-            if (apiSecret != null) {
                 requestBuilder.header("X-Api-Secret", apiSecret);
+            } else if (jwtToken != null) {
+                requestBuilder.header("Authorization", "Bearer " + jwtToken);
             }
 
             // Set method and body
@@ -176,7 +221,7 @@ public class MasaarClient {
     }
 
     @SuppressWarnings("unchecked")
-    private <T> ApiResponse<T> handleResponse(HttpResponse<String> response, Class<T> responseType)
+    private <T> ApiResponse<T> handleResponse(HttpResponse<String> response, Type responseType)
             throws MasaarException {
         int statusCode = response.statusCode();
         String responseBody = response.body();
@@ -192,7 +237,7 @@ public class MasaarClient {
                 if (apiResponse.getData() != null && responseType != Map.class) {
                     // Re-parse data with correct type
                     String dataJson = gson.toJson(apiResponse.getData());
-                    T data = gson.fromJson(dataJson, responseType);
+                    T data = (T) gson.fromJson(dataJson, responseType);
                     apiResponse.setData(data);
                 }
             }

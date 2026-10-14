@@ -126,11 +126,11 @@ module Masaar
     def list(page: 1, per_page: 15, status: nil)
       params = { page: page, per_page: per_page }
       params[:status] = status if status
-      @client.get('/v1/invoices', params)
+      @client.get('/api/v1/invoices', params)
     end
 
     def get(invoice_id)
-      @client.get("/v1/invoices/#{invoice_id}")
+      @client.get("/api/v1/invoices/#{invoice_id}")
     end
 
     def create(invoice_number:, buyer_name:, lines:, **options)
@@ -147,7 +147,7 @@ module Masaar
       body[:issue_date] = options[:issue_date] if options[:issue_date]
       body[:billing_reference_id] = options[:billing_reference_id] if options[:billing_reference_id]
 
-      @client.post('/v1/invoices', body)
+      @client.post('/api/v1/invoices', body)
     end
 
     def create_credit_note(invoice_number:, buyer_name:, billing_reference_id:, lines:, **options)
@@ -169,21 +169,21 @@ module Masaar
     end
 
     def generate(invoice_id)
-      @client.post("/api/compliance/zatca/generate/#{invoice_id}")
+      @client.post("/api/v1/compliance/generate/#{invoice_id}")
     end
 
     def validate(invoice_id)
-      @client.post("/api/compliance/zatca/validate/#{invoice_id}")
+      @client.post("/api/v1/compliance/validate/#{invoice_id}")
     end
 
     def submit(invoice_id)
-      result = @client.post("/api/compliance/zatca/submit/#{invoice_id}")
+      result = @client.post("/api/v1/compliance/submit/#{invoice_id}")
       raise ZatcaError, result['message'] unless result['success']
       result
     end
 
     def status(invoice_id)
-      @client.get("/api/compliance/zatca/status/#{invoice_id}")
+      @client.get("/api/v1/compliance/status/#{invoice_id}")
     end
   end
 
@@ -204,17 +204,17 @@ module Masaar
     end
 
     def list
-      @client.get('/api/webhooks')
+      @client.get('/api/v1/webhooks')
     end
 
     def create(url:, events:, secret: nil)
       body = { url: url, events: events }
       body[:secret] = secret if secret
-      @client.post('/api/webhooks', body)
+      @client.post('/api/v1/webhooks', body)
     end
 
     def delete(webhook_id)
-      @client.delete("/api/webhooks/#{webhook_id}")
+      @client.delete("/api/v1/webhooks/#{webhook_id}")
     end
 
     # Verify webhook signature

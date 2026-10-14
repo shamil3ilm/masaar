@@ -193,27 +193,27 @@ data class ZatcaResult(
 // Resources
 class InvoicesResource(private val client: MasaarClient) {
     fun list(page: Int = 1, perPage: Int = 15): ApiResponse<List<Invoice>> =
-        client.get("/v1/invoices?page=$page&per_page=$perPage")
+        client.get("/api/v1/invoices?page=$page&per_page=$perPage")
 
     fun get(invoiceId: String): ApiResponse<Invoice> =
-        client.get("/v1/invoices/$invoiceId")
+        client.get("/api/v1/invoices/$invoiceId")
 
     fun create(request: CreateInvoiceRequest): ApiResponse<Invoice> =
-        client.post("/v1/invoices", request)
+        client.post("/api/v1/invoices", request)
 }
 
 class ComplianceResource(private val client: MasaarClient) {
     fun generate(invoiceId: String): ApiResponse<ZatcaResult> =
-        client.post("/api/compliance/zatca/generate/$invoiceId")
+        client.post("/api/v1/compliance/generate/$invoiceId")
 
     fun validate(invoiceId: String): ApiResponse<ZatcaResult> =
-        client.post("/api/compliance/zatca/validate/$invoiceId")
+        client.post("/api/v1/compliance/validate/$invoiceId")
 
     fun submit(invoiceId: String): ApiResponse<ZatcaResult> =
-        client.post("/api/compliance/zatca/submit/$invoiceId")
+        client.post("/api/v1/compliance/submit/$invoiceId")
 
     fun status(invoiceId: String): ApiResponse<ZatcaResult> =
-        client.get("/api/compliance/zatca/status/$invoiceId")
+        client.get("/api/v1/compliance/status/$invoiceId")
 }
 
 class WebhooksResource(private val client: MasaarClient) {

@@ -1,5 +1,6 @@
 package com.masaar.resources;
 
+import com.google.gson.reflect.TypeToken;
 import com.masaar.MasaarClient;
 import com.masaar.exceptions.MasaarException;
 import com.masaar.models.*;
@@ -28,11 +29,11 @@ public class InvoicesResource {
      * @return Paginated list of invoices
      */
     public ApiResponse<List<Invoice>> list(int page, int perPage, String status) throws MasaarException {
-        String endpoint = String.format("/v1/invoices?page=%d&per_page=%d", page, perPage);
+        String endpoint = String.format("/invoices?page=%d&per_page=%d", page, perPage);
         if (status != null && !status.isEmpty()) {
             endpoint += "&status=" + status;
         }
-        return client.get(endpoint, List.class);
+        return client.get(endpoint, new TypeToken<List<Invoice>>() {});
     }
 
     /**
@@ -49,7 +50,7 @@ public class InvoicesResource {
      * @return The invoice
      */
     public ApiResponse<Invoice> get(String invoiceId) throws MasaarException {
-        return client.get("/v1/invoices/" + invoiceId, Invoice.class);
+        return client.get("/invoices/" + invoiceId, Invoice.class);
     }
 
     /**
@@ -59,7 +60,7 @@ public class InvoicesResource {
      * @return The created invoice
      */
     public ApiResponse<Invoice> create(CreateInvoiceRequest request) throws MasaarException {
-        return client.post("/v1/invoices", request, Invoice.class);
+        return client.post("/invoices", request, Invoice.class);
     }
 
     /**

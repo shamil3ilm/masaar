@@ -4,7 +4,7 @@
 which compiles to JavaScript and works from both Node.js and the browser.
 
 ```ts
-import { MasaarClient } from '@masaar/sdk';
+import { MasaarClient } from 'masaar';
 
 const client = new MasaarClient({
   baseUrl: 'https://api.masaar.sa',

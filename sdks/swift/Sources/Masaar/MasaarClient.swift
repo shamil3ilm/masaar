@@ -223,11 +223,11 @@ public struct InvoicesResource {
     let client: MasaarClient
 
     public func get(_ invoiceId: String) async throws -> ApiResponse<Invoice> {
-        try await client.get("/v1/invoices/\(invoiceId)")
+        try await client.get("/api/v1/invoices/\(invoiceId)")
     }
 
     public func create(_ request: CreateInvoiceRequest) async throws -> ApiResponse<Invoice> {
-        try await client.post("/v1/invoices", body: request)
+        try await client.post("/api/v1/invoices", body: request)
     }
 }
 
@@ -235,19 +235,19 @@ public struct ComplianceResource {
     let client: MasaarClient
 
     public func generate(_ invoiceId: String) async throws -> ApiResponse<ZatcaResult> {
-        try await client.post("/api/compliance/zatca/generate/\(invoiceId)", body: nil as Empty?)
+        try await client.post("/api/v1/compliance/generate/\(invoiceId)", body: nil as Empty?)
     }
 
     public func validate(_ invoiceId: String) async throws -> ApiResponse<ZatcaResult> {
-        try await client.post("/api/compliance/zatca/validate/\(invoiceId)", body: nil as Empty?)
+        try await client.post("/api/v1/compliance/validate/\(invoiceId)", body: nil as Empty?)
     }
 
     public func submit(_ invoiceId: String) async throws -> ApiResponse<ZatcaResult> {
-        try await client.post("/api/compliance/zatca/submit/\(invoiceId)", body: nil as Empty?)
+        try await client.post("/api/v1/compliance/submit/\(invoiceId)", body: nil as Empty?)
     }
 
     public func status(_ invoiceId: String) async throws -> ApiResponse<ZatcaResult> {
-        try await client.get("/api/compliance/zatca/status/\(invoiceId)")
+        try await client.get("/api/v1/compliance/status/\(invoiceId)")
     }
 }
 

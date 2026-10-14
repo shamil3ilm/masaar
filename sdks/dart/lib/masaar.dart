@@ -341,10 +341,10 @@ class InvoicesResource {
   InvoicesResource(this._client);
 
   Future<ApiResponse<Invoice>> get(String invoiceId) =>
-    _client.get('/v1/invoices/$invoiceId', Invoice.fromJson);
+    _client.get('/api/v1/invoices/$invoiceId', Invoice.fromJson);
 
   Future<ApiResponse<Invoice>> create(CreateInvoiceRequest request) =>
-    _client.post('/v1/invoices', request.toJson(), Invoice.fromJson);
+    _client.post('/api/v1/invoices', request.toJson(), Invoice.fromJson);
 }
 
 class ComplianceResource {
@@ -352,16 +352,16 @@ class ComplianceResource {
   ComplianceResource(this._client);
 
   Future<ApiResponse<ZatcaResult>> generate(String invoiceId) =>
-    _client.post('/api/compliance/zatca/generate/$invoiceId', null, ZatcaResult.fromJson);
+    _client.post('/api/v1/compliance/generate/$invoiceId', null, ZatcaResult.fromJson);
 
   Future<ApiResponse<ZatcaResult>> validate(String invoiceId) =>
-    _client.post('/api/compliance/zatca/validate/$invoiceId', null, ZatcaResult.fromJson);
+    _client.post('/api/v1/compliance/validate/$invoiceId', null, ZatcaResult.fromJson);
 
   Future<ApiResponse<ZatcaResult>> submit(String invoiceId) =>
-    _client.post('/api/compliance/zatca/submit/$invoiceId', null, ZatcaResult.fromJson);
+    _client.post('/api/v1/compliance/submit/$invoiceId', null, ZatcaResult.fromJson);
 
   Future<ApiResponse<ZatcaResult>> status(String invoiceId) =>
-    _client.get('/api/compliance/zatca/status/$invoiceId', ZatcaResult.fromJson);
+    _client.get('/api/v1/compliance/status/$invoiceId', ZatcaResult.fromJson);
 }
 
 class WebhooksResource {

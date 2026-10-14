@@ -25,7 +25,7 @@ public class ComplianceResource {
      * @return The generated compliance data
      */
     public ApiResponse<ZatcaResult> generate(String invoiceId) throws MasaarException {
-        return client.post("/api/compliance/zatca/generate/" + invoiceId, null, ZatcaResult.class);
+        return client.post("/compliance/generate/" + invoiceId, null, ZatcaResult.class);
     }
 
     /**
@@ -36,7 +36,7 @@ public class ComplianceResource {
      * @return Validation result with any warnings or errors
      */
     public ApiResponse<ZatcaResult> validate(String invoiceId) throws MasaarException {
-        return client.post("/api/compliance/zatca/validate/" + invoiceId, null, ZatcaResult.class);
+        return client.post("/compliance/validate/" + invoiceId, null, ZatcaResult.class);
     }
 
     /**
@@ -56,7 +56,7 @@ public class ComplianceResource {
      */
     public ApiResponse<ZatcaResult> submit(String invoiceId) throws MasaarException {
         ApiResponse<ZatcaResult> result = client.post(
-                "/api/compliance/zatca/submit/" + invoiceId,
+                "/compliance/submit/" + invoiceId,
                 null,
                 ZatcaResult.class
         );
@@ -75,18 +75,21 @@ public class ComplianceResource {
      * @return Current compliance status
      */
     public ApiResponse<ZatcaResult> status(String invoiceId) throws MasaarException {
-        return client.get("/api/compliance/zatca/status/" + invoiceId, ZatcaResult.class);
+        return client.get("/compliance/status/" + invoiceId, ZatcaResult.class);
     }
 
     /**
-     * Submit an invoice asynchronously (for high-volume scenarios).
-     * Returns immediately and processes in background.
-     * Use webhooks or polling to track completion.
+     * Submit an invoice - the same call as {@link #submit(String)}.
+     *
+     * Kept so existing callers compile. It called a submit-async endpoint the
+     * API has never had; the API decides for itself whether a submission is
+     * answered at once or queued, so track the outcome through the response,
+     * {@link #status(String)} or webhooks either way.
      *
      * @param invoiceId The invoice UUID
-     * @return Submission acknowledgment with tracking ID
+     * @return The submission result
      */
     public ApiResponse<ZatcaResult> submitAsync(String invoiceId) throws MasaarException {
-        return client.post("/api/compliance/zatca/submit-async/" + invoiceId, null, ZatcaResult.class);
+        return client.post("/compliance/submit/" + invoiceId, null, ZatcaResult.class);
     }
 }

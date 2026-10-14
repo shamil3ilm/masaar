@@ -188,6 +188,29 @@ class HttpClient
         $this->timeout = $timeout;
     }
 
+    /**
+     * A logical path - /invoices, /compliance/submit/{id}, /webhooks - as the
+     * API serves it to this client's credential: the partner API under
+     * /api/v1 for a key and secret, the tenant API under /api for a JWT,
+     * where Saudi compliance sits under /compliance/sa. Paths already under
+     * /api/ are left alone.
+     *
+     * The resources called /v1/invoices and /compliance/..., neither
+     * of which exists, so no invoice could be created or filed.
+     */
+    private function route(string $endpoint): string
+    {
+        if (strpos($endpoint, '/api/') === 0) {
+            return $endpoint;
+        }
+
+        if ($this->apiKey !== null) {
+            return '/api/v1'.$endpoint;
+        }
+
+        return '/api'.preg_replace('#^/compliance/#', '/compliance/sa/', $endpoint);
+    }
+
     private function getHeaders(): array
     {
         $headers = [
@@ -238,7 +261,7 @@ class HttpClient
 
     private function request(string $method, string $endpoint, ?array $data = null): array
     {
-        $url = $this->baseUrl.$endpoint;
+        $url = $this->baseUrl.$this->route($endpoint);
 
         $ch = curl_init();
 
@@ -353,14 +376,14 @@ class InvoicesResource
             $params['status'] = $status;
         }
 
-        return $this->client->get('/v1/invoices', $params);
+        return $this->client->get('/invoices', $params);
     }
 
     public function get(string $invoiceId): array
     {
         $this->validateId($invoiceId, 'Invoice ID');
 
-        return $this->client->get("/v1/invoices/{$invoiceId}");
+        return $this->client->get("/invoices/{$invoiceId}");
     }
 
     /**
@@ -410,7 +433,7 @@ class InvoicesResource
             $data['billing_reference_id'] = $billingReferenceId;
         }
 
-        return $this->client->post('/v1/invoices', $data);
+        return $this->client->post('/invoices', $data);
     }
 
     /**
@@ -497,14 +520,14 @@ class ComplianceResource
     {
         $this->validateId($invoiceId);
 
-        return $this->client->post("/api/compliance/zatca/generate/{$invoiceId}");
+        return $this->client->post("/compliance/generate/{$invoiceId}");
     }
 
     public function validate(string $invoiceId): array
     {
         $this->validateId($invoiceId);
 
-        return $this->client->post("/api/compliance/zatca/validate/{$invoiceId}");
+        return $this->client->post("/compliance/validate/{$invoiceId}");
     }
 
     /**
@@ -513,7 +536,7 @@ class ComplianceResource
     public function submit(string $invoiceId): array
     {
         $this->validateId($invoiceId);
-        $result = $this->client->post("/api/compliance/zatca/submit/{$invoiceId}");
+        $result = $this->client->post("/compliance/submit/{$invoiceId}");
 
         if (! ($result['success'] ?? true)) {
             throw new ZatcaException(
@@ -529,7 +552,7 @@ class ComplianceResource
     {
         $this->validateId($invoiceId);
 
-        return $this->client->get("/api/compliance/zatca/status/{$invoiceId}");
+        return $this->client->get("/compliance/status/{$invoiceId}");
     }
 }
 
@@ -548,7 +571,7 @@ class WebhooksResource
 
     public function list(): array
     {
-        return $this->client->get('/api/webhooks');
+        return $this->client->get('/webhooks');
     }
 
     public function create(string $url, array $events, ?string $secret = null): array
@@ -558,12 +581,12 @@ class WebhooksResource
             $data['secret'] = $secret;
         }
 
-        return $this->client->post('/api/webhooks', $data);
+        return $this->client->post('/webhooks', $data);
     }
 
     public function delete(string $webhookId): array
     {
-        return $this->client->delete("/api/webhooks/{$webhookId}");
+        return $this->client->delete("/webhooks/{$webhookId}");
     }
 
     /**

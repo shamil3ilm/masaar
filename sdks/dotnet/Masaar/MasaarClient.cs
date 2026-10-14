@@ -199,13 +199,13 @@ public class InvoicesResource
     public InvoicesResource(MasaarClient client) => _client = client;
 
     public Task<ApiResponse<List<Invoice>>> ListAsync(int page = 1, int perPage = 15, CancellationToken ct = default)
-        => _client.GetAsync<List<Invoice>>($"/v1/invoices?page={page}&per_page={perPage}", ct);
+        => _client.GetAsync<List<Invoice>>($"/api/v1/invoices?page={page}&per_page={perPage}", ct);
 
     public Task<ApiResponse<Invoice>> GetAsync(string invoiceId, CancellationToken ct = default)
-        => _client.GetAsync<Invoice>($"/v1/invoices/{invoiceId}", ct);
+        => _client.GetAsync<Invoice>($"/api/v1/invoices/{invoiceId}", ct);
 
     public Task<ApiResponse<Invoice>> CreateAsync(CreateInvoiceRequest request, CancellationToken ct = default)
-        => _client.PostAsync<Invoice>("/v1/invoices", request, ct);
+        => _client.PostAsync<Invoice>("/api/v1/invoices", request, ct);
 }
 
 public class ComplianceResource
@@ -214,16 +214,16 @@ public class ComplianceResource
     public ComplianceResource(MasaarClient client) => _client = client;
 
     public Task<ApiResponse<ZatcaResult>> GenerateAsync(string invoiceId, CancellationToken ct = default)
-        => _client.PostAsync<ZatcaResult>($"/api/compliance/zatca/generate/{invoiceId}", null, ct);
+        => _client.PostAsync<ZatcaResult>($"/api/v1/compliance/generate/{invoiceId}", null, ct);
 
     public Task<ApiResponse<ZatcaResult>> ValidateAsync(string invoiceId, CancellationToken ct = default)
-        => _client.PostAsync<ZatcaResult>($"/api/compliance/zatca/validate/{invoiceId}", null, ct);
+        => _client.PostAsync<ZatcaResult>($"/api/v1/compliance/validate/{invoiceId}", null, ct);
 
     public Task<ApiResponse<ZatcaResult>> SubmitAsync(string invoiceId, CancellationToken ct = default)
-        => _client.PostAsync<ZatcaResult>($"/api/compliance/zatca/submit/{invoiceId}", null, ct);
+        => _client.PostAsync<ZatcaResult>($"/api/v1/compliance/submit/{invoiceId}", null, ct);
 
     public Task<ApiResponse<ZatcaResult>> StatusAsync(string invoiceId, CancellationToken ct = default)
-        => _client.GetAsync<ZatcaResult>($"/api/compliance/zatca/status/{invoiceId}", ct);
+        => _client.GetAsync<ZatcaResult>($"/api/v1/compliance/status/{invoiceId}", ct);
 }
 
 public class WebhooksResource

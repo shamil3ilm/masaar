@@ -161,11 +161,7 @@ If you believe your deployment has been compromised:
 5. **Assess**: Determine scope and impact
 6. **Notify**: Inform affected parties as required
 
-## Bug Bounty Program
-
-We currently operate a private bug bounty program. Researchers who report valid security vulnerabilities may be eligible for recognition and rewards. Contact security@{YOUR_DOMAIN} for details.
-
-### Scope
+## Scope of Reports
 
 **In Scope**:
 - Masaar API endpoints

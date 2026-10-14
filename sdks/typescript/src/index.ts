@@ -151,6 +151,29 @@ class HttpClient {
     this.timeout = config.timeout || 30000;
   }
 
+  /**
+   * A logical path - /invoices, /compliance/submit/{id}, /webhooks - as the
+   * API serves it to this client's credential. A key and secret reach the
+   * partner API under /api/v1; a JWT reaches the tenant API under /api, where
+   * Saudi compliance sits under /compliance/sa. Paths already under /api/ are
+   * left as they are.
+   *
+   * The resources called /v1/invoices and /api/compliance/zatca/..., neither
+   * of which exists, so no invoice could be created or filed through this
+   * client.
+   */
+  private route(endpoint: string): string {
+    if (endpoint.startsWith('/api/')) {
+      return endpoint;
+    }
+
+    if (this.apiKey) {
+      return `/api/v1${endpoint}`;
+    }
+
+    return `/api${endpoint.replace(/^\/compliance\//, '/compliance/sa/')}`;
+  }
+
   private getHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -200,7 +223,7 @@ class HttpClient {
   }
 
   async get<T>(endpoint: string, params?: Record<string, any>): Promise<ApiResponse<T>> {
-    const url = new URL(`${this.baseUrl}${endpoint}`);
+    const url = new URL(`${this.baseUrl}${this.route(endpoint)}`);
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined) url.searchParams.append(key, String(value));
@@ -227,7 +250,7 @@ class HttpClient {
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
     try {
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      const response = await fetch(`${this.baseUrl}${this.route(endpoint)}`, {
         method: 'POST',
         headers: this.getHeaders(),
         body: body ? JSON.stringify(body) : undefined,
@@ -244,7 +267,7 @@ class HttpClient {
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
     try {
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      const response = await fetch(`${this.baseUrl}${this.route(endpoint)}`, {
         method: 'DELETE',
         headers: this.getHeaders(),
         signal: controller.signal,
@@ -261,11 +284,11 @@ class InvoicesResource {
   constructor(private http: HttpClient) {}
 
   async list(params?: { page?: number; perPage?: number; status?: string }) {
-    return this.http.get<Invoice[]>('/v1/invoices', params);
+    return this.http.get<Invoice[]>('/invoices', params);
   }
 
   async get(invoiceId: string) {
-    return this.http.get<Invoice>(`/v1/invoices/${invoiceId}`);
+    return this.http.get<Invoice>(`/invoices/${invoiceId}`);
   }
 
   async create(params: CreateInvoiceParams) {
@@ -295,7 +318,7 @@ class InvoicesResource {
       })),
     };
 
-    return this.http.post<Invoice>('/v1/invoices', body);
+    return this.http.post<Invoice>('/invoices', body);
   }
 
   async createCreditNote(
@@ -322,7 +345,7 @@ class ComplianceResource {
 
   async generate(invoiceId: string) {
     return this.http.post<{ hash: string; qrCode: string }>(
-      `/api/compliance/zatca/generate/${invoiceId}`
+      `/compliance/generate/${invoiceId}`
     );
   }
 
@@ -332,14 +355,14 @@ class ComplianceResource {
       status: string;
       warnings: string[];
       errors: string[];
-    }>(`/api/compliance/zatca/validate/${invoiceId}`);
+    }>(`/compliance/validate/${invoiceId}`);
   }
 
   async submit(invoiceId: string) {
     const result = await this.http.post<{
       status: string;
       warnings: string[];
-    }>(`/api/compliance/zatca/submit/${invoiceId}`);
+    }>(`/compliance/submit/${invoiceId}`);
 
     if (!result.success) {
       throw new ZatcaError('ZATCA submission failed', result.errors || []);
@@ -349,7 +372,7 @@ class ComplianceResource {
   }
 
   async status(invoiceId: string) {
-    return this.http.get<ZatcaStatus>(`/api/compliance/zatca/status/${invoiceId}`);
+    return this.http.get<ZatcaStatus>(`/compliance/status/${invoiceId}`);
   }
 }
 
@@ -357,15 +380,15 @@ class WebhooksResource {
   constructor(private http: HttpClient) {}
 
   async list() {
-    return this.http.get<any[]>('/api/webhooks');
+    return this.http.get<any[]>('/webhooks');
   }
 
   async create(params: { url: string; events: string[]; secret?: string }) {
-    return this.http.post('/api/webhooks', params);
+    return this.http.post('/webhooks', params);
   }
 
   async delete(webhookId: string) {
-    return this.http.delete(`/api/webhooks/${webhookId}`);
+    return this.http.delete(`/webhooks/${webhookId}`);
   }
 
   /**
