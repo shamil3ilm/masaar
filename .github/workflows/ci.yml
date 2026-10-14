@@ -904,10 +904,13 @@ jobs:
   # whether the platform can serve. It is the first time the entrypoint,
   # the production boot guards, the optional Redis and the compose wiring
   # have run together anywhere.
+  # On application changes as well as container ones: whether the platform
+  # boots and answers its readiness probe depends on both. A licence setting
+  # once put the probe behind the licence check, and only this job saw it.
   stack:
     name: Compose stack starts
     needs: changes
-    if: needs.changes.outputs.container == 'true'
+    if: needs.changes.outputs.app == 'true' || needs.changes.outputs.container == 'true'
     runs-on: ubuntu-24.04
 
     steps:
