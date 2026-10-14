@@ -330,9 +330,8 @@ public class InvoiceService {
 
 ## Support
 
-- Documentation: https://docs.masaar.com
-- Issues: https://github.com/masaar/masaar-java/issues
-- Email: support@masaar.com
+- Issues: https://github.com/shamil3ilm/masaar/issues
+- Security vulnerabilities: see [SECURITY.md](../../SECURITY.md)
 
 ## License
 

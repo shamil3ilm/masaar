@@ -15,7 +15,7 @@ namespace Masaar;
 /// Masaar .NET SDK for ZATCA-compliant e-invoicing.
 /// </summary>
 /// <example>
-/// var client = new MasaarClient("https://api.masaar.sa", "api_key", "api_secret");
+/// var client = new MasaarClient("https://api.example.com", "api_key", "api_secret");
 ///
 /// var invoice = await client.Invoices.CreateAsync(new CreateInvoiceRequest
 /// {

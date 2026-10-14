@@ -16,7 +16,7 @@ import javax.crypto.spec.SecretKeySpec
  * Usage:
  * ```kotlin
  * val client = MasaarClient(
- *     baseUrl = "https://api.masaar.sa",
+ *     baseUrl = "https://api.example.com",
  *     apiKey = "your_api_key",
  *     apiSecret = "your_api_secret"
  * )

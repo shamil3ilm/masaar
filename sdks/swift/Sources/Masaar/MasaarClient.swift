@@ -6,7 +6,7 @@ import CryptoKit
 /// Usage:
 /// ```swift
 /// let client = MasaarClient(
-///     baseURL: "https://api.masaar.sa",
+///     baseURL: "https://api.example.com",
 ///     apiKey: "your_api_key",
 ///     apiSecret: "your_api_secret"
 /// )

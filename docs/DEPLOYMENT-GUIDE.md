@@ -409,7 +409,7 @@ Schedule::call(function () {
 
 ```bash
 # Obtain certificate
-sudo certbot --nginx -d api.masaar.sa -d sandbox.masaar.sa
+sudo certbot --nginx -d api.example.com -d sandbox.example.com
 
 # Verify auto-renewal
 sudo certbot renew --dry-run
@@ -422,19 +422,19 @@ Create `/etc/nginx/sites-available/masaar`:
 ```nginx
 server {
     listen 80;
-    server_name api.masaar.sa sandbox.masaar.sa;
+    server_name api.example.com sandbox.example.com;
     return 301 https://$server_name$request_uri;
 }
 
 server {
     listen 443 ssl http2;
-    server_name api.masaar.sa;
+    server_name api.example.com;
 
     root /var/www/masaar/public;
     index index.php;
 
-    ssl_certificate /etc/letsencrypt/live/api.masaar.sa/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/api.masaar.sa/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/api.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.example.com/privkey.pem;
 
     # Modern SSL configuration
     ssl_protocols TLSv1.2 TLSv1.3;
@@ -550,7 +550,7 @@ APP_NAME=Masaar
 APP_ENV=production
 APP_KEY=base64:your-generated-key
 APP_DEBUG=false
-APP_URL=https://api.masaar.sa
+APP_URL=https://api.example.com
 
 #--------------------------------------------
 # Database (CRITICAL)
@@ -632,7 +632,7 @@ MAIL_HOST=smtp.mailgun.org
 MAIL_PORT=587
 MAIL_USERNAME=your-mailgun-username
 MAIL_PASSWORD=your-mailgun-password
-MAIL_FROM_ADDRESS=noreply@masaar.sa
+MAIL_FROM_ADDRESS=noreply@example.com
 MAIL_FROM_NAME="Masaar Notifications"
 ```
 
@@ -756,7 +756,7 @@ fi
 
 # 9. Check SSL certificate
 echo -n "SSL Certificate: "
-EXPIRY=$(echo | openssl s_client -servername api.masaar.sa -connect api.masaar.sa:443 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
+EXPIRY=$(echo | openssl s_client -servername api.example.com -connect api.example.com:443 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
 if [[ -n "$EXPIRY" ]]; then
     echo "✅ OK (expires: $EXPIRY)"
 else

@@ -5,14 +5,11 @@ ZATCA-compliant e-invoicing API client for Go 1.18+.
 ## Installation
 
 ```bash
-go get github.com/masaar/masaar-go
+go get github.com/shamil3ilm/masaar/sdks/go@main
 ```
 
-Or add to your `go.mod`:
-
-```go
-require github.com/masaar/masaar-go v1.0.0
-```
+The module lives in a subdirectory of the platform repository and has no
+release tags yet, so it resolves to a pseudo-version of the commit you fetch.
 
 ## Quick Start
 
@@ -24,7 +21,7 @@ import (
     "fmt"
     "log"
 
-    "github.com/masaar/masaar-go"
+    masaar "github.com/shamil3ilm/masaar/sdks/go"
 )
 
 func main() {

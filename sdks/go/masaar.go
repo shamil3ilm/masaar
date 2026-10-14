@@ -2,7 +2,7 @@
 //
 // Example usage:
 //
-//	client := masaar.NewClient("https://api.masaar.sa", "api_key", "api_secret")
+//	client := masaar.NewClient("https://api.example.com", "api_key", "api_secret")
 //
 //	invoice, err := client.Invoices.Create(context.Background(), &masaar.CreateInvoiceRequest{
 //	    InvoiceNumber: "INV-001",

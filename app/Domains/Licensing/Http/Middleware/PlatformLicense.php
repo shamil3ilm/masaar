@@ -50,7 +50,7 @@ class PlatformLicense
             return ApiResponse::error(
                 $validation['message'],
                 403,
-                ['support' => 'Contact sales@masaar.com for licensing inquiries.'],
+                ['support' => 'Contact your licence provider for licensing inquiries.'],
                 'LICENSE_INVALID',
                 'licensing',
             );

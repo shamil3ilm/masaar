@@ -24,9 +24,12 @@ class PublicDocsTest extends TestCase
     private const PARTNER_NAMES = '/example/i';
 
     /**
-     * Names and places that only make sense inside the project.
+     * Names and places that only make sense inside the project - and hosts
+     * and addresses that were invented for it and serve nothing: a reader
+     * who wrote to support@masaar.sa or pointed a client at api.masaar.sa
+     * reached nobody. Examples use example.com.
      */
-    private const INTERNAL = '/shamil3ilm\.workers\.dev|docs\/superpowers|docs\/audit\/|_audit\/|erp-backend|erp-frontend|bounty/i';
+    private const INTERNAL = '/shamil3ilm\.workers\.dev|docs\/superpowers|docs\/audit\/|_audit\/|erp-backend|erp-frontend|bounty|masaar\.(sa|io|com)\b|github\.com\/masaar\//i';
 
     /**
      * A calendar date, or a "last updated" line. Versions and legal citations

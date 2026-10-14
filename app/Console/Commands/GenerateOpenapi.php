@@ -72,8 +72,8 @@ class GenerateOpenapi extends Command
                     .'`php artisan masaar:openapi` — edit the routes, not this file.',
             ],
             'servers' => [
-                ['url' => 'https://api.masaar.sa', 'description' => 'Production'],
-                ['url' => 'https://sandbox.masaar.sa', 'description' => 'Sandbox'],
+                ['url' => 'https://api.example.com', 'description' => 'Production'],
+                ['url' => 'https://sandbox.example.com', 'description' => 'Sandbox'],
             ],
             'components' => [
                 'securitySchemes' => [

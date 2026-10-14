@@ -4,23 +4,16 @@ ZATCA-compliant e-invoicing API client for Swift 5.9+ (iOS, macOS, watchOS, tvOS
 
 ## Installation
 
-### Swift Package Manager
-
-Add to your `Package.swift`:
+The SDK is not published to a package registry. Copy `sdks/swift` into your
+project and add it as a local package in your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/masaar/masaar-swift.git", from: "1.0.0")
+    .package(path: "Vendor/masaar-swift")
 ]
 ```
 
-Or in Xcode: File → Add Packages → Enter the repository URL.
-
-### CocoaPods
-
-```ruby
-pod 'Masaar', '~> 1.0'
-```
+Or in Xcode: File → Add Package Dependencies → Add Local.
 
 ## Quick Start
 

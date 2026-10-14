@@ -51,13 +51,13 @@ In this model, **the partner provides all of the infrastructure**. Masaar provid
 
 ```bash
 # Login to Masaar registry (credentials provided separately)
-docker login registry.masaar.io
+docker login registry.example.com
 
 # Pull the latest stable image
-docker pull registry.masaar.io/masaar/zatca-api:latest
+docker pull registry.example.com/masaar/zatca-api:latest
 
 # Or a specific version
-docker pull registry.masaar.io/masaar/zatca-api:1.0.0
+docker pull registry.example.com/masaar/zatca-api:1.0.0
 ```
 
 ### Step 2: Configure Environment
@@ -205,7 +205,7 @@ docker-compose up -d
 
 ```bash
 # 1. Pull new image
-docker pull registry.masaar.io/masaar/zatca-api:1.1.0
+docker pull registry.example.com/masaar/zatca-api:1.1.0
 
 # 2. Update docker-compose.yml IMAGE_TAG
 IMAGE_TAG=1.1.0

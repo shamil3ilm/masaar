@@ -9,7 +9,7 @@
  * import { MasaarClient } from 'masaar';
  *
  * const client = new MasaarClient({
- *   baseUrl: 'https://api.masaar.sa',
+ *   baseUrl: 'https://api.example.com',
  *   apiKey: 'your_api_key',
  *   apiSecret: 'your_api_secret'
  * });

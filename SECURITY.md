@@ -22,7 +22,7 @@ Masaar is committed to ensuring the security of our users and the integrity of t
 
 ### Do
 
-1. **Email us directly**: security@{YOUR_DOMAIN}
+1. **Email us directly**: shamil3ilm@gmail.com
 2. **Include the following information**:
    - Type of vulnerability (e.g., XSS, SQL injection, authentication bypass)
    - Full path of affected source file(s)
@@ -158,7 +158,7 @@ If you believe your deployment has been compromised:
 1. **Isolate**: Disconnect affected systems
 2. **Preserve**: Maintain logs and evidence
 3. **Revoke**: Invalidate all credentials immediately
-4. **Report**: Contact security@{YOUR_DOMAIN}
+4. **Report**: Contact shamil3ilm@gmail.com
 5. **Assess**: Determine scope and impact
 6. **Notify**: Inform affected parties as required
 
@@ -205,8 +205,8 @@ This project is designed to comply with:
 
 ## Contact
 
-- **Security issues**: security@{YOUR_DOMAIN}
-- **General inquiries**: support@{YOUR_DOMAIN}
+- **Security issues**: shamil3ilm@gmail.com
+- **General questions**: https://github.com/shamil3ilm/masaar/issues
 - **Emergency**: Include [URGENT] in subject line
 
 ---

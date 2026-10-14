@@ -141,7 +141,7 @@ The system may monitor for:
 
 ### 8.1 Report Violations
 
-Report suspected misuse to: security@{YOUR_DOMAIN}
+Report suspected misuse to: shamil3ilm@gmail.com
 
 ### 8.2 Security Vulnerabilities
 

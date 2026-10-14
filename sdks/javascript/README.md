@@ -7,7 +7,7 @@ which compiles to JavaScript and works from both Node.js and the browser.
 import { MasaarClient } from 'masaar';
 
 const client = new MasaarClient({
-  baseUrl: 'https://api.masaar.sa',
+  baseUrl: 'https://api.example.com',
   apiKey: process.env.MASAAR_API_KEY,
   apiSecret: process.env.MASAAR_API_SECRET,
 });

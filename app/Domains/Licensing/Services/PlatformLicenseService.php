@@ -201,7 +201,7 @@ class PlatformLicenseService
         if ($now > $expiresAt) {
             $expiredDays = $now->diff($expiresAt)->days;
 
-            return $this->invalidResult("License expired {$expiredDays} days ago. Contact sales@masaar.com to renew.");
+            return $this->invalidResult("License expired {$expiredDays} days ago. Contact your licence provider to renew.");
         }
 
         $daysRemaining = (int) $now->diff($expiresAt)->days;

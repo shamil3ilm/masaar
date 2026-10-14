@@ -11,11 +11,10 @@ setup(
     name="masaar",
     version="1.0.0",
     author="Masaar",
-    author_email="support@masaar.sa",
     description="ZATCA-compliant e-invoicing API client for Python",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/masaar/masaar-python",
+    url="https://github.com/shamil3ilm/masaar",
     packages=find_packages(),
     classifiers=[
         "Development Status :: 5 - Production/Stable",

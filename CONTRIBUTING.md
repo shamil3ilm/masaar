@@ -229,7 +229,7 @@ Top contributors may be invited to:
 
 - **General questions**: discussions@{YOUR_DOMAIN}
 - **Technical issues**: Create a GitHub issue
-- **Security concerns**: security@{YOUR_DOMAIN}
+- **Security concerns**: shamil3ilm@gmail.com
 - **Contribution questions**: contributors@{YOUR_DOMAIN}
 
 ## Code of Conduct

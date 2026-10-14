@@ -26,7 +26,7 @@ import java.lang.reflect.Type;
  *
  * <pre>{@code
  * MasaarClient client = new MasaarClient.Builder()
- *     .baseUrl("https://api.masaar.sa")
+ *     .baseUrl("https://api.example.com")
  *     .apiKey("your_api_key")
  *     .apiSecret("your_api_secret")
  *     .build();

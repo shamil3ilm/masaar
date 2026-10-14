@@ -55,7 +55,7 @@ class CheckPlatformLicense extends Command
             if ($result['days_remaining'] !== null && $result['days_remaining'] <= 7) {
                 $this->newLine();
                 $this->warn("  ⚠️  License expires in {$result['days_remaining']} days!");
-                $this->line('  Contact sales@masaar.com to renew.');
+                $this->line('  Contact your licence provider to renew.');
             }
 
             $this->newLine();
@@ -72,7 +72,7 @@ class CheckPlatformLicense extends Command
             $this->line('  To resolve:');
             $this->line('  1. Ensure PLATFORM_LICENSE_KEY is set in .env');
             $this->line('  2. Verify the license has not expired');
-            $this->line('  3. Contact sales@masaar.com for assistance');
+            $this->line('  3. Contact your licence provider for assistance');
             $this->newLine();
 
             return Command::FAILURE;

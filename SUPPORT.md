@@ -35,7 +35,7 @@ We provide support for the following technical issues:
 - Unexpected behavior
 - Error messages and stack traces
 - Performance issues
-- Security vulnerabilities (via security@{YOUR_DOMAIN})
+- Security vulnerabilities (via shamil3ilm@gmail.com)
 
 #### 5. Feature Requests
 - Enhancement suggestions
@@ -206,7 +206,7 @@ We provide support for the following technical issues:
 |---------|---------|---------------|
 | GitHub Issues | Bug reports, feature requests | 1-3 business days |
 | support@{YOUR_DOMAIN} | General technical questions | 1-2 business days |
-| security@{YOUR_DOMAIN} | Security vulnerabilities | Within 24 hours |
+| shamil3ilm@gmail.com | Security vulnerabilities | Within 24 hours |
 | Documentation | Self-service guidance | Immediate |
 
 ### For Professional Consultation (External)

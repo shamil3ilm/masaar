@@ -37,11 +37,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/masaar/masaar-js"
+    "url": "https://github.com/shamil3ilm/masaar"
   },
-  "homepage": "https://masaar.com",
+  "homepage": "https://github.com/shamil3ilm/masaar",
   "bugs": {
-    "url": "https://github.com/masaar/masaar-js/issues"
+    "url": "https://github.com/shamil3ilm/masaar/issues"
   },
   "engines": {
     "node": ">=14.0.0"

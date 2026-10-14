@@ -6,8 +6,7 @@
     "version": "1.0.0",
     "authors": [
         {
-            "name": "Masaar",
-            "email": "support@masaar.com"
+            "name": "Masaar"
         }
     ],
     "require": {
@@ -38,8 +37,8 @@
         "compliance",
         "laravel"
     ],
-    "homepage": "https://masaar.com",
+    "homepage": "https://github.com/shamil3ilm/masaar",
     "support": {
-        "issues": "https://github.com/masaar/masaar-php/issues"
+        "issues": "https://github.com/shamil3ilm/masaar/issues"
     }
 }

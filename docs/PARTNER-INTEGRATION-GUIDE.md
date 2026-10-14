@@ -57,9 +57,9 @@ Replace the partner system's own ZATCA handling with Masaar API calls while keep
 
 | Environment | Base URL |
 |-------------|----------|
-| Sandbox | `https://sandbox.masaar.sa` |
-| Simulation | `https://simulation.masaar.sa` |
-| Production | `https://api.masaar.sa` |
+| Sandbox | `https://sandbox.example.com` |
+| Simulation | `https://simulation.example.com` |
+| Production | `https://api.example.com` |
 
 ---
 
@@ -87,7 +87,7 @@ return [
     |--------------------------------------------------------------------------
     */
 
-    'base_url' => env('MASAAR_BASE_URL', 'https://sandbox.masaar.sa'),
+    'base_url' => env('MASAAR_BASE_URL', 'https://sandbox.example.com'),
 
     'api_key' => env('MASAAR_API_KEY'),
 
@@ -133,7 +133,7 @@ Add to `.env`:
 
 ```env
 # Masaar Configuration
-MASAAR_BASE_URL=https://sandbox.masaar.sa
+MASAAR_BASE_URL=https://sandbox.example.com
 MASAAR_API_KEY=your_api_key_here
 MASAAR_WEBHOOK_SECRET=your_webhook_secret_here
 MASAAR_TIMEOUT=30
@@ -1186,7 +1186,7 @@ Route::post('/webhooks/masaar', [MasaarWebhookController::class, 'handle'])
 After deployment, register webhook URL:
 
 ```bash
-curl -X POST https://api.masaar.sa/api/webhooks \
+curl -X POST https://api.example.com/api/webhooks \
   -H "X-API-Key: your_api_key" \
   -H "Content-Type: application/json" \
   -d '{
@@ -1276,7 +1276,7 @@ class MasaarIntegrationTest extends TestCase
 1. **Environment Setup**
    ```bash
    # Ensure sandbox configuration
-   MASAAR_BASE_URL=https://sandbox.masaar.sa
+   MASAAR_BASE_URL=https://sandbox.example.com
    ```
 
 2. **Test Standard Invoice (B2B)**
@@ -1409,9 +1409,8 @@ tail -f storage/logs/laravel.log | grep -i masaar
 
 ### Support Contacts
 
-- **Masaar Technical Support**: support@masaar.sa
-- **Documentation**: https://docs.masaar.sa
-- **API Status**: https://status.masaar.sa
+- **Issues**: https://github.com/shamil3ilm/masaar/issues
+- **Security vulnerabilities**: see [SECURITY.md](../SECURITY.md); do not open a public issue
 
 ---
 

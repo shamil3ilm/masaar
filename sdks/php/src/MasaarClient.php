@@ -607,7 +607,7 @@ class WebhooksResource
  *
  * @example
  * $client = new MasaarClient([
- *     'base_url' => 'https://api.masaar.sa',
+ *     'base_url' => 'https://api.example.com',
  *     'api_key' => 'your_api_key',
  *     'api_secret' => 'your_api_secret',
  * ]);

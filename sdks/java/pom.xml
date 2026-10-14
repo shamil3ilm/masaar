@@ -11,7 +11,7 @@
 
     <name>Masaar Java SDK</name>
     <description>ZATCA-compliant e-invoicing API client for Java</description>
-    <url>https://github.com/masaar/masaar-java</url>
+    <url>https://github.com/shamil3ilm/masaar</url>
 
     <licenses>
         <license>
@@ -23,7 +23,6 @@
     <developers>
         <developer>
             <name>Masaar Team</name>
-            <email>support@masaar.sa</email>
             <organization>Masaar</organization>
         </developer>
     </developers>

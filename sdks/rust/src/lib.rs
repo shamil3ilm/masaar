@@ -7,7 +7,7 @@
 //! #[tokio::main]
 //! async fn main() -> Result<(), masaar::Error> {
 //!     let client = MasaarClient::new(
-//!         "https://api.masaar.sa",
+//!         "https://api.example.com",
 //!         "your_api_key",
 //!         "your_api_secret",
 //!     );

@@ -43,7 +43,7 @@ return [
     | URL of the license validation server for phone-home verification.
     | If not set, the system will use offline validation only.
     |
-    | Example: https://license.masaar.com
+    | Example: https://license.example.com
     |
     */
     'server_url' => env('PLATFORM_LICENSE_SERVER_URL'),

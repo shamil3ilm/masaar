@@ -2,10 +2,10 @@
 name = "masaar"
 version = "1.0.0"
 edition = "2021"
-authors = ["Masaar <support@masaar.sa>"]
+authors = ["Masaar"]
 description = "ZATCA-compliant e-invoicing API client for Rust"
 license = "MIT"
-repository = "https://github.com/masaar/masaar-rust"
+repository = "https://github.com/shamil3ilm/masaar"
 keywords = ["zatca", "einvoicing", "saudi", "ksa", "vat"]
 categories = ["api-bindings", "web-programming::http-client"]
 

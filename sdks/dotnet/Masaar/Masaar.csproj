@@ -8,7 +8,7 @@
     <Authors>Masaar</Authors>
     <Company>Masaar</Company>
     <Description>ZATCA-compliant e-invoicing API client for .NET</Description>
-    <PackageProjectUrl>https://github.com/masaar/masaar-dotnet</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/shamil3ilm/masaar</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageTags>zatca;einvoicing;saudi;ksa;vat;invoice;compliance</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
