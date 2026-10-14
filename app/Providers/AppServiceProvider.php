@@ -16,6 +16,7 @@ use App\Domains\Licensing\Http\Middleware\ValidateLicense;
 use App\Domains\Organization\Http\Middleware\IsOrgAdmin;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Services\TenantResolver;
+use App\Domains\Platform\Http\Middleware\AuditAdminAction;
 use App\Domains\Platform\Http\Middleware\MetricsAccess;
 use App\Domains\Platform\Http\Middleware\RateLimitApi;
 use Illuminate\Database\Eloquent\Model;
@@ -34,6 +35,7 @@ class AppServiceProvider extends ServiceProvider
     public const MIDDLEWARE_ALIASES = [
         'jwt.auth' => JwtGuard::class,
         'platform.admin' => IsPlatformAdmin::class,
+        'admin.audit' => AuditAdminAction::class,
         'portal.tenant' => PortalTenant::class,
         'org.admin' => IsOrgAdmin::class,
         'metrics' => MetricsAccess::class,

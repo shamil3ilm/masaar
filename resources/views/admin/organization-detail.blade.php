@@ -135,6 +135,37 @@
     </div>
 </div>
 
+<!-- Members -->
+<div class="bg-white rounded-lg shadow mb-6">
+    <div class="p-6 border-b">
+        <h3 class="text-lg font-semibold text-gray-800">Members</h3>
+    </div>
+    <x-ui.table>
+        <x-slot:head>
+            <x-ui.th>User</x-ui.th>
+            <x-ui.th>Role</x-ui.th>
+            <x-ui.th>Membership</x-ui.th>
+            <x-ui.th>Account</x-ui.th>
+            <x-ui.th>Joined</x-ui.th>
+        </x-slot:head>
+
+        @forelse($members as $member)
+        <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4">
+                <a href="{{ route('admin.users.show', $member->id) }}" class="font-medium text-teal-700 hover:text-teal-900">{{ $member->name }}</a>
+                <div class="text-sm text-gray-500 break-all">{{ $member->email }}</div>
+            </td>
+            <td class="px-6 py-4 text-sm text-gray-500">{{ $member->role }}</td>
+            <td class="px-6 py-4"><x-ui.badge :state="$member->status" /></td>
+            <td class="px-6 py-4"><x-ui.badge :state="$member->account_status" /></td>
+            <td class="px-6 py-4 text-sm text-gray-500">{{ $member->joined_at ? \Carbon\Carbon::parse($member->joined_at)->format('M d, Y') : '-' }}</td>
+        </tr>
+        @empty
+        <x-ui.empty :columns="5">No members</x-ui.empty>
+        @endforelse
+    </x-ui.table>
+</div>
+
 <!-- Recent Submissions -->
 <div class="bg-white rounded-lg shadow">
     <div class="p-6 border-b flex justify-between items-center">

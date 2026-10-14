@@ -122,19 +122,56 @@ class AuditService
      *
      * @param  string  $action  Dotted event name, e.g. 'api_key.revoked'
      * @param  array<string, mixed>  $metadata  Never credentials; identifiers and outcome only
+     * @param  string|null  $userId  Who acted, when it is not the authenticated user - an API
+     *                               sign-in authenticates through JWT, which the default guard
+     *                               does not see
      */
     public function logSecurity(
         string $action,
         ?string $entityType = null,
         ?string $entityId = null,
         array $metadata = [],
+        ?string $userId = null,
     ): AuditLog {
         return AuditLog::create([
             'org_id' => app(TenantResolver::class)->getOrganizationId(),
-            'user_id' => auth()->id(),
+            'user_id' => $userId ?? auth()->id(),
             'action' => 'security.'.$action,
             'entity_type' => $entityType,
             'entity_id' => $entityId,
+            'ip_address' => request()?->ip(),
+            'user_agent' => request()?->userAgent(),
+            'metadata' => $metadata,
+        ]);
+    }
+
+    /**
+     * Record what a platform admin did through the console.
+     *
+     * Written for every change an admin makes, by AuditAdminAction rather
+     * than by each controller, so a new admin action is on the record without
+     * anyone remembering to put it there.
+     *
+     * @param  array<string, mixed>|null  $oldValues
+     * @param  array<string, mixed>|null  $newValues
+     * @param  array<string, mixed>  $metadata  Outcome, route parameters and the redacted input
+     */
+    public function logAdminAction(
+        string $action,
+        string $entityType,
+        ?string $entityId,
+        ?array $oldValues,
+        ?array $newValues,
+        array $metadata,
+    ): AuditLog {
+        return AuditLog::create([
+            'org_id' => null,
+            'user_id' => auth()->id(),
+            'action' => $action,
+            'entity_type' => $entityType,
+            'entity_id' => $entityId,
+            'old_values' => $oldValues,
+            'new_values' => $newValues,
             'ip_address' => request()?->ip(),
             'user_agent' => request()?->userAgent(),
             'metadata' => $metadata,

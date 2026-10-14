@@ -8,8 +8,10 @@ use App\Domains\Invoice\Http\Controllers\PortalInvoiceDraftController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceFilingController;
 use App\Domains\Licensing\Http\Controllers\AdminLicenceController;
 use App\Domains\Organization\Http\Controllers\CustomerPortalController;
+use App\Domains\Platform\Http\Controllers\AdminAuditController;
 use App\Domains\Platform\Http\Controllers\AdminController;
 use App\Domains\Platform\Http\Controllers\AdminSettingsController;
+use App\Domains\Platform\Http\Controllers\AdminUserController;
 use App\Domains\Webhook\Http\Controllers\AdminWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -45,7 +47,10 @@ Route::post('/logout', [SessionAuthController::class, 'logout'])
 |
 */
 Route::prefix('admin')->name('admin.')
-    ->middleware(['auth', 'platform.admin'])
+    // admin.audit records every change made through the console - see
+    // AuditAdminAction. On the group, so a new admin action is on the record
+    // without anyone having to remember it.
+    ->middleware(['auth', 'platform.admin', 'admin.audit'])
     // Every identifier in this group names a HasUuids model, so anything that
     // is not a UUID is a mistyped URL and is a 404 at the router, before a
     // query is built from it. Two reasons beyond tidiness:
@@ -59,11 +64,18 @@ Route::prefix('admin')->name('admin.')
     // It also makes the ordering of /licences/create above /licences/{id}
     // a convenience rather than a requirement: "create" is not a UUID, so it
     // can no longer be swallowed as one if the lines are ever reordered.
-    ->whereUuid(['id', 'licenceId', 'webhookId', 'logId'])
+    ->whereUuid(['id', 'licenceId', 'webhookId', 'logId', 'userId'])
     ->group(function () {
         Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
         Route::get('/organizations', [AdminController::class, 'organizations'])->name('organizations');
         Route::get('/organizations/{id}', [AdminController::class, 'organizationDetail'])->name('organization.detail');
+        Route::get('/users', [AdminUserController::class, 'index'])->name('users.index');
+        Route::get('/users/{userId}', [AdminUserController::class, 'show'])->name('users.show');
+        // Suspending locks someone out of everything at once, so it is a POST
+        // behind a confirmation and a required reason.
+        Route::post('/users/{userId}/suspend', [AdminUserController::class, 'suspend'])->name('users.suspend');
+        Route::post('/users/{userId}/reactivate', [AdminUserController::class, 'reactivate'])->name('users.reactivate');
+        Route::get('/audit', [AdminAuditController::class, 'index'])->name('audit');
         Route::get('/licences', [AdminLicenceController::class, 'index'])->name('licences.index');
         // Before the {licenceId} route below, or "create" is taken for an id
         // and the form never renders.

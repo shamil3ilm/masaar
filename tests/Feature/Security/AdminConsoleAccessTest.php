@@ -73,13 +73,20 @@ class AdminConsoleAccessTest extends TestCase
             ->assertForbidden();
     }
 
+    /**
+     * Denied, and signed out. This was a 403 that left the session open;
+     * ActiveAccount now ends a suspended account's session on its next
+     * request, which is the stronger form of the same refusal.
+     */
     public function test_suspended_admin_denied(): void
     {
         $user = User::factory()->platformAdmin()->suspended()->create();
 
         $this->actingAs($user)
             ->get('/admin/organizations')
-            ->assertForbidden();
+            ->assertRedirect(route('login'));
+
+        $this->assertGuest();
     }
 
     public function test_admin_allowed(): void

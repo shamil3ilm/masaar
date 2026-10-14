@@ -9,6 +9,7 @@ use App\Domains\Auth\DTOs\RegistrationData;
 use App\Domains\Auth\Http\Requests\LoginRequest;
 use App\Domains\Auth\Http\Requests\RegisterRequest;
 use App\Domains\Auth\Services\AccountRegistrar;
+use App\Domains\Auth\Services\SignInRecorder;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -22,6 +23,7 @@ class AuthController extends Controller
         private readonly Authenticator $auth,
         private readonly AuditService $audit,
         private readonly AccountRegistrar $registrar,
+        private readonly SignInRecorder $signIns,
     ) {}
 
     /**
@@ -65,10 +67,12 @@ class AuthController extends Controller
         );
 
         if (! $token) {
+            $this->signIns->failed((string) $request->email, 'api');
+
             return ApiResponse::unauthorized('Invalid credentials');
         }
 
-        $this->audit->logAuth('login');
+        $this->signIns->succeeded($this->auth->user(), 'api');
 
         return ApiResponse::success([
             'token' => $token->toArray(),

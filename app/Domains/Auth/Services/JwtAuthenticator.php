@@ -19,9 +19,12 @@ final class JwtAuthenticator implements Authenticator
     public function attempt(LoginData $credentials): ?AuthToken
     {
         try {
+            // status is part of the credential set, as it is for the console:
+            // without it a suspended account was still issued a token.
             if (! $token = $this->jwt->attempt([
                 'email' => $credentials->email,
                 'password' => $credentials->password,
+                'status' => 'active',
             ])) {
                 return null;
             }

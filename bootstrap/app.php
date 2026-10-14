@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\Auth\Http\Middleware\ActiveAccount;
 use App\Domains\Compliance\Fatoora\Exceptions\CertificateException;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Exceptions\SigningException;
@@ -61,6 +62,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // Every response, web and API alike: a PHP version is announced on
         // both, and the rest cost nothing on a JSON response.
         $middleware->append(SecurityHeaders::class);
+
+        // A session outlives the decision to suspend its account - for a
+        // remembered one, by years. Every web request asks.
+        $middleware->web(append: [ActiveAccount::class]);
 
         $middleware->api(prepend: [
             HandleCors::class,

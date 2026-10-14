@@ -48,6 +48,45 @@ class SecurityAuditTest extends TestCase
         $this->assertSame('operator@masaar.test', $entry->metadata['email'] ?? null);
     }
 
+    /**
+     * A failure against a real account is filed under that account.
+     *
+     * Recorded with no entity, a failed attempt could only be found by
+     * searching metadata for the email, so an account's own history showed
+     * its successes and none of the attempts against it.
+     */
+    public function test_a_failure_names_the_account(): void
+    {
+        $user = User::factory()->create(['email' => 'operator@masaar.test']);
+
+        $this->post('/login', ['email' => 'operator@masaar.test', 'password' => 'wrong']);
+
+        $this->assertSame((string) $user->id, AuditLog::where('action', 'security.login.failed')->first()->entity_id);
+    }
+
+    /**
+     * The API's sign-ins go in the same trail, under the same names.
+     *
+     * It recorded a success as auth.login and a failure not at all, so the
+     * console and the API told two different stories and only one of them
+     * included the attempts that failed.
+     */
+    public function test_api_sign_ins_are_recorded(): void
+    {
+        $user = User::factory()->create(['email' => 'operator@masaar.test']);
+
+        $this->postJson('/api/auth/login', ['email' => 'operator@masaar.test', 'password' => 'wrong']);
+        $this->postJson('/api/auth/login', ['email' => 'operator@masaar.test', 'password' => 'password']);
+
+        $failed = AuditLog::where('action', 'security.login.failed')->first();
+        $succeeded = AuditLog::where('action', 'security.login.succeeded')->first();
+
+        $this->assertSame((string) $user->id, $failed?->entity_id);
+        $this->assertSame('api', $failed->metadata['surface'] ?? null);
+        $this->assertSame((string) $user->id, $succeeded?->entity_id);
+        $this->assertSame((string) $user->id, $succeeded->user_id);
+    }
+
     public function test_unknown_account_recorded(): void
     {
         $this->post('/login', ['email' => 'nobody@masaar.test', 'password' => 'guess']);

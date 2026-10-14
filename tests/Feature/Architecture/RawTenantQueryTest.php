@@ -56,6 +56,7 @@ class RawTenantQueryTest extends TestCase
         'Domains/Platform/Services/PlatformStatus.php' => 'platform-wide counts, no tenant to scope to',
         'Domains/Platform/Services/QueueReport.php' => 'platform admin, cross-tenant by design',
         'Domains/Platform/Services/SubmissionLog.php' => 'platform admin, cross-tenant by design',
+        'Domains/Platform/Services/UserReport.php' => 'platform admin, a user spans tenants by design',
 
         // Prometheus scrapes one set of figures for the whole deployment.
         'Domains/Platform/Services/MetricsCollector.php' => 'platform-wide metrics, no tenant to scope to',

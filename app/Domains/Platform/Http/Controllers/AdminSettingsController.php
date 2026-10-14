@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Http\Controllers;
 
+use App\Domains\Platform\Http\Middleware\AuditAdminAction;
 use App\Domains\Platform\Services\Settings;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
@@ -42,7 +43,20 @@ class AdminSettingsController extends Controller
         // The email, not the id. This is read by someone asking who changed a
         // threshold, and a UUID does not answer that - the same reason the
         // kill switches record one.
+        $before = $this->settings->all();
         $problems = $this->settings->put($request->all(), Auth::user()?->email);
+
+        // Only what changed, so the record answers "what did they change"
+        // rather than listing every threshold on every save.
+        if ($problems === []) {
+            $after = $this->settings->all();
+            $changed = array_keys(array_filter($after, fn (mixed $value, string $key): bool => ($before[$key] ?? null) !== $value, ARRAY_FILTER_USE_BOTH));
+
+            $request->attributes->set(AuditAdminAction::CHANGES, [
+                array_intersect_key($before, array_flip($changed)),
+                array_intersect_key($after, array_flip($changed)),
+            ]);
+        }
 
         if ($problems !== []) {
             return redirect()

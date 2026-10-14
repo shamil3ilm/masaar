@@ -120,6 +120,27 @@ class OrganizationReport
     }
 
     /**
+     * Who belongs to an organization, with their role and membership status.
+     * Named columns only: the users table holds a password hash.
+     */
+    public function members(string $id): Collection
+    {
+        return DB::table('organization_user')
+            ->join('users', 'users.id', '=', 'organization_user.user_id')
+            ->where('organization_user.org_id', $id)
+            ->orderBy('users.name')
+            ->get([
+                'users.id',
+                'users.name',
+                'users.email',
+                'users.status as account_status',
+                'organization_user.role',
+                'organization_user.status',
+                'organization_user.created_at as joined_at',
+            ]);
+    }
+
+    /**
      * The certificate an organization signs with, or null before onboarding.
      */
     public function certificate(string $id): ?object

@@ -54,7 +54,16 @@ class User extends Authenticatable implements JWTSubject
      */
     public function isPlatformAdmin(): bool
     {
-        return $this->status === 'active' && $this->is_platform_admin === true;
+        return $this->isActive() && $this->is_platform_admin === true;
+    }
+
+    /**
+     * Whether the account may be used at all. A suspended account is refused
+     * at sign-in, and on its next request if it was already signed in.
+     */
+    public function isActive(): bool
+    {
+        return $this->status === 'active';
     }
 
     /**

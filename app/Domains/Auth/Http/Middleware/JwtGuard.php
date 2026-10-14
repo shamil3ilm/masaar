@@ -36,6 +36,12 @@ class JwtGuard
                 return ApiResponse::unauthorized('User not found');
             }
 
+            // A token outlives the decision to suspend its account by up to
+            // its TTL. The user row is already loaded, so asking costs nothing.
+            if (! $user->isActive()) {
+                return ApiResponse::unauthorized('Account suspended');
+            }
+
             // Bind user to Laravel's auth context
             auth()->setUser($user);
 

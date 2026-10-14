@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Auth\Http\Controllers;
 
 use App\Domains\Audit\Services\AuditService;
+use App\Domains\Auth\Services\SignInRecorder;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -33,6 +34,7 @@ class SessionAuthController extends Controller
 
     public function __construct(
         private readonly AuditService $audit,
+        private readonly SignInRecorder $signIns,
     ) {}
 
     public function showLogin(): View|RedirectResponse
@@ -80,9 +82,7 @@ class SessionAuthController extends Controller
 
             // Failed attempts are the signal that distinguishes a break-in
             // from ordinary use, so they are audited alongside successes.
-            $this->audit->logSecurity('login.failed', 'User', null, [
-                'email' => $credentials['email'],
-            ]);
+            $this->signIns->failed($credentials['email'], 'console');
 
             throw ValidationException::withMessages([
                 'email' => __('These credentials do not match our records.'),
@@ -97,7 +97,7 @@ class SessionAuthController extends Controller
 
         $user = Auth::user();
 
-        $this->audit->logSecurity('login.succeeded', 'User', (string) $user->getAuthIdentifier(), [
+        $this->signIns->succeeded($user, 'console', [
             'platform_admin' => $user->isPlatformAdmin(),
         ]);
 

@@ -76,8 +76,9 @@ class AdminController extends Controller
         $stats = $this->organizations->stats($id);
         $recentSubmissions = $this->organizations->recentSubmissions($id, 20);
         $certificate = $this->organizations->certificate($id);
+        $members = $this->organizations->members($id);
 
-        return view('admin.organization-detail', compact('organization', 'stats', 'recentSubmissions', 'certificate'));
+        return view('admin.organization-detail', compact('organization', 'stats', 'recentSubmissions', 'certificate', 'members'));
     }
 
     /**
