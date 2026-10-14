@@ -78,6 +78,30 @@ class PlatformLicenseTest extends TestCase
     }
 
     /**
+     * And so must the readiness probe, under the shipped configuration.
+     *
+     * The exclusions matched api/health exactly, so api/health/ready went
+     * through the licence check: without a key it answered 403 and never
+     * ready. The load balancer routes on that probe, so a lapsed or
+     * unreachable licence took every replica out of rotation at once, and
+     * the 403 said nothing about why. Licensing answers whether a request may
+     * be served; readiness answers whether the platform can serve one.
+     *
+     * Read from config/platform-license.php rather than set here, which is
+     * what the test above does and why it could not have caught this.
+     */
+    public function test_readiness_ignores_the_licence(): void
+    {
+        config([
+            'platform-license.enabled' => true,
+            'platform-license.key' => '',
+        ]);
+
+        $this->getJson('/api/health/ready')->assertStatus(200);
+        $this->getJson('/api/health')->assertStatus(200);
+    }
+
+    /**
      * A valid key admits the request, so the gate is not simply refusing
      * everything.
      */
