@@ -9,6 +9,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Spatie\Backup\Events\DumpingDatabase;
+use Spatie\Backup\Tasks\Monitor\HealthChecks\MaximumStorageInMegabytes;
 use Spatie\DbDumper\Databases\MySql;
 use Tests\TestCase;
 use ZipArchive;
@@ -134,6 +135,38 @@ class BackupTest extends TestCase
         $this->assertGreaterThanOrEqual(6, config('backup.cleanup.default_strategy.keep_yearly_backups_for_years'));
         $this->assertNull(config('backup.cleanup.default_strategy.delete_oldest_backups_when_using_more_megabytes_than'));
         $this->assertSame('aes256', config('backup.backup.encryption'));
+    }
+
+    /**
+     * OCI Object Storage, and most other S3-compatible stores, refuse the
+     * checksums aws-sdk-php has sent by default since 3.337 - the upload
+     * fails with 501 NotImplemented. AWS itself does not require them.
+     */
+    public function test_the_bucket_accepts_s3_compatibles(): void
+    {
+        config([
+            'filesystems.disks.s3.key' => 'key',
+            'filesystems.disks.s3.secret' => 'secret',
+            'filesystems.disks.s3.bucket' => 'backups',
+        ]);
+
+        $client = Storage::disk('s3')->getClient();
+
+        $this->assertSame('when_required', $client->getConfig('request_checksum_calculation'));
+        $this->assertSame('when_required', $client->getConfig('response_checksum_validation'));
+    }
+
+    /**
+     * Retention never prunes to a size, so the size is watched instead: an
+     * alert well before the bucket's quota - 20 GB on OCI's free tier - turns
+     * a full bucket into a decision rather than a failed night.
+     */
+    public function test_storage_is_watched_not_pruned(): void
+    {
+        $checks = config('backup.monitor_backups.0.health_checks');
+
+        $this->assertArrayHasKey(MaximumStorageInMegabytes::class, $checks);
+        $this->assertLessThan(20 * 1024, $checks[MaximumStorageInMegabytes::class]);
     }
 
     public function test_the_monitor_watches_the_destination(): void

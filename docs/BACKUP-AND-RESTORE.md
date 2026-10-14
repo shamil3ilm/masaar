@@ -28,8 +28,30 @@ Failures page through the alerts channel, and through Slack once `LOG_SLACK_WEBH
 | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`, `AWS_BUCKET` | The bucket. |
 | `AWS_ENDPOINT`, `AWS_USE_PATH_STYLE_ENDPOINT` | Only for S3-compatible stores that aren't AWS, such as OCI Object Storage, Cloudflare R2 or MinIO. |
 | `DB_DUMP_SSL_FLAG` | `skip-ssl` in the compose stack. See `config/database.php`. |
+| `BACKUP_ALERT_AT_MEGABYTES` | Raises an alert once archives use this much of the bucket. The default is 16384. Nothing is deleted to make room. |
 
-Give the bucket credentials permission to write and list, and **not to delete**: use the bucket's retention or object lock. Then a stolen server can't destroy its own backups. If you do that, `backup:clean` can't prune, and the bucket's lifecycle rules have to do the pruning instead.
+Ideally, give the bucket credentials permission to write and list but **not to delete**, and use the bucket's retention rules. Then a stolen server can't destroy its own backups. If you do that, `backup:clean` can't prune, and the bucket's lifecycle rules have to do the pruning instead. On a quota-limited bucket, such as OCI's free tier below, locked archives can't be pruned and will fill it. Choose that trade deliberately.
+
+## On Oracle Cloud (OCI Object Storage)
+
+OCI Object Storage speaks the S3 API, so the `s3` disk works unchanged.
+
+1. **Create a bucket.** Make it private, Standard tier, in your home region. For Saudi data residency that's Jeddah or Riyadh.
+2. **Get S3 credentials.** Go to *Identity → your user → Customer Secret Keys → Generate*. The access key goes in `AWS_ACCESS_KEY_ID` and the secret in `AWS_SECRET_ACCESS_KEY`. The secret is shown once, at creation.
+3. **Point the disk at OCI:**
+
+   ```dotenv
+   AWS_DEFAULT_REGION=me-jeddah-1          # your region identifier
+   AWS_BUCKET=masaar-backups
+   AWS_ENDPOINT=https://<namespace>.compat.objectstorage.me-jeddah-1.oraclecloud.com
+   AWS_USE_PATH_STYLE_ENDPOINT=true
+   ```
+
+   The namespace is on the bucket's details page.
+
+The checksum change in `config/filesystems.php` is what makes uploads work. Since 3.337 the AWS PHP SDK attaches checksums to every upload, and OCI rejects them with `501 NotImplemented`.
+
+The Always Free tier gives 20 GB of Object Storage and 50,000 API requests a month. The nightly backup uses a handful of requests. Storage is the limit to watch: retention keeps up to about 67 archives, so `BACKUP_ALERT_AT_MEGABYTES` (16 GB by default) is what tells you the bucket is filling. Size it from the first archives: one archive's size times about 67 should stay under the quota.
 
 ## Keys are kept apart, and a restore needs all three
 

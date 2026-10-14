@@ -9,6 +9,7 @@ use Spatie\Backup\Notifications\Notifications\HealthyBackupWasFoundNotification;
 use Spatie\Backup\Notifications\Notifications\UnhealthyBackupWasFoundNotification;
 use Spatie\Backup\Tasks\Cleanup\Strategies\DefaultStrategy;
 use Spatie\Backup\Tasks\Monitor\HealthChecks\MaximumAgeInDays;
+use Spatie\Backup\Tasks\Monitor\HealthChecks\MaximumStorageInMegabytes;
 use Spatie\DbDumper\Compressors\GzipCompressor;
 
 /*
@@ -163,8 +164,12 @@ return [
      * backup:monitor raises UnhealthyBackupWasFound when the newest archive is
      * more than a day old - which is what a scheduler that stopped running, or
      * a run that never started, looks like. A failed run is caught sooner, by
-     * BackupHasFailed. No storage ceiling: retention is a legal minimum, not a
-     * budget.
+     * BackupHasFailed.
+     *
+     * Storage is watched rather than pruned to: retention is a legal minimum,
+     * so nothing deletes an archive to make room, and a bucket with a quota -
+     * 20 GB on OCI's Always Free tier - would otherwise fill and fail one
+     * night. The default alerts at 16 GB, leaving room to decide.
      */
     'monitor_backups' => [
         [
@@ -172,6 +177,7 @@ return [
             'disks' => $disks,
             'health_checks' => [
                 MaximumAgeInDays::class => 1,
+                MaximumStorageInMegabytes::class => (int) env('BACKUP_ALERT_AT_MEGABYTES', 16384),
             ],
         ],
     ],

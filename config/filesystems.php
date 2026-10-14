@@ -57,6 +57,12 @@ return [
             // Compose forwards an unset variable as an empty string, and an
             // empty endpoint is not the same as none to the AWS SDK.
             'endpoint' => env('AWS_ENDPOINT') ?: null,
+            // Since aws-sdk-php 3.337 every upload carries a checksum, sent
+            // as aws-chunked trailers that OCI Object Storage and most other
+            // S3-compatible stores refuse with 501 NotImplemented. AWS does
+            // not need them, so they are sent only where an API requires one.
+            'request_checksum_calculation' => 'when_required',
+            'response_checksum_validation' => 'when_required',
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
             'throw' => false,
             'report' => false,
