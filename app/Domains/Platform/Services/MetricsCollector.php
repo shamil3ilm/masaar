@@ -8,7 +8,7 @@ use App\Domains\Compliance\Fatoora\Services\CircuitBreaker;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Queue;
 
 /**
  * Gathers the figures /api/metrics exposes to Prometheus.
@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Redis;
 class MetricsCollector
 {
     /**
-     * Redis-backed job queues whose depth is reported.
+     * Job queues whose depth is reported, on whichever queue driver runs.
      */
     private const QUEUES = ['default', 'zatca-submissions', 'webhooks'];
 
@@ -164,25 +164,33 @@ class MetricsCollector
     {
         $metrics = [];
 
+        // Asked of the configured connection, not of Redis: the depths were
+        // read with Redis::llen whatever the driver, which on the database
+        // queue - the default without Redis - threw on every scrape.
         try {
             foreach (self::QUEUES as $queue) {
                 $metrics["queue_size_{$queue}"] = [
                     'type' => 'gauge',
                     'help' => "Size of {$queue} queue",
-                    'value' => Redis::llen("queues:{$queue}") ?? 0,
+                    'value' => Queue::size($queue),
                     'labels' => ['queue' => $queue],
                 ];
             }
+        } catch (\Throwable $e) {
+            // A missing phpredis extension raises Error, not Exception.
+            $this->logFailure('queue', $e);
+        }
 
+        // Apart, so a queue backend that is down does not also hide the jobs
+        // that have already failed - which is when they matter most.
+        try {
             $metrics['queue_failed_jobs_total'] = [
                 'type' => 'gauge',
                 'help' => 'Total failed jobs',
                 'value' => DB::table('failed_jobs')->count(),
             ];
         } catch (\Throwable $e) {
-            // Reached when phpredis is absent as well as when Redis is down:
-            // a missing extension raises Error, not Exception.
-            $this->logFailure('queue', $e);
+            $this->logFailure('failed_jobs', $e);
         }
 
         return $metrics;
