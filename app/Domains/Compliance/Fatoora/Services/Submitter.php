@@ -94,8 +94,20 @@ class Submitter
         $this->killSwitch->assertNotEnabled(KillSwitch::SWITCH_ISSUANCE, (string) $organization->id);
         $this->killSwitch->assertNotEnabled(KillSwitch::SWITCH_SIGNING, (string) $organization->id);
 
-        // Get signing credentials if available
-        $credentials = $this->getSigningCredentials($organization->id);
+        // The device that issues the document signs it: the invoice's branch
+        // when it has a certificate of its own, the organization otherwise -
+        // the same device CredentialStore::device() files it as. The branch
+        // was never passed, so a branch document was signed by head office
+        // and filed by the branch.
+        //
+        // Required once the organization is onboarded. Unsigned is Phase 1 and
+        // correct before onboarding; after it, it is a document no device can
+        // file, and it was issued without a word.
+        $credentials = $this->getSigningCredentials(
+            $organization->id,
+            $this->branchOf($invoice),
+            required: $organization->zatca_onboarded,
+        );
 
         // Counter, predecessor, document and chain entry are decided together,
         // inside one transaction holding the organization row.
@@ -168,7 +180,7 @@ class Submitter
     public function validate(Invoice $invoice, Organization $organization): FatooraResponse
     {
         $previousHash = $invoice->previous_invoice_hash;
-        $credentials = $this->getSigningCredentials($organization->id);
+        $credentials = $this->getSigningCredentials($organization->id, $this->branchOf($invoice));
 
         $complianceData = $this->compliance->generateComplianceData(
             invoice: $invoice,
@@ -229,7 +241,7 @@ class Submitter
         // branch signs with the organization's. invoices.branch_id is nullable
         // rather than absent, so isset() is asking whether this document came
         // from a particular EGS unit, not whether the column exists.
-        $branch = isset($invoice->branch_id) ? $invoice->branch : null;
+        $branch = $this->branchOf($invoice);
         $credentials = $this->getSigningCredentials($organization->id, $branch, required: true);
 
         // Validate certificate is valid and not revoked before submission
@@ -491,6 +503,17 @@ class Submitter
      *
      * @throws FatooraException If required is true and credentials are missing/invalid
      */
+    /**
+     * The EGS unit an invoice came from, or null for head office.
+     *
+     * invoices.branch_id is nullable rather than absent, so isset() asks
+     * whether this document came from a particular device.
+     */
+    private function branchOf(Invoice $invoice): ?Branch
+    {
+        return isset($invoice->branch_id) ? $invoice->branch : null;
+    }
+
     private function getSigningCredentials(string $organizationId, ?Branch $branch = null, bool $required = false): array
     {
         // A branch is an EGS unit with its own certificate, so its credentials
