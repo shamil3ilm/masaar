@@ -94,4 +94,36 @@ class ComposeEnvTest extends TestCase
                 .'host environment, so setting it in .env has no effect.'
         );
     }
+
+    /**
+     * Everything else in the deployment's .env reaches the container too.
+     *
+     * The list above is the settings whose silent default is worst, and it
+     * was the only route in: some 110 of .env.example's settings - JWT_SECRET,
+     * API_KEY_PEPPER, MAIL_*, the licence and metrics settings - were dropped
+     * at the door. The app service reads .env whole, so a setting is in force
+     * because it is set, not because someone remembered to list it.
+     */
+    public function test_the_container_reads_the_whole_env(): void
+    {
+        $app = Yaml::parseFile(self::COMPOSE)['services']['app'];
+        $paths = array_map(
+            fn ($entry) => is_array($entry) ? ($entry['path'] ?? null) : $entry,
+            (array) ($app['env_file'] ?? [])
+        );
+
+        $this->assertContains('.env', $paths, 'the app service does not read the deployment .env');
+    }
+
+    /**
+     * Except the database's root password, which is in the same file for the
+     * db service and has no business in the application's environment.
+     */
+    public function test_the_root_password_stays_with_mysql(): void
+    {
+        $environment = (array) (Yaml::parseFile(self::COMPOSE)['services']['app']['environment'] ?? []);
+
+        $this->assertArrayHasKey('DB_ROOT_PASSWORD', $environment);
+        $this->assertSame('', $environment['DB_ROOT_PASSWORD'], 'the app container would hold the MySQL root password');
+    }
 }

@@ -3,7 +3,6 @@
 #
 # Usage: docker-compose -f docker-compose.yml -f docker/monitoring/docker-compose.monitoring.yml up -d
 
-version: '3.8'
 
 services:
   # Prometheus - Metrics Collection

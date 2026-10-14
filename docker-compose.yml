@@ -8,7 +8,6 @@
 #
 # For production, use: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
-version: '3.8'
 
 services:
   # ==========================================================================
@@ -25,7 +24,22 @@ services:
     # docker-compose.override.yml, which Compose loads only when no -f is
     # given - so production, started with -f, never publishes the app.
     restart: unless-stopped
+    # The deployment's .env, whole. The environment block below was the only
+    # route in, and as an allow-list it dropped everything it did not name -
+    # some 110 settings .env.example documents, among them JWT_SECRET (no
+    # token could be signed), API_KEY_PEPPER, MAIL_*, the licence and metrics
+    # settings and every ZATCA tuning knob - each silently at its default.
+    # The block below still applies on top: it holds compose's own defaults
+    # (the db and redis hosts, the database drivers) and takes precedence.
+    # Needs Docker Compose 2.24 for required: false.
+    env_file:
+      - path: .env
+        required: false
     environment:
+      # The database's root password is in .env for the db service; the
+      # application connects as its own user and has no use for it.
+      DB_ROOT_PASSWORD: ""
+
       # Application
       APP_NAME: Masaar
       APP_ENV: ${APP_ENV:-production}

@@ -41,7 +41,7 @@ In this model, **the partner provides all of the infrastructure**. Masaar provid
 
 ### Prerequisites
 
-- Docker 24+ and Docker Compose 2.20+
+- Docker 24+ and Docker Compose 2.24+
 - Access to Masaar Docker registry (credentials provided)
 - MySQL 8.0 database (empty, will be migrated)
 - Redis 7+ only if you choose it for cache, sessions and queues; they use the database by default

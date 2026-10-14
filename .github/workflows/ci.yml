@@ -955,14 +955,20 @@ jobs:
         run: |
           docker compose ps
           docker compose logs --no-color --tail=300
-          # The first errors rather than the last lines: a stack trace's tail
-          # names the handler, not the fault. Then Laravel's own log, from
-          # inside the container.
+          # What pins a failure down, in the order it is read: which container
+          # is unhealthy, what the probe actually answered, the message line
+          # of each Laravel log entry (not the frames of its trace), and how
+          # far the entrypoint got.
           {
-            echo "--- first errors from the app container"
-            docker compose logs --no-color app 2>&1 | grep -E -m 15 'Exception|ERROR|CRITICAL|denied|could not|failed' || true
-            echo "--- storage/logs"
-            docker compose exec -T app sh -c 'tail -n 15 storage/logs/*.log' 2>&1 || true
+            echo "--- containers"
+            docker compose ps -a --format '{{.Service}} {{.State}} {{.Health}}' 2>&1 || true
+            echo "--- /api/health/ready"
+            curl -sS -i --max-time 10 http://127.0.0.1:8000/api/health/ready 2>&1 | head -c 600 || true
+            echo
+            echo "--- laravel log entries"
+            docker compose exec -T app sh -c "grep -hE '^\[[0-9]{4}-' storage/logs/*.log | cut -c1-500 | tail -n 12" 2>&1 || true
+            echo "--- entrypoint"
+            docker compose logs --no-color app 2>&1 | grep -vE 'level=warning' | head -n 25 || true
           } > "$RUNNER_TEMP/app.log"
           body=$(python3 -c 'import sys; print(open(sys.argv[1], encoding="utf-8", errors="replace").read().replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A"))' "$RUNNER_TEMP/app.log")
           echo "::error title=App container log::$body"

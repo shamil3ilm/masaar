@@ -7,7 +7,6 @@
 # - SSL/TLS termination (via reverse proxy)
 # - Enhanced security settings
 
-version: '3.8'
 
 services:
   # ==========================================================================
