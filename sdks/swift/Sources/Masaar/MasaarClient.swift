@@ -1,5 +1,14 @@
 import Foundation
+#if canImport(FoundationNetworking)
+// URLSession lives here on Linux.
+import FoundationNetworking
+#endif
+#if canImport(CryptoKit)
 import CryptoKit
+#else
+// swift-crypto: the same API, for platforms without CryptoKit.
+import Crypto
+#endif
 
 /// Masaar Swift SDK for ZATCA-compliant e-invoicing.
 ///

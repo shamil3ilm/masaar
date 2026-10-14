@@ -40,7 +40,10 @@ class MasaarClient(
         .connectTimeout(timeout)
         .build()
 
-    private val json = Json {
+    // Read by the public inline handleResponse, whose body is copied into
+    // the caller: a private field is out of its reach, a published one is not.
+    @PublishedApi
+    internal val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
         encodeDefaults = false
