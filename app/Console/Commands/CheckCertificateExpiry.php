@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Domains\Compliance\Fatoora\Helpers\CertificatePem;
 use App\Domains\Compliance\Fatoora\Services\CertificateService;
 use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use App\Domains\Organization\Models\Organization;
@@ -85,6 +86,7 @@ class CheckCertificateExpiry extends Command
             null,
             CredentialStore::PCSID
         )['pcsid'] ?? null;
+        $certificate = CertificatePem::from($certificate);
 
         if (! $certificate) {
             return [

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Fatoora\Http\Controllers;
 
 use App\Domains\Compliance\Fatoora\Exceptions\CertificateException;
+use App\Domains\Compliance\Fatoora\Helpers\CertificatePem;
 use App\Domains\Compliance\Fatoora\Services\ComplianceSampleSet;
 use App\Domains\Compliance\Fatoora\Services\CsidOnboarding;
 use App\Domains\Organization\Models\Branch;
@@ -310,7 +311,9 @@ class BranchOnboardingController extends Controller
     private function parseCertificateExpiry(string $certificate): ?\DateTime
     {
         try {
-            $cert = openssl_x509_read($certificate);
+            // Stored as ZATCA issues it - a token, not a PEM - which this read
+            // as nothing, so a branch was activated with no expiry on record.
+            $cert = openssl_x509_read((string) CertificatePem::from($certificate));
             if (! $cert) {
                 return null;
             }

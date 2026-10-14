@@ -7,6 +7,7 @@ namespace App\Domains\Compliance\Fatoora\Services;
 use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
+use App\Domains\Compliance\Fatoora\Helpers\CertificatePem;
 use App\Domains\Compliance\Fatoora\Helpers\FatooraTime;
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Invoice\Models\Invoice;
@@ -200,7 +201,7 @@ class SubmissionGuard
             CredentialStore::PCSID
         );
 
-        $certificate = $credentials['pcsid'] ?? null;
+        $certificate = CertificatePem::from($credentials['pcsid'] ?? null);
 
         if (! $certificate) {
             throw new FatooraException(

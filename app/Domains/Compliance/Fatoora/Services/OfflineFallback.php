@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Fatoora\Services;
 
 use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
+use App\Domains\Compliance\Fatoora\Helpers\CertificatePem;
 use App\Domains\Invoice\Models\Invoice;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -147,7 +148,7 @@ class OfflineFallback
                 // that do not exist, so both were null and the document was
                 // filed unsigned.
                 privateKey: $signing['privateKey'] ?? null,
-                certificate: $signing['pcsid'] ?? null,
+                certificate: CertificatePem::from($signing['pcsid'] ?? null),
             );
 
             // Update invoice with signed data. The key is qr_code — this read

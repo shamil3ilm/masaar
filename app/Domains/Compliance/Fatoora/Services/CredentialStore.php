@@ -7,6 +7,7 @@ namespace App\Domains\Compliance\Fatoora\Services;
 use App\Domains\Compliance\Fatoora\DTOs\DeviceCredentials;
 use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
+use App\Domains\Compliance\Fatoora\Helpers\CertificatePem;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Encryption\Encrypter;
 use Illuminate\Support\Facades\Crypt;
@@ -132,7 +133,7 @@ class CredentialStore
      */
     public function certificate(string $organizationId, ?string $branchId = null): ?string
     {
-        return $this->signing($organizationId, $branchId)['pcsid'] ?? null;
+        return CertificatePem::from($this->signing($organizationId, $branchId)['pcsid'] ?? null);
     }
 
     /**

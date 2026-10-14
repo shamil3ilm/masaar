@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Security;
 
+use App\Domains\Compliance\Fatoora\Helpers\CertificatePem;
 use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use Illuminate\Encryption\EncryptionServiceProvider;
 use Illuminate\Support\Facades\Crypt;
@@ -54,7 +55,7 @@ class CredentialStoreTest extends TestCase
     {
         $this->store->put(self::ORG, null, CredentialStore::PCSID, $this->pcsid());
 
-        $this->assertSame('CERT', $this->store->certificate(self::ORG, self::BRANCH));
+        $this->assertSame(CertificatePem::from('CERT'), $this->store->certificate(self::ORG, self::BRANCH));
     }
 
     /**
@@ -69,8 +70,8 @@ class CredentialStoreTest extends TestCase
             'pcsid' => 'BRANCH-CERT',
         ]);
 
-        $this->assertSame('BRANCH-CERT', $this->store->certificate(self::ORG, self::BRANCH));
-        $this->assertSame('CERT', $this->store->certificate(self::ORG));
+        $this->assertSame(CertificatePem::from('BRANCH-CERT'), $this->store->certificate(self::ORG, self::BRANCH));
+        $this->assertSame(CertificatePem::from('CERT'), $this->store->certificate(self::ORG));
     }
 
     public function test_round_trips_branch_credentials(): void

@@ -9,6 +9,7 @@ use App\Domains\Compliance\Fatoora\Client\FatooraClient;
 use App\Domains\Compliance\Fatoora\DTOs\FatooraResponse;
 use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
+use App\Domains\Compliance\Fatoora\Helpers\CertificatePem;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Licensing\Enums\LicenseEnvironment;
@@ -476,7 +477,7 @@ class Submitter
 
             if ($branchCredentials) {
                 $privateKey = $branchCredentials['privateKey'] ?? null;
-                $certificate = $branchCredentials['pcsid'] ?? null;
+                $certificate = CertificatePem::from($branchCredentials['pcsid'] ?? null);
 
                 if (! empty($privateKey) && ! empty($certificate)) {
                     Log::debug('Using branch-level credentials', [
@@ -530,7 +531,7 @@ class Submitter
             $data = $organizationCredentials;
 
             $privateKey = $data['privateKey'] ?? null;
-            $certificate = $data['pcsid'] ?? null;
+            $certificate = CertificatePem::from($data['pcsid'] ?? null);
 
             // Validate credentials are not empty when required
             if ($required && (empty($privateKey) || empty($certificate))) {
