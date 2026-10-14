@@ -34,7 +34,7 @@ class RawTenantQueryTest extends TestCase
         'invoice_submissions',
         'submission_idempotency',
         'offline_queue',
-        'hash_chain_state',
+        'hash_chain_heads',
         'hash_chain_history',
         'fta_submissions',
         'webhooks',

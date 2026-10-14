@@ -237,6 +237,8 @@ class TenantDashboardTest extends TestCase
     private function chainState(Organization $organization, int $icv, string $invoiceId): void
     {
         (new ChainState)->forceFill([
+            // Head office's chain: the device is the organization itself.
+            'device_id' => $organization->id,
             'org_id' => $organization->id,
             'last_hash' => str_repeat('d', 64),
             'last_icv' => $icv,

@@ -28,6 +28,7 @@ class ChainEntry extends Model
 
     protected $fillable = [
         'org_id',
+        'device_id',
         'invoice_id',
         'invoice_hash',
         'previous_hash',
@@ -42,6 +43,19 @@ class ChainEntry extends Model
             'icv' => 'integer',
             'cert_transition' => 'array',
         ];
+    }
+
+    /**
+     * An entry belongs to a device's chain. One written without naming the
+     * device - a fixture, a backfill - is head office's, as every entry was
+     * before devices had chains; left null it would sit outside every chain,
+     * and the (device_id, icv) unique index treats nulls as distinct.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (ChainEntry $entry): void {
+            $entry->device_id ??= $entry->org_id;
+        });
     }
 
     public function org(): BelongsTo

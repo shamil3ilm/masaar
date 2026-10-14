@@ -34,6 +34,10 @@ class Invoice extends Model
         // The EGS unit that issued this invoice. A branch signs with its own
         // ZATCA certificate, so this decides which credentials are used.
         'branch_id',
+        // The device that signed it, whose counter and chain it is in: the
+        // branch when it had its own certificate, head office (org_id)
+        // otherwise. Set at issuance.
+        'device_id',
         'profile_id',
         'invoice_number',
         'type',
@@ -128,6 +132,8 @@ class Invoice extends Model
         'tax_amount',
         'total',
         'icv',
+        // The chain it was numbered in, and the credentials that file it.
+        'device_id',
     ];
 
     /**
@@ -165,7 +171,7 @@ class Invoice extends Model
         // skips anything unhashed, so a document issued while a lower-numbered
         // draft was still unsigned chained straight past it — and when that
         // draft was issued in turn, both named the same predecessor. Neither
-        // unique index catches that: they constrain (org_id, icv) and
+        // unique index catches that: they constrain (device_id, icv) and
         // invoice_id, and two rows at different positions may share a
         // previous_hash.
         //
@@ -177,6 +183,18 @@ class Invoice extends Model
         // Submitter::generate() allocates, under the same organization-row
         // lock that reads the PIH, so the pair is decided together.
         // ChainForkTest holds this.
+
+        // A counter belongs to a device's sequence. Something that sets one
+        // without naming the device - a fixture, a backfill - is head
+        // office's, which is what every document was before devices had
+        // chains. Left null it would sit outside every sequence, and the
+        // (device_id, icv) unique index treats nulls as distinct, so nothing
+        // would stop a second invoice taking the same number.
+        static::saving(function (Invoice $invoice) {
+            if ($invoice->icv !== null && $invoice->device_id === null) {
+                $invoice->device_id = $invoice->org_id;
+            }
+        });
 
         // Prevent deletion of finalized invoices
         static::deleting(function (Invoice $invoice) {
@@ -214,11 +232,12 @@ class Invoice extends Model
     }
 
     /**
-     * Allocate the next ICV for an organization.
+     * Allocate the next ICV for a device.
      *
-     * ZATCA requires the invoice counter to be strictly sequential per
-     * taxpayer, and the PIH chain is built on it, so two invoices must never
-     * receive the same value.
+     * ZATCA requires the invoice counter to be strictly sequential per EGS
+     * unit, and the PIH chain is built on it, so two invoices from one device
+     * must never receive the same value. A device is head office (its id is
+     * the organization's) or a branch with its own certificate (the branch's).
      *
      * The lock is taken on the organization row rather than on the invoice
      * rows. Locking `SELECT MAX(icv) ... FOR UPDATE` looks equivalent but has
@@ -230,12 +249,18 @@ class Invoice extends Model
      * nested transaction into a savepoint, which keeps the lock held until the
      * outer commit — that is, until after the INSERT. Without an outer
      * transaction the lock is released here and the window reopens.
-     * `invoices_org_icv_unique` is the backstop either way: a collision fails
+     * `invoices_device_icv_unique` is the backstop either way: a collision fails
      * the insert rather than corrupting the chain.
+     *
+     * Still locked on the organization row, so issuance is serialised per
+     * taxpayer across all its devices: simpler than a lock per device, and
+     * the same guarantee.
      */
-    public static function generateNextIcv(string $organizationId): int
+    public static function generateNextIcv(string $organizationId, ?string $deviceId = null): int
     {
-        return DB::transaction(function () use ($organizationId) {
+        $deviceId ??= $organizationId;
+
+        return DB::transaction(function () use ($organizationId, $deviceId) {
             DB::table('organizations')
                 ->where('id', $organizationId)
                 ->lockForUpdate()
@@ -247,7 +272,7 @@ class Invoice extends Model
             // no tenant context reads zero rows, restarts the counter at 1,
             // and the unique index rejects the insert.
             $highest = static::withoutTenantScope(
-                fn () => static::query()->where('org_id', $organizationId)->max('icv')
+                fn () => static::query()->where('org_id', $organizationId)->where('device_id', $deviceId)->max('icv')
             );
 
             return ((int) $highest) + 1;
@@ -411,8 +436,11 @@ class Invoice extends Model
             return null;
         }
 
+        // The device's own predecessor: ZATCA chains per EGS unit, so a
+        // branch's document never names head office's.
         return static::withoutTenantScope(fn (): ?string => static::query()
             ->where('org_id', $this->org_id)
+            ->where('device_id', $this->device_id ?? $this->org_id)
             ->where('icv', '<', $this->icv)
             ->whereNotNull('hash')
             ->orderByDesc('icv')

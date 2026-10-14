@@ -87,7 +87,7 @@ class IcvAllocationTest extends TestCase
     public function test_duplicate_icv_rejected(): void
     {
         if (DB::connection()->getDriverName() === 'sqlite'
-            && ! $this->uniqueIndexExists('invoices', 'invoices_org_icv_unique')) {
+            && ! $this->uniqueIndexExists('invoices', 'invoices_device_icv_unique')) {
             $this->markTestSkipped('Unique index not present on this connection.');
         }
 

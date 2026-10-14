@@ -19,9 +19,13 @@ class ChainState extends Model
 {
     use BelongsToTenant;
 
-    protected $table = 'hash_chain_state';
+    /**
+     * One head per device - head office or a branch with its own
+     * certificate - because ZATCA chains per EGS unit.
+     */
+    protected $table = 'hash_chain_heads';
 
-    protected $primaryKey = 'org_id';
+    protected $primaryKey = 'device_id';
 
     public $incrementing = false;
 
@@ -30,6 +34,7 @@ class ChainState extends Model
     public const CREATED_AT = null;
 
     protected $fillable = [
+        'device_id',
         'org_id',
         'last_hash',
         'last_icv',

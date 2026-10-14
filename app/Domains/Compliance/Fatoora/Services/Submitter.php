@@ -135,8 +135,13 @@ class Submitter
 
             // A draft carries no counter. Anything already numbered keeps its
             // number, so re-issuing a document does not move it in the chain.
+            //
+            // Numbered in the sequence of the device that signs it - the
+            // branch when it has its own certificate, head office otherwise -
+            // because ZATCA keeps a counter and a chain per EGS unit.
             if ($invoice->icv === null) {
-                $invoice->icv = Invoice::generateNextIcv((string) $invoice->org_id);
+                $invoice->device_id = $credentials['device'];
+                $invoice->icv = Invoice::generateNextIcv((string) $invoice->org_id, $invoice->device_id);
             }
 
             $previousHash = $invoice->previous_invoice_hash;
@@ -151,6 +156,7 @@ class Submitter
 
             $invoice->update([
                 'icv' => $invoice->icv,
+                'device_id' => $invoice->device_id,
                 'hash' => $complianceData['hash'],
                 'qr_code' => $complianceData['qr_code'],
                 'signed_xml' => $complianceData['signed_xml'] ?? null,
@@ -272,7 +278,7 @@ class Submitter
         // Issuance above guarantees both are present.
         $invoiceXml = (string) $invoice->signed_xml;
         $invoiceHash = (string) $invoice->hash;
-        $device = $this->credentials->device((string) $invoice->org_id, $invoice->branch_id);
+        $device = $this->credentials->forInvoice((string) $invoice->org_id, $invoice->device_id, $invoice->branch_id);
 
         // Choose clearance (B2B) or reporting (B2C) based on invoice type
         if ($invoice->requiresClearance()) {
@@ -446,7 +452,7 @@ class Submitter
      * @param  string  $organizationId  The organization ID
      * @param  Branch|null  $branch  The branch (optional)
      * @param  bool  $required  If true, throws exception when credentials are missing
-     * @return array{privateKey: ?string, certificate: ?string}
+     * @return array{privateKey: ?string, certificate: ?string, device: string}
      *
      * @throws FatooraException If required is true and credentials are missing/invalid
      */
@@ -481,6 +487,8 @@ class Submitter
                     return [
                         'privateKey' => $privateKey,
                         'certificate' => $certificate,
+                        // The branch is the device: its own counter and chain.
+                        'device' => (string) $branch->id,
                     ];
                 }
             }
@@ -515,7 +523,7 @@ class Submitter
                 );
             }
 
-            return ['privateKey' => null, 'certificate' => null];
+            return ['privateKey' => null, 'certificate' => null, 'device' => $organizationId];
         }
 
         try {
@@ -544,6 +552,7 @@ class Submitter
             return [
                 'privateKey' => $privateKey,
                 'certificate' => $certificate,
+                'device' => $organizationId,
             ];
         } catch (FatooraException $e) {
             throw $e;
@@ -559,7 +568,7 @@ class Submitter
                 );
             }
 
-            return ['privateKey' => null, 'certificate' => null];
+            return ['privateKey' => null, 'certificate' => null, 'device' => $organizationId];
         }
     }
 }

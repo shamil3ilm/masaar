@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\Models\ChainEntry;
 use App\Domains\Invoice\Models\Invoice;
 use Illuminate\Console\Command;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -183,7 +185,7 @@ class VerifyHashChain extends Command
         $invoices = Invoice::where('org_id', $organizationId)
             ->whereNotNull('icv')
             ->orderBy('icv')
-            ->get(['id', 'invoice_number', 'icv', 'hash', 'created_at']);
+            ->get(['id', 'invoice_number', 'icv', 'hash', 'device_id', 'created_at']);
 
         $this->strays($organizationId);
 
@@ -200,9 +202,35 @@ class VerifyHashChain extends Command
             fn () => ChainEntry::where('org_id', $organizationId)->pluck('previous_hash', 'invoice_id')
         );
 
-        // First invoice should have PIH = base64(32 zero bytes)
-        $expectedFirstPih = base64_encode(str_repeat("\0", 32));
-        $previousHash = $expectedFirstPih;
+        // One chain per device, as ZATCA keeps them. Walked as one sequence,
+        // a branch's documents read as gaps in head office's counter and as
+        // PIH mismatches in both.
+        foreach ($invoices->groupBy(fn (Invoice $invoice): string => (string) ($invoice->device_id ?? $organizationId)) as $deviceId => $chain) {
+            if ($deviceId !== $organizationId) {
+                $this->line("  Device {$deviceId}");
+            }
+
+            $this->walk($chain, $recorded);
+        }
+
+        $this->info("  Verified {$invoices->count()} invoices");
+        $this->info('');
+    }
+
+    /**
+     * One device's chain, in counter order.
+     *
+     * @param  Collection<int, Invoice>  $invoices
+     * @param  Collection<string, string>  $recorded  invoice id => the PIH it was built with
+     */
+    private function walk(Collection $invoices, Collection $recorded): void
+    {
+        // A device's first document names ZATCA's genesis PIH. This expected
+        // base64 of thirty-two zero bytes, which ZATCA refuses and the
+        // platform never writes, so every chain's first document was reported
+        // as a PIH mismatch and the weekly check said FAILED for every tenant
+        // - the outcome that teaches people to ignore it.
+        $previousHash = FatooraConfig::GENESIS_PIH;
         $previousIcv = 0;
 
         foreach ($invoices as $invoice) {
@@ -211,9 +239,15 @@ class VerifyHashChain extends Command
             // Check 1: ICV sequence
             if ($invoice->icv !== $previousIcv + 1) {
                 $gap = $invoice->icv - $previousIcv - 1;
+                // An error, not a warning. The counter is allocated at
+                // issuance, under the lock that writes the hash, so a device's
+                // sequence is contiguous by construction: a gap is a document
+                // that was issued and is now missing. It was only a warning,
+                // and ChainVerifierScopeTest's gap case passed solely because
+                // the genesis check failed every chain anyway.
                 if ($gap > 0) {
-                    $this->warn("  ⚠️  ICV gap: {$previousIcv} → {$invoice->icv} (missing {$gap})");
-                    $this->warnings++;
+                    $this->error("  ❌ ICV gap: {$previousIcv} → {$invoice->icv} (missing {$gap})");
+                    $this->errors++;
                 } else {
                     $this->error("  ❌ ICV sequence error: {$previousIcv} → {$invoice->icv}");
                     $this->errors++;
@@ -250,8 +284,5 @@ class VerifyHashChain extends Command
             $previousHash = $invoice->hash;
             $previousIcv = $invoice->icv;
         }
-
-        $this->info("  Verified {$invoices->count()} invoices");
-        $this->info('');
     }
 }

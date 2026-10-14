@@ -21,7 +21,7 @@ from them.
 | `invoices` | The invoice as issued: parties, dates, amounts, its ICV, its hash, the signed XML and - for a standard invoice - the authority's cleared copy |
 | `invoice_lines` | The individual lines, with their own tax |
 | `hash_chain_history` | One row per document: its ICV, its hash, and the hash of the document before it |
-| `hash_chain_state` | The chain's current position for each taxpayer |
+| `hash_chain_heads` | Each device's current position in its chain - head office and every branch with its own certificate |
 | `invoice_submissions` | Every attempt to send a document to ZATCA, and what came back |
 
 Plus `audit_logs`, which records who did what — see `docs/AUDIT-SCHEMA.md`.

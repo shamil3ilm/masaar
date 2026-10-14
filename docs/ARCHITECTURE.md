@@ -109,7 +109,7 @@ a matter of trust. `docs/DATA-FLOW.md` section 3 gives the queries to verify it.
 | Table | Holds |
 |---|---|
 | `invoices`, `invoice_lines` | The documents as issued, their hash, their signed XML, and the authority's cleared copy where there is one |
-| `hash_chain_history`, `hash_chain_state` | The sequence and the chain |
+| `hash_chain_history`, `hash_chain_heads` | The sequence and the chain, one per device (EGS unit) |
 | `invoice_submissions`, `submission_idempotency` | Every transmission attempt and its outcome |
 | `audit_logs` | Who acted — see `docs/AUDIT-SCHEMA.md` |
 | `organizations`, `users` | Taxpayers and credentials |

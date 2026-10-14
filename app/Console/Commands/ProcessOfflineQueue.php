@@ -271,7 +271,7 @@ class ProcessOfflineQueue extends Command
     private function send(object $item, Invoice $invoice): FatooraResponse
     {
         // The device that signed the queued document files it.
-        $device = $this->credentials->device((string) $invoice->org_id, $invoice->branch_id);
+        $device = $this->credentials->forInvoice((string) $invoice->org_id, $invoice->device_id, $invoice->branch_id);
 
         return $invoice->isB2B()
             ? $this->zatcaClient->clearInvoice($item->signed_xml, $item->invoice_hash, $invoice->id, $device)

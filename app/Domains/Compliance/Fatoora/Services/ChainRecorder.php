@@ -49,6 +49,7 @@ final class ChainRecorder
     public function record(Invoice $invoice, string $invoiceHash, ?string $previousHash, ?string $certificate): void
     {
         $organizationId = (string) $invoice->org_id;
+        $deviceId = (string) ($invoice->device_id ?? $invoice->org_id);
         $certificateId = $this->certificateId($certificate);
 
         // The genesis PIH, for the first document in a chain. XmlBuilder emits
@@ -56,15 +57,16 @@ final class ChainRecorder
         // what the document says.
         $previousHash ??= FatooraConfig::GENESIS_PIH;
 
-        DB::transaction(function () use ($invoice, $invoiceHash, $previousHash, $certificateId, $organizationId): void {
+        DB::transaction(function () use ($invoice, $invoiceHash, $previousHash, $certificateId, $organizationId, $deviceId): void {
             // org_id is given explicitly, so the scope would only decide
             // whether this row is visible to the caller writing it — and in a
             // queue there is no tenant to decide with.
-            ChainEntry::withoutTenantScope(function () use ($invoice, $invoiceHash, $previousHash, $certificateId, $organizationId): void {
+            ChainEntry::withoutTenantScope(function () use ($invoice, $invoiceHash, $previousHash, $certificateId, $organizationId, $deviceId): void {
                 ChainEntry::updateOrCreate(
                     ['invoice_id' => $invoice->id],
                     [
                         'org_id' => $organizationId,
+                        'device_id' => $deviceId,
                         'invoice_hash' => $invoiceHash,
                         'previous_hash' => $previousHash,
                         'icv' => (int) $invoice->icv,
@@ -73,8 +75,8 @@ final class ChainRecorder
                 );
             });
 
-            ChainState::withoutTenantScope(function () use ($invoice, $invoiceHash, $certificateId, $organizationId): void {
-                $state = ChainState::query()->find($organizationId);
+            ChainState::withoutTenantScope(function () use ($invoice, $invoiceHash, $certificateId, $organizationId, $deviceId): void {
+                $state = ChainState::query()->find($deviceId);
 
                 // A chain head only moves forward. Re-issuing an earlier
                 // document must not drag it back, or the next invoice chains
@@ -84,8 +86,9 @@ final class ChainRecorder
                 }
 
                 ChainState::query()->updateOrInsert(
-                    ['org_id' => $organizationId],
+                    ['device_id' => $deviceId],
                     [
+                        'org_id' => $organizationId,
                         'last_hash' => $invoiceHash,
                         'last_icv' => (int) $invoice->icv,
                         'last_invoice_id' => $invoice->id,

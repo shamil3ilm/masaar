@@ -442,8 +442,11 @@ class OfflineQueue
 
         // Check if ICV was already used (race condition protection)
         if ($invoice && $invoice->icv) {
+            // Within the device's own counter: another device's document
+            // numbered the same is not a conflict.
             $icvConflict = ChainEntry::query()
                 ->where('org_id', $item->org_id)
+                ->where('device_id', $invoice->device_id ?? $item->org_id)
                 ->where('icv', $invoice->icv)
                 ->where('invoice_id', '!=', $item->invoice_id)
                 ->exists();

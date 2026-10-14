@@ -342,26 +342,35 @@ class DuplicateDetector
 
         $conflicts = [];
 
-        // Check for ICV gaps or duplicates
-        $icvValues = $recentInvoices->pluck('icv')->sort()->values();
-        for ($i = 1; $i < $icvValues->count(); $i++) {
-            $prev = $icvValues[$i - 1];
-            $curr = $icvValues[$i];
+        // Check for ICV gaps or duplicates, within each device's own counter.
+        // Across devices, two documents numbered 3 are expected and a branch's
+        // numbers are not gaps in head office's.
+        $byDevice = $recentInvoices
+            ->whereNotNull('icv')
+            ->groupBy(fn (Invoice $invoice): string => (string) ($invoice->device_id ?? $invoice->org_id));
 
-            if ($curr === $prev) {
-                $conflicts[] = [
-                    'type' => 'duplicate_icv',
-                    'icv' => $curr,
-                    'message' => "Duplicate ICV {$curr} detected - possible multi-system sync issue",
-                ];
-            } elseif ($curr > $prev + 1) {
-                $conflicts[] = [
-                    'type' => 'icv_gap',
-                    'from_icv' => $prev,
-                    'to_icv' => $curr,
-                    'gap' => $curr - $prev - 1,
-                    'message' => "ICV gap detected: {$prev} to {$curr} (missing ".($curr - $prev - 1).' invoices)',
-                ];
+        foreach ($byDevice as $deviceInvoices) {
+            $icvValues = $deviceInvoices->pluck('icv')->sort()->values();
+
+            for ($i = 1; $i < $icvValues->count(); $i++) {
+                $prev = $icvValues[$i - 1];
+                $curr = $icvValues[$i];
+
+                if ($curr === $prev) {
+                    $conflicts[] = [
+                        'type' => 'duplicate_icv',
+                        'icv' => $curr,
+                        'message' => "Duplicate ICV {$curr} detected - possible multi-system sync issue",
+                    ];
+                } elseif ($curr > $prev + 1) {
+                    $conflicts[] = [
+                        'type' => 'icv_gap',
+                        'from_icv' => $prev,
+                        'to_icv' => $curr,
+                        'gap' => $curr - $prev - 1,
+                        'message' => "ICV gap detected: {$prev} to {$curr} (missing ".($curr - $prev - 1).' invoices)',
+                    ];
+                }
             }
         }
 

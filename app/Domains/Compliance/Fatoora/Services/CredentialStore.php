@@ -195,6 +195,40 @@ class CredentialStore
     }
 
     /**
+     * What the device that signed a document files it with.
+     *
+     * Exactly that device, with no fallback. The document carries its
+     * signature, and ZATCA checks the filer against it: a branch onboarded
+     * after head office signed an invoice must not file that invoice as
+     * itself, and a branch whose credentials are gone must not quietly file
+     * as head office. $deviceId is the organization's id for head office.
+     *
+     * An invoice issued before devices were recorded has none, and is
+     * resolved the way it was signed then.
+     *
+     * @throws FatooraException When the device has no credentials
+     */
+    public function forInvoice(string $organizationId, ?string $deviceId, ?string $branchId): DeviceCredentials
+    {
+        if ($deviceId === null) {
+            return $this->device($organizationId, $branchId);
+        }
+
+        $stored = $this->get($organizationId, $deviceId === $organizationId ? null : $deviceId, self::PCSID);
+
+        if (empty($stored[self::PCSID]) || empty($stored['secret'])) {
+            throw new FatooraException(
+                'No production certificate and secret for the device that signed this invoice. '
+                .'It has to be filed by that device: restore its credentials rather than re-onboarding another.',
+                ErrorCode::CERT_NOT_FOUND,
+                ['org_id' => $organizationId, 'device_id' => $deviceId],
+            );
+        }
+
+        return new DeviceCredentials((string) $stored[self::PCSID], (string) $stored['secret']);
+    }
+
+    /**
      * Remove one branch's credentials, or the organization's own.
      */
     public function forget(string $organizationId, ?string $branchId = null): void

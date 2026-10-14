@@ -25,7 +25,7 @@ use Tests\TestCase;
  * so a document issued while a lower-numbered draft was still unsigned chained
  * straight past it, and when that draft was issued in turn both named the same
  * predecessor. Neither unique index catches that: hash_chain_history
- * constrains (org_id, icv) and invoice_id, and two rows at different positions
+ * constrains (device_id, icv) and invoice_id, and two rows at different positions
  * may share a previous_hash. Concurrency was one way in and out-of-order
  * issuance was the other, needing no concurrency at all.
  *

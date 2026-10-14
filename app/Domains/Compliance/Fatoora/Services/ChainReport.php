@@ -16,33 +16,34 @@ use App\Domains\Compliance\Fatoora\Models\ChainState;
 class ChainReport
 {
     /**
-     * The counter value of the last recorded document, or 0 before the first.
+     * The furthest any of the tenant's devices has counted, or 0 before the
+     * first document. For a tenant with one device - most of them - that
+     * device's counter.
      */
     public function latestIcv(): int
     {
-        return ChainState::query()->value('last_icv') ?? 0;
+        return (int) (ChainState::query()->max('last_icv') ?? 0);
     }
 
     /**
-     * Whether the chain head points at the last entry actually recorded.
+     * Whether every device's chain head points at the last entry actually
+     * recorded for that device.
      *
      * A cheap consistency check, not a verification: VerifyHashChain walks the
-     * entries themselves. A tenant with no chain yet is intact.
+     * entries themselves. A tenant with no chain yet is intact. It compared
+     * one head with the tenant's highest entry, which with more than one
+     * device compares one device's head with another's entry.
      */
     public function isIntact(): bool
     {
-        $state = ChainState::query()->first();
+        foreach (ChainState::query()->get() as $state) {
+            $lastIcv = ChainEntry::query()->where('device_id', $state->device_id)->max('icv');
 
-        if (! $state) {
-            return true;
+            if ($lastIcv === null || (int) $lastIcv !== $state->last_icv) {
+                return false;
+            }
         }
 
-        $lastEntry = ChainEntry::query()->orderByDesc('icv')->first();
-
-        if (! $lastEntry) {
-            return false;
-        }
-
-        return $lastEntry->icv === $state->last_icv;
+        return true;
     }
 }
