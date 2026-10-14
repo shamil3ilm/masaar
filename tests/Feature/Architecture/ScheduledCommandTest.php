@@ -34,6 +34,29 @@ class ScheduledCommandTest extends TestCase
     ];
 
     /**
+     * Every replica runs the scheduler, so every task runs on one of them.
+     *
+     * withoutOverlapping() only stops two copies running at the same moment.
+     * A replica that finished a task before the other replica's minute came
+     * round ran it again: tenants were told twice that a certificate expires,
+     * usage was reported twice to the licence server it is billed from, and
+     * the alerts paged twice. onOneServer() takes one lock per task per run
+     * in the shared cache, and the replica that loses does nothing.
+     */
+    public function test_every_task_runs_on_one_server(): void
+    {
+        $everywhere = [];
+
+        foreach (app(Schedule::class)->events() as $event) {
+            if ($event->onOneServer !== true) {
+                $everywhere[] = $event->command;
+            }
+        }
+
+        $this->assertSame([], $everywhere, "These tasks run on every replica:\n  ".implode("\n  ", $everywhere));
+    }
+
+    /**
      * A task that guards against overlapping says for how long.
      *
      * withoutOverlapping() defaults to a 1440 minute expiry. A

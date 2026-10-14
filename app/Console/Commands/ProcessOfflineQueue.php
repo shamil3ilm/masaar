@@ -262,8 +262,10 @@ class ProcessOfflineQueue extends Command
             return;
         }
 
-        if (! $response->success) {
-            $errorMessage = implode('; ', $response->errorMessages ?? ['Unknown error']);
+        // Busy, down or throttled: the authority has not looked at the
+        // document, so it goes back in the queue.
+        if (! $response->success && $response->isRetryable()) {
+            $errorMessage = implode('; ', $response->errorMessages ?: ['Unknown error']);
             $this->queueManager->markFailed($item->id, $errorMessage, true);
             $this->failed++;
 
@@ -272,6 +274,15 @@ class ProcessOfflineQueue extends Command
                 'invoice_id' => $invoice->id,
                 'error' => $errorMessage,
             ]);
+
+            return;
+        }
+
+        // Anything else is the authority's answer. A refusal was handled as
+        // the busy case above: resent until the attempts ran out and recorded
+        // nowhere, after which the recovery job filed it once more.
+        if (! $response->success) {
+            $this->recordRejection($item, $invoice, $response);
 
             return;
         }
@@ -317,6 +328,34 @@ class ProcessOfflineQueue extends Command
         Log::info('Offline queue item submitted successfully', [
             'queue_id' => $item->id,
             'invoice_id' => $invoice->id,
+        ]);
+    }
+
+    /**
+     * Record a refusal. Outside processItem()'s retrying error handling for
+     * the same reason as recordAcceptance(): the authority has answered, and
+     * a local failure must not put the document back in the queue.
+     */
+    private function recordRejection(object $item, Invoice $invoice, FatooraResponse $response): void
+    {
+        $this->failed++;
+
+        try {
+            $this->queueManager->reject($item->id, $invoice, $response);
+        } catch (\Throwable $e) {
+            Log::critical('ZATCA rejected an offline queue item but it could not be recorded', [
+                'queue_id' => $item->id,
+                'invoice_id' => $invoice->id,
+                'exception' => $e,
+            ]);
+
+            return;
+        }
+
+        Log::warning('Offline queue item rejected by ZATCA', [
+            'queue_id' => $item->id,
+            'invoice_id' => $invoice->id,
+            'errors' => $response->errorMessages,
         ]);
     }
 

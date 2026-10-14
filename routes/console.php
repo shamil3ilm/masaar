@@ -16,10 +16,16 @@ Artisan::command('inspire', function () {
 | These tasks support ZATCA compliance monitoring and maintenance.
 | See docs/PRODUCTION-READINESS.md for operational guidelines.
 |
+| Every task is onOneServer: each replica runs this scheduler, and
+| withoutOverlapping only stops two copies running at once, so a replica
+| that finished first let the other run the task again - certificate
+| notices sent twice, usage billed twice. ScheduledCommandTest holds it.
+|
 */
 
 // Index health check - runs every 15 minutes
 Schedule::command('compliance:index-health --alert')
+    ->onOneServer()
     ->everyFifteenMinutes()
     ->withoutOverlapping(10)
     ->runInBackground()
@@ -27,6 +33,7 @@ Schedule::command('compliance:index-health --alert')
 
 // Partition maintenance - runs monthly on the 1st at 3 AM
 Schedule::command('compliance:partition-maintenance --create-future --months-ahead=2')
+    ->onOneServer()
     ->monthlyOn(1, '03:00')
     ->withoutOverlapping(60)
     ->appendOutputTo(storage_path('logs/partition-maintenance.log'));
@@ -42,6 +49,7 @@ Schedule::command('compliance:partition-maintenance --create-future --months-ahe
 
 // Clean up expired rate limits - runs hourly
 Schedule::command('license:cleanup-rate-limits')
+    ->onOneServer()
     ->hourly()
     ->withoutOverlapping(30)
     ->runInBackground()
@@ -49,12 +57,14 @@ Schedule::command('license:cleanup-rate-limits')
 
 // Check license expirations - runs daily at midnight
 Schedule::command('license:check-expiration')
+    ->onOneServer()
     ->dailyAt('00:00')
     ->withoutOverlapping(60)
     ->appendOutputTo(storage_path('logs/license-expiration.log'));
 
 // Report usage metrics to license server - runs hourly
 Schedule::command('license:report-usage')
+    ->onOneServer()
     ->hourly()
     ->withoutOverlapping(30)
     ->runInBackground()
@@ -73,6 +83,7 @@ Schedule::command('license:report-usage')
 
 // Process offline queue - runs every 5 minutes when auto-recovery enabled
 Schedule::command('fatoora:process-offline --limit=50')
+    ->onOneServer()
     ->everyFiveMinutes()
     // Ten minutes, not the default.
     //
@@ -95,6 +106,7 @@ Schedule::command('fatoora:process-offline --limit=50')
 
 // Check certificate expiry - runs daily at 8 AM with notifications
 Schedule::command('fatoora:check-certificate --notify')
+    ->onOneServer()
     ->dailyAt('08:00')
     ->withoutOverlapping(60)
     ->appendOutputTo(storage_path('logs/zatca-certificate.log'));
@@ -106,6 +118,7 @@ Schedule::command('fatoora:check-certificate --notify')
 // submission left in flight. ZATCA gives a simplified invoice twenty-four
 // hours, so this goes looking every hour and fails the run if any are past it.
 Schedule::command('fatoora:overdue-submissions --alert')
+    ->onOneServer()
     ->hourly()
     ->withoutOverlapping(30);
 
@@ -113,16 +126,19 @@ Schedule::command('fatoora:overdue-submissions --alert')
 // worker, a lost job. Every ten minutes, so an invoice is not blocked from
 // filing for longer than the stale window plus this.
 Schedule::command('fatoora:recover-submissions')
+    ->onOneServer()
     ->everyTenMinutes()
     ->withoutOverlapping(10);
 
 Schedule::command('fatoora:verify-hash-chain')
+    ->onOneServer()
     ->weeklyOn(0, '02:00')
     ->withoutOverlapping(120)
     ->appendOutputTo(storage_path('logs/zatca-hash-chain.log'));
 
 // Clean up old offline queue items - runs daily at 4 AM
 Schedule::command('compliance:cleanup-offline-queue')
+    ->onOneServer()
     ->dailyAt('04:00')
     ->withoutOverlapping(30)
     ->runInBackground()
