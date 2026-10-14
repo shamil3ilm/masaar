@@ -129,7 +129,7 @@ webhook, err := client.Webhooks.Create(ctx, &masaar.CreateWebhookRequest{
 // Verify webhook signature
 func handleWebhook(w http.ResponseWriter, r *http.Request) {
     payload, _ := io.ReadAll(r.Body)
-    signature := r.Header.Get("X-Masaar-Signature")
+    signature := r.Header.Get("X-Webhook-Signature")
 
     if !masaar.VerifyWebhookSignature(payload, signature, webhookSecret) {
         http.Error(w, "Invalid signature", http.StatusUnauthorized)

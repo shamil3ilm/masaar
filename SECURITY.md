@@ -51,7 +51,7 @@ Masaar is committed to ensuring the security of our users and the integrity of t
 - **SQL Injection Prevention**: Parameterized queries and ORM usage
 - **XSS Prevention**: Output encoding and Content Security Policy
 - **CSRF Protection**: Token-based CSRF protection on all forms
-- **Authentication**: Secure password hashing (bcrypt), breach detection
+- **Authentication**: Secure password hashing (bcrypt); passwords found in known breaches are refused at registration
 - **Authorization**: Role-based access control with organization isolation
 - **Session Security**: Encrypted sessions, secure cookies, HTTP-only flags
 
@@ -60,7 +60,7 @@ Masaar is committed to ensuring the security of our users and the integrity of t
 - **Digital Signatures**: ECDSA with secp256k1 curve (ZATCA compliant)
 - **Hashing**: SHA-256 for document hashes and integrity
 - **Certificate Management**:
-  - CRL/OCSP revocation checking
+  - CRL revocation checking (OCSP is not consulted)
   - Certificate chain validation
   - Expiry monitoring
 - **Timestamp Authority**: RFC 3161 compliant timestamping (XAdES-T)
@@ -79,12 +79,11 @@ Masaar is committed to ensuring the security of our users and the integrity of t
 - **Environment Isolation**: Separate development, staging, production
 - **Secrets Management**: Environment-based configuration
 - **Logging**: Comprehensive audit logging without sensitive data
-- **Monitoring**: Real-time alerting for suspicious activities
+- **Monitoring**: Failed sign-ins and every admin change are recorded in the audit log, readable under Admin -> Audit log; alerting on them is not built in
 
 ### Container Security
 
-- **Non-root User**: Containers run as non-root user (UID 1000)
-- **Read-only Filesystem**: Application code is immutable
+- **Unprivileged workers**: Supervisor starts as root; the queue workers and scheduler it runs are the unprivileged `masaar` user (UID 1000)
 - **Health Checks**: Automated container health monitoring
 - **Resource Limits**: CPU and memory constraints in production
 - **No Privileged Mode**: Containers run without elevated privileges

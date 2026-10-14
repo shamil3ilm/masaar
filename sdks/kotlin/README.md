@@ -153,7 +153,7 @@ class WebhookController {
     @PostMapping("/webhooks/masaar")
     fun handleWebhook(
         @RequestBody payload: String,
-        @RequestHeader("X-Masaar-Signature") signature: String
+        @RequestHeader("X-Webhook-Signature") signature: String
     ): ResponseEntity<Unit> {
         if (!MasaarWebhook.verifySignature(payload, signature, webhookSecret)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()

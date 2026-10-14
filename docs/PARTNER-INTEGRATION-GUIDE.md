@@ -1067,14 +1067,15 @@ class MasaarWebhookController extends Controller
      */
     private function verifySignature(Request $request): bool
     {
-        $signature = $request->header('X-Masaar-Signature');
+        $signature = $request->header('X-Webhook-Signature');
         $secret = config('masaar.webhook.secret');
 
         if (!$signature || !$secret) {
             return false;
         }
 
-        $expectedSignature = hash_hmac(
+        // The header carries the algorithm as a prefix: sha256=<hex>.
+        $expectedSignature = 'sha256='.hash_hmac(
             'sha256',
             $request->getContent(),
             $secret

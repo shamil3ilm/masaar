@@ -190,7 +190,7 @@ ApiResponse<?> webhook = client.webhooks().create(
 @PostMapping("/webhooks/masaar")
 public ResponseEntity<Void> handleWebhook(
     @RequestBody String payload,
-    @RequestHeader("X-Masaar-Signature") String signature
+    @RequestHeader("X-Webhook-Signature") String signature
 ) {
     // Verify signature
     if (!WebhooksResource.verifySignature(payload, signature, webhookSecret)) {

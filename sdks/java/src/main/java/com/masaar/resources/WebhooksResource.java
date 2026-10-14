@@ -73,7 +73,7 @@ public class WebhooksResource {
      * Use this to verify that webhook payloads are authentic and weren't tampered with.
      *
      * @param payload The raw request body bytes
-     * @param signature The X-Masaar-Signature header value
+     * @param signature The X-Webhook-Signature header value
      * @param secret Your webhook secret
      * @return true if the signature is valid
      */

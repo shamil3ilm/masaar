@@ -148,7 +148,7 @@ public class WebhooksController : ControllerBase
     {
         using var reader = new StreamReader(Request.Body);
         var payload = await reader.ReadToEndAsync();
-        var signature = Request.Headers["X-Masaar-Signature"].FirstOrDefault();
+        var signature = Request.Headers["X-Webhook-Signature"].FirstOrDefault();
 
         if (!MasaarWebhook.VerifySignature(payload, signature, _webhookSecret))
         {

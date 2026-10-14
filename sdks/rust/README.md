@@ -154,7 +154,7 @@ async fn handle_webhook(
     body: String,
 ) -> impl IntoResponse {
     let signature = headers
-        .get("X-Masaar-Signature")
+        .get("X-Webhook-Signature")
         .and_then(|v| v.to_str().ok())
         .unwrap_or("");
 

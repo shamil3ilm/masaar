@@ -131,7 +131,7 @@ class WebhooksController < ApplicationController
 
   def masaar
     payload = request.raw_post
-    signature = request.headers['X-Masaar-Signature']
+    signature = request.headers['X-Webhook-Signature']
 
     unless Masaar::Webhook.verify_signature(payload, signature, ENV['WEBHOOK_SECRET'])
       head :unauthorized
