@@ -86,6 +86,24 @@ final class FatooraConfig
     public const TAX_CATEGORY_OUT_OF_SCOPE = 'O';   // Out of scope
 
     /**
+     * Exemptions that make a simplified invoice name its buyer.
+     *
+     * BR-KSA-25: on a simplified invoice the buyer name (BT-44) is
+     * mandatory only when the exemption reason is one of these - private
+     * education or private healthcare supplied to a Saudi citizen, where the
+     * exemption depends on who the buyer is. Otherwise it is optional, and a
+     * walk-in sale carries none: ZATCA's own sample simplified invoice has
+     * an empty cac:AccountingCustomerParty.
+     *
+     * One list, read by both CreateInvoiceRequest and InvoiceValidator, so
+     * the form and the pre-submission check cannot disagree about when a
+     * name is owed.
+     *
+     * @var list<string>
+     */
+    public const NAMED_BUYER_EXEMPTIONS = ['VATEX-SA-EDU', 'VATEX-SA-HEA'];
+
+    /**
      * BT-121, the exemption reason codes ZATCA accepts, by the category each
      * one puts the line in.
      *

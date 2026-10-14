@@ -46,6 +46,23 @@ class CreateInvoiceRequest extends FormRequest
         // elsewhere is not five digits, and most are not digits at all.
         $buyerIsSaudi = ($this->input('buyer_address.country_code') ?? 'SA') === 'SA';
 
+        // BR-KSA-25: a simplified invoice names its buyer only when a line is
+        // exempt as private education or healthcare to a Saudi citizen. A
+        // walk-in sale names nobody, and ZATCA's own sample does not either.
+        $mustNameBuyer = fn (): bool => $isB2B() || collect($this->input('lines', []))
+            ->contains(fn ($line): bool => in_array(
+                $line['exempt_code'] ?? null,
+                FatooraConfig::NAMED_BUYER_EXEMPTIONS,
+                true,
+            ));
+
+        // BR-KSA-81: a standard invoice identifies its buyer by VAT number or,
+        // failing that, by another identifier (BT-46). Requiring the VAT
+        // number outright refused every business buyer that is not
+        // VAT-registered, which the authority accepts.
+        $hasBuyerId = fn (): bool => $this->filled('buyer_id');
+        $hasBuyerVat = fn (): bool => $this->filled('buyer_vat_number');
+
         return [
             // Invoice header
             'invoice_number' => ['required', 'string', 'max:255'],
@@ -69,7 +86,7 @@ class CreateInvoiceRequest extends FormRequest
             'payment_means_code' => ['nullable', 'string', 'size:2'],
 
             // Buyer information
-            'buyer_name' => ['required', 'string', 'max:255'],
+            'buyer_name' => ['nullable', 'string', 'max:255', Rule::requiredIf($mustNameBuyer)],
             // The buyer's name in Arabic, where they have one. Optional,
             // and not a compliance gap when absent: ZATCA's Guideline for Tax
             // Invoicing and Records (v3, May 2026) 4.2.1 approves Latin
@@ -86,15 +103,20 @@ class CreateInvoiceRequest extends FormRequest
                 // numbered and written into the chain, and the remedy for a
                 // rejected invoice is a credit note.
                 new VatNumber,
-                // BT-46: Required for B2B (Standard) invoices
-                Rule::requiredIf($isB2B),
+                // BT-48, required on a standard invoice unless the buyer is
+                // identified by BT-46 instead.
+                Rule::requiredIf(fn (): bool => $isB2B() && ! $hasBuyerId()),
             ],
             // BT-46 / BT-46-1: the buyer's identifier and the register it came
             // from. Required together — an identifier without its scheme says
             // nothing about which register to look it up in. ZATCA rejects an
             // identifier containing spaces, so the pattern excludes them
             // rather than trimming and hoping.
-            'buyer_id' => ['nullable', 'string', 'max:50', 'regex:/^[A-Za-z0-9]+$/', 'required_with:buyer_id_scheme'],
+            'buyer_id' => [
+                'nullable', 'string', 'max:50', 'regex:/^[A-Za-z0-9]+$/', 'required_with:buyer_id_scheme',
+                // The other half of BR-KSA-81.
+                Rule::requiredIf(fn (): bool => $isB2B() && ! $hasBuyerVat()),
+            ],
             'buyer_id_scheme' => [
                 'nullable',
                 Rule::in(self::VALID_BUYER_ID_SCHEMES),
@@ -188,7 +210,11 @@ class CreateInvoiceRequest extends FormRequest
         return [
             // Buyer
             'exchange_rate.required' => 'Exchange rate to SAR is required for foreign-currency invoices (BR-KSA-CU-01).',
-            'buyer_vat_number.required_if' => 'Buyer VAT number is required for B2B (standard) invoices (BT-46).',
+            // BT-48, not BT-46: BT-46 is the other buyer identifier, which
+            // is the alternative to this one rather than its name.
+            'buyer_vat_number.required' => 'A standard invoice needs the buyer VAT number (BT-48) or another buyer identifier (BT-46).',
+            'buyer_id.required' => 'A standard invoice needs the buyer VAT number (BT-48) or another buyer identifier (BT-46).',
+            'buyer_name.required' => 'The buyer name (BT-44) is required on a standard invoice, and on a simplified one exempt as private education or healthcare (BR-KSA-25).',
             'buyer_address.required_if' => 'Buyer address is required for B2B (standard) invoices (BT-50).',
             'buyer_address.street.required_if' => 'Buyer street is required for B2B (standard) invoices.',
             'buyer_address.city.required_if' => 'Buyer city is required for B2B (standard) invoices.',

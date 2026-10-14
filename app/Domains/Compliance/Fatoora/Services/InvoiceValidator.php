@@ -203,22 +203,45 @@ class InvoiceValidator
     /**
      * Validate buyer information.
      */
+    /**
+     * What the authority requires of the buyer, and no more.
+     *
+     * This refused every invoice without a buyer name and every standard
+     * invoice without a buyer VAT number. Both are stricter than ZATCA:
+     *
+     *   BR-KSA-25  a simplified invoice names its buyer only when a line is
+     *              exempt as private education or healthcare to a Saudi
+     *              citizen. A walk-in sale names nobody - the authority's own
+     *              sample simplified invoice has an empty customer party.
+     *   BR-KSA-81  a standard invoice identifies its buyer by VAT number or,
+     *              failing that, by another identifier (BT-46). A business
+     *              that is not VAT-registered can still be invoiced.
+     *
+     * The messages cited BR-KSA-15 for the buyer VAT number. BR-KSA-15 is the
+     * rule that a standard invoice carries a supply date, so anyone following
+     * the citation to the rule found nothing about VAT numbers at all.
+     */
     private function validateBuyer(Invoice $invoice): array
     {
         $errors = [];
+        $standard = $invoice->type->value === 'standard';
 
-        // Buyer name (BT-44)
-        if (! $invoice->buyer_name) {
-            $errors[] = 'BT-44: Buyer name is required';
+        $exemptForNamedBuyer = $invoice->lines->contains(
+            fn ($line): bool => in_array($line->exempt_code, FatooraConfig::NAMED_BUYER_EXEMPTIONS, true)
+        );
+
+        if (! $invoice->buyer_name && ($standard || $exemptForNamedBuyer)) {
+            $errors[] = $standard
+                ? 'BT-44: Buyer name is required on a standard invoice'
+                : 'BR-KSA-25: Buyer name is required when a line is exempt as private education or healthcare';
         }
 
-        // For standard (B2B) invoices, buyer VAT is required
-        if ($invoice->type->value === 'standard') {
-            if (! $invoice->buyer_vat_number) {
-                $errors[] = 'BR-KSA-15: Buyer VAT number is required for standard invoices';
-            } elseif (! $this->isValidVatNumber($invoice->buyer_vat_number)) {
-                $errors[] = 'BR-KSA-15: Buyer VAT number must be 15 digits starting with 3';
+        if ($invoice->buyer_vat_number !== null && $invoice->buyer_vat_number !== '') {
+            if (! $this->isValidVatNumber($invoice->buyer_vat_number)) {
+                $errors[] = 'BR-KSA-44: Buyer VAT number must be 15 digits, starting and ending with 3';
             }
+        } elseif ($standard && ! $invoice->buyer_id) {
+            $errors[] = 'BR-KSA-81: A standard invoice needs the buyer VAT number (BT-48) or another buyer identifier (BT-46)';
         }
 
         return $errors;

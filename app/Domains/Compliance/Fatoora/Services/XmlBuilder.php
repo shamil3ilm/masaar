@@ -371,12 +371,27 @@ class XmlBuilder
             $party->appendChild($taxScheme);
         }
 
-        // Party legal entity (name)
-        $legalEntity = $this->dom->createElementNS(self::CAC_NS, 'cac:PartyLegalEntity');
-        $legalEntity->appendChild($this->dom->createElementNS(self::CBC_NS, 'cbc:RegistrationName', $data->buyerName));
-        $party->appendChild($legalEntity);
+        // Party legal entity (name), only when there is one.
+        //
+        // This always wrote cbc:RegistrationName, and with no name to write it
+        // threw a TypeError - so a walk-in sale could not be built at all, and
+        // the form forced the cashier to invent a name to get past it.
+        // BR-KSA-25 makes the name optional on a simplified invoice outside the
+        // EDU and HEA exemptions.
+        if ($data->buyerName !== null && trim($data->buyerName) !== '') {
+            $legalEntity = $this->dom->createElementNS(self::CAC_NS, 'cac:PartyLegalEntity');
+            $legalEntity->appendChild($this->dom->createElementNS(self::CBC_NS, 'cbc:RegistrationName', $data->buyerName));
+            $party->appendChild($legalEntity);
+        }
 
-        $customer->appendChild($party);
+        // A buyer with nothing to say about them is an empty customer party,
+        // which is what ZATCA's own sample simplified invoice carries. An
+        // empty cac:Party inside it is not the same thing and is not what the
+        // sample does.
+        if ($party->hasChildNodes()) {
+            $customer->appendChild($party);
+        }
+
         $this->root->appendChild($customer);
     }
 

@@ -70,7 +70,9 @@ final readonly class InvoiceXmlData
         public string $sellerName,
         public string $sellerVatNumber,
         public AddressData $sellerAddress,
-        public string $buyerName,
+        // Null for a walk-in sale: BR-KSA-25 makes it optional on a
+        // simplified invoice outside the EDU and HEA exemptions.
+        public ?string $buyerName,
         public float $subtotal,
         public float $taxAmount,
         public float $total,

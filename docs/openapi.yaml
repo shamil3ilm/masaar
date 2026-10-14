@@ -1541,7 +1541,6 @@ paths:
                 - invoice_number
                 - type
                 - issue_date
-                - buyer_name
                 - lines
       responses:
         201:
@@ -1655,7 +1654,6 @@ paths:
                 - invoice_number
                 - type
                 - issue_date
-                - buyer_name
                 - lines
       responses:
         200:
@@ -1740,7 +1738,6 @@ paths:
                 - invoice_number
                 - type
                 - issue_date
-                - buyer_name
                 - lines
       responses:
         200:
@@ -2817,7 +2814,6 @@ paths:
                 - invoice_number
                 - type
                 - issue_date
-                - buyer_name
                 - lines
       responses:
         201:
@@ -2933,7 +2929,6 @@ paths:
                 - invoice_number
                 - type
                 - issue_date
-                - buyer_name
                 - lines
       responses:
         200:
@@ -3083,7 +3078,6 @@ paths:
               required:
                 - type
                 - issue_date
-                - buyer_name
                 - lines
                 - org_id
       responses:

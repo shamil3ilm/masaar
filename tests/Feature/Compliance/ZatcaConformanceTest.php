@@ -222,6 +222,67 @@ class ZatcaConformanceTest extends TestCase
      * at compliance with an error naming something the caller could not send.
      * Nothing had put the result in front of the authority.
      */
+    /**
+     * A walk-in sale: no name, no address, no identifier.
+     *
+     * ZATCA's data dictionary marks the buyer name Conditional on a
+     * simplified invoice and BR-KSA-25 gives the condition - it is owed only
+     * when a line is exempt as private education or healthcare to a Saudi
+     * citizen. The authority's own sample simplified invoice, in the SDK this
+     * test validates against, carries an empty cac:AccountingCustomerParty.
+     *
+     * This platform could not produce one. The column was NOT NULL, the
+     * request, the portal form and the validator all required a name, and the
+     * XML builder threw a TypeError when there was none - so a cashier had to
+     * invent a buyer's name for every cash sale, and the authority received it
+     * as that buyer's registered name.
+     */
+    public function test_a_walk_in_sale_validates(): void
+    {
+        $xml = $this->signed('simplified', 'invoice', [], null, ['buyer_name' => null]);
+
+        $result = $this->validate($xml);
+
+        $this->assertSame(
+            'PASSED',
+            $result['stages']['KSA'] ?? 'ABSENT',
+            "ZATCA rejected a walk-in sale:\n".implode("\n", $result['errors'])
+        );
+
+        $this->assertSame([], $this->businessRules($result['errors']));
+
+        $this->assertStringNotContainsString('RegistrationName', $this->customerParty($xml),
+            'a walk-in sale was given a name');
+
+        // The shape of the authority's own sample: the party element is there
+        // and holds nothing.
+        $this->assertMatchesRegularExpression(
+            '#^<cac:AccountingCustomerParty\s*/>$|^<cac:AccountingCustomerParty>\s*</cac:AccountingCustomerParty>$#',
+            $this->customerParty($xml)
+        );
+    }
+
+    /**
+     * And a simplified invoice that does name its buyer still carries it.
+     */
+    public function test_a_named_buyer_is_kept(): void
+    {
+        $xml = $this->signed('simplified', 'invoice', [], null, ['buyer_name' => 'Beta Industries']);
+
+        $this->assertStringContainsString('Beta Industries', $this->customerParty($xml));
+    }
+
+    private function customerParty(string $xml): string
+    {
+        preg_match(
+            '#<cac:AccountingCustomerParty\s*/>|<cac:AccountingCustomerParty>.*?</cac:AccountingCustomerParty>#s',
+            $xml,
+            $match
+        );
+
+        return $match[0] ?? '';
+    }
+
     public function test_foreign_currency_validates(): void
     {
         $result = $this->validate($this->signed('standard', 'invoice', [], null, [

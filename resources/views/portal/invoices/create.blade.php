@@ -108,7 +108,13 @@
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
                 <label for="buyer_name" class="block text-sm font-medium text-gray-700">Name</label>
-                <x-ui.input type="text" name="buyer_name" id="buyer_name" value="{{ old('buyer_name') }}" required />
+                {{-- Not required here. ZATCA's BR-KSA-25 owes a name on a
+                     simplified invoice only when a line is exempt as private
+                     education or healthcare, and the server knows which lines
+                     those are. Required in the browser, every cash sale made
+                     the cashier invent a buyer. --}}
+                <x-ui.input type="text" name="buyer_name" id="buyer_name" value="{{ old('buyer_name') }}" />
+                <span class="mt-1 block text-xs text-gray-500">Leave empty for a walk-in customer on a simplified invoice.</span>
             </div>
 
             <div>

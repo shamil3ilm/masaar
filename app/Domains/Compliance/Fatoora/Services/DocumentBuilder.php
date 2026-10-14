@@ -219,7 +219,11 @@ class DocumentBuilder
             sellerName: $this->normalizeName($organization->documentName()),
             sellerVatNumber: $organization->vat_number ?? '',
             sellerAddress: $organization->getAddressData(),
-            buyerName: $this->normalizeName($invoice->documentBuyerName()),
+            // Null rather than an empty string for a walk-in sale, so the
+            // builder omits the name instead of writing an empty one.
+            buyerName: $invoice->documentBuyerName() === ''
+                ? null
+                : $this->normalizeName($invoice->documentBuyerName()),
             subtotal: (float) $invoice->subtotal,
             taxAmount: (float) $invoice->tax_amount,
             total: (float) $invoice->total,
