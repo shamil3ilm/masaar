@@ -185,9 +185,14 @@ the API rather than generated, so treat the HTTP API and
 | [Rust](sdks/rust/) · [Go](sdks/go/) · [Kotlin](sdks/kotlin/) · [Swift](sdks/swift/) · [.NET](sdks/dotnet/) · [Ruby](sdks/ruby/) · [Dart](sdks/dart/) | 🟠 Skeleton | One client file each; no tests, unverified against a live API |
 | JavaScript | 🔴 Not implemented | Use the TypeScript SDK — it compiles to JavaScript |
 
-Known gaps: the SDKs cover a subset of the API and most carry no automated
-tests. The intended direction is to generate them from the OpenAPI
-specification rather than maintain eleven by hand.
+What every SDK has: CI builds each one with its own toolchain on every push
+(Swift on Linux as well as Apple platforms), checks that it calls only routes
+the API serves, and each verifies webhook signatures in constant time.
+
+Known gaps: the SDKs cover a subset of the API, most carry no automated tests,
+and none has been run against a live API. The intended direction is to
+generate them from the OpenAPI specification rather than maintain eleven by
+hand.
 
 ## License
 
