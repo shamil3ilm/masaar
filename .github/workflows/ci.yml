@@ -160,6 +160,49 @@ jobs:
       - name: Run end-to-end checks
         run: php tests/E2e/run.php
 
+      # The restore drill, on the database the checks above just filled. A
+      # backup nobody has restored is a hope, so this takes one the way the
+      # scheduler does, opens the archive with the password and only with it,
+      # restores the dump into a second database and compares them table by
+      # table. Local disk: the bucket is the deployment's, not CI's.
+      - name: Back up and restore
+        env:
+          BACKUP_DISKS: local
+          BACKUP_ARCHIVE_PASSWORD: ci-restore-drill
+        run: |
+          set -euo pipefail
+          php artisan backup:run --disable-notifications
+          archive=$(find storage/app/private -name '*.zip' | head -n 1)
+          test -n "$archive"
+
+          if 7z t -p"wrong-password" "$archive" >/dev/null 2>&1; then
+            echo "::error::The archive opened without its password"
+            exit 1
+          fi
+
+          7z x -p"$BACKUP_ARCHIVE_PASSWORD" -o"$RUNNER_TEMP/restore" "$archive" >/dev/null
+          dump=$(find "$RUNNER_TEMP/restore" -name '*.sql.gz' | head -n 1)
+          test -n "$dump"
+
+          mysql -h 127.0.0.1 -u root -e 'CREATE DATABASE masaar_restore'
+          gunzip -c "$dump" | mysql -h 127.0.0.1 -u root masaar_restore
+
+          for table in organizations users invoices hash_chain_history hash_chain_heads audit_logs; do
+            live=$(mysql -h 127.0.0.1 -u root -N -e "SELECT COUNT(*) FROM masaar.$table")
+            restored=$(mysql -h 127.0.0.1 -u root -N -e "SELECT COUNT(*) FROM masaar_restore.$table")
+            echo "$table: $live live, $restored restored"
+            if [ "$live" != "$restored" ]; then
+              echo "::error::$table restored $restored rows of $live"
+              exit 1
+            fi
+          done
+
+          invoices=$(mysql -h 127.0.0.1 -u root -N -e 'SELECT COUNT(*) FROM masaar_restore.invoices')
+          if [ "$invoices" -eq 0 ]; then
+            echo "::error::The drill restored no invoices, so it proved nothing"
+            exit 1
+          fi
+
       # The same suite the first job runs, against the engine production uses.
       #
       # SQLite accepts a WHERE on a column that does not exist: it matches

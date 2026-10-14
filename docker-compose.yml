@@ -83,6 +83,21 @@ services:
       ZATCA_CREDENTIAL_KEY: ${ZATCA_CREDENTIAL_KEY}
       ZATCA_CREDENTIAL_PREVIOUS_KEYS: ${ZATCA_CREDENTIAL_PREVIOUS_KEYS}
 
+      # Backups (config/backup.php), nightly to the S3-compatible bucket the
+      # AWS_* variables name. No password, no backup: the run is refused and
+      # pages rather than uploading an unencrypted archive. skip-ssl because
+      # the image's dump client is MariaDB's and will not accept the compose
+      # MySQL's self-signed certificate; see config/database.php.
+      BACKUP_DISKS: ${BACKUP_DISKS:-s3}
+      BACKUP_ARCHIVE_PASSWORD: ${BACKUP_ARCHIVE_PASSWORD}
+      DB_DUMP_SSL_FLAG: ${DB_DUMP_SSL_FLAG:-skip-ssl}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      AWS_BUCKET: ${AWS_BUCKET}
+      AWS_ENDPOINT: ${AWS_ENDPOINT}
+      AWS_USE_PATH_STYLE_ENDPOINT: ${AWS_USE_PATH_STYLE_ENDPOINT:-false}
+
       # Rate limits. RATE_LIMIT_SUBMISSION and ZATCA_RATE_LIMIT_PER_MINUTE
       # throttle the same traffic and the application refuses to boot in
       # production while they disagree, so both are passed or neither is.

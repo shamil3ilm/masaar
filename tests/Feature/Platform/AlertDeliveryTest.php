@@ -9,10 +9,13 @@ use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
+use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
+use Spatie\Backup\Events\BackupHasFailed;
+use Spatie\Backup\Events\UnhealthyBackupWasFound;
 use Tests\Fixtures\SigningCredentials;
 use Tests\TestCase;
 
@@ -151,6 +154,26 @@ class AlertDeliveryTest extends TestCase
         $this->artisan('fatoora:check-certificate');
 
         $this->assertStringContainsString('certificate has expired', $this->alerts());
+    }
+
+    /**
+     * A night without a backup is a night that cannot be restored.
+     */
+    public function test_a_failed_backup_is_critical(): void
+    {
+        event(new BackupHasFailed(new Exception('bucket unreachable'), 's3', 'Masaar'));
+
+        $this->assertStringContainsString('Backup failed', $this->alerts());
+        $this->assertStringContainsString('bucket unreachable', $this->alerts());
+    }
+
+    public function test_a_stale_backup_is_critical(): void
+    {
+        event(new UnhealthyBackupWasFound('s3', 'Masaar', collect([
+            ['check' => 'MaximumAgeInDays', 'message' => 'The latest backup is too old'],
+        ])));
+
+        $this->assertStringContainsString('latest backup is too old', $this->alerts());
     }
 
     private function alerts(): string

@@ -107,6 +107,26 @@ return [
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 (PHP_VERSION_ID >= 80500 ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
+
+            /*
+             * How backup:run calls mysqldump (config/backup.php).
+             *
+             * A single transaction gives a consistent snapshot of InnoDB
+             * without locking the tables invoices are being written to.
+             * --no-tablespaces, because MySQL 8 otherwise wants the PROCESS
+             * privilege an application user has no reason to hold.
+             *
+             * DB_DUMP_SSL_FLAG exists for the image: its client is MariaDB's,
+             * which insists on verifying the server certificate, and the
+             * compose MySQL presents a self-signed one on a private network
+             * the application itself connects over without TLS. 'skip-ssl'
+             * matches that. Unset, the client's default applies.
+             */
+            'dump' => [
+                'use_single_transaction' => true,
+                'add_extra_option' => '--no-tablespaces',
+                'set_ssl_flag' => (string) env('DB_DUMP_SSL_FLAG', ''),
+            ],
         ],
 
         'mariadb' => [

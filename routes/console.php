@@ -127,3 +127,29 @@ Schedule::command('compliance:cleanup-offline-queue')
     ->withoutOverlapping(30)
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/zatca-queue-cleanup.log'));
+
+/*
+|--------------------------------------------------------------------------
+| Backups
+|--------------------------------------------------------------------------
+|
+| Every replica runs this scheduler, so each is onOneServer: one archive a
+| night, not one per container. That needs a cache every replica shares,
+| which production's Redis is. Clean before the run, so the new archive is
+| never what pruning removes; monitor well after, so a run that has not
+| finished is not reported stale. Failures page via AlertOnBackupTrouble.
+|
+*/
+Schedule::command('backup:clean')
+    ->dailyAt('01:00')
+    ->onOneServer()
+    ->withoutOverlapping(60);
+
+Schedule::command('backup:run')
+    ->dailyAt('01:30')
+    ->onOneServer()
+    ->withoutOverlapping(120);
+
+Schedule::command('backup:monitor')
+    ->dailyAt('06:00')
+    ->onOneServer();

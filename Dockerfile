@@ -104,6 +104,9 @@ RUN apk add --no-cache \
     nginx \
     # Curl for healthchecks
     curl \
+    # mysqldump, for backup:run. Alpine's is MariaDB's client, which dumps a
+    # MySQL 8 server; nothing in the image could take a backup without it.
+    mysql-client \
     # Git for composer
     git \
     # Linux headers for some extensions

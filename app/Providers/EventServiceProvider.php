@@ -11,7 +11,13 @@ use App\Domains\Compliance\Fatoora\Events\InvoiceReported;
 use App\Domains\Compliance\Fatoora\Events\InvoiceSubmitted;
 use App\Domains\Compliance\Fatoora\Events\InvoiceWarning;
 use App\Domains\Compliance\Fatoora\Listeners\DispatchInvoiceWebhook;
+use App\Domains\Platform\Listeners\AlertOnBackupTrouble;
+use App\Domains\Platform\Listeners\RefuseUnencryptedBackup;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
+use Spatie\Backup\Events\BackupHasFailed;
+use Spatie\Backup\Events\CleanupHasFailed;
+use Spatie\Backup\Events\DumpingDatabase;
+use Spatie\Backup\Events\UnhealthyBackupWasFound;
 
 /**
  * Event Service Provider.
@@ -45,6 +51,20 @@ class EventServiceProvider extends ServiceProvider
         ],
         InvoiceSubmitted::class => [
             DispatchInvoiceWebhook::class,
+        ],
+
+        // Backups: refuse to dump unencrypted, and page when one fails or goes stale.
+        DumpingDatabase::class => [
+            RefuseUnencryptedBackup::class,
+        ],
+        BackupHasFailed::class => [
+            AlertOnBackupTrouble::class,
+        ],
+        UnhealthyBackupWasFound::class => [
+            AlertOnBackupTrouble::class,
+        ],
+        CleanupHasFailed::class => [
+            AlertOnBackupTrouble::class,
         ],
     ];
 
