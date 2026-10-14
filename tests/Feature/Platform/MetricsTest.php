@@ -6,6 +6,8 @@ namespace Tests\Feature\Platform;
 
 use App\Domains\Compliance\Fatoora\Services\CircuitBreaker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
@@ -73,6 +75,41 @@ class MetricsTest extends TestCase
         $this->assertStringContainsString("masaar_zatca_offline_queue_size 1\n", $body);
         $this->assertStringContainsString("masaar_zatca_circuit_breaker_open 1\n", $body);
         $this->assertStringContainsString("masaar_zatca_submission_duration_avg_ms 0\n", $body);
+    }
+
+    /**
+     * Queue depths came from Redis::llen whatever the queue driver was. On the
+     * database queue - what runs without Redis - that threw, and the failed
+     * job count shared its try block, so every scrape lost both.
+     */
+    public function test_queue_metrics_follow_the_driver(): void
+    {
+        config(['queue.default' => 'database']);
+
+        foreach (['webhooks', 'webhooks', 'default'] as $queue) {
+            DB::table('jobs')->insert([
+                'queue' => $queue,
+                'payload' => '{}',
+                'attempts' => 0,
+                'available_at' => now()->getTimestamp(),
+                'created_at' => now()->getTimestamp(),
+            ]);
+        }
+
+        DB::table('failed_jobs')->insert([
+            'uuid' => (string) Str::uuid(),
+            'connection' => 'database',
+            'queue' => 'default',
+            'payload' => '{}',
+            'exception' => 'RuntimeException',
+            'failed_at' => now(),
+        ]);
+
+        $body = $this->scrape();
+
+        $this->assertStringContainsString("masaar_queue_size_webhooks{queue=\"webhooks\"} 2\n", $body);
+        $this->assertStringContainsString("masaar_queue_size_default{queue=\"default\"} 1\n", $body);
+        $this->assertStringContainsString("masaar_queue_failed_jobs_total 1\n", $body);
     }
 
     private function scrape(): string
