@@ -83,21 +83,22 @@ services:
       ZATCA_CREDENTIAL_KEY: ${ZATCA_CREDENTIAL_KEY}
       ZATCA_CREDENTIAL_PREVIOUS_KEYS: ${ZATCA_CREDENTIAL_PREVIOUS_KEYS}
 
-      # Backups (config/backup.php), nightly to the S3-compatible bucket the
-      # AWS_* variables name. No password, no backup: the run is refused and
-      # pages rather than uploading an unencrypted archive. skip-ssl because
-      # the image's dump client is MariaDB's and will not accept the compose
-      # MySQL's self-signed certificate; see config/database.php.
-      BACKUP_DISKS: ${BACKUP_DISKS:-s3}
+      # Backups (config/backup.php), nightly to the object store the
+      # BACKUP_STORAGE_* variables name - any provider speaking the S3
+      # protocol. No password, no backup: the run is refused and pages rather
+      # than uploading an unencrypted archive. skip-ssl because the image's
+      # dump client is MariaDB's and will not accept the compose MySQL's
+      # self-signed certificate; see config/database.php.
+      BACKUP_DISKS: ${BACKUP_DISKS:-backups}
       BACKUP_ARCHIVE_PASSWORD: ${BACKUP_ARCHIVE_PASSWORD}
       BACKUP_ALERT_AT_MEGABYTES: ${BACKUP_ALERT_AT_MEGABYTES:-16384}
       DB_DUMP_SSL_FLAG: ${DB_DUMP_SSL_FLAG:-skip-ssl}
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
-      AWS_BUCKET: ${AWS_BUCKET}
-      AWS_ENDPOINT: ${AWS_ENDPOINT}
-      AWS_USE_PATH_STYLE_ENDPOINT: ${AWS_USE_PATH_STYLE_ENDPOINT:-false}
+      BACKUP_STORAGE_ENDPOINT: ${BACKUP_STORAGE_ENDPOINT}
+      BACKUP_STORAGE_REGION: ${BACKUP_STORAGE_REGION}
+      BACKUP_STORAGE_BUCKET: ${BACKUP_STORAGE_BUCKET}
+      BACKUP_STORAGE_KEY: ${BACKUP_STORAGE_KEY}
+      BACKUP_STORAGE_SECRET: ${BACKUP_STORAGE_SECRET}
+      BACKUP_STORAGE_PATH_STYLE: ${BACKUP_STORAGE_PATH_STYLE:-true}
 
       # Rate limits. RATE_LIMIT_SUBMISSION and ZATCA_RATE_LIMIT_PER_MINUTE
       # throttle the same traffic and the application refuses to boot in

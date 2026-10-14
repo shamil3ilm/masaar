@@ -138,19 +138,31 @@ class BackupTest extends TestCase
     }
 
     /**
-     * OCI Object Storage, and most other S3-compatible stores, refuse the
-     * checksums aws-sdk-php has sent by default since 3.337 - the upload
-     * fails with 501 NotImplemented. AWS itself does not require them.
+     * Backups go to a disk of their own, named for what it holds rather than
+     * who provides it, so changing provider changes the environment only.
      */
-    public function test_the_bucket_accepts_s3_compatibles(): void
+    public function test_backups_have_their_own_disk(): void
+    {
+        $this->assertSame(['backups'], config('backup.backup.destination.disks'));
+        $this->assertSame('s3', config('filesystems.disks.backups.driver'));
+        $this->assertTrue(config('filesystems.disks.backups.throw'), 'a failed upload would pass silently');
+    }
+
+    /**
+     * Many stores speaking the S3 protocol refuse the checksums the client
+     * library has sent by default since 3.337 - the upload fails with 501
+     * NotImplemented. No operation the backup performs requires one.
+     */
+    public function test_uploads_carry_no_optional_checksums(): void
     {
         config([
-            'filesystems.disks.s3.key' => 'key',
-            'filesystems.disks.s3.secret' => 'secret',
-            'filesystems.disks.s3.bucket' => 'backups',
+            'filesystems.disks.backups.key' => 'key',
+            'filesystems.disks.backups.secret' => 'secret',
+            'filesystems.disks.backups.region' => 'region-1',
+            'filesystems.disks.backups.bucket' => 'backups',
         ]);
 
-        $client = Storage::disk('s3')->getClient();
+        $client = Storage::disk('backups')->getClient();
 
         $this->assertSame('when_required', $client->getConfig('request_checksum_calculation'));
         $this->assertSame('when_required', $client->getConfig('response_checksum_validation'));
@@ -158,8 +170,8 @@ class BackupTest extends TestCase
 
     /**
      * Retention never prunes to a size, so the size is watched instead: an
-     * alert well before the bucket's quota - 20 GB on OCI's free tier - turns
-     * a full bucket into a decision rather than a failed night.
+     * alert well before the bucket's quota turns a full bucket into a
+     * decision rather than a failed night.
      */
     public function test_storage_is_watched_not_pruned(): void
     {

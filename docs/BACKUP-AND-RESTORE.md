@@ -17,41 +17,43 @@ The code is not backed up. It lives in git and the image registry.
 
 Every replica runs the scheduler, so each command is `onOneServer` and takes one shared Redis lock. You get one archive a night, not one per container.
 
-Failures page through the alerts channel, and through Slack once `LOG_SLACK_WEBHOOK_URL` is set. Three things page: a failed run, a stale backup, and a run refused because `BACKUP_ARCHIVE_PASSWORD` is unset. A failed cleanup is logged as an error and does not page.
+Failures page through the alerts channel, and through its chat webhook once one is configured. Three things page: a failed run, a stale backup, and a run refused because `BACKUP_ARCHIVE_PASSWORD` is unset. A failed cleanup is logged as an error and does not page.
 
 ## Configuration
 
 | Variable | Purpose |
 |---|---|
 | `BACKUP_ARCHIVE_PASSWORD` | **Required.** It encrypts the archive. Without it the run is refused rather than uploaded in the clear. |
-| `BACKUP_DISKS` | Where archives go. Defaults to `s3`; separate several with commas. |
-| `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`, `AWS_BUCKET` | The bucket. |
-| `AWS_ENDPOINT`, `AWS_USE_PATH_STYLE_ENDPOINT` | Only for S3-compatible stores that aren't AWS, such as OCI Object Storage, Cloudflare R2 or MinIO. |
+| `BACKUP_DISKS` | Where archives go. Defaults to `backups`; separate several disks with commas. |
+| `BACKUP_STORAGE_ENDPOINT`, `BACKUP_STORAGE_REGION`, `BACKUP_STORAGE_BUCKET` | The object store and bucket. |
+| `BACKUP_STORAGE_KEY`, `BACKUP_STORAGE_SECRET` | The store's access key and secret. |
+| `BACKUP_STORAGE_PATH_STYLE` | Path-style bucket addressing. Defaults to `true`, which most stores expect. |
 | `DB_DUMP_SSL_FLAG` | `skip-ssl` in the compose stack. See `config/database.php`. |
 | `BACKUP_ALERT_AT_MEGABYTES` | Raises an alert once archives use this much of the bucket. The default is 16384. Nothing is deleted to make room. |
 
-Ideally, give the bucket credentials permission to write and list but **not to delete**, and use the bucket's retention rules. Then a stolen server can't destroy its own backups. If you do that, `backup:clean` can't prune, and the bucket's lifecycle rules have to do the pruning instead. On a quota-limited bucket, such as OCI's free tier below, locked archives can't be pruned and will fill it. Choose that trade deliberately.
+Ideally, give the bucket credentials permission to write and list but **not to delete**, and use the bucket's retention rules. Then a stolen server can't destroy its own backups. If you do that, `backup:clean` can't prune, and the bucket's lifecycle rules have to do the pruning instead. On a bucket with a quota, locked archives can't be pruned and will fill it. Choose that trade deliberately.
 
-## On Oracle Cloud (OCI Object Storage)
+## Setting up the object store
 
-OCI Object Storage speaks the S3 API, so the `s3` disk works unchanged.
+Any provider whose object storage speaks the S3 protocol will do. Nothing in the code names one: changing provider means changing the `BACKUP_STORAGE_*` values, not the code.
 
-1. **Create a bucket.** Make it private, Standard tier, in your home region. For Saudi data residency that's Jeddah or Riyadh.
-2. **Get S3 credentials.** Go to *Identity → your user → Customer Secret Keys → Generate*. The access key goes in `AWS_ACCESS_KEY_ID` and the secret in `AWS_SECRET_ACCESS_KEY`. The secret is shown once, at creation.
-3. **Point the disk at OCI:**
+1. **Create a bucket.** Make it private, in a region that meets your data-residency obligations.
+2. **Create an access key and secret** for the S3-compatible API. Many providers show the secret only once, at creation.
+3. **Set the environment.** The endpoint, region and bucket come from the provider's console:
 
    ```dotenv
-   AWS_DEFAULT_REGION=me-jeddah-1          # your region identifier
-   AWS_BUCKET=masaar-backups
-   AWS_ENDPOINT=https://<namespace>.compat.objectstorage.me-jeddah-1.oraclecloud.com
-   AWS_USE_PATH_STYLE_ENDPOINT=true
+   BACKUP_STORAGE_ENDPOINT=https://<the provider's S3-compatible endpoint>
+   BACKUP_STORAGE_REGION=<region identifier>
+   BACKUP_STORAGE_BUCKET=masaar-backups
+   BACKUP_STORAGE_KEY=<access key>
+   BACKUP_STORAGE_SECRET=<secret>
    ```
 
-   The namespace is on the bucket's details page.
+4. **Confirm it works** before relying on it: `php artisan backup:run`, then `php artisan backup:list`.
 
-The checksum change in `config/filesystems.php` is what makes uploads work. Since 3.337 the AWS PHP SDK attaches checksums to every upload, and OCI rejects them with `501 NotImplemented`.
+The `backups` disk in `config/filesystems.php` sends upload checksums only where an operation requires one. The S3 client library has added them to every upload since 3.337, and many stores refuse them with `501 NotImplemented`.
 
-The Always Free tier gives 20 GB of Object Storage and 50,000 API requests a month. The nightly backup uses a handful of requests. Storage is the limit to watch: retention keeps up to about 67 archives, so `BACKUP_ALERT_AT_MEGABYTES` (16 GB by default) is what tells you the bucket is filling. Size it from the first archives: one archive's size times about 67 should stay under the quota.
+**Sizing.** Retention keeps up to about 67 archives. One archive's size times 67 should stay under the bucket's quota, and `BACKUP_ALERT_AT_MEGABYTES` should be set below that quota.
 
 ## Keys are kept apart, and a restore needs all three
 
@@ -67,12 +69,7 @@ Keep all three in the password manager or secret store, not on the server and no
 
 Rehearse this. CI does it on every push, in the MySQL job's "Back up and restore" step. A restore into a real environment should still be done by hand once a quarter.
 
-1. **Pick the archive.**
-
-   ```bash
-   aws s3 ls s3://$AWS_BUCKET/Masaar/ --endpoint-url "$AWS_ENDPOINT"
-   aws s3 cp s3://$AWS_BUCKET/Masaar/<archive>.zip . --endpoint-url "$AWS_ENDPOINT"
-   ```
+1. **Pick the archive.** `php artisan backup:list` shows what the bucket holds. Archives are under `<APP_NAME>/` in the bucket. Download the one you want with the provider's console or any S3-protocol client.
 
 2. **Open it.** `unzip` can't read AES-encrypted zips, so use 7-Zip:
 

@@ -14,7 +14,8 @@ use Spatie\Backup\Events\UnhealthyBackupWasFound;
  *
  * The package's own notifications mail a fixed address and are switched off
  * in config/backup.php. Logged critical instead, a failed or stale backup goes
- * where every other page goes: the alerts channel, and Slack once configured.
+ * where every other page goes: the alerts channel, and its chat webhook once
+ * one is configured.
  *
  * A failed cleanup is an error, not a page: the newest backup is intact and
  * the cost is storage, which the next night's cleanup will usually recover.

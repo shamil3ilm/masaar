@@ -30,7 +30,7 @@ use Spatie\DbDumper\Compressors\GzipCompressor;
 |
 */
 
-$disks = array_values(array_filter(array_map('trim', explode(',', (string) env('BACKUP_DISKS', 's3')))));
+$disks = array_values(array_filter(array_map('trim', explode(',', (string) env('BACKUP_DISKS', 'backups')))));
 
 return [
 
@@ -83,8 +83,9 @@ return [
             'filename_prefix' => '',
 
             /*
-             * Offsite: the S3-compatible bucket the 's3' disk names (AWS_*).
-             * Comma-separated to write to more than one.
+             * Offsite: the object store the 'backups' disk names, configured
+             * by BACKUP_STORAGE_* (config/filesystems.php). Comma-separated
+             * to write to more than one.
              */
             'disks' => $disks,
 
@@ -167,9 +168,9 @@ return [
      * BackupHasFailed.
      *
      * Storage is watched rather than pruned to: retention is a legal minimum,
-     * so nothing deletes an archive to make room, and a bucket with a quota -
-     * 20 GB on OCI's Always Free tier - would otherwise fill and fail one
-     * night. The default alerts at 16 GB, leaving room to decide.
+     * so nothing deletes an archive to make room, and a bucket with a quota
+     * would otherwise fill and fail one night. The default alerts at 16 GB,
+     * sized for a 20 GB quota; set it under whatever the bucket allows.
      */
     'monitor_backups' => [
         [
