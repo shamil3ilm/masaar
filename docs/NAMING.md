@@ -94,10 +94,9 @@ Tables are `snake_case` plural (`invoices`, `invoice_submissions`); pivots are
 the two singulars alphabetically (`organization_user`); columns are
 `snake_case`, foreign keys are `<singular>_id`.
 
-Table names are **not** renamed casually — but the reason is not cross-repo
-coupling. `erp-backend` reaches this platform over HTTP
-(`config/zatca-integration.php` → `/api/v1`) and defines no connection to this
-database, so a rename here breaks nothing in that repository.
+Table names are **not** renamed casually — but the reason is not client
+coupling. Client applications reach this platform over its HTTP API and define
+no connection to this database, so a rename here does not break them.
 
 The real constraint is that a rename costs a migration, a coordinated deploy,
 and a window where old and new code disagree about the table — so it has to buy
@@ -112,8 +111,7 @@ The `license_*` cluster — eight tables — is the one that reads worst, and it
 the one **not** to rename yet. `licenses`, `license_registrations` and
 `organization_licenses` are hard to tell apart because the *concepts* overlap:
 three licensing systems occupy one namespace. Renaming would give the confusion
-better labels. Collapse the concepts first, rename once afterwards. See the
-licensing consolidation in `docs/audit/05-TARGET-ARCHITECTURE-AND-ROADMAP.md`.
+better labels. Collapse the concepts first, rename once afterwards.
 
 ---
 

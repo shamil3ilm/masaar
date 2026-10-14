@@ -3,11 +3,8 @@
 **Written for a tax auditor or compliance reviewer, and their technical
 advisor.** It describes what this platform does to an invoice, what it keeps,
 and where to look to confirm any of it. It is not an engineering guide; for
-that, see `docs/architecture/` and `docs/sa/`.
-
-A note on one word. `docs/audit/` in this repository is an *engineering* audit
-of the source code, not records of invoicing activity. The records this
-document describes are in the database tables and log channels named below.
+that, see `docs/architecture/` and `docs/sa/`. The records this document
+describes are in the database tables and log channels named below.
 
 ---
 

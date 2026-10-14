@@ -32,8 +32,11 @@ class DocLinkTest extends TestCase
     private function docs(): array
     {
         return array_merge(
-            glob(self::ROOT.'/docs/audit/*.md') ?: [],
             glob(self::ROOT.'/*.md') ?: [],
+            glob(self::ROOT.'/docs/*.md') ?: [],
+            glob(self::ROOT.'/docs/*/*.md') ?: [],
+            glob(self::ROOT.'/sdks/*/README.md') ?: [],
+            glob(self::ROOT.'/cloudflare-worker/*.md') ?: [],
         );
     }
 

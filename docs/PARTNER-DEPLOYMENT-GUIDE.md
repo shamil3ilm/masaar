@@ -1,17 +1,16 @@
-# Northwind Deployment Guide for Masaar
+# Partner Deployment Guide for Masaar
 
-This document provides Northwind's DevOps team with everything needed to deploy and operate Masaar on Northwind infrastructure.
+This document gives a partner's operations team everything needed to deploy and operate Masaar on the partner's own infrastructure.
 
-## Deployment Model: Northwind Hosts Everything
+## Deployment Model: The Partner Hosts Everything
 
-In this partnership model, **Northwind provides 100% of the infrastructure**. Masaar provides:
+In this model, **the partner provides all of the infrastructure**. Masaar provides:
 - Docker image (pre-built or Dockerfile for building)
 - Configuration templates
 - Database migrations
-- Technical support
 - Software updates
 
-### What Northwind Provides
+### What the Partner Provides
 
 | Component | Specification | Notes |
 |-----------|---------------|-------|
@@ -21,7 +20,7 @@ In this partnership model, **Northwind provides 100% of the infrastructure**. Ma
 | **Storage** | 50GB+ SSD | For logs and file storage |
 | **Network** | Internal VPC | Isolated from public |
 | **Load Balancer** | HTTPS termination | With valid SSL certificate |
-| **DNS** | Subdomain | e.g., `api.masaar.example.sa` |
+| **DNS** | Subdomain | e.g., `api.example.com` |
 | **Monitoring** | Health checks | `/api/health` endpoint |
 | **Backup** | Daily automated | Database + Redis |
 
@@ -35,7 +34,6 @@ In this partnership model, **Northwind provides 100% of the infrastructure**. Ma
 | **Environment Template** | `.env.template` | All required variables |
 | **Database Migrations** | Laravel migrations | Automated via artisan |
 | **API Documentation** | OpenAPI 3.0 | Full endpoint reference |
-| **Support** | Email/Slack | 24-hour response SLA |
 
 ---
 
@@ -83,16 +81,16 @@ nano .env
 APP_KEY=base64:YOUR_GENERATED_KEY_HERE
 
 # Your domain
-APP_URL=https://api.masaar.example.sa
+APP_URL=https://api.example.com
 
 # Database (your MySQL server)
-DB_HOST=your-mysql-host.example.sa
+DB_HOST=mysql.internal.example.com
 DB_DATABASE=masaar
 DB_USERNAME=masaar_user
 DB_PASSWORD=SECURE_PASSWORD_HERE
 
 # Redis (your Redis server)
-REDIS_HOST=your-redis-host.example.sa
+REDIS_HOST=redis.internal.example.com
 REDIS_PASSWORD=REDIS_PASSWORD_HERE
 
 # ZATCA (sandbox for testing, production for live)
@@ -119,10 +117,10 @@ docker-compose exec app php artisan migrate --force
 docker-compose ps
 
 # Check application health
-curl https://api.masaar.example.sa/api/health
+curl https://api.example.com/api/health
 
 # Expected response:
-# {"status":"ok","timestamp":"2026-02-03T12:00:00Z"}
+# {"status":"ok","version":"1.0.0","timestamp":"<ISO-8601 time>"}
 
 # Check logs
 docker-compose logs -f app
@@ -132,15 +130,15 @@ docker-compose logs -f app
 
 ## Architecture Options
 
-### Option A: Northwind Managed Services (Recommended)
+### Option A: Partner Managed Services (Recommended)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    Northwind Saudi Arabia VPC                       │
+│                   Partner Saudi Arabia VPC                       │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  ┌──────────────┐     ┌──────────────┐     ┌──────────────┐    │
-│  │   Northwind     │     │  Masaar   │     │  Masaar   │    │
+│  │   Partner    │     │  Masaar   │     │  Masaar   │    │
 │  │   Load       │────▶│  Container   │     │  Container   │    │
 │  │   Balancer   │     │  (Replica 1) │     │  (Replica 2) │    │
 │  │   (HTTPS)    │────▶│              │     │              │    │
@@ -148,13 +146,13 @@ docker-compose logs -f app
 │                              │                     │            │
 │                              ▼                     ▼            │
 │  ┌───────────────────────────────────────────────────────────┐ │
-│  │                     Northwind MySQL RDS                       │ │
+│  │                  Managed MySQL database                    │ │
 │  │               (Multi-AZ, Automated Backups)                │ │
 │  └───────────────────────────────────────────────────────────┘ │
 │                              │                                  │
 │  ┌───────────────────────────────────────────────────────────┐ │
-│  │                    Northwind ElastiCache                      │ │
-│  │                        (Redis)                             │ │
+│  │                      Managed Redis                         │ │
+│  │                                                            │ │
 │  └───────────────────────────────────────────────────────────┘ │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
@@ -163,12 +161,12 @@ docker-compose logs -f app
 **Benefits:**
 - Automatic failover for database
 - Managed backups and maintenance
-- Scales with Northwind's existing infrastructure
+- Scales with the partner's existing infrastructure
 - Minimal operational overhead
 
 ### Option B: Self-Contained Docker Stack
 
-If Northwind prefers to run everything in Docker:
+If the partner prefers to run everything in Docker:
 
 ```bash
 # Uses built-in MySQL and Redis containers
@@ -181,7 +179,7 @@ docker-compose up -d
 ```
 
 **Benefits:**
-- Completely isolated from Northwind systems
+- Completely isolated from the partner's other systems
 - Easy to migrate or replicate
 - Single deployment unit
 
@@ -215,7 +213,7 @@ docker-compose up -d --no-deps app
 docker-compose exec app php artisan migrate --force
 
 # 5. Verify
-curl https://api.masaar.example.sa/api/health/ready
+curl https://api.example.com/api/health/ready
 ```
 
 #### Rollback Procedure
@@ -225,8 +223,8 @@ curl https://api.masaar.example.sa/api/health/ready
 docker-compose down
 IMAGE_TAG=1.0.0 docker-compose up -d
 
-# Note: Database migrations may need manual rollback
-# Coordinate with Masaar support before rolling back
+# Note: Database migrations may need a manual rollback.
+# Check which migrations the newer release added before rolling back.
 ```
 
 ### Backup Procedures
@@ -238,7 +236,7 @@ IMAGE_TAG=1.0.0 docker-compose up -d
 docker-compose exec db mysqldump -u root -p masaar > backup_$(date +%Y%m%d).sql
 
 # Restore from backup
-docker-compose exec -T db mysql -u root -p masaar < backup_20260203.sql
+docker-compose exec -T db mysql -u root -p masaar < backup_YYYYMMDD.sql
 ```
 
 #### Redis Backup
@@ -369,38 +367,12 @@ docker-compose exec app php artisan tinker
 
 ---
 
-## Support Contact
+## Reporting Issues
 
-### For Technical Issues
-
-- **Email**: support@masaar.io
-- **Slack**: #masaar-example (invite provided)
-- **Response Time**: 24 hours (business days)
-
-### For Emergencies
-
-- **Hotline**: Provided in partnership agreement
-- **Response Time**: 4 hours
-
-### Information to Include
-
-When reporting issues, please provide:
+When reporting an issue, please provide:
 
 1. Container logs: `docker-compose logs app > logs.txt`
 2. Health check output: `curl /api/health`
 3. Environment (sandbox/production)
 4. Steps to reproduce
 5. Expected vs actual behavior
-
----
-
-## Version History
-
-| Version | Date | Changes |
-|---------|------|---------|
-| 1.0.0 | 2026-02-03 | Initial deployment guide |
-
----
-
-**Document Owner**: Masaar Team
-**Last Updated**: February 3, 2026

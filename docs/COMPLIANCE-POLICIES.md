@@ -413,8 +413,8 @@ Every webhook payload includes:
 {
   "event_id": "evt_unique_uuid",
   "event_type": "invoice.cleared",
-  "occurred_at": "2026-01-31T12:00:00Z",
-  "delivered_at": "2026-01-31T12:00:01Z",
+  "occurred_at": "YYYY-MM-DDTHH:MM:SSZ",
+  "delivered_at": "YYYY-MM-DDTHH:MM:SSZ",
   "signature": "sha256=abc123...",
   "idempotency_key": "idem_xyz789"
 }
@@ -488,14 +488,3 @@ All SDK READMEs must include:
 3. Maintain proper exemption documentation
 4. Comply with retention requirements
 5. Respond to ZATCA inquiries
-
----
-
-## Document Control
-
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | 2026-01-31 | Masaar Team | Initial release |
-| 1.1 | 2026-01-31 | Masaar Team | Added timestamp authority, certificate overlap, sandbox variance, webhook replay protection policies |
-
-**Last Updated**: January 31, 2026

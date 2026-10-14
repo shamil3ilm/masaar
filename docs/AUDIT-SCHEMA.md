@@ -5,10 +5,6 @@ advisor.** It says what is recorded when someone acts on an invoice, where it
 is, and what each field means — enough to answer "who did this, and when"
 without reading the source.
 
-One word of warning about naming: `docs/audit/` in this repository is an
-*engineering* audit of the source code. It is not a record of invoicing
-activity and is not what this document describes.
-
 ---
 
 ## 1. Two kinds of record
@@ -32,13 +28,8 @@ each time.
 | `ip_address` | Where the request came from, when there was one |
 | `created_at` | When, in UTC |
 
-Earlier versions of this document named five log *files* here —
-`zatca-submissions`, `zatca-compliance`, `zatca-webhooks`, `zatca-audit` and
-`zatca-errors`. They were configured and never written to: nothing in the
-application ever opened them, so an auditor sent to read them would have
-found nothing at all. The table above is what was actually being recorded,
-and the configuration that promised the files has been removed rather than
-left to be believed.
+There are no separate per-submission log files. The table above is the record
+of each submission's progress.
 
 ---
 

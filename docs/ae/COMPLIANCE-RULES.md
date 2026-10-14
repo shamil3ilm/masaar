@@ -2,8 +2,7 @@
 
 **Authority:** UAE Federal Tax Authority (FTA)  
 **Regulation:** Ministerial Decision No. 243 & 244 of 2025  
-**XML Spec:** Peppol PINT AE (`urn:peppol:pint:billing-1@ae-1`)  
-**Last updated:** 2026-04-03
+**XML Spec:** Peppol PINT AE (`urn:peppol:pint:billing-1@ae-1`)
 
 ---
 
@@ -44,12 +43,15 @@ Applies to any person **conducting business in the UAE** for **B2B and B2G** tra
 
 ## Rollout Timeline
 
-| Phase | Threshold | Mandatory From |
-|-------|-----------|---------------|
-| Voluntary Pilot | All | 2026-07-01 |
-| Phase 1 | Revenue ≥ AED 50M | **2027-01-01** |
-| Phase 2 | Revenue < AED 50M | 2027-07-01 |
-| Phase 3 | Federal government entities | 2027-10-01 |
+| Phase | Threshold |
+|-------|-----------|
+| Voluntary Pilot | All |
+| Phase 1 | Revenue ≥ AED 50M |
+| Phase 2 | Revenue < AED 50M |
+| Phase 3 | Federal government entities |
+
+The FTA sets each phase's mandatory date; see the official portal
+(https://uaeei.tax.gov.ae) for the current timeline.
 
 ## Environments
 

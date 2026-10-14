@@ -47,7 +47,7 @@ $csrData = new CsrData(
     vatNumber: '300000000000003',
     location: 'Riyadh',
     industry: 'Retail',
-    serialNumber: 'EGS/1/2025/serial'
+    serialNumber: '1-Masaar|2-1.0|3-your-egs-unit-serial'
 );
 
 $result = $certificateService->generateCsr($csrData);
@@ -241,12 +241,9 @@ Thresholds come from `ZATCA_CERT_WARNING_DAYS` (default 30) and
 `ZATCA_CERT_CRITICAL_DAYS` (default 7); channels from
 `ZATCA_CERT_NOTIFY_CHANNELS`.
 
-This section previously carried a closure to paste into
-`app/Console/Kernel.php`. That file does not exist — the application is Laravel
-12 and schedules in `routes/console.php` — and the closure read
-`Organization::whereHas('zatcaCertificate')`, a relation the model does not
-have. Certificates live in `CredentialStore`, encrypted on disk, which is why
-reading them is a command rather than a query.
+The application schedules in `routes/console.php` (there is no
+`app/Console/Kernel.php`). Certificates live in `CredentialStore`, encrypted on
+disk, which is why reading them is a command rather than a query.
 
 ### 7.2 Audit Logging
 
@@ -291,5 +288,4 @@ In case of security incidents involving credentials:
 ---
 
 **Document Version**: 1.0
-**Last Updated**: January 2026
 **Review Schedule**: Quarterly

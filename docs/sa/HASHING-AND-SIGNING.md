@@ -45,9 +45,8 @@ the quickest way to tell which one a sample is using.
 - **Where:** `FatooraConfig::GENESIS_PIH`, emitted by `XmlBuilder` and recorded
   by `ChainRecorder`, which have to agree.
 - **Established by:** it is the value the SDK ships in `Data/PIH/pih.txt` and
-  checks KSA-13 against. This platform sent base64 of thirty-two zero bytes
-  until 2026-10-09, so every first document in a chain was refused with
-  "PIH is inValid".
+  checks KSA-13 against. A genesis of base64 of thirty-two zero bytes has every
+  first document in a chain refused with "PIH is inValid".
 
 ## Signing certificate digest (xades:CertDigest)
 
@@ -77,70 +76,53 @@ the quickest way to tell which one a sample is using.
   sample's digest, and compacting that element and recomputing leaves its
   check passing - so the indentation is the document's to choose and the
   declarations are not.
-- **Status: satisfied by the SDK on 2026-10-09, and by the authority on
-  2026-10-10 - and the gap between those two dates is the lesson.** The
-  namespace fix below made the SDK's digest check pass, and the live API went
-  on refusing every simplified document with "Invalid signed properties
-  hashing" while clearing every standard one.
+- **The signed document must not be re-indented after signing.** The DOM round
+  trip that inserts the QR code runs *after* the document is signed. If it
+  pretty-prints (`formatOutput`), it re-indents the signature block, so the
+  digest recorded in `ds:SignedInfo` describes a block the document no longer
+  carries - and the live API refuses every simplified document with "Invalid
+  signed properties hashing" while clearing every standard one.
 
-  **The cause was not the digest at all.** `formatOutput` was set on the DOM
-  round trip that inserts the QR code, which runs *after* the document is
-  signed: pretty-printing re-indented the signature block from 726 bytes to
-  1130, so the digest recorded in `ds:SignedInfo` described a block the
-  document no longer carried. Removing it had all six documents accepted.
+  `EmittedSignatureTest` and `EmittedDigestsTest` assert that the recorded
+  digest still describes the block in the document **as finally emitted**, on
+  the onboarding path and the production path respectively, and the first
+  names the files that must never pretty-print a signed document.
+  `QrCodeInjector` owns the load and the save so no caller chooses them.
 
-  Two hypotheses were wrong first, and are recorded because the next person
-  will reach for them. `xades:SigningTime` did carry a trailing `Z` where
-  ZATCA's own signer writes local time with no designator - that was fixed, it
-  is what the authority writes, and it changed nothing about the refusal. Then
-  four digest encodings were tried against the authority - the SDK's form and
-  the canonical form, each as hex and as bytes - and all four were refused,
-  which is what finally ruled out the hashing and sent the search elsewhere.
+  Two other suspects do not cause that refusal, and are recorded because they
+  are the first ones reached for. `xades:SigningTime` is written on the
+  Kingdom's clock with no `Z` designator, as ZATCA's own signer writes it - the
+  same clock as `IssueTime` and the QR, for the same reason - but its form does
+  not affect the digest check. And the encoding above is right: the SDK's form
+  and the canonical form, each as hex and as bytes, are otherwise all refused.
 
-  What settled it was submitting **ZATCA's own published sample** simplified
-  invoice, which the live API accepts, and bisecting from there. That
-  established the rule in this section is the authority's own (it reproduces
-  the digest recorded in three of ZATCA's samples), that indentation of the
-  block is irrelevant *when the digest describes it*, that the live API does
-  not verify `ds:SignatureValue`, and that the authority's sample carrying
-  this platform's block is accepted - so the block was never the problem.
+  Submitting **ZATCA's own published sample** simplified invoice, which the
+  live API accepts, and varying one thing at a time establishes the rest: the
+  rule in this section is the authority's own (it reproduces the digest
+  recorded in three of ZATCA's samples), indentation of the block is
+  irrelevant *when the digest describes it*, the live API does not verify
+  `ds:SignatureValue`, and the authority's sample carrying this platform's
+  block is accepted.
 
-  The SDK could not have found any of it. It recomputes the digest from the
-  bytes it is handed, so a document that contradicts itself still passes; all
-  26 conformance tests did while the authority refused the documents. **A
-  validator that reads what you wrote cannot catch a disagreement about what
-  you wrote it over.** Only submitting can, which is what
-  `fatoora:onboard --step=submit` is for.
+  The SDK cannot detect this kind of mismatch. It recomputes the digest from
+  the bytes it is handed, so a document that contradicts itself still passes
+  all 26 conformance tests. **A validator that reads what you wrote cannot
+  catch a disagreement about what you wrote it over.** Only submitting can,
+  which is what `fatoora:onboard --step=submit` is for.
 
-  What now holds it: `EmittedSignatureTest` and `EmittedDigestsTest` assert
-  that the recorded digest still describes the block in the document **as
-  finally emitted**, on the onboarding path and the production path
-  respectively, and the first names the files that must never pretty-print a
-  signed document. `QrCodeInjector` owns the load and the save so no caller
-  chooses them.
-
-  The `Z` is gone regardless, and the stamp is on the Kingdom's clock so that
-  reading it as local time is right - the same clock as `IssueTime` and the
-  QR, for the same reason. The earlier note here argued the `Z` should stay
-  because a bare stamp is ambiguous. It is the authority's format, and that
-  settles it.
-
-- **The namespace shape, which was the other half.** It was wrong until
-  2026-10-09, and the reason was the
-  block rather than the rule. `DOMDocument::createElementNS` attaches a
-  namespace declaration to each element it creates and libxml keeps them when
-  the subtree is assembled, so the block this platform built carried ten
-  `xmlns:ds` declarations - on the apex and on every `xades:` element - where
-  the authority's own block carries none and inherits both prefixes from
-  ancestors. The digest was computed over the right rule and the wrong bytes.
+- **The namespace shape.** `DOMDocument::createElementNS` attaches a namespace
+  declaration to each element it creates and libxml keeps them when the
+  subtree is assembled, so a block built that way carries ten `xmlns:ds`
+  declarations - on the apex and on every `xades:` element - where the
+  authority's own block carries none and inherits both prefixes from
+  ancestors. The digest would then be computed over the right rule and the
+  wrong bytes. The block is therefore built with `createElement` and a literal
+  prefixed name - both prefixes are already in scope from `ds:Signature` and
+  `xades:QualifyingProperties` - which declares nothing and matches.
 
   Established by having the SDK sign one of this platform's own invoices and
-  comparing the two blocks directly: theirs, zero declarations; ours, ten.
-  Building the block with `createElement` and a literal prefixed name - both
-  prefixes are already in scope from `ds:Signature` and
-  `xades:QualifyingProperties` - declares nothing and matches. Reverting that
-  one change brings the failure back on all four simplified documents, which
-  is how the fix was checked.
+  comparing the two blocks directly. Building them with `createElementNS`
+  instead brings the failure back on all four simplified documents.
 
   Indentation is not part of it: the authority's block is pretty-printed and
   this platform's is compact, and both digest correctly, because the digest is

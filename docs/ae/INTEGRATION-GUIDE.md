@@ -46,7 +46,7 @@ GET /api/compliance/ae/status/{submission_id}
     "data": {
       "status": "accepted",
       "fta_validation_status": "PASS",
-      "accepted_at": "2027-01-15T10:30:00Z"
+      "accepted_at": "YYYY-MM-DDTHH:MM:SSZ"
     }
   }
 ```

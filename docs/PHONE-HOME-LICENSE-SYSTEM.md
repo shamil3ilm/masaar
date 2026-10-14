@@ -13,8 +13,8 @@ This document describes the Masaar license validation system using Cloudflare Wo
 │   ┌─────────────────┐                ┌─────────────────────────┐        │
 │   │                 │   1. Validate  │                         │        │
 │   │  Masaar App  │ ─────────────► │  License Server         │        │
-│   │  (Docker)       │                │  your-worker        │        │
-│   │                 │ ◄───────────── │  .shamil3ilm.workers.dev│        │
+│   │  (Docker)       │                │  your-worker            │        │
+│   │                 │ ◄───────────── │  (workers.dev)          │        │
 │   └─────────────────┘   2. Response  └──────────┬──────────────┘        │
 │          │                                      │                        │
 │          │ 3. Fallback                          │                        │
@@ -30,6 +30,10 @@ This document describes the Masaar license validation system using Cloudflare Wo
 ## Cloudflare Worker Details
 
 ### URL
+
+The worker is served from your own Cloudflare account. The examples below use
+this placeholder; substitute the URL `wrangler deploy` prints:
+
 ```
 https://your-worker.YOUR-SUBDOMAIN.workers.dev
 ```
@@ -63,11 +67,11 @@ https://your-worker.YOUR-SUBDOMAIN.workers.dev
 ```
 {PARTNER}-{TYPE}-{EXPIRY}-{SIGNATURE}
 
-Example: ACME-TRIAL-20260305-a1b2c3d4
-         │       │      │        │
-         │       │      │        └─ HMAC signature (8 chars)
-         │       │      └─ Expiry date (YYYYMMDD)
-         │       └─ License type (TRIAL/PROD/DEV)
+Example: ACME-TRIAL-YYYYMMDD-a1b2c3d4
+         │     │      │        │
+         │     │      │        └─ HMAC signature (8 chars)
+         │     │      └─ Expiry date (YYYYMMDD)
+         │     └─ License type (TRIAL/PROD/DEV)
          └─ Partner identifier
 ```
 
@@ -84,7 +88,7 @@ Example: ACME-TRIAL-20260305-a1b2c3d4
 ### Generate License Key
 ```powershell
 php artisan license:generate ACME --type=TRIAL --days=30
-php artisan license:generate ACME --type=PROD --expires=2027-12-31
+php artisan license:generate ACME --type=PROD --expires=YYYY-MM-DD
 ```
 
 ### Check License Status
@@ -136,7 +140,7 @@ Invoke-RestMethod -Uri "https://your-worker.YOUR-SUBDOMAIN.workers.dev/usage/sta
   "partner": "ACME",
   "month": {
     "partner": "ACME",
-    "month": "2026-02",
+    "month": "YYYY-MM",
     "total_invoices_created": 1500,
     "total_invoices_submitted": 1450,
     "total_invoices_cleared": 1000,
@@ -154,10 +158,10 @@ Invoke-RestMethod -Uri "https://your-worker.YOUR-SUBDOMAIN.workers.dev/usage/sta
 ```powershell
 $body = @{
     admin_secret = "YOUR_ADMIN_SECRET"
-    license_key = "ACME-TRIAL-20260305-xxxxxxxx"
+    license_key = "ACME-TRIAL-YYYYMMDD-xxxxxxxx"
     partner = "ACME"
     type = "TRIAL"
-    expires = "2026-03-05"
+    expires = "YYYY-MM-DD"
 } | ConvertTo-Json
 
 Invoke-RestMethod -Uri "https://your-worker.YOUR-SUBDOMAIN.workers.dev/register" `
@@ -169,8 +173,8 @@ Invoke-RestMethod -Uri "https://your-worker.YOUR-SUBDOMAIN.workers.dev/register"
 ```powershell
 $body = @{
     admin_secret = "YOUR_ADMIN_SECRET"
-    license_key = "ACME-TRIAL-20260305-xxxxxxxx"
-    reason = "Partnership ended"
+    license_key = "ACME-TRIAL-YYYYMMDD-xxxxxxxx"
+    reason = "License terminated"
 } | ConvertTo-Json
 
 Invoke-RestMethod -Uri "https://your-worker.YOUR-SUBDOMAIN.workers.dev/revoke" `
@@ -187,7 +191,7 @@ Invoke-RestMethod -Uri "https://your-worker.YOUR-SUBDOMAIN.workers.dev/list?admi
 
 ```powershell
 $body = @{
-    license_key = "ACME-TRIAL-20260305-xxxxxxxx"
+    license_key = "ACME-TRIAL-YYYYMMDD-xxxxxxxx"
     domain = "api.example.com"
 } | ConvertTo-Json
 
@@ -210,7 +214,7 @@ PLATFORM_LICENSE_SECRET=your-secret-here-generate-with-php-random-bytes
 ```env
 # Production - license check enabled
 PLATFORM_LICENSE_ENABLED=true
-PLATFORM_LICENSE_KEY=ACME-TRIAL-20260305-xxxxxxxx
+PLATFORM_LICENSE_KEY=ACME-TRIAL-YYYYMMDD-xxxxxxxx
 PLATFORM_LICENSE_SERVER_URL=https://your-worker.YOUR-SUBDOMAIN.workers.dev
 PLATFORM_LICENSE_SECRET=your-secret-here-must-match-your-env
 ```
@@ -245,7 +249,7 @@ PLATFORM_LICENSE_SECRET=your-secret-here-must-match-your-env
 
 - **Workers & Pages:** https://dash.cloudflare.com → Workers & Pages
 - **KV Storage:** https://dash.cloudflare.com → Storage & databases → KV
-- **Worker Logs:** Workers & Pages → your-worker → Logs
+- **Worker Logs:** Workers & Pages → your worker → Logs
 
 ## Emergency: Revoke Partner Access
 
@@ -281,7 +285,3 @@ Partner's app will stop working within 1 hour (when cache expires).
 ### Admin operations fail
 - Verify `ADMIN_SECRET` matches what's in Cloudflare
 - Check request format (JSON with correct fields)
-
----
-
-**Last Updated:** February 3, 2026

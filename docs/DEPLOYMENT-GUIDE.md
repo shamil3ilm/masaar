@@ -76,11 +76,9 @@ sudo apt install -y mysql-server
 sudo mysql_secure_installation
 ```
 
-> This guide described a PostgreSQL deployment until 2026-10-12, and the
-> application has never run on one. `.env.example` sets `DB_CONNECTION=mysql`,
-> the container image installs `pdo_mysql` and `mysqli` and no `pdo_pgsql` at
-> all, and CI runs its suite against `mysql:8.4`. Following the old text
-> produced a carefully tuned database the application could not open.
+> The application runs on MySQL, not PostgreSQL. `.env.example` sets
+> `DB_CONNECTION=mysql`, the container image installs `pdo_mysql` and `mysqli`
+> and no `pdo_pgsql` at all, and CI runs its suite against `mysql:8.4`.
 
 ### PHP Configuration
 
@@ -868,14 +866,6 @@ the ICV sequence, and an invoice that reached a non-draft status while
 holding no counter at all - which is outside the chain rather than wrong
 within it. A draft is not a chain member and is not checked.
 
-> Until 2026-10-12 this section printed an implementation of the command
-> instead of pointing at it, and the two had diverged. The printed version
-> read a `previous_invoice_hash` column the `invoices` table does not have,
-> and it wrote `database.connections.pgsql.database` - so `--database` on a
-> MySQL deployment reconfigured an unused connection and verified the live
-> database while printing the name it had been given. The monthly test
-> above therefore passed without reading the restored copy once.
-
 ---
 
 ## 12. Monitoring & Alerting
@@ -1069,4 +1059,3 @@ sudo supervisorctl start all
 ---
 
 *Document Version: 1.0*
-*Last Updated: 2026-02-02*

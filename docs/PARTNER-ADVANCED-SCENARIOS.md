@@ -1,8 +1,8 @@
-# Northwind Advanced Integration Scenarios
+# Partner Advanced Integration Scenarios
 
 ## Complete Guide for Multi-Business, Multi-Branch, and Cross-Border ZATCA Compliance
 
-This document supplements the main [ACME-INTEGRATION-GUIDE.md](./ACME-INTEGRATION-GUIDE.md) with advanced scenarios.
+This document supplements the main [PARTNER-INTEGRATION-GUIDE.md](./PARTNER-INTEGRATION-GUIDE.md) with advanced scenarios.
 
 ---
 
@@ -13,7 +13,7 @@ This document supplements the main [ACME-INTEGRATION-GUIDE.md](./ACME-INTEGRATIO
 3. [Branch/Location Management](#3-branchlocation-management)
 4. [Different Business Types](#4-different-business-types)
 5. [Cross-Border Transactions](#5-cross-border-transactions)
-6. [Required Northwind Changes](#6-required-example-changes)
+6. [Required Partner System Changes](#6-required-partner-system-changes)
 7. [Data Collection Forms](#7-data-collection-forms)
 8. [Onboarding Workflow](#8-onboarding-workflow)
 
@@ -23,7 +23,7 @@ This document supplements the main [ACME-INTEGRATION-GUIDE.md](./ACME-INTEGRATIO
 
 ### 1.1 Mandatory Organization Data
 
-For a Northwind user to become ZATCA-compliant, collect the following:
+For a partner's user to become ZATCA-compliant, collect the following:
 
 #### Basic Information (Required)
 
@@ -79,7 +79,7 @@ For a Northwind user to become ZATCA-compliant, collect the following:
 ### 2.1 Architecture Overview
 
 ```
-Northwind User (Account)
+Partner User (Account)
     ├── Business 1 (Organization)
     │   ├── Branch A (EGS Device)
     │   └── Branch B (EGS Device)
@@ -96,7 +96,7 @@ Northwind User (Account)
 Each business needs **separate ZATCA onboarding**:
 
 ```php
-// Northwind: User with multiple businesses
+// Partner system: user with multiple businesses
 class User {
     public function businesses() {
         return $this->hasMany(Business::class);
@@ -130,7 +130,7 @@ class MultiBusinessService
     private OrganizationService $orgService;
 
     /**
-     * Register multiple businesses for a Northwind user
+     * Register multiple businesses for a partner user
      */
     public function registerUserBusinesses(User $user): array
     {
@@ -378,7 +378,7 @@ ZATCA treats different business types differently:
 ### 4.2 Business Type Configuration Model
 
 ```php
-// Northwind business model extension
+// Partner business model extension
 class Business extends Model
 {
     protected $fillable = [
@@ -677,7 +677,7 @@ When submitting a foreign currency invoice:
 $invoiceData = [
     'currency' => 'USD',
     'exchange_rate' => 3.75,        // USD to SAR rate
-    'exchange_rate_date' => '2024-01-15',
+    'exchange_rate_date' => 'YYYY-MM-DD',
     'subtotal' => 1000.00,          // In USD
     'tax_amount' => 150.00,         // In USD
     'total' => 1150.00,             // In USD
@@ -691,7 +691,7 @@ $invoiceData = [
 // 4. Generate second TaxTotal in SAR (150 × 3.75 = 562.50 SAR)
 ```
 
-**Northwind Integration:**
+**Partner Integration:**
 
 ```php
 class MultiCurrencyService
@@ -754,7 +754,7 @@ class MultiCurrencyService
 
 ---
 
-## 6. Required Northwind Changes
+## 6. Required Partner System Changes
 
 ### 6.1 Database Schema Changes
 
@@ -1297,17 +1297,17 @@ class BranchRegistrationRequest extends FormRequest
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    Northwind ZATCA Onboarding Flow                     │
+│                   Partner ZATCA Onboarding Flow                     │
 └─────────────────────────────────────────────────────────────────────┘
 
-User creates account in Northwind
+User creates account in the partner system
            │
            ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │ STEP 1: Business Registration                                       │
 │ - User enters business details (name, VAT, CR, address)             │
-│ - Northwind validates format locally                                   │
-│ - Northwind calls Masaar API to register organization               │
+│ - Partner validates format locally                                  │
+│ - Partner calls Masaar API to register organization              │
 │ - Masaar validates VAT with ZATCA                                │
 └─────────────────────────────────────────────────────────────────────┘
            │
@@ -1317,7 +1317,7 @@ User creates account in Northwind
 │ - User logs into https://fatoora.zatca.gov.sa                       │
 │ - User navigates to "Onboard Solution Unit"                         │
 │ - User generates OTP (valid for 1 hour)                             │
-│ - User enters OTP in Northwind                                         │
+│ - User enters OTP in the partner system                             │
 └─────────────────────────────────────────────────────────────────────┘
            │
            ▼
@@ -1354,11 +1354,11 @@ User creates account in Northwind
            ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │ READY: Invoice Submission                                           │
-│ - User creates invoices in Northwind                                   │
-│ - Northwind sends to Masaar                                         │
+│ - User creates invoices in the partner system                       │
+│ - Partner sends to Masaar                                        │
 │ - Masaar generates XML, signs, submits to ZATCA                  │
 │ - ZATCA clears/reports invoice                                      │
-│ - Masaar returns QR code and status to Northwind                    │
+│ - Masaar returns QR code and status to the partner               │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -1470,7 +1470,7 @@ class ZatcaOnboardingService
 
 ## Summary Checklist
 
-### For Northwind Development Team
+### For the Partner Development Team
 
 - [ ] Add `masaar_org_id` to businesses table
 - [ ] Add `zatca_*` fields to invoices table
@@ -1500,5 +1500,4 @@ class ZatcaOnboardingService
 ---
 
 *Document Version: 1.0*
-*Last Updated: 2026-02-03*
 *For use with Masaar API v1*

@@ -1,8 +1,7 @@
 # Saudi Arabia — Fatoora Compliance Rules Reference
 
 **Authority:** ZATCA  
-**Regulation:** E-Invoicing Regulation, Article 3  
-**Last updated:** 2026-04-03
+**Regulation:** E-Invoicing Regulation, Article 3
 
 ---
 
@@ -30,11 +29,14 @@
 
 ## Rollout Waves
 
-| Wave | Revenue Threshold | Deadline |
-|------|-------------------|---------|
-| 1 | ≥ SAR 3 billion | 2023-01-01 |
-| … | … | … |
-| 24 | ≥ SAR 375,000 | **2026-06-30** |
+| Wave | Revenue Threshold |
+|------|-------------------|
+| 1 | ≥ SAR 3 billion |
+| … | … |
+| 24 | ≥ SAR 375,000 |
+
+ZATCA sets each wave's deadline; the Fatoora portal (https://fatoora.zatca.gov.sa)
+lists the current waves and their dates.
 
 Wave is tracked in `ComplianceProfile.settings['wave']` for reporting purposes.
 

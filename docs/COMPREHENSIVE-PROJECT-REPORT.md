@@ -510,7 +510,7 @@ $xmlData = new InvoiceXmlData(
     currency: 'USD',
     originalCurrency: 'USD',
     exchangeRate: 3.75,         // 1 USD = 3.75 SAR
-    exchangeRateDate: '2026-01-15',
+    exchangeRateDate: 'YYYY-MM-DD',
     subtotal: 1000.00,          // USD
     taxAmount: 150.00,          // USD - converted to 562.50 SAR internally
     total: 1150.00,             // USD
@@ -757,7 +757,7 @@ Response:
       "sandbox_result": "passed",
       "production_result": "failed",
       "variance_type": "validation_difference",
-      "detected_at": "2026-01-31T10:30:00Z"
+      "detected_at": "YYYY-MM-DDTHH:MM:SSZ"
     }
   ],
   "statistics": {
@@ -1069,7 +1069,7 @@ $xmlData = new InvoiceXmlData(
 **Integration**:
 ```php
 $tracker = new VatPeriodTracker();
-$summary = $tracker->getPeriodSummary($organizationId, '2026-01');
+$summary = $tracker->getPeriodSummary($organizationId, 'YYYY-MM');
 
 // Returns:
 // - total_invoices, total_credit_notes, total_debit_notes
@@ -1113,5 +1113,4 @@ $summary = $tracker->getPeriodSummary($organizationId, '2026-01');
 ---
 
 *Document Version: 1.2*
-*Last Updated: January 2026*
 *Platform Version: Masaar 1.0.0*

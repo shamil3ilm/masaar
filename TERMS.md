@@ -159,4 +159,3 @@ These terms are governed by the laws of the Kingdom of Saudi Arabia. Disputes sh
 
 **By using Masaar, you acknowledge that you have read, understood, and agree to these Terms of Use.**
 
-Last Updated: January 2026

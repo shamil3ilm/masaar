@@ -206,21 +206,20 @@ Each alert should link to a runbook:
 - [ ] **Sandbox Testing**: Submit 100+ test invoices to ZATCA sandbox. The
       `sandbox` job in `.github/workflows/ci.yml` runs the round trip nightly
       and on request - CSR, CCSID, the six compliance documents, PCSID - and
-      needs no credentials. As of 2026-10-10 it also clears and reports all six
+      needs no credentials. It also clears and reports all six
       with the production certificate, against the real clearance and reporting
       endpoints, and all six are accepted. It is six documents, not a hundred,
       so volume is still to do.
 - [ ] **Error Handling**: Verify all ZATCA error codes handled correctly.
       `ErrorCode` enumerates 99 of them with a retryable flag and a category,
       and `SubmissionTracker` schedules the next attempt from its retry delay.
-      Auditing this found that three of the retryable cases were assigned by
-      nothing: a 500, 502, 504 or 408 from ZATCA arrived with no code, so
-      `isRetryable()` answered false and `SubmissionLedger` recorded the
-      submission as **rejected** - which asserts the document was wrong and
-      spends a simplified invoice's twenty-four hour window on a gateway blip.
-      Fixed and held by `TransientRefusalTest`; a refusal's own reasons are now
-      carried into `errorMessages` rather than left in the raw body.
-      The document-level codes the authority returns were then collected from
+      A 500, 502, 504 or 408 from ZATCA arrives with no code and is treated as
+      retryable, not recorded as **rejected** - a rejection asserts the
+      document was wrong and would spend a simplified invoice's twenty-four
+      hour window on a gateway blip. `TransientRefusalTest` holds this; a
+      refusal's own reasons are carried into `errorMessages` rather than left
+      in the raw body.
+      The document-level codes the authority returns were collected from
       the sandbox by submitting deliberate faults. They are **not** the
       `BR-KSA-*` identifiers the rules are written as, and nothing in
       `ErrorCode` corresponds to them - see `docs/sa/STATUS.md` section 3 for
@@ -235,10 +234,9 @@ Each alert should link to a runbook:
       `ZatcaConformanceTest`, but only a phone proves the app reads it.
 - [x] **XML Schema Validation**: ZATCA's own SDK validator runs over generated
       documents in `ZatcaConformanceTest` - UBL 2.1 schema, EN 16931, Schematron -
-      and runs in CI on every push as of 2026-10-10. All 26 checks pass for both
-      document kinds. The signature digest that was outstanding here is resolved:
-      it was never the digest, but `formatOutput` re-indenting the document after
-      it was signed. See `docs/sa/STATUS.md` section 3.
+      and runs in CI on every push. All 26 checks pass for both document kinds.
+      A signed document is never re-indented after signing, which would
+      invalidate its signed-properties digest; see `docs/sa/STATUS.md` section 3.
 
 ### 4.2 Production Onboarding
 
@@ -262,16 +260,12 @@ say where the evidence is and how to verify it, not how the code is arranged.
 | Security Controls | `SECURITY.md` | Security measures |
 | Audit Log Schema | `docs/AUDIT-SCHEMA.md` | Reading the activity records |
 
-Two things to tell an auditor before handing over the repository:
-
-- **`docs/audit/` is not what its name suggests.** It is an engineering audit
-  of the source code, not a record of invoicing activity. The records are the
-  tables and channels in `docs/AUDIT-SCHEMA.md`.
-- **`audit_logs` is an application record, not cryptographic proof.** Someone
-  with direct database access could alter it. The tamper-evidence is the hash
-  chain over the documents; `docs/DATA-FLOW.md` section 3 gives the queries.
-  An audit should use both - the chain for whether the documents are intact
-  and complete, the log for who acted.
+One thing to tell an auditor before handing over the repository:
+**`audit_logs` is an application record, not cryptographic proof.** Someone
+with direct database access could alter it. The tamper-evidence is the hash
+chain over the documents; `docs/DATA-FLOW.md` section 3 gives the queries.
+An audit should use both - the chain for whether the documents are intact
+and complete, the log for who acted.
 
 ### 4.4 Penetration Testing Requirements
 
@@ -291,22 +285,17 @@ Before production:
       for a single taxpayer; a blocker before a second one is onboarded.
 - [x] **Dependency vulnerability scan** — `composer audit --locked` runs as the
       `security` job in CI on every push, and is currently clean.
-#### What the nightly scan reported, and what was done
+#### What the nightly scan checks, and how each finding is handled
 
-Read 2026-10-12: `PASS 56`, `WARN-NEW 11`, `FAIL-NEW 0` from the baseline
-scan. The API scan had never run at all - the step killed the application
-before it, so it imported zero URLs and died on `NoUrlsException`, and the
-job's failure read as a missing report rather than as a dead server.
+Handled in the application or the image:
 
-Fixed, with the finding as the reason:
-
-| Finding | What it actually was |
+| Finding | How it is handled |
 |---|---|
-| CSP header not set | Genuinely absent, and genuinely blocked until the Tailwind Play CDN went. `SecurityHeaders` now sets a policy with no `unsafe-` of any kind, which needed the four inline `onsubmit` handlers and the inline `[x-cloak]` style gone and Alpine on its CSP build. |
-| `X-Powered-By` leak | The middleware removed it from Symfony's header bag, and PHP emits this one from the SAPI where it is not in the bag. `header_remove()` reaches it. The image sets `expose_php=Off`, so only the dev server leaked - but the removal had never worked anywhere. |
-| `X-Content-Type-Options` missing on `/build/assets` | True of the deployment too, for a different reason: nginx's `add_header` replaces the inherited set rather than adding to it, so the static-file block setting `Cache-Control` dropped all four security headers. |
-| Permissions-Policy missing on an asset | Same cause, same fix. |
-| Sub Resource Integrity missing | The welcome page fetched a typeface from `fonts.bunny.net`. `ExternalScriptTest` had read past it for two years' worth of edits because its pattern matched `<script src>` and not `<link href>`. |
+| CSP header not set | `SecurityHeaders` sets a policy with no `unsafe-` of any kind: there are no inline event handlers or inline styles, and Alpine runs on its CSP build. |
+| `X-Powered-By` leak | PHP emits this header from the SAPI, outside Symfony's header bag, so the middleware removes it with `header_remove()` as well. The image also sets `expose_php=Off`. |
+| `X-Content-Type-Options` missing on `/build/assets` | nginx's `add_header` replaces the inherited set rather than adding to it, so the static-file block that sets `Cache-Control` repeats all the security headers. |
+| Permissions-Policy missing on an asset | Same cause, same handling. |
+| Sub Resource Integrity missing | Pages load no third-party scripts or stylesheets. `ExternalScriptTest` checks both `<script src>` and `<link href>`. |
 
 Accepted, and why:
 
@@ -332,15 +321,15 @@ defect.
 
 **The remaining step for this job** is the one 4.4 already describes:
 commit the rules worth gating on to `.zap/rules.tsv` - `IGNORE` for the two
-accepted above, `FAIL` for the five fixed, so a regression breaks the
-build - and then drop `-I`. The scanner is now asked for a JSON report and
+accepted above, `FAIL` for the five handled, so a regression breaks the
+build - and then drop `-I`. The scanner is asked for a JSON report and
 the job prints one line per rule with the plugin id that file is keyed by,
 because an id written wrongly matches nothing and leaves the rules file
 looking applied when it is not.
 
 - [ ] **OWASP Top 10 validation** — partly covered: `tests/Feature/Security`
       sweeps the router for unguarded routes and proves tenant scoping holds,
-      and rate limiting is now enforced (5.2). Not a substitute for the
+      and rate limiting is enforced (5.2). Not a substitute for the
       external test above.
 
 ---
@@ -371,10 +360,8 @@ config already runs php-fpm, nginx, two default workers, three
       Still to do: a runbook entry saying who may throw it and what it stops.
 - [x] **Rate limits configured and enforced** — `RateLimitApi` is attached to
       the api middleware group in `bootstrap/app.php` and reads
-      `config/security.php`. It was aliased and attached to nothing until
-      2026-10-09, so the whole policy was inert and `/api/auth/login` had no
-      limit at all; `tests/Feature/Security/AuthThrottleTest.php` holds that
-      shut.
+      `config/security.php`, so `/api/auth/login` and the rest of the API are
+      limited; `tests/Feature/Security/AuthThrottleTest.php` holds that.
 
       The bands are ordered by what a request costs - onboarding 5, anonymous
       20, submission 120, default 300, read 600 - so a band is never tighter
@@ -405,8 +392,8 @@ config already runs php-fpm, nginx, two default workers, three
 - [x] **Errors are identifiable** — `LogContext` shares a correlation id, the
       organization, the user and the matched route with every log line written
       during a request, and returns the id as `X-Request-Id` so a customer
-      reporting a problem can quote it. Until 2026-10-09 an unhandled exception
-      reached the log as a message and a stack trace with no tenant on it,
+      reporting a problem can quote it. Without it, an unhandled exception
+      would reach the log as a message and a stack trace with no tenant on it,
       which on a deployment serving several taxpayers is close to
       unactionable - and no aggregator fixes that, since it can only group what
       it is given. Identifiers only, deliberately: a VAT or invoice number
@@ -653,20 +640,8 @@ CREATE TABLE audit_logs (
     ...
 ) PARTITION BY RANGE (created_at);
 
-CREATE TABLE audit_logs_2026_01 PARTITION OF audit_logs
-    FOR VALUES FROM ('2026-01-01') TO ('2026-02-01');
-
-CREATE TABLE audit_logs_2026_02 PARTITION OF audit_logs
-    FOR VALUES FROM ('2026-02-01') TO ('2026-03-01');
+-- One partition per month, bounded by the first day of that month
+-- and the first day of the next.
+CREATE TABLE audit_logs_YYYY_MM PARTITION OF audit_logs
+    FOR VALUES FROM ('<first day of month>') TO ('<first day of next month>');
 ```
-
----
-
-## Document Control
-
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | 2026-01-31 | Masaar Team | Initial release |
-| 1.1 | 2026-01-31 | Masaar Team | Added index health monitoring section |
-
-**Last Updated**: January 31, 2026

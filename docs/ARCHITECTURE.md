@@ -153,6 +153,3 @@ grows.
 | `docs/sa/COMPLIANCE-RULES.md` | Engineer | The Saudi rules as implemented |
 | `docs/sa/HASHING-AND-SIGNING.md` | Engineer | Every hash and encoding, and how each was established |
 | `docs/architecture/` | Engineer | Jurisdiction model and routing |
-
-`docs/audit/` is an engineering audit of the source code. It is not a record of
-invoicing activity.

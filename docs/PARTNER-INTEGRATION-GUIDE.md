@@ -1,6 +1,6 @@
-# Northwind + Masaar Integration Guide
+# Partner Integration Guide
 
-Complete guide for integrating Masaar ZATCA E-Invoicing API into Northwind's existing system.
+Complete guide for integrating the Masaar ZATCA E-Invoicing API into a partner's existing invoicing system.
 
 ## Table of Contents
 
@@ -20,9 +20,8 @@ Complete guide for integrating Masaar ZATCA E-Invoicing API into Northwind's exi
 
 ## 1. Overview
 
-### Current Northwind Status
-- **Phase 1**: Partial (QR generation exists but incomplete TLV encoding)
-- **Phase 2**: Not Ready (missing XAdES-BES signing, ZATCA API integration)
+### Typical Starting Point
+A partner system often already issues invoices and may produce a Phase 1 QR code, but lacks what Phase 2 requires: XAdES-BES signing and the ZATCA clearance and reporting APIs.
 
 ### What Masaar Provides
 - Complete ZATCA Phase 2 compliance
@@ -35,16 +34,16 @@ Complete guide for integrating Masaar ZATCA E-Invoicing API into Northwind's exi
 - **Foreign currency invoices** (USD, EUR, etc. with SAR VAT reporting)
 
 ### Integration Strategy
-Replace Northwind's partial ZATCA implementation with Masaar API calls while keeping Northwind's existing invoice management UI and business logic.
+Replace the partner system's own ZATCA handling with Masaar API calls while keeping its existing invoice management UI and business logic.
 
-> **Advanced Scenarios**: For multi-business, multi-branch, and cross-border transactions, see [ACME-ADVANCED-SCENARIOS.md](./ACME-ADVANCED-SCENARIOS.md).
+> **Advanced Scenarios**: For multi-business, multi-branch, and cross-border transactions, see [PARTNER-ADVANCED-SCENARIOS.md](./PARTNER-ADVANCED-SCENARIOS.md).
 
 ---
 
 ## 2. Prerequisites
 
 ### System Requirements
-- PHP 7.4+ (Northwind uses Laravel 8)
+- PHP 8.0+ with Laravel 8 or later (the examples use `match` and the nullsafe operator)
 - OpenSSL extension
 - cURL extension
 - JSON extension
@@ -68,7 +67,7 @@ Replace Northwind's partial ZATCA implementation with Masaar API calls while kee
 
 ### Step 1: Install HTTP Client
 
-Northwind already has Guzzle, but ensure it's up to date:
+If Guzzle is already installed, ensure it is up to date:
 
 ```bash
 composer require guzzlehttp/guzzle:^7.0
@@ -119,11 +118,11 @@ return [
     |--------------------------------------------------------------------------
     | Organization Mapping
     |--------------------------------------------------------------------------
-    | Map Northwind company IDs to Masaar organization IDs
+    | Map partner company IDs to Masaar organization IDs
     */
 
     'organization_map' => [
-        // 'example_company_id' => 'masaar_organization_id',
+        // 'partner_company_id' => 'masaar_organization_id',
     ],
 ];
 ```
@@ -328,14 +327,14 @@ class InvoiceService
      */
     public function createAndSubmit(Invoice $invoice, Company $company): array
     {
-        // Step 1: Map Northwind invoice to Masaar format
+        // Step 1: Map the partner invoice to Masaar format
         $invoiceData = $this->mapInvoiceData($invoice, $company);
 
         // Step 2: Create invoice in Masaar
         $created = $this->client->post('/api/invoices', $invoiceData);
 
         Log::info('Invoice created in Masaar', [
-            'example_invoice_id' => $invoice->id,
+            'partner_invoice_id' => $invoice->id,
             'masaar_invoice_id' => $created['id'],
         ]);
 
@@ -363,7 +362,7 @@ class InvoiceService
     }
 
     /**
-     * Map Northwind invoice format to Masaar format
+     * Map the partner invoice format to Masaar format
      */
     private function mapInvoiceData(Invoice $invoice, Company $company): array
     {
@@ -413,7 +412,7 @@ class InvoiceService
      */
     private function mapInvoiceType(Invoice $invoice): string
     {
-        // Northwind uses invoice_type field
+        // The partner model uses an invoice_type field
         // B2B = standard (requires clearance)
         // B2C = simplified (reporting only)
 
@@ -429,7 +428,7 @@ class InvoiceService
      */
     private function mapDocumentType(Invoice $invoice): string
     {
-        // Check Northwind's document type field
+        // Check the partner model's document type field
         return match ($invoice->document_type ?? 'invoice') {
             'credit_note', 'CN' => 'credit_note',
             'debit_note', 'DN' => 'debit_note',
@@ -446,7 +445,7 @@ class InvoiceService
             return null;
         }
 
-        // Northwind may store address as string or structured
+        // The partner model may store the address as a string or structured
         if (is_string($invoice->customer_address)) {
             return [
                 'street' => $invoice->customer_address,
@@ -789,7 +788,7 @@ class InvoiceController extends Controller
             // ... other validation rules
         ]);
 
-        // Create invoice in Northwind database
+        // Create invoice in the partner database
         $invoice = Invoice::create($validated);
         $invoice->load('items', 'company');
 
@@ -1191,7 +1190,7 @@ curl -X POST https://api.masaar.sa/api/webhooks \
   -H "X-API-Key: your_api_key" \
   -H "Content-Type: application/json" \
   -d '{
-    "url": "https://your-example-domain.com/api/webhooks/masaar",
+    "url": "https://partner.example.com/api/webhooks/masaar",
     "events": ["invoice.cleared", "invoice.reported", "invoice.rejected", "certificate.expiring"],
     "secret": "your_webhook_secret"
   }'
@@ -1506,7 +1505,6 @@ $invoiceData = [
 ---
 
 *Document Version: 1.1*
-*Last Updated: 2026-02-03*
 *Masaar API Version: v1*
 
 **Changelog:**

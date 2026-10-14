@@ -1,9 +1,8 @@
 # Saudi Arabia (ZATCA Phase 2) — where the implementation stands
 
-**Written for whoever picks up the ZATCA work next, including the person who
-left it.** It says what has been established, by what evidence, and what has
-not — so that nothing here has to be re-derived and nothing is assumed to work
-because it looks finished.
+**Written for whoever picks up the ZATCA work next.** It says what has been
+established, by what evidence, and what has not — so that nothing here has to
+be re-derived and nothing is assumed to work because it looks finished.
 
 Reference material is elsewhere and not repeated: [README.md](README.md) for
 what the authority requires, [HASHING-AND-SIGNING.md](HASHING-AND-SIGNING.md)
@@ -11,8 +10,6 @@ for every digest and how each was pinned down,
 [COMPLIANCE-RULES.md](COMPLIANCE-RULES.md) for the BR-KSA rules, and
 [../PRODUCTION-READINESS.md](../PRODUCTION-READINESS.md) for the go-live
 checklist.
-
-Last updated 2026-10-10.
 
 ---
 
@@ -27,10 +24,9 @@ portal at `gw-fatoora.zatca.gov.sa/e-invoicing/developer-portal`.
 | **All six compliance documents** are accepted — standard and simplified invoice, credit note and debit note | `--step=compliance`, six `PASS` |
 | A **production CSID** is issued | `--step=pcsid`, HTTP 200, disposition `ISSUED` |
 
-First completed in CI on 2026-10-09 and again locally on 2026-10-10. The
-sandbox needs no taxpayer: the developer portal accepts the fixed OTP
-`123345`, which is the one value in the flow that could not be confirmed any
-other way.
+Completed both in CI and locally. The sandbox needs no taxpayer: the developer
+portal accepts the fixed OTP `123345`, which is the one value in the flow that
+could not be confirmed any other way.
 
 What this settles beyond onboarding: the authority accepts documents this
 platform generates and signs, chained by ICV and PIH, over the real protocol.
@@ -49,10 +45,9 @@ Signing with the authority's certificate rather than a self-signed one is what
 makes the certificate and QR checks meaningful; `SigningCredentials::authorityCredentials()`
 loads it when `ZATCA_SDK_PATH` is set.
 
-**This runs in CI on every push, as of 2026-10-10.** The SDK is a licensed
-download that cannot be committed, so it is hosted as a release asset in the
-private repository `<owner>/<repo>`, and two secrets on this repository
-point at it:
+**This runs in CI on every push.** The SDK is a licensed download that cannot
+be committed, so it is hosted as a release asset in a separate private
+repository, and two secrets on this repository point at it:
 
 | Secret | Value |
 |---|---|
@@ -103,7 +98,7 @@ so a second cannot join it unnoticed.
 be cleared before it is issued; simplified are reported, where B2C goes within
 twenty-four hours.
 
-**On 2026-10-10 all six were accepted** - three CLEARED with a stamped copy
+**All six are accepted** - three CLEARED with a stamped copy
 returned, three REPORTED. The authority accepts documents generated and signed
 here, over the real protocol, on both routes.
 
@@ -111,39 +106,35 @@ here, over the real protocol, on both routes.
 go each way, that `Clearance-Status: 1` rides only on clearance, that a refusal
 ends the command non-zero - with the exchange faked.
 
-### How the simplified documents were failing, and why it took so long
+### Why a signed document must never be re-serialised with formatting
 
-Worth reading before touching the signer, because every plausible theory here
-was wrong and the evidence said so each time.
+Worth reading before touching the signer.
 
-Every simplified document was refused with *"Invalid signed properties hashing,
-SignedProperties with id='xadesSignedProperties'"* while every standard one
-cleared. The cause was `formatOutput = true` on the DOM round trip that inserts
-the QR code - which runs **after** the document is signed. Pretty-printing
-re-indented the signature block, from 726 bytes to 1130, so the digest recorded
-in `ds:SignedInfo` described a block the document no longer carried.
+The QR code is inserted by a DOM round trip that runs **after** the document is
+signed. If that round trip pretty-prints (`formatOutput = true`), it re-indents
+the signature block, so the digest recorded in `ds:SignedInfo` describes a
+block the document no longer carries. The authority then refuses every
+simplified document with *"Invalid signed properties hashing, SignedProperties
+with id='xadesSignedProperties'"* - while standard documents still clear.
 
-Three things conspired to hide it:
+Three things make this fault easy to miss:
 
 - **Only simplified documents are checked.** ZATCA stamps a standard document
   itself and does not verify the seller's signature; it must verify a
   simplified one, which is reported after the customer already holds it. So
-  half the suite passed and pointed away from signing.
+  half the suite passes and points away from signing.
 - **The SDK cannot see it.** It recomputes the digest from whatever bytes it is
-  handed, so a document that contradicts itself still passes. All 26
-  conformance checks did.
-- **An earlier fix hid it.** The invoice hash had the same problem and was
-  fixed by taking it *after* the round trip rather than before. That left the
-  signature as the only thing still describing the unformatted document.
+  handed, so a document that contradicts itself still passes all 26
+  conformance checks.
+- **The invoice hash is taken after the round trip**, so it always matches the
+  emitted document; only the signature can be left describing an earlier form.
 
-What the error message says is not what it means: it was the one check that
-failed, not the thing that was wrong. Four digest encodings were tried against
-the authority - the SDK's form and the canonical form, each as hex and as bytes
-- and all four were refused, which is what finally ruled out the hashing.
+The error message names the check that failed, not the thing that is wrong:
+the digest encoding is correct, and changing it does not help.
 
 ### What the authority says when it refuses, and when it does not
 
-Collected from the sandbox on 2026-10-10 by submitting deliberate faults,
+Collected from the sandbox by submitting deliberate faults,
 because the readiness checklist asked whether the codes the authority returns
 are the ones handled, and only the authority can answer that.
 
@@ -151,8 +142,7 @@ are the ones handled, and only the authority can answer that.
 reported twice, byte for byte, and both times the answer was HTTP 200
 `REPORTED` with validation `PASS`. This is the property every retry in the
 platform rests on - a retry after a timeout cannot know whether the first
-attempt landed - and it was previously assumed in a comment. It is now
-observed. Re-check it against simulation when a taxpayer exists.
+attempt landed - and it is observed, not assumed. Re-check it against simulation when a taxpayer exists.
 
 **The codes are not `BR-KSA-*`.** The rules are written as BR-KSA-nn; the API
 answers with something else entirely, and in three different spellings:
@@ -175,10 +165,10 @@ than one.
 
 ---
 
-### What settled it, and the facts worth keeping
+### Signing facts established against the authority
 
-Submitting **the authority's own published sample** simplified invoice, which
-it accepts. That turned guesswork into bisection, and established:
+Established by submitting **the authority's own published sample** simplified
+invoice, which it accepts, and varying one thing at a time:
 
 | Fact | How |
 |---|---|
@@ -188,17 +178,16 @@ it accepts. That turned guesswork into bisection, and established:
 | The block's own content is right | The authority's sample carrying **our** block, digest recomputed - accepted |
 | The sandbox issues everyone the same certificate | Our PCSID's CertDigest, issuer and serial are identical to the sample's |
 
-`EmittedSignatureTest` now asserts the property none of the above covered: that
+`EmittedSignatureTest` asserts the property none of the above covers: that
 the digest recorded in `SignedInfo` still describes the `SignedProperties` block
 in the document **as finally emitted**, after the QR is inserted. It fails if
-`formatOutput` is reintroduced, and it names the three files that handle a
+`formatOutput` is introduced, and it names the three files that handle a
 signed document and must never pretty-print one.
 
-`ds:Signature` now carries `Id="signature"` and `QualifyingProperties` a
+`ds:Signature` carries `Id="signature"` and `QualifyingProperties` a
 `Target` of `signature` with no `#`, matching the authority's own accepted
 documents. XML-DSig reads `Target` as a URI reference, so `#signature` is the
-conformant form; ZATCA compares it to the Id literally. That was not the cause
-of the refusals, and is right regardless.
+conformant form; ZATCA compares it to the Id literally.
 
 ---
 
@@ -266,11 +255,11 @@ none.
 | Question | Answer | Why |
 |---|---|---|
 | Which clock do `IssueDate`, `IssueTime` and QR tag 3 use? | The Kingdom's | They are civil statements about when a document was issued. Read off UTC, an invoice issued 01:30 in Riyadh declared 22:30 — twenty-one hours out, for every invoice before 03:00 |
-| Does `xades:SigningTime` keep its `Z`? | No, Saudi local, no designator | Reasoned the other way first - a signing instant with an explicit marker - and the authority's own samples and SDK write it without one. Changing it did not make the live API accept the digest either, so it was not the cause of that; it is simply what the authority writes |
+| Does `xades:SigningTime` keep its `Z`? | No, Saudi local, no designator | The authority's own samples and SDK write it without one |
 | Where does a document discount reduce? | The taxable amount | EN 16931 and BR-CO-14 read a document-level allowance that way; VAT on the undiscounted base overstates the tax |
 | Which certificate template? | From `config('fatoora.environment')` | The template tells ZATCA which environment a request is for, and one carrying another's is refused. Both commands read the same value so they cannot disagree |
 | Submission rate ceiling | 120/min per organization, under ZATCA's | A limit above the authority's does not buy throughput; it moves the refusal from a cheap local 429 to a failed submission against the 24-hour deadline. **Confirm their published figure and stay under it** |
-| May a signed document be pretty-printed? | Never | Indenting it moves the bytes every recorded digest describes. This is what refused every simplified document for weeks, and `EmittedSignatureTest` now fails if it returns. Build the document readable *before* signing if it has to be |
+| May a signed document be pretty-printed? | Never | Indenting it moves the bytes every recorded digest describes, and the authority refuses every simplified document whose signed-properties digest no longer matches. `EmittedSignatureTest` fails if it is introduced. Build the document readable *before* signing if it has to be |
 | Is `QualifyingProperties/@Target` a URI reference? | Not here | XML-DSig says it is, so `#signature` is conformant. The authority compares it to the signature's Id literally and its own accepted documents carry the bare `signature` |
 | One encryption key for every tenant's credentials? | Adequate for one taxpayer | A per-tenant key wrapped by a managed key service is wanted before a second is onboarded — see `CredentialStore`'s own docblock |
 

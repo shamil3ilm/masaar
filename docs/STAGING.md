@@ -5,16 +5,14 @@ database and its own keys. It exists so a change can be exercised the way a
 deployment runs it — real MySQL, real HTTP, `APP_DEBUG=false` — before it
 reaches anything that matters.
 
-Last set up 2026-10-12.
-
 ## Why it is not just "run it locally"
 
 The test suite runs on in-memory SQLite, which is fast and permissive. It does
 not enforce foreign key types, it accepts a `WHERE` on a column that does not
-exist, and it is a console process, where `TenantScope` stands down. Each has
-hidden a real defect: submissions declared `bigint` against UUID keys that MySQL
-refused outright, an ICV allocation that handed every invoice the same counter,
-and four separate reads of columns no table has.
+exist, and it is a console process, where `TenantScope` stands down. Each can
+hide a real defect: a foreign key declared `bigint` against a UUID key, which
+MySQL refuses outright; a counter allocation that behaves differently under a
+real database's locking; a read of a column no table has.
 
 Staging is the cheapest place to catch that class of thing.
 
@@ -80,8 +78,8 @@ appear over real HTTP:
 - **Sign in.** The login page must render a CSRF token. If `public/build` is
   missing, the page throws and every form on the site stops working — the
   symptom is five login checks failing while everything around them passes.
-- **The dashboard shows non-zero figures** that match the database. Zeros used
-  to mean the page was fetching from an API it could not authenticate against.
+- **The dashboard shows non-zero figures** that match the database. Zeros on a
+  populated database mean the page is not reading the data it reports.
 - **Issue an invoice from the portal** for an organization with no certificate.
   It should get a Phase 1 QR — five TLV tags, no cryptographic ones.
 - **`php artisan fatoora:verify-hash-chain --env=staging`** should pass. It
