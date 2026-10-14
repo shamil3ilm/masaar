@@ -78,21 +78,6 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
 
     /* Organizations and branches ------------------------------------------ */
 
-    Route::apiResource('organizations', OrganizationController::class)->except(['destroy', 'update']);
-    // Both verbs, because that is what apiResource's update answers and
-    // declaring it separately must not quietly retire PATCH.
-    Route::match(['put', 'patch'], '/organizations/{organization}', [OrganizationController::class, 'update'])
-        ->middleware('org.admin');
-    Route::post('/organizations/{id}/switch', [OrganizationController::class, 'switch']);
-
-    Route::prefix('organizations/{organization}')->group(function () {
-        Route::get('/compliance-profiles', [ComplianceProfileController::class, 'index']);
-        Route::post('/compliance-profiles', [ComplianceProfileController::class, 'store']);
-        Route::delete('/compliance-profiles/{profile}', [ComplianceProfileController::class, 'destroy'])
-            ->middleware('org.admin');
-    });
-
-    // Branches are ZATCA EGS units: each signs with its own certificate.
     Route::prefix('organizations/branches')->group(function () {
         Route::get('/', [BranchController::class, 'index']);
         Route::post('/', [BranchController::class, 'store']);
@@ -115,6 +100,30 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
             Route::post('/{branch}/onboarding/pcsid', [BranchOnboardingController::class, 'requestPcsid']);
             Route::post('/{branch}/onboarding/reset', [BranchOnboardingController::class, 'resetOnboarding']);
         });
+    });
+
+    // Branches first, and the order is the whole point.
+    //
+    // Laravel matches in declaration order. Declared after the
+    // organizations resource, GET organizations/branches was answered by
+    // GET organizations/{organization} with the word 'branches' as the id,
+    // so listing a taxpayer's branches returned a 404 that read like an
+    // empty account rather than a route nothing could reach. POST to the
+    // same path worked, because no POST organizations/{organization}
+    // exists to catch it - which is the kind of half-working that a smoke
+    // test walks straight past. RouteShadowTest now asserts it.
+    Route::apiResource('organizations', OrganizationController::class)->except(['destroy', 'update']);
+    // Both verbs, because that is what apiResource's update answers and
+    // declaring it separately must not quietly retire PATCH.
+    Route::match(['put', 'patch'], '/organizations/{organization}', [OrganizationController::class, 'update'])
+        ->middleware('org.admin');
+    Route::post('/organizations/{id}/switch', [OrganizationController::class, 'switch']);
+
+    Route::prefix('organizations/{organization}')->group(function () {
+        Route::get('/compliance-profiles', [ComplianceProfileController::class, 'index']);
+        Route::post('/compliance-profiles', [ComplianceProfileController::class, 'store']);
+        Route::delete('/compliance-profiles/{profile}', [ComplianceProfileController::class, 'destroy'])
+            ->middleware('org.admin');
     });
 
     /* Integration management ---------------------------------------------- */
