@@ -12,6 +12,7 @@ use App\Domains\Compliance\Fatoora\Events\InvoiceSubmitted;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Compliance\Fatoora\Models\SubmissionIdempotency;
+use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use App\Domains\Compliance\Fatoora\Services\KillSwitch;
 use App\Domains\Compliance\Fatoora\Services\SubmissionLedger;
 use App\Domains\Compliance\Fatoora\Services\Submitter;
@@ -126,7 +127,8 @@ class ProcessFatooraSubmission implements ShouldQueue
         FatooraClient $zatcaClient,
         KillSwitch $killSwitch,
         Submitter $submitter,
-        SubmissionLedger $ledger
+        SubmissionLedger $ledger,
+        CredentialStore $credentials,
     ): void {
         // Checked here as well as before queueing, because the gap between the
         // two is exactly when an operator throws the switch. A job queued
@@ -151,7 +153,7 @@ class ProcessFatooraSubmission implements ShouldQueue
         ]);
 
         try {
-            $response = $this->send($submission, $zatcaClient, $submitter, $ledger);
+            $response = $this->send($submission, $zatcaClient, $submitter, $ledger, $credentials);
         } catch (Throwable $e) {
             $this->handleError($submission, $e);
             throw $e; // Re-throw for queue retry mechanism
@@ -176,7 +178,8 @@ class ProcessFatooraSubmission implements ShouldQueue
         InvoiceSubmission $submission,
         FatooraClient $zatcaClient,
         Submitter $submitter,
-        SubmissionLedger $ledger
+        SubmissionLedger $ledger,
+        CredentialStore $credentials,
     ): FatooraResponse {
         $invoice = $submission->invoice;
 
@@ -200,14 +203,18 @@ class ProcessFatooraSubmission implements ShouldQueue
         $invoiceXml = (string) $invoice->signed_xml;
         $invoiceHash = (string) $invoice->hash;
 
+        // The device that signed it files it. Resolved before the transition,
+        // so a device with no credentials is not left in 'submitted'.
+        $device = $credentials->device((string) $invoice->org_id, $invoice->branch_id);
+
         $ledger->transition($submission, 'submitted', 'queue_job');
 
         // Fire submitted event for real-time tracking
         event(new InvoiceSubmitted($submission->fresh()));
 
         return $submission->isClearance()
-            ? $zatcaClient->clearInvoice($invoiceXml, $invoiceHash, $invoice->id)
-            : $zatcaClient->reportInvoice($invoiceXml, $invoiceHash, $invoice->id);
+            ? $zatcaClient->clearInvoice($invoiceXml, $invoiceHash, $invoice->id, $device)
+            : $zatcaClient->reportInvoice($invoiceXml, $invoiceHash, $invoice->id, $device);
     }
 
     /**

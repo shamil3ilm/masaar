@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Services;
 
+use App\Domains\Compliance\Fatoora\DTOs\DeviceCredentials;
+use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
+use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Encryption\Encrypter;
 use Illuminate\Support\Facades\Crypt;
@@ -155,6 +158,40 @@ class CredentialStore
         }
 
         return $this->get($organizationId, null, self::PCSID);
+    }
+
+    /**
+     * What a device authenticates to ZATCA with: the branch's own, or the
+     * organization's - the order signing resolves in, because the device that
+     * signed a document is the one that files it.
+     *
+     * $type is PCSID for clearance and reporting, CCSID for a compliance
+     * check. Each record holds the token under its own type's name.
+     *
+     * @throws FatooraException When the device has not been onboarded, or was
+     *                          onboarded before its secret was kept
+     */
+    public function device(string $organizationId, ?string $branchId, string $type = self::PCSID): DeviceCredentials
+    {
+        $stored = null;
+
+        if ($branchId !== null) {
+            $branch = $this->get($organizationId, $branchId, $type);
+            $stored = ! empty($branch[$type]) ? $branch : null;
+        }
+
+        $stored ??= $this->get($organizationId, null, $type);
+
+        if (empty($stored[$type]) || empty($stored['secret'])) {
+            throw new FatooraException(
+                'No '.($type === self::PCSID ? 'production' : 'compliance').' certificate and secret '
+                .'for this device. Complete ZATCA onboarding before filing.',
+                ErrorCode::CERT_NOT_FOUND,
+                ['org_id' => $organizationId, 'branch_id' => $branchId, 'type' => $type],
+            );
+        }
+
+        return new DeviceCredentials((string) $stored[$type], (string) $stored['secret']);
     }
 
     /**

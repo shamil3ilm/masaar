@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Fatoora\Client;
 
 use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\DTOs\CsidResponse;
+use App\Domains\Compliance\Fatoora\DTOs\DeviceCredentials;
 use App\Domains\Compliance\Fatoora\DTOs\FatooraResponse;
 use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
 use App\Domains\Compliance\Fatoora\Services\InvoiceHasher;
@@ -20,14 +21,16 @@ use Illuminate\Support\Facades\Log;
  *
  * Handles communication with ZATCA e-invoicing portal.
  * Supports sandbox, simulation, and production environments.
+ *
+ * Every call authenticates as the device it is made for. Clearance and
+ * reporting were sent with one platform-wide ZATCA_USERNAME and
+ * ZATCA_PASSWORD, which ZATCA does not issue: it onboards each EGS unit and
+ * gives it its own token and secret, and an invoice filed under another
+ * device's credentials is filed as that device's.
  */
 class FatooraClient
 {
     private string $baseUrl;
-
-    private ?string $username;
-
-    private ?string $password;
 
     private InvoiceHasher $hasher;
 
@@ -75,79 +78,45 @@ class FatooraClient
     {
         $this->hasher = $hasher ?? new InvoiceHasher;
         $this->baseUrl = FatooraConfig::getBaseUrl();
-        $this->username = config('fatoora.credentials.username');
-        $this->password = config('fatoora.credentials.password');
     }
 
     /**
      * Submit invoice for clearance (B2B).
      */
-    public function clearInvoice(string $invoiceXml, string $invoiceHash, string $uuid): FatooraResponse
+    public function clearInvoice(string $invoiceXml, string $invoiceHash, string $uuid, DeviceCredentials $device): FatooraResponse
     {
-        return $this->submitInvoice('/invoices/clearance/single', $invoiceXml, $invoiceHash, $uuid);
+        return $this->submitInvoice('/invoices/clearance/single', $invoiceXml, $invoiceHash, $uuid, $device);
     }
 
     /**
      * Report invoice (B2C).
      */
-    public function reportInvoice(string $invoiceXml, string $invoiceHash, string $uuid): FatooraResponse
+    public function reportInvoice(string $invoiceXml, string $invoiceHash, string $uuid, DeviceCredentials $device): FatooraResponse
     {
-        return $this->submitInvoice('/invoices/reporting/single', $invoiceXml, $invoiceHash, $uuid);
+        return $this->submitInvoice('/invoices/reporting/single', $invoiceXml, $invoiceHash, $uuid, $device);
     }
 
     /**
      * Check compliance of invoice without submission.
+     *
+     * Authenticated with the compliance CSID, as ZATCA requires. This posted
+     * to /invoices/compliance, which is not ZATCA's path - onboarding and the
+     * sandbox round trip use /compliance/invoices - so validation never
+     * reached the authority.
      */
-    public function checkCompliance(string $invoiceXml, string $invoiceHash, string $uuid): FatooraResponse
+    public function checkCompliance(string $invoiceXml, string $invoiceHash, string $uuid, DeviceCredentials $device): FatooraResponse
     {
-        return $this->submitInvoice('/invoices/compliance', $invoiceXml, $invoiceHash, $uuid);
-    }
-
-    /**
-     * Get invoice status by UUID.
-     * Used to check clearance status for pending submissions.
-     */
-    public function getInvoiceStatus(string $uuid): array
-    {
-        try {
-            $response = $this->httpClient()
-                ->get($this->baseUrl.'/invoices/'.$uuid.'/status');
-
-            if ($response->successful()) {
-                return $response->json();
-            }
-
-            Log::warning('ZATCA status check failed', [
-                'uuid' => $uuid,
-                'status' => $response->status(),
-            ]);
-
-            return [
-                'error' => true,
-                'status_code' => $response->status(),
-                'message' => 'Status check failed',
-            ];
-
-        } catch (\Exception $e) {
-            Log::error('ZATCA status check exception', [
-                'uuid' => $uuid,
-                'message' => $e->getMessage(),
-            ]);
-
-            return [
-                'error' => true,
-                'message' => $e->getMessage(),
-            ];
-        }
+        return $this->submitInvoice('/compliance/invoices', $invoiceXml, $invoiceHash, $uuid, $device);
     }
 
     /**
      * Submit invoice to ZATCA API.
      */
-    private function submitInvoice(string $endpoint, string $invoiceXml, string $invoiceHash, string $uuid): FatooraResponse
+    private function submitInvoice(string $endpoint, string $invoiceXml, string $invoiceHash, string $uuid, DeviceCredentials $device): FatooraResponse
     {
         try {
-            $response = $this->httpClient()
+            $response = $this->createBaseHttpClient()
+                ->withBasicAuth($device->token, $device->secret)
                 ->post($this->baseUrl.$endpoint, [
                     'invoiceHash' => $invoiceHash,
                     'uuid' => $uuid,
@@ -349,22 +318,6 @@ class FatooraClient
     }
 
     /**
-     * Create HTTP client with authentication and retry logic.
-     * Uses config-driven timeouts, retries, and SSL settings.
-     */
-    private function httpClient(): PendingRequest
-    {
-        $client = $this->createBaseHttpClient();
-
-        // Add basic auth if credentials configured
-        if ($this->username && $this->password) {
-            $client->withBasicAuth($this->username, $this->password);
-        }
-
-        return $client;
-    }
-
-    /**
      * Request Compliance CSID (Step 1 of onboarding).
      */
     public function requestComplianceCsid(string $csr, string $otp): CsidResponse
@@ -397,27 +350,12 @@ class FatooraClient
      */
     public function submitComplianceInvoice(string $invoiceXml, string $ccsid, string $secret): FatooraResponse
     {
-        try {
-            $client = $this->createBaseHttpClient()
-                ->withBasicAuth($ccsid, $secret);
-
-            $response = $client->post($this->baseUrl.'/compliance/invoices', [
-                'invoiceHash' => $this->hashInvoice($invoiceXml),
-                'uuid' => $this->extractUuid($invoiceXml),
-                'invoice' => base64_encode($invoiceXml),
-            ]);
-
-            if ($response->successful()) {
-                return FatooraResponse::fromApiResponse($response->json());
-            }
-
-            return FatooraResponse::failed('Compliance invoice submission failed: '.$response->status());
-
-        } catch (\Exception $e) {
-            Log::error('Compliance invoice submission failed', ['error' => $e->getMessage()]);
-
-            return FatooraResponse::failed($e->getMessage());
-        }
+        return $this->checkCompliance(
+            $invoiceXml,
+            $this->hashInvoice($invoiceXml),
+            $this->extractUuid($invoiceXml),
+            new DeviceCredentials($ccsid, $secret),
+        );
     }
 
     /**
@@ -471,16 +409,6 @@ class FatooraClient
 
             return CsidResponse::failed($e->getMessage());
         }
-    }
-
-    /**
-     * Check if client is configured.
-     */
-    public function isConfigured(): bool
-    {
-        return $this->baseUrl !== null
-            && $this->username !== null
-            && $this->password !== null;
     }
 
     /**

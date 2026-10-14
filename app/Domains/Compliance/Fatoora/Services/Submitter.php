@@ -182,6 +182,9 @@ class Submitter
             invoiceXml: $complianceData['xml'],
             invoiceHash: $complianceData['hash'],
             uuid: $invoice->id,
+            // ZATCA's compliance endpoint takes the compliance CSID, not the
+            // production one.
+            device: $this->credentials->device((string) $invoice->org_id, $invoice->branch_id, CredentialStore::CCSID),
         );
     }
 
@@ -257,6 +260,7 @@ class Submitter
         // Issuance above guarantees both are present.
         $invoiceXml = (string) $invoice->signed_xml;
         $invoiceHash = (string) $invoice->hash;
+        $device = $this->credentials->device((string) $invoice->org_id, $invoice->branch_id);
 
         // Choose clearance (B2B) or reporting (B2C) based on invoice type
         if ($invoice->requiresClearance()) {
@@ -265,6 +269,7 @@ class Submitter
                 invoiceXml: $invoiceXml,
                 invoiceHash: $invoiceHash,
                 uuid: $invoice->id,
+                device: $device,
             );
         } else {
             // B2C: Report invoice - ZATCA requires reporting within 24 hours
@@ -273,6 +278,7 @@ class Submitter
                 invoiceXml: $invoiceXml,
                 invoiceHash: $invoiceHash,
                 uuid: $invoice->id,
+                device: $device,
             );
         }
 

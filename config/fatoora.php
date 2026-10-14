@@ -32,17 +32,11 @@ return [
     ],
 
     /*
-    |--------------------------------------------------------------------------
-    | API Credentials
-    |--------------------------------------------------------------------------
-    |
-    | Credentials issued by ZATCA for API authentication.
-    |
+    | There is no platform-wide API credential. ZATCA onboards each EGS unit
+    | and issues it a token and secret; CredentialStore::device() finds the
+    | ones for the invoice being filed. ZATCA_USERNAME and ZATCA_PASSWORD
+    | were read here and sent with every tenant's clearance and reporting.
     */
-    'credentials' => [
-        'username' => env('ZATCA_USERNAME'),
-        'password' => env('ZATCA_PASSWORD'),
-    ],
 
     /*
     |--------------------------------------------------------------------------

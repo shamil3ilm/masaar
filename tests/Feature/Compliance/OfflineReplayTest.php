@@ -60,7 +60,7 @@ class OfflineReplayTest extends TestCase
             $this->organization->id,
             null,
             CredentialStore::PCSID,
-            ['privateKey' => $credentials['privateKey'], 'pcsid' => $credentials['certificate']]
+            ['privateKey' => $credentials['privateKey'], 'pcsid' => $credentials['certificate'], 'secret' => 'device-secret']
         );
 
         Http::fake(['*' => Http::response([

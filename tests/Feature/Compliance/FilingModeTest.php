@@ -76,7 +76,7 @@ class FilingModeTest extends TestCase
             $this->organization->id,
             null,
             CredentialStore::PCSID,
-            ['privateKey' => $credentials['privateKey'], 'pcsid' => $credentials['certificate']],
+            ['privateKey' => $credentials['privateKey'], 'pcsid' => $credentials['certificate'], 'secret' => 'device-secret'],
         );
 
         // Connectivity makes a real outbound request otherwise. false keeps

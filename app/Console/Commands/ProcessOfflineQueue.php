@@ -7,6 +7,7 @@ namespace App\Console\Commands;
 use App\Domains\Compliance\Fatoora\Client\FatooraClient;
 use App\Domains\Compliance\Fatoora\DTOs\FatooraResponse;
 use App\Domains\Compliance\Fatoora\Services\Connectivity;
+use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use App\Domains\Compliance\Fatoora\Services\OfflineQueue;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
@@ -47,6 +48,7 @@ class ProcessOfflineQueue extends Command
     public function __construct(
         private readonly OfflineQueue $queueManager,
         private readonly FatooraClient $zatcaClient,
+        private readonly CredentialStore $credentials,
         private readonly ?Connectivity $connectivityChecker = null,
     ) {
         parent::__construct();
@@ -268,9 +270,12 @@ class ProcessOfflineQueue extends Command
 
     private function send(object $item, Invoice $invoice): FatooraResponse
     {
+        // The device that signed the queued document files it.
+        $device = $this->credentials->device((string) $invoice->org_id, $invoice->branch_id);
+
         return $invoice->isB2B()
-            ? $this->zatcaClient->clearInvoice($item->signed_xml, $item->invoice_hash, $invoice->id)
-            : $this->zatcaClient->reportInvoice($item->signed_xml, $item->invoice_hash, $invoice->id);
+            ? $this->zatcaClient->clearInvoice($item->signed_xml, $item->invoice_hash, $invoice->id, $device)
+            : $this->zatcaClient->reportInvoice($item->signed_xml, $item->invoice_hash, $invoice->id, $device);
     }
 
     /**

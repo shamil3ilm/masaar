@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Compliance;
 
 use App\Domains\Compliance\Fatoora\Client\FatooraClient;
+use App\Domains\Compliance\Fatoora\DTOs\DeviceCredentials;
 use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
@@ -56,7 +57,7 @@ class TransientRefusalTest extends TestCase
     {
         Http::fake(['*' => Http::response('gateway error', $status)]);
 
-        $response = app(FatooraClient::class)->checkCompliance('<Invoice/>', 'hash', 'uuid');
+        $response = app(FatooraClient::class)->checkCompliance('<Invoice/>', 'hash', 'uuid', new DeviceCredentials('token', 'secret'));
 
         $this->assertFalse($response->success, 'A failing status is still a failure.');
 
@@ -86,7 +87,7 @@ class TransientRefusalTest extends TestCase
     {
         Http::fake(['*' => fn () => throw new ConnectionException('cURL error 28: Operation timed out')]);
 
-        $response = app(FatooraClient::class)->checkCompliance('<Invoice/>', 'hash', 'uuid');
+        $response = app(FatooraClient::class)->checkCompliance('<Invoice/>', 'hash', 'uuid', new DeviceCredentials('token', 'secret'));
 
         $this->assertFalse($response->success);
         $this->assertSame(ErrorCode::ZATCA_SERVICE_UNAVAILABLE, $response->errorCode);
@@ -110,7 +111,7 @@ class TransientRefusalTest extends TestCase
     {
         Http::fake(['*' => Http::response(['errorMessages' => [['message' => 'PIH is inValid']]], $status)]);
 
-        $response = app(FatooraClient::class)->checkCompliance('<Invoice/>', 'hash', 'uuid');
+        $response = app(FatooraClient::class)->checkCompliance('<Invoice/>', 'hash', 'uuid', new DeviceCredentials('token', 'secret'));
 
         $this->assertNull($response->errorCode, "HTTP {$status} says something about the document.");
         $this->assertFalse($response->isRetryable(), "HTTP {$status} must not be resent unchanged.");
@@ -132,7 +133,7 @@ class TransientRefusalTest extends TestCase
             ],
         ], 400)]);
 
-        $response = app(FatooraClient::class)->checkCompliance('<Invoice/>', 'hash', 'uuid');
+        $response = app(FatooraClient::class)->checkCompliance('<Invoice/>', 'hash', 'uuid', new DeviceCredentials('token', 'secret'));
 
         $this->assertStringContainsString('PIH is inValid', implode(' ', $response->errorMessages));
         $this->assertStringContainsString('QR code is missing', implode(' ', $response->errorMessages));
@@ -151,7 +152,7 @@ class TransientRefusalTest extends TestCase
             ],
         ], 400)]);
 
-        $response = app(FatooraClient::class)->checkCompliance('<Invoice/>', 'hash', 'uuid');
+        $response = app(FatooraClient::class)->checkCompliance('<Invoice/>', 'hash', 'uuid', new DeviceCredentials('token', 'secret'));
 
         $this->assertStringContainsString(
             'Invoice type code is invalid',
@@ -167,7 +168,7 @@ class TransientRefusalTest extends TestCase
     {
         Http::fake(['*' => Http::response('<html>502 Bad Gateway</html>', 502)]);
 
-        $response = app(FatooraClient::class)->checkCompliance('<Invoice/>', 'hash', 'uuid');
+        $response = app(FatooraClient::class)->checkCompliance('<Invoice/>', 'hash', 'uuid', new DeviceCredentials('token', 'secret'));
 
         $this->assertStringContainsString('502', implode(' ', $response->errorMessages));
     }

@@ -54,7 +54,7 @@ class ChainRecordTest extends TestCase
             $this->organization->id,
             null,
             CredentialStore::PCSID,
-            ['privateKey' => $this->credentials['privateKey'], 'pcsid' => $this->credentials['certificate']]
+            ['privateKey' => $this->credentials['privateKey'], 'pcsid' => $this->credentials['certificate'], 'secret' => 'device-secret']
         );
     }
 

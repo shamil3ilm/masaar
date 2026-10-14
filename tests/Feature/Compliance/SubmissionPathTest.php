@@ -68,7 +68,7 @@ class SubmissionPathTest extends TestCase
             $this->organization->id,
             null,
             CredentialStore::PCSID,
-            ['privateKey' => $credentials['privateKey'], 'pcsid' => $credentials['certificate']]
+            ['privateKey' => $credentials['privateKey'], 'pcsid' => $credentials['certificate'], 'secret' => 'device-secret']
         );
 
         $client = \Mockery::mock(FatooraClient::class);

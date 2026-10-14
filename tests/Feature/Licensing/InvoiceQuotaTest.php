@@ -67,7 +67,7 @@ class InvoiceQuotaTest extends TestCase
             $this->organization->id,
             null,
             CredentialStore::PCSID,
-            ['privateKey' => $credentials['privateKey'], 'pcsid' => $credentials['certificate']]
+            ['privateKey' => $credentials['privateKey'], 'pcsid' => $credentials['certificate'], 'secret' => 'device-secret']
         );
 
         $this->license = License::createWithCredentials([
@@ -262,7 +262,7 @@ class InvoiceQuotaTest extends TestCase
         $credentials = $this->selfSignedCredentials();
         app(CredentialStore::class)->put(
             $other->id, null, CredentialStore::PCSID,
-            ['privateKey' => $credentials['privateKey'], 'pcsid' => $credentials['certificate']]
+            ['privateKey' => $credentials['privateKey'], 'pcsid' => $credentials['certificate'], 'secret' => 'device-secret']
         );
 
         app(SubmissionTracker::class)->submit($this->issued('INV-9', $other));

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Compliance;
 
 use App\Domains\Compliance\Fatoora\Client\FatooraClient;
+use App\Domains\Compliance\Fatoora\DTOs\DeviceCredentials;
 use App\Domains\Compliance\Fatoora\DTOs\FatooraResponse;
 use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
 use Illuminate\Support\Facades\Http;
@@ -54,7 +55,7 @@ class ThrottleResponseTest extends TestCase
             '*' => Http::response(['message' => 'too many'], $status, $headers),
         ]);
 
-        $response = app(FatooraClient::class)->reportInvoice('<Invoice/>', 'hash', 'uuid');
+        $response = app(FatooraClient::class)->reportInvoice('<Invoice/>', 'hash', 'uuid', new DeviceCredentials('token', 'secret'));
 
         $this->assertFalse($response->success);
         $this->assertSame(ErrorCode::ZATCA_RATE_LIMITED, $response->errorCode);
@@ -72,7 +73,7 @@ class ThrottleResponseTest extends TestCase
             '*' => Http::response(['errorMessages' => [['code' => 'BR-KSA-01']]], 400),
         ]);
 
-        $response = app(FatooraClient::class)->reportInvoice('<Invoice/>', 'hash', 'uuid');
+        $response = app(FatooraClient::class)->reportInvoice('<Invoice/>', 'hash', 'uuid', new DeviceCredentials('token', 'secret'));
 
         $this->assertFalse($response->success);
         $this->assertNull($response->errorCode);
@@ -91,7 +92,7 @@ class ThrottleResponseTest extends TestCase
             ]),
         ]);
 
-        $response = app(FatooraClient::class)->reportInvoice('<Invoice/>', 'hash', 'uuid');
+        $response = app(FatooraClient::class)->reportInvoice('<Invoice/>', 'hash', 'uuid', new DeviceCredentials('token', 'secret'));
 
         // Allowing for the second that may pass while the request is made.
         $this->assertGreaterThan(100, (int) $response->retryAfterSeconds);

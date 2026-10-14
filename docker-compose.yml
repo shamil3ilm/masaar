@@ -61,8 +61,6 @@ services:
 
       # ZATCA Configuration
       ZATCA_ENVIRONMENT: ${ZATCA_ENVIRONMENT:-sandbox}
-      ZATCA_USERNAME: ${ZATCA_USERNAME}
-      ZATCA_PASSWORD: ${ZATCA_PASSWORD}
 
       # UAE FTA Configuration
       #

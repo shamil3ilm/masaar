@@ -43,6 +43,7 @@ class SubmissionTracker
         private readonly SubmissionGuard $guard,
         private readonly SubmissionLedger $ledger,
         private readonly UsageMeteringService $usage,
+        private readonly CredentialStore $credentials,
     ) {}
 
     /**
@@ -231,11 +232,15 @@ class SubmissionTracker
      */
     private function send(InvoiceSubmission $submission, Invoice $invoice): FatooraResponse
     {
+        // Before the transition: a device with no credentials has sent
+        // nothing, and must not be left in 'submitted', which nothing resends.
+        $device = $this->credentials->device((string) $invoice->org_id, $invoice->branch_id);
+
         $this->ledger->transition($submission, 'submitted', 'api_call');
 
         return $invoice->isB2B()
-            ? $this->zatcaClient->clearInvoice($invoice->signed_xml, $invoice->hash, $invoice->id)
-            : $this->zatcaClient->reportInvoice($invoice->signed_xml, $invoice->hash, $invoice->id);
+            ? $this->zatcaClient->clearInvoice($invoice->signed_xml, $invoice->hash, $invoice->id, $device)
+            : $this->zatcaClient->reportInvoice($invoice->signed_xml, $invoice->hash, $invoice->id, $device);
     }
 
     /**
