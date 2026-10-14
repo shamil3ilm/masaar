@@ -284,8 +284,9 @@ class Submitter
                 device: $device,
             );
         } else {
-            // B2C: Report invoice - ZATCA requires reporting within 24 hours
-            $this->validateReportingDeadline($invoice);
+            // B2C: report. ZATCA gives it 24 hours, and a late report is still
+            // owed - the overdue sweep and the deadline screen say it is late;
+            // refusing to send it would only make sure it never arrives.
             $response = $this->client->reportInvoice(
                 invoiceXml: $invoiceXml,
                 invoiceHash: $invoiceHash,
@@ -357,60 +358,6 @@ class Submitter
             // Log but don't block submission if validation fails unexpectedly
             Log::warning('Certificate validation failed unexpectedly', [
                 'error' => $e->getMessage(),
-            ]);
-        }
-    }
-
-    /**
-     * Validate B2C invoice reporting deadline.
-     *
-     * COMPLIANCE: ZATCA requires simplified (B2C) invoices to be reported
-     * within 24 hours of issuance. This method enforces that deadline.
-     *
-     * @throws FatooraException If invoice is older than 24 hours
-     */
-    private function validateReportingDeadline(Invoice $invoice): void
-    {
-        // Get the deadline hours from config (default 24 hours per ZATCA)
-        $deadlineHours = config('fatoora.reporting.deadline_hours', 24);
-
-        // Skip deadline check if explicitly disabled
-        if (! config('fatoora.reporting.enforce_deadline', true)) {
-            return;
-        }
-
-        $issueDate = $invoice->issue_date;
-        if (! $issueDate instanceof \DateTimeInterface) {
-            $issueDate = new \DateTime($issueDate);
-        }
-
-        $now = new \DateTime;
-        $ageHours = ($now->getTimestamp() - $issueDate->getTimestamp()) / 3600;
-
-        if ($ageHours > $deadlineHours) {
-            throw FatooraException::validation(
-                sprintf(
-                    'B2C invoice reporting deadline exceeded. Invoice was issued %.1f hours ago. '.
-                    'ZATCA requires simplified invoices to be reported within %d hours of issuance.',
-                    $ageHours,
-                    $deadlineHours
-                ),
-                context: [
-                    'invoice_id' => $invoice->id,
-                    'issue_date' => $issueDate->format('Y-m-d H:i:s'),
-                    'age_hours' => round($ageHours, 2),
-                    'deadline_hours' => $deadlineHours,
-                ]
-            );
-        }
-
-        // Log warning if approaching deadline (>20 hours)
-        if ($ageHours > ($deadlineHours * 0.8)) {
-            Log::warning('B2C invoice approaching reporting deadline', [
-                'invoice_id' => $invoice->id,
-                'age_hours' => round($ageHours, 2),
-                'deadline_hours' => $deadlineHours,
-                'remaining_hours' => round($deadlineHours - $ageHours, 2),
             ]);
         }
     }
