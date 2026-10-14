@@ -97,6 +97,14 @@ class ProductionGuardTest extends TestCase
                 .' a licence secret would be stored in the clear.');
         }
 
+        // assertLicenceSecretIsSet: licensing defaults to enabled, and with
+        // no secret no licence key verifies, so every API request is refused.
+        if (($env['PLATFORM_LICENSE_ENABLED'] ?? 'true') !== 'false') {
+            $this->assertNotSame('', $env['PLATFORM_LICENSE_SECRET'] ?? '',
+                $template.' enforces licences without PLATFORM_LICENSE_SECRET, and the '
+                .'application refuses to boot like that.');
+        }
+
         // assertSubmissionLimitsAgree: two keys throttle submissions and the
         // lower one silently decides. Either both are set and equal, or
         // neither is and they share a default.
@@ -132,6 +140,7 @@ class ProductionGuardTest extends TestCase
         $this->assertSame([
             'assertAuthorityIsNotSandbox',
             'assertDebugDisabledInProduction',
+            'assertLicenceSecretIsSet',
             'assertSessionsAreEncrypted',
             'assertSubmissionLimitsAgree',
         ], $guards, 'AppServiceProvider has a boot guard this test does not check the '

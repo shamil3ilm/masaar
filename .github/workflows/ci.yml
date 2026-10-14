@@ -930,6 +930,9 @@ jobs:
             echo "ZATCA_ENVIRONMENT=simulation"
             echo "UAE_FTA_ENVIRONMENT=production"
             echo "AUTO_MIGRATE=true"
+            # Licensing enforced, as by default, with no key issued: API
+            # calls are refused, and the readiness probe must not be.
+            echo "PLATFORM_LICENSE_SECRET=$(openssl rand -hex 32)"
           } > .env
 
       - name: Check every compose combination resolves
