@@ -28,13 +28,15 @@ from masaar import MasaarClient, InvoiceLine
 # Initialize client (local development)
 client = MasaarClient(
     base_url="http://localhost:8000",  # Your server URL
-    api_key="your_api_key"
+    api_key="your_api_key",
+    api_secret="your_api_secret"
 )
 
 # For production, use your deployed server URL:
 # client = MasaarClient(
 #     base_url="https://your-domain.com",
-#     api_key="your_api_key"
+#     api_key="your_api_key",
+#     api_secret="your_api_secret"
 # )
 
 # Create an invoice
@@ -68,6 +70,7 @@ print(f"ZATCA Status: {result['status']}")
 # settings.py
 MASAAR_URL = "http://localhost:8000"  # or your production URL
 MASAAR_API_KEY = "your_api_key"
+MASAAR_API_SECRET = "your_api_secret"
 
 # views.py
 from django.conf import settings
@@ -76,7 +79,8 @@ from masaar import MasaarClient
 
 client = MasaarClient(
     base_url=settings.MASAAR_URL,
-    api_key=settings.MASAAR_API_KEY
+    api_key=settings.MASAAR_API_KEY,
+    api_secret=settings.MASAAR_API_SECRET
 )
 
 def create_invoice(request):
@@ -100,7 +104,8 @@ app = Flask(__name__)
 # Use environment variables for configuration
 client = MasaarClient(
     base_url=os.environ.get("MASAAR_URL", "http://localhost:8000"),
-    api_key=os.environ.get("MASAAR_API_KEY", "your_api_key")
+    api_key=os.environ.get("MASAAR_API_KEY", "your_api_key"),
+    api_secret=os.environ.get("MASAAR_API_SECRET", "your_api_secret")
 )
 
 @app.route("/invoices", methods=["POST"])
@@ -122,7 +127,8 @@ app = FastAPI()
 # Configure with environment variables
 client = MasaarClient(
     base_url=os.environ.get("MASAAR_URL", "http://localhost:8000"),
-    api_key=os.environ.get("MASAAR_API_KEY", "your_api_key")
+    api_key=os.environ.get("MASAAR_API_KEY", "your_api_key"),
+    api_secret=os.environ.get("MASAAR_API_SECRET", "your_api_secret")
 )
 
 @app.post("/invoices")

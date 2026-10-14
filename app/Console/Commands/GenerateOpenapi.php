@@ -45,12 +45,20 @@ class GenerateOpenapi extends Command
 
     protected $description = 'Generate the OpenAPI description from the route table';
 
-    /** Middleware class => the security scheme it enforces. */
+    /**
+     * Middleware class => the security schemes it enforces, all of them at
+     * once.
+     *
+     * ValidateLicense wants the key and the secret together. It was described
+     * with the key alone, so a client generated from this spec - or an
+     * integrator reading it - sent no secret, and every partner call was
+     * refused.
+     */
     private const SECURITY = [
-        'JwtGuard' => 'bearerAuth',
-        'ValidateLicense' => 'apiKey',
-        'ApiKeyAuth' => 'apiKey',
-        'MetricsAccess' => 'metricsToken',
+        'JwtGuard' => ['bearerAuth'],
+        'ValidateLicense' => ['apiKey', 'apiSecret'],
+        'ApiKeyAuth' => ['apiKey'],
+        'MetricsAccess' => ['metricsToken'],
     ];
 
     public function handle(): int
@@ -71,6 +79,7 @@ class GenerateOpenapi extends Command
                 'securitySchemes' => [
                     'bearerAuth' => ['type' => 'http', 'scheme' => 'bearer', 'bearerFormat' => 'JWT'],
                     'apiKey' => ['type' => 'apiKey', 'in' => 'header', 'name' => 'X-API-Key'],
+                    'apiSecret' => ['type' => 'apiKey', 'in' => 'header', 'name' => 'X-API-Secret'],
                     // Operational rather than customer-facing: the scrape
                     // endpoint admits an allowlisted source IP or this token,
                     // and is closed when neither is configured.
@@ -519,17 +528,20 @@ class GenerateOpenapi extends Command
      */
     private function security(Route $route): array
     {
-        $schemes = [];
+        $requirements = [];
 
         foreach ($this->middlewareClasses($route) as $class) {
             $name = class_basename($class);
 
+            // One requirement per middleware, naming every scheme it needs:
+            // in OpenAPI the schemes inside one requirement are all required,
+            // while separate requirements are alternatives.
             if (isset(self::SECURITY[$name])) {
-                $schemes[self::SECURITY[$name]] = true;
+                $requirements[$name] = array_fill_keys(self::SECURITY[$name], []);
             }
         }
 
-        return array_map(fn (string $scheme) => [$scheme => []], array_keys($schemes));
+        return array_values($requirements);
     }
 
     /**

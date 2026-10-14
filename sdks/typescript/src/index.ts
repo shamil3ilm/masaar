@@ -10,7 +10,8 @@
  *
  * const client = new MasaarClient({
  *   baseUrl: 'https://api.masaar.sa',
- *   apiKey: 'your_api_key'
+ *   apiKey: 'your_api_key',
+ *   apiSecret: 'your_api_secret'
  * });
  *
  * const invoice = await client.invoices.create({
@@ -25,6 +26,8 @@
 export interface MasaarConfig {
   baseUrl: string;
   apiKey?: string;
+  /** Required with apiKey: the API authenticates the pair, not the key alone. */
+  apiSecret?: string;
   jwtToken?: string;
   timeout?: number;
 }
@@ -136,12 +139,14 @@ export class ZatcaError extends MasaarError {
 class HttpClient {
   private baseUrl: string;
   private apiKey?: string;
+  private apiSecret?: string;
   private jwtToken?: string;
   private timeout: number;
 
   constructor(config: MasaarConfig) {
     this.baseUrl = config.baseUrl.replace(/\/$/, '');
     this.apiKey = config.apiKey;
+    this.apiSecret = config.apiSecret;
     this.jwtToken = config.jwtToken;
     this.timeout = config.timeout || 30000;
   }
@@ -153,7 +158,9 @@ class HttpClient {
     };
 
     if (this.apiKey) {
+      // Both, always: a key without its secret is refused.
       headers['X-API-Key'] = this.apiKey;
+      headers['X-API-Secret'] = this.apiSecret ?? '';
     } else if (this.jwtToken) {
       headers['Authorization'] = `Bearer ${this.jwtToken}`;
     }
@@ -410,7 +417,11 @@ export class MasaarClient {
 
   constructor(config: MasaarConfig) {
     if (!config.apiKey && !config.jwtToken) {
-      throw new Error('Either apiKey or jwtToken must be provided');
+      throw new Error('Either apiKey and apiSecret, or jwtToken, must be provided');
+    }
+
+    if (config.apiKey && !config.apiSecret) {
+      throw new Error('apiSecret is required with apiKey: the API refuses a key sent without its secret');
     }
 
     this.http = new HttpClient(config);

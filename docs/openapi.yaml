@@ -18,6 +18,10 @@ components:
       type: apiKey
       in: header
       name: X-API-Key
+    apiSecret:
+      type: apiKey
+      in: header
+      name: X-API-Secret
     metricsToken:
       type: http
       scheme: bearer
@@ -1811,6 +1815,7 @@ paths:
       security:
         -
           apiKey: []
+          apiSecret: []
   '/api/license/features/{feature}':
     get:
       tags:
@@ -1840,6 +1845,7 @@ paths:
       security:
         -
           apiKey: []
+          apiSecret: []
   /api/license/health:
     get:
       tags:
@@ -1862,6 +1868,7 @@ paths:
       security:
         -
           apiKey: []
+          apiSecret: []
   /api/license/quotas:
     get:
       tags:
@@ -1884,6 +1891,7 @@ paths:
       security:
         -
           apiKey: []
+          apiSecret: []
   /api/license/status:
     get:
       tags:
@@ -1920,6 +1928,7 @@ paths:
       security:
         -
           apiKey: []
+          apiSecret: []
   /api/metrics:
     get:
       tags:
@@ -2580,6 +2589,7 @@ paths:
       security:
         -
           apiKey: []
+          apiSecret: []
       description: 'Requires scope: invoice.submit'
   '/api/v1/compliance/status/{invoiceId}':
     get:
@@ -2610,6 +2620,7 @@ paths:
       security:
         -
           apiKey: []
+          apiSecret: []
       description: 'Requires scope: compliance.status'
   '/api/v1/compliance/submit/{invoiceId}':
     post:
@@ -2640,6 +2651,7 @@ paths:
       security:
         -
           apiKey: []
+          apiSecret: []
       description: 'Requires scope: invoice.submit'
   '/api/v1/compliance/validate/{invoiceId}':
     post:
@@ -2670,6 +2682,7 @@ paths:
       security:
         -
           apiKey: []
+          apiSecret: []
       description: 'Requires scope: invoice.submit'
   /api/v1/dashboard:
     get:
@@ -2693,6 +2706,7 @@ paths:
       security:
         -
           apiKey: []
+          apiSecret: []
   /api/v1/dashboard/health:
     get:
       tags:
@@ -2715,6 +2729,7 @@ paths:
       security:
         -
           apiKey: []
+          apiSecret: []
   /api/v1/dashboard/usage:
     get:
       tags:
@@ -2737,6 +2752,7 @@ paths:
       security:
         -
           apiKey: []
+          apiSecret: []
   /api/v1/invoices:
     get:
       tags:
@@ -2759,6 +2775,7 @@ paths:
       security:
         -
           apiKey: []
+          apiSecret: []
       description: 'Requires scope: invoice.read'
     post:
       tags:
@@ -2837,6 +2854,7 @@ paths:
       security:
         -
           apiKey: []
+          apiSecret: []
       description: 'Requires scope: invoice.submit'
   '/api/v1/invoices/{invoice}':
     get:
@@ -2867,6 +2885,7 @@ paths:
       security:
         -
           apiKey: []
+          apiSecret: []
       description: 'Requires scope: invoice.read'
     put:
       tags:
@@ -2952,6 +2971,7 @@ paths:
       security:
         -
           apiKey: []
+          apiSecret: []
       description: 'Requires scope: invoice.submit'
     delete:
       tags:
@@ -2981,6 +3001,7 @@ paths:
       security:
         -
           apiKey: []
+          apiSecret: []
       description: 'Requires scope: invoice.cancel'
   '/api/v1/pipeline/status/{invoiceId}':
     get:
@@ -3011,6 +3032,7 @@ paths:
       security:
         -
           apiKey: []
+          apiSecret: []
       description: 'Requires scope: compliance.status'
   /api/v1/pipeline/submit:
     post:
@@ -3102,6 +3124,7 @@ paths:
       security:
         -
           apiKey: []
+          apiSecret: []
       description: 'Requires scope: invoice.submit'
   /api/v1/webhooks:
     get:
@@ -3125,6 +3148,7 @@ paths:
       security:
         -
           apiKey: []
+          apiSecret: []
       description: 'Requires scope: webhook.manage'
     post:
       tags:
@@ -3147,6 +3171,7 @@ paths:
       security:
         -
           apiKey: []
+          apiSecret: []
       description: 'Requires scope: webhook.manage'
   '/api/v1/webhooks/{webhook}':
     get:
@@ -3177,6 +3202,7 @@ paths:
       security:
         -
           apiKey: []
+          apiSecret: []
       description: 'Requires scope: webhook.manage'
     put:
       tags:
@@ -3206,6 +3232,7 @@ paths:
       security:
         -
           apiKey: []
+          apiSecret: []
       description: 'Requires scope: webhook.manage'
     delete:
       tags:
@@ -3235,6 +3262,7 @@ paths:
       security:
         -
           apiKey: []
+          apiSecret: []
       description: 'Requires scope: webhook.manage'
   /api/webhooks:
     get:

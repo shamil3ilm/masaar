@@ -166,6 +166,9 @@ class HttpClient
     private $apiKey;
 
     /** @var string|null */
+    private $apiSecret;
+
+    /** @var string|null */
     private $jwtToken;
 
     /** @var int */
@@ -175,10 +178,12 @@ class HttpClient
         string $baseUrl,
         ?string $apiKey = null,
         ?string $jwtToken = null,
-        int $timeout = 30
+        int $timeout = 30,
+        ?string $apiSecret = null
     ) {
         $this->baseUrl = rtrim($baseUrl, '/');
         $this->apiKey = $apiKey;
+        $this->apiSecret = $apiSecret;
         $this->jwtToken = $jwtToken;
         $this->timeout = $timeout;
     }
@@ -191,7 +196,9 @@ class HttpClient
         ];
 
         if ($this->apiKey !== null) {
+            // Both, always: the API refuses a key sent without its secret.
             $headers[] = 'X-API-Key: '.$this->apiKey;
+            $headers[] = 'X-API-Secret: '.($this->apiSecret ?? '');
         } elseif ($this->jwtToken !== null) {
             $headers[] = 'Authorization: Bearer '.$this->jwtToken;
         }
@@ -579,6 +586,7 @@ class WebhooksResource
  * $client = new MasaarClient([
  *     'base_url' => 'https://api.masaar.sa',
  *     'api_key' => 'your_api_key',
+ *     'api_secret' => 'your_api_secret',
  * ]);
  *
  * $invoice = $client->invoices->create(
@@ -607,6 +615,7 @@ class MasaarClient
      * @param  array  $config  [
      *                         'base_url' => string (required),
      *                         'api_key' => string (optional),
+     *                         'api_secret' => string (required with api_key),
      *                         'jwt_token' => string (optional),
      *                         'timeout' => int (default: 30),
      *                         ]
@@ -618,14 +627,19 @@ class MasaarClient
         }
 
         if (! isset($config['api_key']) && ! isset($config['jwt_token'])) {
-            throw new InvalidArgumentException('Either api_key or jwt_token must be provided');
+            throw new InvalidArgumentException('Either api_key and api_secret, or jwt_token, must be provided');
+        }
+
+        if (isset($config['api_key']) && ! isset($config['api_secret'])) {
+            throw new InvalidArgumentException('api_secret is required with api_key: the API refuses a key sent without its secret');
         }
 
         $this->http = new HttpClient(
             $config['base_url'],
             $config['api_key'] ?? null,
             $config['jwt_token'] ?? null,
-            $config['timeout'] ?? 30
+            $config['timeout'] ?? 30,
+            $config['api_secret'] ?? null
         );
 
         $this->invoices = new InvoicesResource($this->http);

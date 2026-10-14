@@ -34,12 +34,14 @@ use Masaar\InvoiceLine;
 $client = new MasaarClient([
     'base_url' => 'http://localhost:8000',  // Your server URL
     'api_key' => 'your_api_key',
+    'api_secret' => 'your_api_secret',
 ]);
 
 // For production, use your deployed server URL:
 // $client = new MasaarClient([
 //     'base_url' => 'https://your-domain.com',
 //     'api_key' => 'your_api_key',
+//     'api_secret' => 'your_api_secret',
 // ]);
 
 // Create an invoice
@@ -77,6 +79,7 @@ Add to your `config/services.php`:
 'masaar' => [
     'url' => env('MASAAR_URL', 'http://localhost:8000'),
     'key' => env('MASAAR_API_KEY'),
+    'secret' => env('MASAAR_API_SECRET'),
 ],
 ```
 
@@ -86,6 +89,7 @@ Add to your `.env`:
 # Local development
 MASAAR_URL=http://localhost:8000
 MASAAR_API_KEY=your_api_key
+MASAAR_API_SECRET=your_api_secret
 
 # Production (update when deployed)
 # MASAAR_URL=https://your-domain.com
@@ -111,6 +115,7 @@ class MasaarServiceProvider extends ServiceProvider
             return new MasaarClient([
                 'base_url' => config('services.masaar.url'),
                 'api_key' => config('services.masaar.key'),
+                'api_secret' => config('services.masaar.secret'),
             ]);
         });
     }

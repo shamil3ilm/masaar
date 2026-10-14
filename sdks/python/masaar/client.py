@@ -9,7 +9,8 @@ Usage:
 
     client = MasaarClient(
         base_url="https://api.masaar.sa",
-        api_key="your_api_key"
+        api_key="your_api_key",
+        api_secret="your_api_secret"
     )
 
     # Create invoice
@@ -102,9 +103,10 @@ class InvoiceLine:
 class HttpClient:
     """HTTP client abstraction supporting requests and httpx."""
 
-    def __init__(self, base_url: str, api_key: str = None, jwt_token: str = None, timeout: int = 30):
+    def __init__(self, base_url: str, api_key: str = None, jwt_token: str = None, timeout: int = 30, api_secret: str = None):
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
+        self.api_secret = api_secret
         self.jwt_token = jwt_token
         self.timeout = timeout
 
@@ -121,7 +123,9 @@ class HttpClient:
             "Accept": "application/json",
         }
         if self.api_key:
+            # Both, always: the API refuses a key sent without its secret.
             headers["X-API-Key"] = self.api_key
+            headers["X-API-Secret"] = self.api_secret or ""
         elif self.jwt_token:
             headers["Authorization"] = f"Bearer {self.jwt_token}"
         return headers
@@ -364,7 +368,8 @@ class MasaarClient:
     Usage:
         client = MasaarClient(
             base_url="https://api.masaar.sa",
-            api_key="your_api_key"
+            api_key="your_api_key",
+            api_secret="your_api_secret"
         )
 
         # Create and submit invoice
@@ -395,11 +400,15 @@ class MasaarClient:
         api_key: str = None,
         jwt_token: str = None,
         timeout: int = 30,
+        api_secret: str = None,
     ):
         if not api_key and not jwt_token:
-            raise ValueError("Either api_key or jwt_token must be provided")
+            raise ValueError("Either api_key and api_secret, or jwt_token, must be provided")
 
-        self._http = HttpClient(base_url, api_key, jwt_token, timeout)
+        if api_key and not api_secret:
+            raise ValueError("api_secret is required with api_key: the API refuses a key sent without its secret")
+
+        self._http = HttpClient(base_url, api_key, jwt_token, timeout, api_secret)
 
         # Resources
         self.invoices = InvoicesResource(self._http)

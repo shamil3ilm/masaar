@@ -36,13 +36,15 @@ import { MasaarClient, InvoiceLine } from 'masaar';
 // For local development
 const client = new MasaarClient({
   baseUrl: 'http://localhost:8000',  // Your server URL
-  apiKey: 'your_api_key'
+  apiKey: 'your_api_key',
+  apiSecret: 'your_api_secret'
 });
 
 // For production, use your deployed server URL:
 // const client = new MasaarClient({
 //   baseUrl: 'https://your-domain.com',
-//   apiKey: 'your_api_key'
+//   apiKey: 'your_api_key',
+//   apiSecret: 'your_api_secret'
 // });
 
 // Create an invoice
@@ -76,7 +78,8 @@ const { MasaarClient } = require('masaar');
 // For local development
 const client = new MasaarClient({
   baseUrl: 'http://localhost:8000',  // Your server URL
-  apiKey: 'your_api_key'
+  apiKey: 'your_api_key',
+  apiSecret: 'your_api_secret'
 });
 
 // Create invoice
@@ -98,10 +101,12 @@ import { MasaarClient } from 'masaar';
 // .env.local:
 // NEXT_PUBLIC_MASAAR_URL=http://localhost:8000
 // MASAAR_API_KEY=your_api_key
+// MASAAR_API_SECRET=your_api_secret
 
 const client = new MasaarClient({
   baseUrl: process.env.NEXT_PUBLIC_MASAAR_URL!,
-  apiKey: process.env.MASAAR_API_KEY!
+  apiKey: process.env.MASAAR_API_KEY!,
+  apiSecret: process.env.MASAAR_API_SECRET!
 });
 
 export async function createInvoice(formData: FormData) {
@@ -127,10 +132,12 @@ import { MasaarClient } from 'masaar';
 // .env:
 // VITE_MASAAR_URL=http://localhost:8000
 // VITE_MASAAR_API_KEY=your_api_key
+// VITE_MASAAR_API_SECRET=your_api_secret
 
 const client = new MasaarClient({
   baseUrl: import.meta.env.VITE_MASAAR_URL,
-  apiKey: import.meta.env.VITE_MASAAR_API_KEY
+  apiKey: import.meta.env.VITE_MASAAR_API_KEY,
+  apiSecret: import.meta.env.VITE_MASAAR_API_SECRET
 });
 
 async function submitInvoice() {
@@ -151,9 +158,11 @@ const app = express();
 // Configure via environment variables
 // MASAAR_URL=http://localhost:8000
 // MASAAR_API_KEY=your_api_key
+// MASAAR_API_SECRET=your_api_secret
 const client = new MasaarClient({
   baseUrl: process.env.MASAAR_URL || 'http://localhost:8000',
-  apiKey: process.env.MASAAR_API_KEY
+  apiKey: process.env.MASAAR_API_KEY,
+  apiSecret: process.env.MASAAR_API_SECRET
 });
 
 app.post('/invoices', async (req, res) => {
