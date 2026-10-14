@@ -63,11 +63,6 @@ class OfflineReplayTest extends TestCase
             ['privateKey' => $credentials['privateKey'], 'pcsid' => $credentials['certificate'], 'secret' => 'device-secret']
         );
 
-        Http::fake(['*' => Http::response([
-            'clearanceStatus' => 'CLEARED',
-            'validationResults' => ['status' => 'PASS'],
-        ])]);
-
         $this->invoice = $this->issued();
 
         $queued = app(OfflineQueue::class)->queue(
@@ -82,6 +77,8 @@ class OfflineReplayTest extends TestCase
 
     public function test_accepted_item_marks_invoice_accepted(): void
     {
+        $this->authorityAccepts();
+
         $this->replay();
 
         $this->assertSame(OfflineQueue::STATE_COMPLETED, $this->item->fresh()->state);
@@ -94,6 +91,8 @@ class OfflineReplayTest extends TestCase
      */
     public function test_unrecorded_acceptance_is_not_requeued(): void
     {
+        $this->authorityAccepts();
+
         Invoice::updating(fn (Invoice $invoice) => $invoice->isDirty('status')
             ? throw new \RuntimeException('invoice store down')
             : null);
@@ -125,6 +124,8 @@ class OfflineReplayTest extends TestCase
      */
     public function test_an_accepted_invoice_is_not_resent(): void
     {
+        $this->authorityAccepts();
+
         // The verdict, as InvoiceVerdict::record would have written it.
         Invoice::withoutTenantScope(fn () => $this->invoice->update(['status' => InvoiceStatus::Accepted]));
 
@@ -138,6 +139,60 @@ class OfflineReplayTest extends TestCase
             Http::recorded(fn (Request $request) => str_contains($request->url(), '/invoices/')),
             'a document the authority had already accepted was sent again'
         );
+    }
+
+    /**
+     * A refusal is the authority's answer, and it is final.
+     *
+     * The drain treated every unsuccessful response alike: the item went back
+     * to pending and the document was sent again until the attempts ran out.
+     * The refusal was recorded nowhere, so the invoice stayed issued with its
+     * submission in flight - and once the item gave up, the stale-submission
+     * recovery saw no live queue item and filed the same refused document
+     * again. A refusal is now recorded as one is on every other path.
+     */
+    public function test_a_rejection_is_final(): void
+    {
+        Http::fake(['*' => Http::response([
+            'clearanceStatus' => 'NOT_CLEARED',
+            'validationResults' => [
+                'status' => 'ERROR',
+                'errorMessages' => [['code' => 'BR-KSA-37', 'message' => 'The seller address building number must contain 4 digits.']],
+            ],
+        ], 400)]);
+
+        $this->replay();
+        $this->replay();
+
+        $this->assertSame(InvoiceStatus::Rejected, $this->invoice->fresh()->status);
+        $this->assertNotSame(OfflineQueue::STATE_PENDING, $this->item->fresh()->state);
+        $this->assertCount(
+            1,
+            Http::recorded(fn (Request $request) => str_contains($request->url(), '/invoices/')),
+            'a refused document was sent again'
+        );
+    }
+
+    /**
+     * A busy authority has not looked at the document, so it goes back in
+     * the queue and the invoice says nothing about it yet.
+     */
+    public function test_a_busy_authority_is_retried(): void
+    {
+        Http::fake(['*' => Http::response(['message' => 'Service Unavailable'], 503)]);
+
+        $this->replay();
+
+        $this->assertSame(OfflineQueue::STATE_PENDING, $this->item->fresh()->state);
+        $this->assertSame(InvoiceStatus::Issued, $this->invoice->fresh()->status);
+    }
+
+    private function authorityAccepts(): void
+    {
+        Http::fake(['*' => Http::response([
+            'clearanceStatus' => 'CLEARED',
+            'validationResults' => ['status' => 'PASS'],
+        ])]);
     }
 
     private function replay(): void
