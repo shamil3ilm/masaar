@@ -436,10 +436,17 @@ jobs:
   # On a schedule and on request rather than on every push: it depends on a
   # service outside this repository, and a failure means either a regression
   # here or ZATCA being down. Blocking merges on the second would be wrong.
+  #
+  # A push whose commit message carries [sandbox] runs it too, so a change to
+  # the filing path can be put in front of the authority before it merges
+  # rather than at three the next morning.
   sandbox:
     name: ZATCA sandbox round trip
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    if: >-
+      github.event_name == 'schedule'
+      || github.event_name == 'workflow_dispatch'
+      || (github.event_name == 'push' && contains(github.event.head_commit.message, '[sandbox]'))
 
     steps:
       - name: Checkout repository
@@ -505,6 +512,30 @@ jobs:
 
           grep -q 'All 6 documents were accepted' submit.log || {
             echo "::error title=Submission incomplete::The step did not report six acceptances."
+            exit 1
+          }
+
+      # Everything above is the CLI's own building, signing and sending. None
+      # of it is the code a taxpayer's invoice goes through - Submitter issuing
+      # it, CredentialStore finding the device, FatooraClient sending it, the
+      # ledger and InvoiceVerdict recording the answer - so this files through
+      # that path, with the certificate onboarding just obtained, stored the
+      # way API onboarding stores it.
+      #
+      # Its own SQLite database and a sandbox environment: .env says
+      # production, and the boot guard refuses a sandbox authority there.
+      - name: File through the platform's own path
+        env:
+          APP_ENV: local
+          ZATCA_ENVIRONMENT: sandbox
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ${{ github.workspace }}/database/sandbox.sqlite
+        run: |
+          touch database/sandbox.sqlite
+          php artisan migrate --force
+          php artisan fatoora:sandbox-filing | tee filing.log
+          grep -q 'Both invoices were accepted' filing.log || {
+            echo "::error title=Platform filing refused::The platform's own clearance or reporting path did not get both invoices accepted. The table above carries what the authority said."
             exit 1
           }
 
