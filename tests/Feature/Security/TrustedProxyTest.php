@@ -31,12 +31,29 @@ class TrustedProxyTest extends TestCase
      */
     public function test_the_deployment_names_its_proxy(): void
     {
-        putenv('TRUSTED_PROXIES=172.16.0.0/12');
+        // Set where a deployment's environment arrives, not only through
+        // putenv: env() reads $_SERVER and $_ENV first, so a blank
+        // TRUSTED_PROXIES= in a .env built from .env.example - as CI's is -
+        // would win over a putenv value and hide what the file reads.
+        $saved = [$_SERVER['TRUSTED_PROXIES'] ?? null, $_ENV['TRUSTED_PROXIES'] ?? null];
+        $_SERVER['TRUSTED_PROXIES'] = $_ENV['TRUSTED_PROXIES'] = '172.16.0.0/12';
 
         try {
             $config = require base_path('config/trustedproxy.php');
         } finally {
-            putenv('TRUSTED_PROXIES');
+            [$server, $env] = $saved;
+
+            if ($server === null) {
+                unset($_SERVER['TRUSTED_PROXIES']);
+            } else {
+                $_SERVER['TRUSTED_PROXIES'] = $server;
+            }
+
+            if ($env === null) {
+                unset($_ENV['TRUSTED_PROXIES']);
+            } else {
+                $_ENV['TRUSTED_PROXIES'] = $env;
+            }
         }
 
         $this->assertSame('172.16.0.0/12', $config['proxies']);
