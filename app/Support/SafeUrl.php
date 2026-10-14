@@ -59,28 +59,45 @@ final class SafeUrl
      */
     public static function reject(string $url, string $allowlistKey): ?string
     {
+        return self::decide($url, $allowlistKey)[0];
+    }
+
+    /**
+     * The decision, and the address it was made about.
+     *
+     * Deciding and then letting the HTTP client resolve the name again leaves
+     * a gap: a name can answer with a public address to the check and a
+     * private one to the connection a moment later. A caller that connects to
+     * the returned address - and only to it - closes that gap. Null when there
+     * is nothing to pin: the host is a literal address, or an allowlisted name
+     * whose operator vouched for it.
+     *
+     * @return array{0: string|null, 1: string|null} [why it was refused, the address to connect to]
+     */
+    public static function decide(string $url, string $allowlistKey): array
+    {
         $parts = parse_url($url);
 
         if ($parts === false || empty($parts['host'])) {
-            return 'URL could not be parsed.';
+            return ['URL could not be parsed.', null];
         }
 
         $scheme = strtolower($parts['scheme'] ?? '');
-        $host = $parts['host'];
+        $host = trim($parts['host'], '[]');
 
         if ($scheme !== 'https') {
-            return "Scheme '{$scheme}' is not permitted; https only.";
+            return ["Scheme '{$scheme}' is not permitted; https only.", null];
         }
 
         $allowed = (array) config($allowlistKey, []);
 
         if ($allowed !== []) {
             return self::hostMatches($host, $allowed)
-                ? null
-                : "Host '{$host}' is not on the allowlist.";
+                ? [null, null]
+                : ["Host '{$host}' is not on the allowlist.", null];
         }
 
-        return self::rejectByAddress($host);
+        return self::decideByAddress($host);
     }
 
     /**
@@ -120,29 +137,29 @@ final class SafeUrl
      * All of them are checked because a name can resolve to both a public and
      * a private address, and the fetch may use either.
      *
-     * @return string|null Reason for refusal, or null if the host is fetchable.
+     * @return array{0: string|null, 1: string|null} [reason for refusal, address to pin]
      */
-    private static function rejectByAddress(string $host): ?string
+    private static function decideByAddress(string $host): array
     {
-        $addresses = filter_var($host, FILTER_VALIDATE_IP)
-            ? [$host]
-            : (gethostbynamel($host) ?: []);
+        $literal = filter_var($host, FILTER_VALIDATE_IP) !== false;
+
+        $addresses = $literal ? [$host] : (gethostbynamel($host) ?: []);
 
         if ($addresses === []) {
             // Refused rather than passed through: an unresolvable name here
             // would be resolved again by the fetch itself, which could answer
             // differently. Distinguished from a private address so a DNS
             // outage is not misreported as an attack.
-            return "Host '{$host}' could not be resolved.";
+            return ["Host '{$host}' could not be resolved.", null];
         }
 
         foreach ($addresses as $address) {
             if (self::isBlocked($address)) {
-                return "Host '{$host}' resolves to a non-public address ({$address}).";
+                return ["Host '{$host}' resolves to a non-public address ({$address}).", null];
             }
         }
 
-        return null;
+        return [null, $literal ? null : $addresses[0]];
     }
 
     private static function isBlocked(string $address): bool

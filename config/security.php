@@ -28,6 +28,19 @@ return [
     )),
 
     /*
+    | Hosts a tenant's webhook may point at.
+    |
+    | A webhook is a URL the tenant chooses and the platform calls, so it gets
+    | the same check as a revocation endpoint. Empty is the usual setting -
+    | customers' endpoints are not known in advance - and means https only,
+    | resolving only to public addresses. A deployment that serves known ERPs
+    | can name them here and refuse everything else.
+    */
+    'webhook_hosts' => array_values(array_filter(
+        array_map('trim', explode(',', (string) env('WEBHOOK_ALLOWED_HOSTS', '')))
+    )),
+
+    /*
     |--------------------------------------------------------------------------
     | Outbound Fetch Limits
     |--------------------------------------------------------------------------

@@ -129,7 +129,7 @@ class SubmissionPathTest extends TestCase
 
         Webhook::withoutTenantScope(fn () => Webhook::create([
             'org_id' => $this->organization->id,
-            'url' => 'https://erp.test/hooks',
+            'url' => 'https://203.0.113.20/hooks',
             'secret' => 'shhh',
             'events' => ['invoice.cleared'],
             'is_active' => true,

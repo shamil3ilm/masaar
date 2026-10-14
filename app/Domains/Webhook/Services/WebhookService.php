@@ -6,6 +6,7 @@ namespace App\Domains\Webhook\Services;
 
 use App\Domains\Webhook\Models\Webhook;
 use App\Domains\Webhook\Models\WebhookLog;
+use App\Support\SafeUrl;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -95,8 +96,36 @@ class WebhookService
 
         $startTime = microtime(true);
 
+        // Checked here as well as when the URL was saved: an endpoint saved
+        // before the check existed, or a name whose DNS has changed since,
+        // would otherwise be called wherever it points now - the cloud
+        // metadata service, Redis, the database. Recorded, so the tenant can
+        // see why their endpoint stopped receiving.
+        [$refusal, $address] = SafeUrl::decide($webhook->url, 'security.webhook_hosts');
+
+        if ($refusal !== null) {
+            $this->record($webhook, [
+                'event' => $event,
+                'payload' => $body,
+                'response_status' => 0,
+                'response_body' => 'Not sent: '.$refusal,
+                'duration_ms' => 0,
+                'success' => false,
+            ]);
+
+            Log::warning('Webhook delivery refused', [
+                'webhook_id' => $webhook->id,
+                'reason' => $refusal,
+            ]);
+
+            return false;
+        }
+
         try {
             $response = Http::timeout(30)
+                // A redirect would take the request somewhere the check above
+                // never looked. A 3xx is an answer, and an unsuccessful one.
+                ->withOptions(['allow_redirects' => false, ...$this->pinned($webhook->url, $address)])
                 ->withHeaders([
                     'Content-Type' => 'application/json',
                     'X-Webhook-ID' => $deliveryId,
@@ -137,6 +166,28 @@ class WebhookService
 
             return false;
         }
+    }
+
+    /**
+     * Connect to the address SafeUrl approved, and only that one.
+     *
+     * Without it the client resolves the name again, and a name can answer
+     * with a public address to the check and a private one to the connection.
+     *
+     * @return array<string, mixed>
+     */
+    private function pinned(string $url, ?string $address): array
+    {
+        if ($address === null) {
+            return [];
+        }
+
+        $parts = parse_url($url);
+        $port = $parts['port'] ?? 443;
+        $host = $parts['host'] ?? '';
+        $target = str_contains($address, ':') ? '['.$address.']' : $address;
+
+        return ['curl' => [CURLOPT_RESOLVE => [$host.':'.$port.':'.$target]]];
     }
 
     /**

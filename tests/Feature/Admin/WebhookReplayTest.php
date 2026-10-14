@@ -50,9 +50,9 @@ class WebhookReplayTest extends TestCase
      */
     public function test_a_delivery_can_be_replayed(): void
     {
-        Http::fake(['acme.test/*' => Http::response('{"received":true}', 200)]);
+        Http::fake(['203.0.113.10/*' => Http::response('{"received":true}', 200)]);
 
-        $webhook = $this->endpoint($this->organization('Acme Trading'), 'https://acme.test/hooks/masaar');
+        $webhook = $this->endpoint($this->organization('Acme Trading'), 'https://203.0.113.10/hooks/masaar');
         $delivery = $this->delivery($webhook, ['response_status' => 503, 'success' => false]);
 
         $response = $this->replay($webhook, $delivery);
@@ -72,7 +72,7 @@ class WebhookReplayTest extends TestCase
         $this->assertTrue($replayed?->success);
 
         Http::assertSent(function ($request) {
-            return $request->url() === 'https://acme.test/hooks/masaar'
+            return $request->url() === 'https://203.0.113.10/hooks/masaar'
                 && $request['event'] === 'invoice.cleared'
                 && $request['data'] === ['invoice_number' => 'INV-9001'];
         });
@@ -93,7 +93,7 @@ class WebhookReplayTest extends TestCase
     {
         Http::fake(fn () => throw new ConnectionException('cURL error 28: Operation timed out'));
 
-        $webhook = $this->endpoint($this->organization('Acme Trading'), 'https://acme.test/hooks/masaar');
+        $webhook = $this->endpoint($this->organization('Acme Trading'), 'https://203.0.113.10/hooks/masaar');
         $delivery = $this->delivery($webhook, ['response_status' => 500, 'success' => false]);
 
         $response = $this->replay($webhook, $delivery);
@@ -123,7 +123,7 @@ class WebhookReplayTest extends TestCase
     {
         Http::fake();
 
-        $acme = $this->endpoint($this->organization('Acme Trading'), 'https://acme.test/hooks/masaar');
+        $acme = $this->endpoint($this->organization('Acme Trading'), 'https://203.0.113.10/hooks/masaar');
         $rawafid = $this->endpoint($this->organization('Rawafid Logistics'), 'https://rawafid.test/webhooks/zatca');
         $delivery = $this->delivery($acme, ['response_status' => 503, 'success' => false]);
 
@@ -163,11 +163,11 @@ class WebhookReplayTest extends TestCase
      */
     public function test_a_disabled_endpoint_is_not_replayed(): void
     {
-        Http::fake(['acme.test/*' => Http::response('{"received":true}', 200)]);
+        Http::fake(['203.0.113.10/*' => Http::response('{"received":true}', 200)]);
 
         $webhook = $this->endpoint(
             $this->organization('Acme Trading'),
-            'https://acme.test/hooks/masaar',
+            'https://203.0.113.10/hooks/masaar',
             active: false,
             failures: 10,
         );

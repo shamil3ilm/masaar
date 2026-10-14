@@ -62,7 +62,7 @@ class WebhookDeliveryTest extends TestCase
 
         Event::dispatch(new InvoiceCleared($this->submission()));
 
-        Http::assertSent(fn ($request) => $request->url() === 'https://erp.test/hooks');
+        Http::assertSent(fn ($request) => $request->url() === 'https://203.0.113.20/hooks');
     }
 
     /**
@@ -129,7 +129,7 @@ class WebhookDeliveryTest extends TestCase
     {
         Webhook::withoutTenantScope(fn () => Webhook::create([
             'org_id' => $this->organization->id,
-            'url' => 'https://erp.test/hooks',
+            'url' => 'https://203.0.113.20/hooks',
             'secret' => 'shhh',
             'events' => $events,
             'is_active' => $active,

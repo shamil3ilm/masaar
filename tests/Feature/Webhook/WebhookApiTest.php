@@ -60,11 +60,11 @@ class WebhookApiTest extends TestCase
     public function test_store_returns_secret_once(): void
     {
         $response = $this->api()->postJson('/api/webhooks', [
-            'url' => 'https://erp.test/hooks',
+            'url' => 'https://203.0.113.20/hooks',
             'events' => ['invoice.cleared'],
         ])
             ->assertCreated()
-            ->assertJsonPath('data.webhook.url', 'https://erp.test/hooks')
+            ->assertJsonPath('data.webhook.url', 'https://203.0.113.20/hooks')
             ->assertJsonPath('data.webhook.events', ['invoice.cleared'])
             ->assertJsonPath('data.webhook.is_active', true)
             ->assertJsonPath('message', 'Webhook created. Save the secret - it will not be shown again.');
@@ -98,7 +98,7 @@ class WebhookApiTest extends TestCase
         $webhook = $this->webhook($this->acme, ['is_active' => false, 'failure_count' => 10]);
 
         $this->api()->putJson("/api/webhooks/{$webhook->id}", [
-            'url' => 'https://erp.test/new',
+            'url' => 'https://203.0.113.21/new',
             'is_active' => true,
         ])
             ->assertOk()
@@ -108,7 +108,7 @@ class WebhookApiTest extends TestCase
                 'message' => 'Webhook updated',
                 'data' => ['webhook' => [
                     'id' => $webhook->id,
-                    'url' => 'https://erp.test/new',
+                    'url' => 'https://203.0.113.21/new',
                     'events' => ['invoice.cleared'],
                     'is_active' => true,
                 ]],
@@ -118,7 +118,7 @@ class WebhookApiTest extends TestCase
 
         $this->assertTrue($stored->is_active);
         $this->assertSame(0, $stored->failure_count);
-        $this->assertSame('https://erp.test/new', $stored->url);
+        $this->assertSame('https://203.0.113.21/new', $stored->url);
     }
 
     public function test_other_edits_keep_failures(): void
@@ -165,13 +165,13 @@ class WebhookApiTest extends TestCase
     {
         $theirs = $this->webhook($this->rival);
 
-        $this->api()->putJson("/api/webhooks/{$theirs->id}", ['url' => 'https://evil.test/'])->assertNotFound();
+        $this->api()->putJson("/api/webhooks/{$theirs->id}", ['url' => 'https://203.0.113.66/'])->assertNotFound();
         $this->api()->postJson("/api/webhooks/{$theirs->id}/rotate-secret")->assertNotFound();
         $this->api()->deleteJson("/api/webhooks/{$theirs->id}")->assertNotFound();
 
         $stored = $this->reload($theirs);
 
-        $this->assertSame('https://erp.test/hooks', $stored->url);
+        $this->assertSame('https://203.0.113.20/hooks', $stored->url);
         $this->assertSame('old-secret', $stored->secret);
     }
 
@@ -184,7 +184,7 @@ class WebhookApiTest extends TestCase
     {
         $webhook = (new Webhook)->forceFill([
             'org_id' => $organization->id,
-            'url' => 'https://erp.test/hooks',
+            'url' => 'https://203.0.113.20/hooks',
             'secret' => 'old-secret',
             'events' => ['invoice.cleared'],
             'is_active' => true,

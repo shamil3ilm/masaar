@@ -94,7 +94,7 @@ class WebhookRecordingTest extends TestCase
     {
         $webhook = (new Webhook)->forceFill([
             'org_id' => $this->organization->id,
-            'url' => 'https://erp.test/hooks',
+            'url' => 'https://203.0.113.20/hooks',
             'secret' => 'shhh',
             'events' => ['invoice.cleared'],
             'is_active' => true,

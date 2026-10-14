@@ -4,6 +4,7 @@ namespace App\Domains\Webhook\Http\Controllers;
 
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Webhook\Models\Webhook;
+use App\Domains\Webhook\Rules\PublicEndpoint;
 use App\Domains\Webhook\Services\Subscriptions;
 use App\Domains\Webhook\Services\WebhookService;
 use App\Http\Controllers\Controller;
@@ -55,7 +56,7 @@ class WebhookController extends Controller
     public function store(Request $request): JsonResponse
     {
         $request->validate([
-            'url' => ['required', 'url', 'max:500'],
+            'url' => ['required', 'url', 'max:500', new PublicEndpoint],
             'events' => ['required', 'array', 'min:1'],
             'events.*' => ['string', 'in:'.implode(',', WebhookService::EVENTS).',*'],
         ]);
@@ -109,7 +110,7 @@ class WebhookController extends Controller
         $webhook = $this->getWebhook($id);
 
         $request->validate([
-            'url' => ['sometimes', 'url', 'max:500'],
+            'url' => ['sometimes', 'url', 'max:500', new PublicEndpoint],
             'events' => ['sometimes', 'array', 'min:1'],
             'events.*' => ['string', 'in:'.implode(',', WebhookService::EVENTS).',*'],
             'is_active' => ['sometimes', 'boolean'],
