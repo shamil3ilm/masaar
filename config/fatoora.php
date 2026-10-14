@@ -496,21 +496,22 @@ return [
     | expiry to prevent submission failures.
     |
     */
-    'certificate_notifications' => [
-        // Enable expiry notifications
-        'enabled' => env('ZATCA_CERT_NOTIFICATIONS_ENABLED', true),
-
-        // Days before expiry to send notifications
-        'notify_at_days' => [30, 14, 7, 3, 1],
-
-        // Notification channels (mail, slack, webhook)
-        'channels' => explode(',', env('ZATCA_CERT_NOTIFY_CHANNELS', 'mail,webhook')),
-
-        // Block submissions on expiry (enforced by CertificateService)
-        'block_on_expiry' => true,
-
-        // Send daily reminders when < 7 days remaining
-        'daily_reminders_threshold_days' => 7,
-    ],
+    /*
+     * certificate_notifications moved to the settings table.
+     *
+     * 'enabled', 'notify_at_days' and 'channels' are now editable from
+     * /admin/settings, because the schedule a taxpayer wants warning on is an
+     * operational decision and these needed a release to change - channels
+     * needed an environment variable change, which needed a redeploy.
+     *
+     * Two keys are gone rather than moved, because nothing ever read either:
+     *
+     * 'block_on_expiry' was a toggle that toggled nothing. Submissions on an
+     * expired certificate are refused by SubmissionGuard, unconditionally,
+     * which is right: the authority would reject them anyway, so an operator
+     * who could switch that off would only be choosing to find out later.
+     *
+     * 'daily_reminders_threshold_days' was never consulted by the reminder.
+     */
 
 ];

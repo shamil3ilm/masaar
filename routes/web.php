@@ -9,6 +9,7 @@ use App\Domains\Invoice\Http\Controllers\PortalInvoiceFilingController;
 use App\Domains\Licensing\Http\Controllers\AdminLicenceController;
 use App\Domains\Organization\Http\Controllers\CustomerPortalController;
 use App\Domains\Platform\Http\Controllers\AdminController;
+use App\Domains\Platform\Http\Controllers\AdminSettingsController;
 use App\Domains\Webhook\Http\Controllers\AdminWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -74,6 +75,11 @@ Route::prefix('admin')->name('admin.')
         Route::post('/licences/{licenceId}/revoke', [AdminLicenceController::class, 'revoke'])->name('licences.revoke');
         Route::post('/licences/{licenceId}/rotate', [AdminLicenceController::class, 'rotate'])->name('licences.rotate');
         Route::get('/alerts', [AdminAlertController::class, 'index'])->name('alerts');
+
+        // The thresholds the dashboard judges by, and the certificate
+        // warning schedule. Both were only changeable by shipping.
+        Route::get('/settings', [AdminSettingsController::class, 'index'])->name('settings');
+        Route::post('/settings', [AdminSettingsController::class, 'update'])->name('settings.update');
 
         // The kill switches. Every one of these is a POST: they change what
         // the platform will do for every taxpayer on it, so none of them is

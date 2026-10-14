@@ -7,6 +7,7 @@ namespace App\Console\Commands;
 use App\Domains\Compliance\Fatoora\Services\CertificateService;
 use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Platform\Services\Settings;
 use App\Domains\Webhook\Events\CertificateExpiring;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -168,7 +169,19 @@ class CheckCertificateExpiry extends Command
         int $daysRemaining,
         Carbon $expiryDate
     ): void {
-        $notifyAtDays = config('fatoora.certificate_notifications.notify_at_days', [30, 14, 7, 3, 1]);
+        $settings = app(Settings::class);
+
+        // config('fatoora.certificate_notifications.enabled') existed and
+        // nothing read it, so there was no way to turn these off short of
+        // unscheduling the command.
+        if (! $settings->get('certificates.notifications_enabled')) {
+            return;
+        }
+
+        // A setting rather than a config literal: the schedule a taxpayer
+        // wants warning on is an operational decision, and this one could
+        // only be changed by shipping a release.
+        $notifyAtDays = $settings->get('certificates.notify_at_days');
 
         if (! in_array($daysRemaining, $notifyAtDays) && $daysRemaining > 0) {
             return;
@@ -180,7 +193,8 @@ class CheckCertificateExpiry extends Command
             return;
         }
 
-        $channels = config('fatoora.certificate_notifications.channels', ['mail', 'webhook']);
+        // Was an environment variable, so adding Slack meant a redeploy.
+        $channels = $settings->get('certificates.channels');
 
         foreach ($channels as $channel) {
             match ($channel) {

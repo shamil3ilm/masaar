@@ -16,20 +16,22 @@ use App\Domains\Compliance\Fatoora\Services\OfflineQueue;
  */
 class IssueDetector
 {
-    private const BACKLOG_WARNING = 100;
-
-    private const BACKLOG_CRITICAL = 500;
-
-    private const FAILED_CRITICAL = 50;
-
-    private const REJECTIONS_WARNING = 10;
-
+    /**
+     * The thresholds are settings, not constants.
+     *
+     * They were private consts here - 100 queued invoices is a warning, 500
+     * is critical, 50 failed items is critical, 10 rejections in a day is a
+     * warning. The right value for any of them is only learned by watching
+     * the platform run, and changing one meant editing this file, raising a
+     * pull request and shipping a release.
+     */
     public function __construct(
         private readonly Connectivity $connectivity,
         private readonly CircuitBreaker $circuitBreaker,
         private readonly PlatformStatus $status,
         private readonly QueueReport $queue,
         private readonly SubmissionLog $submissionLog,
+        private readonly Settings $settings,
     ) {}
 
     /**
@@ -80,13 +82,13 @@ class IssueDetector
     {
         $pending = $this->queue->countInState(OfflineQueue::STATE_PENDING);
 
-        if ($pending <= self::BACKLOG_WARNING) {
+        if ($pending <= $this->settings->get('alerts.backlog_warning')) {
             return null;
         }
 
         return [
             'type' => 'offline_queue',
-            'severity' => $pending > self::BACKLOG_CRITICAL ? 'critical' : 'warning',
+            'severity' => $pending > $this->settings->get('alerts.backlog_critical') ? 'critical' : 'warning',
             'message' => "Offline queue has {$pending} pending items",
         ];
     }
@@ -101,7 +103,7 @@ class IssueDetector
 
         return [
             'type' => 'failed_submissions',
-            'severity' => $failed > self::FAILED_CRITICAL ? 'critical' : 'warning',
+            'severity' => $failed > $this->settings->get('alerts.failed_critical') ? 'critical' : 'warning',
             'message' => "{$failed} failed items in offline queue",
         ];
     }
@@ -127,7 +129,7 @@ class IssueDetector
     {
         $rejections = $this->submissionLog->rejectionsSince(now()->subHours(24));
 
-        if ($rejections <= self::REJECTIONS_WARNING) {
+        if ($rejections <= $this->settings->get('alerts.rejections_warning')) {
             return null;
         }
 
