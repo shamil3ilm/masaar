@@ -137,7 +137,11 @@ check('running on mysql', DB::connection()->getDriverName() === 'mysql');
 
 $declared = 1; // the migrations table itself
 foreach (glob($root.'/database/migrations/*.php') ?: [] as $migration) {
-    $declared += preg_match_all('/Schema::create\(/', (string) file_get_contents($migration));
+    // What up() leaves behind: its creates less its drops. down() is not run,
+    // so a table it recreates is not declared - 0270 creates hash_chain_heads,
+    // drops hash_chain_state, and recreates the latter only in down().
+    $up = explode('function down()', (string) file_get_contents($migration))[0];
+    $declared += preg_match_all('/Schema::create\(/', $up) - preg_match_all('/Schema::(?:drop|dropIfExists)\(/', $up);
 }
 check('every declared table built', count(DB::select('SHOW TABLES')) === $declared,
     $declared.' declared, '.count(DB::select('SHOW TABLES')).' built');
