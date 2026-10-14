@@ -402,11 +402,13 @@ class WebhooksResource {
     // Node.js crypto
     if (typeof window === 'undefined') {
       const crypto = await import('crypto');
-      const expected = crypto
-        .createHmac('sha256', secret)
-        .update(payload)
-        .digest('hex');
-      return `sha256=${expected}` === signature;
+      const expected = Buffer.from(
+        'sha256=' + crypto.createHmac('sha256', secret).update(payload).digest('hex')
+      );
+      const given = Buffer.from(signature);
+      // Constant time: === returns at the first differing character, which
+      // tells an attacker how much of a forged signature was right.
+      return given.length === expected.length && crypto.timingSafeEqual(given, expected);
     }
 
     // Browser Web Crypto API
@@ -421,12 +423,28 @@ class WebhooksResource {
     const sig = await crypto.subtle.sign(
       'HMAC',
       key,
-      typeof payload === 'string' ? encoder.encode(payload) : payload
+      // Copied into a fresh Uint8Array: Web Crypto takes an ArrayBuffer-backed
+      // view, and a Node Buffer may sit on a shared one.
+      typeof payload === 'string' ? encoder.encode(payload) : new Uint8Array(payload)
     );
     const expected = Array.from(new Uint8Array(sig))
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
-    return `sha256=${expected}` === signature;
+    return WebhooksResource.constantTimeEquals(`sha256=${expected}`, signature);
+  }
+
+  /**
+   * Compare two strings without returning early on the first difference.
+   */
+  private static constantTimeEquals(a: string, b: string): boolean {
+    if (a.length !== b.length) {
+      return false;
+    }
+    let difference = 0;
+    for (let i = 0; i < a.length; i++) {
+      difference |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    }
+    return difference === 0;
   }
 }
 

@@ -365,8 +365,9 @@ class ComplianceResource {
 }
 
 class WebhooksResource {
-  final MasaarClient _client;
-  WebhooksResource(this._client);
+  // Everything here is static; the client is accepted so the resource is
+  // built like the others, and is not kept.
+  WebhooksResource(MasaarClient _);
 
   static const invoiceCreated = 'invoice.created';
   static const invoiceSubmitted = 'invoice.submitted';
@@ -380,7 +381,18 @@ class WebhooksResource {
     final hmacSha256 = Hmac(sha256, utf8.encode(secret));
     final digest = hmacSha256.convert(payload);
     final expected = 'sha256=${digest.toString()}';
-    return expected == signature;
+    return _constantTimeEquals(expected, signature);
+  }
+
+  // == returns at the first differing character, which tells an attacker
+  // how much of a forged signature was right.
+  static bool _constantTimeEquals(String a, String b) {
+    if (a.length != b.length) return false;
+    var difference = 0;
+    for (var i = 0; i < a.length; i++) {
+      difference |= a.codeUnitAt(i) ^ b.codeUnitAt(i);
+    }
+    return difference == 0;
   }
 }
 

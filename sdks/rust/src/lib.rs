@@ -198,20 +198,20 @@ impl MasaarClient {
         }
     }
 
-    pub fn invoices(&self) -> InvoicesResource {
+    pub fn invoices(&self) -> InvoicesResource<'_> {
         InvoicesResource { client: self }
     }
 
-    pub fn compliance(&self) -> ComplianceResource {
+    pub fn compliance(&self) -> ComplianceResource<'_> {
         ComplianceResource { client: self }
     }
 
-    pub fn webhooks(&self) -> WebhooksResource {
+    pub fn webhooks(&self) -> WebhooksResource<'_> {
         WebhooksResource { client: self }
     }
 
     async fn get<T: for<'de> Deserialize<'de>>(&self, endpoint: &str) -> Result<ApiResponse<T>, Error> {
-        self.request("GET", endpoint, None::<()>).await
+        self.request("GET", endpoint, None::<&()>).await
     }
 
     async fn post<T, B>(&self, endpoint: &str, body: Option<&B>) -> Result<ApiResponse<T>, Error>
@@ -334,6 +334,13 @@ impl<'a> WebhooksResource<'a> {
         mac.update(payload);
         let result = mac.finalize();
         let expected = format!("sha256={}", hex::encode(result.into_bytes()));
-        expected == signature
+        // Constant time: == returns at the first differing byte, which tells
+        // an attacker how much of a forged signature was right.
+        expected.len() == signature.len()
+            && expected
+                .bytes()
+                .zip(signature.bytes())
+                .fold(0u8, |acc, (a, b)| acc | (a ^ b))
+                == 0
     }
 }

@@ -220,9 +220,13 @@ module Masaar
     # Verify webhook signature
     def self.verify_signature(payload, signature, secret)
       expected = 'sha256=' + OpenSSL::HMAC.hexdigest('SHA256', secret, payload)
-      Rack::Utils.secure_compare(expected, signature)
-    rescue StandardError
-      expected == signature
+      # Constant time, with no dependency: Rack::Utils.secure_compare was
+      # called without Rack being required, so outside a Rack app it raised
+      # and the rescue fell back to ==, which returns at the first
+      # differing byte and tells an attacker how much of a forgery was right.
+      return false unless expected.bytesize == signature.to_s.bytesize
+
+      expected.bytes.zip(signature.to_s.bytes).reduce(0) { |acc, (a, b)| acc | (a ^ b) }.zero?
     end
   end
 end

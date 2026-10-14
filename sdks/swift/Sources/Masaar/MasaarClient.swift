@@ -266,7 +266,12 @@ public struct WebhooksResource {
         let key = SymmetricKey(data: Data(secret.utf8))
         let hmac = HMAC<SHA256>.authenticationCode(for: payload, using: key)
         let expected = "sha256=" + hmac.map { String(format: "%02x", $0) }.joined()
-        return expected == signature
+        // Constant time: == returns at the first differing byte, which tells
+        // an attacker how much of a forged signature was right.
+        let a = Array(expected.utf8)
+        let b = Array(signature.utf8)
+        guard a.count == b.count else { return false }
+        return zip(a, b).reduce(0) { $0 | ($1.0 ^ $1.1) } == 0
     }
 }
 

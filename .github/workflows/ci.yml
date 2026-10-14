@@ -773,9 +773,20 @@ jobs:
         if: matrix.sdk == 'dart'
         uses: dart-lang/setup-dart@v1
 
+      # On failure the compiler's last lines go into an annotation as well as
+      # the log, so the reason is readable from the run summary.
       - name: Build
         working-directory: sdks/${{ matrix.sdk }}
-        run: ${{ matrix.run }}
+        run: |
+          if ( ${{ matrix.run }} ) > "$RUNNER_TEMP/build.log" 2>&1; then
+            cat "$RUNNER_TEMP/build.log"
+            exit 0
+          fi
+          cat "$RUNNER_TEMP/build.log"
+          tail -n 40 "$RUNNER_TEMP/build.log" > "$RUNNER_TEMP/tail.log"
+          body=$(python3 -c 'import sys; print(open(sys.argv[1], encoding="utf-8", errors="replace").read().replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A"))' "$RUNNER_TEMP/tail.log")
+          echo "::error title=${{ matrix.sdk }} SDK does not build::$body"
+          exit 1
 
   # The same image, built on Arm.
   #

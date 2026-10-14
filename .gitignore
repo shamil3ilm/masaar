@@ -39,3 +39,20 @@ Thumbs.db
 
 # Python bytecode, e.g. from importing sdks/python locally
 __pycache__/
+
+# SDK build output, from compiling the SDKs locally or in CI. The SDKs are
+# libraries, so their lock files are not committed either.
+sdks/rust/target/
+sdks/rust/Cargo.lock
+sdks/typescript/node_modules/
+sdks/typescript/dist/
+sdks/typescript/package-lock.json
+sdks/dart/.dart_tool/
+sdks/dart/pubspec.lock
+sdks/kotlin/build/
+sdks/kotlin/.gradle/
+sdks/swift/.build/
+sdks/java/target/
+sdks/dotnet/Masaar/bin/
+sdks/dotnet/Masaar/obj/
+sdks/ruby/*.gem

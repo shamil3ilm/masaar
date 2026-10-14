@@ -231,7 +231,9 @@ class WebhooksResource(private val client: MasaarClient) {
             mac.init(SecretKeySpec(secret.toByteArray(), "HmacSHA256"))
             val hash = mac.doFinal(payload)
             val expected = "sha256=" + hash.joinToString("") { "%02x".format(it) }
-            return expected == signature
+            // Constant time: == returns at the first differing character,
+            // which tells an attacker how much of a forged signature was right.
+            return java.security.MessageDigest.isEqual(expected.toByteArray(), signature.toByteArray())
         }
     }
 }
