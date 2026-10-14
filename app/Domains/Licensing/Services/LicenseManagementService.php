@@ -10,7 +10,6 @@ use App\Domains\Licensing\Models\License;
 use App\Domains\Licensing\Models\LicenseAuditLog;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 

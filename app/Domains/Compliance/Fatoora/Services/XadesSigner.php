@@ -684,14 +684,6 @@ class XadesSigner
     }
 
     /**
-     * Convert PEM to DER format.
-     */
-    private function pemToDer(string $pem): string
-    {
-        return base64_decode($this->extractCertificateValue($pem));
-    }
-
-    /**
      * The bytes ZATCA digests for the SignedProperties reference.
      *
      * The element exactly as this document carries it, and nothing else. The
@@ -1251,7 +1243,7 @@ class XadesSigner
 
         // Check status (0 = granted, 1 = grantedWithMods)
         if ($status > 1) {
-            \Log::warning('TSA returned non-granted status', ['status' => $status]);
+            Log::warning('TSA returned non-granted status', ['status' => $status]);
 
             return null;
         }
