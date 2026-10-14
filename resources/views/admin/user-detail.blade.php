@@ -68,6 +68,14 @@
                 <dt class="text-sm font-medium text-gray-500">Email verified</dt>
                 <dd class="text-sm text-gray-900 mt-1">{{ $user->email_verified_at ? $when($user->email_verified_at) : 'Not verified' }}</dd>
             </div>
+            @if($user->is_platform_admin)
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Two-factor</dt>
+                    <dd class="text-sm text-gray-900 mt-1">
+                        {{ $user->two_factor_confirmed_at ? 'On since '.$when($user->two_factor_confirmed_at) : 'Not set up - required at next sign-in' }}
+                    </dd>
+                </div>
+            @endif
             <div>
                 <dt class="text-sm font-medium text-gray-500">Last sign-in</dt>
                 <dd class="text-sm text-gray-900 mt-1">{{ $user->last_sign_in_at ? $when($user->last_sign_in_at) : 'Never' }}</dd>
@@ -117,6 +125,16 @@
                       data-confirm="Reactivate {{ $user->email }}? They can sign in again straight away.">
                     @csrf
                     <x-ui.button variant="primary" class="w-full">Reactivate account</x-ui.button>
+                </form>
+            @endif
+
+            @if(! $isSelf && $user->is_platform_admin && $user->two_factor_confirmed_at)
+                <form method="POST" action="{{ route('admin.users.reset-two-factor', $user->id) }}" class="mt-6 border-t pt-6"
+                      data-confirm-tone="danger" data-confirm-action="Reset"
+                      data-confirm="Reset two-factor for {{ $user->email }}? Their app and recovery codes stop working, and they set it up again at their next sign-in. Do this only once you know it is really them.">
+                    @csrf
+                    <x-ui.button variant="outline" class="w-full">Reset two-factor</x-ui.button>
+                    <p class="mt-1 text-xs text-gray-500">For an admin who has lost their phone and their recovery codes.</p>
                 </form>
             @endif
         </div>

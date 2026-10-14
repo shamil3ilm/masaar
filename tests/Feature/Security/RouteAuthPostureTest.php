@@ -29,6 +29,11 @@ class RouteAuthPostureTest extends TestCase
     private const PUBLIC_ROUTES = [
         '/' => 'Marketing landing page',
         'login' => 'Credential entry form',
+        // Reached after the password, before sign-in: a platform admin is not
+        // authenticated until this checks the second factor. Each refuses
+        // anyone without a fresh pending sign-in in the session.
+        'login/two-factor' => 'Platform admin second factor, after the password',
+        'login/two-factor/setup' => 'Platform admin enrolment, after the password',
         'up' => 'Container health probe',
     ];
 

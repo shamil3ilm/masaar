@@ -26,6 +26,8 @@ class UserReport
         'users.email',
         'users.status',
         'users.is_platform_admin',
+        // When two-factor was confirmed - never the secret or the codes.
+        'users.two_factor_confirmed_at',
         'users.email_verified_at',
         'users.default_org_id',
         'users.created_at',

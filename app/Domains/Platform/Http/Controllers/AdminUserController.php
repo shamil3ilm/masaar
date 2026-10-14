@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Platform\Http\Controllers;
 
 use App\Domains\Auth\Services\AccountStatus;
+use App\Domains\Auth\Services\TwoFactor;
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
 use App\Domains\Platform\Services\UserReport;
 use App\Http\Controllers\Controller;
@@ -30,6 +31,7 @@ class AdminUserController extends Controller
     public function __construct(
         private readonly UserReport $users,
         private readonly AccountStatus $accounts,
+        private readonly TwoFactor $twoFactor,
     ) {}
 
     public function index(Request $request): View
@@ -76,6 +78,20 @@ class AdminUserController extends Controller
         $request->attributes->set(AuditAdminAction::TARGET, ['User', $userId]);
 
         return $this->outcome($this->accounts->reactivate($userId), 'Account reactivated.', $userId);
+    }
+
+    /**
+     * Let an admin who has lost their phone enrol again at their next sign-in.
+     */
+    public function resetTwoFactor(Request $request, string $userId): RedirectResponse
+    {
+        $request->attributes->set(AuditAdminAction::TARGET, ['User', $userId]);
+
+        return $this->outcome(
+            $this->twoFactor->resetFor($userId, (string) Auth::id()),
+            'Two-factor reset. They set it up again the next time they sign in.',
+            $userId,
+        );
     }
 
     private function outcome(?string $refusal, string $success, string $userId): RedirectResponse

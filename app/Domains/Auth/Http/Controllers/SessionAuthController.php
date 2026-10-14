@@ -65,11 +65,15 @@ class SessionAuthController extends Controller
 
         // `status` is part of the credential set so suspended and deleted
         // accounts cannot authenticate even with a valid password.
-        $attempted = Auth::attempt([
+        //
+        // Validated rather than attempted: attempt() signs the user in at
+        // once, remember-me cookie and all, and a platform admin is not signed
+        // in until their second factor is checked.
+        $attempted = Auth::validate([
             'email' => $credentials['email'],
             'password' => $credentials['password'],
             'status' => 'active',
-        ], $request->boolean('remember'));
+        ]);
 
         if (! $attempted) {
             RateLimiter::hit($throttleKey, self::LOCKOUT_SECONDS);
@@ -91,11 +95,27 @@ class SessionAuthController extends Controller
 
         RateLimiter::clear($throttleKey);
 
+        $user = Auth::getLastAttempted();
+
+        // A platform admin goes on to their second factor - or to enrolling
+        // one - and is signed in only once it is checked. TwoFactorController
+        // finishes the sign-in from what is kept here.
+        if ($user->isPlatformAdmin()) {
+            $request->session()->regenerate();
+            $request->session()->put(TwoFactorController::PENDING, [
+                'id' => (string) $user->getAuthIdentifier(),
+                'remember' => $request->boolean('remember'),
+                'until' => now()->addMinutes(TwoFactorController::PENDING_MINUTES)->timestamp,
+            ]);
+
+            return redirect()->route($user->hasTwoFactor() ? 'login.two-factor' : 'login.two-factor.setup');
+        }
+
+        Auth::login($user, $request->boolean('remember'));
+
         // Prevents session fixation: the pre-authentication session identifier
         // must not survive the privilege change.
         $request->session()->regenerate();
-
-        $user = Auth::user();
 
         $this->signIns->succeeded($user, 'console', [
             'platform_admin' => $user->isPlatformAdmin(),

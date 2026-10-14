@@ -91,6 +91,10 @@ class SessionAuthTest extends TestCase
         $this->assertNotSame($before, session()->getId());
     }
 
+    /**
+     * A platform admin's password leads to the second factor - here,
+     * enrolling one - not to the console. TwoFactorTest covers the rest.
+     */
     public function test_admin_lands_on_console(): void
     {
         User::factory()->platformAdmin()->create(['email' => 'admin@masaar.test']);
@@ -98,7 +102,9 @@ class SessionAuthTest extends TestCase
         $this->post('/login', [
             'email' => 'admin@masaar.test',
             'password' => 'password',
-        ])->assertRedirect(route('admin.dashboard'));
+        ])->assertRedirect(route('login.two-factor.setup'));
+
+        $this->assertGuest();
     }
 
     public function test_user_lands_on_portal(): void

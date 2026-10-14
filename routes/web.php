@@ -1,6 +1,7 @@
 <?php
 
 use App\Domains\Auth\Http\Controllers\SessionAuthController;
+use App\Domains\Auth\Http\Controllers\TwoFactorController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\AdminAlertController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\AdminKillSwitchController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceController;
@@ -35,6 +36,17 @@ Route::post('/login', [SessionAuthController::class, 'login'])
 Route::post('/logout', [SessionAuthController::class, 'logout'])
     ->middleware('auth')
     ->name('logout');
+
+// A platform admin's second factor, between the password and the console.
+// Throttled like the login itself, and per admin inside the controller.
+Route::get('/login/two-factor', [TwoFactorController::class, 'showChallenge'])->name('login.two-factor');
+Route::post('/login/two-factor', [TwoFactorController::class, 'challenge'])
+    ->middleware('throttle:10,1')
+    ->name('login.two-factor.attempt');
+Route::get('/login/two-factor/setup', [TwoFactorController::class, 'showSetup'])->name('login.two-factor.setup');
+Route::post('/login/two-factor/setup', [TwoFactorController::class, 'setup'])
+    ->middleware('throttle:10,1')
+    ->name('login.two-factor.confirm');
 
 /*
 |--------------------------------------------------------------------------
@@ -75,6 +87,7 @@ Route::prefix('admin')->name('admin.')
         // behind a confirmation and a required reason.
         Route::post('/users/{userId}/suspend', [AdminUserController::class, 'suspend'])->name('users.suspend');
         Route::post('/users/{userId}/reactivate', [AdminUserController::class, 'reactivate'])->name('users.reactivate');
+        Route::post('/users/{userId}/reset-two-factor', [AdminUserController::class, 'resetTwoFactor'])->name('users.reset-two-factor');
         Route::get('/audit', [AdminAuditController::class, 'index'])->name('audit');
         Route::get('/licences', [AdminLicenceController::class, 'index'])->name('licences.index');
         // Before the {licenceId} route below, or "create" is taken for an id

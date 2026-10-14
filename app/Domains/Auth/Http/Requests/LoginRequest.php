@@ -16,6 +16,9 @@ class LoginRequest extends FormRequest
         return [
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
+            // Required of a platform admin: the code from their authenticator
+            // app, or a recovery code.
+            'two_factor_code' => ['nullable', 'string', 'max:32'],
         ];
     }
 }

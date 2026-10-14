@@ -35,6 +35,8 @@ class User extends Authenticatable implements JWTSubject
     protected $hidden = [
         'password',
         'remember_token',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
     ];
 
     protected function casts(): array
@@ -43,6 +45,12 @@ class User extends Authenticatable implements JWTSubject
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_platform_admin' => 'boolean',
+            // Encrypted at rest: the secret is the second factor, and stored
+            // in the clear it is not a second factor for anyone who can read
+            // the database.
+            'two_factor_secret' => 'encrypted',
+            'two_factor_recovery_codes' => 'encrypted:array',
+            'two_factor_confirmed_at' => 'datetime',
         ];
     }
 
@@ -55,6 +63,14 @@ class User extends Authenticatable implements JWTSubject
     public function isPlatformAdmin(): bool
     {
         return $this->isActive() && $this->is_platform_admin === true;
+    }
+
+    /**
+     * Whether two-factor authentication is set up and confirmed.
+     */
+    public function hasTwoFactor(): bool
+    {
+        return $this->two_factor_confirmed_at !== null && $this->two_factor_secret !== null;
     }
 
     /**

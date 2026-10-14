@@ -39,6 +39,7 @@ export type ApiResult<T = unknown> = Success<T> | Paginated<T> | ApiError;
 export interface AuthLoginBody {
   email: string;
   password: string;
+  two_factor_code?: string;
 }
 
 export interface AuthRegisterBody {

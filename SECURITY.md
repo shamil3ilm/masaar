@@ -52,6 +52,7 @@ Masaar is committed to ensuring the security of our users and the integrity of t
 - **XSS Prevention**: Output encoding and Content Security Policy
 - **CSRF Protection**: Token-based CSRF protection on all forms
 - **Authentication**: Secure password hashing (bcrypt); passwords found in known breaches are refused at registration
+- **Two-factor**: Platform admins must use an authenticator app (TOTP) or a single-use recovery code, on the console and the API alike
 - **Authorization**: Role-based access control with organization isolation
 - **Session Security**: Encrypted sessions, secure cookies, HTTP-only flags
 
