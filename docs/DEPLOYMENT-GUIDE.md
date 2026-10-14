@@ -188,7 +188,9 @@ appendfsync everysec
 
 # Memory
 maxmemory 1gb
-maxmemory-policy allkeys-lru
+# Never evict: Redis holds the job queue, and an LRU policy silently drops a
+# filing job that has waited longest. noeviction refuses the write instead.
+maxmemory-policy noeviction
 
 # Security
 requirepass your-redis-password-here

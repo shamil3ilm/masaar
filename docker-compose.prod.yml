@@ -14,6 +14,13 @@ services:
   # Production Application Configuration
   # ==========================================================================
   app:
+    environment:
+      # Traefik is the only way in, so its forwarded headers name the client.
+      # Unset, every request seemed to come from Traefik: all clients shared
+      # one rate-limit bucket and every audit row named the proxy. These are
+      # Docker's default address pools for compose networks; narrow it to the
+      # network's actual subnet once it is known.
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12,192.168.0.0/16}
     deploy:
       mode: replicated
       replicas: 2
@@ -83,6 +90,10 @@ services:
   # ==========================================================================
   # Production Redis Configuration
   # ==========================================================================
+  # noeviction, not allkeys-lru: Redis holds the job queue, and an LRU
+  # policy drops whatever was touched least recently once memory is full - a
+  # filing job waiting its turn is exactly that, and it vanishes without an
+  # error. noeviction refuses the write instead, where it is seen.
   redis:
     deploy:
       resources:
@@ -95,9 +106,9 @@ services:
     command: >
       redis-server
       --appendonly yes
-      --requirepass ${REDIS_PASSWORD}
+      --requirepass ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
       --maxmemory 256mb
-      --maxmemory-policy allkeys-lru
+      --maxmemory-policy noeviction
     logging:
       driver: "json-file"
       options:

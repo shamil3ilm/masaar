@@ -22,7 +22,10 @@ services:
     container_name: masaar-app
     restart: unless-stopped
     ports:
-      - "${APP_PORT:-8000}:80"
+      # Loopback only. Docker writes its own firewall rules ahead of the
+      # host's, so an unaddressed mapping is reachable from anywhere; in
+      # production Traefik reaches the app over the compose network instead.
+      - "127.0.0.1:${APP_PORT:-8000}:80"
     environment:
       # Application
       APP_NAME: Masaar
@@ -41,7 +44,15 @@ services:
 
       # Redis (for queues and cache)
       REDIS_HOST: ${REDIS_HOST:-redis}
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-null}
+      # Required, and the same value the server below is started with. The
+      # two defaults disagreed - null here, masaar_redis there - so a stack
+      # started without one ran Redis under a published password the app
+      # could not use.
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+
+      # Reverse proxies whose X-Forwarded-* headers are believed. Empty trusts
+      # none; docker-compose.prod.yml sets it for Traefik.
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
       REDIS_PORT: ${REDIS_PORT:-6379}
 
       # Cache & Session
@@ -121,7 +132,7 @@ services:
     container_name: masaar-db
     restart: unless-stopped
     ports:
-      - "${DB_EXTERNAL_PORT:-3306}:3306"
+      - "127.0.0.1:${DB_EXTERNAL_PORT:-3306}:3306"
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MYSQL_DATABASE: ${DB_DATABASE:-masaar}
@@ -153,14 +164,14 @@ services:
     container_name: masaar-redis
     restart: unless-stopped
     ports:
-      - "${REDIS_EXTERNAL_PORT:-6379}:6379"
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-masaar_redis}
+      - "127.0.0.1:${REDIS_EXTERNAL_PORT:-6379}:6379"
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
     volumes:
       - masaar-redis:/data
     networks:
       - masaar-network
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-masaar_redis}", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
