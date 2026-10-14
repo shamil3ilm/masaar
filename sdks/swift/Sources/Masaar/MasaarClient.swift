@@ -39,9 +39,12 @@ public actor MasaarClient {
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
 
-    public let invoices: InvoicesResource
-    public let compliance: ComplianceResource
-    public let webhooks: WebhooksResource
+    // Computed rather than stored: each is a small value holding the actor,
+    // and storing them meant handing out self before init had finished,
+    // which Swift refuses. nonisolated, so callers reach them without await.
+    public nonisolated var invoices: InvoicesResource { InvoicesResource(client: self) }
+    public nonisolated var compliance: ComplianceResource { ComplianceResource(client: self) }
+    public nonisolated var webhooks: WebhooksResource { WebhooksResource(client: self) }
 
     public init(baseURL: String, apiKey: String, apiSecret: String, timeout: TimeInterval = 30) {
         self.baseURL = baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
@@ -57,10 +60,6 @@ public actor MasaarClient {
 
         self.decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
-
-        self.invoices = InvoicesResource(client: self)
-        self.compliance = ComplianceResource(client: self)
-        self.webhooks = WebhooksResource(client: self)
     }
 
     internal func get<T: Decodable>(_ endpoint: String) async throws -> ApiResponse<T> {
