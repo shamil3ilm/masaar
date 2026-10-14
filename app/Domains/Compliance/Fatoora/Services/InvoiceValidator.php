@@ -428,17 +428,6 @@ class InvoiceValidator
         // line behind an isset, so the check silently never ran. Marking a line
         // as free is a column, a request field and a rule — not a fix here.
 
-        // Buyer identification warning for B2B without VAT
-        if ($invoice->type->value === 'standard' && empty($invoice->buyer_vat_number)) {
-            // ZATCA accepts an alternative buyer identification in place of the
-            // VAT number (BT-46-1/BT-46-2). It is not modelled, so there is
-            // nothing to check for: this tested buyer_id and buyer_id_scheme,
-            // neither of which is a column, so both were always empty and the
-            // condition was always true. Stated plainly rather than dressed up
-            // as a check.
-            $warnings[] = 'B2B invoice without buyer VAT may be rejected; alternative buyer identification is not supported';
-        }
-
         return $warnings;
     }
 

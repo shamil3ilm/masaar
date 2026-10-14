@@ -87,6 +87,11 @@ class BuyerRuleTest extends TestCase
 
     /**
      * A business buyer that is not VAT-registered, identified another way.
+     *
+     * And the identifier is kept. This asserted the 201 and stopped, and
+     * InvoiceDrafter never wrote either field: the request was accepted on
+     * the strength of an identifier that was then discarded, so the invoice
+     * reached ZATCA with neither BT-48 nor BT-46 and failed BR-KSA-81 there.
      */
     public function test_a_buyer_id_replaces_vat(): void
     {
@@ -95,6 +100,8 @@ class BuyerRuleTest extends TestCase
             'buyer_id' => '1010101010',
             'buyer_id_scheme' => 'CRN',
         ]))->assertCreated();
+
+        $this->assertDatabaseHas('invoices', ['buyer_id' => '1010101010', 'buyer_id_scheme' => 'CRN']);
     }
 
     /**

@@ -59,6 +59,8 @@ class InvoiceDrafter
                 'buyer_name' => $data['buyer_name'],
                 'buyer_name_ar' => $data['buyer_name_ar'] ?? null,
                 'buyer_vat_number' => $data['buyer_vat_number'] ?? null,
+                'buyer_id' => $data['buyer_id'] ?? null,
+                'buyer_id_scheme' => $data['buyer_id_scheme'] ?? null,
                 'buyer_address' => $data['buyer_address'] ?? null,
                 'billing_ref' => $data['billing_ref'] ?? null,
                 'adjustment_reason' => $data['adjustment_reason'] ?? null,
