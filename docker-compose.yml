@@ -54,6 +54,15 @@ services:
       ZATCA_USERNAME: ${ZATCA_USERNAME}
       ZATCA_PASSWORD: ${ZATCA_PASSWORD}
 
+      # UAE FTA Configuration
+      #
+      # Forwarded for the same reason as ZATCA_ENVIRONMENT. Left out, the
+      # container read the config default of sandbox whatever .env said, and
+      # under APP_ENV=production the boot guard refused it - so config:cache
+      # failed in the entrypoint and the container restart-looped.
+      UAE_FTA_ENVIRONMENT: ${UAE_FTA_ENVIRONMENT:-sandbox}
+      UAE_FTA_API_KEY: ${UAE_FTA_API_KEY}
+
       # Signing credentials.
       #
       # This block is an allow-list: a variable set in the host .env and not

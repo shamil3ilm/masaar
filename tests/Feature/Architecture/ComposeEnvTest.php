@@ -48,6 +48,15 @@ class ComposeEnvTest extends TestCase
             ['ZATCA_RATE_LIMIT_PER_MINUTE', 'SubmissionGuard and the edge limiter would disagree'],
             ['RATE_LIMIT_ANONYMOUS', 'the credential endpoints would run at the config default'],
 
+            // Not silent: the boot guard refuses a sandbox authority under
+            // APP_ENV=production, so an unforwarded environment is a container
+            // that restart-loops whatever the host .env says.
+            ['ZATCA_ENVIRONMENT', 'the container would boot against the sandbox default and refuse to start'],
+            ['UAE_FTA_ENVIRONMENT', 'the container would boot against the sandbox default and refuse to start'],
+
+            // Silent default: none, so every UAE submission is unauthenticated.
+            ['UAE_FTA_API_KEY', 'the UAE authority would receive no API key'],
+
             // Silent default: errors reach a log file and nothing else.
             ['LOG_STACK', 'an alerting channel would never be written to'],
             ['LOG_SLACK_WEBHOOK_URL', 'the slack channel would have nowhere to post'],
