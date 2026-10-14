@@ -9,21 +9,26 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Re-encrypt every stored CSID credential under the application's current key.
+ * Re-encrypt every stored CSID credential under the current credential key.
  *
- * Rotating APP_KEY is routine security practice and, without this, it is an
- * outage: stored credentials stay encrypted under the old key, every decrypt
- * fails, and no tenant can sign. Nothing warns beforehand.
+ * The credentials are encrypted under ZATCA_CREDENTIAL_KEY, or APP_KEY when
+ * that is unset - see CredentialStore::cipher(). Rotating either is, without
+ * this, an outage: stored credentials stay encrypted under the old key, every
+ * decrypt fails, and no tenant can sign. Nothing warns beforehand.
  *
- * The order that works:
+ * The order that works, with ZATCA_CREDENTIAL_KEY set:
  *
- *   1. Put the new key in APP_KEY and keep the old one in APP_PREVIOUS_KEYS.
- *   2. Run this. Laravel decrypts with either key and writes back under the
+ *   1. Put the new key in ZATCA_CREDENTIAL_KEY and the old one in
+ *      ZATCA_CREDENTIAL_PREVIOUS_KEYS.
+ *   2. Run this. The store decrypts with either key and writes back under the
  *      new one.
- *   3. Once this reports no failures, drop APP_PREVIOUS_KEYS.
+ *   3. Once this reports no failures, empty ZATCA_CREDENTIAL_PREVIOUS_KEYS.
+ *
+ * With it unset the same applies to APP_KEY and APP_PREVIOUS_KEYS.
  *
  * Stopping after step 1 leaves the platform working but still dependent on the
- * old key, which is the state people mistake for a finished rotation.
+ * old key, which is the state people mistake for a finished rotation - and
+ * for a key that has leaked, still dependent on the leaked one.
  */
 class RotateCredentialKey extends Command
 {
@@ -48,7 +53,9 @@ class RotateCredentialKey extends Command
             '%s %d credential file(s) on disk "%s".',
             $dryRun ? 'Would re-encrypt' : 'Re-encrypting',
             count($paths),
-            config('fatoora.credentials.disk', 'local')
+            // fatoora.credentials.disk was read here, a key that does not
+            // exist, so this always said "local" - whatever disk was in use.
+            config('fatoora.signing.disk', 'local')
         ));
 
         $rotated = 0;
@@ -96,7 +103,7 @@ class RotateCredentialKey extends Command
         }
 
         if (! $dryRun) {
-            $this->info('All credentials re-encrypted. APP_PREVIOUS_KEYS can now be cleared.');
+            $this->info('All credentials re-encrypted. The previous key can now be removed.');
         }
 
         return self::SUCCESS;
