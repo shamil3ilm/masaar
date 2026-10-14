@@ -251,6 +251,7 @@ export const operations = {
   'dashboardController.submissions': { method: 'get', path: '/api/dashboard/submissions', security: ['bearerAuth'], scopes: [] },
   'dashboardController.usage': { method: 'get', path: '/api/dashboard/usage', security: ['bearerAuth'], scopes: [] },
   'getApiHealth': { method: 'get', path: '/api/health', security: [], scopes: [] },
+  'readinessController.show': { method: 'get', path: '/api/health/ready', security: [], scopes: [] },
   'invoiceController.index': { method: 'get', path: '/api/invoices', security: ['bearerAuth'], scopes: [] },
   'invoiceController.store': { method: 'post', path: '/api/invoices', security: ['bearerAuth'], scopes: [] },
   'invoiceController.show': { method: 'get', path: '/api/invoices/{invoice}', security: ['bearerAuth'], scopes: [] },

@@ -56,6 +56,13 @@ services:
       - "traefik.http.routers.masaar.entrypoints=websecure"
       - "traefik.http.routers.masaar.tls.certresolver=letsencrypt"
       - "traefik.http.services.masaar.loadbalancer.server.port=80"
+      # Stop routing to a replica that cannot reach its database or cache. The
+      # probe is anonymous, so it draws on RATE_LIMIT_ANONYMOUS (20 a minute)
+      # per source IP: two replicas every 10s is 12 a minute from Traefik.
+      # Shorten the interval or add replicas and that budget has to move too.
+      - "traefik.http.services.masaar.loadbalancer.healthcheck.path=/api/health/ready"
+      - "traefik.http.services.masaar.loadbalancer.healthcheck.interval=10s"
+      - "traefik.http.services.masaar.loadbalancer.healthcheck.timeout=3s"
 
   # ==========================================================================
   # Production Database Configuration

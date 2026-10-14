@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Domains\Auth\Http\Controllers\AuthController;
 use App\Domains\Licensing\Services\PlatformLicenseService;
 use App\Domains\Platform\Http\Controllers\MetricsController;
+use App\Domains\Platform\Http\Controllers\ReadinessController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -33,6 +34,11 @@ Route::middleware('rate.api')->group(function () {
         'version' => '1.0.0',
         'timestamp' => now()->toISOString(),
     ]));
+
+    // Liveness above, for the container: it answers while PHP does, because
+    // restarting the app does not bring a database back. Readiness here, for
+    // the load balancer: 503 when this instance could not serve a request.
+    Route::get('/health/ready', [ReadinessController::class, 'show']);
 
     // Lets a partner check its own licence before attempting real calls.
     Route::get('/license/status', function () {

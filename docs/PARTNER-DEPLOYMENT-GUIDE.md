@@ -215,7 +215,7 @@ docker-compose up -d --no-deps app
 docker-compose exec app php artisan migrate --force
 
 # 5. Verify
-curl https://api.masaar.example.sa/api/health
+curl https://api.masaar.example.sa/api/health/ready
 ```
 
 #### Rollback Procedure
@@ -253,10 +253,14 @@ docker run --rm -v masaar-redis:/data -v $(pwd):/backup alpine tar czf /backup/r
 
 | Endpoint | Purpose | Expected Response |
 |----------|---------|-------------------|
-| `GET /api/health` | Application health | `{"status":"ok"}` |
-| `GET /api/health/db` | Database connectivity | `{"status":"ok","latency_ms":5}` |
-| `GET /api/health/redis` | Redis connectivity | `{"status":"ok"}` |
-| `GET /api/health/zatca` | ZATCA API reachability | `{"status":"ok","environment":"sandbox"}` |
+| `GET /api/health` | Liveness: PHP is answering. The container health check uses it. | `200 {"status":"ok"}` |
+| `GET /api/health/ready` | Readiness: the database and the cache answer. Traefik routes only to replicas that pass. | `200 {"status":"ready","checks":{"database":"ok","cache":"ok"}}`, or `503` with `"not_ready"` and the failing check named |
+| `GET /api/metrics` | Prometheus scrape: latencies, queue depths, failed jobs, the ZATCA circuit breaker. Closed unless `METRICS_ALLOWED_IPS` or `METRICS_TOKEN` is set. | Prometheus text format |
+
+ZATCA reachability is deliberately not part of readiness: when ZATCA is down,
+invoices queue offline and the platform keeps serving. Watch
+`zatca_circuit_breaker_open` and `zatca_offline_queue_size` in the metrics
+instead.
 
 ---
 
