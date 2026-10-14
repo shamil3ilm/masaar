@@ -25,6 +25,7 @@ declare(strict_types=1);
  */
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Auth\Support\Totp;
 use App\Domains\Compliance\Fatoora\Services\DocumentBuilder;
 use App\Domains\Compliance\Fatoora\Services\Submitter;
 use App\Domains\Invoice\Models\Invoice;
@@ -167,8 +168,17 @@ check('organizations created with vat', $acme->fresh()->vat_number === '30000000
 
 $admin = User::create(['name' => 'Admin', 'email' => 'admin@masaar.test',
     'password' => Hash::make('secret-password'), 'status' => 'active']);
-$admin->forceFill(['is_platform_admin' => true])->save();
+// Enrolled in a second factor, as a platform admin must be before the console
+// lets them in. The secret is kept here so the harness can compute a code.
+$adminSecret = Totp::secret();
+$admin->forceFill([
+    'is_platform_admin' => true,
+    'two_factor_secret' => $adminSecret,
+    'two_factor_confirmed_at' => now(),
+])->save();
 check('platform admin created', $admin->fresh()->isPlatformAdmin());
+check('second factor stored encrypted',
+    DB::table('users')->where('id', $admin->id)->value('two_factor_secret') !== $adminSecret);
 
 echo "\n=== guards ===\n";
 foreach (['/admin', '/admin/organizations', '/portal', '/portal/submissions'] as $uri) {
@@ -259,7 +269,12 @@ check('failure audited', DB::table('audit_logs')->where('action', 'security.logi
 
 $good = send($kernel, 'POST', '/login',
     ['_token' => token($kernel), 'email' => 'admin@masaar.test', 'password' => 'secret-password']);
-check('login succeeds', $good->getStatusCode() === 302);
+check('password leads to the code', str_ends_with((string) $good->headers->get('Location'), '/login/two-factor'));
+check('a password alone is not in', send($kernel, 'GET', '/admin/organizations')->getStatusCode() === 302);
+
+$coded = send($kernel, 'POST', '/login/two-factor',
+    ['_token' => token($kernel), 'code' => Totp::code($adminSecret, time())]);
+check('login succeeds with the code', $coded->getStatusCode() === 302);
 check('success audited', DB::table('audit_logs')->where('action', 'security.login.succeeded')->count() >= 1);
 check('console reachable when signed in', send($kernel, 'GET', '/admin/organizations')->getStatusCode() === 200);
 
