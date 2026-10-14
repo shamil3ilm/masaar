@@ -20,7 +20,7 @@ k6 run --vus 100 --duration 5m stress-test-invoices.js
 | Scenario | Expected Behavior | Validation |
 |----------|------------------|------------|
 | 100 concurrent invoice submissions | All ICVs unique, sequential per org | Query `SELECT organization_id, COUNT(DISTINCT icv) FROM invoices GROUP BY organization_id` |
-| Redis failure during ICV allocation | Automatic fallback to DB transactions | Kill Redis, verify invoices continue with DB-level atomicity |
+| Cache or Redis failure during ICV allocation | Unaffected: allocation uses a database row lock | Stop the cache backend, verify invoices still issue with unique ICVs |
 | Millisecond-burst (10 invoices in 1ms) | Microsecond timestamps differentiate | Check `AtomicIcvManager` timestamps differ |
 
 ### 1.2 Multi-DC / Network Partition Simulation

@@ -22,7 +22,7 @@ In this model, **the partner provides all of the infrastructure**. Masaar provid
 | **Load Balancer** | HTTPS termination | With valid SSL certificate |
 | **DNS** | Subdomain | e.g., `api.example.com` |
 | **Monitoring** | Health checks | `/api/health` endpoint |
-| **Backup** | Daily automated | Database + Redis |
+| **Backup** | Daily automated | Database and credential store; see [BACKUP-AND-RESTORE.md](BACKUP-AND-RESTORE.md) |
 
 ### What Masaar Provides
 
@@ -41,10 +41,10 @@ In this model, **the partner provides all of the infrastructure**. Masaar provid
 
 ### Prerequisites
 
-- Docker 24+ and Docker Compose v2
+- Docker 24+ and Docker Compose 2.20+
 - Access to Masaar Docker registry (credentials provided)
 - MySQL 8.0 database (empty, will be migrated)
-- Redis 7+ instance
+- Redis 7+ only if you choose it for cache, sessions and queues; they use the database by default
 - Domain with SSL certificate
 
 ### Step 1: Pull the Docker Image
@@ -89,9 +89,13 @@ DB_DATABASE=masaar
 DB_USERNAME=masaar_user
 DB_PASSWORD=SECURE_PASSWORD_HERE
 
-# Redis (your Redis server)
-REDIS_HOST=redis.internal.example.com
-REDIS_PASSWORD=REDIS_PASSWORD_HERE
+# Cache, sessions and queues: the database by default
+CACHE_STORE=database
+SESSION_DRIVER=database
+QUEUE_CONNECTION=database
+# Or Redis: set the three above to redis, and
+# REDIS_HOST=redis.internal.example.com
+# REDIS_PASSWORD=REDIS_PASSWORD_HERE
 
 # ZATCA (sandbox for testing, production for live)
 ZATCA_ENVIRONMENT=sandbox
@@ -169,13 +173,13 @@ docker-compose logs -f app
 If the partner prefers to run everything in Docker:
 
 ```bash
-# Uses built-in MySQL and Redis containers
+# Uses the built-in MySQL container
 docker-compose up -d
 
 # All services run in isolated network
 # - app: Masaar application
 # - db: MySQL 8.0
-# - redis: Redis 7
+# - redis: Redis 7, only with COMPOSE_PROFILES=redis
 ```
 
 **Benefits:**
@@ -239,11 +243,11 @@ docker-compose exec db mysqldump -u root -p masaar > backup_$(date +%Y%m%d).sql
 docker-compose exec -T db mysql -u root -p masaar < backup_YYYYMMDD.sql
 ```
 
-#### Redis Backup
+#### Redis Backup (only when running the redis profile)
 
 ```bash
-# Redis automatically persists to appendonly.aof
-# Backup the volume:
+# Redis persists to appendonly.aof. With QUEUE_CONNECTION=redis it holds
+# queued jobs; back up the volume:
 docker run --rm -v masaar-redis:/data -v $(pwd):/backup alpine tar czf /backup/redis_backup.tar.gz /data
 ```
 

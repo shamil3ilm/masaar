@@ -36,7 +36,7 @@ Complete deployment guide for production-ready ZATCA e-invoicing infrastructure.
 | Service | Purpose | Critical |
 |---------|---------|----------|
 | MySQL 8.4+ | Primary database | ✅ YES |
-| Redis 7+ | Cache, queues, ICV locks | ✅ YES |
+| Redis 7+ | Cache, sessions and queues, if you choose it over the database (the default) | Optional |
 | Nginx | Web server | ✅ YES |
 | PHP 8.4-FPM | Application runtime | ✅ YES |
 | Supervisor | Queue workers | ✅ YES |
@@ -67,7 +67,6 @@ sudo apt install -y \
     php8.4-bcmath \
     php8.4-gmp \
     supervisor \
-    redis-server \
     certbot \
     python3-certbot-nginx
 
@@ -173,14 +172,26 @@ long_query_time = 1
 
 ---
 
-## 4. Redis Setup
+## 4. Redis Setup (optional)
+
+Cache, sessions and queues run on the database by default, and nothing in the
+platform requires Redis: ICV allocation and every other critical section use
+database row locks. Redis is worth adding when queue and cache traffic grows
+enough to want it off the database. Skip this section otherwise.
+
+```bash
+sudo apt install -y redis-server
+```
+
+Then set `CACHE_STORE`, `SESSION_DRIVER` and `QUEUE_CONNECTION` to `redis` in
+`.env` (see [Environment Configuration](#9-environment-configuration)).
 
 ### Configuration
 
 Edit `/etc/redis/redis.conf`:
 
 ```ini
-# Persistence (CRITICAL for ICV state)
+# Persistence: with QUEUE_CONNECTION=redis, Redis holds the job queue
 appendonly yes
 appendfsync everysec
 
@@ -224,7 +235,7 @@ Create `/etc/supervisor/conf.d/masaar.conf`:
 ;--------------------------------------------
 [program:masaar-zatca-submissions]
 process_name=%(program_name)s_%(process_num)02d
-command=php /var/www/masaar/artisan queue:work redis --queue=zatca-submissions --sleep=3 --tries=3 --max-time=3600 --memory=256
+command=php /var/www/masaar/artisan queue:work --queue=zatca-submissions --sleep=3 --tries=3 --max-time=3600 --memory=256
 autostart=true
 autorestart=true
 stopasgroup=true
@@ -242,7 +253,7 @@ stopwaitsecs=120
 ;--------------------------------------------
 [program:masaar-webhooks]
 process_name=%(program_name)s_%(process_num)02d
-command=php /var/www/masaar/artisan queue:work redis --queue=webhooks --sleep=3 --tries=5 --max-time=3600 --memory=128
+command=php /var/www/masaar/artisan queue:work --queue=webhooks --sleep=3 --tries=5 --max-time=3600 --memory=128
 autostart=true
 autorestart=true
 stopasgroup=true
@@ -260,7 +271,7 @@ stopwaitsecs=60
 ;--------------------------------------------
 [program:masaar-default]
 process_name=%(program_name)s_%(process_num)02d
-command=php /var/www/masaar/artisan queue:work redis --queue=default --sleep=3 --tries=3 --max-time=3600 --memory=128
+command=php /var/www/masaar/artisan queue:work --queue=default --sleep=3 --tries=3 --max-time=3600 --memory=128
 autostart=true
 autorestart=true
 stopasgroup=true
@@ -552,15 +563,17 @@ DB_USERNAME=masaar
 DB_PASSWORD=your-strong-password
 
 #--------------------------------------------
-# Redis (CRITICAL for ICV atomicity)
+# Cache, sessions and queues
 #--------------------------------------------
-REDIS_HOST=127.0.0.1
-REDIS_PASSWORD=your-redis-password
-REDIS_PORT=6379
+# The database by default. To use Redis (section 4), set all three to redis
+# and fill in the REDIS_* values below.
+CACHE_STORE=database
+QUEUE_CONNECTION=database
+SESSION_DRIVER=database
 
-CACHE_DRIVER=redis
-QUEUE_CONNECTION=redis
-SESSION_DRIVER=redis
+# REDIS_HOST=127.0.0.1
+# REDIS_PASSWORD=your-redis-password
+# REDIS_PORT=6379
 
 #--------------------------------------------
 # Storage (7-year retention)
@@ -684,9 +697,9 @@ else
     ((ERRORS++))
 fi
 
-# 3. Check Redis connection
-echo -n "Redis connection: "
-if php artisan tinker --execute="Redis::ping();" 2>/dev/null | grep -q "PONG"; then
+# 3. Check the database and cache answer, whichever drivers are configured
+echo -n "Readiness: "
+if curl -fsS http://localhost/api/health/ready >/dev/null; then
     echo "✅ OK"
 else
     echo "❌ FAIL"
@@ -889,7 +902,7 @@ $metrics = [
     'masaar_invoices_total' => Invoice::count(),
     'masaar_invoices_cleared' => Invoice::where('zatca_status', 'cleared')->count(),
     'masaar_invoices_failed' => Invoice::where('zatca_status', 'failed')->count(),
-    'masaar_queue_depth' => Redis::llen('queues:zatca-submissions'),
+    'masaar_queue_depth' => Queue::size('zatca-submissions'),
     'masaar_certificate_days_remaining' => $certificateService->getDaysUntilExpiry(),
 ];
 ```
@@ -1036,7 +1049,7 @@ php artisan fatoora:verify-hash-chain
 # Pause ZATCA submission workers
 sudo supervisorctl stop masaar-zatca-submissions:*
 
-# Jobs will accumulate in Redis
+# Jobs will accumulate in the queue
 # Resume when ZATCA is back
 sudo supervisorctl start masaar-zatca-submissions:*
 ```

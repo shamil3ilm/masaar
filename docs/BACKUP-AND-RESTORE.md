@@ -15,7 +15,7 @@ The code is not backed up. It lives in git and the image registry.
 | 01:30 | `backup:run` | Dumps MySQL as a consistent snapshot in one transaction, with no table locks, and gzips it. It zips the dump with `storage/app/private/zatca`, encrypts the zip with AES-256, opens it again to check it is readable, and uploads it to `BACKUP_DISKS`. |
 | 06:00 | `backup:monitor` | Raises an alert if the newest archive is more than a day old. That catches a scheduler that stopped, as well as a run that never started. |
 
-Every replica runs the scheduler, so each command is `onOneServer` and takes one shared Redis lock. You get one archive a night, not one per container.
+Every replica runs the scheduler, so each command is `onOneServer` and takes one lock in the shared cache, database or Redis. You get one archive a night, not one per container.
 
 Failures page through the alerts channel, and through its chat webhook once one is configured. Three things page: a failed run, a stale backup, and a run refused because `BACKUP_ARCHIVE_PASSWORD` is unset. A failed cleanup is logged as an error and does not page.
 
