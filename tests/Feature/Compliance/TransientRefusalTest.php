@@ -6,6 +6,7 @@ namespace Tests\Feature\Compliance;
 
 use App\Domains\Compliance\Fatoora\Client\FatooraClient;
 use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -71,6 +72,25 @@ class TransientRefusalTest extends TestCase
             $response->isRetryable(),
             "HTTP {$status} must be re-sendable. The document was never looked at."
         );
+    }
+
+    /**
+     * No answer at all is the plainest case of the authority not looking.
+     *
+     * A refused connection, a DNS failure or a cURL timeout never reaches a
+     * status, so the classification above never saw it: the client caught the
+     * exception and returned a failure with no code, and the ledger recorded
+     * an outage as a rejection.
+     */
+    public function test_an_unreachable_authority_is_retryable(): void
+    {
+        Http::fake(['*' => fn () => throw new ConnectionException('cURL error 28: Operation timed out')]);
+
+        $response = app(FatooraClient::class)->checkCompliance('<Invoice/>', 'hash', 'uuid');
+
+        $this->assertFalse($response->success);
+        $this->assertSame(ErrorCode::ZATCA_SERVICE_UNAVAILABLE, $response->errorCode);
+        $this->assertTrue($response->isRetryable(), 'Nothing reached the authority, so resending is safe.');
     }
 
     /**

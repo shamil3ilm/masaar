@@ -186,6 +186,16 @@ class FatooraClient
                 $this->transient($response),
             );
 
+        } catch (ConnectionException $e) {
+            // Nothing reached the authority, so nothing was refused. Without a
+            // code this was recorded as a rejection - and once the verdict is
+            // written to the invoice, an outage would mark it Rejected too.
+            Log::warning('ZATCA unreachable', [
+                'message' => $e->getMessage(),
+                'endpoint' => $endpoint,
+            ]);
+
+            return FatooraResponse::failed($e->getMessage(), errorCode: ErrorCode::ZATCA_SERVICE_UNAVAILABLE);
         } catch (\Exception $e) {
             Log::error('ZATCA API exception', [
                 'message' => $e->getMessage(),

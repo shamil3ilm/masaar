@@ -21,12 +21,19 @@ use Throwable;
  * The synchronous tracker and the queued job both send documents. Both take a
  * submission, move it through its states and record the authority's answer
  * through here, so the two paths cannot drift apart on either.
+ *
+ * That includes the answer's effect on the invoice. InvoiceVerdict was called
+ * only from Submitter::submit and the offline queue, and every route that
+ * files comes through here instead - so a cleared invoice stayed "issued" and
+ * the stamped copy ZATCA returned, the legal document for a standard invoice,
+ * was discarded.
  */
 class SubmissionLedger
 {
     public function __construct(
         private readonly ClearanceState $clearanceState,
         private readonly UsageMeteringService $usage,
+        private readonly InvoiceVerdict $verdict,
     ) {}
 
     /**
@@ -85,8 +92,9 @@ class SubmissionLedger
     /**
      * Record ZATCA's answer and return the state it produced.
      *
-     * Metering, the submission row, its idempotency record and the state log
-     * describe one answer, so they are written in one transaction.
+     * Metering, the submission row, its idempotency record, the invoice's
+     * verdict and the state log describe one answer, so they are written in
+     * one transaction.
      *
      * The answer is already final at the authority. A local failure here must
      * therefore not become a failure of the submission: a failed submission
@@ -168,6 +176,13 @@ class SubmissionLedger
         ]);
 
         $this->recordIdempotency($submission, $response);
+
+        // A retryable answer is the authority not looking, not a verdict:
+        // the submission goes to 'failed' to be resent and the invoice stays
+        // issued. Recording it would mark the invoice Rejected for an outage.
+        if (! $response->isRetryable() && $submission->invoice !== null) {
+            $this->verdict->record($submission->invoice, $response);
+        }
 
         $this->log($submission, $from, $state, 'zatca', [
             'clearance_status' => $response->clearanceStatus,
