@@ -42,7 +42,7 @@ jobs:
   # only the image build.
   changes:
     name: What changed
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       app: ${{ steps.diff.outputs.app }}
       sdks: ${{ steps.diff.outputs.sdks }}
@@ -94,7 +94,7 @@ jobs:
 
   test:
     name: Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout repository
@@ -137,7 +137,7 @@ jobs:
       # Alpine from the bundle rather than from a CDN, so the suite cannot
       # render a page without this.
       - name: Set up Node ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -160,7 +160,7 @@ jobs:
     name: MySQL (suite and end-to-end)
     needs: changes
     if: needs.changes.outputs.app == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     services:
       mysql:
@@ -211,7 +211,7 @@ jobs:
       # without a manifest. See the note in the test job. Before the end-to-end checks, not after:
       # those drive the consoles over real HTTP and render the same views.
       - name: Set up Node ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -293,7 +293,7 @@ jobs:
   # again — the second pass settles it.
   formatting:
     name: Formatting
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout repository
@@ -328,7 +328,7 @@ jobs:
     name: ZATCA conformance
     needs: changes
     if: needs.changes.outputs.app == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     env:
       SDK_URL: ${{ secrets.ZATCA_SDK_URL }}
@@ -550,7 +550,7 @@ jobs:
   # rather than at three the next morning.
   sandbox:
     name: ZATCA sandbox round trip
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: >-
       github.event_name == 'schedule'
       || github.event_name == 'workflow_dispatch'
@@ -652,7 +652,7 @@ jobs:
 
   security:
     name: Dependency audit
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout repository
@@ -683,7 +683,7 @@ jobs:
     name: Container image scan
     needs: changes
     if: needs.changes.outputs.container == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout repository
@@ -781,7 +781,7 @@ jobs:
 
       - name: Keep the report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: trivy-report
           path: trivy.json
@@ -799,7 +799,7 @@ jobs:
     name: SDK build (${{ matrix.sdk }})
     needs: changes
     if: needs.changes.outputs.sdks == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -834,7 +834,7 @@ jobs:
       # Kotlin 1.9's Gradle plugin predates Gradle 9, which the runner ships.
       - name: Set up Gradle
         if: matrix.sdk == 'kotlin'
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
         with:
           gradle-version: '8.7'
 
@@ -908,7 +908,7 @@ jobs:
     name: Compose stack starts
     needs: changes
     if: needs.changes.outputs.container == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout repository
@@ -975,7 +975,7 @@ jobs:
   # than about forms.
   zap:
     name: Dynamic scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
 
     services:
@@ -1028,7 +1028,7 @@ jobs:
       # public/build is gitignored, and the consoles render @vite - which throws
       # without a manifest. See the note in the test job.
       - name: Set up Node ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -1179,7 +1179,7 @@ jobs:
           echo "API report: $(wc -c < zap-out/zap-api-report.html) bytes"
       - name: Keep the report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: zap-report
           path: |
