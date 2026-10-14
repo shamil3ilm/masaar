@@ -133,7 +133,20 @@ class ProcessFatooraSubmission implements ShouldQueue
         // Checked here as well as before queueing, because the gap between the
         // two is exactly when an operator throws the switch. A job queued
         // before an incident would otherwise submit during it.
-        $killSwitch->assertNotEnabled(KillSwitch::SWITCH_SUBMISSION, (string) $this->submission->org_id);
+        //
+        // Stopped, not failed. Throwing here spent the job's retries in about
+        // seventy seconds and marked the submission permanently failed, so a
+        // stop of a few minutes failed every queued invoice for good and
+        // releasing it resent none of them. The submission stays queued;
+        // fatoora:recover-submissions dispatches it again until the switch is
+        // released and it can go.
+        if ($killSwitch->isEnabled(KillSwitch::SWITCH_SUBMISSION, (string) $this->submission->org_id)) {
+            Log::info('Submission held by the kill switch; it stays queued', [
+                'submission_id' => $this->submission->id,
+            ]);
+
+            return;
+        }
 
         $submission = $ledger->claim($this->submission, self::SENDABLE_STATES, 'queue_job');
 

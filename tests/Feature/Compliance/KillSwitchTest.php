@@ -17,6 +17,7 @@ use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Tests\Fixtures\SigningCredentials;
 use Tests\TestCase;
@@ -199,9 +200,18 @@ class KillSwitchTest extends TestCase
      * A job queued before the incident must not submit during it. The switch is
      * thrown in the gap between queueing and running, which is the whole reason
      * the job checks again rather than trusting the check made at queue time.
+     *
+     * And it must not fail either. The job threw, the queue retried at ten and
+     * sixty seconds, and after three tries - about seventy seconds - marked
+     * the submission permanently failed and told the tenant so. A stop of a
+     * few minutes failed every queued invoice for good, and releasing the
+     * switch resent none of them. The submission stays queued now, and
+     * fatoora:recover-submissions sends it once the switch is released.
      */
     public function test_queued_job_respects_a_later_switch(): void
     {
+        Http::fake();
+
         $submission = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::create([
             'invoice_id' => $this->invoice($this->organization, 'INV-2')->id,
             'org_id' => $this->organization->id,
@@ -211,9 +221,10 @@ class KillSwitchTest extends TestCase
 
         app(KillSwitch::class)->enable(KillSwitch::SWITCH_SUBMISSION, reason: 'incident');
 
-        $this->assertBlockedByKillSwitch(
-            fn () => $this->app->call([new ProcessFatooraSubmission($submission), 'handle'])
-        );
+        $this->app->call([new ProcessFatooraSubmission($submission), 'handle']);
+
+        Http::assertNothingSent();
+        $this->assertSame('queued', $submission->fresh()->state, 'a stop is not a failure');
     }
 
     /**
