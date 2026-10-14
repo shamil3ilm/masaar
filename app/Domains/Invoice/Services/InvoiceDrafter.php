@@ -56,7 +56,7 @@ class InvoiceDrafter
                 'currency' => $data['currency'] ?? 'SAR',
                 'exchange_rate' => $data['exchange_rate'] ?? null,
                 'payment_means_code' => $data['payment_means_code'] ?? '10',
-                'buyer_name' => $data['buyer_name'],
+                'buyer_name' => $data['buyer_name'] ?? null,
                 'buyer_name_ar' => $data['buyer_name_ar'] ?? null,
                 'buyer_vat_number' => $data['buyer_vat_number'] ?? null,
                 'buyer_id' => $data['buyer_id'] ?? null,

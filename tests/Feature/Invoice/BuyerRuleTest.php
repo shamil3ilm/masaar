@@ -57,6 +57,23 @@ class BuyerRuleTest extends TestCase
     }
 
     /**
+     * And with the field left out, which is how most clients say it.
+     *
+     * The drafter read buyer_name without a default. An explicit null got
+     * through; an absent key was a 500 on every walk-in sale an ERP sent
+     * without one - the case the optional name was made optional for.
+     */
+    public function test_a_walk_in_sale_needs_no_field(): void
+    {
+        $this->withToken($this->token)->postJson('/api/invoices', [
+            'invoice_number' => 'INV-'.uniqid(),
+            'type' => 'simplified',
+            'issue_date' => now()->toDateString(),
+            'lines' => [['description' => 'Item', 'quantity' => 1, 'unit_price' => 100]],
+        ])->assertCreated();
+    }
+
+    /**
      * Except where the exemption depends on who the buyer is.
      */
     public function test_a_healthcare_exemption_needs_a_name(): void
