@@ -67,7 +67,7 @@ class CrossDomainModelTest extends TestCase
         'Domains/Organization/Models/ComplianceProfile.php' => 'Invoice',
         'Domains/Organization/Models/Organization.php' => 'Invoice',
         'Domains/Pipeline/Services/PipelineResult.php' => 'Invoice',
-        'Domains/Pipeline/Services/PipelineService.php' => 'Organization',
+        'Domains/Pipeline/Services/PipelineService.php' => 'Invoice, Organization',
     ];
 
     public function test_domains_keep_their_models_to_themselves(): void

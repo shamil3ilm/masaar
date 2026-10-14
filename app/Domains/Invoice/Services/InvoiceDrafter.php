@@ -39,6 +39,18 @@ class InvoiceDrafter
      *                                 confirmed to belong to the organization;
      *                                 decides which certificate signs it.
      */
+    /**
+     * The invoice an earlier request created under this Idempotency-Key, if
+     * any. Outside the tenant scope because the organization is given.
+     */
+    public function createdUnder(string $organizationId, string $idempotencyKey): ?Invoice
+    {
+        return Invoice::withoutTenantScope(fn (): ?Invoice => Invoice::query()
+            ->where('org_id', $organizationId)
+            ->where('idempotency_key', $idempotencyKey)
+            ->first());
+    }
+
     public function draft(array $data, string $organizationId, ?string $branchId = null): Invoice
     {
         $totals = InvoiceTotals::of($data['lines'], (string) ($data['discount_amount'] ?? '0'));
@@ -66,6 +78,7 @@ class InvoiceDrafter
                 'adjustment_reason' => $data['adjustment_reason'] ?? null,
                 'notes' => $data['notes'] ?? null,
                 'erp_reference_id' => $data['erp_reference_id'] ?? null,
+                'idempotency_key' => $data['idempotency_key'] ?? null,
             ]);
 
             foreach (array_values($data['lines']) as $index => $line) {

@@ -63,7 +63,7 @@ class BuyerRuleTest extends TestCase
      * through; an absent key was a 500 on every walk-in sale an ERP sent
      * without one - the case the optional name was made optional for.
      */
-    public function test_a_walk_in_sale_needs_no_field(): void
+    public function test_walk_in_needs_no_buyer_field(): void
     {
         $this->withToken($this->token)->postJson('/api/invoices', [
             'invoice_number' => 'INV-'.uniqid(),

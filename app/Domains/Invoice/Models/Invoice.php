@@ -68,6 +68,8 @@ class Invoice extends Model
         'zatca_response',
         'notes',
         'erp_reference_id',
+        // The pipeline Idempotency-Key it was created under, so a retry finds it.
+        'idempotency_key',
         // ZATCA BT-3 invoice sub-type flags (bits 3-7)
         'is_third_party',
         'is_nominal',

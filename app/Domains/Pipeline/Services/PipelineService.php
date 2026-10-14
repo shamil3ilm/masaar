@@ -6,9 +6,12 @@ namespace App\Domains\Pipeline\Services;
 
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Services\InvoiceIssuer;
+use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Validation\ValidationException;
 
 /**
  * One ERP call: create the invoice, sign it, file it with the authority.
@@ -50,11 +53,31 @@ class PipelineService
     ): array {
         $organization = Organization::findOrFail($organizationId);
 
-        $invoice = $this->drafter->draft(
-            $data,
-            $organizationId,
-            $this->resolveBranch($branchId, $organizationId)
-        );
+        // A retry: answer with what the first call made, and do nothing again.
+        // The key only reached filing before, so the retry drafted a second
+        // invoice - colliding on the invoice number, or, with a fresh one,
+        // billing the sale twice.
+        if ($idempotencyKey !== null && ($earlier = $this->drafter->createdUnder($organizationId, $idempotencyKey))) {
+            return $this->replay($earlier, $data);
+        }
+
+        try {
+            $invoice = $this->drafter->draft(
+                [...$data, 'idempotency_key' => $idempotencyKey],
+                $organizationId,
+                $this->resolveBranch($branchId, $organizationId)
+            );
+        } catch (UniqueConstraintViolationException $e) {
+            // Two retries raced past the check above; the unique index let one
+            // draft. The other answers with that one.
+            $earlier = $idempotencyKey === null ? null : $this->drafter->createdUnder($organizationId, $idempotencyKey);
+
+            if ($earlier === null) {
+                throw $e;
+            }
+
+            return $this->replay($earlier, $data);
+        }
 
         $outcome = $this->issuer->issue(
             $invoice,
@@ -88,6 +111,36 @@ class PipelineService
                 'reporting_status' => $outcome->submission['reporting_status'] ?? null,
             ]
         );
+    }
+
+    /**
+     * What the first request with this key produced, as it stands now.
+     *
+     * A key names one request. Sent with a different invoice it is an
+     * integrator's bug, and answering with the other invoice would hide it.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     *
+     * @throws ValidationException
+     */
+    private function replay(Invoice $invoice, array $data): array
+    {
+        if ($invoice->invoice_number !== ($data['invoice_number'] ?? null)) {
+            throw ValidationException::withMessages([
+                'invoice_number' => 'This Idempotency-Key was already used for invoice '.$invoice->invoice_number
+                    .'. Send a new key for a new invoice.',
+            ]);
+        }
+
+        $submission = $invoice->latestSubmission;
+
+        return $this->result->build($invoice, [], [], $submission === null ? null : [
+            'submission_id' => $submission->id,
+            'state' => $submission->state,
+            'clearance_status' => $submission->clearance_status,
+            'reporting_status' => $submission->reporting_status,
+        ]);
     }
 
     /**
