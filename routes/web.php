@@ -137,7 +137,7 @@ Route::prefix('admin')->name('admin.')
 
 /*
 |--------------------------------------------------------------------------
-| Customer Portal Routes (Northwind, etc.)
+| Customer Portal Routes
 |--------------------------------------------------------------------------
 |
 | Tenant-scoped dashboard for customers to monitor their ZATCA compliance.

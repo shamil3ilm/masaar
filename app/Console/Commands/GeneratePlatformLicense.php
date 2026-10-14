@@ -17,7 +17,7 @@ use Illuminate\Console\Command;
 class GeneratePlatformLicense extends Command
 {
     protected $signature = 'license:generate
-                            {partner : Partner identifier (e.g., ACME, ACME)}
+                            {partner : Partner identifier (e.g., ACME)}
                             {--type=TRIAL : License type (TRIAL, PROD, DEV)}
                             {--days=30 : Number of days until expiration}
                             {--expires= : Specific expiration date (YYYY-MM-DD)}';

@@ -21,7 +21,7 @@ use Illuminate\View\View;
 /**
  * Customer Portal Controller.
  *
- * Provides a tenant-scoped dashboard for customers like Northwind.
+ * Provides a tenant-scoped dashboard for partner customers.
  *
  * The organization is resolved by PortalTenant from the authenticated
  * session's active memberships. Nothing here may read a tenant identifier from

@@ -30,7 +30,7 @@ return [
     | The platform license key provided by Masaar. Format:
     | {PARTNER}-{TYPE}-{EXPIRY_YYYYMMDD}-{SIGNATURE}
     |
-    | Example: ACME-TRIAL-20260303-a1b2c3d4
+    | Example: ACME-TRIAL-YYYYMMDD-a1b2c3d4
     |
     */
     'key' => env('PLATFORM_LICENSE_KEY'),

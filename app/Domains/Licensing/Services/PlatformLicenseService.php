@@ -160,7 +160,7 @@ class PlatformLicenseService
      * Validate license offline using embedded data.
      *
      * License key format: {PARTNER}-{TYPE}-{EXPIRY_YYYYMMDD}-{SIGNATURE}
-     * Example: ACME-TRIAL-20260303-a1b2c3d4
+     * Example: ACME-TRIAL-YYYYMMDD-a1b2c3d4
      */
     private function validateOffline(string $licenseKey): array
     {

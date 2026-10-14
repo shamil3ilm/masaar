@@ -99,7 +99,7 @@ class LicenceSecretTest extends TestCase
     {
         return License::createWithCredentials([
             'organization_name' => 'Northwind',
-            'contact_email' => 'ops@example.test',
+            'contact_email' => 'ops@northwind.test',
             'tier' => LicenseTier::Professional,
             'status' => LicenseStatus::Active,
         ])['license'];

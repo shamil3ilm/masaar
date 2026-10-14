@@ -41,7 +41,7 @@ class LicenceIssueTest extends TestCase
         $response->assertSessionHas('success', 'Licence issued.');
 
         $this->assertSame(LicenseTier::Professional, $licence->tier);
-        $this->assertSame('ops@example.test', $licence->contact_email);
+        $this->assertSame('ops@northwind.test', $licence->contact_email);
         $this->assertNotSame('', (string) $licence->api_key);
     }
 
@@ -108,7 +108,7 @@ class LicenceIssueTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.licences.create'))
             ->assertSee('Issue licence')
-            ->assertSee('ops@example.test')
+            ->assertSee('ops@northwind.test')
             ->assertSee('The organization name field is required.');
     }
 
@@ -154,7 +154,7 @@ class LicenceIssueTest extends TestCase
     {
         return [
             'organization_name' => 'Northwind',
-            'contact_email' => 'ops@example.test',
+            'contact_email' => 'ops@northwind.test',
             'tier' => LicenseTier::Professional->value,
             ...$overrides,
         ];

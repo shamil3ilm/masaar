@@ -14,8 +14,8 @@
  * 7. Add your signing secret as an environment variable: LICENSE_SECRET
  *
  * KV Data Structure:
- * Key: license key (e.g., "ACME-TRIAL-20260303-a1b2c3d4")
- * Value: JSON { "partner": "ACME", "type": "TRIAL", "expires": "2026-03-03", "revoked": false, "features": {...} }
+ * Key: license key (e.g., "ACME-TRIAL-YYYYMMDD-a1b2c3d4")
+ * Value: JSON { "partner": "ACME", "type": "TRIAL", "expires": "YYYY-MM-DD", "revoked": false, "features": {...} }
  */
 
 export default {

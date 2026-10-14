@@ -1,5 +1,5 @@
 # Masaar Monitoring Stack
-# Optional add-on for Northwind deployment
+# Optional add-on for a deployment
 #
 # Usage: docker-compose -f docker-compose.yml -f docker/monitoring/docker-compose.monitoring.yml up -d
 
