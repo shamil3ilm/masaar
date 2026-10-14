@@ -146,6 +146,16 @@ class FatooraOnboarding extends Command
         // This defaulted to simulation while the configuration defaulted to
         // sandbox, which is two answers to one question.
         $this->environment = (string) ($this->option('target') ?: config('fatoora.environment'));
+
+        // And the target is the environment for the whole run, not just the
+        // endpoint. The signer asks the configuration where it is - it lets the
+        // sandbox's shared certificate through and refuses a mismatched key
+        // anywhere else - so a production .env with --target=sandbox had the
+        // signer refusing the sandbox's own certificate. That is how the
+        // nightly round trip failed once .env.example said production.
+        if ($this->environment !== self::LOCAL) {
+            config(['fatoora.environment' => $this->environment]);
+        }
         $this->baseUrl = $this->environment === self::LOCAL
             ? self::LOCAL
             : (string) config(
