@@ -128,11 +128,40 @@ class Submitter
         // issuance per tenant — correct, and worth measuring if a tenant ever
         // issues fast enough to feel it. An advisory lock keyed on org_id
         // would free the row without changing the guarantee.
-        $complianceData = DB::transaction(function () use ($invoice, $organization, $credentials): array {
+        $complianceData = DB::transaction(function () use ($invoice, $organization, $credentials, $reissue): array {
             DB::table('organizations')
                 ->where('id', $invoice->org_id)
                 ->lockForUpdate()
                 ->first();
+
+            // Decided again here, on the row as it stands. The check above
+            // read the caller's copy before the lock: two requests issuing one
+            // draft both saw a draft, took the lock in turn, and the second -
+            // still holding icv = null - allocated another counter and
+            // re-signed a document already issued. Every issuance holds this
+            // lock, so the row read under it is final.
+            $invoice->refresh();
+
+            if ($invoice->status !== InvoiceStatus::Draft) {
+                if (! $reissue) {
+                    throw new FatooraException(
+                        "Invoice {$invoice->invoice_number} was issued by another request.",
+                        ErrorCode::VAL_INVOICE_ALREADY_ISSUED,
+                        ['invoice_id' => $invoice->id, 'invoice_number' => $invoice->invoice_number],
+                    );
+                }
+
+                // Asked to finish an issuance another request has finished:
+                // there is nothing left to do, and re-signing would be a
+                // second document under the same counter.
+                if ($invoice->icv !== null && $invoice->hash !== null) {
+                    return [
+                        'hash' => $invoice->hash,
+                        'qr_code' => $invoice->qr_code,
+                        'signed_xml' => $invoice->signed_xml,
+                    ];
+                }
+            }
 
             // A draft carries no counter. Anything already numbered keeps its
             // number, so re-issuing a document does not move it in the chain.
