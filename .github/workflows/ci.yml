@@ -31,6 +31,67 @@ env:
   NODE_VERSION: '24'
 
 jobs:
+  # What this push touched, so the expensive jobs run only when something
+  # they check has changed. A docs commit used to start some twenty jobs.
+  #
+  # Tests, formatting and the dependency audit always run - the
+  # documentation ratchets live in Tests. Everything runs on a schedule, by
+  # hand, when the workflow itself changes, and whenever the previous commit
+  # cannot be found (a new branch, a force-push): the nightly run catches
+  # whatever a path filter misses, such as application code that breaks
+  # only the image build.
+  changes:
+    name: What changed
+    runs-on: ubuntu-latest
+    outputs:
+      app: ${{ steps.diff.outputs.app }}
+      sdks: ${{ steps.diff.outputs.sdks }}
+      container: ${{ steps.diff.outputs.container }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Classify the changed files
+        id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.sha }}
+        run: |
+          everything() {
+            echo "Running everything: $1"
+            for key in app sdks container; do echo "$key=true" >> "$GITHUB_OUTPUT"; done
+            exit 0
+          }
+
+          case "$EVENT" in
+            push) base="$PUSH_BEFORE" ;;
+            pull_request) base="$PR_BASE" ;;
+            *) everything "$EVENT" ;;
+          esac
+
+          if [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+            everything "no previous commit to compare with"
+          fi
+
+          files=$(git diff --name-only "$base" "$HEAD")
+          echo "$files"
+
+          if echo "$files" | grep -q '^\.github/'; then
+            everything "the workflow changed"
+          fi
+
+          classify() {
+            if echo "$files" | grep -qE "$2"; then value=true; else value=false; fi
+            echo "$1=$value" | tee -a "$GITHUB_OUTPUT"
+          }
+          classify app '^(app|bootstrap|config|database|lang|public|resources|routes|tests)/|^(artisan|phpunit\.xml|composer\.json|composer\.lock)$'
+          classify sdks '^sdks/'
+          classify container '^(docker/|Dockerfile$|\.dockerignore$|docker-compose[^/]*\.ya?ml$|composer\.(json|lock)$|package(-lock)?\.json$)'
+
   test:
     name: Tests
     runs-on: ubuntu-latest
@@ -97,6 +158,8 @@ jobs:
   # the same application against MySQL, over real HTTP and through the suite.
   e2e:
     name: MySQL (suite and end-to-end)
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
 
     services:
@@ -263,6 +326,8 @@ jobs:
   # ZATCA_SDK_TOKEN if that location needs a bearer token.
   conformance:
     name: ZATCA conformance
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
 
     env:
@@ -616,6 +681,8 @@ jobs:
   # teaches people to ignore it, which is worse than not having it.
   image:
     name: Container image scan
+    needs: changes
+    if: needs.changes.outputs.container == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -730,6 +797,8 @@ jobs:
   # of all of them at once.
   sdks:
     name: SDK build (${{ matrix.sdk }})
+    needs: changes
+    if: needs.changes.outputs.sdks == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -799,6 +868,8 @@ jobs:
   # releases, and the x86-64 job already gates on them.
   image-arm:
     name: Container image (Arm)
+    needs: changes
+    if: needs.changes.outputs.container == 'true'
     runs-on: ubuntu-24.04-arm
 
     steps:
@@ -823,6 +894,70 @@ jobs:
             php -r "require \"/var/www/html/vendor/autoload.php\"; echo \"platform check passed\n\";"
             mysqldump --version
           '
+
+  # The deployment, started.
+  #
+  # The image jobs build the image and look inside it; nothing had run it.
+  # This starts the compose stack the way a deployment does - production
+  # environment, migrations on, Redis left off - waits for the containers'
+  # own health checks, and then asks the readiness probe from outside
+  # whether the platform can serve. It is the first time the entrypoint,
+  # the production boot guards, the optional Redis and the compose wiring
+  # have run together anywhere.
+  stack:
+    name: Compose stack starts
+    needs: changes
+    if: needs.changes.outputs.container == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      # What a deployment's .env holds, with throwaway secrets. ZATCA on
+      # simulation: production refuses the sandbox, and this must not reach
+      # the authority's production gateway.
+      - name: Write a deployment environment
+        run: |
+          {
+            echo "APP_KEY=base64:$(openssl rand -base64 32)"
+            echo "APP_URL=http://127.0.0.1:8000"
+            echo "DB_PASSWORD=$(openssl rand -hex 16)"
+            echo "DB_ROOT_PASSWORD=$(openssl rand -hex 16)"
+            echo "ZATCA_ENVIRONMENT=simulation"
+            echo "UAE_FTA_ENVIRONMENT=production"
+            echo "AUTO_MIGRATE=true"
+          } > .env
+
+      - name: Check every compose combination resolves
+        run: |
+          docker compose config -q
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml config -q
+          COMPOSE_PROFILES=redis REDIS_PASSWORD=ci docker compose config -q
+
+      - name: Start the stack
+        run: docker compose up -d --build --wait --wait-timeout 300
+
+      - name: Ask whether it is ready
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/api/health/ready; then
+              echo
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error title=Not ready::/api/health/ready never answered 200"
+          exit 1
+
+      - name: Report the app's last words
+        if: failure()
+        run: |
+          docker compose ps
+          docker compose logs --no-color --tail=300
+          docker compose logs --no-color --tail=40 app > "$RUNNER_TEMP/app.log" 2>&1 || true
+          body=$(python3 -c 'import sys; print(open(sys.argv[1], encoding="utf-8", errors="replace").read().replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A"))' "$RUNNER_TEMP/app.log")
+          echo "::error title=App container log::$body"
 
   # A dynamic scan of the running API.
   #
