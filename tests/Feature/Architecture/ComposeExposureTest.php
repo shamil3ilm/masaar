@@ -27,14 +27,18 @@ class ComposeExposureTest extends TestCase
 
     private const PROD = __DIR__.'/../../../docker-compose.prod.yml';
 
+    private const DEV = __DIR__.'/../../../docker-compose.override.yml';
+
     public function test_no_port_is_public(): void
     {
         $public = [];
 
-        foreach ($this->services(self::BASE) as $name => $service) {
-            foreach ((array) ($service['ports'] ?? []) as $port) {
-                if (! str_starts_with((string) $port, '127.0.0.1:')) {
-                    $public[] = $name.': '.$port;
+        foreach ([self::BASE, self::DEV] as $file) {
+            foreach ($this->services($file) as $name => $service) {
+                foreach ((array) ($service['ports'] ?? []) as $port) {
+                    if (! str_starts_with((string) $port, '127.0.0.1:')) {
+                        $public[] = basename($file).' '.$name.': '.$port;
+                    }
                 }
             }
         }
@@ -58,6 +62,29 @@ class ComposeExposureTest extends TestCase
         }
 
         $this->assertSame(['traefik'], $publishing);
+    }
+
+    /**
+     * Production runs more than one app container, so nothing may pin it to one.
+     *
+     * The override asked for two replicas while the base file named the
+     * container masaar-app and bound it to a host port. Compose refuses both
+     * for a second container, so the production stack could not start the
+     * app at all.
+     */
+    public function test_the_app_can_be_replicated(): void
+    {
+        $replicas = (int) ($this->services(self::PROD)['app']['deploy']['replicas'] ?? 1);
+
+        if ($replicas < 2) {
+            $this->markTestSkipped('Production runs a single app container.');
+        }
+
+        $app = $this->services(self::BASE)['app'];
+
+        $this->assertArrayNotHasKey('container_name', $app, 'A named container cannot be replicated.');
+        $this->assertArrayNotHasKey('ports', $app, 'Two replicas cannot bind one host port.');
+        $this->assertArrayNotHasKey('ports', $this->services(self::PROD)['app']);
     }
 
     /**

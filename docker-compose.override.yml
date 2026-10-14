@@ -1,0 +1,15 @@
+# Development additions, loaded automatically by `docker compose up` and
+# ignored whenever -f names the files, as production does:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# The app's host port lives here rather than in docker-compose.yml because
+# production runs two replicas of it, and two containers cannot bind one
+# host port. Traefik reaches them over the compose network instead.
+
+services:
+  app:
+    ports:
+      # Loopback only. Docker writes its own firewall rules ahead of the
+      # host's, so an unaddressed mapping is reachable from anywhere.
+      - "127.0.0.1:${APP_PORT:-8000}:80"

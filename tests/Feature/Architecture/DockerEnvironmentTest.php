@@ -44,6 +44,7 @@ class DockerEnvironmentTest extends TestCase
         'docker/.env.template',
         'docker-compose.yml',
         'docker-compose.prod.yml',
+        'docker-compose.override.yml',
     ];
 
     /**

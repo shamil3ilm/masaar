@@ -19,13 +19,12 @@ services:
       context: .
       dockerfile: Dockerfile
     image: masaar/zatca-api:${IMAGE_TAG:-latest}
-    container_name: masaar-app
+    # No container_name and no published port here: docker-compose.prod.yml
+    # runs two replicas, and Compose will not start two containers under one
+    # name or bind one host port twice. The development port is in
+    # docker-compose.override.yml, which Compose loads only when no -f is
+    # given - so production, started with -f, never publishes the app.
     restart: unless-stopped
-    ports:
-      # Loopback only. Docker writes its own firewall rules ahead of the
-      # host's, so an unaddressed mapping is reachable from anywhere; in
-      # production Traefik reaches the app over the compose network instead.
-      - "127.0.0.1:${APP_PORT:-8000}:80"
     environment:
       # Application
       APP_NAME: Masaar
