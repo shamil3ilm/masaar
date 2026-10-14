@@ -636,6 +636,22 @@ jobs:
       - name: Check the nginx configuration
         run: docker run --rm --entrypoint nginx masaar:ci -t
 
+      # What the running container needs and nothing else proves is there:
+      # the PHP extensions the code calls, a vendor tree whose platform check
+      # passes on this PHP, and the mysqldump the nightly backup shells out
+      # to - added to the image without anything having run it.
+      - name: Check the image's runtime
+        run: |
+          docker run --rm --entrypoint sh masaar:ci -c '
+            set -e
+            php -v | head -n 1
+            for ext in pdo_mysql redis gmp bcmath intl zip sockets pcntl openssl mbstring; do
+              php -m | grep -qix "$ext" || { echo "missing PHP extension: $ext"; exit 1; }
+            done
+            php -r "require \"/var/www/html/vendor/autoload.php\"; echo \"platform check passed\n\";"
+            mysqldump --version
+          '
+
       # The scanner is run directly rather than through aquasecurity's action.
       #
       # The action is versioned independently of Trivy itself and a tag that
@@ -703,6 +719,42 @@ jobs:
           name: trivy-report
           path: trivy.json
           retention-days: 30
+
+  # The same image, built on Arm.
+  #
+  # The job above builds for x86-64 only, and the deployment target is an Arm
+  # (aarch64) server. Nothing had shown the image builds there: the PHP
+  # extensions are compiled from source during the build, pecl's redis among
+  # them, and Alpine's packages differ by architecture. Built natively on an
+  # Arm runner rather than emulated, so it costs minutes, not an hour.
+  # The vulnerability scan is not repeated: the packages are the same
+  # releases, and the x86-64 job already gates on them.
+  image-arm:
+    name: Container image (Arm)
+    runs-on: ubuntu-24.04-arm
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Build the image
+        run: docker build -t masaar:arm .
+
+      - name: Check the nginx configuration
+        run: docker run --rm --entrypoint nginx masaar:arm -t
+
+      - name: Check the image's runtime
+        run: |
+          docker run --rm --entrypoint sh masaar:arm -c '
+            set -e
+            uname -m
+            php -v | head -n 1
+            for ext in pdo_mysql redis gmp bcmath intl zip sockets pcntl openssl mbstring; do
+              php -m | grep -qix "$ext" || { echo "missing PHP extension: $ext"; exit 1; }
+            done
+            php -r "require \"/var/www/html/vendor/autoload.php\"; echo \"platform check passed\n\";"
+            mysqldump --version
+          '
 
   # A dynamic scan of the running API.
   #
