@@ -21,8 +21,8 @@ QR code: TLV-encoded, 9 tags (Phase 2).
 | Debit Note | Upward adjustment | Clearance |
 
 ## Mandatory Rollout (Integration Phase)
-Waves are released by taxable revenue threshold. ZATCA notifies each wave 6 months in advance.  
-Wave 24 (SAR 375K threshold) deadline: **2026-06-30**.
+Waves are released by taxable revenue threshold. ZATCA notifies each wave 6 months in advance;
+the Fatoora portal lists the current waves and their deadlines.
 
 ## Onboarding Flow
 1. Generate CSR (`fatoora:generate-csr`)

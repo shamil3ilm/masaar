@@ -36,7 +36,7 @@ client = Masaar::Client.new(
 
 # Create an invoice
 invoice = client.invoices.create(
-  invoice_number: 'INV-2026-001',
+  invoice_number: 'INV-0001',
   buyer_name: 'Acme Corporation',
   buyer_vat_number: '300000000000003',
   lines: [

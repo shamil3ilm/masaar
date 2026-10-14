@@ -21,5 +21,5 @@ const client = new MasaarClient({
 
 This directory holds no JavaScript source and is kept only so links to it land
 on this pointer rather than a 404. The plan is to generate SDKs from the
-OpenAPI specification instead of maintaining one per language by hand — see
-[`docs/audit/`](../../docs/audit/).
+OpenAPI specification ([`docs/openapi.yaml`](../../docs/openapi.yaml)) instead
+of maintaining one per language by hand.

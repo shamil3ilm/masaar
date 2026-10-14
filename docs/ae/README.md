@@ -3,7 +3,7 @@
 ## Regulatory Authority
 UAE Federal Tax Authority (FTA)  
 Official portal: https://uaeei.tax.gov.ae  
-Guidelines: UAE Electronic Invoicing Guidelines v1.0 (Feb 2026)
+Guidelines: UAE Electronic Invoicing Guidelines v1.0
 
 ## Legal Basis
 Ministerial Decision No. 243 of 2025 (Electronic Invoicing System)  
@@ -38,12 +38,15 @@ NOT BIS Billing 3.0 (that is the European profile).
 | 0% (0.00) | Zero-rated supplies |
 
 ## Mandatory Rollout Timeline
-| Phase | Applies to | Mandatory Date |
-|-------|-----------|----------------|
-| Pilot (voluntary) | All | 2026-07-01 |
-| Phase 1 | Revenue ≥ AED 50M | **2027-01-01** |
-| Phase 2 | Revenue < AED 50M | 2027-07-01 |
-| Phase 3 | Federal government | 2027-10-01 |
+| Phase | Applies to |
+|-------|-----------|
+| Pilot (voluntary) | All |
+| Phase 1 | Revenue ≥ AED 50M |
+| Phase 2 | Revenue < AED 50M |
+| Phase 3 | Federal government |
+
+The FTA sets each phase's mandatory date; the official portal above has the
+current timeline.
 
 ## API Endpoints
 | Method | Path | Description |

@@ -73,11 +73,11 @@ k6 run -e API_KEY=your_api_key tests/Load/stress-test.k6.js
 # Local development
 k6 run -e BASE_URL=http://localhost:8000 -e API_KEY=key tests/Load/invoice-api.k6.js
 
-# Northwind Staging
-k6 run -e BASE_URL=https://staging.masaar.example.sa -e API_KEY=key tests/Load/invoice-api.k6.js
+# Staging
+k6 run -e BASE_URL=https://staging.example.com -e API_KEY=key tests/Load/invoice-api.k6.js
 
 # Production (careful!)
-k6 run -e BASE_URL=https://api.masaar.example.sa -e API_KEY=key tests/Load/invoice-api.k6.js
+k6 run -e BASE_URL=https://api.example.com -e API_KEY=key tests/Load/invoice-api.k6.js
 ```
 
 ## Expected Results

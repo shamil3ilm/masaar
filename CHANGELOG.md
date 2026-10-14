@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-02-03
+## [1.0.0]
 
 ### Added
 
@@ -76,9 +76,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History
 
-| Version | Release Date | Status |
-|---------|--------------|--------|
-| 1.0.0   | 2026-02-03   | Current |
+| Version | Status |
+|---------|--------|
+| 1.0.0   | Current |
 
 [Unreleased]: https://github.com/shamil3ilm/masaar/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/shamil3ilm/masaar/releases/tag/v1.0.0

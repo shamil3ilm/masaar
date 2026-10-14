@@ -39,7 +39,7 @@ func main() {
 
     // Create an invoice
     invoice, err := client.Invoices.Create(ctx, &masaar.CreateInvoiceRequest{
-        InvoiceNumber:  "INV-2026-001",
+        InvoiceNumber:  "INV-0001",
         BuyerName:      "Acme Corporation",
         BuyerVATNumber: "300000000000003",
         Lines: []masaar.InvoiceLine{

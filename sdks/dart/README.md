@@ -35,7 +35,7 @@ void main() async {
   // Create an invoice
   final invoice = await client.invoices.create(
     CreateInvoiceRequest(
-      invoiceNumber: 'INV-2026-001',
+      invoiceNumber: 'INV-0001',
       buyerName: 'Acme Corporation',
       buyerVatNumber: '300000000000003',
       lines: [

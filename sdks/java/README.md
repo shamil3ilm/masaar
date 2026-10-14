@@ -45,7 +45,7 @@ MasaarClient client = new MasaarClient.Builder()
 
 // Create an invoice
 CreateInvoiceRequest request = CreateInvoiceRequest.builder()
-    .invoiceNumber("INV-2026-001")
+    .invoiceNumber("INV-0001")
     .buyerName("Acme Corporation")
     .buyerVatNumber("300000000000003")
     .buyerAddress(CreateInvoiceRequest.BuyerAddress.builder()

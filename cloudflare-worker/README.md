@@ -2,13 +2,9 @@
 
 Free license validation server for phone-home verification.
 
-## Current Deployment
+See [PHONE-HOME-LICENSE-SYSTEM.md](../docs/PHONE-HOME-LICENSE-SYSTEM.md) for how the platform uses it.
 
-> **Already Deployed:** `https://your-worker.YOUR-SUBDOMAIN.workers.dev`
->
-> See [PHONE-HOME-LICENSE-SYSTEM.md](../docs/PHONE-HOME-LICENSE-SYSTEM.md) for usage instructions.
-
-## Setup (For New Deployments)
+## Setup
 
 ### 1. Create Cloudflare Account
 - Go to [cloudflare.com](https://cloudflare.com)
@@ -68,7 +64,7 @@ PLATFORM_LICENSE_SECRET=your-license-secret-here
 ```bash
 curl -X POST https://your-worker.workers.dev/validate \
   -H "Content-Type: application/json" \
-  -d '{"license_key": "ACME-TRIAL-20260303-abc123"}'
+  -d '{"license_key": "ACME-TRIAL-YYYYMMDD-abc123"}'
 ```
 
 ### Register License (Admin)
@@ -77,10 +73,10 @@ curl -X POST https://your-worker.workers.dev/register \
   -H "Content-Type: application/json" \
   -d '{
     "admin_secret": "your-admin-secret",
-    "license_key": "ACME-TRIAL-20260303-abc123",
+    "license_key": "ACME-TRIAL-YYYYMMDD-abc123",
     "partner": "ACME",
     "type": "TRIAL",
-    "expires": "2026-03-03"
+    "expires": "YYYY-MM-DD"
   }'
 ```
 
@@ -90,7 +86,7 @@ curl -X POST https://your-worker.workers.dev/revoke \
   -H "Content-Type: application/json" \
   -d '{
     "admin_secret": "your-admin-secret",
-    "license_key": "ACME-TRIAL-20260303-abc123",
+    "license_key": "ACME-TRIAL-YYYYMMDD-abc123",
     "reason": "Partnership ended"
   }'
 ```
@@ -105,7 +101,7 @@ curl "https://your-worker.workers.dev/list?admin_secret=your-admin-secret"
 curl -X POST https://your-worker.workers.dev/usage \
   -H "Content-Type: application/json" \
   -d '{
-    "license_key": "ACME-PROD-20270203-abc123",
+    "license_key": "ACME-PROD-YYYYMMDD-abc123",
     "metrics": {
       "invoices_created": 150,
       "invoices_submitted": 145,
@@ -154,17 +150,17 @@ curl -X POST https://your-worker.workers.dev/register \
   -H "Content-Type: application/json" \
   -d '{
     "admin_secret": "your-secret",
-    "license_key": "ACME-TRIAL-20260303-abc123",
+    "license_key": "ACME-TRIAL-YYYYMMDD-abc123",
     "partner": "ACME",
     "type": "TRIAL",
-    "expires": "2026-03-03"
+    "expires": "YYYY-MM-DD"
   }'
 ```
 
 ### Partner Deploys
 Partner adds to their `.env`:
 ```env
-PLATFORM_LICENSE_KEY=ACME-TRIAL-20260303-abc123
+PLATFORM_LICENSE_KEY=ACME-TRIAL-YYYYMMDD-abc123
 ```
 
 ### Validation Flow
@@ -179,7 +175,7 @@ curl -X POST https://your-worker.workers.dev/revoke \
   -H "Content-Type: application/json" \
   -d '{
     "admin_secret": "your-secret",
-    "license_key": "ACME-TRIAL-20260303-abc123",
+    "license_key": "ACME-TRIAL-YYYYMMDD-abc123",
     "reason": "Non-payment"
   }'
 ```
@@ -197,8 +193,3 @@ Partner's app will stop working within 1 hour (cache expiry).
 ## Related Documentation
 
 - [Phone-Home License System](../docs/PHONE-HOME-LICENSE-SYSTEM.md) - Complete system documentation
-- [Northwind Deployment Guide](../docs/ACME-DEPLOYMENT-GUIDE.md) - Partner deployment instructions
-
----
-
-**Last Updated:** February 3, 2026

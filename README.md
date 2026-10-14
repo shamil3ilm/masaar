@@ -7,37 +7,24 @@ A multi-jurisdiction e-invoicing compliance API platform for GCC businesses.
 | Country | Authority | System | Status |
 |---------|-----------|--------|--------|
 | 🇸🇦 Saudi Arabia | ZATCA | Fatoora Phase 2 | 🟡 Passes ZATCA's SDK validator — schema, EN 16931, Schematron and, signed with the authority's own certificate, its certificate, QR, signed-properties digest and PIH checks. Live submission outstanding, see [Conformance](#conformance) |
-| 🇦🇪 UAE | FTA | Peppol PINT AE | 🚧 In development (mandate: 2027-01-01) |
+| 🇦🇪 UAE | FTA | Peppol PINT AE | 🚧 In development |
 | 🇶🇦 Qatar | GTA | — | 📋 Planned |
 
 > **Production readiness.** The Saudi pipeline — UBL generation, ICV/PIH hash
-> chaining, XAdES signing, TLV QR, CSID onboarding and submission — is built,
-> and the parts of it that can be checked without ZATCA's own fixtures are:
-> signatures verify against the certificate in the document, the QR's tags match
-> the document beside them, and the UBL totals satisfy their own arithmetic.
+> chaining, XAdES signing, TLV QR, CSID onboarding and submission — is built.
+> Signatures verify against the certificate in the document, the QR's tags match
+> the document beside them, the UBL totals satisfy their own arithmetic, and
+> documents pass ZATCA's own validator — see [Conformance](#conformance).
 >
-> That wording used to be "built and covered by tests", which was true and
-> misleading. Tests existed; they did not check these things, and until recently
-> the signature was computed over an empty string, certificate requests could not
-> be generated, and every tax subtotal declared a base that included its own tax.
->
-> Documents are now checked against ZATCA's own validator rather than against
-> our reading of it — see [Conformance](#conformance) below. That check found
-> nine defects the internal suite could not, because none of those tests knew
-> what the authority requires.
->
-> Still outstanding: signing keys are not yet held in a managed KMS, and a live
-> submission has not been made — the conformance run uses a self-signed
-> certificate, so the certificate, QR and PIH checks it performs are not
-> exercised. See [`docs/audit/09-WORK-MAP.md`](docs/audit/09-WORK-MAP.md) for
-> the current gap list before deploying to production.
+> Not yet established: signing keys are encrypted at rest by the platform rather
+> than held in a managed KMS, and no live submission to ZATCA's production API
+> has been made. See [docs/sa/STATUS.md](docs/sa/STATUS.md) before deploying to
+> production.
 
 ## Repository Structure
 
 ```
-Masaar/
-├── platform/        ← This directory: Compliance API (Laravel 12, PHP 8.4)
-├── erp/             ← ERP backend (separate repo, future git submodule)
+├── app/             ← Compliance API (Laravel 12, PHP 8.4), by domain
 ├── sdks/            ← Client SDKs (PHP, TypeScript, Python, Java, Go, ...)
 └── docs/
     ├── sa/          ← Saudi Arabia (Fatoora) documentation
@@ -45,8 +32,6 @@ Masaar/
     ├── qa/          ← Qatar (GTA) documentation — planned
     └── architecture/ ← Platform design docs
 ```
-
-> **Note:** The `platform/` directory is the root of this repository.
 
 ## Quick Start
 
@@ -71,12 +56,11 @@ php artisan test
 
 ## Conformance
 
-The test suite checks that the code does what the code intends. That is worth
-having and it is not compliance: it cannot tell you that BT-23 must read
-`reporting:1.0`, because nothing in this repository knew. ZATCA's own Java SDK
-knows, and `ZatcaConformanceTest` runs it over documents this platform
-generates — the UBL 2.1 schema, the CEN EN 16931 rules, ZATCA's Schematron, and
-the PIH check.
+The test suite checks that the code does what the code intends; it cannot by
+itself establish what the authority requires, such as BT-23 reading
+`reporting:1.0`. ZATCA's own Java SDK does, and `ZatcaConformanceTest` runs it
+over documents this platform generates — the UBL 2.1 schema, the CEN EN 16931
+rules, ZATCA's Schematron, and the PIH check.
 
 The SDK is a licensed download that cannot be committed, so these tests skip
 unless you point at one:
@@ -96,7 +80,7 @@ a citizen, foreign currency, a document-level discount, and a discount spread
 across two tax categories. One test validates ZATCA's own sample invoice, so a
 broken harness reports itself as broken rather than as a broken invoice.
 
-Two things about the SDK itself, both of which cost an afternoon:
+Notes on running the SDK:
 
 - It reads `SDK_CONFIG` and `FATOORA_HOME`. Without `SDK_CONFIG` it dies in
   `Config.readResourcesPaths` with a NullPointerException that reads like a
@@ -146,14 +130,22 @@ that cannot drift. What it currently registers:
 | When | Task |
 |------|------|
 | Every 5 min | `fatoora:process-offline --limit=50` — drain the offline queue |
+| Every 10 min | `fatoora:recover-submissions` — re-dispatch submissions left in flight |
 | Every 15 min | `compliance:index-health --alert` |
+| Hourly | `fatoora:overdue-submissions --alert` — invoices past their filing deadline |
 | Hourly | `license:cleanup-rate-limits` |
 | Hourly | `license:report-usage` |
 | Daily 00:00 | `license:check-expiration` |
+| Daily 01:00 | `backup:clean` — prune archives by the retention policy |
+| Daily 01:30 | `backup:run` — encrypted database and credential-store backup |
 | Daily 04:00 | `compliance:cleanup-offline-queue` |
+| Daily 06:00 | `backup:monitor` — alert when the newest backup is stale |
 | Daily 08:00 | `fatoora:check-certificate --notify` |
 | Weekly Sun 02:00 | `fatoora:verify-hash-chain` |
 | Monthly 1st 03:00 | `compliance:partition-maintenance --create-future --months-ahead=2` |
+
+Backup setup and the restore procedure are in
+[docs/BACKUP-AND-RESTORE.md](docs/BACKUP-AND-RESTORE.md).
 
 Run once when connecting a taxpayer, not scheduled:
 
@@ -175,7 +167,7 @@ The remaining commands are operator tools rather than scheduled work:
 - [UAE (FTA)](docs/ae/README.md)
 - [Qatar (GTA)](docs/qa/README.md)
 - [Adding a Jurisdiction](docs/architecture/ADDING-A-JURISDICTION.md)
-- [Design Spec](docs/superpowers/specs/2026-04-02-masaar-multi-jurisdiction-design.md)
+- [Backup and restore](docs/BACKUP-AND-RESTORE.md)
 
 ## SDKs
 
@@ -193,9 +185,8 @@ the API rather than generated, so treat the HTTP API and
 | [Rust](sdks/rust/) · [Go](sdks/go/) · [Kotlin](sdks/kotlin/) · [Swift](sdks/swift/) · [.NET](sdks/dotnet/) · [Ruby](sdks/ruby/) · [Dart](sdks/dart/) | 🟠 Skeleton | One client file each; no tests, unverified against a live API |
 | JavaScript | 🔴 Not implemented | Use the TypeScript SDK — it compiles to JavaScript |
 
-Known gaps, tracked in [`docs/audit/`](docs/audit/): the SDKs cover a subset of
-the API, carry no automated tests, and several still use the platform's former
-name in class names. The intended direction is to generate them from the OpenAPI
+Known gaps: the SDKs cover a subset of the API and most carry no automated
+tests. The intended direction is to generate them from the OpenAPI
 specification rather than maintain eleven by hand.
 
 ## License

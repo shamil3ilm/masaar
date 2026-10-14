@@ -32,7 +32,7 @@ var client = new MasaarClient(new MasaarOptions
 // Create an invoice
 var invoice = await client.Invoices.CreateAsync(new CreateInvoiceRequest
 {
-    InvoiceNumber = "INV-2026-001",
+    InvoiceNumber = "INV-0001",
     BuyerName = "Acme Corporation",
     BuyerVatNumber = "300000000000003",
     Lines =

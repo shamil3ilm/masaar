@@ -35,7 +35,7 @@ async fn main() -> Result<(), masaar::Error> {
     // Create an invoice
     let invoice = client.invoices().create(
         CreateInvoiceRequest::builder()
-            .invoice_number("INV-2026-001")
+            .invoice_number("INV-0001")
             .buyer_name("Acme Corporation")
             .buyer_vat_number("300000000000003")
             .line(InvoiceLine::builder()
