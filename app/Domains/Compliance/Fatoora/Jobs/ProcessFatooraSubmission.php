@@ -361,7 +361,11 @@ class ProcessFatooraSubmission implements ShouldQueue
             'final_error' => $exception->getMessage(),
         ]);
 
-        Log::error('ZATCA submission permanently failed', [
+        // Critical, so it reaches the alert channel: an invoice that has
+        // exhausted its retries will not be filed by anything, and as an
+        // error it surfaced only when the overdue sweep found its deadline
+        // gone - and a clearance has no deadline for that sweep to find.
+        Log::critical('ZATCA submission permanently failed; the invoice will not be filed without intervention', [
             'submission_id' => $submission->id,
             'invoice_id' => $submission->invoice_id,
             'error' => $exception->getMessage(),

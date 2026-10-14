@@ -116,6 +116,17 @@ class CheckCertificateExpiry extends Command
 
             $status = $this->getStatus($daysRemaining);
 
+            // The tenant hears about it by mail, webhook or Slack as they have
+            // chosen. The platform heard nothing, and an expired certificate
+            // means that tenant can sign and file nothing at all. Daily while
+            // it lasts, with this command.
+            if ($daysRemaining <= 0) {
+                Log::critical('A tenant certificate has expired; it cannot issue or file until it is renewed', [
+                    'org_id' => $organization->id,
+                    'expired_on' => $expiryCarbon->toDateString(),
+                ]);
+            }
+
             // Send notifications if needed
             if ($shouldNotify) {
                 $this->sendNotificationIfNeeded($organization, $daysRemaining, $expiryCarbon);
