@@ -503,15 +503,19 @@ jobs:
       # to.
       - name: Clear and report with the production certificate
         run: |
-          php artisan fatoora:onboard --step=submit --target=sandbox | tee submit.log
+          php artisan fatoora:onboard --step=submit --target=sandbox 2>&1 | tee submit.log
 
           if grep -q 'REFUSED' submit.log; then
             echo "::error title=A document was refused::The authority rejected a document submitted with the production certificate. The outcome column says why; a GATEWAY line is a timeout rather than a refusal."
             exit 1
           fi
 
+          # The tail goes into the annotation itself: annotations are readable
+          # without access to the log, and "did not report six acceptances"
+          # alone says nothing about why.
           grep -q 'All 6 documents were accepted' submit.log || {
-            echo "::error title=Submission incomplete::The step did not report six acceptances."
+            echo "::error title=Submission incomplete::The step did not report six acceptances. Last output: $(tail -n 8 submit.log | tr '
+' ' ' | cut -c1-900)"
             exit 1
           }
 
@@ -533,9 +537,10 @@ jobs:
         run: |
           touch database/sandbox.sqlite
           php artisan migrate --force
-          php artisan fatoora:sandbox-filing | tee filing.log
+          php artisan fatoora:sandbox-filing 2>&1 | tee filing.log
           grep -q 'Both invoices were accepted' filing.log || {
-            echo "::error title=Platform filing refused::The platform's own clearance or reporting path did not get both invoices accepted. The table above carries what the authority said."
+            echo "::error title=Platform filing refused::The platform's own clearance or reporting path did not get both invoices accepted. Last output: $(tail -n 8 filing.log | tr '
+' ' ' | cut -c1-900)"
             exit 1
           }
 
