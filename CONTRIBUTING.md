@@ -25,7 +25,7 @@ By submitting a pull request or any contribution, you:
 
 ### Registration for Contributors
 
-Active contributors must register by emailing: contributors@{YOUR_DOMAIN}
+Active contributors must register by emailing: shamil3ilm@gmail.com
 
 Include:
 - GitHub username
@@ -227,10 +227,10 @@ Top contributors may be invited to:
 
 ## Getting Help
 
-- **General questions**: discussions@{YOUR_DOMAIN}
+- **General questions**: shamil3ilm@gmail.com
 - **Technical issues**: Create a GitHub issue
 - **Security concerns**: shamil3ilm@gmail.com
-- **Contribution questions**: contributors@{YOUR_DOMAIN}
+- **Contribution questions**: shamil3ilm@gmail.com
 
 ## Code of Conduct
 
@@ -256,7 +256,7 @@ Violations may result in:
 - Permanent ban
 - Reporting to appropriate authorities
 
-Report conduct issues to: conduct@{YOUR_DOMAIN}
+Report conduct issues to: shamil3ilm@gmail.com
 
 ---
 

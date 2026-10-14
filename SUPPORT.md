@@ -205,7 +205,7 @@ We provide support for the following technical issues:
 | Channel | Use For | Response Time |
 |---------|---------|---------------|
 | GitHub Issues | Bug reports, feature requests | 1-3 business days |
-| support@{YOUR_DOMAIN} | General technical questions | 1-2 business days |
+| shamil3ilm@gmail.com | General technical questions | 1-2 business days |
 | shamil3ilm@gmail.com | Security vulnerabilities | Within 24 hours |
 | Documentation | Self-service guidance | Immediate |
 
@@ -309,7 +309,7 @@ We recommend maintaining relationships with:
 ## Contact Information
 
 **Technical Support (Within Scope):**
-- Email: support@{YOUR_DOMAIN}
+- Email: shamil3ilm@gmail.com
 - GitHub: [Repository Issues]
 - Documentation: [Link to docs]
 
