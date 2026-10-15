@@ -1393,6 +1393,29 @@ Error: BR-KSA-* validation errors
 2. Check webhook secret matches
 3. Verify HTTPS certificate is valid
 4. Check firewall allows Masaar IPs
+5. Check the licence includes `webhook_notifications` (see 6)
+
+#### 6. "Feature not available in your license tier"
+```
+HTTP 403  {"error": {"code": "LICENSE_FEATURE_UNAVAILABLE", "details": {"feature": "standard_invoices"}}}
+```
+A licence grants the features it lists, and the API refuses anything else.
+`details.feature` names the one that is missing.
+
+| Feature | Needed to |
+|---|---|
+| `simplified_invoices` | create, generate or submit a simplified (B2C) invoice |
+| `standard_invoices` | create, generate or submit a standard (B2B) invoice |
+| `credit_notes` | issue a credit note (as well as its invoice type) |
+| `debit_notes` | issue a debit note (as well as its invoice type) |
+| `webhook_notifications` | manage webhooks |
+
+By default a Starter licence includes simplified invoices only; Professional
+adds standard invoices, credit and debit notes and webhooks; Enterprise adds
+the rest. `GET /api/license/features/{feature}` answers whether the current
+licence has one.
+
+**Solution**: ask the licence provider to raise the tier or add the feature.
 
 ### Logging
 
