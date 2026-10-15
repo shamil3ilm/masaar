@@ -89,13 +89,11 @@ class BranchOnboardingController extends Controller
 
         } catch (CertificateException $e) {
             // Its own code and category, from the one place that knows them.
-            // This used to fall through to the broad catch below and answer
+            // This used to fall through to a broad catch that answered
             // VALIDATION_ERROR, and the prefix added there duplicated the
             // exception's own message - CsidOnboarding already throws
             // 'Failed to obtain CCSID: ...'.
             return ApiResponse::fromCertificate($e);
-        } catch (\Exception $e) {
-            return ApiResponse::error('Failed to obtain CCSID: '.$e->getMessage(), 422);
         }
     }
 
@@ -149,13 +147,11 @@ class BranchOnboardingController extends Controller
 
         } catch (CertificateException $e) {
             // Its own code and category, from the one place that knows them.
-            // This used to fall through to the broad catch below and answer
+            // This used to fall through to a broad catch that answered
             // VALIDATION_ERROR, and the prefix added there duplicated the
             // exception's own message - CsidOnboarding already throws
             // 'Failed to obtain CCSID: ...'.
             return ApiResponse::fromCertificate($e);
-        } catch (\Exception $e) {
-            return ApiResponse::error('Compliance check failed: '.$e->getMessage(), 422);
         }
     }
 
@@ -237,13 +233,11 @@ class BranchOnboardingController extends Controller
 
         } catch (CertificateException $e) {
             // Its own code and category, from the one place that knows them.
-            // This used to fall through to the broad catch below and answer
+            // This used to fall through to a broad catch that answered
             // VALIDATION_ERROR, and the prefix added there duplicated the
             // exception's own message - CsidOnboarding already throws
             // 'Failed to obtain CCSID: ...'.
             return ApiResponse::fromCertificate($e);
-        } catch (\Exception $e) {
-            return ApiResponse::error('Failed to obtain PCSID: '.$e->getMessage(), 422);
         }
     }
 

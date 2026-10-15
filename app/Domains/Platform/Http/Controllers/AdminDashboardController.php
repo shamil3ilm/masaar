@@ -100,17 +100,13 @@ class AdminDashboardController extends Controller
      */
     public function runHealthCheck(): JsonResponse
     {
-        try {
-            Artisan::call('compliance:index-health', ['--json' => true]);
-            $output = Artisan::output();
+        Artisan::call('compliance:index-health', ['--json' => true]);
+        $output = Artisan::output();
 
-            return ApiResponse::success([
-                'result' => json_decode($output, true) ?? $output,
-                'ran_at' => now()->toIso8601String(),
-            ], 'Health check completed');
-        } catch (\Exception $e) {
-            return ApiResponse::error('Failed to run health check: '.$e->getMessage(), 500);
-        }
+        return ApiResponse::success([
+            'result' => json_decode($output, true) ?? $output,
+            'ran_at' => now()->toIso8601String(),
+        ], 'Health check completed');
     }
 
     /**
@@ -220,43 +216,48 @@ class AdminDashboardController extends Controller
      */
     public function processOfflineQueue(Request $request): JsonResponse
     {
-        $organizationId = $request->input('org_id');
-        $limit = min((int) $request->input('limit', 50), 200);
+        // A body, not a query string, so validated rather than read through
+        // PageSize. A negative limit reached the command, and a failure to
+        // queue answered with its own message attached; the global renderer
+        // logs that and answers a generic 500.
+        $validated = $request->validate([
+            'limit' => ['nullable', 'integer', 'min:1'],
+            'org_id' => ['nullable', 'uuid'],
+        ]);
 
-        try {
-            $params = ['--limit' => $limit];
-            if ($organizationId) {
-                $params['--organization'] = $organizationId;
-            }
+        $organizationId = $validated['org_id'] ?? null;
+        $limit = min((int) ($validated['limit'] ?? 50), 200);
 
-            // Queued, not called.
-            //
-            // Artisan::call ran the whole drain inside this request. The
-            // command walks every organization with pending items and submits
-            // up to --limit invoices one at a time, and FatooraClient gives
-            // each ZATCA call a 30 second timeout with retry(3, 1000) - and
-            // Guzzle maps a read timeout to a ConnectException, so a read
-            // timeout is retried too. That is about 92 seconds per invoice at
-            // worst, against a limit this endpoint allows up to 200. The
-            // request could not have returned, and the operator pressing the
-            // button would have had a gateway timeout and no idea whether any
-            // of it had happened.
-            //
-            // There is nothing to wait for: the same command runs on a
-            // schedule every five minutes, and this endpoint only means "go
-            // now". The two default-queue workers pick it up.
-            Artisan::queue('fatoora:process-offline', $params);
-
-            Cache::forget('admin:offline_queue');
-
-            return ApiResponse::success([
-                'limit' => $limit,
-                'org_id' => $organizationId,
-                'queued_at' => now()->toIso8601String(),
-            ], 'Offline queue processing queued', 202);
-        } catch (\Exception $e) {
-            return ApiResponse::error('Failed to queue offline queue processing: '.$e->getMessage(), 500);
+        $params = ['--limit' => $limit];
+        if ($organizationId) {
+            $params['--organization'] = $organizationId;
         }
+
+        // Queued, not called.
+        //
+        // Artisan::call ran the whole drain inside this request. The
+        // command walks every organization with pending items and submits
+        // up to --limit invoices one at a time, and FatooraClient gives
+        // each ZATCA call a 30 second timeout with retry(3, 1000) - and
+        // Guzzle maps a read timeout to a ConnectException, so a read
+        // timeout is retried too. That is about 92 seconds per invoice at
+        // worst, against a limit this endpoint allows up to 200. The
+        // request could not have returned, and the operator pressing the
+        // button would have had a gateway timeout and no idea whether any
+        // of it had happened.
+        //
+        // There is nothing to wait for: the same command runs on a
+        // schedule every five minutes, and this endpoint only means "go
+        // now". The two default-queue workers pick it up.
+        Artisan::queue('fatoora:process-offline', $params);
+
+        Cache::forget('admin:offline_queue');
+
+        return ApiResponse::success([
+            'limit' => $limit,
+            'org_id' => $organizationId,
+            'queued_at' => now()->toIso8601String(),
+        ], 'Offline queue processing queued', 202);
     }
 
     /**
@@ -300,7 +301,9 @@ class AdminDashboardController extends Controller
      */
     public function logs(Request $request): JsonResponse
     {
-        $limit = min((int) $request->query('limit', 50), 200);
+        // min() alone let limit=-1 through, which the query builder ignores:
+        // the whole table in one response.
+        $limit = PageSize::fromRequest($request, 50, 200, 'limit');
         $state = $request->query('state');
         $organizationId = $request->query('org_id');
 
