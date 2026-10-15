@@ -112,6 +112,37 @@ class PipelineIdempotencyTest extends TestCase
     /**
      * @param  array<string, mixed>  $overrides
      */
+    /**
+     * A retry is how an ERP recovers from a failed call, so it has to pick up
+     * where that call stopped.
+     *
+     * The replay answered with the stored invoice and no errors. When the
+     * first call had drafted but failed to issue, the retry reported a clean
+     * success for a draft that held no counter, no hash and no QR - and the
+     * ERP, keying off the status code, marked the sale done.
+     */
+    public function test_a_retry_finishes_a_failed_issue(): void
+    {
+        $first = $this->submit('key-1')->assertStatus(207);
+        $this->assertSame('draft', $first->json('data.status'));
+
+        // What stopped it - the seller's VAT registration and address - is put right.
+        $this->acme->forceFill([
+            'vat_number' => '300000000000003',
+            'street' => 'King Fahd Road',
+            'building_number' => '1234',
+            'district' => 'Al Olaya',
+            'city' => 'Riyadh',
+            'postal_code' => '12345',
+        ])->save();
+
+        $retry = $this->submit('key-1')->assertCreated();
+
+        $this->assertSame($first->json('data.invoice_id'), $retry->json('data.invoice_id'));
+        $this->assertSame('issued', $retry->json('data.status'));
+        $this->assertSame(1, $this->invoices());
+    }
+
     private function submit(string $key, array $overrides = []): TestResponse
     {
         return $this->withHeaders([...$this->credential, 'Idempotency-Key' => $key])
