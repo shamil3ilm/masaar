@@ -41,7 +41,7 @@ services:
       DB_ROOT_PASSWORD: ""
 
       # Application
-      APP_NAME: Masaar
+      APP_NAME: ${APP_NAME:-Masaar}
       APP_ENV: ${APP_ENV:-production}
       APP_KEY: ${APP_KEY}
       APP_DEBUG: ${APP_DEBUG:-false}

@@ -38,6 +38,8 @@
             Off here; PlatformLicenseTest turns it on where that is the subject.
         -->
         <env name="PLATFORM_LICENSE_ENABLED" value="false"/>
+        <!-- On for the suite, so the UAE code stays tested while a deployment keeps it off. -->
+        <env name="UAE_FTA_ENABLED" value="true"/>
         <!--
             ZATCA work now honours its configured queue connection instead of
             ignoring it, so an operator's own .env would otherwise decide where

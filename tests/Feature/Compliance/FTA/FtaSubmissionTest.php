@@ -133,15 +133,22 @@ class FtaSubmissionTest extends TestCase
         $this->assertSame(FtaStatus::PendingReview, $submission->fresh()->status);
     }
 
-    public function test_an_unknown_environment_uses_sandbox(): void
+    /**
+     * A name with no endpoint is not sent anywhere. It used to go to the
+     * sandbox, so a typo filed every invoice with the developer portal.
+     */
+    public function test_an_unknown_environment_sends_nothing(): void
     {
         config(['fta.environment' => 'staging']);
 
         Http::fake(['fta.test/*' => Http::response(['status' => 'accepted'])]);
 
-        $this->resubmit();
+        try {
+            $this->resubmit();
+        } catch (\RuntimeException) {
+        }
 
-        Http::assertSent(fn (Request $request) => str_starts_with($request->url(), 'https://fta.test/api/v1/'));
+        Http::assertNothingSent();
     }
 
     /**
