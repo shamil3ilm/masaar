@@ -111,6 +111,7 @@ class AppServiceProvider extends ServiceProvider
             $this->assertSessionsAreEncrypted();
             $this->assertSubmissionLimitsAgree();
             $this->assertAuthorityIsNotSandbox();
+            $this->assertLicenceSecretIsSet();
         }
 
         $this->reclaimMiddlewareAliases();
@@ -191,6 +192,32 @@ class AppServiceProvider extends ServiceProvider
                     .'succeed and file nothing, which no later check can detect.'
                 );
             }
+        }
+    }
+
+    /**
+     * A production deployment that enforces licences can verify them.
+     *
+     * Without PLATFORM_LICENSE_SECRET no licence key verifies, so every API
+     * request is refused - the service once covered for that with a default
+     * secret written in its source, which accepted keys anyone could sign.
+     * Refused here instead, at boot, where the cause is named. A deployment
+     * that does not enforce licences says so with PLATFORM_LICENSE_ENABLED=false.
+     */
+    private function assertLicenceSecretIsSet(): void
+    {
+        if (! $this->app->environment('production') || ! config('platform-license.enabled', true)) {
+            return;
+        }
+
+        $secret = config('platform-license.signing_secret');
+
+        if (! is_string($secret) || $secret === '') {
+            throw new \RuntimeException(
+                'PLATFORM_LICENSE_SECRET must be set when APP_ENV=production and licensing is enabled. '
+                .'Without it no licence key verifies and every API request is refused. '
+                .'Set it, or set PLATFORM_LICENSE_ENABLED=false for a deployment that does not enforce licences.'
+            );
         }
     }
 

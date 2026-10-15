@@ -26,10 +26,13 @@ class PlatformLicenseService
     public const TYPE_DEVELOPMENT = 'DEV';
 
     /**
-     * Secret key for signing license keys.
-     * In production, this should be in a secure location.
+     * Secret key for signing license keys, from PLATFORM_LICENSE_SECRET.
+     *
+     * Null when unset, and never defaulted: a fallback written in this source
+     * is a secret anyone can read, and it let a deployment that forgot the
+     * variable accept keys anyone could sign.
      */
-    private string $signingSecret;
+    private ?string $signingSecret;
 
     /**
      * License server URL for phone-home validation.
@@ -64,7 +67,8 @@ class PlatformLicenseService
 
     public function __construct()
     {
-        $this->signingSecret = config('platform-license.signing_secret', 'masaar-default-secret-change-me');
+        $secret = config('platform-license.signing_secret');
+        $this->signingSecret = is_string($secret) && $secret !== '' ? $secret : null;
         $this->licenseServerUrl = config('platform-license.server_url');
     }
 
@@ -79,6 +83,11 @@ class PlatformLicenseService
 
         if (empty($licenseKey)) {
             return $this->invalidResult('No license key configured. Set PLATFORM_LICENSE_KEY in .env');
+        }
+
+        // Without the secret no key can be verified, so none is valid.
+        if ($this->signingSecret === null) {
+            return $this->invalidResult('No license secret configured. Set PLATFORM_LICENSE_SECRET in .env');
         }
 
         // Check cache first
@@ -241,6 +250,10 @@ class PlatformLicenseService
      */
     private function generateSignature(string $partner, string $type, string $expiryDate): string
     {
+        if ($this->signingSecret === null) {
+            throw new \RuntimeException('PLATFORM_LICENSE_SECRET is not set; licence keys can be neither signed nor verified.');
+        }
+
         $data = "{$partner}-{$type}-{$expiryDate}";
 
         return substr(hash_hmac('sha256', $data, $this->signingSecret), 0, 8);

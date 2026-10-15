@@ -74,6 +74,10 @@ return [
     */
     'excluded_paths' => [
         'api/health',
+        // Matched exactly, so the readiness probe is listed on its own. The
+        // load balancer routes on it: behind the licence check, a lapsed or
+        // unreachable licence took every replica out of rotation at once.
+        'api/health/ready',
         'api/license/status',
         'up', // Laravel health check
     ],

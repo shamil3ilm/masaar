@@ -154,6 +154,16 @@ RUN echo "memory_limit=512M" >> /usr/local/etc/php/conf.d/custom.ini \
 RUN addgroup -g 1000 -S masaar \
     && adduser -u 1000 -S masaar -G masaar
 
+# php-fpm serves requests as masaar: the user that owns storage and runs the
+# queue workers. Its pool defaulted to the base image's www-data, which owns
+# nothing here, so a request could not write a log line, a compiled view or
+# a session - and the first request to log an error threw while logging it.
+# The grep fails the build if the stock pool file ever stops matching.
+RUN sed -i -e 's/^user = www-data$/user = masaar/' -e 's/^group = www-data$/group = masaar/' \
+        /usr/local/etc/php-fpm.d/www.conf \
+    && grep -q '^user = masaar$' /usr/local/etc/php-fpm.d/www.conf \
+    && grep -q '^group = masaar$' /usr/local/etc/php-fpm.d/www.conf
+
 # Set working directory
 WORKDIR /var/www/html
 

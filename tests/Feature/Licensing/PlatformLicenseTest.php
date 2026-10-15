@@ -36,6 +36,11 @@ class PlatformLicenseTest extends TestCase
         // retries against a host that does not exist, and offline validation is
         // what these tests are about.
         config(['platform-license.server_url' => null]);
+
+        // Stated, because the service no longer supplies one: these tests
+        // signed their keys with a default written into the service, and
+        // passed only because every deployment shared it.
+        config(['platform-license.signing_secret' => 'test-licence-secret']);
     }
 
     /**
@@ -74,6 +79,70 @@ class PlatformLicenseTest extends TestCase
             'platform-license.excluded_paths' => ['api/health', 'api/license/status'],
         ]);
 
+        $this->getJson('/api/health')->assertStatus(200);
+    }
+
+    /**
+     * And so must the readiness probe, under the shipped configuration.
+     *
+     * The exclusions matched api/health exactly, so api/health/ready went
+     * through the licence check: without a key it answered 403 and never
+     * ready. The load balancer routes on that probe, so a lapsed or
+     * unreachable licence took every replica out of rotation at once, and
+     * the 403 said nothing about why. Licensing answers whether a request may
+     * be served; readiness answers whether the platform can serve one.
+     *
+     * Read from config/platform-license.php rather than set here, which is
+     * what the test above does and why it could not have caught this.
+     */
+    /**
+     * No secret, no licence - and no crash.
+     *
+     * The service fell back to a secret written in its own source, so any
+     * deployment that forgot PLATFORM_LICENSE_SECRET accepted licence keys
+     * anyone could sign. And when the config key held null rather than being
+     * absent, the fallback never applied and the typed property refused null:
+     * constructing the middleware threw, and every API request was a 500.
+     */
+    public function test_no_secret_refuses_cleanly(): void
+    {
+        config([
+            'platform-license.enabled' => true,
+            'platform-license.key' => 'ACME-PROD-20991231-abcdef12',
+            'platform-license.signing_secret' => null,
+        ]);
+
+        $this->getJson('/api/v1/invoices')
+            ->assertStatus(403)
+            ->assertJsonPath('error.code', 'LICENSE_INVALID');
+        $this->getJson('/api/health/ready')->assertStatus(200);
+    }
+
+    /**
+     * And a key signed with the old built-in secret proves nothing.
+     */
+    public function test_the_old_default_secret_signs_nothing(): void
+    {
+        $forged = 'ACME-PROD-20991231-'.substr(hash_hmac('sha256', 'ACME-PROD-20991231', 'masaar-default-secret-change-me'), 0, 8);
+
+        config([
+            'platform-license.enabled' => true,
+            'platform-license.key' => $forged,
+            'platform-license.signing_secret' => null,
+            'platform-license.server_url' => null,
+        ]);
+
+        $this->assertFalse(app(PlatformLicenseService::class)->validate()['valid']);
+    }
+
+    public function test_readiness_ignores_the_licence(): void
+    {
+        config([
+            'platform-license.enabled' => true,
+            'platform-license.key' => '',
+        ]);
+
+        $this->getJson('/api/health/ready')->assertStatus(200);
         $this->getJson('/api/health')->assertStatus(200);
     }
 

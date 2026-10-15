@@ -142,6 +142,13 @@ main() {
     cache_config
     create_storage_link
 
+    # Everything above ran as root, after setup_storage set ownership, so a
+    # log file or cache entry it created belongs to root and the masaar
+    # processes - php-fpm and the workers - cannot write it. Hand it back.
+    if [ "$(id -u)" = "0" ]; then
+        chown -R masaar:masaar storage bootstrap/cache
+    fi
+
     echo "=============================================="
     echo "Container initialization complete!"
     echo "Starting application services..."
