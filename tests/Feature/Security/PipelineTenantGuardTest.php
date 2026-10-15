@@ -65,7 +65,9 @@ class PipelineTenantGuardTest extends TestCase
             'organization_name' => $organization->name,
             'contact_email' => 'ops@masaar.test',
             'environment' => 'sandbox',
-            'tier' => 'starter',
+            // Professional: these submit standard invoices, which a Starter
+            // licence does not include now that licence features are enforced.
+            'tier' => 'professional',
             'status' => 'active',
             'scopes' => ['invoice.submit', 'compliance.status'],
         ]);

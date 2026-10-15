@@ -278,16 +278,6 @@ class ValidateLicense
     }
 
     /**
-     * Validate feature access for the license.
-     */
-    private function validateFeatureAccess(License $license, string $feature): void
-    {
-        if (! $license->hasFeature($feature)) {
-            throw LicenseException::featureNotAvailable($feature);
-        }
-    }
-
-    /**
      * Add rate limit headers to response.
      */
     private function addRateLimitHeaders(mixed $response, License $license): void

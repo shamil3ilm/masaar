@@ -40,7 +40,9 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
         Route::get('/invoices/{invoice}', [InvoiceController::class, 'show']);
     });
 
-    Route::middleware(['scope:invoice.submit'])->group(function () {
+    // license.feature:documents - the licence must include the kind of
+    // document being written: standard or simplified, credit or debit note.
+    Route::middleware(['scope:invoice.submit', 'license.feature:documents'])->group(function () {
         Route::post('/invoices', [InvoiceController::class, 'store']);
         Route::put('/invoices/{invoice}', [InvoiceController::class, 'update']);
     });
@@ -66,14 +68,14 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
     /* Pipeline — create, generate and submit in one atomic call ------------ */
 
     Route::post('/pipeline/submit', [PipelineController::class, 'submit'])
-        ->middleware(['scope:invoice.submit', 'license.quota']);
+        ->middleware(['scope:invoice.submit', 'license.feature:documents', 'license.quota']);
 
     Route::get('/pipeline/status/{invoiceId}', [PipelineController::class, 'status'])
         ->middleware(['scope:compliance.status']);
 
     /* Webhooks -------------------------------------------------------------- */
 
-    Route::middleware(['scope:webhook.manage'])->group(function () {
+    Route::middleware(['scope:webhook.manage', 'license.feature:webhook_notifications'])->group(function () {
         Route::get('/webhooks', [WebhookController::class, 'index']);
         Route::get('/webhooks/{webhook}', [WebhookController::class, 'show']);
         Route::post('/webhooks', [WebhookController::class, 'store']);

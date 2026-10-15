@@ -369,13 +369,14 @@ class License extends Model
      */
     public function hasFeature(string $feature): bool
     {
-        if (! is_array($this->features)) {
-            return false;
-        }
+        // A licence issued without a list has its tier's. Read as none, now
+        // that features are enforced, it would refuse every request from
+        // every licence issued before they were.
+        $features = is_array($this->features) ? $this->features : $this->tier->getDefaultFeatures();
 
         // Support both array of strings and key-value pairs
-        return in_array($feature, $this->features, true)
-            || (isset($this->features[$feature]) && $this->features[$feature] === true);
+        return in_array($feature, $features, true)
+            || (isset($features[$feature]) && $features[$feature] === true);
     }
 
     /**
