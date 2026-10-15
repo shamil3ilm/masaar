@@ -45,7 +45,10 @@ final readonly class AddressData
             plotIdentification: $data['plot_identification'] ?? null,
             district: $data['district'] ?? null,
             city: $data['city'] ?? '',
-            postalCode: $data['postal_code'] ?? '',
+            // digits:5 accepts a JSON number, so a stored postal code can be
+            // an integer, and under strict types it stopped the invoice from
+            // being signed.
+            postalCode: (string) ($data['postal_code'] ?? ''),
             countrySubentity: $data['country_subentity'] ?? $data['region'] ?? null,
             countryCode: $data['country_code'] ?? 'SA',
         );
