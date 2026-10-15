@@ -645,8 +645,8 @@ jobs:
           touch database/sandbox.sqlite
           php artisan migrate --force
           php artisan fatoora:sandbox-filing 2>&1 | tee filing.log
-          grep -q 'Both invoices were accepted' filing.log || {
-            echo "::error title=Platform filing refused::The platform's own clearance or reporting path did not get both invoices accepted. Last output: $(tail -n 8 filing.log | tr '\n' ' ' | cut -c1-900)"
+          grep -q 'invoices were accepted through the platform' filing.log || {
+            echo "::error title=Platform filing refused::The platform's own clearance or reporting path did not get every invoice accepted. Last output: $(tail -n 8 filing.log | tr '\n' ' ' | cut -c1-900)"
             exit 1
           }
 

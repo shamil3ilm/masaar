@@ -20,7 +20,7 @@ use Tests\TestCase;
  * ZATCA's sandbox, which only the nightly CI job can do. This checks the part
  * that does not need the authority: that it refuses anywhere but the sandbox,
  * and that it really does go through the platform - the device stored and
- * found, both invoices issued, filed with that device's credentials, and the
+ * found, every invoice issued, filed with that device's credentials, and the
  * verdict and stamped copy recorded.
  */
 class SandboxFilingTest extends TestCase
@@ -87,7 +87,7 @@ class SandboxFilingTest extends TestCase
         ]);
 
         $this->artisan('fatoora:sandbox-filing')
-            ->expectsOutputToContain('Both invoices were accepted')
+            ->expectsOutputToContain('All 4 invoices were accepted')
             ->assertSuccessful();
 
         Http::assertSent(fn (Request $request): bool => $request->header('Authorization')
@@ -95,7 +95,13 @@ class SandboxFilingTest extends TestCase
 
         $invoices = Invoice::withoutTenantScope(fn () => Invoice::all());
 
-        $this->assertCount(2, $invoices);
+        $this->assertCount(4, $invoices);
+
+        // The inclusive pair went through the drafter's pricing: ZATCA's
+        // worked example, 1,255.00 gross.
+        $inclusive = $invoices->where('prices_include_vat', true);
+        $this->assertCount(2, $inclusive);
+        $this->assertTrue($inclusive->every(fn (Invoice $invoice): bool => (string) $invoice->total === '1255.00' && (string) $invoice->tax_amount === '163.70'));
         $this->assertTrue($invoices->every(fn (Invoice $invoice): bool => $invoice->status === InvoiceStatus::Accepted));
         $this->assertSame('<Invoice>STAMPED</Invoice>', $invoices->firstWhere('type.value', 'standard')?->cleared_xml);
     }
