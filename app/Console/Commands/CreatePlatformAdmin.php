@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use App\Domains\Audit\Services\AuditService;
 use App\Domains\Auth\Models\User;
+use App\Domains\Auth\Services\EnrolmentLinks;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -37,8 +38,12 @@ class CreatePlatformAdmin extends Command
 
     protected $description = 'Create the first platform administrator, or promote an existing user';
 
-    public function handle(): int
+    private EnrolmentLinks $links;
+
+    public function handle(EnrolmentLinks $links): int
     {
+        $this->links = $links;
+
         $email = (string) $this->argument('email');
 
         $invalid = Validator::make(['email' => $email], [
@@ -105,6 +110,7 @@ class CreatePlatformAdmin extends Command
         $this->record('platform_admin.granted', $user);
 
         $this->info('Promoted '.$user->email.' to platform administrator.');
+        $this->enrolmentLink($user);
 
         return self::SUCCESS;
     }
@@ -132,6 +138,22 @@ class CreatePlatformAdmin extends Command
             // operator is told about.
             $this->warn('The grant was not audited: '.$e->getMessage());
         }
+    }
+
+    /**
+     * A platform admin cannot sign in until they enrol a second factor, and
+     * enrolling needs a link. The first admin has no other admin to ask.
+     */
+    private function enrolmentLink(User $user): void
+    {
+        $this->line('Open this link, then sign in and set up two-factor. It works once and expires in '
+            .EnrolmentLinks::VALID_HOURS.' hours:');
+
+        if (($warning = EnrolmentLinks::unreachableHostWarning()) !== null) {
+            $this->warn($warning);
+        }
+
+        $this->line($this->links->issue($user, null));
     }
 
     private function create(string $email): int
@@ -174,7 +196,7 @@ class CreatePlatformAdmin extends Command
         $this->record('platform_admin.created', $user);
 
         $this->info('Created '.$user->email.' as a platform administrator.');
-        $this->line('Sign in at /login, then the console is at /admin.');
+        $this->enrolmentLink($user);
 
         return self::SUCCESS;
     }

@@ -34,6 +34,8 @@ class RouteAuthPostureTest extends TestCase
         // anyone without a fresh pending sign-in in the session.
         'login/two-factor' => 'Platform admin second factor, after the password',
         'login/two-factor/setup' => 'Platform admin enrolment, after the password',
+        // Only marks the browser; enrolment still needs the password after it.
+        'login/two-factor/enrol/{token}' => 'One-time enrolment link, before the password',
         'up' => 'Container health probe',
         // The look of the sign-in page has to load before anyone signs in,
         // and an organization's colours and logo are on every invoice it

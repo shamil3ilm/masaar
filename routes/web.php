@@ -72,6 +72,11 @@ Route::get('/login/two-factor', [TwoFactorController::class, 'showChallenge'])->
 Route::post('/login/two-factor', [TwoFactorController::class, 'challenge'])
     ->middleware('throttle:10,1')
     ->name('login.two-factor.attempt');
+// A one-time enrolment link, issued by another admin or by masaar:enrolment-link.
+Route::get('/login/two-factor/enrol/{token}', [TwoFactorController::class, 'enrol'])
+    ->where('token', '[A-Za-z0-9]{48}')
+    ->middleware('throttle:10,1')
+    ->name('login.two-factor.enrol');
 Route::get('/login/two-factor/setup', [TwoFactorController::class, 'showSetup'])->name('login.two-factor.setup');
 Route::post('/login/two-factor/setup', [TwoFactorController::class, 'setup'])
     ->middleware('throttle:10,1')
@@ -117,6 +122,7 @@ Route::prefix('admin')->name('admin.')
         Route::post('/users/{userId}/suspend', [AdminUserController::class, 'suspend'])->name('users.suspend');
         Route::post('/users/{userId}/reactivate', [AdminUserController::class, 'reactivate'])->name('users.reactivate');
         Route::post('/users/{userId}/reset-two-factor', [AdminUserController::class, 'resetTwoFactor'])->name('users.reset-two-factor');
+        Route::post('/users/{userId}/enrolment-link', [AdminUserController::class, 'issueEnrolmentLink'])->name('users.enrolment-link');
         Route::get('/audit', [AdminAuditController::class, 'index'])->name('audit');
         Route::get('/licences', [AdminLicenceController::class, 'index'])->name('licences.index');
         // Before the {licenceId} route below, or "create" is taken for an id

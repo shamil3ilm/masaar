@@ -135,6 +135,10 @@ class TwoFactor
             'two_factor_secret' => null,
             'two_factor_recovery_codes' => null,
             'two_factor_confirmed_at' => null,
+            // And any enrolment link: one issued before the reset must not
+            // come back to life with it.
+            'two_factor_enrolment_hash' => null,
+            'two_factor_enrolment_expires_at' => null,
         ])->save();
     }
 

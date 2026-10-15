@@ -6,6 +6,7 @@ namespace Tests\Feature\Security;
 
 use App\Domains\Audit\Models\AuditLog;
 use App\Domains\Auth\Models\User;
+use App\Domains\Auth\Services\EnrolmentLinks;
 use App\Domains\Auth\Support\Totp;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -104,6 +105,9 @@ class TwoFactorTest extends TestCase
     {
         $admin = User::factory()->create(['email' => 'new@masaar.test', 'is_platform_admin' => true]);
 
+        // The enrolment link another admin sent them, opened in this browser.
+        $this->get(app(EnrolmentLinks::class)->issue($admin, null))->assertRedirect(route('login'));
+
         $this->post('/login', ['email' => 'new@masaar.test', 'password' => 'password'])
             ->assertRedirect(route('login.two-factor.setup'));
         $this->assertGuest();
@@ -119,6 +123,7 @@ class TwoFactorTest extends TestCase
         $this->assertAuthenticatedAs($admin);
         $this->assertTrue($admin->fresh()->hasTwoFactor());
         $this->assertCount(8, (array) $admin->fresh()->two_factor_recovery_codes);
+        $this->assertNull($admin->fresh()->two_factor_enrolment_hash, 'the link was not spent');
     }
 
     public function test_a_member_needs_no_code(): void
@@ -142,6 +147,29 @@ class TwoFactorTest extends TestCase
             'password' => 'password',
             'two_factor_code' => Totp::code(self::SECRET, time()),
         ])->assertOk();
+    }
+
+    /**
+     * The API checked a code with no limit, so six digits were a million
+     * requests away. It now shares the console's count, per admin.
+     */
+    public function test_the_api_limits_code_guesses(): void
+    {
+        $this->enrolledAdmin();
+
+        for ($guess = 0; $guess < 5; $guess++) {
+            $this->postJson('/api/auth/login', [
+                'email' => 'ops@masaar.test',
+                'password' => 'password',
+                'two_factor_code' => '000000',
+            ])->assertUnauthorized();
+        }
+
+        $this->postJson('/api/auth/login', [
+            'email' => 'ops@masaar.test',
+            'password' => 'password',
+            'two_factor_code' => Totp::code(self::SECRET, time()),
+        ])->assertStatus(429)->assertHeader('Retry-After');
     }
 
     public function test_the_api_refuses_an_unenrolled_admin(): void

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Security;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Auth\Services\EnrolmentLinks;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Tests\TestCase;
@@ -97,7 +98,8 @@ class SessionAuthTest extends TestCase
      */
     public function test_admin_lands_on_console(): void
     {
-        User::factory()->platformAdmin()->create(['email' => 'admin@masaar.test']);
+        $admin = User::factory()->platformAdmin()->create(['email' => 'admin@masaar.test']);
+        $this->get(app(EnrolmentLinks::class)->issue($admin, null));
 
         $this->post('/login', [
             'email' => 'admin@masaar.test',

@@ -6,7 +6,9 @@ namespace App\Domains\Auth\Http\Controllers;
 
 use App\Domains\Audit\Services\AuditService;
 use App\Domains\Auth\Models\User;
+use App\Domains\Auth\Services\EnrolmentLinks;
 use App\Domains\Auth\Services\SignInRecorder;
+use App\Domains\Auth\Services\SignInThrottle;
 use App\Domains\Auth\Services\TwoFactor;
 use App\Domains\Auth\Support\Totp;
 use App\Domains\Compliance\Fatoora\Services\QrCodeRenderer;
@@ -14,7 +16,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -31,15 +32,41 @@ class TwoFactorController extends Controller
 
     public const PENDING_MINUTES = 5;
 
-    private const SETUP_SECRET = 'mfa.setup_secret';
+    /**
+     * The hash of the enrolment link this browser opened. Kept as the hash,
+     * so the session never holds the link itself.
+     */
+    public const ENROLMENT = 'mfa.enrolment';
 
-    private const MAX_ATTEMPTS = 5;
+    private const SETUP_SECRET = 'mfa.setup_secret';
 
     public function __construct(
         private readonly TwoFactor $twoFactor,
         private readonly SignInRecorder $signIns,
         private readonly AuditService $audit,
+        private readonly SignInThrottle $throttle,
+        private readonly EnrolmentLinks $links,
     ) {}
+
+    /**
+     * Where an enrolment link lands. It marks this browser and sends the
+     * admin to sign in: the link permits enrolment, the password still says
+     * who is enrolling.
+     */
+    public function enrol(Request $request, string $token): RedirectResponse
+    {
+        if ($this->links->holder($token) === null) {
+            return redirect()->route('login')
+                ->withErrors(['email' => 'This enrolment link is not valid. It may have been used, replaced or expired - ask another platform admin for a new one.']);
+        }
+
+        $request->session()->put(self::ENROLMENT, EnrolmentLinks::hash($token));
+
+        // The address held the token; nothing should keep a copy of it.
+        return redirect()->route('login')
+            ->with('status', 'Sign in to set up two-factor authentication.')
+            ->header('Cache-Control', 'no-store');
+    }
 
     public function showChallenge(Request $request): View|RedirectResponse
     {
@@ -62,17 +89,17 @@ class TwoFactorController extends Controller
 
         $code = (string) $request->validate(['code' => ['required', 'string', 'max:32']])['code'];
 
-        $this->throttle($user);
+        $this->refuseWhileLocked($user);
 
         if (! $this->twoFactor->check($user, $code)) {
-            RateLimiter::hit($this->throttleKey($user), self::PENDING_MINUTES * 60);
+            $this->throttle->codeFailed($user);
 
             $this->audit->logSecurity('mfa.failed', 'User', (string) $user->id, ['surface' => 'console']);
 
             throw ValidationException::withMessages(['code' => 'That code is not right. Try the current one from your app, or a recovery code.']);
         }
 
-        RateLimiter::clear($this->throttleKey($user));
+        $this->throttle->codeSucceeded($user);
 
         $this->complete($request, $user);
 
@@ -83,7 +110,7 @@ class TwoFactorController extends Controller
     {
         $user = $this->pending($request);
 
-        if ($user === null || $user->hasTwoFactor()) {
+        if ($user === null || $user->hasTwoFactor() || ! $this->mayEnrol($request, $user)) {
             return redirect()->route('login');
         }
 
@@ -101,29 +128,42 @@ class TwoFactorController extends Controller
         $user = $this->pending($request);
         $secret = $request->session()->get(self::SETUP_SECRET);
 
-        if ($user === null || $user->hasTwoFactor() || ! is_string($secret)) {
+        if ($user === null || $user->hasTwoFactor() || ! is_string($secret) || ! $this->mayEnrol($request, $user)) {
             return redirect()->route('login');
         }
 
         $code = (string) $request->validate(['code' => ['required', 'string', 'max:32']])['code'];
 
-        $this->throttle($user);
+        $this->refuseWhileLocked($user);
 
-        $recoveryCodes = $this->twoFactor->confirm($user, $secret, $code);
+        $recoveryCodes = $this->links->enrol($user, $request->session()->get(self::ENROLMENT), $secret, $code);
 
-        if ($recoveryCodes === null) {
-            RateLimiter::hit($this->throttleKey($user), self::PENDING_MINUTES * 60);
+        if ($recoveryCodes === EnrolmentLinks::LINK_GONE) {
+            return redirect()->route('login');
+        }
+
+        if ($recoveryCodes === EnrolmentLinks::WRONG_CODE) {
+            $this->throttle->codeFailed($user);
 
             throw ValidationException::withMessages(['code' => 'That code is not right. Check the app is showing the Masaar entry you just added.']);
         }
 
-        RateLimiter::clear($this->throttleKey($user));
+        $this->throttle->codeSucceeded($user);
+        $request->session()->forget(self::ENROLMENT);
 
         $this->complete($request, $user);
 
         // Shown once, here, and never again: they are kept encrypted and are
         // not displayable afterwards.
         return view('auth.recovery-codes', ['codes' => $recoveryCodes]);
+    }
+
+    /**
+     * Whether this browser opened a live enrolment link issued to this admin.
+     */
+    private function mayEnrol(Request $request, User $user): bool
+    {
+        return $this->links->permits($user, $request->session()->get(self::ENROLMENT));
     }
 
     /**
@@ -151,17 +191,14 @@ class TwoFactorController extends Controller
     /**
      * @throws ValidationException
      */
-    private function throttle(User $user): void
+    private function refuseWhileLocked(User $user): void
     {
-        if (RateLimiter::tooManyAttempts($this->throttleKey($user), self::MAX_ATTEMPTS)) {
+        $seconds = $this->throttle->codeLockedFor($user);
+
+        if ($seconds > 0) {
             throw ValidationException::withMessages([
-                'code' => 'Too many attempts. Try again in '.RateLimiter::availableIn($this->throttleKey($user)).' seconds.',
+                'code' => 'Too many attempts. Try again in '.$seconds.' seconds.',
             ]);
         }
-    }
-
-    private function throttleKey(User $user): string
-    {
-        return 'mfa:'.$user->id;
     }
 }

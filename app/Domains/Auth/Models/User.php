@@ -37,6 +37,7 @@ class User extends Authenticatable implements JWTSubject
         'remember_token',
         'two_factor_secret',
         'two_factor_recovery_codes',
+        'two_factor_enrolment_hash',
     ];
 
     protected function casts(): array
@@ -51,6 +52,7 @@ class User extends Authenticatable implements JWTSubject
             'two_factor_secret' => 'encrypted',
             'two_factor_recovery_codes' => 'encrypted:array',
             'two_factor_confirmed_at' => 'datetime',
+            'two_factor_enrolment_expires_at' => 'datetime',
         ];
     }
 

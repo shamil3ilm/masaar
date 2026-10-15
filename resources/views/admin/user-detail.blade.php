@@ -72,7 +72,7 @@
                 <div>
                     <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Two-factor</dt>
                     <dd class="text-sm text-gray-900 dark:text-gray-100 mt-1">
-                        {{ $user->two_factor_confirmed_at ? 'On since '.$when($user->two_factor_confirmed_at) : 'Not set up - required at next sign-in' }}
+                        {{ $user->two_factor_confirmed_at ? 'On since '.$when($user->two_factor_confirmed_at) : 'Not set up - they need an enrolment link from another admin' }}
                     </dd>
                 </div>
             @endif
@@ -136,6 +136,25 @@
                     <x-ui.button variant="outline" class="w-full">Reset two-factor</x-ui.button>
                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">For an admin who has lost their phone and their recovery codes.</p>
                 </form>
+            @endif
+
+            @if(! $isSelf && $user->is_platform_admin && ! $user->two_factor_confirmed_at)
+                <form method="POST" action="{{ route('admin.users.enrolment-link', $user->id) }}" class="mt-6 border-t pt-6"
+                      data-confirm-action="Issue link"
+                      data-confirm="Issue a two-factor enrolment link for {{ $user->email }}? Anyone holding it and their password can enrol, so send it only to them. Any earlier link stops working.">
+                    @csrf
+                    <x-ui.button variant="outline" class="w-full">Issue enrolment link</x-ui.button>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">They cannot set up two-factor, or sign in, without one.</p>
+                </form>
+            @endif
+
+            @if(session(\App\Domains\Platform\Http\Controllers\AdminUserController::LINK))
+                <div class="mt-6 border-t pt-6">
+                    <label for="enrolment-link" class="block text-xs font-medium uppercase text-gray-500 dark:text-gray-400">One-time enrolment link</label>
+                    <x-ui.input id="enrolment-link" type="text" readonly
+                                value="{{ session(\App\Domains\Platform\Http\Controllers\AdminUserController::LINK) }}" />
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Shown only now, and valid for 24 hours. Send it by a channel you trust; it works once.</p>
+                </div>
             @endif
         </div>
     </div>
