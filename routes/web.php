@@ -10,6 +10,7 @@ use App\Domains\Compliance\Fatoora\Http\Controllers\AdminKillSwitchController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceDraftController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceFilingController;
+use App\Domains\Invoice\Http\Controllers\PortalNumberingController;
 use App\Domains\Licensing\Http\Controllers\AdminLicenceController;
 use App\Domains\Organization\Http\Controllers\CustomerPortalController;
 use App\Domains\Organization\Http\Controllers\PortalCompanyController;
@@ -222,6 +223,11 @@ Route::prefix('portal')->name('portal.')
         // complete. Administrators only; the controller checks the role.
         Route::get('/company', [PortalCompanyController::class, 'edit'])->name('company.edit');
         Route::post('/company', [PortalCompanyController::class, 'update'])->name('company.update');
+
+        // How documents issued without a number are numbered. Administrators
+        // only; the controller checks the role.
+        Route::get('/numbering', [PortalNumberingController::class, 'edit'])->name('numbering.edit');
+        Route::post('/numbering/{documentType}', [PortalNumberingController::class, 'update'])->name('numbering.update');
 
         // The organization's own look over the platform's. Administrators
         // of the organization only; the controller checks the role.

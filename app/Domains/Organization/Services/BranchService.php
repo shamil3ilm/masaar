@@ -205,6 +205,18 @@ class BranchService
     /**
      * Store branch credentials securely.
      */
+    /**
+     * Whether a branch is one of the organization's, for anything that takes
+     * a branch id from a request.
+     */
+    public function belongsTo(string $branchId, string $organizationId): bool
+    {
+        return Branch::withoutTenantScope(fn (): bool => Branch::query()
+            ->whereKey($branchId)
+            ->where('org_id', $organizationId)
+            ->exists());
+    }
+
     public function storeCredentials(Branch $branch, string $type, array $data): void
     {
         $this->credentials->put($branch->org_id, $branch->id, $type, $data);

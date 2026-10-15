@@ -20,7 +20,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $invoice->invoice_number }}</title>
+    <title>{{ $invoice->invoice_number ?? 'Draft' }}</title>
     {{-- Stylesheet only. Nothing on a receipt is interactive, and the print
          dialog is the browser's own. --}}
     @vite(['resources/css/app.css'])
@@ -38,7 +38,7 @@
             {{ $simplified ? 'Simplified tax invoice' : 'Tax invoice' }}
             <span dir="rtl" lang="ar">{{ $simplified ? 'فاتورة ضريبية مبسطة' : 'فاتورة ضريبية' }}</span>
         </p>
-        <h1 class="mt-1 text-xl font-bold">{{ $invoice->invoice_number }}</h1>
+        <h1 class="mt-1 text-xl font-bold">{{ $invoice->invoice_number ?? 'Draft' }}</h1>
 
         {{-- Stacked rather than label-colon-value: x-caption is two block
              elements, one per language, so an inline colon after it lands at

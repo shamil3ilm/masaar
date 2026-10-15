@@ -64,8 +64,9 @@ class CreateInvoiceRequest extends FormRequest
         $hasBuyerVat = fn (): bool => $this->filled('buyer_vat_number');
 
         return [
-            // Invoice header
-            'invoice_number' => ['required', 'string', 'max:255'],
+            // Invoice header. Left out, the invoice is numbered when it is
+            // issued, from the organization's sequence for its document type.
+            'invoice_number' => ['nullable', 'string', 'max:255'],
             'type' => ['required', Rule::enum(InvoiceType::class)],
             // Proforma (document_type=325) is not valid for ZATCA VAT reporting
             'document_type' => ['nullable', Rule::enum(DocumentType::class), Rule::notIn(['proforma'])],

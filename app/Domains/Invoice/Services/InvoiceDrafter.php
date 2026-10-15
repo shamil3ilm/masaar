@@ -52,6 +52,18 @@ class InvoiceDrafter
             ->first());
     }
 
+    /**
+     * The invoice an earlier request drafted for this ERP document, if any.
+     */
+    public function createdFor(string $organizationId, string $erpReferenceId): ?Invoice
+    {
+        return Invoice::withoutTenantScope(fn (): ?Invoice => Invoice::query()
+            ->where('org_id', $organizationId)
+            ->where('erp_reference_id', $erpReferenceId)
+            ->oldest()
+            ->first());
+    }
+
     public function draft(array $data, string $organizationId, ?string $branchId = null): Invoice
     {
         // The invoice says whether its prices include VAT; if it does not,
@@ -66,7 +78,7 @@ class InvoiceDrafter
             $invoice = Invoice::create([
                 'org_id' => $organizationId,
                 'branch_id' => $branchId,
-                'invoice_number' => $data['invoice_number'],
+                'invoice_number' => $data['invoice_number'] ?? null,
                 'type' => $data['type'],
                 'document_type' => $data['document_type'],
                 'status' => InvoiceStatus::Draft,

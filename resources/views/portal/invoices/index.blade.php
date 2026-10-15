@@ -56,7 +56,7 @@
                 <td class="px-4 py-3">
                     <a href="{{ route('portal.invoices.show', $invoice->id) }}"
                        class="font-medium text-teal-700 dark:text-teal-300 hover:underline">
-                        {{ $invoice->invoice_number }}
+                        {{ $invoice->invoice_number ?? 'Draft (not yet numbered)' }}
                     </a>
                     <p class="text-xs text-gray-400 dark:text-gray-500">{{ ucfirst($invoice->type instanceof \BackedEnum ? $invoice->type->value : (string) $invoice->type) }}</p>
                 </td>

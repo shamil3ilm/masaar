@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Fatoora\Services;
 
 use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Invoice\Enums\DocumentType;
+use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\InvoiceTotals;
 use App\Domains\Organization\Models\Organization;
@@ -145,8 +146,10 @@ class InvoiceValidator
     {
         $errors = [];
 
-        // Invoice number (BT-1)
-        if (! $invoice->invoice_number) {
+        // Invoice number (BT-1). A draft may be unnumbered: issuing it takes
+        // the next number from the organization's sequence, before the
+        // document is built.
+        if (! $invoice->invoice_number && $invoice->status !== InvoiceStatus::Draft) {
             $errors[] = 'BT-1: Invoice number is required';
         }
 

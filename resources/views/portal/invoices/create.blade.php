@@ -44,7 +44,8 @@
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
                 <label for="invoice_number" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Invoice number</label>
-                <x-ui.input type="text" name="invoice_number" id="invoice_number" value="{{ old('invoice_number') }}" required />
+                <x-ui.input type="text" name="invoice_number" id="invoice_number" value="{{ old('invoice_number') }}" placeholder="Numbered when issued" />
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Leave empty to take the next number from your numbering when it is issued.</p>
             </div>
 
             <div>

@@ -49,7 +49,7 @@ export interface AuthRegisterBody {
 }
 
 export interface InvoiceStoreBody {
-  invoice_number: string;
+  invoice_number?: string;
   type: string;
   document_type?: string;
   issue_date: string;
@@ -72,7 +72,7 @@ export interface InvoiceStoreBody {
 }
 
 export interface InvoiceUpdateBody {
-  invoice_number: string;
+  invoice_number?: string;
   type: string;
   document_type?: string;
   issue_date: string;
@@ -95,7 +95,7 @@ export interface InvoiceUpdateBody {
 }
 
 export interface InvoiceUpdateBody {
-  invoice_number: string;
+  invoice_number?: string;
   type: string;
   document_type?: string;
   issue_date: string;
@@ -118,7 +118,7 @@ export interface InvoiceUpdateBody {
 }
 
 export interface V1InvoiceControllerBody {
-  invoice_number: string;
+  invoice_number?: string;
   type: string;
   document_type?: string;
   issue_date: string;
@@ -141,7 +141,7 @@ export interface V1InvoiceControllerBody {
 }
 
 export interface V1InvoiceControllerBody {
-  invoice_number: string;
+  invoice_number?: string;
   type: string;
   document_type?: string;
   issue_date: string;
@@ -293,6 +293,8 @@ export const operations = {
   'complianceProfileController.index': { method: 'get', path: '/api/organizations/{organization}/compliance-profiles', security: ['bearerAuth'], scopes: [] },
   'complianceProfileController.store': { method: 'post', path: '/api/organizations/{organization}/compliance-profiles', security: ['bearerAuth'], scopes: [] },
   'complianceProfileController.destroy': { method: 'delete', path: '/api/organizations/{organization}/compliance-profiles/{profile}', security: ['bearerAuth'], scopes: [] },
+  'numberingController.index': { method: 'get', path: '/api/settings/numbering', security: ['bearerAuth'], scopes: [] },
+  'numberingController.update': { method: 'put', path: '/api/settings/numbering/{documentType}', security: ['bearerAuth'], scopes: [] },
   'v1.complianceController.generate': { method: 'post', path: '/api/v1/compliance/generate/{invoiceId}', security: ['apiKey', 'apiSecret'], scopes: ['invoice.submit'] },
   'v1.complianceController.status': { method: 'get', path: '/api/v1/compliance/status/{invoiceId}', security: ['apiKey', 'apiSecret'], scopes: ['compliance.status'] },
   'v1.complianceController.submit': { method: 'post', path: '/api/v1/compliance/submit/{invoiceId}', security: ['apiKey', 'apiSecret'], scopes: ['invoice.submit'] },
