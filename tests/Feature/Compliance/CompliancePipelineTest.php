@@ -207,7 +207,7 @@ class CompliancePipelineTest extends TestCase
 
     private function draftInvoice(string $number): Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
             'org_id' => $this->organization->id,
             'invoice_number' => $number,
             'type' => 'standard',
@@ -219,6 +219,20 @@ class CompliancePipelineTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]))->fresh();
+        ]));
+
+        // The line the stored totals describe: an invoice with none breaks
+        // BR-16 and is refused before issue.
+        $invoice->lines()->create([
+            'description' => 'Item',
+            'quantity' => '1',
+            'unit_price' => '100.00',
+            'tax_rate' => '15',
+            'tax_amount' => '15.00',
+            'tax_category' => 'S',
+            'line_total' => '115.00',
+        ]);
+
+        return $invoice->fresh();
     }
 }

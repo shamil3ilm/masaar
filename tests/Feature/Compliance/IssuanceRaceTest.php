@@ -36,7 +36,16 @@ class IssuanceRaceTest extends TestCase
     {
         parent::setUp();
 
-        $this->acme = Organization::create(['name' => 'Acme Trading', 'country' => 'SA', 'vat_number' => '300000000000003']);
+        $this->acme = Organization::create([
+            'name' => 'Acme Trading',
+            'country' => 'SA',
+            'vat_number' => '300000000000003',
+            'street' => 'King Fahd Road',
+            'building_number' => '1234',
+            'district' => 'Al Olaya',
+            'city' => 'Riyadh',
+            'postal_code' => '12345',
+        ]);
     }
 
     public function test_a_stale_copy_cannot_issue_again(): void

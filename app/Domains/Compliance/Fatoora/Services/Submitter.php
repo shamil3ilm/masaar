@@ -95,6 +95,23 @@ class Submitter
         $this->killSwitch->assertNotEnabled(KillSwitch::SWITCH_ISSUANCE, (string) $organization->id);
         $this->killSwitch->assertNotEnabled(KillSwitch::SWITCH_SIGNING, (string) $organization->id);
 
+        // ZATCA's rules, before a counter is spent. InvoiceValidator held them
+        // and nothing called it, so an invoice that broke them was signed,
+        // numbered and chained, and only then refused by the authority - with
+        // its counter gone for good. Not on a reissue, which finishes an
+        // issuance that already passed here.
+        if (! $reissue) {
+            $check = $this->compliance->validateInvoice($invoice, $organization);
+
+            if (! $check['valid']) {
+                throw new FatooraException(
+                    "Invoice {$invoice->invoice_number} breaks ZATCA's rules: ".implode('; ', $check['errors']),
+                    ErrorCode::VALIDATION_FAILED,
+                    ['errors' => $check['errors']],
+                );
+            }
+        }
+
         // The device that issues the document signs it: the invoice's branch
         // when it has a certificate of its own, the organization otherwise -
         // the same device CredentialStore::device() files it as. The branch

@@ -218,6 +218,18 @@ class SubmissionRaceTest extends TestCase
             'total' => '115.00',
         ]));
 
+        // The line the stored totals describe: an invoice with none breaks
+        // BR-16 and is refused before issue.
+        $invoice->lines()->create([
+            'description' => 'Item',
+            'quantity' => '1',
+            'unit_price' => '100.00',
+            'tax_rate' => '15',
+            'tax_amount' => '15.00',
+            'tax_category' => 'S',
+            'line_total' => '115.00',
+        ]);
+
         app(Submitter::class)->generate($invoice, $this->organization);
 
         return $invoice->fresh(['lines']);
