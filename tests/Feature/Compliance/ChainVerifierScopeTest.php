@@ -92,6 +92,24 @@ class ChainVerifierScopeTest extends TestCase
     }
 
     /**
+     * The chain is read a page at a time now, and its position carries over
+     * the page break: a sound chain longer than a page still passes.
+     */
+    public function test_a_chain_spanning_pages_passes(): void
+    {
+        $org = Organization::create(['name' => 'Acme', 'country' => 'SA']);
+        $previous = FatooraConfig::GENESIS_PIH;
+
+        foreach (range(1, 5) as $icv) {
+            $previous = (string) $this->issued($org, "INV-{$icv}", $icv, $previous)->hash;
+        }
+
+        $this->artisan('fatoora:verify-hash-chain', ['--page' => 2])
+            ->expectsOutputToContain('Verified 5 invoices')
+            ->assertSuccessful();
+    }
+
+    /**
      * An issued invoice as issuance actually leaves it: a counter, a hash,
      * and the chain entry recording what it was built on.
      */

@@ -59,7 +59,7 @@ class RecoverSubmissions extends Command
             ->limit((int) $this->option('limit'))
             ->get());
 
-        $counts = ['resent' => 0, 'reconcile' => 0];
+        $counts = ['resent' => 0, 'reconcile' => 0, 'errors' => 0];
 
         foreach ($stale as $submission) {
             if ($submission->state === 'submitted' && $submission->isClearance()) {
@@ -77,21 +77,55 @@ class RecoverSubmissions extends Command
                 continue;
             }
 
-            if ($submission->state !== 'queued') {
-                $ledger->transition($submission, 'failed', 'recovered', [
-                    'from' => $submission->state,
-                    'reason' => $submission->state === 'submitted'
-                        ? 'sent with no answer recorded; a report is safe to resend'
-                        : 'claimed and never sent',
-                ]);
-            }
+            try {
+                $this->resend($ledger, $submission);
+                $counts['resent']++;
+            } catch (\Throwable $e) {
+                // One row's trouble is not the run's: the rest still go.
+                $counts['errors']++;
 
-            ProcessFatooraSubmission::dispatch($submission->fresh());
-            $counts['resent']++;
+                Log::error('A stale submission could not be recovered; the next run will try again', [
+                    'submission_id' => $submission->id,
+                    'invoice_id' => $submission->invoice_id,
+                    'error' => $e->getMessage(),
+                ]);
+
+                $this->error("  {$submission->id}: not recovered - {$e->getMessage()}");
+            }
         }
 
         $this->info("Recovered {$counts['resent']} submission(s); {$counts['reconcile']} clearance(s) need reconciling.");
 
-        return self::SUCCESS;
+        return $counts['errors'] === 0 ? self::SUCCESS : self::FAILURE;
+    }
+
+    /**
+     * Re-stamp the row and queue its job, together.
+     *
+     * Together, because apart they stranded it: a row marked failed whose job
+     * then failed to queue is not in flight, so no later run looked at it, and
+     * nothing else sends a failed submission. Inside one transaction a queue
+     * that refuses the push leaves the row stale, and the next run retries it.
+     *
+     * A queued row is re-stamped too, though its state does not change. Left
+     * with its old timestamp it stayed stale while the job waited behind a
+     * backlog, and every run ten minutes apart queued it once more.
+     */
+    private function resend(SubmissionLedger $ledger, InvoiceSubmission $submission): void
+    {
+        DB::transaction(function () use ($ledger, $submission): void {
+            $from = $submission->state;
+
+            $ledger->transition($submission, $from === 'queued' ? 'queued' : 'failed', 'recovered', [
+                'from' => $from,
+                'reason' => match ($from) {
+                    'queued' => 'its job was lost; queued again',
+                    'submitted' => 'sent with no answer recorded; a report is safe to resend',
+                    default => 'claimed and never sent',
+                },
+            ]);
+
+            ProcessFatooraSubmission::dispatch($submission->fresh());
+        });
     }
 }
