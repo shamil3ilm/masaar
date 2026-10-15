@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\Webhook\Models\WebhookLog;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -143,6 +144,12 @@ Schedule::command('compliance:cleanup-offline-queue')
     ->withoutOverlapping(30)
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/zatca-queue-cleanup.log'));
+
+// Webhook delivery logs past their retention (WebhookLog::RETENTION_DAYS).
+Schedule::command('model:prune', ['--model' => [WebhookLog::class]])
+    ->onOneServer()
+    ->dailyAt('04:30')
+    ->withoutOverlapping(30);
 
 /*
 |--------------------------------------------------------------------------

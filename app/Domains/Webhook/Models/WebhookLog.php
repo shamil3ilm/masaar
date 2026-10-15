@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Webhook\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -16,6 +18,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class WebhookLog extends Model
 {
     use HasUuids;
+    use MassPrunable;
+
+    /**
+     * Every attempt writes a row with its whole payload, and nothing removed
+     * them, so the table grew with every invoice for good. Ninety days covers
+     * any investigation a delivery needs; the invoice and its submission are
+     * the record that has to last, and they are kept elsewhere.
+     */
+    public const RETENTION_DAYS = 90;
 
     protected $fillable = [
         'webhook_id',
@@ -35,6 +46,11 @@ class WebhookLog extends Model
             'duration_ms' => 'integer',
             'success' => 'boolean',
         ];
+    }
+
+    public function prunable(): Builder
+    {
+        return static::query()->where('created_at', '<', now()->subDays(self::RETENTION_DAYS));
     }
 
     /**

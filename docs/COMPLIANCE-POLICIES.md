@@ -407,27 +407,33 @@ If a customer's webhook endpoint is compromised, attackers could replay old webh
 
 ### Payload Security Fields
 
-Every webhook payload includes:
+Every webhook body is this envelope, signed as a whole:
 
 ```json
 {
-  "event_id": "evt_unique_uuid",
-  "event_type": "invoice.cleared",
-  "occurred_at": "YYYY-MM-DDTHH:MM:SSZ",
-  "delivered_at": "YYYY-MM-DDTHH:MM:SSZ",
-  "signature": "sha256=abc123...",
-  "idempotency_key": "idem_xyz789"
+  "id": "delivery uuid",
+  "event": "invoice.cleared",
+  "timestamp": "YYYY-MM-DDTHH:MM:SS.sssZ",
+  "data": { }
 }
 ```
+
+The same values arrive as headers: `X-Webhook-ID`, `X-Webhook-Event`, `X-Webhook-Timestamp`, and `X-Webhook-Signature` (`sha256=` followed by the HMAC-SHA256 of the raw body, keyed with the webhook secret). Because `id` and `timestamp` are inside the signed body, neither can be altered without breaking the signature.
+
+### Retries
+
+A delivery the receiver does not answer (a connection failure, a timeout, 408, 429 or 5xx) is retried up to four more times over about forty minutes. **Every retry carries the same `id`**, with a fresh `timestamp`. Any other non-2xx status is treated as the receiver's answer and is not retried.
+
+An endpoint is disabled after ten failed deliveries in a row with nothing delivered for 24 hours. Re-enabling it clears the count.
 
 ### Consumer Requirements
 
 | Requirement | Implementation |
 |-------------|----------------|
-| Verify signature | HMAC-SHA256 with webhook secret |
-| Check event_id uniqueness | Store processed event_ids |
-| Validate timestamp freshness | Reject if `occurred_at` > 5 minutes old |
-| Idempotent processing | Use `idempotency_key` for deduplication |
+| Verify signature | HMAC-SHA256 of the raw body with the webhook secret |
+| Discard repeats | Store processed `id`s; a retry repeats the `id` |
+| Validate timestamp freshness | Reject if `timestamp` is more than 5 minutes old |
+| Answer quickly | Return 2xx once the event is stored, and process it afterwards |
 
 ### SDK Guidance
 
@@ -438,23 +444,23 @@ import { verifyWebhook } from '@masaar/sdk';
 app.post('/webhooks', (req, res) => {
   const event = verifyWebhook(
     req.body,
-    req.headers['x-masaar-signature'],
+    req.headers['x-webhook-signature'],
     process.env.WEBHOOK_SECRET
   );
 
   // Check for replay
-  if (await isEventProcessed(event.event_id)) {
+  if (await isEventProcessed(event.id)) {
     return res.status(200).send('Already processed');
   }
 
   // Check timestamp freshness
-  const age = Date.now() - new Date(event.occurred_at).getTime();
+  const age = Date.now() - new Date(event.timestamp).getTime();
   if (age > 5 * 60 * 1000) { // 5 minutes
     return res.status(400).send('Event too old');
   }
 
   // Process event...
-  await markEventProcessed(event.event_id);
+  await markEventProcessed(event.id);
   res.status(200).send('OK');
 });
 ```

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Webhook\Services;
 
+use App\Domains\Webhook\DTOs\DeliveryOutcome;
+use App\Domains\Webhook\Jobs\DeliverWebhook;
 use App\Domains\Webhook\Models\Webhook;
 use App\Domains\Webhook\Models\WebhookLog;
 use App\Support\SafeUrl;
@@ -35,10 +37,16 @@ class WebhookService
         'onboarding.ccsid_obtained',
         'onboarding.compliance_passed',
         'onboarding.pcsid_obtained',
+        'certificate.expiring',
     ];
 
     /**
-     * Dispatch webhook for an event.
+     * Queue the event for every endpoint subscribed to it.
+     *
+     * Queued, not sent: this runs inside issuance and submission, and a
+     * customer's endpoint taking thirty seconds to answer held those up for
+     * thirty seconds each. One job per endpoint, so one failing receiver is
+     * retried without repeating the event to the others.
      *
      * @param  string  $organizationId  Organization ID
      * @param  string  $event  Event name
@@ -51,14 +59,38 @@ class WebhookService
             ->get();
 
         foreach ($webhooks as $webhook) {
-            if ($webhook->isSubscribedTo($event)) {
-                $this->deliver($webhook, $event, $payload);
+            if (! $webhook->isSubscribedTo($event)) {
+                continue;
+            }
+
+            // After commit: an event raised inside a transaction that rolls
+            // back never happened, and must not be announced. And each push
+            // on its own, so a queue failure on one endpoint neither stops the
+            // others nor, by failing the caller, gets the ones already queued
+            // queued again under new ids when the caller is retried.
+            try {
+                DeliverWebhook::dispatch($webhook->id, $event, $payload, Str::uuid()->toString())->afterCommit();
+            } catch (\Throwable $e) {
+                Log::error('Webhook delivery could not be queued', [
+                    'webhook_id' => $webhook->id,
+                    'event' => $event,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
     }
 
     /**
-     * Deliver webhook to endpoint.
+     * Deliver once, now, under a new delivery id: the test button and the
+     * console's replay, which report the answer to the person who pressed it.
+     */
+    public function deliver(Webhook $webhook, string $event, array $payload): bool
+    {
+        return $this->attempt($webhook, $event, $payload, Str::uuid()->toString(), lastTry: true)->delivered;
+    }
+
+    /**
+     * One attempt at a delivery.
      *
      * The HTTP call is made before anything is written, so no transaction is
      * held open while the receiver answers.
@@ -74,14 +106,18 @@ class WebhookService
      *
      * Nothing is recorded when it is refused. A log row means an attempt was
      * made, and reading one that was never sent is worse than reading none.
+     *
+     * Every attempt is logged, but only a delivery that has finished failing
+     * counts against the endpoint's health: an attempt the queue will retry
+     * is not yet a failure, and counting each one disabled an endpoint after
+     * a few events during a short outage.
      */
-    public function deliver(Webhook $webhook, string $event, array $payload): bool
+    public function attempt(Webhook $webhook, string $event, array $payload, string $deliveryId, bool $lastTry): DeliveryOutcome
     {
         if (! $webhook->is_active) {
-            return false;
+            return DeliveryOutcome::refused();
         }
 
-        $deliveryId = Str::uuid()->toString();
         $timestamp = now()->toISOString();
 
         $body = [
@@ -101,7 +137,10 @@ class WebhookService
         // would otherwise be called wherever it points now - the cloud
         // metadata service, Redis, the database. Recorded, so the tenant can
         // see why their endpoint stopped receiving.
-        [$refusal, $address] = SafeUrl::decide($webhook->url, 'security.webhook_hosts');
+        //
+        // A name that did not resolve is retried like an unanswered request:
+        // a resolver blip says nothing about the endpoint.
+        [$refusal, $address, $transient] = SafeUrl::decide($webhook->url, 'security.webhook_hosts');
 
         if ($refusal !== null) {
             $this->record($webhook, [
@@ -111,16 +150,19 @@ class WebhookService
                 'response_body' => 'Not sent: '.$refusal,
                 'duration_ms' => 0,
                 'success' => false,
-            ]);
+            ], countFailure: $lastTry || ! $transient);
 
             Log::warning('Webhook delivery refused', [
                 'webhook_id' => $webhook->id,
                 'reason' => $refusal,
             ]);
 
-            return false;
+            return $transient ? DeliveryOutcome::unanswered() : DeliveryOutcome::refused();
         }
 
+        // Only the request is in the try. Recording an answer that did arrive
+        // and then failing to write it would otherwise log a second, failed
+        // attempt, count it against the endpoint, and send it again.
         try {
             $response = Http::timeout(30)
                 // A redirect would take the request somewhere the check above
@@ -135,19 +177,6 @@ class WebhookService
                     'User-Agent' => 'Masaar-Webhook/1.0',
                 ])
                 ->post($webhook->url, $body);
-
-            $success = $response->successful();
-
-            $this->record($webhook, [
-                'event' => $event,
-                'payload' => $body,
-                'response_status' => $response->status(),
-                'response_body' => Str::limit($response->body(), 1000),
-                'duration_ms' => (int) ((microtime(true) - $startTime) * 1000),
-                'success' => $success,
-            ]);
-
-            return $success;
         } catch (\Exception $e) {
             $this->record($webhook, [
                 'event' => $event,
@@ -156,7 +185,7 @@ class WebhookService
                 'response_body' => $e->getMessage(),
                 'duration_ms' => (int) ((microtime(true) - $startTime) * 1000),
                 'success' => false,
-            ]);
+            ], countFailure: $lastTry);
 
             Log::warning('Webhook delivery failed', [
                 'webhook_id' => $webhook->id,
@@ -164,8 +193,21 @@ class WebhookService
                 'error' => $e->getMessage(),
             ]);
 
-            return false;
+            return DeliveryOutcome::unanswered();
         }
+
+        $outcome = DeliveryOutcome::forStatus($response->status());
+
+        $this->record($webhook, [
+            'event' => $event,
+            'payload' => $body,
+            'response_status' => $response->status(),
+            'response_body' => Str::limit($response->body(), 1000),
+            'duration_ms' => (int) ((microtime(true) - $startTime) * 1000),
+            'success' => $outcome->delivered,
+        ], countFailure: $lastTry || ! $outcome->retryable);
+
+        return $outcome;
     }
 
     /**
@@ -231,10 +273,11 @@ class WebhookService
      * for its organization by dispatch().
      *
      * @param  array{event: string, payload: array, response_status: int, response_body: string, duration_ms: int, success: bool}  $attempt
+     * @param  bool  $countFailure  False for an attempt the queue will retry.
      */
-    private function record(Webhook $webhook, array $attempt): void
+    private function record(Webhook $webhook, array $attempt, bool $countFailure): void
     {
-        DB::transaction(function () use ($webhook, $attempt): void {
+        DB::transaction(function () use ($webhook, $attempt, $countFailure): void {
             WebhookLog::create(['webhook_id' => $webhook->id, ...$attempt]);
 
             $endpoint = Webhook::withoutTenantScope(
@@ -243,8 +286,24 @@ class WebhookService
 
             if ($attempt['success']) {
                 $endpoint->recordSuccess();
-            } else {
-                $endpoint->recordFailure();
+
+                return;
+            }
+
+            if (! $countFailure) {
+                return;
+            }
+
+            $endpoint->recordFailure();
+
+            // Critical, so it reaches the alert channel: from here nothing is
+            // sent to this endpoint until its owner turns it back on.
+            if (! $endpoint->is_active) {
+                Log::critical('Webhook endpoint disabled after repeated failed deliveries', [
+                    'webhook_id' => $endpoint->id,
+                    'org_id' => $endpoint->org_id,
+                    'failure_count' => $endpoint->failure_count,
+                ]);
             }
         });
     }

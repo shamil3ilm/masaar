@@ -800,7 +800,7 @@ Response:
 |-------|-------------|----------------|
 | Signature Verification | HMAC-SHA256 with webhook secret | Return 401, do not process |
 | Timestamp Freshness | Reject if > 5 min old or > 30s future | Return 400, do not process |
-| Event Deduplication | Track event_id for 24 hours | Return 200, do not reprocess |
+| Event Deduplication | Track the delivery `id` (`X-Webhook-ID`) for 24 hours | Return 200, do not reprocess |
 | Idempotent Processing | Use idempotency_key for safe retries | Ensure operations are idempotent |
 
 ### 11.6 Hash Chain Longevity Monitoring

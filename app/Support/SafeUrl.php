@@ -72,29 +72,34 @@ final class SafeUrl
      * is nothing to pin: the host is a literal address, or an allowlisted name
      * whose operator vouched for it.
      *
-     * @return array{0: string|null, 1: string|null} [why it was refused, the address to connect to]
+     * The third element marks a refusal that may not hold a minute later: the
+     * name did not resolve, which a resolver blip causes as readily as a dead
+     * domain. A caller that retries can try again; every other refusal is the
+     * same answer however often it is asked.
+     *
+     * @return array{0: string|null, 1: string|null, 2: bool} [why it was refused, the address to connect to, whether the refusal is transient]
      */
     public static function decide(string $url, string $allowlistKey): array
     {
         $parts = parse_url($url);
 
         if ($parts === false || empty($parts['host'])) {
-            return ['URL could not be parsed.', null];
+            return ['URL could not be parsed.', null, false];
         }
 
         $scheme = strtolower($parts['scheme'] ?? '');
         $host = trim($parts['host'], '[]');
 
         if ($scheme !== 'https') {
-            return ["Scheme '{$scheme}' is not permitted; https only.", null];
+            return ["Scheme '{$scheme}' is not permitted; https only.", null, false];
         }
 
         $allowed = (array) config($allowlistKey, []);
 
         if ($allowed !== []) {
             return self::hostMatches($host, $allowed)
-                ? [null, null]
-                : ["Host '{$host}' is not on the allowlist.", null];
+                ? [null, null, false]
+                : ["Host '{$host}' is not on the allowlist.", null, false];
         }
 
         return self::decideByAddress($host);
@@ -137,7 +142,7 @@ final class SafeUrl
      * All of them are checked because a name can resolve to both a public and
      * a private address, and the fetch may use either.
      *
-     * @return array{0: string|null, 1: string|null} [reason for refusal, address to pin]
+     * @return array{0: string|null, 1: string|null, 2: bool} [reason for refusal, address to pin, transient]
      */
     private static function decideByAddress(string $host): array
     {
@@ -150,16 +155,16 @@ final class SafeUrl
             // would be resolved again by the fetch itself, which could answer
             // differently. Distinguished from a private address so a DNS
             // outage is not misreported as an attack.
-            return ["Host '{$host}' could not be resolved.", null];
+            return ["Host '{$host}' could not be resolved.", null, true];
         }
 
         foreach ($addresses as $address) {
             if (self::isBlocked($address)) {
-                return ["Host '{$host}' resolves to a non-public address ({$address}).", null];
+                return ["Host '{$host}' resolves to a non-public address ({$address}).", null, false];
             }
         }
 
-        return [null, $literal ? null : $addresses[0]];
+        return [null, $literal ? null : $addresses[0], false];
     }
 
     private static function isBlocked(string $address): bool
