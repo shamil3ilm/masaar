@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Pipeline\Services;
 
+use App\Domains\Compliance\Fatoora\DTOs\IssueOutcome;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Services\InvoiceIssuer;
+use App\Domains\Compliance\Fatoora\Services\OfflineQueue;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\InvoiceDrafter;
@@ -39,6 +41,7 @@ class PipelineService
     public function __construct(
         private readonly InvoiceDrafter $drafter,
         private readonly InvoiceIssuer $issuer,
+        private readonly OfflineQueue $offline,
         private readonly PipelineResult $result,
     ) {}
 
@@ -101,6 +104,14 @@ class PipelineService
             idempotencyKey: $idempotencyKey,
         );
 
+        return $this->answer($invoice, $outcome);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function answer(Invoice $invoice, IssueOutcome $outcome): array
+    {
         if (! $outcome->issued) {
             return $this->result->build($invoice, $outcome->errors, $outcome->warnings, null);
         }
@@ -153,9 +164,25 @@ class PipelineService
             return $this->issue($invoice, $organization, $data, $idempotencyKey);
         }
 
+        // Issued and not filed - the filing failed, or was refused before it
+        // began. This answered with no errors whenever the invoice was past
+        // draft, so a 207 on the first call became a 201 on the retry and the
+        // ERP marked an unfiled invoice done. Filed now, unless it is waiting
+        // in the offline queue, where sending it again would file it twice.
+        if ($invoice->status === InvoiceStatus::Issued
+            && (bool) ($data['auto_submit'] ?? true)
+            && ! $this->offline->isQueued($invoice)) {
+            return $this->answer($invoice, $this->issuer->file($invoice, $idempotencyKey));
+        }
+
         $submission = $invoice->latestSubmission;
 
-        return $this->result->build($invoice, [], [], $submission === null ? null : [
+        // A rejection is the answer, and it is not a success.
+        $errors = $invoice->status === InvoiceStatus::Rejected
+            ? ['ZATCA rejected this invoice: '.($submission?->last_error ?? 'see zatca_response').' Issue a credit note to correct it.']
+            : [];
+
+        return $this->result->build($invoice, $errors, [], $submission === null ? null : [
             'submission_id' => $submission->id,
             'state' => $submission->state,
             'clearance_status' => $submission->clearance_status,

@@ -118,7 +118,15 @@ class InvoiceIssuer
         rescue(fn () => $invoice->refresh(), report: false);
     }
 
-    private function file(Invoice $invoice, ?string $idempotencyKey): IssueOutcome
+    /**
+     * File an invoice that is already issued.
+     *
+     * For a retry that finds the invoice issued and not filed. Under the same
+     * key, a submission that was made answers with what it got; one that was
+     * never made - refused before it began, say for want of a certificate - is
+     * made now.
+     */
+    public function file(Invoice $invoice, ?string $idempotencyKey): IssueOutcome
     {
         try {
             // A simplified invoice is queued. A standard one is not.

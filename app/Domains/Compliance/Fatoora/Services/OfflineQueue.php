@@ -146,6 +146,20 @@ class OfflineQueue
     ): array {
         $organizationId = $invoice->org_id;
 
+        // One invoice, one item. Nothing checked for one already waiting, so
+        // a retried request queued the same document again and the worker
+        // filed it twice. The waiting item is the answer.
+        $waiting = $this->waitingItem($invoice);
+
+        if ($waiting !== null) {
+            return [
+                'queued' => true,
+                'queue_id' => $waiting->id,
+                'position' => $this->getQueueSize($organizationId),
+                'estimated_wait' => $this->estimateWaitTime($organizationId),
+            ];
+        }
+
         // Check queue size limit
         $currentSize = $this->getQueueSize($organizationId);
         if ($currentSize >= $this->maxQueueSize) {
@@ -183,6 +197,22 @@ class OfflineQueue
             'position' => $currentSize + 1,
             'estimated_wait' => $this->estimateWaitTime($organizationId),
         ];
+    }
+
+    /**
+     * Whether the invoice is waiting in the queue, or being sent from it.
+     */
+    public function isQueued(Invoice $invoice): bool
+    {
+        return $this->waitingItem($invoice) !== null;
+    }
+
+    private function waitingItem(Invoice $invoice): ?OfflineItem
+    {
+        return OfflineItem::query()
+            ->where('invoice_id', $invoice->id)
+            ->whereIn('state', [self::STATE_PENDING, self::STATE_PROCESSING])
+            ->first();
     }
 
     /**

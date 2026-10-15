@@ -143,6 +143,35 @@ class PipelineIdempotencyTest extends TestCase
         $this->assertSame(1, $this->invoices());
     }
 
+    /**
+     * Issued, and the filing failed: a retry says so rather than reporting a
+     * clean success for an invoice ZATCA never received.
+     *
+     * The replay answered with the stored invoice and no errors whenever it
+     * was no longer a draft, so a 207 on the first call became a 201 on the
+     * retry and the ERP marked an unfiled invoice done.
+     */
+    public function test_a_retry_reports_an_unfiled_invoice(): void
+    {
+        $this->acme->forceFill([
+            'vat_number' => '300000000000003',
+            'street' => 'King Fahd Road',
+            'building_number' => '1234',
+            'district' => 'Al Olaya',
+            'city' => 'Riyadh',
+            'postal_code' => '12345',
+        ])->save();
+
+        $first = $this->submit('key-1', ['auto_submit' => true])->assertStatus(207);
+        $this->assertSame('issued', $first->json('data.status'));
+
+        $retry = $this->submit('key-1', ['auto_submit' => true])->assertStatus(207);
+
+        $this->assertSame($first->json('data.invoice_id'), $retry->json('data.invoice_id'));
+        $this->assertNotSame([], $retry->json('data.errors'));
+        $this->assertSame(1, $this->invoices());
+    }
+
     private function submit(string $key, array $overrides = []): TestResponse
     {
         return $this->withHeaders([...$this->credential, 'Idempotency-Key' => $key])
