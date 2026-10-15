@@ -240,16 +240,21 @@ class Organization extends Model
     }
 
     /**
-     * Check if organization has complete ZATCA profile.
+     * Whether the seller details ZATCA requires are all here, in its shapes.
+     *
+     * The building number and district were not checked, and both are on
+     * every invoice: BR-KSA-37 refuses a building number that is not four
+     * digits, and BR-KSA-09 requires the district. An organization without
+     * them onboarded, then had its invoices refused.
      */
     public function hasCompleteZatcaProfile(): bool
     {
-        return $this->vat_number !== null
-            && strlen($this->vat_number) === 15
-            && $this->street !== null
-            && $this->city !== null
-            && $this->postal_code !== null
-            && strlen($this->postal_code) === 5;
+        return $this->isValidVatNumber()
+            && filled($this->street)
+            && preg_match('/^\d{4}$/', (string) $this->building_number) === 1
+            && filled($this->district)
+            && filled($this->city)
+            && preg_match('/^\d{5}$/', (string) $this->postal_code) === 1;
     }
 
     /**

@@ -1,0 +1,72 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domains\Organization\Http\Controllers;
+
+use App\Domains\Organization\DTOs\AddressFields;
+use App\Domains\Organization\DTOs\OrganizationChangesData;
+use App\Domains\Organization\Http\Middleware\PortalTenant;
+use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Rules\CompanyProfileRules;
+use App\Domains\Organization\Services\Registrar;
+use App\Domains\Organization\Services\TenantResolver;
+use App\Http\Controllers\Controller;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\View\View;
+
+/**
+ * The seller details printed on every invoice and named in its certificate.
+ *
+ * ZATCA onboarding refuses an organization until its VAT number and address
+ * are complete, and there was no screen to complete them on - only an API
+ * that accepted a name and a VAT number. Its administrators only; the
+ * organization is the one the session works in.
+ */
+class PortalCompanyController extends Controller
+{
+    public function __construct(
+        private readonly TenantResolver $tenant,
+        private readonly Registrar $registrar,
+    ) {}
+
+    public function edit(Request $request): View
+    {
+        $organization = $this->organization($request);
+
+        return view('portal.company', [
+            'organization' => $organization,
+            'onboarded' => (bool) ($organization->compliance_profile['zatca_onboarded'] ?? false),
+        ]);
+    }
+
+    public function update(Request $request): RedirectResponse
+    {
+        $organization = $this->organization($request);
+
+        $validated = $request->validate(
+            CompanyProfileRules::rules((string) $organization->country, complete: true, existing: $organization),
+            CompanyProfileRules::messages(),
+        );
+
+        $this->registrar->amend($organization, new OrganizationChangesData(
+            name: $validated['name'],
+            nameAr: $validated['name_ar'] ?? null,
+            vatNumber: $validated['vat_number'],
+            address: AddressFields::from($validated),
+        ));
+
+        return redirect()->route('portal.company.edit')->with('success', 'Company details saved.');
+    }
+
+    private function organization(Request $request): Organization
+    {
+        $organizationId = $request->attributes->get(PortalTenant::ORG_ID);
+
+        abort_unless(is_string($organizationId), 404);
+        abort_unless($request->user()?->roleIn($organizationId) === 'admin', 403, 'Only an administrator of this organization can change its details.');
+
+        return $this->tenant->getOrganization() ?? abort(404);
+    }
+}
