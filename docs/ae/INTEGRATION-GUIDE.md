@@ -32,11 +32,20 @@ Authorization: Bearer <token>
 → returns {
     "data": {
       "submission_id": "...",
-      "status": "queued",
-      "fta_ref": null
+      "status": "accepted",
+      "fta_ref": "..."
     }
   }
 ```
+
+The answer follows the authority's verdict:
+
+| Status | Meaning |
+|---|---|
+| `201` | Accepted. |
+| `202` | The FTA is reviewing it; `data.status` is `pending_review`. Check its status later. |
+| `422` | Rejected. `error.details.errors` lists why. Correct the invoice and file it again. |
+| `502` | The FTA could not be reached. The submission is kept and retried automatically from `error.details.next_retry_at`; do not resend it. |
 
 ### 3. Check Status (async)
 
@@ -45,7 +54,7 @@ GET /api/compliance/ae/status/{submission_id}
 → returns {
     "data": {
       "status": "accepted",
-      "fta_validation_status": "PASS",
+      "validation_status": "PASS",
       "accepted_at": "YYYY-MM-DDTHH:MM:SSZ"
     }
   }

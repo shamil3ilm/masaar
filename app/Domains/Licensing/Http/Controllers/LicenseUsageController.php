@@ -58,7 +58,12 @@ class LicenseUsageController extends Controller
     public function usage(Request $request): JsonResponse
     {
         $license = $this->getLicenseFromRequest($request);
-        $month = $request->get('month', now()->format('Y-m'));
+
+        // Unvalidated, month[]=x reached a string parameter under strict
+        // types and answered 500.
+        $month = $request->validate([
+            'month' => ['sometimes', 'string', 'date_format:Y-m'],
+        ])['month'] ?? now()->format('Y-m');
 
         $usage = $this->meteringService->getUsageSummary($license, $month);
 
