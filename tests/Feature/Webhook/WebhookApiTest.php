@@ -175,6 +175,30 @@ class WebhookApiTest extends TestCase
         $this->assertSame('old-secret', $stored->secret);
     }
 
+    /**
+     * Where the organization's invoice events go is an administrator's call.
+     *
+     * Deleting a webhook and rotating its secret were admin-only, while a
+     * member could create one or repoint an existing one - sending the
+     * organization's clearance and rejection events to an address of their
+     * choosing - or switch the ERP's off.
+     */
+    public function test_a_member_cannot_redirect_events(): void
+    {
+        $existing = $this->webhook($this->acme);
+
+        $member = User::factory()->create();
+        $member->organizations()->attach($this->acme->id, ['role' => 'member', 'status' => 'active']);
+        $token = JWTAuth::claims(['org_id' => $this->acme->id, 'role' => 'member'])->fromUser($member);
+
+        $this->withToken($token)->putJson("/api/webhooks/{$existing->id}", ['url' => 'https://203.0.113.99/steal'])
+            ->assertForbidden();
+        $this->withToken($token)->postJson('/api/webhooks', ['url' => 'https://203.0.113.99/steal', 'events' => ['invoice.cleared']])
+            ->assertForbidden();
+
+        $this->assertSame('https://203.0.113.20/hooks', Webhook::withoutTenantScope(fn () => Webhook::find($existing->id))->url);
+    }
+
     private function api(): self
     {
         return $this->withToken($this->token);

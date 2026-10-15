@@ -121,7 +121,8 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
 
     Route::prefix('organizations/{organization}')->group(function () {
         Route::get('/compliance-profiles', [ComplianceProfileController::class, 'index']);
-        Route::post('/compliance-profiles', [ComplianceProfileController::class, 'store']);
+        Route::post('/compliance-profiles', [ComplianceProfileController::class, 'store'])
+            ->middleware('org.admin');
         Route::delete('/compliance-profiles/{profile}', [ComplianceProfileController::class, 'destroy'])
             ->middleware('org.admin');
     });
@@ -131,9 +132,16 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
     // Declared before the resource so /webhooks/events is not captured by
     // /webhooks/{webhook}.
     Route::get('/webhooks/events', [WebhookController::class, 'events']);
-    Route::apiResource('webhooks', WebhookController::class)->except(['destroy']);
-    Route::delete('/webhooks/{webhook}', [WebhookController::class, 'destroy'])
-        ->middleware('org.admin');
+    Route::apiResource('webhooks', WebhookController::class)->only(['index', 'show']);
+
+    // Where the organization's invoice events go is an administrator's call:
+    // a member who could create or repoint a webhook received every clearance
+    // and rejection at an address of their choosing, or switched the ERP's off.
+    Route::middleware('org.admin')->group(function () {
+        Route::post('/webhooks', [WebhookController::class, 'store'])->name('webhooks.store');
+        Route::match(['put', 'patch'], '/webhooks/{webhook}', [WebhookController::class, 'update'])->name('webhooks.update');
+        Route::delete('/webhooks/{webhook}', [WebhookController::class, 'destroy']);
+    });
     Route::post('/webhooks/{id}/test', [WebhookController::class, 'test']);
     Route::post('/webhooks/{id}/rotate-secret', [WebhookController::class, 'rotateSecret'])
         ->middleware('org.admin');
