@@ -956,6 +956,19 @@ jobs:
           echo "::error title=Not ready::/api/health/ready never answered 200"
           exit 1
 
+      # The theme stylesheet, through the real nginx. Anything ending in .css
+      # is served there as a static file and never reaches PHP, which is why
+      # the route has no extension - and nothing but a request through nginx
+      # would notice if one came back.
+      - name: Serve the theme through nginx
+        run: |
+          answer=$(curl -sS -o /dev/null -w '%{http_code} %{content_type}' http://127.0.0.1:8000/theme/platform/stylesheet)
+          echo "$answer"
+          case "$answer" in
+            "200 text/css"*) ;;
+            *) echo "::error title=Theme not served::/theme/platform/stylesheet answered $answer"; exit 1 ;;
+          esac
+
       - name: Report the app's last words
         if: failure()
         run: |

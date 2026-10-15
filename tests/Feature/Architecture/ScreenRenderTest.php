@@ -50,6 +50,21 @@ class ScreenRenderTest extends TestCase
 
     private User $member;
 
+    /**
+     * Portal screens only an organization's administrators may open, rendered
+     * as one. Every other portal screen is rendered as a plain member, so a
+     * screen that needs more than that still fails here.
+     */
+    private const ORG_ADMIN_ONLY = ['portal.branding.edit'];
+
+    /**
+     * GET routes that answer with a file rather than a page. ThemeTest covers
+     * what they send.
+     */
+    private const DOWNLOADS = ['admin.branding.export', 'portal.branding.export'];
+
+    private User $orgAdmin;
+
     private License $licence;
 
     private Webhook $webhook;
@@ -71,6 +86,9 @@ class ScreenRenderTest extends TestCase
 
         $this->member = User::factory()->create();
         $this->member->organizations()->attach($this->org->id, ['role' => 'member', 'status' => 'active']);
+
+        $this->orgAdmin = User::factory()->create();
+        $this->orgAdmin->organizations()->attach($this->org->id, ['role' => 'admin', 'status' => 'active']);
 
         $this->licence = License::createWithCredentials([
             'organization_name' => 'Acme Trading',
@@ -164,7 +182,7 @@ class ScreenRenderTest extends TestCase
     public function test_every_portal_screen_renders(): void
     {
         foreach ($this->screens('portal.') as $name => $uri) {
-            $this->assertRenders($this->member, $name, $uri);
+            $this->assertRenders($this->portalUser($name), $name, $uri);
         }
     }
 
@@ -197,7 +215,7 @@ class ScreenRenderTest extends TestCase
         }
 
         foreach ($this->screens('portal.') as $name => $uri) {
-            $this->assertColouredPills($this->html($this->member, $uri), $name);
+            $this->assertColouredPills($this->html($this->portalUser($name), $uri), $name);
         }
     }
 
@@ -218,7 +236,7 @@ class ScreenRenderTest extends TestCase
         }
 
         foreach ($this->screens('portal.') as $name => $uri) {
-            $this->assertCanConfirm($this->html($this->member, $uri), $name);
+            $this->assertCanConfirm($this->html($this->portalUser($name), $uri), $name);
         }
     }
 
@@ -231,6 +249,11 @@ class ScreenRenderTest extends TestCase
         $this->assertStringContainsString('data-confirm-dialog', $html,
             $name.' has a form behind a confirmation and no dialog to ask in. '
             .'Its layout needs <x-ui.confirm-dialog />.');
+    }
+
+    private function portalUser(string $screen): User
+    {
+        return in_array($screen, self::ORG_ADMIN_ONLY, true) ? $this->orgAdmin : $this->member;
     }
 
     private function html(User $as, string $uri): string
@@ -278,7 +301,8 @@ class ScreenRenderTest extends TestCase
         foreach (Route::getRoutes() as $route) {
             $name = (string) $route->getName();
 
-            if (! str_starts_with($name, $prefix) || ! in_array('GET', $route->methods(), true)) {
+            if (! str_starts_with($name, $prefix) || ! in_array('GET', $route->methods(), true)
+                || in_array($name, self::DOWNLOADS, true)) {
                 continue;
             }
 

@@ -2,6 +2,9 @@
 
 use App\Domains\Auth\Http\Controllers\SessionAuthController;
 use App\Domains\Auth\Http\Controllers\TwoFactorController;
+use App\Domains\Branding\Http\Controllers\AdminBrandingController;
+use App\Domains\Branding\Http\Controllers\PortalBrandingController;
+use App\Domains\Branding\Http\Controllers\ThemeAssetController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\AdminAlertController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\AdminKillSwitchController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceController;
@@ -19,6 +22,28 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 });
+
+/*
+|--------------------------------------------------------------------------
+| Theme (public)
+|--------------------------------------------------------------------------
+|
+| The colours, logo and favicon every page loads, the sign-in page before
+| anyone has signed in. {scope} is "platform" or an organization's id; an id
+| with no theme of its own gets the platform's.
+|
+*/
+// No .css on the end: nginx serves anything ending in .css as a static
+// file and never reaches PHP, so the theme would have been a 404 there.
+Route::get('/theme/{scope}/stylesheet', [ThemeAssetController::class, 'stylesheet'])
+    ->where('scope', 'platform|[0-9a-fA-F-]{36}')
+    ->name('theme.css');
+Route::get('/theme/{scope}/logo', [ThemeAssetController::class, 'logo'])
+    ->where('scope', 'platform|[0-9a-fA-F-]{36}')
+    ->name('theme.logo');
+Route::get('/theme/{scope}/favicon', [ThemeAssetController::class, 'favicon'])
+    ->where('scope', 'platform|[0-9a-fA-F-]{36}')
+    ->name('theme.favicon');
 
 /*
 |--------------------------------------------------------------------------
@@ -104,6 +129,13 @@ Route::prefix('admin')->name('admin.')
         // The thresholds the dashboard judges by, and the certificate
         // warning schedule. Both were only changeable by shipping.
         Route::get('/settings', [AdminSettingsController::class, 'index'])->name('settings');
+
+        // The platform's look: colours, name, logo and favicon.
+        Route::get('/branding', [AdminBrandingController::class, 'edit'])->name('branding.edit');
+        Route::post('/branding', [AdminBrandingController::class, 'update'])->name('branding.update');
+        Route::post('/branding/import', [AdminBrandingController::class, 'import'])->name('branding.import');
+        Route::get('/branding/export', [AdminBrandingController::class, 'export'])->name('branding.export');
+        Route::post('/branding/reset', [AdminBrandingController::class, 'reset'])->name('branding.reset');
         Route::post('/settings', [AdminSettingsController::class, 'update'])->name('settings.update');
 
         // The kill switches. Every one of these is a POST: they change what
@@ -174,4 +206,12 @@ Route::prefix('portal')->name('portal.')
         Route::get('/submissions', [CustomerPortalController::class, 'submissions'])->name('submissions');
         Route::get('/certificates', [CustomerPortalController::class, 'certificates'])->name('certificates');
         Route::get('/users/{userId}/activity', [CustomerPortalController::class, 'userActivity'])->name('user.activity');
+
+        // The organization's own look over the platform's. Administrators
+        // of the organization only; the controller checks the role.
+        Route::get('/branding', [PortalBrandingController::class, 'edit'])->name('branding.edit');
+        Route::post('/branding', [PortalBrandingController::class, 'update'])->name('branding.update');
+        Route::post('/branding/import', [PortalBrandingController::class, 'import'])->name('branding.import');
+        Route::get('/branding/export', [PortalBrandingController::class, 'export'])->name('branding.export');
+        Route::post('/branding/reset', [PortalBrandingController::class, 'reset'])->name('branding.reset');
     });

@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Masaar &mdash; ZATCA e-invoicing</title>
     <meta name="description" content="Masaar signs, chains and reports e-invoices to ZATCA.">
-    <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <x-theme-head />
 </head>
 <body class="flex min-h-full flex-col bg-ink-900 text-white">
     <header class="px-6 py-6 sm:px-10">
