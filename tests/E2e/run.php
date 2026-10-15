@@ -163,7 +163,7 @@ $identity = ['country' => 'SA', 'street' => 'King Fahd Road', 'building_number' 
     'district' => 'Al Olaya', 'city' => 'Riyadh', 'postal_code' => '12345'];
 
 $acme = Organization::create($identity + ['name' => 'Acme', 'vat_number' => '300000000000003']);
-$rival = Organization::create($identity + ['name' => 'Rival', 'vat_number' => '300000000000011']);
+$rival = Organization::create($identity + ['name' => 'Rival', 'vat_number' => '311111111111113']);
 check('organizations created with vat', $acme->fresh()->vat_number === '300000000000003');
 
 $admin = User::create(['name' => 'Admin', 'email' => 'admin@masaar.test',
@@ -228,8 +228,16 @@ foreach ([[$acme, 'ACME'], [$rival, 'RIVAL']] as [$org, $prefix]) {
         $draft = Invoice::withoutTenantScope(fn () => Invoice::create([
             'org_id' => $org->id, 'invoice_number' => "$prefix-$i", 'type' => 'standard',
             'status' => 'draft', 'issue_date' => now()->toDateString(), 'currency' => 'SAR',
-            'buyer_name' => 'Buyer', 'subtotal' => '100.00', 'tax_amount' => '15.00', 'total' => '115.00',
+            'buyer_name' => 'Buyer', 'buyer_vat_number' => '399999999900003',
+            'subtotal' => '100.00', 'tax_amount' => '15.00', 'total' => '115.00',
         ]));
+
+        // ZATCA's rules are checked before issuance, so the draft is one the
+        // authority would accept: a line, and a standard invoice's buyer VAT.
+        $draft->lines()->create([
+            'description' => 'Item', 'quantity' => '1', 'unit_price' => '100.00', 'tax_rate' => '15',
+            'tax_amount' => '15.00', 'tax_category' => 'S', 'line_total' => '115.00',
+        ]);
 
         // The counter is allocated at issuance, not on save — a draft carries
         // no ICV, because a document that may never be issued must not consume
