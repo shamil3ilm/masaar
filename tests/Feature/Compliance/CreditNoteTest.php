@@ -121,6 +121,26 @@ class CreditNoteTest extends TestCase
         $this->assertNull($this->one($xpath, '/*/cac:BillingReference/cac:InvoiceDocumentReference/cbc:ID'));
     }
 
+    /**
+     * The reason was optional on the way in and mandatory on the way out, so
+     * a note without one was accepted, signed, and then rejected by the
+     * authority with a counter already spent.
+     */
+    public function test_a_note_needs_a_reason(): void
+    {
+        $this->withToken($this->token)->postJson('/api/invoices', [
+            'invoice_number' => 'CN-'.uniqid(),
+            'type' => 'simplified',
+            'document_type' => 'debit_note',
+            'issue_date' => now()->toDateString(),
+            'buyer_name' => 'Buyer Co',
+            'billing_ref' => 'INV-ORIGINAL-1',
+            'lines' => [$this->line()],
+        ])
+            ->assertUnprocessable()
+            ->assertJsonStructure(['error' => ['details' => ['adjustment_reason']]]);
+    }
+
     private function creditNote(
         string $reference = 'INV-ORIGINAL-1',
         string $reason = 'Partial return',

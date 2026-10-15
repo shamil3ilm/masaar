@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Fatoora\Services;
 
 use App\Domains\Compliance\Fatoora\Helpers\FatooraTime;
-use App\Domains\Invoice\Enums\DocumentType;
+use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -130,149 +130,6 @@ class VatPeriodTracker
     }
 
     /**
-     * Get VAT summary for a period.
-     *
-     * @param  string  $organizationId  Organization ID
-     * @param  string  $periodKey  Period key (e.g., '2024-01' or '2024-Q1')
-     * @return array VAT summary with totals
-     */
-    public function getPeriodSummary(string $organizationId, string $periodKey): array
-    {
-        $period = $this->parsePeriodKey($periodKey);
-
-        $invoices = Invoice::where('org_id', $organizationId)
-            ->whereBetween('issue_date', [$period['start'], $period['end']])
-            ->whereIn('status', ['cleared', 'reported', 'warning'])
-            ->get();
-
-        $summary = [
-            'period_key' => $periodKey,
-            'period_start' => $period['start'],
-            'period_end' => $period['end'],
-            'total_invoices' => 0,
-            'total_credit_notes' => 0,
-            'total_debit_notes' => 0,
-            'gross_sales' => 0.0,
-            'gross_adjustments' => 0.0,
-            'net_taxable' => 0.0,
-            'vat_collected' => 0.0,
-            'vat_adjusted' => 0.0,
-            'net_vat_payable' => 0.0,
-            'cross_period_adjustments' => [],
-        ];
-
-        foreach ($invoices as $invoice) {
-            $docType = $invoice->document_type;
-
-            if ($docType === DocumentType::Invoice || $docType === DocumentType::Prepayment) {
-                $summary['total_invoices']++;
-                $summary['gross_sales'] += (float) $invoice->subtotal;
-                $summary['vat_collected'] += (float) $invoice->tax_amount;
-            } elseif ($docType === DocumentType::CreditNote) {
-                $summary['total_credit_notes']++;
-                $summary['gross_adjustments'] -= (float) $invoice->subtotal;
-                $summary['vat_adjusted'] -= (float) $invoice->tax_amount;
-
-                // Check if this is a cross-period adjustment
-                if ($invoice->billing_ref) {
-                    $originalInvoice = Invoice::find($invoice->billing_ref);
-                    if ($originalInvoice) {
-                        $originalPeriod = $this->getPeriodForDate($originalInvoice->issue_date);
-                        if ($originalPeriod['period_key'] !== $periodKey) {
-                            $summary['cross_period_adjustments'][] = [
-                                'credit_note_id' => $invoice->id,
-                                'original_invoice_id' => $originalInvoice->id,
-                                'original_period' => $originalPeriod['period_key'],
-                                'amount' => (float) $invoice->total,
-                                'vat' => (float) $invoice->tax_amount,
-                            ];
-                        }
-                    }
-                }
-            } elseif ($docType === DocumentType::DebitNote) {
-                $summary['total_debit_notes']++;
-                $summary['gross_adjustments'] += (float) $invoice->subtotal;
-                $summary['vat_adjusted'] += (float) $invoice->tax_amount;
-            }
-        }
-
-        $summary['net_taxable'] = $summary['gross_sales'] + $summary['gross_adjustments'];
-        $summary['net_vat_payable'] = $summary['vat_collected'] + $summary['vat_adjusted'];
-
-        return $summary;
-    }
-
-    /**
-     * Get cross-period adjustments that need special handling.
-     *
-     * These are credit/debit notes where the original invoice's period has closed.
-     *
-     * @param  string  $organizationId  Organization ID
-     * @param  string  $currentPeriodKey  Current reporting period
-     * @return array List of cross-period adjustments
-     */
-    public function getCrossPeriodAdjustments(string $organizationId, string $currentPeriodKey): array
-    {
-        $period = $this->parsePeriodKey($currentPeriodKey);
-
-        return Invoice::where('org_id', $organizationId)
-            ->whereBetween('issue_date', [$period['start'], $period['end']])
-            ->whereIn('document_type', [DocumentType::CreditNote, DocumentType::DebitNote])
-            ->whereNotNull('billing_ref')
-            ->with('billingReference')
-            ->get()
-            ->filter(function ($note) use ($currentPeriodKey) {
-                if (! $note->billingReference) {
-                    return false;
-                }
-                $originalPeriod = $this->getPeriodForDate($note->billingReference->issue_date);
-
-                return $originalPeriod['period_key'] !== $currentPeriodKey;
-            })
-            ->map(function ($note) {
-                $originalPeriod = $this->getPeriodForDate($note->billingReference->issue_date);
-
-                return [
-                    'note_id' => $note->id,
-                    'note_number' => $note->invoice_number,
-                    'note_type' => $note->document_type->value,
-                    'note_date' => $note->issue_date->format('Y-m-d'),
-                    'original_invoice_id' => $note->billing_ref,
-                    'original_invoice_number' => $note->billingReference->invoice_number,
-                    'original_period' => $originalPeriod['period_key'],
-                    'amount' => (float) $note->total,
-                    'vat' => (float) $note->tax_amount,
-                    'reason' => $note->adjustment_reason,
-                ];
-            })
-            ->values()
-            ->toArray();
-    }
-
-    /**
-     * Parse period key into start/end dates.
-     */
-    private function parsePeriodKey(string $periodKey): array
-    {
-        if (str_contains($periodKey, '-Q')) {
-            // Quarterly: 2024-Q1
-            [$year, $quarter] = explode('-Q', $periodKey);
-            $startMonth = (((int) $quarter - 1) * 3) + 1;
-            $start = Carbon::createFromDate((int) $year, $startMonth, 1)->startOfMonth();
-            $end = $start->copy()->addMonths(2)->endOfMonth();
-        } else {
-            // Monthly: 2024-01
-            $start = Carbon::parse($periodKey.'-01')->startOfMonth();
-            $end = $start->copy()->endOfMonth();
-        }
-
-        return [
-            'start' => $start->format('Y-m-d'),
-            'end' => $end->format('Y-m-d'),
-        ];
-    }
-
-    /**
      * Validate that an adjustment note is reported in the correct period.
      *
      * A credit or debit note raised after the original invoice's VAT period has
@@ -301,13 +158,19 @@ class VatPeriodTracker
             ];
         }
 
-        $originalInvoice = Invoice::withoutTenantScope(
-            fn () => Invoice::find($note->billing_ref)
-        );
+        $originalInvoice = $this->original($note);
         if (! $originalInvoice) {
             return [
                 'valid' => false,
-                'warning' => 'Original invoice not found for credit note',
+                'warning' => "Original invoice {$note->billing_ref} was not found in this organization",
+                'suggested_period' => null,
+            ];
+        }
+
+        if ($originalInvoice->status === InvoiceStatus::Draft) {
+            return [
+                'valid' => false,
+                'warning' => "Original invoice {$note->billing_ref} has not been issued, so there is nothing to adjust",
                 'suggested_period' => null,
             ];
         }
@@ -324,5 +187,26 @@ class VatPeriodTracker
         }
 
         return ['valid' => true, 'warning' => null, 'suggested_period' => null];
+    }
+
+    /**
+     * The invoice a note adjusts, in the note's own organization.
+     *
+     * billing_ref is the original's invoice number: it is what the document
+     * declares in BillingReference, what the partner guide tells an ERP to
+     * send, and what the portal asks for. This looked it up as a row id, and
+     * without the tenant scope, so a note referenced the documented way was
+     * never found and could not be filed, while a row id resolved against any
+     * organization's invoices. An id within the organization is still
+     * accepted, for integrations that sent one.
+     */
+    private function original(Invoice $note): ?Invoice
+    {
+        return Invoice::withoutTenantScope(fn () => Invoice::where('org_id', $note->org_id)
+            ->where(fn ($query) => $query
+                ->where('invoice_number', $note->billing_ref)
+                ->orWhere('id', $note->billing_ref))
+            ->orderByRaw('invoice_number = ? desc', [$note->billing_ref])
+            ->first());
     }
 }
