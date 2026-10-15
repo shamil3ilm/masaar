@@ -41,6 +41,14 @@ class AuthController extends Controller
     {
         $user = $this->registrar->register(RegistrationData::from($request->validated()));
 
+        // The portal waits for a verified address, so an account made here
+        // gets the link too; without it, it could never open the portal.
+        try {
+            $user->sendEmailVerificationNotification();
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
         $token = $this->auth->attempt(
             LoginData::from([
                 'email' => $request->email,

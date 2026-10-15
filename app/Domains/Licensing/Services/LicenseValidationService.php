@@ -211,6 +211,19 @@ class LicenseValidationService
     /**
      * Invalidate license cache.
      */
+    /**
+     * Whether an organization holds a licence it can file under: active, and
+     * not past its expiry.
+     */
+    public function organizationIsLicensed(string $organizationId): bool
+    {
+        return License::query()
+            ->active()
+            ->where('org_id', $organizationId)
+            ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))
+            ->exists();
+    }
+
     public function invalidateCache(string $apiKey): void
     {
         Cache::forget($this->getCacheKey($apiKey));

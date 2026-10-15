@@ -105,11 +105,16 @@ class Registrar
      * organization with it is either a duplicate or somebody else's claim to
      * it. Its people join the existing organization instead.
      */
-    public function vatInUse(string $vatNumber): bool
+    public function vatInUse(string $vatNumber, ?string $exceptOrganizationId = null): bool
     {
         return Organization::query()
-            ->where('vat_number', $vatNumber)
-            ->orWhere('compliance_profile->vat_number', $vatNumber)
+            // One that was turned down holds nothing: it must not keep the
+            // real taxpayer out.
+            ->where('status', '!=', Organization::STATUS_REJECTED)
+            ->when($exceptOrganizationId !== null, fn ($query) => $query->whereKeyNot($exceptOrganizationId))
+            ->where(fn ($query) => $query
+                ->where('vat_number', $vatNumber)
+                ->orWhere('compliance_profile->vat_number', $vatNumber))
             ->exists();
     }
 

@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Domains\Auth\Http\Requests;
 
 use App\Domains\Organization\Rules\CompanyProfileRules;
-use App\Domains\Organization\Services\Registrar;
-use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Password;
 
@@ -42,7 +40,7 @@ class SignupRequest extends FormRequest
 
             'company_name' => $company['name'],
             'company_name_ar' => $company['name_ar'],
-            'vat_number' => [...$company['vat_number'], $this->unclaimed()],
+            'vat_number' => $company['vat_number'],
             'cr_number' => $company['cr_number'],
             'street' => $company['street'],
             'building_number' => $company['building_number'],
@@ -65,14 +63,5 @@ class SignupRequest extends FormRequest
             'password.uncompromised' => 'This password has appeared in a data breach. Please choose a different password.',
             'terms.accepted' => 'Accept the terms to create an account.',
         ];
-    }
-
-    private function unclaimed(): Closure
-    {
-        return function (string $attribute, mixed $value, Closure $fail): void {
-            if (app(Registrar::class)->vatInUse((string) $value)) {
-                $fail('A company with this VAT number is already registered. Ask its administrator to add you to it.');
-            }
-        };
     }
 }

@@ -151,6 +151,55 @@ class SignupTest extends TestCase
     }
 
     /**
+     * Links are built from APP_URL. From the Host header, anyone could ask
+     * for a victim's reset link and have it point at their own host.
+     */
+    public function test_reset_links_ignore_the_host_header(): void
+    {
+        $user = User::factory()->create(['email' => 'owner@acme.sa']);
+
+        $this->post('http://attacker.example/forgot-password', ['email' => 'owner@acme.sa']);
+
+        Notification::assertSentTo($user, ResetPassword::class, function (ResetPassword $notification) use ($user): bool {
+            $url = (string) $notification->toMail($user)->actionUrl;
+
+            return str_starts_with($url, rtrim((string) config('app.url'), '/').'/') && ! str_contains($url, 'attacker.example');
+        });
+    }
+
+    /**
+     * A reset is how someone takes an account back, so the API tokens issued
+     * before it stop working.
+     */
+    public function test_a_reset_revokes_api_tokens(): void
+    {
+        $user = User::factory()->create(['email' => 'owner@acme.sa']);
+        $token = JWTAuth::fromUser($user);
+
+        $this->withToken($token)->getJson('/api/auth/me')->assertOk();
+
+        $this->travel(5)->seconds();
+        $user->forceFill(['password_changed_at' => now()])->save();
+
+        $this->withToken($token)->getJson('/api/auth/me')->assertUnauthorized();
+    }
+
+    /**
+     * One that was turned down holds nothing, so the real taxpayer can sign up.
+     */
+    public function test_a_rejected_claim_frees_the_vat(): void
+    {
+        Organization::create([
+            'name' => 'Squatter',
+            'country' => 'SA',
+            'status' => Organization::STATUS_REJECTED,
+            'compliance_profile' => ['vat_number' => '300000000000003'],
+        ]);
+
+        $this->post('/register', $this->form())->assertRedirect(route('verification.notice'));
+    }
+
+    /**
      * @param  array<string, string|null>  $overrides
      * @return array<string, string>
      */

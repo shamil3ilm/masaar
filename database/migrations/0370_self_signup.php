@@ -24,6 +24,9 @@ return new class extends Migration
         Schema::table('users', function (Blueprint $table) {
             $table->timestamp('terms_accepted_at')->nullable();
             $table->string('terms_version', 20)->nullable();
+            // API tokens issued before it are refused: a reset is how
+            // someone takes an account back, and a token outlives a session.
+            $table->timestamp('password_changed_at')->nullable();
         });
 
         DB::table('users')->whereNull('email_verified_at')->update(['email_verified_at' => DB::raw('created_at')]);
@@ -42,7 +45,7 @@ return new class extends Migration
         });
 
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn(['terms_accepted_at', 'terms_version']);
+            $table->dropColumn(['terms_accepted_at', 'terms_version', 'password_changed_at']);
         });
     }
 };

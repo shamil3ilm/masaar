@@ -32,9 +32,10 @@ class OrganizationReport
      * decryption per row: acceptable on a paginated admin screen, not
      * somewhere it would run per invoice.
      */
-    public function page(int $perPage): LengthAwarePaginator
+    public function page(int $perPage, ?string $status = null): LengthAwarePaginator
     {
         $organizations = DB::table('organizations')
+            ->when($status !== null, fn ($query) => $query->where('organizations.status', $status))
             ->select([
                 'organizations.id',
                 'organizations.name',

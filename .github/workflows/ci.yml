@@ -639,6 +639,9 @@ jobs:
         env:
           APP_ENV: local
           ZATCA_ENVIRONMENT: sandbox
+          # The sandbox's test taxpayer has no plan, and this is about the
+          # filing path, not plans.
+          LICENSING_FILING_REQUIRES_LICENCE: 'false'
           DB_CONNECTION: sqlite
           DB_DATABASE: ${{ github.workspace }}/database/sandbox.sqlite
         run: |

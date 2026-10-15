@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `INV-{erp_reference_id}` or `INV-{timestamp}`. A draft created without a
   number has `invoice_number: null` until it is issued. Sending your own
   number works as before.
+- **Organizations created through `POST /api/organizations` start pending
+  review**, as sign-ups do. Until a platform admin approves one and assigns
+  its plan, ZATCA onboarding and issuing answer 403 with `AUTH_011` (under
+  review) or `AUTH_012` (no active plan). With
+  `LICENSING_FILING_REQUIRES_LICENCE=true` (the default), an existing active
+  organization needs an active licence to onboard or issue; invoices already
+  issued are still filed.
+- **A password reset revokes the account's API tokens.**
 - **Deployments file with ZATCA only unless `UAE_FTA_ENABLED=true`.** While it
   is off, `/api/compliance/ae/*` answers 404 and organizations register in
   Saudi Arabia only.
@@ -48,6 +56,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Self sign-up** at `/register`: the person and the company's ZATCA
+  details, email verification, forgot and reset password, and a review by a
+  platform admin who approves the company and assigns its plan.
 - **Invoice numbering you configure**: a pattern per document type (and per
   branch) with `{YYYY}`, `{YY}`, `{MM}` and `{SEQ}`, zero-padding, and a yearly,
   monthly or no reset. `GET /api/settings/numbering`,

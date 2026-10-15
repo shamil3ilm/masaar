@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Organization\Rules;
 
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\Registrar;
 use Closure;
 use Illuminate\Validation\Rule;
 
@@ -44,6 +45,7 @@ final class CompanyProfileRules
                 new VatNumber,
                 ...($saudi ? ['regex:/^3\d{13}3$/'] : []),
                 self::fixedOnceOnboarded($existing),
+                self::unclaimed($existing),
             ],
             'cr_number' => ['sometimes', 'nullable', 'string', 'regex:/^\d{10}$/'],
             'street' => [$need, 'string', 'max:127'],
@@ -85,6 +87,19 @@ final class CompanyProfileRules
             'postal_code.regex' => 'The postal code is 5 digits.',
             'country.in' => 'This deployment registers organizations in: '.implode(', ', self::countries()).'.',
         ];
+    }
+
+    /**
+     * A VAT number is one taxpayer. Held by another organization, it is a
+     * duplicate or somebody else's claim, on every way in - not only sign-up.
+     */
+    private static function unclaimed(?Organization $existing): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail) use ($existing): void {
+            if (app(Registrar::class)->vatInUse((string) $value, $existing?->id === null ? null : (string) $existing->id)) {
+                $fail('A company with this VAT number is already registered. Ask its administrator to add you to it.');
+            }
+        };
     }
 
     /**

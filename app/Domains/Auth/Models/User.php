@@ -56,6 +56,7 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmailContrac
             'two_factor_confirmed_at' => 'datetime',
             'two_factor_enrolment_expires_at' => 'datetime',
             'terms_accepted_at' => 'datetime',
+            'password_changed_at' => 'datetime',
         ];
     }
 

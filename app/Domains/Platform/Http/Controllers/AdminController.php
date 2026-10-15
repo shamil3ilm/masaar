@@ -56,7 +56,9 @@ class AdminController extends Controller
      */
     public function organizations(Request $request): View
     {
-        $organizations = $this->organizations->page(20);
+        // ?status=pending_review lists the sign-ups waiting for a decision.
+        $status = $request->query('status');
+        $organizations = $this->organizations->page(20, is_string($status) && $status !== '' ? $status : null)->withQueryString();
         $submissionStats = $this->organizations->acceptedSubmissions($organizations->pluck('id'));
 
         return view('admin.organizations', compact('organizations', 'submissionStats'));

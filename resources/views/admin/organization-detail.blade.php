@@ -12,6 +12,52 @@
     <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">{{ $organization->name }}</h2>
 </div>
 
+@if (in_array($organization->status, ['pending_review', 'rejected'], true))
+<div class="mb-6 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 p-6">
+    <h3 class="text-lg font-semibold text-amber-900 dark:text-amber-100">
+        {{ $organization->status === 'rejected' ? 'Not approved' : 'Awaiting review' }}
+    </h3>
+    <p class="mt-1 text-sm text-amber-800 dark:text-amber-200">
+        Signed up {{ \Illuminate\Support\Carbon::parse($organization->created_at)->diffForHumans() }}.
+        Check the company details below against its VAT and CR registration before approving: approval lets it obtain a ZATCA certificate and issue.
+    </p>
+    @if ($organization->review_note)
+        <p class="mt-2 text-sm text-amber-800 dark:text-amber-200"><strong>Reason given:</strong> {{ $organization->review_note }}</p>
+    @endif
+
+    <div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2">
+        <form method="POST" action="{{ route('admin.organizations.approve', $organization->id) }}" class="space-y-3"
+              data-confirm-action="Approve"
+              data-confirm="Approve {{ $organization->name }} and assign the plan? It can then connect to ZATCA and issue.">
+            @csrf
+            <x-ui.field label="Plan">
+                <x-ui.select name="tier" required>
+                    @foreach (\App\Domains\Licensing\Enums\LicenseTier::cases() as $case)
+                        <option value="{{ $case->value }}">{{ $case->getDisplayName() }}</option>
+                    @endforeach
+                </x-ui.select>
+            </x-ui.field>
+            <x-ui.field label="Plan ends (optional)">
+                <x-ui.input type="date" name="expires_at" />
+            </x-ui.field>
+            <x-ui.button variant="primary" class="w-full">Approve and assign plan</x-ui.button>
+        </form>
+
+        @if ($organization->status === 'pending_review')
+        <form method="POST" action="{{ route('admin.organizations.reject', $organization->id) }}" class="space-y-3"
+              data-confirm-tone="danger" data-confirm-action="Turn down"
+              data-confirm="Turn down {{ $organization->name }}? Its admins are emailed the reason.">
+            @csrf
+            <x-ui.field label="Reason, sent to the company">
+                <x-ui.textarea name="reason" rows="4" maxlength="1000" required></x-ui.textarea>
+            </x-ui.field>
+            <x-ui.button variant="danger" class="w-full">Turn down</x-ui.button>
+        </form>
+        @endif
+    </div>
+</div>
+@endif
+
 <!-- Stats Cards -->
 <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
     <div class="bg-white dark:bg-gray-900 rounded-lg shadow p-6">

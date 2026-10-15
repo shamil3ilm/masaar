@@ -19,6 +19,7 @@ use App\Domains\Organization\Http\Controllers\CustomerPortalController;
 use App\Domains\Organization\Http\Controllers\PortalCompanyController;
 use App\Domains\Platform\Http\Controllers\AdminAuditController;
 use App\Domains\Platform\Http\Controllers\AdminController;
+use App\Domains\Platform\Http\Controllers\AdminOrganizationReviewController;
 use App\Domains\Platform\Http\Controllers\AdminSettingsController;
 use App\Domains\Platform\Http\Controllers\AdminUserController;
 use App\Domains\Webhook\Http\Controllers\AdminWebhookController;
@@ -150,6 +151,10 @@ Route::prefix('admin')->name('admin.')
         Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
         Route::get('/organizations', [AdminController::class, 'organizations'])->name('organizations');
         Route::get('/organizations/{id}', [AdminController::class, 'organizationDetail'])->name('organization.detail');
+        // A business that signed itself up: approve it and assign its plan,
+        // or turn it down with a reason. Either way its admins are emailed.
+        Route::post('/organizations/{id}/approve', [AdminOrganizationReviewController::class, 'approve'])->name('organizations.approve');
+        Route::post('/organizations/{id}/reject', [AdminOrganizationReviewController::class, 'reject'])->name('organizations.reject');
         Route::get('/users', [AdminUserController::class, 'index'])->name('users.index');
         Route::get('/users/{userId}', [AdminUserController::class, 'show'])->name('users.show');
         // Suspending locks someone out of everything at once, so it is a POST

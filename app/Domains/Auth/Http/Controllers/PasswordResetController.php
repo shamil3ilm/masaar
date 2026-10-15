@@ -63,6 +63,7 @@ class PasswordResetController extends Controller
                 $user->forceFill([
                     'password' => Hash::make($password),
                     'remember_token' => Str::random(60),
+                    'password_changed_at' => now(),
                 ])->save();
 
                 $this->audit->logSecurity('password.reset', 'User', (string) $user->id, userId: (string) $user->id);

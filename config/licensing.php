@@ -11,6 +11,10 @@ return [
     | Configuration for license caching to reduce database lookups.
     |
     */
+    // Whether an organization needs an active licence - its plan, assigned
+    // when a platform admin approves it - to onboard with ZATCA and issue.
+    'filing_requires_licence' => (bool) env('LICENSING_FILING_REQUIRES_LICENCE', true),
+
     'cache' => [
         'enabled' => env('LICENSE_CACHE_ENABLED', true),
         'ttl_seconds' => env('LICENSE_CACHE_TTL', 300), // 5 minutes

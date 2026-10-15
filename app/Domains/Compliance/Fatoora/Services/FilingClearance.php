@@ -1,0 +1,73 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domains\Compliance\Fatoora\Services;
+
+use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
+use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
+use App\Domains\Licensing\Services\LicenseValidationService;
+use App\Domains\Organization\Models\Organization;
+
+/**
+ * Whether an organization may deal with ZATCA at all.
+ *
+ * One check for issuing, filing and onboarding, so they cannot disagree. A
+ * business that signed itself up waits for a platform admin to approve it
+ * and assign its plan; until then it can draft, and cannot obtain a
+ * certificate, give an invoice its counter or send one to the authority.
+ */
+class FilingClearance
+{
+    public function __construct(
+        private readonly LicenseValidationService $licences,
+    ) {}
+
+    /**
+     * For new work with ZATCA: obtaining a certificate, and issuing.
+     *
+     * @throws FatooraException
+     */
+    public function assertCleared(Organization $organization): void
+    {
+        $this->assertMayFile($organization);
+
+        if (config('licensing.filing_requires_licence') && ! $this->licences->organizationIsLicensed((string) $organization->id)) {
+            throw new FatooraException(
+                'This company has no active plan. A platform admin assigns one when approving it.',
+                ErrorCode::AUTH_LICENSE_REQUIRED,
+            );
+        }
+    }
+
+    /**
+     * For sending an invoice already issued.
+     *
+     * Not the plan: an issued invoice is a tax invoice, and reporting or
+     * clearing it is the taxpayer's obligation whether or not its plan has
+     * since lapsed. Withholding it would make the lapse their compliance
+     * failure.
+     *
+     * @throws FatooraException
+     */
+    public function assertMayFile(Organization $organization): void
+    {
+        if ($organization->isSuspended()) {
+            throw new FatooraException('Organization is suspended', ErrorCode::AUTH_ORGANIZATION_SUSPENDED);
+        }
+
+        if ($organization->isPendingReview()) {
+            throw new FatooraException(
+                'This company is being reviewed. Connecting to ZATCA and issuing open once it is approved.',
+                ErrorCode::AUTH_ORGANIZATION_UNDER_REVIEW,
+            );
+        }
+
+        if ($organization->status === Organization::STATUS_REJECTED) {
+            throw new FatooraException(
+                'This company was not approved to file. Contact support to review it again.',
+                ErrorCode::AUTH_ORGANIZATION_UNDER_REVIEW,
+            );
+        }
+    }
+}

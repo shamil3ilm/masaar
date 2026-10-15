@@ -53,6 +53,7 @@ class Submitter
         private readonly ChainRecorder $chain,
         private readonly InvoiceVerdict $verdict,
         private readonly InvoiceNumbering $numbering,
+        private readonly FilingClearance $clearance,
     ) {}
 
     /**
@@ -96,6 +97,11 @@ class Submitter
         // continued to be signed and issued.
         $this->killSwitch->assertNotEnabled(KillSwitch::SWITCH_ISSUANCE, (string) $organization->id);
         $this->killSwitch->assertNotEnabled(KillSwitch::SWITCH_SIGNING, (string) $organization->id);
+
+        // Issuing gives the invoice its counter and makes it a tax invoice,
+        // so an organization not yet approved - or without a plan - drafts
+        // and stops there.
+        $this->clearance->assertCleared($organization);
 
         // ZATCA's rules, before a counter is spent. InvoiceValidator held them
         // and nothing called it, so an invoice that broke them was signed,
