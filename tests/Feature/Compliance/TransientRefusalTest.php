@@ -85,13 +85,31 @@ class TransientRefusalTest extends TestCase
      */
     public function test_an_unreachable_authority_is_retryable(): void
     {
-        Http::fake(['*' => fn () => throw new ConnectionException('cURL error 28: Operation timed out')]);
+        Http::fake(['*' => fn () => throw new ConnectionException('cURL error 7: Failed to connect to gw-fatoora.zatca.gov.sa')]);
 
         $response = app(FatooraClient::class)->checkCompliance('<Invoice/>', 'hash', 'uuid', new DeviceCredentials('token', 'secret'));
 
         $this->assertFalse($response->success);
         $this->assertSame(ErrorCode::ZATCA_SERVICE_UNAVAILABLE, $response->errorCode);
         $this->assertTrue($response->isRetryable(), 'Nothing reached the authority, so resending is safe.');
+        $this->assertFalse($response->mayHaveArrived);
+    }
+
+    /**
+     * A read that timed out is retryable too, but it is not "nothing reached
+     * the authority": the request went out, and a clearance ZATCA granted
+     * before the timeout would be filed twice by sending it again. This test
+     * used to say otherwise.
+     */
+    public function test_a_read_timeout_may_have_arrived(): void
+    {
+        Http::fake(['*' => fn () => throw new ConnectionException('cURL error 28: Operation timed out after 30001 milliseconds with 0 bytes received')]);
+
+        $response = app(FatooraClient::class)->checkCompliance('<Invoice/>', 'hash', 'uuid', new DeviceCredentials('token', 'secret'));
+
+        $this->assertSame(ErrorCode::ZATCA_TIMEOUT, $response->errorCode);
+        $this->assertTrue($response->isRetryable());
+        $this->assertTrue($response->mayHaveArrived);
     }
 
     /**

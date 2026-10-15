@@ -121,7 +121,9 @@ class AlertDeliveryTest extends TestCase
         $submission = (new InvoiceSubmission)->forceFill([
             'invoice_id' => $invoice->id,
             'org_id' => $organization->id,
-            'state' => 'submitted',
+            // Not yet sent: a job that gave up on a sent submission leaves it
+            // for reconciliation instead (FilingRetryTest).
+            'state' => 'pending_submission',
             'submission_type' => 'clearance',
             'submission_mode' => 'async',
         ]);

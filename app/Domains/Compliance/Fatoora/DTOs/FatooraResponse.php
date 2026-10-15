@@ -31,6 +31,15 @@ final readonly class FatooraResponse
         public ?ErrorCode $errorCode = null,
         /** Seconds to wait before retrying, when the authority said. */
         public ?int $retryAfterSeconds = null,
+        /**
+         * Whether the request may have reached the authority.
+         *
+         * False only when it certainly did not: the connection never opened,
+         * or the authority said it was too busy to look. A read timeout or a
+         * 5xx after the request went out could follow a clearance ZATCA has
+         * already granted, and sending a clearance again files it twice.
+         */
+        public bool $mayHaveArrived = true,
     ) {}
 
     /**
@@ -60,6 +69,7 @@ final readonly class FatooraResponse
         ?string $rawResponse = null,
         ?ErrorCode $errorCode = null,
         ?int $retryAfterSeconds = null,
+        bool $mayHaveArrived = true,
     ): self {
         return new self(
             success: false,
@@ -73,6 +83,7 @@ final readonly class FatooraResponse
             rawResponse: $rawResponse,
             errorCode: $errorCode,
             retryAfterSeconds: $retryAfterSeconds,
+            mayHaveArrived: $mayHaveArrived,
         );
     }
 
@@ -90,6 +101,7 @@ final readonly class FatooraResponse
             $rawResponse,
             ErrorCode::ZATCA_RATE_LIMITED,
             $retryAfterSeconds,
+            mayHaveArrived: false,
         );
     }
 

@@ -360,7 +360,9 @@ class OfflineQueue
                 'failed_at' => now(),
             ]);
 
-            Log::error('Offline queue item permanently failed', [
+            // Critical, so it reaches the alert channel: nothing will file
+            // this invoice without someone acting on it.
+            Log::critical('Offline queue item permanently failed', [
                 'queue_id' => $queueId,
                 'attempts' => $attempts,
                 'error' => $error,
@@ -471,8 +473,12 @@ class OfflineQueue
      */
     public function cleanup(int $olderThanDays = 7): int
     {
+        // Not failed items. Those are invoices ZATCA never filed - retries
+        // exhausted, held for reconciliation, needing a new signature - and
+        // the queue row, with its signed document, is the record of them.
+        // Deleting them after a week erased the evidence of unfiled work.
         $deleted = OfflineItem::query()
-            ->whereIn('state', [self::STATE_COMPLETED, self::STATE_FAILED, 'cancelled'])
+            ->whereIn('state', [self::STATE_COMPLETED, 'cancelled'])
             ->where('updated_at', '<', now()->subDays($olderThanDays))
             ->delete();
 

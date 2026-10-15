@@ -10,6 +10,7 @@ use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
 use App\Domains\Compliance\Fatoora\Events\InvoiceFailed;
 use App\Domains\Compliance\Fatoora\Events\InvoiceSubmitted;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
+use App\Domains\Compliance\Fatoora\Exceptions\FilingRetryException;
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Compliance\Fatoora\Models\SubmissionIdempotency;
 use App\Domains\Compliance\Fatoora\Services\CredentialStore;
@@ -17,6 +18,7 @@ use App\Domains\Compliance\Fatoora\Services\KillSwitch;
 use App\Domains\Compliance\Fatoora\Services\SubmissionLedger;
 use App\Domains\Compliance\Fatoora\Services\Submitter;
 use App\Domains\Invoice\Enums\InvoiceStatus;
+use App\Domains\Licensing\Services\UsageMeteringService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -130,6 +132,7 @@ class ProcessFatooraSubmission implements ShouldQueue
         Submitter $submitter,
         SubmissionLedger $ledger,
         CredentialStore $credentials,
+        UsageMeteringService $usage,
     ): void {
         // Checked here as well as before queueing, because the gap between the
         // two is exactly when an operator throws the switch. A job queued
@@ -161,6 +164,11 @@ class ProcessFatooraSubmission implements ShouldQueue
             return;
         }
 
+        // A retry of a failed attempt: the failure gave its quota slot back,
+        // so the attempt about to be made takes one again. Without this an
+        // invoice that failed once and then filed cost no slot at all.
+        $retrying = $this->submission->fresh()?->state === 'failed';
+
         $submission = $ledger->claim($this->submission, self::SENDABLE_STATES, 'queue_job');
 
         if ($submission === null) {
@@ -179,6 +187,10 @@ class ProcessFatooraSubmission implements ShouldQueue
         ]);
 
         try {
+            if ($retrying) {
+                $usage->reserveInvoiceQuotaFor((string) $submission->org_id);
+            }
+
             $response = $this->send($submission, $zatcaClient, $submitter, $ledger, $credentials);
         } catch (Throwable $e) {
             $this->handleError($submission, $e);
@@ -195,6 +207,28 @@ class ProcessFatooraSubmission implements ShouldQueue
             'state' => $state,
             'recorded' => $state !== null,
         ]);
+
+        // No answer. Recorded and returned from, the failure ended here: the
+        // queue retries only a job that throws, and nothing else looks for a
+        // failed submission - a two-minute outage left invoices unfiled.
+        if (! $response->success && $response->isRetryable()) {
+            if ($submission->isClearance() && $response->mayHaveArrived) {
+                // RecoverSubmissions' rule: a clearance that may be with
+                // ZATCA already is reconciled, not sent again.
+                Log::critical('A clearance may have reached ZATCA without an answer; reconcile with ZATCA before it is sent again', [
+                    'submission_id' => $submission->id,
+                    'invoice_id' => $submission->invoice_id,
+                    'org_id' => $submission->org_id,
+                    'error' => $response->errorMessages[0] ?? null,
+                ]);
+
+                return;
+            }
+
+            throw new FilingRetryException(
+                'ZATCA did not answer ('.($response->errorCode?->value ?? 'unknown').'); the queue will retry the submission.'
+            );
+        }
     }
 
     /**
@@ -343,6 +377,34 @@ class ProcessFatooraSubmission implements ShouldQueue
     public function failed(Throwable $exception): void
     {
         $submission = $this->submission->fresh();
+
+        // Only a submission still waiting to be sent. A slow attempt the queue
+        // gave to a second worker can end here after the first recorded
+        // ZATCA's answer - which this overwrote, or failed to, since an
+        // answered submission refuses changes.
+        // Sent, and no answer recorded: ZATCA may hold it. Marked failed, it
+        // would be sent again - a clearance filed twice - so it is left for
+        // reconciliation, loudly.
+        if ($submission?->state === 'submitted') {
+            Log::critical('A submission job gave up after sending, with no answer recorded; reconcile with ZATCA before it is sent again', [
+                'submission_id' => $submission->id,
+                'invoice_id' => $submission->invoice_id,
+                'org_id' => $submission->org_id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return;
+        }
+
+        if ($submission === null || ! in_array($submission->state, ['draft', 'queued', 'pending_submission', 'failed'], true)) {
+            Log::warning('A submission job gave up after its submission was already settled; leaving it as it is', [
+                'submission_id' => $this->submission->id,
+                'state' => $submission?->state,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return;
+        }
 
         // Final failure - mark as permanently failed
         $submission->update([

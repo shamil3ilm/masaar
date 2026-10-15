@@ -187,6 +187,25 @@ class OfflineReplayTest extends TestCase
         $this->assertSame(InvoiceStatus::Issued, $this->invoice->fresh()->status);
     }
 
+    /**
+     * A clearance that may have arrived is held, not resent: a 504 can follow
+     * a clearance ZATCA has already granted.
+     */
+    public function test_an_ambiguous_clearance_is_held(): void
+    {
+        Http::fake(['*' => Http::response(['message' => 'Gateway Timeout'], 504)]);
+
+        $this->replay();
+        $this->replay();
+
+        $this->assertSame(OfflineQueue::STATE_FAILED, $this->item->fresh()->state);
+        $this->assertCount(1, Http::recorded(fn (Request $request) => str_contains($request->url(), '/invoices/')));
+
+        // And kept: the held item is the record of an unfiled invoice.
+        app(OfflineQueue::class)->cleanup(0);
+        $this->assertNotNull($this->item->fresh());
+    }
+
     private function authorityAccepts(): void
     {
         Http::fake(['*' => Http::response([
