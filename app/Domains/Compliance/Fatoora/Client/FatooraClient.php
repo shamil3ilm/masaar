@@ -156,15 +156,26 @@ class FatooraClient
             );
 
         } catch (ConnectionException $e) {
-            // Nothing reached the authority, so nothing was refused. Without a
-            // code this was recorded as a rejection - and once the verdict is
-            // written to the invoice, an outage would mark it Rejected too.
+            // No answer, so nothing was refused. Without a code this was
+            // recorded as a rejection - and once the verdict is written to the
+            // invoice, an outage would mark it Rejected too.
+            //
+            // Two different silences, though. A connection that never opened
+            // carried nothing; a read that timed out may have delivered a
+            // clearance ZATCA has since granted.
+            $neverConnected = $this->neverConnected($e);
+
             Log::warning('ZATCA unreachable', [
                 'message' => $e->getMessage(),
                 'endpoint' => $endpoint,
+                'never_connected' => $neverConnected,
             ]);
 
-            return FatooraResponse::failed($e->getMessage(), errorCode: ErrorCode::ZATCA_SERVICE_UNAVAILABLE);
+            return FatooraResponse::failed(
+                $e->getMessage(),
+                errorCode: $neverConnected ? ErrorCode::ZATCA_SERVICE_UNAVAILABLE : ErrorCode::ZATCA_TIMEOUT,
+                mayHaveArrived: ! $neverConnected,
+            );
         } catch (\Exception $e) {
             Log::error('ZATCA API exception', [
                 'message' => $e->getMessage(),
@@ -235,6 +246,19 @@ class FatooraClient
      * method safe to widen, and it is the one worth re-checking against
      * simulation when a taxpayer exists.
      */
+    /**
+     * Whether the request certainly never left: a name that did not resolve,
+     * a connection refused or not established in time. cURL reports a read
+     * that timed out as "Operation timed out", and that one may have arrived.
+     */
+    private function neverConnected(ConnectionException $e): bool
+    {
+        return preg_match(
+            '/cURL error (6|7):|Could not resolve host|Failed to connect|Connection refused|Connection timed out/i',
+            $e->getMessage()
+        ) === 1;
+    }
+
     private function transient(Response $response): ?ErrorCode
     {
         return match ($response->status()) {
@@ -296,10 +320,14 @@ class FatooraClient
             // backoff, an idempotency key and a record of each attempt, and
             // for a 429 it can wait exactly as long as the authority asked.
             // throw: false returns the response rather than raising it.
+            //
+            // And only a connection that never opened: a read timeout is a
+            // ConnectionException too, and it can follow a clearance ZATCA
+            // has already granted.
             ->retry(
                 $this->getRetryAttempts(),
                 $this->getRetryDelay(),
-                fn (\Throwable $e): bool => $e instanceof ConnectionException,
+                fn (\Throwable $e): bool => $e instanceof ConnectionException && $this->neverConnected($e),
                 throw: false,
             )
             ->withHeaders([
