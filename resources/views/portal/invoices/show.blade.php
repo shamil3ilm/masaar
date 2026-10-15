@@ -69,7 +69,11 @@
                 <x-slot:head>
                     <x-ui.th><x-caption en="Description" ar="تفاصيل السلع أو الخدمات" /></x-ui.th>
                     <x-ui.th align="right"><x-caption en="Qty" ar="الكمية" /></x-ui.th>
-                    <x-ui.th align="right"><x-caption en="Unit" ar="سعر الوحدة" /></x-ui.th>
+                    @if ($invoice->prices_include_vat)
+                        <x-ui.th align="right"><x-caption en="Unit price (incl. VAT)" ar="سعر الوحدة شامل ضريبة القيمة المضافة" /></x-ui.th>
+                    @else
+                        <x-ui.th align="right"><x-caption en="Unit price" ar="سعر الوحدة" /></x-ui.th>
+                    @endif
                     <x-ui.th align="right"><x-caption en="VAT" ar="نسبة الضريبة" /></x-ui.th>
                     <x-ui.th align="right"><x-caption en="Line total" ar="المجموع" /></x-ui.th>
                 </x-slot:head>

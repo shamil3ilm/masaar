@@ -404,48 +404,83 @@ class ZatcaConformanceTest extends TestCase
     }
 
     /**
-     * Prices entered with VAT in them: the net is backed out of the gross,
-     * and the document still reconciles.
+     * Pricing scenarios run both ways: prices without VAT, and the same
+     * prices with VAT in them. One data set each, so every document is the
+     * first in its chain - the SDK checks the previous-invoice hash against
+     * the genesis value.
+     *
+     * @return iterable<string, array{0: string, 1: list<array<string, mixed>>, 2: string, 3: bool}>
      */
-    public function test_inclusive_prices_validate(): void
+    public static function pricing(): iterable
     {
-        $result = $this->validate($this->drafted(inclusive: true, lines: [
-            ['description' => 'Widget', 'quantity' => 3, 'unit_price' => '10.00'],
-            ['description' => 'Bolt', 'quantity' => 7, 'unit_price' => '4.99'],
-        ], discount: '5.00'));
-
-        $this->assertSame([], $this->businessRules($result['errors']), 'ZATCA rejected an invoice priced VAT-inclusive.');
-        $this->assertSame([], $result['warnings'], 'an advisory fired on an invoice priced VAT-inclusive.');
-    }
-
-    /**
-     * A gross that the net and VAT, each rounded, cannot reach: 10.00 is 8.70
-     * and 1.31, which is 10.01. The customer's 10.00 is kept and the VAT is
-     * 1.30, which BR-S-09 notices - as a warning - and nothing else does.
-     */
-    public function test_an_unreachable_gross_validates(): void
-    {
-        $result = $this->validate($this->drafted(inclusive: true, lines: [
-            ['description' => 'Widget', 'quantity' => 1, 'unit_price' => '10.00'],
-        ]));
-
-        $this->assertSame([], $this->businessRules($result['errors']), 'ZATCA rejected an exact inclusive total.');
-
-        foreach ($result['warnings'] as $warning) {
-            $this->assertStringContainsString('BR-S-09', $warning, 'an advisory other than BR-S-09 fired.');
+        foreach (self::scenarios() as $name => [$type, $lines, $discount]) {
+            yield "{$name}, VAT-exclusive" => [$type, $lines, $discount, false];
+            yield "{$name}, VAT-inclusive" => [$type, $lines, $discount, true];
         }
     }
 
     /**
-     * Draft a standard invoice through InvoiceDrafter and sign it.
+     * @return iterable<string, array{0: string, 1: list<array<string, mixed>>, 2: string}>
+     */
+    private static function scenarios(): iterable
+    {
+        $zero = ['tax_rate' => 0, 'tax_category' => 'Z', 'exempt_code' => 'VATEX-SA-34-3', 'exempt_reason' => 'Exported goods'];
+
+        // 10.00 alone cannot be split into a net and a VAT that, each
+        // rounded, add back to it (8.70 + 1.31 = 10.01).
+        yield 'one item at 10.00' => ['standard', [['description' => 'Widget', 'quantity' => 1, 'unit_price' => '10.00']], '0'];
+        yield 'three at 10.00' => ['standard', [['description' => 'Widget', 'quantity' => 3, 'unit_price' => '10.00']], '0'];
+        yield 'many lines and a discount' => ['standard', [
+            ['description' => 'Widget', 'quantity' => 3, 'unit_price' => '10.00'],
+            ['description' => 'Bolt', 'quantity' => 7, 'unit_price' => '4.99'],
+            ['description' => 'Nut', 'quantity' => 1, 'unit_price' => '0.07'],
+            ['description' => 'Panel', 'quantity' => 2, 'unit_price' => '1234.56'],
+        ], '5.00'];
+        yield 'standard and zero rated with a discount' => ['standard', [
+            ['description' => 'Widget', 'quantity' => 2, 'unit_price' => '23.00'],
+            ['description' => 'Exported goods', 'quantity' => 1, 'unit_price' => '40.00', ...$zero],
+        ], '6.33'];
+        yield 'a large quantity' => ['standard', [['description' => 'Screw', 'quantity' => 1500, 'unit_price' => '0.99']], '0'];
+        // Near a million units, a six-place net price no longer lands on the
+        // line net it was backed out of (BR-KSA-EN16931-11).
+        yield 'a huge quantity' => ['standard', [['description' => 'Grain', 'quantity' => 987654.321, 'unit_price' => '0.37']], '0'];
+        yield 'a fractional quantity' => ['standard', [['description' => 'Cable', 'quantity' => 2.5, 'unit_price' => '7.49']], '0'];
+        yield 'a simplified receipt' => ['simplified', [
+            ['description' => 'Coffee', 'quantity' => 1, 'unit_price' => '10.00'],
+            ['description' => 'Water', 'quantity' => 2, 'unit_price' => '1.50'],
+        ], '0'];
+    }
+
+    /**
+     * ZATCA accepts each scenario, with no advisory either.
+     *
+     * Where the net and VAT, each rounded, cannot reach a gross, the VAT is
+     * what the gross leaves over the net. BR-S-09 and BR-CO-17 compare the
+     * category VAT with its base times the rate within one riyal, and only
+     * as warnings, so the halalah does not register at all; BR-CO-14 and
+     * BR-CO-15, which are errors, hold exactly.
      *
      * @param  list<array<string, mixed>>  $lines
      */
-    private function drafted(bool $inclusive, array $lines, string $discount = '0'): string
+    #[DataProvider('pricing')]
+    public function test_both_pricings_validate(string $type, array $lines, string $discount, bool $inclusive): void
+    {
+        $result = $this->validate($this->drafted($inclusive, $type, $lines, $discount));
+
+        $this->assertSame([], $this->businessRules($result['errors']), 'ZATCA rejected the invoice.');
+        $this->assertSame([], $result['warnings'], 'an advisory fired on the invoice.');
+    }
+
+    /**
+     * Draft an invoice through InvoiceDrafter and sign it.
+     *
+     * @param  list<array<string, mixed>>  $lines
+     */
+    private function drafted(bool $inclusive, string $type, array $lines, string $discount = '0'): string
     {
         $invoice = app(InvoiceDrafter::class)->draft([
-            'invoice_number' => 'INCL-'.uniqid(),
-            'type' => 'standard',
+            'invoice_number' => 'PRICE-'.uniqid(),
+            'type' => $type,
             'document_type' => 'invoice',
             'issue_date' => now()->toDateString(),
             'supply_date' => now()->toDateString(),

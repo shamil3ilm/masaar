@@ -100,6 +100,71 @@ class InvoiceTotalsTest extends TestCase
     }
 
     /**
+     * ZATCA's own example: "The price inclusive of VAT was SAR 1,255.00 ...
+     * The VAT amount calculated as a fraction of 15/115 of the VAT-inclusive
+     * price is SAR 163.70", leaving 1,091.30 taxable (Guideline for Tax
+     * Invoicing and Records, v3, section 4.2.4, Example 6).
+     */
+    public function test_zatcas_inclusive_example(): void
+    {
+        $totals = InvoiceTotals::of([$this->line('1', '1255.00')], inclusive: true);
+
+        $this->assertSame(['1091.30', '0.00', '163.70', '1255.00'], $this->figures($totals));
+    }
+
+    /**
+     * Inclusive invoices of every shape stay inside what ZATCA allows.
+     *
+     * The VAT is what the gross leaves over the net, so a category's VAT can
+     * sit off its base times its rate. ZATCA's check on that (BR-S-09 and
+     * BR-CO-17 in its SDK) allows one halalah per invoice line, and it warns
+     * rather than rejects - but warnings are investigated, so this keeps
+     * clear of it: random invoices, mixed rates, discounts, the customer's
+     * total exact every time.
+     */
+    public function test_random_invoices_stay_in_tolerance(): void
+    {
+        mt_srand(20261015);
+        $rates = [['S', '15'], ['Z', '0'], ['S', '5']];
+
+        for ($n = 0; $n < 400; $n++) {
+            $lines = [];
+            $gross = '0';
+
+            for ($i = 0, $count = mt_rand(1, 6); $i < $count; $i++) {
+                [$category, $rate] = $rates[mt_rand(0, 2)];
+                $quantity = (string) mt_rand(1, 40);
+                $price = number_format(mt_rand(1, 500000) / 100, 2, '.', '');
+                $lines[] = ['quantity' => $quantity, 'unit_price' => $price, 'tax_rate' => $rate, 'tax_category' => $category];
+                $gross = bcadd($gross, bcmul($quantity, $price, 2), 2);
+            }
+
+            $discount = mt_rand(0, 1) ? number_format(mt_rand(0, (int) ((float) $gross * 30)) / 100, 2, '.', '') : '0';
+            $totals = InvoiceTotals::of($lines, $discount, inclusive: true);
+
+            $this->assertSame(bcsub($gross, $discount, 2), $totals->total, "invoice {$n}: the customer's total moved");
+
+            $nets = [];
+            $byRate = [];
+            foreach ($totals->lines as $i => $line) {
+                $key = $lines[$i]['tax_category'].'_'.$lines[$i]['tax_rate'];
+                $nets[$key] = ($nets[$key] ?? 0.0) + (float) $line['net'];
+                $byRate[$key] = (float) $lines[$i]['tax_rate'];
+            }
+
+            $categories = InvoiceTotals::categories($nets, $byRate, (float) $totals->discount, (float) $totals->tax);
+            $tolerance = count($lines) * 0.01 + 0.000001;
+
+            foreach ($categories as $key => $category) {
+                $expected = round($category['base'] * $byRate[$key] / 100, 2);
+                $this->assertLessThanOrEqual($tolerance, abs($category['tax'] - $expected), "invoice {$n}, {$key}");
+            }
+
+            $this->assertSame((float) $totals->tax, round(array_sum(array_column($categories, 'tax')), 2), "invoice {$n}: BR-CO-14");
+        }
+    }
+
+    /**
      * A line read back from storage carries its exact net, which is used in
      * place of quantity times the rounded price.
      */

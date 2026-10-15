@@ -121,8 +121,15 @@
                 <th scope="col" class="py-2 text-right"><x-caption en="Qty" ar="الكمية" /></th>
                 {{-- This column held the unit price under the heading "Unit",
                      so a money value sat under a word that means something
-                     else. BT-146 is the item net price; say so. --}}
-                <th scope="col" class="py-2 text-right"><x-caption en="Unit price" ar="سعر الوحدة" /></th>
+                     else. BT-146 is the item net price; say so.
+                     Priced with VAT in, the column is the price the customer
+                     saw, and says so - ZATCA's model receipt heads it "Unit
+                     price (including VAT)". --}}
+                @if ($invoice->prices_include_vat)
+                    <th scope="col" class="py-2 text-right"><x-caption en="Unit price (incl. VAT)" ar="سعر الوحدة شامل ضريبة القيمة المضافة" /></th>
+                @else
+                    <th scope="col" class="py-2 text-right"><x-caption en="Unit price" ar="سعر الوحدة" /></th>
+                @endif
                 @if (! $simplified)
                     {{-- BT-131, BT-152 and KSA-11, all required on a standard
                          invoice and none of them shown before. --}}

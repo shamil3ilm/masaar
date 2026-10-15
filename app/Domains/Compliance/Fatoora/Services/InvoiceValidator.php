@@ -346,8 +346,9 @@ class InvoiceValidator
 
         // Prices entered with VAT in them keep the customer's total exact,
         // and the VAT is what that leaves over the net. It may sit a halalah
-        // per tax category from the categories' own rounding (BR-S-09, a
-        // warning), and the total is then net plus that VAT.
+        // per tax category from the categories' own rounding (BR-S-09, within
+        // ZATCA's halalah-per-line tolerance), and the total is then net plus
+        // that VAT.
         $inclusive = (bool) $invoice->prices_include_vat;
         $categories = $invoice->lines->map(fn ($line): string => ($line->tax_category ?? 'S').'_'.(float) $line->tax_rate)->unique()->count();
         $expectedTotal = $inclusive

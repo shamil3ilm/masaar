@@ -108,7 +108,7 @@ class InclusivePricingTest extends TestCase
      * Where net and VAT, each rounded, cannot reach the gross, the document
      * still declares what the customer paid, and its categories still add up
      * to its VAT (BR-CO-14). The halalah is in the category's VAT, which ZATCA
-     * reports under BR-S-09 as a warning.
+     * allows under BR-S-09: a halalah per invoice line.
      */
     public function test_an_unreachable_gross_is_still_exact(): void
     {

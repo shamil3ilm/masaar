@@ -187,6 +187,21 @@ class PrintFieldTest extends TestCase
         $this->print($this->invoice('simplified', line: ['unit_code' => 'PCE']))->assertSee('Piece')->assertDontSee('PCE');
     }
 
+    /**
+     * Priced with VAT in, the price column is the price the customer saw and
+     * is headed as such, as on ZATCA's model simplified invoice ("Unit price
+     * (including VAT)"). Priced without, it is the net price.
+     */
+    public function test_the_price_column_says_which(): void
+    {
+        $this->print($this->invoice('simplified', ['prices_include_vat' => true, 'subtotal' => '100.00', 'total' => '115.00']))
+            ->assertSee('Unit price (incl. VAT)')
+            ->assertSee('115.00');
+
+        $this->print($this->invoice('simplified', ['icv' => 2]))
+            ->assertDontSee('Unit price (incl. VAT)');
+    }
+
     private function print(Invoice $invoice): TestResponse
     {
         return $this->asRequest(fn () => $this->actingAs($this->member)

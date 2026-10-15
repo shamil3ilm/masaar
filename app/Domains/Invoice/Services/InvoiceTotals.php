@@ -19,10 +19,14 @@ use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
  * customer's figures are the fixed ones: each line's gross is exact, and so is
  * the document total. The net ZATCA is given is backed out of the gross per
  * tax category, and the document VAT is whatever the gross leaves over the
- * net. Rounding the net and the VAT separately cannot land on every gross -
- * at 15% about one total in eight is out of reach - so where it cannot, the
- * halalah sits in a category's VAT. That is BR-S-09, which ZATCA reports as a
- * warning; the totals rules it enforces as errors (BR-CO-14, BR-CO-15) hold.
+ * net - ZATCA's own method: "The VAT amount calculated as a fraction of
+ * 15/115 of the VAT-inclusive price" (Guideline for Tax Invoicing and
+ * Records, v3, 4.2.4, Example 6). Rounding the net and the VAT separately
+ * cannot land on every gross - at 15% about one total in eight is out of
+ * reach - so where it cannot, the halalah sits in a category's VAT. ZATCA's
+ * check of a category's VAT against its base times its rate (BR-S-09,
+ * BR-CO-17) allows a halalah per invoice line, so this does not register;
+ * the totals rules it enforces as errors (BR-CO-14, BR-CO-15) hold exactly.
  */
 final readonly class InvoiceTotals
 {
