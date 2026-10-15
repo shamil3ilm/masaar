@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Licensing\Http\Middleware;
 
+use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Licensing\Exceptions\LicenseException;
 use App\Domains\Licensing\Models\License;
 use Closure;
@@ -56,12 +57,26 @@ class RequireLicenseFeature
      * invoice_type alias for it, and document_type, an invoice when absent.
      * A value that is not one of these is left to validation to refuse.
      *
+     * A route that acts on an invoice already stored - generating or filing
+     * it - carries no document, so the stored one decides. Without that, an
+     * invoice made in the portal could be filed through any licence. The
+     * lookup is tenant-scoped: ValidateLicense set the licence's organization.
+     *
      * @return list<string>
      */
     private static function forDocument(Request $request): array
     {
         $type = $request->input('type') ?? $request->input('invoice_type');
-        $documentType = $request->input('document_type') ?? 'invoice';
+        $documentType = $request->input('document_type');
+
+        $id = $request->route('invoiceId') ?? $request->route('invoice');
+
+        if ($type === null && is_string($id) && ($invoice = Invoice::find($id)) !== null) {
+            $type = self::value($invoice->type);
+            $documentType = self::value($invoice->document_type);
+        }
+
+        $documentType ??= 'invoice';
 
         $features = match ($type) {
             'standard' => ['standard_invoices'],
@@ -74,5 +89,10 @@ class RequireLicenseFeature
             'debit_note' => [...$features, 'debit_notes'],
             default => $features,
         };
+    }
+
+    private static function value(mixed $attribute): ?string
+    {
+        return $attribute instanceof \BackedEnum ? (string) $attribute->value : ($attribute === null ? null : (string) $attribute);
     }
 }

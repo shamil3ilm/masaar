@@ -63,6 +63,7 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Fatoora/Services/Submitter.php' => 'Invoice, Organization',
         'Domains/Compliance/Fatoora/Services/VatPeriodTracker.php' => 'Invoice',
         'Domains/Invoice/Models/Invoice.php' => 'Organization',
+        'Domains/Licensing/Http/Middleware/RequireLicenseFeature.php' => 'Invoice',
         'Domains/Organization/Models/Branch.php' => 'Invoice',
         'Domains/Organization/Models/ComplianceProfile.php' => 'Invoice',
         'Domains/Organization/Models/Organization.php' => 'Invoice',

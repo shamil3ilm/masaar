@@ -52,15 +52,19 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
 
     /* Compliance ----------------------------------------------------------- */
 
+    // Generating and filing act on an invoice already stored, so the licence
+    // must include that invoice's kind - license.feature:documents reads it.
+    // Validating changes nothing and stays open.
     Route::middleware(['scope:invoice.submit'])->group(function () {
-        Route::post('/compliance/generate/{invoiceId}', [ComplianceController::class, 'generate']);
+        Route::post('/compliance/generate/{invoiceId}', [ComplianceController::class, 'generate'])
+            ->middleware('license.feature:documents');
         Route::post('/compliance/validate/{invoiceId}', [ComplianceController::class, 'validate']);
     });
 
     // Submitting consumes the licence's invoice allowance, so quota is checked
     // before the document is signed and sent.
     Route::post('/compliance/submit/{invoiceId}', [ComplianceController::class, 'submit'])
-        ->middleware(['scope:invoice.submit', 'license.quota']);
+        ->middleware(['scope:invoice.submit', 'license.feature:documents', 'license.quota']);
 
     Route::get('/compliance/status/{invoiceId}', [ComplianceController::class, 'status'])
         ->middleware(['scope:compliance.status']);

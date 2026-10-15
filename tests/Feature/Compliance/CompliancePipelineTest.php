@@ -78,7 +78,9 @@ class CompliancePipelineTest extends TestCase
             'org_id' => $this->organization->id,
             'organization_name' => 'Acme Trading',
             'contact_email' => 'erp@acme.test',
-            'tier' => 'starter',
+            // Professional: these file standard invoices, which a Starter
+            // licence does not include now that licence features are enforced.
+            'tier' => 'professional',
             'scopes' => ['invoice.read', 'invoice.submit', 'compliance.status'],
         ]);
 

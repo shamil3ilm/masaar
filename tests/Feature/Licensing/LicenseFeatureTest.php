@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Licensing;
 
+use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Licensing\Models\License;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -62,6 +63,36 @@ class LicenseFeatureTest extends TestCase
         $this->postJson('/api/v1/pipeline/submit', ['invoice_type' => 'standard'], $this->licence('starter'))
             ->assertStatus(403)
             ->assertJsonPath('error.details.feature', 'standard_invoices');
+    }
+
+    /**
+     * Filing an invoice that already exists is gated by what it is.
+     *
+     * The gate read the document in the request, and the compliance routes
+     * take only an id: an invoice made elsewhere - in the portal - could be
+     * issued and filed through a licence that does not include its kind.
+     */
+    public function test_filing_an_existing_invoice_is_gated(): void
+    {
+        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+            'org_id' => $this->acme->id,
+            'invoice_number' => 'ACME-B2B-1',
+            'type' => 'standard',
+            'status' => 'draft',
+            'issue_date' => now()->toDateString(),
+            'currency' => 'SAR',
+            'subtotal' => '100.00',
+            'tax_amount' => '15.00',
+            'total' => '115.00',
+        ]));
+
+        $credential = $this->licence('starter');
+
+        foreach (['generate', 'submit'] as $step) {
+            $this->postJson("/api/v1/compliance/{$step}/{$invoice->id}", [], $credential)
+                ->assertStatus(403)
+                ->assertJsonPath('error.details.feature', 'standard_invoices');
+        }
     }
 
     public function test_webhooks_need_their_feature(): void
