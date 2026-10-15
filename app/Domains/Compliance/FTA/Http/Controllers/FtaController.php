@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\FTA\Http\Controllers;
 
+use App\Domains\Compliance\FTA\Enums\FtaStatus;
+use App\Domains\Compliance\FTA\Models\FtaSubmission;
 use App\Domains\Compliance\FTA\Services\FtaService;
 use App\Domains\Compliance\FTA\Services\SubmissionFinder;
 use App\Domains\Invoice\Services\InvoiceFinder;
@@ -36,11 +38,39 @@ class FtaController extends Controller
 
         $submission = $this->ftaService->submit($invoice, $organization);
 
-        return ApiResponse::success([
+        // Every outcome answered 201 "submitted" with success true, so a
+        // rejection or an unreachable authority read as a filing to any ERP
+        // that keys off success.
+        return match ($submission->status) {
+            FtaStatus::Rejected => ApiResponse::error('UAE FTA rejected the invoice', 422, [
+                'submission_id' => $submission->id,
+                'errors' => $submission->errors ?? [],
+            ]),
+            // No verdict was reached. The submission is kept and retried on
+            // a schedule, so the caller is told when rather than to resend.
+            FtaStatus::Failed => ApiResponse::error('UAE FTA could not be reached; the submission will be retried', 502, [
+                'submission_id' => $submission->id,
+                'next_retry_at' => $submission->next_retry_at?->toISOString(),
+            ]),
+            FtaStatus::PendingReview => ApiResponse::success(
+                $this->submitted($submission),
+                'UAE FTA is reviewing the invoice',
+                202,
+            ),
+            default => ApiResponse::success($this->submitted($submission), 'UAE FTA invoice submitted', 201),
+        };
+    }
+
+    /**
+     * @return array{submission_id: string, status: string, fta_ref: ?string}
+     */
+    private function submitted(FtaSubmission $submission): array
+    {
+        return [
             'submission_id' => $submission->id,
             'status' => $submission->status->value,
             'fta_ref' => $submission->reference,
-        ], 'UAE FTA invoice submitted', 201);
+        ];
     }
 
     public function status(string $submissionId): JsonResponse

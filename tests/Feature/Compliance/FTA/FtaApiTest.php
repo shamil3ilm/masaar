@@ -6,9 +6,11 @@ namespace Tests\Feature\Compliance\FTA;
 
 use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\FTA\Models\FtaSubmission;
+use App\Domains\Compliance\FTA\Services\FtaService;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
@@ -85,6 +87,46 @@ class FtaApiTest extends TestCase
 
         $this->withToken($this->token)->getJson("/api/compliance/ae/status/{$theirs->id}")->assertNotFound();
         $this->withToken($this->token)->postJson("/api/compliance/ae/retry/{$theirs->id}")->assertNotFound();
+    }
+
+    /**
+     * The answer says what the authority said.
+     *
+     * Every outcome answered 201 with success true and "submitted": a
+     * rejection and an authority that could not be reached read as a filing,
+     * and an ERP that keys off success marked the invoice done.
+     */
+    public function test_submit_answers_the_outcome(): void
+    {
+        $outcomes = [
+            $this->submission($this->acme, 'accepted', ['reference' => 'FTA-1']),
+            $this->submission($this->acme, 'pending_review'),
+            $this->submission($this->acme, 'rejected', ['errors' => ['BR-AE-01 buyer TRN missing']]),
+            $this->submission($this->acme, 'failed', ['last_error' => 'timeout', 'next_retry_at' => now()->addMinutes(5)]),
+        ];
+
+        // One mock for all four: the route keeps the controller it built
+        // first, so a mock bound later would never be asked.
+        $this->mock(FtaService::class)->shouldReceive('submit')->andReturn(...$outcomes);
+
+        $this->submit($outcomes[0])->assertCreated()->assertJsonPath('success', true);
+
+        $this->submit($outcomes[1])->assertAccepted()->assertJsonPath('data.status', 'pending_review');
+
+        $this->submit($outcomes[2])
+            ->assertUnprocessable()
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('error.details.errors', ['BR-AE-01 buyer TRN missing']);
+
+        $this->submit($outcomes[3])
+            ->assertStatus(502)
+            ->assertJsonPath('success', false)
+            ->assertJsonStructure(['error' => ['details' => ['submission_id', 'next_retry_at']]]);
+    }
+
+    private function submit(FtaSubmission $submission): TestResponse
+    {
+        return $this->withToken($this->token)->postJson("/api/compliance/ae/submit/{$submission->invoice_id}");
     }
 
     private function submission(Organization $organization, string $status, array $attributes = []): FtaSubmission
