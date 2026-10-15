@@ -6,6 +6,7 @@ namespace App\Domains\Licensing\Services;
 
 use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Enums\LicenseTier;
+use App\Domains\Licensing\Exceptions\LicenceStateException;
 use App\Domains\Licensing\Models\License;
 use App\Domains\Licensing\Models\LicenseAuditLog;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -130,7 +131,7 @@ class LicenseManagementService
         $license = License::findOrFail($licenseId);
 
         if ($license->status !== LicenseStatus::PendingActivation) {
-            throw new \RuntimeException("License is not pending activation. Current status: {$license->status->value}");
+            throw new LicenceStateException("License is not pending activation. Current status: {$license->status->value}");
         }
 
         $license->update([

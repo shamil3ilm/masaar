@@ -6,6 +6,7 @@ namespace App\Domains\Licensing\Http\Controllers;
 
 use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Enums\LicenseTier;
+use App\Domains\Licensing\Exceptions\LicenceStateException;
 use App\Domains\Licensing\Exceptions\LicenseException;
 use App\Domains\Licensing\Services\LicenseManagementService;
 use App\Domains\Organization\Rules\VatNumber;
@@ -214,7 +215,7 @@ class AdminLicenceController extends Controller
             return $target->with('error', OperatorError::message(
                 $e,
                 'Changing the licence',
-                [LicenseException::class, ModelNotFoundException::class],
+                [LicenseException::class, LicenceStateException::class, ModelNotFoundException::class],
             ));
         }
 

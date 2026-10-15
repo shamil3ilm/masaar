@@ -6,21 +6,30 @@ namespace App\Domains\Licensing\Http\Controllers;
 
 use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Enums\LicenseTier;
+use App\Domains\Licensing\Exceptions\LicenceStateException;
 use App\Domains\Licensing\Models\License;
 use App\Domains\Licensing\Services\LicenseManagementService;
 use App\Domains\Licensing\Services\UsageMeteringService;
 use App\Http\Pagination\PageSize;
+use App\Http\Responses\ApiResponse;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
 /**
  * License Management Controller.
  *
  * API endpoints for license administration.
+ *
+ * Every answer is the envelope the rest of the API uses. This controller built
+ * its own - {success, error_code, errors} - so its validation failures and
+ * refusals read differently from every other endpoint's, and the two
+ * lifecycle actions caught any RuntimeException and returned its message,
+ * which a database failure would have filled with SQL. Validation now goes
+ * through the shared renderer, and only a licence's own refusal
+ * (LicenceStateException) is answered with its words.
  */
 class LicenseController extends Controller
 {
@@ -39,18 +48,7 @@ class LicenseController extends Controller
         $filters = $request->only(['status', 'tier', 'search', 'expired']);
         $perPage = PageSize::fromRequest($request, 20);
 
-        $licenses = $this->managementService->listLicenses($filters, $perPage);
-
-        return response()->json([
-            'success' => true,
-            'data' => $licenses->items(),
-            'meta' => [
-                'current_page' => $licenses->currentPage(),
-                'last_page' => $licenses->lastPage(),
-                'per_page' => $licenses->perPage(),
-                'total' => $licenses->total(),
-            ],
-        ]);
+        return ApiResponse::paginated($this->managementService->listLicenses($filters, $perPage));
     }
 
     /**
@@ -60,7 +58,7 @@ class LicenseController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
+        $validated = $request->validate([
             // The organization every partner call on this licence acts for.
             'org_id' => 'required|uuid|exists:organizations,id',
             'organization_name' => 'required|string|max:255',
@@ -78,28 +76,15 @@ class LicenseController extends Controller
             'notes' => 'sometimes|nullable|string',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'error_code' => 'VALIDATION_ERROR',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
+        $result = $this->managementService->createLicense($validated);
 
-        $result = $this->managementService->createLicense($validator->validated());
-
-        return response()->json([
-            'success' => true,
-            'message' => 'License created',
-            'data' => [
-                'license' => $result['license']->toArray(),
-                'credentials' => [
-                    'api_key' => $result['api_key'],
-                    'api_secret' => $result['api_secret'],
-                ],
+        return ApiResponse::created([
+            'license' => $result['license']->toArray(),
+            'credentials' => [
+                'api_key' => $result['api_key'],
+                'api_secret' => $result['api_secret'],
             ],
-            'warning' => 'Store the API secret securely. It cannot be retrieved again.',
-        ], 201);
+        ], 'License created. Store the API secret securely: it cannot be retrieved again.');
     }
 
     /**
@@ -110,18 +95,9 @@ class LicenseController extends Controller
     public function show(string $id): JsonResponse
     {
         try {
-            $details = $this->managementService->getLicenseDetails($id);
-
-            return response()->json([
-                'success' => true,
-                'data' => $details,
-            ]);
-        } catch (ModelNotFoundException $e) {
-            return response()->json([
-                'success' => false,
-                'error_code' => 'LICENSE_NOT_FOUND',
-                'message' => 'License not found',
-            ], 404);
+            return ApiResponse::success($this->managementService->getLicenseDetails($id));
+        } catch (ModelNotFoundException) {
+            return ApiResponse::error('License not found', 404, [], 'LICENSE_NOT_FOUND');
         }
     }
 
@@ -134,19 +110,11 @@ class LicenseController extends Controller
     {
         try {
             $license = $this->managementService->activateLicense($id);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'License activated',
-                'data' => $license->toArray(),
-            ]);
-        } catch (\RuntimeException $e) {
-            return response()->json([
-                'success' => false,
-                'error_code' => 'ACTIVATION_FAILED',
-                'message' => $e->getMessage(),
-            ], 400);
+        } catch (LicenceStateException $e) {
+            return ApiResponse::error($e->getMessage(), 409, [], 'ACTIVATION_FAILED');
         }
+
+        return ApiResponse::success($license->toArray(), 'License activated');
     }
 
     /**
@@ -156,14 +124,15 @@ class LicenseController extends Controller
      */
     public function suspend(Request $request, string $id): JsonResponse
     {
-        $reason = $request->get('reason');
-        $license = $this->managementService->suspendLicense($id, $reason);
+        $reason = $request->validate(['reason' => 'sometimes|nullable|string|max:255'])['reason'] ?? null;
 
-        return response()->json([
-            'success' => true,
-            'message' => 'License suspended',
-            'data' => $license->toArray(),
-        ]);
+        try {
+            $license = $this->managementService->suspendLicense($id, $reason);
+        } catch (LicenceStateException $e) {
+            return ApiResponse::error($e->getMessage(), 409, [], 'SUSPENSION_FAILED');
+        }
+
+        return ApiResponse::success($license->toArray(), 'License suspended');
     }
 
     /**
@@ -175,19 +144,11 @@ class LicenseController extends Controller
     {
         try {
             $license = $this->managementService->reactivateLicense($id);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'License reactivated',
-                'data' => $license->toArray(),
-            ]);
-        } catch (\RuntimeException $e) {
-            return response()->json([
-                'success' => false,
-                'error_code' => 'REACTIVATION_FAILED',
-                'message' => $e->getMessage(),
-            ], 400);
+        } catch (LicenceStateException $e) {
+            return ApiResponse::error($e->getMessage(), 409, [], 'REACTIVATION_FAILED');
         }
+
+        return ApiResponse::success($license->toArray(), 'License reactivated');
     }
 
     /**
@@ -197,14 +158,9 @@ class LicenseController extends Controller
      */
     public function revoke(Request $request, string $id): JsonResponse
     {
-        $reason = $request->get('reason');
-        $license = $this->managementService->revokeLicense($id, $reason);
+        $reason = $request->validate(['reason' => 'sometimes|nullable|string|max:255'])['reason'] ?? null;
 
-        return response()->json([
-            'success' => true,
-            'message' => 'License revoked',
-            'data' => $license->toArray(),
-        ]);
+        return ApiResponse::success($this->managementService->revokeLicense($id, $reason)->toArray(), 'License revoked');
     }
 
     /**
@@ -214,25 +170,9 @@ class LicenseController extends Controller
      */
     public function extend(Request $request, string $id): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'days' => 'required|integer|min:1|max:3650',
-        ]);
+        $days = (int) $request->validate(['days' => 'required|integer|min:1|max:3650'])['days'];
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'error_code' => 'VALIDATION_ERROR',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        $license = $this->managementService->extendLicense($id, $request->get('days'));
-
-        return response()->json([
-            'success' => true,
-            'message' => 'License extended',
-            'data' => $license->toArray(),
-        ]);
+        return ApiResponse::success($this->managementService->extendLicense($id, $days)->toArray(), 'License extended');
     }
 
     /**
@@ -242,25 +182,11 @@ class LicenseController extends Controller
      */
     public function upgrade(Request $request, string $id): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
+        $tier = $request->validate([
             'tier' => ['required', Rule::in(array_column(LicenseTier::cases(), 'value'))],
-        ]);
+        ])['tier'];
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'error_code' => 'VALIDATION_ERROR',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        $license = $this->managementService->upgradeTier($id, $request->get('tier'));
-
-        return response()->json([
-            'success' => true,
-            'message' => 'License tier upgraded',
-            'data' => $license->toArray(),
-        ]);
+        return ApiResponse::success($this->managementService->upgradeTier($id, $tier)->toArray(), 'License tier upgraded');
     }
 
     /**
@@ -270,28 +196,14 @@ class LicenseController extends Controller
      */
     public function updateLimits(Request $request, string $id): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
+        $validated = $request->validate([
             'invoices_per_month' => 'sometimes|integer|min:-1|max:4294967295',
             'calls_per_day' => 'sometimes|integer|min:-1|max:4294967295',
             'calls_per_min' => 'sometimes|integer|min:1',
             'max_organizations' => 'sometimes|integer|min:-1|max:4294967295',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'error_code' => 'VALIDATION_ERROR',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        $license = $this->managementService->updateLimits($id, $validator->validated());
-
-        return response()->json([
-            'success' => true,
-            'message' => 'License limits updated',
-            'data' => $license->toArray(),
-        ]);
+        return ApiResponse::success($this->managementService->updateLimits($id, $validated)->toArray(), 'License limits updated');
     }
 
     /**
@@ -301,26 +213,12 @@ class LicenseController extends Controller
      */
     public function updateFeatures(Request $request, string $id): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
+        $features = $request->validate([
             'features' => 'required|array',
             'features.*' => 'string',
-        ]);
+        ])['features'];
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'error_code' => 'VALIDATION_ERROR',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        $license = $this->managementService->updateFeatures($id, $request->get('features'));
-
-        return response()->json([
-            'success' => true,
-            'message' => 'License features updated',
-            'data' => $license->toArray(),
-        ]);
+        return ApiResponse::success($this->managementService->updateFeatures($id, $features)->toArray(), 'License features updated');
     }
 
     /**
@@ -332,15 +230,10 @@ class LicenseController extends Controller
     {
         $result = $this->managementService->regenerateSecret($id);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'API secret regenerated',
-            'data' => [
-                'license' => $result['license']->toArray(),
-                'api_secret' => $result['api_secret'],
-            ],
-            'warning' => 'Store the new API secret securely. It cannot be retrieved again.',
-        ]);
+        return ApiResponse::success([
+            'license' => $result['license']->toArray(),
+            'api_secret' => $result['api_secret'],
+        ], 'API secret regenerated. Store it securely: it cannot be retrieved again.');
     }
 
     /**
@@ -351,14 +244,14 @@ class LicenseController extends Controller
     public function usage(Request $request, string $id): JsonResponse
     {
         $license = License::findOrFail($id);
-        $month = $request->get('month', now()->format('Y-m'));
 
-        $usage = $this->meteringService->getUsageSummary($license, $month);
+        // Unvalidated, month[]=x reached a string parameter under strict
+        // types and answered 500, as it did on the partner's own endpoint.
+        $month = $request->validate([
+            'month' => ['sometimes', 'string', 'date_format:Y-m'],
+        ])['month'] ?? now()->format('Y-m');
 
-        return response()->json([
-            'success' => true,
-            'data' => $usage,
-        ]);
+        return ApiResponse::success($this->meteringService->getUsageSummary($license, $month));
     }
 
     /**
@@ -369,12 +262,8 @@ class LicenseController extends Controller
     public function audit(Request $request, string $id): JsonResponse
     {
         $limit = PageSize::fromRequest($request, 50, 200, 'limit');
-        $logs = $this->managementService->getAuditLog($id, $limit);
 
-        return response()->json([
-            'success' => true,
-            'data' => $logs,
-        ]);
+        return ApiResponse::success($this->managementService->getAuditLog($id, $limit));
     }
 
     /**
@@ -384,12 +273,7 @@ class LicenseController extends Controller
      */
     public function statistics(): JsonResponse
     {
-        $stats = $this->managementService->getStatistics();
-
-        return response()->json([
-            'success' => true,
-            'data' => $stats,
-        ]);
+        return ApiResponse::success($this->managementService->getStatistics());
     }
 
     /**
@@ -399,14 +283,8 @@ class LicenseController extends Controller
      */
     public function cleanup(): JsonResponse
     {
-        $deleted = $this->meteringService->cleanupExpiredRateLimits();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Cleanup completed',
-            'data' => [
-                'rate_limits_deleted' => $deleted,
-            ],
-        ]);
+        return ApiResponse::success([
+            'rate_limits_deleted' => $this->meteringService->cleanupExpiredRateLimits(),
+        ], 'Cleanup completed');
     }
 }

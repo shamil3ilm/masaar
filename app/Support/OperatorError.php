@@ -23,8 +23,8 @@ final class OperatorError
     /**
      * @param  string  $what  What was attempted, e.g. "Issuing the licence".
      * @param  list<class-string<Throwable>>  $explained  Exceptions whose
-     *                                                  message is written for
-     *                                                  the operator.
+     *                                                    message is written for
+     *                                                    the operator.
      */
     public static function message(Throwable $e, string $what, array $explained = []): string
     {
