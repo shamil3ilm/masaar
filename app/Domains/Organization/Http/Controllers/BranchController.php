@@ -11,6 +11,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 /**
  * Branch management API controller.
@@ -68,6 +69,8 @@ class BranchController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        $organization = $this->tenant->getOrganization();
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'name_ar' => ['nullable', 'string', 'max:255'],
@@ -78,10 +81,13 @@ class BranchController extends Controller
             'district' => ['required', 'string', 'max:100'],
             'city' => ['required', 'string', 'max:100'],
             'postal_code' => ['required', 'string', 'size:5', 'regex:/^\d{5}$/'],
-            'device_serial' => ['nullable', 'string', 'max:255', 'unique:branches,device_serial'],
+            // Within this organization: across the platform, one tenant could
+            // take another's predictable next serial and block its branches.
+            'device_serial' => [
+                'nullable', 'string', 'max:255',
+                Rule::unique('branches', 'device_serial')->where('org_id', $organization->id),
+            ],
         ]);
-
-        $organization = $this->tenant->getOrganization();
 
         try {
             $branch = $this->branchService->create($organization, $validated);
