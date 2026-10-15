@@ -6,6 +6,7 @@ namespace App\Domains\Pipeline\Services;
 
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Services\InvoiceIssuer;
+use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Organization\Models\Branch;
@@ -58,7 +59,7 @@ class PipelineService
         // invoice - colliding on the invoice number, or, with a fresh one,
         // billing the sale twice.
         if ($idempotencyKey !== null && ($earlier = $this->drafter->createdUnder($organizationId, $idempotencyKey))) {
-            return $this->replay($earlier, $data);
+            return $this->replay($earlier, $data, $organization, $idempotencyKey);
         }
 
         try {
@@ -76,9 +77,20 @@ class PipelineService
                 throw $e;
             }
 
-            return $this->replay($earlier, $data);
+            return $this->replay($earlier, $data, $organization, $idempotencyKey);
         }
 
+        return $this->issue($invoice, $organization, $data, $idempotencyKey);
+    }
+
+    /**
+     * Issue a draft, file it unless asked not to, and shape the answer.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function issue(Invoice $invoice, Organization $organization, array $data, ?string $idempotencyKey): array
+    {
         $outcome = $this->issuer->issue(
             $invoice,
             $organization,
@@ -124,13 +136,21 @@ class PipelineService
      *
      * @throws ValidationException
      */
-    private function replay(Invoice $invoice, array $data): array
+    private function replay(Invoice $invoice, array $data, Organization $organization, ?string $idempotencyKey): array
     {
         if ($invoice->invoice_number !== ($data['invoice_number'] ?? null)) {
             throw ValidationException::withMessages([
                 'invoice_number' => 'This Idempotency-Key was already used for invoice '.$invoice->invoice_number
                     .'. Send a new key for a new invoice.',
             ]);
+        }
+
+        // The first call drafted and then failed to issue. Answering with the
+        // stored draft and no errors reported a clean success for an invoice
+        // with no counter, hash or QR, and the ERP marked the sale done. A
+        // retry is how it recovers, so it carries on from the draft.
+        if ($invoice->status === InvoiceStatus::Draft) {
+            return $this->issue($invoice, $organization, $data, $idempotencyKey);
         }
 
         $submission = $invoice->latestSubmission;
