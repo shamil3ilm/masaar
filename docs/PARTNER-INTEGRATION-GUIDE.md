@@ -1545,7 +1545,11 @@ With VAT included, the customer's figures are the ones kept exact: each line's t
 // The line's unit_price is the net (8.70) and net_amount the exact net (26.09).
 ```
 
-Occasionally no rounded net and rounded VAT add up to the gross. A single item at 10.00 is one case: a net of 8.70 with its own VAT is 10.01. The total stays 10.00 and the VAT is 1.30. ZATCA may report this under BR-S-09 as a warning, never as an error, and the invoice is accepted.
+The VAT is the fraction 15/115 of the VAT-inclusive amount, as in ZATCA's Guideline for Tax Invoicing and Records (section 4.2.4, Example 6): 1,255.00 including VAT is 163.70 VAT on 1,091.30.
+
+Occasionally no rounded net and rounded VAT add up to the gross. A single item at 10.00 is one case: a net of 8.70 with its own VAT is 10.01. The total stays 10.00 and the VAT is 1.30. That halalah is within the tolerance ZATCA's validation allows for a category's VAT (one halalah per invoice line), so the invoice is accepted without errors or warnings.
+
+On a printed receipt, an invoice priced this way heads its price column "Unit price (incl. VAT)", as in the model simplified invoice ZATCA publishes.
 
 ---
 

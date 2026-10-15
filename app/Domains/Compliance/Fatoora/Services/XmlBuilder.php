@@ -835,7 +835,7 @@ class XmlBuilder
             // Prices are stored net whichever way they were entered; a price
             // that had VAT in it was converted when the invoice was drafted.
             // This converted again from the unit price, which by then was net.
-            $netUnitPrice = $unitPrice;
+            $netUnitPrice = $this->formatPrice($unitPrice);
             // Quantity times price, not lineTotal: that carries the tax. The
             // stored net when there is one.
             $lineNet = ($isFreeItem ? round($unitPrice * (float) $line['quantity'], 2) : $this->lineNet($line)) - $lineDiscount;
@@ -846,7 +846,7 @@ class XmlBuilder
             // need more places. ZATCA sets no limit on the price's decimals.
             if (! $isFreeItem && $lineDiscount === 0.0 && (float) $line['quantity'] > 0
                 && round($unitPrice * (float) $line['quantity'], 2) !== round($lineNet, 2)) {
-                $netUnitPrice = round($lineNet / (float) $line['quantity'], 6);
+                $netUnitPrice = $this->priceFor($lineNet, (float) $line['quantity']);
             }
 
             // For free items: lineNet = 0 but VAT still calculated on market value
@@ -938,7 +938,7 @@ class XmlBuilder
 
             // Price (net unit price - ZATCA requires tax-exclusive price in XML)
             $price = $this->dom->createElementNS(self::CAC_NS, 'cac:Price');
-            $priceAmount = $this->dom->createElementNS(self::CBC_NS, 'cbc:PriceAmount', $this->formatPrice($netUnitPrice));
+            $priceAmount = $this->dom->createElementNS(self::CBC_NS, 'cbc:PriceAmount', $netUnitPrice);
             $priceAmount->setAttribute('currencyID', $data->currency);
             $price->appendChild($priceAmount);
 
@@ -1071,15 +1071,45 @@ class XmlBuilder
     }
 
     /**
-     * Format a unit price: two places, or up to six when a net price backed
-     * out of a VAT-inclusive one needs them to reproduce its line net.
+     * Format a unit price to two places, as every price entered is.
      */
     private function formatPrice(float $price): string
     {
-        $formatted = rtrim(number_format($price, 6, '.', ''), '0');
-        $places = strlen(substr(strrchr($formatted, '.'), 1));
+        return number_format($price, 2, '.', '');
+    }
 
-        return $places < 2 ? number_format($price, 2, '.', '') : $formatted;
+    /**
+     * The fewest places of net price at which quantity times price comes back
+     * to the line net, as ZATCA checks it (BR-KSA-EN16931-11, rounded to the
+     * halalah).
+     *
+     * A net backed out of a VAT-inclusive price is decided per line, so the
+     * unit price is the derived figure. Six places served until about a
+     * million units, where they no longer reached the halalah; ZATCA sets no
+     * limit on a price's decimals, so this takes what the quantity needs.
+     */
+    private function priceFor(float $lineNet, float $quantity): string
+    {
+        $net = number_format($lineNet, 2, '.', '');
+        $qty = number_format($quantity, 3, '.', '');
+
+        for ($places = 2; $places <= 12; $places++) {
+            $price = $this->halfUp(bcdiv($net, $qty, $places + 1), $places);
+
+            if ($this->halfUp(bcmul($qty, $price, $places + 3), 2) === $net) {
+                return $price;
+            }
+        }
+
+        return $this->halfUp(bcdiv($net, $qty, 13), 12);
+    }
+
+    /**
+     * Round a non-negative decimal string half up to the given places.
+     */
+    private function halfUp(string $value, int $places): string
+    {
+        return bcadd($value, '0.'.str_repeat('0', $places).'5', $places);
     }
 
     /**
