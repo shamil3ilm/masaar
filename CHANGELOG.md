@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — may need a change on your side
+
+- **Credit and debit notes must give a reason.** `adjustment_reason` is now
+  required with `document_type` `credit_note` or `debit_note`, as ZATCA's
+  BR-KSA-17 requires. A note without one is refused with 422 before it is
+  signed, instead of being refused by ZATCA afterwards.
+- **`billing_ref` names the original invoice in your organization**, by its
+  invoice number or its id. A reference to a draft is refused.
+- **UAE submission status codes say what happened.** Every outcome used to
+  answer 201. Now: 201 submitted, 202 under review by the FTA, 422 rejected
+  (`error.details.errors` lists why), 502 the FTA could not be reached (kept
+  and retried; `error.details.next_retry_at` says when). Do not resend on 502.
+- **The licence admin API uses the standard envelope**: `success`, then `data`
+  or `error` with `code`, `message` and `details`. Field errors moved from
+  `errors` to `error.details`.
+- **Webhooks are retried.** A delivery your endpoint does not answer (timeout,
+  connection failure, 408, 429 or 5xx) is retried for about forty minutes.
+  Every retry carries the same `id` and `X-Webhook-ID`, so discard repeats by
+  that id. Any other non-2xx answer is final and not retried. An endpoint is
+  disabled only after ten failed deliveries in a row with nothing delivered
+  for 24 hours.
+- **Sign-in is limited per account as well as per address**, on the API as on
+  the console. A locked sign-in answers 429 with `Retry-After`.
+- **Platform admins enrol two-factor with a one-time link** from another
+  admin, or from `masaar:enrolment-link` on the server.
+
+### Added
+
+- **VAT-inclusive prices.** `prices_include_vat` on an invoice, or as the
+  organization's default, says `unit_price` and `discount_amount` include VAT.
+  The customer's total is kept exactly and the net is derived from it.
+- **`certificate.expiring` webhook**, sent as a certificate nears expiry.
+- **Portal issuing and printing**, with the QR drawn on the printed copy.
+
+### Fixed
+
+- A ZATCA outage, throttle or gateway error is retried instead of being left
+  unfiled. A standard invoice that may already have reached ZATCA is held for
+  reconciliation rather than cleared twice.
+- An invoice that breaks ZATCA's rules is refused before it is given a
+  counter, so a refusal leaves no gap in the chain.
+
 ## [1.0.0]
 
 ### Added
