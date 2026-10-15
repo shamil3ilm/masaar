@@ -83,7 +83,10 @@ class BranchServiceTest extends TestCase
         $fired = false;
 
         DB::listen(function (QueryExecuted $query) use (&$fired): void {
-            if ($fired || ! str_contains($query->sql, '"branches"') || ! str_contains($query->sql, '"is_active"')) {
+            // Either quoting: SQLite writes "branches", MySQL `branches`. On
+            // MySQL this matched nothing, so the race was never staged there
+            // and the test only exercised creating the first branch.
+            if ($fired || preg_match('/["`]branches["`]/', $query->sql) !== 1 || preg_match('/["`]is_active["`]/', $query->sql) !== 1) {
                 return;
             }
 
