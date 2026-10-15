@@ -74,7 +74,9 @@
                     @else
                         <x-ui.th align="right"><x-caption en="Unit price" ar="سعر الوحدة" /></x-ui.th>
                     @endif
-                    <x-ui.th align="right"><x-caption en="VAT" ar="نسبة الضريبة" /></x-ui.th>
+                    {{-- The column is the line's VAT amount. Its Arabic caption
+                         said "tax rate", which is the receipt's other column. --}}
+                    <x-ui.th align="right"><x-caption en="VAT" ar="مبلغ الضريبة" /></x-ui.th>
                     <x-ui.th align="right"><x-caption en="Line total" ar="المجموع" /></x-ui.th>
                 </x-slot:head>
 
