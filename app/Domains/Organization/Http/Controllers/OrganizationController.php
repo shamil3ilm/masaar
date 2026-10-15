@@ -5,6 +5,7 @@ namespace App\Domains\Organization\Http\Controllers;
 use App\Domains\Organization\DTOs\AddressFields;
 use App\Domains\Organization\DTOs\OrganizationChangesData;
 use App\Domains\Organization\DTOs\OrganizationData;
+use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Rules\CompanyProfileRules;
 use App\Domains\Organization\Services\Membership;
 use App\Domains\Organization\Services\Registrar;
@@ -65,6 +66,9 @@ class OrganizationController extends Controller
             country: $country,
             vatNumber: $validated['vat_number'] ?? null,
             address: AddressFields::from($validated),
+            // Reviewed before it can onboard or issue, as one signed up from
+            // the portal is: otherwise this was the way around the review.
+            status: Organization::STATUS_PENDING_REVIEW,
         ));
 
         return ApiResponse::created([

@@ -28,6 +28,14 @@ class Organization extends Model
 
     public const STATUS_SUSPENDED = 'suspended';
 
+    /**
+     * Signed up and waiting for a platform admin: it may draft, and may not
+     * onboard with ZATCA or issue until it is approved.
+     */
+    public const STATUS_PENDING_REVIEW = 'pending_review';
+
+    public const STATUS_REJECTED = 'rejected';
+
     protected $fillable = [
         'name',
         'name_ar',
@@ -55,6 +63,7 @@ class Organization extends Model
         return [
             'compliance_profile' => 'array',
             'prices_include_vat' => 'boolean',
+            'reviewed_at' => 'datetime',
         ];
     }
 
@@ -170,6 +179,11 @@ class Organization extends Model
     public function isSuspended(): bool
     {
         return $this->status === self::STATUS_SUSPENDED;
+    }
+
+    public function isPendingReview(): bool
+    {
+        return $this->status === self::STATUS_PENDING_REVIEW;
     }
 
     /**

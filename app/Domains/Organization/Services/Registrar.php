@@ -36,7 +36,7 @@ class Registrar
                 'name' => $data->name,
                 'name_ar' => $data->nameAr,
                 'country' => $data->country,
-                'status' => Organization::STATUS_ACTIVE,
+                'status' => $data->status,
                 'compliance_profile' => [
                     'vat_number' => $data->vatNumber,
                 ],
@@ -96,6 +96,21 @@ class Registrar
 
             return $locked;
         });
+    }
+
+    /**
+     * Whether an organization already holds this VAT number.
+     *
+     * A sign-up is refused one: the VAT number is the taxpayer, and a second
+     * organization with it is either a duplicate or somebody else's claim to
+     * it. Its people join the existing organization instead.
+     */
+    public function vatInUse(string $vatNumber): bool
+    {
+        return Organization::query()
+            ->where('vat_number', $vatNumber)
+            ->orWhere('compliance_profile->vat_number', $vatNumber)
+            ->exists();
     }
 
     public function amend(Organization $organization, OrganizationChangesData $changes): Organization

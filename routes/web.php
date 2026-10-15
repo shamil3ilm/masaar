@@ -1,6 +1,9 @@
 <?php
 
+use App\Domains\Auth\Http\Controllers\EmailVerificationController;
+use App\Domains\Auth\Http\Controllers\PasswordResetController;
 use App\Domains\Auth\Http\Controllers\SessionAuthController;
+use App\Domains\Auth\Http\Controllers\SignupController;
 use App\Domains\Auth\Http\Controllers\TwoFactorController;
 use App\Domains\Branding\Http\Controllers\AdminBrandingController;
 use App\Domains\Branding\Http\Controllers\PortalBrandingController;
@@ -68,6 +71,34 @@ Route::post('/logout', [SessionAuthController::class, 'logout'])
     ->middleware('auth')
     ->name('logout');
 
+// A business signing itself up, proving its email address, and getting back
+// in after a forgotten password. Each form that sends mail or creates
+// something is throttled.
+Route::middleware('guest')->group(function () {
+    Route::get('/register', [SignupController::class, 'create'])->name('register');
+    Route::post('/register', [SignupController::class, 'store'])
+        ->middleware('throttle:5,1')
+        ->name('register.store');
+    Route::get('/forgot-password', [PasswordResetController::class, 'request'])->name('password.request');
+    Route::post('/forgot-password', [PasswordResetController::class, 'email'])
+        ->middleware('throttle:5,1')
+        ->name('password.email');
+    Route::get('/reset-password/{token}', [PasswordResetController::class, 'edit'])->name('password.reset');
+    Route::post('/reset-password', [PasswordResetController::class, 'update'])
+        ->middleware('throttle:10,1')
+        ->name('password.update');
+});
+
+Route::middleware('auth')->group(function () {
+    Route::get('/email/verify', [EmailVerificationController::class, 'notice'])->name('verification.notice');
+    Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
+        ->middleware(['signed', 'throttle:6,1'])
+        ->name('verification.verify');
+    Route::post('/email/verification-notification', [EmailVerificationController::class, 'resend'])
+        ->middleware('throttle:6,1')
+        ->name('verification.send');
+});
+
 // A platform admin's second factor, between the password and the console.
 // Throttled like the login itself, and per admin inside the controller.
 Route::get('/login/two-factor', [TwoFactorController::class, 'showChallenge'])->name('login.two-factor');
@@ -98,7 +129,9 @@ Route::prefix('admin')->name('admin.')
     // admin.audit records every change made through the console - see
     // AuditAdminAction. On the group, so a new admin action is on the record
     // without anyone having to remember it.
-    ->middleware(['auth', 'platform.admin', 'admin.audit'])
+    // auth.session ends this session when the account's password changes
+    // elsewhere - a reset is how someone takes an account back.
+    ->middleware(['auth', 'auth.session', 'platform.admin', 'admin.audit'])
     // Every identifier in this group names a HasUuids model, so anything that
     // is not a UUID is a mistyped URL and is a 404 at the router, before a
     // query is built from it. Two reasons beyond tidiness:
@@ -196,7 +229,10 @@ Route::prefix('portal')->name('portal.')->middleware('auth')->group(function () 
 });
 
 Route::prefix('portal')->name('portal.')
-    ->middleware(['auth', 'portal.tenant'])
+    // Verified: a signed-up account proves its email address before it sees
+    // the portal. Everyone with an account before sign-up existed counts as
+    // verified (migration 0370).
+    ->middleware(['auth', 'auth.session', 'verified', 'portal.tenant'])
     ->whereUuid(['invoiceId', 'userId'])
     ->group(function () {
         Route::get('/', [CustomerPortalController::class, 'dashboard'])->name('dashboard');

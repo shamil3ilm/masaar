@@ -18,5 +18,8 @@ final readonly class OrganizationData
         public string $country,
         public ?string $vatNumber,
         public ?AddressFields $address = null,
+        // A business that signs itself up waits for review; one the platform
+        // creates does not.
+        public string $status = 'active',
     ) {}
 }
