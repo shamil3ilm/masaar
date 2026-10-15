@@ -55,7 +55,8 @@ RUN if [ -f vite.config.js ]; then npm run build; else mkdir -p public/build; fi
 # built, the vulnerability scan passed, the container started, and the first
 # request to reach PHP died in vendor/composer/platform_check.php with
 # "Your Composer dependencies require a PHP version >= 8.4.1". Nothing in CI
-# runs the image, so nothing said so.
+# ran the image then, so nothing said so; the "Compose stack starts" job now
+# boots it and asks its readiness probe.
 #
 # DockerRuntimeVersionTest now pins this line to composer.json and to ci.yml,
 # so the three cannot disagree again. See the note further down for why there
@@ -273,20 +274,20 @@ RUN chmod +x /entrypoint.sh
 #   a root start.
 #
 # So the container could not have served a request, and nothing noticed
-# because no job and no procedure has ever run this image - the deployment
-# guide installs onto a host directly, and the image job only builds and scans.
-# The `nginx -t` step added in the same change as this comment is what found
-# it: nginx could not open its error log as uid 1000.
+# because nothing ran the image - the deployment guide installed onto a host
+# directly, and the image job only built and scanned. The `nginx -t` step
+# added in the same change as this comment is what found it: nginx could not
+# open its error log as uid 1000. CI's "Compose stack starts" job now runs the
+# image end to end, and found four more faults the first time it did.
 #
 # Privileges are still dropped, by the thing designed to drop them: nginx
-# workers run as `user nginx` from nginx.conf, php-fpm hands work to its pool
-# user, and the queue workers run as masaar. Only the supervisord and master
-# processes are root.
+# workers run as `user nginx` from nginx.conf, php-fpm's pool runs as masaar,
+# and so do the queue workers. Only the supervisord and master processes are
+# root.
 #
 # Running the whole container rootless is the better end state - nginx on 8080
 # with no user directive, no user=root in supervisord, the published port
-# remapped - and it is a change that has to be verified by running the
-# container, not by reading it.
+# remapped. The stack job is where that change would be proven.
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
