@@ -85,6 +85,11 @@ final class BrandAssets
         }
     }
 
+    public function deleteFolder(string $scope): void
+    {
+        Storage::disk(self::DISK)->deleteDirectory($scope);
+    }
+
     public function exists(?string $path): bool
     {
         return $path !== null && $path !== '' && Storage::disk(self::DISK)->exists($path);
@@ -93,6 +98,15 @@ final class BrandAssets
     public function absolutePath(string $path): string
     {
         return Storage::disk(self::DISK)->path($path);
+    }
+
+    /**
+     * Whether a (whitespace-free, lower-cased) value calls url() on anything
+     * but a fragment inside the image.
+     */
+    private function fetches(string $value): bool
+    {
+        return preg_match('/url\([\'"]?(?!#)/', $value) === 1;
     }
 
     /**
@@ -116,6 +130,12 @@ final class BrandAssets
      */
     private function refuseActiveSvg(string $svg, string $label): void
     {
+        // Anywhere in the file, not only near the top: a long comment ahead
+        // of a DOCTYPE carried it past a check of the first few kilobytes.
+        if (preg_match('/<!(DOCTYPE|ENTITY)/i', $svg) === 1) {
+            throw new InvalidThemeException(["{$label} declares a DOCTYPE or entities, which an image does not need."]);
+        }
+
         $dom = new DOMDocument;
 
         try {
@@ -137,23 +157,29 @@ final class BrandAssets
             }
 
             foreach ($element->attributes ?? [] as $attribute) {
-                $name = strtolower($attribute->nodeName);
-                $value = strtolower(trim($attribute->nodeValue ?? ''));
+                // By local name, so a prefix bound to the xlink namespace -
+                // x:href - is still an href.
+                $name = strtolower((string) ($attribute->localName ?? $attribute->nodeName));
+                // Whitespace and control characters removed before comparing:
+                // java&#9;script: is javascript: to a browser.
+                $value = strtolower((string) preg_replace('/[\x00-\x20]+/', '', $attribute->nodeValue ?? ''));
 
                 if (str_starts_with($name, 'on')) {
                     throw new InvalidThemeException(["{$label} contains an event handler ({$attribute->nodeName})."]);
                 }
 
-                if (in_array($name, ['href', 'xlink:href', 'src'], true) && $value !== '' && ! str_starts_with($value, '#')) {
+                if (in_array($name, ['href', 'src'], true) && $value !== '' && ! str_starts_with($value, '#')) {
                     throw new InvalidThemeException(["{$label} links outside itself, which an embedded image must not."]);
                 }
 
-                if (str_contains($value, 'javascript:') || str_contains($value, 'url(http') || str_contains($value, '@import')) {
+                if (str_contains($value, 'javascript:') || str_contains($value, '@import') || $this->fetches($value)) {
                     throw new InvalidThemeException(["{$label} refers to something outside itself."]);
                 }
             }
 
-            if (strtolower($element->localName) === 'style' && preg_match('/@import|url\(\s*[\'"]?(?!#)/i', $element->textContent)) {
+            if (strtolower($element->localName) === 'style'
+                && (stripos($element->textContent, '@import') !== false
+                    || $this->fetches(strtolower((string) preg_replace('/[\x00-\x20]+/', '', $element->textContent))))) {
                 throw new InvalidThemeException(["{$label} loads styles from outside itself."]);
             }
         }

@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
  * override otherwise.
  *
  * @property string $id
+ * @property string $scope
  * @property string|null $org_id
  * @property array<string, mixed> $definition
  * @property string|null $logo_path
@@ -26,6 +27,7 @@ class Theme extends Model
     use HasUuids;
 
     protected $fillable = [
+        'scope',
         'org_id',
         'definition',
         'logo_path',

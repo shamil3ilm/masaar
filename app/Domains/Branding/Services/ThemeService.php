@@ -6,11 +6,15 @@ namespace App\Domains\Branding\Services;
 
 use App\Domains\Branding\DTOs\ActiveTheme;
 use App\Domains\Branding\DTOs\ThemeDefinition;
+use App\Domains\Branding\Exceptions\InvalidThemeException;
 use App\Domains\Branding\Models\Theme;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Which theme a page is drawn in, and the stylesheet that draws it.
@@ -72,6 +76,7 @@ final class ThemeService
             organizationLogoUrl: $scope !== self::PLATFORM && $logoOwner === $scope
                 ? route('theme.logo', ['scope' => $scope, 'v' => $logo['version']])
                 : null,
+            logoType: $logo['logo_type'] ?? null,
         );
     }
 
@@ -171,33 +176,59 @@ final class ThemeService
      */
     public function save(?string $organizationId, ThemeDefinition $definition, array $uploads = [], array $remove = [], ?string $actor = null): void
     {
-        $theme = Theme::query()->firstOrNew(['org_id' => $organizationId]);
-        $folder = $organizationId ?? self::PLATFORM;
+        $scope = $organizationId ?? self::PLATFORM;
+        $theme = Theme::query()->firstOrNew(['scope' => $scope]);
+        $theme->org_id = $organizationId;
         $discard = [];
+        $written = [];
 
-        foreach (['logo', 'favicon'] as $kind) {
-            $file = $uploads[$kind] ?? null;
+        try {
+            foreach (['logo', 'favicon'] as $kind) {
+                $file = $uploads[$kind] ?? null;
 
-            if ($file instanceof UploadedFile) {
-                $stored = $this->assets->store($file, $folder, $kind);
-                $discard[] = $theme->{"{$kind}_path"};
-                $theme->{"{$kind}_path"} = $stored['path'];
-                $theme->{"{$kind}_type"} = $stored['type'];
-            } elseif ($remove[$kind] ?? false) {
-                $discard[] = $theme->{"{$kind}_path"};
-                $theme->{"{$kind}_path"} = null;
-                $theme->{"{$kind}_type"} = null;
+                if ($file instanceof UploadedFile) {
+                    $stored = $this->assets->store($file, $scope, $kind);
+                    $written[] = $stored['path'];
+                    $discard[] = $theme->{"{$kind}_path"};
+                    $theme->{"{$kind}_path"} = $stored['path'];
+                    $theme->{"{$kind}_type"} = $stored['type'];
+                } elseif ($remove[$kind] ?? false) {
+                    $discard[] = $theme->{"{$kind}_path"};
+                    $theme->{"{$kind}_path"} = null;
+                    $theme->{"{$kind}_type"} = null;
+                }
             }
+
+            $theme->definition = $definition->toArray();
+            // Never a version this scope has served before. Counting from the
+            // row restarted at 1 after a reset, and a browser that had cached
+            // version 1 for a year kept the old colours and logo.
+            $theme->version = max(($theme->version ?? 0) + 1, time());
+            $theme->updated_by = $actor;
+            $theme->save();
+        } catch (UniqueConstraintViolationException $e) {
+            // Another first save for this scope won the race; ours is not kept.
+            $this->discardFiles($written);
+
+            throw new InvalidThemeException(['Someone else saved this branding at the same moment. Reload and try again.']);
+        } catch (Throwable $e) {
+            // A second upload refused after the first was written left that
+            // file on disk with nothing pointing at it.
+            $this->discardFiles($written);
+
+            throw $e;
         }
 
-        $theme->definition = $definition->toArray();
-        $theme->version = ($theme->version ?? 0) + 1;
-        $theme->updated_by = $actor;
-        $theme->save();
-
         $this->forget($organizationId);
+        $this->discardFiles($discard);
+    }
 
-        foreach ($discard as $path) {
+    /**
+     * @param  list<string|null>  $paths
+     */
+    private function discardFiles(array $paths): void
+    {
+        foreach ($paths as $path) {
             $this->assets->delete($path);
         }
     }
@@ -207,16 +238,39 @@ final class ThemeService
      */
     public function reset(?string $organizationId): void
     {
-        $theme = Theme::query()->where('org_id', $organizationId)->first();
+        $theme = Theme::query()->where('scope', $organizationId ?? self::PLATFORM)->first();
 
         if ($theme === null) {
             return;
         }
 
-        $this->assets->delete($theme->logo_path);
-        $this->assets->delete($theme->favicon_path);
-        $theme->delete();
+        $files = [$theme->logo_path, $theme->favicon_path];
 
+        // Emptied rather than deleted, so its version keeps counting up. A
+        // deleted row started again at 1, and a browser holding version 1 for
+        // a year showed the old look after the next save.
+        $theme->forceFill([
+            'definition' => [],
+            'logo_path' => null,
+            'logo_type' => null,
+            'favicon_path' => null,
+            'favicon_type' => null,
+            'version' => $theme->version + 1,
+        ])->save();
+
+        $this->forget($organizationId);
+        $this->discardFiles($files);
+    }
+
+    /**
+     * An organization is gone: its uploaded files and cached theme go too.
+     *
+     * The database removes the theme row with the organization; the files on
+     * disk, still served from their old URLs, and the cached row were left.
+     */
+    public function forgetOrganization(string $organizationId): void
+    {
+        $this->assets->deleteFolder($organizationId);
         $this->forget($organizationId);
     }
 
@@ -265,16 +319,30 @@ final class ThemeService
      */
     private function row(?string $organizationId): ?array
     {
-        $cached = Cache::rememberForever(self::CACHE_PREFIX.($organizationId ?? self::PLATFORM), function () use ($organizationId) {
-            $theme = Theme::query()->where('org_id', $organizationId)->first();
+        $key = self::CACHE_PREFIX.($organizationId ?? self::PLATFORM);
+        $cached = Cache::get($key);
 
-            // false, not null: a null would not be remembered.
-            return $theme === null ? false : $theme->only([
-                'definition', 'logo_path', 'logo_type', 'favicon_path', 'favicon_type', 'version',
-            ]);
-        });
+        if ($cached !== null) {
+            return $cached === false ? null : $cached;
+        }
 
-        return $cached === false ? null : $cached;
+        $theme = Theme::query()->where('scope', $organizationId ?? self::PLATFORM)->first();
+
+        if ($theme === null) {
+            // Only the platform's absence is remembered. An organization id
+            // comes from a public URL, and remembering every one asked about
+            // let anyone fill the cache with ids that do not exist.
+            if ($organizationId === null) {
+                Cache::forever($key, false);
+            }
+
+            return null;
+        }
+
+        $row = $theme->only(['definition', 'logo_path', 'logo_type', 'favicon_path', 'favicon_type', 'version']);
+        Cache::forever($key, $row);
+
+        return $row;
     }
 
     /**
@@ -282,7 +350,20 @@ final class ThemeService
      */
     private function definitionOf(?array $row): ThemeDefinition
     {
-        return $row === null ? ThemeDefinition::empty() : ThemeDefinition::fromArray($row['definition'] ?? []);
+        if ($row === null) {
+            return ThemeDefinition::empty();
+        }
+
+        // A stored theme that no longer validates - the rules tightened, the
+        // row edited by hand - would otherwise fail every page, sign-in and
+        // the editor that could reset it included. It is ignored, loudly.
+        try {
+            return ThemeDefinition::fromArray($row['definition'] ?? []);
+        } catch (InvalidThemeException $e) {
+            Log::warning('A stored theme no longer validates and is being ignored', ['errors' => $e->errors]);
+
+            return ThemeDefinition::empty();
+        }
     }
 
     private function forget(?string $organizationId): void

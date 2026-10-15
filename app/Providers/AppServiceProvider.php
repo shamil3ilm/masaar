@@ -7,6 +7,7 @@ use App\Domains\Auth\Http\Middleware\IsPlatformAdmin;
 use App\Domains\Auth\Http\Middleware\JwtGuard;
 use App\Domains\Auth\Services\JwtAuthenticator;
 use App\Domains\Branding\Http\ThemeComposer;
+use App\Domains\Branding\Services\ThemeService;
 use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\Services\CircuitBreaker;
 use App\Domains\Compliance\Fatoora\Services\TimestampValidator;
@@ -17,6 +18,7 @@ use App\Domains\Licensing\Http\Middleware\RequireScope;
 use App\Domains\Licensing\Http\Middleware\ValidateLicense;
 use App\Domains\Organization\Http\Middleware\IsOrgAdmin;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
+use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
 use App\Domains\Platform\Http\Middleware\MetricsAccess;
@@ -123,6 +125,11 @@ class AppServiceProvider extends ServiceProvider
         // The platform's colours, name and logo - and an organization's over
         // them on its own pages - for every view that draws a page's frame.
         View::composer(ThemeComposer::VIEWS, ThemeComposer::class);
+
+        // After the delete has happened - an organization with invoices
+        // cannot be deleted, and its branding should not go if it stays.
+        Organization::deleted(fn (Organization $organization) => $this->app->make(ThemeService::class)
+            ->forgetOrganization((string) $organization->id));
 
         // Eloquent drops attributes that are not fillable without a word.
         // SubmissionTracker wrote 'clearance_confirmed_at' on every ZATCA
