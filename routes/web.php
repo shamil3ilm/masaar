@@ -30,19 +30,23 @@ Route::get('/', function () {
 |
 | The colours, logo and favicon every page loads, the sign-in page before
 | anyone has signed in. {scope} is "platform" or an organization's id; an id
-| with no theme of its own gets the platform's.
+| with no theme of its own gets the platform's. Throttled, and a real UUID or
+| nothing: every distinct id asked about used to leave a cache entry behind.
 |
 */
 // No .css on the end: nginx serves anything ending in .css as a static
 // file and never reaches PHP, so the theme would have been a 404 there.
 Route::get('/theme/{scope}/stylesheet', [ThemeAssetController::class, 'stylesheet'])
-    ->where('scope', 'platform|[0-9a-fA-F-]{36}')
+    ->where('scope', 'platform|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
+    ->middleware('throttle:300,1')
     ->name('theme.css');
 Route::get('/theme/{scope}/logo', [ThemeAssetController::class, 'logo'])
-    ->where('scope', 'platform|[0-9a-fA-F-]{36}')
+    ->where('scope', 'platform|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
+    ->middleware('throttle:300,1')
     ->name('theme.logo');
 Route::get('/theme/{scope}/favicon', [ThemeAssetController::class, 'favicon'])
-    ->where('scope', 'platform|[0-9a-fA-F-]{36}')
+    ->where('scope', 'platform|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
+    ->middleware('throttle:300,1')
     ->name('theme.favicon');
 
 /*

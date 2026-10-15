@@ -20,6 +20,7 @@ final readonly class ActiveTheme
         // The organization's own uploaded logo, never the platform's: what a
         // document the organization issues may carry.
         public ?string $organizationLogoUrl = null,
+        public ?string $logoType = null,
     ) {}
 
     public function name(): string

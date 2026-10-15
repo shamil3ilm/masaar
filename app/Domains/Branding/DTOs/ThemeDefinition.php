@@ -33,7 +33,8 @@ final readonly class ThemeDefinition
 {
     public const MODES = ['light', 'dark', 'system'];
 
-    private const HEX = '/^#[0-9A-Fa-f]{6}$/';
+    // \A and \z, not ^ and $: $ also matches before a final newline.
+    private const HEX = '/\A#[0-9A-Fa-f]{6}\z/';
 
     /**
      * @param  array<string, string|null>  $colors  primary, navigation, highlight
@@ -171,18 +172,55 @@ final readonly class ThemeDefinition
             $colors[$key] = $over->colors[$key] ?? $mine;
         }
 
+        // A colour the overlay sets is its whole ramp: shades pinned beneath
+        // it, and dark-mode colours for that ramp, belonged to the colour it
+        // replaced. Kept, a platform's pinned step or dark teal showed through
+        // an organization's own brand colour.
+        $replaced = array_keys(array_filter($over->colors, fn (?string $c): bool => $c !== null));
+        $inheritedDark = $this->dark?->without($replaced);
+
         $dark = match (true) {
-            $this->dark === null => $over->dark,
-            $over->dark === null => $this->dark,
-            default => $this->dark->under($over->dark),
+            $inheritedDark === null => $over->dark,
+            $over->dark === null => $inheritedDark,
+            default => $inheritedDark->under($over->dark),
         };
 
         return new self(
             $over->name ?? $this->name,
             $over->mode ?? $this->mode,
             $colors,
-            [...$this->shades, ...$over->shades],
+            [...self::withoutRamps($this->shades, $replaced), ...$over->shades],
             $dark,
+        );
+    }
+
+    /**
+     * This definition without the given ramps' colours and pinned shades.
+     *
+     * @param  list<string>  $ramps
+     */
+    private function without(array $ramps): self
+    {
+        $colors = $this->colors;
+
+        foreach ($ramps as $ramp) {
+            $colors[$ramp] = null;
+        }
+
+        return new self($this->name, $this->mode, $colors, self::withoutRamps($this->shades, $ramps), $this->dark);
+    }
+
+    /**
+     * @param  array<string, string>  $shades
+     * @param  list<string>  $ramps
+     * @return array<string, string>
+     */
+    private static function withoutRamps(array $shades, array $ramps): array
+    {
+        return array_filter(
+            $shades,
+            fn (string $key): bool => ! in_array(explode('-', $key, 2)[0], $ramps, true),
+            ARRAY_FILTER_USE_KEY,
         );
     }
 

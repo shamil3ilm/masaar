@@ -64,8 +64,10 @@ class ThemeRequest extends FormRequest
                 'name' => $this->filled('name') ? $this->string('name')->toString() : null,
                 'mode' => $this->filled('mode') ? $this->string('mode')->toString() : null,
                 'colors' => $colors,
-                // Pinned shades are edited as JSON; the form keeps them.
+                // Pinned shades and dark-mode colours are edited as JSON;
+                // the form keeps them rather than dropping them on save.
                 'shades' => $current->shades,
+                'dark' => $current->dark?->toArray(),
             ]);
         } catch (InvalidThemeException $e) {
             throw ValidationException::withMessages(['theme' => $e->errors]);

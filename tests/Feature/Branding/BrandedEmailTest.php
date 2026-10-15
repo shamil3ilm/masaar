@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Branding;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Branding\DTOs\ActiveTheme;
 use App\Domains\Branding\DTOs\ThemeDefinition;
 use App\Domains\Branding\Services\BrandAssets;
 use App\Domains\Branding\Services\ThemeService;
@@ -65,6 +66,30 @@ class BrandedEmailTest extends TestCase
                 && str_contains($html, "/theme/{$acme->id}/logo");
         });
         Mail::assertSentCount(1);
+    }
+
+    /**
+     * Mail clients do not draw SVG, so an SVG logo gives way to the name; and
+     * the text part is plain text, not HTML.
+     */
+    public function test_the_mail_suits_mail_clients(): void
+    {
+        $theme = new ActiveTheme(
+            scope: 'platform',
+            definition: ThemeDefinition::shipped(),
+            stylesheetUrl: 'https://example.com/theme/platform/stylesheet',
+            faviconUrl: 'https://example.com/favicon.svg',
+            faviconType: 'image/svg+xml',
+            logoUrl: 'https://example.com/theme/platform/logo',
+            logoType: 'image/svg+xml',
+        );
+
+        $mail = new CertificateExpiringMail('A & B Trading', 7, '2026-10-22', $theme);
+
+        $this->assertStringNotContainsString('/theme/platform/logo', $mail->render());
+        $this->assertStringContainsString('A & B Trading', view('emails.certificate-expiring-text', [
+            'brand' => $theme, 'organizationName' => 'A & B Trading', 'daysRemaining' => 7, 'expiryDate' => '2026-10-22',
+        ])->render());
     }
 
     private function member(Organization $organization, string $role, string $status): User

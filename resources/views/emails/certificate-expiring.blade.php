@@ -24,7 +24,9 @@
             <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:8px;overflow:hidden;">
                 <tr>
                     <td style="background:{{ $navigation }};padding:20px 24px;">
-                        @if ($brand->logoUrl)
+                        {{-- Raster only: Gmail and Outlook do not draw SVG, and a
+                             broken image is worse than the name. --}}
+                        @if ($brand->logoUrl && in_array($brand->logoType, ['image/png', 'image/jpeg', 'image/webp'], true))
                             <img src="{{ $brand->logoUrl }}" alt="{{ $brand->name() }}" height="36" style="display:block;height:36px;width:auto;border:0;">
                         @else
                             <span style="color:#ffffff;font-size:18px;font-weight:bold;">{{ $brand->name() }}</span>
