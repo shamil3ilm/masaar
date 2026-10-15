@@ -9,6 +9,6 @@
     touch target.
 --}}
 <textarea rows="{{ $rows }}" {{ $attributes->merge([
-    'class' => 'mt-1 block w-full rounded border-gray-300 text-sm font-normal text-gray-900 shadow-sm'
+    'class' => 'mt-1 block w-full rounded border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-sm font-normal text-gray-900 dark:text-gray-100 shadow-sm'
         .' focus:border-teal-600 focus:ring-1 focus:ring-teal-600',
 ]) }}>{{ $slot }}</textarea>

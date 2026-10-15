@@ -21,7 +21,7 @@
 @endphp
 
 @if ($errors->any())
-    <div class="mb-6 rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+    <div class="mb-6 rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-700 dark:text-red-300">
         <ul class="list-disc pl-5">
             @foreach ($errors->all() as $error)
                 <li>{{ $error }}</li>
@@ -33,16 +33,16 @@
 <form method="POST" action="{{ route($route.'.update') }}" enctype="multipart/form-data" class="mb-6 max-w-2xl">
     @csrf
 
-    <div class="mb-6 rounded-lg bg-white shadow">
+    <div class="mb-6 rounded-lg bg-white dark:bg-gray-900 shadow">
         <div class="border-b p-4">
-            <h3 class="font-semibold text-gray-800">Name and mode</h3>
+            <h3 class="font-semibold text-gray-800 dark:text-gray-100">Name and mode</h3>
         </div>
         <div class="space-y-4 p-4">
             <x-ui.field label="Name shown beside the logo">
                 <x-ui.input type="text" name="name" maxlength="40"
                             placeholder="{{ $effective->name() }}"
                             value="{{ old('name', $stored->name) }}" />
-                <span class="mt-1 block text-xs font-normal text-gray-500">Left empty, {{ $fallback }} name is used.</span>
+                <span class="mt-1 block text-xs font-normal text-gray-500 dark:text-gray-400">Left empty, {{ $fallback }} name is used.</span>
             </x-ui.field>
 
             <x-ui.field label="Mode">
@@ -56,10 +56,10 @@
         </div>
     </div>
 
-    <div class="mb-6 rounded-lg bg-white shadow">
+    <div class="mb-6 rounded-lg bg-white dark:bg-gray-900 shadow">
         <div class="border-b p-4">
-            <h3 class="font-semibold text-gray-800">Colours</h3>
-            <p class="text-xs text-gray-500">Each colour sets a full range of shades for hover and tinted states.</p>
+            <h3 class="font-semibold text-gray-800 dark:text-gray-100">Colours</h3>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Each colour sets a full range of shades for hover and tinted states.</p>
         </div>
         <div class="space-y-4 p-4">
             @foreach ($labels as $key => [$label, $help])
@@ -71,22 +71,22 @@
                     <label class="flex items-center gap-2 text-sm">
                         <input type="hidden" name="custom[{{ $key }}]" value="0">
                         <input type="checkbox" name="custom[{{ $key }}]" value="1"
-                               class="rounded border-gray-300 text-teal-600 focus:ring-teal-600"
+                               class="rounded border-gray-300 dark:border-gray-700 text-teal-600 dark:text-teal-400 focus:ring-teal-600"
                                @checked(old("custom.$key", $own !== null ? '1' : '0') === '1')>
-                        <span class="font-medium text-gray-700">{{ $label }}</span>
+                        <span class="font-medium text-gray-700 dark:text-gray-200">{{ $label }}</span>
                     </label>
                     <x-ui.input type="color" name="colors[{{ $key }}]" value="{{ $shown }}"
                                 aria-label="{{ $label }} colour" class="!mt-0 !w-20 cursor-pointer" />
-                    <span class="text-xs text-gray-500">{{ $help }} Unticked, {{ $fallback }} colour applies.</span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ $help }} Unticked, {{ $fallback }} colour applies.</span>
                 </div>
             @endforeach
         </div>
     </div>
 
-    <div class="mb-6 rounded-lg bg-white shadow">
+    <div class="mb-6 rounded-lg bg-white dark:bg-gray-900 shadow">
         <div class="border-b p-4">
-            <h3 class="font-semibold text-gray-800">Logo and favicon</h3>
-            <p class="text-xs text-gray-500">PNG, JPEG, WebP or SVG, up to {{ \App\Domains\Branding\Services\BrandAssets::MAX_KILOBYTES }} KB.
+            <h3 class="font-semibold text-gray-800 dark:text-gray-100">Logo and favicon</h3>
+            <p class="text-xs text-gray-500 dark:text-gray-400">PNG, JPEG, WebP or SVG, up to {{ \App\Domains\Branding\Services\BrandAssets::MAX_KILOBYTES }} KB.
                 @if ($inherits) Your logo also appears at the top of the invoices you print. @endif</p>
         </div>
         <div class="space-y-4 p-4">
@@ -96,10 +96,10 @@
                         <x-ui.input type="file" name="{{ $kind }}" accept="image/png,image/jpeg,image/webp,image/svg+xml" />
                     </x-ui.field>
                     @if ($assets[$kind])
-                        <label class="mt-2 flex items-center gap-2 text-sm text-gray-600">
+                        <label class="mt-2 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
                             <input type="hidden" name="remove_{{ $kind }}" value="0">
                             <input type="checkbox" name="remove_{{ $kind }}" value="1"
-                                   class="rounded border-gray-300 text-teal-600 focus:ring-teal-600">
+                                   class="rounded border-gray-300 dark:border-gray-700 text-teal-600 dark:text-teal-400 focus:ring-teal-600">
                             Remove the current {{ strtolower($label) }}
                         </label>
                     @endif
@@ -107,8 +107,8 @@
             @endforeach
 
             @if ($effective->logoUrl)
-                <div class="rounded border border-gray-200 bg-gray-50 p-4">
-                    <p class="mb-2 text-xs text-gray-500">Shown now</p>
+                <div class="rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 p-4">
+                    <p class="mb-2 text-xs text-gray-500 dark:text-gray-400">Shown now</p>
                     <img src="{{ $effective->logoUrl }}" alt="Current logo" height="48" class="h-12 w-auto">
                 </div>
             @endif
@@ -118,10 +118,10 @@
     <x-ui.button>Save branding</x-ui.button>
 </form>
 
-<div class="mb-6 max-w-2xl rounded-lg bg-white shadow">
+<div class="mb-6 max-w-2xl rounded-lg bg-white dark:bg-gray-900 shadow">
     <div class="border-b p-4">
-        <h3 class="font-semibold text-gray-800">Theme as JSON</h3>
-        <p class="text-xs text-gray-500">
+        <h3 class="font-semibold text-gray-800 dark:text-gray-100">Theme as JSON</h3>
+        <p class="text-xs text-gray-500 dark:text-gray-400">
             The whole theme in one file: name, mode, colours, and "shades" to pin any single step,
             such as <code>"primary-600": "#0D9488"</code>. Importing replaces the colours, name and mode; the logo and favicon stay.
         </p>

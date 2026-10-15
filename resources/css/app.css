@@ -6,6 +6,39 @@
 @source '../**/*.js';
 
 /*
+ * Dark mode, as the theme decides it rather than the device alone.
+ *
+ * The theme's mode puts a class on <html>: "dark" turns it on, and
+ * "theme-system" turns it on when the device prefers dark. Light puts
+ * neither. So a platform or organization can fix its pages light or dark, or
+ * leave the choice to each visitor's device - which plain
+ * prefers-color-scheme could not.
+ */
+@custom-variant dark {
+    &:where(.dark, .dark *) {
+        @slot;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        &:where(.theme-system, .theme-system *) {
+            @slot;
+        }
+    }
+}
+
+/* Scrollbars, date pickers and the like are drawn by the browser; this tells
+   it which scheme to draw them in. */
+.dark {
+    color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+    .theme-system {
+        color-scheme: dark;
+    }
+}
+
+/*
  * The Masaar palette, taken from the logo rather than invented here.
  *
  * The mark is a deep navy tile with a teal path looping through a sand

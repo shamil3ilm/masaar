@@ -18,14 +18,14 @@
     @slot head  the <x-ui.th> cells. Omit it for a table with no header.
 --}}
 <div class="overflow-x-auto" tabindex="0">
-    <table {{ $attributes->merge(['class' => 'min-w-full divide-y divide-gray-200']) }}>
+    <table {{ $attributes->merge(['class' => 'min-w-full divide-y divide-gray-200 dark:divide-gray-700']) }}>
         @isset($head)
-            <thead class="bg-gray-50">
+            <thead class="bg-gray-50 dark:bg-gray-950">
                 <tr>{{ $head }}</tr>
             </thead>
         @endisset
 
-        <tbody class="divide-y divide-gray-200 bg-white">
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-900">
             {{ $slot }}
         </tbody>
     </table>

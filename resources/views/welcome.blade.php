@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="en" class="h-full {{ $theme->htmlClass() }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -31,7 +31,7 @@
             <div class="mt-10 flex flex-wrap items-center gap-4">
                 @auth
                     <a href="{{ route('portal.dashboard') }}"
-                       class="rounded-lg bg-teal-500 px-5 py-3 text-sm font-semibold text-ink-950 transition-colors hover:bg-teal-400">
+                       class="rounded-lg bg-teal-500 px-5 py-3 text-sm font-semibold text-ink-950 dark:text-gray-100 transition-colors hover:bg-teal-400">
                         Open the portal
                     </a>
                     @if (auth()->user()->isPlatformAdmin())
@@ -42,7 +42,7 @@
                     @endif
                 @else
                     <a href="{{ route('login') }}"
-                       class="rounded-lg bg-teal-500 px-5 py-3 text-sm font-semibold text-ink-950 transition-colors hover:bg-teal-400">
+                       class="rounded-lg bg-teal-500 px-5 py-3 text-sm font-semibold text-ink-950 dark:text-gray-100 transition-colors hover:bg-teal-400">
                         Sign in
                     </a>
                 @endauth
