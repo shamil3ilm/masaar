@@ -82,7 +82,9 @@ class ClearanceTimestampTest extends TestCase
             'org_id' => $this->org->id,
             'invoice_number' => 'INV-'.uniqid(),
             'type' => 'standard',
-            'status' => 'draft',
+            // Issued: only an issued invoice is filed, and a verdict on a
+            // draft is refused as the upstream bug it would be.
+            'status' => 'issued',
             'issue_date' => now()->toDateString(),
             'currency' => 'SAR',
             'buyer_name' => 'Test Buyer',

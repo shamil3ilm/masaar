@@ -26,6 +26,29 @@ class InvoiceVerdict
     public function record(Invoice $invoice, FatooraResponse $response): void
     {
         DB::transaction(function () use ($invoice, $response): void {
+            // Read under a lock, so two answers for one invoice are decided
+            // one after the other against the status the first left.
+            $current = Invoice::withoutTenantScope(fn () => Invoice::query()
+                ->whereKey($invoice->getKey())->lockForUpdate()->value('status'));
+
+            if ($current === InvoiceStatus::Draft) {
+                throw new \LogicException("Invoice {$invoice->id} is a draft; nothing was filed for ZATCA to answer.");
+            }
+
+            // Acceptance is final. A filing that timed out after ZATCA had
+            // accepted it is retried, the retry is told the invoice was
+            // already submitted, and that error was written over the
+            // acceptance - cleared copy and all.
+            if ($current === InvoiceStatus::Accepted) {
+                Log::warning('ZATCA answered an invoice it had already accepted; the acceptance stands.', [
+                    'invoice_id' => $invoice->id,
+                    'success' => $response->success,
+                    'errors' => $response->errorMessages,
+                ]);
+
+                return;
+            }
+
             $invoice->update($this->changes($response));
 
             if ($response->success && $invoice->branch_id && $invoice->branch) {
