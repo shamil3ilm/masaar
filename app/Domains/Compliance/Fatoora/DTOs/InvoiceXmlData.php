@@ -207,58 +207,6 @@ final readonly class InvoiceXmlData
     }
 
     /**
-     * Calculate net price from gross (tax-inclusive) price.
-     *
-     * Formula: Net = Gross / (1 + taxRate/100)
-     *
-     * @param  float  $grossPrice  Tax-inclusive price
-     * @param  float  $taxRate  Tax rate percentage (e.g., 15 for 15%)
-     * @return float Net (tax-exclusive) price
-     */
-    public static function calculateNetFromGross(float $grossPrice, float $taxRate): float
-    {
-        if ($taxRate <= 0) {
-            return $grossPrice;
-        }
-
-        return round($grossPrice / (1 + $taxRate / 100), 2);
-    }
-
-    /**
-     * Calculate tax amount from gross (tax-inclusive) price.
-     *
-     * Formula: Tax = Gross - Net = Gross - (Gross / (1 + taxRate/100))
-     *
-     * @param  float  $grossPrice  Tax-inclusive price
-     * @param  float  $taxRate  Tax rate percentage (e.g., 15 for 15%)
-     * @return float Tax amount
-     */
-    public static function calculateTaxFromGross(float $grossPrice, float $taxRate): float
-    {
-        if ($taxRate <= 0) {
-            return 0.0;
-        }
-
-        $netPrice = self::calculateNetFromGross($grossPrice, $taxRate);
-
-        return round($grossPrice - $netPrice, 2);
-    }
-
-    /**
-     * Calculate gross (tax-inclusive) price from net price.
-     *
-     * Formula: Gross = Net × (1 + taxRate/100)
-     *
-     * @param  float  $netPrice  Tax-exclusive price
-     * @param  float  $taxRate  Tax rate percentage (e.g., 15 for 15%)
-     * @return float Gross (tax-inclusive) price
-     */
-    public static function calculateGrossFromNet(float $netPrice, float $taxRate): float
-    {
-        return round($netPrice * (1 + $taxRate / 100), 2);
-    }
-
-    /**
      * Calculate tax amount from net (tax-exclusive) price.
      *
      * Formula: Tax = Net × (taxRate/100)
