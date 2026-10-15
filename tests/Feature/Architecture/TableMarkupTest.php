@@ -44,6 +44,13 @@ class TableMarkupTest extends TestCase
     private const STANDALONE = 'portal/invoices/print.blade.php';
 
     /**
+     * Emails are laid out with tables because mail clients support little
+     * else; those tables are layout, not data, and there is no scroll area to
+     * give them.
+     */
+    private const EMAILS = 'emails/';
+
+    /**
      * One table shell, so a table cannot be built without a scroll area.
      *
      * The scroll area lives inside x-ui.table, which is the only way to make
@@ -54,7 +61,8 @@ class TableMarkupTest extends TestCase
         $offenders = [];
 
         foreach ($this->views() as $relative => $contents) {
-            if (str_starts_with($relative, 'components/ui/') || $relative === self::STANDALONE) {
+            if (str_starts_with($relative, 'components/ui/') || $relative === self::STANDALONE
+                || str_starts_with($relative, self::EMAILS)) {
                 continue;
             }
 

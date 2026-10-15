@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Domains\Branding\Services\ThemeService;
 use App\Domains\Compliance\Fatoora\Helpers\CertificatePem;
+use App\Domains\Compliance\Fatoora\Mail\CertificateExpiringMail;
 use App\Domains\Compliance\Fatoora\Services\CertificateService;
 use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use App\Domains\Organization\Models\Organization;
@@ -32,6 +34,7 @@ class CheckCertificateExpiry extends Command
     public function __construct(
         private readonly CertificateService $certificateService,
         private readonly CredentialStore $credentials,
+        private readonly ThemeService $themes,
     ) {
         parent::__construct();
     }
@@ -233,9 +236,12 @@ class CheckCertificateExpiry extends Command
         int $daysRemaining,
         Carbon $expiryDate
     ): void {
-        // Get admin email(s) for organization
+        // The organization's administrators, on the membership: role and
+        // status are both the pivot's. Filtering on role alone mailed members
+        // who had been removed.
         $adminEmails = $organization->users()
-            ->where('role', 'admin')
+            ->wherePivot('role', 'admin')
+            ->wherePivot('status', 'active')
             ->pluck('email')
             ->toArray();
 
@@ -243,18 +249,13 @@ class CheckCertificateExpiry extends Command
             return;
         }
 
-        $subject = $daysRemaining <= 0
-            ? "🔴 URGENT: ZATCA Certificate EXPIRED - {$organization->name}"
-            : "⚠️ ZATCA Certificate Expiring in {$daysRemaining} days - {$organization->name}";
-
-        $body = $daysRemaining <= 0
-            ? 'Your ZATCA certificate has EXPIRED. Invoice submissions will fail until renewed.'
-            : "Your ZATCA certificate will expire on {$expiryDate->format('Y-m-d')}. Please renew before expiry to avoid service interruption.";
-
-        Mail::raw($body, function ($message) use ($adminEmails, $subject) {
-            $message->to($adminEmails)
-                ->subject($subject);
-        });
+        // In the organization's own branding: it is about its own filing.
+        Mail::to($adminEmails)->send(new CertificateExpiringMail(
+            organizationName: $organization->name,
+            daysRemaining: $daysRemaining,
+            expiryDate: $expiryDate->format('Y-m-d'),
+            brand: $this->themes->forScope((string) $organization->id),
+        ));
     }
 
     private function sendWebhookNotification(
