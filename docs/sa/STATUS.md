@@ -244,6 +244,40 @@ Two things to expect that differ from the sandbox, and one to re-check:
 - Re-check that a resubmission is still idempotent. It is in the sandbox
   (section 3), and every retry in the platform depends on it.
 
+### The rehearsal that counts: the platform's own path
+
+The command above proves the certificate and the signing. It keeps its
+credentials in files of its own, though, and real filing reads each
+organization's credentials from `CredentialStore`, written by the onboarding
+API. So the rehearsal that says the platform works is this one, on a separate
+deployment (the environment is per deployment, not per organization):
+
+1. A deployment with `ZATCA_ENVIRONMENT=simulation`, migrated, with `APP_URL`
+   set. Not the production deployment: credentials are environment-specific.
+2. An organization whose VAT number is the taxpayer's, with a complete
+   address (building number of four digits, postal code of five, district,
+   city) and an org admin with an API token.
+3. The OTP, generated in the Fatoora portal's simulation environment. It is
+   valid for an hour; the next three calls fit in minutes.
+4. As the org admin, in order:
+   - `POST /api/compliance/onboarding/ccsid` with `otp`, `common_name` (the
+     device name, e.g. `EGS1-Masaar-001`), `serial_number` in ZATCA's
+     `1-<solution>|2-<model or version>|3-<device uuid>` form,
+     `organization_unit`, `location` and `industry`.
+   - `POST /api/compliance/onboarding/compliance-check`. All six documents
+     must pass; `results` says which did not and why.
+   - `POST /api/compliance/onboarding/pcsid`. The organization is then
+     onboarded.
+5. File through the platform, not a command: a simplified invoice, a standard
+   one, a credit note against each, and one with `prices_include_vat`. Use
+   `POST /api/v1/pipeline/submit` as an ERP would, and the portal's Issue
+   button once. Each should end reported or cleared in
+   `GET /api/v1/pipeline/status/{invoiceId}`, and appear in the simulation
+   portal's invoice list.
+6. Then the checks no unit test can make: `fatoora:verify-hash-chain` passes;
+   a printed simplified invoice's QR, scanned with a phone, decodes to its
+   tags; a webhook endpoint receives `invoice.cleared`.
+
 Everything else above is reachable today. Run the sandbox round trip, then
 simulation when a taxpayer exists, then production — in that order, skipping
 none.
