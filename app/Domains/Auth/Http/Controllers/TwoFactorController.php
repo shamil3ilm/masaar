@@ -6,6 +6,7 @@ namespace App\Domains\Auth\Http\Controllers;
 
 use App\Domains\Audit\Services\AuditService;
 use App\Domains\Auth\Models\User;
+use App\Domains\Auth\Services\EnrolmentLinks;
 use App\Domains\Auth\Services\SignInRecorder;
 use App\Domains\Auth\Services\SignInThrottle;
 use App\Domains\Auth\Services\TwoFactor;
@@ -31,6 +32,12 @@ class TwoFactorController extends Controller
 
     public const PENDING_MINUTES = 5;
 
+    /**
+     * The hash of the enrolment link this browser opened. Kept as the hash,
+     * so the session never holds the link itself.
+     */
+    public const ENROLMENT = 'mfa.enrolment';
+
     private const SETUP_SECRET = 'mfa.setup_secret';
 
     public function __construct(
@@ -38,7 +45,28 @@ class TwoFactorController extends Controller
         private readonly SignInRecorder $signIns,
         private readonly AuditService $audit,
         private readonly SignInThrottle $throttle,
+        private readonly EnrolmentLinks $links,
     ) {}
+
+    /**
+     * Where an enrolment link lands. It marks this browser and sends the
+     * admin to sign in: the link permits enrolment, the password still says
+     * who is enrolling.
+     */
+    public function enrol(Request $request, string $token): RedirectResponse
+    {
+        if ($this->links->holder($token) === null) {
+            return redirect()->route('login')
+                ->withErrors(['email' => 'This enrolment link is not valid. It may have been used, replaced or expired - ask another platform admin for a new one.']);
+        }
+
+        $request->session()->put(self::ENROLMENT, EnrolmentLinks::hash($token));
+
+        // The address held the token; nothing should keep a copy of it.
+        return redirect()->route('login')
+            ->with('status', 'Sign in to set up two-factor authentication.')
+            ->header('Cache-Control', 'no-store');
+    }
 
     public function showChallenge(Request $request): View|RedirectResponse
     {
@@ -82,7 +110,7 @@ class TwoFactorController extends Controller
     {
         $user = $this->pending($request);
 
-        if ($user === null || $user->hasTwoFactor()) {
+        if ($user === null || $user->hasTwoFactor() || ! $this->mayEnrol($request, $user)) {
             return redirect()->route('login');
         }
 
@@ -100,7 +128,7 @@ class TwoFactorController extends Controller
         $user = $this->pending($request);
         $secret = $request->session()->get(self::SETUP_SECRET);
 
-        if ($user === null || $user->hasTwoFactor() || ! is_string($secret)) {
+        if ($user === null || $user->hasTwoFactor() || ! is_string($secret) || ! $this->mayEnrol($request, $user)) {
             return redirect()->route('login');
         }
 
@@ -108,21 +136,34 @@ class TwoFactorController extends Controller
 
         $this->refuseWhileLocked($user);
 
-        $recoveryCodes = $this->twoFactor->confirm($user, $secret, $code);
+        $recoveryCodes = $this->links->enrol($user, $request->session()->get(self::ENROLMENT), $secret, $code);
 
-        if ($recoveryCodes === null) {
+        if ($recoveryCodes === EnrolmentLinks::LINK_GONE) {
+            return redirect()->route('login');
+        }
+
+        if ($recoveryCodes === EnrolmentLinks::WRONG_CODE) {
             $this->throttle->codeFailed($user);
 
             throw ValidationException::withMessages(['code' => 'That code is not right. Check the app is showing the Masaar entry you just added.']);
         }
 
         $this->throttle->codeSucceeded($user);
+        $request->session()->forget(self::ENROLMENT);
 
         $this->complete($request, $user);
 
         // Shown once, here, and never again: they are kept encrypted and are
         // not displayable afterwards.
         return view('auth.recovery-codes', ['codes' => $recoveryCodes]);
+    }
+
+    /**
+     * Whether this browser opened a live enrolment link issued to this admin.
+     */
+    private function mayEnrol(Request $request, User $user): bool
+    {
+        return $this->links->permits($user, $request->session()->get(self::ENROLMENT));
     }
 
     /**

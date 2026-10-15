@@ -130,7 +130,7 @@ class AuthController extends Controller
         }
 
         if (! $user->hasTwoFactor()) {
-            return ApiResponse::forbidden('Platform admins must set up two-factor authentication in the console before signing in to the API.');
+            return ApiResponse::forbidden('Platform admins must set up two-factor authentication in the console, with an enrolment link from another admin, before signing in to the API.');
         }
 
         // Shared with the console's code page, so a code cannot be guessed

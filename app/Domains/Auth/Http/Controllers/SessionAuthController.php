@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Auth\Http\Controllers;
 
 use App\Domains\Audit\Services\AuditService;
+use App\Domains\Auth\Services\EnrolmentLinks;
 use App\Domains\Auth\Services\SignInRecorder;
 use App\Domains\Auth\Services\SignInThrottle;
 use App\Http\Controllers\Controller;
@@ -28,6 +29,7 @@ class SessionAuthController extends Controller
         private readonly AuditService $audit,
         private readonly SignInRecorder $signIns,
         private readonly SignInThrottle $throttle,
+        private readonly EnrolmentLinks $links,
     ) {}
 
     public function showLogin(): View|RedirectResponse
@@ -94,6 +96,17 @@ class SessionAuthController extends Controller
         // one - and is signed in only once it is checked. TwoFactorController
         // finishes the sign-in from what is kept here.
         if ($user->isPlatformAdmin()) {
+            // Not enrolled, and no live enrolment link opened in this
+            // browser: the password alone does not get to bind an
+            // authenticator to the account.
+            if (! $user->hasTwoFactor() && ! $this->links->permits($user, $request->session()->get(TwoFactorController::ENROLMENT))) {
+                $this->signIns->failed($credentials['email'], 'console');
+
+                throw ValidationException::withMessages([
+                    'email' => __('Two-factor is not set up for this account. Ask another platform admin for an enrolment link, and open it in this browser.'),
+                ]);
+            }
+
             $request->session()->regenerate();
             $request->session()->put(TwoFactorController::PENDING, [
                 'id' => (string) $user->getAuthIdentifier(),
