@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Pipeline\Services;
 
-use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\DTOs\IssueOutcome;
+use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Services\InvoiceIssuer;
 use App\Domains\Compliance\Fatoora\Services\OfflineQueue;
 use App\Domains\Invoice\Enums\InvoiceStatus;
