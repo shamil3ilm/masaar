@@ -6,9 +6,12 @@ namespace App\Domains\Licensing\Http\Controllers;
 
 use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Enums\LicenseTier;
+use App\Domains\Licensing\Exceptions\LicenceStateException;
+use App\Domains\Licensing\Exceptions\LicenseException;
 use App\Domains\Licensing\Services\LicenseManagementService;
 use App\Domains\Organization\Rules\VatNumber;
 use App\Http\Controllers\Controller;
+use App\Support\OperatorError;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -109,7 +112,7 @@ class AdminLicenceController extends Controller
                 'notes' => $data['notes'] ?? null,
             ]);
         } catch (\Throwable $e) {
-            return back()->withInput()->with('error', $e->getMessage());
+            return back()->withInput()->with('error', OperatorError::message($e, 'Issuing the licence', [LicenseException::class]));
         }
 
         return redirect()
@@ -141,7 +144,7 @@ class AdminLicenceController extends Controller
         } catch (\Throwable $e) {
             return redirect()
                 ->route('admin.licences.show', $licenceId)
-                ->with('error', $e->getMessage());
+                ->with('error', OperatorError::message($e, 'Regenerating the secret', [LicenseException::class]));
         }
 
         return redirect()
@@ -209,7 +212,11 @@ class AdminLicenceController extends Controller
                 ? redirect()->route('admin.licences.index')
                 : redirect()->route('admin.licences.show', $licenceId);
 
-            return $target->with('error', $e->getMessage());
+            return $target->with('error', OperatorError::message(
+                $e,
+                'Changing the licence',
+                [LicenseException::class, LicenceStateException::class, ModelNotFoundException::class],
+            ));
         }
 
         return redirect()

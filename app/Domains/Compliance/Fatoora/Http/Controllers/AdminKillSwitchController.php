@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Fatoora\Http\Controllers;
 
 use App\Domains\Compliance\Fatoora\Services\KillSwitch;
 use App\Http\Controllers\Controller;
+use App\Support\OperatorError;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -133,10 +134,15 @@ class AdminKillSwitchController extends Controller
 
             return redirect()->route('admin.kill-switches')->with('success', $success);
         } catch (Throwable $e) {
-            report($e);
-
+            // KillSwitch's own refusals are sentences; anything else - the
+            // registry lock timing out, the store failing - is logged under
+            // a reference rather than shown.
             return redirect()->route('admin.kill-switches')
-                ->with('error', 'That did not take effect: '.$e->getMessage());
+                ->with('error', 'That did not take effect: '.OperatorError::message(
+                    $e,
+                    'Changing the switch',
+                    [\InvalidArgumentException::class],
+                ));
         }
     }
 

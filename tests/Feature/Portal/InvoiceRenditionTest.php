@@ -110,7 +110,9 @@ class InvoiceRenditionTest extends TestCase
             'تفاصيل السلع أو الخدمات',                 // Nature of goods or services
             'الكمية',                                  // Quantity
             'سعر الوحدة',                              // Unit price
-            'نسبة الضريبة',                            // Tax rate
+            // The column holds each line's VAT amount; "tax rate" was the
+            // receipt's other heading, and named the wrong figure here.
+            'مبلغ الضريبة',                            // VAT amount
             'الإجمالي (باستثناء ضريبة القيمة المضافة)', // Total excluding VAT
             'مجموع ضريبة القيمة المضافة',              // Total VAT
             'إجمالي المبلغ المستحق',                   // Total amount due

@@ -7,6 +7,7 @@ namespace App\Domains\Webhook\Http\Controllers;
 use App\Domains\Webhook\Services\WebhookReport;
 use App\Domains\Webhook\Services\WebhookService;
 use App\Http\Controllers\Controller;
+use App\Support\OperatorError;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
@@ -105,7 +106,7 @@ class AdminWebhookController extends Controller
         try {
             $accepted = $this->deliveries->deliver($endpoint, $delivery->event, $delivery->sentPayload());
         } catch (\Throwable $e) {
-            return $this->backTo($webhookId)->with('error', 'Replay failed: '.$e->getMessage());
+            return $this->backTo($webhookId)->with('error', OperatorError::message($e, 'Replaying the delivery'));
         }
 
         if (! $accepted) {

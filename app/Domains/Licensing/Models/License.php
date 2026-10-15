@@ -8,6 +8,7 @@ use App\Domains\Licensing\Enums\ApiScope;
 use App\Domains\Licensing\Enums\LicenseEnvironment;
 use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Enums\LicenseTier;
+use App\Domains\Licensing\Exceptions\LicenceStateException;
 use Carbon\Carbon;
 use Closure;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -509,7 +510,7 @@ class License extends Model
             'suspension_reason' => $reason,
         ], 'suspended', $actorId, new: ['reason' => $reason], guard: function (LicenseStatus $status): void {
             if ($status === LicenseStatus::Revoked) {
-                throw new \RuntimeException(
+                throw new LicenceStateException(
                     'A revoked licence cannot be suspended. Revocation is permanent; '
                     .'issue a new licence instead.'
                 );
@@ -542,7 +543,7 @@ class License extends Model
             'suspension_reason' => null,
         ], 'reactivated', $actorId, guard: function (LicenseStatus $status): void {
             if (! $status->canReactivate()) {
-                throw new \RuntimeException(
+                throw new LicenceStateException(
                     'A licence that is '.$status->value.' cannot be reactivated. '
                     .'Revocation is permanent; issue a new licence instead.'
                 );
