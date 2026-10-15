@@ -7,6 +7,7 @@ namespace App\Domains\Auth\Http\Controllers;
 use App\Domains\Audit\Services\AuditService;
 use App\Domains\Auth\Models\User;
 use App\Domains\Auth\Services\SignInRecorder;
+use App\Domains\Auth\Services\SignInThrottle;
 use App\Domains\Auth\Services\TwoFactor;
 use App\Domains\Auth\Support\Totp;
 use App\Domains\Compliance\Fatoora\Services\QrCodeRenderer;
@@ -14,7 +15,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -33,12 +33,11 @@ class TwoFactorController extends Controller
 
     private const SETUP_SECRET = 'mfa.setup_secret';
 
-    private const MAX_ATTEMPTS = 5;
-
     public function __construct(
         private readonly TwoFactor $twoFactor,
         private readonly SignInRecorder $signIns,
         private readonly AuditService $audit,
+        private readonly SignInThrottle $throttle,
     ) {}
 
     public function showChallenge(Request $request): View|RedirectResponse
@@ -62,17 +61,17 @@ class TwoFactorController extends Controller
 
         $code = (string) $request->validate(['code' => ['required', 'string', 'max:32']])['code'];
 
-        $this->throttle($user);
+        $this->refuseWhileLocked($user);
 
         if (! $this->twoFactor->check($user, $code)) {
-            RateLimiter::hit($this->throttleKey($user), self::PENDING_MINUTES * 60);
+            $this->throttle->codeFailed($user);
 
             $this->audit->logSecurity('mfa.failed', 'User', (string) $user->id, ['surface' => 'console']);
 
             throw ValidationException::withMessages(['code' => 'That code is not right. Try the current one from your app, or a recovery code.']);
         }
 
-        RateLimiter::clear($this->throttleKey($user));
+        $this->throttle->codeSucceeded($user);
 
         $this->complete($request, $user);
 
@@ -107,17 +106,17 @@ class TwoFactorController extends Controller
 
         $code = (string) $request->validate(['code' => ['required', 'string', 'max:32']])['code'];
 
-        $this->throttle($user);
+        $this->refuseWhileLocked($user);
 
         $recoveryCodes = $this->twoFactor->confirm($user, $secret, $code);
 
         if ($recoveryCodes === null) {
-            RateLimiter::hit($this->throttleKey($user), self::PENDING_MINUTES * 60);
+            $this->throttle->codeFailed($user);
 
             throw ValidationException::withMessages(['code' => 'That code is not right. Check the app is showing the Masaar entry you just added.']);
         }
 
-        RateLimiter::clear($this->throttleKey($user));
+        $this->throttle->codeSucceeded($user);
 
         $this->complete($request, $user);
 
@@ -151,17 +150,14 @@ class TwoFactorController extends Controller
     /**
      * @throws ValidationException
      */
-    private function throttle(User $user): void
+    private function refuseWhileLocked(User $user): void
     {
-        if (RateLimiter::tooManyAttempts($this->throttleKey($user), self::MAX_ATTEMPTS)) {
+        $seconds = $this->throttle->codeLockedFor($user);
+
+        if ($seconds > 0) {
             throw ValidationException::withMessages([
-                'code' => 'Too many attempts. Try again in '.RateLimiter::availableIn($this->throttleKey($user)).' seconds.',
+                'code' => 'Too many attempts. Try again in '.$seconds.' seconds.',
             ]);
         }
-    }
-
-    private function throttleKey(User $user): string
-    {
-        return 'mfa:'.$user->id;
     }
 }

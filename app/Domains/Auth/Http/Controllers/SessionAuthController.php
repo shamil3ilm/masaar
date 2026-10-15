@@ -6,13 +6,12 @@ namespace App\Domains\Auth\Http\Controllers;
 
 use App\Domains\Audit\Services\AuditService;
 use App\Domains\Auth\Services\SignInRecorder;
+use App\Domains\Auth\Services\SignInThrottle;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -25,16 +24,10 @@ use Illuminate\View\View;
  */
 class SessionAuthController extends Controller
 {
-    /**
-     * Failed attempts permitted per email+IP before lockout.
-     */
-    private const MAX_ATTEMPTS = 5;
-
-    private const LOCKOUT_SECONDS = 300;
-
     public function __construct(
         private readonly AuditService $audit,
         private readonly SignInRecorder $signIns,
+        private readonly SignInThrottle $throttle,
     ) {}
 
     public function showLogin(): View|RedirectResponse
@@ -53,12 +46,12 @@ class SessionAuthController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        $throttleKey = $this->throttleKey($request, $credentials['email']);
+        $lockedFor = $this->throttle->passwordLockedFor($credentials['email'], $request->ip());
 
-        if (RateLimiter::tooManyAttempts($throttleKey, self::MAX_ATTEMPTS)) {
+        if ($lockedFor > 0) {
             throw ValidationException::withMessages([
                 'email' => __('Too many login attempts. Try again in :seconds seconds.', [
-                    'seconds' => RateLimiter::availableIn($throttleKey),
+                    'seconds' => $lockedFor,
                 ]),
             ]);
         }
@@ -76,7 +69,7 @@ class SessionAuthController extends Controller
         ]);
 
         if (! $attempted) {
-            RateLimiter::hit($throttleKey, self::LOCKOUT_SECONDS);
+            $this->throttle->passwordFailed($credentials['email'], $request->ip());
 
             Log::warning('Console login failed', [
                 'email' => $credentials['email'],
@@ -93,7 +86,7 @@ class SessionAuthController extends Controller
             ]);
         }
 
-        RateLimiter::clear($throttleKey);
+        $this->throttle->passwordSucceeded($credentials['email'], $request->ip());
 
         $user = Auth::getLastAttempted();
 
@@ -156,10 +149,5 @@ class SessionAuthController extends Controller
         return $user->isPlatformAdmin()
             ? route('admin.dashboard')
             : route('portal.dashboard');
-    }
-
-    private function throttleKey(Request $request, string $email): string
-    {
-        return 'console-login:'.Str::lower($email).'|'.$request->ip();
     }
 }

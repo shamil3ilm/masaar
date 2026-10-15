@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Security;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Auth\Services\SignInThrottle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -68,6 +69,44 @@ class AuthThrottleTest extends TestCase
             $statuses,
             'Twenty-five accounts were created in a row without a refusal.'
         );
+    }
+
+    /**
+     * Counted per account as well as per address: a guesser with a pool of
+     * addresses had five tries from each, without end.
+     */
+    public function test_rotating_addresses_still_locks_the_account(): void
+    {
+        User::factory()->create(['email' => 'target@masaar.test']);
+
+        foreach (range(1, SignInThrottle::PER_ACCOUNT) as $address) {
+            $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.'.$address])
+                ->postJson('/api/auth/login', ['email' => 'target@masaar.test', 'password' => 'not-the-password'])
+                ->assertUnauthorized();
+        }
+
+        $this->withServerVariables(['REMOTE_ADDR' => '198.51.100.7'])
+            ->postJson('/api/auth/login', ['email' => 'target@masaar.test', 'password' => 'password'])
+            ->assertStatus(429);
+    }
+
+    /**
+     * The console counts the same way, and against the same account.
+     */
+    public function test_the_console_shares_the_account_count(): void
+    {
+        User::factory()->create(['email' => 'target@masaar.test']);
+
+        foreach (range(1, SignInThrottle::PER_ACCOUNT) as $address) {
+            $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.'.$address])
+                ->postJson('/api/auth/login', ['email' => 'target@masaar.test', 'password' => 'not-the-password']);
+        }
+
+        $this->withServerVariables(['REMOTE_ADDR' => '198.51.100.7'])
+            ->post('/login', ['email' => 'target@masaar.test', 'password' => 'password'])
+            ->assertSessionHasErrors('email');
+
+        $this->assertGuest();
     }
 
     /**

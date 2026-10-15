@@ -144,6 +144,29 @@ class TwoFactorTest extends TestCase
         ])->assertOk();
     }
 
+    /**
+     * The API checked a code with no limit, so six digits were a million
+     * requests away. It now shares the console's count, per admin.
+     */
+    public function test_the_api_limits_code_guesses(): void
+    {
+        $this->enrolledAdmin();
+
+        for ($guess = 0; $guess < 5; $guess++) {
+            $this->postJson('/api/auth/login', [
+                'email' => 'ops@masaar.test',
+                'password' => 'password',
+                'two_factor_code' => '000000',
+            ])->assertUnauthorized();
+        }
+
+        $this->postJson('/api/auth/login', [
+            'email' => 'ops@masaar.test',
+            'password' => 'password',
+            'two_factor_code' => Totp::code(self::SECRET, time()),
+        ])->assertStatus(429)->assertHeader('Retry-After');
+    }
+
     public function test_the_api_refuses_an_unenrolled_admin(): void
     {
         User::factory()->create(['email' => 'new@masaar.test', 'is_platform_admin' => true]);

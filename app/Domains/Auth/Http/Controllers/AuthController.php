@@ -11,6 +11,7 @@ use App\Domains\Auth\Http\Requests\RegisterRequest;
 use App\Domains\Auth\Models\User;
 use App\Domains\Auth\Services\AccountRegistrar;
 use App\Domains\Auth\Services\SignInRecorder;
+use App\Domains\Auth\Services\SignInThrottle;
 use App\Domains\Auth\Services\TwoFactor;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
@@ -28,6 +29,7 @@ class AuthController extends Controller
         private readonly AccountRegistrar $registrar,
         private readonly SignInRecorder $signIns,
         private readonly TwoFactor $twoFactor,
+        private readonly SignInThrottle $throttle,
     ) {}
 
     /**
@@ -63,6 +65,17 @@ class AuthController extends Controller
      */
     public function login(LoginRequest $request): JsonResponse
     {
+        $email = (string) $request->email;
+
+        // The same limits as the console. Here there were none past the
+        // anonymous request budget, which is per address, so the API was the
+        // place to guess a password from many addresses at once.
+        $lockedFor = $this->throttle->passwordLockedFor($email, $request->ip());
+
+        if ($lockedFor > 0) {
+            return $this->tooManyAttempts($lockedFor);
+        }
+
         // A platform admin's second factor applies here too. Checked before a
         // token exists, so a wrong code issues nothing. Without it the API
         // was the way around the console's two-factor: the same password,
@@ -79,11 +92,13 @@ class AuthController extends Controller
         );
 
         if (! $token) {
-            $this->signIns->failed((string) $request->email, 'api');
+            $this->throttle->passwordFailed($email, $request->ip());
+            $this->signIns->failed($email, 'api');
 
             return ApiResponse::unauthorized('Invalid credentials');
         }
 
+        $this->throttle->passwordSucceeded($email, $request->ip());
         $this->signIns->succeeded($this->auth->user(), 'api');
 
         return ApiResponse::success([
@@ -118,13 +133,34 @@ class AuthController extends Controller
             return ApiResponse::forbidden('Platform admins must set up two-factor authentication in the console before signing in to the API.');
         }
 
+        // Shared with the console's code page, so a code cannot be guessed
+        // here while the console is locked. Without it a six-digit code was
+        // a million requests away.
+        $lockedFor = $this->throttle->codeLockedFor($user);
+
+        if ($lockedFor > 0) {
+            return $this->tooManyAttempts($lockedFor);
+        }
+
         if (! $this->twoFactor->check($user, (string) $request->input('two_factor_code', ''))) {
+            $this->throttle->codeFailed($user);
             $this->audit->logSecurity('mfa.failed', 'User', (string) $user->id, ['surface' => 'api']);
 
             return ApiResponse::unauthorized('A valid two_factor_code is required to sign in as a platform admin.');
         }
 
+        $this->throttle->codeSucceeded($user);
+
         return null;
+    }
+
+    private function tooManyAttempts(int $seconds): JsonResponse
+    {
+        return ApiResponse::error(
+            'Too many sign-in attempts. Try again in '.$seconds.' seconds.',
+            429,
+            retryAfter: $seconds,
+        );
     }
 
     /**
