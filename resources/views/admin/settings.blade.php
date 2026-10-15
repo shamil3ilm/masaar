@@ -4,8 +4,8 @@
 
 @section('content')
 <div class="mb-6">
-    <h2 class="text-2xl font-bold text-gray-800">Settings</h2>
-    <p class="text-gray-500">
+    <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Settings</h2>
+    <p class="text-gray-500 dark:text-gray-400">
         What the dashboard treats as a problem, and when a certificate expiry is worth telling someone about.
         These took a release to change before.
     </p>
@@ -23,9 +23,9 @@
     @endphp
 
     @foreach ($groups as $group => $fields)
-        <div class="mb-6 rounded-lg bg-white shadow">
+        <div class="mb-6 rounded-lg bg-white dark:bg-gray-900 shadow">
             <div class="border-b p-4">
-                <h3 class="font-semibold text-gray-800">{{ $group }}</h3>
+                <h3 class="font-semibold text-gray-800 dark:text-gray-100">{{ $group }}</h3>
             </div>
 
             <div class="space-y-4 p-4">
@@ -37,11 +37,11 @@
                         <label class="flex items-start gap-3 text-sm">
                             <input type="hidden" name="{{ $key }}" value="0">
                             <input type="checkbox" name="{{ $key }}" value="1"
-                                   class="mt-1 rounded border-gray-300 text-teal-600 focus:ring-teal-600"
+                                   class="mt-1 rounded border-gray-300 dark:border-gray-700 text-teal-600 dark:text-teal-400 focus:ring-teal-600"
                                    @checked(old($key, $settings->display($key)) === '1')>
                             <span>
-                                <span class="font-medium text-gray-700">{{ $definition['label'] }}</span>
-                                <span class="block text-xs text-gray-500">{{ $definition['help'] }}</span>
+                                <span class="font-medium text-gray-700 dark:text-gray-200">{{ $definition['label'] }}</span>
+                                <span class="block text-xs text-gray-500 dark:text-gray-400">{{ $definition['help'] }}</span>
                             </span>
                         </label>
                     @else
@@ -55,7 +55,7 @@
                                             value="{{ old($key, $settings->display($key)) }}" />
                             @endif
 
-                            <span class="mt-1 block text-xs font-normal text-gray-500">{{ $definition['help'] }}</span>
+                            <span class="mt-1 block text-xs font-normal text-gray-500 dark:text-gray-400">{{ $definition['help'] }}</span>
                         </x-ui.field>
                     @endif
                 @endforeach

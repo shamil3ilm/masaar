@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="{{ $theme->htmlClass() }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,7 +8,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <x-theme-head />
 </head>
-<body class="bg-gray-100 min-h-screen">
+<body class="bg-gray-100 dark:bg-gray-800 min-h-screen">
     <div x-data="sidebar" class="flex">
         <!-- Sidebar -->
         {{-- Covers the page only while the drawer is out, which is only ever
@@ -85,19 +85,19 @@
              anything to do. --}}
         <main class="min-w-0 flex-1">
             <!-- Top Bar -->
-            <header class="bg-white shadow-sm border-b">
+            <header class="bg-white dark:bg-gray-900 shadow-sm border-b">
                 <div class="flex items-center justify-between px-4 py-4 md:px-6">
                     <button type="button" @click="toggle" :aria-expanded="expanded"
                             aria-controls="sidebar" aria-label="Navigation"
-                            class="-ml-2 inline-flex min-h-11 min-w-11 items-center justify-center rounded text-gray-500 transition-colors hover:text-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-900">
+                            class="-ml-2 inline-flex min-h-11 min-w-11 items-center justify-center rounded text-gray-500 dark:text-gray-400 transition-colors hover:text-gray-700 dark:hover:text-gray-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-900">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                     </button>
                     <div class="flex items-center space-x-4">
                         @auth
-                        <span class="text-sm text-gray-600 border-l pl-4">{{ auth()->user()->email }}</span>
+                        <span class="text-sm text-gray-600 dark:text-gray-300 border-l pl-4">{{ auth()->user()->email }}</span>
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
-                            <button type="submit" class="text-sm text-gray-500 hover:text-gray-700">Sign out</button>
+                            <button type="submit" class="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">Sign out</button>
                         </form>
                         @endauth
                     </div>

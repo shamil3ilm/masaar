@@ -25,10 +25,10 @@
     <div data-confirm-backdrop class="absolute inset-0 bg-ink-950/60"></div>
 
     <div role="dialog" aria-modal="true" aria-labelledby="confirm-title"
-         class="relative w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-        <h2 id="confirm-title" class="text-lg font-semibold text-ink-900">Are you sure?</h2>
+         class="relative w-full max-w-md rounded-lg bg-white dark:bg-gray-900 p-6 shadow-xl">
+        <h2 id="confirm-title" class="text-lg font-semibold text-ink-900 dark:text-gray-100">Are you sure?</h2>
 
-        <p data-confirm-message class="mt-2 text-sm text-gray-600"></p>
+        <p data-confirm-message class="mt-2 text-sm text-gray-600 dark:text-gray-300"></p>
 
         {{-- Reverse on a narrow screen so the safe answer is nearest the
              thumb, and Cancel first in the DOM so it takes focus on open. --}}

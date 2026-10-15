@@ -5,23 +5,23 @@
 @section('content')
 <div class="mb-8 flex flex-wrap items-start justify-between gap-4">
     <div>
-        <h2 class="text-2xl font-bold text-gray-800">Invoices</h2>
-        <p class="text-gray-500">Everything issued under {{ $organization->name }}</p>
+        <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Invoices</h2>
+        <p class="text-gray-500 dark:text-gray-400">Everything issued under {{ $organization->name }}</p>
     </div>
 
     <x-ui.button :href="route('portal.invoices.create')">New invoice</x-ui.button>
 </div>
 
-<form method="GET" action="{{ route('portal.invoices.index') }}" class="mb-6 rounded-lg bg-white p-4 shadow">
+<form method="GET" action="{{ route('portal.invoices.index') }}" class="mb-6 rounded-lg bg-white dark:bg-gray-900 p-4 shadow">
     <div class="grid gap-4 md:grid-cols-4">
         <div class="md:col-span-2">
-            <label for="q" class="mb-1 block text-xs font-medium text-gray-600">Search</label>
+            <label for="q" class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Search</label>
             <x-ui.input type="text" name="q" id="q" value="{{ $search }}"
                    placeholder="Invoice number or buyer" />
         </div>
 
         <div>
-            <label for="status" class="mb-1 block text-xs font-medium text-gray-600">Status</label>
+            <label for="status" class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Status</label>
             <x-ui.select name="status" id="status">
                 <option value="">Any status</option>
                 @foreach (['draft' => 'Draft', 'issued' => 'Issued', 'accepted' => 'Accepted', 'rejected' => 'Rejected'] as $value => $label)
@@ -33,7 +33,7 @@
         <div class="flex items-end gap-2">
             <x-ui.button variant="secondary">Filter</x-ui.button>
             @if ($status || $search)
-                <a href="{{ route('portal.invoices.index') }}" class="px-3 py-2 text-sm text-gray-600 hover:text-gray-900">
+                <a href="{{ route('portal.invoices.index') }}" class="px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100">
                     Clear
                 </a>
             @endif
@@ -41,7 +41,7 @@
     </div>
 </form>
 
-<div class="overflow-hidden rounded-lg bg-white shadow">
+<div class="overflow-hidden rounded-lg bg-white dark:bg-gray-900 shadow">
     <x-ui.table>
         <x-slot:head>
             <x-ui.th>Invoice</x-ui.th>
@@ -52,20 +52,20 @@
         </x-slot:head>
 
         @forelse ($invoices as $invoice)
-            <tr class="hover:bg-gray-50">
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-950">
                 <td class="px-4 py-3">
                     <a href="{{ route('portal.invoices.show', $invoice->id) }}"
-                       class="font-medium text-teal-700 hover:underline">
+                       class="font-medium text-teal-700 dark:text-teal-300 hover:underline">
                         {{ $invoice->invoice_number }}
                     </a>
-                    <p class="text-xs text-gray-400">{{ ucfirst($invoice->type instanceof \BackedEnum ? $invoice->type->value : (string) $invoice->type) }}</p>
+                    <p class="text-xs text-gray-400 dark:text-gray-500">{{ ucfirst($invoice->type instanceof \BackedEnum ? $invoice->type->value : (string) $invoice->type) }}</p>
                 </td>
-                <td class="px-4 py-3 text-sm text-gray-700">{{ $invoice->buyer_name ?: '—' }}</td>
-                <td class="px-4 py-3 text-sm text-gray-500">{{ $invoice->issue_date }}</td>
+                <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">{{ $invoice->buyer_name ?: '—' }}</td>
+                <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{{ $invoice->issue_date }}</td>
                 <td class="px-4 py-3">
                     @include('portal.partials.invoice-status', ['status' => $invoice->status])
                 </td>
-                <td class="px-4 py-3 text-right text-sm tabular-nums text-gray-900">
+                <td class="px-4 py-3 text-right text-sm tabular-nums text-gray-900 dark:text-gray-100">
                     @include('portal.partials.money', ['amount' => $invoice->total, 'currency' => $invoice->currency])
                 </td>
             </tr>

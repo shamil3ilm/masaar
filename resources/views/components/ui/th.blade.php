@@ -19,6 +19,6 @@
     $alignment = $align === 'right' ? 'text-right' : 'text-left';
 @endphp
 
-<th scope="col" {{ $attributes->merge(['class' => 'px-6 py-3 text-xs font-medium uppercase tracking-wider text-gray-500 '.$alignment]) }}>
+<th scope="col" {{ $attributes->merge(['class' => 'px-6 py-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 '.$alignment]) }}>
     {{ $slot }}
 </th>

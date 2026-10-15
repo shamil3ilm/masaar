@@ -86,10 +86,34 @@ final class ThemeService
             $custom = $custom->under($this->definitionOf($this->row($scope)));
         }
 
+        $css = $this->block(':root', $this->variables($custom));
+
+        // Dark-only colours, for the two ways a page is dark: fixed by the
+        // theme (.dark), or left to a device that prefers it (.theme-system).
+        if ($custom->dark !== null) {
+            $dark = $this->variables($custom->dark);
+            $css .= $this->block(':root.dark', $dark);
+
+            if ($dark !== []) {
+                $css .= "@media (prefers-color-scheme: dark) {\n".$this->block(':root.theme-system', $dark)."}\n";
+            }
+        }
+
+        return $css === '' ? "/* No theme is set: the application's own colours apply. */\n" : $css;
+    }
+
+    /**
+     * The colour variables a definition sets: whole ramps for its colours,
+     * then any pinned shades over them.
+     *
+     * @return array<string, string>
+     */
+    private function variables(ThemeDefinition $definition): array
+    {
         $variables = [];
 
         foreach (Palette::RAMPS as $ramp => $meta) {
-            $hex = $custom->colors[$ramp] ?? null;
+            $hex = $definition->colors[$ramp] ?? null;
 
             if ($hex !== null) {
                 foreach ($this->palette->ramp($ramp, $hex) as $step => $value) {
@@ -98,18 +122,26 @@ final class ThemeService
             }
         }
 
-        foreach ($custom->shades as $key => $hex) {
+        foreach ($definition->shades as $key => $hex) {
             [$ramp, $step] = explode('-', $key, 2);
             $variables['--color-'.Palette::RAMPS[$ramp]['variable']."-{$step}"] = $hex;
         }
 
+        return $variables;
+    }
+
+    /**
+     * @param  array<string, string>  $variables
+     */
+    private function block(string $selector, array $variables): string
+    {
         if ($variables === []) {
-            return "/* No theme is set: the application's own colours apply. */\n";
+            return '';
         }
 
         $lines = array_map(fn (string $name, string $value): string => "  {$name}: {$value};", array_keys($variables), $variables);
 
-        return ":root {\n".implode("\n", $lines)."\n}\n";
+        return "{$selector} {\n".implode("\n", $lines)."\n}\n";
     }
 
     /**

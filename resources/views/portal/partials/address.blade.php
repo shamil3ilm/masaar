@@ -36,5 +36,5 @@
 @endphp
 
 @foreach ($lines as $text)
-    <p class="text-gray-600">{{ $text }}</p>
+    <p class="text-gray-600 dark:text-gray-300">{{ $text }}</p>
 @endforeach

@@ -5,42 +5,42 @@
 @section('content')
 <div class="mb-8">
     <a href="{{ route('portal.submissions', ['org_id' => request('org_id')]) }}"
-       class="text-teal-700 hover:text-teal-900 text-sm mb-2 inline-block">&larr; Back to Submissions</a>
+       class="text-teal-700 dark:text-teal-300 hover:text-teal-900 dark:hover:text-teal-200 text-sm mb-2 inline-block">&larr; Back to Submissions</a>
     <div class="flex items-center">
-        <div class="w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center mr-4">
-            <span class="text-teal-700 font-bold text-xl">{{ strtoupper(substr($user->name ?? $user->email, 0, 2)) }}</span>
+        <div class="w-16 h-16 bg-teal-100 dark:bg-teal-900/40 rounded-full flex items-center justify-center mr-4">
+            <span class="text-teal-700 dark:text-teal-300 font-bold text-xl">{{ strtoupper(substr($user->name ?? $user->email, 0, 2)) }}</span>
         </div>
         <div>
-            <h2 class="text-2xl font-bold text-gray-800">{{ $user->name ?? 'User' }}</h2>
-            <p class="text-gray-500">{{ $user->email }}</p>
+            <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">{{ $user->name ?? 'User' }}</h2>
+            <p class="text-gray-500 dark:text-gray-400">{{ $user->email }}</p>
         </div>
     </div>
 </div>
 
 <!-- User Stats -->
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-    <div class="bg-white rounded-lg shadow p-6">
-        <p class="text-sm text-gray-500">Today</p>
-        <p class="text-3xl font-bold text-gray-800">{{ $userStats['today'] }}</p>
+    <div class="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
+        <p class="text-sm text-gray-500 dark:text-gray-400">Today</p>
+        <p class="text-3xl font-bold text-gray-800 dark:text-gray-100">{{ $userStats['today'] }}</p>
     </div>
-    <div class="bg-white rounded-lg shadow p-6">
-        <p class="text-sm text-gray-500">Total Submissions</p>
-        <p class="text-3xl font-bold text-gray-800">{{ $userStats['total'] }}</p>
+    <div class="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
+        <p class="text-sm text-gray-500 dark:text-gray-400">Total Submissions</p>
+        <p class="text-3xl font-bold text-gray-800 dark:text-gray-100">{{ $userStats['total'] }}</p>
     </div>
-    <div class="bg-white rounded-lg shadow p-6">
-        <p class="text-sm text-gray-500">Cleared</p>
-        <p class="text-3xl font-bold text-green-600">{{ $userStats['cleared'] }}</p>
+    <div class="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
+        <p class="text-sm text-gray-500 dark:text-gray-400">Cleared</p>
+        <p class="text-3xl font-bold text-green-600 dark:text-green-400">{{ $userStats['cleared'] }}</p>
     </div>
-    <div class="bg-white rounded-lg shadow p-6">
-        <p class="text-sm text-gray-500">Rejected</p>
-        <p class="text-3xl font-bold {{ $userStats['rejected'] > 0 ? 'text-red-600' : 'text-gray-400' }}">{{ $userStats['rejected'] }}</p>
+    <div class="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
+        <p class="text-sm text-gray-500 dark:text-gray-400">Rejected</p>
+        <p class="text-3xl font-bold {{ $userStats['rejected'] > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-400 dark:text-gray-500' }}">{{ $userStats['rejected'] }}</p>
     </div>
 </div>
 
 <!-- User's Submissions -->
-<div class="bg-white rounded-lg shadow">
+<div class="bg-white dark:bg-gray-900 rounded-lg shadow">
     <div class="p-6 border-b">
-        <h3 class="text-lg font-semibold text-gray-800">Submission History</h3>
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">Submission History</h3>
     </div>
     <x-ui.table>
         <x-slot:head>
@@ -53,9 +53,9 @@
         </x-slot:head>
 
         @forelse($submissions as $sub)
-        <tr class="hover:bg-gray-50">
+        <tr class="hover:bg-gray-50 dark:hover:bg-gray-950">
             <td class="px-6 py-4">
-                <p class="text-sm font-medium text-gray-800">{{ $sub->invoice_number ?? Str::limit($sub->invoice_id, 8) }}</p>
+                <p class="text-sm font-medium text-gray-800 dark:text-gray-100">{{ $sub->invoice_number ?? Str::limit($sub->invoice_id, 8) }}</p>
             </td>
             <td class="px-6 py-4">
                 <x-ui.badge tone="neutral" :label="ucfirst($sub->submission_type ?? '-')" />
@@ -63,23 +63,23 @@
             <td class="px-6 py-4">
                 <x-ui.badge :state="$sub->state" />
             </td>
-            <td class="px-6 py-4 text-sm text-gray-600">
+            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
                 @if($sub->invoice_total)
                 {{ number_format($sub->invoice_total, 2) }} SAR
                 @else
                 -
                 @endif
             </td>
-            <td class="px-6 py-4 text-sm text-gray-500">
+            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                 {{ \Carbon\Carbon::parse($sub->created_at)->format('M d, H:i') }}
             </td>
             <td class="px-6 py-4">
                 @if($sub->last_error)
-                <span class="text-xs text-red-600" title="{{ $sub->last_error }}">
+                <span class="text-xs text-red-600 dark:text-red-400" title="{{ $sub->last_error }}">
                     {{ Str::limit($sub->last_error, 30) }}
                 </span>
                 @else
-                <span class="text-gray-400">-</span>
+                <span class="text-gray-400 dark:text-gray-500">-</span>
                 @endif
             </td>
         </tr>

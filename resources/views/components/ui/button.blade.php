@@ -37,8 +37,8 @@
 
     $look = match ($variant) {
         'secondary' => 'bg-gray-600 text-white hover:bg-gray-700',
-        'quiet' => 'bg-gray-200 text-gray-700 hover:bg-gray-300',
-        'outline' => 'border border-teal-700 text-teal-700 hover:bg-teal-50',
+        'quiet' => 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600',
+        'outline' => 'border border-teal-700 text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-950/40',
         'danger' => 'bg-red-600 text-white hover:bg-red-700',
         default => 'bg-teal-600 text-white hover:bg-teal-700',
     };

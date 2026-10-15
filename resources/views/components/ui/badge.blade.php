@@ -59,11 +59,11 @@
     };
 
     $classes = match ($meaning) {
-        'success' => 'bg-green-100 text-green-800',
-        'danger' => 'bg-red-100 text-red-800',
-        'warning' => 'bg-amber-100 text-amber-800',
-        'info' => 'bg-blue-100 text-blue-800',
-        default => 'bg-gray-100 text-gray-700',
+        'success' => 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200',
+        'danger' => 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200',
+        'warning' => 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200',
+        'info' => 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200',
+        default => 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200',
     };
 @endphp
 

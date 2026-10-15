@@ -13,7 +13,7 @@
     under it, which is the mistake that happens when a column is added later.
 --}}
 <tr>
-    <td colspan="{{ $columns }}" class="px-6 py-10 text-center text-gray-500">
+    <td colspan="{{ $columns }}" class="px-6 py-10 text-center text-gray-500 dark:text-gray-400">
         {{ $slot }}
     </td>
 </tr>

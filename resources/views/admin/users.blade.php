@@ -4,13 +4,13 @@
 
 @section('content')
 <div class="mb-6">
-    <h2 class="text-2xl font-bold text-gray-800">Users</h2>
-    <p class="text-gray-500">Every account on the platform, with where it belongs and when it last signed in</p>
+    <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Users</h2>
+    <p class="text-gray-500 dark:text-gray-400">Every account on the platform, with where it belongs and when it last signed in</p>
 </div>
 
-<form method="GET" action="{{ route('admin.users.index') }}" class="mb-6 bg-white rounded-lg shadow p-4 flex flex-wrap items-end gap-4">
+<form method="GET" action="{{ route('admin.users.index') }}" class="mb-6 bg-white dark:bg-gray-900 rounded-lg shadow p-4 flex flex-wrap items-end gap-4">
     <div>
-        <label for="status" class="block text-xs font-medium text-gray-500 uppercase mb-1">Status</label>
+        <label for="status" class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-1">Status</label>
         <x-ui.select id="status" name="status">
             <option value="">Any status</option>
             <option value="active" @selected($status === 'active')>Active</option>
@@ -18,7 +18,7 @@
         </x-ui.select>
     </div>
     <div class="flex-1 min-w-48">
-        <label for="q" class="block text-xs font-medium text-gray-500 uppercase mb-1">Search</label>
+        <label for="q" class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-1">Search</label>
         <x-ui.input id="q" name="q" type="text" value="{{ $search }}" placeholder="Name or email" />
     </div>
     <div class="flex items-center gap-2">
@@ -27,7 +27,7 @@
     </div>
 </form>
 
-<div class="bg-white rounded-lg shadow overflow-hidden">
+<div class="bg-white dark:bg-gray-900 rounded-lg shadow overflow-hidden">
     <x-ui.table>
         <x-slot:head>
             <x-ui.th>User</x-ui.th>
@@ -39,24 +39,24 @@
         </x-slot:head>
 
         @forelse($users as $user)
-        <tr class="hover:bg-gray-50">
+        <tr class="hover:bg-gray-50 dark:hover:bg-gray-950">
             <td class="px-6 py-4">
-                <div class="font-medium text-gray-900">
+                <div class="font-medium text-gray-900 dark:text-gray-100">
                     {{ $user->name }}
                     @if($user->is_platform_admin)
                         <x-ui.badge tone="info" label="Platform admin" />
                     @endif
                 </div>
-                <div class="text-sm text-gray-500 break-all">{{ $user->email }}</div>
+                <div class="text-sm text-gray-500 dark:text-gray-400 break-all">{{ $user->email }}</div>
             </td>
             <td class="px-6 py-4"><x-ui.badge :state="$user->status" /></td>
-            <td class="px-6 py-4 text-sm text-gray-500">{{ $user->organizations }}</td>
-            <td class="px-6 py-4 text-sm text-gray-500">
+            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{{ $user->organizations }}</td>
+            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                 {{ $user->last_sign_in_at ? \Carbon\Carbon::parse($user->last_sign_in_at)->diffForHumans() : 'Never' }}
             </td>
-            <td class="px-6 py-4 text-sm text-gray-500">{{ \Carbon\Carbon::parse($user->created_at)->format('M d, Y') }}</td>
+            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{{ \Carbon\Carbon::parse($user->created_at)->format('M d, Y') }}</td>
             <td class="px-6 py-4 text-right">
-                <a href="{{ route('admin.users.show', $user->id) }}" class="text-teal-700 hover:text-teal-900 text-sm">View</a>
+                <a href="{{ route('admin.users.show', $user->id) }}" class="text-teal-700 dark:text-teal-300 hover:text-teal-900 dark:hover:text-teal-200 text-sm">View</a>
             </td>
         </tr>
         @empty

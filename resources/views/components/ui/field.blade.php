@@ -19,7 +19,7 @@
     to a screen reader is a filter sighted users have to guess at too - which
     is what a bare placeholder already was.
 --}}
-<label class="block text-xs font-medium text-gray-600">
+<label class="block text-xs font-medium text-gray-600 dark:text-gray-300">
     {{ $label }}
     {{ $slot }}
 </label>

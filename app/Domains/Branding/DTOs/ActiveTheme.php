@@ -26,4 +26,17 @@ final readonly class ActiveTheme
     {
         return $this->definition->name ?? 'Masaar';
     }
+
+    /**
+     * The class <html> carries for the theme's mode: "dark" always dark,
+     * "theme-system" dark when the device prefers it, nothing for light.
+     */
+    public function htmlClass(): string
+    {
+        return match ($this->definition->mode) {
+            'dark' => 'dark',
+            'system' => 'theme-system',
+            default => '',
+        };
+    }
 }
