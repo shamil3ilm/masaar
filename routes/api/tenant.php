@@ -8,6 +8,7 @@ use App\Domains\Compliance\Fatoora\Http\Controllers\ComplianceController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\OnboardingController;
 use App\Domains\Compliance\FTA\Http\Controllers\FtaController;
 use App\Domains\Invoice\Http\Controllers\InvoiceController;
+use App\Domains\Invoice\Http\Controllers\NumberingController;
 use App\Domains\Organization\Http\Controllers\BranchController;
 use App\Domains\Organization\Http\Controllers\ComplianceProfileController;
 use App\Domains\Organization\Http\Controllers\OrganizationController;
@@ -44,6 +45,11 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
     // to do; everything else about invoicing is.
     Route::apiResource('invoices', InvoiceController::class)->except(['destroy']);
     Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy'])
+        ->middleware('org.admin');
+
+    // How invoices sent without a number are numbered when issued.
+    Route::get('/settings/numbering', [NumberingController::class, 'index']);
+    Route::put('/settings/numbering/{documentType}', [NumberingController::class, 'update'])
         ->middleware('org.admin');
 
     /* Compliance — Saudi Arabia (ZATCA Fatoora, Phase 2) ------------------ */

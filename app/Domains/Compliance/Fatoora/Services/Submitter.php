@@ -12,6 +12,7 @@ use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Helpers\CertificatePem;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Services\InvoiceNumbering;
 use App\Domains\Licensing\Enums\LicenseEnvironment;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
@@ -51,6 +52,7 @@ class Submitter
         private readonly KillSwitch $killSwitch,
         private readonly ChainRecorder $chain,
         private readonly InvoiceVerdict $verdict,
+        private readonly InvoiceNumbering $numbering,
     ) {}
 
     /**
@@ -76,7 +78,7 @@ class Submitter
         // repeating one.
         if (! $reissue && $invoice->status !== InvoiceStatus::Draft) {
             throw new FatooraException(
-                "Invoice {$invoice->invoice_number} is {$invoice->status->value} and cannot be issued again. "
+                "Invoice {$this->label($invoice)} is {$invoice->status->value} and cannot be issued again. "
                 .'Re-issuing rewrites its hash and forks the chain.',
                 ErrorCode::VAL_INVOICE_ALREADY_ISSUED,
                 [
@@ -105,7 +107,7 @@ class Submitter
 
             if (! $check['valid']) {
                 throw new FatooraException(
-                    "Invoice {$invoice->invoice_number} breaks ZATCA's rules: ".implode('; ', $check['errors']),
+                    "Invoice {$this->label($invoice)} breaks ZATCA's rules: ".implode('; ', $check['errors']),
                     ErrorCode::VALIDATION_FAILED,
                     ['errors' => $check['errors']],
                 );
@@ -191,6 +193,13 @@ class Submitter
                 $invoice->icv = Invoice::generateNextIcv((string) $invoice->org_id, $invoice->device_id);
             }
 
+            // A draft left unnumbered takes its number now, under the same
+            // lock as the counter: issued invoices run without gaps, and a
+            // failure from here rolls the number back with the counter.
+            if (blank($invoice->invoice_number)) {
+                $invoice->invoice_number = $this->numbering->allocate($invoice);
+            }
+
             $previousHash = $invoice->previous_invoice_hash;
 
             $complianceData = $this->compliance->generateComplianceData(
@@ -202,6 +211,7 @@ class Submitter
             );
 
             $invoice->update([
+                'invoice_number' => $invoice->invoice_number,
                 'icv' => $invoice->icv,
                 'device_id' => $invoice->device_id,
                 'hash' => $complianceData['hash'],
@@ -225,6 +235,15 @@ class Submitter
             'qr_code' => $complianceData['qr_code'],
             'signed_xml' => $complianceData['signed_xml'] ?? null,
         ];
+    }
+
+    /**
+     * How an invoice is named in a message: its number, or for a draft not
+     * yet numbered, its id.
+     */
+    private function label(Invoice $invoice): string
+    {
+        return filled($invoice->invoice_number) ? (string) $invoice->invoice_number : 'draft '.$invoice->id;
     }
 
     /**

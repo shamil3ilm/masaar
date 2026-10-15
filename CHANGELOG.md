@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed — may need a change on your side
 
+- **An invoice sent without `invoice_number` is numbered when it is issued**,
+  from your organization's sequence for its document type (by default
+  `INV-2026-00001`, `CN-…`, `DN-…`). The pipeline used to make one up as
+  `INV-{erp_reference_id}` or `INV-{timestamp}`. A draft created without a
+  number has `invoice_number: null` until it is issued. Sending your own
+  number works as before.
+- **Deployments file with ZATCA only unless `UAE_FTA_ENABLED=true`.** While it
+  is off, `/api/compliance/ae/*` answers 404 and organizations register in
+  Saudi Arabia only.
+- **Production refuses to serve until it is configured**: `APP_URL` off
+  localhost, `JWT_SECRET`, `API_KEY_PEPPER`, a real `MAIL_MAILER` and
+  `MAIL_FROM_ADDRESS`. An unrecognised `ZATCA_ENVIRONMENT` is refused instead
+  of falling back to the sandbox.
 - **Credit and debit notes must give a reason.** `adjustment_reason` is now
   required with `document_type` `credit_note` or `debit_note`, as ZATCA's
   BR-KSA-17 requires. A note without one is refused with 422 before it is
@@ -35,6 +48,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Invoice numbering you configure**: a pattern per document type (and per
+  branch) with `{YYYY}`, `{YY}`, `{MM}` and `{SEQ}`, zero-padding, and a yearly,
+  monthly or no reset. `GET /api/settings/numbering`,
+  `PUT /api/settings/numbering/{documentType}`, and a Numbering page in the
+  portal. Numbers are given at issue, so issued invoices run without gaps.
+- **The seller details ZATCA requires can be set**: CR number and national
+  address on `POST`/`PUT /api/organizations`, and a Company page in the
+  portal. Checked in ZATCA's shapes; the VAT number is fixed once onboarded.
 - **VAT-inclusive prices.** `prices_include_vat` on an invoice, or as the
   organization's default, says `unit_price` and `discount_amount` include VAT.
   The customer's total is kept exactly and the net is derived from it.

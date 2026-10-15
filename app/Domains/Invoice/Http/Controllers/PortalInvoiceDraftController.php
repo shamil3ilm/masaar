@@ -77,6 +77,6 @@ class PortalInvoiceDraftController extends Controller
 
         return redirect()
             ->route('portal.invoices.show', $invoice->id)
-            ->with('success', 'Invoice '.$invoice->invoice_number.' saved as a draft. It has no counter and no hash until it is issued.');
+            ->with('success', ($invoice->invoice_number === null ? 'Draft saved. It is numbered' : 'Invoice '.$invoice->invoice_number.' saved as a draft. It has no counter and no hash').' until it is issued.');
     }
 }

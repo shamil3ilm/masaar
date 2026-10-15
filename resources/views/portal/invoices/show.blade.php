@@ -1,6 +1,6 @@
 @extends('layouts.portal')
 
-@section('title', $invoice->invoice_number . ' - ' . $organization->name)
+@section('title', ($invoice->invoice_number ?? 'Draft') . ' - ' . $organization->name)
 
 @section('content')
 <div class="mb-6">
@@ -21,7 +21,7 @@
             <span class="text-gray-400 dark:text-gray-500" dir="rtl" lang="ar">{{ $simplified ? 'فاتورة ضريبية مبسطة' : 'فاتورة ضريبية' }}</span>
         </p>
 
-        <h2 class="mt-1 text-2xl font-bold text-gray-800 dark:text-gray-100">{{ $invoice->invoice_number }}</h2>
+        <h2 class="mt-1 text-2xl font-bold text-gray-800 dark:text-gray-100">{{ $invoice->invoice_number ?? 'Draft (numbered when issued)' }}</h2>
         <p class="text-gray-500 dark:text-gray-400">
             <span lang="ar" dir="rtl">تاريخ الفاتورة</span> &middot; issued {{ $invoice->issue_date }}
         </p>

@@ -77,6 +77,44 @@ class PipelineIdempotencyTest extends TestCase
         $this->assertSame(1, $this->invoices());
     }
 
+    /**
+     * Sent without a number, the invoice is numbered at issue - and the
+     * retry, which still sends none, is the same request, not a reused key.
+     */
+    public function test_an_unnumbered_retry_returns_the_original(): void
+    {
+        // Complete, so the first call issues and the invoice is numbered.
+        $this->acme->forceFill([
+            'vat_number' => '300000000000003',
+            'street' => 'King Fahd Road',
+            'building_number' => '1234',
+            'district' => 'Al Olaya',
+            'city' => 'Riyadh',
+            'postal_code' => '12345',
+        ])->save();
+
+        $first = $this->submit('key-1', ['invoice_number' => null])->assertSuccessful();
+        $retry = $this->submit('key-1', ['invoice_number' => null])->assertSuccessful();
+
+        $this->assertSame($first->json('data.invoice_id'), $retry->json('data.invoice_id'));
+        $this->assertNotNull($first->json('data.invoice_number'), 'the first call did not issue, so nothing was numbered');
+        $this->assertSame(1, $this->invoices());
+    }
+
+    /**
+     * With no key and no number the ERP's reference names the document. The
+     * number used to be made from it, so a retry collided; now the number
+     * comes from the sequence, and a retry must still not bill twice.
+     */
+    public function test_an_erp_reference_dedupes_without_key(): void
+    {
+        $first = $this->submit(null, ['invoice_number' => null, 'erp_reference_id' => 'SO-77'])->assertSuccessful();
+        $retry = $this->submit(null, ['invoice_number' => null, 'erp_reference_id' => 'SO-77'])->assertSuccessful();
+
+        $this->assertSame($first->json('data.invoice_id'), $retry->json('data.invoice_id'));
+        $this->assertSame(1, $this->invoices());
+    }
+
     public function test_a_new_key_drafts_anew(): void
     {
         $this->submit('key-1')->assertSuccessful();
@@ -172,9 +210,9 @@ class PipelineIdempotencyTest extends TestCase
         $this->assertSame(1, $this->invoices());
     }
 
-    private function submit(string $key, array $overrides = []): TestResponse
+    private function submit(?string $key, array $overrides = []): TestResponse
     {
-        return $this->withHeaders([...$this->credential, 'Idempotency-Key' => $key])
+        return $this->withHeaders([...$this->credential, ...($key === null ? [] : ['Idempotency-Key' => $key])])
             ->postJson('/api/v1/pipeline/submit', array_merge([
                 'org_id' => $this->acme->id,
                 'invoice_number' => 'INV-1',

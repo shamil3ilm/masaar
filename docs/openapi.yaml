@@ -1486,7 +1486,6 @@ paths:
                 lines:
                   type: array
               required:
-                - invoice_number
                 - type
                 - issue_date
                 - lines
@@ -1597,7 +1596,6 @@ paths:
                 lines:
                   type: array
               required:
-                - invoice_number
                 - type
                 - issue_date
                 - lines
@@ -1681,7 +1679,6 @@ paths:
                 lines:
                   type: array
               required:
-                - invoice_number
                 - type
                 - issue_date
                 - lines
@@ -2451,6 +2448,54 @@ paths:
                 $ref: '#/components/schemas/Error'
       security:
         - bearerAuth: []
+  /api/settings/numbering:
+    get:
+      tags:
+        - Invoice
+      operationId: numberingController.index
+      summary: 'Index — Numbering Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - bearerAuth: []
+  '/api/settings/numbering/{documentType}':
+    put:
+      tags:
+        - Invoice
+      operationId: numberingController.update
+      summary: 'Update — Numbering Controller'
+      parameters:
+        - name: documentType
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - bearerAuth: []
   '/api/v1/compliance/generate/{invoiceId}':
     post:
       tags:
@@ -2709,7 +2754,6 @@ paths:
                 lines:
                   type: array
               required:
-                - invoice_number
                 - type
                 - issue_date
                 - lines
@@ -2824,7 +2868,6 @@ paths:
                 lines:
                   type: array
               required:
-                - invoice_number
                 - type
                 - issue_date
                 - lines

@@ -65,6 +65,18 @@ class PipelineService
             return $this->replay($earlier, $data, $organization, $idempotencyKey);
         }
 
+        // Sent with no number and no key, the ERP's own reference is what
+        // names the document. The number used to be made from it, so a retry
+        // collided with the first call on the unique index; the number now
+        // comes from the sequence at issue, and without this a retry drafted
+        // a second invoice and billed the sale twice.
+        if ($idempotencyKey === null
+            && blank($data['invoice_number'] ?? null)
+            && filled($data['erp_reference_id'] ?? null)
+            && ($earlier = $this->drafter->createdFor($organizationId, (string) $data['erp_reference_id']))) {
+            return $this->replay($earlier, $data, $organization, null);
+        }
+
         try {
             $invoice = $this->drafter->draft(
                 [...$data, 'idempotency_key' => $idempotencyKey],
@@ -149,7 +161,13 @@ class PipelineService
      */
     private function replay(Invoice $invoice, array $data, Organization $organization, ?string $idempotencyKey): array
     {
-        if ($invoice->invoice_number !== ($data['invoice_number'] ?? null)) {
+        // The request's own number, or failing that its ERP reference, has to
+        // be the first call's. A request that sent no number was numbered at
+        // issue, so its number is compared with nothing.
+        $sent = $data['invoice_number'] ?? null;
+        $reference = $data['erp_reference_id'] ?? null;
+
+        if (filled($sent) ? $invoice->invoice_number !== $sent : (filled($reference) && $invoice->erp_reference_id !== $reference)) {
             throw ValidationException::withMessages([
                 'invoice_number' => 'This Idempotency-Key was already used for invoice '.$invoice->invoice_number
                     .'. Send a new key for a new invoice.',

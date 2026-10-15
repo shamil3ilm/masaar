@@ -27,12 +27,7 @@ class PipelineSubmitRequest extends CreateInvoiceRequest
 
     public function rules(): array
     {
-        $parentRules = parent::rules();
-
-        // Override parent: invoice_number is auto-generated if not provided by ERP
-        $parentRules['invoice_number'] = ['nullable', 'string', 'max:255'];
-
-        return array_merge($parentRules, [
+        return array_merge(parent::rules(), [
             // Accept ERP field name alias for invoice type
             'invoice_type' => ['nullable', 'string'],
             // Accept due_date as ZATCA supply_date alias
@@ -93,11 +88,10 @@ class PipelineSubmitRequest extends CreateInvoiceRequest
             $merges['supply_date'] = $this->due_date;
         }
 
-        // Gap 2: ERP does not send `invoice_number` — auto-generate it
-        if (empty($this->invoice_number)) {
-            $seed = $this->erp_reference_id ?? now()->format('YmdHis');
-            $merges['invoice_number'] = 'INV-'.$seed;
-        }
+        // An ERP that sends no invoice_number has the invoice numbered at
+        // issue, from the organization's sequence. This made one up as
+        // INV-{erp_reference_id} or INV-{timestamp}, and two requests in the
+        // same second without a reference shared the timestamp.
 
         $this->merge($merges);
     }
