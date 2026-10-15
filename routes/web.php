@@ -10,6 +10,7 @@ use App\Domains\Branding\Http\Controllers\PortalBrandingController;
 use App\Domains\Branding\Http\Controllers\ThemeAssetController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\AdminAlertController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\AdminKillSwitchController;
+use App\Domains\Compliance\Fatoora\Http\Controllers\PortalZatcaController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceDraftController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceFilingController;
@@ -264,6 +265,15 @@ Route::prefix('portal')->name('portal.')
         // complete. Administrators only; the controller checks the role.
         Route::get('/company', [PortalCompanyController::class, 'edit'])->name('company.edit');
         Route::post('/company', [PortalCompanyController::class, 'update'])->name('company.update');
+
+        // Connecting to ZATCA: OTP, compliance checks, production
+        // certificate. Administrators only, and only once the company is
+        // approved; the controller checks both. Each step reaches ZATCA, so
+        // they are throttled.
+        Route::get('/zatca', [PortalZatcaController::class, 'show'])->name('zatca.show');
+        Route::post('/zatca/ccsid', [PortalZatcaController::class, 'ccsid'])->middleware('throttle:6,1')->name('zatca.ccsid');
+        Route::post('/zatca/check', [PortalZatcaController::class, 'check'])->middleware('throttle:6,1')->name('zatca.check');
+        Route::post('/zatca/production', [PortalZatcaController::class, 'production'])->middleware('throttle:6,1')->name('zatca.production');
 
         // How documents issued without a number are numbered. Administrators
         // only; the controller checks the role.
