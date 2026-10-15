@@ -146,16 +146,14 @@ class PrintFieldTest extends TestCase
      */
     public function test_a_standard_names_the_exemption(): void
     {
-        $invoice = $this->invoice('standard');
-
-        $invoice->lines()->first()->update([
+        $invoice = $this->invoice('standard', line: [
             'tax_rate' => '0.00',
             'tax_amount' => '0.00',
             'exempt_code' => 'VATEX-SA-HEA',
             'exempt_reason' => 'Private healthcare to a Saudi citizen',
         ]);
 
-        $this->print($invoice->fresh(['lines']))->assertSee('Private healthcare to a Saudi citizen');
+        $this->print($invoice)->assertSee('Private healthcare to a Saudi citizen');
     }
 
     /**
@@ -175,10 +173,7 @@ class PrintFieldTest extends TestCase
      */
     public function test_a_line_names_its_unit(): void
     {
-        $invoice = $this->invoice('simplified');
-        $invoice->lines()->first()->update(['unit_code' => 'KGM']);
-
-        $this->print($invoice->fresh(['lines']))->assertSee('Kilogram');
+        $this->print($this->invoice('simplified', line: ['unit_code' => 'KGM']))->assertSee('Kilogram');
     }
 
     /**
@@ -189,10 +184,7 @@ class PrintFieldTest extends TestCase
      */
     public function test_a_legacy_unit_is_named(): void
     {
-        $invoice = $this->invoice('simplified');
-        $invoice->lines()->first()->update(['unit_code' => 'PCE']);
-
-        $this->print($invoice->fresh(['lines']))->assertSee('Piece')->assertDontSee('PCE');
+        $this->print($this->invoice('simplified', line: ['unit_code' => 'PCE']))->assertSee('Piece')->assertDontSee('PCE');
     }
 
     private function print(Invoice $invoice): TestResponse
@@ -204,10 +196,11 @@ class PrintFieldTest extends TestCase
 
     /**
      * @param  array<string, mixed>  $overrides
+     * @param  array<string, mixed>  $line
      */
-    private function invoice(string $type, array $overrides = []): Invoice
+    private function invoice(string $type, array $overrides = [], array $line = []): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create(array_merge([
+        $attributes = array_merge([
             'org_id' => $this->acme->id,
             'invoice_number' => 'ACME-'.uniqid(),
             'type' => $type,
@@ -226,7 +219,11 @@ class PrintFieldTest extends TestCase
             // A standard invoice is withheld until ZATCA stamps it, and the
             // withheld page prints the notice instead of the document.
             'cleared_xml' => $type === 'simplified' ? null : '<Invoice/>',
-        ], $overrides)));
+        ], $overrides);
+
+        // Drafted with its line and then issued, in that order: an issued
+        // invoice's lines are part of the document and cannot be added to.
+        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([...$attributes, 'status' => 'draft']));
 
         $invoice->lines()->create([
             'description' => 'Widget',
@@ -236,7 +233,10 @@ class PrintFieldTest extends TestCase
             'tax_rate' => '15.00',
             'tax_amount' => '15.00',
             'line_total' => '115.00',
+            ...$line,
         ]);
+
+        $invoice->update(['status' => $attributes['status']]);
 
         return $invoice->fresh(['lines']);
     }

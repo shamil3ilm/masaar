@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Models;
 
+use App\Domains\Invoice\Enums\InvoiceStatus;
+use App\Domains\Invoice\Exceptions\InvoiceNotEditableException;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -42,6 +44,29 @@ class InvoiceLine extends Model
             'tax_amount' => 'decimal:2',
             'line_total' => 'decimal:2',
         ];
+    }
+
+    /**
+     * A line is part of the document, so it is frozen with its invoice.
+     *
+     * Invoice guarded its own columns and nothing guarded its lines: an issued
+     * invoice's quantities, prices and VAT could be edited, added to or
+     * deleted, and the stored document no longer matched what was signed and
+     * filed.
+     */
+    protected static function booted(): void
+    {
+        $guard = function (InvoiceLine $line): void {
+            $invoice = Invoice::withoutTenantScope(fn (): ?Invoice => Invoice::query()->find($line->invoice_id));
+
+            if ($invoice !== null && $invoice->status !== InvoiceStatus::Draft) {
+                throw InvoiceNotEditableException::for($invoice);
+            }
+        };
+
+        static::creating($guard);
+        static::updating($guard);
+        static::deleting($guard);
     }
 
     /**
