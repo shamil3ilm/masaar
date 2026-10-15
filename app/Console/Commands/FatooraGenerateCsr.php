@@ -104,6 +104,18 @@ class FatooraGenerateCsr extends Command
             return Command::FAILURE;
         }
 
+        // The defaults are ZATCA's test taxpayer, which is right for the
+        // sandbox and refused anywhere else - the OTP there belongs to a real
+        // taxpayer, and this would spend it on a request for someone else.
+        $target = (string) ($this->option('target') ?: config('fatoora.environment'));
+
+        if ($target !== 'sandbox' && $vatNumber === $this->getDefinition()->getOption('vat')->getDefault()) {
+            $this->error("--vat is still the sandbox's test taxpayer, and the target is {$target}. "
+                .'Pass the real taxpayer\'s --vat, --org, --cn and --sn.');
+
+            return Command::FAILURE;
+        }
+
         // Display configuration
         $this->info('CSR Configuration:');
         $this->table(['Field', 'Value'], [

@@ -44,14 +44,37 @@ class OnboardingTlsTest extends TestCase
      */
     public function test_endpoints_come_from_config(): void
     {
-        config(['fatoora.endpoints.production' => 'https://example.test/core']);
+        config(['fatoora.endpoints.sandbox' => 'https://example.test/developer-portal']);
 
-        $command = $this->command(['--target' => 'production', '--step' => 'info']);
+        $command = $this->command(['--target' => 'sandbox', '--step' => 'info']);
 
         $this->assertSame(
-            'https://example.test/core',
+            'https://example.test/developer-portal',
             (new \ReflectionProperty($command, 'baseUrl'))->getValue($command)
         );
+    }
+
+    /**
+     * It files as ZATCA's test taxpayer, which a real environment's OTP can
+     * never be for - so it refuses there rather than spend the OTP.
+     */
+    public function test_a_real_environment_is_refused(): void
+    {
+        foreach (['simulation', 'production'] as $target) {
+            $this->artisan('fatoora:onboard', ['--step' => 'info', '--target' => $target])
+                ->expectsOutputToContain('for the sandbox and local runs')
+                ->assertFailed();
+        }
+    }
+
+    /**
+     * And a request for a real environment cannot carry the test taxpayer.
+     */
+    public function test_a_real_csr_needs_real_vat(): void
+    {
+        $this->artisan('fatoora:generate-csr', ['--target' => 'simulation'])
+            ->expectsOutputToContain('test taxpayer')
+            ->assertFailed();
     }
 
     private function verifyOption(): mixed

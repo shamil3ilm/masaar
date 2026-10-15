@@ -8,6 +8,7 @@ use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use App\Domains\Organization\Exceptions\BranchInUseException;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
+use DomainException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -135,6 +136,13 @@ class BranchService
      * Creation happens under the organization lock after looking again, so
      * concurrent first calls create one "Main Branch" between them. The first
      * look is unlocked because an existing default is the common case.
+     *
+     * The branch takes the organization's address. It used to fill a gap with
+     * an invented one - "Main Street", building 0001, Central, Riyadh, postal
+     * code 00000 - which is a seller address on a tax invoice nobody gave.
+     * Now an incomplete address is refused, and has to be completed first.
+     *
+     * @throws DomainException when the organization's address is incomplete
      */
     public function getOrCreateDefault(Organization $organization): Branch
     {
@@ -145,14 +153,36 @@ class BranchService
                 return $this->findDefault($organization) ?? $this->create($organization, [
                     'name' => 'Main Branch',
                     'name_ar' => 'الفرع الرئيسي',
-                    'street' => $organization->street ?? 'Main Street',
-                    'building_number' => $organization->building_number ?? '0001',
-                    'additional_number' => $organization->additional_street,
-                    'district' => $organization->district ?? 'Central',
-                    'city' => $organization->city ?? 'Riyadh',
-                    'postal_code' => $organization->postal_code ?? '00000',
+                    ...$this->addressOf($organization),
                 ]);
             });
+    }
+
+    /**
+     * @return array<string, string|null>
+     *
+     * @throws DomainException
+     */
+    private function addressOf(Organization $organization): array
+    {
+        $address = [
+            'street' => $organization->street,
+            'building_number' => $organization->building_number,
+            'district' => $organization->district,
+            'city' => $organization->city,
+            'postal_code' => $organization->postal_code,
+        ];
+
+        $missing = array_keys(array_filter($address, fn (mixed $value): bool => blank($value)));
+
+        if ($missing !== []) {
+            throw new DomainException(
+                'The organization address is incomplete ('.implode(', ', $missing).'). '
+                .'Complete it before a branch is created from it.'
+            );
+        }
+
+        return [...$address, 'additional_number' => $organization->additional_street];
     }
 
     /**

@@ -219,16 +219,15 @@ already built; what is missing is the OTP, and the OTP needs the registration.
 1. Sign in to the Fatoora portal as the taxpayer, switch to the **Simulation**
    environment, and generate an OTP. This is the step a developer cannot do:
    the portal authenticates a VAT-registered entity, not a person.
-2. `ZATCA_ENVIRONMENT=simulation`, then
-   `php artisan fatoora:onboard --step=full --otp=<otp> --target=simulation`.
-   The CSR template switches itself - `CsrBuilder::TEMPLATE_SIMULATION`,
-   `PREZATCA-Code-Signing` - because both commands read the environment from
-   one place. A CSR carrying another environment's template is refused.
+2. Onboard the taxpayer's organization through the platform, as described
+   under "The rehearsal that counts" below. Not `fatoora:onboard`: it files as
+   ZATCA's test taxpayer, which a real OTP can never be for, so it refuses any
+   target but the sandbox. The CSR template switches itself to
+   `PREZATCA-Code-Signing` from `ZATCA_ENVIRONMENT`.
 3. The six compliance documents go up as they do against the sandbox, and a
    **production CSID is issued on passing**. Note the name: in simulation that
    certificate is still scoped to simulation. It is not the production
    credential and does not shorten production onboarding.
-4. Then `--step=submit --target=simulation` to clear and report with it.
 
 Two things to expect that differ from the sandbox, and one to re-check:
 
@@ -246,11 +245,11 @@ Two things to expect that differ from the sandbox, and one to re-check:
 
 ### The rehearsal that counts: the platform's own path
 
-The command above proves the certificate and the signing. It keeps its
-credentials in files of its own, though, and real filing reads each
-organization's credentials from `CredentialStore`, written by the onboarding
-API. So the rehearsal that says the platform works is this one, on a separate
-deployment (the environment is per deployment, not per organization):
+Real filing reads each organization's credentials from `CredentialStore`,
+written by the onboarding API, and signs with the organization's own VAT
+number and address. So the rehearsal that says the platform works is this
+one, on a separate deployment (the environment is per deployment, not per
+organization):
 
 1. A deployment with `ZATCA_ENVIRONMENT=simulation`, migrated, with `APP_URL`
    set. Not the production deployment: credentials are environment-specific.

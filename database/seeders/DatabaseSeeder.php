@@ -15,7 +15,13 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        // A known address with the factory's password is an account anyone
+        // can sign in to. Local and testing only, as DevUsersSeeder is.
+        if (! app()->environment(['local', 'testing'])) {
+            $this->command?->warn('DatabaseSeeder creates a test account and only runs in local or testing.');
+
+            return;
+        }
 
         User::factory()->create([
             'name' => 'Test User',

@@ -154,6 +154,12 @@ main() {
     echo "Starting application services..."
     echo "=============================================="
 
+    # The worker definitions read the queue names from the environment, as the
+    # application does, and supervisord refuses an unset one - so the
+    # application's defaults are given here.
+    export ZATCA_QUEUE_NAME="${ZATCA_QUEUE_NAME:-zatca-submissions}"
+    export ZATCA_QUEUE_WEBHOOKS="${ZATCA_QUEUE_WEBHOOKS:-webhooks}"
+
     # Execute the main command (supervisord)
     exec "$@"
 }
