@@ -337,9 +337,22 @@ class InvoiceValidator
         $totals = InvoiceTotals::of($invoice->lines->map(fn ($line): array => [
             'quantity' => (string) $line->quantity,
             'unit_price' => (string) $line->unit_price,
+            // The exact net where the line has one: a net price backed out of
+            // a VAT-inclusive one is rounded.
+            'net' => $line->net_amount,
             'tax_rate' => (string) $line->tax_rate,
             'tax_category' => $line->tax_category,
         ])->all(), $discount);
+
+        // Prices entered with VAT in them keep the customer's total exact,
+        // and the VAT is what that leaves over the net. It may sit a halalah
+        // per tax category from the categories' own rounding (BR-S-09, a
+        // warning), and the total is then net plus that VAT.
+        $inclusive = (bool) $invoice->prices_include_vat;
+        $categories = $invoice->lines->map(fn ($line): string => ($line->tax_category ?? 'S').'_'.(float) $line->tax_rate)->unique()->count();
+        $expectedTotal = $inclusive
+            ? bcadd(bcsub($totals->subtotal, $discount, 2), (string) ($invoice->tax_amount ?? '0'), 2)
+            : $totals->total;
 
         // BR-CO-10
         if (! $this->agrees($invoice->subtotal, $totals->subtotal)) {
@@ -347,13 +360,13 @@ class InvoiceValidator
         }
 
         // BR-CO-14
-        if (! $this->agrees($invoice->tax_amount, $totals->tax)) {
+        if (! $this->agrees($invoice->tax_amount, $totals->tax, $inclusive ? max(1, $categories) : 1)) {
             $errors[] = "BR-CO-14: VAT total {$invoice->tax_amount} does not match its tax categories ({$totals->tax})";
         }
 
         // BR-CO-15
-        if (! $this->agrees($invoice->total, $totals->total)) {
-            $errors[] = "BR-CO-15: Invoice total {$invoice->total} does not match subtotal less discount plus VAT ({$totals->total})";
+        if (! $this->agrees($invoice->total, $expectedTotal)) {
+            $errors[] = "BR-CO-15: Invoice total {$invoice->total} does not match subtotal less discount plus VAT ({$expectedTotal})";
         }
 
         // Discount validation (BR-KSA-DEC-01)
@@ -376,13 +389,14 @@ class InvoiceValidator
     }
 
     /**
-     * Within a halalah, the tolerance this check has always allowed.
+     * Within a halalah - the tolerance this check has always allowed - or a
+     * halalah per tax category where the VAT is fixed by a gross total.
      */
-    private function agrees(mixed $stored, string $computed): bool
+    private function agrees(mixed $stored, string $computed, int $halalahs = 1): bool
     {
         $difference = bcsub((string) ($stored ?? '0'), $computed, 2);
 
-        return bccomp(ltrim($difference, '-'), '0.01', 2) <= 0;
+        return bccomp(ltrim($difference, '-'), bcmul('0.01', (string) $halalahs, 2), 2) <= 0;
     }
 
     /**

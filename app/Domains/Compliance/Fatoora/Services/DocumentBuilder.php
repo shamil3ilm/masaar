@@ -188,6 +188,9 @@ class DocumentBuilder
             'quantity' => (float) $line->quantity,
             'unitCode' => UnitCode::normalise($line->unit_code),
             'unitPrice' => (float) $line->unit_price,
+            // The exact net, where the line has one. A net price backed out
+            // of a VAT-inclusive one is rounded; this is not.
+            'lineNet' => $line->net_amount !== null ? (float) $line->net_amount : null,
             'taxRate' => (float) $line->tax_rate,
             'taxAmount' => (float) $line->tax_amount,
             'lineTotal' => (float) $line->line_total,
@@ -258,6 +261,10 @@ class DocumentBuilder
             isExport: (bool) ($invoice->is_export ?? false),
             isSummary: (bool) ($invoice->is_summary ?? false),
             isSelfBilled: (bool) ($invoice->is_self_billed ?? false),
+            // Prices entered with VAT in them: the stored VAT is the figure
+            // that keeps the customer's total exact, and the document
+            // declares it rather than recomputing it.
+            isTaxInclusive: (bool) $invoice->prices_include_vat,
         );
     }
 

@@ -91,7 +91,7 @@
                             {{ rtrim(rtrim((string) $line->quantity, '0'), '.') }}
                         </td>
                         <td class="px-6 py-3 text-right text-sm tabular-nums text-gray-700">
-                            @include('portal.partials.money', ['amount' => $line->unit_price, 'currency' => $invoice->currency])
+                            @include('portal.partials.money', ['amount' => $line->priceAsEntered((bool) $invoice->prices_include_vat), 'currency' => $invoice->currency])
                         </td>
                         <td class="px-6 py-3 text-right text-sm tabular-nums text-gray-700">
                             @include('portal.partials.money', ['amount' => $line->tax_amount, 'currency' => $invoice->currency])

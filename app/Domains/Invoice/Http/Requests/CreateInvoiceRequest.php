@@ -157,6 +157,10 @@ class CreateInvoiceRequest extends FormRequest
                 Rule::requiredIf(fn () => in_array($this->document_type, ['credit_note', 'debit_note'])),
             ],
 
+            // Whether unit_price and discount_amount include VAT. Left out,
+            // the organization's own setting decides.
+            'prices_include_vat' => ['sometimes', 'boolean'],
+
             // Discount
             // Two places, as stored; never more than the lines (checked after).
             'discount_amount' => ['nullable', 'numeric', 'min:0', 'decimal:0,2'],

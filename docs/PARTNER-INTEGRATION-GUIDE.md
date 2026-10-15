@@ -1526,6 +1526,29 @@ $invoiceData = [
 
 ---
 
+## Appendix D: Prices Including VAT
+
+Unit prices can be sent with or without VAT in them.
+
+| Field | Where | Description |
+|-------|-------|-------------|
+| `prices_include_vat` | Organization (`PUT /api/organizations/{id}`) | The default for its invoices. `false` unless set. |
+| `prices_include_vat` | Invoice | Overrides the organization's default for this invoice. Applies to `unit_price` and `discount_amount`. |
+
+With VAT included, the customer's figures are the ones kept exact: each line's total and the invoice total are what was sent. The net ZATCA requires is backed out of them, per tax category.
+
+```php
+// Three at 10.00, VAT included: the customer pays 30.00.
+'prices_include_vat' => true,
+'lines' => [['description' => 'Widget', 'quantity' => 3, 'unit_price' => 10.00, 'tax_rate' => 15]],
+// Stored and returned: subtotal 26.09, tax_amount 3.91, total 30.00.
+// The line's unit_price is the net (8.70) and net_amount the exact net (26.09).
+```
+
+Occasionally no rounded net and rounded VAT add up to the gross. A single item at 10.00 is one case: a net of 8.70 with its own VAT is 10.01. The total stays 10.00 and the VAT is 1.30. ZATCA may report this under BR-S-09 as a warning, never as an error, and the invoice is accepted.
+
+---
+
 *Document Version: 1.1*
 *Masaar API Version: v1*
 

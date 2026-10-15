@@ -65,6 +65,7 @@ export interface InvoiceStoreBody {
   buyer_address?: unknown[];
   billing_ref?: string;
   adjustment_reason?: string;
+  prices_include_vat?: boolean;
   discount_amount?: number;
   notes?: string;
   lines: unknown[];
@@ -87,6 +88,7 @@ export interface InvoiceUpdateBody {
   buyer_address?: unknown[];
   billing_ref?: string;
   adjustment_reason?: string;
+  prices_include_vat?: boolean;
   discount_amount?: number;
   notes?: string;
   lines: unknown[];
@@ -109,6 +111,7 @@ export interface InvoiceUpdateBody {
   buyer_address?: unknown[];
   billing_ref?: string;
   adjustment_reason?: string;
+  prices_include_vat?: boolean;
   discount_amount?: number;
   notes?: string;
   lines: unknown[];
@@ -131,6 +134,7 @@ export interface V1InvoiceControllerBody {
   buyer_address?: unknown[];
   billing_ref?: string;
   adjustment_reason?: string;
+  prices_include_vat?: boolean;
   discount_amount?: number;
   notes?: string;
   lines: unknown[];
@@ -153,6 +157,7 @@ export interface V1InvoiceControllerBody {
   buyer_address?: unknown[];
   billing_ref?: string;
   adjustment_reason?: string;
+  prices_include_vat?: boolean;
   discount_amount?: number;
   notes?: string;
   lines: unknown[];
@@ -175,6 +180,7 @@ export interface V1PipelineControllerBody {
   buyer_address?: unknown[];
   billing_ref?: string;
   adjustment_reason?: string;
+  prices_include_vat?: boolean;
   discount_amount?: number;
   notes?: string;
   lines: unknown[];

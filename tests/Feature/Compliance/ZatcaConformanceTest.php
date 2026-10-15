@@ -403,6 +403,70 @@ class ZatcaConformanceTest extends TestCase
         $this->assertSame([], $result['warnings'], 'an advisory fired on a drafted invoice.');
     }
 
+    /**
+     * Prices entered with VAT in them: the net is backed out of the gross,
+     * and the document still reconciles.
+     */
+    public function test_inclusive_prices_validate(): void
+    {
+        $result = $this->validate($this->drafted(inclusive: true, lines: [
+            ['description' => 'Widget', 'quantity' => 3, 'unit_price' => '10.00'],
+            ['description' => 'Bolt', 'quantity' => 7, 'unit_price' => '4.99'],
+        ], discount: '5.00'));
+
+        $this->assertSame([], $this->businessRules($result['errors']), 'ZATCA rejected an invoice priced VAT-inclusive.');
+        $this->assertSame([], $result['warnings'], 'an advisory fired on an invoice priced VAT-inclusive.');
+    }
+
+    /**
+     * A gross that the net and VAT, each rounded, cannot reach: 10.00 is 8.70
+     * and 1.31, which is 10.01. The customer's 10.00 is kept and the VAT is
+     * 1.30, which BR-S-09 notices - as a warning - and nothing else does.
+     */
+    public function test_an_unreachable_gross_validates(): void
+    {
+        $result = $this->validate($this->drafted(inclusive: true, lines: [
+            ['description' => 'Widget', 'quantity' => 1, 'unit_price' => '10.00'],
+        ]));
+
+        $this->assertSame([], $this->businessRules($result['errors']), 'ZATCA rejected an exact inclusive total.');
+
+        foreach ($result['warnings'] as $warning) {
+            $this->assertStringContainsString('BR-S-09', $warning, 'an advisory other than BR-S-09 fired.');
+        }
+    }
+
+    /**
+     * Draft a standard invoice through InvoiceDrafter and sign it.
+     *
+     * @param  list<array<string, mixed>>  $lines
+     */
+    private function drafted(bool $inclusive, array $lines, string $discount = '0'): string
+    {
+        $invoice = app(InvoiceDrafter::class)->draft([
+            'invoice_number' => 'INCL-'.uniqid(),
+            'type' => 'standard',
+            'document_type' => 'invoice',
+            'issue_date' => now()->toDateString(),
+            'supply_date' => now()->toDateString(),
+            'buyer_name' => 'Beta Industries',
+            'buyer_vat_number' => '399999999800003',
+            'buyer_address' => [
+                'street' => 'Olaya Street',
+                'building_number' => '4321',
+                'district' => 'Al Murooj',
+                'city' => 'Riyadh',
+                'postal_code' => '11564',
+                'country_code' => 'SA',
+            ],
+            'prices_include_vat' => $inclusive,
+            'discount_amount' => $discount,
+            'lines' => $lines,
+        ], $this->organization->id);
+
+        return app(Submitter::class)->generate($invoice->fresh(['lines']), $this->organization)['signed_xml'];
+    }
+
     #[DataProvider('taxCategories')]
     public function test_untaxed_lines_validate(string $category, string $code, float $rate): void
     {

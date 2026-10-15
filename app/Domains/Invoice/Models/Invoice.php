@@ -70,6 +70,9 @@ class Invoice extends Model
         'erp_reference_id',
         // The pipeline Idempotency-Key it was created under, so a retry finds it.
         'idempotency_key',
+        // Whether its prices were entered with VAT in them. Frozen with the
+        // rest of the document once issued.
+        'prices_include_vat',
         // ZATCA BT-3 invoice sub-type flags (bits 3-7)
         'is_third_party',
         'is_nominal',
@@ -99,6 +102,7 @@ class Invoice extends Model
             'is_export' => 'boolean',
             'is_summary' => 'boolean',
             'is_self_billed' => 'boolean',
+            'prices_include_vat' => 'boolean',
         ];
     }
 
