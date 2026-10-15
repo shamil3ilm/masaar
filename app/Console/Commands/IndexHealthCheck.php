@@ -51,27 +51,6 @@ class IndexHealthCheck extends Command
         'invoice_submissions' => 500,
     ];
 
-    /**
-     * Sequential scan threshold per hour.
-     */
-    private const SEQ_SCAN_WARNING = 1000;
-
-    private const SEQ_SCAN_CRITICAL = 5000;
-
-    /**
-     * Table bloat thresholds (percentage).
-     */
-    private const TABLE_BLOAT_WARNING = 20;
-
-    private const TABLE_BLOAT_CRITICAL = 50;
-
-    /**
-     * Index bloat thresholds (percentage).
-     */
-    private const INDEX_BLOAT_WARNING = 30;
-
-    private const INDEX_BLOAT_CRITICAL = 60;
-
     public function handle(): int
     {
         $specificTable = $this->option('table');
@@ -295,6 +274,10 @@ class IndexHealthCheck extends Command
         try {
             return DB::getSchemaBuilder()->hasTable($table);
         } catch (\Exception $e) {
+            // Logged, or a database that cannot be reached reads here as a
+            // table that does not exist.
+            Log::warning('Index health: could not check for table', ['table' => $table, 'error' => $e->getMessage()]);
+
             return false;
         }
     }
@@ -307,6 +290,8 @@ class IndexHealthCheck extends Command
         try {
             return DB::table($table)->count();
         } catch (\Exception $e) {
+            Log::warning('Index health: could not count rows', ['table' => $table, 'error' => $e->getMessage()]);
+
             return -1;
         }
     }
@@ -338,6 +323,8 @@ class IndexHealthCheck extends Command
                 return (float) ($result->size_mb ?? 0);
             }
         } catch (\Exception $e) {
+            Log::warning('Index health: could not read table size', ['table' => $table, 'error' => $e->getMessage()]);
+
             return -1;
         }
 

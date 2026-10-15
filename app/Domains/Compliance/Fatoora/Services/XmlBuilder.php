@@ -43,10 +43,6 @@ class XmlBuilder
      */
     public const SIGNATURE_REFERENCE = 'urn:oasis:names:specification:ubl:signature:Invoice';
 
-    private const SIG_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonSignatureComponents-2';
-
-    private const SBC_NS = 'urn:oasis:names:specification:ubl:schema:xsd:SignatureBasicComponents-2';
-
     private DOMDocument $dom;
 
     private DOMElement $root;

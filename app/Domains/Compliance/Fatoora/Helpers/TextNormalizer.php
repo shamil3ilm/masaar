@@ -19,18 +19,6 @@ namespace App\Domains\Compliance\Fatoora\Helpers;
 final class TextNormalizer
 {
     /**
-     * Arabic prefixes to normalize.
-     */
-    private const ARABIC_PREFIXES = [
-        'ال',     // Al
-        'آل',     // Aal
-        'بن',     // Bin
-        'إبن',    // Ibn
-        'أبو',    // Abu
-        'عبد',    // Abd
-    ];
-
-    /**
      * Arabic diacritics (tashkeel) to remove.
      */
     private const ARABIC_DIACRITICS = [

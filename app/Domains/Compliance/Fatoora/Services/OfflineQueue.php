@@ -14,7 +14,6 @@ use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Compliance\Fatoora\Models\OfflineItem;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -44,11 +43,6 @@ class OfflineQueue
     public const STATE_COMPLETED = 'completed';
 
     public const STATE_FAILED = 'failed';
-
-    /**
-     * Cache key prefix for queue items.
-     */
-    private const CACHE_PREFIX = 'zatca:offline_queue:';
 
     /**
      * Max queue size per organization.
