@@ -69,8 +69,8 @@ class VatPeriodTest extends TestCase
      */
     public function test_same_period_adjustment_is_quiet(): void
     {
-        $original = $this->invoice('INV-1', 'invoice', now()->toDateString());
-        $note = $this->invoice('CN-1', 'credit_note', now()->toDateString(), $original->id);
+        $original = $this->invoice('INV-1', 'invoice', now()->toDateString(), status: 'issued');
+        $note = $this->invoice('CN-1', 'credit_note', now()->toDateString(), $original->invoice_number);
 
         $result = $this->validate($note);
 
@@ -84,8 +84,8 @@ class VatPeriodTest extends TestCase
      */
     public function test_cross_period_adjustment_warns(): void
     {
-        $original = $this->invoice('INV-1', 'invoice', now()->subMonths(3)->toDateString());
-        $note = $this->invoice('CN-1', 'credit_note', now()->toDateString(), $original->id);
+        $original = $this->invoice('INV-1', 'invoice', now()->subMonths(3)->toDateString(), status: 'issued');
+        $note = $this->invoice('CN-1', 'credit_note', now()->toDateString(), $original->invoice_number);
 
         $result = $this->validate($note);
 
@@ -106,6 +106,49 @@ class VatPeriodTest extends TestCase
     }
 
     /**
+     * The reference is the original's invoice number - what the document
+     * carries in BillingReference, what the partner guide tells an ERP to
+     * send, and what the portal asks for. This looked it up as a row id, so
+     * every note referenced the documented way was refused at filing as
+     * "original invoice not found".
+     */
+    public function test_reference_is_the_invoice_number(): void
+    {
+        $this->invoice('INV-7', 'invoice', now()->toDateString(), status: 'issued');
+        $note = $this->invoice('CN-7', 'credit_note', now()->toDateString(), 'INV-7');
+
+        $this->assertTrue($this->validate($note)['valid']);
+    }
+
+    /**
+     * The lookup ran without the tenant scope, so a reference resolved
+     * against any organization's invoices.
+     */
+    public function test_another_organizations_invoice_is_unknown(): void
+    {
+        $rival = Organization::create(['name' => 'Rival', 'country' => 'SA']);
+        $theirs = $this->invoice('INV-9', 'invoice', now()->toDateString(), status: 'issued', organization: $rival);
+
+        $byNumber = $this->invoice('CN-9', 'credit_note', now()->toDateString(), 'INV-9');
+        $byId = $this->invoice('CN-10', 'credit_note', now()->toDateString(), $theirs->id);
+
+        $this->assertFalse($this->validate($byNumber)['valid']);
+        $this->assertFalse($this->validate($byId)['valid']);
+    }
+
+    /**
+     * A draft has no counter, no hash and no standing with the authority;
+     * there is nothing yet for a note to correct.
+     */
+    public function test_an_unissued_original_is_refused(): void
+    {
+        $this->invoice('INV-3', 'invoice', now()->toDateString());
+        $note = $this->invoice('CN-3', 'credit_note', now()->toDateString(), 'INV-3');
+
+        $this->assertFalse($this->validate($note)['valid']);
+    }
+
+    /**
      * @return array{valid: bool, warning: ?string, suggested_period: ?string}
      */
     private function validate(Invoice $note): array
@@ -113,14 +156,20 @@ class VatPeriodTest extends TestCase
         return app(VatPeriodTracker::class)->validateAdjustmentPeriod($note);
     }
 
-    private function invoice(string $number, string $documentType, ?string $issueDate = null, ?string $billingRef = null): Invoice
-    {
+    private function invoice(
+        string $number,
+        string $documentType,
+        ?string $issueDate = null,
+        ?string $billingRef = null,
+        string $status = 'draft',
+        ?Organization $organization = null,
+    ): Invoice {
         return Invoice::withoutTenantScope(fn () => Invoice::create([
-            'org_id' => $this->organization->id,
+            'org_id' => ($organization ?? $this->organization)->id,
             'invoice_number' => $number,
             'type' => 'standard',
             'document_type' => $documentType,
-            'status' => 'draft',
+            'status' => $status,
             'issue_date' => $issueDate ?? now()->toDateString(),
             'billing_ref' => $billingRef,
             'currency' => 'SAR',

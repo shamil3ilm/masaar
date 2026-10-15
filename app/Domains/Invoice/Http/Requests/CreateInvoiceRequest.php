@@ -147,7 +147,15 @@ class CreateInvoiceRequest extends FormRequest
                 // Required for credit/debit notes
                 Rule::requiredIf(fn () => in_array($this->document_type, ['credit_note', 'debit_note'])),
             ],
-            'adjustment_reason' => ['nullable', 'string', 'max:255'],
+            // BR-KSA-17: the authority rejects a note that does not say why.
+            // Optional here, a note without one was signed - spending its
+            // counter - and only then refused.
+            'adjustment_reason' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::requiredIf(fn () => in_array($this->document_type, ['credit_note', 'debit_note'])),
+            ],
 
             // Discount
             // Two places, as stored; never more than the lines (checked after).
@@ -264,6 +272,7 @@ class CreateInvoiceRequest extends FormRequest
             'document_type.not_in' => 'Proforma invoices (document_type=proforma) cannot be submitted to ZATCA.',
             // Credit/debit note references
             'billing_ref.required_if' => 'Original invoice reference is required for credit/debit notes.',
+            'adjustment_reason.required' => 'A credit or debit note must state its reason (BR-KSA-17).',
             // Tax exemption
             'lines.*.exempt_code.in' => 'Invalid ZATCA exemption code. Must be a valid VATEX-SA-* code.',
             'lines.*.exempt_reason.required_with' => 'Exemption reason is required when exemption code is provided.',
