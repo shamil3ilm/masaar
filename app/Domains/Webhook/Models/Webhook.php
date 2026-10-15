@@ -23,6 +23,10 @@ class Webhook extends Model
     use BelongsToTenant;
     use HasUuids;
 
+    public const FAILURES_BEFORE_DISABLE = 10;
+
+    public const SILENT_HOURS_BEFORE_DISABLE = 24;
+
     protected $fillable = [
         'org_id',
         'url',
@@ -119,8 +123,16 @@ class Webhook extends Model
     {
         $this->increment('failure_count');
 
-        // Disable after 10 consecutive failures
-        if ($this->failure_count >= 10) {
+        // Ten failed deliveries in a row, and nothing delivered for a day.
+        // Ten alone disabled a busy endpoint during a half-hour outage, when
+        // ten invoices are an ordinary morning. last_triggered_at is written
+        // only on success, so it is when the receiver last answered; one that
+        // never has is measured from when it was added.
+        $lastAnswered = $this->last_triggered_at ?? $this->created_at;
+
+        if ($this->failure_count >= self::FAILURES_BEFORE_DISABLE
+            && $lastAnswered !== null
+            && $lastAnswered->lte(now()->subHours(self::SILENT_HOURS_BEFORE_DISABLE))) {
             $this->update(['is_active' => false]);
         }
     }

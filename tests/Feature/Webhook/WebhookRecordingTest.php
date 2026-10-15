@@ -17,7 +17,8 @@ use Tests\TestCase;
  * What a delivery leaves behind: a log entry and the endpoint's health.
  *
  * An endpoint that keeps failing is switched off after ten consecutive
- * failures, and a success forgives the ones before it.
+ * failures with nothing delivered for a day, and a success forgives the ones
+ * before it.
  */
 class WebhookRecordingTest extends TestCase
 {
@@ -52,7 +53,7 @@ class WebhookRecordingTest extends TestCase
     public function test_tenth_failure_disables_endpoint(): void
     {
         Http::fake(['*' => Http::response('down', 500)]);
-        $webhook = $this->webhook(9);
+        $webhook = $this->webhook(9, lastAnswered: now()->subDays(2));
 
         app(WebhookService::class)->deliver($webhook, 'invoice.cleared', []);
 
@@ -60,6 +61,23 @@ class WebhookRecordingTest extends TestCase
 
         $this->assertSame(10, $stored->failure_count);
         $this->assertFalse($stored->is_active);
+    }
+
+    /**
+     * Ten failures inside an hour are an outage, not a dead endpoint: a busy
+     * receiver that answered this morning stays on.
+     */
+    public function test_a_short_outage_does_not_disable(): void
+    {
+        Http::fake(['*' => Http::response('down', 500)]);
+        $webhook = $this->webhook(9, lastAnswered: now()->subHour());
+
+        app(WebhookService::class)->deliver($webhook, 'invoice.cleared', []);
+
+        $stored = $this->reload($webhook);
+
+        $this->assertSame(10, $stored->failure_count);
+        $this->assertTrue($stored->is_active);
     }
 
     public function test_unreachable_endpoint_is_a_failure(): void
@@ -90,7 +108,7 @@ class WebhookRecordingTest extends TestCase
         $this->assertTrue((bool) WebhookLog::where('webhook_id', $webhook->id)->sole()->success);
     }
 
-    private function webhook(int $failures): Webhook
+    private function webhook(int $failures, ?\DateTimeInterface $lastAnswered = null): Webhook
     {
         $webhook = (new Webhook)->forceFill([
             'org_id' => $this->organization->id,
@@ -99,6 +117,7 @@ class WebhookRecordingTest extends TestCase
             'events' => ['invoice.cleared'],
             'is_active' => true,
             'failure_count' => $failures,
+            'last_triggered_at' => $lastAnswered,
         ]);
 
         $webhook->save();

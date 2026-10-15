@@ -13,6 +13,8 @@ use App\Domains\Compliance\Fatoora\Events\InvoiceWarning;
 use App\Domains\Compliance\Fatoora\Listeners\DispatchInvoiceWebhook;
 use App\Domains\Platform\Listeners\AlertOnBackupTrouble;
 use App\Domains\Platform\Listeners\RefuseUnencryptedBackup;
+use App\Domains\Webhook\Events\CertificateExpiring;
+use App\Domains\Webhook\Listeners\DispatchCertificateWebhook;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 use Spatie\Backup\Events\BackupHasFailed;
 use Spatie\Backup\Events\CleanupHasFailed;
@@ -51,6 +53,9 @@ class EventServiceProvider extends ServiceProvider
         ],
         InvoiceSubmitted::class => [
             DispatchInvoiceWebhook::class,
+        ],
+        CertificateExpiring::class => [
+            DispatchCertificateWebhook::class,
         ],
 
         // Backups: refuse to dump unencrypted, and page when one fails or goes stale.

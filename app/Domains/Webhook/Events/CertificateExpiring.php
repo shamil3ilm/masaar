@@ -34,19 +34,19 @@ class CertificateExpiring
 
     /**
      * Get the webhook payload.
+     *
+     * The data alone: WebhookService wraps it in the envelope - id, event,
+     * timestamp - and a payload carrying its own envelope arrived at
+     * data.data, below where a receiver's handler looks.
      */
     public function getWebhookPayload(): array
     {
         return [
-            'event' => $this->getWebhookEventName(),
-            'data' => [
-                'org_id' => $this->organizationId,
-                'days_remaining' => $this->daysRemaining,
-                'expiry_date' => $this->expiryDate,
-                'severity' => $this->getSeverity(),
-                'message' => $this->getMessage(),
-            ],
-            'timestamp' => now()->toIso8601String(),
+            'org_id' => $this->organizationId,
+            'days_remaining' => $this->daysRemaining,
+            'expiry_date' => $this->expiryDate,
+            'severity' => $this->getSeverity(),
+            'message' => $this->getMessage(),
         ];
     }
 

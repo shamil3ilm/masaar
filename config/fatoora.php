@@ -472,8 +472,8 @@ return [
         'timeout' => (int) env('ZATCA_QUEUE_TIMEOUT', 120),
         'backoff' => [10, 60, 300], // seconds between retries
 
-        // Read by DispatchInvoiceWebhook. Separate from submissions so a slow
-        // customer endpoint cannot delay a clearance.
+        // Read by DispatchInvoiceWebhook and DeliverWebhook. Separate from
+        // submissions so a slow customer endpoint cannot delay a clearance.
         'webhooks_queue' => env('ZATCA_QUEUE_WEBHOOKS', 'webhooks'),
 
         // Recommended minimum workers per queue
