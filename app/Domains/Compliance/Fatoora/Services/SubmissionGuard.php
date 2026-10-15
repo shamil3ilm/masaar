@@ -39,6 +39,7 @@ class SubmissionGuard
         private readonly VatPeriodTracker $vatPeriodTracker,
         private readonly CredentialStore $credentials,
         private readonly KillSwitch $killSwitch,
+        private readonly FilingClearance $clearance,
     ) {}
 
     /**
@@ -69,13 +70,9 @@ class SubmissionGuard
             (string) $organization->id
         );
 
-        // 1. Check organization status
-        if ($organization->isSuspended()) {
-            throw new FatooraException(
-                'Organization is suspended',
-                ErrorCode::AUTH_ORGANIZATION_SUSPENDED
-            );
-        }
+        // 1. Check organization status: suspended, awaiting review or
+        // rejected. Not its plan - an issued invoice is filed regardless.
+        $this->clearance->assertMayFile($organization);
 
         // 2. Check certificate validity
         $this->checkCertificateHealth($organization);

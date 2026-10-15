@@ -4,6 +4,8 @@ namespace App\Domains\Auth\Models;
 
 use App\Domains\Organization\Models\Organization;
 use Database\Factories\UserFactory;
+use Illuminate\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -17,9 +19,9 @@ use Tymon\JWTAuth\Contracts\JWTSubject;
  * Users can belong to multiple organizations (multi-tenant).
  * JWT token represents the user identity, not the organization.
  */
-class User extends Authenticatable implements JWTSubject
+class User extends Authenticatable implements JWTSubject, MustVerifyEmailContract
 {
-    use HasFactory, HasUuids, Notifiable;
+    use HasFactory, HasUuids, MustVerifyEmail, Notifiable;
 
     /**
      * `is_platform_admin` is deliberately absent: it is a cross-tenant
@@ -53,6 +55,8 @@ class User extends Authenticatable implements JWTSubject
             'two_factor_recovery_codes' => 'encrypted:array',
             'two_factor_confirmed_at' => 'datetime',
             'two_factor_enrolment_expires_at' => 'datetime',
+            'terms_accepted_at' => 'datetime',
+            'password_changed_at' => 'datetime',
         ];
     }
 

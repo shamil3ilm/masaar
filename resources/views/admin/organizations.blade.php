@@ -6,6 +6,10 @@
 <div class="mb-6">
     <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Organizations</h2>
     <p class="text-gray-500 dark:text-gray-400">Manage all registered organizations</p>
+    <div class="mt-3 flex gap-4 text-sm">
+        <a href="{{ route('admin.organizations') }}" class="{{ request('status') ? 'text-gray-500 dark:text-gray-400' : 'font-semibold text-teal-700 dark:text-teal-300' }} hover:underline">All</a>
+        <a href="{{ route('admin.organizations', ['status' => 'pending_review']) }}" class="{{ request('status') === 'pending_review' ? 'font-semibold text-teal-700 dark:text-teal-300' : 'text-gray-500 dark:text-gray-400' }} hover:underline">Awaiting review</a>
+    </div>
 </div>
 
 <div class="bg-white dark:bg-gray-900 rounded-lg shadow overflow-hidden">

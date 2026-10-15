@@ -1,12 +1,16 @@
 <?php
 
+use App\Domains\Auth\Http\Controllers\EmailVerificationController;
+use App\Domains\Auth\Http\Controllers\PasswordResetController;
 use App\Domains\Auth\Http\Controllers\SessionAuthController;
+use App\Domains\Auth\Http\Controllers\SignupController;
 use App\Domains\Auth\Http\Controllers\TwoFactorController;
 use App\Domains\Branding\Http\Controllers\AdminBrandingController;
 use App\Domains\Branding\Http\Controllers\PortalBrandingController;
 use App\Domains\Branding\Http\Controllers\ThemeAssetController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\AdminAlertController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\AdminKillSwitchController;
+use App\Domains\Compliance\Fatoora\Http\Controllers\PortalZatcaController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceDraftController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceFilingController;
@@ -16,6 +20,7 @@ use App\Domains\Organization\Http\Controllers\CustomerPortalController;
 use App\Domains\Organization\Http\Controllers\PortalCompanyController;
 use App\Domains\Platform\Http\Controllers\AdminAuditController;
 use App\Domains\Platform\Http\Controllers\AdminController;
+use App\Domains\Platform\Http\Controllers\AdminOrganizationReviewController;
 use App\Domains\Platform\Http\Controllers\AdminSettingsController;
 use App\Domains\Platform\Http\Controllers\AdminUserController;
 use App\Domains\Webhook\Http\Controllers\AdminWebhookController;
@@ -68,6 +73,34 @@ Route::post('/logout', [SessionAuthController::class, 'logout'])
     ->middleware('auth')
     ->name('logout');
 
+// A business signing itself up, proving its email address, and getting back
+// in after a forgotten password. Each form that sends mail or creates
+// something is throttled.
+Route::middleware('guest')->group(function () {
+    Route::get('/register', [SignupController::class, 'create'])->name('register');
+    Route::post('/register', [SignupController::class, 'store'])
+        ->middleware('throttle:5,1')
+        ->name('register.store');
+    Route::get('/forgot-password', [PasswordResetController::class, 'request'])->name('password.request');
+    Route::post('/forgot-password', [PasswordResetController::class, 'email'])
+        ->middleware('throttle:5,1')
+        ->name('password.email');
+    Route::get('/reset-password/{token}', [PasswordResetController::class, 'edit'])->name('password.reset');
+    Route::post('/reset-password', [PasswordResetController::class, 'update'])
+        ->middleware('throttle:10,1')
+        ->name('password.update');
+});
+
+Route::middleware('auth')->group(function () {
+    Route::get('/email/verify', [EmailVerificationController::class, 'notice'])->name('verification.notice');
+    Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
+        ->middleware(['signed', 'throttle:6,1'])
+        ->name('verification.verify');
+    Route::post('/email/verification-notification', [EmailVerificationController::class, 'resend'])
+        ->middleware('throttle:6,1')
+        ->name('verification.send');
+});
+
 // A platform admin's second factor, between the password and the console.
 // Throttled like the login itself, and per admin inside the controller.
 Route::get('/login/two-factor', [TwoFactorController::class, 'showChallenge'])->name('login.two-factor');
@@ -98,7 +131,9 @@ Route::prefix('admin')->name('admin.')
     // admin.audit records every change made through the console - see
     // AuditAdminAction. On the group, so a new admin action is on the record
     // without anyone having to remember it.
-    ->middleware(['auth', 'platform.admin', 'admin.audit'])
+    // auth.session ends this session when the account's password changes
+    // elsewhere - a reset is how someone takes an account back.
+    ->middleware(['auth', 'auth.session', 'platform.admin', 'admin.audit'])
     // Every identifier in this group names a HasUuids model, so anything that
     // is not a UUID is a mistyped URL and is a 404 at the router, before a
     // query is built from it. Two reasons beyond tidiness:
@@ -117,6 +152,10 @@ Route::prefix('admin')->name('admin.')
         Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
         Route::get('/organizations', [AdminController::class, 'organizations'])->name('organizations');
         Route::get('/organizations/{id}', [AdminController::class, 'organizationDetail'])->name('organization.detail');
+        // A business that signed itself up: approve it and assign its plan,
+        // or turn it down with a reason. Either way its admins are emailed.
+        Route::post('/organizations/{id}/approve', [AdminOrganizationReviewController::class, 'approve'])->name('organizations.approve');
+        Route::post('/organizations/{id}/reject', [AdminOrganizationReviewController::class, 'reject'])->name('organizations.reject');
         Route::get('/users', [AdminUserController::class, 'index'])->name('users.index');
         Route::get('/users/{userId}', [AdminUserController::class, 'show'])->name('users.show');
         // Suspending locks someone out of everything at once, so it is a POST
@@ -196,7 +235,10 @@ Route::prefix('portal')->name('portal.')->middleware('auth')->group(function () 
 });
 
 Route::prefix('portal')->name('portal.')
-    ->middleware(['auth', 'portal.tenant'])
+    // Verified: a signed-up account proves its email address before it sees
+    // the portal. Everyone with an account before sign-up existed counts as
+    // verified (migration 0370).
+    ->middleware(['auth', 'auth.session', 'verified', 'portal.tenant'])
     ->whereUuid(['invoiceId', 'userId'])
     ->group(function () {
         Route::get('/', [CustomerPortalController::class, 'dashboard'])->name('dashboard');
@@ -223,6 +265,15 @@ Route::prefix('portal')->name('portal.')
         // complete. Administrators only; the controller checks the role.
         Route::get('/company', [PortalCompanyController::class, 'edit'])->name('company.edit');
         Route::post('/company', [PortalCompanyController::class, 'update'])->name('company.update');
+
+        // Connecting to ZATCA: OTP, compliance checks, production
+        // certificate. Administrators only, and only once the company is
+        // approved; the controller checks both. Each step reaches ZATCA, so
+        // they are throttled.
+        Route::get('/zatca', [PortalZatcaController::class, 'show'])->name('zatca.show');
+        Route::post('/zatca/ccsid', [PortalZatcaController::class, 'ccsid'])->middleware('throttle:6,1')->name('zatca.ccsid');
+        Route::post('/zatca/check', [PortalZatcaController::class, 'check'])->middleware('throttle:6,1')->name('zatca.check');
+        Route::post('/zatca/production', [PortalZatcaController::class, 'production'])->middleware('throttle:6,1')->name('zatca.production');
 
         // How documents issued without a number are numbered. Administrators
         // only; the controller checks the role.

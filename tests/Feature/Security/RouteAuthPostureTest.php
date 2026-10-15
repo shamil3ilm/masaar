@@ -29,6 +29,12 @@ class RouteAuthPostureTest extends TestCase
     private const PUBLIC_ROUTES = [
         '/' => 'Marketing landing page',
         'login' => 'Credential entry form',
+        // A business signing itself up, and getting back in after a forgotten
+        // password: before there is anyone to sign in as.
+        'register' => 'Sign-up form',
+        'forgot-password' => 'Password reset request form',
+        'reset-password/{token}' => 'Password reset form, from the emailed link',
+        'reset-password' => 'Password reset submission, checked against the emailed token',
         // Reached after the password, before sign-in: a platform admin is not
         // authenticated until this checks the second factor. Each refuses
         // anyone without a fresh pending sign-in in the session.

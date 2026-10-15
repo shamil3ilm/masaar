@@ -40,6 +40,9 @@
         <env name="PLATFORM_LICENSE_ENABLED" value="false"/>
         <!-- On for the suite, so the UAE code stays tested while a deployment keeps it off. -->
         <env name="UAE_FTA_ENABLED" value="true"/>
+        <!-- Off for the suite: its fixtures issue for organizations without a
+             licence. LicenceGateTest turns it on. -->
+        <env name="LICENSING_FILING_REQUIRES_LICENCE" value="false"/>
         <!--
             ZATCA work now honours its configured queue connection instead of
             ignoring it, so an operator's own .env would otherwise decide where

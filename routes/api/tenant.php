@@ -66,7 +66,7 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
 
         // Obtaining a CSID is how the organization gets the keys every invoice
         // is signed with, so it belongs to whoever runs it.
-        Route::middleware('org.admin')->group(function () {
+        Route::middleware(['org.admin', 'filing.cleared'])->group(function () {
             Route::post('/ccsid', [OnboardingController::class, 'requestCcsid']);
             Route::post('/compliance-check', [OnboardingController::class, 'runComplianceCheck']);
             Route::post('/pcsid', [OnboardingController::class, 'requestPcsid']);
@@ -77,9 +77,9 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
 
     Route::prefix('compliance/ae')->middleware('uae.enabled')->group(function () {
         Route::get('/submissions', [FtaController::class, 'index']);
-        Route::post('/submit/{invoiceId}', [FtaController::class, 'submit']);
+        Route::post('/submit/{invoiceId}', [FtaController::class, 'submit'])->middleware('filing.cleared');
         Route::get('/status/{submissionId}', [FtaController::class, 'status']);
-        Route::post('/retry/{submissionId}', [FtaController::class, 'retry']);
+        Route::post('/retry/{submissionId}', [FtaController::class, 'retry'])->middleware('filing.cleared');
     });
 
     /* Organizations and branches ------------------------------------------ */
@@ -101,9 +101,11 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
             Route::post('/{branch}/suspend', [BranchController::class, 'suspend']);
             Route::post('/{branch}/reactivate', [BranchController::class, 'reactivate']);
 
-            Route::post('/{branch}/onboarding/ccsid', [BranchOnboardingController::class, 'requestCcsid']);
-            Route::post('/{branch}/onboarding/compliance-check', [BranchOnboardingController::class, 'runComplianceCheck']);
-            Route::post('/{branch}/onboarding/pcsid', [BranchOnboardingController::class, 'requestPcsid']);
+            Route::middleware('filing.cleared')->group(function () {
+                Route::post('/{branch}/onboarding/ccsid', [BranchOnboardingController::class, 'requestCcsid']);
+                Route::post('/{branch}/onboarding/compliance-check', [BranchOnboardingController::class, 'runComplianceCheck']);
+                Route::post('/{branch}/onboarding/pcsid', [BranchOnboardingController::class, 'requestPcsid']);
+            });
             Route::post('/{branch}/onboarding/reset', [BranchOnboardingController::class, 'resetOnboarding']);
         });
     });

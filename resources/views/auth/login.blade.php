@@ -50,6 +50,13 @@
 
                 <x-ui.button class="w-full">Sign in</x-ui.button>
             </form>
+
+            <div class="mt-6 flex justify-between text-sm">
+                <a href="{{ route('password.request') }}" class="text-teal-700 dark:text-teal-300 hover:underline">Forgot your password?</a>
+                @if (config('signup.enabled'))
+                    <a href="{{ route('register') }}" class="text-teal-700 dark:text-teal-300 hover:underline">Create an account</a>
+                @endif
+            </div>
         </div>
 
         <p class="text-center text-xs text-gray-400 dark:text-gray-500 mt-6">Powered by Masaar</p>

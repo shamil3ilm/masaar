@@ -70,7 +70,8 @@ class OrganizationApiTest extends TestCase
             ->assertJsonPath('message', 'Organization created')
             ->assertJsonPath('data.organization.name', 'Newco')
             ->assertJsonPath('data.organization.country', 'SA')
-            ->assertJsonPath('data.organization.status', 'active')
+            // Reviewed before it can onboard or issue, as a sign-up is.
+            ->assertJsonPath('data.organization.status', 'pending_review')
             ->assertJsonPath('data.organization.compliance_profile', ['vat_number' => '311111111100003']);
 
         $id = $response->json('data.organization.id');

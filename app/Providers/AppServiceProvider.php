@@ -9,6 +9,7 @@ use App\Domains\Auth\Services\JwtAuthenticator;
 use App\Domains\Branding\Http\ThemeComposer;
 use App\Domains\Branding\Services\ThemeService;
 use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
+use App\Domains\Compliance\Fatoora\Http\Middleware\FilingCleared;
 use App\Domains\Compliance\Fatoora\Services\CircuitBreaker;
 use App\Domains\Compliance\Fatoora\Services\TimestampValidator;
 use App\Domains\Compliance\FTA\Http\Middleware\UaeEnabled;
@@ -27,6 +28,7 @@ use App\Domains\Platform\Http\Middleware\RateLimitApi;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -52,6 +54,7 @@ class AppServiceProvider extends ServiceProvider
         'license.feature' => RequireLicenseFeature::class,
         'platform.license' => PlatformLicense::class,
         'uae.enabled' => UaeEnabled::class,
+        'filing.cleared' => FilingCleared::class,
     ];
 
     /**
@@ -125,6 +128,18 @@ class AppServiceProvider extends ServiceProvider
         }
 
         $this->reclaimMiddlewareAliases();
+
+        // Links in mail - password resets, email verification, enrolment -
+        // are built from APP_URL, never from the request's Host header. From
+        // the header, anyone could ask for a victim's reset link and have it
+        // point at a host they control.
+        if (filled(config('app.url'))) {
+            URL::forceRootUrl((string) config('app.url'));
+
+            if (str_starts_with((string) config('app.url'), 'https://')) {
+                URL::forceScheme('https');
+            }
+        }
 
         // The platform's colours, name and logo - and an organization's over
         // them on its own pages - for every view that draws a page's frame.

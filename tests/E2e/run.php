@@ -195,6 +195,16 @@ $issued = License::createWithCredentials([
     'tier' => 'starter',
 ]);
 
+// Rival issues below too, and an organization issues under a plan: with
+// LICENSING_FILING_REQUIRES_LICENCE, as .env.example ships it, one without
+// an active licence is refused.
+License::createWithCredentials([
+    'org_id' => $rival->id,
+    'organization_name' => 'Rival',
+    'contact_email' => 'erp@rival.test',
+    'tier' => 'starter',
+]);
+
 check('secret stored only as a hash',
     $issued['license']->api_secret_hash !== $issued['api_secret']
     && $issued['license']->verifySecret($issued['api_secret'])

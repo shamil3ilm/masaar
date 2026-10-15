@@ -42,6 +42,15 @@ class JwtGuard
                 return ApiResponse::unauthorized('Account suspended');
             }
 
+            // Nor does a token survive a password reset: the reset is how
+            // someone takes an account back, and a stolen token would
+            // otherwise keep working, and keep refreshing, after it.
+            $issuedAt = (int) ($token->getPayload()->get('iat') ?? 0);
+
+            if ($user->password_changed_at !== null && $issuedAt < $user->password_changed_at->getTimestamp()) {
+                return ApiResponse::unauthorized('The password was changed. Sign in again.');
+            }
+
             // Bind user to Laravel's auth context
             auth()->setUser($user);
 
