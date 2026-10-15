@@ -103,43 +103,15 @@ class Invoice extends Model
     }
 
     /**
-     * Immutable fields after invoice is finalized (status != draft).
-     * These fields cannot be changed once invoice leaves draft status.
-     */
-    public const IMMUTABLE_FIELDS = [
-        'org_id',
-        // Which EGS unit issued it is bound into the signature and the
-        // certificate that produced it, so it cannot move after issue.
-        'branch_id',
-        'invoice_number',
-        'type',
-        'document_type',
-        'issue_date',
-        'supply_date',
-        'currency',
-        // The rate the VAT was reported in SAR at. Changing it after issue
-        // restates the tax without restating the document.
-        'exchange_rate',
-        'buyer_name',
-        'buyer_name_ar',
-        'buyer_vat_number',
-        'buyer_id',
-        'buyer_id_scheme',
-        'buyer_address',
-        'payment_means_code',
-        'billing_ref',
-        'adjustment_reason',
-        'subtotal',
-        'discount_amount',
-        'tax_amount',
-        'total',
-        'icv',
-        // The chain it was numbered in, and the credentials that file it.
-        'device_id',
-    ];
-
-    /**
-     * Fields that can be updated after finalization (ZATCA response data).
+     * The only fields that may change once an invoice has left draft.
+     *
+     * Everything else is the document: what was signed, numbered and chained.
+     * This used to be the other way round - a list of fields that could not
+     * change, read by the guard below, while this list was never read. Any
+     * column missing from that list was writable after issue, including the
+     * five flags that make up the signed type name (export, summary, nominal,
+     * third party, self-billed) and every column added since. A new column is
+     * now frozen until it is added here on purpose.
      */
     public const MUTABLE_AFTER_FINALIZED = [
         'status',
@@ -218,9 +190,9 @@ class Invoice extends Model
                 return;
             }
 
-            // Invoice is finalized - check for immutable field changes
+            // Invoice is finalized - only the fields listed as mutable may move
             $changedFields = array_keys($invoice->getDirty());
-            $immutableChanges = array_intersect($changedFields, self::IMMUTABLE_FIELDS);
+            $immutableChanges = array_diff($changedFields, self::MUTABLE_AFTER_FINALIZED);
 
             if (! empty($immutableChanges)) {
                 throw new \RuntimeException(

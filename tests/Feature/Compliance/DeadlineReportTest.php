@@ -123,8 +123,12 @@ class DeadlineReportTest extends TestCase
                 'hash' => base64_encode(hash('sha256', $number, true)),
             ]);
 
-            // created_at is what the deadline is measured from.
-            $invoice->forceFill(['created_at' => now()->subHours($hoursAgo)])->save();
+            // created_at is what the deadline is measured from. Moved by a
+            // query, not the model: an issued invoice refuses any change to a
+            // column outside the mutable list, and this is the passage of
+            // time, not an edit.
+            Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoice->id)
+                ->update(['created_at' => now()->subHours($hoursAgo)]));
 
             return $invoice->fresh();
         });
