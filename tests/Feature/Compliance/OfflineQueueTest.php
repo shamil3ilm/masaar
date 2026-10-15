@@ -68,6 +68,24 @@ class OfflineQueueTest extends TestCase
     }
 
     /**
+     * One invoice is queued once.
+     *
+     * Nothing checked for an item already waiting, so a retried request
+     * queued the same document again and the worker filed it twice.
+     */
+    public function test_an_invoice_is_queued_once(): void
+    {
+        $invoice = $this->invoice($this->acme);
+
+        $first = $this->queue->queue($invoice, '<Invoice/>', 'HASH', 'QR');
+        $again = $this->queue->queue($invoice, '<Invoice/>', 'HASH', 'QR');
+
+        $this->assertSame($first['queue_id'], $again['queue_id']);
+        $this->assertSame(1, OfflineItem::where('invoice_id', $invoice->id)->count());
+        $this->assertTrue($this->queue->isQueued($invoice));
+    }
+
+    /**
      * A worker draining one organization must not be handed another's work.
      */
     public function test_queue_is_scoped_to_its_tenant(): void
