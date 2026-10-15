@@ -35,6 +35,13 @@ class RouteAuthPostureTest extends TestCase
         'login/two-factor' => 'Platform admin second factor, after the password',
         'login/two-factor/setup' => 'Platform admin enrolment, after the password',
         'up' => 'Container health probe',
+        // The look of the sign-in page has to load before anyone signs in,
+        // and an organization's colours and logo are on every invoice it
+        // hands out. Colours and images only; nothing a theme stores is
+        // private.
+        'theme/{scope}/stylesheet' => 'Theme colours, needed before sign-in',
+        'theme/{scope}/logo' => 'Uploaded logo, shown on sign-in and on invoices',
+        'theme/{scope}/favicon' => 'Uploaded favicon, needed before sign-in',
     ];
 
     public function test_all_web_routes_guarded(): void

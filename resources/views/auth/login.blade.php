@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign in - Masaar</title>
-    <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
+    <title>Sign in - {{ $theme->name() }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <x-theme-head />
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center">
     <div class="max-w-md w-full mx-4">
         <div class="bg-white rounded-lg shadow-lg p-8">
             <div class="mb-8 flex flex-col items-center text-center">
                 <x-logo :size="44" />
-                <h1 class="mt-4 text-2xl font-semibold tracking-tight text-ink-900">Masaar</h1>
+                <h1 class="mt-4 text-2xl font-semibold tracking-tight text-ink-900">{{ $theme->name() }}</h1>
                 <p class="mt-1 text-gray-500">Sign in to continue</p>
             </div>
 

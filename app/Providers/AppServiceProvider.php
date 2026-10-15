@@ -6,6 +6,7 @@ use App\Domains\Auth\Contracts\Authenticator;
 use App\Domains\Auth\Http\Middleware\IsPlatformAdmin;
 use App\Domains\Auth\Http\Middleware\JwtGuard;
 use App\Domains\Auth\Services\JwtAuthenticator;
+use App\Domains\Branding\Http\ThemeComposer;
 use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\Services\CircuitBreaker;
 use App\Domains\Compliance\Fatoora\Services\TimestampValidator;
@@ -23,6 +24,7 @@ use App\Domains\Platform\Http\Middleware\RateLimitApi;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -117,6 +119,10 @@ class AppServiceProvider extends ServiceProvider
         }
 
         $this->reclaimMiddlewareAliases();
+
+        // The platform's colours, name and logo - and an organization's over
+        // them on its own pages - for every view that draws a page's frame.
+        View::composer(ThemeComposer::VIEWS, ThemeComposer::class);
 
         // Eloquent drops attributes that are not fillable without a word.
         // SubmissionTracker wrote 'clearance_confirmed_at' on every ZATCA

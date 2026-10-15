@@ -21,14 +21,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $invoice->invoice_number }}</title>
-    <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
     {{-- Stylesheet only. Nothing on a receipt is interactive, and the print
          dialog is the browser's own. --}}
     @vite(['resources/css/app.css'])
+    <x-theme-head />
 </head>
 <body class="bg-white p-8 text-gray-900">
 <div class="mx-auto max-w-2xl">
     <header class="mb-6 border-b border-gray-300 pb-4">
+        {{-- The issuer's own logo, when it has uploaded one. Never the
+             platform's: this is the organization's document. --}}
+        @if ($theme->organizationLogoUrl)
+            <img src="{{ $theme->organizationLogoUrl }}" alt="{{ $organization->documentName() }}" height="56" class="mb-4 h-14 w-auto">
+        @endif
         <p class="text-sm font-semibold tracking-wide uppercase">
             {{ $simplified ? 'Simplified tax invoice' : 'Tax invoice' }}
             <span dir="rtl" lang="ar">{{ $simplified ? 'فاتورة ضريبية مبسطة' : 'فاتورة ضريبية' }}</span>

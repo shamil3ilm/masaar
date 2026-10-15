@@ -38,6 +38,16 @@ return [
             'report' => false,
         ],
 
+        // Logos and favicons uploaded for the platform and for each
+        // organization. Served through ThemeAssetController, which sets the
+        // headers an uploaded image needs, rather than from a public path.
+        'branding' => [
+            'driver' => 'local',
+            'root' => storage_path('app/branding'),
+            'throw' => true,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

@@ -19,6 +19,11 @@
     style would have to be permitted by the content policy, and permitting it
     anywhere permits it everywhere - a whole directive relaxed to set one font
     size.
+
+    Themed. An uploaded logo replaces the mark; without one, the mark takes the
+    theme's colours through its classes (which win over the fill and stroke
+    attributes, kept as the fallback), and the wordmark is the theme's name.
+    $theme comes from ThemeComposer.
 --}}
 @props([
     'size' => 32,
@@ -28,32 +33,42 @@
 ])
 
 <span {{ $attributes->merge(['class' => 'inline-flex items-center gap-2.5']) }}>
+    @if ($theme->logoUrl)
+    <img
+        src="{{ $theme->logoUrl }}"
+        height="{{ (int) $size }}"
+        class="w-auto shrink-0"
+        @if ($name) alt="" @else alt="{{ $theme->name() }}" @endif
+    >
+    @else
     <svg
         width="{{ (int) $size }}"
         height="{{ (int) $size }}"
         viewBox="0 0 120 120"
         xmlns="http://www.w3.org/2000/svg"
         class="shrink-0"
-        @if ($name) aria-hidden="true" @else role="img" aria-label="Masaar" @endif
+        @if ($name) aria-hidden="true" @else role="img" aria-label="{{ $theme->name() }}" @endif
     >
         @if ($tile)
-            <rect x="10" y="10" width="100" height="100" rx="20" fill="#1A1F36" />
+            <rect x="10" y="10" width="100" height="100" rx="20" fill="#1A1F36" class="fill-ink-900" />
         @endif
 
         {{-- The path: masaar means route, and this is one. --}}
         <path
             d="M30 75 C40 40, 60 40, 70 75 S100 100, 95 55"
             stroke="#14B8A6"
+            class="stroke-teal-500"
             stroke-width="4"
             stroke-linecap="round"
             fill="none"
         />
 
         {{-- Where it arrives. --}}
-        <circle cx="95" cy="55" r="4" fill="#EADBC8" />
+        <circle cx="95" cy="55" r="4" fill="#EADBC8" class="fill-sand-200" />
     </svg>
+    @endif
 
     @if ($name)
-        <span class="{{ $nameClass }}">Masaar</span>
+        <span class="{{ $nameClass }}">{{ $theme->name() }}</span>
     @endif
 </span>
