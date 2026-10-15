@@ -114,8 +114,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/admin/dashboard/circuit-breaker/reset:
     post:
       tags:
@@ -136,8 +135,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/admin/dashboard/connectivity:
     get:
       tags:
@@ -158,8 +156,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/admin/dashboard/connectivity/refresh:
     post:
       tags:
@@ -180,8 +177,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/admin/dashboard/error-rates:
     get:
       tags:
@@ -202,8 +198,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/admin/dashboard/hash-chain-health:
     get:
       tags:
@@ -224,8 +219,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/admin/dashboard/health:
     get:
       tags:
@@ -246,8 +240,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/admin/dashboard/issues:
     get:
       tags:
@@ -268,8 +261,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/admin/dashboard/logs:
     get:
       tags:
@@ -290,8 +282,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/admin/dashboard/offline-queue:
     get:
       tags:
@@ -312,8 +303,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/admin/dashboard/offline-queue/process:
     post:
       tags:
@@ -334,8 +324,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/admin/dashboard/offline-queue/{organizationId}':
     get:
       tags:
@@ -343,8 +332,7 @@ paths:
       operationId: adminDashboardController.offlineQueueByOrg
       summary: 'Offline Queue By Org — Admin Dashboard Controller'
       parameters:
-        -
-          name: organizationId
+        - name: organizationId
           in: path
           required: true
           schema:
@@ -363,8 +351,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/admin/dashboard/offline-queue/{queueId}/retry':
     post:
       tags:
@@ -372,8 +359,7 @@ paths:
       operationId: adminDashboardController.retryQueueItem
       summary: 'Retry Queue Item — Admin Dashboard Controller'
       parameters:
-        -
-          name: queueId
+        - name: queueId
           in: path
           required: true
           schema:
@@ -392,8 +378,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/admin/dashboard/run-health-check:
     post:
       tags:
@@ -414,8 +399,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/admin/dashboard/top-organizations:
     get:
       tags:
@@ -436,8 +420,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/admin/licenses:
     get:
       tags:
@@ -458,8 +441,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
     post:
       tags:
         - Licensing
@@ -479,8 +461,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/admin/licenses/cleanup:
     post:
       tags:
@@ -501,8 +482,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/admin/licenses/statistics:
     get:
       tags:
@@ -523,8 +503,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/admin/licenses/{id}':
     get:
       tags:
@@ -532,8 +511,7 @@ paths:
       operationId: licenseController.show
       summary: 'Show — License Controller'
       parameters:
-        -
-          name: id
+        - name: id
           in: path
           required: true
           schema:
@@ -552,8 +530,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/admin/licenses/{id}/activate':
     post:
       tags:
@@ -561,8 +538,7 @@ paths:
       operationId: licenseController.activate
       summary: 'Activate — License Controller'
       parameters:
-        -
-          name: id
+        - name: id
           in: path
           required: true
           schema:
@@ -581,8 +557,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/admin/licenses/{id}/audit':
     get:
       tags:
@@ -590,8 +565,7 @@ paths:
       operationId: licenseController.audit
       summary: 'Audit — License Controller'
       parameters:
-        -
-          name: id
+        - name: id
           in: path
           required: true
           schema:
@@ -610,8 +584,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/admin/licenses/{id}/extend':
     post:
       tags:
@@ -619,8 +592,7 @@ paths:
       operationId: licenseController.extend
       summary: 'Extend — License Controller'
       parameters:
-        -
-          name: id
+        - name: id
           in: path
           required: true
           schema:
@@ -639,8 +611,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/admin/licenses/{id}/features':
     patch:
       tags:
@@ -648,8 +619,7 @@ paths:
       operationId: licenseController.updateFeatures
       summary: 'Update Features — License Controller'
       parameters:
-        -
-          name: id
+        - name: id
           in: path
           required: true
           schema:
@@ -668,8 +638,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/admin/licenses/{id}/limits':
     patch:
       tags:
@@ -677,8 +646,7 @@ paths:
       operationId: licenseController.updateLimits
       summary: 'Update Limits — License Controller'
       parameters:
-        -
-          name: id
+        - name: id
           in: path
           required: true
           schema:
@@ -697,8 +665,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/admin/licenses/{id}/reactivate':
     post:
       tags:
@@ -706,8 +673,7 @@ paths:
       operationId: licenseController.reactivate
       summary: 'Reactivate — License Controller'
       parameters:
-        -
-          name: id
+        - name: id
           in: path
           required: true
           schema:
@@ -726,8 +692,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/admin/licenses/{id}/regenerate-secret':
     post:
       tags:
@@ -735,8 +700,7 @@ paths:
       operationId: licenseController.regenerateSecret
       summary: 'Regenerate Secret — License Controller'
       parameters:
-        -
-          name: id
+        - name: id
           in: path
           required: true
           schema:
@@ -755,8 +719,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/admin/licenses/{id}/revoke':
     post:
       tags:
@@ -764,8 +727,7 @@ paths:
       operationId: licenseController.revoke
       summary: 'Revoke — License Controller'
       parameters:
-        -
-          name: id
+        - name: id
           in: path
           required: true
           schema:
@@ -784,8 +746,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/admin/licenses/{id}/suspend':
     post:
       tags:
@@ -793,8 +754,7 @@ paths:
       operationId: licenseController.suspend
       summary: 'Suspend — License Controller'
       parameters:
-        -
-          name: id
+        - name: id
           in: path
           required: true
           schema:
@@ -813,8 +773,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/admin/licenses/{id}/upgrade':
     post:
       tags:
@@ -822,8 +781,7 @@ paths:
       operationId: licenseController.upgrade
       summary: 'Upgrade — License Controller'
       parameters:
-        -
-          name: id
+        - name: id
           in: path
           required: true
           schema:
@@ -842,8 +800,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/admin/licenses/{id}/usage':
     get:
       tags:
@@ -851,8 +808,7 @@ paths:
       operationId: licenseController.usage
       summary: 'Usage — License Controller'
       parameters:
-        -
-          name: id
+        - name: id
           in: path
           required: true
           schema:
@@ -871,8 +827,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/auth/login:
     post:
       tags:
@@ -929,8 +884,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/auth/me:
     get:
       tags:
@@ -951,8 +905,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/auth/refresh:
     post:
       tags:
@@ -973,8 +926,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/auth/register:
     post:
       tags:
@@ -1019,8 +971,7 @@ paths:
       operationId: ftaController.retry
       summary: 'Retry — Fta Controller'
       parameters:
-        -
-          name: submissionId
+        - name: submissionId
           in: path
           required: true
           schema:
@@ -1039,8 +990,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/compliance/ae/status/{submissionId}':
     get:
       tags:
@@ -1048,8 +998,7 @@ paths:
       operationId: ftaController.status
       summary: 'Status — Fta Controller'
       parameters:
-        -
-          name: submissionId
+        - name: submissionId
           in: path
           required: true
           schema:
@@ -1068,8 +1017,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/compliance/ae/submissions:
     get:
       tags:
@@ -1090,8 +1038,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/compliance/ae/submit/{invoiceId}':
     post:
       tags:
@@ -1099,8 +1046,7 @@ paths:
       operationId: ftaController.submit
       summary: 'Submit — Fta Controller'
       parameters:
-        -
-          name: invoiceId
+        - name: invoiceId
           in: path
           required: true
           schema:
@@ -1119,8 +1065,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/compliance/onboarding/ccsid:
     post:
       tags:
@@ -1141,8 +1086,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/compliance/onboarding/compliance-check:
     post:
       tags:
@@ -1163,8 +1107,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/compliance/onboarding/pcsid:
     post:
       tags:
@@ -1185,8 +1128,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/compliance/onboarding/status:
     get:
       tags:
@@ -1207,8 +1149,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/compliance/sa/generate/{invoiceId}':
     post:
       tags:
@@ -1216,8 +1157,7 @@ paths:
       operationId: complianceController.generate
       summary: 'Generate — Compliance Controller'
       parameters:
-        -
-          name: invoiceId
+        - name: invoiceId
           in: path
           required: true
           schema:
@@ -1236,8 +1176,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/compliance/sa/status/{submissionId}':
     get:
       tags:
@@ -1245,8 +1184,7 @@ paths:
       operationId: complianceController.status
       summary: 'Status — Compliance Controller'
       parameters:
-        -
-          name: submissionId
+        - name: submissionId
           in: path
           required: true
           schema:
@@ -1265,8 +1203,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/compliance/sa/submit/{invoiceId}':
     post:
       tags:
@@ -1274,8 +1211,7 @@ paths:
       operationId: complianceController.submit
       summary: 'Submit — Compliance Controller'
       parameters:
-        -
-          name: invoiceId
+        - name: invoiceId
           in: path
           required: true
           schema:
@@ -1294,8 +1230,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/compliance/sa/validate/{invoiceId}':
     post:
       tags:
@@ -1303,8 +1238,7 @@ paths:
       operationId: complianceController.validate
       summary: 'Validate — Compliance Controller'
       parameters:
-        -
-          name: invoiceId
+        - name: invoiceId
           in: path
           required: true
           schema:
@@ -1323,8 +1257,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/dashboard:
     get:
       tags:
@@ -1345,8 +1278,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/dashboard/activity:
     get:
       tags:
@@ -1367,8 +1299,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/dashboard/health:
     get:
       tags:
@@ -1389,8 +1320,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/dashboard/invoices:
     get:
       tags:
@@ -1411,8 +1341,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/dashboard/submissions:
     get:
       tags:
@@ -1433,8 +1362,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/dashboard/usage:
     get:
       tags:
@@ -1455,8 +1383,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/health:
     get:
       tags:
@@ -1505,8 +1432,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
     post:
       tags:
         - Invoice
@@ -1582,8 +1508,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/invoices/{invoice}':
     get:
       tags:
@@ -1591,8 +1516,7 @@ paths:
       operationId: invoiceController.show
       summary: 'Show — Invoice Controller'
       parameters:
-        -
-          name: invoice
+        - name: invoice
           in: path
           required: true
           schema:
@@ -1611,16 +1535,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
     put:
       tags:
         - Invoice
       operationId: invoiceController.update.put
       summary: 'Update — Invoice Controller'
       parameters:
-        -
-          name: invoice
+        - name: invoice
           in: path
           required: true
           schema:
@@ -1695,16 +1617,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
     patch:
       tags:
         - Invoice
       operationId: invoiceController.update.patch
       summary: 'Update — Invoice Controller'
       parameters:
-        -
-          name: invoice
+        - name: invoice
           in: path
           required: true
           schema:
@@ -1779,16 +1699,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
     delete:
       tags:
         - Invoice
       operationId: invoiceController.destroy
       summary: 'Destroy — Invoice Controller'
       parameters:
-        -
-          name: invoice
+        - name: invoice
           in: path
           required: true
           schema:
@@ -1807,8 +1725,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/license:
     get:
       tags:
@@ -1829,8 +1746,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          apiKey: []
+        - apiKey: []
           apiSecret: []
   '/api/license/features/{feature}':
     get:
@@ -1839,8 +1755,7 @@ paths:
       operationId: licenseUsageController.checkFeature
       summary: 'Check Feature — License Usage Controller'
       parameters:
-        -
-          name: feature
+        - name: feature
           in: path
           required: true
           schema:
@@ -1859,8 +1774,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          apiKey: []
+        - apiKey: []
           apiSecret: []
   /api/license/health:
     get:
@@ -1882,8 +1796,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          apiKey: []
+        - apiKey: []
           apiSecret: []
   /api/license/quotas:
     get:
@@ -1905,8 +1818,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          apiKey: []
+        - apiKey: []
           apiSecret: []
   /api/license/status:
     get:
@@ -1942,8 +1854,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          apiKey: []
+        - apiKey: []
           apiSecret: []
   /api/metrics:
     get:
@@ -1965,8 +1876,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          metricsToken: []
+        - metricsToken: []
   /api/organizations:
     get:
       tags:
@@ -1987,8 +1897,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
     post:
       tags:
         - Organization
@@ -2008,8 +1917,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/organizations/branches:
     get:
       tags:
@@ -2030,8 +1938,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
     post:
       tags:
         - Organization
@@ -2051,8 +1958,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/organizations/branches/{branch}':
     get:
       tags:
@@ -2060,8 +1966,7 @@ paths:
       operationId: branchController.show
       summary: 'Show — Branch Controller'
       parameters:
-        -
-          name: branch
+        - name: branch
           in: path
           required: true
           schema:
@@ -2080,16 +1985,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
     put:
       tags:
         - Organization
       operationId: branchController.update
       summary: 'Update — Branch Controller'
       parameters:
-        -
-          name: branch
+        - name: branch
           in: path
           required: true
           schema:
@@ -2108,16 +2011,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
     delete:
       tags:
         - Organization
       operationId: branchController.destroy
       summary: 'Destroy — Branch Controller'
       parameters:
-        -
-          name: branch
+        - name: branch
           in: path
           required: true
           schema:
@@ -2136,8 +2037,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/organizations/branches/{branch}/onboarding-status':
     get:
       tags:
@@ -2145,8 +2045,7 @@ paths:
       operationId: branchController.onboardingStatus
       summary: 'Onboarding Status — Branch Controller'
       parameters:
-        -
-          name: branch
+        - name: branch
           in: path
           required: true
           schema:
@@ -2165,8 +2064,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/organizations/branches/{branch}/onboarding/ccsid':
     post:
       tags:
@@ -2174,8 +2072,7 @@ paths:
       operationId: branchOnboardingController.requestCcsid
       summary: 'Request Ccsid — Branch Onboarding Controller'
       parameters:
-        -
-          name: branch
+        - name: branch
           in: path
           required: true
           schema:
@@ -2194,8 +2091,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/organizations/branches/{branch}/onboarding/compliance-check':
     post:
       tags:
@@ -2203,8 +2099,7 @@ paths:
       operationId: branchOnboardingController.runComplianceCheck
       summary: 'Run Compliance Check — Branch Onboarding Controller'
       parameters:
-        -
-          name: branch
+        - name: branch
           in: path
           required: true
           schema:
@@ -2223,8 +2118,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/organizations/branches/{branch}/onboarding/pcsid':
     post:
       tags:
@@ -2232,8 +2126,7 @@ paths:
       operationId: branchOnboardingController.requestPcsid
       summary: 'Request Pcsid — Branch Onboarding Controller'
       parameters:
-        -
-          name: branch
+        - name: branch
           in: path
           required: true
           schema:
@@ -2252,8 +2145,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/organizations/branches/{branch}/onboarding/reset':
     post:
       tags:
@@ -2261,8 +2153,7 @@ paths:
       operationId: branchOnboardingController.resetOnboarding
       summary: 'Reset Onboarding — Branch Onboarding Controller'
       parameters:
-        -
-          name: branch
+        - name: branch
           in: path
           required: true
           schema:
@@ -2281,8 +2172,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/organizations/branches/{branch}/reactivate':
     post:
       tags:
@@ -2290,8 +2180,7 @@ paths:
       operationId: branchController.reactivate
       summary: 'Reactivate — Branch Controller'
       parameters:
-        -
-          name: branch
+        - name: branch
           in: path
           required: true
           schema:
@@ -2310,8 +2199,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/organizations/branches/{branch}/set-default':
     post:
       tags:
@@ -2319,8 +2207,7 @@ paths:
       operationId: branchController.setDefault
       summary: 'Set Default — Branch Controller'
       parameters:
-        -
-          name: branch
+        - name: branch
           in: path
           required: true
           schema:
@@ -2339,8 +2226,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/organizations/branches/{branch}/suspend':
     post:
       tags:
@@ -2348,8 +2234,7 @@ paths:
       operationId: branchController.suspend
       summary: 'Suspend — Branch Controller'
       parameters:
-        -
-          name: branch
+        - name: branch
           in: path
           required: true
           schema:
@@ -2368,8 +2253,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/organizations/{id}/switch':
     post:
       tags:
@@ -2377,8 +2261,7 @@ paths:
       operationId: organizationController.switch
       summary: 'Switch — Organization Controller'
       parameters:
-        -
-          name: id
+        - name: id
           in: path
           required: true
           schema:
@@ -2397,8 +2280,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/organizations/{organization}':
     get:
       tags:
@@ -2406,8 +2288,7 @@ paths:
       operationId: organizationController.show
       summary: 'Show — Organization Controller'
       parameters:
-        -
-          name: organization
+        - name: organization
           in: path
           required: true
           schema:
@@ -2426,16 +2307,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
     put:
       tags:
         - Organization
       operationId: organizationController.update.put
       summary: 'Update — Organization Controller'
       parameters:
-        -
-          name: organization
+        - name: organization
           in: path
           required: true
           schema:
@@ -2454,16 +2333,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
     patch:
       tags:
         - Organization
       operationId: organizationController.update.patch
       summary: 'Update — Organization Controller'
       parameters:
-        -
-          name: organization
+        - name: organization
           in: path
           required: true
           schema:
@@ -2482,8 +2359,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/organizations/{organization}/compliance-profiles':
     get:
       tags:
@@ -2491,8 +2367,7 @@ paths:
       operationId: complianceProfileController.index
       summary: 'Index — Compliance Profile Controller'
       parameters:
-        -
-          name: organization
+        - name: organization
           in: path
           required: true
           schema:
@@ -2511,16 +2386,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
     post:
       tags:
         - Organization
       operationId: complianceProfileController.store
       summary: 'Store — Compliance Profile Controller'
       parameters:
-        -
-          name: organization
+        - name: organization
           in: path
           required: true
           schema:
@@ -2539,8 +2412,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/organizations/{organization}/compliance-profiles/{profile}':
     delete:
       tags:
@@ -2548,14 +2420,12 @@ paths:
       operationId: complianceProfileController.destroy
       summary: 'Destroy — Compliance Profile Controller'
       parameters:
-        -
-          name: organization
+        - name: organization
           in: path
           required: true
           schema:
             type: string
-        -
-          name: profile
+        - name: profile
           in: path
           required: true
           schema:
@@ -2574,8 +2444,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/v1/compliance/generate/{invoiceId}':
     post:
       tags:
@@ -2583,8 +2452,7 @@ paths:
       operationId: v1.complianceController.generate
       summary: 'Generate — Compliance Controller'
       parameters:
-        -
-          name: invoiceId
+        - name: invoiceId
           in: path
           required: true
           schema:
@@ -2603,8 +2471,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          apiKey: []
+        - apiKey: []
           apiSecret: []
       description: 'Requires scope: invoice.submit'
   '/api/v1/compliance/status/{invoiceId}':
@@ -2614,8 +2481,7 @@ paths:
       operationId: v1.complianceController.status
       summary: 'Status — Compliance Controller'
       parameters:
-        -
-          name: invoiceId
+        - name: invoiceId
           in: path
           required: true
           schema:
@@ -2634,8 +2500,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          apiKey: []
+        - apiKey: []
           apiSecret: []
       description: 'Requires scope: compliance.status'
   '/api/v1/compliance/submit/{invoiceId}':
@@ -2645,8 +2510,7 @@ paths:
       operationId: v1.complianceController.submit
       summary: 'Submit — Compliance Controller'
       parameters:
-        -
-          name: invoiceId
+        - name: invoiceId
           in: path
           required: true
           schema:
@@ -2665,8 +2529,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          apiKey: []
+        - apiKey: []
           apiSecret: []
       description: 'Requires scope: invoice.submit'
   '/api/v1/compliance/validate/{invoiceId}':
@@ -2676,8 +2539,7 @@ paths:
       operationId: v1.complianceController.validate
       summary: 'Validate — Compliance Controller'
       parameters:
-        -
-          name: invoiceId
+        - name: invoiceId
           in: path
           required: true
           schema:
@@ -2696,8 +2558,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          apiKey: []
+        - apiKey: []
           apiSecret: []
       description: 'Requires scope: invoice.submit'
   /api/v1/dashboard:
@@ -2720,8 +2581,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          apiKey: []
+        - apiKey: []
           apiSecret: []
   /api/v1/dashboard/health:
     get:
@@ -2743,8 +2603,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          apiKey: []
+        - apiKey: []
           apiSecret: []
   /api/v1/dashboard/usage:
     get:
@@ -2766,8 +2625,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          apiKey: []
+        - apiKey: []
           apiSecret: []
   /api/v1/invoices:
     get:
@@ -2789,8 +2647,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          apiKey: []
+        - apiKey: []
           apiSecret: []
       description: 'Requires scope: invoice.read'
     post:
@@ -2868,8 +2725,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          apiKey: []
+        - apiKey: []
           apiSecret: []
       description: 'Requires scope: invoice.submit'
   '/api/v1/invoices/{invoice}':
@@ -2879,8 +2735,7 @@ paths:
       operationId: v1.invoiceController.show
       summary: 'Show — Invoice Controller'
       parameters:
-        -
-          name: invoice
+        - name: invoice
           in: path
           required: true
           schema:
@@ -2899,8 +2754,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          apiKey: []
+        - apiKey: []
           apiSecret: []
       description: 'Requires scope: invoice.read'
     put:
@@ -2909,8 +2763,7 @@ paths:
       operationId: v1.invoiceController.update
       summary: 'Update — Invoice Controller'
       parameters:
-        -
-          name: invoice
+        - name: invoice
           in: path
           required: true
           schema:
@@ -2985,8 +2838,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          apiKey: []
+        - apiKey: []
           apiSecret: []
       description: 'Requires scope: invoice.submit'
     delete:
@@ -2995,8 +2847,7 @@ paths:
       operationId: v1.invoiceController.destroy
       summary: 'Destroy — Invoice Controller'
       parameters:
-        -
-          name: invoice
+        - name: invoice
           in: path
           required: true
           schema:
@@ -3015,8 +2866,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          apiKey: []
+        - apiKey: []
           apiSecret: []
       description: 'Requires scope: invoice.cancel'
   '/api/v1/pipeline/status/{invoiceId}':
@@ -3026,8 +2876,7 @@ paths:
       operationId: v1.pipelineController.status
       summary: 'Status — Pipeline Controller'
       parameters:
-        -
-          name: invoiceId
+        - name: invoiceId
           in: path
           required: true
           schema:
@@ -3046,8 +2895,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          apiKey: []
+        - apiKey: []
           apiSecret: []
       description: 'Requires scope: compliance.status'
   /api/v1/pipeline/submit:
@@ -3138,8 +2986,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          apiKey: []
+        - apiKey: []
           apiSecret: []
       description: 'Requires scope: invoice.submit'
   /api/v1/webhooks:
@@ -3162,8 +3009,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          apiKey: []
+        - apiKey: []
           apiSecret: []
       description: 'Requires scope: webhook.manage'
     post:
@@ -3185,8 +3031,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          apiKey: []
+        - apiKey: []
           apiSecret: []
       description: 'Requires scope: webhook.manage'
   '/api/v1/webhooks/{webhook}':
@@ -3196,8 +3041,7 @@ paths:
       operationId: v1.webhookController.show
       summary: 'Show — Webhook Controller'
       parameters:
-        -
-          name: webhook
+        - name: webhook
           in: path
           required: true
           schema:
@@ -3216,8 +3060,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          apiKey: []
+        - apiKey: []
           apiSecret: []
       description: 'Requires scope: webhook.manage'
     put:
@@ -3226,8 +3069,7 @@ paths:
       operationId: v1.webhookController.update
       summary: 'Update — Webhook Controller'
       parameters:
-        -
-          name: webhook
+        - name: webhook
           in: path
           required: true
           schema:
@@ -3246,8 +3088,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          apiKey: []
+        - apiKey: []
           apiSecret: []
       description: 'Requires scope: webhook.manage'
     delete:
@@ -3256,8 +3097,7 @@ paths:
       operationId: v1.webhookController.destroy
       summary: 'Destroy — Webhook Controller'
       parameters:
-        -
-          name: webhook
+        - name: webhook
           in: path
           required: true
           schema:
@@ -3276,8 +3116,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          apiKey: []
+        - apiKey: []
           apiSecret: []
       description: 'Requires scope: webhook.manage'
   /api/webhooks:
@@ -3300,8 +3139,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
     post:
       tags:
         - Webhook
@@ -3321,8 +3159,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   /api/webhooks/events:
     get:
       tags:
@@ -3343,8 +3180,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/webhooks/{id}/logs':
     get:
       tags:
@@ -3352,8 +3188,7 @@ paths:
       operationId: webhookController.logs
       summary: 'Logs — Webhook Controller'
       parameters:
-        -
-          name: id
+        - name: id
           in: path
           required: true
           schema:
@@ -3372,8 +3207,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/webhooks/{id}/rotate-secret':
     post:
       tags:
@@ -3381,8 +3215,7 @@ paths:
       operationId: webhookController.rotateSecret
       summary: 'Rotate Secret — Webhook Controller'
       parameters:
-        -
-          name: id
+        - name: id
           in: path
           required: true
           schema:
@@ -3401,8 +3234,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/webhooks/{id}/test':
     post:
       tags:
@@ -3410,8 +3242,7 @@ paths:
       operationId: webhookController.test
       summary: 'Test — Webhook Controller'
       parameters:
-        -
-          name: id
+        - name: id
           in: path
           required: true
           schema:
@@ -3430,8 +3261,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
   '/api/webhooks/{webhook}':
     get:
       tags:
@@ -3439,8 +3269,7 @@ paths:
       operationId: webhookController.show
       summary: 'Show — Webhook Controller'
       parameters:
-        -
-          name: webhook
+        - name: webhook
           in: path
           required: true
           schema:
@@ -3459,16 +3288,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
     put:
       tags:
         - Webhook
       operationId: webhookController.update.put
       summary: 'Update — Webhook Controller'
       parameters:
-        -
-          name: webhook
+        - name: webhook
           in: path
           required: true
           schema:
@@ -3487,16 +3314,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
     patch:
       tags:
         - Webhook
       operationId: webhookController.update.patch
       summary: 'Update — Webhook Controller'
       parameters:
-        -
-          name: webhook
+        - name: webhook
           in: path
           required: true
           schema:
@@ -3515,16 +3340,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
     delete:
       tags:
         - Webhook
       operationId: webhookController.destroy
       summary: 'Destroy — Webhook Controller'
       parameters:
-        -
-          name: webhook
+        - name: webhook
           in: path
           required: true
           schema:
@@ -3543,5 +3366,4 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        -
-          bearerAuth: []
+        - bearerAuth: []
