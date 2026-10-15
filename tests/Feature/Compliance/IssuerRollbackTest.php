@@ -108,6 +108,24 @@ class IssuerRollbackTest extends TestCase
      * Through a model event rather than a mock: ChainRecorder is final, and
      * this exercises the real write path instead of replacing it.
      */
+    /**
+     * The errors go back to the ERP in the pipeline's answer and to the
+     * portal's flash, and an unexpected failure's own message - a database
+     * error, a path - went with them.
+     */
+    public function test_an_unexpected_failure_stays_inside(): void
+    {
+        ChainEntry::creating(function (): void {
+            throw new RuntimeException('SQLSTATE[HY000]: chain_entries on /var/www/storage');
+        });
+
+        $outcome = app(InvoiceIssuer::class)->issue($this->draft('ACME-9'), $this->organization, file: false);
+
+        $this->assertFalse($outcome->issued);
+        $this->assertStringStartsWith('Unexpected error during compliance generation', $outcome->errors[0]);
+        $this->assertStringNotContainsString('SQLSTATE', $outcome->errors[0]);
+    }
+
     private function failTheChainWrite(): void
     {
         ChainEntry::creating(function (): void {

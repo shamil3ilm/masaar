@@ -93,7 +93,10 @@ class InvoiceIssuer
 
             $this->discardRolledBackValues($invoice);
 
-            return 'Unexpected error during compliance generation: '.$e->getMessage();
+            // The message is logged above and kept out of the answer: it goes
+            // to the ERP and the portal, and an unexpected failure's own words
+            // can be SQL or a path on this server.
+            return 'Unexpected error during compliance generation. The details are logged; retry, and contact support if it persists.';
         }
     }
 
@@ -177,7 +180,7 @@ class InvoiceIssuer
             $invoice->refresh();
 
             return IssueOutcome::filingFailed(
-                'Unexpected error during ZATCA submission: '.$e->getMessage()
+                'Unexpected error during ZATCA submission. The details are logged; the invoice remains issued.'
             );
         }
     }
