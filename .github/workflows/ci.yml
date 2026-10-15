@@ -924,7 +924,14 @@ jobs:
         run: |
           {
             echo "APP_KEY=base64:$(openssl rand -base64 32)"
-            echo "APP_URL=http://127.0.0.1:8000"
+            # Not a loopback address: production refuses to serve on one, as
+            # links in mail would point at the server itself. The probes
+            # below reach 127.0.0.1 directly.
+            echo "APP_URL=https://masaar-ci.invalid"
+            echo "JWT_SECRET=$(openssl rand -hex 32)"
+            echo "API_KEY_PEPPER=$(openssl rand -base64 32)"
+            echo "MAIL_MAILER=smtp"
+            echo "MAIL_FROM_ADDRESS=noreply@masaar-ci.invalid"
             echo "DB_PASSWORD=$(openssl rand -hex 16)"
             echo "DB_ROOT_PASSWORD=$(openssl rand -hex 16)"
             echo "ZATCA_ENVIRONMENT=simulation"
@@ -1057,6 +1064,15 @@ jobs:
           php artisan key:generate --force
           php artisan jwt:secret --force
           php artisan migrate --force
+          # What production requires before it serves. Replaced in place: the
+          # first value for a key is the one that counts. The scan reaches
+          # 127.0.0.1 directly; APP_URL only shapes links in mail.
+          sed -i \
+            -e 's|^APP_URL=.*|APP_URL=https://masaar-scan.invalid|' \
+            -e "s|^API_KEY_PEPPER=.*|API_KEY_PEPPER=$(openssl rand -hex 32)|" \
+            -e 's|^MAIL_MAILER=.*|MAIL_MAILER=smtp|' \
+            -e 's|^MAIL_FROM_ADDRESS=.*|MAIL_FROM_ADDRESS=noreply@masaar-scan.invalid|' \
+            .env
 
       # public/build is gitignored, and the consoles render @vite - which throws
       # without a manifest. See the note in the test job.

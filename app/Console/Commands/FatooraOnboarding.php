@@ -147,6 +147,18 @@ class FatooraOnboarding extends Command
         // sandbox, which is two answers to one question.
         $this->environment = (string) ($this->option('target') ?: config('fatoora.environment'));
 
+        // The documents this builds are always ZATCA's test taxpayer's, and in
+        // simulation or production the OTP belongs to a real taxpayer whose
+        // VAT number has to be on them. So this can only ever be refused
+        // there, after spending the OTP. A real organization onboards through
+        // its own onboarding (the portal, or /api/compliance/onboarding).
+        if (! in_array($this->environment, ['sandbox', self::LOCAL], true)) {
+            $this->error("fatoora:onboard is for the sandbox and local runs; it files as ZATCA's test taxpayer. "
+                .'Onboard a real organization through its own onboarding instead, which uses its VAT number and address.');
+
+            return Command::FAILURE;
+        }
+
         // And the target is the environment for the whole run, not just the
         // endpoint. The signer asks the configuration where it is - it lets the
         // sandbox's shared certificate through and refuses a mismatched key
@@ -158,10 +170,7 @@ class FatooraOnboarding extends Command
         }
         $this->baseUrl = $this->environment === self::LOCAL
             ? self::LOCAL
-            : (string) config(
-                "fatoora.endpoints.{$this->environment}",
-                config('fatoora.endpoints.simulation')
-            );
+            : (string) config("fatoora.endpoints.{$this->environment}");
 
         $step = $this->option('step');
 

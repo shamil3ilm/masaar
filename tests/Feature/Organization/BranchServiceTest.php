@@ -83,7 +83,10 @@ class BranchServiceTest extends TestCase
         $fired = false;
 
         DB::listen(function (QueryExecuted $query) use (&$fired): void {
-            if ($fired || ! str_contains($query->sql, '"branches"') || ! str_contains($query->sql, '"is_active"')) {
+            // Either quoting: SQLite writes "branches", MySQL `branches`. On
+            // MySQL this matched nothing, so the race was never staged there
+            // and the test only exercised creating the first branch.
+            if ($fired || preg_match('/["`]branches["`]/', $query->sql) !== 1 || preg_match('/["`]is_active["`]/', $query->sql) !== 1) {
                 return;
             }
 
@@ -94,6 +97,34 @@ class BranchServiceTest extends TestCase
         app(BranchService::class)->getOrCreateDefault($this->organization);
 
         $this->assertSame(1, Branch::withoutTenantScope(fn () => Branch::count()));
+    }
+
+    /**
+     * No invented seller address: an incomplete one is refused, not filled
+     * with "Main Street", building 0001 and postal code 00000.
+     */
+    public function test_an_incomplete_address_is_refused(): void
+    {
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('building_number');
+
+        app(BranchService::class)->getOrCreateDefault($this->organization);
+    }
+
+    public function test_the_default_takes_the_real_address(): void
+    {
+        $this->organization->forceFill([
+            'street' => 'King Fahd Road',
+            'building_number' => '1234',
+            'district' => 'Al Olaya',
+            'city' => 'Riyadh',
+            'postal_code' => '12345',
+        ])->save();
+
+        $branch = app(BranchService::class)->getOrCreateDefault($this->organization);
+
+        $this->assertSame('1234', $branch->building_number);
+        $this->assertSame('12345', $branch->postal_code);
     }
 
     private function branch(string $name, bool $default = false): Branch

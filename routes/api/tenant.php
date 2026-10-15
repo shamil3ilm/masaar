@@ -69,7 +69,7 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
 
     /* Compliance — United Arab Emirates (FTA, Peppol PINT AE) ------------- */
 
-    Route::prefix('compliance/ae')->group(function () {
+    Route::prefix('compliance/ae')->middleware('uae.enabled')->group(function () {
         Route::get('/submissions', [FtaController::class, 'index']);
         Route::post('/submit/{invoiceId}', [FtaController::class, 'submit']);
         Route::get('/status/{submissionId}', [FtaController::class, 'status']);

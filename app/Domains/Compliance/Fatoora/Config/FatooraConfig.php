@@ -468,9 +468,17 @@ final class FatooraConfig
      */
     public static function getBaseUrl(): string
     {
-        $env = self::get('environment', 'sandbox');
+        $env = (string) self::get('environment', 'sandbox');
+        $url = self::get("endpoints.{$env}");
 
-        return (string) (self::get("endpoints.{$env}") ?? self::get('endpoints.sandbox'));
+        // Never the sandbox in place of a name it does not know: that filed
+        // every invoice with the developer portal. The boot guard refuses
+        // such a name first; this is for anything that runs without booting.
+        if (! is_string($url) || $url === '') {
+            throw new \RuntimeException("ZATCA_ENVIRONMENT '{$env}' has no endpoint in config/fatoora.php.");
+        }
+
+        return $url;
     }
 
     /**

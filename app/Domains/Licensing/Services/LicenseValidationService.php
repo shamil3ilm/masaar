@@ -24,7 +24,10 @@ class LicenseValidationService
      */
     private function getCacheTtl(): int
     {
-        return (int) config('licensing.cache_ttl', 300); // 5 minutes
+        // licensing.cache.ttl_seconds, which LICENSE_CACHE_TTL sets. This read
+        // licensing.cache_ttl, a key config/licensing.php does not have, so
+        // the setting changed nothing.
+        return (int) config('licensing.cache.ttl_seconds', 300);
     }
 
     /**

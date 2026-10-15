@@ -16,6 +16,10 @@ return [
     | Environment
     |--------------------------------------------------------------------------
     */
+    // Off unless a deployment files in the UAE. While off, the UAE routes
+    // answer 404 and UAE_FTA_ENVIRONMENT is not checked at boot.
+    'enabled' => (bool) env('UAE_FTA_ENABLED', false),
+
     'environment' => env('UAE_FTA_ENVIRONMENT', 'sandbox'),
 
     /*

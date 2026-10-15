@@ -11,6 +11,7 @@ use App\Domains\Branding\Services\ThemeService;
 use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\Services\CircuitBreaker;
 use App\Domains\Compliance\Fatoora\Services\TimestampValidator;
+use App\Domains\Compliance\FTA\Http\Middleware\UaeEnabled;
 use App\Domains\Licensing\Http\Middleware\CheckInvoiceQuota;
 use App\Domains\Licensing\Http\Middleware\PlatformLicense;
 use App\Domains\Licensing\Http\Middleware\RequireLicenseFeature;
@@ -50,6 +51,7 @@ class AppServiceProvider extends ServiceProvider
         'scope' => RequireScope::class,
         'license.feature' => RequireLicenseFeature::class,
         'platform.license' => PlatformLicense::class,
+        'uae.enabled' => UaeEnabled::class,
     ];
 
     /**
@@ -117,7 +119,9 @@ class AppServiceProvider extends ServiceProvider
             $this->assertSessionsAreEncrypted();
             $this->assertSubmissionLimitsAgree();
             $this->assertAuthorityIsNotSandbox();
+            $this->assertAuthorityIsKnown();
             $this->assertLicenceSecretIsSet();
+            $this->assertProductionSettingsAreFilledIn();
         }
 
         $this->reclaimMiddlewareAliases();
@@ -196,11 +200,8 @@ class AppServiceProvider extends ServiceProvider
             return;
         }
 
-        foreach ([
-            'ZATCA_ENVIRONMENT' => 'fatoora.environment',
-            'UAE_FTA_ENVIRONMENT' => 'fta.environment',
-        ] as $variable => $key) {
-            if (config($key) === 'sandbox') {
+        foreach ($this->authorities() as $variable => $key) {
+            if (config($key.'.environment') === 'sandbox') {
                 throw new \RuntimeException(
                     $variable.' must not be sandbox when APP_ENV=production. '
                     .'The sandbox is the authority\'s developer portal: submissions to it '
@@ -208,6 +209,97 @@ class AppServiceProvider extends ServiceProvider
                 );
             }
         }
+    }
+
+    /**
+     * An authority environment is one the configuration has an endpoint for.
+     *
+     * Anything else fell back to the sandbox's endpoint, so
+     * ZATCA_ENVIRONMENT=Production, =prod or a typo filed every invoice with
+     * the developer portal - and passed the check above, which looks for the
+     * word 'sandbox'. Checked in every environment: a name with no endpoint
+     * is wrong everywhere.
+     */
+    private function assertAuthorityIsKnown(): void
+    {
+        foreach ($this->authorities() as $variable => $key) {
+            $environment = config($key.'.environment');
+            $known = array_keys((array) config($key.'.endpoints', []));
+
+            if (! is_string($environment) || ! in_array($environment, $known, true)) {
+                throw new \RuntimeException(
+                    $variable.' is '.var_export($environment, true).', which is not one of: '
+                    .implode(', ', $known).'. An unrecognised name used to file with the sandbox.'
+                );
+            }
+        }
+    }
+
+    /**
+     * The authorities this deployment files with: ZATCA always, the UAE's
+     * only where it is switched on.
+     *
+     * @return array<string, string> environment variable => config file
+     */
+    private function authorities(): array
+    {
+        return array_filter([
+            'ZATCA_ENVIRONMENT' => 'fatoora',
+            'UAE_FTA_ENVIRONMENT' => config('fta.enabled') ? 'fta' : null,
+        ]);
+    }
+
+    /**
+     * What only the operator can supply, supplied, before production serves.
+     *
+     * Each has a default that works on a developer's machine and is wrong in
+     * production, silently: links in mail and in enrolment pointing at
+     * localhost, mail written only to the log, tokens signed with nothing, a
+     * key pepper that cannot be added later without invalidating every key.
+     *
+     * Only where the platform serves - requests, queue workers, the
+     * scheduler. A one-off command is how several of these get filled in
+     * (jwt:secret writes JWT_SECRET), so refusing those would block the fix.
+     */
+    private function assertProductionSettingsAreFilledIn(): void
+    {
+        if (! $this->app->environment('production') || ! $this->serves()) {
+            return;
+        }
+
+        $url = (string) config('app.url');
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+        $from = strtolower((string) config('mail.from.address'));
+
+        $unset = array_keys(array_filter([
+            'APP_URL' => $host === '' || str_contains($url, '<') || in_array(trim($host, '[]'), ['localhost', '127.0.0.1', '::1'], true),
+            'JWT_SECRET' => $this->blank(config('jwt.secret')),
+            'API_KEY_PEPPER' => $this->blank(config('security.api_key_pepper')),
+            'MAIL_MAILER' => in_array(config('mail.default'), ['log', 'array'], true),
+            'MAIL_FROM_ADDRESS' => $this->blank($from) || str_ends_with($from, '@example.com'),
+        ]));
+
+        if ($unset !== []) {
+            throw new \RuntimeException(
+                'Set these before APP_ENV=production serves: '.implode(', ', $unset).'. '
+                .'Each has a default that works locally and is silently wrong in production - '
+                .'see the comments on them in .env.example.'
+            );
+        }
+    }
+
+    private function serves(): bool
+    {
+        return ! $this->app->runningInConsole()
+            || $this->app->runningConsoleCommand('queue:work', 'queue:listen', 'schedule:run', 'schedule:work', 'serve', 'octane:start');
+    }
+
+    /**
+     * Empty, or still the template's <PLACEHOLDER>.
+     */
+    private function blank(mixed $value): bool
+    {
+        return ! is_string($value) || trim($value) === '' || str_contains($value, '<');
     }
 
     /**

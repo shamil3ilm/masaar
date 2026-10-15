@@ -82,14 +82,19 @@ class FtaClient
     }
 
     /**
-     * The configured environment's endpoint, or the sandbox's for a name
-     * config/fta.php does not define.
+     * The configured environment's endpoint. A name config/fta.php does not
+     * define is refused, not sent to the sandbox.
      */
     private function baseUrl(): string
     {
-        $environment = config('fta.environment', 'sandbox');
+        $environment = (string) config('fta.environment', 'sandbox');
+        $url = config("fta.endpoints.{$environment}");
 
-        return (string) (config("fta.endpoints.{$environment}") ?? config('fta.endpoints.sandbox'));
+        if (! is_string($url) || $url === '') {
+            throw new \RuntimeException("UAE_FTA_ENVIRONMENT '{$environment}' has no endpoint in config/fta.php.");
+        }
+
+        return $url;
     }
 
     private function undecided(Response $response): bool

@@ -88,6 +88,22 @@ class ProductionGuardTest extends TestCase
             }
         }
 
+        // assertAuthorityIsKnown: a name with no endpoint used to file with
+        // the sandbox.
+        if (array_key_exists('ZATCA_ENVIRONMENT', $env)) {
+            $this->assertContains($env['ZATCA_ENVIRONMENT'], ['sandbox', 'simulation', 'production'],
+                $template.' sets ZATCA_ENVIRONMENT='.$env['ZATCA_ENVIRONMENT'].', which has no endpoint.');
+        }
+
+        // assertProductionSettingsAreFilledIn is the one guard a template
+        // cannot pass: what it checks is what only the operator can supply,
+        // and an unedited copy should refuse to serve. So each template names
+        // every one of them, where the operator will see it.
+        foreach (['APP_URL', 'JWT_SECRET', 'API_KEY_PEPPER', 'MAIL_MAILER', 'MAIL_FROM_ADDRESS'] as $setting) {
+            $this->assertArrayHasKey($setting, $env,
+                $template.' does not name '.$setting.', which production requires before it serves.');
+        }
+
         // assertSessionsAreEncrypted: the console flashes a one-time API
         // secret through the session.
         if (array_key_exists('SESSION_ENCRYPT', $env)) {
@@ -138,9 +154,11 @@ class ProductionGuardTest extends TestCase
         sort($guards);
 
         $this->assertSame([
+            'assertAuthorityIsKnown',
             'assertAuthorityIsNotSandbox',
             'assertDebugDisabledInProduction',
             'assertLicenceSecretIsSet',
+            'assertProductionSettingsAreFilledIn',
             'assertSessionsAreEncrypted',
             'assertSubmissionLimitsAgree',
         ], $guards, 'AppServiceProvider has a boot guard this test does not check the '
