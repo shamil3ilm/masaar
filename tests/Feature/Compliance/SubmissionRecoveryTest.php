@@ -10,6 +10,7 @@ use App\Domains\Compliance\Fatoora\Services\SubmissionGuard;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -54,6 +55,37 @@ class SubmissionRecoveryTest extends TestCase
         $this->artisan('fatoora:recover-submissions')->assertSuccessful();
 
         Queue::assertPushed(ProcessFatooraSubmission::class, fn ($job) => $job->submission->id === $submission->id);
+    }
+
+    /**
+     * A job waiting behind a backlog is not lost. Recovered once, the row is
+     * re-stamped, so the next run does not queue it again.
+     */
+    public function test_a_resent_job_is_not_requeued(): void
+    {
+        $submission = $this->inFlight('queued', 'reporting', minutesAgo: 30);
+
+        $this->artisan('fatoora:recover-submissions')->assertSuccessful();
+        $this->artisan('fatoora:recover-submissions')->assertSuccessful();
+
+        Queue::assertPushed(ProcessFatooraSubmission::class, 1);
+        $this->assertSame('queued', $submission->fresh()->state);
+    }
+
+    /**
+     * The queue refusing the job leaves the row as it was, stale, so the next
+     * run tries again - not marked failed with no job, which nothing resends.
+     */
+    public function test_a_refused_push_stays_recoverable(): void
+    {
+        $submission = $this->inFlight('pending_submission', 'reporting', minutesAgo: 30);
+
+        Bus::shouldReceive('dispatch')->andThrow(new \RuntimeException('queue down'));
+
+        $this->artisan('fatoora:recover-submissions')->assertFailed();
+
+        $this->assertSame('pending_submission', $submission->fresh()->state);
+        $this->assertTrue(InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()->stale()->whereKey($submission->id)->exists()));
     }
 
     public function test_a_recent_one_is_left_alone(): void

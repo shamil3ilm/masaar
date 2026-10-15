@@ -28,7 +28,8 @@ class VerifyHashChain extends Command
 {
     protected $signature = 'fatoora:verify-hash-chain
                             {--organization= : Verify specific organization only}
-                            {--database= : Use alternate database connection}';
+                            {--database= : Use alternate database connection}
+                            {--page=1000 : Invoices read at a time}';
 
     protected $description = 'Verify PIH (Previous Invoice Hash) chain integrity for ZATCA compliance';
 
@@ -182,48 +183,50 @@ class VerifyHashChain extends Command
         // Filtering on icv costs something, and strays() pays it back: an
         // invoice that is issued but holds no counter is now outside this
         // walk, so it is looked for separately rather than silently skipped.
-        $invoices = Invoice::where('org_id', $organizationId)
-            ->whereNotNull('icv')
-            ->orderBy('icv')
-            ->get(['id', 'invoice_number', 'icv', 'hash', 'device_id', 'created_at']);
-
         $this->strays($organizationId);
 
-        if ($invoices->isEmpty()) {
+        $devices = Invoice::where('org_id', $organizationId)
+            ->whereNotNull('icv')
+            ->distinct()
+            ->pluck('device_id');
+
+        if ($devices->isEmpty()) {
             $this->line('  No invoices found');
 
             return;
         }
 
-        // What each document was actually built with. This is the record worth
-        // checking: the invoice itself keeps no PIH, and deriving one would
-        // only re-walk the chain and agree with itself.
-        $recorded = ChainEntry::withoutTenantScope(
-            fn () => ChainEntry::where('org_id', $organizationId)->pluck('previous_hash', 'invoice_id')
-        );
+        $before = $this->checked;
 
         // One chain per device, as ZATCA keeps them. Walked as one sequence,
         // a branch's documents read as gaps in head office's counter and as
         // PIH mismatches in both.
-        foreach ($invoices->groupBy(fn (Invoice $invoice): string => (string) ($invoice->device_id ?? $organizationId)) as $deviceId => $chain) {
-            if ($deviceId !== $organizationId) {
+        foreach ($devices as $deviceId) {
+            // Head office's device is the organization itself.
+            if ($deviceId !== null && $deviceId !== $organizationId) {
                 $this->line("  Device {$deviceId}");
             }
 
-            $this->walk($chain, $recorded);
+            $this->walk($organizationId, $deviceId);
         }
 
-        $this->info("  Verified {$invoices->count()} invoices");
+        $verified = $this->checked - $before;
+
+        $this->info("  Verified {$verified} invoices");
         $this->info('');
     }
 
     /**
-     * One device's chain, in counter order.
+     * One device's chain, in counter order, a page at a time.
      *
-     * @param  Collection<int, Invoice>  $invoices
-     * @param  Collection<string, string>  $recorded  invoice id => the PIH it was built with
+     * It read the whole tenant into memory - every chained invoice, then a map
+     * of every chain entry - and a tenant issuing a few thousand documents a
+     * day reaches the worker's memory limit within the year, at which point
+     * the weekly check dies instead of reporting.
+     *
+     * Paged on the counter, which (device_id, icv) keeps unique.
      */
-    private function walk(Collection $invoices, Collection $recorded): void
+    private function walk(string $organizationId, ?string $deviceId): void
     {
         // A device's first document names ZATCA's genesis PIH. This expected
         // base64 of thirty-two zero bytes, which ZATCA refuses and the
@@ -233,6 +236,36 @@ class VerifyHashChain extends Command
         $previousHash = FatooraConfig::GENESIS_PIH;
         $previousIcv = 0;
 
+        Invoice::where('org_id', $organizationId)
+            ->whereNotNull('icv')
+            ->when(
+                $deviceId === null,
+                fn ($query) => $query->whereNull('device_id'),
+                fn ($query) => $query->where('device_id', $deviceId),
+            )
+            ->select(['id', 'invoice_number', 'icv', 'hash', 'device_id'])
+            ->chunkById(max(1, (int) $this->option('page')), function (Collection $page) use ($organizationId, &$previousHash, &$previousIcv): void {
+                // What each document was actually built with. This is the
+                // record worth checking: the invoice itself keeps no PIH, and
+                // deriving one would only re-walk the chain and agree with
+                // itself.
+                $recorded = ChainEntry::withoutTenantScope(fn () => ChainEntry::where('org_id', $organizationId)
+                    ->whereIn('invoice_id', $page->modelKeys())
+                    ->pluck('previous_hash', 'invoice_id'));
+
+                [$previousHash, $previousIcv] = $this->check($page, $recorded, $previousHash, $previousIcv);
+            }, 'icv');
+    }
+
+    /**
+     * Checks one page, carrying the chain's position in and out.
+     *
+     * @param  Collection<int, Invoice>  $invoices
+     * @param  Collection<string, string>  $recorded  invoice id => the PIH it was built with
+     * @return array{0: string|null, 1: int} the last hash and counter seen
+     */
+    private function check(Collection $invoices, Collection $recorded, ?string $previousHash, int $previousIcv): array
+    {
         foreach ($invoices as $invoice) {
             $this->checked++;
 
@@ -284,5 +317,7 @@ class VerifyHashChain extends Command
             $previousHash = $invoice->hash;
             $previousIcv = $invoice->icv;
         }
+
+        return [$previousHash, $previousIcv];
     }
 }
