@@ -107,6 +107,29 @@ class InvoiceCreateTest extends TestCase
     }
 
     /**
+     * Prices typed as the customer pays them: the total is what was typed,
+     * and the net is backed out of it.
+     */
+    public function test_inclusive_prices_are_kept(): void
+    {
+        $this->submit($this->simplified([
+            'prices_include_vat' => '1',
+            'lines' => [
+                ['description' => 'Widget', 'quantity' => '3', 'unit_price' => '10.00', 'tax_rate' => '15', 'unit_code' => 'PCE'],
+            ],
+        ]));
+
+        $invoice = Invoice::withoutTenantScope(
+            fn () => Invoice::with('lines')->where('invoice_number', 'PORTAL-1')->firstOrFail()
+        );
+
+        $this->assertTrue($invoice->prices_include_vat);
+        $this->assertSame('30.00', (string) $invoice->total);
+        $this->assertSame('26.09', (string) $invoice->subtotal);
+        $this->assertSame('10.00', $invoice->lines[0]->priceAsEntered(true));
+    }
+
+    /**
      * The empty row the repeater is holding is not an invoice line.
      *
      * Pressing "Add a line" and then not using it posts a row of empty

@@ -27,6 +27,9 @@ class InvoiceLine extends Model
         'quantity',
         'unit_code',
         'unit_price',
+        // The exact net. A net price backed out of a VAT-inclusive one is
+        // rounded, so quantity times it is not always the line's net.
+        'net_amount',
         'tax_rate',
         'tax_amount',
         'tax_category',
@@ -40,6 +43,7 @@ class InvoiceLine extends Model
         return [
             'quantity' => 'decimal:3',
             'unit_price' => 'decimal:2',
+            'net_amount' => 'decimal:2',
             'tax_rate' => 'decimal:2',
             'tax_amount' => 'decimal:2',
             'line_total' => 'decimal:2',
@@ -67,6 +71,22 @@ class InvoiceLine extends Model
         static::creating($guard);
         static::updating($guard);
         static::deleting($guard);
+    }
+
+    /**
+     * The unit price as it was entered: with VAT in it when the invoice was
+     * priced that way, since that is the price the customer saw.
+     *
+     * unit_price is always net - what ZATCA is given - and on an invoice
+     * priced VAT-inclusive that is not the price on the shelf.
+     */
+    public function priceAsEntered(bool $pricesIncludeVat): string
+    {
+        if (! $pricesIncludeVat || bccomp((string) $this->quantity, '0', 3) <= 0) {
+            return (string) $this->unit_price;
+        }
+
+        return number_format((float) bcdiv((string) $this->line_total, (string) $this->quantity, 6), 2, '.', '');
     }
 
     /**

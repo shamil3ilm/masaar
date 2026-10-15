@@ -42,6 +42,7 @@ final readonly class InvoiceXmlData
      *   description: string,
      *   quantity: float,
      *   unitPrice: float,
+     *   lineNet?: float|null,
      *   taxRate: float,
      *   taxAmount: float,
      *   lineTotal: float,
@@ -99,8 +100,9 @@ final readonly class InvoiceXmlData
         public bool $isExport = false,        // Bit 5: Export invoice
         public bool $isSummary = false,       // Bit 6: Summary invoice
         public bool $isSelfBilled = false,    // Bit 7: Self-billed invoice
-        // Tax-inclusive pricing flag
-        public bool $isTaxInclusive = false,  // If true, unitPrice includes VAT and needs conversion
+        // Prices were entered with VAT in them. Amounts are already net; the
+        // document VAT (taxAmount) is fixed, and the categories add up to it.
+        public bool $isTaxInclusive = false,
         // === NEW: Buyer identification for non-VAT registered buyers ===
         // Per ZATCA: When buyer has no VAT, must provide alternative ID
         public ?string $buyerIdScheme = null,  // One of: TIN, CRN, MOM, MLS, SAG, NAT, GCC, IQA, PAS, OTH
@@ -202,58 +204,6 @@ final readonly class InvoiceXmlData
     public function isSelfBilledInvoice(): bool
     {
         return $this->isSelfBilled;
-    }
-
-    /**
-     * Calculate net price from gross (tax-inclusive) price.
-     *
-     * Formula: Net = Gross / (1 + taxRate/100)
-     *
-     * @param  float  $grossPrice  Tax-inclusive price
-     * @param  float  $taxRate  Tax rate percentage (e.g., 15 for 15%)
-     * @return float Net (tax-exclusive) price
-     */
-    public static function calculateNetFromGross(float $grossPrice, float $taxRate): float
-    {
-        if ($taxRate <= 0) {
-            return $grossPrice;
-        }
-
-        return round($grossPrice / (1 + $taxRate / 100), 2);
-    }
-
-    /**
-     * Calculate tax amount from gross (tax-inclusive) price.
-     *
-     * Formula: Tax = Gross - Net = Gross - (Gross / (1 + taxRate/100))
-     *
-     * @param  float  $grossPrice  Tax-inclusive price
-     * @param  float  $taxRate  Tax rate percentage (e.g., 15 for 15%)
-     * @return float Tax amount
-     */
-    public static function calculateTaxFromGross(float $grossPrice, float $taxRate): float
-    {
-        if ($taxRate <= 0) {
-            return 0.0;
-        }
-
-        $netPrice = self::calculateNetFromGross($grossPrice, $taxRate);
-
-        return round($grossPrice - $netPrice, 2);
-    }
-
-    /**
-     * Calculate gross (tax-inclusive) price from net price.
-     *
-     * Formula: Gross = Net × (1 + taxRate/100)
-     *
-     * @param  float  $netPrice  Tax-exclusive price
-     * @param  float  $taxRate  Tax rate percentage (e.g., 15 for 15%)
-     * @return float Gross (tax-inclusive) price
-     */
-    public static function calculateGrossFromNet(float $netPrice, float $taxRate): float
-    {
-        return round($netPrice * (1 + $taxRate / 100), 2);
     }
 
     /**

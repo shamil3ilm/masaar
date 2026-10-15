@@ -46,12 +46,15 @@ class Organization extends Model
         'city',
         'postal_code',
         'cr_number',
+        // Whether its prices include VAT unless an invoice says otherwise.
+        'prices_include_vat',
     ];
 
     protected function casts(): array
     {
         return [
             'compliance_profile' => 'array',
+            'prices_include_vat' => 'boolean',
         ];
     }
 

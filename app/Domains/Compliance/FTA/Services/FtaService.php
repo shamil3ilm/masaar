@@ -256,7 +256,11 @@ class FtaService
             'description' => $line->description ?? '',
             'quantity' => (float) ($line->quantity ?? 1),
             'unit_price' => (float) $line->unit_price,
-            'net_amount' => (float) $line->line_total,
+            // The net, not line_total: that includes the VAT, so every line
+            // went out overstated by its own tax.
+            'net_amount' => $line->net_amount !== null
+                ? (float) $line->net_amount
+                : round((float) $line->quantity * (float) $line->unit_price, 2),
             'tax_amount' => (float) ($line->tax_amount ?? 0),
             'unit_code' => UnitCode::DEFAULT,
         ])->toArray();

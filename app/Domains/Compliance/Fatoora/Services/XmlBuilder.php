@@ -462,7 +462,7 @@ class XmlBuilder
             return;
         }
 
-        foreach ($this->breakdown($data->lines, (float) $data->discount) as $part) {
+        foreach ($this->breakdown($data->lines, (float) $data->discount, $this->fixedTax($data)) as $part) {
             if ($part['share'] <= 0.0) {
                 continue;
             }
@@ -567,7 +567,7 @@ class XmlBuilder
             }
         } else {
             // Aggregate tax subtotals from invoice lines by category and rate
-            $aggregated = $this->aggregateTaxSubtotals($data->lines, (float) $data->discount);
+            $aggregated = $this->aggregateTaxSubtotals($data->lines, (float) $data->discount, $this->fixedTax($data));
             foreach ($aggregated as $subtotal) {
                 $taxTotal->appendChild($this->buildTaxSubtotal($subtotal, $data->currency));
             }
@@ -608,7 +608,7 @@ class XmlBuilder
      * @param  array<int, array<string, mixed>>  $lines
      * @return array<string, array{category: string, rate: float, net: float, share: float, taxableAmount: float, taxAmount: float, taxExemptionReason: ?string, taxExemptionReasonCode: ?string}>
      */
-    private function breakdown(array $lines, float $allowance): array
+    private function breakdown(array $lines, float $allowance, ?float $tax = null): array
     {
         $groups = [];
 
@@ -635,10 +635,11 @@ class XmlBuilder
                 ];
             }
 
-            // The line net, recomputed rather than read from lineTotal: the
-            // controller stores quantity × unitPrice plus the line's tax, so
-            // lineTotal already includes the tax this group exists to explain.
-            $groups[$key]['net'] += round((float) $line['quantity'] * (float) $line['unitPrice'], 2);
+            // The line net, not lineTotal: that already includes the tax this
+            // group exists to explain. The stored net when there is one - a
+            // price backed out of a VAT-inclusive one is rounded, so quantity
+            // times it is not always the net.
+            $groups[$key]['net'] += $this->lineNet($line);
         }
 
         // A discount on the whole invoice reaches every category in proportion
@@ -648,7 +649,8 @@ class XmlBuilder
         $categories = InvoiceTotals::categories(
             array_map(static fn (array $g): float => $g['net'], $groups),
             array_map(static fn (array $g): float => $g['rate'], $groups),
-            $allowance
+            $allowance,
+            $tax
         );
 
         foreach ($categories as $key => $category) {
@@ -660,9 +662,35 @@ class XmlBuilder
         return $groups;
     }
 
-    private function aggregateTaxSubtotals(array $lines, float $allowance = 0.0): array
+    private function aggregateTaxSubtotals(array $lines, float $allowance = 0.0, ?float $tax = null): array
     {
-        return array_values($this->breakdown($lines, $allowance));
+        return array_values($this->breakdown($lines, $allowance, $tax));
+    }
+
+    /**
+     * The document's VAT when it is fixed rather than derived.
+     *
+     * Prices entered with VAT in them keep the customer's total exact, so the
+     * VAT is what that total leaves over the net, and the categories are made
+     * to add up to it (InvoiceTotals::categories()). Otherwise null: the
+     * categories decide it.
+     */
+    private function fixedTax(InvoiceXmlData $data): ?float
+    {
+        return $data->isTaxInclusive ? (float) $data->taxAmount : null;
+    }
+
+    /**
+     * A line's net: the stored figure when there is one, otherwise quantity
+     * times the unit price.
+     *
+     * @param  array<string, mixed>  $line
+     */
+    private function lineNet(array $line): float
+    {
+        return isset($line['lineNet'])
+            ? (float) $line['lineNet']
+            : round((float) $line['quantity'] * (float) $line['unitPrice'], 2);
     }
 
     /**
@@ -804,17 +832,21 @@ class XmlBuilder
                 ? (float) ($line['marketValue'] ?? 0.0)
                 : (float) $line['unitPrice'];
 
-            if ($data->isTaxInclusive && ! $isFreeItem) {
-                // Convert tax-inclusive prices to tax-exclusive for ZATCA XML
-                $netUnitPrice = InvoiceXmlData::calculateNetFromGross($unitPrice, $taxRate);
-                $lineNet = round($netUnitPrice * $line['quantity'], 2) - $lineDiscount;
-                $lineTaxAmount = InvoiceXmlData::calculateTaxFromNet($lineNet, $taxRate);
-            } else {
-                // Already tax-exclusive (or free item with market value)
-                $netUnitPrice = $unitPrice;
-                // Quantity times price, not lineTotal: that carries the tax.
-                $lineNet = round($unitPrice * (float) $line['quantity'], 2) - $lineDiscount;
-                $lineTaxAmount = (float) ($line['taxAmount'] ?? InvoiceXmlData::calculateTaxFromNet($lineNet, $taxRate));
+            // Prices are stored net whichever way they were entered; a price
+            // that had VAT in it was converted when the invoice was drafted.
+            // This converted again from the unit price, which by then was net.
+            $netUnitPrice = $unitPrice;
+            // Quantity times price, not lineTotal: that carries the tax. The
+            // stored net when there is one.
+            $lineNet = ($isFreeItem ? round($unitPrice * (float) $line['quantity'], 2) : $this->lineNet($line)) - $lineDiscount;
+            $lineTaxAmount = (float) ($line['taxAmount'] ?? InvoiceXmlData::calculateTaxFromNet($lineNet, $taxRate));
+
+            // A net backed out of a gross price is rounded to the halalah, so
+            // the price that reproduces the line net (BR-KSA-EN16931-11) may
+            // need more places. ZATCA sets no limit on the price's decimals.
+            if (! $isFreeItem && $lineDiscount === 0.0 && (float) $line['quantity'] > 0
+                && round($unitPrice * (float) $line['quantity'], 2) !== round($lineNet, 2)) {
+                $netUnitPrice = round($lineNet / (float) $line['quantity'], 6);
             }
 
             // For free items: lineNet = 0 but VAT still calculated on market value
@@ -906,7 +938,7 @@ class XmlBuilder
 
             // Price (net unit price - ZATCA requires tax-exclusive price in XML)
             $price = $this->dom->createElementNS(self::CAC_NS, 'cac:Price');
-            $priceAmount = $this->dom->createElementNS(self::CBC_NS, 'cbc:PriceAmount', $this->formatAmount($netUnitPrice));
+            $priceAmount = $this->dom->createElementNS(self::CBC_NS, 'cbc:PriceAmount', $this->formatPrice($netUnitPrice));
             $priceAmount->setAttribute('currencyID', $data->currency);
             $price->appendChild($priceAmount);
 
@@ -1036,6 +1068,18 @@ class XmlBuilder
     private function formatAmount(float $amount): string
     {
         return number_format($amount, 2, '.', '');
+    }
+
+    /**
+     * Format a unit price: two places, or up to six when a net price backed
+     * out of a VAT-inclusive one needs them to reproduce its line net.
+     */
+    private function formatPrice(float $price): string
+    {
+        $formatted = rtrim(number_format($price, 6, '.', ''), '0');
+        $places = strlen(substr(strrchr($formatted, '.'), 1));
+
+        return $places < 2 ? number_format($price, 2, '.', '') : $formatted;
     }
 
     /**

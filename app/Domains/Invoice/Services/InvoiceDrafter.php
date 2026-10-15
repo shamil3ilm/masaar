@@ -9,6 +9,7 @@ use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Exceptions\InvoiceNotEditableException;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Support\UnitCode;
+use App\Domains\Organization\Models\Organization;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -53,9 +54,15 @@ class InvoiceDrafter
 
     public function draft(array $data, string $organizationId, ?string $branchId = null): Invoice
     {
-        $totals = InvoiceTotals::of($data['lines'], (string) ($data['discount_amount'] ?? '0'));
+        // The invoice says whether its prices include VAT; if it does not,
+        // the organization's setting decides.
+        $inclusive = array_key_exists('prices_include_vat', $data) && $data['prices_include_vat'] !== null
+            ? (bool) $data['prices_include_vat']
+            : (bool) Organization::query()->whereKey($organizationId)->value('prices_include_vat');
 
-        return DB::transaction(function () use ($data, $organizationId, $branchId, $totals) {
+        $totals = InvoiceTotals::of($data['lines'], (string) ($data['discount_amount'] ?? '0'), $inclusive);
+
+        return DB::transaction(function () use ($data, $organizationId, $branchId, $totals, $inclusive) {
             $invoice = Invoice::create([
                 'org_id' => $organizationId,
                 'branch_id' => $branchId,
@@ -79,6 +86,7 @@ class InvoiceDrafter
                 'notes' => $data['notes'] ?? null,
                 'erp_reference_id' => $data['erp_reference_id'] ?? null,
                 'idempotency_key' => $data['idempotency_key'] ?? null,
+                'prices_include_vat' => $inclusive,
             ]);
 
             foreach (array_values($data['lines']) as $index => $line) {
@@ -90,7 +98,10 @@ class InvoiceDrafter
                     'class_code' => $line['class_code'] ?? null,
                     'quantity' => (string) $line['quantity'],
                     'unit_code' => UnitCode::normalise($line['unit_code'] ?? null),
-                    'unit_price' => (string) $line['unit_price'],
+                    // Net, with the exact net beside it: a price entered with
+                    // VAT in it is stored as the net it contains.
+                    'unit_price' => $priced['unit_price'],
+                    'net_amount' => $priced['net'],
                     'tax_rate' => $priced['rate'],
                     'tax_amount' => $priced['tax'],
                     'tax_category' => $line['tax_category'] ?? 'S',

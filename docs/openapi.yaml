@@ -1477,6 +1477,8 @@ paths:
                   type: string
                 adjustment_reason:
                   type: string
+                prices_include_vat:
+                  type: boolean
                 discount_amount:
                   type: number
                 notes:
@@ -1586,6 +1588,8 @@ paths:
                   type: string
                 adjustment_reason:
                   type: string
+                prices_include_vat:
+                  type: boolean
                 discount_amount:
                   type: number
                 notes:
@@ -1668,6 +1672,8 @@ paths:
                   type: string
                 adjustment_reason:
                   type: string
+                prices_include_vat:
+                  type: boolean
                 discount_amount:
                   type: number
                 notes:
@@ -2694,6 +2700,8 @@ paths:
                   type: string
                 adjustment_reason:
                   type: string
+                prices_include_vat:
+                  type: boolean
                 discount_amount:
                   type: number
                 notes:
@@ -2807,6 +2815,8 @@ paths:
                   type: string
                 adjustment_reason:
                   type: string
+                prices_include_vat:
+                  type: boolean
                 discount_amount:
                   type: number
                 notes:
@@ -2943,6 +2953,8 @@ paths:
                   type: string
                 adjustment_reason:
                   type: string
+                prices_include_vat:
+                  type: boolean
                 discount_amount:
                   type: number
                 notes:

@@ -102,12 +102,16 @@ class OrganizationController extends Controller
             // was none.
             'name_ar' => ['sometimes', 'nullable', 'string', 'max:255'],
             'vat_number' => ['nullable', 'string', new VatNumber],
+            // Whether invoices' prices include VAT unless an invoice says
+            // otherwise.
+            'prices_include_vat' => ['sometimes', 'boolean'],
         ]);
 
         $organization = $this->registrar->amend($organization, new OrganizationChangesData(
             name: $request->name,
             nameAr: $request->name_ar,
             vatNumber: $request->vat_number,
+            pricesIncludeVat: $request->has('prices_include_vat') ? $request->boolean('prices_include_vat') : null,
         ));
 
         return ApiResponse::success([

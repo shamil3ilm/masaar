@@ -195,6 +195,18 @@
         <h3 class="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-500">Totals and notes</h3>
 
         <div class="grid gap-4 sm:grid-cols-2">
+            {{-- A select, not a checkbox: an unticked box sends nothing, which
+                 would quietly fall back to the organization's own setting. --}}
+            @php($inclusive = (string) old('prices_include_vat', $organization->prices_include_vat ? '1' : '0'))
+            <div class="sm:col-span-2">
+                <label for="prices_include_vat" class="block text-sm font-medium text-gray-700">Prices</label>
+                <x-ui.select name="prices_include_vat" id="prices_include_vat">
+                    <option value="0" @selected($inclusive === '0')>Exclude VAT - VAT is added to them</option>
+                    <option value="1" @selected($inclusive === '1')>Include VAT - the customer pays exactly these</option>
+                </x-ui.select>
+                <p class="mt-1 text-xs text-gray-500">Applies to the unit prices and the discount.</p>
+            </div>
+
             <div>
                 <label for="discount_amount" class="block text-sm font-medium text-gray-700">Document discount</label>
                 <x-ui.input type="number" step="0.01" min="0" name="discount_amount" id="discount_amount"

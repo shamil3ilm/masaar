@@ -110,6 +110,7 @@ class Registrar
             $locked->update([
                 'name' => $changes->name ?? $locked->name,
                 'name_ar' => $changes->nameAr ?? $locked->name_ar,
+                'prices_include_vat' => $changes->pricesIncludeVat ?? $locked->prices_include_vat,
                 'compliance_profile' => array_merge(
                     $locked->compliance_profile ?? [],
                     array_filter(['vat_number' => $changes->vatNumber])

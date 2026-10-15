@@ -155,7 +155,7 @@
                         <span class="text-gray-500">{{ \App\Domains\Invoice\Support\UnitCode::label(\App\Domains\Invoice\Support\UnitCode::normalise($line->unit_code)) }}</span>
                     </td>
                     <td class="py-2 text-right tabular-nums">
-                        @include('portal.partials.money', ['amount' => $line->unit_price, 'currency' => $invoice->currency])
+                        @include('portal.partials.money', ['amount' => $line->priceAsEntered((bool) $invoice->prices_include_vat), 'currency' => $invoice->currency])
                     </td>
                     @if (! $simplified)
                         <td class="py-2 text-right tabular-nums">
