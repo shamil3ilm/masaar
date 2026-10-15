@@ -360,6 +360,27 @@ class AdminDashboardTest extends TestCase
         Queue::assertPushed(QueuedCommand::class);
     }
 
+    /**
+     * min() bounded the limit above and nothing bounded it below: limit=0
+     * answered an empty page, and limit=-1 reached the query builder, which
+     * ignores a negative limit - the whole table in one response.
+     */
+    public function test_a_nonsense_limit_gets_the_default(): void
+    {
+        $acme = $this->organization('Acme');
+        $this->submission($acme, 'rejected');
+        $this->submission($acme, 'cleared');
+
+        $this->api()->getJson('/api/admin/dashboard/logs?limit=0')->assertOk()->assertJsonPath('data.count', 2);
+
+        Queue::fake();
+
+        $this->api()->postJson('/api/admin/dashboard/offline-queue/process', ['limit' => -1])
+            ->assertUnprocessable();
+
+        Queue::assertNothingPushed();
+    }
+
     private function api(): self
     {
         return $this->withToken($this->platformToken());

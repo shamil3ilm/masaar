@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Organization\Services;
 
 use App\Domains\Compliance\Fatoora\Services\CredentialStore;
+use App\Domains\Organization\Exceptions\BranchInUseException;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Support\Collection;
@@ -97,7 +98,7 @@ class BranchService
     {
         // Check for invoices
         if ($branch->invoices()->exists()) {
-            throw new \Exception('Cannot delete branch with existing invoices. Suspend instead.');
+            throw BranchInUseException::hasInvoices();
         }
 
         // Handing the default to another branch and removing this one commit

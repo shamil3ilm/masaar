@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Http\Controllers;
 
+use App\Domains\Organization\Exceptions\BranchInUseException;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Services\BranchService;
 use App\Domains\Organization\Services\TenantResolver;
@@ -11,6 +12,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 /**
  * Branch management API controller.
@@ -68,6 +70,8 @@ class BranchController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        $organization = $this->tenant->getOrganization();
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'name_ar' => ['nullable', 'string', 'max:255'],
@@ -78,31 +82,32 @@ class BranchController extends Controller
             'district' => ['required', 'string', 'max:100'],
             'city' => ['required', 'string', 'max:100'],
             'postal_code' => ['required', 'string', 'size:5', 'regex:/^\d{5}$/'],
-            'device_serial' => ['nullable', 'string', 'max:255', 'unique:branches,device_serial'],
+            // Within this organization: across the platform, one tenant could
+            // take another's predictable next serial and block its branches.
+            'device_serial' => [
+                'nullable', 'string', 'max:255',
+                Rule::unique('branches', 'device_serial')->where('org_id', $organization->id),
+            ],
         ]);
 
-        $organization = $this->tenant->getOrganization();
+        // No catch-all here or in update(): it answered every failure as the
+        // caller's 422 with the exception's message attached - SQL and table
+        // names included. The global renderer logs the detail and answers a
+        // generic 500.
+        $branch = $this->branchService->create($organization, $validated);
 
-        try {
-            $branch = $this->branchService->create($organization, $validated);
-
-            // created(), not success(..., 201). The 201 was landing in the
-            // $message parameter, and this file declares strict_types, so the
-            // int-into-?string raised a TypeError - which is an Error, not an
-            // Exception, so the catch below never saw it and the request
-            // answered 500 with the branch already written. No HTTP test
-            // covered this route, which is why it stood.
-            //
-            // The message also moves out of the data payload: it was a second
-            // message alongside the envelope's own.
-            return ApiResponse::created(
-                ['branch' => $this->formatBranch($branch)],
-                'Branch created. Complete ZATCA onboarding to start issuing invoices.',
-            );
-
-        } catch (\Exception $e) {
-            return ApiResponse::error('Failed to create branch: '.$e->getMessage(), 422);
-        }
+        // created(), not success(..., 201). The 201 was landing in the
+        // $message parameter, and this file declares strict_types, so the
+        // int-into-?string raised a TypeError and the request answered 500
+        // with the branch already written. No HTTP test covered this route,
+        // which is why it stood.
+        //
+        // The message also moves out of the data payload: it was a second
+        // message alongside the envelope's own.
+        return ApiResponse::created(
+            ['branch' => $this->formatBranch($branch)],
+            'Branch created. Complete ZATCA onboarding to start issuing invoices.',
+        );
     }
 
     /**
@@ -152,17 +157,12 @@ class BranchController extends Controller
             'postal_code' => ['sometimes', 'string', 'size:5', 'regex:/^\d{5}$/'],
         ]);
 
-        try {
-            $branch = $this->branchService->update($branch, $validated);
+        $branch = $this->branchService->update($branch, $validated);
 
-            return ApiResponse::success(
-                ['branch' => $this->formatBranch($branch)],
-                'Branch updated',
-            );
-
-        } catch (\Exception $e) {
-            return ApiResponse::error('Failed to update branch: '.$e->getMessage(), 422);
-        }
+        return ApiResponse::success(
+            ['branch' => $this->formatBranch($branch)],
+            'Branch updated',
+        );
     }
 
     /**
@@ -185,7 +185,7 @@ class BranchController extends Controller
 
             return ApiResponse::success(null, 'Branch deleted');
 
-        } catch (\Exception $e) {
+        } catch (BranchInUseException $e) {
             return ApiResponse::error($e->getMessage(), 422);
         }
     }
