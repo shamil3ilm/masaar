@@ -43,6 +43,13 @@ class InvoiceIssueTest extends TestCase
             'name' => 'Acme',
             'country' => 'SA',
             'vat_number' => '300000000000003',
+            // BR-KSA-09: the seller's address is on every document, and an
+            // invoice without one is refused before a counter is spent.
+            'street' => 'King Fahd Road',
+            'building_number' => '1234',
+            'district' => 'Al Olaya',
+            'city' => 'Riyadh',
+            'postal_code' => '12345',
         ]);
 
         $this->member = User::factory()->create();

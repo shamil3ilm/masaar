@@ -254,7 +254,7 @@ class InvoiceQuotaTest extends TestCase
         // A licence cannot be deleted — the model refuses it to preserve the
         // audit trail — so this is an organization that never had one.
         $other = Organization::create([
-            'name' => 'Console Only', 'country' => 'SA', 'vat_number' => '300000000000011',
+            'name' => 'Console Only', 'country' => 'SA', 'vat_number' => '311111111111113',
             'street' => 'King Fahd Road', 'building_number' => '99',
             'district' => 'Al Olaya', 'city' => 'Riyadh', 'postal_code' => '12345',
         ]);
@@ -287,6 +287,18 @@ class InvoiceQuotaTest extends TestCase
             'tax_amount' => '15.00',
             'total' => '115.00',
         ]));
+
+        // The line the stored totals describe: an invoice with none breaks
+        // BR-16 and is refused before issue.
+        $invoice->lines()->create([
+            'description' => 'Item',
+            'quantity' => '1',
+            'unit_price' => '100.00',
+            'tax_rate' => '15',
+            'tax_amount' => '15.00',
+            'tax_category' => 'S',
+            'line_total' => '115.00',
+        ]);
 
         app(Submitter::class)->generate($invoice, $organization);
 

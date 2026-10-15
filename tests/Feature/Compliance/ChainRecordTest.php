@@ -47,6 +47,11 @@ class ChainRecordTest extends TestCase
             'name' => 'Acme Trading',
             'country' => 'SA',
             'vat_number' => '300000000000003',
+            'street' => 'King Fahd Road',
+            'building_number' => '1234',
+            'district' => 'Al Olaya',
+            'city' => 'Riyadh',
+            'postal_code' => '12345',
             'compliance_profile' => ['zatca_onboarded' => true],
         ]);
 

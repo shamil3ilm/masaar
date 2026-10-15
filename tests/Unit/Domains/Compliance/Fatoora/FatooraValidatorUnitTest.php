@@ -120,7 +120,7 @@ it('rejects null exemption code', function () {
 });
 
 // ---------------------------------------------------------------------------
-// UUID v4 format (BR-KSA-01)
+// UUID format (BR-KSA-03)
 // ---------------------------------------------------------------------------
 
 it('accepts a valid UUIDv4', function () {
@@ -129,9 +129,14 @@ it('accepts a valid UUIDv4', function () {
     expect($validator->isValidUuid('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'))->toBeTrue();
 });
 
-it('rejects a UUIDv1 (version digit must be 4)', function () {
-    // Version digit is '1' here — must be '4' per BR-KSA-01
-    expect((new InvoiceValidator)->isValidUuid('550e8400-e29b-11d4-a716-446655440000'))->toBeFalse();
+/*
+ * BR-KSA-03 asks for letters, digits and dashes and names no version. This
+ * test used to require version 4, which every invoice key fails: HasUuids
+ * generates version 7.
+ */
+it('accepts any UUID version', function () {
+    expect((new InvoiceValidator)->isValidUuid('550e8400-e29b-11d4-a716-446655440000'))->toBeTrue();
+    expect((new InvoiceValidator)->isValidUuid('0199e6a8-4c2b-7d3e-9f10-2a3b4c5d6e7f'))->toBeTrue();
 });
 
 it('rejects a UUID without hyphens', function () {
