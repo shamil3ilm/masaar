@@ -158,19 +158,31 @@ class CreateInvoiceRequest extends FormRequest
             ],
 
             // Discount
-            'discount_amount' => ['nullable', 'numeric', 'min:0'],
+            // Two places, as stored; never more than the lines (checked after).
+            'discount_amount' => ['nullable', 'numeric', 'min:0', 'decimal:0,2'],
 
             // Notes
-            'notes' => ['nullable', 'string'],
+            // Bounded: a TEXT column holds 64KB, and Arabic is several bytes a
+            // character - longer failed at the insert as a 500.
+            'notes' => ['nullable', 'string', 'max:5000'],
 
             // Invoice lines
-            'lines' => ['required', 'array', 'min:1'],
+            // Bounded: every line is an insert inside one transaction, and issuing
+            // signs the document while holding the organization's lock.
+            'lines' => ['required', 'array', 'min:1', 'max:1000'],
             'lines.*.description' => ['required', 'string', 'max:255'],
             'lines.*.description_ar' => ['nullable', 'string', 'max:255'],
             'lines.*.class_code' => ['nullable', 'string', 'max:50'],
-            'lines.*.quantity' => ['required', 'numeric', 'min:0.001'],
+            // No finer than the columns hold - quantity to three places, price
+            // to two. Totals were computed from what was sent and the document
+            // from what was stored, so a price of 1.005 totalled one amount
+            // and drew another, and the authority refused it after issue.
+            //
+            // Upper bounds are the columns' too: decimal(12,3) and (12,2). A
+            // larger value failed at the insert as a 500, not a 422.
+            'lines.*.quantity' => ['required', 'numeric', 'min:0.001', 'max:999999999.999', 'decimal:0,3'],
             'lines.*.unit_code' => ['nullable', 'string', Rule::in(UnitCode::accepted())],
-            'lines.*.unit_price' => ['required', 'numeric', 'min:0'],
+            'lines.*.unit_price' => ['required', 'numeric', 'min:0', 'max:9999999999.99', 'decimal:0,2'],
             'lines.*.tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'lines.*.tax_category' => ['nullable', Rule::enum(TaxCategory::class)],
             'lines.*.exempt_code' => [
@@ -207,7 +219,35 @@ class CreateInvoiceRequest extends FormRequest
                     );
                 }
             }
+
+            $this->refuseDiscountBeyondLines($validator);
         });
+    }
+
+    /**
+     * A discount larger than the lines makes a negative invoice: 100 less 200
+     * was drafted, issued and chained with a total of -115.00, which the
+     * authority refuses (BR-KSA-DEC-01). Checked only once the amounts are
+     * well-formed, so bcmath never sees what validation has already refused.
+     */
+    private function refuseDiscountBeyondLines($validator): void
+    {
+        $discount = $this->input('discount_amount');
+        $errors = $validator->errors();
+
+        if ($discount === null || $errors->has('discount_amount') || $errors->has('lines') || $errors->has('lines.*')) {
+            return;
+        }
+
+        $lines = '0';
+
+        foreach ((array) $this->input('lines', []) as $line) {
+            $lines = bcadd($lines, bcmul((string) $line['quantity'], (string) $line['unit_price'], 6), 6);
+        }
+
+        if (bccomp((string) $discount, $lines, 6) > 0) {
+            $errors->add('discount_amount', 'The discount cannot be larger than the invoice lines (BR-KSA-DEC-01).');
+        }
     }
 
     /**
@@ -249,7 +289,10 @@ class CreateInvoiceRequest extends FormRequest
         // Set defaults
         $this->merge([
             'document_type' => $this->document_type ?? 'invoice',
-            'currency' => $this->currency ?? 'SAR',
+            // Upper case, as ISO 4217 and the document have it. 'sar' was
+            // stored as typed, slipped past the foreign-currency rule and
+            // went out as 'sar', which the authority refuses.
+            'currency' => is_string($this->currency) ? strtoupper($this->currency) : 'SAR',
             'payment_means_code' => $this->payment_means_code ?? '10',
         ]);
 

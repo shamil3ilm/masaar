@@ -90,7 +90,10 @@ class GenerateOpenapi extends Command
             'paths' => $this->paths(),
         ];
 
-        $yaml = Yaml::dump($spec, 10, 2, Yaml::DUMP_EMPTY_ARRAY_AS_SEQUENCE);
+        // The layout is pinned rather than left to the library's default,
+        // which changed in symfony/yaml 8.1.6: a patch upgrade rewrote the
+        // whole committed spec, and the drift test read that as a changed API.
+        $yaml = Yaml::dump($spec, 10, 2, Yaml::DUMP_EMPTY_ARRAY_AS_SEQUENCE | Yaml::DUMP_COMPACT_NESTED_MAPPING);
 
         if ($this->option('print')) {
             $this->line($yaml);

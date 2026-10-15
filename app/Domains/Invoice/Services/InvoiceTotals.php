@@ -85,7 +85,10 @@ final readonly class InvoiceTotals
             $categories[$key] = [
                 'share' => $share,
                 'base' => $base,
-                'tax' => round($base * $rates[$key] / 100, 2),
+                // In bcmath, half up, as line VAT is: in floating point
+                // 4.10 * 15 / 100 is 0.61499..., which rounded to 0.61
+                // against a line VAT of 0.62.
+                'tax' => (float) self::round(bcdiv(bcmul(number_format($base, 2, '.', ''), (string) $rates[$key], 6), '100', 6)),
             ];
         }
 
