@@ -2,9 +2,10 @@
 
 namespace App\Domains\Organization\Http\Controllers;
 
+use App\Domains\Organization\DTOs\AddressFields;
 use App\Domains\Organization\DTOs\OrganizationChangesData;
 use App\Domains\Organization\DTOs\OrganizationData;
-use App\Domains\Organization\Rules\VatNumber;
+use App\Domains\Organization\Rules\CompanyProfileRules;
 use App\Domains\Organization\Services\Membership;
 use App\Domains\Organization\Services\Registrar;
 use App\Domains\Organization\Services\TenantResolver;
@@ -44,18 +45,26 @@ class OrganizationController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'name_ar' => ['nullable', 'string', 'max:255'],
-            'country' => ['nullable', 'string', 'size:2'],
-            'vat_number' => ['nullable', 'string', new VatNumber],
-        ]);
+        $country = (string) ($request->input('country') ?: 'SA');
+
+        // The seller's address and registration may come now or later; each is
+        // checked against ZATCA's shape when it is sent. Onboarding refuses
+        // until all of it is there.
+        $validated = $request->validate(
+            [
+                ...CompanyProfileRules::rules($country, complete: false),
+                ...CompanyProfileRules::country(),
+                'name' => ['required', 'string', 'max:255'],
+            ],
+            CompanyProfileRules::messages(),
+        );
 
         $organization = $this->registrar->register(auth()->user(), new OrganizationData(
-            name: $request->name,
-            nameAr: $request->name_ar,
-            country: $request->country ?? 'SA',
-            vatNumber: $request->vat_number,
+            name: $validated['name'],
+            nameAr: $validated['name_ar'] ?? null,
+            country: $country,
+            vatNumber: $validated['vat_number'] ?? null,
+            address: AddressFields::from($validated),
         ));
 
         return ApiResponse::created([
@@ -94,24 +103,26 @@ class OrganizationController extends Controller
 
         $organization = $this->membership->organization(auth()->user(), $id);
 
-        $request->validate([
-            'name' => ['sometimes', 'string', 'max:255'],
-            // The name the invoice is issued under. Settable after the fact
-            // because the column is new: every organization registered before
-            // it existed needs a way to acquire one, and without this there
-            // was none.
-            'name_ar' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'vat_number' => ['nullable', 'string', new VatNumber],
-            // Whether invoices' prices include VAT unless an invoice says
-            // otherwise.
-            'prices_include_vat' => ['sometimes', 'boolean'],
-        ]);
+        // The seller's details, in ZATCA's shapes, each checked when sent. The
+        // address had no way in at all, so no organization could complete
+        // the profile onboarding requires. The VAT number is fixed once the
+        // organization is onboarded.
+        $validated = $request->validate(
+            [
+                ...CompanyProfileRules::rules((string) $organization->country, complete: false, existing: $organization),
+                // Whether invoices' prices include VAT unless an invoice says
+                // otherwise.
+                'prices_include_vat' => ['sometimes', 'boolean'],
+            ],
+            CompanyProfileRules::messages(),
+        );
 
         $organization = $this->registrar->amend($organization, new OrganizationChangesData(
-            name: $request->name,
-            nameAr: $request->name_ar,
-            vatNumber: $request->vat_number,
+            name: $validated['name'] ?? null,
+            nameAr: $validated['name_ar'] ?? null,
+            vatNumber: $validated['vat_number'] ?? null,
             pricesIncludeVat: $request->has('prices_include_vat') ? $request->boolean('prices_include_vat') : null,
+            address: AddressFields::from($validated),
         ));
 
         return ApiResponse::success([

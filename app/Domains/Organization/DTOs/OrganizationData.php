@@ -17,5 +17,6 @@ final readonly class OrganizationData
         public ?string $nameAr,
         public string $country,
         public ?string $vatNumber,
+        public ?AddressFields $address = null,
     ) {}
 }

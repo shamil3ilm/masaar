@@ -17,5 +17,6 @@ final readonly class OrganizationChangesData
         public ?string $nameAr = null,
         public ?string $vatNumber = null,
         public ?bool $pricesIncludeVat = null,
+        public ?AddressFields $address = null,
     ) {}
 }

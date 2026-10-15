@@ -12,6 +12,7 @@ use App\Domains\Invoice\Http\Controllers\PortalInvoiceDraftController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceFilingController;
 use App\Domains\Licensing\Http\Controllers\AdminLicenceController;
 use App\Domains\Organization\Http\Controllers\CustomerPortalController;
+use App\Domains\Organization\Http\Controllers\PortalCompanyController;
 use App\Domains\Platform\Http\Controllers\AdminAuditController;
 use App\Domains\Platform\Http\Controllers\AdminController;
 use App\Domains\Platform\Http\Controllers\AdminSettingsController;
@@ -216,6 +217,11 @@ Route::prefix('portal')->name('portal.')
         Route::get('/submissions', [CustomerPortalController::class, 'submissions'])->name('submissions');
         Route::get('/certificates', [CustomerPortalController::class, 'certificates'])->name('certificates');
         Route::get('/users/{userId}/activity', [CustomerPortalController::class, 'userActivity'])->name('user.activity');
+
+        // The seller details on every invoice, which ZATCA onboarding needs
+        // complete. Administrators only; the controller checks the role.
+        Route::get('/company', [PortalCompanyController::class, 'edit'])->name('company.edit');
+        Route::post('/company', [PortalCompanyController::class, 'update'])->name('company.update');
 
         // The organization's own look over the platform's. Administrators
         // of the organization only; the controller checks the role.

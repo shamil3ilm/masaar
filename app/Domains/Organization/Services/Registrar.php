@@ -40,6 +40,7 @@ class Registrar
                 'compliance_profile' => [
                     'vat_number' => $data->vatNumber,
                 ],
+                ...($data->address?->given() ?? []),
             ]);
 
             $founder->organizations()->attach($organization->id, [
@@ -111,6 +112,7 @@ class Registrar
                 'name' => $changes->name ?? $locked->name,
                 'name_ar' => $changes->nameAr ?? $locked->name_ar,
                 'prices_include_vat' => $changes->pricesIncludeVat ?? $locked->prices_include_vat,
+                ...($changes->address?->given() ?? []),
                 'compliance_profile' => array_merge(
                     $locked->compliance_profile ?? [],
                     array_filter(['vat_number' => $changes->vatNumber])
