@@ -49,11 +49,6 @@ final class FatooraTime
     private const DATE_FORMAT = 'Y-m-d';
 
     /**
-     * Time only format.
-     */
-    private const TIME_FORMAT = 'H:i:s';
-
-    /**
      * Get current UTC timestamp.
      */
     public static function now(): DateTimeImmutable
@@ -80,27 +75,11 @@ final class FatooraTime
     }
 
     /**
-     * Get current timestamp formatted for ZATCA XML.
-     */
-    public static function nowFormatted(): string
-    {
-        return self::now()->format(self::ISO_FORMAT);
-    }
-
-    /**
      * Get current date for ZATCA XML (UTC).
      */
     public static function today(): string
     {
         return self::now()->format(self::DATE_FORMAT);
-    }
-
-    /**
-     * Get current time for ZATCA XML (UTC).
-     */
-    public static function currentTime(): string
-    {
-        return self::now()->format(self::TIME_FORMAT);
     }
 
     /**
@@ -122,22 +101,6 @@ final class FatooraTime
     public static function format(\DateTimeInterface $dateTime): string
     {
         return self::toUtc($dateTime)->format(self::ISO_FORMAT);
-    }
-
-    /**
-     * Format date only (for issue_date, supply_date).
-     */
-    public static function formatDate(\DateTimeInterface $dateTime): string
-    {
-        return self::toUtc($dateTime)->format(self::DATE_FORMAT);
-    }
-
-    /**
-     * Format time only.
-     */
-    public static function formatTime(\DateTimeInterface $dateTime): string
-    {
-        return self::toUtc($dateTime)->format(self::TIME_FORMAT);
     }
 
     /**
@@ -221,46 +184,12 @@ final class FatooraTime
     }
 
     /**
-     * Get Unix timestamp in milliseconds.
-     */
-    public static function timestampMs(): int
-    {
-        return (int) (microtime(true) * 1000);
-    }
-
-    /**
-     * Check if timestamp is within allowed window.
-     */
-    public static function isWithinWindow(
-        \DateTimeInterface $timestamp,
-        int $windowMinutes = 5
-    ): bool {
-        $now = self::now();
-        $diff = abs($now->getTimestamp() - $timestamp->getTimestamp());
-
-        return $diff <= ($windowMinutes * 60);
-    }
-
-    /**
      * Get certificate expiry date in UTC.
      */
     public static function fromUnixTimestamp(int $timestamp): DateTimeImmutable
     {
         return (new DateTimeImmutable('@'.$timestamp))
             ->setTimezone(new DateTimeZone(self::ZATCA_TIMEZONE));
-    }
-
-    /**
-     * Calculate days until date.
-     */
-    public static function daysUntil(\DateTimeInterface $date): int
-    {
-        $now = self::now();
-        $target = self::toUtc($date);
-
-        $diff = $now->diff($target);
-
-        return $diff->invert ? -$diff->days : $diff->days;
     }
 
     /**
@@ -307,15 +236,5 @@ final class FatooraTime
         $from = $from ? self::toUtc($from) : self::now();
 
         return $from->modify("+{$seconds} seconds");
-    }
-
-    /**
-     * Subtract seconds from timestamp.
-     */
-    public static function subSeconds(int $seconds, ?\DateTimeInterface $from = null): DateTimeImmutable
-    {
-        $from = $from ? self::toUtc($from) : self::now();
-
-        return $from->modify("-{$seconds} seconds");
     }
 }

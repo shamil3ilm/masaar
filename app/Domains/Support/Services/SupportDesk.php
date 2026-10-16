@@ -233,11 +233,6 @@ class SupportDesk
             ->paginate($perPage));
     }
 
-    public function openCount(): int
-    {
-        return SupportTicket::withoutTenantScope(fn () => SupportTicket::query()->where('status', TicketStatus::Open)->count());
-    }
-
     /**
      * A ticket for support, with every message, notes included.
      */

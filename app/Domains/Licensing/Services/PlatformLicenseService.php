@@ -323,24 +323,6 @@ class PlatformLicenseService
     }
 
     /**
-     * Get days remaining on license.
-     */
-    public function getDaysRemaining(): ?int
-    {
-        return $this->validate()['days_remaining'];
-    }
-
-    /**
-     * Check if running in trial mode.
-     */
-    public function isTrial(): bool
-    {
-        $result = $this->validate();
-
-        return $result['valid'] && $result['type'] === self::TYPE_TRIAL;
-    }
-
-    /**
      * Log license status for monitoring.
      */
     public function logStatus(): void

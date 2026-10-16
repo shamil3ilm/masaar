@@ -413,33 +413,6 @@ class FatooraClient
     }
 
     /**
-     * Renew Production CSID before expiry.
-     */
-    public function renewProductionCsid(string $pcsid, string $secret, string $csr, string $otp): CsidResponse
-    {
-        try {
-            $client = $this->createBaseHttpClient()
-                ->withBasicAuth($pcsid, $secret)
-                ->withHeaders(['OTP' => $otp]);
-
-            $response = $client->patch($this->baseUrl.'/production/csids', [
-                'csr' => base64_encode($csr),
-            ]);
-
-            if ($response->successful()) {
-                return CsidResponse::fromApiResponse($response->json());
-            }
-
-            return CsidResponse::failed('PCSID renewal failed: '.$response->status());
-
-        } catch (\Exception $e) {
-            Log::error('PCSID renewal failed', ['error' => $e->getMessage()]);
-
-            return CsidResponse::failed($e->getMessage());
-        }
-    }
-
-    /**
      * Get current environment.
      */
     public function getEnvironment(): string

@@ -8,7 +8,6 @@ use App\Domains\Invoice\Models\Invoice;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Duplicate Invoice Detector.
@@ -319,85 +318,5 @@ class DuplicateDetector
             'error' => null,
             'original_invoice' => $original,
         ];
-    }
-
-    /**
-     * Detect potential ERP/POS sync issues.
-     *
-     * When multiple systems generate invoices, duplicates can occur.
-     *
-     * @param  string  $organizationId  Organization ID
-     * @param  int  $lookbackMinutes  Time window to check (default: 60)
-     * @return array List of potential sync conflicts
-     */
-    public function detectSyncConflicts(string $organizationId, int $lookbackMinutes = 60): array
-    {
-        $cutoff = now()->subMinutes($lookbackMinutes);
-
-        // Find invoices with sequential numbers created around the same time
-        $recentInvoices = Invoice::where('org_id', $organizationId)
-            ->where('created_at', '>=', $cutoff)
-            ->orderBy('created_at')
-            ->get();
-
-        $conflicts = [];
-
-        // Check for ICV gaps or duplicates, within each device's own counter.
-        // Across devices, two documents numbered 3 are expected and a branch's
-        // numbers are not gaps in head office's.
-        $byDevice = $recentInvoices
-            ->whereNotNull('icv')
-            ->groupBy(fn (Invoice $invoice): string => (string) ($invoice->device_id ?? $invoice->org_id));
-
-        foreach ($byDevice as $deviceInvoices) {
-            $icvValues = $deviceInvoices->pluck('icv')->sort()->values();
-
-            for ($i = 1; $i < $icvValues->count(); $i++) {
-                $prev = $icvValues[$i - 1];
-                $curr = $icvValues[$i];
-
-                if ($curr === $prev) {
-                    $conflicts[] = [
-                        'type' => 'duplicate_icv',
-                        'icv' => $curr,
-                        'message' => "Duplicate ICV {$curr} detected - possible multi-system sync issue",
-                    ];
-                } elseif ($curr > $prev + 1) {
-                    $conflicts[] = [
-                        'type' => 'icv_gap',
-                        'from_icv' => $prev,
-                        'to_icv' => $curr,
-                        'gap' => $curr - $prev - 1,
-                        'message' => "ICV gap detected: {$prev} to {$curr} (missing ".($curr - $prev - 1).' invoices)',
-                    ];
-                }
-            }
-        }
-
-        // Check for near-simultaneous invoice creation (potential race condition)
-        for ($i = 1; $i < $recentInvoices->count(); $i++) {
-            $prev = $recentInvoices[$i - 1];
-            $curr = $recentInvoices[$i];
-
-            $diffSeconds = $curr->created_at->diffInSeconds($prev->created_at);
-            if ($diffSeconds < 1) {
-                $conflicts[] = [
-                    'type' => 'near_simultaneous',
-                    'invoice_1' => $prev->invoice_number,
-                    'invoice_2' => $curr->invoice_number,
-                    'time_diff_ms' => $diffSeconds * 1000,
-                    'message' => 'Near-simultaneous invoice creation detected - verify no duplicates',
-                ];
-            }
-        }
-
-        if (! empty($conflicts)) {
-            Log::warning('Potential sync conflicts detected', [
-                'org_id' => $organizationId,
-                'conflicts' => $conflicts,
-            ]);
-        }
-
-        return $conflicts;
     }
 }

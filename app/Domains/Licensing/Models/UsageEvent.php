@@ -128,46 +128,6 @@ class UsageEvent extends Model
         return $parts[0] ?? 'api';
     }
 
-    /**
-     * Scope for billable events only.
-     */
-    public function scopeBillable($query)
-    {
-        return $query->where('billable', true);
-    }
-
-    /**
-     * Scope for a specific period.
-     */
-    public function scopeInPeriod($query, string $period = 'month')
-    {
-        $start = match ($period) {
-            'day' => now()->startOfDay(),
-            'week' => now()->startOfWeek(),
-            'month' => now()->startOfMonth(),
-            'year' => now()->startOfYear(),
-            default => now()->startOfMonth(),
-        };
-
-        return $query->where('occurred_at', '>=', $start);
-    }
-
-    /**
-     * Scope for successful events.
-     */
-    public function scopeSuccessful($query)
-    {
-        return $query->where('status', 'success');
-    }
-
-    /**
-     * Scope for failed events.
-     */
-    public function scopeFailed($query)
-    {
-        return $query->where('status', 'failed');
-    }
-
     // Relationships
 
     public function license(): BelongsTo

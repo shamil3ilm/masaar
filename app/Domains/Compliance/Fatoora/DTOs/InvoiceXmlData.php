@@ -148,14 +148,6 @@ final readonly class InvoiceXmlData
     }
 
     /**
-     * Check if this is a debit note.
-     */
-    public function isDebitNote(): bool
-    {
-        return $this->invoiceTypeCode === '383';
-    }
-
-    /**
      * Get invoice type name attribute per ZATCA specification.
      *
      * Format: TTNNNNN where:
@@ -182,30 +174,6 @@ final readonly class InvoiceXmlData
         $bit7 = $this->isSelfBilled ? '1' : '0';
 
         return $transactionType.$bit3.$bit4.$bit5.$bit6.$bit7;
-    }
-
-    /**
-     * Check if this is a third-party invoice.
-     */
-    public function isThirdPartyInvoice(): bool
-    {
-        return $this->isThirdParty;
-    }
-
-    /**
-     * Check if this is an export invoice.
-     */
-    public function isExportInvoice(): bool
-    {
-        return $this->isExport;
-    }
-
-    /**
-     * Check if this is a self-billed invoice.
-     */
-    public function isSelfBilledInvoice(): bool
-    {
-        return $this->isSelfBilled;
     }
 
     /**
@@ -253,14 +221,6 @@ final readonly class InvoiceXmlData
     }
 
     /**
-     * Check if this is a prepayment/deposit invoice.
-     */
-    public function isPrepayment(): bool
-    {
-        return $this->invoiceTypeCode === '386';
-    }
-
-    /**
      * Check if this invoice has prepayment references.
      */
     public function hasPrepaymentReferences(): bool
@@ -293,103 +253,5 @@ final readonly class InvoiceXmlData
         }
 
         return round($amount * $this->exchangeRate, 2);
-    }
-
-    /**
-     * Check if invoice has free items requiring market value VAT.
-     */
-    public function hasFreeItems(): bool
-    {
-        foreach ($this->lines as $line) {
-            if (isset($line['isFreeItem']) && $line['isFreeItem'] === true) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Get effective price for a line item (market value for free items).
-     *
-     * Per ZATCA: Free goods require VAT on "deemed supply" at market value.
-     *
-     * @param  array  $line  Line item data
-     * @return float Price to use for VAT calculation
-     */
-    public static function getEffectivePrice(array $line): float
-    {
-        // If item is free and has market value, use market value for VAT
-        if (isset($line['isFreeItem']) && $line['isFreeItem'] === true) {
-            return $line['marketValue'] ?? 0.0;
-        }
-
-        return $line['unitPrice'] ?? 0.0;
-    }
-
-    /**
-     * Allocate bundle discount proportionally across line items.
-     *
-     * Per ZATCA: Bundle discounts must be allocated by VAT rate to ensure
-     * correct VAT calculation per line.
-     *
-     * @param  array  $lines  Line items with subtotals
-     * @param  float  $totalDiscount  Total discount to allocate
-     * @return array Lines with allocated discounts
-     */
-    public static function allocateBundleDiscount(array $lines, float $totalDiscount): array
-    {
-        if ($totalDiscount <= 0) {
-            return $lines;
-        }
-
-        // Calculate total line value
-        $totalLineValue = 0.0;
-        foreach ($lines as $line) {
-            $totalLineValue += ($line['unitPrice'] ?? 0) * ($line['quantity'] ?? 1);
-        }
-
-        if ($totalLineValue <= 0) {
-            return $lines;
-        }
-
-        // Allocate discount proportionally
-        $allocatedTotal = 0.0;
-        $lastIndex = count($lines) - 1;
-
-        foreach ($lines as $index => &$line) {
-            $lineValue = ($line['unitPrice'] ?? 0) * ($line['quantity'] ?? 1);
-            $proportion = $lineValue / $totalLineValue;
-
-            if ($index === $lastIndex) {
-                // Assign remainder to last line to avoid rounding errors
-                $line['discount'] = round($totalDiscount - $allocatedTotal, 2);
-            } else {
-                $line['discount'] = round($totalDiscount * $proportion, 2);
-                $allocatedTotal += $line['discount'];
-            }
-
-            $line['discountReason'] = $line['discountReason'] ?? 'Bundle discount allocation';
-        }
-
-        return $lines;
-    }
-
-    /**
-     * Validate that credit note doesn't exceed original invoice.
-     *
-     * @param  float  $originalTotal  Original invoice total
-     * @param  float  $previousCnTotal  Sum of previous credit notes for same invoice
-     * @return bool True if valid
-     */
-    public function validateCreditNoteAmount(float $originalTotal, float $previousCnTotal = 0.0): bool
-    {
-        if (! $this->isCreditNote()) {
-            return true;
-        }
-
-        $maxAllowed = $originalTotal - $previousCnTotal;
-
-        return $this->total <= $maxAllowed;
     }
 }

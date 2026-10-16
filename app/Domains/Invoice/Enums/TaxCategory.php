@@ -30,26 +30,4 @@ enum TaxCategory: string
             self::OutOfScope => 'Out of Scope',
         };
     }
-
-    /**
-     * Check if this category requires an exemption reason.
-     */
-    public function requiresExemptionReason(): bool
-    {
-        return match ($this) {
-            self::ZeroRated, self::Exempt, self::OutOfScope => true,
-            self::Standard => false,
-        };
-    }
-
-    /**
-     * Get default tax rate for category.
-     */
-    public function defaultTaxRate(): float
-    {
-        return match ($this) {
-            self::Standard => 15.0,
-            self::ZeroRated, self::Exempt, self::OutOfScope => 0.0,
-        };
-    }
 }

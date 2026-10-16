@@ -485,43 +485,11 @@ final class FatooraConfig
     }
 
     /**
-     * Get large invoice threshold.
-     */
-    public static function getLargeInvoiceThreshold(): float
-    {
-        return (float) self::get('thresholds.large_invoice_amount', self::LARGE_INVOICE_THRESHOLD);
-    }
-
-    /**
-     * Get certificate expiry warning days.
-     */
-    public static function getCertificateExpiryWarningDays(): int
-    {
-        return (int) self::get('certificate.expiry_warning_days', self::CERTIFICATE_EXPIRY_WARNING_DAYS);
-    }
-
-    /**
-     * Get certificate expiry critical days.
-     */
-    public static function getCertificateExpiryCriticalDays(): int
-    {
-        return (int) self::get('certificate.expiry_critical_days', self::CERTIFICATE_EXPIRY_CRITICAL_DAYS);
-    }
-
-    /**
      * Get offline queue max size.
      */
     public static function getOfflineQueueMaxSize(): int
     {
         return (int) self::get('offline.queue_max_size', self::OFFLINE_QUEUE_MAX_SIZE);
-    }
-
-    /**
-     * Get offline retry interval seconds.
-     */
-    public static function getOfflineRetryInterval(): int
-    {
-        return (int) self::get('offline.retry_interval', self::OFFLINE_RETRY_INTERVAL);
     }
 
     /**
@@ -546,14 +514,6 @@ final class FatooraConfig
     }
 
     /**
-     * Check if a feature flag is enabled.
-     */
-    public static function isFeatureEnabled(string $feature): bool
-    {
-        return (bool) self::get("features.{$feature}", false);
-    }
-
-    /**
      * Get invoice type code for document type.
      */
     public static function getInvoiceTypeCode(string $documentType): string
@@ -563,13 +523,5 @@ final class FatooraConfig
             'debit_note' => self::INVOICE_TYPE_DEBIT_NOTE,
             default => self::INVOICE_TYPE_STANDARD,
         };
-    }
-
-    /**
-     * Get default payment means code.
-     */
-    public static function getDefaultPaymentMeansCode(): string
-    {
-        return self::get('default_payment_means_code', self::PAYMENT_CASH);
     }
 }

@@ -136,46 +136,11 @@ class LicenseRegistration extends Model
     }
 
     /**
-     * Check if registration is approved.
-     */
-    public function isApproved(): bool
-    {
-        return $this->status === self::STATUS_APPROVED;
-    }
-
-    /**
-     * Check if registration is pending.
-     */
-    public function isPending(): bool
-    {
-        return $this->status === self::STATUS_PENDING;
-    }
-
-    /**
      * Check if registration is active (can use the software).
      */
     public function isActive(): bool
     {
         return $this->status === self::STATUS_APPROVED && $this->terms_accepted;
-    }
-
-    /**
-     * Check if email is verified.
-     */
-    public function isVerified(): bool
-    {
-        return $this->verified_at !== null;
-    }
-
-    /**
-     * Generate verification token.
-     */
-    public function generateVerificationToken(): string
-    {
-        $this->verify_token = bin2hex(random_bytes(32));
-        $this->save();
-
-        return $this->verify_token;
     }
 
     /**
@@ -292,30 +257,5 @@ class LicenseRegistration extends Model
             'ip_address' => request()->ip(),
             'user_agent' => request()->userAgent(),
         ]);
-    }
-
-    /**
-     * Scope: Approved registrations.
-     */
-    public function scopeApproved($query)
-    {
-        return $query->where('status', self::STATUS_APPROVED);
-    }
-
-    /**
-     * Scope: Pending registrations.
-     */
-    public function scopePending($query)
-    {
-        return $query->where('status', self::STATUS_PENDING);
-    }
-
-    /**
-     * Scope: Active registrations.
-     */
-    public function scopeActive($query)
-    {
-        return $query->where('status', self::STATUS_APPROVED)
-            ->where('terms_accepted', true);
     }
 }

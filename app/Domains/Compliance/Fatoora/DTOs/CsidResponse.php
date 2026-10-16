@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\DTOs;
 
-use App\Domains\Compliance\Fatoora\Helpers\CertificatePem;
-
 /**
  * ZATCA CSID API response wrapper.
  */
@@ -51,16 +49,5 @@ final readonly class CsidResponse
             errorMessages: [$error],
             rawResponse: null,
         );
-    }
-
-    /**
-     * The issued certificate as a PEM.
-     *
-     * This decoded the token and encoded it again, which returns the token:
-     * a PEM whose body was still wrapped once too often.
-     */
-    public function getCertificatePem(): ?string
-    {
-        return CertificatePem::from($this->binarySecurityToken);
     }
 }

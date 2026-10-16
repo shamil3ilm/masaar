@@ -100,22 +100,6 @@ class Organization extends Model
     }
 
     /**
-     * Get active branches ready for invoicing.
-     */
-    public function activeBranches(): HasMany
-    {
-        return $this->branches()->fatooraReady();
-    }
-
-    /**
-     * Get the default branch.
-     */
-    public function defaultBranch(): ?Branch
-    {
-        return $this->branches()->where('is_default', true)->first();
-    }
-
-    /**
      * Invoices belonging to this organization.
      */
     public function invoices(): HasMany

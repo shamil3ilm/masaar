@@ -105,35 +105,11 @@ class SubmissionIdempotency extends Model
     }
 
     /**
-     * Check if request is still processing.
-     */
-    public function isProcessing(): bool
-    {
-        return $this->status === self::STATUS_PROCESSING;
-    }
-
-    /**
-     * Check if request was completed.
-     */
-    public function isCompleted(): bool
-    {
-        return $this->status === self::STATUS_COMPLETED;
-    }
-
-    /**
      * Check if request failed.
      */
     public function isFailed(): bool
     {
         return $this->status === self::STATUS_FAILED;
-    }
-
-    /**
-     * Check if the request hash matches.
-     */
-    public function matchesHash(string $hash): bool
-    {
-        return $this->request_hash === $hash;
     }
 
     /**
@@ -170,38 +146,5 @@ class SubmissionIdempotency extends Model
             'status' => self::STATUS_EXPIRED,
             'expires_at' => now(),
         ]);
-    }
-
-    /**
-     * Increment attempt count.
-     */
-    public function incrementAttempt(): void
-    {
-        $this->increment('attempt_count');
-        $this->update(['last_attempt_at' => now()]);
-    }
-
-    /**
-     * Scope for valid (non-expired) records.
-     */
-    public function scopeValid($query)
-    {
-        return $query->where('expires_at', '>', now());
-    }
-
-    /**
-     * Scope for expired records.
-     */
-    public function scopeExpired($query)
-    {
-        return $query->where('expires_at', '<=', now());
-    }
-
-    /**
-     * Find by idempotency key.
-     */
-    public static function findByKey(string $key): ?self
-    {
-        return static::where('idempotency_key', $key)->first();
     }
 }

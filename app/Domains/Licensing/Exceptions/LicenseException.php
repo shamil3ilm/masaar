@@ -120,16 +120,6 @@ class LicenseException extends Exception
         );
     }
 
-    public static function organizationLimitReached(int $limit): self
-    {
-        return new self(
-            "Organization limit reached: {$limit}. Upgrade your license to add more.",
-            'LICENSE_ORG_LIMIT_REACHED',
-            ['limit' => $limit],
-            403
-        );
-    }
-
     /**
      * Scope not available for this API key.
      */

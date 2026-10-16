@@ -75,21 +75,4 @@ class LicenseRegistrationAudit extends Model
     {
         return $this->belongsTo(User::class);
     }
-
-    /**
-     * Get human-readable action description.
-     */
-    public function getActionDescriptionAttribute(): string
-    {
-        return match ($this->action) {
-            self::ACTION_CREATED => 'Registration submitted',
-            self::ACTION_APPROVED => 'Registration approved',
-            self::ACTION_REJECTED => 'Registration rejected',
-            self::ACTION_SUSPENDED => 'Registration suspended',
-            self::ACTION_REVOKED => 'Registration revoked',
-            self::ACTION_UPDATED => 'Registration updated',
-            self::ACTION_VERIFIED => 'Email verified',
-            default => ucfirst($this->action),
-        };
-    }
 }

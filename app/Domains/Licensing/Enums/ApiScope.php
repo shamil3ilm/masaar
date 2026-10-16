@@ -50,16 +50,6 @@ enum ApiScope: string
     }
 
     /**
-     * Check if this scope requires production environment.
-     */
-    public function requiresProduction(): bool
-    {
-        // Currently no scopes require production
-        // This can be used for scopes that should only work in live mode
-        return false;
-    }
-
-    /**
      * Get the category for this scope.
      */
     public function getCategory(): string
@@ -70,27 +60,6 @@ enum ApiScope: string
             self::OrganizationRead, self::OrganizationWrite => 'organization',
             self::WebhookManage => 'webhook',
             self::ReportsRead, self::ReportsExport => 'reports',
-        };
-    }
-
-    /**
-     * Get description for this scope.
-     */
-    public function getDescription(): string
-    {
-        return match ($this) {
-            self::InvoiceSubmit => 'Submit invoices for clearance/reporting',
-            self::InvoiceRead => 'Read invoice details and status',
-            self::InvoiceCancel => 'Cancel/void invoices (credit notes)',
-            self::InvoiceBatch => 'Submit batch invoices',
-            self::ComplianceStatus => 'Check ZATCA compliance status',
-            self::ComplianceCertificate => 'Manage ZATCA certificates',
-            self::ComplianceOnboarding => 'Complete ZATCA onboarding',
-            self::OrganizationRead => 'Read organization details',
-            self::OrganizationWrite => 'Create/update organizations',
-            self::WebhookManage => 'Manage webhook endpoints',
-            self::ReportsRead => 'Access usage and compliance reports',
-            self::ReportsExport => 'Export reports in various formats',
         };
     }
 

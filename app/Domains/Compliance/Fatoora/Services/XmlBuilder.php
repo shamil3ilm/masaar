@@ -1144,14 +1144,6 @@ class XmlBuilder
     }
 
     /**
-     * Get DOM document for signature injection.
-     */
-    public function getDocument(): DOMDocument
-    {
-        return $this->dom;
-    }
-
-    /**
      * Set QR code in XML (creates element if not exists).
      */
     public function setQrCode(string $qrCode): void

@@ -159,53 +159,6 @@ final class TextNormalizer
     }
 
     /**
-     * Make text safe for XML (escape special characters).
-     */
-    public static function escapeForXml(string $text): string
-    {
-        // First normalize
-        $text = self::normalize($text);
-
-        // Then escape for XML
-        return htmlspecialchars($text, ENT_XML1 | ENT_QUOTES, 'UTF-8');
-    }
-
-    /**
-     * Validate that text is safe for XML element content.
-     *
-     * @return array{valid: bool, errors: string[]}
-     */
-    public static function validateForXml(string $text): array
-    {
-        $errors = [];
-
-        // Check UTF-8 validity
-        if (! mb_check_encoding($text, 'UTF-8')) {
-            $errors[] = 'Text is not valid UTF-8';
-        }
-
-        // Check for XML 1.0 restricted characters
-        if (preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', $text)) {
-            $errors[] = 'Text contains XML 1.0 restricted characters';
-        }
-
-        // Check for null bytes
-        if (str_contains($text, "\0")) {
-            $errors[] = 'Text contains null bytes';
-        }
-
-        // Check length
-        if (mb_strlen($text) > 1000000) {
-            $errors[] = 'Text exceeds maximum length (1MB)';
-        }
-
-        return [
-            'valid' => empty($errors),
-            'errors' => $errors,
-        ];
-    }
-
-    /**
      * Truncate text to max length while preserving UTF-8 integrity.
      */
     public static function truncate(string $text, int $maxLength, string $suffix = '...'): string
@@ -215,71 +168,5 @@ final class TextNormalizer
         }
 
         return mb_substr($text, 0, $maxLength - mb_strlen($suffix)).$suffix;
-    }
-
-    /**
-     * Clean VAT number (remove spaces, dashes, convert to uppercase).
-     */
-    public static function normalizeVatNumber(string $vatNumber): string
-    {
-        // Remove all non-alphanumeric characters
-        $vatNumber = preg_replace('/[^A-Za-z0-9]/', '', $vatNumber);
-
-        // Convert to uppercase
-        return strtoupper($vatNumber);
-    }
-
-    /**
-     * Validate Saudi VAT number format.
-     * Saudi VAT: 15 digits, starts with 3
-     *
-     * @return array{valid: bool, error: ?string}
-     */
-    public static function validateSaudiVatNumber(string $vatNumber): array
-    {
-        $vatNumber = self::normalizeVatNumber($vatNumber);
-
-        if (strlen($vatNumber) !== 15) {
-            return ['valid' => false, 'error' => 'VAT number must be 15 digits'];
-        }
-
-        if (! ctype_digit($vatNumber)) {
-            return ['valid' => false, 'error' => 'VAT number must contain only digits'];
-        }
-
-        if ($vatNumber[0] !== '3') {
-            return ['valid' => false, 'error' => 'Saudi VAT numbers must start with 3'];
-        }
-
-        // Validate checksum (Luhn-like algorithm)
-        if (! self::validateVatChecksum($vatNumber)) {
-            return ['valid' => false, 'error' => 'Invalid VAT number checksum'];
-        }
-
-        return ['valid' => true, 'error' => null];
-    }
-
-    /**
-     * Validate VAT number checksum using Luhn algorithm.
-     */
-    private static function validateVatChecksum(string $vatNumber): bool
-    {
-        $sum = 0;
-        $length = strlen($vatNumber);
-
-        for ($i = 0; $i < $length; $i++) {
-            $digit = (int) $vatNumber[$i];
-
-            if (($length - $i) % 2 === 0) {
-                $digit *= 2;
-                if ($digit > 9) {
-                    $digit -= 9;
-                }
-            }
-
-            $sum += $digit;
-        }
-
-        return $sum % 10 === 0;
     }
 }

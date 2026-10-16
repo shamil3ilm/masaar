@@ -9,7 +9,6 @@ use App\Domains\Organization\Exceptions\BranchInUseException;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use DomainException;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -244,15 +243,5 @@ class BranchService
     public function hasPcsid(Branch $branch): bool
     {
         return $this->getCredentials($branch, 'pcsid') !== null;
-    }
-
-    /**
-     * Get branches with expiring certificates.
-     */
-    public function getExpiringCertificates(int $days = 30): Collection
-    {
-        return Branch::certificateExpiringSoon($days)
-            ->with('org')
-            ->get();
     }
 }

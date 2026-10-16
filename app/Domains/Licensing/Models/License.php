@@ -401,34 +401,6 @@ class License extends Model
     }
 
     /**
-     * Check if license has all of the specified scopes.
-     */
-    public function hasAllScopes(array $scopes): bool
-    {
-        foreach ($scopes as $scope) {
-            if (! $this->hasScope($scope)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * Check if license has any of the specified scopes.
-     */
-    public function hasAnyScope(array $scopes): bool
-    {
-        foreach ($scopes as $scope) {
-            if ($this->hasScope($scope)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
      * Check if this license can operate in the current request environment.
      *
      * ZATCA Compliance: Prevents sandbox keys from submitting real invoices.
@@ -436,14 +408,6 @@ class License extends Model
     public function matchesEnvironment(string $requestedEnv): bool
     {
         return $this->environment->value === $requestedEnv;
-    }
-
-    /**
-     * Check if this license allows real ZATCA submissions.
-     */
-    public function allowsRealSubmissions(): bool
-    {
-        return $this->environment === LicenseEnvironment::Production;
     }
 
     /**
@@ -738,11 +702,6 @@ class License extends Model
 
     // Relationships
 
-    public function usageRecords(): HasMany
-    {
-        return $this->hasMany(LicenseUsage::class);
-    }
-
     public function auditLogs(): HasMany
     {
         return $this->hasMany(LicenseAuditLog::class);
@@ -753,22 +712,10 @@ class License extends Model
         return $this->hasMany(LicenseRateLimit::class);
     }
 
-    public function usageEvents(): HasMany
-    {
-        return $this->hasMany(UsageEvent::class);
-    }
-
     // Query Scopes
 
     public function scopeActive($query)
     {
         return $query->where('status', LicenseStatus::Active);
-    }
-
-    public function scopeExpiringSoon($query, int $days = 30)
-    {
-        return $query->where('status', LicenseStatus::Active)
-            ->whereNotNull('expires_at')
-            ->where('expires_at', '<=', now()->addDays($days));
     }
 }

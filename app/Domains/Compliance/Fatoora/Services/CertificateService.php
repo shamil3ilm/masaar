@@ -199,60 +199,6 @@ class CertificateService
     }
 
     /**
-     * Load certificate from file.
-     *
-     * @param  string  $path  File path
-     * @return string PEM-encoded certificate
-     *
-     * @throws CertificateException
-     */
-    public function loadFromFile(string $path): string
-    {
-        if (! file_exists($path)) {
-            throw new CertificateException("Certificate file not found: {$path}");
-        }
-
-        $content = file_get_contents($path);
-
-        if ($content === false) {
-            throw new CertificateException("Could not read certificate file: {$path}");
-        }
-
-        return $content;
-    }
-
-    /**
-     * Load private key from file.
-     *
-     * @param  string  $path  File path
-     * @param  string|null  $passphrase  Optional passphrase
-     * @return string PEM-encoded private key
-     *
-     * @throws CertificateException
-     */
-    public function loadPrivateKey(string $path, ?string $passphrase = null): string
-    {
-        if (! file_exists($path)) {
-            throw new CertificateException("Private key file not found: {$path}");
-        }
-
-        $content = file_get_contents($path);
-
-        if ($content === false) {
-            throw new CertificateException("Could not read private key file: {$path}");
-        }
-
-        // Verify the key is valid
-        $key = openssl_pkey_get_private($content, $passphrase);
-
-        if ($key === false) {
-            throw new CertificateException('Invalid private key: '.openssl_error_string());
-        }
-
-        return $content;
-    }
-
-    /**
      * Check certificate revocation status against the issuer's CRL.
      *
      * OCSP is not consulted, though certificates commonly advertise it and it
@@ -453,69 +399,6 @@ class CertificateService
         }
 
         return $urls;
-    }
-
-    /**
-     * Verify certificate chain including revocation status.
-     *
-     * @param  string  $certificatePem  End-entity certificate
-     * @param  array  $chainPems  Array of intermediate/root certificates
-     * @param  bool  $checkRevocation  Whether to check revocation status
-     * @return array{valid: bool, errors: array, chain: array}
-     */
-    public function verifyCertificateChain(string $certificatePem, array $chainPems = [], bool $checkRevocation = true): array
-    {
-        $errors = [];
-        $chainInfo = [];
-
-        // Verify the certificate itself
-        if (! $this->isValid($certificatePem)) {
-            $errors[] = 'Certificate is expired or not yet valid';
-        }
-
-        // Check revocation if requested
-        if ($checkRevocation) {
-            try {
-                $revocationStatus = $this->checkRevocationStatus($certificatePem);
-                if ($revocationStatus['revoked']) {
-                    $errors[] = sprintf(
-                        'Certificate is revoked (method: %s, reason: %s)',
-                        $revocationStatus['method'],
-                        $revocationStatus['reason'] ?? 'unknown'
-                    );
-                }
-            } catch (\Exception $e) {
-                $errors[] = 'Could not verify revocation status: '.$e->getMessage();
-            }
-        }
-
-        // Parse and verify each certificate in the chain
-        $allCerts = array_merge([$certificatePem], $chainPems);
-        foreach ($allCerts as $index => $certPem) {
-            try {
-                $details = $this->parseCertificate($certPem);
-                $chainInfo[] = [
-                    'index' => $index,
-                    'subject' => $details['subject']['CN'] ?? 'Unknown',
-                    'issuer' => $details['issuer']['CN'] ?? 'Unknown',
-                    'validFrom' => $details['validFrom'],
-                    'validTo' => $details['validTo'],
-                ];
-
-                // Check if certificate in chain is expired
-                if (! $this->isValid($certPem)) {
-                    $errors[] = sprintf('Certificate at index %d is expired', $index);
-                }
-            } catch (CertificateException $e) {
-                $errors[] = sprintf('Invalid certificate at index %d: %s', $index, $e->getMessage());
-            }
-        }
-
-        return [
-            'valid' => empty($errors),
-            'errors' => $errors,
-            'chain' => $chainInfo,
-        ];
     }
 
     /**

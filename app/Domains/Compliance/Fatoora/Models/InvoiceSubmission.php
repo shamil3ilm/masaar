@@ -186,29 +186,11 @@ class InvoiceSubmission extends Model
     }
 
     /**
-     * Check if submission can transition to given state.
-     */
-    public function canTransitionTo(string $newState): bool
-    {
-        $allowedTransitions = self::STATE_TRANSITIONS[$this->state] ?? [];
-
-        return in_array($newState, $allowedTransitions, true);
-    }
-
-    /**
      * Check if submission is in a terminal state.
      */
     public function isTerminal(): bool
     {
         return in_array($this->state, self::TERMINAL_STATES, true);
-    }
-
-    /**
-     * Check if submission was successful.
-     */
-    public function isSuccessful(): bool
-    {
-        return in_array($this->state, ['cleared', 'reported', 'warning'], true);
     }
 
     /**
@@ -224,46 +206,11 @@ class InvoiceSubmission extends Model
     }
 
     /**
-     * Check if submission can be cancelled.
-     */
-    public function canCancel(): bool
-    {
-        return in_array($this->state, ['draft', 'queued', 'failed'], true);
-    }
-
-    /**
      * Check if submission is B2B (clearance).
      */
     public function isClearance(): bool
     {
         return $this->submission_type === 'clearance';
-    }
-
-    /**
-     * Check if submission is B2C (reporting).
-     */
-    public function isReporting(): bool
-    {
-        return $this->submission_type === 'reporting';
-    }
-
-    /**
-     * Scope for pending retries.
-     */
-    public function scopeReadyForRetry($query)
-    {
-        return $query->where('state', 'failed')
-            ->whereNotNull('next_retry_at')
-            ->where('next_retry_at', '<=', now())
-            ->where('retry_count', '<', $query->raw('max_retries'));
-    }
-
-    /**
-     * Scope for in-progress submissions.
-     */
-    public function scopeInProgress($query)
-    {
-        return $query->whereIn('state', ['queued', 'pending_submission', 'submitted']);
     }
 
     /**
@@ -298,13 +245,5 @@ class InvoiceSubmission extends Model
     public static function staleBefore(): Carbon
     {
         return now()->subMinutes((int) config('fatoora.recovery.stale_minutes', 15));
-    }
-
-    /**
-     * Scope for organization.
-     */
-    public function scopeForOrganization($query, string $organizationId)
-    {
-        return $query->where('org_id', $organizationId);
     }
 }

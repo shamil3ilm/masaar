@@ -38,14 +38,6 @@ enum LicenseEnvironment: string
     }
 
     /**
-     * Check if this environment allows real ZATCA submissions.
-     */
-    public function allowsRealSubmissions(): bool
-    {
-        return $this === self::Production;
-    }
-
-    /**
      * Get display label.
      */
     public function getLabel(): string

@@ -84,14 +84,6 @@ enum LicenseTier: string
     }
 
     /**
-     * Get default scopes for this tier.
-     */
-    public function getDefaultScopes(): array
-    {
-        return ApiScope::getDefaultsForTier($this);
-    }
-
-    /**
      * Get default features for this tier.
      */
     public function getDefaultFeatures(): array

@@ -7,7 +7,6 @@ namespace App\Domains\Compliance\Fatoora\Models;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Concerns\BelongsToTenant;
 use App\Domains\Organization\Models\Organization;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -79,17 +78,6 @@ class OfflineItem extends Model
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);
-    }
-
-    /**
-     * Waiting to go out, and due — an item scheduled for a later retry is not
-     * yet claimable.
-     */
-    public function scopeDue(Builder $query): Builder
-    {
-        return $query->where('state', self::PENDING)
-            ->where(fn (Builder $q) => $q->whereNull('next_attempt_at')
-                ->orWhere('next_attempt_at', '<=', now()));
     }
 
     /**

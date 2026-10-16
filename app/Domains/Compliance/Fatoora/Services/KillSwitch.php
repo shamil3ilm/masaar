@@ -496,64 +496,6 @@ class KillSwitch
     }
 
     /**
-     * Extend the duration of an existing time-boxed switch.
-     */
-    public function extendDuration(
-        string $switch,
-        int $additionalSeconds,
-        string $scope = self::SCOPE_GLOBAL,
-        ?string $tenantId = null,
-        ?string $extendedBy = null,
-        ?string $reason = null
-    ): void {
-        $key = $this->buildKey($switch, $scope, $tenantId);
-        $switches = $this->getAllSwitches();
-
-        if (! isset($switches[$key])) {
-            throw new \InvalidArgumentException("Kill switch {$switch} is not enabled");
-        }
-
-        $switchData = $switches[$key];
-
-        // Calculate new expiry
-        $currentExpiry = $switchData['expires_at']
-            ? new \DateTimeImmutable($switchData['expires_at'])
-            : now();
-
-        $newExpiry = $currentExpiry->modify("+{$additionalSeconds} seconds");
-
-        // Enforce maximum total duration from original enable time
-        $enabledAt = new \DateTimeImmutable($switchData['enabled_at']);
-        $totalDuration = $newExpiry->getTimestamp() - $enabledAt->getTimestamp();
-
-        if ($totalDuration > $this->getMaxDurationSeconds() * 2) {
-            throw new \InvalidArgumentException(
-                'Cannot extend kill switch beyond maximum total duration (8 hours from original enable time)'
-            );
-        }
-
-        $switches[$key]['expires_at'] = $newExpiry->format(\DateTimeInterface::ATOM);
-        $switches[$key]['extension_history'][] = [
-            'extended_at' => now()->toIso8601String(),
-            'extended_by' => $extendedBy,
-            'additional_seconds' => $additionalSeconds,
-            'reason' => $reason,
-        ];
-
-        $this->saveSwitches($switches);
-
-        Log::warning('Kill switch duration EXTENDED', [
-            'switch' => $switch,
-            'scope' => $scope,
-            'tenant_id' => $tenantId,
-            'additional_seconds' => $additionalSeconds,
-            'new_expires_at' => $newExpiry->format(\DateTimeInterface::ATOM),
-            'extended_by' => $extendedBy,
-            'reason' => $reason,
-        ]);
-    }
-
-    /**
      * Convert seconds to human readable duration.
      */
     private function humanizeDuration(int $seconds): string

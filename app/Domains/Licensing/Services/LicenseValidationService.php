@@ -93,29 +93,6 @@ class LicenseValidationService
     }
 
     /**
-     * Validate by API key only (for rate limiting checks).
-     */
-    public function validateKey(string $apiKey): License
-    {
-        $cacheKey = $this->getCacheKey($apiKey);
-        $license = Cache::get($cacheKey);
-
-        if (! $license) {
-            $license = License::where('api_key', $apiKey)->first();
-
-            if (! $license) {
-                throw LicenseException::invalidApiKey();
-            }
-
-            Cache::put($cacheKey, $license, $this->getCacheTtl());
-        }
-
-        $this->checkLicenseStatus($license);
-
-        return $license;
-    }
-
-    /**
      * Check license status and expiry.
      *
      * @throws LicenseException
@@ -170,42 +147,6 @@ class LicenseValidationService
             'webhooks' => $license->webhook_enabled,
             default => false,
         };
-    }
-
-    /**
-     * Check if license can add more organizations.
-     */
-    public function canAddOrganization(License $license, int $currentCount): bool
-    {
-        return $currentCount < $license->max_organizations;
-    }
-
-    /**
-     * Get license info for display (without sensitive data).
-     */
-    public function getLicenseInfo(License $license): array
-    {
-        return [
-            'id' => $license->id,
-            'tier' => $license->tier->value,
-            'tier_name' => $license->tier->getDisplayName(),
-            'status' => $license->status->value,
-            'organization_name' => $license->organization_name,
-            'limits' => [
-                'invoices_per_month' => $license->invoices_per_month,
-                'organizations' => $license->max_organizations,
-                'api_calls_per_minute' => $license->calls_per_min,
-                'api_calls_per_day' => $license->calls_per_day,
-            ],
-            'features' => [
-                'offline_mode' => $license->offline_mode,
-                'multi_tenant' => $license->multi_tenant,
-                'webhooks' => $license->webhook_enabled,
-            ],
-            'expires_at' => $license->expires_at?->toIso8601String(),
-            'days_until_expiry' => $license->getDaysUntilExpiry(),
-            'activated_at' => $license->activated_at?->toIso8601String(),
-        ];
     }
 
     /**

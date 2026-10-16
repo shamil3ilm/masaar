@@ -41,14 +41,6 @@ class FatooraException extends Exception
     }
 
     /**
-     * Get the error code string.
-     */
-    public function getErrorCodeValue(): string
-    {
-        return $this->errorCode->value;
-    }
-
-    /**
      * Check if this error is retryable.
      */
     public function isRetryable(): bool
@@ -120,25 +112,6 @@ class FatooraException extends Exception
             ],
             'context' => $this->context ?: null,
         ];
-    }
-
-    /**
-     * Create exception from ZATCA error response.
-     */
-    public static function fromZatcaResponse(array $response): self
-    {
-        $zatcaCode = $response['errorCode'] ?? 'UNKNOWN';
-        $errorCode = ErrorCode::fromZatcaError($zatcaCode);
-
-        return new self(
-            $response['errorMessage'] ?? $errorCode->getMessage(),
-            $errorCode,
-            [
-                'zatca_code' => $zatcaCode,
-                'validation_errors' => $response['validationResults']['errors'] ?? [],
-                'warnings' => $response['validationResults']['warnings'] ?? [],
-            ]
-        );
     }
 
     /**

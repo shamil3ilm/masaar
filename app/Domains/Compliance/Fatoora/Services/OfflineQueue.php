@@ -424,26 +424,6 @@ class OfflineQueue
     }
 
     /**
-     * Get item by ID.
-     */
-    public function getItem(string $queueId): ?object
-    {
-        return OfflineItem::find($queueId);
-    }
-
-    /**
-     * Get items for invoice.
-     */
-    public function getItemsForInvoice(string $invoiceId): array
-    {
-        return OfflineItem::query()
-            ->where('invoice_id', $invoiceId)
-            ->orderBy('queued_at', 'desc')
-            ->get()
-            ->all();
-    }
-
-    /**
      * Cancel pending item.
      */
     public function cancel(string $queueId, ?string $reason = null): bool
@@ -490,22 +470,6 @@ class OfflineQueue
         }
 
         return $deleted;
-    }
-
-    /**
-     * Check if system should go to offline mode.
-     */
-    public function shouldGoOffline(string $organizationId): bool
-    {
-        // Check if kill switch forces offline mode
-        if ($this->killSwitchManager->isOfflineModeForced($organizationId)) {
-            return true;
-        }
-
-        // Check circuit breaker status (injected from outside)
-        // This method is meant to be called by orchestrator with circuit breaker info
-
-        return false;
     }
 
     /**
@@ -630,53 +594,5 @@ class OfflineQueue
             'reason' => null,
             'action' => 'process',
         ];
-    }
-
-    /**
-     * Handle certificate rotation for queued items.
-     * If certificate changed while item was queued, mark for re-signing.
-     */
-    public function handleCertificateRotation(string $organizationId): array
-    {
-        $affected = OfflineItem::query()
-            ->where('org_id', $organizationId)
-            ->where('state', self::STATE_PENDING)
-            ->get();
-
-        $results = ['marked_for_resign' => 0, 'already_valid' => 0];
-
-        foreach ($affected as $item) {
-            $validation = $this->validateQueuedItem($item);
-
-            if ($validation['action'] === 'resign') {
-                // Mark item as needing re-signature
-                $item->update([
-                    'last_error' => 'Certificate rotated - needs re-signing',
-                ]);
-                $results['marked_for_resign']++;
-            } else {
-                $results['already_valid']++;
-            }
-        }
-
-        Log::info('Certificate rotation handling for offline queue', array_merge(
-            ['org_id' => $organizationId],
-            $results
-        ));
-
-        return $results;
-    }
-
-    /**
-     * Get queue items that need re-signing due to certificate change.
-     */
-    public function getItemsNeedingResign(string $organizationId): array
-    {
-        return OfflineItem::query()
-            ->where('org_id', $organizationId)
-            ->where('state', self::STATE_PENDING)
-            ->where('last_error', 'LIKE', '%needs re-signing%')
-            ->get()
-            ->all();
     }
 }

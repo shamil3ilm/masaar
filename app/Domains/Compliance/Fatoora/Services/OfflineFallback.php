@@ -304,29 +304,6 @@ class OfflineFallback
     }
 
     /**
-     * Get current offline queue status for organization.
-     */
-    public function getOfflineQueueStatus(string $organizationId): array
-    {
-        $queueStatus = $this->offlineQueueManager->getStatus($organizationId);
-        $connectivity = $this->connectivityChecker->getDetailedStatus();
-
-        return [
-            'queue' => $queueStatus,
-            'connectivity' => $connectivity,
-            'mode' => $this->connectivityChecker->shouldUseOfflineMode() ? 'offline' : 'online',
-        ];
-    }
-
-    /**
-     * Check if submission can proceed online.
-     */
-    public function canSubmitOnline(): bool
-    {
-        return $this->connectivityChecker->isAvailable();
-    }
-
-    /**
      * Force connectivity refresh.
      */
     public function refreshConnectivity(): array

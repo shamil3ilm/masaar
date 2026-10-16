@@ -341,14 +341,4 @@ class Branch extends Model
                     ->orWhere('cert_expires_at', '>', now());
             });
     }
-
-    /**
-     * Scope to branches with expiring certificates.
-     */
-    public function scopeCertificateExpiringSoon($query, int $days = 30)
-    {
-        return $query->whereNotNull('cert_expires_at')
-            ->where('cert_expires_at', '<=', now()->addDays($days))
-            ->where('cert_expires_at', '>', now());
-    }
 }

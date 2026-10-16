@@ -108,21 +108,6 @@ class InvoiceHasher
     }
 
     /**
-     * Generate hash from invoice data (without XML).
-     * Useful for simple hash generation.
-     */
-    public function hashFromData(array $data): string
-    {
-        // Create deterministic string from data
-        ksort($data);
-        $content = json_encode($data, JSON_UNESCAPED_UNICODE);
-
-        $hash = hash('sha256', $content, true);
-
-        return base64_encode($hash);
-    }
-
-    /**
      * Verify hash matches content.
      */
     public function verify(string $xml, string $expectedHash): bool

@@ -363,14 +363,6 @@ class Invoice extends Model
     }
 
     /**
-     * Check if invoice is B2C (Simplified - reporting only).
-     */
-    public function isB2C(): bool
-    {
-        return $this->type === InvoiceType::Simplified;
-    }
-
-    /**
      * Get invoice submissions.
      */
     public function submissions(): HasMany
@@ -384,26 +376,6 @@ class Invoice extends Model
     public function latestSubmission()
     {
         return $this->hasOne(InvoiceSubmission::class)->latestOfMany();
-    }
-
-    /**
-     * Check if invoice has been successfully submitted.
-     */
-    public function isSubmitted(): bool
-    {
-        return $this->submissions()
-            ->whereIn('state', ['cleared', 'reported', 'warning'])
-            ->exists();
-    }
-
-    /**
-     * Check if invoice has pending submission.
-     */
-    public function hasPendingSubmission(): bool
-    {
-        return $this->submissions()
-            ->whereIn('state', ['queued', 'pending_submission', 'submitted'])
-            ->exists();
     }
 
     /**

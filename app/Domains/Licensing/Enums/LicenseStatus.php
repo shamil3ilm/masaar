@@ -16,14 +16,6 @@ enum LicenseStatus: string
     case PendingActivation = 'pending_activation';
 
     /**
-     * Check if license is usable.
-     */
-    public function isUsable(): bool
-    {
-        return $this === self::Active;
-    }
-
-    /**
      * Check if license can be reactivated.
      */
     public function canReactivate(): bool

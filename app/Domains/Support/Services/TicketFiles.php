@@ -85,11 +85,6 @@ final class TicketFiles
         return Storage::disk(self::DISK)->path($path);
     }
 
-    public function deleteTicket(string $ticketId): void
-    {
-        Storage::disk(self::DISK)->deleteDirectory($ticketId);
-    }
-
     /**
      * The name shown and offered on download, without anything a header or
      * a file system would read as structure.
