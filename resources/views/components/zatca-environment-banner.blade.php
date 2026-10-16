@@ -10,6 +10,6 @@
 @php($zatcaEnvironment = (string) config('fatoora.environment'))
 @if ($zatcaEnvironment !== 'production')
     <div role="status" class="bg-amber-400 dark:bg-amber-500 px-4 py-2 text-center text-sm font-medium text-amber-950">
-        ZATCA {{ $zatcaEnvironment }}: invoices here are not legally filed with ZATCA.
+        {{ __('ZATCA :environment: invoices here are not legally filed with ZATCA.', ['environment' => $zatcaEnvironment]) }}
     </div>
 @endif

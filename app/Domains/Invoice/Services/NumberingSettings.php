@@ -85,7 +85,7 @@ class NumberingSettings
     public static function messages(): array
     {
         return [
-            'pattern.regex' => 'The pattern may use letters, digits, - / _ . and the tokens {YYYY}, {YY}, {MM} and {SEQ}.',
+            'pattern.regex' => __('The pattern may use letters, digits, - / _ . and the tokens {YYYY}, {YY}, {MM} and {SEQ}.'),
         ];
     }
 
@@ -142,7 +142,7 @@ class NumberingSettings
     {
         return function (string $attribute, mixed $value, Closure $fail): void {
             if (substr_count((string) $value, '{SEQ}') !== 1) {
-                $fail('The pattern needs {SEQ}, the counter, exactly once.');
+                $fail(__('The pattern needs {SEQ}, the counter, exactly once.'));
             }
         };
     }
@@ -158,11 +158,11 @@ class NumberingSettings
             $year = str_contains($pattern, '{YYYY}') || str_contains($pattern, '{YY}');
 
             if ($reset === 'yearly' && ! $year) {
-                $fail('A counter that restarts each year needs {YYYY} or {YY} in the pattern, or its numbers repeat.');
+                $fail(__('A counter that restarts each year needs {YYYY} or {YY} in the pattern, or its numbers repeat.'));
             }
 
             if ($reset === 'monthly' && (! $year || ! str_contains($pattern, '{MM}'))) {
-                $fail('A counter that restarts each month needs the year and {MM} in the pattern, or its numbers repeat.');
+                $fail(__('A counter that restarts each month needs the year and {MM} in the pattern, or its numbers repeat.'));
             }
         };
     }
@@ -200,7 +200,7 @@ class NumberingSettings
 
             // And no branch's own sequence elsewhere.
             if ($stored->contains(fn ($s) => ! in_array($s->scope, $scopes, true) && $s->pattern === $value)) {
-                $fail('That pattern is already used by another branch. Two sequences with one pattern would give the same numbers.');
+                $fail(__('That pattern is already used by another branch. Two sequences with one pattern would give the same numbers.'));
             }
         };
     }

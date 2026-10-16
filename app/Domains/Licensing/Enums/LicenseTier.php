@@ -79,12 +79,8 @@ enum LicenseTier: string
      */
     public function getMonthlyPrice(): int
     {
-        return match ($this) {
-            self::Starter => 500,
-            self::Professional => 2000,
-            self::Enterprise => 5000,
-            self::Unlimited => 0, // Custom pricing
-        };
+        // config/billing.php, so a price change is a setting, not a release.
+        return (int) config('billing.prices.'.$this->value, 0);
     }
 
     /**

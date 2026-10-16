@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Http\Controllers;
 
+use App\Domains\Invoice\Services\Catalogue;
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Services\Membership;
@@ -42,6 +43,7 @@ class PortalInvoiceController extends Controller
         private readonly TenantResolver $tenant,
         private readonly Membership $membership,
         private readonly InvoiceFinder $invoices,
+        private readonly Catalogue $catalogue,
     ) {}
 
     public function index(Request $request): View
@@ -85,6 +87,7 @@ class PortalInvoiceController extends Controller
         return view('portal.invoices.show', [
             'organization' => $this->tenant->getOrganization(),
             'invoice' => $invoice,
+            'sendTo' => $this->catalogue->emailFor((string) $orgId, $invoice->buyer_vat_number),
         ]);
     }
 

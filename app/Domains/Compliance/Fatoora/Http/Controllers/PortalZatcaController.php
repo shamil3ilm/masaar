@@ -59,7 +59,7 @@ class PortalZatcaController extends Controller
             'common_name' => ['required', 'string', 'max:64'],
             'organization_unit' => ['nullable', 'string', 'max:64'],
             'industry' => ['nullable', 'string', 'max:64'],
-        ], ['otp.regex' => 'The OTP is the 6 digits the Fatoora portal showed you.']);
+        ], ['otp.regex' => __('The OTP is the 6 digits the Fatoora portal showed you.')]);
 
         return $this->step(function () use ($organization, $data): string {
             $this->onboarding->requestCcsid($organization, (string) $data['otp'], [
@@ -69,7 +69,7 @@ class PortalZatcaController extends Controller
                 'industry' => $data['industry'] ?: null,
             ]);
 
-            return 'ZATCA issued a compliance certificate. Next, run the compliance checks.';
+            return __('ZATCA issued a compliance certificate. Next, run the compliance checks.');
         });
     }
 
@@ -88,8 +88,8 @@ class PortalZatcaController extends Controller
 
         return back()
             ->with($result['passed'] ? 'success' : 'error', $result['passed']
-                ? 'All six compliance documents passed. Next, get the production certificate.'
-                : 'Some compliance documents were refused. The details are below.')
+                ? __('All six compliance documents passed. Next, get the production certificate.')
+                : __('Some compliance documents were refused. The details are below.'))
             ->with('checks', $result['results']);
     }
 
@@ -103,7 +103,7 @@ class PortalZatcaController extends Controller
         return $this->step(function () use ($organization): string {
             $this->onboarding->requestPcsid($organization);
 
-            return 'Connected. Invoices you issue are now signed and filed with ZATCA.';
+            return __('Connected. Invoices you issue are now signed and filed with ZATCA.');
         });
     }
 
@@ -145,7 +145,7 @@ class PortalZatcaController extends Controller
         $organizationId = $request->attributes->get(PortalTenant::ORG_ID);
 
         abort_unless(is_string($organizationId), 404);
-        abort_unless($request->user()?->roleIn($organizationId) === 'admin', 403, 'Only an administrator of this organization can connect it to ZATCA.');
+        abort_unless($request->user()?->roleIn($organizationId) === 'admin', 403, __('Only an administrator of this organization can connect it to ZATCA.'));
 
         return $this->tenant->getOrganization() ?? abort(404);
     }

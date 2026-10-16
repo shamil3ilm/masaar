@@ -293,6 +293,23 @@ final class ThemeService
     }
 
     /**
+     * An organization's own uploaded logo, never the platform's: what goes on
+     * a document it issues.
+     *
+     * @return array{path: string, type: string}|null
+     */
+    public function organizationLogo(string $organizationId): ?array
+    {
+        $row = $this->row($organizationId);
+
+        if (($row['logo_path'] ?? null) === null || ! $this->assets->exists($row['logo_path'])) {
+            return null;
+        }
+
+        return ['path' => $this->assets->absolutePath($row['logo_path']), 'type' => $row['logo_type']];
+    }
+
+    /**
      * Whose logo or favicon a scope shows: its own, else the platform's.
      *
      * @param  array<string, mixed>|null  $platform

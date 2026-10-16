@@ -36,11 +36,11 @@ class OrgWriter
 
         // No organization to read a role in is a refusal, not a pass.
         if (! is_string($organizationId)) {
-            return $this->refuse($request, 'Choose an organization first.');
+            return $this->refuse($request, __('Choose an organization first.'));
         }
 
         if ($request->user()?->roleIn($organizationId) === 'viewer') {
-            return $this->refuse($request, 'Your role in this organization is read-only.');
+            return $this->refuse($request, __('Your role in this organization is read-only.'));
         }
 
         return $next($request);

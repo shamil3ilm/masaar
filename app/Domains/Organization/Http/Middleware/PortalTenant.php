@@ -58,7 +58,7 @@ class PortalTenant
                 // Clear the stale selection so the user is not wedged on 403.
                 $request->session()->forget(self::SESSION_KEY);
 
-                abort(403, 'You do not have access to that organization.');
+                abort(403, __('You do not have access to that organization.'));
             }
 
             $this->activate($request, $user, $requested);

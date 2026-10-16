@@ -149,7 +149,7 @@ class SessionAuthController extends Controller
         // auth/login.blade.php has rendered session('status') in a blue
         // band since it was written, and nothing ever set it. This is the
         // message it was built for.
-        return redirect()->route('login')->with('status', 'You have been signed out.');
+        return redirect()->route('login')->with('status', __('You have been signed out.'));
     }
 
     /**

@@ -265,6 +265,7 @@ export const operations = {
   'invoiceController.update.put': { method: 'put', path: '/api/invoices/{invoice}', security: ['bearerAuth'], scopes: [] },
   'invoiceController.update.patch': { method: 'patch', path: '/api/invoices/{invoice}', security: ['bearerAuth'], scopes: [] },
   'invoiceController.destroy': { method: 'delete', path: '/api/invoices/{invoice}', security: ['bearerAuth'], scopes: [] },
+  'invoiceController.pdf': { method: 'get', path: '/api/invoices/{invoice}/pdf', security: ['bearerAuth'], scopes: [] },
   'licenseUsageController.info': { method: 'get', path: '/api/license', security: ['apiKey', 'apiSecret'], scopes: [] },
   'licenseUsageController.checkFeature': { method: 'get', path: '/api/license/features/{feature}', security: ['apiKey', 'apiSecret'], scopes: [] },
   'licenseUsageController.health': { method: 'get', path: '/api/license/health', security: ['apiKey', 'apiSecret'], scopes: [] },

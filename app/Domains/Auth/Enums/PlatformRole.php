@@ -33,13 +33,16 @@ enum PlatformRole: string
                 AdminPermission::AuditView,
                 AdminPermission::OrganizationsReview,
                 AdminPermission::LicencesManage,
+                AdminPermission::BillingManage,
                 AdminPermission::UsersManage,
                 AdminPermission::UsersTwoFactor,
+                AdminPermission::SupportManage,
                 AdminPermission::OperationsRun,
             ],
             self::Support => [
                 AdminPermission::View,
                 AdminPermission::UsersTwoFactor,
+                AdminPermission::SupportManage,
             ],
             self::Auditor => [
                 AdminPermission::View,

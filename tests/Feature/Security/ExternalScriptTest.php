@@ -90,7 +90,8 @@ class ExternalScriptTest extends TestCase
         'layouts/admin.blade.php',
         'layouts/portal.blade.php',
         'portal/select-org.blade.php',
-        'welcome.blade.php',
+        // The landing page and the legal pages, through the layout they share.
+        'layouts/public.blade.php',
     ];
 
     public function test_no_new_third_party_asset(): void

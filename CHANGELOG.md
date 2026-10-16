@@ -62,6 +62,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Arabic**: the portal, sign-in, sign-up and My account read in Arabic,
+  right to left, with a language switch on every page; the choice is kept
+  on the account. Dates, units, validation and messages follow it. The
+  admin console stays in English.
+- **Public pages**: a landing page with sign-up, features, how it works and
+  plan prices (from `BILLING_PRICE_*`), and a privacy notice and terms of
+  service in English and Arabic, filled in from the new `COMPANY_*` and
+  `CONTACT_*` settings. Sign-up links to `/terms` unless
+  `SIGNUP_TERMS_URL` names another page.
+- **Reports**: the portal's Reports page shows a period's sales grouped as
+  the VAT return's sales boxes - standard rated, citizens' healthcare and
+  education, zero rated, exports, exempt - with credit notes taken off and
+  foreign currency converted, and downloads it and the invoices behind it as
+  CSV. Viewers see it too.
+- **Manual billing**: on an organization's Plan and billing page, an Owner or
+  Operations admin records a payment (`billing.manage`). It renews the plan
+  from its current end - from today once it has lapsed - and can change it.
+  The platform invoices each payment through ZATCA from the organization
+  `BILLING_ORGANIZATION_ID` names. Customers see their plan, this month's
+  usage and their payments' invoices under Plan and billing, and their admins
+  are emailed 14 and 3 days before it ends. Plan prices are
+  `BILLING_PRICE_*` settings.
+- **Invoice PDFs**: an issued invoice downloads as a bilingual PDF/A-3 with
+  its XML embedded - from the portal, and from `GET /api/invoices/{id}/pdf`
+  (409 for a draft or an uncleared standard invoice). The portal also emails
+  it to the buyer, starting from the saved customer's address.
+- **Customers and products**: the portal keeps an organization's customers
+  (name, VAT number, national address, email) and products (description,
+  unit, price, VAT rate). On a new invoice, picking a customer fills the
+  buyer and picking a product fills a line; "Save this buyer" keeps a new
+  buyer for next time.
+- **Support tickets**: customers open tickets from the portal's Support page,
+  with attachments, and follow the conversation there. Admins answer from a
+  Support queue in the console - reply, add internal notes, assign, resolve -
+  with the new `support.manage` permission (Owner, Operations, Support).
+  `SUPPORT_NOTIFY_ADDRESS` receives an email for each new ticket.
 - **My account**: everyone changes their own name, email address (confirmed
   by a link to the new one), password, and signs out other sessions.
 - **Two-factor for everyone**: any user can turn it on, and is then asked for

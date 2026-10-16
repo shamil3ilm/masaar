@@ -57,7 +57,7 @@ class PortalCompanyController extends Controller
             address: AddressFields::from($validated),
         ));
 
-        return redirect()->route('portal.company.edit')->with('success', 'Company details saved.');
+        return redirect()->route('portal.company.edit')->with('success', __('Company details saved.'));
     }
 
     /**
@@ -73,14 +73,14 @@ class PortalCompanyController extends Controller
 
         if ($required && ! $request->user()->hasTwoFactor()) {
             return redirect()->route('portal.company.edit')
-                ->with('error', 'Turn on two-factor for your own account first, on My account.');
+                ->with('error', __('Turn on two-factor for your own account first, on My account.'));
         }
 
         $this->registrar->requireTwoFactor($organization, $required);
 
         return redirect()->route('portal.company.edit')->with('success', $required
-            ? 'Two-factor is now required. Members without it are asked to set it up when they next open the portal.'
-            : 'Two-factor is no longer required.');
+            ? __('Two-factor is now required. Members without it are asked to set it up when they next open the portal.')
+            : __('Two-factor is no longer required.'));
     }
 
     private function organization(Request $request): Organization
@@ -88,7 +88,7 @@ class PortalCompanyController extends Controller
         $organizationId = $request->attributes->get(PortalTenant::ORG_ID);
 
         abort_unless(is_string($organizationId), 404);
-        abort_unless($request->user()?->roleIn($organizationId) === 'admin', 403, 'Only an administrator of this organization can change its details.');
+        abort_unless($request->user()?->roleIn($organizationId) === 'admin', 403, __('Only an administrator of this organization can change its details.'));
 
         return $this->tenant->getOrganization() ?? abort(404);
     }

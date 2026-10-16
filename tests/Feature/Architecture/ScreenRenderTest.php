@@ -7,11 +7,15 @@ namespace Tests\Feature\Architecture;
 use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Compliance\Fatoora\Models\OfflineItem;
+use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Models\Product;
 use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Licensing\Models\License;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Support\Models\SupportMessage;
+use App\Domains\Support\Models\SupportTicket;
 use App\Domains\Webhook\Models\Webhook;
 use App\Domains\Webhook\Models\WebhookLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -55,13 +59,23 @@ class ScreenRenderTest extends TestCase
      * as one. Every other portal screen is rendered as a plain member, so a
      * screen that needs more than that still fails here.
      */
-    private const ORG_ADMIN_ONLY = ['portal.branding.edit', 'portal.company.edit', 'portal.numbering.edit', 'portal.zatca.show', 'portal.team.index'];
+    private const ORG_ADMIN_ONLY = ['portal.branding.edit', 'portal.company.edit', 'portal.numbering.edit', 'portal.zatca.show', 'portal.team.index', 'portal.billing'];
 
     /**
      * GET routes that answer with a file rather than a page. ThemeTest covers
      * what they send.
      */
-    private const DOWNLOADS = ['admin.branding.export', 'portal.branding.export'];
+    private const DOWNLOADS = [
+        'admin.branding.export',
+        'portal.branding.export',
+        'admin.support.attachment',
+        'portal.support.attachment',
+        'portal.invoices.pdf',
+        'admin.billing.download',
+        'portal.billing.invoice',
+        'portal.reports.invoices',
+        'portal.reports.vat',
+    ];
 
     private User $orgAdmin;
 
@@ -70,6 +84,12 @@ class ScreenRenderTest extends TestCase
     private Webhook $webhook;
 
     private Invoice $invoice;
+
+    private SupportTicket $ticket;
+
+    private Customer $customer;
+
+    private Product $product;
 
     protected function setUp(): void
     {
@@ -115,6 +135,24 @@ class ScreenRenderTest extends TestCase
             'duration_ms' => 4201,
             'success' => false,
         ]);
+
+        // A ticket with one message and an internal note, so both thread
+        // styles render.
+        $this->ticket = SupportTicket::create([
+            'number' => 1,
+            'org_id' => $this->org->id,
+            'opened_by' => $this->member->id,
+            'subject' => 'Clearance keeps failing',
+            'category' => 'zatca',
+            'priority' => 'urgent',
+            'status' => 'open',
+            'last_activity_at' => now(),
+        ]);
+        SupportMessage::create(['ticket_id' => $this->ticket->id, 'user_id' => $this->member->id, 'body' => 'Every invoice fails.']);
+        SupportMessage::create(['ticket_id' => $this->ticket->id, 'user_id' => $this->admin->id, 'from_staff' => true, 'internal' => true, 'body' => 'Certificate expired.']);
+
+        $this->customer = Customer::create(['org_id' => $this->org->id, 'name' => 'Gulf Supplies', 'vat_number' => '310122393500003', 'city' => 'Riyadh']);
+        $this->product = Product::create(['org_id' => $this->org->id, 'name' => 'Consulting hour', 'unit_code' => 'HUR', 'unit_price' => '250', 'tax_rate' => '15']);
 
         // Draft, not issued: the Issue button is the only confirmation on any
         // portal screen and it renders only for a draft, so an issued fixture
@@ -294,6 +332,9 @@ class ScreenRenderTest extends TestCase
             'webhookId' => $this->webhook->id,
             'invoiceId' => $this->invoice->id,
             'userId' => $this->member->id,
+            'ticketId' => $this->ticket->id,
+            'customerId' => $this->customer->id,
+            'productId' => $this->product->id,
         ];
 
         $screens = [];

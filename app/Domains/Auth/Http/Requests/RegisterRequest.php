@@ -33,7 +33,7 @@ class RegisterRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'password.uncompromised' => 'This password has appeared in a data breach. Please choose a different password.',
+            'password.uncompromised' => __('This password has appeared in a data breach. Please choose a different password.'),
         ];
     }
 }

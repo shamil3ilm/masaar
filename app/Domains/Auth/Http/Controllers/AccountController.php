@@ -54,7 +54,7 @@ class AccountController extends Controller
 
         $this->settings->rename($request->user(), $data['name']);
 
-        return back()->with('success', 'Name saved.');
+        return back()->with('success', __('Name saved.'));
     }
 
     public function email(Request $request): RedirectResponse
@@ -65,7 +65,7 @@ class AccountController extends Controller
         ]);
 
         return $this->attempt(fn () => $this->settings->requestEmailChange($request->user(), $data['email'], $data['password']),
-            'We sent a link to '.$data['email'].'. Your address changes when you open it.');
+            __('We sent a link to :email. Your address changes when you open it.', ['email' => $data['email']]));
     }
 
     public function confirmEmail(Request $request, string $token): RedirectResponse
@@ -76,7 +76,7 @@ class AccountController extends Controller
             return redirect()->route('account.show')->with('error', $e->getMessage());
         }
 
-        return redirect()->route('account.show')->with('success', 'Your email address is changed.');
+        return redirect()->route('account.show')->with('success', __('Your email address is changed.'));
     }
 
     public function password(Request $request): RedirectResponse
@@ -87,7 +87,7 @@ class AccountController extends Controller
         ]);
 
         return $this->attempt(fn () => $this->settings->changePassword($request->user(), $data['current_password'], $data['password']),
-            'Password changed. You are signed out everywhere else.');
+            __('Password changed. You are signed out everywhere else.'));
     }
 
     public function sessions(Request $request): RedirectResponse
@@ -95,7 +95,7 @@ class AccountController extends Controller
         $data = $request->validate(['password' => ['required', 'string']]);
 
         return $this->attempt(fn () => $this->settings->signOutOtherSessions($request->user(), $data['password']),
-            'Signed out of every other browser and device.');
+            __('Signed out of every other browser and device.'));
     }
 
     /**
@@ -129,11 +129,11 @@ class AccountController extends Controller
         // Someone holding the session could otherwise bind their own phone
         // and lock the owner out.
         if (! Hash::check((string) $data['password'], (string) $user->password)) {
-            return back()->with('error', 'Your current password is not right.');
+            return back()->with('error', __('Your current password is not right.'));
         }
 
         if (($lockedFor = $this->throttle->codeLockedFor($user)) > 0) {
-            return back()->with('error', 'Too many codes tried. Try again in '.$lockedFor.' seconds.');
+            return back()->with('error', __('Too many codes tried. Try again in :seconds seconds.', ['seconds' => $lockedFor]));
         }
 
         $codes = $this->twoFactor->confirm($user, $secret, (string) $data['code']);
@@ -141,7 +141,7 @@ class AccountController extends Controller
         if ($codes === null) {
             $this->throttle->codeFailed($user);
 
-            return back()->with('error', 'That code is not right. Check the app shows the entry you just added.');
+            return back()->with('error', __('That code is not right. Check the app shows the entry you just added.'));
         }
 
         $this->throttle->codeSucceeded($user);
@@ -149,7 +149,7 @@ class AccountController extends Controller
         $request->session()->forget(self::SETUP_SECRET);
 
         return redirect()->to(route('account.show').'#two-factor')
-            ->with('success', 'Two-factor is on. Keep these recovery codes somewhere safe; they are shown only now.')
+            ->with('success', __('Two-factor is on. Keep these recovery codes somewhere safe; they are shown only now.'))
             ->with('recovery_codes', $codes);
     }
 
@@ -157,7 +157,7 @@ class AccountController extends Controller
     {
         $code = (string) $request->validate(['code' => ['required', 'string', 'max:32']])['code'];
 
-        return $this->attempt(fn () => $this->twoFactor->turnOff($request->user(), $code), 'Two-factor is off.');
+        return $this->attempt(fn () => $this->twoFactor->turnOff($request->user(), $code), __('Two-factor is off.'));
     }
 
     public function destroy(Request $request): RedirectResponse
@@ -165,7 +165,7 @@ class AccountController extends Controller
         $data = $request->validate([
             'password' => ['required', 'string'],
             'confirm' => ['required', 'in:DELETE'],
-        ], ['confirm.in' => 'Type DELETE to confirm.']);
+        ], ['confirm.in' => __('Type DELETE to confirm.')]);
 
         try {
             $this->deletion->delete($request->user(), $data['password']);
@@ -177,7 +177,7 @@ class AccountController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('login')->with('status', 'Your account is deleted.');
+        return redirect()->route('login')->with('status', __('Your account is deleted.'));
     }
 
     /**

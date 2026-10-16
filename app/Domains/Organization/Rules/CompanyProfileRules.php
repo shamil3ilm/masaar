@@ -81,11 +81,11 @@ final class CompanyProfileRules
     public static function messages(): array
     {
         return [
-            'vat_number.regex' => 'A Saudi VAT number is 15 digits that start and end with 3.',
-            'cr_number.regex' => 'The commercial registration number is 10 digits.',
-            'building_number.regex' => 'The building number is 4 digits.',
-            'postal_code.regex' => 'The postal code is 5 digits.',
-            'country.in' => 'This deployment registers organizations in: '.implode(', ', self::countries()).'.',
+            'vat_number.regex' => __('A Saudi VAT number is 15 digits that start and end with 3.'),
+            'cr_number.regex' => __('The commercial registration number is 10 digits.'),
+            'building_number.regex' => __('The building number is 4 digits.'),
+            'postal_code.regex' => __('The postal code is 5 digits.'),
+            'country.in' => __('This deployment registers organizations in: :countries.', ['countries' => implode(', ', self::countries())]),
         ];
     }
 
@@ -97,7 +97,7 @@ final class CompanyProfileRules
     {
         return function (string $attribute, mixed $value, Closure $fail) use ($existing): void {
             if (app(Registrar::class)->vatInUse((string) $value, $existing?->id === null ? null : (string) $existing->id)) {
-                $fail('A company with this VAT number is already registered. Ask its administrator to add you to it.');
+                $fail(__('A company with this VAT number is already registered. Ask its administrator to add you to it.'));
             }
         };
     }
@@ -115,7 +115,7 @@ final class CompanyProfileRules
             }
 
             if ((string) $value !== (string) $existing->vat_number) {
-                $fail('The VAT number cannot change after ZATCA onboarding: the certificate is issued for it.');
+                $fail(__('The VAT number cannot change after ZATCA onboarding: the certificate is issued for it.'));
             }
         };
     }

@@ -6,12 +6,14 @@ use App\Domains\Invoice\Exceptions\InvoiceNotEditableException;
 use App\Domains\Invoice\Http\Requests\CreateInvoiceRequest;
 use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Invoice\Services\InvoiceFinder;
+use App\Domains\Invoice\Services\InvoicePdf;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Pagination\PageSize;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 /**
  * Invoice API controller.
@@ -35,6 +37,7 @@ class InvoiceController extends Controller
         private readonly TenantResolver $tenant,
         private readonly InvoiceDrafter $drafter,
         private readonly InvoiceFinder $invoices,
+        private readonly InvoicePdf $pdf,
     ) {}
 
     /**
@@ -77,6 +80,32 @@ class InvoiceController extends Controller
         $invoice = $this->invoices->findWithLines($this->tenant->getOrganizationId(), $id);
 
         return ApiResponse::success(['invoice' => $invoice]);
+    }
+
+    /**
+     * The issued invoice as a PDF/A-3 with its XML inside.
+     *
+     * GET /api/invoices/{id}/pdf
+     *
+     * 409 for a draft, or a standard invoice ZATCA has not cleared yet: it
+     * may not be given to the buyer before then.
+     */
+    public function pdf(string $id): Response|JsonResponse
+    {
+        $invoice = $this->invoices->findWithLines($this->tenant->getOrganizationId(), $id);
+        $organization = $this->tenant->getOrganization() ?? abort(404);
+
+        try {
+            $pdf = $this->pdf->render($invoice, $organization);
+        } catch (\DomainException $e) {
+            return ApiResponse::error($e->getMessage(), 409);
+        }
+
+        return response($pdf, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$this->pdf->fileName($invoice).'"',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     /**

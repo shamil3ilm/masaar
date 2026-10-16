@@ -90,7 +90,7 @@ class CustomerPortalController extends Controller
         $organization = $this->tenant->getOrganization();
 
         if (! $organization) {
-            return $this->organizationPicker('Organization not found');
+            return $this->organizationPicker(__('Organization not found'));
         }
 
         $stats = [
@@ -183,7 +183,7 @@ class CustomerPortalController extends Controller
         $user = $this->membership->member($orgId, $userId);
 
         if (! $user) {
-            abort(404, 'User not found');
+            abort(404, __('User not found'));
         }
 
         $submissions = $this->submissionReport->byUser($userId, 25)->withQueryString();

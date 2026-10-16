@@ -29,6 +29,10 @@ class RouteAuthPostureTest extends TestCase
     private const PUBLIC_ROUTES = [
         '/' => 'Marketing landing page',
         'login' => 'Credential entry form',
+        // Which language the pages are in; it changes nothing else.
+        'locale' => 'Interface language, offered before sign-in',
+        'privacy' => 'Privacy notice',
+        'terms' => 'Terms of service, accepted at sign-up',
         // A business signing itself up, and getting back in after a forgotten
         // password: before there is anyone to sign in as.
         'register' => 'Sign-up form',

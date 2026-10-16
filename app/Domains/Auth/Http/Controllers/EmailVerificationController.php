@@ -36,7 +36,7 @@ class EmailVerificationController extends Controller
             event(new Verified($request->user()));
         }
 
-        return redirect()->route('portal.dashboard')->with('success', 'Your email address is verified.');
+        return redirect()->route('portal.dashboard')->with('success', __('Your email address is verified.'));
     }
 
     public function resend(Request $request): RedirectResponse
@@ -47,6 +47,6 @@ class EmailVerificationController extends Controller
 
         $request->user()->sendEmailVerificationNotification();
 
-        return back()->with('status', 'A new verification link is on its way.');
+        return back()->with('status', __('A new verification link is on its way.'));
     }
 }

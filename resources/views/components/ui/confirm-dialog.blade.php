@@ -26,19 +26,19 @@
 
     <div role="dialog" aria-modal="true" aria-labelledby="confirm-title"
          class="relative w-full max-w-md rounded-lg bg-white dark:bg-gray-900 p-6 shadow-xl">
-        <h2 id="confirm-title" class="text-lg font-semibold text-ink-900 dark:text-gray-100">Are you sure?</h2>
+        <h2 id="confirm-title" class="text-lg font-semibold text-ink-900 dark:text-gray-100">{{ __('Are you sure?') }}</h2>
 
         <p data-confirm-message class="mt-2 text-sm text-gray-600 dark:text-gray-300"></p>
 
         {{-- Reverse on a narrow screen so the safe answer is nearest the
              thumb, and Cancel first in the DOM so it takes focus on open. --}}
         <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <x-ui.button type="button" variant="quiet" data-confirm-cancel>Cancel</x-ui.button>
+            <x-ui.button type="button" variant="quiet" data-confirm-cancel>{{ __('Cancel') }}</x-ui.button>
 
-            <x-ui.button type="button" data-confirm-accept data-tone="primary">Confirm</x-ui.button>
+            <x-ui.button type="button" data-confirm-accept data-tone="primary">{{ __('Confirm') }}</x-ui.button>
 
             <x-ui.button type="button" variant="danger" data-confirm-accept data-tone="danger" hidden>
-                Confirm
+                {{ __('Confirm') }}
             </x-ui.button>
         </div>
     </div>

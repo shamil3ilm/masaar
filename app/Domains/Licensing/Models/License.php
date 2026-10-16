@@ -587,6 +587,46 @@ class License extends Model
     }
 
     /**
+     * Paid for another stretch: the expiry moves on from where it stands, or
+     * from today when it has already passed, and a lapsed licence is active
+     * again.
+     *
+     * Not for a suspended or revoked licence: payment is not how those come
+     * back, and renewing one would quietly undo an administrator's decision.
+     *
+     * @throws LicenceStateException
+     */
+    public function renewFor(int $months, ?string $actorId = null): void
+    {
+        $this->changeWithAudit(
+            fn (self $locked): array => [
+                'expires_at' => self::renewalStart($locked)->addMonths($months),
+                'status' => LicenseStatus::Active,
+            ],
+            'renewed',
+            $actorId,
+            old: fn (self $locked): array => ['expires_at' => $locked->expires_at?->toIso8601String(), 'status' => $locked->status->value],
+            new: fn (self $locked, array $changes): array => ['expires_at' => $changes['expires_at']->toIso8601String(), 'months' => $months],
+            guard: function (LicenseStatus $status): void {
+                if (in_array($status, [LicenseStatus::Suspended, LicenseStatus::Revoked], true)) {
+                    throw new LicenceStateException('This licence is '.$status->value.'. Reactivate it before recording a renewal.');
+                }
+            },
+        );
+    }
+
+    /**
+     * Where a renewal starts: the current expiry while it is still ahead,
+     * otherwise now - so paying late does not buy time already passed.
+     */
+    public static function renewalStart(self $licence): Carbon
+    {
+        $expiry = $licence->expires_at;
+
+        return $expiry !== null && $expiry->isFuture() ? $expiry->copy() : now();
+    }
+
+    /**
      * Upgrade to a new tier.
      */
     public function upgradeTier(LicenseTier $newTier, ?string $actorId = null): void

@@ -220,7 +220,7 @@ class CreateInvoiceRequest extends FormRequest
                 if (in_array($category, ['Z', 'E', 'O'], true) && empty($exemptionCode)) {
                     $validator->errors()->add(
                         "lines.{$index}.exempt_code",
-                        'Exemption code is required for line '.($index + 1)." with tax category {$category}."
+                        __('Exemption code is required for line :line with tax category :category.', ['line' => $index + 1, 'category' => $category])
                     );
                 }
             }
@@ -251,7 +251,7 @@ class CreateInvoiceRequest extends FormRequest
         }
 
         if (bccomp((string) $discount, $lines, 6) > 0) {
-            $errors->add('discount_amount', 'The discount cannot be larger than the invoice lines (BR-KSA-DEC-01).');
+            $errors->add('discount_amount', __('The discount cannot be larger than the invoice lines (BR-KSA-DEC-01).'));
         }
     }
 
@@ -262,27 +262,27 @@ class CreateInvoiceRequest extends FormRequest
     {
         return [
             // Buyer
-            'exchange_rate.required' => 'Exchange rate to SAR is required for foreign-currency invoices (BR-KSA-CU-01).',
+            'exchange_rate.required' => __('Exchange rate to SAR is required for foreign-currency invoices (BR-KSA-CU-01).'),
             // BT-48, not BT-46: BT-46 is the other buyer identifier, which
             // is the alternative to this one rather than its name.
-            'buyer_vat_number.required' => 'A standard invoice needs the buyer VAT number (BT-48) or another buyer identifier (BT-46).',
-            'buyer_id.required' => 'A standard invoice needs the buyer VAT number (BT-48) or another buyer identifier (BT-46).',
-            'buyer_name.required' => 'The buyer name (BT-44) is required on a standard invoice, and on a simplified one exempt as private education or healthcare (BR-KSA-25).',
-            'buyer_address.required_if' => 'Buyer address is required for B2B (standard) invoices (BT-50).',
-            'buyer_address.street.required_if' => 'Buyer street is required for B2B (standard) invoices.',
-            'buyer_address.city.required_if' => 'Buyer city is required for B2B (standard) invoices.',
-            'buyer_address.building_number.required_if' => 'Buyer building number is required for B2B (standard) invoices.',
-            'buyer_address.country_code.regex' => 'Country code must be a valid ISO 3166-1 alpha-2 code in uppercase (e.g. SA, AE, GB).',
+            'buyer_vat_number.required' => __('A standard invoice needs the buyer VAT number (BT-48) or another buyer identifier (BT-46).'),
+            'buyer_id.required' => __('A standard invoice needs the buyer VAT number (BT-48) or another buyer identifier (BT-46).'),
+            'buyer_name.required' => __('The buyer name (BT-44) is required on a standard invoice, and on a simplified one exempt as private education or healthcare (BR-KSA-25).'),
+            'buyer_address.required_if' => __('Buyer address is required for B2B (standard) invoices (BT-50).'),
+            'buyer_address.street.required_if' => __('Buyer street is required for B2B (standard) invoices.'),
+            'buyer_address.city.required_if' => __('Buyer city is required for B2B (standard) invoices.'),
+            'buyer_address.building_number.required_if' => __('Buyer building number is required for B2B (standard) invoices.'),
+            'buyer_address.country_code.regex' => __('Country code must be a valid ISO 3166-1 alpha-2 code in uppercase (e.g. SA, AE, GB).'),
             // Document type
-            'document_type.not_in' => 'Proforma invoices (document_type=proforma) cannot be submitted to ZATCA.',
+            'document_type.not_in' => __('Proforma invoices (document_type=proforma) cannot be submitted to ZATCA.'),
             // Credit/debit note references
-            'billing_ref.required_if' => 'Original invoice reference is required for credit/debit notes.',
-            'adjustment_reason.required' => 'A credit or debit note must state its reason (BR-KSA-17).',
+            'billing_ref.required_if' => __('Original invoice reference is required for credit/debit notes.'),
+            'adjustment_reason.required' => __('A credit or debit note must state its reason (BR-KSA-17).'),
             // Tax exemption
-            'lines.*.exempt_code.in' => 'Invalid ZATCA exemption code. Must be a valid VATEX-SA-* code.',
-            'lines.*.exempt_reason.required_with' => 'Exemption reason is required when exemption code is provided.',
+            'lines.*.exempt_code.in' => __('Invalid ZATCA exemption code. Must be a valid VATEX-SA-* code.'),
+            'lines.*.exempt_reason.required_with' => __('Exemption reason is required when exemption code is provided.'),
             // Units
-            'lines.*.unit_code.in' => 'Invalid unit code. Must be a UN/ECE Recommendation 20 code, or a Recommendation 21 packaging code written with an X prefix.',
+            'lines.*.unit_code.in' => __('Invalid unit code. Must be a UN/ECE Recommendation 20 code, or a Recommendation 21 packaging code written with an X prefix.'),
         ];
     }
 

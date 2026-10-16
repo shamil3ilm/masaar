@@ -6,16 +6,22 @@ use App\Domains\Auth\Http\Controllers\PasswordResetController;
 use App\Domains\Auth\Http\Controllers\SessionAuthController;
 use App\Domains\Auth\Http\Controllers\SignupController;
 use App\Domains\Auth\Http\Controllers\TwoFactorController;
+use App\Domains\Billing\Http\Controllers\AdminBillingController;
+use App\Domains\Billing\Http\Controllers\PortalBillingController;
 use App\Domains\Branding\Http\Controllers\AdminBrandingController;
 use App\Domains\Branding\Http\Controllers\PortalBrandingController;
 use App\Domains\Branding\Http\Controllers\ThemeAssetController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\AdminAlertController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\AdminKillSwitchController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\PortalZatcaController;
+use App\Domains\Invoice\Http\Controllers\PortalCustomerController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceController;
+use App\Domains\Invoice\Http\Controllers\PortalInvoiceDocumentController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceDraftController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceFilingController;
 use App\Domains\Invoice\Http\Controllers\PortalNumberingController;
+use App\Domains\Invoice\Http\Controllers\PortalProductController;
+use App\Domains\Invoice\Http\Controllers\PortalReportController;
 use App\Domains\Licensing\Http\Controllers\AdminLicenceController;
 use App\Domains\Organization\Http\Controllers\CustomerPortalController;
 use App\Domains\Organization\Http\Controllers\InvitationController;
@@ -27,12 +33,23 @@ use App\Domains\Platform\Http\Controllers\AdminController;
 use App\Domains\Platform\Http\Controllers\AdminOrganizationReviewController;
 use App\Domains\Platform\Http\Controllers\AdminSettingsController;
 use App\Domains\Platform\Http\Controllers\AdminUserController;
+use App\Domains\Support\Http\Controllers\AdminSupportController;
+use App\Domains\Support\Http\Controllers\PortalSupportController;
 use App\Domains\Webhook\Http\Controllers\AdminWebhookController;
+use App\Http\Controllers\LegalController;
+use App\Http\Controllers\LocaleController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
 });
+
+// The privacy notice and the terms, which sign-up asks people to accept.
+Route::get('/privacy', [LegalController::class, 'privacy'])->name('privacy');
+Route::get('/terms', [LegalController::class, 'terms'])->name('terms');
+
+// The interface language. Public: the sign-in page offers it too.
+Route::post('/locale', LocaleController::class)->middleware('throttle:20,1')->name('locale');
 
 /*
 |--------------------------------------------------------------------------
@@ -187,15 +204,29 @@ Route::prefix('admin')->name('admin.')
     // It also makes the ordering of /licences/create above /licences/{id}
     // a convenience rather than a requirement: "create" is not a UUID, so it
     // can no longer be swallowed as one if the lines are ever reordered.
-    ->whereUuid(['id', 'licenceId', 'webhookId', 'logId', 'userId'])
+    ->whereUuid(['id', 'licenceId', 'webhookId', 'logId', 'userId', 'ticketId', 'attachmentId', 'paymentId'])
     ->group(function () {
         Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
         Route::get('/organizations', [AdminController::class, 'organizations'])->name('organizations');
         Route::get('/organizations/{id}', [AdminController::class, 'organizationDetail'])->name('organization.detail');
+        // A plan's payments. Recording one renews the plan and invoices it.
+        Route::get('/organizations/{id}/billing', [AdminBillingController::class, 'show'])->name('billing.show');
+        Route::post('/organizations/{id}/billing', [AdminBillingController::class, 'record'])->middleware('admin.can:billing.manage')->name('billing.record');
+        Route::post('/organizations/{id}/billing/{paymentId}/invoice', [AdminBillingController::class, 'invoice'])->middleware('admin.can:billing.manage')->name('billing.invoice');
+        Route::get('/organizations/{id}/billing/{paymentId}/pdf', [AdminBillingController::class, 'download'])->name('billing.download');
         // A business that signed itself up: approve it and assign its plan,
         // or turn it down with a reason. Either way its admins are emailed.
         Route::post('/organizations/{id}/approve', [AdminOrganizationReviewController::class, 'approve'])->middleware('admin.can:organizations.review')->name('organizations.approve');
         Route::post('/organizations/{id}/reject', [AdminOrganizationReviewController::class, 'reject'])->middleware('admin.can:organizations.review')->name('organizations.reject');
+        // Support tickets. Everyone in the console reads them; answering
+        // takes support.manage.
+        Route::get('/support', [AdminSupportController::class, 'index'])->name('support.index');
+        Route::get('/support/{ticketId}', [AdminSupportController::class, 'show'])->name('support.show');
+        Route::get('/support/{ticketId}/attachments/{attachmentId}', [AdminSupportController::class, 'attachment'])->name('support.attachment');
+        Route::post('/support/{ticketId}/reply', [AdminSupportController::class, 'reply'])->middleware('admin.can:support.manage')->name('support.reply');
+        Route::post('/support/{ticketId}/assign', [AdminSupportController::class, 'assign'])->middleware('admin.can:support.manage')->name('support.assign');
+        Route::post('/support/{ticketId}/status', [AdminSupportController::class, 'status'])->middleware('admin.can:support.manage')->name('support.status');
+
         Route::get('/users', [AdminUserController::class, 'index'])->name('users.index');
         Route::get('/users/{userId}', [AdminUserController::class, 'show'])->name('users.show');
         // Suspending locks someone out of everything at once, so it is a POST
@@ -288,7 +319,7 @@ Route::prefix('portal')->name('portal.')
     // org.two_factor: an organization that requires a second factor sends
     // anyone without one to set it up first.
     ->middleware(['auth', 'auth.session', 'verified', 'portal.tenant', 'org.two_factor', 'org.writer'])
-    ->whereUuid(['invoiceId', 'userId', 'invitationId'])
+    ->whereUuid(['invoiceId', 'userId', 'invitationId', 'ticketId', 'attachmentId', 'customerId', 'productId', 'paymentId'])
     ->group(function () {
         Route::get('/', [CustomerPortalController::class, 'dashboard'])->name('dashboard');
         // Invoices. {invoiceId} rather than {invoice}: route model binding
@@ -305,6 +336,9 @@ Route::prefix('portal')->name('portal.')
         Route::get('/invoices/{invoiceId}', [PortalInvoiceController::class, 'show'])->name('invoices.show');
         Route::post('/invoices/{invoiceId}/issue', [PortalInvoiceFilingController::class, 'issue'])->name('invoices.issue');
         Route::get('/invoices/{invoiceId}/print', [PortalInvoiceFilingController::class, 'print'])->name('invoices.print');
+        // The PDF the buyer keeps, and sending it to them.
+        Route::get('/invoices/{invoiceId}/pdf', [PortalInvoiceDocumentController::class, 'download'])->name('invoices.pdf');
+        Route::post('/invoices/{invoiceId}/send', [PortalInvoiceDocumentController::class, 'send'])->middleware('throttle:20,1')->name('invoices.send');
 
         Route::get('/submissions', [CustomerPortalController::class, 'submissions'])->name('submissions');
         Route::get('/certificates', [CustomerPortalController::class, 'certificates'])->name('certificates');
@@ -315,6 +349,38 @@ Route::prefix('portal')->name('portal.')
         Route::get('/company', [PortalCompanyController::class, 'edit'])->name('company.edit');
         Route::post('/company', [PortalCompanyController::class, 'update'])->name('company.update');
         Route::post('/company/security', [PortalCompanyController::class, 'security'])->name('company.security');
+
+        // Customers and products, which the invoice form fills itself from.
+        Route::get('/customers', [PortalCustomerController::class, 'index'])->name('customers.index');
+        Route::get('/customers/new', [PortalCustomerController::class, 'create'])->name('customers.create');
+        Route::post('/customers', [PortalCustomerController::class, 'store'])->name('customers.store');
+        Route::get('/customers/{customerId}', [PortalCustomerController::class, 'edit'])->name('customers.edit');
+        Route::post('/customers/{customerId}', [PortalCustomerController::class, 'update'])->name('customers.update');
+        Route::post('/customers/{customerId}/archive', [PortalCustomerController::class, 'archive'])->name('customers.archive');
+        Route::get('/products', [PortalProductController::class, 'index'])->name('products.index');
+        Route::get('/products/new', [PortalProductController::class, 'create'])->name('products.create');
+        Route::post('/products', [PortalProductController::class, 'store'])->name('products.store');
+        Route::get('/products/{productId}', [PortalProductController::class, 'edit'])->name('products.edit');
+        Route::post('/products/{productId}', [PortalProductController::class, 'update'])->name('products.update');
+        Route::post('/products/{productId}/archive', [PortalProductController::class, 'archive'])->name('products.archive');
+
+        // The period's sales as the VAT return groups them, and CSV exports.
+        Route::get('/reports', [PortalReportController::class, 'index'])->name('reports');
+        Route::get('/reports/invoices.csv', [PortalReportController::class, 'invoices'])->middleware('throttle:20,1')->name('reports.invoices');
+        Route::get('/reports/vat.csv', [PortalReportController::class, 'vat'])->middleware('throttle:20,1')->name('reports.vat');
+
+        // The plan, its usage and its payments. Administrators only.
+        Route::get('/billing', [PortalBillingController::class, 'show'])->name('billing');
+        Route::get('/billing/{paymentId}/invoice', [PortalBillingController::class, 'download'])->name('billing.invoice');
+
+        // Support tickets: everyone in the organization sees its tickets.
+        Route::get('/support', [PortalSupportController::class, 'index'])->name('support.index');
+        Route::get('/support/new', [PortalSupportController::class, 'create'])->name('support.create');
+        Route::post('/support', [PortalSupportController::class, 'store'])->middleware('throttle:10,1')->name('support.store');
+        Route::get('/support/{ticketId}', [PortalSupportController::class, 'show'])->name('support.show');
+        Route::post('/support/{ticketId}/reply', [PortalSupportController::class, 'reply'])->middleware('throttle:20,1')->name('support.reply');
+        Route::post('/support/{ticketId}/resolve', [PortalSupportController::class, 'resolve'])->name('support.resolve');
+        Route::get('/support/{ticketId}/attachments/{attachmentId}', [PortalSupportController::class, 'attachment'])->name('support.attachment');
 
         // Connecting to ZATCA: OTP, compliance checks, production
         // certificate. Administrators only, and only once the company is

@@ -34,7 +34,7 @@ class FilingClearance
 
         if (config('licensing.filing_requires_licence') && ! $this->licences->organizationIsLicensed((string) $organization->id)) {
             throw new FatooraException(
-                'This company has no active plan. A platform admin assigns one when approving it.',
+                __('This company has no active plan. A platform admin assigns one when approving it.'),
                 ErrorCode::AUTH_LICENSE_REQUIRED,
             );
         }
@@ -58,14 +58,14 @@ class FilingClearance
 
         if ($organization->isPendingReview()) {
             throw new FatooraException(
-                'This company is being reviewed. Connecting to ZATCA and issuing open once it is approved.',
+                __('This company is being reviewed. Connecting to ZATCA and issuing open once it is approved.'),
                 ErrorCode::AUTH_ORGANIZATION_UNDER_REVIEW,
             );
         }
 
         if ($organization->status === Organization::STATUS_REJECTED) {
             throw new FatooraException(
-                'This company was not approved to file. Contact support to review it again.',
+                __('This company was not approved to file. Contact support to review it again.'),
                 ErrorCode::AUTH_ORGANIZATION_UNDER_REVIEW,
             );
         }

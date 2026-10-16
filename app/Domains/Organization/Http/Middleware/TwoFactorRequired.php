@@ -31,6 +31,6 @@ class TwoFactorRequired
         }
 
         return redirect()->to(route('account.show').'#two-factor')
-            ->with('error', $this->tenant->getOrganization()->name.' requires two-factor authentication. Set it up to continue.');
+            ->with('error', __(':organization requires two-factor authentication. Set it up to continue.', ['organization' => $this->tenant->getOrganization()->name]));
     }
 }

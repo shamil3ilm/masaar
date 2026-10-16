@@ -63,6 +63,13 @@ Schedule::command('license:check-expiration')
     ->withoutOverlapping(60)
     ->appendOutputTo(storage_path('logs/license-expiration.log'));
 
+// Tell organizations their plan ends soon, while there is time to pay.
+Schedule::command('billing:remind-renewals')
+    ->onOneServer()
+    ->dailyAt('09:00')
+    ->withoutOverlapping(60)
+    ->appendOutputTo(storage_path('logs/billing-reminders.log'));
+
 // Report usage metrics to license server - runs hourly
 Schedule::command('license:report-usage')
     ->onOneServer()

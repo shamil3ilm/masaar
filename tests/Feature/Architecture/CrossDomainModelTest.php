@@ -37,6 +37,9 @@ class CrossDomainModelTest extends TestCase
      * @var array<string, string>
      */
     private const DECLARED = [
+        'Domains/Billing/Models/Payment.php' => 'Invoice',
+        'Domains/Billing/Services/Billing.php' => 'Invoice, Licensing',
+        'Domains/Billing/Services/RenewalReminders.php' => 'Licensing',
         'Domains/Compliance/ComplianceRouter.php' => 'Invoice, Organization',
         'Domains/Compliance/Contracts/ComplianceEngine.php' => 'Invoice, Organization',
         'Domains/Compliance/FTA/FtaEngine.php' => 'Invoice, Organization',

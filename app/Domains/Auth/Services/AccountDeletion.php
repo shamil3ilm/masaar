@@ -33,11 +33,11 @@ class AccountDeletion
     public function delete(User $user, string $password): void
     {
         if (! Hash::check($password, (string) $user->password)) {
-            throw new DomainException('That password is not right.');
+            throw new DomainException(__('That password is not right.'));
         }
 
         if ($user->is_platform_admin) {
-            throw new DomainException('Platform admins are removed by an owner first, on the Admins page.');
+            throw new DomainException(__('Platform admins are removed by an owner first, on the Admins page.'));
         }
 
         DB::transaction(function () use ($user): void {
@@ -45,7 +45,7 @@ class AccountDeletion
             // admins deleting themselves at once could otherwise each see the
             // other and both go.
             if (($organization = $this->onlyAdminOf($user)) !== null) {
-                throw new DomainException('You are the only admin of '.$organization.'. Make someone else an admin there first.');
+                throw new DomainException(__('You are the only admin of :organization. Make someone else an admin there first.', ['organization' => $organization]));
             }
 
             DB::table('organization_user')
