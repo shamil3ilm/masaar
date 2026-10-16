@@ -70,10 +70,12 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Fatoora/Services/IssuanceNotifier.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Services/OfflineFallback.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Services/OfflineQueue.php' => 'Invoice',
+        'Domains/Compliance/Fatoora/Services/SigningCredentials.php' => 'Invoice, Organization',
         'Domains/Compliance/Fatoora/Services/SubmissionGuard.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Services/SubmissionTracker.php' => 'Invoice',
-        'Domains/Compliance/Fatoora/Services/Submitter.php' => 'Invoice, Organization',
+        'Domains/Compliance/Fatoora/Services/Submitter.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Services/VatPeriodTracker.php' => 'Invoice',
+        'Domains/Compliance/Fatoora/Services/ZatcaJurisdiction.php' => 'Invoice',
         'Domains/Compliance/Peppol/PeppolEngine.php' => 'Invoice, Organization',
         // The receiver of an inbound document is the endpoint on a compliance profile.
         'Domains/Compliance/Peppol/Services/InboundDocuments.php' => 'Organization',

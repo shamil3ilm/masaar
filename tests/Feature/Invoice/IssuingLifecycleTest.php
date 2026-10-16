@@ -1,0 +1,338 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature\Invoice;
+
+use App\Domains\Invoice\Contracts\IssuingJurisdiction;
+use App\Domains\Invoice\Contracts\Seal;
+use App\Domains\Invoice\Enums\InvoiceStatus;
+use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Services\IssuingLifecycle;
+use App\Domains\Organization\Models\Organization;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use RuntimeException;
+use Tests\TestCase;
+use Throwable;
+
+/**
+ * The lifecycle every country shares, driven by a jurisdiction that only
+ * records when it is called and what the invoice looked like at the time.
+ */
+class IssuingLifecycleTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private Organization $acme;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->acme = Organization::create([
+            'name' => 'Acme Trading',
+            'country' => 'SA',
+            'vat_number' => '300000000000003',
+            'street' => 'King Fahd Road',
+            'building_number' => '1234',
+            'district' => 'Al Olaya',
+            'city' => 'Riyadh',
+            'postal_code' => '12345',
+        ]);
+    }
+
+    /**
+     * The jurisdiction's steps run where the contract puts them: before the
+     * number, after the number and moment of issue, after the save, and
+     * after the transaction.
+     */
+    public function test_hooks_run_in_lifecycle_order(): void
+    {
+        $fake = new RecordingJurisdiction;
+        $outside = DB::transactionLevel();
+
+        $result = $this->lifecycle()->issue($this->draft(), $this->acme, $fake);
+
+        $this->assertSame('issued', $result);
+        $this->assertSame(['prepare', 'beforeNumbering', 'seal', 'afterIssued', 'afterCommit'], array_column($fake->calls, 'hook'));
+
+        [$prepare, $before, $seal, $after, $commit] = $fake->calls;
+
+        $this->assertSame($outside, $prepare['level'], 'prepare ran inside the transaction');
+        $this->assertNull($before['number'], 'numbered before beforeNumbering');
+        $this->assertGreaterThan($outside, $before['level']);
+        $this->assertNotNull($seal['number'], 'sealed before the number was set');
+        $this->assertNotNull($seal['issued_at'], 'sealed before the moment of issue was set');
+        $this->assertSame(InvoiceStatus::Draft, $seal['stored_status']);
+        $this->assertSame(InvoiceStatus::Issued, $after['stored_status'], 'afterIssued ran before the save');
+        $this->assertGreaterThan($outside, $after['level']);
+        $this->assertSame($outside, $commit['level'], 'afterCommit ran inside the transaction');
+        $this->assertTrue($commit['issued_now']);
+    }
+
+    /**
+     * Seal columns are saved in the one update that makes the invoice Issued.
+     */
+    public function test_seal_columns_saved_with_status(): void
+    {
+        $draft = $this->draft();
+
+        $this->lifecycle()->issue($draft, $this->acme, new RecordingJurisdiction(columns: ['hash' => 'sealed-hash']));
+
+        $issued = $draft->fresh();
+        $this->assertSame(InvoiceStatus::Issued, $issued->status);
+        $this->assertSame('sealed-hash', $issued->hash);
+        $this->assertNotNull($issued->invoice_number);
+        $this->assertNotNull($issued->issued_at);
+    }
+
+    /**
+     * The organization row is read inside the transaction before the invoice
+     * is refreshed, and the draft check is made again on the refreshed row:
+     * a copy loaded before another request issued it is refused under the
+     * lock, without numbering or sealing anything.
+     */
+    public function test_stale_copy_refused_under_lock(): void
+    {
+        $draft = $this->draft();
+        $stale = Invoice::withoutTenantScope(fn () => Invoice::find($draft->id));
+
+        $this->lifecycle()->issue($draft, $this->acme, new RecordingJurisdiction);
+        $number = $draft->fresh()->invoice_number;
+
+        $outside = DB::transactionLevel();
+        $queries = [];
+        DB::listen(function (QueryExecuted $query) use (&$queries): void {
+            $queries[] = ['sql' => $query->sql, 'level' => DB::transactionLevel()];
+        });
+
+        $fake = new RecordingJurisdiction;
+
+        try {
+            $this->lifecycle()->issue($stale, $this->acme, $fake);
+            $this->fail('A stale copy issued the invoice again.');
+        } catch (RuntimeException $e) {
+            $this->assertSame('issued meanwhile', $e->getMessage());
+        }
+
+        $this->assertSame(['prepare'], array_column($fake->calls, 'hook'));
+        $this->assertSame($number, $draft->fresh()->invoice_number);
+
+        $lock = array_search(true, array_map(fn (array $q): bool => str_contains($q['sql'], '"organizations"'), $queries), true);
+        $this->assertNotFalse($lock, 'the organization row was not read');
+        $this->assertGreaterThan($outside, $queries[$lock]['level'], 'the organization row was read outside the transaction');
+        $this->assertStringContainsString('"invoices"', $queries[$lock + 1]['sql'] ?? '', 'the invoice was not refreshed after the lock');
+    }
+
+    /**
+     * A non-draft without reissue is refused before the jurisdiction does
+     * anything.
+     */
+    public function test_issued_invoice_refused_up_front(): void
+    {
+        $draft = $this->draft();
+        $this->lifecycle()->issue($draft, $this->acme, new RecordingJurisdiction);
+        $fake = new RecordingJurisdiction;
+
+        $this->expectExceptionMessage('already issued');
+
+        try {
+            $this->lifecycle()->issue($draft->fresh(), $this->acme, $fake);
+        } finally {
+            $this->assertSame([], $fake->calls);
+        }
+    }
+
+    /**
+     * Finishing an issuance another request finished answers with what the
+     * jurisdiction says it produced, and numbers, seals and saves nothing.
+     */
+    public function test_finished_reissue_returns_existing_data(): void
+    {
+        $draft = $this->draft();
+        $this->lifecycle()->issue($draft, $this->acme, new RecordingJurisdiction);
+        $issued = $draft->fresh();
+        $fake = new RecordingJurisdiction(finished: ['hash' => 'existing']);
+
+        $result = $this->lifecycle()->issue($issued, $this->acme, $fake, reissue: true);
+
+        $this->assertSame(['hash' => 'existing'], $result);
+        $this->assertSame(['prepare', 'finished', 'afterCommit'], array_column($fake->calls, 'hook'));
+        $this->assertFalse($fake->calls[2]['issued_now']);
+        $this->assertEquals($issued->updated_at, $draft->fresh()->updated_at);
+    }
+
+    /**
+     * A reissue the jurisdiction says is unfinished runs the steps again,
+     * keeping the number and moment the invoice already has.
+     */
+    public function test_unfinished_reissue_is_completed(): void
+    {
+        $draft = $this->draft();
+        $this->lifecycle()->issue($draft, $this->acme, new RecordingJurisdiction);
+        $issued = $draft->fresh();
+        $fake = new RecordingJurisdiction;
+
+        $this->lifecycle()->issue($issued, $this->acme, $fake, reissue: true);
+
+        $this->assertSame(['prepare', 'finished', 'beforeNumbering', 'seal', 'afterIssued', 'afterCommit'], array_column($fake->calls, 'hook'));
+        $this->assertSame($issued->invoice_number, $draft->fresh()->invoice_number);
+        $this->assertEquals($issued->issued_at, $draft->fresh()->issued_at);
+    }
+
+    /**
+     * A refused pre-check leaves a draft with no number and no moment of
+     * issue, and nothing after it runs.
+     */
+    public function test_refused_precheck_leaves_unnumbered_draft(): void
+    {
+        $draft = $this->draft();
+        $fake = new RecordingJurisdiction(refuse: true);
+
+        try {
+            $this->lifecycle()->issue($draft, $this->acme, $fake);
+            $this->fail('The refusal did not stop issuance.');
+        } catch (RuntimeException $e) {
+            $this->assertSame('refused: missing buyer', $e->getMessage());
+        }
+
+        $this->assertSame(['prepare'], array_column($fake->calls, 'hook'));
+        $stored = $draft->fresh();
+        $this->assertSame(InvoiceStatus::Draft, $stored->status);
+        $this->assertNull($stored->invoice_number);
+        $this->assertNull($stored->issued_at);
+    }
+
+    /**
+     * A failure in the seal rolls back the number and leaves a draft.
+     */
+    public function test_seal_failure_rolls_back_number(): void
+    {
+        $draft = $this->draft();
+
+        try {
+            $this->lifecycle()->issue($draft, $this->acme, new RecordingJurisdiction(failSeal: true));
+            $this->fail('The seal failure was swallowed.');
+        } catch (RuntimeException) {
+            // Expected.
+        }
+
+        $stored = $draft->fresh();
+        $this->assertSame(InvoiceStatus::Draft, $stored->status);
+        $this->assertNull($stored->invoice_number);
+    }
+
+    private function lifecycle(): IssuingLifecycle
+    {
+        return app(IssuingLifecycle::class);
+    }
+
+    private function draft(): Invoice
+    {
+        return Invoice::withoutTenantScope(fn () => Invoice::create([
+            'org_id' => $this->acme->id,
+            'type' => 'simplified',
+            'document_type' => 'invoice',
+            'status' => 'draft',
+            'issue_date' => now()->toDateString(),
+            'supply_date' => now()->toDateString(),
+            'currency' => 'SAR',
+            'subtotal' => '100.00',
+            'tax_amount' => '15.00',
+            'total' => '115.00',
+        ]));
+    }
+}
+
+/**
+ * Records each hook with the transaction depth and the invoice's state at the
+ * moment it ran.
+ */
+class RecordingJurisdiction implements IssuingJurisdiction
+{
+    /** @var list<array<string, mixed>> */
+    public array $calls = [];
+
+    /**
+     * @param  array<string, mixed>  $columns
+     */
+    public function __construct(
+        private readonly array $columns = [],
+        private readonly ?array $finished = null,
+        private readonly bool $refuse = false,
+        private readonly bool $failSeal = false,
+    ) {}
+
+    public function refuseIssued(Invoice $invoice): Throwable
+    {
+        return new RuntimeException('already issued');
+    }
+
+    public function refuseIssuedMeanwhile(Invoice $invoice): Throwable
+    {
+        return new RuntimeException('issued meanwhile');
+    }
+
+    public function prepare(Invoice $invoice, Organization $organization, bool $reissue): mixed
+    {
+        $this->record('prepare', $invoice);
+
+        if ($this->refuse) {
+            throw new RuntimeException('refused: missing buyer');
+        }
+
+        return 'context';
+    }
+
+    public function finished(Invoice $invoice): mixed
+    {
+        $this->record('finished', $invoice);
+
+        return $this->finished;
+    }
+
+    public function beforeNumbering(Invoice $invoice, mixed $context): void
+    {
+        $this->record('beforeNumbering', $invoice);
+    }
+
+    public function seal(Invoice $invoice, Organization $organization, mixed $context): Seal
+    {
+        $this->record('seal', $invoice);
+
+        if ($this->failSeal) {
+            throw new RuntimeException('signing failed');
+        }
+
+        return new Seal($this->columns);
+    }
+
+    public function afterIssued(Invoice $invoice, mixed $context, Seal $seal): mixed
+    {
+        $this->record('afterIssued', $invoice);
+
+        return 'issued';
+    }
+
+    public function afterCommit(Invoice $invoice, mixed $result, bool $issuedNow): void
+    {
+        $this->record('afterCommit', $invoice, ['issued_now' => $issuedNow]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $extra
+     */
+    private function record(string $hook, Invoice $invoice, array $extra = []): void
+    {
+        $this->calls[] = [
+            'hook' => $hook,
+            'level' => DB::transactionLevel(),
+            'number' => $invoice->invoice_number,
+            'issued_at' => $invoice->issued_at,
+            'stored_status' => Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoice->id)->value('status')),
+            ...$extra,
+        ];
+    }
+}
