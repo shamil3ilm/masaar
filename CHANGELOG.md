@@ -62,6 +62,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Signed invoice PDFs**: an invoice PDF is stamped with a PAdES B-B
+  signature (ETSI.CAdES.detached) using the issuing device's ZATCA
+  certificate, as the Security Features Implementation Standards require for
+  a PDF/A-3 invoice. A company not yet connected to ZATCA gets the PDF
+  unsigned.
 - **ZATCA compliance review** of the documents people see, against the
   Guideline for Tax Invoicing and Records, the XML Implementation Standard
   and the Data Dictionary:
