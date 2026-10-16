@@ -2387,6 +2387,34 @@ paths:
                 $ref: '#/components/schemas/Error'
       security:
         - bearerAuth: []
+  /api/peppol/webhooks/inbound:
+    post:
+      tags:
+        - Compliance
+      operationId: inboundWebhookController.store
+      summary: 'Store — Inbound Webhook Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+      security: []
+  /api/peppol/webhooks/status:
+    post:
+      tags:
+        - Compliance
+      operationId: statusWebhookController.store
+      summary: 'Store — Status Webhook Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+      security: []
   /api/settings/numbering:
     get:
       tags:

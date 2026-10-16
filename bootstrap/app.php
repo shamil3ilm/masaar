@@ -40,6 +40,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withCommands([
         __DIR__.'/../app/Domains/Licensing/Console',
         __DIR__.'/../app/Domains/Billing/Console',
+        __DIR__.'/../app/Domains/Compliance/Peppol/Console',
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         // Single source of truth. AppServiceProvider::boot() reasserts these

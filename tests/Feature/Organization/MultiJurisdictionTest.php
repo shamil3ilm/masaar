@@ -5,8 +5,8 @@ declare(strict_types=1);
 use App\Domains\Compliance\ComplianceRouter;
 use App\Domains\Compliance\Contracts\ComplianceEngine;
 use App\Domains\Compliance\Contracts\SubmissionResult;
-use App\Domains\Compliance\Exceptions\UnsupportedJurisdictionException;
 use App\Domains\Compliance\Fatoora\FatooraEngine;
+use App\Domains\Compliance\Peppol\PeppolEngine;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\ComplianceProfile;
 use App\Domains\Organization\Models\Organization;
@@ -36,9 +36,8 @@ it('an org in a group with two profiles routes to the right engine per profile',
 
     $router = app(ComplianceRouter::class);
 
-    // No AE engine is registered until the Peppol engine lands.
     expect($router->engineFor($saProfile))->toBeInstanceOf(FatooraEngine::class)
-        ->and(fn () => $router->engineFor($aeProfile))->toThrow(UnsupportedJurisdictionException::class);
+        ->and($router->engineFor($aeProfile))->toBeInstanceOf(PeppolEngine::class);
 });
 
 it('invoice can be linked to a compliance profile', function () {

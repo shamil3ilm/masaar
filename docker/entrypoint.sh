@@ -159,6 +159,7 @@ main() {
     # application's defaults are given here.
     export ZATCA_QUEUE_NAME="${ZATCA_QUEUE_NAME:-zatca-submissions}"
     export ZATCA_QUEUE_WEBHOOKS="${ZATCA_QUEUE_WEBHOOKS:-webhooks}"
+    export PEPPOL_QUEUE="${PEPPOL_QUEUE:-peppol}"
 
     # Execute the main command (supervisord)
     exec "$@"

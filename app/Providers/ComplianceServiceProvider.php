@@ -6,14 +6,16 @@ namespace App\Providers;
 
 use App\Domains\Compliance\ComplianceRouter;
 use App\Domains\Compliance\Fatoora\FatooraEngine;
+use App\Domains\Compliance\Peppol\PeppolEngine;
 use Illuminate\Support\ServiceProvider;
 
 class ComplianceServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        // Tag all engine implementations for collective resolution
-        $this->app->tag([FatooraEngine::class], 'compliance.engines');
+        // Tag all engine implementations for collective resolution: ZATCA for
+        // SA, Peppol PINT for AE.
+        $this->app->tag([FatooraEngine::class, PeppolEngine::class], 'compliance.engines');
 
         // Bind ComplianceRouter with all tagged engines
         $this->app->singleton(ComplianceRouter::class, function ($app) {

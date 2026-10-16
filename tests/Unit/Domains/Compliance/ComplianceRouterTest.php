@@ -9,6 +9,7 @@ use App\Domains\Compliance\Contracts\SubmissionResult;
 use App\Domains\Compliance\Contracts\ValidationResult;
 use App\Domains\Compliance\Exceptions\UnsupportedJurisdictionException;
 use App\Domains\Compliance\Fatoora\FatooraEngine;
+use App\Domains\Compliance\Peppol\PeppolEngine;
 use App\Domains\Organization\Models\ComplianceProfile;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -76,7 +77,7 @@ it('ComplianceRouter resolves FatooraEngine for SA profile', function () {
     expect($engine)->toBeInstanceOf(FatooraEngine::class);
 });
 
-it('ComplianceRouter has no AE engine yet', function () {
+it('ComplianceRouter resolves PeppolEngine for AE profile', function () {
     $org = Organization::create([
         'name' => 'AE Corp', 'country' => 'AE', 'status' => 'active',
     ]);
@@ -91,7 +92,7 @@ it('ComplianceRouter has no AE engine yet', function () {
 
     $router = app(ComplianceRouter::class);
 
-    expect(fn () => $router->engineFor($profile))->toThrow(UnsupportedJurisdictionException::class);
+    expect($router->engineFor($profile))->toBeInstanceOf(PeppolEngine::class);
 });
 
 it('ComplianceRouter throws for unknown jurisdiction', function () {

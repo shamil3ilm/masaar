@@ -8,6 +8,7 @@ use App\Domains\Compliance\Contracts\SubmissionResult;
 use App\Domains\Compliance\Contracts\ValidationResult;
 use App\Domains\Compliance\Exceptions\UnsupportedJurisdictionException;
 use App\Domains\Compliance\Fatoora\FatooraEngine;
+use App\Domains\Compliance\Peppol\PeppolEngine;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\ComplianceProfile;
 use App\Domains\Organization\Models\Organization;
@@ -52,12 +53,11 @@ it('routes SA profile to FatooraEngine', function () {
     expect($router->engineFor($profile))->toBeInstanceOf(FatooraEngine::class);
 });
 
-it('has no AE engine registered yet', function () {
+it('routes AE profile to PeppolEngine', function () {
     $profile = makeComplianceProfile('AE', 'peppol');
     $router = app(ComplianceRouter::class);
 
-    expect(fn () => $router->engineFor($profile))
-        ->toThrow(UnsupportedJurisdictionException::class);
+    expect($router->engineFor($profile))->toBeInstanceOf(PeppolEngine::class);
 });
 
 it('throws UnsupportedJurisdictionException for unregistered jurisdiction', function () {

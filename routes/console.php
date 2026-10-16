@@ -152,6 +152,23 @@ Schedule::command('compliance:cleanup-offline-queue')
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/zatca-queue-cleanup.log'));
 
+/*
+|--------------------------------------------------------------------------
+| Peppol (UAE)
+|--------------------------------------------------------------------------
+|
+| The service provider calls back with each document's status; this asks
+| about the sent documents whose callback never came. Only where a provider
+| is connected - without one nothing is ever sent.
+|
+*/
+Schedule::command('peppol:poll-status')
+    ->onOneServer()
+    ->everyTenMinutes()
+    ->withoutOverlapping(10)
+    ->when(fn () => filled(config('peppol.asp.base_url')))
+    ->appendOutputTo(storage_path('logs/peppol-status.log'));
+
 // Webhook delivery logs past their retention (WebhookLog::RETENTION_DAYS).
 Schedule::command('model:prune', ['--model' => [WebhookLog::class]])
     ->onOneServer()

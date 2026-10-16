@@ -62,6 +62,12 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Fatoora/Services/SubmissionTracker.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Services/Submitter.php' => 'Invoice, Organization',
         'Domains/Compliance/Fatoora/Services/VatPeriodTracker.php' => 'Invoice',
+        'Domains/Compliance/Peppol/PeppolEngine.php' => 'Invoice, Organization',
+        // The receiver of an inbound document is the endpoint on a compliance profile.
+        'Domains/Compliance/Peppol/Services/InboundDocuments.php' => 'Organization',
+        // A UAE document is built from an invoice and its organization's UAE settings.
+        'Domains/Compliance/Peppol/Services/PeppolPreparer.php' => 'Invoice, Organization',
+        'Domains/Compliance/Peppol/Services/PintMapper.php' => 'Invoice, Organization',
         'Domains/Invoice/Models/Invoice.php' => 'Organization',
         'Domains/Licensing/Http/Middleware/RequireLicenseFeature.php' => 'Invoice',
         'Domains/Organization/Models/Branch.php' => 'Invoice',

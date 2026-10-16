@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Compliance\Peppol;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Compliance\Peppol\Enums\PintTaxCategory;
 use App\Domains\Compliance\Peppol\Models\PeppolDocument;
 use App\Domains\Invoice\Enums\TaxCategory;
 use App\Domains\Invoice\Models\Invoice;
@@ -83,7 +84,7 @@ class PeppolFoundationTest extends TestCase
             'status' => 'draft',
             'issue_date' => now()->toDateString(),
             'due_date' => now()->addDays(30)->toDateString(),
-            'jurisdiction_data' => ['transaction_type' => '00100000'],
+            'jurisdiction_data' => ['transaction_flags' => '00100000'],
             'currency' => 'AED',
         ]);
 
@@ -94,11 +95,11 @@ class PeppolFoundationTest extends TestCase
             'quantity' => 1,
             'unit_price' => 100,
             'tax_rate' => 5,
-            'tax_category' => TaxCategory::ReverseCharge->value,
+            'tax_category' => PintTaxCategory::ReverseCharge->value,
         ]);
 
         $this->assertSame('AE', $line->fresh()->tax_category);
-        $this->assertSame(['transaction_type' => '00100000'], Invoice::withoutTenantScope(fn () => $invoice->fresh())->jurisdiction_data);
+        $this->assertSame(['transaction_flags' => '00100000'], Invoice::withoutTenantScope(fn () => $invoice->fresh())->jurisdiction_data);
     }
 
     public function test_document_is_stored_per_tenant(): void
@@ -139,7 +140,7 @@ class PeppolFoundationTest extends TestCase
             'password' => 'password',
         ])->json('data.token.access_token');
 
-        foreach ([TaxCategory::ReverseCharge, TaxCategory::MarginScheme] as $category) {
+        foreach ([PintTaxCategory::ReverseCharge, PintTaxCategory::MarginScheme] as $category) {
             $this->withToken($token)
                 ->postJson('/api/invoices', [
                     'type' => 'simplified',
@@ -155,7 +156,7 @@ class PeppolFoundationTest extends TestCase
                 ->assertJsonStructure(['error' => ['details' => ['lines.0.tax_category']]]);
         }
 
-        $this->assertSame(['S', 'Z', 'E', 'O'], TaxCategory::saudi());
+        $this->assertSame(['S', 'Z', 'E', 'O'], array_column(TaxCategory::cases(), 'value'));
     }
 
     /**

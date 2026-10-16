@@ -39,6 +39,8 @@ class ApiRouteAuthPostureTest extends TestCase
         'api/auth/login' => 'Credential exchange',
         'api/auth/register' => 'Account creation',
         'api/auth/email/resend' => 'The verification link again, before the account can sign in',
+        'api/peppol/webhooks/status' => 'Peppol service provider callback; refused unless HMAC-signed and recent',
+        'api/peppol/webhooks/inbound' => 'Peppol service provider callback; refused unless HMAC-signed and recent',
     ];
 
     /** Middleware that establishes who is calling. */

@@ -42,6 +42,9 @@ return [
         'client_secret' => env('PEPPOL_ASP_CLIENT_SECRET') ?: null,
         // Signs the provider's status and inbound callbacks.
         'webhook_secret' => env('PEPPOL_ASP_WEBHOOK_SECRET') ?: null,
+        // Sending runs on its own queue and worker (laravel-worker-peppol),
+        // apart from ZATCA's, so neither country's provider delays the other.
+        'queue' => env('PEPPOL_QUEUE') ?: 'peppol',
     ],
 
     /*

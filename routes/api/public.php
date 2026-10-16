@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Domains\Auth\Http\Controllers\AuthController;
+use App\Domains\Compliance\Peppol\Http\Controllers\InboundWebhookController;
+use App\Domains\Compliance\Peppol\Http\Controllers\StatusWebhookController;
 use App\Domains\Licensing\Services\PlatformLicenseService;
 use App\Domains\Platform\Http\Controllers\MetricsController;
 use App\Domains\Platform\Http\Controllers\ReadinessController;
@@ -21,7 +23,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-// rate.api on the whole file, as tenant.php, partner.php and platform.php
+// rate.api on all but the provider callbacks at the end, as tenant.php, partner.php and platform.php
 // declare it for theirs. This was the one audience without it, which left
 // /auth/login and /auth/register with no limit at all - an unlimited number
 // of password attempts against a known address, and unlimited account
@@ -71,4 +73,16 @@ Route::middleware('rate.api')->group(function () {
         Route::post('/email/resend', [AuthController::class, 'resendVerification'])->middleware('throttle:5,1');
     });
 
+});
+
+// The Peppol service provider's callbacks: a document's status, and documents
+// other suppliers sent to our organizations. The provider holds no credential
+// of ours, so the HMAC signature on each request is the credential, checked
+// first by the controller. Outside rate.api: its anonymous budget of twenty a
+// minute would throttle a provider reporting a busy day. Limited on their own
+// instead; a refused callback is retried by the provider, and missed statuses
+// are polled for (peppol:poll-status).
+Route::prefix('peppol/webhooks')->middleware('throttle:300,1')->group(function () {
+    Route::post('/status', [StatusWebhookController::class, 'store']);
+    Route::post('/inbound', [InboundWebhookController::class, 'store']);
 });

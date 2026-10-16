@@ -189,10 +189,7 @@ class CreateInvoiceRequest extends FormRequest
             'lines.*.unit_code' => ['nullable', 'string', Rule::in(UnitCode::accepted())],
             'lines.*.unit_price' => ['required', 'numeric', 'min:0', 'max:9999999999.99', 'decimal:0,2'],
             'lines.*.tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            // ZATCA's four only. The UAE's reverse-charge and margin-scheme
-            // categories would otherwise pass here and be refused after
-            // issue; a UAE invoice gets its own rules.
-            'lines.*.tax_category' => ['nullable', Rule::in(TaxCategory::saudi())],
+            'lines.*.tax_category' => ['nullable', Rule::enum(TaxCategory::class)],
             'lines.*.exempt_code' => [
                 'nullable',
                 'string',
