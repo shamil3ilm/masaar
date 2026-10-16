@@ -6,6 +6,7 @@ namespace App\Domains\Auth\Services;
 
 use App\Domains\Auth\Enums\PlatformRole;
 use App\Domains\Auth\Models\User;
+use Illuminate\Support\Facades\Password;
 
 /**
  * Suspending an account and letting it back in.
@@ -49,6 +50,31 @@ class AccountStatus
         $user->update(['status' => 'suspended']);
 
         return null;
+    }
+
+    /**
+     * Email someone a link to choose a new password - the support answer to
+     * "I cannot sign in". The admin never sees or sets the password.
+     */
+    public function sendPasswordReset(string $userId, string $actorId): ?string
+    {
+        $user = User::query()->find($userId);
+
+        if ($user === null) {
+            return 'No such account.';
+        }
+
+        if (! $user->isActive()) {
+            return 'This account is suspended. Reactivate it first.';
+        }
+
+        if ((string) $user->id !== $actorId && ! User::query()->find($actorId)?->mayActOnAccessOf($user)) {
+            return 'Your admin role cannot change the access of an admin of the same rank or above.';
+        }
+
+        $status = Password::broker()->sendResetLink(['email' => $user->email]);
+
+        return $status === Password::RESET_LINK_SENT ? null : __($status);
     }
 
     private function anotherOwner(User $leaving): bool

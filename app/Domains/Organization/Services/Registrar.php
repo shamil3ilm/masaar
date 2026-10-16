@@ -118,6 +118,29 @@ class Registrar
             ->exists();
     }
 
+    /**
+     * Whether everyone in the organization must sign in with a second factor.
+     */
+    public function requireTwoFactor(Organization $organization, bool $required): Organization
+    {
+        return DB::transaction(function () use ($organization, $required): Organization {
+            $locked = Organization::query()
+                ->whereKey($organization->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $oldValues = $locked->toArray();
+
+            // Not mass-assignable: only this, an administrator's choice,
+            // sets it.
+            $locked->forceFill(['require_two_factor' => $required])->save();
+
+            $this->audit->logUpdated($locked, $oldValues);
+
+            return $locked;
+        });
+    }
+
     public function amend(Organization $organization, OrganizationChangesData $changes): Organization
     {
         return DB::transaction(function () use ($organization, $changes): Organization {

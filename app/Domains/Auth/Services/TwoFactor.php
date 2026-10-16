@@ -101,6 +101,60 @@ class TwoFactor
     }
 
     /**
+     * Whoever a pending sign-in names, while it is fresh: a platform admin,
+     * or anyone else who has turned a second factor on.
+     *
+     * @param  mixed  $pending  What SessionAuthController kept in the session
+     */
+    public function pendingSignIn(mixed $pending): ?User
+    {
+        if (! is_array($pending) || ($pending['until'] ?? 0) < now()->timestamp) {
+            return null;
+        }
+
+        $user = User::query()->find($pending['id'] ?? null);
+
+        return $user !== null && $user->isActive() && ($user->isPlatformAdmin() || $user->hasTwoFactor()) ? $user : null;
+    }
+
+    /**
+     * Whether this person may turn their second factor off: not a platform
+     * admin, who must have one, nor a member of an organization requiring it.
+     *
+     * @return string|null Why not, or null when they may
+     */
+    public function mayTurnOff(User $user): ?string
+    {
+        if ($user->is_platform_admin) {
+            return 'Platform admins keep two-factor on.';
+        }
+
+        $requiring = $user->activeOrganizations()->where('require_two_factor', true)->value('name');
+
+        return $requiring === null ? null : $requiring.' requires two-factor for everyone in it.';
+    }
+
+    /**
+     * Turn one's own second factor off, after proving it with a code.
+     *
+     * @throws \DomainException
+     */
+    public function turnOff(User $user, string $code): void
+    {
+        if (($refusal = $this->mayTurnOff($user)) !== null) {
+            throw new \DomainException($refusal);
+        }
+
+        if (! $this->check($user, $code)) {
+            throw new \DomainException('That code is not right.');
+        }
+
+        $this->reset($user);
+
+        $this->audit->logSecurity('mfa.disabled', 'User', (string) $user->id, userId: (string) $user->id);
+    }
+
+    /**
      * Clear another admin's second factor, for one who has lost their phone.
      *
      * @return string|null Why it was refused, or null when done

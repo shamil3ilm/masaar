@@ -84,8 +84,19 @@ class AdminUserController extends Controller
         return $this->outcome($this->accounts->reactivate($userId), 'Account reactivated.', $userId);
     }
 
+    public function sendPasswordReset(Request $request, string $userId): RedirectResponse
+    {
+        $request->attributes->set(AuditAdminAction::TARGET, ['User', $userId]);
+
+        return $this->outcome(
+            $this->accounts->sendPasswordReset($userId, (string) Auth::id()),
+            'Password reset link sent to their email address.',
+            $userId,
+        );
+    }
+
     /**
-     * Let an admin who has lost their phone enrol again at their next sign-in.
+     * Let someone who has lost their phone enrol again at their next sign-in.
      */
     public function resetTwoFactor(Request $request, string $userId): RedirectResponse
     {

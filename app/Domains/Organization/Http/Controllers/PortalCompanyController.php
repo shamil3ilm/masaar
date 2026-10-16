@@ -60,6 +60,29 @@ class PortalCompanyController extends Controller
         return redirect()->route('portal.company.edit')->with('success', 'Company details saved.');
     }
 
+    /**
+     * Require everyone in the organization to sign in with a second factor.
+     *
+     * Turning it on needs the administrator to have one already, or the next
+     * page they open would send them away to set it up mid-change.
+     */
+    public function security(Request $request): RedirectResponse
+    {
+        $organization = $this->organization($request);
+        $required = $request->boolean('require_two_factor');
+
+        if ($required && ! $request->user()->hasTwoFactor()) {
+            return redirect()->route('portal.company.edit')
+                ->with('error', 'Turn on two-factor for your own account first, on My account.');
+        }
+
+        $this->registrar->requireTwoFactor($organization, $required);
+
+        return redirect()->route('portal.company.edit')->with('success', $required
+            ? 'Two-factor is now required. Members without it are asked to set it up when they next open the portal.'
+            : 'Two-factor is no longer required.');
+    }
+
     private function organization(Request $request): Organization
     {
         $organizationId = $request->attributes->get(PortalTenant::ORG_ID);

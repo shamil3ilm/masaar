@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\Auth\Http\Controllers\AccountController;
 use App\Domains\Auth\Http\Controllers\EmailVerificationController;
 use App\Domains\Auth\Http\Controllers\PasswordResetController;
 use App\Domains\Auth\Http\Controllers\SessionAuthController;
@@ -119,6 +120,25 @@ Route::middleware('auth')->group(function () {
         ->name('verification.send');
 });
 
+// My account: the signed-in person's own name, email address, password,
+// sessions, second factor, and deleting it. Each change is throttled.
+Route::prefix('account')->name('account.')->middleware(['auth', 'auth.session'])->group(function () {
+    Route::get('/', [AccountController::class, 'show'])->name('show');
+    Route::middleware('throttle:10,1')->group(function () {
+        Route::post('/name', [AccountController::class, 'name'])->name('name');
+        Route::post('/email', [AccountController::class, 'email'])->name('email');
+        Route::post('/password', [AccountController::class, 'password'])->name('password');
+        Route::post('/sessions', [AccountController::class, 'sessions'])->name('sessions');
+        Route::post('/two-factor/start', [AccountController::class, 'twoFactorStart'])->name('two-factor.start');
+        Route::post('/two-factor', [AccountController::class, 'twoFactorConfirm'])->name('two-factor.confirm');
+        Route::post('/two-factor/off', [AccountController::class, 'twoFactorOff'])->name('two-factor.off');
+        Route::post('/delete', [AccountController::class, 'destroy'])->name('destroy');
+    });
+    Route::get('/email/{token}', [AccountController::class, 'confirmEmail'])
+        ->where('token', '[A-Za-z0-9]{48}')
+        ->name('email.confirm');
+});
+
 // A platform admin's second factor, between the password and the console.
 // Throttled like the login itself, and per admin inside the controller.
 Route::get('/login/two-factor', [TwoFactorController::class, 'showChallenge'])->name('login.two-factor');
@@ -182,6 +202,7 @@ Route::prefix('admin')->name('admin.')
         // behind a confirmation and a required reason.
         Route::post('/users/{userId}/suspend', [AdminUserController::class, 'suspend'])->middleware('admin.can:users.manage')->name('users.suspend');
         Route::post('/users/{userId}/reactivate', [AdminUserController::class, 'reactivate'])->middleware('admin.can:users.manage')->name('users.reactivate');
+        Route::post('/users/{userId}/password-reset', [AdminUserController::class, 'sendPasswordReset'])->middleware(['admin.can:users.two_factor', 'throttle:10,1'])->name('users.password-reset');
         Route::post('/users/{userId}/reset-two-factor', [AdminUserController::class, 'resetTwoFactor'])->middleware('admin.can:users.two_factor')->name('users.reset-two-factor');
         Route::post('/users/{userId}/enrolment-link', [AdminUserController::class, 'issueEnrolmentLink'])->middleware('admin.can:users.two_factor')->name('users.enrolment-link');
         // Who runs the platform and in which role. Owners only.
@@ -264,7 +285,9 @@ Route::prefix('portal')->name('portal.')
     // the portal. Everyone with an account before sign-up existed counts as
     // verified (migration 0370).
     // org.writer: a viewer reads the portal and submits nothing.
-    ->middleware(['auth', 'auth.session', 'verified', 'portal.tenant', 'org.writer'])
+    // org.two_factor: an organization that requires a second factor sends
+    // anyone without one to set it up first.
+    ->middleware(['auth', 'auth.session', 'verified', 'portal.tenant', 'org.two_factor', 'org.writer'])
     ->whereUuid(['invoiceId', 'userId', 'invitationId'])
     ->group(function () {
         Route::get('/', [CustomerPortalController::class, 'dashboard'])->name('dashboard');
@@ -291,6 +314,7 @@ Route::prefix('portal')->name('portal.')
         // complete. Administrators only; the controller checks the role.
         Route::get('/company', [PortalCompanyController::class, 'edit'])->name('company.edit');
         Route::post('/company', [PortalCompanyController::class, 'update'])->name('company.update');
+        Route::post('/company/security', [PortalCompanyController::class, 'security'])->name('company.security');
 
         // Connecting to ZATCA: OTP, compliance checks, production
         // certificate. Administrators only, and only once the company is

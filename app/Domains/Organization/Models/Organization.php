@@ -63,6 +63,7 @@ class Organization extends Model
         return [
             'compliance_profile' => 'array',
             'prices_include_vat' => 'boolean',
+            'require_two_factor' => 'boolean',
             'reviewed_at' => 'datetime',
         ];
     }

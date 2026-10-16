@@ -132,14 +132,26 @@
                 @endadmincan
             @endif
 
-            @if(! $isSelf && $user->is_platform_admin && $user->two_factor_confirmed_at)
+            @if(! $isSelf && $user->status === 'active')
+                @admincan('users.two_factor')
+                <form method="POST" action="{{ route('admin.users.password-reset', $user->id) }}" class="mt-6 border-t pt-6"
+                      data-confirm-action="Send link"
+                      data-confirm="Email {{ $user->email }} a link to choose a new password?">
+                    @csrf
+                    <x-ui.button variant="outline" class="w-full">Send password reset link</x-ui.button>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">To their own address. You never see the password.</p>
+                </form>
+                @endadmincan
+            @endif
+
+            @if(! $isSelf && $user->two_factor_confirmed_at)
                 @admincan('users.two_factor')
                 <form method="POST" action="{{ route('admin.users.reset-two-factor', $user->id) }}" class="mt-6 border-t pt-6"
                       data-confirm-tone="danger" data-confirm-action="Reset"
                       data-confirm="Reset two-factor for {{ $user->email }}? Their app and recovery codes stop working, and they set it up again at their next sign-in. Do this only once you know it is really them.">
                     @csrf
                     <x-ui.button variant="outline" class="w-full">Reset two-factor</x-ui.button>
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">For an admin who has lost their phone and their recovery codes.</p>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">For someone who has lost their phone and their recovery codes.</p>
                 </form>
                 @endadmincan
             @endif

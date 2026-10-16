@@ -62,6 +62,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **My account**: everyone changes their own name, email address (confirmed
+  by a link to the new one), password, and signs out other sessions.
+- **Two-factor for everyone**: any user can turn it on, and is then asked for
+  a code at sign-in, console and API alike. A company admin can require it
+  for the whole company on the Company page.
+- **Deleting an account**: a person erases their name, address and sign-in;
+  invoices and the audit trail stay with the company, no longer naming them.
+- **Admin help with sign-in**: support can email someone a password reset
+  link and reset anyone's two-factor.
 - **Admin roles**: Owner, Operations, Support and Auditor decide what each
   platform admin may do, on the console and the admin API; owners manage
   admins on an Admins page. Every existing admin is an owner.

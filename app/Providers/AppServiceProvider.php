@@ -22,6 +22,7 @@ use App\Domains\Licensing\Http\Middleware\ValidateLicense;
 use App\Domains\Organization\Http\Middleware\IsOrgAdmin;
 use App\Domains\Organization\Http\Middleware\OrgWriter;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
+use App\Domains\Organization\Http\Middleware\TwoFactorRequired;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
@@ -51,6 +52,7 @@ class AppServiceProvider extends ServiceProvider
         'portal.tenant' => PortalTenant::class,
         'org.admin' => IsOrgAdmin::class,
         'org.writer' => OrgWriter::class,
+        'org.two_factor' => TwoFactorRequired::class,
         'metrics' => MetricsAccess::class,
         'rate.api' => RateLimitApi::class,
         'license' => ValidateLicense::class,

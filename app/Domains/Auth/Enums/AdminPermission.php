@@ -26,7 +26,7 @@ enum AdminPermission: string
     /** Suspend and reactivate accounts. */
     case UsersManage = 'users.manage';
 
-    /** Reset someone's two-factor, and issue enrolment links. */
+    /** Help someone back in: reset their two-factor, issue enrolment links, email a password reset link. */
     case UsersTwoFactor = 'users.two_factor';
 
     /** Replay webhooks, process and retry the queue, reset connectivity. */

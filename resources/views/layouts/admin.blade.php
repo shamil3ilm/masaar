@@ -104,7 +104,7 @@
                     </button>
                     <div class="flex items-center space-x-4">
                         @auth
-                        <span class="text-sm text-gray-600 dark:text-gray-300 border-l pl-4">{{ auth()->user()->email }}</span>
+                        <a href="{{ route('account.show') }}" class="text-sm text-gray-600 dark:text-gray-300 border-l pl-4 hover:underline">{{ auth()->user()->email }}</a>
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
                             <button type="submit" class="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">Sign out</button>

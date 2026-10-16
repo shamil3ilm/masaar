@@ -75,7 +75,7 @@
             </nav>
             <div class="border-t bg-gray-50 dark:bg-gray-950 p-4">
                 @auth
-                <p class="text-xs text-gray-500 dark:text-gray-400 truncate mb-2">{{ auth()->user()->email }}</p>
+                <a href="{{ route('account.show') }}" class="block text-xs text-gray-500 dark:text-gray-400 truncate mb-2 hover:underline">{{ auth()->user()->email }}</a>
                 <div class="flex items-center gap-3 mb-2">
                     <a href="{{ route('portal.switch') }}" class="text-xs text-teal-700 dark:text-teal-300 hover:text-teal-900 dark:hover:text-teal-200">Switch organization</a>
                     <form method="POST" action="{{ route('logout') }}">

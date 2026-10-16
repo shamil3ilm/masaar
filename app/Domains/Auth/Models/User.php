@@ -42,6 +42,7 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmailContrac
         'two_factor_secret',
         'two_factor_recovery_codes',
         'two_factor_enrolment_hash',
+        'pending_email_hash',
     ];
 
     protected function casts(): array
@@ -59,6 +60,8 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmailContrac
             'two_factor_enrolment_expires_at' => 'datetime',
             'terms_accepted_at' => 'datetime',
             'password_changed_at' => 'datetime',
+            'pending_email_expires_at' => 'datetime',
+            'anonymized_at' => 'datetime',
         ];
     }
 
