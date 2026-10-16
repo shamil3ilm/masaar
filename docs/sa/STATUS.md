@@ -242,6 +242,12 @@ Two things to expect that differ from the sandbox, and one to re-check:
   real document.
 - Re-check that a resubmission is still idempotent. It is in the sandbox
   (section 3), and every retry in the platform depends on it.
+- Put ZATCA's CA certificates for that environment - the issuing CA named in
+  the device certificate's issuer, and the root above it - in one PEM file and
+  set `ZATCA_CA_CHAIN_PATH`. Stamped PDFs then carry the chain the Security
+  Features standard asks for. A bundle that does not lead from the device
+  certificate to a self-signed root logs "does not reach a trust anchor";
+  check the log after downloading the first stamped PDF.
 
 ### The rehearsal that counts: the platform's own path
 
