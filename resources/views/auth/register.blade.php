@@ -1,11 +1,12 @@
 @extends('layouts.guest')
 
 @section('title', __('Create an account'))
-@section('subtitle', __('Register your business for ZATCA e-invoicing'))
+@section('subtitle', $choice ? __('Register your business for e-invoicing') : __('Register your business for ZATCA e-invoicing'))
 @section('width', 'max-w-2xl')
 
 @section('content')
-<form method="POST" action="{{ route('register.store') }}" class="space-y-6">
+<form method="POST" action="{{ route('register.store') }}" class="space-y-6"
+      @if ($choice) x-data="signupCountry" data-country="{{ $country }}" @endif>
     @csrf
 
     <fieldset class="space-y-4">
@@ -31,7 +32,7 @@
     </fieldset>
 
     <fieldset class="space-y-4">
-        <legend class="mb-2 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ __('Your company, as registered with ZATCA') }}</legend>
+        <legend class="mb-2 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ $choice ? __('Your company') : __('Your company, as registered with ZATCA') }}</legend>
 
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <x-ui.field :label="__('Legal name')">
@@ -40,39 +41,17 @@
             <x-ui.field :label="__('Legal name in Arabic')">
                 <x-ui.input type="text" name="company_name_ar" maxlength="255" dir="rtl" value="{{ old('company_name_ar') }}" />
             </x-ui.field>
-            <x-ui.field :label="__('VAT number')">
-                <x-ui.input type="text" name="vat_number" inputmode="numeric" maxlength="15" required value="{{ old('vat_number') }}" />
-            </x-ui.field>
-            <x-ui.field :label="__('Commercial registration (CR) number')">
-                <x-ui.input type="text" name="cr_number" inputmode="numeric" maxlength="10" value="{{ old('cr_number') }}" />
-            </x-ui.field>
+            @unless ($choice)
+                @include('auth.partials.saudi-registration')
+            @endunless
         </div>
     </fieldset>
 
-    <fieldset class="space-y-4">
-        <legend class="mb-2 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ __('National address') }}</legend>
-
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <x-ui.field :label="__('Street')">
-                <x-ui.input type="text" name="street" maxlength="127" required value="{{ old('street') }}" />
-            </x-ui.field>
-            <x-ui.field :label="__('Building number')">
-                <x-ui.input type="text" name="building_number" inputmode="numeric" maxlength="4" required value="{{ old('building_number') }}" />
-            </x-ui.field>
-            <x-ui.field :label="__('Additional street')">
-                <x-ui.input type="text" name="additional_street" maxlength="127" value="{{ old('additional_street') }}" />
-            </x-ui.field>
-            <x-ui.field :label="__('District')">
-                <x-ui.input type="text" name="district" maxlength="127" required value="{{ old('district') }}" />
-            </x-ui.field>
-            <x-ui.field :label="__('City')">
-                <x-ui.input type="text" name="city" maxlength="127" required value="{{ old('city') }}" />
-            </x-ui.field>
-            <x-ui.field :label="__('Postal code')">
-                <x-ui.input type="text" name="postal_code" inputmode="numeric" maxlength="5" required value="{{ old('postal_code') }}" />
-            </x-ui.field>
-        </div>
-    </fieldset>
+    @if ($choice)
+        @include('auth.partials.country-sections')
+    @else
+        @include('auth.partials.saudi-address')
+    @endif
 
     <label class="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-300">
         <input type="checkbox" name="terms" value="1" class="mt-1 text-teal-600 dark:text-teal-400" @checked(old('terms')) required>
@@ -86,9 +65,14 @@
         </span>
     </label>
 
-    <p class="text-xs text-gray-500 dark:text-gray-400">
+    <p class="text-xs text-gray-500 dark:text-gray-400" @if ($choice) :hidden="notSaudi" @if ($country !== 'SA') hidden @endif @endif>
         {{ __('We review every company before it connects to ZATCA. You can sign in and prepare invoices straight away; connecting to ZATCA and issuing open once your company is approved.') }}
     </p>
+    @if ($choice)
+        <p class="text-xs text-gray-500 dark:text-gray-400" :hidden="notUae" @if ($country !== 'AE') hidden @endif>
+            {{ __('We review every company before it can issue. You can sign in and prepare invoices straight away; issuing opens once your company is approved and you have added the Peppol endpoint your service provider issues you on your company page.') }}
+        </p>
+    @endif
 
     <x-ui.button class="w-full">{{ __('Create account') }}</x-ui.button>
 

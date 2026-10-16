@@ -7,6 +7,7 @@ namespace App\Domains\Auth\Http\Controllers;
 use App\Domains\Auth\Http\Requests\SignupRequest;
 use App\Domains\Auth\Services\SelfSignup;
 use App\Domains\Auth\Services\SignInRecorder;
+use App\Domains\Organization\Rules\CompanyProfileRules;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
@@ -33,8 +34,14 @@ class SignupController extends Controller
             return redirect()->route('portal.dashboard');
         }
 
+        $countries = CompanyProfileRules::countries();
+        $chosen = old('country');
+
         return view('auth.register', [
             'termsUrl' => config('signup.terms_url'),
+            // The country is asked only where there is a choice to make.
+            'choice' => count($countries) > 1,
+            'country' => in_array($chosen, $countries, true) ? $chosen : 'SA',
         ]);
     }
 
