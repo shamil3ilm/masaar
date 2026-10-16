@@ -120,10 +120,12 @@ class IssuingLifecycleTest extends TestCase
         $this->assertSame(['prepare'], array_column($fake->calls, 'hook'));
         $this->assertSame($number, $draft->fresh()->invoice_number);
 
-        $lock = array_search(true, array_map(fn (array $q): bool => str_contains($q['sql'], '"organizations"'), $queries), true);
+        // Either quoting: SQLite writes "organizations", MySQL `organizations`.
+        $names = fn (string $table): string => '/["`]'.$table.'["`]/';
+        $lock = array_search(true, array_map(fn (array $q): bool => preg_match($names('organizations'), $q['sql']) === 1, $queries), true);
         $this->assertNotFalse($lock, 'the organization row was not read');
         $this->assertGreaterThan($outside, $queries[$lock]['level'], 'the organization row was read outside the transaction');
-        $this->assertStringContainsString('"invoices"', $queries[$lock + 1]['sql'] ?? '', 'the invoice was not refreshed after the lock');
+        $this->assertMatchesRegularExpression($names('invoices'), $queries[$lock + 1]['sql'] ?? '', 'the invoice was not refreshed after the lock');
     }
 
     /**
