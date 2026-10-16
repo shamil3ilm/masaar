@@ -77,10 +77,10 @@ class PortalInvoiceDocumentController extends Controller
             Log::error('Invoice email failed', ['invoice_id' => $invoice->id, 'error' => $e->getMessage()]);
 
             return redirect()->route('portal.invoices.show', $invoiceId)
-                ->with('error', 'The email could not be sent. Download the PDF and send it yourself, or try again later.');
+                ->with('error', __('The email could not be sent. Download the PDF and send it yourself, or try again later.'));
         }
 
-        return redirect()->route('portal.invoices.show', $invoiceId)->with('success', 'Invoice sent to '.$email.'.');
+        return redirect()->route('portal.invoices.show', $invoiceId)->with('success', __('Invoice sent to :email.', ['email' => $email]));
     }
 
     private function invoice(Request $request, string $invoiceId): Invoice

@@ -32,7 +32,7 @@ class InvitationController extends Controller
         $invitation = $this->team->invitation($token);
 
         if ($invitation === null) {
-            return redirect()->route('login')->withErrors(['email' => 'This invitation is not valid any more. Ask for a new one.']);
+            return redirect()->route('login')->withErrors(['email' => __('This invitation is not valid any more. Ask for a new one.')]);
         }
 
         return view('auth.invitation', [
@@ -57,7 +57,7 @@ class InvitationController extends Controller
 
         $request->session()->put(PortalTenant::SESSION_KEY, $invitation->org_id);
 
-        return redirect()->route('portal.dashboard')->with('success', 'You have joined '.$invitation->organization->name.'.');
+        return redirect()->route('portal.dashboard')->with('success', __('You have joined :organization.', ['organization' => $invitation->organization->name]));
     }
 
     /**
@@ -67,7 +67,7 @@ class InvitationController extends Controller
     {
         $invitation = $this->team->invitation($token) ?? abort(404);
 
-        abort_if($this->team->hasAccount($invitation->email), 409, 'That address already has an account. Sign in to accept.');
+        abort_if($this->team->hasAccount($invitation->email), 409, __('That address already has an account. Sign in to accept.'));
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -81,6 +81,6 @@ class InvitationController extends Controller
         $request->session()->regenerate();
         $request->session()->put(PortalTenant::SESSION_KEY, $invitation->org_id);
 
-        return redirect()->route('portal.dashboard')->with('success', 'Welcome to '.$invitation->organization->name.'.');
+        return redirect()->route('portal.dashboard')->with('success', __('Welcome to :organization.', ['organization' => $invitation->organization->name]));
     }
 }

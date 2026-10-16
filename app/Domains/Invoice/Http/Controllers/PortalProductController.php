@@ -49,7 +49,7 @@ class PortalProductController extends Controller
 
         $this->catalogue->saveProduct($organizationId, $this->validated($request, $organizationId));
 
-        return redirect()->route('portal.products.index')->with('success', 'Product saved.');
+        return redirect()->route('portal.products.index')->with('success', __('Product saved.'));
     }
 
     public function edit(Request $request, string $productId): View
@@ -64,7 +64,7 @@ class PortalProductController extends Controller
 
         $this->catalogue->saveProduct($organizationId, $this->validated($request, $organizationId, $product), $product);
 
-        return redirect()->route('portal.products.index')->with('success', 'Product saved.');
+        return redirect()->route('portal.products.index')->with('success', __('Product saved.'));
     }
 
     public function archive(Request $request, string $productId): RedirectResponse
@@ -75,7 +75,7 @@ class PortalProductController extends Controller
         $this->catalogue->archive($product, $archived);
 
         return redirect()->route('portal.products.index')
-            ->with('success', $archived ? $product->name.' archived. Invoices already written keep their lines.' : $product->name.' restored.');
+            ->with('success', $archived ? __(':name archived. Invoices already written keep their lines.', ['name' => $product->name]) : __(':name restored.', ['name' => $product->name]));
     }
 
     /**
@@ -94,7 +94,7 @@ class PortalProductController extends Controller
             'unit_price' => ['required', 'numeric', 'min:0', 'max:9999999999'],
             'tax_rate' => ['required', 'numeric', 'min:0', 'max:100'],
         ], [
-            'sku.unique' => 'Another product already has this code.',
+            'sku.unique' => __('Another product already has this code.'),
         ]);
     }
 

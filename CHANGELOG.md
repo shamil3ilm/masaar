@@ -62,6 +62,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Arabic**: the portal, sign-in, sign-up and My account read in Arabic,
+  right to left, with a language switch on every page; the choice is kept
+  on the account. Dates, units, validation and messages follow it. The
+  admin console stays in English.
+- **Public pages**: a landing page with sign-up, features, how it works and
+  plan prices (from `BILLING_PRICE_*`), and a privacy notice and terms of
+  service in English and Arabic, filled in from the new `COMPANY_*` and
+  `CONTACT_*` settings. Sign-up links to `/terms` unless
+  `SIGNUP_TERMS_URL` names another page.
 - **Reports**: the portal's Reports page shows a period's sales grouped as
   the VAT return's sales boxes - standard rated, citizens' healthcare and
   education, zero rated, exports, exempt - with credit notes taken off and

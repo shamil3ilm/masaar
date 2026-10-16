@@ -44,20 +44,20 @@ final class TicketFiles
     public function check(array $files): void
     {
         if (count($files) > self::MAX_FILES) {
-            throw new DomainException('Attach at most '.self::MAX_FILES.' files to one message.');
+            throw new DomainException(__('Attach at most :count files to one message.', ['count' => self::MAX_FILES]));
         }
 
         foreach ($files as $file) {
             if (! $file->isValid()) {
-                throw new DomainException($file->getClientOriginalName().' did not upload completely.');
+                throw new DomainException(__(':name did not upload completely.', ['name' => $file->getClientOriginalName()]));
             }
 
             if ($file->getSize() > self::MAX_KILOBYTES * 1024) {
-                throw new DomainException($file->getClientOriginalName().' is over '.(self::MAX_KILOBYTES / 1024).' MB.');
+                throw new DomainException(__(':name is over :size MB.', ['name' => $file->getClientOriginalName(), 'size' => self::MAX_KILOBYTES / 1024]));
             }
 
             if (! isset(self::TYPES[(string) $file->getMimeType()])) {
-                throw new DomainException($file->getClientOriginalName().' is not a PDF, image, XML, CSV or text file.');
+                throw new DomainException(__(':name is not a PDF, image, XML, CSV or text file.', ['name' => $file->getClientOriginalName()]));
             }
         }
     }

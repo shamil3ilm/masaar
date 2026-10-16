@@ -8,6 +8,7 @@ use App\Domains\Licensing\Exceptions\LicenseException;
 use App\Domains\Licensing\Http\Middleware\PlatformLicense;
 use App\Domains\Platform\Http\Middleware\LogContext;
 use App\Domains\Platform\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\SetLocale;
 use App\Http\Responses\ApiResponse;
 use App\Providers\AppServiceProvider;
 use Illuminate\Foundation\Application;
@@ -66,7 +67,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // A session outlives the decision to suspend its account - for a
         // remembered one, by years. Every web request asks.
-        $middleware->web(append: [ActiveAccount::class]);
+        $middleware->web(append: [ActiveAccount::class, SetLocale::class]);
 
         $middleware->api(prepend: [
             HandleCors::class,

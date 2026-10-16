@@ -65,7 +65,7 @@ abstract class BrandingController extends Controller
             'favicon' => $request->boolean('remove_favicon'),
         ]);
 
-        return redirect()->route($this->route().'.edit')->with('success', 'Branding saved.');
+        return redirect()->route($this->route().'.edit')->with('success', __('Branding saved.'));
     }
 
     /**
@@ -88,7 +88,7 @@ abstract class BrandingController extends Controller
 
         $this->keep($this->owner($request), $definition);
 
-        return redirect()->route($this->route().'.edit')->with('success', 'Theme imported.');
+        return redirect()->route($this->route().'.edit')->with('success', __('Theme imported.'));
     }
 
     /**
@@ -109,7 +109,7 @@ abstract class BrandingController extends Controller
     {
         $this->themes->reset($this->owner($request));
 
-        return redirect()->route($this->route().'.edit')->with('success', 'Branding reset.');
+        return redirect()->route($this->route().'.edit')->with('success', __('Branding reset.'));
     }
 
     /**

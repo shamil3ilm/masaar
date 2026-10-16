@@ -98,11 +98,11 @@ class InvoicePdf
     public function assertShareable(Invoice $invoice): void
     {
         if ($invoice->hash === null || $invoice->qr_code === null) {
-            throw new DomainException('Issue the invoice first. A draft has no QR code and is not a tax invoice.');
+            throw new DomainException(__('Issue the invoice first. A draft has no QR code and is not a tax invoice.'));
         }
 
         if ($invoice->type === InvoiceType::Standard && $invoice->cleared_xml === null) {
-            throw new DomainException('ZATCA has not cleared this invoice yet. A standard invoice may not be given to the buyer until it is.');
+            throw new DomainException(__('ZATCA has not cleared this invoice yet. A standard invoice may not be given to the buyer until it is.'));
         }
     }
 

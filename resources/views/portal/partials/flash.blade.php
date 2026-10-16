@@ -33,8 +33,8 @@
 
 @if ($errors->any())
     <div class="mb-6 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-800 dark:text-red-200">
-        <p class="font-semibold">Please correct the following:</p>
-        <ul class="mt-2 list-disc space-y-1 pl-5">
+        <p class="font-semibold">{{ __('Please correct the following:') }}</p>
+        <ul class="mt-2 list-disc space-y-1 ps-5">
             @foreach ($errors->all() as $message)
                 <li>{{ $message }}</li>
             @endforeach

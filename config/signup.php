@@ -16,7 +16,7 @@ return [
     // The terms a business accepts at sign-up. The version is stored with the
     // acceptance, so a change of terms is a new version and a record of who
     // accepted which.
-    'terms_url' => env('SIGNUP_TERMS_URL'),
+    'terms_url' => env('SIGNUP_TERMS_URL') ?: '/terms',
     'terms_version' => env('SIGNUP_TERMS_VERSION', '1'),
 
 ];

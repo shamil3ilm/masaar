@@ -47,7 +47,7 @@ class PortalInvoiceDraftController extends Controller
         }
 
         // A viewer would only be refused on saving (org.writer).
-        abort_if($request->user()?->roleIn((string) $request->attributes->get(PortalTenant::ORG_ID)) === 'viewer', 403, 'Your role in this organization is read-only.');
+        abort_if($request->user()?->roleIn((string) $request->attributes->get(PortalTenant::ORG_ID)) === 'viewer', 403, __('Your role in this organization is read-only.'));
 
         $organizationId = (string) $request->attributes->get(PortalTenant::ORG_ID);
 
@@ -81,7 +81,7 @@ class PortalInvoiceDraftController extends Controller
 
             return back()
                 ->withInput()
-                ->with('error', 'The invoice could not be saved. Nothing was written, and what you typed is still here. If this keeps happening, the detail is in the application log.');
+                ->with('error', __('The invoice could not be saved. Nothing was written, and what you typed is still here. If this keeps happening, the detail is in the application log.'));
         }
 
         // After the draft, and never at its expense: the invoice is what was
@@ -96,6 +96,8 @@ class PortalInvoiceDraftController extends Controller
 
         return redirect()
             ->route('portal.invoices.show', $invoice->id)
-            ->with('success', ($invoice->invoice_number === null ? 'Draft saved. It is numbered' : 'Invoice '.$invoice->invoice_number.' saved as a draft. It has no counter and no hash').' until it is issued.');
+            ->with('success', $invoice->invoice_number === null
+                ? __('Draft saved. It is numbered until it is issued.')
+                : __('Invoice :number saved as a draft. It has no counter and no hash until it is issued.', ['number' => $invoice->invoice_number]));
     }
 }

@@ -36,11 +36,20 @@ use App\Domains\Platform\Http\Controllers\AdminUserController;
 use App\Domains\Support\Http\Controllers\AdminSupportController;
 use App\Domains\Support\Http\Controllers\PortalSupportController;
 use App\Domains\Webhook\Http\Controllers\AdminWebhookController;
+use App\Http\Controllers\LegalController;
+use App\Http\Controllers\LocaleController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
 });
+
+// The privacy notice and the terms, which sign-up asks people to accept.
+Route::get('/privacy', [LegalController::class, 'privacy'])->name('privacy');
+Route::get('/terms', [LegalController::class, 'terms'])->name('terms');
+
+// The interface language. Public: the sign-in page offers it too.
+Route::post('/locale', LocaleController::class)->middleware('throttle:20,1')->name('locale');
 
 /*
 |--------------------------------------------------------------------------

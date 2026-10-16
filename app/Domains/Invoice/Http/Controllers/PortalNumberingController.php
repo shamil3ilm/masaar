@@ -44,8 +44,12 @@ class PortalNumberingController extends Controller
 
         $this->settings->save($organizationId, $documentType, $validated);
 
-        return redirect()->route('portal.numbering.edit')
-            ->with('success', ucfirst(str_replace('_', ' ', $documentType)).' numbering saved.');
+        return redirect()->route('portal.numbering.edit')->with('success', match ($documentType) {
+            'credit_note' => __('Credit note numbering saved.'),
+            'debit_note' => __('Debit note numbering saved.'),
+            'prepayment' => __('Prepayment numbering saved.'),
+            default => __('Invoice numbering saved.'),
+        });
     }
 
     private function organization(Request $request): string
@@ -53,7 +57,7 @@ class PortalNumberingController extends Controller
         $organizationId = $request->attributes->get(PortalTenant::ORG_ID);
 
         abort_unless(is_string($organizationId), 404);
-        abort_unless($request->user()?->roleIn($organizationId) === 'admin', 403, 'Only an administrator of this organization can change its numbering.');
+        abort_unless($request->user()?->roleIn($organizationId) === 'admin', 403, __('Only an administrator of this organization can change its numbering.'));
 
         return $organizationId;
     }

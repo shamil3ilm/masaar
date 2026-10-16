@@ -57,14 +57,14 @@ class TwoFactorController extends Controller
     {
         if ($this->links->holder($token) === null) {
             return redirect()->route('login')
-                ->withErrors(['email' => 'This enrolment link is not valid. It may have been used, replaced or expired - ask another platform admin for a new one.']);
+                ->withErrors(['email' => __('This enrolment link is not valid. It may have been used, replaced or expired - ask another platform admin for a new one.')]);
         }
 
         $request->session()->put(self::ENROLMENT, EnrolmentLinks::hash($token));
 
         // The address held the token; nothing should keep a copy of it.
         return redirect()->route('login')
-            ->with('status', 'Sign in to set up two-factor authentication.')
+            ->with('status', __('Sign in to set up two-factor authentication.'))
             ->header('Cache-Control', 'no-store');
     }
 
@@ -96,7 +96,7 @@ class TwoFactorController extends Controller
 
             $this->audit->logSecurity('mfa.failed', 'User', (string) $user->id, ['surface' => 'console']);
 
-            throw ValidationException::withMessages(['code' => 'That code is not right. Try the current one from your app, or a recovery code.']);
+            throw ValidationException::withMessages(['code' => __('That code is not right. Try the current one from your app, or a recovery code.')]);
         }
 
         $this->throttle->codeSucceeded($user);
@@ -145,7 +145,7 @@ class TwoFactorController extends Controller
         if ($recoveryCodes === EnrolmentLinks::WRONG_CODE) {
             $this->throttle->codeFailed($user);
 
-            throw ValidationException::withMessages(['code' => 'That code is not right. Check the app is showing the Masaar entry you just added.']);
+            throw ValidationException::withMessages(['code' => __('That code is not right. Check the app is showing the Masaar entry you just added.')]);
         }
 
         $this->throttle->codeSucceeded($user);
@@ -206,7 +206,7 @@ class TwoFactorController extends Controller
 
         if ($seconds > 0) {
             throw ValidationException::withMessages([
-                'code' => 'Too many attempts. Try again in '.$seconds.' seconds.',
+                'code' => __('Too many attempts. Try again in :seconds seconds.', ['seconds' => $seconds]),
             ]);
         }
     }

@@ -21,7 +21,7 @@ class PortalBrandingController extends BrandingController
         $organizationId = $request->attributes->get(PortalTenant::ORG_ID);
 
         abort_unless(is_string($organizationId), 404);
-        abort_unless($request->user()?->roleIn($organizationId) === 'admin', 403, 'Only an administrator of this organization can change its branding.');
+        abort_unless($request->user()?->roleIn($organizationId) === 'admin', 403, __('Only an administrator of this organization can change its branding.'));
 
         return $organizationId;
     }

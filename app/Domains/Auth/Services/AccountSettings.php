@@ -36,6 +36,11 @@ class AccountSettings
         private readonly AuditService $audit,
     ) {}
 
+    public function setLocale(User $user, string $locale): void
+    {
+        $user->forceFill(['locale' => $locale])->save();
+    }
+
     public function rename(User $user, string $name): void
     {
         $user->forceFill(['name' => $name])->save();
@@ -53,17 +58,17 @@ class AccountSettings
         // Whoever holds a session is not necessarily its owner, and the
         // address is how an account is recovered.
         if (! Hash::check($password, (string) $user->password)) {
-            throw new DomainException('Your current password is not right.');
+            throw new DomainException(__('Your current password is not right.'));
         }
 
         $email = Str::lower(trim($email));
 
         if ($email === Str::lower((string) $user->email)) {
-            throw new DomainException('That is already your address.');
+            throw new DomainException(__('That is already your address.'));
         }
 
         if (User::query()->where('email', $email)->exists()) {
-            throw new DomainException('Another account uses that address.');
+            throw new DomainException(__('Another account uses that address.'));
         }
 
         $token = Str::random(48);
@@ -91,11 +96,11 @@ class AccountSettings
             && $user->pending_email_expires_at?->isFuture();
 
         if (! $matches) {
-            throw new DomainException('That link is not valid any more. Ask for the change again.');
+            throw new DomainException(__('That link is not valid any more. Ask for the change again.'));
         }
 
         if (User::query()->where('email', $user->pending_email)->whereKeyNot($user->getKey())->exists()) {
-            throw new DomainException('Another account took that address meanwhile.');
+            throw new DomainException(__('Another account took that address meanwhile.'));
         }
 
         $previous = (string) $user->email;
@@ -129,7 +134,7 @@ class AccountSettings
     public function changePassword(User $user, string $current, string $new): void
     {
         if (! Hash::check($current, (string) $user->password)) {
-            throw new DomainException('Your current password is not right.');
+            throw new DomainException(__('Your current password is not right.'));
         }
 
         $user->forceFill([
@@ -154,7 +159,7 @@ class AccountSettings
     public function signOutOtherSessions(User $user, string $password): void
     {
         if (! Hash::check($password, (string) $user->password)) {
-            throw new DomainException('That password is not right.');
+            throw new DomainException(__('That password is not right.'));
         }
 
         Auth::logoutOtherDevices($password);

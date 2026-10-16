@@ -1,10 +1,10 @@
 @extends('layouts.portal')
 
-@section('title', ($invoice->invoice_number ?? 'Draft') . ' - ' . $organization->name)
+@section('title', ($invoice->invoice_number ?? __('Draft')) . ' - ' . $organization->name)
 
 @section('content')
 <div class="mb-6">
-    <a href="{{ route('portal.invoices.index') }}" class="text-sm text-teal-700 dark:text-teal-300 hover:underline">&larr; All invoices</a>
+    <a href="{{ route('portal.invoices.index') }}" class="text-sm text-teal-700 dark:text-teal-300 hover:underline"><span class="inline-block rtl:rotate-180">&larr;</span> {{ __('All invoices') }}</a>
 </div>
 
 <div class="mb-8 flex flex-wrap items-start justify-between gap-4">
@@ -25,9 +25,9 @@
             <span class="text-gray-400 dark:text-gray-500" dir="rtl" lang="ar">{{ $simplified ? 'فاتورة ضريبية مبسطة' : 'فاتورة ضريبية' }}</span>
         </p>
 
-        <h2 class="mt-1 text-2xl font-bold text-gray-800 dark:text-gray-100">{{ $invoice->invoice_number ?? 'Draft (numbered when issued)' }}</h2>
+        <h2 class="mt-1 text-2xl font-bold text-gray-800 dark:text-gray-100">{{ $invoice->invoice_number ?? __('Draft (numbered when issued)') }}</h2>
         <p class="text-gray-500 dark:text-gray-400">
-            <span lang="ar" dir="rtl">تاريخ الفاتورة</span> &middot; issued {{ $invoice->issue_date }}
+            <span lang="ar" dir="rtl">تاريخ الفاتورة</span> &middot; {{ __('issued :date', ['date' => $invoice->issue_date]) }}
         </p>
     </div>
     <div class="flex items-center gap-3">
@@ -36,15 +36,15 @@
         @if ($invoice->status === \App\Domains\Invoice\Enums\InvoiceStatus::Draft)
             @if (auth()->user()?->roleIn((string) request()->attributes->get(\App\Domains\Organization\Http\Middleware\PortalTenant::ORG_ID)) !== 'viewer')
             <form method="POST" action="{{ route('portal.invoices.issue', $invoice->id) }}"
-                  data-confirm-action="Issue invoice"
-                  data-confirm="Issue this invoice? It gets a counter and a hash, joins the chain, and cannot be issued again.">
+                  data-confirm-action="{{ __('Issue invoice') }}"
+                  data-confirm="{{ __('Issue this invoice? It gets a counter and a hash, joins the chain, and cannot be issued again.') }}">
                 @csrf
-                <x-ui.button>Issue</x-ui.button>
+                <x-ui.button>{{ __('Issue') }}</x-ui.button>
             </form>
             @endif
         @else
             <x-ui.button variant="outline" :href="route('portal.invoices.print', $invoice->id)">
-                Print
+                {{ __('Print') }}
             </x-ui.button>
             @if ($shareable)
                 <x-ui.button variant="outline" :href="route('portal.invoices.pdf', $invoice->id)">
@@ -61,11 +61,11 @@
           class="mb-6 flex flex-wrap items-end gap-3 rounded-lg bg-white dark:bg-gray-900 p-4 shadow">
         @csrf
         <div class="min-w-64 flex-1">
-            <x-ui.field label="Email the PDF to the buyer">
+            <x-ui.field :label="__('Email the PDF to the buyer')">
                 <x-ui.input type="email" name="email" maxlength="255" required value="{{ old('email', $sendTo) }}" />
             </x-ui.field>
         </div>
-        <x-ui.button variant="outline">Send invoice</x-ui.button>
+        <x-ui.button variant="outline">{{ __('Send invoice') }}</x-ui.button>
     </form>
 @endif
 
@@ -79,16 +79,16 @@
                 <p class="font-medium text-gray-900 dark:text-gray-100" dir="rtl" lang="ar">{{ $invoice->buyer_name_ar }}</p>
                 <p class="text-sm text-gray-500 dark:text-gray-400">{{ $invoice->buyer_name }}</p>
             @else
-                <p class="font-medium text-gray-900 dark:text-gray-100">{{ $invoice->buyer_name ?: 'Walk-in customer' }}</p>
+                <p class="font-medium text-gray-900 dark:text-gray-100">{{ $invoice->buyer_name ?: __('Walk-in customer') }}</p>
             @endif
             @if ($invoice->buyer_vat_number)
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">VAT {{ $invoice->buyer_vat_number }}</p>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('VAT :number', ['number' => $invoice->buyer_vat_number]) }}</p>
             @endif
         </div>
 
         <div class="overflow-hidden rounded-lg bg-white dark:bg-gray-900 shadow">
             <h3 class="border-b border-gray-200 dark:border-gray-700 px-6 py-4 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                Lines
+                {{ __('Lines') }}
             </h3>
             <x-ui.table>
                 <x-slot:head>
@@ -115,19 +115,19 @@
                                 {{ $line->description }}
                             @endif
                             @if ($line->exempt_code)
-                                <span class="ml-1 text-xs text-gray-400 dark:text-gray-500">({{ $line->exempt_code }})</span>
+                                <span class="ms-1 text-xs text-gray-400 dark:text-gray-500">({{ $line->exempt_code }})</span>
                             @endif
                         </td>
-                        <td class="px-6 py-3 text-right text-sm tabular-nums text-gray-700 dark:text-gray-200">
+                        <td class="px-6 py-3 text-end text-sm tabular-nums text-gray-700 dark:text-gray-200">
                             {{ rtrim(rtrim((string) $line->quantity, '0'), '.') }}
                         </td>
-                        <td class="px-6 py-3 text-right text-sm tabular-nums text-gray-700 dark:text-gray-200">
+                        <td class="px-6 py-3 text-end text-sm tabular-nums text-gray-700 dark:text-gray-200">
                             @include('portal.partials.money', ['amount' => $line->priceAsEntered((bool) $invoice->prices_include_vat), 'currency' => $invoice->currency])
                         </td>
-                        <td class="px-6 py-3 text-right text-sm tabular-nums text-gray-700 dark:text-gray-200">
+                        <td class="px-6 py-3 text-end text-sm tabular-nums text-gray-700 dark:text-gray-200">
                             @include('portal.partials.money', ['amount' => $line->tax_amount, 'currency' => $invoice->currency])
                         </td>
-                        <td class="px-6 py-3 text-right text-sm tabular-nums text-gray-900 dark:text-gray-100">
+                        <td class="px-6 py-3 text-end text-sm tabular-nums text-gray-900 dark:text-gray-100">
                             @include('portal.partials.money', ['amount' => $line->line_total, 'currency' => $invoice->currency])
                         </td>
                     </tr>
@@ -142,7 +142,7 @@
                 discount or mixed categories.
             --}}
             <div class="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 px-6 py-4">
-                <dl class="ml-auto max-w-xs space-y-1 text-sm">
+                <dl class="ms-auto max-w-xs space-y-1 text-sm">
                     <div class="flex justify-between">
                         <dt class="text-gray-500 dark:text-gray-400">
                             <x-caption en="Taxable amount" ar="الإجمالي (باستثناء ضريبة القيمة المضافة)" />
@@ -151,7 +151,7 @@
                     </div>
                     @if ((float) $invoice->discount_amount > 0)
                         <div class="flex justify-between">
-                            <dt class="text-gray-500 dark:text-gray-400">Discount</dt>
+                            <dt class="text-gray-500 dark:text-gray-400">{{ __('Discount') }}</dt>
                             <dd class="tabular-nums">@include('portal.partials.money', ['amount' => $invoice->discount_amount, 'currency' => $invoice->currency])</dd>
                         </div>
                     @endif
@@ -167,7 +167,7 @@
                     </div>
                     @if ($invoice->currency !== 'SAR' && $invoice->exchange_rate)
                         <p class="pt-2 text-xs text-gray-400 dark:text-gray-500">
-                            VAT reported in SAR at {{ $invoice->exchange_rate }}
+                            {{ __('VAT reported in SAR at :rate', ['rate' => $invoice->exchange_rate]) }}
                         </p>
                     @endif
                 </dl>

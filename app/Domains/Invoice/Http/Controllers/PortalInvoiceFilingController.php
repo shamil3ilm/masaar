@@ -59,24 +59,24 @@ class PortalInvoiceFilingController extends Controller
             // like any other, already worded for a person to read.
             return redirect()
                 ->route('portal.invoices.show', $invoiceId)
-                ->with('error', $outcome->errors[0] ?? 'The invoice could not be issued.');
+                ->with('error', $outcome->errors[0] ?? __('The invoice could not be issued.'));
         }
 
         if (! $outcome->attemptedFiling) {
             return redirect()
                 ->route('portal.invoices.show', $invoiceId)
-                ->with('warning', 'Issued. It has not been filed with ZATCA: this organization has no certificate yet, so complete onboarding before the reporting deadline.');
+                ->with('warning', __('Issued. It has not been filed with ZATCA: this organization has no certificate yet, so complete onboarding before the reporting deadline.'));
         }
 
         if ($outcome->errors !== []) {
             return redirect()
                 ->route('portal.invoices.show', $invoiceId)
-                ->with('warning', 'Issued, and filing did not succeed: '.$outcome->errors[0].' The invoice keeps its counter and will be retried.');
+                ->with('warning', __('Issued, and filing did not succeed: :error The invoice keeps its counter and will be retried.', ['error' => $outcome->errors[0]]));
         }
 
         return redirect()
             ->route('portal.invoices.show', $invoiceId)
-            ->with('success', 'Issued and filed with ZATCA.');
+            ->with('success', __('Issued and filed with ZATCA.'));
     }
 
     public function print(Request $request, string $invoiceId): View|RedirectResponse

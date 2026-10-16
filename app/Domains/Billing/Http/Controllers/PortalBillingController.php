@@ -43,7 +43,7 @@ class PortalBillingController extends Controller
         $payment = $this->billing->payment($this->organizationId($request), $paymentId) ?? abort(404);
 
         return BillingInvoiceResponse::for($payment, $this->billing, $this->pdf)
-            ?? redirect()->route('portal.billing')->with('error', 'That invoice is not ready yet. It is available once ZATCA has cleared it.');
+            ?? redirect()->route('portal.billing')->with('error', __('That invoice is not ready yet. It is available once ZATCA has cleared it.'));
     }
 
     private function organizationId(Request $request): string
@@ -51,7 +51,7 @@ class PortalBillingController extends Controller
         $organizationId = $request->attributes->get(PortalTenant::ORG_ID);
 
         abort_unless(is_string($organizationId), 404);
-        abort_unless($request->user()?->roleIn($organizationId) === 'admin', 403, 'Only an administrator of this organization can see its billing.');
+        abort_unless($request->user()?->roleIn($organizationId) === 'admin', 403, __('Only an administrator of this organization can see its billing.'));
 
         return $organizationId;
     }

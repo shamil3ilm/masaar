@@ -65,9 +65,42 @@
         'info' => 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200',
         default => 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200',
     };
+
+    // Each known state's name, written out so it can be translated.
+    $name = match ($value) {
+        'cleared' => __('Cleared'),
+        'reported' => __('Reported'),
+        'accepted' => __('Accepted'),
+        'completed' => __('Completed'),
+        'active' => __('Active'),
+        'compliance_passed' => __('Compliance passed'),
+        'rejected' => __('Rejected'),
+        'revoked' => __('Revoked'),
+        'cancelled' => __('Cancelled'),
+        'expired' => __('Expired'),
+        'failed' => __('Failed'),
+        'suspended' => __('Suspended'),
+        'expiring_soon' => __('Expiring soon'),
+        'queued' => __('Queued'),
+        'queued_offline' => __('Queued offline'),
+        'pending' => __('Pending'),
+        'pending_submission' => __('Pending submission'),
+        'pending_activation' => __('Pending activation'),
+        'pending_review' => __('Pending review'),
+        'processing' => __('Processing'),
+        'submitted' => __('Submitted'),
+        'issued' => __('Issued'),
+        'draft' => __('Draft'),
+        'in_progress' => __('In progress'),
+        'passed' => __('Passed'),
+        'warning' => __('Warning'),
+        'missing' => __('Missing'),
+        '', 'unknown' => __('Unknown'),
+        default => null,
+    };
 @endphp
 
 <span {{ $attributes->merge(['class' => 'inline-flex rounded-full px-2 py-0.5 text-xs font-semibold '.$classes]) }}>
     {{-- Underscores are a database detail. 'pending_submission' is not a word. --}}
-    {{ $label ?? ucfirst(str_replace('_', ' ', $value ?: 'unknown')) }}
+    {{ $label ?? $name ?? ucfirst(str_replace('_', ' ', $value)) }}
 </span>

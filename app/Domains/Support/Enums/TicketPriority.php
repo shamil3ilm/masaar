@@ -14,8 +14,8 @@ enum TicketPriority: string
     public function label(): string
     {
         return match ($this) {
-            self::Normal => 'Normal',
-            self::Urgent => 'Urgent - invoicing has stopped',
+            self::Normal => __('Normal'),
+            self::Urgent => __('Urgent - invoicing has stopped'),
         };
     }
 }

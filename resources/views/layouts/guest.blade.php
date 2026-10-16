@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="{{ $theme->htmlClass() }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ \App\Http\Middleware\SetLocale::rtl() ? 'rtl' : 'ltr' }}" class="{{ $theme->htmlClass() }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -18,7 +18,7 @@
 
             @if ($errors->any())
             <div class="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded mb-6 text-sm">
-                <ul class="list-disc pl-5">
+                <ul class="list-disc ps-5">
                     @foreach ($errors->all() as $error)
                         <li>{{ $error }}</li>
                     @endforeach
@@ -34,6 +34,7 @@
 
             @yield('content')
         </div>
+        <p class="mt-4 text-center"><x-locale-switch /></p>
     </div>
 </body>
 </html>

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" class="{{ $theme->htmlClass() }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="{{ $theme->htmlClass() }}" dir="{{ \App\Http\Middleware\SetLocale::rtl() ? 'rtl' : 'ltr' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Set up two-factor - {{ $theme->name() }}</title>
+    <title>{{ __('Set up two-factor') }} - {{ $theme->name() }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <x-theme-head />
 </head>
@@ -12,8 +12,8 @@
         <div class="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-8">
             <div class="mb-6 flex flex-col items-center text-center">
                 <x-logo :size="44" />
-                <h1 class="mt-4 text-2xl font-semibold tracking-tight text-ink-900 dark:text-gray-100">Set up two-factor</h1>
-                <p class="mt-1 text-gray-500 dark:text-gray-400">Platform admins sign in with a code as well as a password.</p>
+                <h1 class="mt-4 text-2xl font-semibold tracking-tight text-ink-900 dark:text-gray-100">{{ __('Set up two-factor') }}</h1>
+                <p class="mt-1 text-gray-500 dark:text-gray-400">{{ __('Platform admins sign in with a code as well as a password.') }}</p>
             </div>
 
             @if ($errors->any())
@@ -23,9 +23,9 @@
             @endif
 
             <ol class="mb-6 space-y-2 text-sm text-gray-700 dark:text-gray-200 list-decimal list-inside">
-                <li>Open an authenticator app - Google Authenticator, 1Password, Microsoft Authenticator.</li>
-                <li>Scan this code, or type the key below it.</li>
-                <li>Enter the six-digit code the app shows.</li>
+                <li>{{ __('Open an authenticator app - Google Authenticator, 1Password, Microsoft Authenticator.') }}</li>
+                <li>{{ __('Scan this code, or type the key below it.') }}</li>
+                <li>{{ __('Enter the six-digit code the app shows.') }}</li>
             </ol>
 
             {{-- Unescaped: markup QrCodeRenderer drew from the otpauth URI. --}}
@@ -36,14 +36,15 @@
                 @csrf
 
                 <div>
-                    <label for="code" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Code from the app</label>
+                    <label for="code" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">{{ __('Code from the app') }}</label>
                     <x-ui.input id="code" name="code" type="text" required autofocus
                            inputmode="numeric" autocomplete="one-time-code" maxlength="32" />
                 </div>
 
-                <x-ui.button class="w-full">Turn on two-factor</x-ui.button>
+                <x-ui.button class="w-full">{{ __('Turn on two-factor') }}</x-ui.button>
             </form>
         </div>
     </div>
+    <p class="pb-6 text-center"><x-locale-switch /></p>
 </body>
 </html>

@@ -64,7 +64,7 @@ class OrganizationOnboarding
     public function requestCcsid(Organization $organization, string $otp, array $device): array
     {
         if (! $organization->hasCompleteZatcaProfile()) {
-            throw new DomainException('Organization profile incomplete. Ensure VAT number and address are set.');
+            throw new DomainException(__('Organization profile incomplete. Ensure VAT number and address are set.'));
         }
 
         $result = $this->onboarding->requestComplianceCsid(new CsrData(
@@ -93,7 +93,7 @@ class OrganizationOnboarding
     public function runComplianceCheck(Organization $organization): array
     {
         $ccsid = $this->stored($organization, CredentialStore::CCSID)
-            ?? throw new DomainException('No CCSID found. Complete step 1 first.');
+            ?? throw new DomainException(__('No CCSID found. Complete step 1 first.'));
 
         $documents = $this->samples->build(
             sellerName: $organization->name,
@@ -127,7 +127,7 @@ class OrganizationOnboarding
     public function requestPcsid(Organization $organization): void
     {
         $ccsid = $this->stored($organization, CredentialStore::CCSID)
-            ?? throw new DomainException('No CCSID found. Complete steps 1-2 first.');
+            ?? throw new DomainException(__('No CCSID found. Complete steps 1-2 first.'));
 
         $existing = $this->stored($organization, CredentialStore::PCSID);
 

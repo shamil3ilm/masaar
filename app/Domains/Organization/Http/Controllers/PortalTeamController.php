@@ -54,14 +54,14 @@ class PortalTeamController extends Controller
             return back()->withInput()->with('error', $e->getMessage());
         }
 
-        return back()->with('success', 'Invitation sent to '.$data['email'].'.');
+        return back()->with('success', __('Invitation sent to :email.', ['email' => $data['email']]));
     }
 
     public function revoke(Request $request, string $invitationId): RedirectResponse
     {
         $this->team->revoke((string) $this->organization($request)->id, $invitationId);
 
-        return back()->with('success', 'Invitation withdrawn.');
+        return back()->with('success', __('Invitation withdrawn.'));
     }
 
     public function remove(Request $request, string $userId): RedirectResponse
@@ -72,7 +72,7 @@ class PortalTeamController extends Controller
             return back()->with('error', $e->getMessage());
         }
 
-        return back()->with('success', 'Removed from the organization.');
+        return back()->with('success', __('Removed from the organization.'));
     }
 
     private function organization(Request $request): Organization
@@ -80,7 +80,7 @@ class PortalTeamController extends Controller
         $organizationId = $request->attributes->get(PortalTenant::ORG_ID);
 
         abort_unless(is_string($organizationId), 404);
-        abort_unless($request->user()?->roleIn($organizationId) === 'admin', 403, 'Only an administrator of this organization can manage its people.');
+        abort_unless($request->user()?->roleIn($organizationId) === 'admin', 403, __('Only an administrator of this organization can manage its people.'));
 
         return $this->tenant->getOrganization() ?? abort(404);
     }

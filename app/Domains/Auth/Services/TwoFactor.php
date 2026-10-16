@@ -153,12 +153,12 @@ class TwoFactor
     public function mayTurnOff(User $user): ?string
     {
         if ($user->is_platform_admin) {
-            return 'Platform admins keep two-factor on.';
+            return __('Platform admins keep two-factor on.');
         }
 
         $requiring = $user->activeOrganizations()->where('require_two_factor', true)->value('name');
 
-        return $requiring === null ? null : $requiring.' requires two-factor for everyone in it.';
+        return $requiring === null ? null : __(':organization requires two-factor for everyone in it.', ['organization' => $requiring]);
     }
 
     /**
@@ -173,13 +173,13 @@ class TwoFactor
         }
 
         if (($lockedFor = $this->throttle->codeLockedFor($user)) > 0) {
-            throw new \DomainException('Too many codes tried. Try again in '.$lockedFor.' seconds.');
+            throw new \DomainException(__('Too many codes tried. Try again in :seconds seconds.', ['seconds' => $lockedFor]));
         }
 
         if (! $this->check($user, $code)) {
             $this->throttle->codeFailed($user);
 
-            throw new \DomainException('That code is not right.');
+            throw new \DomainException(__('That code is not right.'));
         }
 
         $this->throttle->codeSucceeded($user);

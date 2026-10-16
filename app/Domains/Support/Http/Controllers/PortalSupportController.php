@@ -78,7 +78,7 @@ class PortalSupportController extends Controller
         }
 
         return redirect()->route('portal.support.show', $ticket->id)
-            ->with('success', 'Ticket '.$ticket->reference().' is open. We reply here, and email you when we do.');
+            ->with('success', __('Ticket :reference is open. We reply here, and email you when we do.', ['reference' => $ticket->reference()]));
     }
 
     public function show(Request $request, string $ticketId): View
@@ -105,14 +105,14 @@ class PortalSupportController extends Controller
             return back()->withInput()->with('error', $e->getMessage());
         }
 
-        return redirect()->route('portal.support.show', $ticket->id)->with('success', 'Reply sent.');
+        return redirect()->route('portal.support.show', $ticket->id)->with('success', __('Reply sent.'));
     }
 
     public function markResolved(Request $request, string $ticketId): RedirectResponse
     {
         $this->desk->markResolved($this->ticket($request, $ticketId));
 
-        return redirect()->route('portal.support.show', $ticketId)->with('success', 'Marked as resolved. Reply if it comes back.');
+        return redirect()->route('portal.support.show', $ticketId)->with('success', __('Marked as resolved. Reply if it comes back.'));
     }
 
     public function attachment(Request $request, string $ticketId, string $attachmentId): BinaryFileResponse

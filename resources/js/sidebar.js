@@ -68,7 +68,9 @@ function create({ collapsible }) {
          */
         get panel() {
             const width = collapsible && !this.open && this.wide ? 'w-20' : 'w-64';
-            const slide = this.open || this.wide ? 'translate-x-0' : '-translate-x-full';
+            // Off-canvas toward the start edge: left in English, right in
+            // Arabic, where the panel is anchored with start-0.
+            const slide = this.open || this.wide ? 'translate-x-0' : '-translate-x-full rtl:translate-x-full';
 
             return `${width} ${slide}`;
         },

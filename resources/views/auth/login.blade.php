@@ -1,19 +1,19 @@
 <!DOCTYPE html>
-<html lang="en" class="{{ $theme->htmlClass() }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="{{ $theme->htmlClass() }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign in - {{ $theme->name() }}</title>
+    <title>{{ __('Sign in') }} - {{ $theme->name() }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <x-theme-head />
 </head>
-<body class="bg-gray-100 dark:bg-gray-800 min-h-screen flex items-center justify-center">
+<body dir="{{ \App\Http\Middleware\SetLocale::rtl() ? 'rtl' : 'ltr' }}" class="bg-gray-100 dark:bg-gray-800 min-h-screen flex items-center justify-center">
     <div class="max-w-md w-full mx-4">
         <div class="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-8">
             <div class="mb-8 flex flex-col items-center text-center">
                 <x-logo :size="44" />
                 <h1 class="mt-4 text-2xl font-semibold tracking-tight text-ink-900 dark:text-gray-100">{{ $theme->name() }}</h1>
-                <p class="mt-1 text-gray-500 dark:text-gray-400">Sign in to continue</p>
+                <p class="mt-1 text-gray-500 dark:text-gray-400">{{ __('Sign in to continue') }}</p>
             </div>
 
             @if ($errors->any())
@@ -32,34 +32,35 @@
                 @csrf
 
                 <div>
-                    <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Email</label>
+                    <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">{{ __('Email') }}</label>
                     <x-ui.input id="email" name="email" type="email" required autofocus
                            value="{{ old('email') }}" autocomplete="username" />
                 </div>
 
                 <div>
-                    <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Password</label>
+                    <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">{{ __('Password') }}</label>
                     <x-ui.input id="password" name="password" type="password" required
                            autocomplete="current-password" />
                 </div>
 
                 <label class="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                    <input type="checkbox" name="remember" value="1" class="mr-2 text-teal-600 dark:text-teal-400">
-                    Remember me
+                    <input type="checkbox" name="remember" value="1" class="me-2 text-teal-600 dark:text-teal-400">
+                    {{ __('Remember me') }}
                 </label>
 
-                <x-ui.button class="w-full">Sign in</x-ui.button>
+                <x-ui.button class="w-full">{{ __('Sign in') }}</x-ui.button>
             </form>
 
             <div class="mt-6 flex justify-between text-sm">
-                <a href="{{ route('password.request') }}" class="text-teal-700 dark:text-teal-300 hover:underline">Forgot your password?</a>
+                <a href="{{ route('password.request') }}" class="text-teal-700 dark:text-teal-300 hover:underline">{{ __('Forgot your password?') }}</a>
                 @if (config('signup.enabled'))
-                    <a href="{{ route('register') }}" class="text-teal-700 dark:text-teal-300 hover:underline">Create an account</a>
+                    <a href="{{ route('register') }}" class="text-teal-700 dark:text-teal-300 hover:underline">{{ __('Create an account') }}</a>
                 @endif
             </div>
         </div>
 
-        <p class="text-center text-xs text-gray-400 dark:text-gray-500 mt-6">Powered by Masaar</p>
+        <p class="text-center text-xs text-gray-400 dark:text-gray-500 mt-6">{{ __('Powered by Masaar') }}</p>
     </div>
+    <p class="pb-6 text-center"><x-locale-switch /></p>
 </body>
 </html>

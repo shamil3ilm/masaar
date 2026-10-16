@@ -84,3 +84,14 @@
 [x-cloak] {
     display: none !important;
 }
+
+/*
+ * Dates, amounts and addresses read left to right in Arabic too. A date
+ * field in a right-to-left page otherwise shows its day and year swapped.
+ */
+[dir='rtl'] input[type='date'],
+[dir='rtl'] input[type='number'],
+[dir='rtl'] input[type='email'] {
+    direction: ltr;
+    text-align: right;
+}

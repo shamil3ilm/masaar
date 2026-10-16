@@ -67,7 +67,7 @@ class Team
         $email = Str::lower(trim($email));
 
         if ($this->members((string) $organization->id)->contains(fn (object $member): bool => Str::lower($member->email) === $email)) {
-            throw new DomainException($email.' is already a member.');
+            throw new DomainException(__(':email is already a member.', ['email' => $email]));
         }
 
         $token = Str::random(48);
@@ -124,7 +124,7 @@ class Team
     public function remove(string $organizationId, string $userId, User $actor): void
     {
         if ($userId === (string) $actor->id) {
-            throw new DomainException('You cannot remove yourself. Another admin can.');
+            throw new DomainException(__('You cannot remove yourself. Another admin can.'));
         }
 
         DB::transaction(function () use ($organizationId, $userId, $actor): void {
@@ -137,11 +137,11 @@ class Team
             $target = $members->firstWhere('user_id', $userId);
 
             if ($target === null) {
-                throw new DomainException('That person is not a member.');
+                throw new DomainException(__('That person is not a member.'));
             }
 
             if ($target->role === 'admin' && $members->where('role', 'admin')->count() <= 1) {
-                throw new DomainException('An organization keeps at least one admin.');
+                throw new DomainException(__('An organization keeps at least one admin.'));
             }
 
             DB::table('organization_user')
@@ -175,7 +175,7 @@ class Team
     public function accept(OrganizationInvitation $invitation, User $user): void
     {
         if (Str::lower((string) $user->email) !== Str::lower($invitation->email)) {
-            throw new DomainException('This invitation was sent to '.$invitation->email.'. Sign in as that address to accept it.');
+            throw new DomainException(__('This invitation was sent to :email. Sign in as that address to accept it.', ['email' => $invitation->email]));
         }
 
         DB::transaction(function () use ($invitation, $user): void {
@@ -185,7 +185,7 @@ class Team
                 ->update(['accepted_at' => now()]));
 
             if ($spent !== 1) {
-                throw new DomainException('This invitation has already been used.');
+                throw new DomainException(__('This invitation has already been used.'));
             }
 
             $user->organizations()->syncWithoutDetaching([

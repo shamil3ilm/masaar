@@ -50,7 +50,7 @@ class PortalCustomerController extends Controller
 
         $this->catalogue->saveCustomer($organizationId, $this->validated($request, $organizationId));
 
-        return redirect()->route('portal.customers.index')->with('success', 'Customer saved.');
+        return redirect()->route('portal.customers.index')->with('success', __('Customer saved.'));
     }
 
     public function edit(Request $request, string $customerId): View
@@ -65,7 +65,7 @@ class PortalCustomerController extends Controller
 
         $this->catalogue->saveCustomer($organizationId, $this->validated($request, $organizationId, $customer), $customer);
 
-        return redirect()->route('portal.customers.index')->with('success', 'Customer saved.');
+        return redirect()->route('portal.customers.index')->with('success', __('Customer saved.'));
     }
 
     public function archive(Request $request, string $customerId): RedirectResponse
@@ -76,7 +76,7 @@ class PortalCustomerController extends Controller
         $this->catalogue->archive($customer, $archived);
 
         return redirect()->route('portal.customers.index')
-            ->with('success', $archived ? $customer->name.' archived. Invoices already written keep their details.' : $customer->name.' restored.');
+            ->with('success', $archived ? __(':name archived. Invoices already written keep their details.', ['name' => $customer->name]) : __(':name restored.', ['name' => $customer->name]));
     }
 
     /**
@@ -103,7 +103,7 @@ class PortalCustomerController extends Controller
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:30'],
         ], [
-            'vat_number.unique' => 'Another customer already has this VAT number.',
+            'vat_number.unique' => __('Another customer already has this VAT number.'),
         ]);
     }
 

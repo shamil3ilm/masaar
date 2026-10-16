@@ -60,8 +60,8 @@ class SignupRequest extends FormRequest
     {
         return [
             ...CompanyProfileRules::messages(),
-            'password.uncompromised' => 'This password has appeared in a data breach. Please choose a different password.',
-            'terms.accepted' => 'Accept the terms to create an account.',
+            'password.uncompromised' => __('This password has appeared in a data breach. Please choose a different password.'),
+            'terms.accepted' => __('Accept the terms to create an account.'),
         ];
     }
 }
