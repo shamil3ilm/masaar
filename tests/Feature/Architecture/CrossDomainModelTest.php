@@ -70,6 +70,7 @@ class CrossDomainModelTest extends TestCase
         'Domains/Organization/Models/Branch.php' => 'Invoice',
         'Domains/Organization/Models/ComplianceProfile.php' => 'Invoice',
         'Domains/Organization/Models/Organization.php' => 'Invoice',
+        'Domains/Organization/Services/SetupChecklist.php' => 'Invoice',
         'Domains/Pipeline/Services/PipelineResult.php' => 'Invoice',
         'Domains/Pipeline/Services/PipelineService.php' => 'Invoice, Organization',
     ];

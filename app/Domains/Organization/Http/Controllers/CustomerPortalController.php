@@ -11,6 +11,7 @@ use App\Domains\Compliance\Fatoora\Services\SubmissionReport;
 use App\Domains\Invoice\Services\InvoiceReport;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Services\Membership;
+use App\Domains\Organization\Services\SetupChecklist;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -40,6 +41,7 @@ class CustomerPortalController extends Controller
         private readonly Membership $membership,
         private readonly SubmissionReport $submissionReport,
         private readonly InvoiceReport $invoiceReport,
+        private readonly SetupChecklist $setup,
     ) {}
 
     /**
@@ -102,13 +104,17 @@ class CustomerPortalController extends Controller
         $certificate = $this->activeCertificate($orgId);
         $userActivity = $this->submissionReport->activityByUser(now()->subDays(7), 10);
         $recentSubmissions = $this->submissionReport->recent(10);
+        $setup = $this->setup->steps($organization);
+        $settingUp = $this->setup->unfinished($setup);
 
         return view('portal.dashboard', compact(
             'organization',
             'stats',
             'certificate',
             'userActivity',
-            'recentSubmissions'
+            'recentSubmissions',
+            'setup',
+            'settingUp'
         ));
     }
 

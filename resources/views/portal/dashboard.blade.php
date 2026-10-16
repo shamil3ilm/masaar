@@ -8,6 +8,54 @@
     <p class="text-gray-500 dark:text-gray-400">{{ __('Your ZATCA compliance overview') }}</p>
 </div>
 
+@if ($settingUp)
+    @php
+        $isAdmin = auth()->user()?->roleIn((string) $organization->id) === 'admin';
+        $labels = [
+            'company' => [__('Complete your company details'), __('Your VAT number and national address, as they go on every invoice.')],
+            'approved' => [__('Wait for approval'), __('We review new companies and start their plan, usually within one working day.')],
+            'zatca' => [__('Connect to ZATCA'), __('With the one-time code from the Fatoora portal. Your invoices are signed with the certificate it issues.')],
+            'numbering' => [__('Check how invoices are numbered'), __('Optional: the defaults work, or set your own prefix and pattern.')],
+            'catalogue' => [__('Add your customers and products'), __('Optional: so invoices fill themselves in.')],
+            'invoice' => [__('Issue your first invoice'), __('Once it is issued, it is signed and filed with ZATCA.')],
+        ];
+    @endphp
+    <div class="mb-8 rounded-lg bg-white dark:bg-gray-900 shadow">
+        <div class="border-b p-6">
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">{{ __('Getting set up') }}</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('A few steps before your first invoice. This list goes away once they are done.') }}</p>
+        </div>
+        <ol class="divide-y divide-gray-200 dark:divide-gray-700">
+            @foreach ($setup as $step)
+                @php
+                    [$title, $detail] = $labels[$step['key']];
+                @endphp
+                <li class="flex items-start gap-4 p-4">
+                    @if ($step['done'])
+                        <span class="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-teal-600 text-white" aria-label="{{ __('Done') }}">
+                            <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                        </span>
+                    @else
+                        <span class="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-xs text-gray-500 dark:text-gray-400">{{ $loop->iteration }}</span>
+                    @endif
+                    <div class="flex-1">
+                        <p class="font-medium {{ $step['done'] ? 'text-gray-500 dark:text-gray-400 line-through' : 'text-gray-800 dark:text-gray-100' }}">{{ $title }}</p>
+                        @unless ($step['done'])
+                            <p class="text-sm text-gray-500 dark:text-gray-400">{{ $detail }}</p>
+                        @endunless
+                    </div>
+                    {{-- Company, ZATCA and numbering are an administrator's;
+                         a member is shown what is left, not a link that
+                         would refuse them. --}}
+                    @if (! $step['done'] && $step['route'] && ($isAdmin || in_array($step['key'], ['catalogue', 'invoice'], true)))
+                        <x-ui.button variant="outline" :href="route($step['route'])">{{ __('Start') }}</x-ui.button>
+                    @endif
+                </li>
+            @endforeach
+        </ol>
+    </div>
+@endif
+
 <!-- Certificate Alert -->
 @if($certificate)
     @php
@@ -29,7 +77,7 @@
         </div>
     </div>
     @endif
-@else
+@elseif ($organization->zatca_onboarded)
     <div class="mb-6 p-4 rounded-lg bg-red-100 dark:bg-red-900/40 border border-red-400">
         <div class="flex items-center">
             <svg class="w-5 h-5 me-2 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 20 20">

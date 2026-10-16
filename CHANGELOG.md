@@ -62,6 +62,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Setup checklist**: a new company's dashboard lists what is left before
+  its first invoice - company details, approval, connecting to ZATCA,
+  numbering, customers and products, the first invoice - with a link to
+  each, and goes away once the required steps are done. The "no active
+  certificate" warning now shows only for a company already connected.
 - **ZATCA addresses and OpenSSL are settings**: `ZATCA_SANDBOX_URL`,
   `ZATCA_SIMULATION_URL`, `ZATCA_PRODUCTION_URL` and `ZATCA_PORTAL_URL`
   override the published addresses when set; `OPENSSL_BIN` names the
