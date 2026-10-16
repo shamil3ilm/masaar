@@ -53,7 +53,7 @@ class FatooraOnboarding extends Command
     protected $signature = 'fatoora:onboard
                             {--step=info : Step to execute (info|ccsid|compliance|pcsid|submit|full)}
                             {--otp= : One-Time Password from Fatoora Portal}
-                            {--target= : Target environment (sandbox|simulation|production|local); default config fatoora.environment}
+                            {--target= : Target environment (sandbox|local; a real organization onboards through the portal); default config fatoora.environment}
                             {--csr= : Path to CSR file (default: storage/app/zatca/taxpayer.csr)}
                             {--key= : Path to private key file (default: storage/app/zatca/taxpayer.key)}';
 
@@ -224,16 +224,17 @@ class FatooraOnboarding extends Command
         $this->line('  • For branch-specific invoices, use "Other Seller ID" field');
         $this->newLine();
 
-        $this->info('🔗 How to get OTP:');
-        $this->line('  1. Go to '.config('fatoora.portal_url'));
-        $this->line('  2. Login with your TIN credentials');
-        $this->line('  3. Click "Fatoora Simulation Portal" (top right) for testing');
-        $this->line('  4. Go to "Onboard New Solution Unit/Device"');
-        $this->line('  5. Generate OTP (valid for 1 hour)');
+        // This command refuses simulation and production (see handle()), so
+        // it must not send anyone to the Fatoora portal for an OTP it will
+        // then refuse after spending it.
+        $this->info('🔗 Which OTP:');
+        $this->line("  Sandbox: the fixed OTP ZATCA's developer portal documents.");
+        $this->line('  A real organization (simulation or production) onboards through the portal');
+        $this->line('  or /api/compliance/onboarding, with an OTP from '.config('fatoora.portal_url'));
         $this->newLine();
 
-        $this->info('Quick Start (full onboarding):');
-        $this->line('  php artisan fatoora:onboard --step=full --otp=<your-otp> --target=simulation');
+        $this->info('Quick Start (full sandbox onboarding):');
+        $this->line('  php artisan fatoora:onboard --step=full --otp=<otp> --target=sandbox');
 
         return Command::SUCCESS;
     }

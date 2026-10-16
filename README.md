@@ -6,20 +6,39 @@ A multi-jurisdiction e-invoicing compliance API platform for GCC businesses.
 
 | Country | Authority | System | Status |
 |---------|-----------|--------|--------|
-| 🇸🇦 Saudi Arabia | ZATCA | Fatoora Phase 2 | 🟡 Passes ZATCA's SDK validator — schema, EN 16931, Schematron and, signed with the authority's own certificate, its certificate, QR, signed-properties digest and PIH checks. Live submission outstanding, see [Conformance](#conformance) |
+| 🇸🇦 Saudi Arabia | ZATCA | Fatoora Phase 2 | 🟡 Passes ZATCA's SDK validator — schema, EN 16931, Schematron and, signed with the authority's own certificate, its certificate, QR, signed-properties digest and PIH checks — and ZATCA's developer sandbox accepts the full onboarding round trip. Simulation and production need a registered taxpayer, see [Conformance](#conformance) |
 | 🇦🇪 UAE | FTA | Peppol PINT AE | 🚧 In development |
 | 🇶🇦 Qatar | GTA | — | 📋 Planned |
 
 > **Production readiness.** The Saudi pipeline — UBL generation, ICV/PIH hash
-> chaining, XAdES signing, TLV QR, CSID onboarding and submission — is built.
-> Signatures verify against the certificate in the document, the QR's tags match
-> the document beside them, the UBL totals satisfy their own arithmetic, and
-> documents pass ZATCA's own validator — see [Conformance](#conformance).
+> chaining, XAdES signing, TLV QR, CSID onboarding and submission — is built,
+> and so are invoice PDFs: PDF/A-3b with the signed XML embedded and a PAdES
+> stamp. Signatures verify against the certificate in the document, the QR's
+> tags match the document beside them, the UBL totals satisfy their own
+> arithmetic, documents pass ZATCA's own validator, and PDFs pass an
+> independent PDF/A validator — see [Conformance](#conformance).
 >
 > Not yet established: signing keys are encrypted at rest by the platform rather
-> than held in a managed KMS, and no live submission to ZATCA's production API
-> has been made. See [docs/sa/STATUS.md](docs/sa/STATUS.md) before deploying to
+> than held in a managed KMS, and nothing has been filed in ZATCA's simulation
+> or production environments, which issue an OTP only to a registered
+> taxpayer. See [docs/sa/STATUS.md](docs/sa/STATUS.md) before deploying to
 > production.
+
+## What It Does
+
+**For an ERP or billing system — the API.** Submit an invoice and get back the
+signed XML, hash, QR and ZATCA's answer; or drive each step yourself. Clearance
+and reporting, offline queueing and retry, credit and debit notes, PDFs, and
+signed webhooks. Described in [`docs/openapi.yaml`](docs/openapi.yaml).
+
+**For a taxpayer — the portal.** Create and issue invoices, start a credit or
+debit note from the invoice it corrects, keep customers and products, download
+or email the PDF, read the VAT summary and export it as CSV, onboard with
+ZATCA, and raise support tickets. In Arabic and English, with two-factor
+sign-in and per-organization roles.
+
+**For the operator — the console.** Organizations, licenses and renewals,
+billing, the support desk, and filing-deadline alerts across every taxpayer.
 
 ## Repository Structure
 
@@ -45,8 +64,11 @@ php artisan key:generate
 php artisan jwt:secret
 php artisan migrate
 php artisan db:seed
+npm install && npm run build   # the portal's stylesheet and scripts
 php artisan serve
 ```
+
+`php artisan masaar:create-admin` creates the first operator for the console.
 
 Run the test suite:
 
@@ -113,8 +135,23 @@ so a second cannot join it unnoticed. See
 digest and how each was established.
 
 What no conformance run can establish: that the Fatoora portal will issue a
-CSID for a certificate request, and that ZATCA's API will clear or report a
-document. Both need a real taxpayer.
+CSID for a real taxpayer's certificate request, and that ZATCA's simulation and
+production APIs will clear or report that taxpayer's documents. Both need a
+registered taxpayer. The developer sandbox accepts the whole round trip -
+onboarding and all six compliance documents - and CI repeats it on a schedule.
+
+### Invoice PDFs
+
+A PDF invoice is PDF/A-3b with the signed XML embedded and, once the
+organization holds a certificate, a PAdES stamp (ZATCA's Security Features
+standard). `PdfaConformanceTest` hands stamped and unstamped PDFs to an
+independent PDF/A validator; point `PDFA_VALIDATOR_PATH` at its command-line
+launcher to run it locally. CI installs the validator, checks its publisher's
+signature, and runs the suite on every push.
+
+The stamp carries the certificate chain up to ZATCA's root when
+`ZATCA_CA_CHAIN_PATH` names a PEM bundle of ZATCA's CA certificates for the
+environment in use; without it the stamp carries the device certificate alone.
 
 ## Scheduled Tasks
 
@@ -139,18 +176,23 @@ that cannot drift. What it currently registers:
 | Daily 01:00 | `backup:clean` — prune archives by the retention policy |
 | Daily 01:30 | `backup:run` — encrypted database and credential-store backup |
 | Daily 04:00 | `compliance:cleanup-offline-queue` |
+| Daily 04:30 | `model:prune` — webhook delivery logs past retention |
 | Daily 06:00 | `backup:monitor` — alert when the newest backup is stale |
 | Daily 08:00 | `fatoora:check-certificate --notify` |
+| Daily 09:00 | `billing:remind-renewals` — email admins whose plan ends soon |
 | Weekly Sun 02:00 | `fatoora:verify-hash-chain` |
 | Monthly 1st 03:00 | `compliance:partition-maintenance --create-future --months-ahead=2` |
 
 Backup setup and the restore procedure are in
 [docs/BACKUP-AND-RESTORE.md](docs/BACKUP-AND-RESTORE.md).
 
-Run once when connecting a taxpayer, not scheduled:
+A taxpayer is connected once, from the portal's ZATCA page or through
+`/api/compliance/onboarding`, with an OTP from the Fatoora portal. The
+`fatoora:onboard` command rehearses the same exchange as ZATCA's test taxpayer
+and so runs against the developer sandbox only:
 
 ```bash
-php artisan fatoora:onboard --step=full --otp=<otp> --target=simulation
+php artisan fatoora:onboard --step=full --otp=<otp> --target=sandbox
 ```
 
 The remaining commands are operator tools rather than scheduled work:
@@ -176,23 +218,38 @@ registry yet** — use them by vendoring the source. They are hand-written again
 the API rather than generated, so treat the HTTP API and
 [`docs/openapi.yaml`](docs/openapi.yaml) as authoritative where they disagree.
 
-| SDK | Status | Notes |
-|-----|--------|-------|
-| [Java](sdks/java/) | 🟢 Most complete | Typed models, resource classes, exception hierarchy |
-| [PHP](sdks/php/) | 🟡 Single-file client | Covers a subset of the API surface |
-| [TypeScript](sdks/typescript/) | 🟡 Single-file client | Intended Tier-1 target |
-| [Python](sdks/python/) | 🟡 Single-file client | |
-| [Rust](sdks/rust/) · [Go](sdks/go/) · [Kotlin](sdks/kotlin/) · [Swift](sdks/swift/) · [.NET](sdks/dotnet/) · [Ruby](sdks/ruby/) · [Dart](sdks/dart/) | 🟠 Skeleton | One client file each; no tests, unverified against a live API |
-| JavaScript | 🔴 Not implemented | Use the TypeScript SDK — it compiles to JavaScript |
+They are not at the same level. No SDK covers more than 21 of the API's 122
+operations; what they cover is an ERP's invoice-and-filing flow.
+
+| SDK | Operations | Covers |
+|-----|-----------|--------|
+| [TypeScript](sdks/typescript/) · [PHP](sdks/php/) · [Python](sdks/python/) · [Java](sdks/java/) | 21 of 122 | Invoices (list, get, create), ZATCA generate, validate, submit and status, webhook management, health. API key or a JWT you supply |
+| [Ruby](sdks/ruby/) | 10 of 122 | The same, API-key routes only |
+| [Go](sdks/go/) · [Kotlin](sdks/kotlin/) · [.NET](sdks/dotnet/) | 7 of 122 | Invoices and filing; no webhook management |
+| [Dart](sdks/dart/) · [Rust](sdks/rust/) · [Swift](sdks/swift/) | 6 of 122 | As above, without listing invoices |
+| JavaScript | — | Use the TypeScript SDK — it compiles to JavaScript |
 
 What every SDK has: CI builds each one with its own toolchain on every push
-(Swift on Linux as well as Apple platforms), checks that it calls only routes
-the API serves, and each verifies webhook signatures in constant time.
+(Swift on Linux as well as Apple platforms), a test checks that it calls only
+routes the API serves, and each verifies webhook signatures in constant time.
 
-Known gaps: the SDKs cover a subset of the API, most carry no automated tests,
-and none has been run against a live API. The intended direction is to
-generate them from the OpenAPI specification rather than maintain eleven by
-hand.
+Known gaps, shared by all of them:
+
+- **Errors.** The API returns `{"success": false, "error": {"code", "message",
+  "retryable", "retry_after", "details"}}`; the SDKs read a top-level
+  `message`, so they choose an error class by status code and lose the code,
+  the message and whether to retry.
+- **No retries or idempotency keys**, though the API sends `retryable` and
+  `Retry-After` and honours `Idempotency-Key`.
+- **No sign-in or token refresh**; a JWT has to be obtained elsewhere.
+- **No tests.** CI compiles, lints or imports each SDK; none has been run
+  against a live API.
+- **Not covered by any:** authentication, the submit-and-status pipeline,
+  organizations and branches, onboarding, dashboards, licensing, numbering
+  settings and the operator API.
+
+The intended direction is to generate them from the OpenAPI specification
+rather than maintain eleven by hand.
 
 ## License
 
