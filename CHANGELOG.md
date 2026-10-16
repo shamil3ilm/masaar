@@ -70,6 +70,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **UAE e-invoicing API** under `/api/compliance/ae`, where a deployment
+  turns on `PEPPOL_AE_ENABLED`: save the seller's UAE details (`PUT
+  /profile`), draft an invoice or credit note in PINT AE's shapes (`POST
+  /invoices`), issue and send it as a Peppol document (`POST
+  /invoices/{invoice}/send`, 422 with every problem when it would be
+  refused), and read its status, the documents sent and received, and their
+  XML. An organization registered outside the UAE is refused with 403.
 - **Signed invoice PDFs**: an invoice PDF is stamped with a PAdES B-B
   signature (ETSI.CAdES.detached) using the issuing device's ZATCA
   certificate, as the Security Features Implementation Standards require for

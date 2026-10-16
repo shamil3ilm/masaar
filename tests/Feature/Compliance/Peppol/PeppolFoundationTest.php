@@ -50,7 +50,8 @@ class PeppolFoundationTest extends TestCase
     public function test_direct_authority_routes_are_gone(): void
     {
         $uae = collect(Route::getRoutes()->getRoutes())
-            ->filter(fn ($route): bool => str_starts_with($route->uri(), 'api/compliance/ae'));
+            ->filter(fn ($route): bool => str_starts_with($route->uri(), 'api/compliance/ae'))
+            ->reject(fn ($route): bool => str_starts_with($route->getActionName(), 'App\\Domains\\Compliance\\Peppol\\'));
 
         $this->assertCount(0, $uae);
         $this->assertArrayNotHasKey('uae.enabled', app('router')->getMiddleware());

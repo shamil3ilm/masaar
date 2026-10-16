@@ -90,6 +90,19 @@ class Submitter
             );
         }
 
+        // ZATCA issues Saudi invoices. An organization registered elsewhere is
+        // issued by its own country's rules - a UAE one by UaeInvoiceIssuer -
+        // and must never take a ZATCA counter, hash or signature. A blank
+        // country is a row from before the column was set, which was Saudi.
+        if (filled($organization->country) && $organization->country !== 'SA') {
+            throw new FatooraException(
+                "Invoice {$this->label($invoice)} belongs to an organization registered in {$organization->country}. "
+                .'ZATCA issues Saudi invoices only; issue it through its own country\'s e-invoicing.',
+                ErrorCode::VALIDATION_FAILED,
+                ['invoice_id' => $invoice->id, 'country' => $organization->country],
+            );
+        }
+
         // Issuance is what this method does: it signs the document and marks
         // the invoice Issued, which is the irreversible step. KillSwitch offers
         // an issuance stop for a signing defect caught in production, and

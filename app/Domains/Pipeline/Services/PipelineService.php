@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Domains\Pipeline\Services;
 
+use App\Domains\Compliance\Exceptions\IssuanceRefusedException;
 use App\Domains\Compliance\Fatoora\DTOs\IssueOutcome;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Services\InvoiceIssuer;
 use App\Domains\Compliance\Fatoora\Services\OfflineQueue;
+use App\Domains\Compliance\Peppol\Services\UaeInvoiceIssuer;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\InvoiceDrafter;
@@ -43,6 +45,7 @@ class PipelineService
         private readonly InvoiceIssuer $issuer,
         private readonly OfflineQueue $offline,
         private readonly PipelineResult $result,
+        private readonly UaeInvoiceIssuer $uae,
     ) {}
 
     /**
@@ -106,6 +109,10 @@ class PipelineService
      */
     private function issue(Invoice $invoice, Organization $organization, array $data, ?string $idempotencyKey): array
     {
+        if ($organization->country === 'AE') {
+            return $this->answer($invoice, $this->issueInUae($invoice));
+        }
+
         $outcome = $this->issuer->issue(
             $invoice,
             $organization,
@@ -117,6 +124,23 @@ class PipelineService
         );
 
         return $this->answer($invoice, $outcome);
+    }
+
+    /**
+     * A UAE organization's invoice is issued and sent as a Peppol document,
+     * never signed for ZATCA. Its document stands in for the submission.
+     * Sending is what issuing a UAE invoice means, so auto_submit does not
+     * hold it back. Issuing an issued one answers with its document.
+     */
+    private function issueInUae(Invoice $invoice): IssueOutcome
+    {
+        try {
+            $document = $this->uae->issue($invoice);
+        } catch (IssuanceRefusedException $e) {
+            return IssueOutcome::notIssued($e->getMessage());
+        }
+
+        return IssueOutcome::filed(['submission_id' => $document->id, 'state' => $document->status], [], []);
     }
 
     /**
@@ -187,6 +211,10 @@ class PipelineService
         // draft, so a 207 on the first call became a 201 on the retry and the
         // ERP marked an unfiled invoice done. Filed now, unless it is waiting
         // in the offline queue, where sending it again would file it twice.
+        if ($invoice->status === InvoiceStatus::Issued && $organization->country === 'AE') {
+            return $this->answer($invoice, $this->issueInUae($invoice));
+        }
+
         if ($invoice->status === InvoiceStatus::Issued
             && (bool) ($data['auto_submit'] ?? true)
             && ! $this->offline->isQueued($invoice)) {

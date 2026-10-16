@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Http\Controllers;
 
+use App\Domains\Compliance\Exceptions\IssuanceRefusedException;
 use App\Domains\Compliance\Fatoora\Services\InvoiceIssuer;
 use App\Domains\Compliance\Fatoora\Services\QrCodeRenderer;
+use App\Domains\Compliance\Peppol\Services\UaeInvoiceIssuer;
+use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Invoice\Services\InvoicePdf;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
@@ -37,6 +40,7 @@ class PortalInvoiceFilingController extends Controller
         private readonly InvoiceIssuer $issuer,
         private readonly QrCodeRenderer $qr,
         private readonly InvoicePdf $pdf,
+        private readonly UaeInvoiceIssuer $uae,
     ) {}
 
     public function issue(Request $request, string $invoiceId): RedirectResponse
@@ -49,6 +53,12 @@ class PortalInvoiceFilingController extends Controller
 
         $invoice = $this->invoices->findWithLines($orgId, $invoiceId);
         $organization = $this->tenant->getOrganization();
+
+        // A UAE organization's invoice is issued and sent as a Peppol
+        // document, never signed for ZATCA.
+        if ($organization?->country === 'AE') {
+            return $this->issueInUae($invoice);
+        }
 
         $outcome = $this->issuer->issue(
             $invoice,
@@ -80,6 +90,21 @@ class PortalInvoiceFilingController extends Controller
         return redirect()
             ->route('portal.invoices.show', $invoiceId)
             ->with('success', __('Issued and filed with ZATCA.'));
+    }
+
+    private function issueInUae(Invoice $invoice): RedirectResponse
+    {
+        abort_unless((bool) config('peppol.countries.AE.enabled'), 404);
+
+        $back = redirect()->route('portal.invoices.show', $invoice->id);
+
+        try {
+            $this->uae->issue($invoice);
+        } catch (IssuanceRefusedException $e) {
+            return $back->with('error', $e->getMessage());
+        }
+
+        return $back->with('success', __('Issued, and its UAE e-invoice is queued for sending.'));
     }
 
     public function print(Request $request, string $invoiceId): View|RedirectResponse

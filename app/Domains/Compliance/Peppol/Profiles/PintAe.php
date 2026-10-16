@@ -61,6 +61,9 @@ final class PintAe implements JurisdictionProfile
     /** No scenario applies. */
     public const NO_FLAGS = '00000000';
 
+    /** IBR-190-AE: a standard-rated line is at 5.00, and nothing else. */
+    public const STANDARD_RATE = '5';
+
     /** The seven emirates (IBR-128-AE). */
     public const EMIRATES = ['AUH', 'DXB', 'SHJ', 'UAQ', 'FUJ', 'AJM', 'RAK'];
 
@@ -130,9 +133,9 @@ final class PintAe implements JurisdictionProfile
         return 'AED';
     }
 
-    /** IBR-190-AE: a standard-rated line is at 5.00, and nothing else. */
+    /** IBR-190-AE: see STANDARD_RATE. */
     public function standardRate(): string
     {
-        return '5';
+        return self::STANDARD_RATE;
     }
 }

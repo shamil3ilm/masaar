@@ -4,14 +4,18 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Compliance\Peppol;
 
+use App\Domains\Auth\Models\User;
+use App\Domains\Compliance\Peppol\Models\PeppolDocument;
 use App\Domains\Compliance\Peppol\Services\PeppolPreparer;
 use App\Domains\Invoice\Models\Invoice;
 use DOMDocument;
 use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\Queue;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 /**
  * Documents this platform produces, judged by the published PINT AE rules.
@@ -55,6 +59,44 @@ class PintConformanceTest extends TestCase
         $failures = $this->validate($document->xml, $artefacts, $jar);
 
         $this->assertSame([], $failures, "PINT AE refused the {$case}:\n".implode("\n", $failures)."\n\n".$document->xml);
+    }
+
+    /**
+     * An invoice drafted and sent through /api/compliance/ae, as an
+     * integrator would: the document the platform queued is the one judged.
+     */
+    public function test_api_invoice_passes_official_rules(): void
+    {
+        [$artefacts, $jar] = $this->requireArtefacts();
+        config(['peppol.countries.AE.enabled' => true]);
+        Queue::fake();
+
+        $organization = $this->uaeOrganization();
+        $user = User::factory()->create();
+        $user->organizations()->attach($organization->id, ['role' => 'admin', 'status' => 'active']);
+        $api = $this->withToken(JWTAuth::claims(['org_id' => $organization->id, 'role' => 'admin'])->fromUser($user));
+
+        $id = $api->postJson('/api/compliance/ae/invoices', [
+            'issue_date' => '2026-10-10',
+            'due_date' => '2026-11-09',
+            'payment_means_code' => '30',
+            'discount_amount' => '25.00',
+            'buyer_name' => 'Noor Electronics LLC',
+            'buyer_vat_number' => '100765432100003',
+            'buyer_address' => ['street' => 'Khalifa Street', 'city' => 'Abu Dhabi'],
+            'buyer_endpoint' => '0235:1007654321',
+            'buyer_subdivision' => 'AUH',
+            'lines' => [
+                ['item_name' => 'Consulting', 'description' => 'Consulting services, October', 'quantity' => 2, 'unit_code' => 'DAY', 'unit_price' => 500, 'tax_category' => 'S', 'tax_rate' => 5],
+                ['item_name' => 'Medicine', 'quantity' => 3, 'unit_code' => 'H87', 'unit_price' => 33.33, 'tax_category' => 'Z'],
+            ],
+        ])->assertCreated()->json('data.invoice.id');
+        $documentId = $api->postJson("/api/compliance/ae/invoices/{$id}/send")->assertOk()->json('data.document_id');
+
+        $xml = PeppolDocument::query()->findOrFail($documentId)->xml;
+        $failures = $this->validate($xml, $artefacts, $jar);
+
+        $this->assertSame([], $failures, "PINT AE refused the API invoice:\n".implode("\n", $failures)."\n\n".$xml);
     }
 
     /**

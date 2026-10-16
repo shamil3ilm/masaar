@@ -66,7 +66,15 @@ class InvoiceDrafter
             ->first());
     }
 
-    public function draft(array $data, string $organizationId, ?string $branchId = null): Invoice
+    /**
+     * $countryFields are header columns only one country's documents carry -
+     * a UAE invoice's due_date, jurisdiction_data and profile_id. They are
+     * taken as given and apart from $data, so a caller names them on purpose
+     * and nothing a Saudi request validated can reach them.
+     *
+     * @param  array<string, mixed>  $countryFields
+     */
+    public function draft(array $data, string $organizationId, ?string $branchId = null, array $countryFields = []): Invoice
     {
         $this->assertSupplyPeriod($data['supply_date'] ?? null, $data['supply_end_date'] ?? null);
 
@@ -78,8 +86,9 @@ class InvoiceDrafter
 
         $totals = InvoiceTotals::of($data['lines'], (string) ($data['discount_amount'] ?? '0'), $inclusive);
 
-        return DB::transaction(function () use ($data, $organizationId, $branchId, $totals, $inclusive) {
+        return DB::transaction(function () use ($data, $organizationId, $branchId, $totals, $inclusive, $countryFields) {
             $invoice = Invoice::create([
+                ...$countryFields,
                 'org_id' => $organizationId,
                 'branch_id' => $branchId,
                 'invoice_number' => $data['invoice_number'] ?? null,
@@ -112,6 +121,8 @@ class InvoiceDrafter
                 $invoice->lines()->create([
                     'description' => $line['description'],
                     'description_ar' => $line['description_ar'] ?? null,
+                    // PINT AE's item name; no Saudi request carries one.
+                    'item_name' => $line['item_name'] ?? null,
                     'class_code' => $line['class_code'] ?? null,
                     'quantity' => (string) $line['quantity'],
                     'unit_code' => UnitCode::normalise($line['unit_code'] ?? null),

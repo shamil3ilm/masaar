@@ -13,6 +13,7 @@ use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\Http\Middleware\FilingCleared;
 use App\Domains\Compliance\Fatoora\Services\CircuitBreaker;
 use App\Domains\Compliance\Fatoora\Services\TimestampValidator;
+use App\Domains\Compliance\Peppol\Http\Middleware\UaeInvoicing;
 use App\Domains\Licensing\Http\Middleware\CheckInvoiceQuota;
 use App\Domains\Licensing\Http\Middleware\PlatformLicense;
 use App\Domains\Licensing\Http\Middleware\RequireLicenseFeature;
@@ -60,6 +61,7 @@ class AppServiceProvider extends ServiceProvider
         'license.feature' => RequireLicenseFeature::class,
         'platform.license' => PlatformLicense::class,
         'filing.cleared' => FilingCleared::class,
+        'uae.invoicing' => UaeInvoicing::class,
     ];
 
     /**

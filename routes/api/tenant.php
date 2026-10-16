@@ -6,6 +6,9 @@ use App\Domains\Auth\Http\Controllers\AuthController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\BranchOnboardingController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\ComplianceController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\OnboardingController;
+use App\Domains\Compliance\Peppol\Http\Controllers\UaeDocumentController;
+use App\Domains\Compliance\Peppol\Http\Controllers\UaeInvoiceController;
+use App\Domains\Compliance\Peppol\Http\Controllers\UaeProfileController;
 use App\Domains\Invoice\Http\Controllers\InvoiceController;
 use App\Domains\Invoice\Http\Controllers\NumberingController;
 use App\Domains\Organization\Http\Controllers\BranchController;
@@ -62,6 +65,26 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
         Route::post('/validate/{invoiceId}', [ComplianceController::class, 'validate']);
         Route::post('/submit/{invoiceId}', [ComplianceController::class, 'submit']);
         Route::get('/status/{submissionId}', [ComplianceController::class, 'status']);
+    });
+
+    /* Compliance — United Arab Emirates (Peppol PINT AE) ---------------- */
+
+    // uae.invoicing: 404 while the deployment does not offer the UAE, 403 for
+    // an organization registered elsewhere.
+    Route::prefix('compliance/ae')->middleware('uae.invoicing')->group(function () {
+        Route::get('/documents', [UaeDocumentController::class, 'index']);
+        Route::get('/documents/{document}', [UaeDocumentController::class, 'show']);
+        Route::get('/documents/{document}/xml', [UaeDocumentController::class, 'xml']);
+        Route::get('/invoices/{invoice}/status', [UaeInvoiceController::class, 'status']);
+
+        Route::middleware('org.writer')->group(function () {
+            Route::post('/invoices', [UaeInvoiceController::class, 'store']);
+            Route::post('/invoices/{invoice}/send', [UaeInvoiceController::class, 'send']);
+        });
+
+        // The seller identity on every document, as the organization's
+        // details are: an administrator's.
+        Route::put('/profile', [UaeProfileController::class, 'update'])->middleware('org.admin');
     });
 
     Route::prefix('compliance/onboarding')->group(function () {

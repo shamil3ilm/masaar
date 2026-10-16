@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Rules;
 
+use App\Domains\Compliance\Peppol\Profiles\PintAe;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\Registrar;
 use Closure;
@@ -20,7 +21,8 @@ use Illuminate\Validation\Rule;
  * Organization::hasCompleteZatcaProfile() and onboard.
  *
  * The Saudi shapes apply to a Saudi organization. VatNumber alone stays
- * neutral, because a UAE TRN is also fifteen digits.
+ * neutral, because a UAE TRN is also fifteen digits. A UAE organization is
+ * checked by uae() instead, in PINT AE's shapes.
  */
 final class CompanyProfileRules
 {
@@ -33,6 +35,10 @@ final class CompanyProfileRules
      */
     public static function rules(string $country, bool $complete, ?Organization $existing = null): array
     {
+        if ($country === 'AE') {
+            return self::uae($complete, $existing);
+        }
+
         $need = $complete ? 'required' : 'sometimes';
         $saudi = $country === 'SA';
 
@@ -54,6 +60,47 @@ final class CompanyProfileRules
             'district' => [$need, 'string', 'max:127'],
             'city' => [$need, 'string', 'max:127'],
             'postal_code' => [$need, 'string', 'regex:/^\d{5}$/'],
+        ];
+    }
+
+    /**
+     * A UAE seller, in the shapes PINT AE checks.
+     *
+     * A UAE address has no building number or postal code of a fixed shape,
+     * and most have no postal code at all; the emirate is what a document
+     * names (IBR-128-AE). The tax identity is the UAE's: a TRN for a
+     * VAT-registered seller (IBR-132-AE), otherwise its TIN (IBR-148-AE),
+     * the Peppol endpoint the service provider issued, and the legal
+     * registration a document carries (IBR-172-AE, IBR-173-AE). Stored as
+     * the UAE compliance profile's settings, where PintMapper reads them.
+     *
+     * @return array<string, list<mixed>>
+     */
+    private static function uae(bool $complete, ?Organization $existing): array
+    {
+        $need = $complete ? 'required' : 'sometimes';
+
+        return [
+            'name' => [$need, 'string', 'max:255'],
+            'name_ar' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'street' => [$need, 'string', 'max:127'],
+            'building_number' => ['sometimes', 'nullable', 'string', 'max:127'],
+            'additional_street' => ['sometimes', 'nullable', 'string', 'max:127'],
+            'district' => ['sometimes', 'nullable', 'string', 'max:127'],
+            'city' => [$need, 'string', 'max:127'],
+            'postal_code' => ['sometimes', 'nullable', 'string', 'max:20'],
+            'emirate' => [$need, 'string', Rule::in(PintAe::EMIRATES)],
+            'trn' => ['sometimes', 'nullable', 'string', 'regex:/^1\d{12}03$/', self::unclaimed($existing)],
+            'tin' => [$complete ? 'required_without:trn' : 'sometimes', 'nullable', 'string', new UaeTin],
+            'endpoint_id' => [$need, 'string', 'regex:/^'.PintAe::SCHEME.':\d{10}$/'],
+            'legal_registration_type' => [$need, 'string', Rule::in(PintAe::LEGAL_REGISTRATION_TYPES)],
+            'legal_registration_id' => [$need, 'string', 'max:100'],
+            'legal_registration_authority' => [
+                'nullable', 'string', 'max:255',
+                'required_if:legal_registration_type,TL,PAS',
+                Rule::when(fn ($input): bool => $input->get('legal_registration_type') === 'PAS', ['regex:/^[A-Z]{2}$/']),
+            ],
+            'payment_account' => ['sometimes', 'nullable', 'string', 'regex:/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/'],
         ];
     }
 
@@ -86,6 +133,14 @@ final class CompanyProfileRules
             'building_number.regex' => __('The building number is 4 digits.'),
             'postal_code.regex' => __('The postal code is 5 digits.'),
             'country.in' => __('This deployment registers organizations in: :countries.', ['countries' => implode(', ', self::countries())]),
+            'emirate.in' => __('The emirate is one of :codes.', ['codes' => implode(', ', PintAe::EMIRATES)]),
+            'trn.regex' => __('A TRN is 15 digits that start with 1 and end with 03.'),
+            'tin.required_without' => __('A seller with no TRN gives its TIN.'),
+            'endpoint_id.regex' => __('The Peppol endpoint is :scheme: followed by 10 digits, as the service provider issued it.', ['scheme' => PintAe::SCHEME]),
+            'legal_registration_type.in' => __('The legal registration type is one of :types.', ['types' => implode(', ', PintAe::LEGAL_REGISTRATION_TYPES)]),
+            'legal_registration_authority.required_if' => __('A trade licence names its issuing authority, and a passport its issuing country.'),
+            'legal_registration_authority.regex' => __('A passport names its issuing country as a two-letter code.'),
+            'payment_account.regex' => __('The payment account is an IBAN.'),
         ];
     }
 
