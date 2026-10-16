@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Http\Controllers;
 
+use App\Domains\Compliance\Peppol\Services\UaeVatSummary;
 use App\Domains\Invoice\Services\InvoiceCsv;
 use App\Domains\Invoice\Services\VatSummary;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
+use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -19,6 +21,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  *
  * Everyone in the organization, viewers included: a viewer is usually that
  * accountant.
+ *
+ * A UAE organization's sales are summarised by UAE tax category in dirhams
+ * instead (UaeVatSummary): the Saudi return's boxes, riyals and ZATCA hash
+ * describe none of its invoices.
  */
 class PortalReportController extends Controller
 {
@@ -29,12 +35,23 @@ class PortalReportController extends Controller
 
     public function __construct(
         private readonly VatSummary $summary,
+        private readonly UaeVatSummary $uaeSummary,
         private readonly InvoiceCsv $csv,
+        private readonly TenantResolver $tenant,
     ) {}
 
     public function index(Request $request): View
     {
         [$from, $to] = $this->period($request);
+
+        if ($this->inUae($request)) {
+            return view('portal.reports-uae', [
+                'from' => $from,
+                'to' => $to,
+                'summary' => $this->uaeSummary->for($this->portalOrganizationId($request), $from, $to),
+                'presets' => $this->presets(),
+            ]);
+        }
 
         return view('portal.reports', [
             'from' => $from,
@@ -47,15 +64,30 @@ class PortalReportController extends Controller
     public function invoices(Request $request): StreamedResponse
     {
         [$from, $to] = $this->period($request);
+        $fileName = 'invoices-'.$from->toDateString().'-to-'.$to->toDateString().'.csv';
 
-        return $this->csv->invoices($this->portalOrganizationId($request), $from, $to, 'invoices-'.$from->toDateString().'-to-'.$to->toDateString().'.csv');
+        if ($this->inUae($request)) {
+            return $this->csv->uaeInvoices($this->portalOrganizationId($request), $from, $to, $this->uaeSummary->currency(), $fileName);
+        }
+
+        return $this->csv->invoices($this->portalOrganizationId($request), $from, $to, $fileName);
     }
 
     public function vat(Request $request): StreamedResponse
     {
         [$from, $to] = $this->period($request);
+        $fileName = 'vat-summary-'.$from->toDateString().'-to-'.$to->toDateString().'.csv';
 
-        return $this->csv->summary($this->portalOrganizationId($request), $from, $to, 'vat-summary-'.$from->toDateString().'-to-'.$to->toDateString().'.csv');
+        if ($this->inUae($request)) {
+            return $this->csv->uaeSummary($this->uaeSummary->for($this->portalOrganizationId($request), $from, $to), $from, $to, $fileName);
+        }
+
+        return $this->csv->summary($this->portalOrganizationId($request), $from, $to, $fileName);
+    }
+
+    private function inUae(Request $request): bool
+    {
+        return $this->portalOrganization($this->tenant, $request)->country === 'AE';
     }
 
     /**

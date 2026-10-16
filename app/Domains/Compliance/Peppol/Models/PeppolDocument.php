@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Peppol\Models;
 
+use App\Domains\Compliance\Peppol\Exceptions\DocumentRetainedException;
 use App\Domains\Organization\Concerns\BelongsToTenant;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -51,6 +52,20 @@ class PeppolDocument extends Model
             'errors' => 'array',
             'attempts' => 'integer',
         ];
+    }
+
+    /**
+     * A stored document is never deleted through the application, as an
+     * issued invoice is not (Invoice's deleting guard). The organization
+     * keeps it too: peppol_documents.org_id restricts on delete, so an
+     * organization with documents cannot be deleted below this guard either.
+     * A bulk query-builder delete bypasses model events, and nothing does one.
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (PeppolDocument $document): void {
+            throw DocumentRetainedException::for((string) $document->id);
+        });
     }
 
     public function org(): BelongsTo

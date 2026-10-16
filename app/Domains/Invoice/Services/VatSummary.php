@@ -166,12 +166,30 @@ class VatSummary
     }
 
     /**
-     * The document's rate to riyals, or null for a foreign currency without
-     * one: the tax must be stated in riyals ([GL] §4.2.2).
+     * Documents of any country issued in the period, oldest first, with
+     * lines: the same tax point as documents(), without asking for a ZATCA
+     * hash, which a UAE invoice never has.
+     *
+     * @return LazyCollection<int, Invoice>
      */
-    public function rate(Invoice $invoice): ?float
+    public function issued(string $organizationId, CarbonImmutable $from, CarbonImmutable $to): LazyCollection
     {
-        if (strtoupper((string) ($invoice->currency ?: 'SAR')) === 'SAR') {
+        return Invoice::withoutTenantScope(fn () => $this->query($organizationId, $from, $to, sealed: false)
+            ->with('lines')
+            ->orderBy('issue_date')
+            ->orderBy('issued_at')
+            ->orderBy('invoice_number')
+            ->lazy(200));
+    }
+
+    /**
+     * The document's rate to riyals, or null for a foreign currency without
+     * one: the tax must be stated in riyals ([GL] §4.2.2). Another country's
+     * tax currency is named, as the UAE's dirhams are.
+     */
+    public function rate(Invoice $invoice, string $taxCurrency = 'SAR'): ?float
+    {
+        if (strtoupper((string) ($invoice->currency ?: $taxCurrency)) === $taxCurrency) {
             return 1.0;
         }
 
@@ -190,16 +208,21 @@ class VatSummary
      * it reads the same on SQLite and MySQL. Half-open, so the last day
      * counts whether the column holds a date or a datetime.
      *
+     * Sealed asks for the ZATCA hash an issued Saudi document has; unsealed
+     * for any document past draft.
+     *
      * @return Builder<Invoice>
      */
-    private function query(string $organizationId, CarbonImmutable $from, CarbonImmutable $to): Builder
+    private function query(string $organizationId, CarbonImmutable $from, CarbonImmutable $to, bool $sealed = true): Builder
     {
         $start = $from->toDateString();
         $until = $to->addDay()->toDateString();
 
         return Invoice::query()
             ->where('org_id', $organizationId)
-            ->whereNotNull('hash')
+            ->when($sealed,
+                fn (Builder $query) => $query->whereNotNull('hash'),
+                fn (Builder $query) => $query->where('status', '!=', InvoiceStatus::Draft))
             ->where('status', '!=', InvoiceStatus::Rejected)
             ->where('document_type', '!=', DocumentType::Proforma)
             ->where(fn (Builder $query) => $query

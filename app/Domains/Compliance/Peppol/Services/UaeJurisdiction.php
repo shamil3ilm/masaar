@@ -107,12 +107,20 @@ class UaeJurisdiction implements IssuingJurisdiction
     }
 
     /**
+     * invoice.issued carries the e-invoice as it stands at issue, from the
+     * document already in hand: the UAE has no counter or ZATCA identifier
+     * to report, and its amounts are in the invoice's own currency.
+     *
      * @param  PeppolDocument  $result
      */
     public function afterCommit(Invoice $invoice, mixed $result, bool $issuedNow): void
     {
         if ($issuedNow) {
-            $this->notifier->issued($invoice);
+            $this->notifier->issued($invoice, ['e_invoice' => [
+                'id' => $result->id,
+                'status' => $result->status,
+                'message_id' => $result->asp_message_id,
+            ]]);
         }
 
         if ($result->wasRecentlyCreated) {

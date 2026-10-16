@@ -27,9 +27,14 @@ class IssuanceNotifier
         private readonly WebhookService $webhooks,
     ) {}
 
-    public function issued(Invoice $invoice): void
+    /**
+     * @param  array<string, mixed>  $extra  a country's own fields, added
+     *                                       after the shared ones - for the
+     *                                       UAE its e-invoice's status
+     */
+    public function issued(Invoice $invoice, array $extra = []): void
     {
-        $this->send($invoice, 'invoice.issued');
+        $this->send($invoice, 'invoice.issued', $extra);
     }
 
     private function send(Invoice $invoice, string $event, array $extra = []): void

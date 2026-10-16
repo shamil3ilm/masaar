@@ -126,6 +126,22 @@ class PintMapper
     }
 
     /**
+     * The invoice's VAT breakdown alone, as map() computes it, without the
+     * parties: what a summary of the period's sales needs. In the invoice's
+     * own currency; each subtotal's tax is exact, not rounded.
+     *
+     * @return list<PintTaxSubtotal>
+     *
+     * @throws DomainException for a line in a category the UAE does not use
+     */
+    public function breakdownOf(Invoice $invoice, JurisdictionProfile $profile): array
+    {
+        $lines = $this->lines($invoice, (array) ($invoice->jurisdiction_data ?? []), $profile, null);
+
+        return $this->breakdown($lines, bcadd((string) ($invoice->discount_amount ?? '0'), '0', 2))[1];
+    }
+
+    /**
      * The kind of document: named in jurisdiction_data, or read off the
      * invoice's own document type and self-billing flag.
      *

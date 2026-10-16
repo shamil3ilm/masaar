@@ -27,6 +27,29 @@ send a test from the API.
 The secret is returned once, when the webhook is created, and again when you
 rotate it (`POST /api/webhooks/{id}/rotate-secret`).
 
+### UAE organizations
+
+A UAE organization's invoices are sent as Peppol e-invoices, not filed with
+ZATCA, so of the invoice events only `invoice.issued` arrives for them:
+`invoice.submitted`, `invoice.cleared`, `invoice.reported` and
+`invoice.rejected` describe a ZATCA filing and are never sent for a UAE
+invoice. Its `invoice.issued` differs from a Saudi one in two ways:
+
+- `currency` and `total` are the invoice's own, which may be a currency other
+  than dirhams; there is no riyal default.
+- An `e_invoice` object describes the e-invoice as it stood at issue: `id`
+  (the e-invoice's id in the documents API), `status` (`ready` at issue) and
+  `message_id` (null until the service provider accepts it). There is no ICV
+  or ZATCA UUID.
+
+```json
+{"invoice_id":"...","invoice_number":"INV-2026-1","status":"issued","type":"standard","total":"1050.00","currency":"USD",
+ "e_invoice":{"id":"...","status":"ready","message_id":null}}
+```
+
+Follow the e-invoice's later progress (sent, delivered, rejected) with
+`GET /api/compliance/ae/documents/{id}`.
+
 ## Verifying the signature
 
 `X-Webhook-Signature` is `sha256=` followed by the lowercase hex HMAC-SHA256 of

@@ -97,7 +97,7 @@ class ScreenRenderTest extends TestCase
      * Screens every organization has, whose UAE organization's version is
      * its own markup, so it is rendered too.
      */
-    private const UAE_VARIANTS = ['portal.dashboard', 'portal.company.edit', 'portal.invoices.create', 'portal.invoices.show'];
+    private const UAE_VARIANTS = ['portal.dashboard', 'portal.company.edit', 'portal.invoices.create', 'portal.invoices.show', 'portal.reports'];
 
     private User $orgAdmin;
 
@@ -278,6 +278,7 @@ class ScreenRenderTest extends TestCase
             'portal.company.edit' => route('portal.company.edit', absolute: false),
             'portal.invoices.create' => route('portal.invoices.create', absolute: false),
             'portal.invoices.show' => route('portal.invoices.show', $draft->id, false),
+            'portal.reports' => route('portal.reports', absolute: false),
         ];
         $this->assertSame([...self::UAE_ONLY, ...self::UAE_VARIANTS], array_keys($uris));
 

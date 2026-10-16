@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Peppol\Services;
 
 use App\Domains\Compliance\Peppol\Models\PeppolDocument;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -79,6 +80,54 @@ class UaeDocuments
             ->where('invoice_id', $invoiceId)
             ->where('direction', PeppolDocument::DIRECTION_OUT)
             ->first();
+    }
+
+    /**
+     * Where the organization's e-invoices are, for the dashboard: sent ones
+     * grouped by how far they got, and received ones in all. One grouped
+     * count, so the dashboard costs a query however many there are.
+     *
+     * @return array{awaiting: int, delivered: int, rejected: int, failed: int, received: int}
+     */
+    public function counts(?string $organizationId): array
+    {
+        $counts = ['awaiting' => 0, 'delivered' => 0, 'rejected' => 0, 'failed' => 0, 'received' => 0];
+
+        $rows = $this->ofOrganization($organizationId)
+            ->select('direction', 'status')
+            ->selectRaw('count(*) as total')
+            ->groupBy('direction', 'status')
+            ->toBase()
+            ->get();
+
+        foreach ($rows as $row) {
+            $key = $row->direction === PeppolDocument::DIRECTION_IN ? 'received' : match ($row->status) {
+                // Reported is the authority's confirmation: past delivery.
+                DocumentStatus::DELIVERED, DocumentStatus::REPORTED => 'delivered',
+                DocumentStatus::REJECTED => 'rejected',
+                DocumentStatus::FAILED => 'failed',
+                default => 'awaiting',
+            };
+            $counts[$key] += (int) $row->total;
+        }
+
+        return $counts;
+    }
+
+    /**
+     * The organization's latest sent e-invoices, newest first, without XML.
+     *
+     * @return Collection<int, PeppolDocument>
+     */
+    public function recentSent(?string $organizationId, int $limit): Collection
+    {
+        return $this->ofOrganization($organizationId)
+            ->select(self::METADATA)
+            ->where('direction', PeppolDocument::DIRECTION_OUT)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get();
     }
 
     /**

@@ -2,10 +2,16 @@
 
 @section('title', __('Dashboard - :organization', ['organization' => $organization->name]))
 
+@php
+    // A UAE organization's invoices are Peppol e-invoices: it has no ZATCA
+    // certificate, submissions or submission activity to show.
+    $uae = $uae ?? false;
+@endphp
+
 @section('content')
 <div class="mb-8">
     <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">{{ __('Dashboard') }}</h2>
-    <p class="text-gray-500 dark:text-gray-400">{{ __('Your ZATCA compliance overview') }}</p>
+    <p class="text-gray-500 dark:text-gray-400">{{ $uae ? __('Your UAE e-invoicing overview') : __('Your ZATCA compliance overview') }}</p>
 </div>
 
 @if ($settingUp)
@@ -59,6 +65,9 @@
     </div>
 @endif
 
+@if ($uae)
+    @include('portal.partials.dashboard-uae')
+@else
 <!-- Certificate Alert -->
 @if($certificate)
     @php
@@ -166,4 +175,5 @@
         </div>
     </div>
 </div>
+@endif
 @endsection

@@ -8,8 +8,10 @@ use App\Domains\Compliance\Fatoora\DTOs\SubmissionFilterData;
 use App\Domains\Compliance\Fatoora\Services\CertificateService;
 use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use App\Domains\Compliance\Fatoora\Services\SubmissionReport;
+use App\Domains\Compliance\Peppol\Services\UaeDocuments;
 use App\Domains\Invoice\Services\InvoiceReport;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
+use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\Membership;
 use App\Domains\Organization\Services\SetupChecklist;
 use App\Domains\Organization\Services\TenantResolver;
@@ -42,6 +44,7 @@ class CustomerPortalController extends Controller
         private readonly SubmissionReport $submissionReport,
         private readonly InvoiceReport $invoiceReport,
         private readonly SetupChecklist $setup,
+        private readonly UaeDocuments $uaeDocuments,
     ) {}
 
     /**
@@ -95,6 +98,10 @@ class CustomerPortalController extends Controller
             return $this->organizationPicker(__('Organization not found'));
         }
 
+        if ($organization->country === 'AE') {
+            return $this->uaeDashboard($organization);
+        }
+
         $stats = [
             'invoices_today' => $this->invoiceReport->countSince(now()->startOfDay()),
             'invoices_month' => $this->invoiceReport->countSince(now()->startOfMonth()),
@@ -116,6 +123,29 @@ class CustomerPortalController extends Controller
             'setup',
             'settingUp'
         ));
+    }
+
+    /**
+     * A UAE organization's dashboard: its invoices and where their e-invoices
+     * are. It has no ZATCA certificate, submissions or per-user submission
+     * activity, so none of those is looked up or shown.
+     */
+    private function uaeDashboard(Organization $organization): View
+    {
+        $setup = $this->setup->steps($organization);
+
+        return view('portal.dashboard', [
+            'organization' => $organization,
+            'stats' => [
+                'invoices_today' => $this->invoiceReport->countSince(now()->startOfDay()),
+                'invoices_month' => $this->invoiceReport->countSince(now()->startOfMonth()),
+            ],
+            'setup' => $setup,
+            'settingUp' => $this->setup->unfinished($setup),
+            'uae' => true,
+            'einvoices' => $this->uaeDocuments->counts((string) $organization->id),
+            'recentDocuments' => $this->uaeDocuments->recentSent((string) $organization->id, 10),
+        ]);
     }
 
     /**
