@@ -14,14 +14,22 @@ parts of this document. If you change a convention, change that test with it.
 
 **Never** rename these to plainer English:
 
-`ZATCA` · `Fatoora` · `FTA` · `Peppol` · `ICV` · `PIH` · `CSID` · `CCSID` ·
-`PCSID` · `XAdES` · `TLV` · `UBL` · `CRL` · `OCSP` · `QR` · `VAT` · `CR`
+`ZATCA` · `Fatoora` · `Peppol` · `PINT` · `ASP` · `MLS` · `TRN` · `TIN` ·
+`ICV` · `PIH` · `CSID` · `CCSID` · `PCSID` · `XAdES` · `TLV` · `UBL` · `CRL` ·
+`OCSP` · `QR` · `VAT` · `CR`
 
 They are the words used by the regulators and their specifications. An
 engineer holding the ZATCA spec next to the code needs `IcvManager` and
 `TlvEncoder` to be findable. Renaming `TlvEncoder` to `QrFieldEncoder` makes
 the code read more easily to a newcomer and much harder to audit against the
 specification, which is the trade we do not want.
+
+The UAE has no authority API, so UAE code is named after the specification it
+follows (`PintMapper`, `PintAe`, `MandatoryFields`) or after the country
+(`UaeInvoiceIssuer`, `UaeSellerDetails`), never after the authority. The
+retired `FTA` domain and its `UAE_FTA_*` settings are gone. A service provider
+is never named after a vendor: say `Asp` or "service provider"
+(`PEPPOL_ASP_*`, `AspGateway`).
 
 ---
 
@@ -100,12 +108,11 @@ no connection to this database, so a rename here does not break them.
 
 The real constraint is that a rename costs a migration, a coordinated deploy,
 and a window where old and new code disagree about the table — so it has to buy
-something. Two that do:
+something. One that does:
 
 | Current | Rename to | Why |
 |---|---|---|
 | `environment_variance_log` | `variance_logs` | Only singular table name in the schema; `environment_` restates the column it holds |
-| `uae_fta_submissions` | `fta_submissions` | The API moved to ISO codes (`/compliance/ae/`) and the `uae_fta` config key is already gone |
 
 The `license_*` cluster — eight tables — is the one that reads worst, and it is
 the one **not** to rename yet. `licenses`, `license_registrations` and

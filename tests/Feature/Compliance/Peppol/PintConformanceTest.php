@@ -29,8 +29,8 @@ use Tymon\JWTAuth\Facades\JWTAuth;
  * Set PEPPOL_ARTEFACTS_PATH to a directory holding the billing resources
  * unzipped under billing/ and the self-billing ones under selfbilling/
  * (optionally the UBL 2.1 package under ubl21/), and PEPPOL_XSLT_JAR to a
- * jar with Saxon in it. Without both, these skip: the artefacts are a
- * download and CI has no Java.
+ * jar with Saxon in it. Without both, these skip locally; CI's PINT AE job
+ * downloads both, pinned by hash, and fails if they skip.
  *
  * @see https://docs.peppol.eu/poac/ae/pint-ae/resources.zip
  * @see https://docs.peppol.eu/poac/ae/pint-ae-sb/resources.zip

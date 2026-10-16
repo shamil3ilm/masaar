@@ -1,79 +1,101 @@
-# How to Add a New Jurisdiction (e.g. Qatar GTA)
+# Adding a jurisdiction
 
-This guide walks through adding a new GCC e-invoicing compliance engine to Masaar.
+This page covers what adding a country involves today. Read
+[JURISDICTION-ROUTING.md](JURISDICTION-ROUTING.md) first. The short version
+is that each country has its own routes and issuing flow, and the
+`ComplianceRouter` is not on any request path. So registering an engine is
+not enough: a new country needs a flow of its own until the planned common
+issuer exists.
 
-## Step 1: Create the domain folder
+## First, decide which of two models the country follows
 
-```
-app/Domains/Compliance/GTA/
-├── Client/
-│   └── GtaClient.php
-├── Config/
-│   └── GtaConfig.php
-├── DTOs/
-│   ├── GtaInvoiceData.php
-│   └── GtaResponse.php
-├── Enums/
-│   └── GtaStatus.php
-├── Events/
-├── Exceptions/
-│   └── GtaException.php
-├── Jobs/
-│   └── RetryGtaSubmission.php
-├── Models/
-│   └── GtaSubmission.php
-└── Services/
-    ├── GtaService.php
-    ├── GtaValidator.php
-    └── GtaXmlBuilder.php
-```
+| Model | Example | What the platform builds |
+|---|---|---|
+| **The authority's own API** (clearance or reporting) | Saudi Arabia (ZATCA) | The client for the authority, onboarding and credentials, and whatever the authority requires on each document: signing, hashing, QR codes. Lives in a domain folder like `app/Domains/Compliance/Fatoora/` |
+| **Peppol through an accredited service provider** | United Arab Emirates (PINT AE) | The PINT document and the country's field rules. Transport goes through the existing `AspGateway`. Lives in `app/Domains/Compliance/Peppol/` |
 
-## Step 2: Implement ComplianceEngine contract
+## A country on Peppol PINT
 
-```php
-class GtaEngine implements ComplianceEngine
-{
-    public function supports(string $jurisdiction): bool { return $jurisdiction === 'QA'; }
-    public function submit(Invoice $invoice, ComplianceProfile $profile): SubmissionContract { ... }
-    public function retry(SubmissionContract $submission): SubmissionContract { ... }
-    public function checkStatus(SubmissionContract $submission): SubmissionContract { ... }
-    public function validate(Invoice $invoice, ComplianceProfile $profile): ValidationResult { ... }
-    public function onboard(ComplianceProfile $profile, array $credentials): void { ... }
-}
-```
+The Peppol module is built for the UAE. The parts written so another country
+can use them are:
 
-## Step 3: Register in AppServiceProvider
+- the `JurisdictionProfile` contract;
+- the PINT DTOs;
+- `PintUblBuilder`;
+- the transport (`AspGateway`, `PeppolSender`, `DocumentStatus`, the
+  callbacks, `peppol:poll-status` and `peppol:resend`);
+- the `peppol_documents` table, which has a `country` column.
 
-```php
-$this->app->tag([FatooraEngine::class, FtaEngine::class, GtaEngine::class], 'compliance.engines');
-```
+Several parts are still tied to the UAE, and need to be generalised before a
+second country can use them:
 
-## Step 4: Add migration for submissions table
+- `PintMapper`, `MandatoryFields` and `CreateUaeInvoiceRequest` read
+  `PintAe` constants, such as reserved endpoints, flags, emirates and code
+  lists.
+- `InboundDocuments` stores every received document as `AE`.
+- `UaeInvoicing` checks `peppol.countries.AE.enabled` and `country === 'AE'`.
 
-```bash
-php artisan make:migration create_gta_submissions_table
-```
+Steps:
 
-## Step 5: Add routes
+1. **Profile.** Add `Profiles/Pint<Cc>` implementing `JurisdictionProfile`:
+   - customization and profile IDs for each document kind;
+   - type codes;
+   - the endpoint scheme;
+   - allowed tax categories;
+   - the tax currency and standard rate.
 
-In `routes/api.php`:
-```php
-Route::prefix('compliance/qa')->group(function () {
-    Route::post('/submit/{invoiceId}', [GtaController::class, 'submit']);
-    Route::get('/status/{submissionId}', [GtaController::class, 'status']);
-    Route::post('/retry/{submissionId}', [GtaController::class, 'retry']);
-});
-```
+   Read every value from the published PINT specification for that country,
+   not from memory.
+2. **Rules.** Write the country's field and scenario checks in the style of
+   `MandatoryFields`: one named check per official field, and the schematron
+   rule named beside any conditional one.
+3. **Generalise.** Move the UAE-specific parts listed above behind the
+   profile.
+4. **Switch.** Add `countries.<CC>.enabled` (from `PEPPOL_<CC>_ENABLED`) to
+   `config/peppol.php`, to `.env.example` and to `docker/.env.template`, off by
+   default. Allow the country in `CompanyProfileRules::countries()` only while
+   the switch is on.
+5. **API.** Add `/api/compliance/<cc>/*` routes behind a gate middleware like
+   `uae.invoicing`, and add them to `docs/openapi.yaml`.
+6. **Conformance.** Extend `PintConformanceTest` and the CI job to run that
+   country's official artefacts. Pin each downloaded file by hash.
 
-## Step 6: Add docs
+## A country with its own authority API
 
-Create `docs/qa/README.md` with regulatory authority, scope trigger, XML standard, timeline.
+1. Create `app/Domains/Compliance/<Authority>/` with the client, DTOs,
+   exceptions, jobs, models and services the authority needs. Use the Fatoora
+   domain as the reference for retries, idempotency, offline handling and
+   certificate storage.
+2. Implement `ComplianceEngine` (`supports()` returning the country code) and
+   add the class to the `tag()` call in
+   `app/Providers/ComplianceServiceProvider.php`. This keeps the router
+   consistent, but, as explained above, it does not wire the engine to any
+   request.
+3. Write the issuing flow and routes (`/api/compliance/<cc>/*`). Reuse
+   `InvoiceDrafter`, `InvoiceNumbering` and `IssuanceNotifier` rather than
+   copying them. Follow `UaeInvoiceIssuer` in keeping the shared lifecycle
+   apart from the country's own steps, so the flow can move into the common
+   issuer later.
+4. Add the authority's credentials and switch to `config/` and the env
+   templates, named by purpose, with a production guard for anything required.
+5. Add a migration for any submission records. Compliance records are never
+   deleted, so use `restrictOnDelete` on their foreign keys.
 
-## Step 7: Add tests
+## For every country
 
-```
-tests/Feature/Compliance/GTA/
-├── GtaSubmissionTest.php
-├── GtaXmlBuilderTest.php
-└── GtaValidatorTest.php
-```
+- **Organization.** Add the country's seller details and their validation to
+  `CompanyProfileRules`, stored on that country's `ComplianceProfile` (see
+  [ORGANIZATION-MODEL.md](ORGANIZATION-MODEL.md)).
+- **Docs.** Add `docs/<cc>/README.md`, `COMPLIANCE-RULES.md` and
+  `INTEGRATION-GUIDE.md`, as `docs/ae/` and `docs/sa/` have.
+  - README files carry no dates. Regulatory timelines go in
+    `COMPLIANCE-RULES.md`, with their source.
+- **Tests.** Add `tests/Feature/Compliance/<Domain>/` covering the following:
+  - rules refused at draft time and at send time;
+  - one document per invoice;
+  - retries that never file twice;
+  - another tenant's records answering `404`;
+  - the official conformance run.
+- **Naming.** Use the authority's own vocabulary, which is exempt from
+  plain-English renaming (see [NAMING.md](../NAMING.md)). Never use a vendor
+  or provider name in code, config, env or docs.

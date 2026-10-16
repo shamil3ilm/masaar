@@ -22,7 +22,9 @@ class BackfillComplianceProfilesSeeder extends Seeder
      */
     private const ENGINE_MAP = [
         'SA' => 'fatoora',
-        'AE' => 'fta',
+        // The engine UaeSellerDetails creates; 'fta' named the retired
+        // direct-to-authority stub, which no profile can resolve to.
+        'AE' => 'peppol',
         'QA' => 'gta',
     ];
 
