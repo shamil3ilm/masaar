@@ -43,7 +43,9 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
 
     // Deleting a document the authority may already hold is not a member's
     // to do; everything else about invoicing is.
-    Route::apiResource('invoices', InvoiceController::class)->except(['destroy']);
+    // org.writer: a viewer reads invoices and changes none.
+    Route::apiResource('invoices', InvoiceController::class)->only(['index', 'show']);
+    Route::apiResource('invoices', InvoiceController::class)->only(['store', 'update'])->middleware('org.writer');
     Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy'])
         ->middleware('org.admin');
 
@@ -54,7 +56,7 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
 
     /* Compliance — Saudi Arabia (ZATCA Fatoora, Phase 2) ------------------ */
 
-    Route::prefix('compliance/sa')->group(function () {
+    Route::prefix('compliance/sa')->middleware('org.writer')->group(function () {
         Route::post('/generate/{invoiceId}', [ComplianceController::class, 'generate']);
         Route::post('/validate/{invoiceId}', [ComplianceController::class, 'validate']);
         Route::post('/submit/{invoiceId}', [ComplianceController::class, 'submit']);
@@ -75,7 +77,7 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
 
     /* Compliance — United Arab Emirates (FTA, Peppol PINT AE) ------------- */
 
-    Route::prefix('compliance/ae')->middleware('uae.enabled')->group(function () {
+    Route::prefix('compliance/ae')->middleware(['uae.enabled', 'org.writer'])->group(function () {
         Route::get('/submissions', [FtaController::class, 'index']);
         Route::post('/submit/{invoiceId}', [FtaController::class, 'submit'])->middleware('filing.cleared');
         Route::get('/status/{submissionId}', [FtaController::class, 'status']);
@@ -84,7 +86,7 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
 
     /* Organizations and branches ------------------------------------------ */
 
-    Route::prefix('organizations/branches')->group(function () {
+    Route::prefix('organizations/branches')->middleware('org.writer')->group(function () {
         Route::get('/', [BranchController::class, 'index']);
         Route::post('/', [BranchController::class, 'store']);
         Route::get('/{branch}', [BranchController::class, 'show']);
@@ -150,7 +152,7 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
         Route::match(['put', 'patch'], '/webhooks/{webhook}', [WebhookController::class, 'update'])->name('webhooks.update');
         Route::delete('/webhooks/{webhook}', [WebhookController::class, 'destroy']);
     });
-    Route::post('/webhooks/{id}/test', [WebhookController::class, 'test']);
+    Route::post('/webhooks/{id}/test', [WebhookController::class, 'test'])->middleware('org.writer');
     Route::post('/webhooks/{id}/rotate-secret', [WebhookController::class, 'rotateSecret'])
         ->middleware('org.admin');
     Route::get('/webhooks/{id}/logs', [WebhookController::class, 'logs']);

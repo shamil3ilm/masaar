@@ -47,10 +47,12 @@
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                     <span class="ml-3" x-show="labelled">Logs</span>
                 </a>
+                @admincan('audit.view')
                 <a href="{{ route('admin.audit') }}" class="flex items-center border-l-2 px-4 py-3 text-white/70 transition-colors hover:bg-ink-800 hover:text-white {{ request()->routeIs('admin.audit') ? 'border-teal-400 bg-ink-800 text-white' : 'border-transparent' }}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
                     <span class="ml-3" x-show="labelled">Audit log</span>
                 </a>
+                @endadmincan
                 <a href="{{ route('admin.licences.index') }}" class="flex items-center border-l-2 px-4 py-3 text-white/70 transition-colors hover:bg-ink-800 hover:text-white {{ request()->routeIs('admin.licences.*') ? 'border-teal-400 bg-ink-800 text-white' : 'border-transparent' }}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
                     <span class="ml-3" x-show="labelled">Licences</span>
@@ -75,6 +77,12 @@
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path></svg>
                     <span class="ml-3" x-show="labelled">Branding</span>
                 </a>
+                @admincan('admins.manage')
+                <a href="{{ route('admin.admins.index') }}" class="flex items-center border-l-2 px-4 py-3 text-white/70 transition-colors hover:bg-ink-800 hover:text-white {{ request()->routeIs('admin.admins.*') ? 'border-teal-400 bg-ink-800 text-white' : 'border-transparent' }}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                    <span class="ml-3" x-show="labelled">Admins</span>
+                </a>
+                @endadmincan
             </nav>
         </aside>
 
@@ -96,7 +104,7 @@
                     </button>
                     <div class="flex items-center space-x-4">
                         @auth
-                        <span class="text-sm text-gray-600 dark:text-gray-300 border-l pl-4">{{ auth()->user()->email }}</span>
+                        <a href="{{ route('account.show') }}" class="text-sm text-gray-600 dark:text-gray-300 border-l pl-4 hover:underline">{{ auth()->user()->email }}</a>
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
                             <button type="submit" class="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">Sign out</button>

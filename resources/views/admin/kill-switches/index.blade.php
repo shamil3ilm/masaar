@@ -36,6 +36,7 @@
     </div>
 
     @if ($status['is_fully_operational'])
+        @admincan('platform.configure')
         <form method="POST" action="{{ route('admin.kill-switches.stop') }}" class="flex flex-wrap items-end gap-2"
               data-confirm-tone="danger" data-confirm-action="Stop everything"
               data-confirm="Stop everything? No invoice will be issued, signed or filed for any taxpayer until you resume.">
@@ -47,13 +48,16 @@
             </div>
             <x-ui.button variant="danger">Stop everything</x-ui.button>
         </form>
+        @endadmincan
     @else
+        @admincan('platform.configure')
         <form method="POST" action="{{ route('admin.kill-switches.resume') }}"
               data-confirm-action="Resume everything"
               data-confirm="Resume everything? Every switch currently on will be turned off.">
             @csrf
             <x-ui.button>Resume everything</x-ui.button>
         </form>
+        @endadmincan
     @endif
 </div>
 
@@ -125,6 +129,7 @@
                      there is room beside the switch's name. --}}
                 <div class="w-full sm:w-auto sm:shrink-0">
                     @if ($state['enabled'])
+                        @admincan('platform.configure')
                         <form method="POST" action="{{ route('admin.kill-switches.disable') }}"
                               data-confirm-action="Resume"
                               data-confirm="Resume {{ strtolower($name) }}? Taxpayers will be able to do this again immediately.">
@@ -132,7 +137,9 @@
                             <input type="hidden" name="switch" value="{{ $switch }}">
                             <x-ui.button variant="outline">Resume</x-ui.button>
                         </form>
+                        @endadmincan
                     @else
+                        @admincan('platform.configure')
                         <form method="POST" action="{{ route('admin.kill-switches.enable') }}"
                               class="flex flex-wrap items-end justify-end gap-2"
                               data-confirm-tone="danger" data-confirm-action="Stop"
@@ -158,6 +165,7 @@
 
                             <x-ui.button variant="danger">Stop</x-ui.button>
                         </form>
+                        @endadmincan
 
                         <p class="mt-1 text-right text-xs text-gray-400 dark:text-gray-500">
                             Leave minutes empty and it stays on until someone turns it off.

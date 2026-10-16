@@ -39,10 +39,10 @@ class RouteAuthPostureTest extends TestCase
         // is the credential, and it is hashed, single-use and expiring.
         'invitations/{token}' => 'Invitation landing page, from the emailed link',
         'invitations/{token}/join' => 'Creating the invited account, with the emailed token',
-        // Reached after the password, before sign-in: a platform admin is not
+        // Reached after the password, before sign-in: someone with a second factor is not
         // authenticated until this checks the second factor. Each refuses
         // anyone without a fresh pending sign-in in the session.
-        'login/two-factor' => 'Platform admin second factor, after the password',
+        'login/two-factor' => 'Second factor, after the password',
         'login/two-factor/setup' => 'Platform admin enrolment, after the password',
         // Only marks the browser; enrolment still needs the password after it.
         'login/two-factor/enrol/{token}' => 'One-time enrolment link, before the password',

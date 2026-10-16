@@ -17,7 +17,8 @@ class OrganizationInvitation extends Model
     use BelongsToTenant;
     use HasUuids;
 
-    public const ROLES = ['admin', 'member'];
+    /** Admin runs the organization; member invoices; viewer reads. */
+    public const ROLES = ['admin', 'member', 'viewer'];
 
     public const VALID_DAYS = 7;
 

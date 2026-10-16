@@ -107,14 +107,12 @@ class SessionAuthController extends Controller
                 ]);
             }
 
-            $request->session()->regenerate();
-            $request->session()->put(TwoFactorController::PENDING, [
-                'id' => (string) $user->getAuthIdentifier(),
-                'remember' => $request->boolean('remember'),
-                'until' => now()->addMinutes(TwoFactorController::PENDING_MINUTES)->timestamp,
-            ]);
+            return $this->toSecondFactor($request, $user, $user->hasTwoFactor() ? 'login.two-factor' : 'login.two-factor.setup');
+        }
 
-            return redirect()->route($user->hasTwoFactor() ? 'login.two-factor' : 'login.two-factor.setup');
+        // Anyone else who turned a second factor on is asked for it too.
+        if ($user->hasTwoFactor()) {
+            return $this->toSecondFactor($request, $user, 'login.two-factor');
         }
 
         Auth::login($user, $request->boolean('remember'));
@@ -157,6 +155,22 @@ class SessionAuthController extends Controller
     /**
      * Where a user lands when they did not request a specific page.
      */
+    /**
+     * Keep who is signing in, unsigned-in, and send them to their second
+     * factor. TwoFactorController finishes the sign-in from what is kept.
+     */
+    private function toSecondFactor(Request $request, mixed $user, string $route): RedirectResponse
+    {
+        $request->session()->regenerate();
+        $request->session()->put(TwoFactorController::PENDING, [
+            'id' => (string) $user->getAuthIdentifier(),
+            'remember' => $request->boolean('remember'),
+            'until' => now()->addMinutes(TwoFactorController::PENDING_MINUTES)->timestamp,
+        ]);
+
+        return redirect()->route($route);
+    }
+
     private function landingPathFor(mixed $user): string
     {
         return $user->isPlatformAdmin()

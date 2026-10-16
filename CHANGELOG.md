@@ -23,6 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   organization needs an active licence to onboard or issue; invoices already
   issued are still filed.
 - **A password reset revokes the account's API tokens.**
+- **API sign-in needs a verified email address.** `POST /api/auth/login`
+  answers 403 `AUTH_013` until it is verified; `POST /api/auth/register`
+  sends the link and returns no token; `POST /api/auth/email/resend` sends it
+  again. API keys are unaffected.
+- **Viewers are read-only.** A member with the `viewer` role gets 403 on any
+  write in the portal or the tenant API.
 - **Deployments file with ZATCA only unless `UAE_FTA_ENABLED=true`.** While it
   is off, `/api/compliance/ae/*` answers 404 and organizations register in
   Saudi Arabia only.
@@ -56,6 +62,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **My account**: everyone changes their own name, email address (confirmed
+  by a link to the new one), password, and signs out other sessions.
+- **Two-factor for everyone**: any user can turn it on, and is then asked for
+  a code at sign-in, console and API alike. A company admin can require it
+  for the whole company on the Company page.
+- **Deleting an account**: a person erases their name, address and sign-in;
+  invoices and the audit trail stay with the company, no longer naming them.
+- **Admin help with sign-in**: support can email someone a password reset
+  link and reset anyone's two-factor.
+- **Admin roles**: Owner, Operations, Support and Auditor decide what each
+  platform admin may do, on the console and the admin API; owners manage
+  admins on an Admins page. Every existing admin is an owner.
+- **A viewer role** for a company's accountant or auditor.
+- **`zatca_environment` on `/api/health`**, and a banner on every page while
+  a deployment files with ZATCA's simulation or sandbox.
 - **Self sign-up** at `/register`: the person and the company's ZATCA
   details, email verification, forgot and reset password, and a review by a
   platform admin who approves the company and assigns its plan.

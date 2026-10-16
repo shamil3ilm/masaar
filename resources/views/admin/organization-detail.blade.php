@@ -26,6 +26,7 @@
     @endif
 
     <div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2">
+        @admincan('organizations.review')
         <form method="POST" action="{{ route('admin.organizations.approve', $organization->id) }}" class="space-y-3"
               data-confirm-action="Approve"
               data-confirm="Approve {{ $organization->name }} and assign the plan? It can then connect to ZATCA and issue.">
@@ -42,8 +43,10 @@
             </x-ui.field>
             <x-ui.button variant="primary" class="w-full">Approve and assign plan</x-ui.button>
         </form>
+        @endadmincan
 
         @if ($organization->status === 'pending_review')
+        @admincan('organizations.review')
         <form method="POST" action="{{ route('admin.organizations.reject', $organization->id) }}" class="space-y-3"
               data-confirm-tone="danger" data-confirm-action="Turn down"
               data-confirm="Turn down {{ $organization->name }}? Its admins are emailed the reason.">
@@ -53,6 +56,7 @@
             </x-ui.field>
             <x-ui.button variant="danger" class="w-full">Turn down</x-ui.button>
         </form>
+        @endadmincan
         @endif
     </div>
 </div>

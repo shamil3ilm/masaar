@@ -140,7 +140,8 @@ class AuthController extends Controller
 
         $user = $valid ? $guard->getLastAttempted() : null;
 
-        if (! $user instanceof User || ! $user->isPlatformAdmin()) {
+        // A platform admin always; anyone else once they turned it on.
+        if (! $user instanceof User || (! $user->isPlatformAdmin() && ! $user->hasTwoFactor())) {
             return null;
         }
 

@@ -7,7 +7,7 @@
     <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Team</h2>
     <p class="text-gray-500 dark:text-gray-400">
         Who works in {{ $organization->name }}. Admins manage the company's details, numbering, ZATCA connection and team;
-        members prepare and issue invoices.
+        members prepare and issue invoices; viewers, such as your accountant, see everything and change nothing.
     </p>
 </div>
 
@@ -25,8 +25,9 @@
             </div>
             <x-ui.field label="Role">
                 <x-ui.select name="role">
-                    <option value="member" @selected(old('role') !== 'admin')>Member</option>
+                    <option value="member" @selected(! in_array(old('role'), ['admin', 'viewer'], true))>Member</option>
                     <option value="admin" @selected(old('role') === 'admin')>Admin</option>
+                    <option value="viewer" @selected(old('role') === 'viewer')>Viewer (read-only)</option>
                 </x-ui.select>
             </x-ui.field>
         </div>

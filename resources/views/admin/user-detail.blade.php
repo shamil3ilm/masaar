@@ -109,6 +109,7 @@
             @if($isSelf)
                 <p class="text-sm text-gray-500 dark:text-gray-400">This is your own account. Another platform admin has to suspend it.</p>
             @elseif($user->status === 'active')
+                @admincan('users.manage')
                 <form method="POST" action="{{ route('admin.users.suspend', $user->id) }}"
                       data-confirm-tone="danger" data-confirm-action="Suspend"
                       data-confirm="Suspend {{ $user->email }}? They are signed out everywhere and cannot sign in until reactivated.">
@@ -119,26 +120,44 @@
                     <x-ui.button variant="danger" class="mt-2 w-full">Suspend account</x-ui.button>
                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Reversible. Their invoices and submissions are untouched.</p>
                 </form>
+                @endadmincan
             @else
+                @admincan('users.manage')
                 <form method="POST" action="{{ route('admin.users.reactivate', $user->id) }}"
                       data-confirm-action="Reactivate"
                       data-confirm="Reactivate {{ $user->email }}? They can sign in again straight away.">
                     @csrf
                     <x-ui.button variant="primary" class="w-full">Reactivate account</x-ui.button>
                 </form>
+                @endadmincan
             @endif
 
-            @if(! $isSelf && $user->is_platform_admin && $user->two_factor_confirmed_at)
+            @if(! $isSelf && $user->status === 'active')
+                @admincan('users.two_factor')
+                <form method="POST" action="{{ route('admin.users.password-reset', $user->id) }}" class="mt-6 border-t pt-6"
+                      data-confirm-action="Send link"
+                      data-confirm="Email {{ $user->email }} a link to choose a new password?">
+                    @csrf
+                    <x-ui.button variant="outline" class="w-full">Send password reset link</x-ui.button>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">To their own address. You never see the password.</p>
+                </form>
+                @endadmincan
+            @endif
+
+            @if(! $isSelf && $user->two_factor_confirmed_at)
+                @admincan('users.two_factor')
                 <form method="POST" action="{{ route('admin.users.reset-two-factor', $user->id) }}" class="mt-6 border-t pt-6"
                       data-confirm-tone="danger" data-confirm-action="Reset"
                       data-confirm="Reset two-factor for {{ $user->email }}? Their app and recovery codes stop working, and they set it up again at their next sign-in. Do this only once you know it is really them.">
                     @csrf
                     <x-ui.button variant="outline" class="w-full">Reset two-factor</x-ui.button>
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">For an admin who has lost their phone and their recovery codes.</p>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">For someone who has lost their phone and their recovery codes.</p>
                 </form>
+                @endadmincan
             @endif
 
             @if(! $isSelf && $user->is_platform_admin && ! $user->two_factor_confirmed_at)
+                @admincan('users.two_factor')
                 <form method="POST" action="{{ route('admin.users.enrolment-link', $user->id) }}" class="mt-6 border-t pt-6"
                       data-confirm-action="Issue link"
                       data-confirm="Issue a two-factor enrolment link for {{ $user->email }}? Anyone holding it and their password can enrol, so send it only to them. Any earlier link stops working.">
@@ -146,6 +165,7 @@
                     <x-ui.button variant="outline" class="w-full">Issue enrolment link</x-ui.button>
                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">They cannot set up two-factor, or sign in, without one.</p>
                 </form>
+                @endadmincan
             @endif
 
             @if(session(\App\Domains\Platform\Http\Controllers\AdminUserController::LINK))

@@ -9,7 +9,9 @@
         <p class="text-gray-500 dark:text-gray-400">Everything issued under {{ $organization->name }}</p>
     </div>
 
+    @if (auth()->user()?->roleIn((string) request()->attributes->get(\App\Domains\Organization\Http\Middleware\PortalTenant::ORG_ID)) !== 'viewer')
     <x-ui.button :href="route('portal.invoices.create')">New invoice</x-ui.button>
+    @endif
 </div>
 
 <form method="GET" action="{{ route('portal.invoices.index') }}" class="mb-6 rounded-lg bg-white dark:bg-gray-900 p-4 shadow">

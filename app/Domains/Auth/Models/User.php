@@ -2,6 +2,8 @@
 
 namespace App\Domains\Auth\Models;
 
+use App\Domains\Auth\Enums\AdminPermission;
+use App\Domains\Auth\Enums\PlatformRole;
 use App\Domains\Organization\Models\Organization;
 use Database\Factories\UserFactory;
 use Illuminate\Auth\MustVerifyEmail;
@@ -40,6 +42,7 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmailContrac
         'two_factor_secret',
         'two_factor_recovery_codes',
         'two_factor_enrolment_hash',
+        'pending_email_hash',
     ];
 
     protected function casts(): array
@@ -57,6 +60,8 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmailContrac
             'two_factor_enrolment_expires_at' => 'datetime',
             'terms_accepted_at' => 'datetime',
             'password_changed_at' => 'datetime',
+            'pending_email_expires_at' => 'datetime',
+            'anonymized_at' => 'datetime',
         ];
     }
 
@@ -69,6 +74,52 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmailContrac
     public function isPlatformAdmin(): bool
     {
         return $this->isActive() && $this->is_platform_admin === true;
+    }
+
+    /**
+     * What this platform admin is for, or null for anyone who is not one.
+     *
+     * An admin with no role recorded - made before roles existed, or by the
+     * server's masaar:create-admin - is an owner, which is what every admin
+     * was until roles existed. The console's Admins page always sets one.
+     */
+    public function platformRole(): ?PlatformRole
+    {
+        if (! $this->isPlatformAdmin()) {
+            return null;
+        }
+
+        // Only a missing role means owner. A value that is not a role - a typo,
+        // a role since retired - is no role at all, not the most powerful one.
+        return $this->platform_role === null ? PlatformRole::Owner : PlatformRole::tryFrom((string) $this->platform_role);
+    }
+
+    /**
+     * Whether this admin may act on another account's access - its second
+     * factor, its enrolment link, its suspension. Any account that is not an
+     * admin, yes; an admin, only from an owner or a higher rank.
+     */
+    public function mayActOnAccessOf(User $target): bool
+    {
+        $mine = $this->platformRole();
+
+        if ($mine === null) {
+            return false;
+        }
+
+        $theirs = $target->platformRole();
+
+        return $theirs === null || $mine === PlatformRole::Owner || $mine->rank() > $theirs->rank();
+    }
+
+    /**
+     * Whether this account may do one thing in the admin console or API.
+     */
+    public function canAdmin(AdminPermission|string $permission): bool
+    {
+        $permission = $permission instanceof AdminPermission ? $permission : AdminPermission::tryFrom($permission);
+
+        return $permission !== null && ($this->platformRole()?->allows($permission) ?? false);
     }
 
     /**
@@ -162,6 +213,17 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmailContrac
     /**
      * Whether the user holds an active membership of the given organization.
      */
+    /**
+     * Whether this organization requires a second factor this account lacks.
+     */
+    public function lacksRequiredTwoFactor(string $organizationId): bool
+    {
+        return ! $this->hasTwoFactor() && $this->activeOrganizations()
+            ->whereKey($organizationId)
+            ->where('require_two_factor', true)
+            ->exists();
+    }
+
     public function belongsToOrganization(string $organizationId): bool
     {
         return $this->activeOrganizations()

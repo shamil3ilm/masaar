@@ -70,7 +70,7 @@ class TwoFactorController extends Controller
 
     public function showChallenge(Request $request): View|RedirectResponse
     {
-        $user = $this->pending($request);
+        $user = $this->pendingSignIn($request);
 
         if ($user === null || ! $user->hasTwoFactor()) {
             return redirect()->route('login');
@@ -81,7 +81,7 @@ class TwoFactorController extends Controller
 
     public function challenge(Request $request): RedirectResponse
     {
-        $user = $this->pending($request);
+        $user = $this->pendingSignIn($request);
 
         if ($user === null || ! $user->hasTwoFactor()) {
             return redirect()->route('login');
@@ -103,7 +103,7 @@ class TwoFactorController extends Controller
 
         $this->complete($request, $user);
 
-        return redirect()->intended(route('admin.dashboard'));
+        return redirect()->intended(route($user->isPlatformAdmin() ? 'admin.dashboard' : 'portal.dashboard'));
     }
 
     public function showSetup(Request $request): View|RedirectResponse
@@ -174,6 +174,15 @@ class TwoFactorController extends Controller
         return $this->twoFactor->pendingAdmin($request->session()->get(self::PENDING));
     }
 
+    /**
+     * For the code itself, which anyone with a second factor is asked for;
+     * enrolling through this page stays the platform admins' (pending()).
+     */
+    private function pendingSignIn(Request $request): ?User
+    {
+        return $this->twoFactor->pendingSignIn($request->session()->get(self::PENDING));
+    }
+
     private function complete(Request $request, User $user): void
     {
         $remember = (bool) ($request->session()->get(self::PENDING)['remember'] ?? false);
@@ -185,7 +194,7 @@ class TwoFactorController extends Controller
         // Session fixation: the pre-authentication id must not survive.
         $request->session()->regenerate();
 
-        $this->signIns->succeeded($user, 'console', ['platform_admin' => true, 'mfa' => true]);
+        $this->signIns->succeeded($user, 'console', ['platform_admin' => $user->isPlatformAdmin(), 'mfa' => true]);
     }
 
     /**

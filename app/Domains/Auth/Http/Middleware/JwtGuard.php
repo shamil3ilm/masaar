@@ -72,6 +72,12 @@ class JwtGuard
                     return ApiResponse::unauthorized('Organization access revoked');
                 }
 
+                // The portal sends such a member to set it up; the API has no
+                // page to send them to, so it refuses.
+                if ($user->lacksRequiredTwoFactor($claims['org_id'])) {
+                    return ApiResponse::forbidden('This organization requires two-factor authentication. Turn it on under My account, then sign in again.');
+                }
+
                 $this->tenantResolver->setContext(
                     OrganizationContext::fromClaims($claims)
                 );

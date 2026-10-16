@@ -44,6 +44,9 @@ class PortalInvoiceDraftController extends Controller
             return redirect()->route('portal.invoices.index');
         }
 
+        // A viewer would only be refused on saving (org.writer).
+        abort_if($request->user()?->roleIn((string) $request->attributes->get(PortalTenant::ORG_ID)) === 'viewer', 403, 'Your role in this organization is read-only.');
+
         return view('portal.invoices.create', [
             'organization' => $this->tenant->getOrganization(),
         ]);

@@ -214,10 +214,12 @@
             are gone rather than pretending to work.
         --}}
         <div class="flex flex-wrap items-center gap-3">
+            @admincan('operations.run')
             <form method="POST" action="{{ route('admin.queue.process') }}">
                 @csrf
                 <x-ui.button>Process Offline Queue</x-ui.button>
             </form>
+            @endadmincan
             <x-ui.button variant="secondary" :href="route('admin.dashboard')">Refresh</x-ui.button>
             <x-ui.button variant="secondary" :href="route('admin.logs', ['state' => 'failed'])">
                 View Failed Submissions
