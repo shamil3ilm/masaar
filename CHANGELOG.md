@@ -82,6 +82,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     lists foreign-currency documents with no exchange rate instead of
     counting them as riyals. The invoices CSV adds SAR columns and signs
     credit notes.
+  - An invoice records the moment it was issued (migration 0460): its
+    document's issue time, its QR and the 24-hour reporting clock read that,
+    not when its draft was started.
+  - One note may correct several invoices (their numbers separated by
+    commas), each checked and the credit capped by their combined total.
+    The invoice form takes a buyer identifier for a buyer with no VAT
+    number, a note carries it over, and the form says a note is due within
+    15 days of the end of the month the change happened.
+  - A rejected invoice is not handed out as a PDF or a print, citations name
+    ZATCA's real rules, every amount must be positive including a credit
+    note's, a buyer registered outside the Kingdom is identified by its
+    registration as another ID, and a payment recorded after the 15 days
+    ZATCA allows for invoicing it is flagged.
   - The platform's own invoices are always standard, identify a customer
     without a VAT number by its CR number, check its national address
     first, and carry the subscription's end date (KSA-24, migration 0450).

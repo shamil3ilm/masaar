@@ -20,7 +20,7 @@
     // [GL] §4.2.3: the date and the time of issue. The time is the one the
     // XML's IssueTime and the QR carry, on the Kingdom's clock.
     $issueTime = $invoice->created_at
-        ? \App\Domains\Compliance\Fatoora\Helpers\FatooraTime::toSaudiTime($invoice->created_at)->format('H:i:s')
+        ? \App\Domains\Compliance\Fatoora\Helpers\FatooraTime::toSaudiTime($invoice->issuedMoment())->format('H:i:s')
         : null;
 
     // Saudi VAT is owed in riyals. Converted as InvoiceXmlData::convertToSar

@@ -215,7 +215,7 @@ class ZatcaConformanceTest extends TestCase
     /**
      * A foreign-currency invoice, which ZATCA reads in two currencies at once.
      *
-     * BR-KSA-CU-01: VAT is reported in SAR whatever the invoice is billed in,
+     * BR-KSA-EN16931-02 and BR-53: VAT is reported in SAR whatever the invoice is billed in,
      * so the document carries the total twice — once in its own currency and
      * once converted. The exchange_rate column that makes the conversion
      * possible was added recently, and InvoiceValidator had been demanding a

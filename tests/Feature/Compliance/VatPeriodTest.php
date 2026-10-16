@@ -223,6 +223,33 @@ class VatPeriodTest extends TestCase
     }
 
     /**
+     * One note may correct several invoices (BT-25 is text): each must stand,
+     * and the credit fits within their combined total.
+     */
+    public function test_one_note_covers_several_invoices(): void
+    {
+        $this->invoice('INV-20', 'invoice', status: 'issued');
+        $this->invoice('INV-21', 'invoice', status: 'issued');
+
+        $within = $this->invoice('CN-20', 'credit_note', billingRef: 'INV-20, INV-21', total: '200.00');
+        $this->assertTrue($this->validate($within)['valid']);
+
+        $beyond = $this->invoice('CN-21', 'credit_note', billingRef: 'INV-20; INV-21', total: '231.00');
+        $this->assertFalse($this->validate($beyond)['valid']);
+    }
+
+    public function test_every_reference_must_exist(): void
+    {
+        $this->invoice('INV-20', 'invoice', status: 'issued');
+        $note = $this->invoice('CN-20', 'credit_note', billingRef: 'INV-20, INV-404', total: '10.00');
+
+        $result = $this->validate($note);
+
+        $this->assertFalse($result['valid']);
+        $this->assertStringContainsString('INV-404', (string) $result['warning']);
+    }
+
+    /**
      * @return array{valid: bool, warning: ?string, suggested_period: ?string}
      */
     private function validate(Invoice $note): array

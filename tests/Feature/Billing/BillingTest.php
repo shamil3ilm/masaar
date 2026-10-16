@@ -7,6 +7,7 @@ namespace Tests\Feature\Billing;
 use App\Domains\Auth\Models\User;
 use App\Domains\Billing\Mail\RenewalReminderMail;
 use App\Domains\Billing\Models\Payment;
+use App\Domains\Billing\Services\Billing;
 use App\Domains\Billing\Services\RenewalReminders;
 use App\Domains\Compliance\Fatoora\DTOs\IssueOutcome;
 use App\Domains\Compliance\Fatoora\Services\InvoiceIssuer;
@@ -16,6 +17,7 @@ use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Licensing\Models\License;
 use App\Domains\Organization\Models\Organization;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Testing\TestResponse;
@@ -284,6 +286,19 @@ class BillingTest extends TestCase
     private function invoiceFor(Payment $payment): Invoice
     {
         return Invoice::withoutTenantScope(fn () => Invoice::query()->with('lines')->findOrFail($payment->invoice_id));
+    }
+
+    /**
+     * A payment invoiced after the fifteen days ZATCA allows still counts,
+     * and the admin is told it is late.
+     */
+    public function test_a_late_payment_is_flagged(): void
+    {
+        $this->record(['paid_at' => now()->subMonths(3)->toDateString()])
+            ->assertSessionHas('error', fn (string $message): bool => str_contains($message, 'fifteen days'));
+
+        $this->assertTrue(app(Billing::class)->invoicedLate(CarbonImmutable::now()->subMonths(3)));
+        $this->assertFalse(app(Billing::class)->invoicedLate(CarbonImmutable::now()));
     }
 
     /**

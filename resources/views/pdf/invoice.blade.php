@@ -20,7 +20,7 @@
     $money = fn ($amount): string => number_format((float) ($amount ?? 0), 2).' '.$invoice->currency;
     // The time the XML's IssueTime and the QR carry, on the Kingdom's clock.
     $issueTime = $invoice->created_at
-        ? \App\Domains\Compliance\Fatoora\Helpers\FatooraTime::toSaudiTime($invoice->created_at)->format('H:i:s')
+        ? \App\Domains\Compliance\Fatoora\Helpers\FatooraTime::toSaudiTime($invoice->issuedMoment())->format('H:i:s')
         : null;
     // BT-111, converted as InvoiceXmlData::convertToSar converts it.
     $inSar = $invoice->currency !== 'SAR' && $invoice->exchange_rate !== null;

@@ -6,6 +6,7 @@ namespace App\Domains\Invoice\Services;
 
 use App\Domains\Branding\Services\ThemeService;
 use App\Domains\Compliance\Fatoora\Services\QrCodeRenderer;
+use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
@@ -97,8 +98,12 @@ class InvoicePdf
      */
     public function assertShareable(Invoice $invoice): void
     {
-        if ($invoice->hash === null || $invoice->qr_code === null) {
+        if ($invoice->hash === null || $invoice->qr_code === null || $invoice->status === InvoiceStatus::Draft) {
             throw new DomainException(__('Issue the invoice first. A draft has no QR code and is not a tax invoice.'));
+        }
+
+        if ($invoice->status === InvoiceStatus::Rejected) {
+            throw new DomainException(__('ZATCA rejected this invoice, so it is not a valid tax invoice. Correct it and issue a new one.'));
         }
 
         if ($invoice->type === InvoiceType::Standard && $invoice->cleared_xml === null) {

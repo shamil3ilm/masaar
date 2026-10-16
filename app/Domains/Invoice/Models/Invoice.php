@@ -12,6 +12,7 @@ use App\Domains\Organization\Concerns\BelongsToTenant;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\ComplianceProfile;
 use App\Domains\Organization\Models\Organization;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -48,6 +49,7 @@ class Invoice extends Model
         // KSA-24: the last day of a supply over a period, such as a
         // subscription. Needs supply_date beside it (BR-KSA-35).
         'supply_end_date',
+        'issued_at',
         'currency',
         'exchange_rate',
         'buyer_name',
@@ -87,6 +89,7 @@ class Invoice extends Model
     protected function casts(): array
     {
         return [
+            'issued_at' => 'datetime',
             'type' => InvoiceType::class,
             'document_type' => DocumentType::class,
             'status' => InvoiceStatus::class,
@@ -329,6 +332,19 @@ class Invoice extends Model
     public function getLegalXmlAttribute(): ?string
     {
         return $this->cleared_xml ?? $this->signed_xml;
+    }
+
+    /**
+     * When the invoice was issued: KSA-25, the QR's timestamp and the start
+     * of the reporting clock.
+     *
+     * created_at for an invoice issued before issued_at was recorded - that
+     * is the time its signed document already carries, so reading anything
+     * else would contradict it.
+     */
+    public function issuedMoment(): CarbonInterface
+    {
+        return $this->issued_at ?? $this->created_at;
     }
 
     /**

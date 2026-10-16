@@ -63,6 +63,8 @@ class AdjustmentDraft
             'buyer_name' => (string) $invoice->buyer_name,
             'buyer_name_ar' => (string) $invoice->buyer_name_ar,
             'buyer_vat_number' => (string) $invoice->buyer_vat_number,
+            'buyer_id' => (string) $invoice->buyer_id,
+            'buyer_id_scheme' => (string) $invoice->buyer_id_scheme,
             'buyer_address' => (array) ($invoice->buyer_address ?? []),
             'discount_amount' => $credit ? $this->discountAsEntered($invoice, $inclusive) : null,
             // The category and exemption go with the line: without them a

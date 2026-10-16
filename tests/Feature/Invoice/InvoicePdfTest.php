@@ -98,6 +98,16 @@ class InvoicePdfTest extends TestCase
         $this->portal()->get(route('portal.invoices.pdf', $invoice->id))->assertOk();
     }
 
+    /**
+     * ZATCA rejected it, so it is not a tax invoice to hand anyone.
+     */
+    public function test_a_rejected_invoice_is_withheld(): void
+    {
+        $invoice = $this->invoice('simplified', ['status' => 'rejected']);
+
+        $this->portal()->get(route('portal.invoices.pdf', $invoice->id))->assertSessionHas('error');
+    }
+
     public function test_another_company_cannot_have_it(): void
     {
         $invoice = $this->invoice('simplified');

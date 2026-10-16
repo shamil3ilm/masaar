@@ -73,7 +73,7 @@ class CreateInvoiceRequest extends FormRequest
             'issue_date' => ['required', 'date'],
             'supply_date' => ['nullable', 'date'],
             'currency' => ['nullable', 'string', 'size:3'],
-            // BR-KSA-CU-01: VAT is reported in SAR, so a foreign-currency
+            // BR-KSA-EN16931-02 and BR-53: VAT is reported in SAR, so a foreign-currency
             // invoice has to say what rate it was converted at. InvoiceValidator
             // enforces this at compliance, so it has to be accepted here —
             // otherwise a non-SAR invoice is taken and then refused for a field
@@ -232,7 +232,7 @@ class CreateInvoiceRequest extends FormRequest
     /**
      * A discount larger than the lines makes a negative invoice: 100 less 200
      * was drafted, issued and chained with a total of -115.00, which the
-     * authority refuses (BR-KSA-DEC-01). Checked only once the amounts are
+     * authority refuses (BR-KSA-F-04). Checked only once the amounts are
      * well-formed, so bcmath never sees what validation has already refused.
      */
     private function refuseDiscountBeyondLines($validator): void
@@ -251,7 +251,7 @@ class CreateInvoiceRequest extends FormRequest
         }
 
         if (bccomp((string) $discount, $lines, 6) > 0) {
-            $errors->add('discount_amount', __('The discount cannot be larger than the invoice lines (BR-KSA-DEC-01).'));
+            $errors->add('discount_amount', __('The discount cannot be larger than the invoice lines (BR-KSA-F-04).'));
         }
     }
 
@@ -262,7 +262,7 @@ class CreateInvoiceRequest extends FormRequest
     {
         return [
             // Buyer
-            'exchange_rate.required' => __('Exchange rate to SAR is required for foreign-currency invoices (BR-KSA-CU-01).'),
+            'exchange_rate.required' => __('Exchange rate to SAR is required for foreign-currency invoices (BR-53).'),
             // BT-48, not BT-46: BT-46 is the other buyer identifier, which
             // is the alternative to this one rather than its name.
             'buyer_vat_number.required' => __('A standard invoice needs the buyer VAT number (BT-48) or another buyer identifier (BT-46).'),

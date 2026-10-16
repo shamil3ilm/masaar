@@ -118,6 +118,19 @@ class Billing
     }
 
     /**
+     * Whether a payment received on this date is now invoiced late.
+     *
+     * A payment received before the supply is the tax point, and its invoice
+     * is due within fifteen days of the end of that month (ZATCA's Guideline
+     * for Tax Invoicing and Records, 4.5.1). The payment still counts and is
+     * still invoiced; the admin is told it is late.
+     */
+    public function invoicedLate(CarbonImmutable $paidAt): bool
+    {
+        return now()->greaterThan($paidAt->endOfMonth()->addDays(15));
+    }
+
+    /**
      * The monthly price of a plan, excluding VAT.
      */
     public function monthlyPrice(LicenseTier $tier): int
@@ -288,6 +301,13 @@ class Billing
      */
     private function buyerIdentity(Organization $buyer): array
     {
+        // A registration outside the Kingdom is not a Saudi VAT number: BT-48
+        // takes only the 15-digit 3...3 form (BR-KSA-44), so a UAE TRN, say,
+        // identifies the buyer as another ID instead.
+        if (filled($buyer->vat_number) && strtoupper((string) ($buyer->country ?: 'SA')) !== 'SA') {
+            return ['buyer_vat_number' => null, 'buyer_id' => preg_replace('/[^A-Za-z0-9]/', '', (string) $buyer->vat_number), 'buyer_id_scheme' => 'OTH'];
+        }
+
         if (filled($buyer->vat_number)) {
             return ['buyer_vat_number' => (string) $buyer->vat_number, 'buyer_id' => null, 'buyer_id_scheme' => null];
         }

@@ -96,6 +96,10 @@ class AdminBillingController extends Controller
 
         $message = 'Payment recorded. The plan now runs to '.$payment->period_end->toDateString().'.';
 
+        if ($this->billing->invoicedLate(CarbonImmutable::parse($data['paid_at']))) {
+            $message .= ' This payment is past the fifteen days after its month in which ZATCA expects it invoiced.';
+        }
+
         return redirect()->route('admin.billing.show', $id)->with(
             $payment->invoice_id === null ? 'error' : 'success',
             $payment->invoice_id === null ? $message.' No invoice was issued: '.$payment->invoice_error : $message.' Invoice issued.',

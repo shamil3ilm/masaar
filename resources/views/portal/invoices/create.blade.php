@@ -106,6 +106,11 @@
                         <option value="{{ $reason }}" @selected(old('adjustment_reason') === $reason)>{{ $reason }}</option>
                     @endforeach
                 </x-ui.select>
+                {{-- VAT Implementing Regulations, Article 54: a note is issued
+                     within fifteen days of the end of the month in which the
+                     change happened. The date of the change is not something
+                     the form knows, so it says so rather than checks. --}}
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Issue a note within 15 days of the end of the month in which the change happened. One note may correct several invoices: separate their numbers with commas.') }}</p>
             </div>
         </div>
     </div>
@@ -153,6 +158,24 @@
             <div>
                 <label for="buyer_vat_number" class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('VAT number') }}</label>
                 <x-ui.input type="text" name="buyer_vat_number" id="buyer_vat_number" value="{{ old('buyer_vat_number') }}" />
+            </div>
+
+            {{-- BT-46: a standard invoice to a buyer with no VAT number
+                 identifies them another way (BR-KSA-81), commonly by
+                 commercial registration. --}}
+            <div>
+                <label for="buyer_id_scheme" class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('Other identifier (if no VAT number)') }}</label>
+                <x-ui.select name="buyer_id_scheme" id="buyer_id_scheme">
+                    <option value="">{{ __('None') }}</option>
+                    @foreach (\App\Domains\Compliance\Fatoora\Config\FatooraConfig::BUYER_ID_SCHEME_LABELS as $scheme => [$english, $arabicLabel])
+                        <option value="{{ $scheme }}" @selected(old('buyer_id_scheme') === $scheme)>{{ app()->getLocale() === 'ar' ? $arabicLabel : $english }}</option>
+                    @endforeach
+                </x-ui.select>
+            </div>
+
+            <div>
+                <label for="buyer_id" class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('Identifier number') }}</label>
+                <x-ui.input type="text" name="buyer_id" id="buyer_id" maxlength="50" value="{{ old('buyer_id') }}" />
             </div>
 
             <div>

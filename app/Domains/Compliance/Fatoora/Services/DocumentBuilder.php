@@ -215,7 +215,7 @@ class DocumentBuilder
             // invoice issued at 01:30 in Riyadh went out carrying 22:30 of
             // the same date, a time twenty-one hours from when it was
             // issued, and so did every invoice issued before 03:00.
-            issueTime: FatooraTime::toSaudiTime($invoice->created_at)->format('H:i:s'),
+            issueTime: FatooraTime::toSaudiTime($invoice->issuedMoment())->format('H:i:s'),
             invoiceTypeCode: $documentType->getTypeCode(),
             invoiceSubtype: $invoiceSubtype,
             currency: $invoice->currency,
@@ -315,6 +315,6 @@ class DocumentBuilder
     private function issuedAt(Invoice $invoice): string
     {
         return $invoice->issue_date->format('Y-m-d')
-            .'T'.FatooraTime::toSaudiTime($invoice->created_at)->format('H:i:s');
+            .'T'.FatooraTime::toSaudiTime($invoice->issuedMoment())->format('H:i:s');
     }
 }

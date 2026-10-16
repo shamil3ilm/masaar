@@ -206,6 +206,12 @@ class Submitter
                 $invoice->invoice_number = $this->numbering->allocate($invoice);
             }
 
+            // The moment of issue, set once: a reissue that finishes an
+            // interrupted issuance keeps the time the document was given.
+            if ($invoice->issued_at === null) {
+                $invoice->issued_at = now();
+            }
+
             $previousHash = $invoice->previous_invoice_hash;
 
             $complianceData = $this->compliance->generateComplianceData(
@@ -220,6 +226,7 @@ class Submitter
                 'invoice_number' => $invoice->invoice_number,
                 'icv' => $invoice->icv,
                 'device_id' => $invoice->device_id,
+                'issued_at' => $invoice->issued_at,
                 'hash' => $complianceData['hash'],
                 'qr_code' => $complianceData['qr_code'],
                 'signed_xml' => $complianceData['signed_xml'] ?? null,

@@ -77,6 +77,9 @@ class ScreenRenderTest extends TestCase
         'portal.reports.vat',
         // Not a screen: it fills the new-invoice form and redirects there.
         'portal.invoices.adjust',
+        // Prints only a shareable invoice, and the fixture here is a draft so
+        // the Issue button renders. InvoicePrintTest and PrintFieldTest cover it.
+        'portal.invoices.print',
     ];
 
     private User $orgAdmin;
