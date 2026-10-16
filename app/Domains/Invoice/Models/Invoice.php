@@ -50,6 +50,11 @@ class Invoice extends Model
         // subscription. Needs supply_date beside it (BR-KSA-35).
         'supply_end_date',
         'issued_at',
+        // PINT AE's payment due date. Null on a Saudi invoice.
+        'due_date',
+        // A country's own document fields - for the UAE the transaction
+        // flags, buyer endpoint and emirate.
+        'jurisdiction_data',
         'currency',
         'exchange_rate',
         'buyer_name',
@@ -96,6 +101,8 @@ class Invoice extends Model
             'issue_date' => 'date',
             'supply_date' => 'date',
             'supply_end_date' => 'date',
+            'due_date' => 'date',
+            'jurisdiction_data' => 'array',
             'subtotal' => 'decimal:2',
             'discount_amount' => 'decimal:2',
             'tax_amount' => 'decimal:2',

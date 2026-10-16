@@ -3,9 +3,10 @@
 declare(strict_types=1);
 
 use App\Domains\Compliance\ComplianceRouter;
+use App\Domains\Compliance\Contracts\ComplianceEngine;
 use App\Domains\Compliance\Contracts\SubmissionResult;
+use App\Domains\Compliance\Exceptions\UnsupportedJurisdictionException;
 use App\Domains\Compliance\Fatoora\FatooraEngine;
-use App\Domains\Compliance\FTA\FtaEngine;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\ComplianceProfile;
 use App\Domains\Organization\Models\Organization;
@@ -27,7 +28,7 @@ it('an org in a group with two profiles routes to the right engine per profile',
     ]);
     $aeProfile = ComplianceProfile::create([
         'org_id' => $org->id, 'jurisdiction' => 'AE',
-        'engine' => 'fta', 'status' => 'active', 'settings' => [],
+        'engine' => 'peppol', 'status' => 'active', 'settings' => [],
     ]);
 
     expect($org->group->id)->toBe($group->id)
@@ -35,8 +36,9 @@ it('an org in a group with two profiles routes to the right engine per profile',
 
     $router = app(ComplianceRouter::class);
 
+    // No AE engine is registered until the Peppol engine lands.
     expect($router->engineFor($saProfile))->toBeInstanceOf(FatooraEngine::class)
-        ->and($router->engineFor($aeProfile))->toBeInstanceOf(FtaEngine::class);
+        ->and(fn () => $router->engineFor($aeProfile))->toThrow(UnsupportedJurisdictionException::class);
 });
 
 it('invoice can be linked to a compliance profile', function () {
@@ -67,7 +69,7 @@ it('mock submit routes correctly per jurisdiction', function () {
 
     $aeProfile = ComplianceProfile::create([
         'org_id' => $org->id, 'jurisdiction' => 'AE',
-        'engine' => 'fta', 'status' => 'active', 'settings' => [],
+        'engine' => 'peppol', 'status' => 'active', 'settings' => [],
     ]);
 
     $invoice = Invoice::create([
@@ -80,15 +82,15 @@ it('mock submit routes correctly per jurisdiction', function () {
         'buyer_name' => 'UAE Buyer',
     ]);
 
-    $mockEngine = Mockery::mock(FtaEngine::class);
+    $mockEngine = Mockery::mock(ComplianceEngine::class);
     $mockEngine->allows('supports')->with('AE')->andReturns(true);
     $mockEngine->expects('submit')->once()->andReturns(
-        new SubmissionResult(true, 'fta-sub-001', 'peppol-ref-001', 'queued', [], null)
+        new SubmissionResult(true, 'peppol-sub-001', 'peppol-ref-001', 'queued', [], null)
     );
 
     $router = new ComplianceRouter([$mockEngine]);
     $result = $router->submit($invoice, $aeProfile);
 
     expect($result->success)->toBeTrue()
-        ->and($result->submissionId)->toBe('fta-sub-001');
+        ->and($result->submissionId)->toBe('peppol-sub-001');
 });

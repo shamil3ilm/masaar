@@ -64,7 +64,7 @@ final class CompanyProfileRules
      */
     public static function countries(): array
     {
-        return config('fta.enabled') ? ['SA', 'AE'] : ['SA'];
+        return config('peppol.countries.AE.enabled') ? ['SA', 'AE'] : ['SA'];
     }
 
     /**

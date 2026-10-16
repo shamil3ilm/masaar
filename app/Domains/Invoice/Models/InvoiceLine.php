@@ -23,6 +23,8 @@ class InvoiceLine extends Model
         'invoice_id',
         'description',
         'description_ar',
+        // PINT AE's item name (IBT-153), apart from the description.
+        'item_name',
         'class_code',
         'quantity',
         'unit_code',

@@ -35,6 +35,10 @@ class Customer extends Model
         'country_code',
         'email',
         'phone',
+        // As the service provider issued it (0235:...), never derived.
+        'peppol_endpoint',
+        // The emirate, for a UAE buyer.
+        'subdivision',
         'archived_at',
     ];
 

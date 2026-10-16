@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use App\Domains\Compliance\ComplianceRouter;
+use App\Domains\Compliance\Exceptions\UnsupportedJurisdictionException;
 use App\Domains\Compliance\Fatoora\FatooraEngine;
-use App\Domains\Compliance\FTA\FtaEngine;
 use App\Domains\Organization\Models\ComplianceProfile;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -20,13 +20,14 @@ it('routes correctly for an org with both SA and AE profiles', function () {
     ]);
     $aeProfile = ComplianceProfile::create([
         'org_id' => $org->id, 'jurisdiction' => 'AE',
-        'engine' => 'fta', 'status' => 'active', 'settings' => [],
+        'engine' => 'peppol', 'status' => 'active', 'settings' => [],
     ]);
 
     $router = app(ComplianceRouter::class);
 
+    // No AE engine is registered until the Peppol engine lands.
     expect($router->engineFor($saProfile))->toBeInstanceOf(FatooraEngine::class)
-        ->and($router->engineFor($aeProfile))->toBeInstanceOf(FtaEngine::class);
+        ->and(fn () => $router->engineFor($aeProfile))->toThrow(UnsupportedJurisdictionException::class);
 });
 
 it('complianceProfileFor returns correct profile per jurisdiction', function () {
@@ -38,7 +39,7 @@ it('complianceProfileFor returns correct profile per jurisdiction', function () 
     ]);
     ComplianceProfile::create([
         'org_id' => $org->id, 'jurisdiction' => 'AE',
-        'engine' => 'fta', 'status' => 'active', 'settings' => [],
+        'engine' => 'peppol', 'status' => 'active', 'settings' => [],
     ]);
 
     $saProfile = $org->complianceProfileFor('SA');
@@ -46,7 +47,7 @@ it('complianceProfileFor returns correct profile per jurisdiction', function () 
     $qaProfile = $org->complianceProfileFor('QA');
 
     expect($saProfile?->engine)->toBe('fatoora')
-        ->and($aeProfile?->engine)->toBe('fta')
+        ->and($aeProfile?->engine)->toBe('peppol')
         ->and($qaProfile)->toBeNull();
 });
 

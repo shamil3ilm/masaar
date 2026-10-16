@@ -6,7 +6,6 @@ use App\Domains\Auth\Http\Controllers\AuthController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\BranchOnboardingController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\ComplianceController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\OnboardingController;
-use App\Domains\Compliance\FTA\Http\Controllers\FtaController;
 use App\Domains\Invoice\Http\Controllers\InvoiceController;
 use App\Domains\Invoice\Http\Controllers\NumberingController;
 use App\Domains\Organization\Http\Controllers\BranchController;
@@ -75,15 +74,6 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
             Route::post('/compliance-check', [OnboardingController::class, 'runComplianceCheck']);
             Route::post('/pcsid', [OnboardingController::class, 'requestPcsid']);
         });
-    });
-
-    /* Compliance — United Arab Emirates (FTA, Peppol PINT AE) ------------- */
-
-    Route::prefix('compliance/ae')->middleware(['uae.enabled', 'org.writer'])->group(function () {
-        Route::get('/submissions', [FtaController::class, 'index']);
-        Route::post('/submit/{invoiceId}', [FtaController::class, 'submit'])->middleware('filing.cleared');
-        Route::get('/status/{submissionId}', [FtaController::class, 'status']);
-        Route::post('/retry/{submissionId}', [FtaController::class, 'retry'])->middleware('filing.cleared');
     });
 
     /* Organizations and branches ------------------------------------------ */

@@ -80,12 +80,10 @@ class ProductionGuardTest extends TestCase
         // and no later check can tell the difference - which is why this
         // template shipping APP_ENV=production beside
         // ZATCA_ENVIRONMENT=sandbox was worth a boot failure.
-        foreach (['ZATCA_ENVIRONMENT', 'UAE_FTA_ENVIRONMENT'] as $authority) {
-            if (array_key_exists($authority, $env)) {
-                $this->assertNotSame('sandbox', $env[$authority],
-                    $template.' sets '.$authority.'=sandbox for a production deployment, '
-                    .'so every invoice would be filed against a developer portal.');
-            }
+        if (array_key_exists('ZATCA_ENVIRONMENT', $env)) {
+            $this->assertNotSame('sandbox', $env['ZATCA_ENVIRONMENT'],
+                $template.' sets ZATCA_ENVIRONMENT=sandbox for a production deployment, '
+                .'so every invoice would be filed against a developer portal.');
         }
 
         // assertAuthorityIsKnown: a name with no endpoint used to file with
@@ -102,6 +100,15 @@ class ProductionGuardTest extends TestCase
         foreach (['APP_URL', 'JWT_SECRET', 'API_KEY_PEPPER', 'MAIL_MAILER', 'MAIL_FROM_ADDRESS'] as $setting) {
             $this->assertArrayHasKey($setting, $env,
                 $template.' does not name '.$setting.', which production requires before it serves.');
+        }
+
+        // The same guard, for a connected UAE service provider: a base URL
+        // set with AE on needs the credentials beside it.
+        if (($env['PEPPOL_AE_ENABLED'] ?? 'false') === 'true' && ($env['PEPPOL_ASP_BASE_URL'] ?? '') !== '') {
+            foreach (['PEPPOL_ASP_CLIENT_ID', 'PEPPOL_ASP_CLIENT_SECRET', 'PEPPOL_ASP_WEBHOOK_SECRET'] as $setting) {
+                $this->assertArrayHasKey($setting, $env,
+                    $template.' connects a service provider without '.$setting.', which production requires.');
+            }
         }
 
         // assertSessionsAreEncrypted: the console flashes a one-time API

@@ -116,13 +116,13 @@ class CompanyProfileTest extends TestCase
      */
     public function test_uae_registration_follows_the_switch(): void
     {
-        config(['fta.enabled' => false]);
+        config(['peppol.countries.AE.enabled' => false]);
 
         $this->withToken($this->token('admin'))
             ->postJson('/api/organizations', ['name' => 'Gulf', 'country' => 'AE'])
             ->assertUnprocessable();
 
-        config(['fta.enabled' => true]);
+        config(['peppol.countries.AE.enabled' => true]);
 
         $this->withToken($this->token('admin'))
             ->postJson('/api/organizations', ['name' => 'Gulf', 'country' => 'AE'])

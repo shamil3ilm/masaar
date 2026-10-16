@@ -13,7 +13,6 @@ use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\Http\Middleware\FilingCleared;
 use App\Domains\Compliance\Fatoora\Services\CircuitBreaker;
 use App\Domains\Compliance\Fatoora\Services\TimestampValidator;
-use App\Domains\Compliance\FTA\Http\Middleware\UaeEnabled;
 use App\Domains\Licensing\Http\Middleware\CheckInvoiceQuota;
 use App\Domains\Licensing\Http\Middleware\PlatformLicense;
 use App\Domains\Licensing\Http\Middleware\RequireLicenseFeature;
@@ -60,7 +59,6 @@ class AppServiceProvider extends ServiceProvider
         'scope' => RequireScope::class,
         'license.feature' => RequireLicenseFeature::class,
         'platform.license' => PlatformLicense::class,
-        'uae.enabled' => UaeEnabled::class,
         'filing.cleared' => FilingCleared::class,
     ];
 
@@ -208,9 +206,9 @@ class AppServiceProvider extends ServiceProvider
     /**
      * A production platform does not file against a developer portal.
      *
-     * config/fatoora.php and config/fta.php both fall back to 'sandbox', and
-     * .env.example ships APP_ENV=production beside ZATCA_ENVIRONMENT=sandbox
-     * and UAE_FTA_ENVIRONMENT=sandbox - so a deployment that copied it, which
+     * config/fatoora.php falls back to 'sandbox', and .env.example shipped
+     * APP_ENV=production beside ZATCA_ENVIRONMENT=sandbox - so a deployment
+     * that copied it, which
      * the deployment guide says to do, submitted every invoice to ZATCA's
      * developer portal. Every submission succeeded. Nothing was legally
      * filed, no deadline was met, and no part of the platform could tell,
@@ -263,17 +261,16 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
-     * The authorities this deployment files with: ZATCA always, the UAE's
-     * only where it is switched on.
+     * The authorities this deployment files with directly: ZATCA.
+     *
+     * The UAE is not one. Its documents go through an accredited service
+     * provider, which has no sandbox switch here - see peppolProviderUnset().
      *
      * @return array<string, string> environment variable => config file
      */
     private function authorities(): array
     {
-        return array_filter([
-            'ZATCA_ENVIRONMENT' => 'fatoora',
-            'UAE_FTA_ENVIRONMENT' => config('fta.enabled') ? 'fta' : null,
-        ]);
+        return ['ZATCA_ENVIRONMENT' => 'fatoora'];
     }
 
     /**
@@ -304,6 +301,7 @@ class AppServiceProvider extends ServiceProvider
             'API_KEY_PEPPER' => $this->blank(config('security.api_key_pepper')),
             'MAIL_MAILER' => in_array(config('mail.default'), ['log', 'array'], true),
             'MAIL_FROM_ADDRESS' => $this->blank($from) || str_ends_with($from, '@example.com'),
+            ...$this->peppolProviderUnset(),
         ]));
 
         if ($unset !== []) {
@@ -313,6 +311,29 @@ class AppServiceProvider extends ServiceProvider
                 .'see the comments on them in .env.example.'
             );
         }
+    }
+
+    /**
+     * A connected UAE service provider has its credentials.
+     *
+     * Only when AE is on and a provider's base URL is set. With no URL the
+     * platform keeps documents for upload by hand, which needs nothing; with
+     * one, a missing secret means every send is refused at the provider and
+     * every callback is unverifiable - found at the first invoice, not here.
+     *
+     * @return array<string, bool>
+     */
+    private function peppolProviderUnset(): array
+    {
+        if (! config('peppol.countries.AE.enabled') || $this->blank(config('peppol.asp.base_url'))) {
+            return [];
+        }
+
+        return [
+            'PEPPOL_ASP_CLIENT_ID' => $this->blank(config('peppol.asp.client_id')),
+            'PEPPOL_ASP_CLIENT_SECRET' => $this->blank(config('peppol.asp.client_secret')),
+            'PEPPOL_ASP_WEBHOOK_SECRET' => $this->blank(config('peppol.asp.webhook_secret')),
+        ];
     }
 
     private function serves(): bool

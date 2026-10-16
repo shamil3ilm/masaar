@@ -4,16 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Platform;
 
-use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
-use App\Domains\Organization\Models\Organization;
 use App\Providers\AppServiceProvider;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use ReflectionMethod;
 use ReflectionProperty;
 use RuntimeException;
 use Tests\TestCase;
-use Tymon\JWTAuth\Facades\JWTAuth;
 
 /**
  * What stops a deployment going live misconfigured.
@@ -49,11 +46,34 @@ class GoLiveGuardTest extends TestCase
         FatooraConfig::getBaseUrl();
     }
 
-    public function test_uae_is_not_checked_while_off(): void
+    /**
+     * A UAE service provider connected without its credentials is refused.
+     */
+    public function test_connected_provider_needs_its_credentials(): void
     {
-        config(['fta.enabled' => false, 'fta.environment' => 'nonsense']);
+        $this->servingInProduction();
+        $this->filledIn();
+        config(['peppol.countries.AE.enabled' => true, 'peppol.asp.base_url' => 'https://asp.example.ae', 'peppol.asp.client_id' => 'id']);
 
-        $this->guard('assertAuthorityIsKnown');
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageMatches('/PEPPOL_ASP_CLIENT_SECRET.*PEPPOL_ASP_WEBHOOK_SECRET/');
+
+        $this->guard('assertProductionSettingsAreFilledIn');
+    }
+
+    /**
+     * No provider connected, or the UAE off: nothing more to supply.
+     */
+    public function test_unconnected_provider_needs_nothing(): void
+    {
+        $this->servingInProduction();
+        $this->filledIn();
+
+        config(['peppol.countries.AE.enabled' => true, 'peppol.asp.base_url' => null]);
+        $this->guard('assertProductionSettingsAreFilledIn');
+
+        config(['peppol.countries.AE.enabled' => false, 'peppol.asp.base_url' => 'https://asp.example.ae']);
+        $this->guard('assertProductionSettingsAreFilledIn');
 
         $this->addToAssertionCount(1);
     }
@@ -102,22 +122,6 @@ class GoLiveGuardTest extends TestCase
         $this->guard('assertProductionSettingsAreFilledIn');
 
         $this->addToAssertionCount(1);
-    }
-
-    public function test_uae_routes_are_gone_while_off(): void
-    {
-        config(['fta.enabled' => false]);
-
-        $organization = Organization::create(['name' => 'Acme', 'country' => 'SA']);
-        $user = User::factory()->create();
-        $user->organizations()->attach($organization->id, ['role' => 'admin', 'status' => 'active']);
-        $token = JWTAuth::claims(['org_id' => $organization->id, 'role' => 'admin'])->fromUser($user);
-
-        $this->withToken($token)->getJson('/api/compliance/ae/submissions')->assertNotFound();
-
-        config(['fta.enabled' => true]);
-
-        $this->withToken($token)->getJson('/api/compliance/ae/submissions')->assertOk();
     }
 
     private function guard(string $name): void

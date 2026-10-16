@@ -52,10 +52,12 @@ class ComposeEnvTest extends TestCase
             // APP_ENV=production, so an unforwarded environment is a container
             // that restart-loops whatever the host .env says.
             ['ZATCA_ENVIRONMENT', 'the container would boot against the sandbox default and refuse to start'],
-            ['UAE_FTA_ENVIRONMENT', 'the container would boot against the sandbox default and refuse to start'],
 
-            // Silent default: none, so every UAE submission is unauthenticated.
-            ['UAE_FTA_API_KEY', 'the UAE authority would receive no API key'],
+            // Silent default: off, so a UAE deployment would quietly not file.
+            ['PEPPOL_AE_ENABLED', 'UAE e-invoicing would stay off'],
+            ['PEPPOL_ASP_BASE_URL', 'no service provider would be connected'],
+            ['PEPPOL_ASP_CLIENT_SECRET', 'the service provider would receive no credential'],
+            ['PEPPOL_ASP_WEBHOOK_SECRET', 'no provider callback could be verified'],
 
             // Silent default: errors reach a log file and nothing else.
             ['LOG_STACK', 'an alerting channel would never be written to'],

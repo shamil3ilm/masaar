@@ -7,7 +7,7 @@ namespace Tests\Feature\Architecture;
 use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Compliance\Fatoora\Models\SubmissionIdempotency;
-use App\Domains\Compliance\FTA\Models\FtaSubmission;
+use App\Domains\Compliance\Peppol\Models\PeppolDocument;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Licensing\Models\LicenseRegistration;
 use App\Domains\Organization\Models\Branch;
@@ -38,7 +38,7 @@ class RelationKeyTest extends TestCase
         return [
             [Branch::class, 'org'],
             [ComplianceProfile::class, 'org'],
-            [FtaSubmission::class, 'org'],
+            [PeppolDocument::class, 'org'],
             [Invoice::class, 'org'],
             [InvoiceSubmission::class, 'org'],
             [LicenseRegistration::class, 'org'],

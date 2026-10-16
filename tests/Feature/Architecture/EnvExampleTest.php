@@ -34,7 +34,7 @@ class EnvExampleTest extends TestCase
     private const OWN_CONFIG = [
         'cors',
         'fatoora',
-        'fta',
+        'peppol',
         'jwt',
         'licensing',
         'metrics',

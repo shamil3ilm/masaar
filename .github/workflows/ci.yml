@@ -938,7 +938,6 @@ jobs:
             echo "DB_PASSWORD=$(openssl rand -hex 16)"
             echo "DB_ROOT_PASSWORD=$(openssl rand -hex 16)"
             echo "ZATCA_ENVIRONMENT=simulation"
-            echo "UAE_FTA_ENVIRONMENT=production"
             echo "AUTO_MIGRATE=true"
             # Licensing enforced, as by default, with no key issued: API
             # calls are refused, and the readiness probe must not be.

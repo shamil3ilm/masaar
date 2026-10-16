@@ -43,7 +43,6 @@ class InstallTest extends TestCase
         // config/session.php derives this from APP_ENV when it is unset.
         'SESSION_ENCRYPT' => 'true',
         'ZATCA_ENVIRONMENT' => 'sandbox',
-        'UAE_FTA_ENVIRONMENT' => 'sandbox',
     ];
 
     public function test_install_survives_no_environment(): void

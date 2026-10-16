@@ -36,7 +36,7 @@ class RawTenantQueryTest extends TestCase
         'offline_queue',
         'hash_chain_heads',
         'hash_chain_history',
-        'fta_submissions',
+        'peppol_documents',
         'webhooks',
         'branches',
         'compliance_profiles',

@@ -60,8 +60,8 @@ return [
              * read inside a transaction to the write connection, and
              * Query\Builder::lock() sets useWritePdo, so the locked
              * read-modify-write sequences this application depends on - the
-             * ICV allocation, License::changeWithAudit, SubmissionLedger::claim,
-             * FtaService::claimRetry - are safe on a replica without any help.
+             * ICV allocation, License::changeWithAudit, SubmissionLedger::claim
+             * - are safe on a replica without any help.
              *
              * What is not safe is read-after-write outside a transaction, and
              * this codebase does that deliberately and often: Submitter's

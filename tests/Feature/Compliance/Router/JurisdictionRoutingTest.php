@@ -3,11 +3,11 @@
 declare(strict_types=1);
 
 use App\Domains\Compliance\ComplianceRouter;
+use App\Domains\Compliance\Contracts\ComplianceEngine;
 use App\Domains\Compliance\Contracts\SubmissionResult;
 use App\Domains\Compliance\Contracts\ValidationResult;
 use App\Domains\Compliance\Exceptions\UnsupportedJurisdictionException;
 use App\Domains\Compliance\Fatoora\FatooraEngine;
-use App\Domains\Compliance\FTA\FtaEngine;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\ComplianceProfile;
 use App\Domains\Organization\Models\Organization;
@@ -52,11 +52,12 @@ it('routes SA profile to FatooraEngine', function () {
     expect($router->engineFor($profile))->toBeInstanceOf(FatooraEngine::class);
 });
 
-it('routes AE profile to FtaEngine', function () {
-    $profile = makeComplianceProfile('AE', 'fta');
+it('has no AE engine registered yet', function () {
+    $profile = makeComplianceProfile('AE', 'peppol');
     $router = app(ComplianceRouter::class);
 
-    expect($router->engineFor($profile))->toBeInstanceOf(FtaEngine::class);
+    expect(fn () => $router->engineFor($profile))
+        ->toThrow(UnsupportedJurisdictionException::class);
 });
 
 it('throws UnsupportedJurisdictionException for unregistered jurisdiction', function () {
@@ -85,10 +86,10 @@ it('routes submit call through to the correct engine', function () {
 });
 
 it('routes validate call through to the correct engine', function () {
-    $profile = makeComplianceProfile('AE', 'fta');
+    $profile = makeComplianceProfile('AE', 'peppol');
     $invoice = makeInvoice($profile->org_id);
 
-    $mockEngine = Mockery::mock(FtaEngine::class);
+    $mockEngine = Mockery::mock(ComplianceEngine::class);
     $mockEngine->allows('supports')->with('AE')->andReturns(true);
     $mockEngine->expects('validate')->once()->andReturns(
         ValidationResult::pass(['advisory: B2C invoices not submitted'])

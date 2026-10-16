@@ -20,8 +20,7 @@ use Tests\TestCase;
  *    Connection::getReadPdo returns getPdo() while $transactions > 0. Every
  *    locked read-modify-write in this application depends on it: the ICV
  *    allocation in Invoice::generateNextIcv, License::changeWithAudit,
- *    SubmissionLedger::claim, FtaService::claimRetry, SubmissionTracker's
- *    guard.
+ *    SubmissionLedger::claim, SubmissionTracker's guard.
  *
  * 2. lockForUpdate forces the write connection. Query\Builder::lock() sets
  *    useWritePdo, so a locking select is never answered by a replica - which

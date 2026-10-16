@@ -46,10 +46,8 @@ class DeploymentTemplateTest extends TestCase
         $this->assertSame('production', $values['APP_ENV'] ?? null);
         $this->assertSame('false', $values['APP_DEBUG'] ?? null, 'APP_DEBUG must be false in production');
 
-        foreach (['ZATCA_ENVIRONMENT', 'UAE_FTA_ENVIRONMENT'] as $authority) {
-            $this->assertArrayHasKey($authority, $values, "{$authority} unset defaults to sandbox, which production refuses");
-            $this->assertNotSame('sandbox', $values[$authority], "{$authority}=sandbox is refused under APP_ENV=production");
-        }
+        $this->assertArrayHasKey('ZATCA_ENVIRONMENT', $values, 'ZATCA_ENVIRONMENT unset defaults to sandbox, which production refuses');
+        $this->assertNotSame('sandbox', $values['ZATCA_ENVIRONMENT'], 'ZATCA_ENVIRONMENT=sandbox is refused under APP_ENV=production');
 
         $this->assertNotSame('false', $values['SESSION_ENCRYPT'] ?? null, 'production refuses unencrypted sessions');
     }

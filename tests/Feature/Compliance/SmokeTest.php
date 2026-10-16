@@ -7,15 +7,12 @@ namespace Tests\Feature\Compliance;
 use App\Domains\Compliance\Fatoora\Services\DocumentBuilder;
 use App\Domains\Compliance\Fatoora\Services\InvoiceValidator;
 use App\Domains\Compliance\Fatoora\Services\Submitter;
-use App\Domains\Compliance\FTA\Services\FtaService;
-use App\Domains\Compliance\FTA\Services\FtaValidator;
-use App\Domains\Compliance\FTA\Services\FtaXmlBuilder;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 /**
  * Smoke tests: verify all renamed classes are resolvable.
- * Catches namespace/autoload issues after the Fatoora/FTA rename.
+ * Catches namespace/autoload issues after the Fatoora rename.
  */
 class SmokeTest extends TestCase
 {
@@ -45,44 +42,6 @@ class SmokeTest extends TestCase
         );
     }
 
-    // ── FTA (UAE) ──────────────────────────────────────────────────
-
-    public function test_fta_service_resolves(): void
-    {
-        $this->assertInstanceOf(
-            FtaService::class,
-            $this->app->make(FtaService::class)
-        );
-    }
-
-    public function test_fta_validator_resolves(): void
-    {
-        $this->assertInstanceOf(
-            FtaValidator::class,
-            $this->app->make(FtaValidator::class)
-        );
-    }
-
-    // ── PINT AE spec ───────────────────────────────────────────────
-
-    public function test_pint_ae_customization_id(): void
-    {
-        $ref = new \ReflectionClass(FtaXmlBuilder::class);
-        $this->assertSame(
-            'urn:peppol:pint:billing-1@ae-1',
-            $ref->getConstant('CUSTOMIZATION')
-        );
-    }
-
-    public function test_pint_ae_profile_id(): void
-    {
-        $ref = new \ReflectionClass(FtaXmlBuilder::class);
-        $this->assertSame(
-            'urn:peppol:bis:billing',
-            $ref->getConstant('PROFILE_ID')
-        );
-    }
-
     // ── Routes ─────────────────────────────────────────────────────
 
     public function test_compliance_sa_routes_registered(): void
@@ -92,23 +51,11 @@ class SmokeTest extends TestCase
         $this->assertGreaterThanOrEqual(3, $saPaths->count(), 'Expected at least 3 /compliance/sa routes');
     }
 
-    public function test_compliance_ae_routes_registered(): void
-    {
-        $routes = collect(Route::getRoutes()->getRoutes());
-        $aePaths = $routes->filter(fn ($r) => str_contains($r->uri(), 'compliance/ae'));
-        $this->assertGreaterThanOrEqual(3, $aePaths->count(), 'Expected at least 3 /compliance/ae routes');
-    }
-
     // ── Config ─────────────────────────────────────────────────────
 
     public function test_fatoora_config_loads(): void
     {
         $this->assertNotNull(config('fatoora.environment'), 'config/fatoora.php must define environment key');
-    }
-
-    public function test_fta_config_loads(): void
-    {
-        $this->assertNotNull(config('fta.environment'), 'config/fta.php must define environment key');
     }
 
     public function test_zatca_config_key_is_gone(): void

@@ -9,7 +9,6 @@ use App\Domains\Compliance\Contracts\SubmissionResult;
 use App\Domains\Compliance\Contracts\ValidationResult;
 use App\Domains\Compliance\Exceptions\UnsupportedJurisdictionException;
 use App\Domains\Compliance\Fatoora\FatooraEngine;
-use App\Domains\Compliance\FTA\FtaEngine;
 use App\Domains\Organization\Models\ComplianceProfile;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -58,18 +57,6 @@ it('FatooraEngine supports SA jurisdiction only', function () {
         ->and($engine->supports('QA'))->toBeFalse();
 });
 
-it('FtaEngine implements ComplianceEngine', function () {
-    expect(is_a(FtaEngine::class, EngineContract::class, true))->toBeTrue();
-});
-
-it('FtaEngine supports AE jurisdiction only', function () {
-    $engine = app(FtaEngine::class);
-
-    expect($engine->supports('AE'))->toBeTrue()
-        ->and($engine->supports('SA'))->toBeFalse()
-        ->and($engine->supports('QA'))->toBeFalse();
-});
-
 it('ComplianceRouter resolves FatooraEngine for SA profile', function () {
     $org = Organization::create([
         'name' => 'SA Corp', 'country' => 'SA', 'status' => 'active',
@@ -89,7 +76,7 @@ it('ComplianceRouter resolves FatooraEngine for SA profile', function () {
     expect($engine)->toBeInstanceOf(FatooraEngine::class);
 });
 
-it('ComplianceRouter resolves FtaEngine for AE profile', function () {
+it('ComplianceRouter has no AE engine yet', function () {
     $org = Organization::create([
         'name' => 'AE Corp', 'country' => 'AE', 'status' => 'active',
     ]);
@@ -97,15 +84,14 @@ it('ComplianceRouter resolves FtaEngine for AE profile', function () {
     $profile = ComplianceProfile::create([
         'org_id' => $org->id,
         'jurisdiction' => 'AE',
-        'engine' => 'fta',
+        'engine' => 'peppol',
         'status' => 'active',
         'settings' => [],
     ]);
 
     $router = app(ComplianceRouter::class);
-    $engine = $router->engineFor($profile);
 
-    expect($engine)->toBeInstanceOf(FtaEngine::class);
+    expect(fn () => $router->engineFor($profile))->toThrow(UnsupportedJurisdictionException::class);
 });
 
 it('ComplianceRouter throws for unknown jurisdiction', function () {
