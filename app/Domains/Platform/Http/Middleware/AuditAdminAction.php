@@ -7,6 +7,7 @@ namespace App\Domains\Platform\Http\Middleware;
 use App\Domains\Audit\Services\AuditService;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
@@ -116,6 +117,9 @@ class AuditAdminAction
             : 'succeeded';
     }
 
+    /** Fields that hold someone's message rather than a setting. */
+    private const PROSE = ['body', 'notes'];
+
     /**
      * @param  array<mixed>  $input
      * @return array<mixed>
@@ -127,6 +131,22 @@ class AuditAdminAction
         foreach ($input as $key => $value) {
             if (is_string($key) && preg_match(self::SECRET, $key) === 1) {
                 $kept[$key] = '[redacted]';
+
+                continue;
+            }
+
+            // A message's text - a ticket reply, an internal note - is the
+            // customer's matter, not the audit's, and the audit is readable
+            // by every auditor. Its length says something was written.
+            if (in_array($key, self::PROSE, true) && is_string($value)) {
+                $kept[$key] = '['.mb_strlen($value).' characters]';
+
+                continue;
+            }
+
+            // An upload is recorded by name, not as the object.
+            if ($value instanceof UploadedFile) {
+                $kept[$key] = '[file '.$value->getClientOriginalName().']';
 
                 continue;
             }

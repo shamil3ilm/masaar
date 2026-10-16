@@ -51,6 +51,7 @@ class SupportDesk
         array $files = [],
     ): SupportTicket {
         $this->files->check($files);
+        $this->withinDailyUpload((string) $organization->id, $files);
 
         $ticket = $this->withNextNumber(fn (int $number): SupportTicket => DB::transaction(function () use ($number, $organization, $user, $category, $priority, $subject, $body, $files): SupportTicket {
             $ticket = SupportTicket::withoutTenantScope(fn () => SupportTicket::query()->create([
@@ -87,6 +88,10 @@ class SupportDesk
     public function reply(SupportTicket $ticket, User $user, string $body, array $files = [], bool $staff = false, bool $internal = false): SupportMessage
     {
         $this->files->check($files);
+
+        if (! $staff) {
+            $this->withinDailyUpload((string) $ticket->org_id, $files);
+        }
 
         // Only support writes notes the customer does not see.
         $internal = $staff && $internal;
@@ -259,6 +264,32 @@ class SupportDesk
     public function filePath(SupportAttachment $attachment): string
     {
         return $this->files->absolutePath((string) $attachment->path);
+    }
+
+    /**
+     * One organization's attachments in a day stay under the configured cap,
+     * so a single sign-up cannot fill the disk.
+     *
+     * @param  list<UploadedFile>  $files
+     *
+     * @throws DomainException
+     */
+    private function withinDailyUpload(string $organizationId, array $files): void
+    {
+        $adding = array_sum(array_map(fn (UploadedFile $file): int => (int) $file->getSize(), $files));
+
+        if ($adding === 0) {
+            return;
+        }
+
+        $today = (int) SupportAttachment::query()
+            ->where('created_at', '>=', now()->subDay())
+            ->whereHas('message.ticket', fn ($query) => $query->withoutGlobalScopes()->where('org_id', $organizationId))
+            ->sum('size');
+
+        if ($today + $adding > (int) config('support.daily_upload_mb', 50) * 1024 * 1024) {
+            throw new DomainException(__('Your company has attached as much as it can today. Send the message without files, or try again tomorrow.'));
+        }
     }
 
     /**

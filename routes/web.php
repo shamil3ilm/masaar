@@ -381,7 +381,7 @@ Route::prefix('portal')->name('portal.')
         Route::post('/support', [PortalSupportController::class, 'store'])->middleware('throttle:10,1')->name('support.store');
         Route::get('/support/{ticketId}', [PortalSupportController::class, 'show'])->name('support.show');
         Route::post('/support/{ticketId}/reply', [PortalSupportController::class, 'reply'])->middleware('throttle:20,1')->name('support.reply');
-        Route::post('/support/{ticketId}/resolve', [PortalSupportController::class, 'resolve'])->name('support.resolve');
+        Route::post('/support/{ticketId}/resolve', [PortalSupportController::class, 'markResolved'])->name('support.resolve');
         Route::get('/support/{ticketId}/attachments/{attachmentId}', [PortalSupportController::class, 'attachment'])->name('support.attachment');
 
         // Connecting to ZATCA: OTP, compliance checks, production

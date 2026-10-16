@@ -761,6 +761,8 @@
     "Your account is deleted.": "تم حذف حسابك.",
     "Your account is not an active member of any organization. Contact your administrator.": "حسابك ليس عضوًا نشطًا في أي شركة. تواصل مع المسؤول.",
     "Your company details are incomplete. ZATCA needs the VAT number and the full national address -": "بيانات شركتك غير مكتملة. تحتاج الهيئة إلى الرقم الضريبي والعنوان الوطني كاملاً -",
+    "Your company has attached as much as it can today. Send the message without files, or try again tomorrow.": "وصلت شركتك إلى الحد اليومي للمرفقات. أرسل الرسالة دون ملفات، أو حاول مرة أخرى غدًا.",
+    "Your company has sent as many invoice emails as it can today. Download the PDF and send it yourself, or try again tomorrow.": "وصلت شركتك إلى الحد اليومي لإرسال الفواتير بالبريد. نزّل ملف PDF وأرسله بنفسك، أو حاول مرة أخرى غدًا.",
     "Your company is being reviewed.": "شركتك قيد المراجعة.",
     "Your company, as registered with ZATCA": "شركتك كما هي مسجلة لدى هيئة الزكاة والضريبة والجمارك",
     "Your current password is not right.": "كلمة المرور الحالية غير صحيحة.",

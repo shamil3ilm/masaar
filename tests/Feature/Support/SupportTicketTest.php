@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Support;
 
+use App\Domains\Audit\Models\AuditLog;
 use App\Domains\Auth\Models\User;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Support\Enums\TicketStatus;
@@ -214,6 +215,48 @@ class SupportTicketTest extends TestCase
             ->assertOk()
             ->assertSee('Invoice rejected')
             ->assertSee('Acme Trading');
+    }
+
+    public function test_the_customer_marks_it_solved(): void
+    {
+        $this->open();
+        $ticket = $this->ticket();
+
+        $this->portal()->post(route('portal.support.resolve', $ticket->id))->assertRedirect();
+
+        $this->assertSame(TicketStatus::Resolved, $ticket->fresh()->status);
+    }
+
+    /**
+     * A day's attachments per company are capped, so one sign-up cannot
+     * fill the disk.
+     */
+    public function test_a_days_uploads_are_capped(): void
+    {
+        config(['support.daily_upload_mb' => 0]);
+
+        $this->open(['files' => [UploadedFile::fake()->createWithContent('error.txt', 'ZATCA said no')]])
+            ->assertSessionHas('error');
+
+        $this->assertSame(0, SupportTicket::withoutTenantScope(fn () => SupportTicket::query()->count()));
+    }
+
+    /**
+     * The audit records that a note was written, not what it said: auditors
+     * read the audit, and the note is the customer's matter.
+     */
+    public function test_the_audit_keeps_no_note_text(): void
+    {
+        $this->open();
+        $ticket = $this->ticket();
+
+        $this->actingAs($this->support)->post(route('admin.support.reply', $ticket->id), [
+            'body' => 'Their certificate expired last week.',
+            'internal' => '1',
+        ]);
+
+        $entry = AuditLog::query()->where('action', 'admin.support.reply')->latest()->firstOrFail();
+        $this->assertStringNotContainsString('certificate expired', json_encode($entry->metadata));
     }
 
     /**

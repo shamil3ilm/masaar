@@ -142,6 +142,24 @@ class InvoicePdfTest extends TestCase
             ->assertSee('value="ap@gulf.test"', false);
     }
 
+    /**
+     * The mail server is not for reaching anyone in bulk: one address gets
+     * at most ten invoices a day from one company.
+     */
+    public function test_sending_is_capped_per_day(): void
+    {
+        Mail::fake();
+        $invoice = $this->invoice('simplified');
+
+        for ($i = 0; $i < 10; $i++) {
+            $this->portal()->post(route('portal.invoices.send', $invoice->id), ['email' => 'ap@gulf.test'])->assertSessionHas('success');
+        }
+
+        $this->portal()->post(route('portal.invoices.send', $invoice->id), ['email' => 'ap@gulf.test'])->assertSessionHas('error');
+
+        Mail::assertSentCount(10);
+    }
+
     public function test_a_viewer_cannot_send_it(): void
     {
         Mail::fake();
