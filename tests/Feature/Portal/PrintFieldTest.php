@@ -8,6 +8,7 @@ use App\Domains\Auth\Models\User;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
@@ -153,7 +154,11 @@ class PrintFieldTest extends TestCase
             'exempt_reason' => 'Private healthcare to a Saudi citizen',
         ]);
 
-        $this->print($invoice)->assertSee('Private healthcare to a Saudi citizen');
+        $this->print($invoice)
+            ->assertSee('Private healthcare to a Saudi citizen')
+            // And the authority's own Arabic for the code, from §11.2.4 of
+            // the XML Implementation Standard.
+            ->assertSee('الخدمات الصحية الخاصة للمواطنين', false);
     }
 
     /**
@@ -165,7 +170,79 @@ class PrintFieldTest extends TestCase
             'document_type' => 'credit_note',
             'billing_ref' => 'ACME-100',
             'adjustment_reason' => 'Goods returned',
-        ]))->assertSee('ACME-100')->assertSee('Goods returned');
+        ]))->assertSee('ACME-100')->assertSee('Goods returned')
+            // Titled as what it is: it printed "Tax invoice".
+            ->assertSee('Credit note')
+            ->assertSee('إشعار دائن', false)
+            ->assertDontSee('Tax invoice');
+    }
+
+    public function test_a_debit_note_says_so(): void
+    {
+        $this->print($this->invoice('standard', ['document_type' => 'debit_note', 'billing_ref' => 'ACME-100']))
+            ->assertSee('Debit note')
+            ->assertSee('إشعار مدين', false);
+    }
+
+    /**
+     * [GL] §4.2.3: the date and the time of issue, on the Kingdom's clock as
+     * the XML's IssueTime is.
+     */
+    public function test_the_issue_time_is_printed(): void
+    {
+        $this->travelTo(Carbon::parse('2026-03-01 10:15:30', 'UTC'));
+
+        $this->print($this->invoice('simplified'))->assertSee('2026-03-01 13:15:30');
+    }
+
+    /**
+     * BT-111. A foreign-currency invoice states its VAT in riyals too, at the
+     * rate the XML converts with: 15.00 USD at 3.75 is 56.25 SAR.
+     */
+    public function test_foreign_currency_vat_in_riyals(): void
+    {
+        $this->print($this->invoice('standard', ['currency' => 'USD', 'exchange_rate' => '3.750000']))
+            ->assertSee('VAT (SAR)')
+            ->assertSee('56.25 SAR')
+            ->assertSee('1 USD = 3.75 SAR');
+
+        $this->print($this->invoice('standard', ['icv' => 2]))->assertDontSee('VAT (SAR)');
+    }
+
+    /**
+     * BT-46, the buyer's other identifier, under its register's name.
+     */
+    public function test_the_buyer_identifier_is_named(): void
+    {
+        $this->print($this->invoice('standard', ['buyer_vat_number' => null, 'buyer_id' => '1010010000', 'buyer_id_scheme' => 'CRN']))
+            ->assertSee('Commercial registration')
+            ->assertSee('السجل التجاري', false)
+            ->assertSee('1010010000');
+    }
+
+    /**
+     * The seller's CR number, which the PDF printed and this page did not,
+     * and the VAT numbers captioned in Arabic.
+     */
+    public function test_the_seller_cr_is_printed(): void
+    {
+        $this->acme->forceFill(['cr_number' => '1010101010'])->save();
+
+        $this->print($this->invoice('standard'))
+            ->assertSee('1010101010')
+            ->assertSee('الرقم الضريبي', false);
+    }
+
+    /**
+     * BT-146 is the item net price. A standard invoice priced with VAT in
+     * prints the net 50.00, not the 57.50 the customer was quoted.
+     */
+    public function test_a_standard_prints_net_price(): void
+    {
+        $this->print($this->invoice('standard', ['prices_include_vat' => true], ['quantity' => '2.000', 'unit_price' => '50.00']))
+            ->assertSee('50.00 SAR')
+            ->assertDontSee('57.50')
+            ->assertDontSee('Unit price (incl. VAT)');
     }
 
     /**
@@ -196,6 +273,7 @@ class PrintFieldTest extends TestCase
     {
         $this->print($this->invoice('simplified', ['prices_include_vat' => true, 'subtotal' => '100.00', 'total' => '115.00']))
             ->assertSee('Unit price (incl. VAT)')
+            ->assertSee('سعر الوحدة شامل ضريبة القيمة المضافة', false)
             ->assertSee('115.00');
 
         $this->print($this->invoice('simplified', ['icv' => 2]))

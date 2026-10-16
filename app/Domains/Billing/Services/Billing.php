@@ -229,20 +229,24 @@ class Billing
 
         $buyer = $payment->organization ?? throw new DomainException('The organization that paid no longer exists.');
         $tier = LicenseTier::from((string) $payment->tier);
+        $identity = $this->buyerIdentity($buyer);
+        $this->assertNationalAddress($buyer);
 
-        return $this->tenant->runAs((string) $seller->id, function () use ($payment, $seller, $buyer, $tier): string {
+        return $this->tenant->runAs((string) $seller->id, function () use ($payment, $seller, $buyer, $tier, $identity): string {
             $invoice = $this->drafter->draft([
-                // Standard when the buyer is VAT registered, which a
-                // company invoicing through the platform is.
-                'type' => $buyer->vat_number ? 'standard' : 'simplified',
+                // Always standard: the buyer is a company, and a simplified
+                // invoice is for a natural person or a sale under SAR 1,000.
+                'type' => 'standard',
                 'document_type' => 'invoice',
                 'issue_date' => now()->toDateString(),
+                // KSA-5 and KSA-24: the subscription period the payment buys.
                 'supply_date' => $payment->period_start->toDateString(),
+                'supply_end_date' => $payment->period_end->toDateString(),
                 'currency' => $payment->currency,
                 'prices_include_vat' => false,
                 'buyer_name' => $buyer->name,
                 'buyer_name_ar' => $buyer->name_ar,
-                'buyer_vat_number' => $buyer->vat_number,
+                ...$identity,
                 'buyer_address' => [
                     'street' => $buyer->street,
                     'building_number' => $buyer->building_number,
@@ -271,6 +275,54 @@ class Billing
 
             return (string) $invoice->id;
         });
+    }
+
+    /**
+     * How the invoice identifies the buyer: its VAT number, or failing that
+     * its commercial registration (BT-46, scheme CRN), which BR-KSA-81 needs
+     * on a standard invoice to a buyer without one.
+     *
+     * @return array{buyer_vat_number: string|null, buyer_id: string|null, buyer_id_scheme: string|null}
+     *
+     * @throws DomainException when it has neither
+     */
+    private function buyerIdentity(Organization $buyer): array
+    {
+        if (filled($buyer->vat_number)) {
+            return ['buyer_vat_number' => (string) $buyer->vat_number, 'buyer_id' => null, 'buyer_id_scheme' => null];
+        }
+
+        if (filled($buyer->cr_number)) {
+            return ['buyer_vat_number' => null, 'buyer_id' => (string) $buyer->cr_number, 'buyer_id_scheme' => 'CRN'];
+        }
+
+        throw new DomainException($buyer->name.' has neither a VAT number nor a CR number, so no invoice was issued. Try again once the company has added one.');
+    }
+
+    /**
+     * BR-KSA-63: a standard invoice to a buyer in the Kingdom carries its
+     * full national address. Billing drafts directly, past the request
+     * validation that checks this for invoices entered by hand.
+     *
+     * @throws DomainException naming what is missing
+     */
+    private function assertNationalAddress(Organization $buyer): void
+    {
+        if (($buyer->country ?: 'SA') !== 'SA') {
+            return;
+        }
+
+        $missing = array_keys(array_filter([
+            'street' => $buyer->street,
+            'building number' => $buyer->building_number,
+            'postal code' => $buyer->postal_code,
+            'city' => $buyer->city,
+            'district' => $buyer->district,
+        ], fn ($value): bool => blank($value)));
+
+        if ($missing !== []) {
+            throw new DomainException("{$buyer->name}'s national address has no ".implode(', ', $missing).', so no invoice was issued. Try again once the company has completed it.');
+        }
     }
 
     private function money(float $value): string

@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Services;
 
+use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\DTOs\FatooraResponse;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
+use App\Support\Xml;
+use App\Support\XmlException;
+use DOMDocument;
+use DOMXPath;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -78,9 +83,42 @@ class InvoiceVerdict
         // Only clearance returns a document, so a simplified invoice has none.
         if ($cleared = $this->clearedXml($response)) {
             $changes['cleared_xml'] = $cleared;
+
+            // KSA-14 on a standard invoice is "applied by ZATCA": the QR the
+            // buyer scans is the one in the stamped copy, not the one built
+            // before submission. Without one, the issued QR stands.
+            if ($qr = $this->clearedQr($cleared)) {
+                $changes['qr_code'] = $qr;
+            }
         }
 
         return $changes;
+    }
+
+    /**
+     * The QR the authority put in the cleared document, if it put one there.
+     *
+     * Null for anything that does not parse, so a document kept verbatim
+     * because it did not decode leaves the QR alone rather than failing the
+     * verdict.
+     */
+    private function clearedQr(string $xml): ?string
+    {
+        try {
+            $dom = Xml::load(new DOMDocument, $xml);
+        } catch (XmlException) {
+            return null;
+        }
+
+        $xpath = new DOMXPath($dom);
+        $xpath->registerNamespace('cac', FatooraConfig::CAC_NS);
+        $xpath->registerNamespace('cbc', FatooraConfig::CBC_NS);
+
+        $qr = trim((string) $xpath->evaluate(
+            'string(/*/cac:AdditionalDocumentReference[normalize-space(cbc:ID) = "QR"]/cac:Attachment/cbc:EmbeddedDocumentBinaryObject)'
+        ));
+
+        return $qr === '' ? null : $qr;
     }
 
     /**

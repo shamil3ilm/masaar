@@ -149,6 +149,80 @@ class VatPeriodTest extends TestCase
     }
 
     /**
+     * ZATCA never accepted it, so there is nothing on record to adjust.
+     */
+    public function test_a_rejected_original_is_refused(): void
+    {
+        $this->invoice('INV-4', 'invoice', status: 'rejected');
+        $note = $this->invoice('CN-4', 'credit_note', billingRef: 'INV-4');
+
+        $this->assertFalse($this->validate($note)['valid']);
+    }
+
+    /**
+     * A note corrects an invoice, not another note.
+     */
+    public function test_a_note_cannot_reference_a_note(): void
+    {
+        $this->invoice('INV-5', 'invoice', status: 'issued');
+        $this->invoice('CN-5', 'credit_note', billingRef: 'INV-5', status: 'issued');
+        $note = $this->invoice('DN-5', 'debit_note', billingRef: 'CN-5');
+
+        $this->assertFalse($this->validate($note)['valid']);
+    }
+
+    /**
+     * "The type of credit/debit note follows the type of invoice that they
+     * are issued against" (Detailed Guidelines 4.3).
+     */
+    public function test_note_type_must_match_original(): void
+    {
+        $this->invoice('INV-6', 'invoice', status: 'issued');
+        $simplified = $this->invoice('CN-6', 'credit_note', billingRef: 'INV-6', type: 'simplified');
+        $standard = $this->invoice('CN-7', 'credit_note', billingRef: 'INV-6');
+
+        $this->assertFalse($this->validate($simplified)['valid']);
+        $this->assertTrue($this->validate($standard)['valid']);
+    }
+
+    /**
+     * Credit notes together may not credit more than the invoice charged.
+     */
+    public function test_credit_beyond_the_original_is_refused(): void
+    {
+        $this->invoice('INV-8', 'invoice', status: 'issued');
+        $this->invoice('CN-8', 'credit_note', billingRef: 'INV-8', status: 'accepted', total: '100.00');
+        $note = $this->invoice('CN-9', 'credit_note', billingRef: 'INV-8', total: '20.00');
+
+        $this->assertFalse($this->validate($note)['valid']);
+    }
+
+    /**
+     * Up to the total is fine; a rejected or draft note credited nothing.
+     */
+    public function test_credit_up_to_the_original_passes(): void
+    {
+        $this->invoice('INV-8', 'invoice', status: 'issued');
+        $this->invoice('CN-8', 'credit_note', billingRef: 'INV-8', status: 'accepted', total: '100.00');
+        $this->invoice('CN-10', 'credit_note', billingRef: 'INV-8', status: 'rejected', total: '100.00');
+        $this->invoice('CN-11', 'credit_note', billingRef: 'INV-8', total: '100.00');
+        $note = $this->invoice('CN-9', 'credit_note', billingRef: 'INV-8', total: '15.00');
+
+        $this->assertTrue($this->validate($note)['valid']);
+    }
+
+    /**
+     * A debit note adds a charge, so the original's total does not cap it.
+     */
+    public function test_a_debit_note_is_not_capped(): void
+    {
+        $this->invoice('INV-8', 'invoice', status: 'issued');
+        $note = $this->invoice('DN-8', 'debit_note', billingRef: 'INV-8', total: '500.00');
+
+        $this->assertTrue($this->validate($note)['valid']);
+    }
+
+    /**
      * @return array{valid: bool, warning: ?string, suggested_period: ?string}
      */
     private function validate(Invoice $note): array
@@ -163,11 +237,13 @@ class VatPeriodTest extends TestCase
         ?string $billingRef = null,
         string $status = 'draft',
         ?Organization $organization = null,
+        string $type = 'standard',
+        string $total = '115.00',
     ): Invoice {
         return Invoice::withoutTenantScope(fn () => Invoice::create([
             'org_id' => ($organization ?? $this->organization)->id,
             'invoice_number' => $number,
-            'type' => 'standard',
+            'type' => $type,
             'document_type' => $documentType,
             'status' => $status,
             'issue_date' => $issueDate ?? now()->toDateString(),
@@ -176,7 +252,7 @@ class VatPeriodTest extends TestCase
             'buyer_name' => 'Buyer',
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
-            'total' => '115.00',
+            'total' => $total,
         ]));
     }
 }

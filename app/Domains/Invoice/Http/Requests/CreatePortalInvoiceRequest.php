@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Http\Requests;
 
+use App\Domains\Invoice\Support\AdjustmentReason;
+use Illuminate\Validation\Rule;
+
 /**
  * The same invoice rules, reached from a form instead of JSON.
  *
- * Only prepareForValidation() is overridden. rules(), messages() and
- * withValidator() are deliberately inherited, so a ZATCA rule added once
- * reaches the API, the ERP pipeline and this form together - which is the
- * whole reason PipelineSubmitRequest extends the same class rather than
- * restating it.
+ * rules(), messages() and withValidator() are inherited, so a ZATCA rule
+ * added once reaches the API, the ERP pipeline and this form together - which
+ * is the whole reason PipelineSubmitRequest extends the same class rather
+ * than restating it. The one rule added here narrows, never replaces: the
+ * form offers ZATCA's listed reasons for a note, so it accepts only those.
  *
  * What a form sends that JSON does not:
  *
@@ -43,6 +46,28 @@ class CreatePortalInvoiceRequest extends CreateInvoiceRequest
      * @var list<string>
      */
     private const LINE_FIELDS = ['description', 'quantity', 'unit_price'];
+
+    /**
+     * The parent's rules, with the reason held to the list the form offers.
+     *
+     * The API keeps free text (see AdjustmentReason). The form is a select,
+     * so anything else arriving from it was not chosen from the list.
+     */
+    public function rules(): array
+    {
+        $rules = parent::rules();
+        $rules['adjustment_reason'][] = Rule::in(AdjustmentReason::values());
+
+        return $rules;
+    }
+
+    public function messages(): array
+    {
+        return [
+            ...parent::messages(),
+            'adjustment_reason.in' => __('Choose one of the reasons ZATCA lists for a credit or debit note.'),
+        ];
+    }
 
     protected function prepareForValidation(): void
     {

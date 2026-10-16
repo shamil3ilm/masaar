@@ -45,6 +45,9 @@ class Invoice extends Model
         'status',
         'issue_date',
         'supply_date',
+        // KSA-24: the last day of a supply over a period, such as a
+        // subscription. Needs supply_date beside it (BR-KSA-35).
+        'supply_end_date',
         'currency',
         'exchange_rate',
         'buyer_name',
@@ -89,6 +92,7 @@ class Invoice extends Model
             'status' => InvoiceStatus::class,
             'issue_date' => 'date',
             'supply_date' => 'date',
+            'supply_end_date' => 'date',
             'subtotal' => 'decimal:2',
             'discount_amount' => 'decimal:2',
             'tax_amount' => 'decimal:2',

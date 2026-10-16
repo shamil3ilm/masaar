@@ -80,6 +80,8 @@ final readonly class InvoiceXmlData
         public array $lines,
         // Optional fields with defaults
         public ?string $supplyDate = null,
+        // KSA-24, the end of a supply over a period. Only beside supplyDate.
+        public ?string $supplyEndDate = null,
         public ?string $sellerCrNumber = null,
         public ?string $buyerVatNumber = null,
         public ?AddressData $buyerAddress = null,

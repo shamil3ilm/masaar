@@ -232,6 +232,7 @@ class DocumentBuilder
             total: (float) $invoice->total,
             lines: $lines,
             supplyDate: $invoice->supply_date?->format('Y-m-d'),
+            supplyEndDate: $invoice->supply_end_date?->format('Y-m-d'),
             sellerCrNumber: $organization->cr_number,
             buyerVatNumber: $invoice->buyer_vat_number,
             // BT-46 and BT-46-1. XmlBuilder has always emitted these, and

@@ -94,9 +94,18 @@
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Required for a credit or debit note.') }}</p>
             </div>
 
-            <div>
+            {{-- The reasons ZATCA's data dictionary lists for KSA-10, read
+                 from App\Domains\Invoice\Support\AdjustmentReason. Each is
+                 stored and printed in both languages, exactly as written
+                 there, so the option shows what the note will say. --}}
+            <div class="sm:col-span-2">
                 <label for="adjustment_reason" class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('Reason') }}</label>
-                <x-ui.input type="text" name="adjustment_reason" id="adjustment_reason" value="{{ old('adjustment_reason') }}" />
+                <x-ui.select name="adjustment_reason" id="adjustment_reason">
+                    <option value="">{{ __('Choose for a credit or debit note...') }}</option>
+                    @foreach (\App\Domains\Invoice\Support\AdjustmentReason::values() as $reason)
+                        <option value="{{ $reason }}" @selected(old('adjustment_reason') === $reason)>{{ $reason }}</option>
+                    @endforeach
+                </x-ui.select>
             </div>
         </div>
     </div>

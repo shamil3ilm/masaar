@@ -7,9 +7,11 @@ namespace App\Domains\Invoice\Http\Controllers;
 use App\Domains\Compliance\Fatoora\Services\InvoiceIssuer;
 use App\Domains\Compliance\Fatoora\Services\QrCodeRenderer;
 use App\Domains\Invoice\Services\InvoiceFinder;
+use App\Domains\Invoice\Services\InvoicePdf;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
+use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -34,6 +36,7 @@ class PortalInvoiceFilingController extends Controller
         private readonly InvoiceFinder $invoices,
         private readonly InvoiceIssuer $issuer,
         private readonly QrCodeRenderer $qr,
+        private readonly InvoicePdf $pdf,
     ) {}
 
     public function issue(Request $request, string $invoiceId): RedirectResponse
@@ -88,6 +91,14 @@ class PortalInvoiceFilingController extends Controller
         }
 
         $invoice = $this->invoices->findWithLines($orgId, $invoiceId);
+
+        // The same gate as the PDF: a printed copy is a copy handed to the
+        // buyer, so a draft or an uncleared standard invoice has none.
+        try {
+            $this->pdf->assertShareable($invoice);
+        } catch (DomainException $e) {
+            return redirect()->route('portal.invoices.show', $invoiceId)->with('error', $e->getMessage());
+        }
 
         return view('portal.invoices.print', [
             'invoice' => $invoice,

@@ -94,7 +94,14 @@ class ThemeTest extends TestCase
      */
     public function test_the_invoice_carries_its_issuers_logo(): void
     {
-        $invoice = $this->makeInvoice($this->acme, 'ACME-1', ['type' => 'simplified', 'status' => 'issued']);
+        // Issued for real - a hash and a QR - or the print page refuses it.
+        $invoice = $this->makeInvoice($this->acme, 'ACME-1', [
+            'type' => 'simplified',
+            'status' => 'issued',
+            'icv' => 1,
+            'hash' => base64_encode(hash('sha256', 'acme', true)),
+            'qr_code' => base64_encode('AQVTZWxsZXI='),
+        ]);
 
         app(ThemeService::class)->save(null, ThemeDefinition::empty(), ['logo' => $this->png()]);
         $this->asMember('admin')->get("/portal/invoices/{$invoice->id}/print")

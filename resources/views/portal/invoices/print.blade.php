@@ -9,9 +9,33 @@
     // A credit or debit note has to say what it adjusts and why.
     $adjusts = in_array($documentType, ['credit_note', 'debit_note'], true);
 
-    // A standard invoice is not shareable until ZATCA has stamped it and
-    // notified the issuer. cleared_xml is that stamped copy coming back.
-    $shareable = $simplified || $invoice->cleared_xml !== null;
+    // A note is titled as one, in both languages, as on the PDF.
+    $titles = [
+        'invoice' => $simplified ? ['Simplified tax invoice', 'فاتورة ضريبية مبسطة'] : ['Tax invoice', 'فاتورة ضريبية'],
+        'credit_note' => ['Credit note', 'إشعار دائن'],
+        'debit_note' => ['Debit note', 'إشعار مدين'],
+    ];
+    [$titleEn, $titleAr] = $titles[$documentType] ?? $titles['invoice'];
+
+    // [GL] §4.2.3: the date and the time of issue. The time is the one the
+    // XML's IssueTime and the QR carry, on the Kingdom's clock.
+    $issueTime = $invoice->created_at
+        ? \App\Domains\Compliance\Fatoora\Helpers\FatooraTime::toSaudiTime($invoice->created_at)->format('H:i:s')
+        : null;
+
+    // Saudi VAT is owed in riyals. Converted as InvoiceXmlData::convertToSar
+    // converts BT-111, so the page and the XML state the same figure.
+    $inSar = $invoice->currency !== 'SAR' && $invoice->exchange_rate !== null;
+    $vatSar = $inSar ? round((float) $invoice->tax_amount * (float) $invoice->exchange_rate, 2) : null;
+
+    // BT-46, the buyer's other identifier, under its register's name.
+    $buyerScheme = \App\Domains\Compliance\Fatoora\Config\FatooraConfig::BUYER_ID_SCHEME_LABELS[$invoice->buyer_id_scheme ?? '']
+        ?? [(string) $invoice->buyer_id_scheme, 'رقم تعريف المشتري'];
+
+    // BT-146 is the item net price, and a standard invoice prints it. Only a
+    // simplified one keeps the shelf price, which is the price its customer
+    // saw.
+    $inclusivePrice = $simplified && $invoice->prices_include_vat;
 
     $buyerAddress = (array) ($invoice->buyer_address ?? []);
 @endphp
@@ -35,8 +59,8 @@
             <img src="{{ $theme->organizationLogoUrl }}" alt="{{ $organization->documentName() }}" height="56" class="mb-4 h-14 w-auto">
         @endif
         <p class="text-sm font-semibold tracking-wide uppercase">
-            {{ $simplified ? 'Simplified tax invoice' : 'Tax invoice' }}
-            <span dir="rtl" lang="ar">{{ $simplified ? 'فاتورة ضريبية مبسطة' : 'فاتورة ضريبية' }}</span>
+            {{ $titleEn }}
+            <span dir="rtl" lang="ar">{{ $titleAr }}</span>
         </p>
         <h1 class="mt-1 text-xl font-bold">{{ $invoice->invoice_number ?? 'Draft' }}</h1>
 
@@ -45,11 +69,11 @@
              the start of the next line instead of beside the label. --}}
         <dl class="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
             <div>
-                <dt class="font-medium"><x-caption en="Issued" ar="تاريخ الإصدار" /></dt>
+                <dt class="font-medium"><x-caption en="Issued" ar="تاريخ ووقت الإصدار" /></dt>
                 {{-- issue_date and supply_date are cast to dates, so printing
-                     one directly gives "2026-09-05 00:00:00" - a time of day
-                     on a document whose BT-2 is a date. --}}
-                <dd class="text-gray-600">{{ $invoice->issue_date?->toDateString() }}</dd>
+                     one directly gives "2026-09-05 00:00:00" - midnight, not
+                     the time of issue, which comes from created_at. --}}
+                <dd class="text-gray-600 tabular-nums">{{ $invoice->issue_date?->toDateString() }} {{ $issueTime }}</dd>
             </div>
 
             {{-- KSA-5. Required on the printed copy of both document types,
@@ -83,7 +107,10 @@
             <p class="font-semibold"><x-caption en="Supplier" ar="المورد" /></p>
             <p>{{ $organization->documentName() }}</p>
             @if ($organization->vat_number)
-                <p class="text-gray-600">VAT {{ $organization->vat_number }}</p>
+                <p class="text-gray-600">VAT <span dir="rtl" lang="ar">الرقم الضريبي</span> {{ $organization->vat_number }}</p>
+            @endif
+            @if ($organization->cr_number)
+                <p class="text-gray-600">CR <span dir="rtl" lang="ar">السجل التجاري</span> {{ $organization->cr_number }}</p>
             @endif
             @include('portal.partials.address', ['address' => [
                 'street' => $organization->street,
@@ -99,7 +126,10 @@
             <p class="font-semibold"><x-caption en="Buyer" ar="العميل" /></p>
             <p>{{ $invoice->documentBuyerName() }}</p>
             @if ($invoice->buyer_vat_number)
-                <p class="text-gray-600">VAT {{ $invoice->buyer_vat_number }}</p>
+                <p class="text-gray-600">VAT <span dir="rtl" lang="ar">الرقم الضريبي</span> {{ $invoice->buyer_vat_number }}</p>
+            @endif
+            @if ($invoice->buyer_id)
+                <p class="text-gray-600">{{ $buyerScheme[0] }} <span dir="rtl" lang="ar">{{ $buyerScheme[1] }}</span> {{ $invoice->buyer_id }}</p>
             @endif
 
             {{-- The buyer's address is required on a standard invoice and not
@@ -127,10 +157,10 @@
                 {{-- This column held the unit price under the heading "Unit",
                      so a money value sat under a word that means something
                      else. BT-146 is the item net price; say so.
-                     Priced with VAT in, the column is the price the customer
-                     saw, and says so - ZATCA's model receipt heads it "Unit
-                     price (including VAT)". --}}
-                @if ($invoice->prices_include_vat)
+                     On a receipt priced with VAT in, the column is the price
+                     the customer saw, and says so - ZATCA's model receipt
+                     heads it "Unit price (including VAT)". --}}
+                @if ($inclusivePrice)
                     <th scope="col" class="py-2 text-right"><x-caption en="Unit price (incl. VAT)" ar="سعر الوحدة شامل ضريبة القيمة المضافة" /></th>
                 @else
                     <th scope="col" class="py-2 text-right"><x-caption en="Unit price" ar="سعر الوحدة" /></th>
@@ -155,6 +185,11 @@
                              an arithmetic mistake. --}}
                         @if (! $simplified && $line->exempt_reason)
                             <span class="block text-xs text-gray-500">{{ $line->exempt_reason }}</span>
+                            {{-- With the authority's own Arabic for the code:
+                                 the reason typed may be English only. --}}
+                            @if ($exemptAr = \App\Domains\Compliance\Fatoora\Config\FatooraConfig::EXEMPTION_REASONS_AR[$line->exempt_code ?? ''] ?? null)
+                                <span class="block text-xs text-gray-500" dir="rtl" lang="ar">{{ $exemptAr }}</span>
+                            @endif
                         @endif
                     </td>
                     <td class="py-2 text-right tabular-nums">
@@ -167,7 +202,7 @@
                         <span class="text-gray-500">{{ \App\Domains\Invoice\Support\UnitCode::label(\App\Domains\Invoice\Support\UnitCode::normalise($line->unit_code)) }}</span>
                     </td>
                     <td class="py-2 text-right tabular-nums">
-                        @include('portal.partials.money', ['amount' => $line->priceAsEntered((bool) $invoice->prices_include_vat), 'currency' => $invoice->currency])
+                        @include('portal.partials.money', ['amount' => $line->priceAsEntered($inclusivePrice), 'currency' => $invoice->currency])
                     </td>
                     @if (! $simplified)
                         <td class="py-2 text-right tabular-nums">
@@ -223,22 +258,34 @@
             <dt><x-caption en="VAT" ar="مجموع ضريبة القيمة المضافة" /></dt>
             <dd class="shrink-0 pl-4 tabular-nums whitespace-nowrap">@include('portal.partials.money', ['amount' => $invoice->tax_amount, 'currency' => $invoice->currency])</dd>
         </div>
+        {{-- BT-111. VAT is owed in riyals whatever the invoice is written
+             in, so a foreign-currency invoice states it in SAR as well, with
+             the rate it was converted at. --}}
+        @if ($inSar)
+            <div class="flex justify-between">
+                <dt><x-caption en="VAT (SAR)" ar="ضريبة القيمة المضافة بالريال" /></dt>
+                <dd class="shrink-0 pl-4 tabular-nums whitespace-nowrap">@include('portal.partials.money', ['amount' => $vatSar, 'currency' => 'SAR'])</dd>
+            </div>
+        @endif
         <div class="flex justify-between border-t border-gray-300 pt-1 font-semibold">
             <dt><x-caption en="Total" ar="إجمالي المبلغ المستحق" /></dt>
             <dd class="shrink-0 pl-4 tabular-nums whitespace-nowrap">@include('portal.partials.money', ['amount' => $invoice->total, 'currency' => $invoice->currency])</dd>
         </div>
+        @if ($inSar)
+            <div class="flex justify-between text-xs text-gray-500">
+                <dt><x-caption en="Exchange rate" ar="سعر الصرف" /></dt>
+                <dd class="shrink-0 pl-4 tabular-nums whitespace-nowrap">1 {{ $invoice->currency }} = {{ rtrim(rtrim((string) $invoice->exchange_rate, '0'), '.') }} SAR</dd>
+            </div>
+        @endif
     </dl>
 
     <div class="border-t border-gray-300 pt-4 text-center">
-        @if ($shareable && $qr !== '')
+        {{-- No notice for an uncleared standard invoice: the controller sends
+             a draft or one back to the invoice, as the PDF does. --}}
+        @if ($qr !== '')
             {{-- Unescaped: this is markup QrCodeRenderer produced from the
                  stored TLV payload, not anything a user typed. --}}
             <div class="inline-block">{!! $qr !!}</div>
-        @elseif (! $shareable)
-            <p class="mx-auto max-w-sm rounded border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-900">
-                This invoice is <strong>not yet cleared</strong> by ZATCA. A standard tax invoice may
-                not be given to the buyer until the authority has stamped it.
-            </p>
         @endif
 
         @if ($invoice->icv)

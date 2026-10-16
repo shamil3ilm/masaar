@@ -62,6 +62,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **ZATCA compliance review** of the documents people see, against the
+  Guideline for Tax Invoicing and Records, the XML Implementation Standard
+  and the Data Dictionary:
+  - Credit and debit notes follow their invoice's type, are refused against
+    a rejected invoice or another note, may not credit more than the
+    invoice, carry its discount and each line's tax category and
+    exemption, and take one of ZATCA's five official reasons, in English
+    and Arabic.
+  - The printed copy and the PDF title notes as notes, print the issue
+    time, the VAT in SAR on a foreign-currency invoice, the buyer's other
+    identifier, the seller's CR number, Arabic for every label and each
+    exemption reason, and the net unit price on a standard invoice. Only an
+    invoice that may be shared prints, and a cleared invoice prints the QR
+    code ZATCA returned.
+  - The VAT summary puts exports under VATEX-SA-32 and -33 (it had used the
+    international transport codes), shows credit notes for earlier periods
+    as adjustments, places an invoice in the period of its tax point, and
+    lists foreign-currency documents with no exchange rate instead of
+    counting them as riyals. The invoices CSV adds SAR columns and signs
+    credit notes.
+  - The platform's own invoices are always standard, identify a customer
+    without a VAT number by its CR number, check its national address
+    first, and carry the subscription's end date (KSA-24, migration 0450).
 - **Credit and debit notes from the invoice**: an issued invoice offers
   Credit note and Debit note, which open the new-invoice form filled in
   from it - the buyer, the reference, and for a credit note its lines - so

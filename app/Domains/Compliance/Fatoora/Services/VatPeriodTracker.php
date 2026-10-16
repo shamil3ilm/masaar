@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Fatoora\Services;
 
 use App\Domains\Compliance\Fatoora\Helpers\FatooraTime;
+use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use Illuminate\Support\Carbon;
@@ -29,6 +30,10 @@ class VatPeriodTracker
     public const PERIOD_MONTHLY = 'monthly';
 
     public const PERIOD_QUARTERLY = 'quarterly';
+
+    public function __construct(
+        private readonly InvoiceValidator $validator,
+    ) {}
 
     /**
      * Get VAT period for a given date.
@@ -175,6 +180,11 @@ class VatPeriodTracker
             ];
         }
 
+        $refusal = $this->refusalAgainst($note, $originalInvoice);
+        if ($refusal !== null) {
+            return ['valid' => false, 'warning' => $refusal, 'suggested_period' => null];
+        }
+
         $reporting = $this->determineReportingPeriod($note, $originalInvoice);
 
         if ($reporting['is_cross_period']) {
@@ -187,6 +197,60 @@ class VatPeriodTracker
         }
 
         return ['valid' => true, 'warning' => null, 'suggested_period' => null];
+    }
+
+    /**
+     * Why this note cannot stand against this original, or null if it can.
+     *
+     * ZATCA's Detailed Guidelines (4.3): "The type of credit/debit note
+     * follows the type of invoice that they are issued against" - a
+     * simplified note against a standard invoice is reported where the
+     * original was cleared, or the other way round. A note corrects an
+     * invoice, not another note. A rejected original was never accepted, so
+     * there is nothing on record to correct: it is reissued, not adjusted.
+     */
+    private function refusalAgainst(Invoice $note, Invoice $original): ?string
+    {
+        if ($original->status === InvoiceStatus::Rejected) {
+            return "Original invoice {$note->billing_ref} was rejected by ZATCA, so there is nothing on record to adjust";
+        }
+
+        if ($original->document_type?->requiresBillingReference() === true) {
+            return "{$note->billing_ref} is itself a credit or debit note; a note must reference the original invoice";
+        }
+
+        if ($note->type !== $original->type) {
+            return "This note is {$note->type?->value} but original invoice {$note->billing_ref} is {$original->type?->value}; ".
+                'a credit or debit note takes the type of the invoice it is issued against';
+        }
+
+        if ($note->document_type === DocumentType::CreditNote && ! $this->creditFits($note, $original)) {
+            return "Credit notes against {$note->billing_ref} would exceed its total of {$original->total}";
+        }
+
+        return null;
+    }
+
+    /**
+     * Whether this credit note, with the credit notes already issued against
+     * the same original, stays within the original's total.
+     *
+     * Every other issued credit note counts, filed or not: once issued it is
+     * on the record. Drafts are not documents yet and rejected ones never
+     * stood, so neither uses up the original.
+     */
+    private function creditFits(Invoice $note, Invoice $original): bool
+    {
+        $references = array_values(array_filter([$original->invoice_number, $original->id]));
+
+        $previous = Invoice::withoutTenantScope(fn () => Invoice::where('org_id', $note->org_id)
+            ->where('document_type', DocumentType::CreditNote->value)
+            ->whereIn('billing_ref', $references)
+            ->whereNotIn('status', [InvoiceStatus::Draft->value, InvoiceStatus::Rejected->value])
+            ->when($note->exists, fn ($query) => $query->whereKeyNot($note->getKey()))
+            ->sum('total'));
+
+        return $this->validator->validateCreditNoteTotal((float) $note->total, (float) $original->total, (float) $previous);
     }
 
     /**

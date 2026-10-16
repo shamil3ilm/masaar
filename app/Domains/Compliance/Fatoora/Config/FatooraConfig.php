@@ -142,29 +142,93 @@ final class FatooraConfig
      * @var array<string, string>
      */
     public const CODE_CATEGORIES = [
-        // Zero-rated ('Z')
-        'VATEX-SA-32' => self::TAX_CATEGORY_ZERO_RATED,       // Supplies within customs suspension
-        'VATEX-SA-33' => self::TAX_CATEGORY_ZERO_RATED,       // Supplies of qualifying metals
-        'VATEX-SA-34-1' => self::TAX_CATEGORY_ZERO_RATED,     // Medicines and medical equipment
-        'VATEX-SA-34-2' => self::TAX_CATEGORY_ZERO_RATED,     // Qualifying means of transport
-        'VATEX-SA-34-3' => self::TAX_CATEGORY_ZERO_RATED,     // Exported goods
-        'VATEX-SA-34-4' => self::TAX_CATEGORY_ZERO_RATED,     // Exported services
-        'VATEX-SA-34-5' => self::TAX_CATEGORY_ZERO_RATED,     // Services to non-GCC residents
-        'VATEX-SA-35' => self::TAX_CATEGORY_ZERO_RATED,       // Real estate
-        'VATEX-SA-36' => self::TAX_CATEGORY_ZERO_RATED,       // Local passenger transport
-        'VATEX-SA-EDU' => self::TAX_CATEGORY_ZERO_RATED,      // Private education to citizens
-        'VATEX-SA-HEA' => self::TAX_CATEGORY_ZERO_RATED,      // Private healthcare to citizens
-        'VATEX-SA-MLTRY' => self::TAX_CATEGORY_ZERO_RATED,    // Supplies to the military
-        'VATEX-SA-DIPLOMAT' => self::TAX_CATEGORY_ZERO_RATED, // Diplomatic exemption
-        'VATEX-SA-DUTYFREE' => self::TAX_CATEGORY_ZERO_RATED, // Duty-free shops
+        // Zero-rated ('Z'). Labelled from the code list in §11.2.4 of the XML
+        // Implementation Standard v1.2; the labels here used to be shifted
+        // one or two rows, so 30 read "international transport" and 35 "real
+        // estate".
+        'VATEX-SA-32' => self::TAX_CATEGORY_ZERO_RATED,       // Export of goods
+        'VATEX-SA-33' => self::TAX_CATEGORY_ZERO_RATED,       // Export of services
+        'VATEX-SA-34-1' => self::TAX_CATEGORY_ZERO_RATED,     // International transport of goods
+        'VATEX-SA-34-2' => self::TAX_CATEGORY_ZERO_RATED,     // International transport of passengers
+        'VATEX-SA-34-3' => self::TAX_CATEGORY_ZERO_RATED,     // Services incidental to international passenger transport
+        'VATEX-SA-34-4' => self::TAX_CATEGORY_ZERO_RATED,     // Supply of a qualifying means of transport
+        'VATEX-SA-34-5' => self::TAX_CATEGORY_ZERO_RATED,     // Services relating to goods or passenger transportation (Art. 25)
+        'VATEX-SA-35' => self::TAX_CATEGORY_ZERO_RATED,       // Medicines and medical equipment
+        'VATEX-SA-36' => self::TAX_CATEGORY_ZERO_RATED,       // Qualifying metals
+        'VATEX-SA-EDU' => self::TAX_CATEGORY_ZERO_RATED,      // Private education to citizen
+        'VATEX-SA-HEA' => self::TAX_CATEGORY_ZERO_RATED,      // Private healthcare to citizen
+        'VATEX-SA-MLTRY' => self::TAX_CATEGORY_ZERO_RATED,    // Supply of qualified military goods
+        // These two are in the Schematron's 'Z' list and not in the
+        // Standard's code list, which gives them no meaning or text.
+        'VATEX-SA-DIPLOMAT' => self::TAX_CATEGORY_ZERO_RATED, // Diplomatic supplies, by its name
+        'VATEX-SA-DUTYFREE' => self::TAX_CATEGORY_ZERO_RATED, // Duty-free supplies, by its name
 
         // Exempt ('E')
-        'VATEX-SA-29' => self::TAX_CATEGORY_EXEMPT,           // Financial services
-        'VATEX-SA-29-7' => self::TAX_CATEGORY_EXEMPT,         // Life insurance
-        'VATEX-SA-30' => self::TAX_CATEGORY_EXEMPT,           // International transport
+        'VATEX-SA-29' => self::TAX_CATEGORY_EXEMPT,           // Financial services (Art. 29)
+        'VATEX-SA-29-7' => self::TAX_CATEGORY_EXEMPT,         // Life insurance services (Art. 29)
+        'VATEX-SA-30' => self::TAX_CATEGORY_EXEMPT,           // Real estate transactions (Art. 30)
 
         // Out of scope ('O')
         'VATEX-SA-OOS' => self::TAX_CATEGORY_OUT_OF_SCOPE,
+    ];
+
+    /**
+     * BT-120 in the authority's Arabic, by exemption code, for the printed
+     * copy.
+     *
+     * Copied from the "Arabic Text" column of the code list in §11.2.4 of
+     * ZATCA's Electronic Invoice XML Implementation Standard v1.2 (pages
+     * 32-33). The E-Invoice Data Dictionary v1.2 names BT-120 and BT-121 but
+     * carries no code list. One correction: the Standard's 34-5 text reads
+     * "ضريبة القيامة المضافة", a typo for القيمة, which a buyer would read
+     * as the seller's mistake.
+     *
+     * Not here: VATEX-SA-OOS, whose Arabic is an instruction to the taxpayer
+     * to write their own reason rather than a reason; and DIPLOMAT and
+     * DUTYFREE, which the Standard does not list. Those print the stored
+     * reason alone.
+     *
+     * @var array<string, string>
+     */
+    public const EXEMPTION_REASONS_AR = [
+        'VATEX-SA-29' => 'الخدمات المالية',
+        'VATEX-SA-29-7' => 'عقد تأمين على الحياة',
+        'VATEX-SA-30' => 'التوريدات العقارية المعفاة من الضريبة',
+        'VATEX-SA-32' => 'صادرات السلع من المملكة',
+        'VATEX-SA-33' => 'صادرات الخدمات من المملكة',
+        'VATEX-SA-34-1' => 'النقل الدولي للسلع',
+        'VATEX-SA-34-2' => 'النقل الدولي للركاب',
+        'VATEX-SA-34-3' => 'الخدمات المرتبطة مباشرة أو عرضياً بتوريد النقل الدولي للركاب',
+        'VATEX-SA-34-4' => 'توريد وسائل النقل المؤهلة',
+        'VATEX-SA-34-5' => 'الخدمات ذات الصلة بنقل السلع أو الركاب، وفقاً للتعريف الوارد بالمادة الخامسة والعشرين من اللائحة التنفيذية لنظام ضريبة القيمة المضافة',
+        'VATEX-SA-35' => 'الأدوية والمعدات الطبية',
+        'VATEX-SA-36' => 'المعادن المؤهلة',
+        'VATEX-SA-EDU' => 'الخدمات التعليمية الخاصة للمواطنين',
+        'VATEX-SA-HEA' => 'الخدمات الصحية الخاصة للمواطنين',
+        'VATEX-SA-MLTRY' => 'توريد السلع العسكرية المؤهلة',
+    ];
+
+    /**
+     * BT-46-1, the buyer identifier schemes, as the printed copy names them.
+     *
+     * English after the scheme list in BR-KSA-14 of the XML Implementation
+     * Standard; the Standard gives no Arabic, so these are the registers'
+     * own Arabic names.
+     *
+     * @var array<string, array{0: string, 1: string}>
+     */
+    public const BUYER_ID_SCHEME_LABELS = [
+        'TIN' => ['Tax identification number', 'الرقم المميز'],
+        'CRN' => ['Commercial registration', 'السجل التجاري'],
+        'MOM' => ['MOMRAH licence', 'ترخيص وزارة الشؤون البلدية والقروية والإسكان'],
+        'MLS' => ['MHRSD licence', 'ترخيص وزارة الموارد البشرية والتنمية الاجتماعية'],
+        '700' => ['700 number', 'الرقم الموحد (700)'],
+        'SAG' => ['MISA licence', 'ترخيص وزارة الاستثمار'],
+        'NAT' => ['National ID', 'الهوية الوطنية'],
+        'GCC' => ['GCC ID', 'هوية مواطني دول الخليج'],
+        'IQA' => ['Iqama number', 'رقم الإقامة'],
+        'PAS' => ['Passport number', 'رقم جواز السفر'],
+        'OTH' => ['Other ID', 'رقم تعريف آخر'],
     ];
 
     /**

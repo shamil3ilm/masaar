@@ -101,4 +101,13 @@
             </x-ui.select>
         </label>
     </div>
+
+    {{-- What a line carries without the form offering it: a credit note
+         started from an invoice brings each line's VAT category, exemption
+         and classification with it. Without these a zero-rated or exempt
+         line came back as standard-rated at 0%. Blank on a new row, and a
+         blank is treated as absent. --}}
+    @foreach (['tax_category', 'exempt_code', 'exempt_reason', 'class_code'] as $carried)
+        <input type="hidden" name="lines[{{ $index }}][{{ $carried }}]" value="{{ $row[$carried] ?? '' }}">
+    @endforeach
 </div>
