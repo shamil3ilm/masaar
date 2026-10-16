@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Peppol\Services;
 
 use App\Domains\Compliance\Exceptions\IssuanceRefusedException;
+use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
+use App\Domains\Compliance\Fatoora\Services\FilingClearance;
 use App\Domains\Compliance\Fatoora\Services\IssuanceNotifier;
+use App\Domains\Compliance\Fatoora\Services\KillSwitch;
 use App\Domains\Compliance\Peppol\Models\PeppolDocument;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
@@ -43,6 +46,8 @@ class UaeInvoiceIssuer
         private readonly PeppolPreparer $preparer,
         private readonly PeppolSender $sender,
         private readonly IssuanceNotifier $notifier,
+        private readonly FilingClearance $clearance,
+        private readonly KillSwitch $killSwitch,
     ) {}
 
     /**
@@ -50,6 +55,10 @@ class UaeInvoiceIssuer
      */
     public function issue(Invoice $invoice): PeppolDocument
     {
+        if ($invoice->status === InvoiceStatus::Draft) {
+            $this->assertMayIssue($invoice);
+        }
+
         try {
             [$issuedNow, $document] = DB::transaction(function () use ($invoice): array {
                 Organization::query()->whereKey($invoice->org_id)->lockForUpdate()->first();
@@ -102,6 +111,26 @@ class UaeInvoiceIssuer
         $problems = $this->preparer->problems($invoice);
 
         return $problems !== [] ? $problems : $this->totalsDisagree($invoice);
+    }
+
+    /**
+     * The guards every issuance passes, whatever the country: an operator's
+     * issuance stop, and an organization approved and on a plan. Saudi
+     * issuing has always checked both; an unapproved UAE organization could
+     * otherwise issue tax invoices.
+     *
+     * @throws IssuanceRefusedException
+     */
+    private function assertMayIssue(Invoice $invoice): void
+    {
+        $organization = Organization::query()->findOrFail($invoice->org_id);
+
+        try {
+            $this->killSwitch->assertNotEnabled(KillSwitch::SWITCH_ISSUANCE, (string) $organization->id);
+            $this->clearance->assertCleared($organization);
+        } catch (FatooraException $e) {
+            throw new IssuanceRefusedException([$e->getMessage()]);
+        }
     }
 
     /** @throws IssuanceRefusedException */

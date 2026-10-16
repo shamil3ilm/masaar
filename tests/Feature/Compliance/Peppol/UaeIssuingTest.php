@@ -7,6 +7,7 @@ namespace Tests\Feature\Compliance\Peppol;
 use App\Domains\Compliance\Exceptions\IssuanceRefusedException;
 use App\Domains\Compliance\Fatoora\Services\DocumentBuilder;
 use App\Domains\Compliance\Fatoora\Services\IssuanceNotifier;
+use App\Domains\Compliance\Fatoora\Services\KillSwitch;
 use App\Domains\Compliance\Fatoora\Services\Submitter;
 use App\Domains\Compliance\Peppol\Jobs\SendPeppolDocument;
 use App\Domains\Compliance\Peppol\Models\PeppolDocument;
@@ -91,6 +92,37 @@ class UaeIssuingTest extends TestCase
         }
 
         $this->assertSame('draft', Invoice::query()->findOrFail($invoice->id)->status->value);
+    }
+
+    /**
+     * The guards Saudi issuing has always had: an organization still under
+     * review issues nothing, and keeps neither a number nor a document.
+     */
+    public function test_unapproved_organization_is_refused(): void
+    {
+        $organization = $this->uaeOrganization();
+        $organization->forceFill(['status' => Organization::STATUS_PENDING_REVIEW])->save();
+        $invoice = $this->draft($organization);
+
+        try {
+            app(UaeInvoiceIssuer::class)->issue($invoice);
+            $this->fail('An organization under review issued a UAE invoice.');
+        } catch (IssuanceRefusedException) {
+        }
+
+        $this->assertSame('draft', Invoice::query()->findOrFail($invoice->id)->status->value);
+        $this->assertNull(Invoice::query()->findOrFail($invoice->id)->invoice_number);
+        $this->assertSame(0, PeppolDocument::query()->count());
+        Queue::assertNothingPushed();
+    }
+
+    public function test_issuance_stop_refuses_uae_too(): void
+    {
+        app(KillSwitch::class)->enable(KillSwitch::SWITCH_ISSUANCE, reason: 'signing defect');
+
+        $this->expectException(IssuanceRefusedException::class);
+
+        app(UaeInvoiceIssuer::class)->issue($this->draft($this->uaeOrganization()));
     }
 
     public function test_organization_without_profile_is_refused(): void
