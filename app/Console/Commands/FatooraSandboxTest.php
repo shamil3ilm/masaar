@@ -46,9 +46,6 @@ class FatooraSandboxTest extends Command
 
     protected $description = 'Test e-invoicing compliance with ZATCA Integration Sandbox (no Java/SDK required)';
 
-    // ZATCA Sandbox URLs
-    private const SANDBOX_BASE_URL = 'https://gw-fatoora.zatca.gov.sa/e-invoicing/developer-portal';
-
     private const SANDBOX_COMPLIANCE_CSID = '/compliance';
 
     private const SANDBOX_COMPLIANCE_CHECK = '/compliance/invoices';
@@ -102,11 +99,11 @@ class FatooraSandboxTest extends Command
 
         $this->info('🧪 SANDBOX API ENDPOINTS:');
         $this->table(['Endpoint', 'Purpose'], [
-            [self::SANDBOX_BASE_URL.self::SANDBOX_COMPLIANCE_CSID, 'Get Compliance CSID'],
-            [self::SANDBOX_BASE_URL.self::SANDBOX_COMPLIANCE_CHECK, 'Submit Compliance Invoices'],
-            [self::SANDBOX_BASE_URL.self::SANDBOX_PRODUCTION_CSID, 'Get Production CSID'],
-            [self::SANDBOX_BASE_URL.self::SANDBOX_REPORTING, 'Report B2C Invoices'],
-            [self::SANDBOX_BASE_URL.self::SANDBOX_CLEARANCE, 'Clear B2B Invoices'],
+            [$this->sandboxUrl().self::SANDBOX_COMPLIANCE_CSID, 'Get Compliance CSID'],
+            [$this->sandboxUrl().self::SANDBOX_COMPLIANCE_CHECK, 'Submit Compliance Invoices'],
+            [$this->sandboxUrl().self::SANDBOX_PRODUCTION_CSID, 'Get Production CSID'],
+            [$this->sandboxUrl().self::SANDBOX_REPORTING, 'Report B2C Invoices'],
+            [$this->sandboxUrl().self::SANDBOX_CLEARANCE, 'Clear B2B Invoices'],
         ]);
         $this->newLine();
 
@@ -224,7 +221,7 @@ class FatooraSandboxTest extends Command
         $this->info('Requesting Compliance CSID from ZATCA Sandbox...');
         $this->newLine();
 
-        $url = self::SANDBOX_BASE_URL.self::SANDBOX_COMPLIANCE_CSID;
+        $url = $this->sandboxUrl().self::SANDBOX_COMPLIANCE_CSID;
 
         $this->line("POST {$url}");
         $this->line("OTP: {$otp}");
@@ -357,12 +354,12 @@ class FatooraSandboxTest extends Command
 
         $this->warn('To complete compliance check:');
         $this->line('1. Generate signed XML for each invoice type');
-        $this->line('2. Submit to: '.self::SANDBOX_BASE_URL.self::SANDBOX_COMPLIANCE_CHECK);
+        $this->line('2. Submit to: '.$this->sandboxUrl().self::SANDBOX_COMPLIANCE_CHECK);
         $this->line('3. Use Basic Auth with CSID:Secret');
         $this->newLine();
 
         $this->info('API Request Format:');
-        $this->line('POST '.self::SANDBOX_BASE_URL.self::SANDBOX_COMPLIANCE_CHECK);
+        $this->line('POST '.$this->sandboxUrl().self::SANDBOX_COMPLIANCE_CHECK);
         $this->line('Headers:');
         $this->line('  Authorization: Basic '.base64_encode($csid.':'.$secret));
         $this->line('  Content-Type: application/json');
@@ -386,10 +383,18 @@ class FatooraSandboxTest extends Command
         $this->newLine();
 
         $this->table(['Invoice Type', 'Endpoint', 'Method'], [
-            ['B2B (Standard)', self::SANDBOX_BASE_URL.self::SANDBOX_CLEARANCE, 'POST'],
-            ['B2C (Simplified)', self::SANDBOX_BASE_URL.self::SANDBOX_REPORTING, 'POST'],
+            ['B2B (Standard)', $this->sandboxUrl().self::SANDBOX_CLEARANCE, 'POST'],
+            ['B2C (Simplified)', $this->sandboxUrl().self::SANDBOX_REPORTING, 'POST'],
         ]);
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * The sandbox gateway, from config/fatoora.php.
+     */
+    private function sandboxUrl(): string
+    {
+        return rtrim((string) config('fatoora.endpoints.sandbox'), '/');
     }
 }

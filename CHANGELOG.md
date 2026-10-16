@@ -62,6 +62,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **ZATCA addresses and OpenSSL are settings**: `ZATCA_SANDBOX_URL`,
+  `ZATCA_SIMULATION_URL`, `ZATCA_PRODUCTION_URL` and `ZATCA_PORTAL_URL`
+  override the published addresses when set; `OPENSSL_BIN` names the
+  binary the onboarding commands run, which otherwise comes from the PATH.
 - **Email in the reader's language**: verification, password reset, email
   change, invitations, review decisions, renewal and certificate reminders
   and support replies are written in the language the recipient chose for

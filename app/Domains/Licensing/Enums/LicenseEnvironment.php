@@ -22,10 +22,8 @@ enum LicenseEnvironment: string
      */
     public function getZatcaBaseUrl(): string
     {
-        return match ($this) {
-            self::Sandbox => 'https://gw-fatoora.zatca.gov.sa/e-invoicing/developer-portal',
-            self::Production => 'https://gw-fatoora.zatca.gov.sa/e-invoicing/core',
-        };
+        // config/fatoora.php, so an address change is a setting.
+        return (string) config('fatoora.endpoints.'.$this->value);
     }
 
     /**

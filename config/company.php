@@ -11,7 +11,8 @@
 return [
 
     // The registered legal name, as on the commercial registration.
-    'legal_name' => env('COMPANY_LEGAL_NAME', env('APP_NAME', 'Masaar')),
+    // Empty in the templates: until it is filled in, the app's name stands in.
+    'legal_name' => env('COMPANY_LEGAL_NAME') ?: env('APP_NAME', 'Masaar'),
 
     'cr_number' => env('COMPANY_CR_NUMBER'),
 
