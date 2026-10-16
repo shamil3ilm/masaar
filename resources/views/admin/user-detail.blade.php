@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', $user->name . ' - Masaar Admin')
+@section('title', $user->name)
 
 @php
     $when = fn ($value) => $value ? \Carbon\Carbon::parse($value)->format('M d, Y H:i') : '-';

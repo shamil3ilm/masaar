@@ -38,6 +38,7 @@ class ApiRouteAuthPostureTest extends TestCase
         'api/metrics' => 'Prometheus scrape, closed by the metrics middleware unless allowed by IP or token',
         'api/auth/login' => 'Credential exchange',
         'api/auth/register' => 'Account creation',
+        'api/auth/email/resend' => 'The verification link again, before the account can sign in',
     ];
 
     /** Middleware that establishes who is calling. */

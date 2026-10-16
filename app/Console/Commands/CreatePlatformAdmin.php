@@ -191,7 +191,9 @@ class CreatePlatformAdmin extends Command
             'password' => Hash::make($password),
         ]);
 
-        $user->forceFill(['is_platform_admin' => true])->save();
+        // Verified: whoever runs this on the server vouches for the address,
+        // and an unverified account cannot sign in to the API.
+        $user->forceFill(['is_platform_admin' => true, 'email_verified_at' => now()])->save();
 
         $this->record('platform_admin.created', $user);
 

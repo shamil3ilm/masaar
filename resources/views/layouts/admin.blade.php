@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', $theme->name().' Admin')</title>
+    {{-- The page's own title, then the platform's name from Branding. --}}
+    <title>@hasSection('title')@yield('title') - @endif{{ $theme->name() }} Admin</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <x-theme-head />
 </head>
@@ -84,6 +85,7 @@
              the page itself scrolled sideways, and overflow-x-auto never had
              anything to do. --}}
         <main class="min-w-0 flex-1">
+            <x-zatca-environment-banner />
             <!-- Top Bar -->
             <header class="bg-white dark:bg-gray-900 shadow-sm border-b">
                 <div class="flex items-center justify-between px-4 py-4 md:px-6">

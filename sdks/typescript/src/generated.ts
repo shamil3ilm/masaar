@@ -233,6 +233,7 @@ export const operations = {
   'licenseController.suspend': { method: 'post', path: '/api/admin/licenses/{id}/suspend', security: ['bearerAuth'], scopes: [] },
   'licenseController.upgrade': { method: 'post', path: '/api/admin/licenses/{id}/upgrade', security: ['bearerAuth'], scopes: [] },
   'licenseController.usage': { method: 'get', path: '/api/admin/licenses/{id}/usage', security: ['bearerAuth'], scopes: [] },
+  'authController.resendVerification': { method: 'post', path: '/api/auth/email/resend', security: [], scopes: [] },
   'authController.login': { method: 'post', path: '/api/auth/login', security: [], scopes: [] },
   'authController.logout': { method: 'post', path: '/api/auth/logout', security: ['bearerAuth'], scopes: [] },
   'authController.me': { method: 'get', path: '/api/auth/me', security: ['bearerAuth'], scopes: [] },

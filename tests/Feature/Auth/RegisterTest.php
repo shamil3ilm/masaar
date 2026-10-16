@@ -37,12 +37,14 @@ class RegisterTest extends TestCase
     {
         $response = $this->register()
             ->assertCreated()
-            ->assertJsonPath('message', 'User registered')
+            ->assertJsonPath('message', 'User registered. Verify the email address, then sign in.')
             ->assertJsonPath('data.user.name', 'New Person')
             ->assertJsonPath('data.user.email', 'new@masaar.test');
 
         $this->assertSame(['id', 'name', 'email'], array_keys($response->json('data.user')));
-        $this->assertIsString($response->json('data.token.access_token'));
+        // No token until the address is verified: login asks for that, and
+        // a token here would be the way around it.
+        $this->assertNull($response->json('data.token'));
 
         $this->assertDatabaseHas('users', ['email' => 'new@masaar.test', 'status' => 'active']);
         $this->assertDatabaseHas('audit_logs', [

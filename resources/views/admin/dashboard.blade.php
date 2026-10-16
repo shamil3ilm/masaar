@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Dashboard - Masaar Admin')
+@section('title', 'Dashboard')
 
 {{--
     Rendered server-side from App\Domains\Platform\Services\PlatformStatus, the

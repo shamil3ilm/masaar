@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Licence - Masaar Admin')
+@section('title', 'Licence')
 
 @section('content')
 @php

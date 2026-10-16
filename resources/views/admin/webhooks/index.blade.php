@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Webhooks - Masaar Admin')
+@section('title', 'Webhooks')
 
 @section('content')
 <div class="mb-6">

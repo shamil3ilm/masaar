@@ -828,6 +828,20 @@ paths:
                 $ref: '#/components/schemas/Error'
       security:
         - bearerAuth: []
+  /api/auth/email/resend:
+    post:
+      tags:
+        - Auth
+      operationId: authController.resendVerification
+      summary: 'Resend Verification — Auth Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+      security: []
   /api/auth/login:
     post:
       tags:

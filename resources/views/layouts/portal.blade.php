@@ -90,6 +90,7 @@
 
         <!-- Main Content -->
         <main class="min-w-0 flex-1">
+            <x-zatca-environment-banner />
             {{-- The portal had no way to reach its navigation on a phone: the
                  sidebar was a fixed 256px column of a 390px screen and there
                  was no toggle anywhere. This bar carries one, and disappears

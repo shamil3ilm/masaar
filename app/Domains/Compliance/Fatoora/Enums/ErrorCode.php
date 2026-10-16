@@ -38,6 +38,7 @@ enum ErrorCode: string
     case AUTH_ENVIRONMENT_MISMATCH = 'AUTH_010';
     case AUTH_ORGANIZATION_UNDER_REVIEW = 'AUTH_011';
     case AUTH_LICENSE_REQUIRED = 'AUTH_012';
+    case AUTH_EMAIL_NOT_VERIFIED = 'AUTH_013';
 
     // ============================================================
     // VALIDATION ERRORS (VAL_*) - Not retryable without changes
@@ -308,6 +309,7 @@ enum ErrorCode: string
             self::AUTH_ENVIRONMENT_MISMATCH,
             self::AUTH_ORGANIZATION_UNDER_REVIEW,
             self::AUTH_LICENSE_REQUIRED,
+            self::AUTH_EMAIL_NOT_VERIFIED,
             self::ZATCA_CERTIFICATE_NOT_AUTHORIZED,
             self::ZATCA_ONBOARDING_REQUIRED,
             self::ZATCA_PRODUCTION_NOT_ENABLED,
@@ -455,6 +457,7 @@ enum ErrorCode: string
             self::AUTH_ENVIRONMENT_MISMATCH => 'License environment does not match the target environment',
             self::AUTH_ORGANIZATION_UNDER_REVIEW => 'Organization has not been approved to file yet',
             self::AUTH_LICENSE_REQUIRED => 'Organization has no active plan',
+            self::AUTH_EMAIL_NOT_VERIFIED => 'Email address has not been verified',
 
             // Validation
             self::VAL_MISSING_REQUIRED_FIELD => 'Required field is missing',
