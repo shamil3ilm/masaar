@@ -48,6 +48,16 @@ return [
             'report' => false,
         ],
 
+        // Files customers and admins attach to support tickets. Private:
+        // served only through the ticket's own download route, to people
+        // who can see the ticket.
+        'support' => [
+            'driver' => 'local',
+            'root' => storage_path('app/support'),
+            'throw' => true,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

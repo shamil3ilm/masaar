@@ -12,6 +12,8 @@ use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Licensing\Models\License;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Support\Models\SupportMessage;
+use App\Domains\Support\Models\SupportTicket;
 use App\Domains\Webhook\Models\Webhook;
 use App\Domains\Webhook\Models\WebhookLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -61,7 +63,12 @@ class ScreenRenderTest extends TestCase
      * GET routes that answer with a file rather than a page. ThemeTest covers
      * what they send.
      */
-    private const DOWNLOADS = ['admin.branding.export', 'portal.branding.export'];
+    private const DOWNLOADS = [
+        'admin.branding.export',
+        'portal.branding.export',
+        'admin.support.attachment',
+        'portal.support.attachment',
+    ];
 
     private User $orgAdmin;
 
@@ -70,6 +77,8 @@ class ScreenRenderTest extends TestCase
     private Webhook $webhook;
 
     private Invoice $invoice;
+
+    private SupportTicket $ticket;
 
     protected function setUp(): void
     {
@@ -115,6 +124,21 @@ class ScreenRenderTest extends TestCase
             'duration_ms' => 4201,
             'success' => false,
         ]);
+
+        // A ticket with one message and an internal note, so both thread
+        // styles render.
+        $this->ticket = SupportTicket::create([
+            'number' => 1,
+            'org_id' => $this->org->id,
+            'opened_by' => $this->member->id,
+            'subject' => 'Clearance keeps failing',
+            'category' => 'zatca',
+            'priority' => 'urgent',
+            'status' => 'open',
+            'last_activity_at' => now(),
+        ]);
+        SupportMessage::create(['ticket_id' => $this->ticket->id, 'user_id' => $this->member->id, 'body' => 'Every invoice fails.']);
+        SupportMessage::create(['ticket_id' => $this->ticket->id, 'user_id' => $this->admin->id, 'from_staff' => true, 'internal' => true, 'body' => 'Certificate expired.']);
 
         // Draft, not issued: the Issue button is the only confirmation on any
         // portal screen and it renders only for a draft, so an issued fixture
@@ -294,6 +318,7 @@ class ScreenRenderTest extends TestCase
             'webhookId' => $this->webhook->id,
             'invoiceId' => $this->invoice->id,
             'userId' => $this->member->id,
+            'ticketId' => $this->ticket->id,
         ];
 
         $screens = [];

@@ -62,6 +62,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Support tickets**: customers open tickets from the portal's Support page,
+  with attachments, and follow the conversation there. Admins answer from a
+  Support queue in the console - reply, add internal notes, assign, resolve -
+  with the new `support.manage` permission (Owner, Operations, Support).
+  `SUPPORT_NOTIFY_ADDRESS` receives an email for each new ticket.
 - **My account**: everyone changes their own name, email address (confirmed
   by a link to the new one), password, and signs out other sessions.
 - **Two-factor for everyone**: any user can turn it on, and is then asked for

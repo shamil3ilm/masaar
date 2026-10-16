@@ -29,6 +29,9 @@ enum AdminPermission: string
     /** Help someone back in: reset their two-factor, issue enrolment links, email a password reset link. */
     case UsersTwoFactor = 'users.two_factor';
 
+    /** Answer support tickets: reply, write internal notes, assign, resolve. */
+    case SupportManage = 'support.manage';
+
     /** Replay webhooks, process and retry the queue, reset connectivity. */
     case OperationsRun = 'operations.run';
 

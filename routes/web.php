@@ -27,6 +27,8 @@ use App\Domains\Platform\Http\Controllers\AdminController;
 use App\Domains\Platform\Http\Controllers\AdminOrganizationReviewController;
 use App\Domains\Platform\Http\Controllers\AdminSettingsController;
 use App\Domains\Platform\Http\Controllers\AdminUserController;
+use App\Domains\Support\Http\Controllers\AdminSupportController;
+use App\Domains\Support\Http\Controllers\PortalSupportController;
 use App\Domains\Webhook\Http\Controllers\AdminWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -187,7 +189,7 @@ Route::prefix('admin')->name('admin.')
     // It also makes the ordering of /licences/create above /licences/{id}
     // a convenience rather than a requirement: "create" is not a UUID, so it
     // can no longer be swallowed as one if the lines are ever reordered.
-    ->whereUuid(['id', 'licenceId', 'webhookId', 'logId', 'userId'])
+    ->whereUuid(['id', 'licenceId', 'webhookId', 'logId', 'userId', 'ticketId', 'attachmentId'])
     ->group(function () {
         Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
         Route::get('/organizations', [AdminController::class, 'organizations'])->name('organizations');
@@ -196,6 +198,15 @@ Route::prefix('admin')->name('admin.')
         // or turn it down with a reason. Either way its admins are emailed.
         Route::post('/organizations/{id}/approve', [AdminOrganizationReviewController::class, 'approve'])->middleware('admin.can:organizations.review')->name('organizations.approve');
         Route::post('/organizations/{id}/reject', [AdminOrganizationReviewController::class, 'reject'])->middleware('admin.can:organizations.review')->name('organizations.reject');
+        // Support tickets. Everyone in the console reads them; answering
+        // takes support.manage.
+        Route::get('/support', [AdminSupportController::class, 'index'])->name('support.index');
+        Route::get('/support/{ticketId}', [AdminSupportController::class, 'show'])->name('support.show');
+        Route::get('/support/{ticketId}/attachments/{attachmentId}', [AdminSupportController::class, 'attachment'])->name('support.attachment');
+        Route::post('/support/{ticketId}/reply', [AdminSupportController::class, 'reply'])->middleware('admin.can:support.manage')->name('support.reply');
+        Route::post('/support/{ticketId}/assign', [AdminSupportController::class, 'assign'])->middleware('admin.can:support.manage')->name('support.assign');
+        Route::post('/support/{ticketId}/status', [AdminSupportController::class, 'status'])->middleware('admin.can:support.manage')->name('support.status');
+
         Route::get('/users', [AdminUserController::class, 'index'])->name('users.index');
         Route::get('/users/{userId}', [AdminUserController::class, 'show'])->name('users.show');
         // Suspending locks someone out of everything at once, so it is a POST
@@ -288,7 +299,7 @@ Route::prefix('portal')->name('portal.')
     // org.two_factor: an organization that requires a second factor sends
     // anyone without one to set it up first.
     ->middleware(['auth', 'auth.session', 'verified', 'portal.tenant', 'org.two_factor', 'org.writer'])
-    ->whereUuid(['invoiceId', 'userId', 'invitationId'])
+    ->whereUuid(['invoiceId', 'userId', 'invitationId', 'ticketId', 'attachmentId'])
     ->group(function () {
         Route::get('/', [CustomerPortalController::class, 'dashboard'])->name('dashboard');
         // Invoices. {invoiceId} rather than {invoice}: route model binding
@@ -315,6 +326,15 @@ Route::prefix('portal')->name('portal.')
         Route::get('/company', [PortalCompanyController::class, 'edit'])->name('company.edit');
         Route::post('/company', [PortalCompanyController::class, 'update'])->name('company.update');
         Route::post('/company/security', [PortalCompanyController::class, 'security'])->name('company.security');
+
+        // Support tickets: everyone in the organization sees its tickets.
+        Route::get('/support', [PortalSupportController::class, 'index'])->name('support.index');
+        Route::get('/support/new', [PortalSupportController::class, 'create'])->name('support.create');
+        Route::post('/support', [PortalSupportController::class, 'store'])->middleware('throttle:10,1')->name('support.store');
+        Route::get('/support/{ticketId}', [PortalSupportController::class, 'show'])->name('support.show');
+        Route::post('/support/{ticketId}/reply', [PortalSupportController::class, 'reply'])->middleware('throttle:20,1')->name('support.reply');
+        Route::post('/support/{ticketId}/resolve', [PortalSupportController::class, 'resolve'])->name('support.resolve');
+        Route::get('/support/{ticketId}/attachments/{attachmentId}', [PortalSupportController::class, 'attachment'])->name('support.attachment');
 
         // Connecting to ZATCA: OTP, compliance checks, production
         // certificate. Administrators only, and only once the company is
