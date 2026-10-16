@@ -80,12 +80,16 @@ class UaeInvoiceFormTest extends TestCase
 
         $this->assertSame(['draft', 'standard', 'invoice', 'AED'], [$invoice->status->value, $invoice->type->value, $invoice->document_type->value, $invoice->currency]);
         $this->assertSame(['1000.00', '50.00', '1050.00'], [$invoice->subtotal, $invoice->tax_amount, $invoice->total]);
+        // Sorted: MySQL stores a JSON object's keys in its own order, and
+        // nothing reads jurisdiction_data by position.
+        $stored = $invoice->jurisdiction_data;
+        ksort($stored);
         $this->assertSame([
-            'document_category' => 'tax_invoice',
-            'transaction_flags' => '00000000',
             'buyer_endpoint' => '0235:1007654321',
             'buyer_subdivision' => 'AUH',
-        ], $invoice->jurisdiction_data);
+            'document_category' => 'tax_invoice',
+            'transaction_flags' => '00000000',
+        ], $stored);
         $this->assertSame(['Consulting', 'S', '5.00'], [$invoice->lines[0]->item_name, $invoice->lines[0]->tax_category, $invoice->lines[0]->tax_rate]);
 
         $this->asRequest(fn () => $this->actingAs($this->admin)->withSession(['portal_org_id' => $this->gulf->id, '_token' => self::TOKEN])
