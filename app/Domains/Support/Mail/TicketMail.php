@@ -26,7 +26,9 @@ final class TicketMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: '['.$this->reference.'] '.$this->headline);
+        // The headline arrives in the sender's language; translated again
+        // here, it reads in the recipient's.
+        return new Envelope(subject: '['.$this->reference.'] '.__($this->headline));
     }
 
     public function content(): Content

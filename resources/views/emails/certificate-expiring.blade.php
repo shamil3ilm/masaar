@@ -11,13 +11,13 @@
     $expired = $daysRemaining <= 0;
 @endphp
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ app()->getLocale() }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $brand->name() }}</title>
 </head>
-<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#111827;">
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#111827;direction:{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }};">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 0;">
     <tr>
         <td align="center">
@@ -36,20 +36,20 @@
                 <tr>
                     <td style="padding:24px;">
                         <h1 style="margin:0 0 12px;font-size:20px;color:{{ $expired ? '#b91c1c' : '#111827' }};">
-                            {{ $expired ? 'Your ZATCA certificate has expired' : 'Your ZATCA certificate is expiring' }}
+                            {{ $expired ? __('Your ZATCA certificate has expired') : __('Your ZATCA certificate is expiring') }}
                         </h1>
                         <p style="margin:0 0 12px;font-size:15px;line-height:1.5;">
-                            {{ $organizationName }}:
                             @if ($expired)
-                                the certificate expired on {{ $expiryDate }}. Invoices cannot be issued or filed until it is renewed.
+                                {{ __(':organization: the certificate expired on :date. Invoices cannot be issued or filed until it is renewed.', ['organization' => $organizationName, 'date' => $expiryDate]) }}
+                            @elseif ($daysRemaining === 1)
+                                {{ __(':organization: the certificate expires on :date, in 1 day. Renew it before then to keep filing without interruption.', ['organization' => $organizationName, 'date' => $expiryDate]) }}
                             @else
-                                the certificate expires on {{ $expiryDate }}, in {{ $daysRemaining }} {{ $daysRemaining === 1 ? 'day' : 'days' }}.
-                                Renew it before then to keep filing without interruption.
+                                {{ __(':organization: the certificate expires on :date, in :days days. Renew it before then to keep filing without interruption.', ['organization' => $organizationName, 'date' => $expiryDate, 'days' => $daysRemaining]) }}
                             @endif
                         </p>
                         <p style="margin:0;font-size:15px;line-height:1.5;">
                             <span style="display:inline-block;padding:10px 16px;border-radius:6px;background:{{ $primary }};color:#ffffff;font-weight:bold;">
-                                Renew through ZATCA onboarding
+                                {{ __('Renew through ZATCA onboarding') }}
                             </span>
                         </p>
                     </td>

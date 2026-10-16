@@ -1,7 +1,11 @@
 {{-- Plain text: unescaped, or "A & B" arrives as "A &amp; B". --}}
-{!! $inviterName !!} invited you to join {!! $organizationName !!} as {!! $role === 'admin' ? 'an admin' : 'a member' !!}.
+@if ($role === 'admin')
+{!! __(':inviter invited you to join :organization as an admin.', ['inviter' => $inviterName, 'organization' => $organizationName]) !!}
+@else
+{!! __(':inviter invited you to join :organization as a member.', ['inviter' => $inviterName, 'organization' => $organizationName]) !!}
+@endif
 
-Accept the invitation:
+{!! __('Accept the invitation') !!}:
 {!! $acceptUrl !!}
 
-The link works once and expires in {!! $validDays !!} days. If you were not expecting it, ignore this message.
+{!! __('The link works once and expires in :days days. If you were not expecting it, ignore this message.', ['days' => $validDays]) !!}

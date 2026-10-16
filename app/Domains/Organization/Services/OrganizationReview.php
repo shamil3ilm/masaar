@@ -132,24 +132,26 @@ class OrganizationReview
 
     private function tell(Organization $organization, bool $approved, ?string $note): void
     {
-        $recipients = $this->admins($organization);
+        // One each, so each is written in its reader's language.
+        $recipients = $organization->users()
+            ->wherePivot('role', 'admin')
+            ->wherePivot('status', 'active')
+            ->get();
 
-        if ($recipients === []) {
-            return;
-        }
-
-        try {
-            Mail::to($recipients)->send(new OrganizationReviewedMail(
-                organizationName: (string) $organization->name,
-                approved: $approved,
-                note: $note,
-                portalUrl: route('portal.dashboard'),
-            ));
-        } catch (Throwable $e) {
-            Log::error('Organization review: the email could not be sent', [
-                'org_id' => $organization->id,
-                'error' => $e->getMessage(),
-            ]);
+        foreach ($recipients as $recipient) {
+            try {
+                Mail::to($recipient)->send(new OrganizationReviewedMail(
+                    organizationName: (string) $organization->name,
+                    approved: $approved,
+                    note: $note,
+                    portalUrl: route('portal.dashboard'),
+                ));
+            } catch (Throwable $e) {
+                Log::error('Organization review: the email could not be sent', [
+                    'org_id' => $organization->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
     }
 }

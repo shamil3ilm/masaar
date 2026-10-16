@@ -23,7 +23,9 @@ final class RenewalReminderMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: 'Your '.$this->plan.' plan ends in '.$this->days.' '.($this->days === 1 ? 'day' : 'days'));
+        return new Envelope(subject: $this->days === 1
+            ? __('Your :plan plan ends in 1 day', ['plan' => $this->plan])
+            : __('Your :plan plan ends in :days days', ['plan' => $this->plan, 'days' => $this->days]));
     }
 
     public function content(): Content

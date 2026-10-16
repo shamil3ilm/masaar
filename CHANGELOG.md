@@ -62,6 +62,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Email in the reader's language**: verification, password reset, email
+  change, invitations, review decisions, renewal and certificate reminders
+  and support replies are written in the language the recipient chose for
+  the portal, right to left in Arabic.
 - **Arabic**: the portal, sign-in, sign-up and My account read in Arabic,
   right to left, with a language switch on every page; the choice is kept
   on the account. Dates, units, validation and messages follow it. The

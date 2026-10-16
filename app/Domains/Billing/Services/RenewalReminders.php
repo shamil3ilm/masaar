@@ -57,13 +57,14 @@ class RenewalReminders
             ->wherePivot('role', 'admin')
             ->wherePivot('status', 'active')
             ->where('users.status', 'active')
-            ->pluck('users.email');
+            ->get();
 
         $sent = 0;
 
-        foreach ($admins as $email) {
+        // One each, so each is written in its reader's language.
+        foreach ($admins as $admin) {
             try {
-                Mail::to($email)->send(new RenewalReminderMail(
+                Mail::to($admin)->send(new RenewalReminderMail(
                     organizationName: (string) $organization->name,
                     plan: $licence->tier->getDisplayName(),
                     endsOn: (string) $licence->expires_at?->toDateString(),

@@ -23,8 +23,8 @@ final class OrganizationReviewedMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(subject: $this->approved
-            ? "{$this->organizationName} is approved - connect to ZATCA"
-            : "{$this->organizationName} was not approved");
+            ? __(':organization is approved - connect to ZATCA', ['organization' => $this->organizationName])
+            : __(':organization was not approved', ['organization' => $this->organizationName]));
     }
 
     public function content(): Content

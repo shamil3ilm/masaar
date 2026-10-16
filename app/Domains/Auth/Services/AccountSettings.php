@@ -79,7 +79,7 @@ class AccountSettings
             'pending_email_expires_at' => now()->addHours(self::EMAIL_LINK_HOURS),
         ])->save();
 
-        Mail::to($email)->send(new EmailChangeMail(
+        Mail::to($email)->locale($user->preferredLocale())->send(new EmailChangeMail(
             name: (string) $user->name,
             confirmUrl: route('account.email.confirm', $token),
             validHours: self::EMAIL_LINK_HOURS,
@@ -120,7 +120,7 @@ class AccountSettings
         // The old address is told: if this was not its owner, that is how
         // they find out.
         try {
-            Mail::to($previous)->send(new EmailChangedMail(name: (string) $user->name, newEmail: (string) $user->email));
+            Mail::to($previous)->locale($user->preferredLocale())->send(new EmailChangedMail(name: (string) $user->name, newEmail: (string) $user->email));
         } catch (Throwable $e) {
             report($e);
         }

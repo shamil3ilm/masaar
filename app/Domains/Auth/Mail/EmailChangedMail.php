@@ -21,7 +21,7 @@ final class EmailChangedMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: 'Your email address was changed');
+        return new Envelope(subject: __('Your email address was changed'));
     }
 
     public function content(): Content

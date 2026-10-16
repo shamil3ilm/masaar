@@ -1,8 +1,12 @@
 {{-- Plain text: unescaped, or "A & B" arrives as "A &amp; B". --}}
-Your plan ends on {!! $endsOn !!}
+{!! __('Your plan ends on :date', ['date' => $endsOn]) !!}
 
-The {!! $plan !!} plan for {!! $organizationName !!} ends in {{ $days }} {{ $days === 1 ? 'day' : 'days' }}. After that, {!! $organizationName !!} cannot issue invoices or file them with ZATCA until it is renewed.
+@if ($days === 1)
+{!! __('The :plan plan for :organization ends in 1 day. After that, :organization cannot issue invoices or file them with ZATCA until it is renewed.', ['plan' => $plan, 'organization' => $organizationName]) !!}
+@else
+{!! __('The :plan plan for :organization ends in :days days. After that, :organization cannot issue invoices or file them with ZATCA until it is renewed.', ['plan' => $plan, 'organization' => $organizationName, 'days' => $days]) !!}
+@endif
 
-To renew, reply to this email or open a ticket under Support, and we will send payment details.
+{!! __('To renew, reply to this email or open a ticket under Support, and we will send payment details.') !!}
 
-See your plan: {!! $url !!}
+{!! __('See your plan') !!}: {!! $url !!}
