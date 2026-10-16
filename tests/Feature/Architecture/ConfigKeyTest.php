@@ -19,7 +19,7 @@ use PHPUnit\Framework\TestCase;
  * hundreds of lines apart, which is exactly the shape a machine should catch.
  *
  * Keys are compared within their enclosing array rather than globally: the
- * same name at different depths, like 'timeout' under both 'queue' and 'tsa',
+ * same name at different depths, like 'timeout' at the top and under 'queue',
  * is fine and common.
  */
 class ConfigKeyTest extends TestCase

@@ -4,27 +4,28 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Console;
 
+use App\Domains\Compliance\Fatoora\Client\FatooraClient;
+use App\Domains\Compliance\Fatoora\Console\Concerns\ChecksCompliance;
 use App\Domains\Compliance\Fatoora\Console\Concerns\EncodesCsr;
 use App\Domains\Compliance\Fatoora\Console\Concerns\FindsOpenSsl;
+use App\Domains\Compliance\Fatoora\Console\Concerns\OnboardsLocally;
+use App\Domains\Compliance\Fatoora\Console\Concerns\StampsSampleQr;
+use App\Domains\Compliance\Fatoora\Console\Concerns\StoresCsids;
+use App\Domains\Compliance\Fatoora\Console\Concerns\SubmitsWithPcsid;
 use App\Domains\Compliance\Fatoora\Console\Concerns\WritesSecrets;
 use App\Domains\Compliance\Fatoora\DTOs\AddressData;
 use App\Domains\Compliance\Fatoora\DTOs\InvoiceXmlData;
-use App\Domains\Compliance\Fatoora\DTOs\QrCodeData;
 use App\Domains\Compliance\Fatoora\Services\CertificateService;
 use App\Domains\Compliance\Fatoora\Services\ComplianceSampleSet;
-use App\Domains\Compliance\Fatoora\Services\EcdsaSigner;
 use App\Domains\Compliance\Fatoora\Services\InvoiceHasher;
 use App\Domains\Compliance\Fatoora\Services\QrCodeGenerator;
 use App\Domains\Compliance\Fatoora\Services\QrCodeInjector;
-use App\Domains\Compliance\Fatoora\Services\TlvEncoder;
 use App\Domains\Compliance\Fatoora\Services\XadesSigner;
-use App\Support\Xml;
+use Closure;
 use Illuminate\Console\Command;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
-use RuntimeException;
 
 /**
  * ZATCA EGS Onboarding Command
@@ -42,11 +43,24 @@ use RuntimeException;
  *   php artisan fatoora:onboard --step=compliance
  *   php artisan fatoora:onboard --step=pcsid
  *   php artisan fatoora:onboard --step=full --otp=<your-otp>
+ *
+ * The endpoint paths are FatooraClient's. The requests are made here rather
+ * than through FatooraClient or CsidOnboarding because what this reports is
+ * the raw exchange - the HTTP status, the body, tokenType, each error's code
+ * - which CsidResponse and FatooraResponse do not keep. The CSR is the PEM
+ * file on disk, trimmed, rather than one CsrBuilder makes; the client's base
+ * URL is fixed when it is built, before --target names the environment; and
+ * a sandbox run retries a 5xx, which a production submission must not.
  */
 class FatooraOnboarding extends Command
 {
+    use ChecksCompliance;
     use EncodesCsr;
     use FindsOpenSsl;
+    use OnboardsLocally;
+    use StampsSampleQr;
+    use StoresCsids;
+    use SubmitsWithPcsid;
     use WritesSecrets;
 
     protected $signature = 'fatoora:onboard
@@ -65,31 +79,25 @@ class FatooraOnboarding extends Command
      */
     private const LOCAL = 'local';
 
-    private InvoiceHasher $hasher;
-
-    private XadesSigner $signer;
-
-    private QrCodeGenerator $qrGenerator;
-
-    private QrCodeInjector $qrInjector;
-
-    private CertificateService $certificateService;
-
     private string $environment;
 
     private ComplianceSampleSet $samples;
 
     private string $baseUrl;
 
-    public function __construct()
-    {
+    /**
+     * The container's signing pipeline, not a second one wired here: a
+     * command that builds its own signer drifts from the one DocumentBuilder
+     * uses (CommandConstructionTest).
+     */
+    public function __construct(
+        private readonly InvoiceHasher $hasher,
+        private readonly XadesSigner $signer,
+        private readonly QrCodeGenerator $qrGenerator,
+        private readonly QrCodeInjector $qrInjector,
+        private readonly CertificateService $certificateService,
+    ) {
         parent::__construct();
-        $this->hasher = new InvoiceHasher;
-        $ecdsaSigner = new EcdsaSigner;
-        $this->certificateService = new CertificateService;
-        $this->signer = new XadesSigner($ecdsaSigner, $this->certificateService);
-        $this->qrGenerator = new QrCodeGenerator(new TlvEncoder);
-        $this->qrInjector = new QrCodeInjector;
     }
 
     /**
@@ -263,8 +271,10 @@ class FatooraOnboarding extends Command
             return Command::FAILURE;
         }
 
+        $endpoint = $this->baseUrl.FatooraClient::COMPLIANCE_CSID;
+
         $this->info("Requesting Compliance CSID from ZATCA {$this->environment}...");
-        $this->line("Endpoint: {$this->baseUrl}/compliance");
+        $this->line("Endpoint: {$endpoint}");
         $this->newLine();
 
         $csrContent = file_get_contents($csrPath);
@@ -274,7 +284,7 @@ class FatooraOnboarding extends Command
         try {
             $response = $this->zatca()
                 ->withHeaders(['OTP' => $otp])
-                ->post($this->baseUrl.'/compliance', [
+                ->post($endpoint, [
                     'csr' => $csrBase64,
                 ]);
 
@@ -289,12 +299,7 @@ class FatooraOnboarding extends Command
                 // Save credentials
                 $this->saveCcsidCredentials($data);
 
-                $this->table(['Field', 'Value'], [
-                    ['Request ID', $data['requestID'] ?? 'N/A'],
-                    ['Disposition', $data['dispositionMessage'] ?? 'N/A'],
-                    ['Token Type', $data['tokenType'] ?? 'N/A'],
-                ]);
-                $this->newLine();
+                $this->csidTable($data);
 
                 $this->info('NEXT: Run compliance check with 6 invoices:');
                 $this->line("  php artisan fatoora:onboard --step=compliance --target={$this->environment}");
@@ -321,275 +326,6 @@ class FatooraOnboarding extends Command
         }
     }
 
-    /**
-     * Generate a local self-signed certificate for testing without ZATCA API.
-     */
-    private function generateLocalCcsid(): int
-    {
-        $this->info('Generating LOCAL test CCSID (self-signed certificate)...');
-        $this->warn('NOTE: This is for local testing only. Not valid for ZATCA submission.');
-        $this->newLine();
-
-        $csrPath = $this->option('csr') ?? storage_path('app/zatca/taxpayer.csr');
-        $keyPath = $this->option('key') ?? storage_path('app/zatca/taxpayer.key');
-
-        if (! file_exists($csrPath)) {
-            $this->error("CSR not found at: {$csrPath}");
-            $this->line('Generate CSR first: php artisan fatoora:generate-csr');
-
-            return Command::FAILURE;
-        }
-
-        if (! file_exists($keyPath)) {
-            $this->error("Private key not found at: {$keyPath}");
-
-            return Command::FAILURE;
-        }
-
-        try {
-            // Generate self-signed certificate from CSR
-            $certPath = storage_path('app/zatca/local_cert.pem');
-
-            // Find OpenSSL executable
-            $opensslCmd = $this->findOpenSsl();
-            if (! $opensslCmd) {
-                $this->error('OpenSSL not found. Install it and put it on the PATH, or set OPENSSL_BIN to its full path.');
-
-                return Command::FAILURE;
-            }
-
-            // Use OpenSSL to create self-signed cert
-            $cmd = sprintf(
-                '"%s" x509 -req -in "%s" -signkey "%s" -out "%s" -days 365 -sha256 2>&1',
-                $opensslCmd,
-                $csrPath,
-                $keyPath,
-                $certPath
-            );
-
-            exec($cmd, $output, $returnCode);
-
-            if ($returnCode !== 0 || ! file_exists($certPath)) {
-                $this->error('Failed to generate self-signed certificate');
-                $this->line(implode("\n", $output));
-
-                return Command::FAILURE;
-            }
-
-            $this->info('✓ Self-signed certificate generated');
-
-            // Create mock CCSID credentials
-            $privateKey = file_get_contents($keyPath);
-            $certificate = file_get_contents($certPath);
-
-            $data = [
-                'requestID' => 'LOCAL-'.time(),
-                'dispositionMessage' => 'LOCAL TEST MODE',
-                'binarySecurityToken' => base64_encode($certificate),
-                'secret' => base64_encode('local-test-secret-'.bin2hex(random_bytes(16))),
-                'tokenType' => 'LOCAL',
-            ];
-
-            // Save credentials with private key
-            $data['privateKey'] = $privateKey;
-            $data['certificate'] = $certificate;
-
-            $this->saveCcsidCredentials($data);
-
-            $this->table(['Field', 'Value'], [
-                ['Request ID', $data['requestID']],
-                ['Mode', 'LOCAL TEST'],
-                ['Certificate', 'Self-signed (365 days)'],
-            ]);
-            $this->newLine();
-
-            $this->info('✓ Local CCSID credentials saved!');
-            $this->newLine();
-
-            $this->info('NEXT: Run compliance check (local validation):');
-            $this->line('  php artisan fatoora:onboard --step=compliance --target=local');
-
-            return Command::SUCCESS;
-
-        } catch (\Exception $e) {
-            $this->error('Failed to generate local CCSID: '.$e->getMessage());
-
-            return Command::FAILURE;
-        }
-    }
-
-    /**
-     * Generate local PCSID for testing (mock production credentials).
-     */
-    private function generateLocalPcsid(): int
-    {
-        $this->info('Generating LOCAL test PCSID (mock production credentials)...');
-        $this->warn('NOTE: This is for local testing only. Not valid for ZATCA submission.');
-        $this->newLine();
-
-        $ccsid = $this->loadCcsidCredentials();
-        if (! $ccsid) {
-            $this->error('CCSID credentials not found. Run --step=ccsid first with --target=local.');
-
-            return Command::FAILURE;
-        }
-
-        // In local mode, PCSID is essentially the same as CCSID (same self-signed cert)
-        $data = [
-            'requestID' => 'PCSID-LOCAL-'.time(),
-            'dispositionMessage' => 'LOCAL PRODUCTION TEST MODE',
-            'binarySecurityToken' => $ccsid['token'],
-            'secret' => base64_encode('local-prod-secret-'.bin2hex(random_bytes(16))),
-            'tokenType' => 'LOCAL-PRODUCTION',
-        ];
-
-        $this->savePcsidCredentials($data);
-
-        $this->table(['Field', 'Value'], [
-            ['Request ID', $data['requestID']],
-            ['Mode', 'LOCAL PRODUCTION TEST'],
-            ['Certificate', 'Same as CCSID (self-signed)'],
-        ]);
-        $this->newLine();
-
-        $this->info('🎉 Local Onboarding Complete!');
-        $this->line('Your LOCAL test EGS device is ready for testing.');
-        $this->newLine();
-        $this->line('Production credentials saved to: storage/app/zatca/pcsid_*.txt');
-        $this->newLine();
-        $this->warn('To test with real ZATCA servers, you need a valid OTP from Fatoora Portal.');
-
-        return Command::SUCCESS;
-    }
-
-    private function runComplianceCheck(): int
-    {
-        $ccsid = $this->loadCcsidCredentials();
-        if (! $ccsid) {
-            $this->error('CCSID credentials not found. Run --step=ccsid first.');
-
-            return Command::FAILURE;
-        }
-
-        // Check if we have signing credentials
-        $canSign = ! empty($ccsid['certificate']) && ! empty($ccsid['privateKey']);
-        if (! $canSign) {
-            $this->warn('Certificate or private key not found. Invoices will be submitted unsigned.');
-            $this->line('For proper compliance, provide --key option when running --step=ccsid');
-            $this->newLine();
-        } else {
-            $this->info('Signing credentials loaded successfully.');
-        }
-
-        $isLocalMode = $this->environment === 'local';
-        $sdk = new SdkValidator;
-        if ($isLocalMode) {
-            $this->info('Running LOCAL 6-Invoice Compliance Check...');
-
-            if ($sdk->available()) {
-                $this->line('Each document is signed with the local certificate and checked by the ZATCA SDK.');
-                $this->line('Its certificate, QR, signature and PIH checks need a ZATCA-issued certificate,');
-                $this->line('so the schema (XSD), EN16931 and KSA rules decide the result.');
-            } else {
-                $this->warn('NOTE: Without the ZATCA SDK, local mode checks XML structure only.');
-                $this->line('      Set ZATCA_SDK_PATH to validate against ZATCA\'s schema and rules.');
-            }
-        } else {
-            $this->info("Running 6-Invoice Compliance Check on {$this->environment}...");
-        }
-        $this->info('Note: ICV is sequential across ALL types (1-6), PIH chains all documents');
-        $this->newLine();
-
-        $results = [];
-        $allPassed = true;
-
-        // Sign whenever there is a certificate, locally too: an unsigned
-        // document fails the SDK's schema stage on its empty signature
-        // extension, which says nothing about the invoice. The chain then
-        // follows the signed, QR-stamped bytes that are submitted.
-        $finalize = $canSign
-            ? fn (string $xml, InvoiceXmlData $data): string => $this->injectQrCode(
-                $this->signer->sign($xml, $ccsid['privateKey'], $ccsid['certificate']),
-                $data,
-                $ccsid['certificate']
-            )
-            : null;
-
-        try {
-            $documents = $this->samples->build(
-                sellerName: 'Maximum Speed Tech Supply LTD',
-                sellerVatNumber: '399999999900003',
-                sellerCrNumber: '1010010000',
-                sellerAddress: new AddressData(
-                    street: 'King Fahd Road',
-                    buildingNumber: '1234',
-                    plotIdentification: '5678',
-                    district: 'Al Olaya',
-                    city: 'Riyadh',
-                    postalCode: '12345',
-                    countrySubentity: 'Riyadh Region',
-                    countryCode: 'SA',
-                ),
-                numberPrefix: 'COMP-'.date('Ymd'),
-                finalize: $finalize,
-            );
-        } catch (\Exception $e) {
-            $this->error('Could not build the compliance documents: '.$e->getMessage());
-
-            return Command::FAILURE;
-        }
-
-        $num = 0;
-
-        foreach ($documents as $key => $document) {
-            $name = ucwords(str_replace('_', ' ', $key));
-            $this->line('['.(++$num)."/6] Submitting {$name}...");
-
-            try {
-                $result = $isLocalMode
-                    ? $this->validateInvoiceLocally($document['xml'], $document['data']->uuid, $sdk)
-                    : $this->submitComplianceInvoice($document['xml'], $document['hash'], $document['data']->uuid, $ccsid);
-
-                if (! $result['success']) {
-                    $allPassed = false;
-                }
-
-                $results[] = [
-                    'Invoice' => $name,
-                    'Status' => $result['success'] ? '✓ PASSED' : '✗ FAILED',
-                    'Message' => $result['message'] ?? '',
-                ];
-            } catch (\Exception $e) {
-                $allPassed = false;
-                $results[] = [
-                    'Invoice' => $name,
-                    'Status' => '✗ ERROR',
-                    'Message' => $e->getMessage(),
-                ];
-            }
-
-            // Small delay between requests
-            usleep(500000);
-        }
-
-        $this->newLine();
-        $this->table(['Invoice', 'Status', 'Message'], $results);
-        $this->newLine();
-
-        if ($allPassed) {
-            $this->info('All 6 invoices passed compliance check!');
-            $this->newLine();
-            $this->info('NEXT: Request Production CSID:');
-            $this->line("  php artisan fatoora:onboard --step=pcsid --target={$this->environment}");
-
-            return Command::SUCCESS;
-        }
-
-        $this->error('Some invoices failed compliance check. Review errors and retry.');
-
-        return Command::FAILURE;
-    }
-
     private function requestProductionCsid(): int
     {
         // Handle local test mode
@@ -604,14 +340,16 @@ class FatooraOnboarding extends Command
             return Command::FAILURE;
         }
 
+        $endpoint = $this->baseUrl.FatooraClient::PRODUCTION_CSID;
+
         $this->info("Requesting Production CSID from ZATCA {$this->environment}...");
-        $this->line("Endpoint: {$this->baseUrl}/production/csids");
+        $this->line("Endpoint: {$endpoint}");
         $this->newLine();
 
         try {
             $response = $this->zatca()
                 ->withBasicAuth($ccsid['token'], $ccsid['secret'])
-                ->post($this->baseUrl.'/production/csids', [
+                ->post($endpoint, [
                     'compliance_request_id' => $ccsid['requestId'],
                 ]);
 
@@ -626,12 +364,7 @@ class FatooraOnboarding extends Command
                 // Save production credentials
                 $this->savePcsidCredentials($data);
 
-                $this->table(['Field', 'Value'], [
-                    ['Request ID', $data['requestID'] ?? 'N/A'],
-                    ['Disposition', $data['dispositionMessage'] ?? 'N/A'],
-                    ['Token Type', $data['tokenType'] ?? 'N/A'],
-                ]);
-                $this->newLine();
+                $this->csidTable($data);
 
                 $this->info('🎉 Onboarding Complete!');
                 $this->line('Your EGS device is now registered with ZATCA.');
@@ -688,534 +421,41 @@ class FatooraOnboarding extends Command
     }
 
     /**
-     * Clear and report real documents with the production certificate.
-     *
-     * The step that was missing, and the gap it left is the largest in this
-     * platform's verification. Onboarding ends at a production CSID;
-     * everything after that - whether the authority accepts a signed invoice,
-     * what it returns, whether a stamped copy comes back - had been
-     * established only against the SDK offline, or against the compliance
-     * endpoint, which is a different endpoint with different rules.
-     *
-     * It needs no taxpayer. The compliance check already obtains a PCSID from
-     * the developer portal, and clearance and reporting are served there too.
-     * This was described as needing a real taxpayer because nobody had tried.
-     *
-     * The same six documents, sent somewhere else. They are already a valid
-     * chain - ICV one to six, each PIH the previous hash - so they are reused
-     * rather than invented, signed this time with the production certificate
-     * rather than the compliance one. Standard documents go to clearance,
-     * because B2B must be cleared before it is issued; simplified go to
-     * reporting, where B2C is sent within twenty-four hours. Which endpoint a
-     * document belongs to is its subtype's answer, not a setting.
+     * What ZATCA said about the CSID it issued.
      */
-    private function submitWithProductionCsid(): int
+    private function csidTable(array $data): void
     {
-        $this->info('Submitting documents with the production certificate');
+        $this->table(['Field', 'Value'], [
+            ['Request ID', $data['requestID'] ?? 'N/A'],
+            ['Disposition', $data['dispositionMessage'] ?? 'N/A'],
+            ['Token Type', $data['tokenType'] ?? 'N/A'],
+        ]);
         $this->newLine();
-
-        $pcsid = $this->loadPcsidCredentials();
-
-        if ($pcsid === null) {
-            $this->error('No production credentials. Run --step=pcsid first.');
-
-            return Command::FAILURE;
-        }
-
-        if (empty($pcsid['certificate']) || empty($pcsid['privateKey'])) {
-            $this->error('The production certificate or its key is missing, so nothing can be signed.');
-
-            return Command::FAILURE;
-        }
-
-        $this->line("Endpoint: {$this->baseUrl}");
-        $this->newLine();
-
-        try {
-            $documents = $this->samples->build(
-                sellerName: 'Maximum Speed Tech Supply LTD',
-                sellerVatNumber: '399999999900003',
-                sellerCrNumber: '1010010000',
-                sellerAddress: new AddressData(
-                    street: 'King Fahd Road',
-                    buildingNumber: '1234',
-                    plotIdentification: '5678',
-                    district: 'Al Olaya',
-                    city: 'Riyadh',
-                    postalCode: '12345',
-                    countrySubentity: 'Riyadh Region',
-                    countryCode: 'SA',
-                ),
-                numberPrefix: 'LIVE-'.date('YmdHis'),
-                finalize: fn (string $xml, InvoiceXmlData $data): string => $this->injectQrCode(
-                    $this->signer->sign($xml, $pcsid['privateKey'], $pcsid['certificate']),
-                    $data,
-                    $pcsid['certificate']
-                ),
-            );
-        } catch (\Exception $e) {
-            $this->error('Could not build the documents: '.$e->getMessage());
-
-            return Command::FAILURE;
-        }
-
-        $results = [];
-        $allPassed = true;
-
-        foreach ($documents as $key => $document) {
-            $standard = $document['data']->invoiceSubtype === '01';
-            $route = $standard ? 'clearance' : 'reporting';
-            $name = ucwords(str_replace('_', ' ', $key));
-
-            $this->line("Submitting {$name} for {$route}...");
-
-            $result = $this->submitForOutcome($document, $pcsid, $standard);
-
-            if (! $result['success']) {
-                $allPassed = false;
-            }
-
-            $results[] = [
-                'Document' => $name,
-                'Route' => $route,
-                'Status' => $result['success'] ? 'ACCEPTED' : 'REFUSED',
-                'Outcome' => $result['message'],
-            ];
-
-            // The authority rate limits, and a tight loop is how a device
-            // finds that out the expensive way.
-            usleep(500000);
-        }
-
-        $this->newLine();
-        $this->table(['Document', 'Route', 'Status', 'Outcome'], $results);
-        $this->newLine();
-
-        if (! $allPassed) {
-            $this->error('A document was refused. The outcome column carries what the authority said.');
-
-            return Command::FAILURE;
-        }
-
-        $this->info('All 6 documents were accepted by the production endpoints!');
-
-        return Command::SUCCESS;
     }
 
     /**
-     * One document, to the endpoint its subtype belongs to.
+     * The six documents, as ZATCA's test taxpayer.
      *
-     * @param  array{xml: string, hash: string, data: InvoiceXmlData}  $document
-     * @param  array<string, string|null>  $pcsid
-     * @return array{success: bool, message: string}
+     * @return array<string, array{xml: string, hash: string, data: InvoiceXmlData}>
      */
-    private function submitForOutcome(array $document, array $pcsid, bool $standard): array
+    private function sampleDocuments(string $numberPrefix, ?Closure $finalize): array
     {
-        $path = $standard ? '/invoices/clearance/single' : '/invoices/reporting/single';
-
-        try {
-            $request = $this->zatca()
-                ->withBasicAuth((string) $pcsid['token'], (string) $pcsid['secret']);
-
-            // Clearance is the only one that takes this, and it is what asks
-            // the authority to stamp the document rather than merely accept a
-            // report of it.
-            if ($standard) {
-                $request = $request->withHeaders(['Clearance-Status' => '1']);
-            }
-
-            $response = $request->post($this->baseUrl.$path, [
-                'invoiceHash' => $document['hash'],
-                'uuid' => $document['data']->uuid,
-                'invoice' => base64_encode($document['xml']),
-            ]);
-
-            $body = (array) $response->json();
-
-            if ($response->successful()) {
-                $status = (string) ($body['clearanceStatus'] ?? $body['reportingStatus'] ?? 'ACCEPTED');
-                $cleared = ! empty($body['clearedInvoice']);
-
-                return [
-                    'success' => true,
-                    'message' => $status.($cleared ? ' (stamped copy returned)' : ''),
-                ];
-            }
-
-            // The reasons, not a status code: a refusal names the rule, and
-            // that is the only part worth reading.
-            $reasons = array_merge(
-                array_column((array) ($body['errorMessages'] ?? []), 'message'),
-                array_column((array) ($body['validationResults']['errorMessages'] ?? []), 'message'),
-            );
-
-            return [
-                'success' => false,
-                'message' => $reasons === []
-                    ? 'HTTP '.$response->status()
-                    : implode('; ', array_slice($reasons, 0, 3)),
-            ];
-        } catch (\Exception $e) {
-            return ['success' => false, 'message' => 'GATEWAY: '.$e->getMessage()];
-        }
-    }
-
-    private function submitComplianceInvoice(string $xml, string $hash, string $uuid, array $ccsid): array
-    {
-        try {
-            $response = $this->zatca()
-                ->withBasicAuth($ccsid['token'], $ccsid['secret'])
-                ->post($this->baseUrl.'/compliance/invoices', [
-                    'invoiceHash' => $hash, // Already base64-encoded from InvoiceHasher
-                    'uuid' => $uuid,
-                    'invoice' => base64_encode($xml),
-                ]);
-
-            if ($response->successful()) {
-                $data = $response->json();
-                $status = $data['validationResults']['status'] ?? $data['clearanceStatus'] ?? 'UNKNOWN';
-
-                return [
-                    'success' => in_array($status, ['PASS', 'PASSED', 'CLEARED', 'REPORTED']),
-                    'message' => $status,
-                ];
-            }
-
-            // ZATCA answers a refused document in more than one shape, and
-            // reporting only the two we recognised turned every other refusal
-            // into a bare "HTTP 400" - which says the request was wrong and
-            // nothing about what was wrong with it.
-            // A 5xx is not a refusal: the gateway failed to answer and the
-            // document was never judged. Calling it one sends the reader after
-            // a payload bug that is not there.
-            $errorMsg = ($response->serverError() ? 'GATEWAY ' : '').'HTTP '.$response->status();
-            $errors = $response->json('errors')
-                ?? $response->json('validationResults.errorMessages')
-                ?? $response->json('validationResults.errors')
-                ?? [];
-
-            if (! empty($errors)) {
-                $first = $errors[0] ?? $errors;
-                $errorMsg .= ': '.(is_array($first) ? ($first['message'] ?? json_encode($first)) : (string) $first);
-            } else {
-                $body = trim((string) $response->body());
-                $errorMsg .= ': '.($body === '' ? '(empty response)' : mb_substr($body, 0, 300));
-            }
-
-            return ['success' => false, 'message' => $errorMsg];
-
-        } catch (\Exception $e) {
-            return ['success' => false, 'message' => $e->getMessage()];
-        }
-    }
-
-    /**
-     * Check a document locally, through ZATCA's SDK when it is installed.
-     *
-     * The SDK's schema, EN16931 and KSA stages judge what the document says,
-     * and they decide the result. Its certificate, QR, signature and PIH checks
-     * need a ZATCA-issued certificate, so with the local one they fail for
-     * reasons that are not about the document, and they are not counted.
-     *
-     * Without the SDK this can only confirm the XML is well formed and carries
-     * the elements every invoice needs, and the message says which it was.
-     */
-    private function validateInvoiceLocally(string $xml, string $uuid, SdkValidator $sdk): array
-    {
-        // Save XML for debugging
-        $debugPath = storage_path("app/zatca/debug_{$uuid}.xml");
-        file_put_contents($debugPath, $xml);
-
-        if ($sdk->available()) {
-            $result = $sdk->validate($xml);
-
-            if ($sdk->contentPassed($result)) {
-                return ['success' => true, 'message' => 'SDK: XSD, EN and KSA passed'];
-            }
-
-            $failed = array_values(array_filter(
-                SdkValidator::CONTENT_STAGES,
-                fn (string $stage): bool => ($result['stages'][$stage] ?? null) !== 'PASSED'
-            ));
-
-            return [
-                'success' => false,
-                'message' => 'SDK: '.implode(', ', $failed).' failed. '.($result['errors'][0] ?? "See {$debugPath}"),
-            ];
-        }
-
-        // Basic XML structure validation
-        try {
-            $dom = new \DOMDocument;
-            Xml::load($dom, $xml, LIBXML_NOERROR | LIBXML_NOWARNING);
-
-            // Check for required elements
-            $xpath = new \DOMXPath($dom);
-            $xpath->registerNamespace('cbc', 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2');
-            $xpath->registerNamespace('cac', 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2');
-
-            $checks = [
-                'UUID' => $xpath->query('//cbc:UUID')->length > 0,
-                'IssueDate' => $xpath->query('//cbc:IssueDate')->length > 0,
-                'InvoiceTypeCode' => $xpath->query('//cbc:InvoiceTypeCode')->length > 0,
-                'Seller' => $xpath->query('//cac:AccountingSupplierParty')->length > 0,
-                'TaxTotal' => $xpath->query('//cac:TaxTotal')->length > 0,
-                'LegalMonetaryTotal' => $xpath->query('//cac:LegalMonetaryTotal')->length > 0,
-            ];
-
-            $missing = array_keys(array_filter($checks, fn ($v) => ! $v));
-
-            if (empty($missing)) {
-                return ['success' => true, 'message' => 'LOCAL: Structure OK'];
-            }
-
-            return ['success' => false, 'message' => 'Missing: '.implode(', ', $missing)];
-
-        } catch (\Exception $e) {
-            return ['success' => false, 'message' => 'XML Error: '.$e->getMessage()];
-        }
-    }
-
-    /**
-     * The certificate's base64 DER, from whatever the authority sent.
-     *
-     * ZATCA wraps it a second time: the token decodes to the DER's own
-     * base64, which is what belongs between the PEM headers. A token that is
-     * already the body decodes to bytes rather than base64, so this only
-     * unwraps when unwrapping produces something a PEM can hold.
-     */
-    private function certificateBodyFrom(string $token): string
-    {
-        $token = trim($token);
-
-        if ($token === '') {
-            return '';
-        }
-
-        $decoded = base64_decode($token, true);
-
-        if ($decoded !== false && preg_match('#^[A-Za-z0-9+/=
-]+$#', $decoded) === 1) {
-            return trim($decoded);
-        }
-
-        return $token;
-    }
-
-    private function saveCcsidCredentials(array $data): void
-    {
-        $dir = $this->secretDir();
-
-        // Save the raw token and secret
-        $this->putSecret($dir.'/ccsid_token.txt', $data['binarySecurityToken'] ?? '');
-        $this->putSecret($dir.'/ccsid_secret.txt', $data['secret'] ?? '');
-        // ZATCA sends requestID as a JSON number, and putSecret takes a
-        // string under strict_types, so onboarding died here after the
-        // authority had already issued the certificate.
-        $this->putSecret($dir.'/ccsid_request_id.txt', (string) ($data['requestID'] ?? ''));
-
-        // Handle certificate - for local mode use raw cert, for API mode convert from base64
-        if (! empty($data['certificate']) && str_starts_with($data['certificate'], '-----BEGIN')) {
-            // Local mode: certificate is already in PEM format
-            File::put($dir.'/ccsid_certificate.pem', $data['certificate']);
-        } else {
-            // binarySecurityToken is base64 of the certificate's base64 DER -
-            // one layer more than a PEM body. Wrapping it as it arrived put
-            // base64 of base64 between the headers, which openssl_x509_read
-            // refuses with "X.509 Certificate cannot be retrieved", and every
-            // document signed with it failed the compliance check.
-            $certBase64 = $this->certificateBodyFrom((string) ($data['binarySecurityToken'] ?? ''));
-
-            if ($certBase64 !== '') {
-                $certPem = '-----BEGIN CERTIFICATE-----
-'.
-                    chunk_split($certBase64, 64, '
-').
-                    '-----END CERTIFICATE-----';
-                File::put($dir.'/ccsid_certificate.pem', $certPem);
-            }
-        }
-
-        // Copy private key if provided via --key option
-        $keyPath = $this->option('key') ?? storage_path('app/zatca/taxpayer.key');
-        if (file_exists($keyPath)) {
-            $privateKey = file_get_contents($keyPath);
-            $this->putSecret($dir.'/ccsid_private_key.pem', $privateKey);
-            $this->line('Private key copied from: '.$keyPath);
-        } else {
-            $this->warn('Private key not found at: '.$keyPath);
-            $this->line('You will need to provide the private key for invoice signing.');
-        }
-
-        $this->line('Credentials saved to storage/app/zatca/ccsid_*.txt');
-    }
-
-    /**
-     * The production credentials, with the key the request was made with.
-     *
-     * There was no loader for these. The PCSID was obtained, written to disk
-     * and never read back, so the certificate that actually clears invoices
-     * had never signed one. The private key is the CCSID's: a production
-     * certificate is issued against the same key the certificate request
-     * carried, and only the certificate changes.
-     */
-    private function loadPcsidCredentials(): ?array
-    {
-        $dir = storage_path('app/zatca');
-        $tokenPath = $dir.'/pcsid_token.txt';
-        $secretPath = $dir.'/pcsid_secret.txt';
-        $certPath = $dir.'/pcsid_certificate.pem';
-        $keyPath = $dir.'/ccsid_private_key.pem';
-
-        if (! file_exists($tokenPath) || ! file_exists($secretPath)) {
-            return null;
-        }
-
-        return [
-            'token' => trim((string) file_get_contents($tokenPath)),
-            'secret' => trim((string) file_get_contents($secretPath)),
-            'certificate' => file_exists($certPath) ? trim((string) file_get_contents($certPath)) : null,
-            'privateKey' => file_exists($keyPath) ? trim((string) file_get_contents($keyPath)) : null,
-        ];
-    }
-
-    private function loadCcsidCredentials(): ?array
-    {
-        $dir = storage_path('app/zatca');
-        $tokenPath = $dir.'/ccsid_token.txt';
-        $secretPath = $dir.'/ccsid_secret.txt';
-        $requestIdPath = $dir.'/ccsid_request_id.txt';
-        $certPath = $dir.'/ccsid_certificate.pem';
-        $keyPath = $dir.'/ccsid_private_key.pem';
-
-        if (! file_exists($tokenPath) || ! file_exists($secretPath)) {
-            return null;
-        }
-
-        return [
-            'token' => trim(file_get_contents($tokenPath)),
-            'secret' => trim(file_get_contents($secretPath)),
-            'requestId' => file_exists($requestIdPath) ? trim(file_get_contents($requestIdPath)) : '',
-            'certificate' => file_exists($certPath) ? trim(file_get_contents($certPath)) : null,
-            'privateKey' => file_exists($keyPath) ? trim(file_get_contents($keyPath)) : null,
-        ];
-    }
-
-    private function savePcsidCredentials(array $data): void
-    {
-        $dir = $this->secretDir();
-        $this->putSecret($dir.'/pcsid_token.txt', $data['binarySecurityToken'] ?? '');
-        $this->putSecret($dir.'/pcsid_secret.txt', $data['secret'] ?? '');
-
-        // A JSON number, as in the CCSID response, and putSecret takes a string
-        // under strict_types.
-        $this->putSecret($dir.'/pcsid_request_id.txt', (string) ($data['requestID'] ?? ''));
-
-        // The CCSID path writes a usable certificate and this one did not, so
-        // the step that finishes onboarding left nothing behind to sign with.
-        $body = $this->certificateBodyFrom((string) ($data['binarySecurityToken'] ?? ''));
-
-        if ($body !== '') {
-            File::put(
-                $dir.'/pcsid_certificate.pem',
-                '-----BEGIN CERTIFICATE-----
-'.chunk_split($body, 64, '
-').'-----END CERTIFICATE-----'
-            );
-        }
-
-        $this->line('Production credentials saved to storage/app/zatca/pcsid_*.txt');
-    }
-
-    /**
-     * Inject QR code into signed invoice XML.
-     *
-     * For Phase 2, QR code requires:
-     * - Tags 1-5: Basic info (seller, VAT, timestamp, totals)
-     * - Tags 6-9: Cryptographic data (hash, signature, public key, cert signature)
-     */
-    private function injectQrCode(string $signedXml, InvoiceXmlData $invoiceData, string $certificate): string
-    {
-        // Put the QR element in place before hashing, empty for now.
-        //
-        // Inserting it is a DOM round trip, and re-serializing changes bytes
-        // the hash covers — self-closing tags, entity escapes — so a hash taken
-        // before it does not describe the document that gets sent. ZATCA
-        // recomputes from what it receives and answered "invoice xml hash does
-        // not match with qr code invoice xml hash" for every simplified
-        // document. Hashing the settled shape, with the QR excluded as the
-        // specification requires, is what makes tag 6 true of the document
-        // carrying it.
-        $signedXml = $this->qrInjector->inject($signedXml, '');
-
-        $invoiceHash = $this->hasher->hash($signedXml);
-
-        // Extract signature from signed XML
-        $signature = $this->signer->extractSignature($signedXml);
-
-        // Extract public key from certificate
-        $certResource = openssl_x509_read($certificate);
-        if ($certResource === false) {
-            throw new RuntimeException('Failed to parse certificate');
-        }
-        $pubKeyResource = openssl_pkey_get_public($certResource);
-        $pubKeyDetails = openssl_pkey_get_details($pubKeyResource);
-        $publicKeyPem = $pubKeyDetails['key'] ?? '';
-
-        // Extract raw public key bytes (without PEM headers)
-        $publicKeyDer = base64_decode(str_replace(
-            ['-----BEGIN PUBLIC KEY-----', '-----END PUBLIC KEY-----', "\n", "\r"],
-            '',
-            $publicKeyPem
-        ));
-
-        // Extract the certificate signature from DER-encoded certificate
-        $certDer = base64_decode(str_replace(
-            ['-----BEGIN CERTIFICATE-----', '-----END CERTIFICATE-----', "\n", "\r"],
-            '',
-            $certificate
-        ));
-        // CertificateService already walks the DER for this. A second copy
-        // of the walk lived here and produced the same 71 bytes, which is
-        // the good case: two implementations of one rule agree until one of
-        // them is fixed.
-        $certSignature = $this->certificateService->getCertificateSignature($certificate);
-
-        // Build QR code data
-        $qrData = new QrCodeData(
-            sellerName: $invoiceData->sellerName,
-            vatNumber: $invoiceData->sellerVatNumber,
-            timestamp: $invoiceData->issueDate.'T'.$invoiceData->issueTime,
-            invoiceTotal: number_format($invoiceData->total, 2, '.', ''),
-            vatTotal: number_format($invoiceData->taxAmount, 2, '.', ''),
-            // hash() already returns base64. Encoding it again put base64 of
-            // base64 in tag 6, which is not the hash ZATCA recomputes.
-            invoiceHash: $invoiceHash,
-            signature: $signature ?? '',
-            // Raw bytes, not base64. Tags 6 and 7 carry base64 text and these
-            // two carry DER; encoding them made the QR a third longer than
-            // ZATCA's, and the authority answered "ECDSA Public Key does not
-            // match with qr code ECDSA public key".
-            publicKey: $publicKeyDer,
-            certificateSignature: $certSignature,
+        return $this->samples->build(
+            sellerName: 'Maximum Speed Tech Supply LTD',
+            sellerVatNumber: '399999999900003',
+            sellerCrNumber: '1010010000',
+            sellerAddress: new AddressData(
+                street: 'King Fahd Road',
+                buildingNumber: '1234',
+                plotIdentification: '5678',
+                district: 'Al Olaya',
+                city: 'Riyadh',
+                postalCode: '12345',
+                countrySubentity: 'Riyadh Region',
+                countryCode: 'SA',
+            ),
+            numberPrefix: $numberPrefix,
+            finalize: $finalize,
         );
-
-        // Nine tags whenever the cryptographic material exists, which after
-        // signing it does. This chose by document type and chose the wrong way
-        // round: the stamp belongs on simplified invoices, which ZATCA verifies
-        // from the QR because it never sees them before they are issued. A
-        // five-tag QR on a simplified invoice is refused with "Failed to
-        // validate QR code", and every one of ours was refused.
-        try {
-            $qrCode = $this->qrGenerator->generatePhase2($qrData);
-        } catch (\Exception $e) {
-            // Falling back silently produced a QR the authority rejects and
-            // said nothing about why, so say it.
-            $this->warn('Phase 2 QR unavailable ('.$e->getMessage().'); falling back to five tags.');
-            $qrCode = $this->qrGenerator->generatePhase1($qrData);
-        }
-
-        // Inject QR code into the XML
-        return $this->qrInjector->inject($signedXml, $qrCode);
     }
 }

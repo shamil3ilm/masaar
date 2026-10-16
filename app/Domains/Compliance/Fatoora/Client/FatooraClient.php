@@ -30,6 +30,20 @@ use Illuminate\Support\Facades\Log;
  */
 class FatooraClient
 {
+    /**
+     * ZATCA's paths, relative to the environment's base URL. Stated once:
+     * the onboarding commands name the same endpoints.
+     */
+    public const COMPLIANCE_CSID = '/compliance';
+
+    public const COMPLIANCE_INVOICES = '/compliance/invoices';
+
+    public const PRODUCTION_CSID = '/production/csids';
+
+    public const CLEARANCE = '/invoices/clearance/single';
+
+    public const REPORTING = '/invoices/reporting/single';
+
     private string $baseUrl;
 
     private InvoiceHasher $hasher;
@@ -85,7 +99,7 @@ class FatooraClient
      */
     public function clearInvoice(string $invoiceXml, string $invoiceHash, string $uuid, DeviceCredentials $device): FatooraResponse
     {
-        return $this->submitInvoice('/invoices/clearance/single', $invoiceXml, $invoiceHash, $uuid, $device);
+        return $this->submitInvoice(self::CLEARANCE, $invoiceXml, $invoiceHash, $uuid, $device);
     }
 
     /**
@@ -93,7 +107,7 @@ class FatooraClient
      */
     public function reportInvoice(string $invoiceXml, string $invoiceHash, string $uuid, DeviceCredentials $device): FatooraResponse
     {
-        return $this->submitInvoice('/invoices/reporting/single', $invoiceXml, $invoiceHash, $uuid, $device);
+        return $this->submitInvoice(self::REPORTING, $invoiceXml, $invoiceHash, $uuid, $device);
     }
 
     /**
@@ -106,7 +120,7 @@ class FatooraClient
      */
     public function checkCompliance(string $invoiceXml, string $invoiceHash, string $uuid, DeviceCredentials $device): FatooraResponse
     {
-        return $this->submitInvoice('/compliance/invoices', $invoiceXml, $invoiceHash, $uuid, $device);
+        return $this->submitInvoice(self::COMPLIANCE_INVOICES, $invoiceXml, $invoiceHash, $uuid, $device);
     }
 
     /**
@@ -356,7 +370,7 @@ class FatooraClient
                     'OTP' => $otp,
                 ]);
 
-            $response = $client->post($this->baseUrl.'/compliance', [
+            $response = $client->post($this->baseUrl.self::COMPLIANCE_CSID, [
                 'csr' => base64_encode($csr),
             ]);
 
@@ -395,7 +409,7 @@ class FatooraClient
             $client = $this->createBaseHttpClient()
                 ->withBasicAuth($ccsid, $secret);
 
-            $response = $client->post($this->baseUrl.'/production/csids', [
+            $response = $client->post($this->baseUrl.self::PRODUCTION_CSID, [
                 'compliance_request_id' => $requestId,
             ]);
 

@@ -67,7 +67,7 @@ class FatooraValidate extends Command
      */
     private const B2C_OPTIONAL = ['Buyer VAT', 'Supply Date'];
 
-    public function handle(): int
+    public function handle(XmlBuilder $builder): int
     {
         $this->info('Generating ZATCA-compliant invoice XML...');
         $this->newLine();
@@ -138,7 +138,6 @@ class FatooraValidate extends Command
         );
 
         // Build XML
-        $builder = new XmlBuilder;
         $xml = $builder->build($invoiceData);
 
         // Output path

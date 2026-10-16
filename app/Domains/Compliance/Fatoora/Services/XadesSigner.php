@@ -5,32 +5,31 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Fatoora\Services;
 
 use App\Domains\Compliance\Fatoora\Exceptions\SigningException;
-use App\Domains\Compliance\Fatoora\Helpers\CertificatePem;
-use App\Domains\Compliance\Fatoora\Helpers\FatooraTime;
-use App\Domains\Compliance\Fatoora\Support\Der;
+use App\Domains\Compliance\Fatoora\Support\XadesDigest;
 use App\Support\Xml;
 use DOMDocument;
 use DOMElement;
 use DOMXPath;
 use Illuminate\Support\Facades\Log;
-use phpseclib3\Math\BigInteger;
 
 /**
- * XAdES-BES/XAdES-T digital signature service.
+ * XAdES digital signature service, at baseline level B-B.
  *
  * Implements XML Advanced Electronic Signatures (XAdES) for ZATCA compliance.
- * Creates enveloped signatures embedded within the invoice XML.
- * Supports optional timestamp authority (TSA) for XAdES-T signatures.
+ * Creates enveloped signatures embedded within the invoice XML. There is no
+ * timestamp: ZATCA's security features standard asks for B-B, which carries
+ * none, and the RFC 3161 client that once sat here was never called.
+ *
+ * The signed properties block is SignedPropertiesBuilder's, what is digested
+ * is XadesDigest's, and checking a signature is XadesVerifier's.
  *
  * @see ETSI EN 319 132-1 (XAdES specification)
  */
 class XadesSigner
 {
-    private const DS_NS = 'http://www.w3.org/2000/09/xmldsig#';
+    private const DS_NS = XadesDigest::DS_NS;
 
-    private const XADES_NS = 'http://uri.etsi.org/01903/v1.3.2#';
-
-    private const C14N_NS = 'http://www.w3.org/2006/12/xml-c14n11';
+    private const C14N_NS = XadesDigest::C14N_NS;
 
     /**
      * The UBL signature envelope BR-KSA-28 reads.
@@ -41,84 +40,15 @@ class XadesSigner
 
     private const SBC_NS = 'urn:oasis:names:specification:ubl:schema:xsd:SignatureBasicComponents-2';
 
-    private const CBC_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2';
+    private const CBC_NS = XadesDigest::CBC_NS;
 
     private const XMLNS = 'http://www.w3.org/2000/xmlns/';
-
-    /**
-     * What the invoice signature does not cover, as XPath and as the
-     * expressions ZATCA's own documents declare in ds:Transforms.
-     *
-     * The two must agree, so they are stated once. Keys are what a verifier is
-     * told; values find the same nodes in a DOMDocument.
-     */
-    private const EXCLUDED_FROM_DIGEST = [
-        'not(//ancestor-or-self::ext:UBLExtensions)' => '//ext:UBLExtensions',
-        'not(//ancestor-or-self::cac:Signature)' => '//cac:Signature',
-        "not(//ancestor-or-self::cac:AdditionalDocumentReference[cbc:ID='QR'])" => "//cac:AdditionalDocumentReference[cbc:ID='QR']",
-    ];
-
-    private ?string $tsaUrl = null;
-
-    private ?string $tsaUsername = null;
-
-    private ?string $tsaPassword = null;
-
-    private int $tsaTimeout;
-
-    /**
-     * Get TSA timeout from config.
-     */
-    private function getDefaultTsaTimeout(): int
-    {
-        return (int) config('fatoora.tsa.timeout', 30);
-    }
 
     public function __construct(
         private readonly EcdsaSigner $ecdsaSigner,
         private readonly CertificateService $certificateService,
-    ) {
-        $this->tsaTimeout = $this->getDefaultTsaTimeout();
-
-        // Timestamping is fully implemented below — an RFC 3161 request, the
-        // response parsed and embedded — and nothing ever called
-        // withTimestampAuthority(), so tsaUrl stayed null and no document was
-        // ever timestamped. fatoora.tsa.enabled, .url, .username and .password
-        // were read nowhere: setting ZATCA_TSA_ENABLED=true turned nothing on.
-        //
-        // Read here rather than left to the caller, because the caller is
-        // DocumentBuilder resolving this from the container and has no reason
-        // to know about a timestamp authority.
-        if (config('fatoora.tsa.enabled', false) && ($url = config('fatoora.tsa.url')) !== null) {
-            $this->withTimestampAuthority(
-                (string) $url,
-                config('fatoora.tsa.username'),
-                config('fatoora.tsa.password'),
-            );
-        }
-    }
-
-    /**
-     * Configure Timestamp Authority (TSA) for XAdES-T signatures.
-     *
-     * @param  string  $url  TSA server URL (RFC 3161)
-     * @param  string|null  $username  Optional authentication username
-     * @param  string|null  $password  Optional authentication password
-     * @param  int  $timeout  Request timeout in seconds
-     */
-    public function withTimestampAuthority(
-        string $url,
-        ?string $username = null,
-        ?string $password = null,
-        ?int $timeout = null
-    ): self {
-        $this->tsaUrl = $url;
-        $this->tsaUsername = $username;
-        $this->tsaPassword = $password;
-        $this->tsaTimeout = $timeout ?? $this->getDefaultTsaTimeout();
-
-        return $this;
-    }
+        private readonly SignedPropertiesBuilder $signedProperties,
+    ) {}
 
     /**
      * Sign invoice XML with XAdES-BES signature.
@@ -154,7 +84,7 @@ class XadesSigner
 
         $signature = $this->createSignatureElement($dom, $signatureId);
 
-        $xadesResult = $this->createXadesObject($dom, $signatureId, $signedPropertiesId, $certificatePem);
+        $xadesResult = $this->signedProperties->build($dom, $signatureId, $signedPropertiesId, $certificatePem);
         $object = $xadesResult['object'];
         $signedProperties = $xadesResult['signedProperties'];
 
@@ -190,6 +120,26 @@ class XadesSigner
         // without preserving whitespace still agrees, but one that preserves
         // it does not, and which of those ZATCA runs is not ours to assume.
         return $dom->saveXML();
+    }
+
+    /**
+     * Get signature value from signed XML (for QR code).
+     */
+    public function extractSignature(string $signedXml): ?string
+    {
+        $dom = new DOMDocument;
+        Xml::load($dom, $signedXml);
+
+        $xpath = new DOMXPath($dom);
+        $xpath->registerNamespace('ds', self::DS_NS);
+
+        $nodes = $xpath->query('//ds:SignatureValue');
+
+        if ($nodes->length > 0) {
+            return $nodes->item(0)->textContent;
+        }
+
+        return null;
     }
 
     /**
@@ -250,13 +200,13 @@ class XadesSigner
         // first was declared, so a verifier told to exclude UBLExtensions
         // alone would digest cac:Signature and the QR — neither of which
         // existed when the digest was taken.
-        foreach (array_keys(self::EXCLUDED_FROM_DIGEST) as $expression) {
+        foreach (array_keys(XadesDigest::EXCLUDED) as $expression) {
             $transform = $dom->createElementNS(self::DS_NS, 'ds:Transform');
             $transform->setAttribute('Algorithm', 'http://www.w3.org/TR/1999/REC-xpath-19991116');
 
             $xpath = $dom->createElementNS(self::DS_NS, 'ds:XPath', $expression);
-            $xpath->setAttributeNS(self::XMLNS, 'xmlns:ext', 'urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2');
-            $xpath->setAttributeNS(self::XMLNS, 'xmlns:cac', 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2');
+            $xpath->setAttributeNS(self::XMLNS, 'xmlns:ext', XadesDigest::EXT_NS);
+            $xpath->setAttributeNS(self::XMLNS, 'xmlns:cac', XadesDigest::CAC_NS);
             $xpath->setAttributeNS(self::XMLNS, 'xmlns:cbc', self::CBC_NS);
 
             $transform->appendChild($xpath);
@@ -298,45 +248,10 @@ class XadesSigner
         $dom->preserveWhiteSpace = false;
         Xml::load($dom, $xml);
 
-        $this->excludeFromDigest($dom);
+        XadesDigest::exclude($dom);
 
         // Apply C14N canonicalization
         return $dom->documentElement->C14N(false, false);
-    }
-
-    /**
-     * Take out of a document everything the signature does not cover.
-     *
-     * Three things, and only UBLExtensions was being removed. The other two
-     * matter because both are written after the digest is taken:
-     *
-     * - cac:Signature says the invoice is signed and how, which cannot be
-     *   known while signing it.
-     * - The QR AdditionalDocumentReference carries the signature itself, so it
-     *   is added once there is one.
-     *
-     * Signing over either would mean a document that fails its own digest the
-     * moment it is finished. It did not show while the QR was never inserted
-     * and cac:Signature was never emitted; with both present, every signature
-     * this platform produced would have failed verification.
-     *
-     * Whatever is removed here must also be named in the ds:Transforms the
-     * signature declares, or a verifier applying what we declared reaches a
-     * different digest than we did.
-     */
-    private function excludeFromDigest(DOMDocument $dom): void
-    {
-        $xpath = new DOMXPath($dom);
-        $xpath->registerNamespace('ext', 'urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2');
-        $xpath->registerNamespace('cac', 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2');
-        $xpath->registerNamespace('cbc', self::CBC_NS);
-        $xpath->registerNamespace('ds', self::DS_NS);
-
-        foreach (self::EXCLUDED_FROM_DIGEST as $path) {
-            foreach (iterator_to_array($xpath->query($path)) as $node) {
-                $node->parentNode?->removeChild($node);
-            }
-        }
     }
 
     /**
@@ -361,7 +276,7 @@ class XadesSigner
         // invoice's own reference, a few lines above, decodes to thirty-two
         // bytes. The two references in one signature do not agree with each
         // other, and this is the one that differs.
-        $digest = base64_encode(hash('sha256', $this->signedPropertiesDigestInput($signedProperties)));
+        $digest = base64_encode(hash('sha256', XadesDigest::signedPropertiesInput($signedProperties)));
         $digestValue = $dom->createElementNS(self::DS_NS, 'ds:DigestValue', $digest);
         $reference->appendChild($digestValue);
 
@@ -379,7 +294,7 @@ class XadesSigner
         $x509Data = $dom->createElementNS(self::DS_NS, 'ds:X509Data');
 
         // Extract certificate value (without headers)
-        $certValue = $this->extractCertificateValue($certificatePem);
+        $certValue = XadesDigest::certificateText($certificatePem);
         $x509Cert = $dom->createElementNS(self::DS_NS, 'ds:X509Certificate', $certValue);
         $x509Data->appendChild($x509Cert);
 
@@ -388,154 +303,6 @@ class XadesSigner
         return $keyInfo;
     }
 
-    /**
-     * Create XAdES Object with SignedProperties.
-     *
-     * @param  DOMDocument  $dom  XML document
-     * @param  string  $signatureId  Dynamic signature ID (for Target attribute)
-     * @param  string  $signedPropertiesId  SignedProperties element ID
-     * @param  string  $certificatePem  Certificate PEM
-     * @return array{object: DOMElement, signedProperties: DOMElement}
-     */
-    private function createXadesObject(DOMDocument $dom, string $signatureId, string $signedPropertiesId, string $certificatePem): array
-    {
-        $object = $dom->createElementNS(self::DS_NS, 'ds:Object');
-
-        // Target names the signature without a leading '#'.
-        //
-        // XML-DSig defines Target as a URI reference, so '#'+Id is the correct
-        // reading and is what this wrote first. The authority's own documents
-        // write the bare Id and its validator compares the two literally, so a
-        // conformant '#signature' matches nothing it looks for. Established by
-        // submitting ZATCA's own sample simplified invoice, which the live API
-        // accepts, and diffing it against ours: Target="signature" there,
-        // Target="#signature-<random>" here. Like the Id above, this was not
-        // what the authority was refusing - it is simply what it writes.
-        $qualifyingProps = $dom->createElementNS(self::XADES_NS, 'xades:QualifyingProperties');
-        $qualifyingProps->setAttribute('Target', $signatureId);
-
-        // From here down, createElement with the prefix written into the name
-        // rather than createElementNS - which looks like a mistake and is not.
-        //
-        // This element's bytes are digested, and ZATCA digests it as the
-        // document carries it. createElementNS attaches a namespace
-        // declaration to each element it makes, and libxml keeps them when the
-        // subtree is assembled, so every element here carried an xmlns:ds that
-        // the authority's own block does not: ten declarations against none.
-        // The digest was computed over the right rule and the wrong bytes, and
-        // every simplified document was refused for it.
-        //
-        // Both prefixes are already in scope - ds from ds:Signature, xades
-        // from xades:QualifyingProperties above - so a literal prefixed name
-        // serialises correctly and declares nothing. The XPath queries in this
-        // class all target QualifyingProperties and above, which are still
-        // built namespace-aware, so nothing looks for these by namespace.
-        //
-        // Checked against the authority: its SDK signing this platform's own
-        // invoice produces a block with no declarations inside it, and with
-        // this change ours matches, so xadesSignedPropertiesDigestValue passes.
-        $signedProps = $dom->createElement('xades:SignedProperties');
-        $signedProps->setAttribute('Id', $signedPropertiesId);
-
-        // SignedSignatureProperties
-        $signedSigProps = $dom->createElement('xades:SignedSignatureProperties');
-
-        // SigningTime, in the form the authority signs with: local time, no
-        // timezone designator.
-        //
-        // This carried a trailing Z, and a comment here defended it on the
-        // grounds that a bare stamp is ambiguous and the SDK's format was not
-        // evidence of what ZATCA reads. The authority settled it: every
-        // simplified document was refused with "Invalid signed properties
-        // hashing", and the Z was the last difference between this block and
-        // the one the SDK produces for the same invoice.
-        //
-        // The SDK could not have told us. It recomputes the digest from the
-        // bytes it is handed, so both forms hash consistently to it - which is
-        // why all 26 conformance tests passed while the live API refused the
-        // documents. A validator that reads what you wrote cannot catch a
-        // disagreement about what to write.
-        //
-        // The Kingdom's clock, so that an unmarked stamp read as local time is
-        // right, and so this agrees with IssueTime and the QR.
-        $signingTime = $dom->createElement('xades:SigningTime', FatooraTime::signingTime());
-        $signedSigProps->appendChild($signingTime);
-
-        // SigningCertificate
-        $signingCert = $this->createSigningCertificate($dom, $certificatePem);
-        $signedSigProps->appendChild($signingCert);
-
-        $signedProps->appendChild($signedSigProps);
-        $qualifyingProps->appendChild($signedProps);
-        $object->appendChild($qualifyingProps);
-
-        return [
-            'object' => $object,
-            'signedProperties' => $signedProps,
-        ];
-    }
-
-    /**
-     * Create SigningCertificate element.
-     */
-    private function createSigningCertificate(DOMDocument $dom, string $certificatePem): DOMElement
-    {
-        $signingCert = $dom->createElement('xades:SigningCertificate');
-        $cert = $dom->createElement('xades:Cert');
-
-        // CertDigest
-        $certDigest = $dom->createElement('xades:CertDigest');
-
-        $digestMethod = $dom->createElement('ds:DigestMethod');
-        $digestMethod->setAttribute('Algorithm', 'http://www.w3.org/2001/04/xmlenc#sha256');
-        $certDigest->appendChild($digestMethod);
-
-        // Two things about this digest, both of them unlike every other digest
-        // in this signature, and both taken from what ZATCA's own signed
-        // samples carry rather than from what XML-DSig would suggest.
-        //
-        // It is taken over the certificate's base64 text and not over the
-        // bytes that text encodes; and it is written as hex and then base64'd,
-        // so the value decodes to sixty-four hex characters rather than to
-        // thirty-two bytes.
-        //
-        // Sent either other way the certificate reads as the wrong one, and
-        // the signed properties digest and the signature over them are wrong
-        // with it, because this value sits inside them.
-        $digestValue = $dom->createElement(
-            'ds:DigestValue',
-            base64_encode(hash('sha256', $this->extractCertificateValue($certificatePem)))
-        );
-        $certDigest->appendChild($digestValue);
-
-        $cert->appendChild($certDigest);
-
-        // IssuerSerial
-        $issuerSerial = $dom->createElement('xades:IssuerSerial');
-
-        $certInfo = openssl_x509_parse($certificatePem);
-        $issuerName = $dom->createElement('ds:X509IssuerName', $this->formatIssuerName($certInfo['issuer'] ?? []));
-        $issuerSerial->appendChild($issuerName);
-
-        // The schema types X509SerialNumber as an integer, but OpenSSL prints a
-        // serial of 32 bits or more as 0x-prefixed hex, and every ZATCA-issued
-        // certificate's serial is that long. The hex form is always present,
-        // so the decimal is built from it.
-        $serial = isset($certInfo['serialNumberHex'])
-            ? (new BigInteger($certInfo['serialNumberHex'], 16))->toString()
-            : '';
-        $serialNumber = $dom->createElement('ds:X509SerialNumber', $serial);
-        $issuerSerial->appendChild($serialNumber);
-
-        $cert->appendChild($issuerSerial);
-        $signingCert->appendChild($cert);
-
-        return $signingCert;
-    }
-
-    /**
-     * Insert signature into document.
-     */
     /**
      * Put the signature where ZATCA looks for it, and return the node that is
      * now in the document.
@@ -548,7 +315,7 @@ class XadesSigner
     private function insertSignature(DOMDocument $dom, DOMElement $signature): DOMElement
     {
         $xpath = new DOMXPath($dom);
-        $xpath->registerNamespace('ext', 'urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2');
+        $xpath->registerNamespace('ext', XadesDigest::EXT_NS);
 
         $nodes = $xpath->query('//ext:UBLExtensions/ext:UBLExtension/ext:ExtensionContent');
 
@@ -616,23 +383,6 @@ class XadesSigner
     }
 
     /**
-     * Extract certificate value from PEM.
-     */
-    private function extractCertificateValue(string $pem): string
-    {
-        $lines = explode("\n", $pem);
-        $value = '';
-
-        foreach ($lines as $line) {
-            if (strpos($line, '-----') === false) {
-                $value .= trim($line);
-            }
-        }
-
-        return $value;
-    }
-
-    /**
      * The key that signs must be the key the certificate names.
      *
      * Nothing checked this, and nothing downstream would: the authority does
@@ -678,585 +428,9 @@ class XadesSigner
 
         throw new SigningException(
             'The private key does not match the certificate it would be signing under, so '
-            .'every invoice signed with this pair would be unverifiable. The authority does 
-'
+            .'every invoice signed with this pair would be unverifiable. The authority does '."\n"
             .'not check this and would accept them. Re-run onboarding so the certificate is '
             .'issued against the key in use ('.$environment.').'
         );
-    }
-
-    /**
-     * The bytes ZATCA digests for the SignedProperties reference.
-     *
-     * The element exactly as this document carries it, and nothing else. The
-     * validator pulls the element out of the document and digests what it
-     * finds, which was established by compacting that element in one of the
-     * authority's own samples, recomputing the digest over the compacted
-     * bytes, and watching the check still pass: the formatting is the
-     * document's to choose, and the digest has to describe it.
-     *
-     * Nothing is added here because nothing is missing. Building these
-     * elements with createElementNS declares xmlns:ds on each one that needs
-     * it rather than once on an ancestor, so the subtree is already
-     * self-contained and serialising it alone changes none of its bytes.
-     * Stripping those declarations and putting them back where ZATCA's own
-     * samples carry them produced a digest of a document nobody had.
-     */
-    private function signedPropertiesDigestInput(DOMElement $signedProperties): string
-    {
-        $xml = (string) $signedProperties->ownerDocument?->saveXML($signedProperties);
-
-        // The element as the document carries it, with xmlns:xades written on
-        // it and xmlns:ds written on each ds: child that lacks one, and
-        // nothing removed.
-        //
-        // This is the rule the authority's validator uses, confirmed twice:
-        // the digest it records for its own sample is the SHA-256 of exactly
-        // this reconstruction of that sample's block, and so is the digest it
-        // records when its SDK signs a document generated here.
-        //
-        // It agrees for the documents this signer produces, since the block
-        // stopped carrying a namespace declaration on every element - see
-        // createXadesObject. A declaration is not data a reader keeps: it puts
-        // the prefix in scope and writes it back where it is needed, which is
-        // why the block has to be built with none inside it and why these two
-        // are added back here rather than left to the serialiser.
-        if (! str_contains((string) strstr($xml, '>', true), 'xmlns:xades=')) {
-            $xml = (string) preg_replace(
-                '#^<xades:SignedProperties#',
-                '<xades:SignedProperties xmlns:xades="'.self::XADES_NS.'"',
-                $xml,
-                1
-            );
-        }
-
-        return (string) preg_replace(
-            '#<ds:([A-Za-z0-9]+)(?![^>]*xmlns:ds=)#',
-            '<ds:$1 xmlns:ds="'.self::DS_NS.'"',
-            $xml
-        );
-    }
-
-    /**
-     * The issuer's whole distinguished name, as X509IssuerName must carry it.
-     *
-     * This named CN, O and C and dropped everything else, which is every
-     * field a self-signed certificate made here happens to have and not the
-     * ones a real CSID has: ZATCA's own CA is CN plus three DC components and
-     * no O or C at all, so the name came out as the CN alone. The name is
-     * inside the signed properties, so a short one takes their digest and the
-     * signature over them with it - which is why a document refused for
-     * "wrong X509IssuerName" is refused three more times for the digests
-     * computed over it.
-     *
-     * Written most specific first, which is the order the string form of a
-     * distinguished name reverses the certificate into, and every component
-     * is kept including the repeated ones.
-     *
-     * @param  array<string, string|list<string>>  $issuer
-     */
-    private function formatIssuerName(array $issuer): string
-    {
-        $parts = [];
-
-        foreach ($issuer as $field => $value) {
-            foreach ((array) $value as $component) {
-                $parts[] = $field.'='.$component;
-            }
-        }
-
-        return implode(', ', array_reverse($parts));
-    }
-
-    /**
-     * Get signature value from signed XML (for QR code).
-     */
-    public function extractSignature(string $signedXml): ?string
-    {
-        $dom = new DOMDocument;
-        Xml::load($dom, $signedXml);
-
-        $xpath = new DOMXPath($dom);
-        $xpath->registerNamespace('ds', self::DS_NS);
-
-        $nodes = $xpath->query('//ds:SignatureValue');
-
-        if ($nodes->length > 0) {
-            return $nodes->item(0)->textContent;
-        }
-
-        return null;
-    }
-
-    /**
-     * Verify signature in signed XML.
-     *
-     * @param  string  $signedXml  Signed XML document
-     * @return bool True if signature is valid
-     */
-    public function verify(string $signedXml): bool
-    {
-        try {
-            $dom = new DOMDocument;
-            $dom->preserveWhiteSpace = false;
-            Xml::load($dom, $signedXml);
-
-            $xpath = new DOMXPath($dom);
-            $xpath->registerNamespace('ds', self::DS_NS);
-
-            // Get SignedInfo element
-            $signedInfoNodes = $xpath->query('//ds:SignedInfo');
-            if ($signedInfoNodes->length === 0) {
-                return false;
-            }
-            $signedInfo = $signedInfoNodes->item(0);
-
-            // Get SignatureValue
-            $signatureValueNodes = $xpath->query('//ds:SignatureValue');
-            if ($signatureValueNodes->length === 0) {
-                return false;
-            }
-            $signatureValue = $signatureValueNodes->item(0)->textContent;
-
-            // Get certificate from KeyInfo
-            $certNodes = $xpath->query('//ds:X509Certificate');
-            if ($certNodes->length === 0) {
-                return false;
-            }
-            $certBase64 = $certNodes->item(0)->textContent;
-            $certificatePem = CertificatePem::from($certBase64) ?? '';
-
-            // Canonicalize SignedInfo
-            $signedInfoC14n = $signedInfo->C14N(false, false);
-
-            // Verify the signature
-            return $this->ecdsaSigner->verify(
-                $signedInfoC14n,
-                $signatureValue,
-                $this->ecdsaSigner->extractPublicKey($certificatePem)
-            );
-        } catch (\Exception $e) {
-            Log::warning('Signature verification could not run', [
-                'exception' => $e::class,
-                'error' => $e->getMessage(),
-            ]);
-
-            return false;
-        }
-    }
-
-    /**
-     * Verify all references in the signature.
-     *
-     * @param  string  $signedXml  Signed XML document
-     * @return array{valid: bool, errors: array}
-     */
-    public function verifyReferences(string $signedXml): array
-    {
-        $errors = [];
-
-        try {
-            $dom = new DOMDocument;
-            $dom->preserveWhiteSpace = false;
-            Xml::load($dom, $signedXml);
-
-            $xpath = new DOMXPath($dom);
-            $xpath->registerNamespace('ds', self::DS_NS);
-
-            // Get all Reference elements
-            $references = $xpath->query('//ds:Reference');
-
-            foreach ($references as $reference) {
-                $uri = $reference->getAttribute('URI');
-                $type = $reference->getAttribute('Type');
-
-                // Get expected digest
-                $digestValueNodes = $xpath->query('ds:DigestValue', $reference);
-                if ($digestValueNodes->length === 0) {
-                    $errors[] = "Reference {$uri}: missing DigestValue";
-
-                    continue;
-                }
-                $expectedDigest = $digestValueNodes->item(0)->textContent;
-
-                // Calculate actual digest based on reference type
-                // Matched on what the reference points at: the type for this
-                // one is not the XAdES type and has been spelt both ways.
-                if (str_ends_with($uri, 'xadesSignedProperties') || str_contains($type, 'SignedProperties')) {
-                    // Reference to SignedProperties
-                    $targetId = ltrim($uri, '#');
-                    $targetNodes = $xpath->query("//*[@Id='{$targetId}']");
-                    if ($targetNodes->length === 0) {
-                        $errors[] = "Reference {$uri}: target element not found";
-
-                        continue;
-                    }
-                    $target = $targetNodes->item(0);
-                    $targetC14n = $target->C14N(false, false);
-                    // Hex then base64, matching how this one reference is
-                    // written, and over the same reconstruction the signer
-                    // digests. The document's own reference below is the
-                    // base64 of the digest's bytes, and stays that way.
-                    $actualDigest = base64_encode(hash('sha256', $this->signedPropertiesDigestInput($target)));
-                } elseif (empty($uri)) {
-                    // Reference to document (enveloped signature)
-                    // Apply transforms: remove signature, remove UBLExtensions, canonicalize
-                    $actualDigest = $this->calculateDocumentReferenceDigest($dom);
-                } else {
-                    continue;
-                }
-
-                if ($actualDigest !== $expectedDigest) {
-                    $errors[] = "Reference {$uri}: digest mismatch";
-                }
-            }
-        } catch (\Exception $e) {
-            $errors[] = 'Verification error: '.$e->getMessage();
-        }
-
-        return [
-            'valid' => empty($errors),
-            'errors' => $errors,
-        ];
-    }
-
-    /**
-     * Calculate document reference digest for verification.
-     *
-     * Applies the same transforms as signing:
-     * 1. Remove ds:Signature (enveloped-signature)
-     * 2. Remove UBLExtensions (XPath)
-     * 3. Canonicalize (C14N 1.1)
-     */
-    private function calculateDocumentReferenceDigest(DOMDocument $dom): string
-    {
-        // Clone to avoid modifying original
-        $clone = $dom->cloneNode(true);
-
-        // The same exclusions the signature declares and signing applied. This
-        // removed UBLExtensions and ds:Signature only, so once cac:Signature
-        // and the QR were in the document it reached a different digest than
-        // the signer had — a valid signature reported as invalid.
-        $this->excludeFromDigest($clone);
-
-        // Canonicalize and hash
-        $canonicalized = $clone->documentElement->C14N(false, false);
-
-        return base64_encode(hash('sha256', $canonicalized, true));
-    }
-
-    /**
-     * Sign invoice XML with XAdES-T (timestamped) signature.
-     *
-     * Creates an XAdES-BES signature and adds a timestamp token from a TSA.
-     * Requires TSA to be configured via withTimestampAuthority().
-     *
-     * @param  string  $xml  Invoice XML document
-     * @param  string  $privateKeyPem  Private key for signing
-     * @param  string  $certificatePem  X.509 certificate
-     * @return string Signed and timestamped XML document
-     *
-     * @throws SigningException
-     */
-    public function signWithTimestamp(string $xml, string $privateKeyPem, string $certificatePem): string
-    {
-        if ($this->tsaUrl === null) {
-            throw new SigningException('Timestamp authority not configured. Call withTimestampAuthority() first.');
-        }
-
-        // First create normal XAdES-BES signature
-        $signedXml = $this->sign($xml, $privateKeyPem, $certificatePem);
-
-        // Add timestamp to the signature
-        return $this->addSignatureTimestamp($signedXml);
-    }
-
-    /**
-     * Add timestamp to an existing XAdES-BES signature (upgrade to XAdES-T).
-     *
-     * @param  string  $signedXml  Signed XML with XAdES-BES signature
-     * @return string XML with XAdES-T signature (includes SignatureTimeStamp)
-     *
-     * @throws SigningException
-     */
-    public function addSignatureTimestamp(string $signedXml): string
-    {
-        if ($this->tsaUrl === null) {
-            throw new SigningException('Timestamp authority not configured');
-        }
-
-        $dom = new DOMDocument('1.0', 'UTF-8');
-        $dom->preserveWhiteSpace = false;
-        Xml::load($dom, $signedXml);
-
-        $xpath = new DOMXPath($dom);
-        $xpath->registerNamespace('ds', self::DS_NS);
-        $xpath->registerNamespace('xades', self::XADES_NS);
-
-        // Get SignatureValue to timestamp
-        $signatureValueNodes = $xpath->query('//ds:SignatureValue');
-        if ($signatureValueNodes->length === 0) {
-            throw new SigningException('No signature found to timestamp');
-        }
-
-        $signatureValue = $signatureValueNodes->item(0);
-        $signatureValueC14n = $signatureValue->C14N(false, false);
-
-        // Request timestamp from TSA
-        $timestampToken = $this->requestTimestamp($signatureValueC14n);
-
-        // Find or create UnsignedProperties in QualifyingProperties
-        $qualifyingProps = $xpath->query('//xades:QualifyingProperties')->item(0);
-        if ($qualifyingProps === null) {
-            throw new SigningException('QualifyingProperties not found');
-        }
-
-        $unsignedProps = $xpath->query('xades:UnsignedProperties', $qualifyingProps)->item(0);
-        if ($unsignedProps === null) {
-            $unsignedProps = $dom->createElementNS(self::XADES_NS, 'xades:UnsignedProperties');
-            $qualifyingProps->appendChild($unsignedProps);
-        }
-
-        // Create UnsignedSignatureProperties
-        $unsignedSigProps = $xpath->query('xades:UnsignedSignatureProperties', $unsignedProps)->item(0);
-        if ($unsignedSigProps === null) {
-            $unsignedSigProps = $dom->createElementNS(self::XADES_NS, 'xades:UnsignedSignatureProperties');
-            $unsignedProps->appendChild($unsignedSigProps);
-        }
-
-        // Create SignatureTimeStamp element
-        $sigTimeStamp = $dom->createElementNS(self::XADES_NS, 'xades:SignatureTimeStamp');
-        $sigTimeStamp->setAttribute('Id', 'timestamp-'.bin2hex(random_bytes(8)));
-
-        // CanonicalizationMethod
-        $c14nMethod = $dom->createElementNS(self::DS_NS, 'ds:CanonicalizationMethod');
-        $c14nMethod->setAttribute('Algorithm', self::C14N_NS);
-        $sigTimeStamp->appendChild($c14nMethod);
-
-        // EncapsulatedTimeStamp (base64-encoded timestamp token)
-        $encapsulatedTS = $dom->createElementNS(self::XADES_NS, 'xades:EncapsulatedTimeStamp');
-        $encapsulatedTS->textContent = base64_encode($timestampToken);
-        $sigTimeStamp->appendChild($encapsulatedTS);
-
-        $unsignedSigProps->appendChild($sigTimeStamp);
-
-        // Not formatOutput, for the reason sign() gives: this document is
-        // already signed, and indenting it moves the bytes the recorded
-        // digests describe. A timestamp is added to a signature, not to a
-        // document that may then be reformatted.
-        return $dom->saveXML();
-    }
-
-    /**
-     * Request timestamp from TSA (RFC 3161).
-     *
-     * @param  string  $data  Data to timestamp (will be SHA-256 hashed)
-     * @return string Binary timestamp token
-     *
-     * @throws SigningException
-     */
-    private function requestTimestamp(string $data): string
-    {
-        // Create timestamp request (RFC 3161)
-        $digest = hash('sha256', $data, true);
-        $tsRequest = $this->createTimestampRequest($digest);
-
-        // Send request to TSA
-        $ch = curl_init();
-
-        $headers = [
-            'Content-Type: application/timestamp-query',
-            'Accept: application/timestamp-reply',
-        ];
-
-        curl_setopt_array($ch, [
-            CURLOPT_URL => $this->tsaUrl,
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => $tsRequest,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER => $headers,
-            CURLOPT_TIMEOUT => $this->tsaTimeout,
-            CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_SSL_VERIFYHOST => 2,
-        ]);
-
-        // Add authentication if configured
-        if ($this->tsaUsername !== null && $this->tsaPassword !== null) {
-            curl_setopt($ch, CURLOPT_USERPWD, $this->tsaUsername.':'.$this->tsaPassword);
-            curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-        }
-
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $error = curl_error($ch);
-        curl_close($ch);
-
-        if ($response === false) {
-            throw new SigningException("TSA request failed: {$error}");
-        }
-
-        if ($httpCode !== 200) {
-            throw new SigningException("TSA returned HTTP {$httpCode}");
-        }
-
-        // Parse and validate timestamp response
-        $timestampToken = $this->parseTimestampResponse($response);
-
-        if ($timestampToken === null) {
-            throw new SigningException('Invalid timestamp response from TSA');
-        }
-
-        return $timestampToken;
-    }
-
-    /**
-     * Create RFC 3161 Timestamp Request.
-     *
-     * @param  string  $digest  SHA-256 hash (binary)
-     * @return string DER-encoded timestamp request
-     */
-    private function createTimestampRequest(string $digest): string
-    {
-        // TimeStampReq ::= SEQUENCE {
-        //    version         INTEGER { v1(1) },
-        //    messageImprint  MessageImprint,
-        //    reqPolicy       TSAPolicyId OPTIONAL,
-        //    nonce           INTEGER OPTIONAL,
-        //    certReq         BOOLEAN DEFAULT FALSE,
-        //    extensions      [0] IMPLICIT Extensions OPTIONAL
-        // }
-        //
-        // MessageImprint ::= SEQUENCE {
-        //    hashAlgorithm   AlgorithmIdentifier,
-        //    hashedMessage   OCTET STRING
-        // }
-
-        // SHA-256 OID: 2.16.840.1.101.3.4.2.1
-        $sha256Oid = "\x06\x09\x60\x86\x48\x01\x65\x03\x04\x02\x01";
-
-        // Build AlgorithmIdentifier (SEQUENCE with OID and NULL)
-        $algorithmIdentifier = "\x30".chr(strlen($sha256Oid) + 2).$sha256Oid."\x05\x00";
-
-        // Build hashedMessage (OCTET STRING)
-        $hashedMessage = "\x04".chr(strlen($digest)).$digest;
-
-        // Build MessageImprint (SEQUENCE)
-        $messageImprintContent = $algorithmIdentifier.$hashedMessage;
-        $messageImprint = "\x30".Der::length(strlen($messageImprintContent)).$messageImprintContent;
-
-        // Build version INTEGER (1)
-        $version = "\x02\x01\x01";
-
-        // Generate nonce
-        $nonceBytes = random_bytes(8);
-        $nonceContent = ltrim($nonceBytes, "\x00") ?: "\x00";
-        if (ord($nonceContent[0]) & 0x80) {
-            $nonceContent = "\x00".$nonceContent;
-        }
-        $nonce = "\x02".chr(strlen($nonceContent)).$nonceContent;
-
-        // certReq BOOLEAN TRUE
-        $certReq = "\x01\x01\xff";
-
-        // Build TimeStampReq (SEQUENCE)
-        $tsReqContent = $version.$messageImprint.$nonce.$certReq;
-        $tsReq = "\x30".Der::length(strlen($tsReqContent)).$tsReqContent;
-
-        return $tsReq;
-    }
-
-    /**
-     * Parse RFC 3161 Timestamp Response.
-     *
-     * @param  string  $response  Binary timestamp response
-     * @return string|null Timestamp token or null if invalid
-     */
-    private function parseTimestampResponse(string $response): ?string
-    {
-        // TimeStampResp ::= SEQUENCE {
-        //    status          PKIStatusInfo,
-        //    timeStampToken  TimeStampToken OPTIONAL
-        // }
-        //
-        // PKIStatusInfo ::= SEQUENCE {
-        //    status        PKIStatus,
-        //    statusString  PKIFreeText OPTIONAL,
-        //    failInfo      PKIFailureInfo OPTIONAL
-        // }
-        //
-        // PKIStatus ::= INTEGER {
-        //    granted                (0),
-        //    grantedWithMods        (1),
-        //    rejection              (2),
-        //    waiting                (3),
-        //    revocationWarning      (4),
-        //    revocationNotification (5)
-        // }
-
-        if (strlen($response) < 10) {
-            return null;
-        }
-
-        // Check for SEQUENCE tag
-        if (ord($response[0]) !== 0x30) {
-            return null;
-        }
-
-        $offset = 1;
-        $totalLength = Der::readLength($response, $offset);
-        $offset = Der::skipLength($response, 1);
-
-        // Read PKIStatusInfo SEQUENCE
-        if (ord($response[$offset]) !== 0x30) {
-            return null;
-        }
-        $offset++;
-        $statusInfoLength = Der::readLength($response, $offset);
-        $offset = Der::skipLength($response, $offset);
-
-        // Read status INTEGER
-        if (ord($response[$offset]) !== 0x02) {
-            return null;
-        }
-        $offset++;
-        $statusLength = Der::readLength($response, $offset);
-        $offset = Der::skipLength($response, $offset);
-
-        $status = 0;
-        for ($i = 0; $i < $statusLength; $i++) {
-            $status = ($status << 8) | ord($response[$offset + $i]);
-        }
-
-        // Check status (0 = granted, 1 = grantedWithMods)
-        if ($status > 1) {
-            Log::warning('TSA returned non-granted status', ['status' => $status]);
-
-            return null;
-        }
-
-        // Skip to timeStampToken
-        $offset += $statusLength;
-
-        // Skip any optional statusString or failInfo
-        while ($offset < strlen($response) && ord($response[$offset]) !== 0x30) {
-            $tag = ord($response[$offset]);
-            $offset++;
-            $len = Der::readLength($response, $offset);
-            $offset = Der::skipLength($response, $offset);
-            $offset += $len;
-        }
-
-        // timeStampToken is ContentInfo SEQUENCE
-        if ($offset >= strlen($response) || ord($response[$offset]) !== 0x30) {
-            return null;
-        }
-
-        // Return the entire timeStampToken
-        $tokenStart = $offset;
-        $offset++;
-        $tokenLength = Der::readLength($response, $offset);
-        $offset = Der::skipLength($response, $offset);
-
-        return substr($response, $tokenStart, ($offset - $tokenStart) + $tokenLength);
     }
 }

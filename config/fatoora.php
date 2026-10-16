@@ -212,22 +212,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Timestamp Authority (TSA) for XAdES-T
-    |--------------------------------------------------------------------------
-    |
-    | Optional timestamp server for XAdES-T signatures.
-    |
-    */
-    'tsa' => [
-        'enabled' => env('ZATCA_TSA_ENABLED', false),
-        'url' => env('ZATCA_TSA_URL'),
-        'username' => env('ZATCA_TSA_USERNAME'),
-        'password' => env('ZATCA_TSA_PASSWORD'),
-        'timeout' => env('ZATCA_TSA_TIMEOUT', 30),
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
     | Validation Rules
     |--------------------------------------------------------------------------
     |

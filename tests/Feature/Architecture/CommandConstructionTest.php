@@ -29,10 +29,7 @@ class CommandConstructionTest extends TestCase
     /**
      * Commands that still construct domain collaborators with new.
      */
-    private const DECLARED = [
-        'FatooraOnboarding.php',
-        'FatooraValidate.php',
-    ];
+    private const DECLARED = [];
 
     public function test_commands_do_not_construct_domain_services(): void
     {

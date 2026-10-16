@@ -64,7 +64,7 @@ Masaar is committed to ensuring the security of our users and the integrity of t
   - CRL revocation checking (OCSP is not consulted)
   - Certificate chain validation
   - Expiry monitoring
-- **Timestamp Authority**: RFC 3161 compliant timestamping (XAdES-T)
+- **Signature level**: XAdES baseline B-B, as ZATCA requires; no timestamp authority
 - **Key Storage**: Private keys encrypted at rest
 
 ### API Security

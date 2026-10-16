@@ -53,6 +53,7 @@ class EmittedSignatureTest extends TestCase
     private const AFTER_SIGNING = [
         'app/Domains/Compliance/Fatoora/Console/FatooraOnboarding.php',
         'app/Domains/Compliance/Fatoora/Services/XadesSigner.php',
+        'app/Domains/Compliance/Fatoora/Services/XadesVerifier.php',
         'app/Domains/Compliance/Fatoora/Services/DocumentBuilder.php',
         'app/Domains/Compliance/Fatoora/Services/QrCodeInjector.php',
     ];

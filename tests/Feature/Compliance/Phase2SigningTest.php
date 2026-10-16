@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Compliance;
 
 use App\Domains\Compliance\Fatoora\Services\DocumentBuilder;
-use App\Domains\Compliance\Fatoora\Services\XadesSigner;
+use App\Domains\Compliance\Fatoora\Services\XadesVerifier;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -309,7 +309,7 @@ class Phase2SigningTest extends TestCase
         $signed = $this->sign()['signed_xml'];
 
         $this->assertTrue(
-            app(XadesSigner::class)->verify($signed),
+            app(XadesVerifier::class)->verify($signed),
             'The signature does not verify against the certificate in the document.'
         );
     }
@@ -336,7 +336,7 @@ class Phase2SigningTest extends TestCase
         $this->assertNotSame($signed, $tampered, 'the tamper did not change the document');
 
         $this->assertFalse(
-            app(XadesSigner::class)->verify($tampered),
+            app(XadesVerifier::class)->verify($tampered),
             'SignedInfo was altered after signing and the signature still verified.'
         );
     }
@@ -347,7 +347,7 @@ class Phase2SigningTest extends TestCase
      */
     public function test_signed_references_match_their_digests(): void
     {
-        $result = app(XadesSigner::class)->verifyReferences($this->sign()['signed_xml']);
+        $result = app(XadesVerifier::class)->verifyReferences($this->sign()['signed_xml']);
 
         $this->assertTrue($result['valid'], implode('; ', $result['errors']));
     }
@@ -366,7 +366,7 @@ class Phase2SigningTest extends TestCase
 
         $this->assertNotSame($signed, $tampered, 'the tamper did not change the document');
 
-        $result = app(XadesSigner::class)->verifyReferences($tampered);
+        $result = app(XadesVerifier::class)->verifyReferences($tampered);
 
         $this->assertFalse($result['valid'], 'An edited invoice still matched its reference digest.');
     }
@@ -421,42 +421,6 @@ class Phase2SigningTest extends TestCase
         ]);
 
         return $invoice->fresh(['lines']);
-    }
-
-    /**
-     * Timestamping engages from configuration.
-     *
-     * XadesSigner implements RFC 3161 in full — the request, the response
-     * parsed and embedded — and nothing ever called withTimestampAuthority(),
-     * so the URL stayed null and no document was timestamped.
-     * fatoora.tsa.enabled, .url, .username and .password were read nowhere:
-     * ZATCA_TSA_ENABLED=true turned nothing on.
-     */
-    public function test_timestamping_engages_from_config(): void
-    {
-        config([
-            'fatoora.tsa.enabled' => true,
-            'fatoora.tsa.url' => 'https://tsa.example.test/rfc3161',
-        ]);
-
-        $url = new \ReflectionProperty(XadesSigner::class, 'tsaUrl');
-
-        $this->assertSame('https://tsa.example.test/rfc3161', $url->getValue(app(XadesSigner::class)));
-    }
-
-    /**
-     * Disabled means disabled, even with a URL configured.
-     */
-    public function test_timestamping_stays_off_when_disabled(): void
-    {
-        config([
-            'fatoora.tsa.enabled' => false,
-            'fatoora.tsa.url' => 'https://tsa.example.test/rfc3161',
-        ]);
-
-        $url = new \ReflectionProperty(XadesSigner::class, 'tsaUrl');
-
-        $this->assertNull($url->getValue(app(XadesSigner::class)));
     }
 
     /**

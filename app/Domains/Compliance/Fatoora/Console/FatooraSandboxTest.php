@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Console;
 
+use App\Domains\Compliance\Fatoora\Client\FatooraClient;
 use App\Domains\Compliance\Fatoora\Console\Concerns\EncodesCsr;
 use App\Domains\Compliance\Fatoora\Console\Concerns\FindsOpenSsl;
 use App\Domains\Compliance\Fatoora\Console\Concerns\WritesSecrets;
@@ -45,16 +46,6 @@ class FatooraSandboxTest extends Command
                             {--invoice= : Invoice XML file path}';
 
     protected $description = 'Test e-invoicing compliance with ZATCA Integration Sandbox (no Java/SDK required)';
-
-    private const SANDBOX_COMPLIANCE_CSID = '/compliance';
-
-    private const SANDBOX_COMPLIANCE_CHECK = '/compliance/invoices';
-
-    private const SANDBOX_PRODUCTION_CSID = '/production/csids';
-
-    private const SANDBOX_REPORTING = '/invoices/reporting/single';
-
-    private const SANDBOX_CLEARANCE = '/invoices/clearance/single';
 
     public function handle(): int
     {
@@ -99,11 +90,11 @@ class FatooraSandboxTest extends Command
 
         $this->info('🧪 SANDBOX API ENDPOINTS:');
         $this->table(['Endpoint', 'Purpose'], [
-            [$this->sandboxUrl().self::SANDBOX_COMPLIANCE_CSID, 'Get Compliance CSID'],
-            [$this->sandboxUrl().self::SANDBOX_COMPLIANCE_CHECK, 'Submit Compliance Invoices'],
-            [$this->sandboxUrl().self::SANDBOX_PRODUCTION_CSID, 'Get Production CSID'],
-            [$this->sandboxUrl().self::SANDBOX_REPORTING, 'Report B2C Invoices'],
-            [$this->sandboxUrl().self::SANDBOX_CLEARANCE, 'Clear B2B Invoices'],
+            [$this->sandboxUrl().FatooraClient::COMPLIANCE_CSID, 'Get Compliance CSID'],
+            [$this->sandboxUrl().FatooraClient::COMPLIANCE_INVOICES, 'Submit Compliance Invoices'],
+            [$this->sandboxUrl().FatooraClient::PRODUCTION_CSID, 'Get Production CSID'],
+            [$this->sandboxUrl().FatooraClient::REPORTING, 'Report B2C Invoices'],
+            [$this->sandboxUrl().FatooraClient::CLEARANCE, 'Clear B2B Invoices'],
         ]);
         $this->newLine();
 
@@ -221,7 +212,7 @@ class FatooraSandboxTest extends Command
         $this->info('Requesting Compliance CSID from ZATCA Sandbox...');
         $this->newLine();
 
-        $url = $this->sandboxUrl().self::SANDBOX_COMPLIANCE_CSID;
+        $url = $this->sandboxUrl().FatooraClient::COMPLIANCE_CSID;
 
         $this->line("POST {$url}");
         $this->line("OTP: {$otp}");
@@ -354,12 +345,12 @@ class FatooraSandboxTest extends Command
 
         $this->warn('To complete compliance check:');
         $this->line('1. Generate signed XML for each invoice type');
-        $this->line('2. Submit to: '.$this->sandboxUrl().self::SANDBOX_COMPLIANCE_CHECK);
+        $this->line('2. Submit to: '.$this->sandboxUrl().FatooraClient::COMPLIANCE_INVOICES);
         $this->line('3. Use Basic Auth with CSID:Secret');
         $this->newLine();
 
         $this->info('API Request Format:');
-        $this->line('POST '.$this->sandboxUrl().self::SANDBOX_COMPLIANCE_CHECK);
+        $this->line('POST '.$this->sandboxUrl().FatooraClient::COMPLIANCE_INVOICES);
         $this->line('Headers:');
         $this->line('  Authorization: Basic '.base64_encode($csid.':'.$secret));
         $this->line('  Content-Type: application/json');
@@ -383,8 +374,8 @@ class FatooraSandboxTest extends Command
         $this->newLine();
 
         $this->table(['Invoice Type', 'Endpoint', 'Method'], [
-            ['B2B (Standard)', $this->sandboxUrl().self::SANDBOX_CLEARANCE, 'POST'],
-            ['B2C (Simplified)', $this->sandboxUrl().self::SANDBOX_REPORTING, 'POST'],
+            ['B2B (Standard)', $this->sandboxUrl().FatooraClient::CLEARANCE, 'POST'],
+            ['B2C (Simplified)', $this->sandboxUrl().FatooraClient::REPORTING, 'POST'],
         ]);
 
         return Command::SUCCESS;

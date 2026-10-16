@@ -27,7 +27,7 @@
 **Masaar** is a production-ready Laravel-based e-invoicing compliance platform designed for Saudi Arabian ZATCA (Zakat, Tax and Customs Authority) Phase 2 requirements. The platform enables businesses to:
 
 - Generate UBL 2.1 compliant invoices
-- Apply XAdES-BES/XAdES-T digital signatures using ECDSA secp256k1
+- Apply XAdES (baseline B-B) digital signatures using ECDSA secp256k1
 - Submit invoices for clearance (B2B) or reporting (B2C)
 - Manage ZATCA onboarding and certificate lifecycle
 - Track submission states with full audit trails
@@ -47,8 +47,7 @@
 ### 1.3 ZATCA Compliance Standards
 
 - **UBL 2.1** - Universal Business Language invoice format
-- **XAdES-BES** - XML Advanced Electronic Signatures (Basic)
-- **XAdES-T** - Optional timestamped signatures via TSA
+- **XAdES-BES** - XML Advanced Electronic Signatures (Basic; baseline B-B, no timestamp, as ZATCA requires)
 - **ECDSA secp256k1** - Elliptic curve digital signature algorithm
 - **TLV Encoding** - Tag-Length-Value for QR code data
 - **SHA-256** - Cryptographic hashing with C14N canonicalization
@@ -718,8 +717,9 @@ GET /api/admin/dashboard/hash-chain-health → Hash chain monitoring
 
 **POLICY**: When disputes arise about invoice timestamps:
 
-1. If XAdES-T is enabled → **TSA timestamp is authoritative**
-2. Otherwise → **System UTC timestamp at signing time is authoritative**
+**The system timestamp at signing time is authoritative.** No timestamp
+authority is used: ZATCA requires XAdES baseline B-B, which carries no
+signature timestamp.
 
 This policy provides legal defensibility when ZATCA or auditors dispute timing.
 
@@ -961,7 +961,7 @@ Response:
 - Critical: Clock drift > 1 second
 - Action: Alert ops team, investigate NTP configuration
 
-**TSA OVERRIDE**: When XAdES-T is enabled, the TSA timestamp is authoritative regardless of local clock accuracy. This provides an independent, trusted time source for legal defensibility.
+**NO TSA**: There is no independent time source behind a signature, so the local clock is the record. Keep it synchronised.
 
 ---
 

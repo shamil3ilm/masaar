@@ -328,7 +328,7 @@ masaar-scheduler                                           RUNNING   pid 12349, 
 
 ### Why This Matters
 
-- XAdES-T timestamps require accurate time
+- Signing time, IssueTime and the QR timestamp all come from the system clock
 - ZATCA may reject invoices with significant clock drift
 - Audit disputes can arise from timestamp inconsistencies
 

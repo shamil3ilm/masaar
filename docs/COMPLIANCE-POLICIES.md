@@ -231,7 +231,7 @@ legal_hold_metadata:
 
 ### Policy Statement
 
-**Invoice issuance time is determined by system UTC time at signing. If XAdES-T is enabled, the TSA (Timestamp Authority) timestamp supersedes local issuance time for audit disputes.**
+**Invoice issuance time is determined by the system clock at signing. No timestamp authority is used: ZATCA's security features standard requires XAdES baseline level B-B, which carries no signature timestamp, so signatures are never upgraded to XAdES-T.**
 
 ### Rationale
 
@@ -241,16 +241,8 @@ ZATCA may later dispute invoice timestamp correctness. System clocks can drift. 
 
 | Source | Priority | Use Case |
 |--------|----------|----------|
-| TSA (XAdES-T) | 1 (highest) | Legally authoritative if enabled |
-| System UTC | 2 | Default issuance time |
-| ERP timestamp | 3 (lowest) | Informational only |
-
-### Implementation
-
-Each invoice stores:
-- `issue_timestamp`: System UTC at signing
-- `timestamp_authority`: `local` or `tsa`
-- `tsa_timestamp`: TSA response timestamp (if XAdES-T enabled)
+| System clock | 1 (highest) | Issuance time |
+| ERP timestamp | 2 (lowest) | Informational only |
 
 ### Dispute Resolution
 
@@ -258,22 +250,15 @@ Each invoice stores:
 Scenario: ZATCA questions invoice timestamp
 
 Resolution Path:
-1. If timestamp_authority = tsa → TSA timestamp is authoritative
-2. If timestamp_authority = local → System UTC is authoritative
-3. Compare against ZATCA's received timestamp (clearance response)
-4. Clock drift tolerance: ±30 seconds
+1. The system clock at signing is authoritative
+2. Compare against ZATCA's received timestamp (clearance response)
+3. Clock drift tolerance: ±30 seconds
 ```
 
 ### Configuration
 
-```env
-# Enable Timestamp Authority for XAdES-T
-ZATCA_TSA_ENABLED=true
-ZATCA_TSA_URL=https://tsa.zatca.gov.sa/timestamp
-ZATCA_TSA_USERNAME=
-ZATCA_TSA_PASSWORD=
-ZATCA_TSA_TIMEOUT=30
-```
+There is nothing to configure. Keep the host clock synchronised (see the
+deployment guide's time synchronisation section).
 
 ---
 

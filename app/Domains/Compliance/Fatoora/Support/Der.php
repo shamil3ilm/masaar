@@ -15,7 +15,7 @@ namespace App\Domains\Compliance\Fatoora\Support;
  *
  * The lengths are short-form under 128 and long-form above, which is all a
  * request of this size needs. Reading goes no further than a length field:
- * enough to walk a certificate or a timestamp response by hand.
+ * enough to walk a certificate by hand.
  */
 final class Der
 {
