@@ -57,6 +57,10 @@ return [
     'certificate' => [
         'expiry_warning_days' => env('ZATCA_CERT_WARNING_DAYS', 30),
         'expiry_critical_days' => env('ZATCA_CERT_CRITICAL_DAYS', 7),
+        // A PEM bundle of ZATCA's CA certificates, from the issuing CA up to
+        // the root. Stamped PDFs carry the path to the anchor, as the
+        // Security Features standard asks. Empty: the device certificate only.
+        'chain_path' => env('ZATCA_CA_CHAIN_PATH'),
     ],
 
     /*
