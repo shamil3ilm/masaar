@@ -74,26 +74,22 @@ class UblTotalsBuilder
 
         // ChargeIndicator: false = allowance (discount), true = charge
         $allowanceCharge->appendChild(
-            $dom->createElementNS(Ubl::CBC_NS, 'cbc:ChargeIndicator', 'false')
+            Ubl::element($dom, Ubl::CBC_NS, 'cbc:ChargeIndicator', 'false')
         );
 
         // AllowanceChargeReasonCode (ZATCA recommendation: 95 = discount)
         $allowanceCharge->appendChild(
-            $dom->createElementNS(Ubl::CBC_NS, 'cbc:AllowanceChargeReasonCode', '95')
+            Ubl::element($dom, Ubl::CBC_NS, 'cbc:AllowanceChargeReasonCode', '95')
         );
 
         // AllowanceChargeReason (required for ZATCA)
         $reason = $data->discountReason ?? 'Discount';
         $allowanceCharge->appendChild(
-            $dom->createElementNS(Ubl::CBC_NS, 'cbc:AllowanceChargeReason', $reason)
+            Ubl::element($dom, Ubl::CBC_NS, 'cbc:AllowanceChargeReason', $reason)
         );
 
         // Amount — this category's share of the discount, not the whole of it.
-        $amount = $dom->createElementNS(
-            Ubl::CBC_NS,
-            'cbc:Amount',
-            Ubl::amount($part['share'])
-        );
+        $amount = Ubl::element($dom, Ubl::CBC_NS, 'cbc:Amount', Ubl::amount($part['share']));
         $amount->setAttribute('currencyID', $data->currency);
         $allowanceCharge->appendChild($amount);
 
@@ -114,12 +110,12 @@ class UblTotalsBuilder
         // BT-95: which category this share belongs to. It is what makes the
         // allowance attributable, and therefore what BR-S-08 and BR-Z-08 read.
         $taxCategory = $dom->createElementNS(Ubl::CAC_NS, 'cac:TaxCategory');
-        $taxCategory->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:ID', $part['category']));
+        $taxCategory->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:ID', $part['category']));
         $taxCategory->appendChild(
-            $dom->createElementNS(Ubl::CBC_NS, 'cbc:Percent', Ubl::amount($part['rate']))
+            Ubl::element($dom, Ubl::CBC_NS, 'cbc:Percent', Ubl::amount($part['rate']))
         );
         $taxScheme = $dom->createElementNS(Ubl::CAC_NS, 'cac:TaxScheme');
-        $taxScheme->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:ID', 'VAT'));
+        $taxScheme->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:ID', 'VAT'));
         $taxCategory->appendChild($taxScheme);
         $allowanceCharge->appendChild($taxCategory);
 
@@ -151,7 +147,7 @@ class UblTotalsBuilder
         $taxTotal = $dom->createElementNS(Ubl::CAC_NS, 'cac:TaxTotal');
 
         // Total tax amount in document currency
-        $taxAmount = $dom->createElementNS(Ubl::CBC_NS, 'cbc:TaxAmount', Ubl::amount($data->taxAmount));
+        $taxAmount = Ubl::element($dom, Ubl::CBC_NS, 'cbc:TaxAmount', Ubl::amount($data->taxAmount));
         $taxAmount->setAttribute('currencyID', $data->currency);
         $taxTotal->appendChild($taxAmount);
 
@@ -174,11 +170,7 @@ class UblTotalsBuilder
         // Per ZATCA: "If the VAT accounting currency code (BT-6) is present,
         // then the Invoice total VAT amount in accounting currency (BT-111) shall be provided"
         $taxTotal2 = $dom->createElementNS(Ubl::CAC_NS, 'cac:TaxTotal');
-        $taxAmount2 = $dom->createElementNS(
-            Ubl::CBC_NS,
-            'cbc:TaxAmount',
-            Ubl::amount($isMultiCurrency ? $taxAmountSar : $data->taxAmount)
-        );
+        $taxAmount2 = Ubl::element($dom, Ubl::CBC_NS, 'cbc:TaxAmount', Ubl::amount($isMultiCurrency ? $taxAmountSar : $data->taxAmount));
         // For multi-currency: SAR; for SAR invoices: same currency
         $taxAmount2->setAttribute('currencyID', $isMultiCurrency ? 'SAR' : $data->currency);
         $taxTotal2->appendChild($taxAmount2);
@@ -272,42 +264,34 @@ class UblTotalsBuilder
         $taxSubtotal = $dom->createElementNS(Ubl::CAC_NS, 'cac:TaxSubtotal');
 
         // Taxable amount
-        $taxableAmount = $dom->createElementNS(
-            Ubl::CBC_NS,
-            'cbc:TaxableAmount',
-            Ubl::amount($subtotal['taxableAmount'])
-        );
+        $taxableAmount = Ubl::element($dom, Ubl::CBC_NS, 'cbc:TaxableAmount', Ubl::amount($subtotal['taxableAmount']));
         $taxableAmount->setAttribute('currencyID', $currency);
         $taxSubtotal->appendChild($taxableAmount);
 
         // Tax amount
-        $taxAmount = $dom->createElementNS(
-            Ubl::CBC_NS,
-            'cbc:TaxAmount',
-            Ubl::amount($subtotal['taxAmount'])
-        );
+        $taxAmount = Ubl::element($dom, Ubl::CBC_NS, 'cbc:TaxAmount', Ubl::amount($subtotal['taxAmount']));
         $taxAmount->setAttribute('currencyID', $currency);
         $taxSubtotal->appendChild($taxAmount);
 
         // Tax category
         $taxCategory = $dom->createElementNS(Ubl::CAC_NS, 'cac:TaxCategory');
-        $taxCategory->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:ID', $subtotal['taxCategory']));
+        $taxCategory->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:ID', $subtotal['taxCategory']));
         $taxCategory->appendChild(
-            $dom->createElementNS(Ubl::CBC_NS, 'cbc:Percent', Ubl::amount($subtotal['taxPercent']))
+            Ubl::element($dom, Ubl::CBC_NS, 'cbc:Percent', Ubl::amount($subtotal['taxPercent']))
         );
 
         // Tax exemption reason (for zero-rated or exempt)
         if (! empty($subtotal['taxExemptionReason'])) {
             $taxCategory->appendChild(
-                $dom->createElementNS(Ubl::CBC_NS, 'cbc:TaxExemptionReasonCode', $subtotal['taxExemptionReasonCode'] ?? '')
+                Ubl::element($dom, Ubl::CBC_NS, 'cbc:TaxExemptionReasonCode', $subtotal['taxExemptionReasonCode'] ?? '')
             );
             $taxCategory->appendChild(
-                $dom->createElementNS(Ubl::CBC_NS, 'cbc:TaxExemptionReason', $subtotal['taxExemptionReason'])
+                Ubl::element($dom, Ubl::CBC_NS, 'cbc:TaxExemptionReason', $subtotal['taxExemptionReason'])
             );
         }
 
         $taxScheme = $dom->createElementNS(Ubl::CAC_NS, 'cac:TaxScheme');
-        $taxScheme->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:ID', 'VAT'));
+        $taxScheme->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:ID', 'VAT'));
         $taxCategory->appendChild($taxScheme);
 
         $taxSubtotal->appendChild($taxCategory);
@@ -323,46 +307,38 @@ class UblTotalsBuilder
         $total = $dom->createElementNS(Ubl::CAC_NS, 'cac:LegalMonetaryTotal');
 
         // Line extension amount (sum of line totals before tax)
-        $lineExt = $dom->createElementNS(Ubl::CBC_NS, 'cbc:LineExtensionAmount', Ubl::amount($data->subtotal));
+        $lineExt = Ubl::element($dom, Ubl::CBC_NS, 'cbc:LineExtensionAmount', Ubl::amount($data->subtotal));
         $lineExt->setAttribute('currencyID', $data->currency);
         $total->appendChild($lineExt);
 
         // Tax exclusive amount
         // BR-CO-13: the taxable total is the line extension less any
         // allowance, not the line extension itself.
-        $taxExcl = $dom->createElementNS(
-            Ubl::CBC_NS,
-            'cbc:TaxExclusiveAmount',
-            Ubl::amount($data->subtotal - $data->discount)
-        );
+        $taxExcl = Ubl::element($dom, Ubl::CBC_NS, 'cbc:TaxExclusiveAmount', Ubl::amount($data->subtotal - $data->discount));
         $taxExcl->setAttribute('currencyID', $data->currency);
         $total->appendChild($taxExcl);
 
         // Tax inclusive amount
-        $taxIncl = $dom->createElementNS(Ubl::CBC_NS, 'cbc:TaxInclusiveAmount', Ubl::amount($data->total));
+        $taxIncl = Ubl::element($dom, Ubl::CBC_NS, 'cbc:TaxInclusiveAmount', Ubl::amount($data->total));
         $taxIncl->setAttribute('currencyID', $data->currency);
         $total->appendChild($taxIncl);
 
         // Allowance total (discount)
         if ($data->discount > 0) {
-            $allowance = $dom->createElementNS(Ubl::CBC_NS, 'cbc:AllowanceTotalAmount', Ubl::amount($data->discount));
+            $allowance = Ubl::element($dom, Ubl::CBC_NS, 'cbc:AllowanceTotalAmount', Ubl::amount($data->discount));
             $allowance->setAttribute('currencyID', $data->currency);
             $total->appendChild($allowance);
         }
 
         // Prepaid amount
         if ($data->prepaidAmount > 0) {
-            $prepaid = $dom->createElementNS(Ubl::CBC_NS, 'cbc:PrepaidAmount', Ubl::amount($data->prepaidAmount));
+            $prepaid = Ubl::element($dom, Ubl::CBC_NS, 'cbc:PrepaidAmount', Ubl::amount($data->prepaidAmount));
             $prepaid->setAttribute('currencyID', $data->currency);
             $total->appendChild($prepaid);
         }
 
         // Payable amount
-        $payable = $dom->createElementNS(
-            Ubl::CBC_NS,
-            'cbc:PayableAmount',
-            Ubl::amount($data->total - $data->prepaidAmount)
-        );
+        $payable = Ubl::element($dom, Ubl::CBC_NS, 'cbc:PayableAmount', Ubl::amount($data->total - $data->prepaidAmount));
         $payable->setAttribute('currencyID', $data->currency);
         $total->appendChild($payable);
 

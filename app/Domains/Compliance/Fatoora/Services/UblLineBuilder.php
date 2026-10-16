@@ -39,10 +39,10 @@ class UblLineBuilder
         $invoiceLine = $dom->createElementNS(Ubl::CAC_NS, 'cac:InvoiceLine');
 
         // Line ID
-        $invoiceLine->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:ID', (string) ($index + 1)));
+        $invoiceLine->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:ID', (string) ($index + 1)));
 
         // Invoiced quantity
-        $quantity = $dom->createElementNS(Ubl::CBC_NS, 'cbc:InvoicedQuantity', $this->formatQuantity($line['quantity']));
+        $quantity = Ubl::element($dom, Ubl::CBC_NS, 'cbc:InvoicedQuantity', $this->formatQuantity($line['quantity']));
         $quantity->setAttribute('unitCode', UnitCode::normalise($line['unitCode'] ?? null));
         $invoiceLine->appendChild($quantity);
 
@@ -80,21 +80,13 @@ class UblLineBuilder
         $displayLineNet = $isFreeItem ? 0.0 : $lineNet;
 
         // For free items: Show 0 as line amount but include VAT note
-        $lineAmount = $dom->createElementNS(
-            Ubl::CBC_NS,
-            'cbc:LineExtensionAmount',
-            Ubl::amount($displayLineNet)
-        );
+        $lineAmount = Ubl::element($dom, Ubl::CBC_NS, 'cbc:LineExtensionAmount', Ubl::amount($displayLineNet));
         $lineAmount->setAttribute('currencyID', $data->currency);
         $invoiceLine->appendChild($lineAmount);
 
         // Add note for free items indicating deemed supply
         if ($isFreeItem && $unitPrice > 0) {
-            $freeNote = $dom->createElementNS(
-                Ubl::CBC_NS,
-                'cbc:Note',
-                'Free item - VAT on deemed supply (market value: '.Ubl::amount($unitPrice).' '.$data->currency.')'
-            );
+            $freeNote = Ubl::element($dom, Ubl::CBC_NS, 'cbc:Note', 'Free item - VAT on deemed supply (market value: '.Ubl::amount($unitPrice).' '.$data->currency.')');
             $invoiceLine->appendChild($freeNote);
         }
 
@@ -121,7 +113,7 @@ class UblLineBuilder
     private function buildLineTaxTotal(DOMDocument $dom, string $currency, float $displayLineNet, float $lineTaxAmount): DOMElement
     {
         $lineTax = $dom->createElementNS(Ubl::CAC_NS, 'cac:TaxTotal');
-        $lineTaxAmountEl = $dom->createElementNS(Ubl::CBC_NS, 'cbc:TaxAmount', Ubl::amount($lineTaxAmount));
+        $lineTaxAmountEl = Ubl::element($dom, Ubl::CBC_NS, 'cbc:TaxAmount', Ubl::amount($lineTaxAmount));
         $lineTaxAmountEl->setAttribute('currencyID', $currency);
         $lineTax->appendChild($lineTaxAmountEl);
 
@@ -134,11 +126,7 @@ class UblLineBuilder
         // nothing, and ZATCA reports that as an advisory rather than an
         // error — the document clears with a stated total of zero, so
         // nothing downstream objects.
-        $rounding = $dom->createElementNS(
-            Ubl::CBC_NS,
-            'cbc:RoundingAmount',
-            Ubl::amount($displayLineNet + $lineTaxAmount)
-        );
+        $rounding = Ubl::element($dom, Ubl::CBC_NS, 'cbc:RoundingAmount', Ubl::amount($displayLineNet + $lineTaxAmount));
         $rounding->setAttribute('currencyID', $currency);
         $lineTax->appendChild($rounding);
 
@@ -151,16 +139,12 @@ class UblLineBuilder
     private function buildItem(DOMDocument $dom, array $line): DOMElement
     {
         $item = $dom->createElementNS(Ubl::CAC_NS, 'cac:Item');
-        $item->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:Name', $line['description']));
+        $item->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:Name', $line['description']));
 
         // Item classification code (UNSPSC or GS1) if provided
         if (! empty($line['itemClassificationCode'])) {
             $commodityClass = $dom->createElementNS(Ubl::CAC_NS, 'cac:CommodityClassification');
-            $classCode = $dom->createElementNS(
-                Ubl::CBC_NS,
-                'cbc:ItemClassificationCode',
-                $line['itemClassificationCode']
-            );
+            $classCode = Ubl::element($dom, Ubl::CBC_NS, 'cbc:ItemClassificationCode', $line['itemClassificationCode']);
             $classCode->setAttribute('listID', 'UNSPSC');
             $commodityClass->appendChild($classCode);
             $item->appendChild($commodityClass);
@@ -168,10 +152,10 @@ class UblLineBuilder
 
         // Item tax category
         $itemTaxCat = $dom->createElementNS(Ubl::CAC_NS, 'cac:ClassifiedTaxCategory');
-        $itemTaxCat->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:ID', $line['taxCategory'] ?? 'S'));
-        $itemTaxCat->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:Percent', Ubl::amount($line['taxRate'] ?? 15)));
+        $itemTaxCat->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:ID', $line['taxCategory'] ?? 'S'));
+        $itemTaxCat->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:Percent', Ubl::amount($line['taxRate'] ?? 15)));
         $itemTaxScheme = $dom->createElementNS(Ubl::CAC_NS, 'cac:TaxScheme');
-        $itemTaxScheme->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:ID', 'VAT'));
+        $itemTaxScheme->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:ID', 'VAT'));
         $itemTaxCat->appendChild($itemTaxScheme);
         $item->appendChild($itemTaxCat);
 
@@ -186,12 +170,12 @@ class UblLineBuilder
     private function buildPrice(DOMDocument $dom, array $line, string $netUnitPrice, string $currency): DOMElement
     {
         $price = $dom->createElementNS(Ubl::CAC_NS, 'cac:Price');
-        $priceAmount = $dom->createElementNS(Ubl::CBC_NS, 'cbc:PriceAmount', $netUnitPrice);
+        $priceAmount = Ubl::element($dom, Ubl::CBC_NS, 'cbc:PriceAmount', $netUnitPrice);
         $priceAmount->setAttribute('currencyID', $currency);
         $price->appendChild($priceAmount);
 
         // BaseQuantity (optional but good for clarity)
-        $baseQty = $dom->createElementNS(Ubl::CBC_NS, 'cbc:BaseQuantity', '1');
+        $baseQty = Ubl::element($dom, Ubl::CBC_NS, 'cbc:BaseQuantity', '1');
         $baseQty->setAttribute('unitCode', UnitCode::normalise($line['unitCode'] ?? null));
         $price->appendChild($baseQty);
 
@@ -211,21 +195,21 @@ class UblLineBuilder
 
         // ChargeIndicator: false = allowance (discount)
         $allowanceCharge->appendChild(
-            $dom->createElementNS(Ubl::CBC_NS, 'cbc:ChargeIndicator', 'false')
+            Ubl::element($dom, Ubl::CBC_NS, 'cbc:ChargeIndicator', 'false')
         );
 
         // AllowanceChargeReasonCode (95 = discount)
         $allowanceCharge->appendChild(
-            $dom->createElementNS(Ubl::CBC_NS, 'cbc:AllowanceChargeReasonCode', '95')
+            Ubl::element($dom, Ubl::CBC_NS, 'cbc:AllowanceChargeReasonCode', '95')
         );
 
         // AllowanceChargeReason
         $allowanceCharge->appendChild(
-            $dom->createElementNS(Ubl::CBC_NS, 'cbc:AllowanceChargeReason', $reason)
+            Ubl::element($dom, Ubl::CBC_NS, 'cbc:AllowanceChargeReason', $reason)
         );
 
         // Amount
-        $amountEl = $dom->createElementNS(Ubl::CBC_NS, 'cbc:Amount', Ubl::amount($amount));
+        $amountEl = Ubl::element($dom, Ubl::CBC_NS, 'cbc:Amount', Ubl::amount($amount));
         $amountEl->setAttribute('currencyID', $currency);
         $allowanceCharge->appendChild($amountEl);
 

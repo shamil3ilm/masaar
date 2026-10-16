@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Support;
 
+use DOMDocument;
+use DOMElement;
+
 /**
  * The namespaces and number formats every part of a UBL invoice shares.
  *
@@ -20,6 +23,26 @@ final class Ubl
     public const CBC_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2';
 
     public const EXT_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2';
+
+    /**
+     * An element with its text, written as a text node.
+     *
+     * Never as createElementNS()'s third argument: DOM reads that as markup,
+     * so "Al Noor Trading & Contracting" was an unterminated entity and the
+     * element came out empty - a buyer, a seller or a line with no name, in
+     * a signed tax invoice. A text node is escaped when it is written, and
+     * text without &, < or > is written exactly as before.
+     */
+    public static function element(DOMDocument $dom, string $namespace, string $qualifiedName, string|int|float|null $text = null): DOMElement
+    {
+        $element = $dom->createElementNS($namespace, $qualifiedName);
+
+        if ($text !== null) {
+            $element->appendChild($dom->createTextNode((string) $text));
+        }
+
+        return $element;
+    }
 
     /**
      * Format monetary amount (2 decimal places).

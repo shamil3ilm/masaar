@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Services;
 
+use App\Domains\Compliance\Fatoora\Support\Ubl;
 use App\Support\Xml;
 use DOMDocument;
 use DOMElement;
@@ -95,9 +96,9 @@ class QrCodeInjector
     private function reference(DOMDocument $dom, string $qrCode): DOMElement
     {
         $reference = $dom->createElementNS(self::CAC_NS, 'cac:AdditionalDocumentReference');
-        $reference->appendChild($dom->createElementNS(self::CBC_NS, 'cbc:ID', 'QR'));
+        $reference->appendChild(Ubl::element($dom, self::CBC_NS, 'cbc:ID', 'QR'));
 
-        $binary = $dom->createElementNS(self::CBC_NS, 'cbc:EmbeddedDocumentBinaryObject', $qrCode);
+        $binary = Ubl::element($dom, self::CBC_NS, 'cbc:EmbeddedDocumentBinaryObject', $qrCode);
         $binary->setAttribute('mimeCode', 'text/plain');
 
         $attachment = $dom->createElementNS(self::CAC_NS, 'cac:Attachment');

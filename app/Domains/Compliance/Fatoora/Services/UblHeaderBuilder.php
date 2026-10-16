@@ -116,7 +116,7 @@ class UblHeaderBuilder
         if ($data->billingReferenceId !== null) {
             $billingRef = $dom->createElementNS(Ubl::CAC_NS, 'cac:BillingReference');
             $invoiceRef = $dom->createElementNS(Ubl::CAC_NS, 'cac:InvoiceDocumentReference');
-            $invoiceRef->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:ID', $data->billingReferenceId));
+            $invoiceRef->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:ID', $data->billingReferenceId));
 
             $billingRef->appendChild($invoiceRef);
             $root->appendChild($billingRef);
@@ -128,10 +128,10 @@ class UblHeaderBuilder
             foreach ($data->prepaymentInvoiceIds as $prepaymentId) {
                 $billingRef = $dom->createElementNS(Ubl::CAC_NS, 'cac:BillingReference');
                 $invoiceRef = $dom->createElementNS(Ubl::CAC_NS, 'cac:InvoiceDocumentReference');
-                $invoiceRef->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:ID', $prepaymentId));
+                $invoiceRef->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:ID', $prepaymentId));
 
                 // Add document type code to distinguish prepayment references
-                $docTypeCode = $dom->createElementNS(Ubl::CBC_NS, 'cbc:DocumentTypeCode', '386');
+                $docTypeCode = Ubl::element($dom, Ubl::CBC_NS, 'cbc:DocumentTypeCode', '386');
                 $invoiceRef->appendChild($docTypeCode);
 
                 $billingRef->appendChild($invoiceRef);
@@ -149,20 +149,16 @@ class UblHeaderBuilder
 
         // Invoice Counter Value (ICV) - sequential per organization
         $icv = $dom->createElementNS(Ubl::CAC_NS, 'cac:AdditionalDocumentReference');
-        $icv->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:ID', 'ICV'));
-        $icv->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:UUID', (string) $data->icv));
+        $icv->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:ID', 'ICV'));
+        $icv->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:UUID', (string) $data->icv));
         $root->appendChild($icv);
 
         // Previous Invoice Hash (PIH), the genesis value for the first
         // document in a chain.
         $pih = $dom->createElementNS(Ubl::CAC_NS, 'cac:AdditionalDocumentReference');
-        $pih->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:ID', 'PIH'));
+        $pih->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:ID', 'PIH'));
         $pihAttachment = $dom->createElementNS(Ubl::CAC_NS, 'cac:Attachment');
-        $pihBinary = $dom->createElementNS(
-            Ubl::CBC_NS,
-            'cbc:EmbeddedDocumentBinaryObject',
-            $data->previousInvoiceHash ?? FatooraConfig::GENESIS_PIH
-        );
+        $pihBinary = Ubl::element($dom, Ubl::CBC_NS, 'cbc:EmbeddedDocumentBinaryObject', $data->previousInvoiceHash ?? FatooraConfig::GENESIS_PIH);
         $pihBinary->setAttribute('mimeCode', 'text/plain');
         $pihAttachment->appendChild($pihBinary);
         $pih->appendChild($pihAttachment);
@@ -188,10 +184,10 @@ class UblHeaderBuilder
     {
         $signature = $dom->createElementNS(Ubl::CAC_NS, 'cac:Signature');
         $signature->appendChild(
-            $dom->createElementNS(Ubl::CBC_NS, 'cbc:ID', XmlBuilder::SIGNATURE_REFERENCE)
+            Ubl::element($dom, Ubl::CBC_NS, 'cbc:ID', XmlBuilder::SIGNATURE_REFERENCE)
         );
         $signature->appendChild(
-            $dom->createElementNS(Ubl::CBC_NS, 'cbc:SignatureMethod', XmlBuilder::SIGNATURE_URI)
+            Ubl::element($dom, Ubl::CBC_NS, 'cbc:SignatureMethod', XmlBuilder::SIGNATURE_URI)
         );
 
         $dom->documentElement->appendChild($signature);
@@ -215,11 +211,11 @@ class UblHeaderBuilder
         }
 
         $delivery = $dom->createElementNS(Ubl::CAC_NS, 'cac:Delivery');
-        $delivery->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:ActualDeliveryDate', $data->supplyDate));
+        $delivery->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:ActualDeliveryDate', $data->supplyDate));
 
         // KSA-24, after the start date as UBL orders them.
         if ($data->supplyEndDate !== null) {
-            $delivery->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:LatestDeliveryDate', $data->supplyEndDate));
+            $delivery->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:LatestDeliveryDate', $data->supplyEndDate));
         }
 
         $dom->documentElement->appendChild($delivery);
@@ -232,7 +228,7 @@ class UblHeaderBuilder
     {
         $paymentMeans = $dom->createElementNS(Ubl::CAC_NS, 'cac:PaymentMeans');
         $paymentMeans->appendChild(
-            $dom->createElementNS(Ubl::CBC_NS, 'cbc:PaymentMeansCode', $data->paymentMeansCode ?? '10')
+            Ubl::element($dom, Ubl::CBC_NS, 'cbc:PaymentMeansCode', $data->paymentMeansCode ?? '10')
         );
 
         // KSA-10. BR-KSA-17 requires a credit or debit note to say why it was
@@ -244,7 +240,7 @@ class UblHeaderBuilder
 
         if ($instruction !== null) {
             $paymentMeans->appendChild(
-                $dom->createElementNS(Ubl::CBC_NS, 'cbc:InstructionNote', $instruction)
+                Ubl::element($dom, Ubl::CBC_NS, 'cbc:InstructionNote', $instruction)
             );
         }
 
@@ -259,7 +255,7 @@ class UblHeaderBuilder
         [$prefix, $localName] = explode(':', $name);
         $ns = $prefix === 'cbc' ? Ubl::CBC_NS : Ubl::CAC_NS;
 
-        $element = $dom->createElementNS($ns, $name, htmlspecialchars($value, ENT_XML1));
+        $element = Ubl::element($dom, $ns, $name, $value);
         $dom->documentElement->appendChild($element);
 
         return $element;

@@ -39,10 +39,10 @@ class UblPartyBuilder
         // ZATCA samples show single PartyIdentification with CRN
         $partyId = $dom->createElementNS(Ubl::CAC_NS, 'cac:PartyIdentification');
         if ($data->sellerCrNumber !== null) {
-            $idElement = $dom->createElementNS(Ubl::CBC_NS, 'cbc:ID', $data->sellerCrNumber);
+            $idElement = Ubl::element($dom, Ubl::CBC_NS, 'cbc:ID', $data->sellerCrNumber);
             $idElement->setAttribute('schemeID', 'CRN');
         } else {
-            $idElement = $dom->createElementNS(Ubl::CBC_NS, 'cbc:ID', $data->sellerVatNumber);
+            $idElement = Ubl::element($dom, Ubl::CBC_NS, 'cbc:ID', $data->sellerVatNumber);
             $idElement->setAttribute('schemeID', 'VAT');
         }
         $partyId->appendChild($idElement);
@@ -53,15 +53,15 @@ class UblPartyBuilder
 
         // Party tax scheme
         $taxScheme = $dom->createElementNS(Ubl::CAC_NS, 'cac:PartyTaxScheme');
-        $taxScheme->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:CompanyID', $data->sellerVatNumber));
+        $taxScheme->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:CompanyID', $data->sellerVatNumber));
         $taxSchemeInner = $dom->createElementNS(Ubl::CAC_NS, 'cac:TaxScheme');
-        $taxSchemeInner->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:ID', 'VAT'));
+        $taxSchemeInner->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:ID', 'VAT'));
         $taxScheme->appendChild($taxSchemeInner);
         $party->appendChild($taxScheme);
 
         // Party legal entity (name)
         $legalEntity = $dom->createElementNS(Ubl::CAC_NS, 'cac:PartyLegalEntity');
-        $legalEntity->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:RegistrationName', $data->sellerName));
+        $legalEntity->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:RegistrationName', $data->sellerName));
         $party->appendChild($legalEntity);
 
         $supplier->appendChild($party);
@@ -96,7 +96,7 @@ class UblPartyBuilder
         // Per ZATCA: buyers without VAT must have alternative ID
         if (! $data->buyerHasVat() && $data->buyerHasAlternativeId()) {
             $partyId = $dom->createElementNS(Ubl::CAC_NS, 'cac:PartyIdentification');
-            $idElement = $dom->createElementNS(Ubl::CBC_NS, 'cbc:ID', $data->buyerId);
+            $idElement = Ubl::element($dom, Ubl::CBC_NS, 'cbc:ID', $data->buyerId);
             $idElement->setAttribute('schemeID', $data->buyerIdScheme);
             $partyId->appendChild($idElement);
             $party->appendChild($partyId);
@@ -110,9 +110,9 @@ class UblPartyBuilder
         // Party tax scheme (for B2B with VAT)
         if ($data->buyerHasVat()) {
             $taxScheme = $dom->createElementNS(Ubl::CAC_NS, 'cac:PartyTaxScheme');
-            $taxScheme->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:CompanyID', $data->buyerVatNumber));
+            $taxScheme->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:CompanyID', $data->buyerVatNumber));
             $taxSchemeInner = $dom->createElementNS(Ubl::CAC_NS, 'cac:TaxScheme');
-            $taxSchemeInner->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:ID', 'VAT'));
+            $taxSchemeInner->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:ID', 'VAT'));
             $taxScheme->appendChild($taxSchemeInner);
             $party->appendChild($taxScheme);
         }
@@ -126,7 +126,7 @@ class UblPartyBuilder
         // EDU and HEA exemptions.
         if ($data->buyerName !== null && trim($data->buyerName) !== '') {
             $legalEntity = $dom->createElementNS(Ubl::CAC_NS, 'cac:PartyLegalEntity');
-            $legalEntity->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:RegistrationName', $data->buyerName));
+            $legalEntity->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:RegistrationName', $data->buyerName));
             $party->appendChild($legalEntity);
         }
 
@@ -160,42 +160,42 @@ class UblPartyBuilder
         $postalAddress = $dom->createElementNS(Ubl::CAC_NS, 'cac:PostalAddress');
 
         // 1. StreetName (mandatory)
-        $postalAddress->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:StreetName', $address->street));
+        $postalAddress->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:StreetName', $address->street));
 
         // 2. AdditionalStreetName (optional)
         if ($address->additionalStreet !== null) {
-            $postalAddress->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:AdditionalStreetName', $address->additionalStreet));
+            $postalAddress->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:AdditionalStreetName', $address->additionalStreet));
         }
 
         // 3. BuildingNumber (mandatory per ZATCA)
         if ($address->buildingNumber !== null) {
-            $postalAddress->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:BuildingNumber', $address->buildingNumber));
+            $postalAddress->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:BuildingNumber', $address->buildingNumber));
         }
 
         // 4. PlotIdentification (optional - for plot/land identification)
         if ($address->plotIdentification !== null) {
-            $postalAddress->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:PlotIdentification', $address->plotIdentification));
+            $postalAddress->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:PlotIdentification', $address->plotIdentification));
         }
 
         // 5. CitySubdivisionName (district - mandatory per ZATCA)
         if ($address->district !== null) {
-            $postalAddress->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:CitySubdivisionName', $address->district));
+            $postalAddress->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:CitySubdivisionName', $address->district));
         }
 
         // 6. CityName (mandatory)
-        $postalAddress->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:CityName', $address->city));
+        $postalAddress->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:CityName', $address->city));
 
         // 7. PostalZone (mandatory)
-        $postalAddress->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:PostalZone', $address->postalCode));
+        $postalAddress->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:PostalZone', $address->postalCode));
 
         // 8. CountrySubentity (optional - region/state)
         if ($address->countrySubentity !== null) {
-            $postalAddress->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:CountrySubentity', $address->countrySubentity));
+            $postalAddress->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:CountrySubentity', $address->countrySubentity));
         }
 
         // 9. Country (mandatory)
         $country = $dom->createElementNS(Ubl::CAC_NS, 'cac:Country');
-        $country->appendChild($dom->createElementNS(Ubl::CBC_NS, 'cbc:IdentificationCode', $address->countryCode));
+        $country->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:IdentificationCode', $address->countryCode));
         $postalAddress->appendChild($country);
 
         return $postalAddress;

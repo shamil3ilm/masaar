@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Fatoora\Services;
 
 use App\Domains\Compliance\Fatoora\Exceptions\SigningException;
+use App\Domains\Compliance\Fatoora\Support\Ubl;
 use App\Domains\Compliance\Fatoora\Support\XadesDigest;
 use App\Support\Xml;
 use DOMDocument;
@@ -109,7 +110,7 @@ class XadesSigner
         );
 
         $signature->insertBefore(
-            $dom->createElementNS(self::DS_NS, 'ds:SignatureValue', $signatureValue),
+            Ubl::element($dom, self::DS_NS, 'ds:SignatureValue', $signatureValue),
             $object
         );
 
@@ -204,7 +205,7 @@ class XadesSigner
             $transform = $dom->createElementNS(self::DS_NS, 'ds:Transform');
             $transform->setAttribute('Algorithm', 'http://www.w3.org/TR/1999/REC-xpath-19991116');
 
-            $xpath = $dom->createElementNS(self::DS_NS, 'ds:XPath', $expression);
+            $xpath = Ubl::element($dom, self::DS_NS, 'ds:XPath', $expression);
             $xpath->setAttributeNS(self::XMLNS, 'xmlns:ext', XadesDigest::EXT_NS);
             $xpath->setAttributeNS(self::XMLNS, 'xmlns:cac', XadesDigest::CAC_NS);
             $xpath->setAttributeNS(self::XMLNS, 'xmlns:cbc', self::CBC_NS);
@@ -228,7 +229,7 @@ class XadesSigner
         // DigestValue - apply transforms before calculating digest
         $transformedXml = $this->applyDocumentTransforms($xml);
         $digest = base64_encode(hash('sha256', $transformedXml, true));
-        $digestValue = $dom->createElementNS(self::DS_NS, 'ds:DigestValue', $digest);
+        $digestValue = Ubl::element($dom, self::DS_NS, 'ds:DigestValue', $digest);
         $reference->appendChild($digestValue);
 
         return $reference;
@@ -277,7 +278,7 @@ class XadesSigner
         // bytes. The two references in one signature do not agree with each
         // other, and this is the one that differs.
         $digest = base64_encode(hash('sha256', XadesDigest::signedPropertiesInput($signedProperties)));
-        $digestValue = $dom->createElementNS(self::DS_NS, 'ds:DigestValue', $digest);
+        $digestValue = Ubl::element($dom, self::DS_NS, 'ds:DigestValue', $digest);
         $reference->appendChild($digestValue);
 
         return $reference;
@@ -295,7 +296,7 @@ class XadesSigner
 
         // Extract certificate value (without headers)
         $certValue = XadesDigest::certificateText($certificatePem);
-        $x509Cert = $dom->createElementNS(self::DS_NS, 'ds:X509Certificate', $certValue);
+        $x509Cert = Ubl::element($dom, self::DS_NS, 'ds:X509Certificate', $certValue);
         $x509Data->appendChild($x509Cert);
 
         $keyInfo->appendChild($x509Data);
@@ -362,10 +363,10 @@ class XadesSigner
 
         $information = $dom->createElementNS(self::SAC_NS, 'sac:SignatureInformation');
         $information->appendChild(
-            $dom->createElementNS(self::CBC_NS, 'cbc:ID', XmlBuilder::SIGNATURE_ID)
+            Ubl::element($dom, self::CBC_NS, 'cbc:ID', XmlBuilder::SIGNATURE_ID)
         );
         $information->appendChild(
-            $dom->createElementNS(self::SBC_NS, 'sbc:ReferencedSignatureID', XmlBuilder::SIGNATURE_REFERENCE)
+            Ubl::element($dom, self::SBC_NS, 'sbc:ReferencedSignatureID', XmlBuilder::SIGNATURE_REFERENCE)
         );
         $information->appendChild($signature);
 

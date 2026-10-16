@@ -108,7 +108,7 @@ class XmlBuilder
         // BR-KSA-30 requires this exact URI. It is what identifies the
         // extension as the cryptographic stamp rather than any other kind.
         $extension->appendChild(
-            $this->dom->createElementNS(self::EXT_NS, 'ext:ExtensionURI', self::SIGNATURE_URI)
+            Ubl::element($this->dom, self::EXT_NS, 'ext:ExtensionURI', self::SIGNATURE_URI)
         );
 
         $content = $this->dom->createElementNS(self::EXT_NS, 'ext:ExtensionContent');
@@ -156,9 +156,9 @@ class XmlBuilder
         $pihNodes = $xpath->query("//cac:AdditionalDocumentReference[cbc:ID='PIH']");
 
         $qr = $this->dom->createElementNS(self::CAC_NS, 'cac:AdditionalDocumentReference');
-        $qr->appendChild($this->dom->createElementNS(self::CBC_NS, 'cbc:ID', 'QR'));
+        $qr->appendChild(Ubl::element($this->dom, self::CBC_NS, 'cbc:ID', 'QR'));
         $qrAttachment = $this->dom->createElementNS(self::CAC_NS, 'cac:Attachment');
-        $qrBinary = $this->dom->createElementNS(self::CBC_NS, 'cbc:EmbeddedDocumentBinaryObject', $qrCode);
+        $qrBinary = Ubl::element($this->dom, self::CBC_NS, 'cbc:EmbeddedDocumentBinaryObject', $qrCode);
         $qrBinary->setAttribute('mimeCode', 'text/plain');
         $qrAttachment->appendChild($qrBinary);
         $qr->appendChild($qrAttachment);

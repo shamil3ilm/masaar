@@ -129,13 +129,22 @@ class FatooraClient
     private function submitInvoice(string $endpoint, string $invoiceXml, string $invoiceHash, string $uuid, DeviceCredentials $device): FatooraResponse
     {
         try {
-            $response = $this->createBaseHttpClient()
-                ->withBasicAuth($device->token, $device->secret)
-                ->post($this->baseUrl.$endpoint, [
-                    'invoiceHash' => $invoiceHash,
-                    'uuid' => $uuid,
-                    'invoice' => base64_encode($invoiceXml),
-                ]);
+            $request = $this->createBaseHttpClient()->withBasicAuth($device->token, $device->secret);
+
+            // Clearance asks the authority to stamp the document, and says so
+            // with Clearance-Status: 1. Without it the clearance endpoint does
+            // not clear: the sandbox onboarding command always sent it, and
+            // this - the path every real standard invoice takes - did not.
+            // Reporting must not carry it.
+            if ($endpoint === self::CLEARANCE) {
+                $request = $request->withHeaders(['Clearance-Status' => '1']);
+            }
+
+            $response = $request->post($this->baseUrl.$endpoint, [
+                'invoiceHash' => $invoiceHash,
+                'uuid' => $uuid,
+                'invoice' => base64_encode($invoiceXml),
+            ]);
 
             if ($response->successful()) {
                 return FatooraResponse::fromApiResponse($response->json());
