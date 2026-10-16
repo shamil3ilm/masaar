@@ -6,6 +6,7 @@ namespace App\Domains\Auth\Http\Controllers;
 
 use App\Domains\Auth\Services\AccountDeletion;
 use App\Domains\Auth\Services\AccountSettings;
+use App\Domains\Auth\Services\SignInThrottle;
 use App\Domains\Auth\Services\TwoFactor;
 use App\Domains\Auth\Support\Totp;
 use App\Domains\Compliance\Fatoora\Services\QrCodeRenderer;
@@ -14,6 +15,7 @@ use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
@@ -30,6 +32,7 @@ class AccountController extends Controller
         private readonly TwoFactor $twoFactor,
         private readonly AccountDeletion $deletion,
         private readonly QrCodeRenderer $qr,
+        private readonly SignInThrottle $throttle,
     ) {}
 
     public function show(Request $request): View
@@ -56,9 +59,12 @@ class AccountController extends Controller
 
     public function email(Request $request): RedirectResponse
     {
-        $data = $request->validate(['email' => ['required', 'email', 'max:255']]);
+        $data = $request->validate([
+            'email' => ['required', 'email', 'max:255'],
+            'password' => ['required', 'string'],
+        ]);
 
-        return $this->attempt(fn () => $this->settings->requestEmailChange($request->user(), $data['email']),
+        return $this->attempt(fn () => $this->settings->requestEmailChange($request->user(), $data['email'], $data['password']),
             'We sent a link to '.$data['email'].'. Your address changes when you open it.');
     }
 
@@ -109,18 +115,36 @@ class AccountController extends Controller
      */
     public function twoFactorConfirm(Request $request): RedirectResponse
     {
-        $code = (string) $request->validate(['code' => ['required', 'string', 'max:32']])['code'];
+        $data = $request->validate([
+            'code' => ['required', 'string', 'max:32'],
+            'password' => ['required', 'string'],
+        ]);
+        $user = $request->user();
         $secret = $request->session()->get(self::SETUP_SECRET);
 
-        if (! is_string($secret) || $request->user()->hasTwoFactor()) {
+        if (! is_string($secret) || $user->hasTwoFactor()) {
             return redirect()->route('account.show');
         }
 
-        $codes = $this->twoFactor->confirm($request->user(), $secret, $code);
+        // Someone holding the session could otherwise bind their own phone
+        // and lock the owner out.
+        if (! Hash::check((string) $data['password'], (string) $user->password)) {
+            return back()->with('error', 'Your current password is not right.');
+        }
+
+        if (($lockedFor = $this->throttle->codeLockedFor($user)) > 0) {
+            return back()->with('error', 'Too many codes tried. Try again in '.$lockedFor.' seconds.');
+        }
+
+        $codes = $this->twoFactor->confirm($user, $secret, (string) $data['code']);
 
         if ($codes === null) {
+            $this->throttle->codeFailed($user);
+
             return back()->with('error', 'That code is not right. Check the app shows the entry you just added.');
         }
+
+        $this->throttle->codeSucceeded($user);
 
         $request->session()->forget(self::SETUP_SECRET);
 

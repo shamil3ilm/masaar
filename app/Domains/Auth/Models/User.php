@@ -213,6 +213,17 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmailContrac
     /**
      * Whether the user holds an active membership of the given organization.
      */
+    /**
+     * Whether this organization requires a second factor this account lacks.
+     */
+    public function lacksRequiredTwoFactor(string $organizationId): bool
+    {
+        return ! $this->hasTwoFactor() && $this->activeOrganizations()
+            ->whereKey($organizationId)
+            ->where('require_two_factor', true)
+            ->exists();
+    }
+
     public function belongsToOrganization(string $organizationId): bool
     {
         return $this->activeOrganizations()

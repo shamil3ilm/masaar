@@ -26,6 +26,12 @@ class AccountSettings
 {
     public const EMAIL_LINK_HOURS = 24;
 
+    private const NO_PENDING_EMAIL = [
+        'pending_email' => null,
+        'pending_email_hash' => null,
+        'pending_email_expires_at' => null,
+    ];
+
     public function __construct(
         private readonly AuditService $audit,
     ) {}
@@ -42,8 +48,14 @@ class AccountSettings
      *
      * @throws DomainException
      */
-    public function requestEmailChange(User $user, string $email): void
+    public function requestEmailChange(User $user, string $email, string $password): void
     {
+        // Whoever holds a session is not necessarily its owner, and the
+        // address is how an account is recovered.
+        if (! Hash::check($password, (string) $user->password)) {
+            throw new DomainException('Your current password is not right.');
+        }
+
         $email = Str::lower(trim($email));
 
         if ($email === Str::lower((string) $user->email)) {
@@ -125,6 +137,7 @@ class AccountSettings
             'remember_token' => Str::random(60),
             // API tokens issued before this stop working (JwtGuard).
             'password_changed_at' => now(),
+            ...self::NO_PENDING_EMAIL,
         ])->save();
 
         // Keeps this session on the new hash, so the sessions auth.session
@@ -146,6 +159,12 @@ class AccountSettings
 
         Auth::logoutOtherDevices($password);
 
-        $user->forceFill(['remember_token' => Str::random(60)])->save();
+        $user->forceFill([
+            'remember_token' => Str::random(60),
+            // API tokens too: "everywhere else" includes them.
+            'password_changed_at' => now(),
+            // Someone signed out here may have asked for a new address.
+            ...self::NO_PENDING_EMAIL,
+        ])->save();
     }
 }

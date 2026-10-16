@@ -6,6 +6,7 @@ namespace App\Domains\Auth\Services;
 
 use App\Domains\Audit\Services\AuditService;
 use App\Domains\Auth\Models\User;
+use App\Domains\Organization\Models\Organization;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -39,11 +40,14 @@ class AccountDeletion
             throw new DomainException('Platform admins are removed by an owner first, on the Admins page.');
         }
 
-        if (($organization = $this->onlyAdminOf($user)) !== null) {
-            throw new DomainException('You are the only admin of '.$organization.'. Make someone else an admin there first.');
-        }
-
         DB::transaction(function () use ($user): void {
+            // Inside the transaction, with the organizations locked: two
+            // admins deleting themselves at once could otherwise each see the
+            // other and both go.
+            if (($organization = $this->onlyAdminOf($user)) !== null) {
+                throw new DomainException('You are the only admin of '.$organization.'. Make someone else an admin there first.');
+            }
+
             DB::table('organization_user')
                 ->where('user_id', $user->id)
                 ->update(['status' => 'removed', 'updated_at' => now()]);
@@ -74,7 +78,9 @@ class AccountDeletion
      */
     private function onlyAdminOf(User $user): ?string
     {
-        foreach ($user->activeOrganizations()->wherePivot('role', 'admin')->get() as $organization) {
+        $organizations = $user->activeOrganizations()->wherePivot('role', 'admin')->pluck('organizations.id');
+
+        foreach (Organization::query()->whereKey($organizations)->orderBy('id')->lockForUpdate()->get() as $organization) {
             $members = DB::table('organization_user')
                 ->where('org_id', $organization->id)
                 ->where('status', 'active');

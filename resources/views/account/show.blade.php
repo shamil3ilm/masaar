@@ -36,9 +36,14 @@
                 Waiting for you to open the link sent to {{ $user->pending_email }}.
             @endif
         </p>
-        <x-ui.field label="New email address">
-            <x-ui.input type="email" name="email" maxlength="255" required />
-        </x-ui.field>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <x-ui.field label="New email address">
+                <x-ui.input type="email" name="email" maxlength="255" required />
+            </x-ui.field>
+            <x-ui.field label="Your password">
+                <x-ui.input type="password" name="password" required autocomplete="current-password" />
+            </x-ui.field>
+        </div>
         <x-ui.button variant="outline">Send confirmation link</x-ui.button>
     </form>
 
@@ -92,9 +97,14 @@
             <p class="font-mono text-sm text-gray-700 dark:text-gray-200 break-all">{{ $setupSecret }}</p>
             <form method="POST" action="{{ route('account.two-factor.confirm') }}" class="space-y-3">
                 @csrf
-                <x-ui.field label="Code from the app">
-                    <x-ui.input type="text" name="code" inputmode="numeric" maxlength="32" autocomplete="one-time-code" required />
-                </x-ui.field>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <x-ui.field label="Code from the app">
+                        <x-ui.input type="text" name="code" inputmode="numeric" maxlength="32" autocomplete="one-time-code" required />
+                    </x-ui.field>
+                    <x-ui.field label="Your password">
+                        <x-ui.input type="password" name="password" required autocomplete="current-password" />
+                    </x-ui.field>
+                </div>
                 <x-ui.button variant="primary">Turn on two-factor</x-ui.button>
             </form>
         @else

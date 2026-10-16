@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 /**
  * My account: a person changing their own name, address, password and second
@@ -67,7 +68,7 @@ class AccountTest extends TestCase
      */
     public function test_the_email_waits_for_the_link(): void
     {
-        $this->actingAs($this->user)->post('/account/email', ['email' => 'sara@new.test'])
+        $this->actingAs($this->user)->post('/account/email', ['email' => 'sara@new.test', 'password' => 'password'])
             ->assertSessionHas('success');
 
         $this->assertSame('sara@acme.test', $this->user->fresh()->email);
@@ -90,7 +91,7 @@ class AccountTest extends TestCase
 
     public function test_a_wrong_link_changes_nothing(): void
     {
-        $this->actingAs($this->user)->post('/account/email', ['email' => 'sara@new.test']);
+        $this->actingAs($this->user)->post('/account/email', ['email' => 'sara@new.test', 'password' => 'password']);
 
         $this->actingAs($this->user)->get('/account/email/'.str_repeat('a', 48))
             ->assertSessionHas('error');
@@ -102,7 +103,7 @@ class AccountTest extends TestCase
     {
         User::factory()->create(['email' => 'taken@acme.test']);
 
-        $this->actingAs($this->user)->post('/account/email', ['email' => 'taken@acme.test'])
+        $this->actingAs($this->user)->post('/account/email', ['email' => 'taken@acme.test', 'password' => 'password'])
             ->assertSessionHas('error');
 
         Mail::assertNothingSent();
@@ -147,7 +148,7 @@ class AccountTest extends TestCase
 
         $secret = (string) session('account.two_factor_secret');
 
-        $page->post('/account/two-factor', ['code' => Totp::code($secret, time())])
+        $page->post('/account/two-factor', ['code' => Totp::code($secret, time()), 'password' => 'password'])
             ->assertSessionHas('recovery_codes');
 
         $this->assertTrue($this->user->fresh()->hasTwoFactor());
@@ -158,7 +159,7 @@ class AccountTest extends TestCase
         $page = $this->actingAs($this->user);
 
         $page->post('/account/two-factor/start');
-        $page->post('/account/two-factor', ['code' => '000000'])->assertSessionHas('error');
+        $page->post('/account/two-factor', ['code' => '000000', 'password' => 'password'])->assertSessionHas('error');
 
         $this->assertFalse($this->user->fresh()->hasTwoFactor());
     }
@@ -215,6 +216,83 @@ class AccountTest extends TestCase
             ->assertSessionHas('error');
 
         $this->assertTrue($this->user->fresh()->hasTwoFactor());
+    }
+
+    /**
+     * Whoever holds a session is not necessarily its owner, and the address
+     * is how an account is recovered.
+     */
+    public function test_an_email_change_needs_the_password(): void
+    {
+        $this->actingAs($this->user)->post('/account/email', ['email' => 'sara@new.test', 'password' => 'wrong'])
+            ->assertSessionHas('error');
+
+        $this->assertNull($this->user->fresh()->pending_email);
+        Mail::assertNothingSent();
+    }
+
+    public function test_turning_on_needs_the_password(): void
+    {
+        $page = $this->actingAs($this->user);
+
+        $page->post('/account/two-factor/start');
+        $secret = (string) session('account.two_factor_secret');
+
+        $page->post('/account/two-factor', ['code' => Totp::code($secret, time()), 'password' => 'wrong'])
+            ->assertSessionHas('error');
+
+        $this->assertFalse($this->user->fresh()->hasTwoFactor());
+    }
+
+    /**
+     * The code that confirmed setup is spent: seen typed, it does not sign in.
+     */
+    public function test_the_setup_code_is_spent(): void
+    {
+        $page = $this->actingAs($this->user);
+
+        $page->post('/account/two-factor/start');
+        $secret = (string) session('account.two_factor_secret');
+        $code = Totp::code($secret, time());
+        $page->post('/account/two-factor', ['code' => $code, 'password' => 'password']);
+
+        $this->postJson('/api/auth/login', [
+            'email' => 'sara@acme.test',
+            'password' => 'password',
+            'two_factor_code' => $code,
+        ])->assertUnauthorized();
+    }
+
+    public function test_a_password_change_drops_pending_email(): void
+    {
+        $this->actingAs($this->user)->post('/account/email', ['email' => 'sara@new.test', 'password' => 'password']);
+
+        $this->actingAs($this->user)->post('/account/password', [
+            'current_password' => 'password',
+            'password' => self::NEW_PASSWORD,
+            'password_confirmation' => self::NEW_PASSWORD,
+        ]);
+
+        $this->assertNull($this->user->fresh()->pending_email);
+    }
+
+    /**
+     * The portal sends such a member to set it up; the API refuses them.
+     */
+    public function test_the_api_honours_the_requirement(): void
+    {
+        $acme = Organization::create(['name' => 'Acme Trading', 'country' => 'SA']);
+        $acme->forceFill(['require_two_factor' => true])->save();
+        $this->user->organizations()->attach($acme->id, ['role' => 'member', 'status' => 'active']);
+
+        $token = JWTAuth::claims(['org_id' => $acme->id, 'role' => 'member'])->fromUser($this->user);
+
+        $this->withToken($token)->getJson('/api/invoices')->assertForbidden();
+
+        $this->enrol($this->user);
+        $token = JWTAuth::claims(['org_id' => $acme->id, 'role' => 'member'])->fromUser($this->user);
+
+        $this->withToken($token)->getJson('/api/invoices')->assertOk();
     }
 
     private function enrol(User $user): void

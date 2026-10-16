@@ -23,6 +23,7 @@ class TwoFactor
 
     public function __construct(
         private readonly AuditService $audit,
+        private readonly SignInThrottle $throttle,
     ) {}
 
     /**
@@ -32,9 +33,14 @@ class TwoFactor
      */
     public function confirm(User $user, string $secret, string $code): ?array
     {
-        if (Totp::verify($secret, $code) === null) {
+        $step = Totp::verify($secret, $code);
+
+        if ($step === null) {
             return null;
         }
+
+        // Spent here, so it cannot sign in a second time within its window.
+        $this->spendStep($user, $step);
 
         $codes = $this->newRecoveryCodes();
 
@@ -42,6 +48,10 @@ class TwoFactor
             'two_factor_secret' => $secret,
             'two_factor_recovery_codes' => $codes,
             'two_factor_confirmed_at' => now(),
+            // Remember-me cookies and API tokens from before were issued on
+            // the password alone.
+            'remember_token' => Str::random(60),
+            'password_changed_at' => now(),
         ])->save();
 
         $this->audit->logSecurity('mfa.enabled', 'User', (string) $user->id, userId: (string) $user->id);
@@ -68,20 +78,37 @@ class TwoFactor
         $step = Totp::verify((string) $user->two_factor_secret, $code);
 
         if ($step !== null) {
-            $key = 'mfa:last-step:'.$user->id;
-
-            if ($step <= (int) Cache::get($key, -1)) {
+            if (! $this->spendStep($user, $step)) {
                 $this->audit->logSecurity('mfa.replayed', 'User', (string) $user->id, userId: (string) $user->id);
 
+                return false;
+            }
+
+            return true;
+        }
+
+        return $this->spendRecoveryCode($user, $code);
+    }
+
+    /**
+     * Mark a code's step used, refusing it and every earlier one after.
+     *
+     * Under a lock: two requests with the same code at once must not both
+     * read the last step before either writes it.
+     */
+    private function spendStep(User $user, int $step): bool
+    {
+        $key = 'mfa:last-step:'.$user->id;
+
+        return (bool) Cache::lock($key.':lock', 5)->block(3, function () use ($key, $step): bool {
+            if ($step <= (int) Cache::get($key, -1)) {
                 return false;
             }
 
             Cache::put($key, $step, now()->addMinutes(5));
 
             return true;
-        }
-
-        return $this->spendRecoveryCode($user, $code);
+        });
     }
 
     /**
@@ -145,10 +172,17 @@ class TwoFactor
             throw new \DomainException($refusal);
         }
 
+        if (($lockedFor = $this->throttle->codeLockedFor($user)) > 0) {
+            throw new \DomainException('Too many codes tried. Try again in '.$lockedFor.' seconds.');
+        }
+
         if (! $this->check($user, $code)) {
+            $this->throttle->codeFailed($user);
+
             throw new \DomainException('That code is not right.');
         }
 
+        $this->throttle->codeSucceeded($user);
         $this->reset($user);
 
         $this->audit->logSecurity('mfa.disabled', 'User', (string) $user->id, userId: (string) $user->id);
