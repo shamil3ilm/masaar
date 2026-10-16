@@ -210,6 +210,8 @@ Route::prefix('admin')->name('admin.')
         Route::get('/organizations', [AdminController::class, 'organizations'])->name('organizations');
         Route::get('/organizations/{id}', [AdminController::class, 'organizationDetail'])->name('organization.detail');
         // A plan's payments. Recording one renews the plan and invoices it.
+        // Plans to chase before invoicing stops: payment is recorded by hand.
+        Route::get('/renewals', [AdminBillingController::class, 'renewals'])->name('billing.renewals');
         Route::get('/organizations/{id}/billing', [AdminBillingController::class, 'show'])->name('billing.show');
         Route::post('/organizations/{id}/billing', [AdminBillingController::class, 'record'])->middleware('admin.can:billing.manage')->name('billing.record');
         Route::post('/organizations/{id}/billing/{paymentId}/invoice', [AdminBillingController::class, 'invoice'])->middleware('admin.can:billing.manage')->name('billing.invoice');

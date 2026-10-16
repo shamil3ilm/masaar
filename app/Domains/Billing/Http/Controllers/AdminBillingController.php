@@ -25,10 +25,26 @@ use Illuminate\View\View;
  */
 class AdminBillingController extends Controller
 {
+    private const RENEWAL_DAYS = 30;
+
     public function __construct(
         private readonly Billing $billing,
         private readonly InvoicePdf $pdf,
     ) {}
+
+    /**
+     * Every plan ending in the next 30 days or lapsed in the last 30.
+     */
+    public function renewals(): View
+    {
+        $licences = $this->billing->renewals(self::RENEWAL_DAYS);
+
+        return view('admin.renewals', [
+            'licences' => $licences,
+            'organizations' => $this->billing->organizationsByIds($licences->pluck('org_id')->unique()->values()->all()),
+            'days' => self::RENEWAL_DAYS,
+        ]);
+    }
 
     public function show(string $id): View
     {
