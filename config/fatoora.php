@@ -240,6 +240,10 @@ return [
         // SdkValidator runs its validator when this is set and Java is present.
         'sdk_path' => env('ZATCA_SDK_PATH') ?: null,
 
+        // A PDF/A validator's command-line launcher. Tests only: when set,
+        // PdfaConformanceTest checks that invoice PDFs are PDF/A-3b.
+        'pdfa_validator' => env('PDFA_VALIDATOR_PATH') ?: null,
+
         // Where the ZATCA UBL 2.1 schema set is installed, relative to the
         // project root or absolute. It ships inside ZATCA's SDK, a licensed
         // download that cannot live in this repository, so with nothing here

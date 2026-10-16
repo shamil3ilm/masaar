@@ -142,9 +142,9 @@ class InvoicePdf
 
     private function qrImage(string $payload): ?string
     {
-        $svg = $this->qr->svg($payload);
+        $png = $this->qr->png($payload);
 
-        return $svg === '' ? null : 'data:image/svg+xml;base64,'.base64_encode($svg);
+        return $png === '' ? null : 'data:image/png;base64,'.base64_encode($png);
     }
 
     private function logo(string $organizationId): ?string
