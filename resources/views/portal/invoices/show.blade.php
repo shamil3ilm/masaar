@@ -46,6 +46,11 @@
             <x-ui.button variant="outline" :href="route('portal.invoices.print', $invoice->id)">
                 {{ __('Print') }}
             </x-ui.button>
+            @if (! in_array($invoice->document_type, [\App\Domains\Invoice\Enums\DocumentType::CreditNote, \App\Domains\Invoice\Enums\DocumentType::DebitNote], true)
+                && auth()->user()?->roleIn((string) request()->attributes->get(\App\Domains\Organization\Http\Middleware\PortalTenant::ORG_ID)) !== 'viewer')
+                <x-ui.button variant="outline" :href="route('portal.invoices.adjust', [$invoice->id, 'credit_note'])">{{ __('Credit note') }}</x-ui.button>
+                <x-ui.button variant="outline" :href="route('portal.invoices.adjust', [$invoice->id, 'debit_note'])">{{ __('Debit note') }}</x-ui.button>
+            @endif
             @if ($shareable)
                 <x-ui.button variant="outline" :href="route('portal.invoices.pdf', $invoice->id)">
                     PDF

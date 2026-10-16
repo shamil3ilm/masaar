@@ -62,6 +62,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Credit and debit notes from the invoice**: an issued invoice offers
+  Credit note and Debit note, which open the new-invoice form filled in
+  from it - the buyer, the reference, and for a credit note its lines - so
+  only the reason and what differs is left to type.
 - **Renewals in the console**: a Renewals page lists every plan ending in
   the next 30 days or lapsed in the last 30, with its contact and a link to
   record the payment.

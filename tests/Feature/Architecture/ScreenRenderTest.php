@@ -75,6 +75,8 @@ class ScreenRenderTest extends TestCase
         'portal.billing.invoice',
         'portal.reports.invoices',
         'portal.reports.vat',
+        // Not a screen: it fills the new-invoice form and redirects there.
+        'portal.invoices.adjust',
     ];
 
     private User $orgAdmin;
