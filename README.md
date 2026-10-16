@@ -44,7 +44,6 @@ billing, the support desk, and filing-deadline alerts across every taxpayer.
 
 ```
 ├── app/             ← Compliance API (Laravel 12, PHP 8.4), by domain
-├── sdks/            ← Client SDKs (PHP, TypeScript, Python, Java, Go, ...)
 └── docs/
     ├── sa/          ← Saudi Arabia (Fatoora) documentation
     ├── ae/          ← UAE (FTA) documentation
@@ -197,7 +196,7 @@ php artisan fatoora:onboard --step=full --otp=<otp> --target=sandbox
 
 The remaining commands are operator tools rather than scheduled work:
 `fatoora:generate-csr`, `fatoora:validate`, `fatoora:sandbox-test`,
-`license:generate`, `license:status`, `masaar:openapi`, `masaar:sdk-types` and
+`license:generate`, `license:status`, `masaar:openapi` and
 `masaar:rotate-credential-key`.
 
 ## Documentation
@@ -211,45 +210,17 @@ The remaining commands are operator tools rather than scheduled work:
 - [Adding a Jurisdiction](docs/architecture/ADDING-A-JURISDICTION.md)
 - [Backup and restore](docs/BACKUP-AND-RESTORE.md)
 
-## SDKs
+## Integrating
 
-Client libraries live in [`sdks/`](sdks/). **None are published to a package
-registry yet** — use them by vendoring the source. They are hand-written against
-the API rather than generated, so treat the HTTP API and
-[`docs/openapi.yaml`](docs/openapi.yaml) as authoritative where they disagree.
+The API is described by [`docs/openapi.yaml`](docs/openapi.yaml), generated
+from the route table and checked against it in CI, so any OpenAPI generator
+produces a complete client in the language you use. There are no official
+client libraries.
 
-They are not at the same level. No SDK covers more than 21 of the API's 122
-operations; what they cover is an ERP's invoice-and-filing flow.
-
-| SDK | Operations | Covers |
-|-----|-----------|--------|
-| [TypeScript](sdks/typescript/) · [PHP](sdks/php/) · [Python](sdks/python/) · [Java](sdks/java/) | 21 of 122 | Invoices (list, get, create), ZATCA generate, validate, submit and status, webhook management, health. API key or a JWT you supply |
-| [Ruby](sdks/ruby/) | 10 of 122 | The same, API-key routes only |
-| [Go](sdks/go/) · [Kotlin](sdks/kotlin/) · [.NET](sdks/dotnet/) | 7 of 122 | Invoices and filing; no webhook management |
-| [Dart](sdks/dart/) · [Rust](sdks/rust/) · [Swift](sdks/swift/) | 6 of 122 | As above, without listing invoices |
-| JavaScript | — | Use the TypeScript SDK — it compiles to JavaScript |
-
-What every SDK has: CI builds each one with its own toolchain on every push
-(Swift on Linux as well as Apple platforms), a test checks that it calls only
-routes the API serves, and each verifies webhook signatures in constant time.
-
-Known gaps, shared by all of them:
-
-- **Errors.** The API returns `{"success": false, "error": {"code", "message",
-  "retryable", "retry_after", "details"}}`; the SDKs read a top-level
-  `message`, so they choose an error class by status code and lose the code,
-  the message and whether to retry.
-- **No retries or idempotency keys**, though the API sends `retryable` and
-  `Retry-After` and honours `Idempotency-Key`.
-- **No sign-in or token refresh**; a JWT has to be obtained elsewhere.
-- **No tests.** CI compiles, lints or imports each SDK; none has been run
-  against a live API.
-- **Not covered by any:** authentication, the submit-and-status pipeline,
-  organizations and branches, onboarding, dashboards, licensing, numbering
-  settings and the operator API.
-
-The intended direction is to generate them from the OpenAPI specification
-rather than maintain eleven by hand.
+Webhooks are signed; [docs/WEBHOOKS.md](docs/WEBHOOKS.md) shows verification in
+PHP, Node.js, Python, Java, C# and Go. The
+[partner integration guide](docs/PARTNER-INTEGRATION-GUIDE.md) walks through an
+ERP integration end to end.
 
 ## License
 
