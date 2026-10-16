@@ -34,12 +34,20 @@ class OrgWriter
 
         $organizationId = $request->attributes->get(PortalTenant::ORG_ID) ?? $this->tenant->getOrganizationId();
 
-        if (is_string($organizationId) && $request->user()?->roleIn($organizationId) === 'viewer') {
-            $message = 'Your role in this organization is read-only.';
+        // No organization to read a role in is a refusal, not a pass.
+        if (! is_string($organizationId)) {
+            return $this->refuse($request, 'Choose an organization first.');
+        }
 
-            return $request->expectsJson() ? ApiResponse::forbidden($message) : abort(403, $message);
+        if ($request->user()?->roleIn($organizationId) === 'viewer') {
+            return $this->refuse($request, 'Your role in this organization is read-only.');
         }
 
         return $next($request);
+    }
+
+    private function refuse(Request $request, string $message): Response
+    {
+        return $request->expectsJson() ? ApiResponse::forbidden($message) : abort(403, $message);
     }
 }

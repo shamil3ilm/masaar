@@ -62,7 +62,7 @@ Route::prefix('api/admin/licenses')
 
         // License data
         Route::get('{id}/usage', [LicenseController::class, 'usage']);
-        Route::get('{id}/audit', [LicenseController::class, 'audit']);
+        Route::get('{id}/audit', [LicenseController::class, 'audit'])->middleware('admin.can:audit.view');
     });
 
 /*

@@ -117,6 +117,10 @@ class TwoFactor
             return 'No such account.';
         }
 
+        if (! User::query()->find($actorId)?->mayActOnAccessOf($user)) {
+            return 'Your admin role cannot change the access of an admin of the same rank or above.';
+        }
+
         if (! $user->hasTwoFactor()) {
             return 'This account has no two-factor to reset.';
         }

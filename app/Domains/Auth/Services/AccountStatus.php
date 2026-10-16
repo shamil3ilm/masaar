@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Auth\Services;
 
+use App\Domains\Auth\Enums\PlatformRole;
 use App\Domains\Auth\Models\User;
 
 /**
@@ -36,9 +37,28 @@ class AccountStatus
             return 'This account is already suspended.';
         }
 
+        if (! User::query()->find($actorId)?->mayActOnAccessOf($user)) {
+            return 'Your admin role cannot change the access of an admin of the same rank or above.';
+        }
+
+        // The last owner suspended leaves nobody to manage admins.
+        if ($user->platformRole() === PlatformRole::Owner && ! $this->anotherOwner($user)) {
+            return 'This is the only active owner. Make someone else an owner first.';
+        }
+
         $user->update(['status' => 'suspended']);
 
         return null;
+    }
+
+    private function anotherOwner(User $leaving): bool
+    {
+        return User::query()
+            ->where('is_platform_admin', true)
+            ->where('status', 'active')
+            ->whereKeyNot($leaving->getKey())
+            ->where(fn ($query) => $query->where('platform_role', PlatformRole::Owner->value)->orWhereNull('platform_role'))
+            ->exists();
     }
 
     public function reactivate(string $userId): ?string

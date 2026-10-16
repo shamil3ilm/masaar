@@ -50,6 +50,12 @@ class PlatformAdmins
             throw new DomainException('No active account has that address. They sign up, or are invited to a company, first.');
         }
 
+        // Verified, so the address is the person's: an account someone else
+        // registered for it in advance does not become an admin.
+        if (! $user->hasVerifiedEmail()) {
+            throw new DomainException($email.' has not verified its email address yet.');
+        }
+
         if ($user->is_platform_admin) {
             throw new DomainException($email.' is already an admin. Change their role instead.');
         }

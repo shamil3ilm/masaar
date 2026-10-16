@@ -118,6 +118,10 @@ class EnrolmentLinks
             return ['Only platform admins enrol a second factor.', null];
         }
 
+        if (! User::query()->find($actorId)?->mayActOnAccessOf($user)) {
+            return ['Your admin role cannot change the access of an admin of the same rank or above.', null];
+        }
+
         if ($user->hasTwoFactor()) {
             return ['This account already has two-factor. Reset it first if they have lost it.', null];
         }

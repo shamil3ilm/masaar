@@ -53,6 +53,23 @@ enum PlatformRole: string
         return in_array($permission, $this->permissions(), true);
     }
 
+    /**
+     * Seniority, for acting on another admin's access: resetting their second
+     * factor, issuing their enrolment link, suspending them. Only an owner, or
+     * an admin of a higher rank, may - otherwise a support admin could reset
+     * an owner's second factor, enrol their own authenticator on it, and with
+     * the owner's password become one.
+     */
+    public function rank(): int
+    {
+        return match ($this) {
+            self::Owner => 4,
+            self::Operations => 3,
+            self::Support => 2,
+            self::Auditor => 1,
+        };
+    }
+
     public function label(): string
     {
         return ucfirst($this->value);

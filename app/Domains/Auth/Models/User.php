@@ -86,7 +86,27 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmailContrac
             return null;
         }
 
-        return PlatformRole::tryFrom((string) $this->platform_role) ?? PlatformRole::Owner;
+        // Only a missing role means owner. A value that is not a role - a typo,
+        // a role since retired - is no role at all, not the most powerful one.
+        return $this->platform_role === null ? PlatformRole::Owner : PlatformRole::tryFrom((string) $this->platform_role);
+    }
+
+    /**
+     * Whether this admin may act on another account's access - its second
+     * factor, its enrolment link, its suspension. Any account that is not an
+     * admin, yes; an admin, only from an owner or a higher rank.
+     */
+    public function mayActOnAccessOf(User $target): bool
+    {
+        $mine = $this->platformRole();
+
+        if ($mine === null) {
+            return false;
+        }
+
+        $theirs = $target->platformRole();
+
+        return $theirs === null || $mine === PlatformRole::Owner || $mine->rank() > $theirs->rank();
     }
 
     /**

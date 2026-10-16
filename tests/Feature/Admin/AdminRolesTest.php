@@ -6,9 +6,11 @@ namespace Tests\Feature\Admin;
 
 use App\Domains\Auth\Enums\PlatformRole;
 use App\Domains\Auth\Models\User;
+use App\Domains\Auth\Services\AccountStatus;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
@@ -127,6 +129,56 @@ class AdminRolesTest extends TestCase
 
         $this->actingAs($second->fresh())->post("/admin/admins/{$owner->id}/revoke")->assertForbidden();
         $this->assertSame(PlatformRole::Owner, $owner->fresh()->platformRole());
+    }
+
+    /**
+     * Support could reset an owner's second factor, take the enrolment link,
+     * enrol their own authenticator on it and, with the owner's password,
+     * become one. Access is changed only by an owner or a higher rank.
+     */
+    public function test_support_cannot_take_an_owner(): void
+    {
+        $owner = $this->admin(PlatformRole::Owner);
+        $owner->forceFill(['two_factor_secret' => 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ', 'two_factor_confirmed_at' => now()])->save();
+        $support = $this->admin(PlatformRole::Support);
+
+        $this->actingAs($support)->post("/admin/users/{$owner->id}/reset-two-factor")->assertSessionHas('error');
+        $this->assertTrue($owner->fresh()->hasTwoFactor());
+
+        $this->actingAs($this->admin(PlatformRole::Operations))
+            ->post("/admin/users/{$owner->id}/suspend", ['reason' => 'test'])
+            ->assertSessionHas('error');
+        $this->assertTrue($owner->fresh()->isActive());
+    }
+
+    public function test_the_last_owner_cannot_be_suspended(): void
+    {
+        $owner = $this->admin(PlatformRole::Owner);
+        $other = $this->admin(PlatformRole::Owner);
+
+        $this->actingAs($other)->post("/admin/users/{$owner->id}/suspend", ['reason' => 'test'])->assertSessionHas('success');
+        $this->assertFalse($owner->fresh()->isActive());
+
+        // $other is now the only active owner; nobody above can suspend them,
+        // and an owner cannot suspend themselves.
+        $this->assertSame('You cannot suspend your own account.', app(AccountStatus::class)->suspend($other->id, $other->id));
+    }
+
+    /**
+     * Only a missing role means owner; a value that is no role grants nothing.
+     */
+    public function test_an_unknown_role_grants_nothing(): void
+    {
+        $odd = User::factory()->create(['is_platform_admin' => true, 'platform_role' => 'superuser']);
+
+        $this->actingAs($odd)->get('/admin')->assertForbidden();
+    }
+
+    public function test_licence_audit_needs_audit_access(): void
+    {
+        $this->withToken(JWTAuth::fromUser($this->admin(PlatformRole::Support)))
+            ->getJson('/api/admin/licenses/'.Str::uuid().'/audit')
+            ->assertForbidden();
     }
 
     private function admin(PlatformRole $role): User
