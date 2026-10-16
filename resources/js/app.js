@@ -1,5 +1,6 @@
 import Alpine from '@alpinejs/csp';
 
+import { registerCataloguePickers } from './catalogue-pickers.js';
 import { registerConfirmations } from './confirm.js';
 import { registerInvoiceLines } from './invoice-lines.js';
 import { registerValidation } from './validate.js';
@@ -24,6 +25,7 @@ Alpine.data('drawer', drawer);
 
 registerConfirmations();
 registerInvoiceLines();
+registerCataloguePickers();
 registerValidation();
 
 Alpine.start();

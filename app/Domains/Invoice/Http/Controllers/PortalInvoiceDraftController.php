@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Invoice\Http\Controllers;
 
 use App\Domains\Invoice\Http\Requests\CreatePortalInvoiceRequest;
+use App\Domains\Invoice\Services\Catalogue;
 use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Services\TenantResolver;
@@ -36,6 +37,7 @@ class PortalInvoiceDraftController extends Controller
     public function __construct(
         private readonly TenantResolver $tenant,
         private readonly InvoiceDrafter $drafter,
+        private readonly Catalogue $catalogue,
     ) {}
 
     public function create(Request $request): View|RedirectResponse
@@ -47,8 +49,12 @@ class PortalInvoiceDraftController extends Controller
         // A viewer would only be refused on saving (org.writer).
         abort_if($request->user()?->roleIn((string) $request->attributes->get(PortalTenant::ORG_ID)) === 'viewer', 403, 'Your role in this organization is read-only.');
 
+        $organizationId = (string) $request->attributes->get(PortalTenant::ORG_ID);
+
         return view('portal.invoices.create', [
             'organization' => $this->tenant->getOrganization(),
+            'customers' => $this->catalogue->customerChoices($organizationId),
+            'products' => $this->catalogue->productChoices($organizationId),
         ]);
     }
 
@@ -76,6 +82,16 @@ class PortalInvoiceDraftController extends Controller
             return back()
                 ->withInput()
                 ->with('error', 'The invoice could not be saved. Nothing was written, and what you typed is still here. If this keeps happening, the detail is in the application log.');
+        }
+
+        // After the draft, and never at its expense: the invoice is what was
+        // asked for, and keeping the buyer is a convenience on top.
+        if ($request->boolean('save_customer')) {
+            try {
+                $this->catalogue->rememberBuyer((string) $orgId, $request->validated());
+            } catch (\Throwable $e) {
+                report($e);
+            }
         }
 
         return redirect()

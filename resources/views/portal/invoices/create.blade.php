@@ -106,6 +106,22 @@
     <div class="mb-6 rounded-lg bg-white dark:bg-gray-900 p-6 shadow">
         <h3 class="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Buyer</h3>
 
+        @if ($customers->isNotEmpty())
+            {{-- Fills the fields below; it submits nothing itself, so what is
+                 sent is what the fields say after any edit. --}}
+            <div class="mb-4 max-w-md">
+                <label for="customer_picker" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Saved customer</label>
+                <x-ui.select id="customer_picker" data-customer-picker>
+                    <option value="">Choose to fill in the buyer...</option>
+                    @foreach ($customers as $customer)
+                        <option value="{{ $customer->id }}" data-fields="{{ json_encode($customer->buyerFields()) }}">
+                            {{ $customer->name }}{{ $customer->vat_number ? ' - '.$customer->vat_number : '' }}
+                        </option>
+                    @endforeach
+                </x-ui.select>
+            </div>
+        @endif
+
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
                 <label for="buyer_name" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Name</label>
@@ -168,6 +184,11 @@
                        value="{{ old('buyer_address.country_code', 'SA') }}" class="uppercase" />
             </div>
         </div>
+
+        <label class="mt-4 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+            <input type="checkbox" name="save_customer" value="1" @checked(old('save_customer'))>
+            Save this buyer to Customers
+        </label>
     </div>
 
     <div class="mb-6 rounded-lg bg-white dark:bg-gray-900 p-6 shadow">

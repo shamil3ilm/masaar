@@ -217,9 +217,9 @@ class SupportDesk
             ->when($assigned === 'mine', fn ($query) => $query->where('assigned_to', $actorId))
             ->when($assigned === 'unassigned', fn ($query) => $query->whereNull('assigned_to'))
             ->when($search !== null, fn ($query) => $query->where(fn ($query) => $query
-                ->where('subject', 'like', '%'.$this->escapeLike((string) $search).'%')
+                ->whereRaw("subject LIKE ? ESCAPE '!'", ['%'.$this->escapeLike((string) $search).'%'])
                 ->orWhere('number', ltrim(preg_replace('/^T-/i', '', (string) $search) ?? '', '0') ?: -1)
-                ->orWhereHas('organization', fn ($query) => $query->where('name', 'like', '%'.$this->escapeLike((string) $search).'%'))))
+                ->orWhereHas('organization', fn ($query) => $query->whereRaw("name LIKE ? ESCAPE '!'", ['%'.$this->escapeLike((string) $search).'%']))))
             ->orderByRaw("case status when 'open' then 0 when 'waiting' then 1 else 2 end")
             ->orderByRaw("case priority when 'urgent' then 0 else 1 end")
             ->orderBy('last_activity_at')

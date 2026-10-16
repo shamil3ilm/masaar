@@ -12,10 +12,12 @@ use App\Domains\Branding\Http\Controllers\ThemeAssetController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\AdminAlertController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\AdminKillSwitchController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\PortalZatcaController;
+use App\Domains\Invoice\Http\Controllers\PortalCustomerController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceDraftController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceFilingController;
 use App\Domains\Invoice\Http\Controllers\PortalNumberingController;
+use App\Domains\Invoice\Http\Controllers\PortalProductController;
 use App\Domains\Licensing\Http\Controllers\AdminLicenceController;
 use App\Domains\Organization\Http\Controllers\CustomerPortalController;
 use App\Domains\Organization\Http\Controllers\InvitationController;
@@ -299,7 +301,7 @@ Route::prefix('portal')->name('portal.')
     // org.two_factor: an organization that requires a second factor sends
     // anyone without one to set it up first.
     ->middleware(['auth', 'auth.session', 'verified', 'portal.tenant', 'org.two_factor', 'org.writer'])
-    ->whereUuid(['invoiceId', 'userId', 'invitationId', 'ticketId', 'attachmentId'])
+    ->whereUuid(['invoiceId', 'userId', 'invitationId', 'ticketId', 'attachmentId', 'customerId', 'productId'])
     ->group(function () {
         Route::get('/', [CustomerPortalController::class, 'dashboard'])->name('dashboard');
         // Invoices. {invoiceId} rather than {invoice}: route model binding
@@ -326,6 +328,20 @@ Route::prefix('portal')->name('portal.')
         Route::get('/company', [PortalCompanyController::class, 'edit'])->name('company.edit');
         Route::post('/company', [PortalCompanyController::class, 'update'])->name('company.update');
         Route::post('/company/security', [PortalCompanyController::class, 'security'])->name('company.security');
+
+        // Customers and products, which the invoice form fills itself from.
+        Route::get('/customers', [PortalCustomerController::class, 'index'])->name('customers.index');
+        Route::get('/customers/new', [PortalCustomerController::class, 'create'])->name('customers.create');
+        Route::post('/customers', [PortalCustomerController::class, 'store'])->name('customers.store');
+        Route::get('/customers/{customerId}', [PortalCustomerController::class, 'edit'])->name('customers.edit');
+        Route::post('/customers/{customerId}', [PortalCustomerController::class, 'update'])->name('customers.update');
+        Route::post('/customers/{customerId}/archive', [PortalCustomerController::class, 'archive'])->name('customers.archive');
+        Route::get('/products', [PortalProductController::class, 'index'])->name('products.index');
+        Route::get('/products/new', [PortalProductController::class, 'create'])->name('products.create');
+        Route::post('/products', [PortalProductController::class, 'store'])->name('products.store');
+        Route::get('/products/{productId}', [PortalProductController::class, 'edit'])->name('products.edit');
+        Route::post('/products/{productId}', [PortalProductController::class, 'update'])->name('products.update');
+        Route::post('/products/{productId}/archive', [PortalProductController::class, 'archive'])->name('products.archive');
 
         // Support tickets: everyone in the organization sees its tickets.
         Route::get('/support', [PortalSupportController::class, 'index'])->name('support.index');

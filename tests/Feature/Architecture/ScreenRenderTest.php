@@ -7,7 +7,9 @@ namespace Tests\Feature\Architecture;
 use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Compliance\Fatoora\Models\OfflineItem;
+use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Models\Product;
 use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Licensing\Models\License;
@@ -80,6 +82,10 @@ class ScreenRenderTest extends TestCase
 
     private SupportTicket $ticket;
 
+    private Customer $customer;
+
+    private Product $product;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -139,6 +145,9 @@ class ScreenRenderTest extends TestCase
         ]);
         SupportMessage::create(['ticket_id' => $this->ticket->id, 'user_id' => $this->member->id, 'body' => 'Every invoice fails.']);
         SupportMessage::create(['ticket_id' => $this->ticket->id, 'user_id' => $this->admin->id, 'from_staff' => true, 'internal' => true, 'body' => 'Certificate expired.']);
+
+        $this->customer = Customer::create(['org_id' => $this->org->id, 'name' => 'Gulf Supplies', 'vat_number' => '310122393500003', 'city' => 'Riyadh']);
+        $this->product = Product::create(['org_id' => $this->org->id, 'name' => 'Consulting hour', 'unit_code' => 'HUR', 'unit_price' => '250', 'tax_rate' => '15']);
 
         // Draft, not issued: the Issue button is the only confirmation on any
         // portal screen and it renders only for a draft, so an issued fixture
@@ -319,6 +328,8 @@ class ScreenRenderTest extends TestCase
             'invoiceId' => $this->invoice->id,
             'userId' => $this->member->id,
             'ticketId' => $this->ticket->id,
+            'customerId' => $this->customer->id,
+            'productId' => $this->product->id,
         ];
 
         $screens = [];

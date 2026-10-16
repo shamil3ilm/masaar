@@ -62,6 +62,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Customers and products**: the portal keeps an organization's customers
+  (name, VAT number, national address, email) and products (description,
+  unit, price, VAT rate). On a new invoice, picking a customer fills the
+  buyer and picking a product fills a line; "Save this buyer" keeps a new
+  buyer for next time.
 - **Support tickets**: customers open tickets from the portal's Support page,
   with attachments, and follow the conversation there. Admins answer from a
   Support queue in the console - reply, add internal notes, assign, resolve -

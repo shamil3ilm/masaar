@@ -31,6 +31,21 @@
     </div>
 
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+        @if (($products ?? collect())->isNotEmpty())
+            {{-- Fills this row's fields and submits nothing itself. --}}
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 sm:col-span-2 lg:col-span-6">
+                Product
+                <x-ui.select data-product-picker>
+                    <option value="">Choose to fill in this line...</option>
+                    @foreach ($products as $product)
+                        <option value="{{ $product->id }}" data-fields="{{ json_encode($product->lineFields()) }}">
+                            {{ $product->name }}{{ $product->sku ? ' ('.$product->sku.')' : '' }}
+                        </option>
+                    @endforeach
+                </x-ui.select>
+            </label>
+        @endif
+
         <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 lg:col-span-2">
             Description
             <x-ui.input type="text" name="lines[{{ $index }}][description]"
