@@ -12,8 +12,8 @@ use phpseclib3\File\ASN1;
  * The CMS SignedData a PAdES signature carries in its /Contents.
  *
  * Built to ZATCA's Security Features standard, section 2.3.4: detached,
- * ECDSA with SHA-256, the signing certificate in SignedData.certificates, and
- * exactly three signed attributes - content-type (id-data), message-digest
+ * ECDSA with SHA-256, the signing certificate and its chain in
+ * SignedData.certificates, and exactly three signed attributes - content-type (id-data), message-digest
  * and ESS signing-certificate-v2. No signing-time attribute: PAdES baseline
  * claims the time in the signature dictionary's /M and forbids it here.
  *
@@ -41,11 +41,12 @@ class CadesSignature
     public function __construct(private readonly EcdsaSigner $signer) {}
 
     /**
+     * @param  list<string>  $chain  PEM certificates above the signing one
      * @return string DER-encoded ContentInfo wrapping the SignedData
      *
      * @throws SigningException when the key is not the certificate's
      */
-    public function sign(string $content, string $privateKeyPem, string $certificatePem): string
+    public function sign(string $content, string $privateKeyPem, string $certificatePem, array $chain = []): string
     {
         // A signature under some other key verifies against nothing, and a
         // PDF carrying one looks stamped to anyone who does not check.
@@ -78,6 +79,13 @@ class CadesSignature
         // Signed as a SET, though it is carried under the [0] tag (RFC 5652, 5.4).
         $signature = base64_decode($this->signer->sign(self::tlv(0x31, $signedAttributes), $privateKeyPem));
 
+        // The chain helps a verifier build the path to ZATCA's anchor. The
+        // set is DER, so ordered by encoding; a verifier finds the signer by
+        // issuer and serial, not by position.
+        $certificates = array_map($this->der(...), $chain);
+        $certificates[] = $certificate;
+        sort($certificates, SORT_STRING);
+
         $signerInfo = self::sequence(
             self::integer(1),
             self::sequence($issuer, $serial),
@@ -94,7 +102,7 @@ class CadesSignature
                 self::tlv(0x31, $sha256),
                 // Detached: the content type, and no content.
                 self::sequence(self::oid(self::ID_DATA)),
-                self::tlv(0xA0, $certificate),
+                self::tlv(0xA0, implode('', $certificates)),
                 self::tlv(0x31, $signerInfo),
             )),
         );

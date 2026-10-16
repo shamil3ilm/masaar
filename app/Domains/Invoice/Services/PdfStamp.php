@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Invoice\Services;
 
 use App\Domains\Compliance\Fatoora\Exceptions\SigningException;
+use App\Domains\Compliance\Fatoora\Services\CertificateChain;
 use Illuminate\Support\Carbon;
 use setasign\Fpdi\PdfParser\PdfParser;
 use setasign\Fpdi\PdfParser\StreamReader;
@@ -47,7 +48,10 @@ class PdfStamp
     /** Ten digits for each offset, so the real numbers fit where these sit. */
     private const BYTE_RANGE_PLACEHOLDER = '[0 0000000000 0000000000 0000000000]';
 
-    public function __construct(private readonly CadesSignature $cades) {}
+    public function __construct(
+        private readonly CadesSignature $cades,
+        private readonly CertificateChain $chain,
+    ) {}
 
     /**
      * @throws SigningException
@@ -141,7 +145,12 @@ class PdfStamp
         $byteRange = str_pad(sprintf('[0 %d %d %d]', $start, $end, strlen($pdf) - $end), strlen(self::BYTE_RANGE_PLACEHOLDER));
         $pdf = substr_replace($pdf, $byteRange, $range, strlen($byteRange));
 
-        $cms = bin2hex($this->cades->sign(substr($pdf, 0, $start).substr($pdf, $end), $privateKeyPem, $certificatePem));
+        $cms = bin2hex($this->cades->sign(
+            substr($pdf, 0, $start).substr($pdf, $end),
+            $privateKeyPem,
+            $certificatePem,
+            $this->chain->above($certificatePem),
+        ));
 
         if (strlen($cms) > self::SIGNATURE_BYTES * 2) {
             throw new SigningException('The signature does not fit the space reserved for it in the PDF.');

@@ -18,6 +18,14 @@ use PHPUnit\Framework\TestCase;
  */
 class QrCodeRendererTest extends TestCase
 {
+    public function test_it_renders_a_png(): void
+    {
+        $png = (new QrCodeRenderer)->png(base64_encode('AQVTZWxsZXI='));
+
+        $this->assertStringStartsWith(chr(0x89).'PNG', $png);
+        $this->assertSame('', (new QrCodeRenderer)->png(''));
+    }
+
     public function test_it_renders_an_svg(): void
     {
         $svg = (new QrCodeRenderer)->svg(base64_encode('AQVTZWxsZXI='));
