@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- **The client SDKs.** They covered at most 21 of the API's 122 operations
+  and none read the API's error envelope, so they lost the error code and
+  whether a failed filing was safe to retry. Generate a client from
+  `docs/openapi.yaml` instead; webhook verification for six languages is in
+  `docs/WEBHOOKS.md`.
+
 ### Changed — may need a change on your side
 
 - **An invoice sent without `invoice_number` is numbered when it is issued**,

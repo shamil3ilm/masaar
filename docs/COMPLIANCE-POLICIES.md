@@ -435,43 +435,8 @@ An endpoint is disabled after ten failed deliveries in a row with nothing delive
 | Validate timestamp freshness | Reject if `timestamp` is more than 5 minutes old |
 | Answer quickly | Return 2xx once the event is stored, and process it afterwards |
 
-### SDK Guidance
-
-```typescript
-// TypeScript SDK - Webhook verification
-import { verifyWebhook } from '@masaar/sdk';
-
-app.post('/webhooks', (req, res) => {
-  const event = verifyWebhook(
-    req.body,
-    req.headers['x-webhook-signature'],
-    process.env.WEBHOOK_SECRET
-  );
-
-  // Check for replay
-  if (await isEventProcessed(event.id)) {
-    return res.status(200).send('Already processed');
-  }
-
-  // Check timestamp freshness
-  const age = Date.now() - new Date(event.timestamp).getTime();
-  if (age > 5 * 60 * 1000) { // 5 minutes
-    return res.status(400).send('Event too old');
-  }
-
-  // Process event...
-  await markEventProcessed(event.id);
-  res.status(200).send('OK');
-});
-```
-
-### Documentation Requirements
-
-All SDK READMEs must include:
-1. Signature verification example
-2. Replay protection example
-3. Timestamp validation example
-4. Idempotency handling example
+Verification in PHP, Node.js, Python, Java, C# and Go, with the receiving
+rules above, is in [WEBHOOKS.md](WEBHOOKS.md).
 
 ---
 

@@ -10,8 +10,8 @@ use PHPUnit\Framework\TestCase;
  * The docs tell a receiver to read the header the platform sends.
  *
  * WebhookService signs into X-Webhook-Signature. The integration guide and
- * seven SDK READMEs told receivers to read X-Masaar-Signature, which never
- * arrives, so a receiver built from them read an empty header and either
+ * the client SDKs once kept here told receivers to read X-Masaar-Signature,
+ * which never arrives, so a receiver built from them read an empty header and either
  * refused every webhook or - worse - skipped verification. The guide's own
  * comparison also left off the sha256= prefix the header carries.
  */
@@ -47,18 +47,6 @@ class WebhookHeaderDocsTest extends TestCase
     /** @return list<string> */
     private function documents(): array
     {
-        $found = array_merge(glob(self::ROOT.'/docs/*.md') ?: [], [self::ROOT.'/README.md']);
-
-        $files = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator(self::ROOT.'/sdks', \FilesystemIterator::SKIP_DOTS)
-        );
-
-        foreach ($files as $file) {
-            if (preg_match('/\.(md|java|kt|go|rs|rb|cs|py|php|ts|js|dart|swift)$/', $file->getFilename()) === 1) {
-                $found[] = $file->getPathname();
-            }
-        }
-
-        return $found;
+        return array_merge(glob(self::ROOT.'/docs/*.md') ?: [], [self::ROOT.'/README.md']);
     }
 }

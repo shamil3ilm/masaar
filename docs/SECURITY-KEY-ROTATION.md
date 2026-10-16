@@ -96,15 +96,11 @@ $oldApiKey->revoke();
 
 ### 2.3 Client Update Example
 
-```php
-// PHP SDK - Update API key
-$client = new MasaarClient([
-    'base_url' => 'https://api.your-domain.com',
-    'api_key' => $newApiKey, // Use new rotated key
-]);
+Swap the key in the client's configuration, then make one authenticated
+call before retiring the old key:
 
-// Verify new key works
-$health = $client->health();
+```bash
+curl -s https://api.your-domain.com/api/v1/invoices?per_page=1   -H "X-API-Key: $NEW_API_KEY" -H "X-API-Secret: $API_SECRET"
 ```
 
 ## 3. JWT Token Rotation
