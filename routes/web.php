@@ -21,6 +21,7 @@ use App\Domains\Invoice\Http\Controllers\PortalInvoiceDraftController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceFilingController;
 use App\Domains\Invoice\Http\Controllers\PortalNumberingController;
 use App\Domains\Invoice\Http\Controllers\PortalProductController;
+use App\Domains\Invoice\Http\Controllers\PortalReportController;
 use App\Domains\Licensing\Http\Controllers\AdminLicenceController;
 use App\Domains\Organization\Http\Controllers\CustomerPortalController;
 use App\Domains\Organization\Http\Controllers\InvitationController;
@@ -353,6 +354,11 @@ Route::prefix('portal')->name('portal.')
         Route::get('/products/{productId}', [PortalProductController::class, 'edit'])->name('products.edit');
         Route::post('/products/{productId}', [PortalProductController::class, 'update'])->name('products.update');
         Route::post('/products/{productId}/archive', [PortalProductController::class, 'archive'])->name('products.archive');
+
+        // The period's sales as the VAT return groups them, and CSV exports.
+        Route::get('/reports', [PortalReportController::class, 'index'])->name('reports');
+        Route::get('/reports/invoices.csv', [PortalReportController::class, 'invoices'])->middleware('throttle:20,1')->name('reports.invoices');
+        Route::get('/reports/vat.csv', [PortalReportController::class, 'vat'])->middleware('throttle:20,1')->name('reports.vat');
 
         // The plan, its usage and its payments. Administrators only.
         Route::get('/billing', [PortalBillingController::class, 'show'])->name('billing');

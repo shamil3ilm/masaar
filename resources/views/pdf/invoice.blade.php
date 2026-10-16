@@ -154,9 +154,21 @@
         </td>
         <td width="60%" style="vertical-align: top;">
             <table class="totals" align="right" style="width: 100%;">
+                {{-- subtotal is before the document discount; the taxable
+                     amount (BT-109) is after it. --}}
+                @if ((float) $invoice->discount_amount > 0)
+                    <tr>
+                        <td>Subtotal <span class="ar">المجموع</span></td>
+                        <td class="num">{{ $money($invoice->subtotal) }}</td>
+                    </tr>
+                    <tr>
+                        <td>Discount <span class="ar">الخصم</span></td>
+                        <td class="num">-{{ $money($invoice->discount_amount) }}</td>
+                    </tr>
+                @endif
                 <tr>
                     <td>Taxable amount <span class="ar">الإجمالي غير شامل الضريبة</span></td>
-                    <td class="num">{{ $money($invoice->subtotal) }}</td>
+                    <td class="num">{{ $money((float) $invoice->subtotal - (float) $invoice->discount_amount) }}</td>
                 </tr>
                 <tr>
                     <td>VAT <span class="ar">مجموع ضريبة القيمة المضافة</span></td>

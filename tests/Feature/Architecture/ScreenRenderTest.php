@@ -73,6 +73,8 @@ class ScreenRenderTest extends TestCase
         'portal.invoices.pdf',
         'admin.billing.download',
         'portal.billing.invoice',
+        'portal.reports.invoices',
+        'portal.reports.vat',
     ];
 
     private User $orgAdmin;

@@ -62,6 +62,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Reports**: the portal's Reports page shows a period's sales grouped as
+  the VAT return's sales boxes - standard rated, citizens' healthcare and
+  education, zero rated, exports, exempt - with credit notes taken off and
+  foreign currency converted, and downloads it and the invoices behind it as
+  CSV. Viewers see it too.
 - **Manual billing**: on an organization's Plan and billing page, an Owner or
   Operations admin records a payment (`billing.manage`). It renews the plan
   from its current end - from today once it has lapsed - and can change it.
