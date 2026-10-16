@@ -16,7 +16,6 @@ return [
     'filing_requires_licence' => (bool) env('LICENSING_FILING_REQUIRES_LICENCE', true),
 
     'cache' => [
-        'enabled' => env('LICENSE_CACHE_ENABLED', true),
         'ttl_seconds' => env('LICENSE_CACHE_TTL', 300), // 5 minutes
         'prefix' => 'license:',
     ],
@@ -31,7 +30,6 @@ return [
     */
     'audit' => [
         'enabled' => env('LICENSE_AUDIT_ENABLED', true),
-        'retention_days' => env('LICENSE_AUDIT_RETENTION_DAYS', 730), // 2 years
     ],
 
     /*
