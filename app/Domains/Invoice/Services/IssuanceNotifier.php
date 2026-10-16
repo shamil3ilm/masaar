@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Domains\Compliance\Fatoora\Services;
+namespace App\Domains\Invoice\Services;
 
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Webhook\Services\WebhookService;

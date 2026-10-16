@@ -2,10 +2,9 @@
 
 This page covers what adding a country involves today. Read
 [JURISDICTION-ROUTING.md](JURISDICTION-ROUTING.md) first. The short version
-is that each country has its own routes and issuing flow, and the
-`ComplianceRouter` is not on any request path. So registering an engine is
-not enough: a new country needs a flow of its own until the planned common
-issuer exists.
+is that each country has its own routes, and every country issues through
+the same `IssuingLifecycle`. A new country implements `IssuingJurisdiction`
+for its own steps and keeps the shared lifecycle as it is.
 
 ## First, decide which of two models the country follows
 
@@ -34,6 +33,9 @@ second country can use them:
   lists.
 - `InboundDocuments` stores every received document as `AE`.
 - `UaeInvoicing` checks `peppol.countries.AE.enabled` and `country === 'AE'`.
+- `UaeJurisdiction` and `UaeInvoiceIssuer` issue UAE invoices. A second
+  country implements its own `IssuingJurisdiction` and calls the same
+  `IssuingLifecycle`.
 
 Steps:
 
@@ -66,16 +68,14 @@ Steps:
    exceptions, jobs, models and services the authority needs. Use the Fatoora
    domain as the reference for retries, idempotency, offline handling and
    certificate storage.
-2. Implement `ComplianceEngine` (`supports()` returning the country code) and
-   add the class to the `tag()` call in
-   `app/Providers/ComplianceServiceProvider.php`. This keeps the router
-   consistent, but, as explained above, it does not wire the engine to any
-   request.
-3. Write the issuing flow and routes (`/api/compliance/<cc>/*`). Reuse
-   `InvoiceDrafter`, `InvoiceNumbering` and `IssuanceNotifier` rather than
-   copying them. Follow `UaeInvoiceIssuer` in keeping the shared lifecycle
-   apart from the country's own steps, so the flow can move into the common
-   issuer later.
+2. Implement `App\Domains\Invoice\Contracts\IssuingJurisdiction` in the
+   country's folder, as `ZatcaJurisdiction` and `UaeJurisdiction` do. Put
+   the country's checks in `prepare()` and its document in `seal()`, and
+   pass `FilingClearance` and the kill switch in `prepare()` like the others.
+3. Write the issuer and routes (`/api/compliance/<cc>/*`). The issuer calls
+   `IssuingLifecycle::issue()` with that jurisdiction, as `UaeInvoiceIssuer`
+   does. Reuse `InvoiceDrafter` and `IssuanceNotifier` rather than copying
+   them; numbering already comes with the lifecycle.
 4. Add the authority's credentials and switch to `config/` and the env
    templates, named by purpose, with a production guard for anything required.
 5. Add a migration for any submission records. Compliance records are never
@@ -86,6 +86,9 @@ Steps:
 - **Organization.** Add the country's seller details and their validation to
   `CompanyProfileRules`, stored on that country's `ComplianceProfile` (see
   [ORGANIZATION-MODEL.md](ORGANIZATION-MODEL.md)).
+- **Clock.** Add the country's time zone to `App\Support\CountryClock`.
+  Without it, the date in an invoice number and the period its counter
+  restarts at are read on Riyadh's clock.
 - **Docs.** Add `docs/<cc>/README.md`, `COMPLIANCE-RULES.md` and
   `INTEGRATION-GUIDE.md`, as `docs/ae/` and `docs/sa/` have.
   - README files carry no dates. Regulatory timelines go in

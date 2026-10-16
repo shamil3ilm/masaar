@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Licensing\Services;
 
-use App\Domains\Compliance\Fatoora\Helpers\LogSanitizer;
 use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Exceptions\LicenseException;
 use App\Domains\Licensing\Models\License;
+use App\Support\LogSanitizer;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 

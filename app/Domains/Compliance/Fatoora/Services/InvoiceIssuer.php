@@ -7,6 +7,7 @@ namespace App\Domains\Compliance\Fatoora\Services;
 use App\Domains\Compliance\Fatoora\DTOs\IssueOutcome;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Services\IssuanceNotifier;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Support\Facades\Log;
 

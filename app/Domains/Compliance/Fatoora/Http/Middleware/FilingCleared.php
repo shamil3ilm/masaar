@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Fatoora\Http\Middleware;
 
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
-use App\Domains\Compliance\Fatoora\Services\FilingClearance;
+use App\Domains\Organization\Services\FilingClearance;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Responses\ApiResponse;
 use Closure;

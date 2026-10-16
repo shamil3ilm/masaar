@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Services;
 
-use App\Domains\Compliance\Fatoora\Helpers\FatooraTime;
 use App\Domains\Invoice\Models\InvoiceSequence;
 use Closure;
 use Illuminate\Support\Facades\DB;
@@ -113,7 +112,7 @@ class NumberingSettings
 
             if (! empty($settings['next_number'])) {
                 $sequence->next_number = (int) $settings['next_number'];
-                $sequence->period = $sequence->periodOf(FatooraTime::saudiNow());
+                $sequence->period = $sequence->periodOf($this->numbering->now($organizationId));
             } elseif ($sequence->isDirty('reset')) {
                 // A new reset period starts counting at the next issue.
                 $sequence->period = null;

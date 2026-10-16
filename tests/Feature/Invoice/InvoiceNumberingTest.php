@@ -143,6 +143,33 @@ class InvoiceNumberingTest extends TestCase
     }
 
     /**
+     * A UAE organization's periods are read on Dubai's clock. Half past
+     * midnight on New Year's Day in Dubai is still 31 December in Riyadh, so
+     * on the Saudi clock that invoice would have stayed in the old year.
+     */
+    public function test_uae_periods_follow_dubai_time(): void
+    {
+        $uae = Organization::create(['name' => 'Gulf Trading', 'country' => 'AE']);
+
+        $this->travelTo(now('Asia/Dubai')->setDate(2026, 12, 31)->setTime(23, 30));
+        $this->assertSame('INV-2026-00001', $this->allocate('invoice', $uae));
+
+        $this->travelTo(now('Asia/Dubai')->setDate(2027, 1, 1)->setTime(0, 30));
+        $this->assertSame('INV-2027-00001', $this->allocate('invoice', $uae));
+    }
+
+    /**
+     * The same instant - 00:30 in Dubai, 23:30 in Riyadh on 31 December -
+     * leaves a Saudi invoice in the old year, as it always has.
+     */
+    public function test_saudi_periods_follow_riyadh_time(): void
+    {
+        $this->travelTo(now('Asia/Dubai')->setDate(2027, 1, 1)->setTime(0, 30));
+
+        $this->assertSame('INV-2026-00001', $this->allocate('invoice'));
+    }
+
+    /**
      * Allocated inside the issuing transaction: an issue that fails spends
      * no number, so the next one does not leave a gap.
      */
@@ -238,9 +265,9 @@ class InvoiceNumberingTest extends TestCase
         $this->assertSame('ACME-2026-000001', $this->allocate('invoice'));
     }
 
-    private function allocate(string $documentType): string
+    private function allocate(string $documentType, ?Organization $organization = null): string
     {
-        $invoice = new Invoice(['org_id' => $this->acme->id, 'document_type' => $documentType]);
+        $invoice = new Invoice(['org_id' => ($organization ?? $this->acme)->id, 'document_type' => $documentType]);
 
         return app(InvoiceNumbering::class)->allocate($invoice);
     }

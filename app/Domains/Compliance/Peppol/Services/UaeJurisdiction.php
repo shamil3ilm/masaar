@@ -6,15 +6,15 @@ namespace App\Domains\Compliance\Peppol\Services;
 
 use App\Domains\Compliance\Exceptions\IssuanceRefusedException;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
-use App\Domains\Compliance\Fatoora\Services\FilingClearance;
-use App\Domains\Compliance\Fatoora\Services\IssuanceNotifier;
 use App\Domains\Compliance\Fatoora\Services\KillSwitch;
 use App\Domains\Compliance\Peppol\Models\PeppolDocument;
 use App\Domains\Invoice\Contracts\IssuingJurisdiction;
 use App\Domains\Invoice\Contracts\Seal;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Services\IssuanceNotifier;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\FilingClearance;
 use Throwable;
 
 /**
@@ -27,7 +27,8 @@ use Throwable;
  * and - after commit - invoice.issued and the queued send.
  *
  * Nothing of ZATCA's runs: no counter, hash, signature, QR or chain. The
- * guards and the notifier are generic classes that still live in Fatoora.
+ * kill switch still lives in Fatoora, and the clearance still throws
+ * FatooraException, which is why that type is caught here.
  */
 class UaeJurisdiction implements IssuingJurisdiction
 {

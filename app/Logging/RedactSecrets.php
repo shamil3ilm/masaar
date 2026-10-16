@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Logging;
 
-use App\Domains\Compliance\Fatoora\Helpers\LogSanitizer;
+use App\Support\LogSanitizer;
 use Illuminate\Log\Logger;
 use Monolog\LogRecord;
 

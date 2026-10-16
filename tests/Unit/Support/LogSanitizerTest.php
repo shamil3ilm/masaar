@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Domains\Compliance\Fatoora;
+namespace Tests\Unit\Support;
 
-use App\Domains\Compliance\Fatoora\Helpers\LogSanitizer;
+use App\Support\LogSanitizer;
 use PHPUnit\Framework\TestCase;
 
 /**

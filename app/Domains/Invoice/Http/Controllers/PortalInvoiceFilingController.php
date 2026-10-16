@@ -6,7 +6,6 @@ namespace App\Domains\Invoice\Http\Controllers;
 
 use App\Domains\Compliance\Exceptions\IssuanceRefusedException;
 use App\Domains\Compliance\Fatoora\Services\InvoiceIssuer;
-use App\Domains\Compliance\Fatoora\Services\QrCodeRenderer;
 use App\Domains\Compliance\Peppol\Services\UaeInvoiceIssuer;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\InvoiceFinder;
@@ -14,6 +13,7 @@ use App\Domains\Invoice\Services\InvoicePdf;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
+use App\Support\QrCodeRenderer;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;

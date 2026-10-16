@@ -2,11 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Domains\Compliance\ComplianceRouter;
-use App\Domains\Compliance\Contracts\ComplianceEngine;
-use App\Domains\Compliance\Contracts\SubmissionResult;
-use App\Domains\Compliance\Fatoora\FatooraEngine;
-use App\Domains\Compliance\Peppol\PeppolEngine;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\ComplianceProfile;
 use App\Domains\Organization\Models\Organization;
@@ -15,7 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-it('an org in a group with two profiles routes to the right engine per profile', function () {
+it('an org in a group keeps one profile per jurisdiction', function () {
     $group = OrganizationGroup::create(['name' => 'GCC Holdings', 'status' => 'active']);
 
     $org = Organization::create([
@@ -32,12 +27,9 @@ it('an org in a group with two profiles routes to the right engine per profile',
     ]);
 
     expect($org->group->id)->toBe($group->id)
-        ->and($group->organizations()->count())->toBe(1);
-
-    $router = app(ComplianceRouter::class);
-
-    expect($router->engineFor($saProfile))->toBeInstanceOf(FatooraEngine::class)
-        ->and($router->engineFor($aeProfile))->toBeInstanceOf(PeppolEngine::class);
+        ->and($group->organizations()->count())->toBe(1)
+        ->and($org->complianceProfileFor('SA')?->id)->toBe($saProfile->id)
+        ->and($org->complianceProfileFor('AE')?->id)->toBe($aeProfile->id);
 });
 
 it('invoice can be linked to a compliance profile', function () {
@@ -61,35 +53,4 @@ it('invoice can be linked to a compliance profile', function () {
 
     expect($invoice->profile->jurisdiction)->toBe('SA')
         ->and($invoice->profile->engine)->toBe('fatoora');
-});
-
-it('mock submit routes correctly per jurisdiction', function () {
-    $org = Organization::create(['name' => 'Mock Submit Corp', 'country' => 'AE', 'status' => 'active']);
-
-    $aeProfile = ComplianceProfile::create([
-        'org_id' => $org->id, 'jurisdiction' => 'AE',
-        'engine' => 'peppol', 'status' => 'active', 'settings' => [],
-    ]);
-
-    $invoice = Invoice::create([
-        'org_id' => $org->id,
-        'invoice_number' => 'INV-AE-001',
-        'type' => 'standard',
-        'status' => 'draft',
-        'issue_date' => now()->toDateString(),
-        'currency' => 'SAR',
-        'buyer_name' => 'UAE Buyer',
-    ]);
-
-    $mockEngine = Mockery::mock(ComplianceEngine::class);
-    $mockEngine->allows('supports')->with('AE')->andReturns(true);
-    $mockEngine->expects('submit')->once()->andReturns(
-        new SubmissionResult(true, 'peppol-sub-001', 'peppol-ref-001', 'queued', [], null)
-    );
-
-    $router = new ComplianceRouter([$mockEngine]);
-    $result = $router->submit($invoice, $aeProfile);
-
-    expect($result->success)->toBeTrue()
-        ->and($result->submissionId)->toBe('peppol-sub-001');
 });

@@ -6,13 +6,13 @@ namespace Tests\Feature\Compliance\Peppol;
 
 use App\Domains\Compliance\Exceptions\IssuanceRefusedException;
 use App\Domains\Compliance\Fatoora\Services\DocumentBuilder;
-use App\Domains\Compliance\Fatoora\Services\IssuanceNotifier;
 use App\Domains\Compliance\Fatoora\Services\KillSwitch;
 use App\Domains\Compliance\Fatoora\Services\Submitter;
 use App\Domains\Compliance\Peppol\Jobs\SendPeppolDocument;
 use App\Domains\Compliance\Peppol\Models\PeppolDocument;
 use App\Domains\Compliance\Peppol\Services\UaeInvoiceIssuer;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Services\IssuanceNotifier;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;

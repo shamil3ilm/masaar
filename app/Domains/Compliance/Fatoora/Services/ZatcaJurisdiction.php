@@ -10,6 +10,7 @@ use App\Domains\Invoice\Contracts\IssuingJurisdiction;
 use App\Domains\Invoice\Contracts\Seal;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\FilingClearance;
 
 /**
  * ZATCA's part of issuing a Saudi invoice: the switches, clearance and rules

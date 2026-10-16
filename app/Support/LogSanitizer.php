@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Domains\Compliance\Fatoora\Helpers;
+namespace App\Support;
 
 /**
  * Log Sanitizer - Prevents sensitive data from appearing in logs.

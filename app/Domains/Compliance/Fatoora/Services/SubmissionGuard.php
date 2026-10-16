@@ -12,6 +12,7 @@ use App\Domains\Compliance\Fatoora\Helpers\FatooraTime;
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\FilingClearance;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 

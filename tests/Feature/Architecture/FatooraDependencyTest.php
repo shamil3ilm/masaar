@@ -42,28 +42,24 @@ class FatooraDependencyTest extends TestCase
      * @var array<string, string>
      */
     private const DECLARED = [
-        'app/Domains/Auth/Http/Controllers/AccountController.php' => 'Services\\QrCodeRenderer',
         'app/Domains/Auth/Http/Controllers/AuthController.php' => 'Enums\\ErrorCode',
-        'app/Domains/Auth/Http/Controllers/TwoFactorController.php' => 'Services\\QrCodeRenderer',
         'app/Domains/Billing/Services/Billing.php' => 'Services\\InvoiceIssuer',
-        // The issuance guards every country passes. They are generic and live
-        // in Fatoora only for now; moving them out removes this line.
-        'app/Domains/Compliance/Peppol/Services/UaeJurisdiction.php' => 'Exceptions\\FatooraException, Services\\FilingClearance, Services\\IssuanceNotifier, Services\\KillSwitch',
-        'app/Domains/Invoice/Http/Controllers/PortalInvoiceFilingController.php' => 'Services\\InvoiceIssuer, Services\\QrCodeRenderer',
+        // The kill switch, and the exception the shared clearance still throws.
+        'app/Domains/Compliance/Peppol/Services/UaeJurisdiction.php' => 'Exceptions\\FatooraException, Services\\KillSwitch',
+        'app/Domains/Invoice/Http/Controllers/PortalInvoiceFilingController.php' => 'Services\\InvoiceIssuer',
         'app/Domains/Invoice/Http/Requests/CreateInvoiceRequest.php' => 'Config\\FatooraConfig',
         'app/Domains/Invoice/Models/Invoice.php' => 'Models\\InvoiceSubmission',
         'app/Domains/Invoice/Services/CadesSignature.php' => 'Exceptions\\SigningException, Services\\EcdsaSigner',
-        'app/Domains/Invoice/Services/InvoiceNumbering.php' => 'Helpers\\FatooraTime',
-        'app/Domains/Invoice/Services/InvoicePdf.php' => 'Exceptions\\SigningException, Helpers\\CertificatePem, Services\\CredentialStore, Services\\QrCodeRenderer',
+        'app/Domains/Invoice/Services/InvoicePdf.php' => 'Exceptions\\SigningException, Helpers\\CertificatePem, Services\\CredentialStore',
         'app/Domains/Invoice/Services/InvoiceTotals.php' => 'Config\\FatooraConfig',
-        'app/Domains/Invoice/Services/NumberingSettings.php' => 'Helpers\\FatooraTime',
         'app/Domains/Invoice/Services/PdfStamp.php' => 'Exceptions\\SigningException, Services\\CertificateChain',
-        'app/Domains/Licensing/Services/LicenseValidationService.php' => 'Helpers\\LogSanitizer',
         'app/Domains/Organization/Http/Controllers/CustomerPortalController.php' => 'DTOs\\SubmissionFilterData, Services\\CertificateService, Services\\CredentialStore, Services\\SubmissionReport',
         'app/Domains/Organization/Models/Branch.php' => 'DTOs\\AddressData, DTOs\\CsrData',
         'app/Domains/Organization/Models/Organization.php' => 'DTOs\\AddressData',
         'app/Domains/Organization/Services/BranchService.php' => 'Services\\CredentialStore',
-        'app/Domains/Organization/Services/SetupChecklist.php' => 'Exceptions\\FatooraException, Services\\FilingClearance',
+        // Moved out of Fatoora; still throws FatooraException, which its callers catch.
+        'app/Domains/Organization/Services/FilingClearance.php' => 'Enums\\ErrorCode, Exceptions\\FatooraException',
+        'app/Domains/Organization/Services/SetupChecklist.php' => 'Exceptions\\FatooraException',
         'app/Domains/Pipeline/Services/PipelineService.php' => 'DTOs\\IssueOutcome, Exceptions\\FatooraException, Services\\InvoiceIssuer, Services\\OfflineQueue',
         'app/Domains/Platform/Http/Controllers/AdminController.php' => 'Enums\\RequeueOutcome, Services\\Requeuer',
         'app/Domains/Platform/Http/Controllers/AdminDashboardController.php' => 'Enums\\RequeueOutcome, Services\\CircuitBreaker, Services\\Connectivity, Services\\Requeuer',
@@ -75,9 +71,7 @@ class FatooraDependencyTest extends TestCase
         'app/Domains/Platform/Services/QueueReport.php' => 'Services\\OfflineQueue',
         'app/Domains/Platform/Services/TenantDashboard.php' => 'Services\\CertificateService, Services\\ChainReport, Services\\CircuitBreaker, Services\\CredentialStore, Services\\QueueBacklog, Services\\SubmissionReport',
         'app/Http/Responses/ApiResponse.php' => 'Exceptions\\CertificateException, Exceptions\\FatooraException',
-        'app/Logging/RedactSecrets.php' => 'Helpers\\LogSanitizer',
         'app/Providers/AppServiceProvider.php' => 'Config\\FatooraConfig, Http\\Middleware\\FilingCleared, Services\\CircuitBreaker, Services\\TimestampValidator',
-        'app/Providers/ComplianceServiceProvider.php' => 'FatooraEngine',
         'app/Providers/EventServiceProvider.php' => 'Events\\InvoiceCleared, Events\\InvoiceFailed, Events\\InvoiceRejected, Events\\InvoiceReported, Events\\InvoiceSubmitted, Events\\InvoiceWarning, Listeners\\DispatchInvoiceWebhook',
         'bootstrap/app.php' => 'Exceptions\\CertificateException, Exceptions\\FatooraException, Exceptions\\SigningException',
         'resources/views/pdf/invoice.blade.php' => 'Config\\FatooraConfig, Helpers\\FatooraTime',

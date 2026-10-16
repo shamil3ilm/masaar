@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Domains\Compliance\Fatoora\Services;
+namespace App\Domains\Organization\Services;
 
 use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
@@ -10,12 +10,16 @@ use App\Domains\Licensing\Services\LicenseValidationService;
 use App\Domains\Organization\Models\Organization;
 
 /**
- * Whether an organization may deal with ZATCA at all.
+ * Whether an organization may deal with its tax authority at all.
  *
  * One check for issuing, filing and onboarding, so they cannot disagree. A
  * business that signed itself up waits for a platform admin to approve it
  * and assign its plan; until then it can draft, and cannot obtain a
  * certificate, give an invoice its counter or send one to the authority.
+ *
+ * Every country passes it. It still throws FatooraException because callers
+ * catch that type - UaeJurisdiction, SetupChecklist, the API's error
+ * envelope - so changing it is a change to their contract, not a move.
  */
 class FilingClearance
 {
@@ -58,7 +62,7 @@ class FilingClearance
 
         if ($organization->isPendingReview()) {
             throw new FatooraException(
-                __('This company is being reviewed. Connecting to ZATCA and issuing open once it is approved.'),
+                __('This company is being reviewed. Connecting to e-invoicing and issuing open once it is approved.'),
                 ErrorCode::AUTH_ORGANIZATION_UNDER_REVIEW,
             );
         }

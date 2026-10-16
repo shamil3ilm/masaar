@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Domains\Compliance\Fatoora\Services;
+namespace App\Support;
 
 use BaconQrCode\Renderer\GDLibRenderer;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
@@ -11,14 +11,14 @@ use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
 
 /**
- * The ZATCA QR payload, as something a phone can read.
+ * A QR payload, as something a phone can read.
  *
- * The payload is already correct and already stored - DocumentBuilder writes
- * the base64 TLV string to invoices.qr_code. This only draws it.
+ * It draws whatever string it is given: an invoice's stored QR payload (for
+ * Saudi Arabia, the base64 TLV string DocumentBuilder writes to
+ * invoices.qr_code), or a two-factor otpauth URI. The payload is already
+ * correct; this only draws it.
  *
- * No constructor arguments: WiredDependencyTest refuses optional collaborators
- * on anything under app/*\/Services/, and there is nothing here worth
- * injecting.
+ * No constructor arguments: there is nothing here worth injecting.
  */
 class QrCodeRenderer
 {

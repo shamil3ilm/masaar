@@ -8,11 +8,11 @@ use App\Domains\Branding\Services\ThemeService;
 use App\Domains\Compliance\Fatoora\Exceptions\SigningException;
 use App\Domains\Compliance\Fatoora\Helpers\CertificatePem;
 use App\Domains\Compliance\Fatoora\Services\CredentialStore;
-use App\Domains\Compliance\Fatoora\Services\QrCodeRenderer;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
+use App\Support\QrCodeRenderer;
 use DomainException;
 use Mpdf\Mpdf;
 

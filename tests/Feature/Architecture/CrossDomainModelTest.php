@@ -52,13 +52,10 @@ class CrossDomainModelTest extends TestCase
         'Domains/Billing/Models/Payment.php' => 'Invoice',
         'Domains/Billing/Services/Billing.php' => 'Invoice, Licensing',
         'Domains/Billing/Services/RenewalReminders.php' => 'Licensing',
-        'Domains/Compliance/ComplianceRouter.php' => 'Invoice, Organization',
-        'Domains/Compliance/Contracts/ComplianceEngine.php' => 'Invoice, Organization',
         // Moved from app/Console/Commands, where the import was not counted.
         'Domains/Compliance/Fatoora/Console/FatooraSandboxFiling.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Console/ProcessOfflineQueue.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Console/VerifyHashChain.php' => 'Invoice',
-        'Domains/Compliance/Fatoora/FatooraEngine.php' => 'Invoice, Organization',
         'Domains/Compliance/Fatoora/Http/Controllers/BranchOnboardingController.php' => 'Organization',
         'Domains/Compliance/Fatoora/Models/ChainEntry.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Models/InvoiceSubmission.php' => 'Invoice',
@@ -71,7 +68,6 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Fatoora/Services/InvoiceIssuer.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Services/InvoiceValidator.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Services/InvoiceVerdict.php' => 'Invoice',
-        'Domains/Compliance/Fatoora/Services/IssuanceNotifier.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Services/OfflineFallback.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Services/OfflineQueue.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Services/SigningCredentials.php' => 'Invoice, Organization',
@@ -80,7 +76,6 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Fatoora/Services/Submitter.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Services/VatPeriodTracker.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Services/ZatcaJurisdiction.php' => 'Invoice',
-        'Domains/Compliance/Peppol/PeppolEngine.php' => 'Invoice, Organization',
         // The receiver of an inbound document is the endpoint on a compliance profile.
         'Domains/Compliance/Peppol/Services/InboundDocuments.php' => 'Organization',
         // A UAE document is built from an invoice and its organization's UAE settings.

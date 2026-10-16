@@ -6,10 +6,10 @@ namespace App\Domains\Compliance\Fatoora\Http\Controllers;
 
 use App\Domains\Compliance\Fatoora\Exceptions\CertificateException;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
-use App\Domains\Compliance\Fatoora\Services\FilingClearance;
 use App\Domains\Compliance\Fatoora\Services\OrganizationOnboarding;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\FilingClearance;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use DomainException;

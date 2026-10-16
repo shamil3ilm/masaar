@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Services;
 
-use App\Domains\Compliance\Fatoora\Helpers\FatooraTime;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Models\InvoiceSequence;
+use App\Domains\Organization\Models\Organization;
+use App\Support\CountryClock;
+use Carbon\Carbon;
 use DateTimeInterface;
 use RuntimeException;
 
@@ -34,7 +36,7 @@ class InvoiceNumbering
      */
     public function allocate(Invoice $invoice): string
     {
-        $now = FatooraTime::saudiNow();
+        $now = $this->now((string) $invoice->org_id);
         $sequence = $this->sequenceFor($invoice);
         $period = $sequence->periodOf($now);
 
@@ -72,10 +74,19 @@ class InvoiceNumbering
      */
     public function preview(InvoiceSequence $sequence, ?DateTimeInterface $on = null): string
     {
-        $on ??= FatooraTime::saudiNow();
+        $on ??= $this->now((string) $sequence->org_id);
         $counter = $sequence->periodOf($on) === $sequence->period ? $sequence->next_number : 1;
 
         return $sequence->format($counter, $on);
+    }
+
+    /**
+     * Now, on the organization's own clock: the date in a number and the
+     * period a counter restarts at are what the day is where it trades.
+     */
+    public function now(string $organizationId): Carbon
+    {
+        return CountryClock::now(Organization::query()->whereKey($organizationId)->value('country'));
     }
 
     /**

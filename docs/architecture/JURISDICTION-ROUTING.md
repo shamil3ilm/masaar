@@ -1,22 +1,21 @@
 # Jurisdiction routing
 
-This page describes how an invoice reaches the right country's rules today,
-and the design that is planned to replace it. The two are kept apart below,
-so you can see what exists and what is only planned.
+This page describes how an invoice reaches the right country's rules: the
+entry points that pick a country, and the one seam every country plugs into
+when an invoice is issued.
 
-## Today
-
-### Each country has its own routes and services
+## Each country has its own entry points
 
 The platform files invoices in two jurisdictions, and each has its own entry
 points.
 
 | Jurisdiction | Entry points | What they call |
 |---|---|---|
-| Saudi Arabia (ZATCA) | `/api/compliance/sa/*`, the pipeline API, and the portal's filing actions | The ZATCA services directly. `PipelineService` and the Fatoora `InvoiceIssuer` issue, hash, sign and submit through `Submitter` and `OfflineFallback` |
-| United Arab Emirates (Peppol PINT AE) | `/api/compliance/ae/*`, behind the `uae.invoicing` middleware | `UaeInvoiceController` drafts with the shared `InvoiceDrafter` and issues with `UaeInvoiceIssuer`. That class uses the shared `InvoiceNumbering` and `IssuanceNotifier`, then the Peppol `PeppolPreparer` and `PeppolSender` |
+| Saudi Arabia (ZATCA) | `/api/compliance/sa/*`, the pipeline API, and the portal's filing actions | `PipelineService` and the Fatoora `InvoiceIssuer`, which issue through `Submitter` and then file through `OfflineFallback` |
+| United Arab Emirates (Peppol PINT AE) | `/api/compliance/ae/*`, behind the `uae.invoicing` middleware, and the portal's filing actions | `UaeInvoiceController` drafts with the shared `InvoiceDrafter` and issues with `UaeInvoiceIssuer`, which then queues the document through `PeppolSender` |
 
-The route decides the jurisdiction. The country check happens in the
+The route decides the jurisdiction, and the portal decides from the
+organization's `country`. The country check for the API happens in the
 `uae.invoicing` middleware:
 
 - It answers `404` while `PEPPOL_AE_ENABLED` is off.
@@ -25,87 +24,57 @@ The route decides the jurisdiction. The country check happens in the
 An organization has one country. Issuing for a second jurisdiction from the
 same organization is not supported by either flow.
 
-### ComplianceRouter exists, but no flow uses it
+## The seam: one lifecycle, one step per country
 
-`app/Domains/Compliance/ComplianceRouter.php` resolves a `ComplianceEngine`
-from a `ComplianceProfile`'s `jurisdiction`. It asks each registered engine
-`supports($jurisdiction)` and throws `UnsupportedJurisdictionException` when
-none matches. Engines are registered in
-`app/Providers/ComplianceServiceProvider.php`:
+Issuing is written once, in `App\Domains\Invoice\Services\IssuingLifecycle`.
+Each country supplies its part by implementing
+`App\Domains\Invoice\Contracts\IssuingJurisdiction`.
 
-```php
-$this->app->tag([FatooraEngine::class, PeppolEngine::class], 'compliance.engines');
-```
-
-| Engine | Jurisdiction | What `submit()` does |
+| Jurisdiction | Implementation | Called from |
 |---|---|---|
-| `Fatoora\FatooraEngine` | `SA` | Files with ZATCA |
-| `Peppol\PeppolEngine` | `AE` | Prepares and stores the Peppol document in status `ready`, where the transport picks it up. There is no authority to submit to: the submission id is the document id, and `retry()` reports status rather than sending again |
+| Saudi Arabia | `Compliance\Fatoora\Services\ZatcaJurisdiction` | `Submitter::generate()` |
+| United Arab Emirates | `Compliance\Peppol\Services\UaeJurisdiction` | `UaeInvoiceIssuer::issue()` |
 
-```php
-interface ComplianceEngine
-{
-    public function supports(string $jurisdiction): bool;
-    public function submit(Invoice $invoice, ComplianceProfile $profile): SubmissionResult;
-    public function retry(string $submissionId, ComplianceProfile $profile): SubmissionResult;
-    public function checkStatus(string $submissionId, ComplianceProfile $profile): SubmissionResult;
-    public function validate(Invoice $invoice, ComplianceProfile $profile): ValidationResult;
-}
-```
+`IssuingLifecycle::issue($invoice, $organization, $jurisdiction, $reissue)`
+owns what every country shares:
 
-**No controller, job or service in `app/` calls the router.** Only its tests
-use it. The Saudi flows call the ZATCA services directly, and the UAE flow
-calls the Peppol services directly. So a new engine registered here is not
-reachable by any request until a flow is written for it.
+- the guard against issuing an invoice that is no longer a draft;
+- the transaction, holding the organization row's lock;
+- the number, from `InvoiceNumbering`, when the draft has none;
+- the moment of issue, set once;
+- status `issued`, saved with the columns the country's seal returns.
 
-The interface also fits the two countries poorly. It assumes one
-`submit` that returns an answer. A ZATCA clearance does answer at once, but a
-Peppol document is handed to a provider and settled later by callbacks.
+It calls the jurisdiction at fixed points, in this order:
 
-### What the two countries already share
+| Step | When | Saudi Arabia | United Arab Emirates |
+|---|---|---|---|
+| `refuseIssued()` | Before anything, for an invoice that is not a draft | `FatooraException` | `IssuanceRefusedException` |
+| `prepare()` | Before the lock. Throwing refuses, and nothing is written | Country check, kill switches, clearance, ZATCA's rules, signing credentials | Kill switch, clearance |
+| `refuseIssuedMeanwhile()` / `finished()` | Under the lock, when another request issued the draft first | Refuses, or returns the finished result on a reissue | Returns the stored document |
+| `beforeNumbering()` | Under the lock, before the number | Allocates the counter for the EGS unit | Nothing |
+| `seal()` | Once the number and moment exist | Hash, XAdES signature and QR code | Mandatory fields, scenarios and totals. Problems refuse and roll the number back |
+| `afterIssued()` | After the invoice is saved as issued | Records the hash-chain entry | Stores the Peppol document |
+| `afterCommit()` | After the transaction | Nothing | `invoice.issued`, then the queued send |
 
-Some parts are already common to both countries:
+Filing is not part of the seam. A ZATCA clearance or report answers at once
+and runs after issuing, in `InvoiceIssuer`, which also raises
+`invoice.issued` for Saudi invoices. A Peppol document is handed to the
+accredited service provider and settled later by callbacks.
+
+## What every country shares
 
 - **Drafting.** `InvoiceDrafter` makes the draft for both. Only the request
   rules and `jurisdiction_data` are country-specific.
+- **Issuing.** `IssuingLifecycle`, described above.
 - **Numbering.** `InvoiceNumbering` allocates from the organization's
-  sequence.
-- **Notification.** `IssuanceNotifier` raises `invoice.issued`. It still
-  lives in the Fatoora namespace.
-
-The issue lifecycle itself is written twice:
-
-- The Fatoora `InvoiceIssuer` interleaves it with the counter, hash chain and
-  signature.
-- `UaeInvoiceIssuer` keeps it apart from the UAE step, so that the step can be
-  lifted out.
-
-## Planned: a common issuer with per-jurisdiction steps
-
-> **Not built.** This is the intended direction. No class described in this
-> section exists yet.
-
-The plan has one issuer that runs the lifecycle every country shares, and
-calls two steps that each jurisdiction supplies.
-
-| Common to every jurisdiction | Supplied by each jurisdiction |
-|---|---|
-| Drafting (`InvoiceDrafter`) | **Seal / document:** turn the issued invoice into the country's record. For Saudi Arabia: counter, previous hash, XAdES signature and QR code. For the UAE: map to PINT, check the mandatory fields and scenarios, check the totals, and build the UBL. Problems are reported before anything is written |
-| Numbering (`InvoiceNumbering`) | **Transmit:** hand the record over. For Saudi Arabia: clearance or reporting with ZATCA. For the UAE: queue to the accredited service provider and follow its callbacks |
-| The issue lifecycle: under the organization's lock, a draft takes its number and its moment of issue and becomes issued. A refusal leaves it a draft. A repeated call issues nothing new | |
-| Notifications (`invoice.issued`) | |
-
-Each jurisdiction would be selected from the organization's compliance
-profile, which could reuse `ComplianceRouter`, with the engine contract
-reshaped around those two steps.
-
-These questions are still open:
-
-- **How the Saudi step is extracted.** Issuing and signing share a transaction
-  and a chain position there, and a submission failure must never roll back
-  issuance.
-- **How status is exposed.** Status is synchronous in Saudi Arabia and driven
-  by callbacks in the UAE, and the API needs to show both consistently.
+  sequence. The date in a number and the period a counter restarts at are read
+  on the organization's own clock (`App\Support\CountryClock`: Riyadh for
+  `SA`, Dubai for `AE`).
+- **Clearance.** `Organization\Services\FilingClearance` decides whether an
+  organization is approved, not suspended and on a plan. It still throws
+  `FatooraException`, because its callers catch that type.
+- **Notification.** `Invoice\Services\IssuanceNotifier` raises
+  `invoice.issued`.
 
 ## Routing key
 
