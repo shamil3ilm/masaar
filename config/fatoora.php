@@ -47,8 +47,6 @@ return [
     |
     */
     'certificate' => [
-        'path' => env('ZATCA_CERTIFICATE_PATH'),
-        'private_key_path' => env('ZATCA_PRIVATE_KEY_PATH'),
         'expiry_warning_days' => env('ZATCA_CERT_WARNING_DAYS', 30),
         'expiry_critical_days' => env('ZATCA_CERT_CRITICAL_DAYS', 7),
     ],
@@ -178,9 +176,6 @@ return [
     |
     */
     'offline' => [
-        // Enable offline mode capability
-        'enabled' => env('ZATCA_OFFLINE_ENABLED', true),
-
         // Maximum invoices that can be queued per organization
         'queue_max_size' => env('ZATCA_OFFLINE_QUEUE_MAX', 10000),
 
@@ -192,53 +187,6 @@ return [
 
         /*
         |----------------------------------------------------------------------
-        | Connectivity Checking
-        |----------------------------------------------------------------------
-        | Settings for detecting ZATCA API availability and auto-switching
-        | to offline mode when connectivity fails.
-        |
-        */
-        'connectivity' => [
-            // How often to check connectivity (seconds)
-            'check_interval' => env('ZATCA_CONNECTIVITY_CHECK_INTERVAL', 30),
-
-            // Request timeout for connectivity check (seconds)
-            'timeout' => env('ZATCA_CONNECTIVITY_TIMEOUT', 10),
-
-            // Number of failures before opening circuit breaker
-            'failure_threshold' => env('ZATCA_CONNECTIVITY_FAILURE_THRESHOLD', 3),
-
-            // Duration circuit breaker stays open (seconds)
-            'circuit_open_duration' => env('ZATCA_CONNECTIVITY_CIRCUIT_DURATION', 60),
-        ],
-
-        /*
-        |----------------------------------------------------------------------
-        | Local Signing (Offline Capable)
-        |----------------------------------------------------------------------
-        | When enabled, invoices can be signed locally without server
-        | connectivity. The signed invoice is queued for later submission.
-        |
-        | IMPORTANT: Local signing still requires the organization's
-        | certificate and private key to be available locally.
-        |
-        */
-        'local_signing' => [
-            // Enable local signing for offline scenarios
-            'enabled' => env('ZATCA_LOCAL_SIGNING_ENABLED', true),
-
-            // Generate QR code locally (Phase 1 compatible)
-            'generate_qr' => env('ZATCA_LOCAL_QR_ENABLED', true),
-
-            // Store signed XML in local storage if DB is unavailable
-            'local_storage_fallback' => env('ZATCA_LOCAL_STORAGE_FALLBACK', true),
-
-            // Path for local storage fallback
-            'fallback_storage_path' => env('ZATCA_FALLBACK_PATH', storage_path('app/zatca/offline')),
-        ],
-
-        /*
-        |----------------------------------------------------------------------
         | Auto-Recovery
         |----------------------------------------------------------------------
         | Settings for automatic processing when connectivity is restored.
@@ -247,37 +195,6 @@ return [
         'auto_recovery' => [
             // Automatically process queue when online
             'enabled' => env('ZATCA_AUTO_RECOVERY_ENABLED', true),
-
-            // Maximum items to process per batch
-            'batch_size' => env('ZATCA_AUTO_RECOVERY_BATCH', 50),
-
-            // Delay between batches (seconds)
-            'batch_delay' => env('ZATCA_AUTO_RECOVERY_DELAY', 5),
-
-            // Process in background (via scheduler) vs synchronous
-            'background' => env('ZATCA_AUTO_RECOVERY_BACKGROUND', true),
-        ],
-
-        /*
-        |----------------------------------------------------------------------
-        | POS/Retail Mode
-        |----------------------------------------------------------------------
-        | Special settings for Point-of-Sale systems that must issue
-        | invoices immediately regardless of connectivity.
-        |
-        */
-        'pos_mode' => [
-            // Enable POS mode (immediate local completion)
-            'enabled' => env('ZATCA_POS_MODE_ENABLED', false),
-
-            // Return QR code immediately (don't wait for clearance)
-            'immediate_qr' => env('ZATCA_POS_IMMEDIATE_QR', true),
-
-            // Maximum offline invoice value (SAR) - higher values need warning
-            'max_offline_value' => env('ZATCA_POS_MAX_OFFLINE_VALUE', 50000),
-
-            // Warn if offline queue exceeds this size
-            'queue_warning_threshold' => env('ZATCA_POS_QUEUE_WARNING', 100),
         ],
     ],
 
@@ -371,10 +288,8 @@ return [
     |
     */
     'features' => [
-        'async_submission' => env('ZATCA_FEATURE_ASYNC', true),
         'offline_mode' => env('ZATCA_FEATURE_OFFLINE', true),
         'circuit_breaker' => env('ZATCA_FEATURE_CIRCUIT_BREAKER', true),
-        'timestamp_authority' => env('ZATCA_FEATURE_TSA', false),
         'certificate_revocation_check' => env('ZATCA_FEATURE_CRL_CHECK', true),
         'arabic_normalization' => env('ZATCA_FEATURE_ARABIC_NORM', true),
     ],
@@ -415,18 +330,6 @@ return [
         'max_duration_seconds' => env('ZATCA_KS_MAX_DURATION', 14400), // 4 hours
         'alert_threshold_seconds' => env('ZATCA_KS_ALERT_THRESHOLD', 1800), // 30 min
         'cache_ttl_seconds' => env('ZATCA_KS_CACHE_TTL', 3600),
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Hash Chain Management
-    |--------------------------------------------------------------------------
-    |
-    | Configuration for hash chain locking and sequence management.
-    |
-    */
-    'hash_chain' => [
-        'lock_timeout_seconds' => env('ZATCA_HASH_CHAIN_LOCK_TIMEOUT', 30),
     ],
 
     /*
