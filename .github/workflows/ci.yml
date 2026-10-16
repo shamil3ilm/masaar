@@ -529,6 +529,64 @@ jobs:
             exit 1
           fi
 
+  # Invoice PDFs are PDF/A-3b, checked by an independent validator rather than
+  # by our reading of ISO 19005-3. The renderer once emitted a QR the format
+  # forbids (6.2.2) and every test here passed; only a validator saw it.
+  #
+  # The validator is a free download, so unlike the SDK this always runs. The
+  # installer is checked against its publisher's signature before it runs.
+  pdfa:
+    name: PDF/A conformance
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
+    runs-on: ubuntu-24.04
+
+    env:
+      # The validator's release signing key (techlead@verapdf.org).
+      VALIDATOR_KEY: 13DD102B4DD69354D12DE5A83184863278B17FE7
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up PHP ${{ env.PHP_VERSION }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: openssl, mbstring, bcmath, dom, xml, gd, zip, fileinfo, tokenizer, sqlite3, pdo_sqlite
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Install the PDF/A validator
+        run: |
+          if [ -n "$JAVA_HOME_17_X64" ]; then
+            echo "$JAVA_HOME_17_X64/bin" >> "$GITHUB_PATH"
+            export PATH="$JAVA_HOME_17_X64/bin:$PATH"
+          fi
+          java -version
+
+          work="$RUNNER_TEMP/validator"
+          mkdir -p "$work"
+          wget -q -O "$work/installer.zip" https://software.verapdf.org/releases/verapdf-installer.zip
+          wget -q -O "$work/installer.zip.asc" https://software.verapdf.org/releases/verapdf-installer.zip.asc
+          gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$VALIDATOR_KEY"
+          gpg --batch --status-fd 1 --verify "$work/installer.zip.asc" "$work/installer.zip" | grep -q "VALIDSIG $VALIDATOR_KEY"
+
+          unzip -q "$work/installer.zip" -d "$work/x"
+          echo "INSTALL_PATH=$work/install" > "$work/options.properties"
+          java -jar "$(ls "$work"/x/*/verapdf-izpack-installer-*.jar)" -options "$work/options.properties"
+          echo "PDFA_VALIDATOR_PATH=$work/install/verapdf" >> "$GITHUB_ENV"
+
+      - name: Run the PDF/A suite
+        run: |
+          php artisan test --do-not-cache-result --filter PdfaConformance | tee pdfa.log
+          if grep -qE '^[[:space:]]*Tests:.*skipped' pdfa.log; then
+            echo "::error title=PDF/A skipped::The validator was installed but the suite still skipped."
+            exit 1
+          fi
+
   # Onboarding, end to end, against ZATCA's developer sandbox.
   #
   # Nine defects sat between generating a CSR and holding a certificate, and
