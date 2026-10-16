@@ -585,6 +585,77 @@ jobs:
             exit 1
           fi
 
+  # UAE documents are checked by the official PINT AE rules (billing and
+  # self-billing schematrons, and the UBL 2.1 schema), run with Saxon over
+  # documents this platform built. The UAE's counterpart to the ZATCA job.
+  #
+  # The rules are free downloads, so unlike the ZATCA SDK this always runs.
+  # They are not signed, so each file is pinned by hash: a new upstream
+  # release fails here until it is reviewed and the pins are updated.
+  pint-ae:
+    name: PINT AE conformance
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up PHP ${{ env.PHP_VERSION }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: openssl, mbstring, bcmath, dom, xml, zip, fileinfo, tokenizer, sqlite3, pdo_sqlite
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Fetch the PINT AE rules and an XSLT processor
+        run: |
+          if [ -n "$JAVA_HOME_17_X64" ]; then
+            echo "$JAVA_HOME_17_X64/bin" >> "$GITHUB_PATH"
+            export PATH="$JAVA_HOME_17_X64/bin:$PATH"
+          fi
+          java -version
+
+          work="$RUNNER_TEMP/pint"
+          mkdir -p "$work/billing" "$work/selfbilling" "$work/ubl21"
+
+          fetch() {
+            wget -q -O "$2" "$1"
+            echo "$3  $2" | sha256sum -c - || {
+              echo "::error title=PINT AE artefact changed::$1 no longer matches its pinned hash. Review the new release, re-run the conformance suite locally against it, then update the pin."
+              exit 1
+            }
+          }
+
+          # PINT AE Billing and Self-Billing 1.0.4, and UBL 2.1.
+          fetch https://docs.peppol.eu/poac/ae/pint-ae/resources.zip "$work/billing.zip" 1e8b0bd595c672ac9d6fc886ddd0eb8027cb39a1d26bebdcb1ada37b7eee491f
+          fetch https://docs.peppol.eu/poac/ae/pint-ae-sb/resources.zip "$work/selfbilling.zip" 7e6e58f120132dd2d2a6acf21b4a9318f0d07f2685c30ff282fae0e2a6613d15
+          fetch http://docs.oasis-open.org/ubl/os-UBL-2.1/UBL-2.1.zip "$work/ubl21.zip" 60b80d76394a8a2add90723ecb8e0e2e9d826775de9749df37a72d60703f86ed
+
+          unzip -q "$work/billing.zip" -d "$work/billing"
+          unzip -q "$work/selfbilling.zip" -d "$work/selfbilling"
+          unzip -q "$work/ubl21.zip" -d "$work/ubl21"
+
+          # Saxon-HE 10.9: a single jar with no dependencies, checked against
+          # the SHA-1 Maven Central publishes for it.
+          wget -q -O "$work/saxon.jar" https://repo1.maven.org/maven2/net/sf/saxon/Saxon-HE/10.9/Saxon-HE-10.9.jar
+          echo "6f58027cfb90638c4bd3bb10c8b38eee8d315026  $work/saxon.jar" | sha1sum -c -
+
+          echo "PEPPOL_ARTEFACTS_PATH=$work" >> "$GITHUB_ENV"
+          echo "PEPPOL_XSLT_JAR=$work/saxon.jar" >> "$GITHUB_ENV"
+
+      - name: Run the PINT AE suite
+        run: |
+          php artisan test --do-not-cache-result --filter PintConformance | tee pint.log
+          if grep -qE '^[[:space:]]*Tests:.*skipped' pint.log; then
+            echo "::error title=PINT AE skipped::The rules were fetched but the suite still skipped."
+            exit 1
+          fi
+
   # Onboarding, end to end, against ZATCA's developer sandbox.
   #
   # Nine defects sat between generating a CSR and holding a certificate, and
