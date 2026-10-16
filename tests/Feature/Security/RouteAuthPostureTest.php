@@ -35,6 +35,10 @@ class RouteAuthPostureTest extends TestCase
         'forgot-password' => 'Password reset request form',
         'reset-password/{token}' => 'Password reset form, from the emailed link',
         'reset-password' => 'Password reset submission, checked against the emailed token',
+        // The invitation link, and creating the account it is for: the token
+        // is the credential, and it is hashed, single-use and expiring.
+        'invitations/{token}' => 'Invitation landing page, from the emailed link',
+        'invitations/{token}/join' => 'Creating the invited account, with the emailed token',
         // Reached after the password, before sign-in: a platform admin is not
         // authenticated until this checks the second factor. Each refuses
         // anyone without a fresh pending sign-in in the session.

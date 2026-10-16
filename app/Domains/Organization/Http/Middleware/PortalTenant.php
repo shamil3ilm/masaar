@@ -29,7 +29,7 @@ class PortalTenant
 {
     public const ORG_ID = 'portal_org_id';
 
-    private const SESSION_KEY = 'portal_org_id';
+    public const SESSION_KEY = 'portal_org_id';
 
     public function handle(Request $request, Closure $next): Response
     {

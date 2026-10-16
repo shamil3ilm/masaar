@@ -17,7 +17,9 @@ use App\Domains\Invoice\Http\Controllers\PortalInvoiceFilingController;
 use App\Domains\Invoice\Http\Controllers\PortalNumberingController;
 use App\Domains\Licensing\Http\Controllers\AdminLicenceController;
 use App\Domains\Organization\Http\Controllers\CustomerPortalController;
+use App\Domains\Organization\Http\Controllers\InvitationController;
 use App\Domains\Organization\Http\Controllers\PortalCompanyController;
+use App\Domains\Organization\Http\Controllers\PortalTeamController;
 use App\Domains\Platform\Http\Controllers\AdminAuditController;
 use App\Domains\Platform\Http\Controllers\AdminController;
 use App\Domains\Platform\Http\Controllers\AdminOrganizationReviewController;
@@ -90,6 +92,21 @@ Route::middleware('guest')->group(function () {
         ->middleware('throttle:10,1')
         ->name('password.update');
 });
+
+// An invitation to join an organization. The link works signed in or out:
+// out, it creates the account it is for, or sends an existing one to sign in.
+Route::get('/invitations/{token}', [InvitationController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]{48}')
+    ->middleware('throttle:20,1')
+    ->name('invitations.show');
+Route::post('/invitations/{token}/join', [InvitationController::class, 'join'])
+    ->where('token', '[A-Za-z0-9]{48}')
+    ->middleware(['guest', 'throttle:5,1'])
+    ->name('invitations.join');
+Route::post('/invitations/{token}/accept', [InvitationController::class, 'accept'])
+    ->where('token', '[A-Za-z0-9]{48}')
+    ->middleware(['auth', 'throttle:10,1'])
+    ->name('invitations.accept');
 
 Route::middleware('auth')->group(function () {
     Route::get('/email/verify', [EmailVerificationController::class, 'notice'])->name('verification.notice');
@@ -239,7 +256,7 @@ Route::prefix('portal')->name('portal.')
     // the portal. Everyone with an account before sign-up existed counts as
     // verified (migration 0370).
     ->middleware(['auth', 'auth.session', 'verified', 'portal.tenant'])
-    ->whereUuid(['invoiceId', 'userId'])
+    ->whereUuid(['invoiceId', 'userId', 'invitationId'])
     ->group(function () {
         Route::get('/', [CustomerPortalController::class, 'dashboard'])->name('dashboard');
         // Invoices. {invoiceId} rather than {invoice}: route model binding
@@ -274,6 +291,13 @@ Route::prefix('portal')->name('portal.')
         Route::post('/zatca/ccsid', [PortalZatcaController::class, 'ccsid'])->middleware('throttle:6,1')->name('zatca.ccsid');
         Route::post('/zatca/check', [PortalZatcaController::class, 'check'])->middleware('throttle:6,1')->name('zatca.check');
         Route::post('/zatca/production', [PortalZatcaController::class, 'production'])->middleware('throttle:6,1')->name('zatca.production');
+
+        // The organization's people, and inviting more. Administrators only;
+        // the controller checks the role.
+        Route::get('/team', [PortalTeamController::class, 'index'])->name('team.index');
+        Route::post('/team/invitations', [PortalTeamController::class, 'invite'])->middleware('throttle:20,1')->name('team.invite');
+        Route::post('/team/invitations/{invitationId}/revoke', [PortalTeamController::class, 'revoke'])->name('team.revoke');
+        Route::post('/team/members/{userId}/remove', [PortalTeamController::class, 'remove'])->name('team.remove');
 
         // How documents issued without a number are numbered. Administrators
         // only; the controller checks the role.
