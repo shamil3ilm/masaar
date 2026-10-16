@@ -7,7 +7,7 @@ A multi-jurisdiction e-invoicing compliance API platform for GCC businesses.
 | Country | Authority | System | Status |
 |---------|-----------|--------|--------|
 | 🇸🇦 Saudi Arabia | ZATCA | Fatoora Phase 2 | 🟡 Passes ZATCA's SDK validator — schema, EN 16931, Schematron and, signed with the authority's own certificate, its certificate, QR, signed-properties digest and PIH checks — and ZATCA's developer sandbox accepts the full onboarding round trip. Simulation and production need a registered taxpayer, see [Conformance](#conformance) |
-| 🇦🇪 UAE | Ministry of Finance / FTA | Peppol PINT AE, through an accredited service provider | 🚧 In development — tax, commercial and self-billed invoices and credit notes pass the official PINT AE rules, and drafting, sending and receiving through a service provider are built and tested. Not yet released: the portal screens remain, and no service provider is connected yet |
+| 🇦🇪 UAE | Ministry of Finance / FTA | Peppol PINT AE, through an accredited service provider | 🚧 In development — tax, commercial and self-billed invoices and credit notes pass the official PINT AE rules, and drafting, sending and receiving through a service provider are built and tested, in the API and the portal. Switched off by default (`PEPPOL_AE_ENABLED`); no service provider is connected yet |
 | 🇶🇦 Qatar | GTA | — | 📋 Planned |
 
 > **Production readiness.** The Saudi pipeline — UBL generation, ICV/PIH hash

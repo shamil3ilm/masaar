@@ -156,15 +156,17 @@ The following is built and tested:
 - Status callbacks and polling
 - Inbound documents
 - The tenant API
+- The portal: UAE company settings, a UAE invoice form, the e-invoice's
+  status and XML on the invoice page, a received-invoices page, and UAE
+  self sign-up
 - The official-rules conformance run in CI
 
 The following is not done:
 
 - **No service provider is connected.** The HTTP gateway follows a generic
   shape and has not run against a real provider.
-- **The portal screens are in progress.** These cover the UAE company
-  settings, the UAE invoice fields, the document status on the invoice page,
-  and a received-invoices page. Until they ship, use the API.
+- **No PDF for a UAE invoice.** The e-invoice is the XML; the PDF, print and
+  email actions are Saudi-only and are hidden for UAE invoices.
 - **Status changes for manually uploaded documents are not recorded.**
 - **Received documents are stored, not processed.** They are kept and listed
   exactly as they arrived, but are not turned into purchase records.
