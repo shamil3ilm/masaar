@@ -14,6 +14,10 @@
             // not a proper name, so the Arabic is required rather than
             // optional - see resources/views/components/caption.blade.php.
             $simplified = ($invoice->type instanceof \BackedEnum ? $invoice->type->value : (string) $invoice->type) === 'simplified';
+
+            // Only an issued invoice goes to the buyer, and a standard one
+            // only once ZATCA has cleared it - InvoicePdf::assertShareable.
+            $shareable = $invoice->hash !== null && ($simplified || $invoice->cleared_xml !== null);
         @endphp
 
         <p class="text-sm font-semibold tracking-wide text-gray-500 dark:text-gray-400 uppercase">
@@ -42,9 +46,28 @@
             <x-ui.button variant="outline" :href="route('portal.invoices.print', $invoice->id)">
                 Print
             </x-ui.button>
+            @if ($shareable)
+                <x-ui.button variant="outline" :href="route('portal.invoices.pdf', $invoice->id)">
+                    PDF
+                </x-ui.button>
+            @endif
         @endif
     </div>
 </div>
+
+@if ($invoice->status !== \App\Domains\Invoice\Enums\InvoiceStatus::Draft && $shareable
+    && auth()->user()?->roleIn((string) request()->attributes->get(\App\Domains\Organization\Http\Middleware\PortalTenant::ORG_ID)) !== 'viewer')
+    <form method="POST" action="{{ route('portal.invoices.send', $invoice->id) }}"
+          class="mb-6 flex flex-wrap items-end gap-3 rounded-lg bg-white dark:bg-gray-900 p-4 shadow">
+        @csrf
+        <div class="min-w-64 flex-1">
+            <x-ui.field label="Email the PDF to the buyer">
+                <x-ui.input type="email" name="email" maxlength="255" required value="{{ old('email', $sendTo) }}" />
+            </x-ui.field>
+        </div>
+        <x-ui.button variant="outline">Send invoice</x-ui.button>
+    </form>
+@endif
 
 <div class="grid gap-6 lg:grid-cols-3">
     <div class="space-y-6 lg:col-span-2">

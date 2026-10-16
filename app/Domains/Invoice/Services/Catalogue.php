@@ -76,6 +76,22 @@ class Catalogue
             ->get());
     }
 
+    /**
+     * Where to send a buyer's invoice: the email of the customer with their
+     * VAT number, when there is one.
+     */
+    public function emailFor(string $organizationId, ?string $vatNumber): ?string
+    {
+        if ($vatNumber === null || $vatNumber === '') {
+            return null;
+        }
+
+        return Customer::withoutTenantScope(fn () => Customer::query()
+            ->where('org_id', $organizationId)
+            ->where('vat_number', $vatNumber)
+            ->value('email'));
+    }
+
     public function customer(string $organizationId, string $customerId): ?Customer
     {
         return Customer::withoutTenantScope(fn () => Customer::query()->where('org_id', $organizationId)->find($customerId));

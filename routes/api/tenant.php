@@ -45,6 +45,8 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
     // to do; everything else about invoicing is.
     // org.writer: a viewer reads invoices and changes none.
     Route::apiResource('invoices', InvoiceController::class)->only(['index', 'show']);
+    // The issued invoice as a PDF/A-3 with its XML inside.
+    Route::get('/invoices/{invoice}/pdf', [InvoiceController::class, 'pdf']);
     Route::apiResource('invoices', InvoiceController::class)->only(['store', 'update'])->middleware('org.writer');
     Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy'])
         ->middleware('org.admin');

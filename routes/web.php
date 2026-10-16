@@ -14,6 +14,7 @@ use App\Domains\Compliance\Fatoora\Http\Controllers\AdminKillSwitchController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\PortalZatcaController;
 use App\Domains\Invoice\Http\Controllers\PortalCustomerController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceController;
+use App\Domains\Invoice\Http\Controllers\PortalInvoiceDocumentController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceDraftController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceFilingController;
 use App\Domains\Invoice\Http\Controllers\PortalNumberingController;
@@ -318,6 +319,9 @@ Route::prefix('portal')->name('portal.')
         Route::get('/invoices/{invoiceId}', [PortalInvoiceController::class, 'show'])->name('invoices.show');
         Route::post('/invoices/{invoiceId}/issue', [PortalInvoiceFilingController::class, 'issue'])->name('invoices.issue');
         Route::get('/invoices/{invoiceId}/print', [PortalInvoiceFilingController::class, 'print'])->name('invoices.print');
+        // The PDF the buyer keeps, and sending it to them.
+        Route::get('/invoices/{invoiceId}/pdf', [PortalInvoiceDocumentController::class, 'download'])->name('invoices.pdf');
+        Route::post('/invoices/{invoiceId}/send', [PortalInvoiceDocumentController::class, 'send'])->middleware('throttle:20,1')->name('invoices.send');
 
         Route::get('/submissions', [CustomerPortalController::class, 'submissions'])->name('submissions');
         Route::get('/certificates', [CustomerPortalController::class, 'certificates'])->name('certificates');

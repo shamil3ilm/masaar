@@ -62,6 +62,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Invoice PDFs**: an issued invoice downloads as a bilingual PDF/A-3 with
+  its XML embedded - from the portal, and from `GET /api/invoices/{id}/pdf`
+  (409 for a draft or an uncleared standard invoice). The portal also emails
+  it to the buyer, starting from the saved customer's address.
 - **Customers and products**: the portal keeps an organization's customers
   (name, VAT number, national address, email) and products (description,
   unit, price, VAT rate). On a new invoice, picking a customer fills the

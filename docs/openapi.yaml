@@ -1743,6 +1743,33 @@ paths:
                 $ref: '#/components/schemas/Error'
       security:
         - bearerAuth: []
+  '/api/invoices/{invoice}/pdf':
+    get:
+      tags:
+        - Invoice
+      operationId: invoiceController.pdf
+      summary: 'Pdf — Invoice Controller'
+      parameters:
+        - name: invoice
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - bearerAuth: []
   /api/license:
     get:
       tags:

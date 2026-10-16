@@ -51,6 +51,13 @@ class TableMarkupTest extends TestCase
     private const EMAILS = 'emails/';
 
     /**
+     * PDF templates are drawn by the PDF renderer, which reads plain tables
+     * and none of the components or stylesheet the screens use. A page has
+     * no scroll area to give a table.
+     */
+    private const PDFS = 'pdf/';
+
+    /**
      * One table shell, so a table cannot be built without a scroll area.
      *
      * The scroll area lives inside x-ui.table, which is the only way to make
@@ -62,7 +69,7 @@ class TableMarkupTest extends TestCase
 
         foreach ($this->views() as $relative => $contents) {
             if (str_starts_with($relative, 'components/ui/') || $relative === self::STANDALONE
-                || str_starts_with($relative, self::EMAILS)) {
+                || str_starts_with($relative, self::EMAILS) || str_starts_with($relative, self::PDFS)) {
                 continue;
             }
 
