@@ -10,4 +10,8 @@ return [
     // place they show.
     'notify_address' => env('SUPPORT_NOTIFY_ADDRESS'),
 
+    // Megabytes of attachments one organization may add to its tickets in
+    // a day. A screenshot or an invoice's XML is well under one.
+    'daily_upload_mb' => (int) env('SUPPORT_DAILY_UPLOAD_MB', 50),
+
 ];

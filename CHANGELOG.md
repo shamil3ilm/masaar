@@ -62,6 +62,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Renewals in the console**: a Renewals page lists every plan ending in
+  the next 30 days or lapsed in the last 30, with its contact and a link to
+  record the payment.
 - **Setup checklist**: a new company's dashboard lists what is left before
   its first invoice - company details, approval, connecting to ZATCA,
   numbering, customers and products, the first invoice - with a link to

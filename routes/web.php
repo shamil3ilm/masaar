@@ -210,6 +210,8 @@ Route::prefix('admin')->name('admin.')
         Route::get('/organizations', [AdminController::class, 'organizations'])->name('organizations');
         Route::get('/organizations/{id}', [AdminController::class, 'organizationDetail'])->name('organization.detail');
         // A plan's payments. Recording one renews the plan and invoices it.
+        // Plans to chase before invoicing stops: payment is recorded by hand.
+        Route::get('/renewals', [AdminBillingController::class, 'renewals'])->name('billing.renewals');
         Route::get('/organizations/{id}/billing', [AdminBillingController::class, 'show'])->name('billing.show');
         Route::post('/organizations/{id}/billing', [AdminBillingController::class, 'record'])->middleware('admin.can:billing.manage')->name('billing.record');
         Route::post('/organizations/{id}/billing/{paymentId}/invoice', [AdminBillingController::class, 'invoice'])->middleware('admin.can:billing.manage')->name('billing.invoice');
@@ -379,7 +381,7 @@ Route::prefix('portal')->name('portal.')
         Route::post('/support', [PortalSupportController::class, 'store'])->middleware('throttle:10,1')->name('support.store');
         Route::get('/support/{ticketId}', [PortalSupportController::class, 'show'])->name('support.show');
         Route::post('/support/{ticketId}/reply', [PortalSupportController::class, 'reply'])->middleware('throttle:20,1')->name('support.reply');
-        Route::post('/support/{ticketId}/resolve', [PortalSupportController::class, 'resolve'])->name('support.resolve');
+        Route::post('/support/{ticketId}/resolve', [PortalSupportController::class, 'markResolved'])->name('support.resolve');
         Route::get('/support/{ticketId}/attachments/{attachmentId}', [PortalSupportController::class, 'attachment'])->name('support.attachment');
 
         // Connecting to ZATCA: OTP, compliance checks, production

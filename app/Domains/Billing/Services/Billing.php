@@ -9,6 +9,7 @@ use App\Domains\Billing\Models\Payment;
 use App\Domains\Compliance\Fatoora\Services\InvoiceIssuer;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\InvoiceDrafter;
+use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Licensing\Exceptions\LicenceStateException;
 use App\Domains\Licensing\Models\License;
@@ -17,6 +18,7 @@ use App\Domains\Organization\Services\TenantResolver;
 use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -37,6 +39,15 @@ class Billing
         private readonly InvoiceIssuer $issuer,
         private readonly TenantResolver $tenant,
     ) {}
+
+    /**
+     * @param  list<string>  $ids
+     * @return SupportCollection<string, Organization>
+     */
+    public function organizationsByIds(array $ids): SupportCollection
+    {
+        return Organization::query()->whereKey($ids)->get()->keyBy('id');
+    }
 
     public function organization(string $organizationId): ?Organization
     {
@@ -84,6 +95,26 @@ class Billing
         $limit = $licence?->invoices_per_month;
 
         return ['used' => $used, 'limit' => $limit === null || (int) $limit <= 0 ? null : (int) $limit];
+    }
+
+    /**
+     * Plans to chase: ending within the window, or lapsed within it.
+     *
+     * Payment is recorded by hand, so nothing renews on its own; this is
+     * the list of who to ask before their invoicing stops, and who already
+     * has.
+     *
+     * @return Collection<int, License>
+     */
+    public function renewals(int $days): Collection
+    {
+        return License::query()
+            ->whereNotNull('org_id')
+            ->whereNotNull('expires_at')
+            ->whereIn('status', [LicenseStatus::Active, LicenseStatus::Expired])
+            ->whereBetween('expires_at', [now()->subDays($days), now()->addDays($days)])
+            ->orderBy('expires_at')
+            ->get();
     }
 
     /**

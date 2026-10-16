@@ -181,6 +181,29 @@ class BillingTest extends TestCase
             ->assertForbidden();
     }
 
+    /**
+     * The console lists plans ending soon and those just lapsed, and leaves
+     * out the ones with time to spare.
+     */
+    public function test_renewals_lists_plans_to_chase(): void
+    {
+        $later = Organization::create(['name' => 'Later Ltd', 'country' => 'SA']);
+        License::createWithCredentials([
+            'org_id' => $later->id,
+            'organization_name' => 'Later Ltd',
+            'contact_email' => 'ops@later.test',
+            'tier' => LicenseTier::Starter,
+            'status' => LicenseStatus::Active,
+            'expires_at' => now()->addDays(200),
+        ]);
+
+        $this->actingAs($this->admin('support'))->get(route('admin.billing.renewals'))
+            ->assertOk()
+            ->assertSee('Acme Trading')
+            ->assertSee('in 10 days')
+            ->assertDontSee('Later Ltd');
+    }
+
     public function test_admins_are_reminded_before_the_end(): void
     {
         Mail::fake();

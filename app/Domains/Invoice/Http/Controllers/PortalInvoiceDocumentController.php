@@ -19,6 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\RateLimiter;
 use Throwable;
 
 /**
@@ -26,6 +27,12 @@ use Throwable;
  */
 class PortalInvoiceDocumentController extends Controller
 {
+    /** Invoice emails one organization may send in a day. */
+    private const DAILY_PER_ORGANIZATION = 200;
+
+    /** And to one address: an invoice and a corrected one, with room. */
+    private const DAILY_PER_ADDRESS = 10;
+
     public function __construct(
         private readonly TenantResolver $tenant,
         private readonly InvoiceFinder $invoices,
@@ -56,6 +63,21 @@ class PortalInvoiceDocumentController extends Controller
         $email = (string) $request->validate(['email' => ['required', 'email', 'max:255']])['email'];
         $organization = $this->organization();
 
+        // Caps per day, not only per minute: an organization's invoices go to
+        // its buyers, and the platform's mail server must not become a way
+        // to reach anyone else in bulk.
+        $keys = [
+            'invoice-mail:org:'.$organization->id => self::DAILY_PER_ORGANIZATION,
+            'invoice-mail:to:'.$organization->id.':'.strtolower($email) => self::DAILY_PER_ADDRESS,
+        ];
+
+        foreach ($keys as $key => $limit) {
+            if (RateLimiter::tooManyAttempts($key, $limit)) {
+                return redirect()->route('portal.invoices.show', $invoiceId)
+                    ->with('error', __('Your company has sent as many invoice emails as it can today. Download the PDF and send it yourself, or try again tomorrow.'));
+            }
+        }
+
         try {
             $pdf = $this->pdf->render($invoice, $organization);
         } catch (DomainException $e) {
@@ -78,6 +100,10 @@ class PortalInvoiceDocumentController extends Controller
 
             return redirect()->route('portal.invoices.show', $invoiceId)
                 ->with('error', __('The email could not be sent. Download the PDF and send it yourself, or try again later.'));
+        }
+
+        foreach ($keys as $key => $limit) {
+            RateLimiter::hit($key, 86400);
         }
 
         return redirect()->route('portal.invoices.show', $invoiceId)->with('success', __('Invoice sent to :email.', ['email' => $email]));
