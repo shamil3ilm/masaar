@@ -202,9 +202,22 @@
          enough that a 16rem row broke "59.97 SAR" across two lines, with the
          currency underneath the figure. --}}
     <dl class="mb-6 ml-auto w-full space-y-1 text-sm sm:w-96">
+        {{-- subtotal is before the document discount; the taxable amount
+             (BT-109) is after it. With a discount this row printed the
+             pre-discount figure, so the receipt's own sums did not add up. --}}
+        @if ((float) $invoice->discount_amount > 0)
+            <div class="flex justify-between">
+                <dt><x-caption en="Subtotal" ar="المجموع" /></dt>
+                <dd class="shrink-0 pl-4 tabular-nums whitespace-nowrap">@include('portal.partials.money', ['amount' => $invoice->subtotal, 'currency' => $invoice->currency])</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt><x-caption en="Discount" ar="الخصم" /></dt>
+                <dd class="shrink-0 pl-4 tabular-nums whitespace-nowrap">-@include('portal.partials.money', ['amount' => $invoice->discount_amount, 'currency' => $invoice->currency])</dd>
+            </div>
+        @endif
         <div class="flex justify-between">
             <dt><x-caption en="Taxable amount" ar="الإجمالي (باستثناء ضريبة القيمة المضافة)" /></dt>
-            <dd class="shrink-0 pl-4 tabular-nums whitespace-nowrap">@include('portal.partials.money', ['amount' => $invoice->subtotal, 'currency' => $invoice->currency])</dd>
+            <dd class="shrink-0 pl-4 tabular-nums whitespace-nowrap">@include('portal.partials.money', ['amount' => (float) $invoice->subtotal - (float) $invoice->discount_amount, 'currency' => $invoice->currency])</dd>
         </div>
         <div class="flex justify-between">
             <dt><x-caption en="VAT" ar="مجموع ضريبة القيمة المضافة" /></dt>
