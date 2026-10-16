@@ -20,6 +20,7 @@ use App\Domains\Licensing\Http\Middleware\RequireLicenseFeature;
 use App\Domains\Licensing\Http\Middleware\RequireScope;
 use App\Domains\Licensing\Http\Middleware\ValidateLicense;
 use App\Domains\Organization\Http\Middleware\IsOrgAdmin;
+use App\Domains\Organization\Http\Middleware\OrgWriter;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\TenantResolver;
@@ -49,6 +50,7 @@ class AppServiceProvider extends ServiceProvider
         'admin.audit' => AuditAdminAction::class,
         'portal.tenant' => PortalTenant::class,
         'org.admin' => IsOrgAdmin::class,
+        'org.writer' => OrgWriter::class,
         'metrics' => MetricsAccess::class,
         'rate.api' => RateLimitApi::class,
         'license' => ValidateLicense::class,

@@ -30,12 +30,14 @@
         @include('portal.partials.invoice-status', ['status' => $invoice->status])
 
         @if ($invoice->status === \App\Domains\Invoice\Enums\InvoiceStatus::Draft)
+            @if (auth()->user()?->roleIn((string) request()->attributes->get(\App\Domains\Organization\Http\Middleware\PortalTenant::ORG_ID)) !== 'viewer')
             <form method="POST" action="{{ route('portal.invoices.issue', $invoice->id) }}"
                   data-confirm-action="Issue invoice"
                   data-confirm="Issue this invoice? It gets a counter and a hash, joins the chain, and cannot be issued again.">
                 @csrf
                 <x-ui.button>Issue</x-ui.button>
             </form>
+            @endif
         @else
             <x-ui.button variant="outline" :href="route('portal.invoices.print', $invoice->id)">
                 Print

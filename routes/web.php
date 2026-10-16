@@ -263,7 +263,8 @@ Route::prefix('portal')->name('portal.')
     // Verified: a signed-up account proves its email address before it sees
     // the portal. Everyone with an account before sign-up existed counts as
     // verified (migration 0370).
-    ->middleware(['auth', 'auth.session', 'verified', 'portal.tenant'])
+    // org.writer: a viewer reads the portal and submits nothing.
+    ->middleware(['auth', 'auth.session', 'verified', 'portal.tenant', 'org.writer'])
     ->whereUuid(['invoiceId', 'userId', 'invitationId'])
     ->group(function () {
         Route::get('/', [CustomerPortalController::class, 'dashboard'])->name('dashboard');
