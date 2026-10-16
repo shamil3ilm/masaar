@@ -26,10 +26,18 @@ return [
     |--------------------------------------------------------------------------
     */
     'endpoints' => [
-        'sandbox' => 'https://gw-fatoora.zatca.gov.sa/e-invoicing/developer-portal',
-        'simulation' => 'https://gw-fatoora.zatca.gov.sa/e-invoicing/simulation',
-        'production' => 'https://gw-fatoora.zatca.gov.sa/e-invoicing/core',
+        'sandbox' => env('ZATCA_SANDBOX_URL') ?: 'https://gw-fatoora.zatca.gov.sa/e-invoicing/developer-portal',
+        'simulation' => env('ZATCA_SIMULATION_URL') ?: 'https://gw-fatoora.zatca.gov.sa/e-invoicing/simulation',
+        'production' => env('ZATCA_PRODUCTION_URL') ?: 'https://gw-fatoora.zatca.gov.sa/e-invoicing/core',
     ],
+
+    // Where a taxpayer signs in to generate the one-time password that
+    // onboarding asks for.
+    'portal_url' => env('ZATCA_PORTAL_URL') ?: 'https://fatoora.zatca.gov.sa/',
+
+    // The OpenSSL binary the onboarding commands run. Empty: `openssl` on
+    // the PATH.
+    'openssl_binary' => env('OPENSSL_BIN'),
 
     /*
     | There is no platform-wide API credential. ZATCA onboards each EGS unit

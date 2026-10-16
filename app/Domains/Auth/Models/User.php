@@ -8,6 +8,7 @@ use App\Domains\Organization\Models\Organization;
 use Database\Factories\UserFactory;
 use Illuminate\Auth\MustVerifyEmail;
 use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
+use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -21,7 +22,7 @@ use Tymon\JWTAuth\Contracts\JWTSubject;
  * Users can belong to multiple organizations (multi-tenant).
  * JWT token represents the user identity, not the organization.
  */
-class User extends Authenticatable implements JWTSubject, MustVerifyEmailContract
+class User extends Authenticatable implements HasLocalePreference, JWTSubject, MustVerifyEmailContract
 {
     use HasFactory, HasUuids, MustVerifyEmail, Notifiable;
 
@@ -71,6 +72,15 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmailContrac
      * Distinct from the per-organization `admin` pivot role, which only
      * confers administration of that single tenant.
      */
+    /**
+     * The language this person's mail is written in: the one they chose for
+     * the portal, or the deployment's default.
+     */
+    public function preferredLocale(): ?string
+    {
+        return $this->locale;
+    }
+
     public function isPlatformAdmin(): bool
     {
         return $this->isActive() && $this->is_platform_admin === true;

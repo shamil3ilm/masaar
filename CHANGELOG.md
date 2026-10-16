@@ -62,6 +62,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Setup checklist**: a new company's dashboard lists what is left before
+  its first invoice - company details, approval, connecting to ZATCA,
+  numbering, customers and products, the first invoice - with a link to
+  each, and goes away once the required steps are done. The "no active
+  certificate" warning now shows only for a company already connected.
+- **ZATCA addresses and OpenSSL are settings**: `ZATCA_SANDBOX_URL`,
+  `ZATCA_SIMULATION_URL`, `ZATCA_PRODUCTION_URL` and `ZATCA_PORTAL_URL`
+  override the published addresses when set; `OPENSSL_BIN` names the
+  binary the onboarding commands run, which otherwise comes from the PATH.
+- **Email in the reader's language**: verification, password reset, email
+  change, invitations, review decisions, renewal and certificate reminders
+  and support replies are written in the language the recipient chose for
+  the portal, right to left in Arabic.
 - **Arabic**: the portal, sign-in, sign-up and My account read in Arabic,
   right to left, with a language switch on every page; the choice is kept
   on the account. Dates, units, validation and messages follow it. The

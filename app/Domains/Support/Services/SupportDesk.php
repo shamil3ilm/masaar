@@ -111,7 +111,9 @@ class SupportDesk
             $opener = $ticket->opener;
 
             if ($opener !== null && $opener->isActive()) {
-                $this->notify($opener->email, 'Support replied to your ticket', $ticket, route('portal.support.show', $ticket->id));
+                // The account, not its address: the mail is then written in
+                // the language the customer reads the portal in.
+                $this->notify($opener, 'Support replied to your ticket', $ticket, route('portal.support.show', $ticket->id));
             }
         } else {
             $this->notify(
@@ -302,7 +304,7 @@ class SupportDesk
 
     private function notify(mixed $address, string $headline, SupportTicket $ticket, string $url): void
     {
-        if (! is_string($address) || $address === '') {
+        if (! $address instanceof User && (! is_string($address) || $address === '')) {
             return;
         }
 

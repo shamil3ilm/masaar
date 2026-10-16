@@ -239,23 +239,23 @@ class CheckCertificateExpiry extends Command
         // The organization's administrators, on the membership: role and
         // status are both the pivot's. Filtering on role alone mailed members
         // who had been removed.
-        $adminEmails = $organization->users()
+        $admins = $organization->users()
             ->wherePivot('role', 'admin')
             ->wherePivot('status', 'active')
-            ->pluck('email')
-            ->toArray();
+            ->get();
 
-        if (empty($adminEmails)) {
-            return;
-        }
+        $brand = $this->themes->forScope((string) $organization->id);
 
         // In the organization's own branding: it is about its own filing.
-        Mail::to($adminEmails)->send(new CertificateExpiringMail(
-            organizationName: $organization->name,
-            daysRemaining: $daysRemaining,
-            expiryDate: $expiryDate->format('Y-m-d'),
-            brand: $this->themes->forScope((string) $organization->id),
-        ));
+        // One each, so each is written in its reader's language.
+        foreach ($admins as $admin) {
+            Mail::to($admin)->send(new CertificateExpiringMail(
+                organizationName: $organization->name,
+                daysRemaining: $daysRemaining,
+                expiryDate: $expiryDate->format('Y-m-d'),
+                brand: $brand,
+            ));
+        }
     }
 
     private function sendWebhookNotification(

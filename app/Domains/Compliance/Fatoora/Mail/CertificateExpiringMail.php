@@ -28,8 +28,8 @@ final class CertificateExpiringMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(subject: $this->daysRemaining <= 0
-            ? "URGENT: ZATCA certificate expired - {$this->organizationName}"
-            : "ZATCA certificate expires in {$this->daysRemaining} days - {$this->organizationName}");
+            ? __('URGENT: ZATCA certificate expired - :organization', ['organization' => $this->organizationName])
+            : __('ZATCA certificate expires in :days days - :organization', ['days' => $this->daysRemaining, 'organization' => $this->organizationName]));
     }
 
     public function content(): Content

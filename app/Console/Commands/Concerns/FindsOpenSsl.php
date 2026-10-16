@@ -17,19 +17,16 @@ trait FindsOpenSsl
     /**
      * The first candidate that answers `version`, or null if none does.
      *
-     * Bare 'openssl' first so a binary on PATH wins over any guess below it.
+     * OPENSSL_BIN when it is set, then `openssl` on the PATH. This used to
+     * guess at install directories on one developer's machine, which found
+     * nothing anywhere else and said nothing about how to fix it.
      */
     private function findOpenSsl(): ?string
     {
-        $candidates = [
+        $candidates = array_values(array_filter([
+            config('fatoora.openssl_binary'),
             'openssl',
-            'C:\\laragon\\bin\\git\\usr\\bin\\openssl.exe',
-            'C:\\Program Files\\Git\\usr\\bin\\openssl.exe',
-            'C:\\Program Files\\Git\\mingw64\\bin\\openssl.exe',
-            'C:\\laragon\\bin\\openssl\\openssl.exe',
-            'C:\\Program Files\\OpenSSL-Win64\\bin\\openssl.exe',
-            'C:\\OpenSSL-Win64\\bin\\openssl.exe',
-        ];
+        ], fn ($path): bool => is_string($path) && $path !== ''));
 
         foreach ($candidates as $path) {
             // Quoted: half these paths contain a space. Reset per probe: exec

@@ -225,7 +225,7 @@ class FatooraOnboarding extends Command
         $this->newLine();
 
         $this->info('🔗 How to get OTP:');
-        $this->line('  1. Go to https://fatoora.zatca.gov.sa/');
+        $this->line('  1. Go to '.config('fatoora.portal_url'));
         $this->line('  2. Login with your TIN credentials');
         $this->line('  3. Click "Fatoora Simulation Portal" (top right) for testing');
         $this->line('  4. Go to "Onboard New Solution Unit/Device"');
@@ -248,7 +248,7 @@ class FatooraOnboarding extends Command
         $otp = $this->option('otp');
         if (! $otp) {
             $this->error('OTP is required. Use --otp=<your-otp>');
-            $this->line('Get OTP from: https://fatoora.zatca.gov.sa/');
+            $this->line('Get OTP from: '.config('fatoora.portal_url'));
             $this->newLine();
             $this->info('TIP: Use --target=local for local testing without OTP');
 
@@ -353,10 +353,7 @@ class FatooraOnboarding extends Command
             // Find OpenSSL executable
             $opensslCmd = $this->findOpenSsl();
             if (! $opensslCmd) {
-                $this->error('OpenSSL not found. Please install OpenSSL or add it to PATH.');
-                $this->line('Common locations:');
-                $this->line('  - C:\\laragon\\bin\\git\\usr\\bin\\openssl.exe');
-                $this->line('  - C:\\Program Files\\Git\\usr\\bin\\openssl.exe');
+                $this->error('OpenSSL not found. Install it and put it on the PATH, or set OPENSSL_BIN to its full path.');
 
                 return Command::FAILURE;
             }

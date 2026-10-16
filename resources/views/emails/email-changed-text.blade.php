@@ -1,6 +1,6 @@
 {{-- Plain text: unescaped, or "A & B" arrives as "A &amp; B". --}}
-Hello {!! $name !!},
+{!! __('Hello :name,', ['name' => $name]) !!}
 
-The email address for your account is now {!! $newEmail !!}. Sign-in links and notices go there from now on.
+{!! __('The email address for your account is now :email. Sign-in links and notices go there from now on.', ['email' => $newEmail]) !!}
 
-If you did not make this change, contact support straight away.
+{!! __('If you did not make this change, contact support straight away.') !!}

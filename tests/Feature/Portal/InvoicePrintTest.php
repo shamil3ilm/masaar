@@ -68,6 +68,30 @@ class InvoicePrintTest extends TestCase
     }
 
     /**
+     * The taxable amount is after the document discount, so the receipt's
+     * own sums add up: 100 less 10, plus 13.50 VAT, is 103.50.
+     */
+    public function test_the_discount_reduces_the_taxable_amount(): void
+    {
+        $invoice = $this->makeInvoice($this->acme, 'ACME-9', [
+            'type' => 'simplified',
+            'status' => 'issued',
+            'icv' => 9,
+            'hash' => base64_encode(hash('sha256', 'd', true)),
+            'qr_code' => base64_encode('AQVTZWxsZXI='),
+            'subtotal' => '100.00',
+            'discount_amount' => '10.00',
+            'tax_amount' => '13.50',
+            'total' => '103.50',
+        ]);
+
+        $this->asRequest(fn () => $this->actingAs($this->member)
+            ->get('/portal/invoices/'.$invoice->id.'/print')
+            ->assertOk()
+            ->assertSeeInOrder(['Subtotal', '100.00 SAR', 'Discount', '10.00 SAR', 'Taxable amount', '90.00 SAR', '13.50 SAR', '103.50 SAR']));
+    }
+
+    /**
      * A standard invoice is not shareable until the authority has cleared it.
      */
     public function test_an_uncleared_standard_is_withheld(): void

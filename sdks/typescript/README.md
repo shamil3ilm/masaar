@@ -21,7 +21,6 @@ pnpm add masaar
 | Environment | Base URL |
 |-------------|----------|
 | **Local Development** | `http://localhost:8000` |
-| **Local (Laragon)** | `http://zatca.test` |
 | **Production** | `https://{YOUR_DOMAIN}` |
 
 > **Note:** Replace `{YOUR_DOMAIN}` with your actual domain when deploying to production.

@@ -1,6 +1,6 @@
 {{-- Plain text: unescaped, or "A & B" arrives as "A &amp; B". --}}
-{!! $headline !!}
+{!! __($headline) !!}
 
 {!! $reference !!} - {!! $subjectLine !!}
 
-Open the ticket: {!! $url !!}
+{!! __('Open the ticket') !!}: {!! $url !!}
