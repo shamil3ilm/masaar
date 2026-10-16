@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Compliance;
 
-use App\Console\Commands\FatooraGenerateCsr;
-use App\Console\Commands\FatooraOnboarding;
+use App\Domains\Compliance\Fatoora\Console\FatooraGenerateCsr;
+use App\Domains\Compliance\Fatoora\Console\FatooraOnboarding;
 use App\Domains\Compliance\Fatoora\Services\CsrBuilder;
 use Tests\TestCase;
 

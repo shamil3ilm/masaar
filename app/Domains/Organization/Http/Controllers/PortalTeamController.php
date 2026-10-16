@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Http\Controllers;
 
-use App\Domains\Organization\Http\Middleware\PortalTenant;
+use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Models\OrganizationInvitation;
 use App\Domains\Organization\Services\Team;
@@ -23,6 +23,8 @@ use Illuminate\View\View;
  */
 class PortalTeamController extends Controller
 {
+    use ResolvesPortalOrganization;
+
     public function __construct(
         private readonly TenantResolver $tenant,
         private readonly Team $team,
@@ -77,11 +79,6 @@ class PortalTeamController extends Controller
 
     private function organization(Request $request): Organization
     {
-        $organizationId = $request->attributes->get(PortalTenant::ORG_ID);
-
-        abort_unless(is_string($organizationId), 404);
-        abort_unless($request->user()?->roleIn($organizationId) === 'admin', 403, __('Only an administrator of this organization can manage its people.'));
-
-        return $this->tenant->getOrganization() ?? abort(404);
+        return $this->portalOrganization($this->tenant, $request, __('Only an administrator of this organization can manage its people.'));
     }
 }

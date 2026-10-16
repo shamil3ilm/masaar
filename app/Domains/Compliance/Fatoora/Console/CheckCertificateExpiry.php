@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Console\Commands;
+namespace App\Domains\Compliance\Fatoora\Console;
 
 use App\Domains\Branding\Services\ThemeService;
 use App\Domains\Compliance\Fatoora\Helpers\CertificatePem;

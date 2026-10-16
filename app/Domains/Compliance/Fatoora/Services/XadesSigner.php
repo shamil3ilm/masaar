@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Fatoora\Services;
 
 use App\Domains\Compliance\Fatoora\Exceptions\SigningException;
+use App\Domains\Compliance\Fatoora\Helpers\CertificatePem;
 use App\Domains\Compliance\Fatoora\Helpers\FatooraTime;
+use App\Domains\Compliance\Fatoora\Support\Der;
 use App\Support\Xml;
 use DOMDocument;
 use DOMElement;
@@ -822,9 +824,7 @@ class XadesSigner
                 return false;
             }
             $certBase64 = $certNodes->item(0)->textContent;
-            $certificatePem = "-----BEGIN CERTIFICATE-----\n".
-                chunk_split($certBase64, 64, "\n").
-                '-----END CERTIFICATE-----';
+            $certificatePem = CertificatePem::from($certBase64) ?? '';
 
             // Canonicalize SignedInfo
             $signedInfoC14n = $signedInfo->C14N(false, false);
@@ -836,6 +836,11 @@ class XadesSigner
                 $this->ecdsaSigner->extractPublicKey($certificatePem)
             );
         } catch (\Exception $e) {
+            Log::warning('Signature verification could not run', [
+                'exception' => $e::class,
+                'error' => $e->getMessage(),
+            ]);
+
             return false;
         }
     }
@@ -1137,7 +1142,7 @@ class XadesSigner
 
         // Build MessageImprint (SEQUENCE)
         $messageImprintContent = $algorithmIdentifier.$hashedMessage;
-        $messageImprint = "\x30".$this->asn1Length(strlen($messageImprintContent)).$messageImprintContent;
+        $messageImprint = "\x30".Der::length(strlen($messageImprintContent)).$messageImprintContent;
 
         // Build version INTEGER (1)
         $version = "\x02\x01\x01";
@@ -1155,28 +1160,9 @@ class XadesSigner
 
         // Build TimeStampReq (SEQUENCE)
         $tsReqContent = $version.$messageImprint.$nonce.$certReq;
-        $tsReq = "\x30".$this->asn1Length(strlen($tsReqContent)).$tsReqContent;
+        $tsReq = "\x30".Der::length(strlen($tsReqContent)).$tsReqContent;
 
         return $tsReq;
-    }
-
-    /**
-     * Encode ASN.1 length.
-     */
-    private function asn1Length(int $length): string
-    {
-        if ($length < 128) {
-            return chr($length);
-        }
-
-        $bytes = '';
-        $temp = $length;
-        while ($temp > 0) {
-            $bytes = chr($temp & 0xFF).$bytes;
-            $temp >>= 8;
-        }
-
-        return chr(0x80 | strlen($bytes)).$bytes;
     }
 
     /**
@@ -1217,24 +1203,24 @@ class XadesSigner
         }
 
         $offset = 1;
-        $totalLength = $this->readAsn1Length($response, $offset);
-        $offset = $this->skipAsn1Length($response, 1);
+        $totalLength = Der::readLength($response, $offset);
+        $offset = Der::skipLength($response, 1);
 
         // Read PKIStatusInfo SEQUENCE
         if (ord($response[$offset]) !== 0x30) {
             return null;
         }
         $offset++;
-        $statusInfoLength = $this->readAsn1Length($response, $offset);
-        $offset = $this->skipAsn1Length($response, $offset);
+        $statusInfoLength = Der::readLength($response, $offset);
+        $offset = Der::skipLength($response, $offset);
 
         // Read status INTEGER
         if (ord($response[$offset]) !== 0x02) {
             return null;
         }
         $offset++;
-        $statusLength = $this->readAsn1Length($response, $offset);
-        $offset = $this->skipAsn1Length($response, $offset);
+        $statusLength = Der::readLength($response, $offset);
+        $offset = Der::skipLength($response, $offset);
 
         $status = 0;
         for ($i = 0; $i < $statusLength; $i++) {
@@ -1255,8 +1241,8 @@ class XadesSigner
         while ($offset < strlen($response) && ord($response[$offset]) !== 0x30) {
             $tag = ord($response[$offset]);
             $offset++;
-            $len = $this->readAsn1Length($response, $offset);
-            $offset = $this->skipAsn1Length($response, $offset);
+            $len = Der::readLength($response, $offset);
+            $offset = Der::skipLength($response, $offset);
             $offset += $len;
         }
 
@@ -1268,44 +1254,9 @@ class XadesSigner
         // Return the entire timeStampToken
         $tokenStart = $offset;
         $offset++;
-        $tokenLength = $this->readAsn1Length($response, $offset);
-        $offset = $this->skipAsn1Length($response, $offset);
+        $tokenLength = Der::readLength($response, $offset);
+        $offset = Der::skipLength($response, $offset);
 
         return substr($response, $tokenStart, ($offset - $tokenStart) + $tokenLength);
-    }
-
-    /**
-     * Read ASN.1 length from data.
-     */
-    private function readAsn1Length(string $data, int $offset): int
-    {
-        $byte = ord($data[$offset]);
-
-        if ($byte < 0x80) {
-            return $byte;
-        }
-
-        $numBytes = $byte & 0x7F;
-        $length = 0;
-
-        for ($i = 0; $i < $numBytes; $i++) {
-            $length = ($length << 8) | ord($data[$offset + 1 + $i]);
-        }
-
-        return $length;
-    }
-
-    /**
-     * Skip ASN.1 length field.
-     */
-    private function skipAsn1Length(string $data, int $offset): int
-    {
-        $byte = ord($data[$offset]);
-
-        if ($byte < 0x80) {
-            return $offset + 1;
-        }
-
-        return $offset + 1 + ($byte & 0x7F);
     }
 }

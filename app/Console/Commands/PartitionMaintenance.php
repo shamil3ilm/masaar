@@ -149,6 +149,8 @@ class PartitionMaintenance extends Command
 
             return ($result->count ?? 0) > 0;
         } catch (\Exception $e) {
+            Log::warning('Partition check failed', ['table' => $table, 'error' => $e->getMessage()]);
+
             return false;
         }
     }
@@ -172,6 +174,8 @@ class PartitionMaintenance extends Command
 
             return array_map(fn ($r) => ['name' => $r->name, 'range' => $r->range], $results);
         } catch (\Exception $e) {
+            Log::warning('Partition listing failed', ['table' => $table, 'error' => $e->getMessage()]);
+
             return [];
         }
     }
@@ -269,6 +273,8 @@ class PartitionMaintenance extends Command
 
             return ($result->count ?? 0) > 0;
         } catch (\Exception $e) {
+            Log::warning('Partition lookup failed', ['partition' => $partitionName, 'error' => $e->getMessage()]);
+
             return false;
         }
     }
@@ -295,6 +301,8 @@ class PartitionMaintenance extends Command
 
             return $estimate;
         } catch (\Exception $e) {
+            Log::warning('Row count failed', ['table' => $table, 'error' => $e->getMessage()]);
+
             return 0;
         }
     }

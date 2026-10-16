@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Compliance;
 
-use App\Console\Commands\Concerns\WritesSecrets;
+use App\Domains\Compliance\Fatoora\Console\Concerns\WritesSecrets;
 use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 

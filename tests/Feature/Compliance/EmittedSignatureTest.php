@@ -51,7 +51,7 @@ class EmittedSignatureTest extends TestCase
      * pretty-print it; XmlBuilder may, because it runs before signing.
      */
     private const AFTER_SIGNING = [
-        'app/Console/Commands/FatooraOnboarding.php',
+        'app/Domains/Compliance/Fatoora/Console/FatooraOnboarding.php',
         'app/Domains/Compliance/Fatoora/Services/XadesSigner.php',
         'app/Domains/Compliance/Fatoora/Services/DocumentBuilder.php',
         'app/Domains/Compliance/Fatoora/Services/QrCodeInjector.php',

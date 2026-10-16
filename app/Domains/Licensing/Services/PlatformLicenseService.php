@@ -203,6 +203,8 @@ class PlatformLicenseService
             }
             $expiresAt->setTime(23, 59, 59);
         } catch (\Exception $e) {
+            Log::warning('Platform license expiry date could not be read', ['error' => $e->getMessage()]);
+
             return $this->invalidResult('Invalid expiration date format');
         }
 

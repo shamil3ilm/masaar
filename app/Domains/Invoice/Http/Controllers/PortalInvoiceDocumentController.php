@@ -8,7 +8,7 @@ use App\Domains\Invoice\Mail\InvoiceMail;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Invoice\Services\InvoicePdf;
-use App\Domains\Organization\Http\Middleware\PortalTenant;
+use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
@@ -27,6 +27,8 @@ use Throwable;
  */
 class PortalInvoiceDocumentController extends Controller
 {
+    use ResolvesPortalOrganization;
+
     /** Invoice emails one organization may send in a day. */
     private const DAILY_PER_ORGANIZATION = 200;
 
@@ -111,9 +113,7 @@ class PortalInvoiceDocumentController extends Controller
 
     private function invoice(Request $request, string $invoiceId): Invoice
     {
-        $organizationId = $request->attributes->get(PortalTenant::ORG_ID);
-
-        abort_unless(is_string($organizationId), 404);
+        $organizationId = $this->portalOrganizationId($request);
 
         try {
             return $this->invoices->findWithLines($organizationId, $invoiceId);

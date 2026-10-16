@@ -7,7 +7,7 @@ namespace App\Domains\Billing\Http\Controllers;
 use App\Domains\Billing\Http\BillingInvoiceResponse;
 use App\Domains\Billing\Services\Billing;
 use App\Domains\Invoice\Services\InvoicePdf;
-use App\Domains\Organization\Http\Middleware\PortalTenant;
+use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,6 +21,8 @@ use Illuminate\View\View;
  */
 class PortalBillingController extends Controller
 {
+    use ResolvesPortalOrganization;
+
     public function __construct(
         private readonly Billing $billing,
         private readonly InvoicePdf $pdf,
@@ -48,11 +50,6 @@ class PortalBillingController extends Controller
 
     private function organizationId(Request $request): string
     {
-        $organizationId = $request->attributes->get(PortalTenant::ORG_ID);
-
-        abort_unless(is_string($organizationId), 404);
-        abort_unless($request->user()?->roleIn($organizationId) === 'admin', 403, __('Only an administrator of this organization can see its billing.'));
-
-        return $organizationId;
+        return $this->portalOrganizationId($request, __('Only an administrator of this organization can see its billing.'));
     }
 }

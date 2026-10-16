@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Invoice\Http\Controllers;
 
 use App\Domains\Invoice\Services\NumberingSettings;
-use App\Domains\Organization\Http\Middleware\PortalTenant;
+use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,6 +19,8 @@ use Illuminate\View\View;
  */
 class PortalNumberingController extends Controller
 {
+    use ResolvesPortalOrganization;
+
     public function __construct(
         private readonly NumberingSettings $settings,
     ) {}
@@ -54,11 +56,6 @@ class PortalNumberingController extends Controller
 
     private function organization(Request $request): string
     {
-        $organizationId = $request->attributes->get(PortalTenant::ORG_ID);
-
-        abort_unless(is_string($organizationId), 404);
-        abort_unless($request->user()?->roleIn($organizationId) === 'admin', 403, __('Only an administrator of this organization can change its numbering.'));
-
-        return $organizationId;
+        return $this->portalOrganizationId($request, __('Only an administrator of this organization can change its numbering.'));
     }
 }

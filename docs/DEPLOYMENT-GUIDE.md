@@ -860,7 +860,7 @@ echo "=========================================="
 
 ### Hash Chain Verification Command
 
-The command already exists: `app/Console/Commands/VerifyHashChain.php`.
+The command already exists: `app/Domains/Compliance/Fatoora/Console/VerifyHashChain.php`.
 
 ```bash
 # Every organization

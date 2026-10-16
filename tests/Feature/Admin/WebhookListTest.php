@@ -149,7 +149,7 @@ class WebhookListTest extends TestCase
 
     private function admin(): User
     {
-        return User::factory()->create(['is_platform_admin' => true]);
+        return User::factory()->platformAdmin()->create();
     }
 
     private function organization(string $name): Organization

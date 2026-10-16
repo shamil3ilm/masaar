@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Support\Http\Controllers;
 
-use App\Domains\Organization\Http\Middleware\PortalTenant;
+use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Support\Enums\TicketCategory;
@@ -29,6 +29,8 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  */
 class PortalSupportController extends Controller
 {
+    use ResolvesPortalOrganization;
+
     private const PER_PAGE = 20;
 
     public function __construct(
@@ -129,8 +131,6 @@ class PortalSupportController extends Controller
 
     private function organization(Request $request): Organization
     {
-        abort_unless(is_string($request->attributes->get(PortalTenant::ORG_ID)), 404);
-
-        return $this->tenant->getOrganization() ?? abort(404);
+        return $this->portalOrganization($this->tenant, $request);
     }
 }

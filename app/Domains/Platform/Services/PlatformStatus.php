@@ -10,6 +10,7 @@ use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * How the platform as a whole is doing.
@@ -200,9 +201,13 @@ class PlatformStatus
                 'latency_ms' => $latency,
             ];
         } catch (\Exception $e) {
+            Log::error('Database health check failed', ['error' => $e->getMessage()]);
+
+            // The detail is in the log: a driver's message can name the host
+            // and the query, and this answer is shown on the admin dashboard.
             return [
                 'status' => 'unhealthy',
-                'error' => $e->getMessage(),
+                'error' => 'The database did not answer.',
             ];
         }
     }
@@ -222,9 +227,11 @@ class PlatformStatus
                 'status' => $retrieved === true ? 'healthy' : 'degraded',
             ];
         } catch (\Exception $e) {
+            Log::error('Cache health check failed', ['error' => $e->getMessage()]);
+
             return [
                 'status' => 'unhealthy',
-                'error' => $e->getMessage(),
+                'error' => 'The cache did not answer.',
             ];
         }
     }

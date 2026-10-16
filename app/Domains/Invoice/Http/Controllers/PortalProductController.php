@@ -7,7 +7,7 @@ namespace App\Domains\Invoice\Http\Controllers;
 use App\Domains\Invoice\Models\Product;
 use App\Domains\Invoice\Services\Catalogue;
 use App\Domains\Invoice\Support\UnitCode;
-use App\Domains\Organization\Http\Middleware\PortalTenant;
+use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,6 +20,8 @@ use Illuminate\View\View;
  */
 class PortalProductController extends Controller
 {
+    use ResolvesPortalOrganization;
+
     private const PER_PAGE = 25;
 
     public function __construct(
@@ -32,7 +34,7 @@ class PortalProductController extends Controller
         $archived = $request->boolean('archived');
 
         return view('portal.products.index', [
-            'products' => $this->catalogue->products($this->organizationId($request), $search === '' ? null : $search, $archived, self::PER_PAGE)->withQueryString(),
+            'products' => $this->catalogue->products($this->portalOrganizationId($request), $search === '' ? null : $search, $archived, self::PER_PAGE)->withQueryString(),
             'search' => $search,
             'archived' => $archived,
         ]);
@@ -45,7 +47,7 @@ class PortalProductController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $organizationId = $this->organizationId($request);
+        $organizationId = $this->portalOrganizationId($request);
 
         $this->catalogue->saveProduct($organizationId, $this->validated($request, $organizationId));
 
@@ -59,7 +61,7 @@ class PortalProductController extends Controller
 
     public function update(Request $request, string $productId): RedirectResponse
     {
-        $organizationId = $this->organizationId($request);
+        $organizationId = $this->portalOrganizationId($request);
         $product = $this->product($request, $productId);
 
         $this->catalogue->saveProduct($organizationId, $this->validated($request, $organizationId, $product), $product);
@@ -100,15 +102,6 @@ class PortalProductController extends Controller
 
     private function product(Request $request, string $productId): Product
     {
-        return $this->catalogue->product($this->organizationId($request), $productId) ?? abort(404);
-    }
-
-    private function organizationId(Request $request): string
-    {
-        $organizationId = $request->attributes->get(PortalTenant::ORG_ID);
-
-        abort_unless(is_string($organizationId), 404);
-
-        return $organizationId;
+        return $this->catalogue->product($this->portalOrganizationId($request), $productId) ?? abort(404);
     }
 }

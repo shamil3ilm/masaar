@@ -6,7 +6,7 @@ namespace App\Domains\Invoice\Http\Controllers;
 
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Services\Catalogue;
-use App\Domains\Organization\Http\Middleware\PortalTenant;
+use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Rules\VatNumber;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
@@ -21,6 +21,8 @@ use Illuminate\View\View;
  */
 class PortalCustomerController extends Controller
 {
+    use ResolvesPortalOrganization;
+
     private const PER_PAGE = 25;
 
     public function __construct(
@@ -33,7 +35,7 @@ class PortalCustomerController extends Controller
         $archived = $request->boolean('archived');
 
         return view('portal.customers.index', [
-            'customers' => $this->catalogue->customers($this->organizationId($request), $search === '' ? null : $search, $archived, self::PER_PAGE)->withQueryString(),
+            'customers' => $this->catalogue->customers($this->portalOrganizationId($request), $search === '' ? null : $search, $archived, self::PER_PAGE)->withQueryString(),
             'search' => $search,
             'archived' => $archived,
         ]);
@@ -46,7 +48,7 @@ class PortalCustomerController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $organizationId = $this->organizationId($request);
+        $organizationId = $this->portalOrganizationId($request);
 
         $this->catalogue->saveCustomer($organizationId, $this->validated($request, $organizationId));
 
@@ -60,7 +62,7 @@ class PortalCustomerController extends Controller
 
     public function update(Request $request, string $customerId): RedirectResponse
     {
-        $organizationId = $this->organizationId($request);
+        $organizationId = $this->portalOrganizationId($request);
         $customer = $this->customer($request, $customerId);
 
         $this->catalogue->saveCustomer($organizationId, $this->validated($request, $organizationId, $customer), $customer);
@@ -109,15 +111,6 @@ class PortalCustomerController extends Controller
 
     private function customer(Request $request, string $customerId): Customer
     {
-        return $this->catalogue->customer($this->organizationId($request), $customerId) ?? abort(404);
-    }
-
-    private function organizationId(Request $request): string
-    {
-        $organizationId = $request->attributes->get(PortalTenant::ORG_ID);
-
-        abort_unless(is_string($organizationId), 404);
-
-        return $organizationId;
+        return $this->catalogue->customer($this->portalOrganizationId($request), $customerId) ?? abort(404);
     }
 }

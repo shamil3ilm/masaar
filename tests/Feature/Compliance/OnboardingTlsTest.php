@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Compliance;
 
-use App\Console\Commands\FatooraOnboarding;
+use App\Domains\Compliance\Fatoora\Console\FatooraOnboarding;
 use Illuminate\Http\Client\PendingRequest;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\NullOutput;

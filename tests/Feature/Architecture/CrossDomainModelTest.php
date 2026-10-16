@@ -54,6 +54,10 @@ class CrossDomainModelTest extends TestCase
         'Domains/Billing/Services/RenewalReminders.php' => 'Licensing',
         'Domains/Compliance/ComplianceRouter.php' => 'Invoice, Organization',
         'Domains/Compliance/Contracts/ComplianceEngine.php' => 'Invoice, Organization',
+        // Moved from app/Console/Commands, where the import was not counted.
+        'Domains/Compliance/Fatoora/Console/FatooraSandboxFiling.php' => 'Invoice',
+        'Domains/Compliance/Fatoora/Console/ProcessOfflineQueue.php' => 'Invoice',
+        'Domains/Compliance/Fatoora/Console/VerifyHashChain.php' => 'Invoice',
         'Domains/Compliance/Fatoora/FatooraEngine.php' => 'Invoice, Organization',
         'Domains/Compliance/Fatoora/Http/Controllers/BranchOnboardingController.php' => 'Organization',
         'Domains/Compliance/Fatoora/Models/ChainEntry.php' => 'Invoice',

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Console\Commands\Concerns;
+namespace App\Domains\Compliance\Fatoora\Console\Concerns;
 
 /**
  * Locate the OpenSSL binary the onboarding commands shell out to.

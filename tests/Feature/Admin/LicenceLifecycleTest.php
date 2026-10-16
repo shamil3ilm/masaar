@@ -154,7 +154,7 @@ class LicenceLifecycleTest extends TestCase
 
     private function admin(): User
     {
-        return User::factory()->create(['is_platform_admin' => true]);
+        return User::factory()->platformAdmin()->create();
     }
 
     private function licence(string $name, LicenseStatus $status = LicenseStatus::Active): License

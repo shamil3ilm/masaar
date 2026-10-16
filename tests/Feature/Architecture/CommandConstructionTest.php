@@ -23,7 +23,8 @@ use RecursiveIteratorIterator;
  */
 class CommandConstructionTest extends TestCase
 {
-    private const COMMANDS = __DIR__.'/../../../app/Console/Commands';
+    /** Commands live in app/Console/Commands and in each domain's Console. */
+    private const APP = __DIR__.'/../../../app';
 
     /**
      * Commands that still construct domain collaborators with new.
@@ -36,10 +37,14 @@ class CommandConstructionTest extends TestCase
     public function test_commands_do_not_construct_domain_services(): void
     {
         $found = [];
-        $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(self::COMMANDS));
+        $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(self::APP));
 
         foreach ($it as $file) {
             if (! $file->isFile() || $file->getExtension() !== 'php') {
+                continue;
+            }
+
+            if (! str_contains(str_replace('\\', '/', $file->getPathname()), '/Console/')) {
                 continue;
             }
 

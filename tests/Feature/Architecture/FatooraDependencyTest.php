@@ -42,18 +42,6 @@ class FatooraDependencyTest extends TestCase
      * @var array<string, string>
      */
     private const DECLARED = [
-        'app/Console/Commands/CheckCertificateExpiry.php' => 'Helpers\\CertificatePem, Mail\\CertificateExpiringMail, Services\\CertificateService, Services\\CredentialStore',
-        'app/Console/Commands/CleanupOfflineQueue.php' => 'Services\\OfflineQueue',
-        'app/Console/Commands/FatooraGenerateCsr.php' => 'DTOs\\CsrData, Services\\CsrBuilder',
-        'app/Console/Commands/FatooraOnboarding.php' => 'DTOs\\AddressData, DTOs\\InvoiceXmlData, DTOs\\QrCodeData, Services\\CertificateService, Services\\ComplianceSampleSet, Services\\EcdsaSigner, Services\\InvoiceHasher, Services\\QrCodeGenerator, Services\\QrCodeInjector, Services\\TlvEncoder, Services\\XadesSigner',
-        'app/Console/Commands/FatooraSandboxFiling.php' => 'Services\\CredentialStore, Services\\SubmissionTracker, Services\\Submitter',
-        'app/Console/Commands/FatooraSandboxTest.php' => 'DTOs\\CsrData, Services\\CsrBuilder',
-        'app/Console/Commands/FatooraValidate.php' => 'Config\\FatooraConfig, DTOs\\AddressData, DTOs\\InvoiceXmlData, Services\\XmlBuilder',
-        'app/Console/Commands/ProcessOfflineQueue.php' => 'Client\\FatooraClient, DTOs\\FatooraResponse, Services\\Connectivity, Services\\CredentialStore, Services\\OfflineQueue',
-        'app/Console/Commands/RecoverSubmissions.php' => 'Jobs\\ProcessFatooraSubmission, Models\\InvoiceSubmission, Services\\SubmissionLedger',
-        'app/Console/Commands/ReportOverdueSubmissions.php' => 'Models\\InvoiceSubmission, Services\\DeadlineReport',
-        'app/Console/Commands/RotateCredentialKey.php' => 'Services\\CredentialStore',
-        'app/Console/Commands/VerifyHashChain.php' => 'Config\\FatooraConfig, Models\\ChainEntry',
         'app/Domains/Auth/Http/Controllers/AccountController.php' => 'Services\\QrCodeRenderer',
         'app/Domains/Auth/Http/Controllers/AuthController.php' => 'Enums\\ErrorCode',
         'app/Domains/Auth/Http/Controllers/TwoFactorController.php' => 'Services\\QrCodeRenderer',

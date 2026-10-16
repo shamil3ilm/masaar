@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Console\Commands\Concerns;
+namespace App\Domains\Compliance\Fatoora\Console\Concerns;
 
 use Illuminate\Support\Facades\File;
 

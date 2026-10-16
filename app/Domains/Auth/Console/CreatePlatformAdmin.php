@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Console\Commands;
+namespace App\Domains\Auth\Console;
 
 use App\Domains\Audit\Services\AuditService;
 use App\Domains\Auth\Models\User;

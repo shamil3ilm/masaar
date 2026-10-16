@@ -38,8 +38,10 @@ return Application::configure(basePath: dirname(__DIR__))
     // that own console commands must be listed, or their commands are never
     // registered and anything scheduling them fails silently.
     ->withCommands([
+        __DIR__.'/../app/Domains/Auth/Console',
         __DIR__.'/../app/Domains/Licensing/Console',
         __DIR__.'/../app/Domains/Billing/Console',
+        __DIR__.'/../app/Domains/Compliance/Fatoora/Console',
         __DIR__.'/../app/Domains/Compliance/Peppol/Console',
     ])
     ->withMiddleware(function (Middleware $middleware): void {

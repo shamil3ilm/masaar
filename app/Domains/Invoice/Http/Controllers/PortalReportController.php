@@ -6,7 +6,7 @@ namespace App\Domains\Invoice\Http\Controllers;
 
 use App\Domains\Invoice\Services\InvoiceCsv;
 use App\Domains\Invoice\Services\VatSummary;
-use App\Domains\Organization\Http\Middleware\PortalTenant;
+use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Http\Controllers\Controller;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -22,6 +22,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class PortalReportController extends Controller
 {
+    use ResolvesPortalOrganization;
+
     /** A period longer than this is a mistake, and a slow one. */
     private const MAX_DAYS = 400;
 
@@ -37,7 +39,7 @@ class PortalReportController extends Controller
         return view('portal.reports', [
             'from' => $from,
             'to' => $to,
-            'summary' => $this->summary->for($this->organizationId($request), $from, $to),
+            'summary' => $this->summary->for($this->portalOrganizationId($request), $from, $to),
             'presets' => $this->presets(),
         ]);
     }
@@ -46,14 +48,14 @@ class PortalReportController extends Controller
     {
         [$from, $to] = $this->period($request);
 
-        return $this->csv->invoices($this->organizationId($request), $from, $to, 'invoices-'.$from->toDateString().'-to-'.$to->toDateString().'.csv');
+        return $this->csv->invoices($this->portalOrganizationId($request), $from, $to, 'invoices-'.$from->toDateString().'-to-'.$to->toDateString().'.csv');
     }
 
     public function vat(Request $request): StreamedResponse
     {
         [$from, $to] = $this->period($request);
 
-        return $this->csv->summary($this->organizationId($request), $from, $to, 'vat-summary-'.$from->toDateString().'-to-'.$to->toDateString().'.csv');
+        return $this->csv->summary($this->portalOrganizationId($request), $from, $to, 'vat-summary-'.$from->toDateString().'-to-'.$to->toDateString().'.csv');
     }
 
     /**
@@ -91,14 +93,5 @@ class PortalReportController extends Controller
             __('This quarter') => ['from' => $now->startOfQuarter()->toDateString(), 'to' => $now->endOfQuarter()->toDateString()],
             __('Last quarter') => ['from' => $lastQuarter->startOfQuarter()->toDateString(), 'to' => $lastQuarter->endOfQuarter()->toDateString()],
         ];
-    }
-
-    private function organizationId(Request $request): string
-    {
-        $organizationId = $request->attributes->get(PortalTenant::ORG_ID);
-
-        abort_unless(is_string($organizationId), 404);
-
-        return $organizationId;
     }
 }

@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Fatoora\Services;
 
 use App\Domains\Compliance\Fatoora\Exceptions\CertificateException;
 use App\Domains\Compliance\Fatoora\Helpers\FatooraTime;
+use App\Domains\Compliance\Fatoora\Support\Der;
 use App\Support\SafeFetch;
 use Illuminate\Support\Facades\Log;
 use phpseclib3\File\X509;
@@ -87,7 +88,12 @@ class CertificateService
 
             // Use the UTC DateTimeImmutable directly
             return $details['validToUtc'] ?? new \DateTimeImmutable($details['validTo'], new \DateTimeZone('UTC'));
-        } catch (\Exception) {
+        } catch (\Exception $e) {
+            Log::warning('Certificate expiry could not be read', [
+                'exception' => $e::class,
+                'error' => $e->getMessage(),
+            ]);
+
             return null;
         }
     }
@@ -137,15 +143,15 @@ class CertificateService
         $offset++;
 
         // Skip outer SEQUENCE length
-        $offset = $this->skipAsn1Length($der, $offset);
+        $offset = Der::skipLength($der, $offset);
 
         // Skip tbsCertificate SEQUENCE
         if (ord($der[$offset]) !== 0x30) {
             throw new CertificateException('Invalid certificate: expected tbsCertificate SEQUENCE');
         }
         $offset++;
-        $tbsLength = $this->readAsn1Length($der, $offset);
-        $offset = $this->skipAsn1Length($der, $offset);
+        $tbsLength = Der::readLength($der, $offset);
+        $offset = Der::skipLength($der, $offset);
         $offset += $tbsLength;
 
         // Skip signatureAlgorithm SEQUENCE
@@ -153,8 +159,8 @@ class CertificateService
             throw new CertificateException('Invalid certificate: expected signatureAlgorithm SEQUENCE');
         }
         $offset++;
-        $algLength = $this->readAsn1Length($der, $offset);
-        $offset = $this->skipAsn1Length($der, $offset);
+        $algLength = Der::readLength($der, $offset);
+        $offset = Der::skipLength($der, $offset);
         $offset += $algLength;
 
         // Read signatureValue BIT STRING
@@ -163,8 +169,8 @@ class CertificateService
         }
         $offset++;
 
-        $sigLength = $this->readAsn1Length($der, $offset);
-        $offset = $this->skipAsn1Length($der, $offset);
+        $sigLength = Der::readLength($der, $offset);
+        $offset = Der::skipLength($der, $offset);
 
         // Skip the unused bits byte (first byte of BIT STRING content)
         $offset++;
@@ -172,45 +178,6 @@ class CertificateService
 
         // Extract the signature bytes
         return substr($der, $offset, $sigLength);
-    }
-
-    /**
-     * Read ASN.1 length field.
-     */
-    private function readAsn1Length(string $data, int $offset): int
-    {
-        $byte = ord($data[$offset]);
-
-        if ($byte < 0x80) {
-            // Short form: length is in this byte
-            return $byte;
-        }
-
-        // Long form: first byte indicates number of length bytes
-        $numBytes = $byte & 0x7F;
-        $length = 0;
-
-        for ($i = 0; $i < $numBytes; $i++) {
-            $length = ($length << 8) | ord($data[$offset + 1 + $i]);
-        }
-
-        return $length;
-    }
-
-    /**
-     * Skip past ASN.1 length field.
-     */
-    private function skipAsn1Length(string $data, int $offset): int
-    {
-        $byte = ord($data[$offset]);
-
-        if ($byte < 0x80) {
-            return $offset + 1;
-        }
-
-        $numBytes = $byte & 0x7F;
-
-        return $offset + 1 + $numBytes;
     }
 
     /**

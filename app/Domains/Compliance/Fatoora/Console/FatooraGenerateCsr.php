@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Console\Commands;
+namespace App\Domains\Compliance\Fatoora\Console;
 
-use App\Console\Commands\Concerns\WritesSecrets;
+use App\Domains\Compliance\Fatoora\Console\Concerns\WritesSecrets;
 use App\Domains\Compliance\Fatoora\DTOs\CsrData;
 use App\Domains\Compliance\Fatoora\Services\CsrBuilder;
 use Illuminate\Console\Command;

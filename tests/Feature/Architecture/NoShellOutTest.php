@@ -19,7 +19,8 @@ use RecursiveIteratorIterator;
  * error message that happens to contain the word being searched for changes
  * the verdict without anything about the certificate changing.
  *
- * Console commands are exempt. They are operator tooling, run deliberately by
+ * Console commands are exempt - a domain's Console directory, which holds its
+ * commands and the operator tooling they share. They are run deliberately by
  * someone who can read the failure, and several exist precisely to drive the
  * ZATCA Java SDK.
  */
@@ -68,7 +69,8 @@ class NoShellOutTest extends TestCase
         $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(self::DOMAINS));
 
         foreach ($it as $file) {
-            if ($file->isFile() && $file->getExtension() === 'php') {
+            if ($file->isFile() && $file->getExtension() === 'php'
+                && ! str_contains(str_replace('\\', '/', $file->getPathname()), '/Console/')) {
                 $files[] = $file->getPathname();
             }
         }

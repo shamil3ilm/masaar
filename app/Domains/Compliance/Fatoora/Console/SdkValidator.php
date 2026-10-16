@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Console;
+namespace App\Domains\Compliance\Fatoora\Console;
 
 use RuntimeException;
 

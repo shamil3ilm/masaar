@@ -8,7 +8,7 @@ use App\Domains\Compliance\Fatoora\Exceptions\CertificateException;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Services\FilingClearance;
 use App\Domains\Compliance\Fatoora\Services\OrganizationOnboarding;
-use App\Domains\Organization\Http\Middleware\PortalTenant;
+use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
@@ -28,6 +28,8 @@ use Illuminate\View\View;
  */
 class PortalZatcaController extends Controller
 {
+    use ResolvesPortalOrganization;
+
     public function __construct(
         private readonly TenantResolver $tenant,
         private readonly OrganizationOnboarding $onboarding,
@@ -142,11 +144,6 @@ class PortalZatcaController extends Controller
 
     private function organization(Request $request): Organization
     {
-        $organizationId = $request->attributes->get(PortalTenant::ORG_ID);
-
-        abort_unless(is_string($organizationId), 404);
-        abort_unless($request->user()?->roleIn($organizationId) === 'admin', 403, __('Only an administrator of this organization can connect it to ZATCA.'));
-
-        return $this->tenant->getOrganization() ?? abort(404);
+        return $this->portalOrganization($this->tenant, $request, __('Only an administrator of this organization can connect it to ZATCA.'));
     }
 }

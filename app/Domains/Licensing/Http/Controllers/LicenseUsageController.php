@@ -6,6 +6,7 @@ namespace App\Domains\Licensing\Http\Controllers;
 
 use App\Domains\Licensing\Models\License;
 use App\Domains\Licensing\Services\UsageMeteringService;
+use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -30,22 +31,19 @@ class LicenseUsageController extends Controller
     {
         $license = $this->getLicenseFromRequest($request);
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                // The column is organization_name; company_name is not one, so
-                // this field was null in every response.
-                'organization_name' => $license->organization_name,
-                'tier' => $license->tier->value,
-                'status' => $license->status->value,
-                'expires_at' => $license->expires_at?->toIso8601String(),
-                'features' => $license->features,
-                'limits' => [
-                    'invoices_per_month' => $license->invoices_per_month,
-                    'calls_per_day' => $license->calls_per_day,
-                    'calls_per_min' => $license->calls_per_min,
-                    'max_organizations' => $license->max_organizations,
-                ],
+        return ApiResponse::success([
+            // The column is organization_name; company_name is not one, so
+            // this field was null in every response.
+            'organization_name' => $license->organization_name,
+            'tier' => $license->tier->value,
+            'status' => $license->status->value,
+            'expires_at' => $license->expires_at?->toIso8601String(),
+            'features' => $license->features,
+            'limits' => [
+                'invoices_per_month' => $license->invoices_per_month,
+                'calls_per_day' => $license->calls_per_day,
+                'calls_per_min' => $license->calls_per_min,
+                'max_organizations' => $license->max_organizations,
             ],
         ]);
     }
@@ -67,10 +65,7 @@ class LicenseUsageController extends Controller
 
         $usage = $this->meteringService->getUsageSummary($license, $month);
 
-        return response()->json([
-            'success' => true,
-            'data' => $usage,
-        ]);
+        return ApiResponse::success($usage);
     }
 
     /**
@@ -92,27 +87,24 @@ class LicenseUsageController extends Controller
             ? -1
             : max(0, $license->invoices_per_month - $usage['totals']['invoices_submitted']);
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'invoices' => [
-                    'used' => $usage['totals']['invoices_submitted'],
-                    'limit' => $unlimitedInvoices ? -1 : $license->invoices_per_month,
-                    'remaining' => $invoicesRemaining,
-                    'percent_used' => $usage['utilization']['invoices_percent'],
-                    'is_unlimited' => $unlimitedInvoices,
-                ],
-                'api_calls' => [
-                    'daily_limit' => $license->isUnlimited('calls_per_day') ? -1 : $license->calls_per_day,
-                    'minute_limit' => $license->calls_per_min,
-                    'today_used' => $usage['totals']['api_calls'],
-                ],
-                'organizations' => [
-                    'limit' => $unlimitedOrganizations ? -1 : $license->max_organizations,
-                    'is_unlimited' => $unlimitedOrganizations,
-                ],
-                'success_rate' => $usage['utilization']['success_rate'],
+        return ApiResponse::success([
+            'invoices' => [
+                'used' => $usage['totals']['invoices_submitted'],
+                'limit' => $unlimitedInvoices ? -1 : $license->invoices_per_month,
+                'remaining' => $invoicesRemaining,
+                'percent_used' => $usage['utilization']['invoices_percent'],
+                'is_unlimited' => $unlimitedInvoices,
             ],
+            'api_calls' => [
+                'daily_limit' => $license->isUnlimited('calls_per_day') ? -1 : $license->calls_per_day,
+                'minute_limit' => $license->calls_per_min,
+                'today_used' => $usage['totals']['api_calls'],
+            ],
+            'organizations' => [
+                'limit' => $unlimitedOrganizations ? -1 : $license->max_organizations,
+                'is_unlimited' => $unlimitedOrganizations,
+            ],
+            'success_rate' => $usage['utilization']['success_rate'],
         ]);
     }
 
@@ -126,14 +118,11 @@ class LicenseUsageController extends Controller
         $license = $this->getLicenseFromRequest($request);
         $hasFeature = $license->hasFeature($feature);
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'feature' => $feature,
-                'available' => $hasFeature,
-                'tier' => $license->tier->value,
-                'all_features' => $hasFeature ? null : $license->features,
-            ],
+        return ApiResponse::success([
+            'feature' => $feature,
+            'available' => $hasFeature,
+            'tier' => $license->tier->value,
+            'all_features' => $hasFeature ? null : $license->features,
         ]);
     }
 
@@ -197,14 +186,11 @@ class LicenseUsageController extends Controller
             collect($issues)->contains('type', 'critical') ? 'critical' : 'warning'
         );
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'status' => $status,
-                'license_status' => $license->status->value,
-                'issues' => $issues,
-                'checked_at' => now()->toIso8601String(),
-            ],
+        return ApiResponse::success([
+            'status' => $status,
+            'license_status' => $license->status->value,
+            'issues' => $issues,
+            'checked_at' => now()->toIso8601String(),
         ]);
     }
 

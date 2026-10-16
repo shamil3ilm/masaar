@@ -6,7 +6,7 @@ namespace App\Domains\Organization\Http\Controllers;
 
 use App\Domains\Organization\DTOs\AddressFields;
 use App\Domains\Organization\DTOs\OrganizationChangesData;
-use App\Domains\Organization\Http\Middleware\PortalTenant;
+use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Rules\CompanyProfileRules;
 use App\Domains\Organization\Services\Registrar;
@@ -27,6 +27,8 @@ use Illuminate\View\View;
  */
 class PortalCompanyController extends Controller
 {
+    use ResolvesPortalOrganization;
+
     public function __construct(
         private readonly TenantResolver $tenant,
         private readonly Registrar $registrar,
@@ -97,11 +99,6 @@ class PortalCompanyController extends Controller
 
     private function organization(Request $request): Organization
     {
-        $organizationId = $request->attributes->get(PortalTenant::ORG_ID);
-
-        abort_unless(is_string($organizationId), 404);
-        abort_unless($request->user()?->roleIn($organizationId) === 'admin', 403, __('Only an administrator of this organization can change its details.'));
-
-        return $this->tenant->getOrganization() ?? abort(404);
+        return $this->portalOrganization($this->tenant, $request, __('Only an administrator of this organization can change its details.'));
     }
 }

@@ -13,8 +13,9 @@ namespace App\Domains\Compliance\Fatoora\Support;
  * names are the taxpayer's registration details. Producing them means writing
  * the bytes.
  *
- * Encoding only. The lengths are short-form under 128 and long-form above,
- * which is all a request of this size needs.
+ * The lengths are short-form under 128 and long-form above, which is all a
+ * request of this size needs. Reading goes no further than a length field:
+ * enough to walk a certificate or a timestamp response by hand.
  */
 final class Der
 {
@@ -100,7 +101,10 @@ final class Der
         return chr($tag).self::length(strlen($body)).$body;
     }
 
-    private static function length(int $length): string
+    /**
+     * A length field for a body of $length bytes.
+     */
+    public static function length(int $length): string
     {
         if ($length < 0x80) {
             return chr($length);
@@ -114,5 +118,40 @@ final class Der
         }
 
         return chr(0x80 | strlen($bytes)).$bytes;
+    }
+
+    /**
+     * The length the field at $offset declares.
+     */
+    public static function readLength(string $data, int $offset): int
+    {
+        $byte = ord($data[$offset]);
+
+        if ($byte < 0x80) {
+            return $byte;
+        }
+
+        $numBytes = $byte & 0x7F;
+        $length = 0;
+
+        for ($i = 0; $i < $numBytes; $i++) {
+            $length = ($length << 8) | ord($data[$offset + 1 + $i]);
+        }
+
+        return $length;
+    }
+
+    /**
+     * The offset just past the length field at $offset.
+     */
+    public static function skipLength(string $data, int $offset): int
+    {
+        $byte = ord($data[$offset]);
+
+        if ($byte < 0x80) {
+            return $offset + 1;
+        }
+
+        return $offset + 1 + ($byte & 0x7F);
     }
 }
