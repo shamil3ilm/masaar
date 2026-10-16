@@ -7,7 +7,7 @@ A multi-jurisdiction e-invoicing compliance API platform for GCC businesses.
 | Country | Authority | System | Status |
 |---------|-----------|--------|--------|
 | 🇸🇦 Saudi Arabia | ZATCA | Fatoora Phase 2 | 🟡 Passes ZATCA's SDK validator — schema, EN 16931, Schematron and, signed with the authority's own certificate, its certificate, QR, signed-properties digest and PIH checks — and ZATCA's developer sandbox accepts the full onboarding round trip. Simulation and production need a registered taxpayer, see [Conformance](#conformance) |
-| 🇦🇪 UAE | FTA | Peppol PINT AE | 🚧 In development |
+| 🇦🇪 UAE | Ministry of Finance / FTA | Peppol PINT AE, through an accredited service provider | 🚧 In development — tax, commercial and self-billed invoices and credit notes pass the official PINT AE rules, and drafting, sending and receiving through a service provider are built and tested. Not yet released: the portal screens remain, and no service provider is connected yet |
 | 🇶🇦 Qatar | GTA | — | 📋 Planned |
 
 > **Production readiness.** The Saudi pipeline — UBL generation, ICV/PIH hash
@@ -46,7 +46,7 @@ billing, the support desk, and filing-deadline alerts across every taxpayer.
 ├── app/             ← Compliance API (Laravel 12, PHP 8.4), by domain
 └── docs/
     ├── sa/          ← Saudi Arabia (Fatoora) documentation
-    ├── ae/          ← UAE (FTA) documentation
+    ├── ae/          ← UAE (Peppol PINT AE) documentation
     ├── qa/          ← Qatar (GTA) documentation — planned
     └── architecture/ ← Platform design docs
 ```
@@ -205,7 +205,7 @@ The remaining commands are operator tools rather than scheduled work:
 - [Saudi Arabia - implementation status](docs/sa/STATUS.md) - what has been
   established against the authority, what has not, and what is blocked on a
   registered taxpayer
-- [UAE (FTA)](docs/ae/README.md)
+- [UAE (Peppol PINT AE)](docs/ae/README.md)
 - [Qatar (GTA)](docs/qa/README.md)
 - [Adding a Jurisdiction](docs/architecture/ADDING-A-JURISDICTION.md)
 - [Backup and restore](docs/BACKUP-AND-RESTORE.md)
