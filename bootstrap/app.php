@@ -38,6 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
     // registered and anything scheduling them fails silently.
     ->withCommands([
         __DIR__.'/../app/Domains/Licensing/Console',
+        __DIR__.'/../app/Domains/Billing/Console',
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         // Single source of truth. AppServiceProvider::boot() reasserts these

@@ -9,7 +9,10 @@
         <span>/</span>
         <span>{{ $organization->name }}</span>
     </div>
-    <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">{{ $organization->name }}</h2>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">{{ $organization->name }}</h2>
+        <x-ui.button variant="outline" :href="route('admin.billing.show', $organization->id)">Plan and billing</x-ui.button>
+    </div>
 </div>
 
 @if (in_array($organization->status, ['pending_review', 'rejected'], true))

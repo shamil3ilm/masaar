@@ -62,6 +62,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Manual billing**: on an organization's Plan and billing page, an Owner or
+  Operations admin records a payment (`billing.manage`). It renews the plan
+  from its current end - from today once it has lapsed - and can change it.
+  The platform invoices each payment through ZATCA from the organization
+  `BILLING_ORGANIZATION_ID` names. Customers see their plan, this month's
+  usage and their payments' invoices under Plan and billing, and their admins
+  are emailed 14 and 3 days before it ends. Plan prices are
+  `BILLING_PRICE_*` settings.
 - **Invoice PDFs**: an issued invoice downloads as a bilingual PDF/A-3 with
   its XML embedded - from the portal, and from `GET /api/invoices/{id}/pdf`
   (409 for a draft or an uncleared standard invoice). The portal also emails

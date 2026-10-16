@@ -6,6 +6,8 @@ use App\Domains\Auth\Http\Controllers\PasswordResetController;
 use App\Domains\Auth\Http\Controllers\SessionAuthController;
 use App\Domains\Auth\Http\Controllers\SignupController;
 use App\Domains\Auth\Http\Controllers\TwoFactorController;
+use App\Domains\Billing\Http\Controllers\AdminBillingController;
+use App\Domains\Billing\Http\Controllers\PortalBillingController;
 use App\Domains\Branding\Http\Controllers\AdminBrandingController;
 use App\Domains\Branding\Http\Controllers\PortalBrandingController;
 use App\Domains\Branding\Http\Controllers\ThemeAssetController;
@@ -192,11 +194,16 @@ Route::prefix('admin')->name('admin.')
     // It also makes the ordering of /licences/create above /licences/{id}
     // a convenience rather than a requirement: "create" is not a UUID, so it
     // can no longer be swallowed as one if the lines are ever reordered.
-    ->whereUuid(['id', 'licenceId', 'webhookId', 'logId', 'userId', 'ticketId', 'attachmentId'])
+    ->whereUuid(['id', 'licenceId', 'webhookId', 'logId', 'userId', 'ticketId', 'attachmentId', 'paymentId'])
     ->group(function () {
         Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
         Route::get('/organizations', [AdminController::class, 'organizations'])->name('organizations');
         Route::get('/organizations/{id}', [AdminController::class, 'organizationDetail'])->name('organization.detail');
+        // A plan's payments. Recording one renews the plan and invoices it.
+        Route::get('/organizations/{id}/billing', [AdminBillingController::class, 'show'])->name('billing.show');
+        Route::post('/organizations/{id}/billing', [AdminBillingController::class, 'record'])->middleware('admin.can:billing.manage')->name('billing.record');
+        Route::post('/organizations/{id}/billing/{paymentId}/invoice', [AdminBillingController::class, 'invoice'])->middleware('admin.can:billing.manage')->name('billing.invoice');
+        Route::get('/organizations/{id}/billing/{paymentId}/pdf', [AdminBillingController::class, 'download'])->name('billing.download');
         // A business that signed itself up: approve it and assign its plan,
         // or turn it down with a reason. Either way its admins are emailed.
         Route::post('/organizations/{id}/approve', [AdminOrganizationReviewController::class, 'approve'])->middleware('admin.can:organizations.review')->name('organizations.approve');
@@ -302,7 +309,7 @@ Route::prefix('portal')->name('portal.')
     // org.two_factor: an organization that requires a second factor sends
     // anyone without one to set it up first.
     ->middleware(['auth', 'auth.session', 'verified', 'portal.tenant', 'org.two_factor', 'org.writer'])
-    ->whereUuid(['invoiceId', 'userId', 'invitationId', 'ticketId', 'attachmentId', 'customerId', 'productId'])
+    ->whereUuid(['invoiceId', 'userId', 'invitationId', 'ticketId', 'attachmentId', 'customerId', 'productId', 'paymentId'])
     ->group(function () {
         Route::get('/', [CustomerPortalController::class, 'dashboard'])->name('dashboard');
         // Invoices. {invoiceId} rather than {invoice}: route model binding
@@ -346,6 +353,10 @@ Route::prefix('portal')->name('portal.')
         Route::get('/products/{productId}', [PortalProductController::class, 'edit'])->name('products.edit');
         Route::post('/products/{productId}', [PortalProductController::class, 'update'])->name('products.update');
         Route::post('/products/{productId}/archive', [PortalProductController::class, 'archive'])->name('products.archive');
+
+        // The plan, its usage and its payments. Administrators only.
+        Route::get('/billing', [PortalBillingController::class, 'show'])->name('billing');
+        Route::get('/billing/{paymentId}/invoice', [PortalBillingController::class, 'download'])->name('billing.invoice');
 
         // Support tickets: everyone in the organization sees its tickets.
         Route::get('/support', [PortalSupportController::class, 'index'])->name('support.index');

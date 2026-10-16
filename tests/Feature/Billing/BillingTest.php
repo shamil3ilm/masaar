@@ -1,0 +1,232 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature\Billing;
+
+use App\Domains\Auth\Models\User;
+use App\Domains\Billing\Mail\RenewalReminderMail;
+use App\Domains\Billing\Models\Payment;
+use App\Domains\Billing\Services\RenewalReminders;
+use App\Domains\Compliance\Fatoora\DTOs\IssueOutcome;
+use App\Domains\Compliance\Fatoora\Services\InvoiceIssuer;
+use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Licensing\Enums\LicenseStatus;
+use App\Domains\Licensing\Enums\LicenseTier;
+use App\Domains\Licensing\Models\License;
+use App\Domains\Organization\Models\Organization;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Testing\TestResponse;
+use Tests\TestCase;
+
+/**
+ * Payments recorded by hand: renewing the plan, and the platform invoicing
+ * them through itself.
+ */
+class BillingTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private Organization $acme;
+
+    private License $licence;
+
+    private User $operations;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->acme = Organization::create([
+            'name' => 'Acme Trading',
+            'country' => 'SA',
+            'vat_number' => '310122393500003',
+            'street' => 'King Fahd Road',
+            'building_number' => '1234',
+            'district' => 'Olaya',
+            'city' => 'Riyadh',
+            'postal_code' => '12345',
+        ]);
+
+        $this->licence = License::createWithCredentials([
+            'org_id' => $this->acme->id,
+            'organization_name' => 'Acme Trading',
+            'contact_email' => 'ops@acme.test',
+            'tier' => LicenseTier::Starter,
+            'status' => LicenseStatus::Active,
+            'expires_at' => now()->addDays(10),
+        ])['license'];
+
+        $this->operations = $this->admin('operations');
+    }
+
+    /**
+     * Paying before the end adds the months after the current end, not after
+     * today: renewing early loses nothing.
+     */
+    public function test_a_payment_renews_the_plan(): void
+    {
+        $end = $this->licence->expires_at->copy();
+
+        $this->record()->assertRedirect(route('admin.billing.show', $this->acme->id));
+
+        $this->assertSame($end->copy()->addMonths(12)->toDateString(), $this->licence->fresh()->expires_at->toDateString());
+
+        $payment = Payment::withoutTenantScope(fn () => Payment::query()->firstOrFail());
+        $this->assertSame('6000.00', (string) $payment->amount);
+        $this->assertSame('900.00', (string) $payment->vat_amount);
+        $this->assertSame('6900.00', (string) $payment->total);
+        $this->assertSame($end->toDateString(), $payment->period_start->toDateString());
+    }
+
+    /**
+     * Paying late buys time from today, and the lapsed plan works again.
+     */
+    public function test_a_lapsed_plan_restarts_today(): void
+    {
+        $this->licence->forceFill(['expires_at' => now()->subDays(20), 'status' => LicenseStatus::Expired])->save();
+
+        $this->record(['months' => 1]);
+
+        $fresh = $this->licence->fresh();
+        $this->assertSame(LicenseStatus::Active, $fresh->status);
+        $this->assertSame(now()->addMonth()->toDateString(), $fresh->expires_at->toDateString());
+    }
+
+    public function test_a_payment_can_change_plan(): void
+    {
+        $this->record(['tier' => 'professional']);
+
+        $this->assertSame(LicenseTier::Professional, $this->licence->fresh()->tier);
+    }
+
+    public function test_a_suspended_plan_is_not_renewed(): void
+    {
+        $this->licence->forceFill(['status' => LicenseStatus::Suspended])->save();
+
+        $this->record()->assertSessionHas('error');
+
+        $this->assertSame(0, Payment::withoutTenantScope(fn () => Payment::query()->count()));
+    }
+
+    public function test_support_cannot_record_payments(): void
+    {
+        $this->actingAs($this->admin('support'))
+            ->post(route('admin.billing.record', $this->acme->id), $this->payment())
+            ->assertForbidden();
+    }
+
+    /**
+     * No billing organization: the payment still counts, and says why it has
+     * no invoice.
+     */
+    public function test_no_billing_organization_is_explained(): void
+    {
+        config(['billing.organization_id' => null]);
+
+        $this->record()->assertSessionHas('error');
+
+        $payment = Payment::withoutTenantScope(fn () => Payment::query()->firstOrFail());
+        $this->assertNull($payment->invoice_id);
+        $this->assertStringContainsString('BILLING_ORGANIZATION_ID', (string) $payment->invoice_error);
+    }
+
+    /**
+     * With one, the platform invoices the payer from its own organization.
+     */
+    public function test_the_platform_invoices_the_payment(): void
+    {
+        $platform = Organization::create([
+            'name' => 'Masaar Platform',
+            'country' => 'SA',
+            'vat_number' => '300000000000003',
+            'compliance_profile' => ['zatca_onboarded' => true],
+        ]);
+        config(['billing.organization_id' => $platform->id]);
+        $this->mock(InvoiceIssuer::class, fn ($mock) => $mock->shouldReceive('issue')->once()->andReturn(IssueOutcome::issuedOnly()));
+
+        $this->record()->assertSessionHas('success');
+
+        $payment = Payment::withoutTenantScope(fn () => Payment::query()->firstOrFail());
+        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->with('lines')->findOrFail($payment->invoice_id));
+
+        $this->assertSame($platform->id, $invoice->org_id);
+        $this->assertSame('Acme Trading', $invoice->buyer_name);
+        $this->assertSame('310122393500003', $invoice->buyer_vat_number);
+        $this->assertSame('6000.00', (string) $invoice->subtotal);
+        $this->assertSame('900.00', (string) $invoice->tax_amount);
+    }
+
+    public function test_the_portal_shows_the_plan(): void
+    {
+        $this->record();
+        $owner = User::factory()->create();
+        $owner->organizations()->attach($this->acme->id, ['role' => 'admin', 'status' => 'active']);
+
+        $this->actingAs($owner)->withSession(['portal_org_id' => $this->acme->id])
+            ->get(route('portal.billing'))
+            ->assertOk()
+            ->assertSee('Starter')
+            ->assertSee('6,900.00 SAR');
+    }
+
+    public function test_a_member_cannot_see_billing(): void
+    {
+        $member = User::factory()->create();
+        $member->organizations()->attach($this->acme->id, ['role' => 'member', 'status' => 'active']);
+
+        $this->actingAs($member)->withSession(['portal_org_id' => $this->acme->id])
+            ->get(route('portal.billing'))
+            ->assertForbidden();
+    }
+
+    public function test_admins_are_reminded_before_the_end(): void
+    {
+        Mail::fake();
+        $owner = User::factory()->create(['email' => 'owner@acme.test']);
+        $owner->organizations()->attach($this->acme->id, ['role' => 'admin', 'status' => 'active']);
+        $this->licence->forceFill(['expires_at' => now()->addDays(14)->setTime(12, 0)])->save();
+
+        $this->assertSame(1, app(RenewalReminders::class)->send());
+
+        Mail::assertSent(RenewalReminderMail::class, fn (RenewalReminderMail $mail): bool => $mail->hasTo('owner@acme.test') && $mail->days === 14);
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     */
+    private function record(array $overrides = []): TestResponse
+    {
+        return $this->actingAs($this->operations)
+            ->post(route('admin.billing.record', $this->acme->id), $this->payment($overrides));
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    private function payment(array $overrides = []): array
+    {
+        return array_merge([
+            'tier' => 'starter',
+            'months' => 12,
+            'amount' => '6000',
+            'method' => 'bank_transfer',
+            'reference' => 'TRF-1001',
+            'paid_at' => now()->toDateString(),
+        ], $overrides);
+    }
+
+    private function admin(string $role): User
+    {
+        $admin = User::factory()->create(['is_platform_admin' => true, 'platform_role' => $role]);
+        $admin->forceFill([
+            'two_factor_secret' => 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
+            'two_factor_recovery_codes' => [],
+            'two_factor_confirmed_at' => now(),
+        ])->save();
+
+        return $admin;
+    }
+}
