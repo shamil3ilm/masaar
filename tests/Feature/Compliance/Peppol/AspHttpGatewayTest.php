@@ -89,10 +89,12 @@ class AspHttpGatewayTest extends TestCase
     {
         Http::fake([
             self::BASE.'/oauth/token' => Http::response(['access_token' => 'token-1']),
-            self::BASE.'/documents' => Http::sequence()->push([], 429)->push([], 503)->push([], 401),
+            // 409 is a retry meeting its own idempotency key: the document
+            // may already be on the network, so it is not a refusal.
+            self::BASE.'/documents' => Http::sequence()->push([], 429)->push([], 503)->push([], 401)->push([], 409),
         ]);
 
-        foreach ([429, 503, 401] as $status) {
+        foreach ([429, 503, 401, 409] as $status) {
             try {
                 $this->gateway()->submit($this->document());
                 $this->fail("HTTP {$status} is no verdict.");

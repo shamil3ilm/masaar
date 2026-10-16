@@ -62,6 +62,9 @@ final class DocumentStatus
         self::SENT => [self::DELIVERED, self::REJECTED, self::REPORTED],
         self::DELIVERED => [self::REPORTED],
         self::REPORTED => [self::REJECTED],
+        // Back to ready only by an operator (peppol:resend), once whatever
+        // stopped every attempt - credentials, an outage - is fixed.
+        self::FAILED => [self::READY],
     ];
 
     /**

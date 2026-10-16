@@ -183,6 +183,35 @@ class SenderTest extends TestCase
     /**
      * @param  array<string, mixed>  $overrides
      */
+    /**
+     * Failed is not final for an operator: once the cause is fixed the
+     * document starts again from its first attempt.
+     */
+    public function test_failed_document_can_be_resent(): void
+    {
+        Queue::fake();
+        $document = $this->readyDocument(['status' => 'failed', 'attempts' => PeppolSender::MAX_ATTEMPTS, 'last_error' => 'HTTP 401']);
+
+        $this->artisan('peppol:resend', ['document' => $document->id])->assertSuccessful();
+
+        $document->refresh();
+        $this->assertSame('ready', $document->status);
+        $this->assertSame(0, $document->attempts);
+        $this->assertNull($document->last_error);
+        Queue::assertPushed(SendPeppolDocument::class, fn (SendPeppolDocument $job) => $job->documentId === $document->id);
+    }
+
+    public function test_only_failed_documents_are_resent(): void
+    {
+        Queue::fake();
+        $document = $this->readyDocument(['status' => 'sent', 'asp_message_id' => 'msg-1']);
+
+        $this->artisan('peppol:resend', ['document' => $document->id])->assertFailed();
+
+        $this->assertSame('sent', $document->fresh()->status);
+        Queue::assertNothingPushed();
+    }
+
     private function readyDocument(array $overrides = []): PeppolDocument
     {
         $organization = Organization::create(['name' => 'Gulf Trading', 'country' => 'AE']);

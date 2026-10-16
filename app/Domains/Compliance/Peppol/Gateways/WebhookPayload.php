@@ -20,6 +20,8 @@ use Illuminate\Validation\ValidationException;
  */
 final class WebhookPayload
 {
+    private const MAX_DOCUMENT_CHARS = 18_000_000;
+
     /**
      * @throws ValidationException
      */
@@ -62,7 +64,9 @@ final class WebhookPayload
     {
         $data = Validator::make($request->json()->all(), [
             'message_id' => ['required', 'string', 'max:255'],
-            'document' => ['required', 'string'],
+            // Base64 of the XML: about 13 MB of document, far above any
+            // invoice, and a bound on what one callback can make this store.
+            'document' => ['required', 'string', 'max:'.self::MAX_DOCUMENT_CHARS],
             'sender' => ['required', 'string', 'max:255'],
             'receiver' => ['required', 'string', 'max:255'],
         ])->validate();

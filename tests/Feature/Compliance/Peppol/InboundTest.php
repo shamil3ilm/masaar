@@ -61,6 +61,38 @@ class InboundTest extends TestCase
     }
 
     /**
+     * One provider can give a sent and a received document the same id. The
+     * sender's row must not be taken for the receiver's, or the received
+     * invoice is never stored.
+     */
+    public function test_sent_id_does_not_hide_received(): void
+    {
+        $seller = $this->organizationAt('0235:1000000001');
+        $buyer = $this->organizationAt('0235:1000000002');
+
+        PeppolDocument::withoutTenantScope(fn () => PeppolDocument::create([
+            'org_id' => $seller->id,
+            'direction' => PeppolDocument::DIRECTION_OUT,
+            'country' => 'AE',
+            'customization_id' => 'urn:peppol:pint:billing-1@ae-1',
+            'profile_id' => 'urn:peppol:bis:billing',
+            'document_type' => 'Invoice',
+            'xml' => self::XML,
+            'status' => 'sent',
+            'asp_message_id' => 'msg-shared',
+        ]));
+
+        $id = $this->deliver('msg-shared', 'iso6523-actorid-upis::0235:1000000002')
+            ->assertOk()
+            ->json('data.id');
+
+        $received = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->findOrFail($id));
+        $this->assertSame($buyer->id, $received->org_id);
+        $this->assertSame('in', $received->direction);
+        $this->assertSame(2, PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->where('asp_message_id', 'msg-shared')->count()));
+    }
+
+    /**
      * The provider retries a callback it thinks failed.
      */
     public function test_redelivery_is_stored_once(): void

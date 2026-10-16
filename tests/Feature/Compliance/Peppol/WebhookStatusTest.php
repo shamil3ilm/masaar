@@ -95,7 +95,10 @@ class WebhookStatusTest extends TestCase
         $this->assertFalse($status->allows('delivered', 'sent'));
         $this->assertFalse($status->allows('reported', 'delivered'));
         $this->assertFalse($status->allows('delivered', 'rejected'));
-        $this->assertFalse($status->allows('failed', 'ready'));
+        // Only back to ready, which no provider status maps to: the one way
+        // out of failed is an operator's peppol:resend.
+        $this->assertTrue($status->allows('failed', 'ready'));
+        $this->assertFalse($status->allows('failed', 'sent'));
         $this->assertFalse($status->allows('ready', 'sent'));
         $this->assertFalse($status->allows('received', 'sent'));
     }

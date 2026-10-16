@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Log;
  * call and outside any transaction during it, so two workers cannot both
  * send it and no lock is held while the provider thinks. Once the provider
  * gives it a message id it is 'sent' and never claimed again; the unique
- * index on asp_message_id backs that up.
+ * index on direction and asp_message_id backs that up.
  *
  * A document left in 'sending' by a worker that died mid-call may already be
  * with the provider. It is not sent again: the provider would file it twice.
@@ -105,6 +105,31 @@ final class PeppolSender
         ]);
 
         return false;
+    }
+
+    /**
+     * Try a failed document again, from its first attempt.
+     *
+     * For an operator, once whatever failed every attempt - credentials, an
+     * outage - is fixed. Safe to repeat: the document keeps its id, which is
+     * the idempotency key the provider de-duplicates on.
+     *
+     * @return bool whether it was failed and is now queued
+     */
+    public function resend(string $documentId): bool
+    {
+        $document = $this->status->transition($documentId, DocumentStatus::READY, [
+            'attempts' => 0,
+            'last_error' => null,
+        ], from: DocumentStatus::FAILED);
+
+        if ($document === null) {
+            return false;
+        }
+
+        $this->queue($document);
+
+        return true;
     }
 
     /**

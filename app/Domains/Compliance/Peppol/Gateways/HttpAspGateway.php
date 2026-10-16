@@ -51,8 +51,15 @@ final class HttpAspGateway implements AspGateway
 
     private const TIMEOUT = 30;
 
-    /** Statuses that are no verdict on the document. */
-    private const NO_VERDICT = [401, 403, 408, 425, 429];
+    /**
+     * Statuses that are no verdict on the document.
+     *
+     * 409 among them: a retry carries the first attempt's idempotency key, and
+     * a provider answers a key it has already seen with a conflict. Reading
+     * that as a refusal marked a delivered invoice rejected and invited the
+     * seller to issue it again.
+     */
+    private const NO_VERDICT = [401, 403, 408, 409, 425, 429];
 
     /**
      * Read by SafeUrl and deliberately unset: the operator chose this one

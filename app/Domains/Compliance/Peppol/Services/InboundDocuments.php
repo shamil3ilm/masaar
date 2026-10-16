@@ -95,7 +95,12 @@ final class InboundDocuments
 
     private function stored(string $messageId): ?PeppolDocument
     {
+        // Received documents only. One provider can give a document the same
+        // id going out from one tenant and coming in to another, and matching
+        // the sender's row here answered the receiver's callback with it, so
+        // the received invoice was never stored.
         return PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()
+            ->where('direction', PeppolDocument::DIRECTION_IN)
             ->where('asp_message_id', $messageId)
             ->first());
     }
