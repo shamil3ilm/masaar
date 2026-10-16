@@ -63,10 +63,6 @@ class UaeDocumentController extends Controller
     {
         $found = $this->documents->find($this->tenant->getOrganizationId(), $document);
 
-        return response((string) $found->xml, 200, [
-            'Content-Type' => 'application/xml',
-            'Content-Disposition' => 'attachment; filename="peppol-'.$found->direction.'-'.$found->id.'.xml"',
-            'X-Content-Type-Options' => 'nosniff',
-        ]);
+        return response((string) $found->xml, 200, UaeDocuments::xmlHeaders($found));
     }
 }

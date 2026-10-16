@@ -6,6 +6,7 @@ namespace App\Domains\Organization\Services;
 
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Services\FilingClearance;
+use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Models\InvoiceSequence;
@@ -26,6 +27,7 @@ class SetupChecklist
 {
     public function __construct(
         private readonly FilingClearance $clearance,
+        private readonly UaeSellerDetails $uae,
     ) {}
 
     /**
@@ -34,6 +36,19 @@ class SetupChecklist
     public function steps(Organization $organization): array
     {
         $id = (string) $organization->id;
+
+        // A UAE organization never onboards with ZATCA. Its seller details
+        // and the Peppol endpoint its service provider issued are what its
+        // documents need, and an issued invoice has no hash.
+        if ($organization->country === 'AE') {
+            return [
+                ['key' => 'uae_company', 'done' => $this->uae->complete($organization), 'required' => true, 'route' => 'portal.company.edit'],
+                ['key' => 'approved', 'done' => $this->approved($organization), 'required' => true, 'route' => null],
+                ['key' => 'numbering', 'done' => $this->numbered($id), 'required' => false, 'route' => 'portal.numbering.edit'],
+                ['key' => 'catalogue', 'done' => $this->catalogued($id), 'required' => false, 'route' => 'portal.customers.index'],
+                ['key' => 'uae_invoice', 'done' => $this->issued($id), 'required' => true, 'route' => 'portal.invoices.create'],
+            ];
+        }
 
         return [
             ['key' => 'company', 'done' => $organization->hasCompleteZatcaProfile(), 'required' => true, 'route' => 'portal.company.edit'],
@@ -93,5 +108,11 @@ class SetupChecklist
     private function invoiced(string $organizationId): bool
     {
         return Invoice::withoutTenantScope(fn () => Invoice::query()->where('org_id', $organizationId)->whereNotNull('hash')->exists());
+    }
+
+    /** Any invoice past draft: a UAE invoice is issued without a hash. */
+    private function issued(string $organizationId): bool
+    {
+        return Invoice::withoutTenantScope(fn () => Invoice::query()->where('org_id', $organizationId)->where('status', '!=', InvoiceStatus::Draft->value)->exists());
     }
 }

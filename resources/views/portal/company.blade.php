@@ -3,6 +3,9 @@
 @section('title', __('Company'))
 
 @section('content')
+@if (($uae ?? null) !== null)
+    @include('portal.partials.company-uae', ['organization' => $organization, 'uae' => $uae])
+@else
 <div class="mb-6">
     <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">{{ __('Company') }}</h2>
     <p class="text-gray-500 dark:text-gray-400">
@@ -98,6 +101,7 @@
 
     <x-ui.button variant="primary">{{ __('Save company details') }}</x-ui.button>
 </form>
+@endif
 
 <form method="POST" action="{{ route('portal.company.security') }}" class="mt-8 rounded-lg bg-white dark:bg-gray-900 shadow">
     @csrf

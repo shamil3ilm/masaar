@@ -14,6 +14,8 @@ use App\Domains\Branding\Http\Controllers\ThemeAssetController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\AdminAlertController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\AdminKillSwitchController;
 use App\Domains\Compliance\Fatoora\Http\Controllers\PortalZatcaController;
+use App\Domains\Compliance\Peppol\Http\Controllers\PortalReceivedController;
+use App\Domains\Compliance\Peppol\Http\Controllers\PortalUaeInvoiceController;
 use App\Domains\Invoice\Http\Controllers\PortalCustomerController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceDocumentController;
@@ -321,7 +323,7 @@ Route::prefix('portal')->name('portal.')
     // org.two_factor: an organization that requires a second factor sends
     // anyone without one to set it up first.
     ->middleware(['auth', 'auth.session', 'verified', 'portal.tenant', 'org.two_factor', 'org.writer'])
-    ->whereUuid(['invoiceId', 'userId', 'invitationId', 'ticketId', 'attachmentId', 'customerId', 'productId', 'paymentId'])
+    ->whereUuid(['invoiceId', 'userId', 'invitationId', 'ticketId', 'attachmentId', 'customerId', 'productId', 'paymentId', 'documentId'])
     ->group(function () {
         Route::get('/', [CustomerPortalController::class, 'dashboard'])->name('dashboard');
         // Invoices. {invoiceId} rather than {invoice}: route model binding
@@ -345,6 +347,16 @@ Route::prefix('portal')->name('portal.')
         // The PDF the buyer keeps, and sending it to them.
         Route::get('/invoices/{invoiceId}/pdf', [PortalInvoiceDocumentController::class, 'download'])->name('invoices.pdf');
         Route::post('/invoices/{invoiceId}/send', [PortalInvoiceDocumentController::class, 'send'])->middleware('throttle:20,1')->name('invoices.send');
+
+        // UAE e-invoicing: the UAE invoice form's draft, the e-invoice an
+        // issued invoice was sent as, and invoices other suppliers sent. A
+        // UAE organization's only, on a deployment that offers it; anyone
+        // else gets a 404 (UaePortal).
+        Route::post('/invoices/uae', [PortalUaeInvoiceController::class, 'store'])->name('invoices.uae.store');
+        Route::get('/invoices/{invoiceId}/e-invoice', [PortalUaeInvoiceController::class, 'xml'])->name('invoices.xml');
+        Route::get('/received', [PortalReceivedController::class, 'index'])->name('received.index');
+        Route::get('/received/{documentId}', [PortalReceivedController::class, 'show'])->name('received.show');
+        Route::get('/received/{documentId}/xml', [PortalReceivedController::class, 'xml'])->name('received.xml');
 
         Route::get('/submissions', [CustomerPortalController::class, 'submissions'])->name('submissions');
         Route::get('/certificates', [CustomerPortalController::class, 'certificates'])->name('certificates');

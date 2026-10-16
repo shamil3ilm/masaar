@@ -7,8 +7,8 @@ namespace App\Domains\Compliance\Peppol\Http\Controllers;
 use App\Domains\Compliance\Exceptions\IssuanceRefusedException;
 use App\Domains\Compliance\Peppol\Http\Requests\CreateUaeInvoiceRequest;
 use App\Domains\Compliance\Peppol\Services\UaeDocuments;
+use App\Domains\Compliance\Peppol\Services\UaeDrafts;
 use App\Domains\Compliance\Peppol\Services\UaeInvoiceIssuer;
-use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
@@ -27,7 +27,7 @@ class UaeInvoiceController extends Controller
 {
     public function __construct(
         private readonly TenantResolver $tenant,
-        private readonly InvoiceDrafter $drafter,
+        private readonly UaeDrafts $drafts,
         private readonly InvoiceFinder $invoices,
         private readonly UaeInvoiceIssuer $issuer,
         private readonly UaeDocuments $documents,
@@ -38,11 +38,7 @@ class UaeInvoiceController extends Controller
      */
     public function store(CreateUaeInvoiceRequest $request): JsonResponse
     {
-        $invoice = $this->drafter->draft(
-            $request->invoice(),
-            (string) $this->tenant->getOrganizationId(),
-            countryFields: $request->jurisdictionFields(),
-        );
+        $invoice = $this->drafts->draft($request, (string) $this->tenant->getOrganizationId());
 
         return ApiResponse::created(['invoice' => $invoice->load('lines')], 'Invoice created');
     }

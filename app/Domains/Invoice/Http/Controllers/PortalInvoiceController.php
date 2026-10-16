@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Http\Controllers;
 
+use App\Domains\Compliance\Peppol\Services\UaeDocuments;
 use App\Domains\Invoice\Services\Catalogue;
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
@@ -44,6 +45,7 @@ class PortalInvoiceController extends Controller
         private readonly Membership $membership,
         private readonly InvoiceFinder $invoices,
         private readonly Catalogue $catalogue,
+        private readonly UaeDocuments $documents,
     ) {}
 
     public function index(Request $request): View
@@ -84,10 +86,16 @@ class PortalInvoiceController extends Controller
             abort(404);
         }
 
+        $organization = $this->tenant->getOrganization();
+        // A UAE organization's invoice has a Peppol document, not a ZATCA hash.
+        $uae = $organization?->country === 'AE';
+
         return view('portal.invoices.show', [
-            'organization' => $this->tenant->getOrganization(),
+            'organization' => $organization,
             'invoice' => $invoice,
             'sendTo' => $this->catalogue->emailFor((string) $orgId, $invoice->buyer_vat_number),
+            'uae' => $uae,
+            'document' => $uae ? $this->documents->outboundFor((string) $orgId, (string) $invoice->id) : null,
         ]);
     }
 

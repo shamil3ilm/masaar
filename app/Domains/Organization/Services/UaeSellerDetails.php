@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Services;
 
+use App\Domains\Compliance\Peppol\Profiles\PintAe;
 use App\Domains\Organization\DTOs\AddressFields;
 use App\Domains\Organization\DTOs\OrganizationChangesData;
 use App\Domains\Organization\Models\ComplianceProfile;
@@ -89,6 +90,47 @@ class UaeSellerDetails
 
             return $profile;
         });
+    }
+
+    /**
+     * The UAE settings as they are stored, for the company page to show.
+     *
+     * @return array<string, string|null>
+     */
+    public function current(Organization $organization): array
+    {
+        $settings = (array) ($this->profile($organization)?->settings ?? []);
+
+        return array_map(
+            fn (string $key): ?string => self::text($settings[$key] ?? null),
+            array_combine(self::SETTINGS, self::SETTINGS),
+        );
+    }
+
+    /**
+     * Whether every detail a document needs from the seller is here: the
+     * name and address with its emirate, a TRN or TIN, the endpoint the
+     * service provider issued and the legal registration.
+     */
+    public function complete(Organization $organization): bool
+    {
+        $settings = $this->current($organization);
+
+        return filled($organization->name)
+            && filled($organization->street)
+            && filled($organization->city)
+            && in_array($settings['emirate'], PintAe::EMIRATES, true)
+            && ($settings['trn'] !== null || $settings['tin'] !== null)
+            && preg_match('/^'.PintAe::SCHEME.':\d{10}$/', (string) $settings['endpoint_id']) === 1
+            && $settings['legal_registration_type'] !== null
+            && $settings['legal_registration_id'] !== null;
+    }
+
+    private function profile(Organization $organization): ?ComplianceProfile
+    {
+        return $organization->complianceProfiles()
+            ->where('jurisdiction', self::JURISDICTION)
+            ->first();
     }
 
     private static function text(mixed $value): ?string

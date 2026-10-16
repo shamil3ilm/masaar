@@ -62,4 +62,23 @@ class Product extends Model
             'class_code' => '',
         ];
     }
+
+    /**
+     * What a UAE invoice line is filled with: the product's name is the
+     * line's item name, and a product with a rate is standard-rated at it.
+     *
+     * @return array<string, string>
+     */
+    public function uaeLineFields(): array
+    {
+        $rated = (float) $this->tax_rate > 0;
+
+        return [
+            'item_name' => (string) $this->name,
+            'unit_price' => (string) $this->unit_price,
+            'unit_code' => (string) $this->unit_code,
+            'tax_category' => $rated ? 'S' : 'Z',
+            'tax_rate' => (string) (float) $this->tax_rate,
+        ];
+    }
 }

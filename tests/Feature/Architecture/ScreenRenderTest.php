@@ -7,6 +7,7 @@ namespace Tests\Feature\Architecture;
 use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Compliance\Fatoora\Models\OfflineItem;
+use App\Domains\Compliance\Peppol\Models\PeppolDocument;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Models\Product;
@@ -80,7 +81,23 @@ class ScreenRenderTest extends TestCase
         // Prints only a shareable invoice, and the fixture here is a draft so
         // the Issue button renders. InvoicePrintTest and PrintFieldTest cover it.
         'portal.invoices.print',
+        // A UAE e-invoice's XML. UaePortalTest and ReceivedInvoicesTest cover them.
+        'portal.invoices.xml',
+        'portal.received.xml',
     ];
+
+    /**
+     * Portal screens only a UAE organization has, on a deployment that
+     * offers UAE e-invoicing: a 404 for the Saudi organization the other
+     * tests render as. test_every_uae_screen_renders opens them as one.
+     */
+    private const UAE_ONLY = ['portal.received.index', 'portal.received.show'];
+
+    /**
+     * Screens every organization has, whose UAE organization's version is
+     * its own markup, so it is rendered too.
+     */
+    private const UAE_VARIANTS = ['portal.dashboard', 'portal.company.edit', 'portal.invoices.create', 'portal.invoices.show'];
 
     private User $orgAdmin;
 
@@ -230,6 +247,54 @@ class ScreenRenderTest extends TestCase
     }
 
     /**
+     * A UAE organization's screens, with a received document and a draft to
+     * show; pills coloured and confirmations askable as on every other.
+     */
+    public function test_every_uae_screen_renders(): void
+    {
+        config(['peppol.countries.AE.enabled' => true]);
+
+        $gulf = Organization::create(['name' => 'Gulf Trading LLC', 'country' => 'AE', 'street' => 'Al Wasl Road', 'city' => 'Dubai', 'status' => 'active']);
+        $admin = User::factory()->create();
+        $admin->organizations()->attach($gulf->id, ['role' => 'admin', 'status' => 'active']);
+
+        $document = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::create([
+            'org_id' => $gulf->id, 'direction' => PeppolDocument::DIRECTION_IN, 'country' => 'AE',
+            'customization_id' => 'urn:peppol:pint:billing-1@ae-1', 'profile_id' => 'urn:peppol:bis:billing',
+            'document_type' => 'Invoice', 'status' => 'received', 'asp_message_id' => 'msg-screen-1',
+            'sender_endpoint' => '0235:1000000001', 'receiver_endpoint' => '0235:1000000002',
+            'xml' => '<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"><cbc:ID>SUP-1</cbc:ID></Invoice>',
+        ]));
+        $draft = Invoice::withoutTenantScope(fn () => Invoice::create([
+            'org_id' => $gulf->id, 'type' => 'standard', 'status' => 'draft', 'issue_date' => now()->toDateString(),
+            'currency' => 'AED', 'buyer_name' => 'Noor Electronics LLC', 'subtotal' => '100.00', 'tax_amount' => '5.00', 'total' => '105.00',
+            'jurisdiction_data' => ['document_category' => 'tax_invoice', 'transaction_flags' => '00000000'],
+        ]));
+
+        $uris = [
+            'portal.received.index' => route('portal.received.index', absolute: false),
+            'portal.received.show' => route('portal.received.show', $document->id, false),
+            'portal.dashboard' => route('portal.dashboard', absolute: false),
+            'portal.company.edit' => route('portal.company.edit', absolute: false),
+            'portal.invoices.create' => route('portal.invoices.create', absolute: false),
+            'portal.invoices.show' => route('portal.invoices.show', $draft->id, false),
+        ];
+        $this->assertSame([...self::UAE_ONLY, ...self::UAE_VARIANTS], array_keys($uris));
+
+        foreach ($uris as $name => $uri) {
+            $html = $this->asRequest(function () use ($admin, $gulf, $uri, $name): string {
+                $response = $this->actingAs($admin)->withSession(['portal_org_id' => $gulf->id])->get($uri);
+                $this->assertSame(200, $response->status(), $name.' answered '.$response->status().' at '.$uri);
+
+                return (string) $response->getContent();
+            });
+
+            $this->assertColouredPills($html, $name);
+            $this->assertCanConfirm($html, $name);
+        }
+    }
+
+    /**
      * A view that throws arrives here as the exception, with the Blade file
      * named in its trace. A redirect arrives as a status, which needs saying -
      * otherwise a screen quietly bouncing to the organization picker would
@@ -348,7 +413,7 @@ class ScreenRenderTest extends TestCase
             $name = (string) $route->getName();
 
             if (! str_starts_with($name, $prefix) || ! in_array('GET', $route->methods(), true)
-                || in_array($name, self::DOWNLOADS, true)) {
+                || in_array($name, self::DOWNLOADS, true) || in_array($name, self::UAE_ONLY, true)) {
                 continue;
             }
 

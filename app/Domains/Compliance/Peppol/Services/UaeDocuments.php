@@ -46,6 +46,31 @@ class UaeDocuments
     }
 
     /**
+     * Documents other suppliers sent the organization, newest first, with
+     * their XML: the portal lists each one by what its XML says.
+     */
+    public function received(?string $organizationId, int $perPage): LengthAwarePaginator
+    {
+        return $this->ofOrganization($organizationId)
+            ->where('direction', PeppolDocument::DIRECTION_IN)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->paginate($perPage);
+    }
+
+    /**
+     * One received document; a sent one is not found here.
+     *
+     * @throws ModelNotFoundException
+     */
+    public function findReceived(?string $organizationId, string $id): PeppolDocument
+    {
+        return $this->ofOrganization($organizationId)
+            ->where('direction', PeppolDocument::DIRECTION_IN)
+            ->findOrFail($id);
+    }
+
+    /**
      * The document an invoice was sent as, if it has been.
      */
     public function outboundFor(?string $organizationId, string $invoiceId): ?PeppolDocument
@@ -54,6 +79,21 @@ class UaeDocuments
             ->where('invoice_id', $invoiceId)
             ->where('direction', PeppolDocument::DIRECTION_OUT)
             ->first();
+    }
+
+    /**
+     * How a document's XML is served: as a download, exactly as it travelled,
+     * and never sniffed into something a browser would render.
+     *
+     * @return array<string, string>
+     */
+    public static function xmlHeaders(PeppolDocument $document): array
+    {
+        return [
+            'Content-Type' => 'application/xml',
+            'Content-Disposition' => 'attachment; filename="peppol-'.$document->direction.'-'.$document->id.'.xml"',
+            'X-Content-Type-Options' => 'nosniff',
+        ];
     }
 
     /**

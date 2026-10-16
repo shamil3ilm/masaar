@@ -66,4 +66,25 @@ class Customer extends Model
 
         return $fields;
     }
+
+    /**
+     * What the UAE invoice form's buyer fields are filled with: the same,
+     * less the Saudi district, plus the emirate and the buyer's own Peppol
+     * endpoint.
+     *
+     * @return array<string, string>
+     */
+    public function uaeBuyerFields(): array
+    {
+        $fields = $this->buyerFields();
+        unset($fields['buyer_address_district']);
+
+        return [
+            ...$fields,
+            'buyer_address_country_code' => (string) ($this->country_code ?: 'AE'),
+            'buyer_subdivision' => (string) $this->subdivision,
+            'buyer_endpoint_choice' => 'own',
+            'buyer_endpoint' => (string) $this->peppol_endpoint,
+        ];
+    }
 }

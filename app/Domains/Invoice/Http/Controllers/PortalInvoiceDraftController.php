@@ -85,9 +85,20 @@ class PortalInvoiceDraftController extends Controller
         abort_if($request->user()?->roleIn((string) $request->attributes->get(PortalTenant::ORG_ID)) === 'viewer', 403, __('Your role in this organization is read-only.'));
 
         $organizationId = (string) $request->attributes->get(PortalTenant::ORG_ID);
+        $organization = $this->tenant->getOrganization();
+
+        // A UAE organization's invoice is a UAE e-invoice: its own form, its
+        // own rules (CreateUaeInvoiceRequest), posted to its own route.
+        if ($organization?->country === 'AE') {
+            return view('portal.invoices.create-uae', [
+                'organization' => $organization,
+                'customers' => $this->catalogue->customerChoices($organizationId),
+                'products' => $this->catalogue->productChoices($organizationId),
+            ]);
+        }
 
         return view('portal.invoices.create', [
-            'organization' => $this->tenant->getOrganization(),
+            'organization' => $organization,
             'customers' => $this->catalogue->customerChoices($organizationId),
             'products' => $this->catalogue->productChoices($organizationId),
         ]);
@@ -99,6 +110,13 @@ class PortalInvoiceDraftController extends Controller
 
         if (! $orgId) {
             return redirect()->route('portal.invoices.index');
+        }
+
+        // Drafted by Saudi rules, a UAE invoice would only be refused when it
+        // is issued. Its form posts to portal.invoices.uae.store.
+        if ($this->tenant->getOrganization()?->country === 'AE') {
+            return redirect()->route('portal.invoices.create')
+                ->with('error', __('A UAE invoice is written on the UAE invoice form.'));
         }
 
         try {
