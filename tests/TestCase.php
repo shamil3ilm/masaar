@@ -3,6 +3,7 @@
 namespace Tests;
 
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\ParallelTesting;
 use Illuminate\Support\Facades\Storage;
 use ReflectionProperty;
 
@@ -40,6 +41,14 @@ abstract class TestCase extends BaseTestCase
         parent::setUp();
 
         Storage::fake(config('fatoora.signing.disk', 'local'));
+
+        // One PDF font cache per parallel process. Sharing one, two processes
+        // on a cold cache built the same font file and the second rename
+        // failed on Windows ("Access is denied") - a PDF test that failed only
+        // on the first parallel run in a fresh checkout.
+        if (($token = ParallelTesting::token()) !== false) {
+            config(['invoices.pdf_cache_dir' => storage_path('framework/cache/pdf-'.$token)]);
+        }
     }
 
     /**

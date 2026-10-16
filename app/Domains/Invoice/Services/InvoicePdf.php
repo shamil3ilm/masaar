@@ -162,7 +162,11 @@ class InvoicePdf
 
     private function tempDir(): string
     {
-        $dir = storage_path('framework/cache/pdf');
+        // mPDF keeps its font cache here. Configurable so parallel test
+        // processes can each have their own: on a cold cache two of them
+        // build the same font file, and Windows refuses to rename one over
+        // the other while it is open.
+        $dir = (string) config('invoices.pdf_cache_dir', storage_path('framework/cache/pdf'));
 
         if (! is_dir($dir)) {
             mkdir($dir, 0775, true);
