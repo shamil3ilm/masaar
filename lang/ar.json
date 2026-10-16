@@ -854,6 +854,7 @@
     "This invitation has already been used.": "تم استخدام هذه الدعوة من قبل.",
     "This invitation is not valid any more. Ask for a new one.": "هذه الدعوة لم تعد صالحة. اطلب دعوة جديدة.",
     "This invitation was sent to :email. Sign in as that address to accept it.": "أُرسلت هذه الدعوة إلى :email. سجّل الدخول بهذا العنوان لقبولها.",
+    "This invoice has already been issued.": "تم إصدار هذه الفاتورة بالفعل.",
     "This invoice is still a draft. It has no counter, no hash and no QR until it is issued.": "هذه الفاتورة ما زالت مسودة. لا يكون لها عداد ولا قيمة تجزئة ولا رمز استجابة سريعة (QR) حتى تُصدر.",
     "This invoice is still a draft. When it is issued it takes its number and is sent to the buyer as a UAE e-invoice.": "هذه الفاتورة لا تزال مسودة. عند إصدارها تأخذ رقمها وتُرسل إلى المشتري فاتورةً إلكترونية إماراتية.",
     "This Month": "هذا الشهر",

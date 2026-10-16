@@ -60,7 +60,7 @@ class FatooraDependencyTest extends TestCase
         'app/Domains/Billing/Services/Billing.php' => 'Services\\InvoiceIssuer',
         // The issuance guards every country passes. They are generic and live
         // in Fatoora only for now; moving them out removes this line.
-        'app/Domains/Compliance/Peppol/Services/UaeInvoiceIssuer.php' => 'Exceptions\\FatooraException, Services\\FilingClearance, Services\\IssuanceNotifier, Services\\KillSwitch',
+        'app/Domains/Compliance/Peppol/Services/UaeJurisdiction.php' => 'Exceptions\\FatooraException, Services\\FilingClearance, Services\\IssuanceNotifier, Services\\KillSwitch',
         'app/Domains/Invoice/Http/Controllers/PortalInvoiceFilingController.php' => 'Services\\InvoiceIssuer, Services\\QrCodeRenderer',
         'app/Domains/Invoice/Http/Requests/CreateInvoiceRequest.php' => 'Config\\FatooraConfig',
         'app/Domains/Invoice/Models/Invoice.php' => 'Models\\InvoiceSubmission',

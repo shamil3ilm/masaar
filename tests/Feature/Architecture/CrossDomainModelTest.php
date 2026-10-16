@@ -84,8 +84,10 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Peppol/Services/PintMapper.php' => 'Invoice, Organization',
         // Drafts a UAE invoice through the shared InvoiceDrafter, for the API and the portal.
         'Domains/Compliance/Peppol/Services/UaeDrafts.php' => 'Invoice',
-        // Issues a UAE invoice: the lifecycle every country shares, and the UAE's step.
+        // Issues a UAE invoice through the lifecycle every country shares.
         'Domains/Compliance/Peppol/Services/UaeInvoiceIssuer.php' => 'Invoice',
+        // The UAE's step in that lifecycle: guards, checks, the stored document.
+        'Domains/Compliance/Peppol/Services/UaeJurisdiction.php' => 'Invoice',
         'Domains/Invoice/Models/Invoice.php' => 'Compliance\Fatoora, Organization',
         'Domains/Licensing/Http/Middleware/RequireLicenseFeature.php' => 'Invoice',
         'Domains/Organization/Models/Branch.php' => 'Invoice',
