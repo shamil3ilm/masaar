@@ -1,0 +1,81 @@
+{
+    "invoice": {
+        "invoice_number": "GM-DN-1",
+        "icv": 2,
+        "device_id": "00000001-0000-4000-8000-000000000001",
+        "issued_at": "2026-09-15T09:15:42+00:00",
+        "status": "issued",
+        "type": "simplified",
+        "document_type": "debit_note",
+        "hash": "6GGgk2PeA1POHH88GQYPd3U7fkUQU8fCnsOfinI+6c0=",
+        "currency": "SAR",
+        "subtotal": "15.00",
+        "discount_amount": "0.00",
+        "tax_amount": "2.25",
+        "total": "17.25"
+    },
+    "qr": {
+        "1": "شركه اكمي للتجاره",
+        "2": "399999999900003",
+        "3": "2026-09-15T12:15:42",
+        "4": "17.25",
+        "5": "2.25",
+        "6": "6GGgk2PeA1POHH88GQYPd3U7fkUQU8fCnsOfinI+6c0=",
+        "7": "[masked: equals ds:SignatureValue]",
+        "8": "base64:MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAExKWafrSuY066RJBCDRYMnOmXFj4vlfhYlFR6CUE/MrDoAG8KvFJFjH0D28E25EPHVK8p/M70wCeMc7IiY7ywPw==",
+        "9": "base64:MEUCIFHYLsn/CXoyE9aJpmcJrj/zW53Mxte0hs+D8/MeZc9EAiEAnwloEy6TdHobNFV29noGVqWy7gaULqi4jPcTnzT9d+8="
+    },
+    "chain": {
+        "entry": {
+            "invoice_id": "00000003-0000-4000-8000-000000000001",
+            "org_id": "00000001-0000-4000-8000-000000000001",
+            "device_id": "00000001-0000-4000-8000-000000000001",
+            "icv": 2,
+            "invoice_hash": "6GGgk2PeA1POHH88GQYPd3U7fkUQU8fCnsOfinI+6c0=",
+            "previous_hash": "XJTS6BAaSSGraxHk2ZiriHp7M9+/LkFKgfLPAUMoIaQ=",
+            "certificate_id": "2df5d18095b483f722583b0fb3c25589ac08eaf5b210e91100e3ae19c87e4e49"
+        },
+        "head_after_case": {
+            "last_icv": 2,
+            "last_hash": "6GGgk2PeA1POHH88GQYPd3U7fkUQU8fCnsOfinI+6c0=",
+            "last_invoice_id": "00000003-0000-4000-8000-000000000001",
+            "certificate_id": "2df5d18095b483f722583b0fb3c25589ac08eaf5b210e91100e3ae19c87e4e49"
+        }
+    },
+    "entry_point": "PipelineService::submitInvoice",
+    "pipeline_result": {
+        "invoice_id": "00000003-0000-4000-8000-000000000001",
+        "uuid": "00000003-0000-4000-8000-000000000001",
+        "invoice_number": "GM-DN-1",
+        "erp_reference_id": "ERP-GM-DN-1",
+        "status": "issued",
+        "compliance_status": "pending",
+        "hash": "6GGgk2PeA1POHH88GQYPd3U7fkUQU8fCnsOfinI+6c0=",
+        "qr_code": "[equals invoice qr_code]",
+        "signed_xml": "[equals invoice signed_xml]",
+        "cleared_xml": null,
+        "zatca_response": null,
+        "totals": {
+            "subtotal": "15.00",
+            "discount_amount": "0.00",
+            "tax_amount": "2.25",
+            "total": "17.25"
+        },
+        "errors": [],
+        "warnings": []
+    },
+    "webhooks": [
+        {
+            "event": "invoice.issued",
+            "payload": {
+                "invoice_id": "00000003-0000-4000-8000-000000000001",
+                "invoice_number": "GM-DN-1",
+                "status": "issued",
+                "type": "simplified",
+                "total": "17.25",
+                "currency": "SAR"
+            }
+        }
+    ],
+    "filing_requests": []
+}

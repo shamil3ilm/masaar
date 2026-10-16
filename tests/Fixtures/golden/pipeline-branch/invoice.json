@@ -1,0 +1,81 @@
+{
+    "invoice": {
+        "invoice_number": "GM-JED-1",
+        "icv": 1,
+        "device_id": "00000001-0000-4000-8000-000000000003",
+        "issued_at": "2026-09-15T09:15:42+00:00",
+        "status": "issued",
+        "type": "simplified",
+        "document_type": "invoice",
+        "hash": "9ge8fptykv1m86AJtlewVC1SulRNmWO4LmianuOI1q0=",
+        "currency": "SAR",
+        "subtotal": "120.00",
+        "discount_amount": "0.00",
+        "tax_amount": "18.00",
+        "total": "138.00"
+    },
+    "qr": {
+        "1": "شركه اكمي للتجاره",
+        "2": "399999999900003",
+        "3": "2026-09-15T12:15:42",
+        "4": "138.00",
+        "5": "18.00",
+        "6": "9ge8fptykv1m86AJtlewVC1SulRNmWO4LmianuOI1q0=",
+        "7": "[masked: equals ds:SignatureValue]",
+        "8": "base64:MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEA9UMltZ2+HJ3FvS4tdWMM7KJOAzMk2WoUsywU+LtajAJ6KP0naqq1dPgXtiIe2Xg9eKMLJ++OhRRENcjbL0a3g==",
+        "9": "base64:MEUCICUJ0BxIzCMn9RhdfCkFLpP1xdmI7g796De7eCpabzaLAiEAjxj+czjkjWUL8KwrhjwD0qo0hTAzHBDW+ZvdycNcyxw="
+    },
+    "chain": {
+        "entry": {
+            "invoice_id": "00000002-0000-4000-8000-000000000001",
+            "org_id": "00000001-0000-4000-8000-000000000001",
+            "device_id": "00000001-0000-4000-8000-000000000003",
+            "icv": 1,
+            "invoice_hash": "9ge8fptykv1m86AJtlewVC1SulRNmWO4LmianuOI1q0=",
+            "previous_hash": "NWZlY2ViNjZmZmM4NmYzOGQ5NTI3ODZjNmQ2OTZjNzljMmRiYzIzOWRkNGU5MWI0NjcyOWQ3M2EyN2ZiNTdlOQ==",
+            "certificate_id": "1d24275ccebe53f8f5fe25c87c8ef6b0468e407992ee1ff7e5ab730a7ddf126e"
+        },
+        "head_after_case": {
+            "last_icv": 1,
+            "last_hash": "9ge8fptykv1m86AJtlewVC1SulRNmWO4LmianuOI1q0=",
+            "last_invoice_id": "00000002-0000-4000-8000-000000000001",
+            "certificate_id": "1d24275ccebe53f8f5fe25c87c8ef6b0468e407992ee1ff7e5ab730a7ddf126e"
+        }
+    },
+    "entry_point": "PipelineService::submitInvoice",
+    "pipeline_result": {
+        "invoice_id": "00000002-0000-4000-8000-000000000001",
+        "uuid": "00000002-0000-4000-8000-000000000001",
+        "invoice_number": "GM-JED-1",
+        "erp_reference_id": "ERP-GM-JED-1",
+        "status": "issued",
+        "compliance_status": "pending",
+        "hash": "9ge8fptykv1m86AJtlewVC1SulRNmWO4LmianuOI1q0=",
+        "qr_code": "[equals invoice qr_code]",
+        "signed_xml": "[equals invoice signed_xml]",
+        "cleared_xml": null,
+        "zatca_response": null,
+        "totals": {
+            "subtotal": "120.00",
+            "discount_amount": "0.00",
+            "tax_amount": "18.00",
+            "total": "138.00"
+        },
+        "errors": [],
+        "warnings": []
+    },
+    "webhooks": [
+        {
+            "event": "invoice.issued",
+            "payload": {
+                "invoice_id": "00000002-0000-4000-8000-000000000001",
+                "invoice_number": "GM-JED-1",
+                "status": "issued",
+                "type": "simplified",
+                "total": "138.00",
+                "currency": "SAR"
+            }
+        }
+    ],
+    "filing_requests": []
+}

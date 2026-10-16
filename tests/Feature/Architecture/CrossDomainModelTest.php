@@ -18,6 +18,13 @@ use RecursiveIteratorIterator;
  * Organization and User are the shared kernel every domain is scoped by and
  * acts as, so importing them is not counted.
  *
+ * Compliance holds one engine per jurisdiction, each with models of its own,
+ * and each engine counts as a domain here: Compliance\Fatoora's models are no
+ * more Compliance\FTA's to import (Compliance\Peppol's, once renamed) than
+ * Invoice's are. Matching only the segment after Domains\ missed every such
+ * import, since App\Domains\Compliance\Fatoora\Models\X has no Models segment
+ * directly under Compliance.
+ *
  * The list below is a ratchet of file => domains whose models it imports: the
  * assertion is equality, so a new cross-domain import fails the build until it
  * is listed, and a removed one fails until it is delisted.
@@ -25,6 +32,11 @@ use RecursiveIteratorIterator;
 class CrossDomainModelTest extends TestCase
 {
     private const DOMAINS = __DIR__.'/../../../app/Domains';
+
+    /**
+     * Engines inside a domain that are domains in their own right.
+     */
+    private const NESTED = ['Compliance/Fatoora', 'Compliance/FTA', 'Compliance/Peppol'];
 
     private const SHARED = [
         'App\\Domains\\Organization\\Models\\Organization',
@@ -65,7 +77,7 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Fatoora/Services/SubmissionTracker.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Services/Submitter.php' => 'Invoice, Organization',
         'Domains/Compliance/Fatoora/Services/VatPeriodTracker.php' => 'Invoice',
-        'Domains/Invoice/Models/Invoice.php' => 'Organization',
+        'Domains/Invoice/Models/Invoice.php' => 'Compliance\\Fatoora, Organization',
         'Domains/Licensing/Http/Middleware/RequireLicenseFeature.php' => 'Invoice',
         'Domains/Organization/Models/Branch.php' => 'Invoice',
         'Domains/Organization/Models/ComplianceProfile.php' => 'Invoice',
@@ -81,13 +93,15 @@ class CrossDomainModelTest extends TestCase
 
         foreach ($this->files() as $path) {
             $relative = $this->relative($path);
-            $own = explode('/', $relative)[1];
+            $own = $this->domainOf(substr($relative, strlen('Domains/')));
 
-            preg_match_all('/^use (App\\\\Domains\\\\(\w+)\\\\Models\\\\\w+)(?: as \w+)?;/m', (string) file_get_contents($path), $imports, PREG_SET_ORDER);
+            preg_match_all('/^use (App\\\\Domains\\\\(\w+(?:\\\\\w+)*?)\\\\Models\\\\\w+)(?: as \w+)?;/m', (string) file_get_contents($path), $imports, PREG_SET_ORDER);
 
             $others = [];
 
-            foreach ($imports as [, $class, $domain]) {
+            foreach ($imports as [, $class, $namespace]) {
+                $domain = $this->domainOf(str_replace('\\', '/', $namespace));
+
                 if ($domain !== $own && ! in_array($class, self::SHARED, true)) {
                     $others[$domain] = true;
                 }
@@ -103,6 +117,21 @@ class CrossDomainModelTest extends TestCase
         ksort($found);
 
         $this->assertSame(self::DECLARED, $found, "Cross-domain model imports changed. Found:\n".var_export($found, true));
+    }
+
+    /**
+     * The domain a path under app/Domains belongs to, written as a namespace:
+     * its first segment, or the engine in NESTED that holds it.
+     */
+    private function domainOf(string $path): string
+    {
+        foreach (self::NESTED as $nested) {
+            if ($path === $nested || str_starts_with($path, $nested.'/')) {
+                return str_replace('/', '\\', $nested);
+            }
+        }
+
+        return explode('/', $path)[0];
     }
 
     /**

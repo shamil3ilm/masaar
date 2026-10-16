@@ -1,0 +1,76 @@
+{
+    "invoice": {
+        "invoice_number": "INV-2026-00001",
+        "icv": 1,
+        "device_id": "00000001-0000-4000-8000-000000000001",
+        "issued_at": "2026-09-15T09:15:42+00:00",
+        "status": "issued",
+        "type": "standard",
+        "document_type": "invoice",
+        "hash": "cfBFTbLCO/LdwRitsKgfDSVMMPhU5OzlaPJVNP91oUA=",
+        "currency": "SAR",
+        "subtotal": "6000.00",
+        "discount_amount": "0.00",
+        "tax_amount": "900.00",
+        "total": "6900.00"
+    },
+    "qr": {
+        "1": "شركه اكمي للتجاره",
+        "2": "399999999900003",
+        "3": "2026-09-15T12:15:42",
+        "4": "6900.00",
+        "5": "900.00",
+        "6": "cfBFTbLCO/LdwRitsKgfDSVMMPhU5OzlaPJVNP91oUA=",
+        "7": "[masked: equals ds:SignatureValue]",
+        "8": "base64:MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAExKWafrSuY066RJBCDRYMnOmXFj4vlfhYlFR6CUE/MrDoAG8KvFJFjH0D28E25EPHVK8p/M70wCeMc7IiY7ywPw==",
+        "9": "base64:MEUCIFHYLsn/CXoyE9aJpmcJrj/zW53Mxte0hs+D8/MeZc9EAiEAnwloEy6TdHobNFV29noGVqWy7gaULqi4jPcTnzT9d+8="
+    },
+    "chain": {
+        "entry": {
+            "invoice_id": "00000002-0000-4000-8000-000000000003",
+            "org_id": "00000001-0000-4000-8000-000000000001",
+            "device_id": "00000001-0000-4000-8000-000000000001",
+            "icv": 1,
+            "invoice_hash": "cfBFTbLCO/LdwRitsKgfDSVMMPhU5OzlaPJVNP91oUA=",
+            "previous_hash": "NWZlY2ViNjZmZmM4NmYzOGQ5NTI3ODZjNmQ2OTZjNzljMmRiYzIzOWRkNGU5MWI0NjcyOWQ3M2EyN2ZiNTdlOQ==",
+            "certificate_id": "2df5d18095b483f722583b0fb3c25589ac08eaf5b210e91100e3ae19c87e4e49"
+        },
+        "head_after_case": {
+            "last_icv": 1,
+            "last_hash": "cfBFTbLCO/LdwRitsKgfDSVMMPhU5OzlaPJVNP91oUA=",
+            "last_invoice_id": "00000002-0000-4000-8000-000000000003",
+            "certificate_id": "2df5d18095b483f722583b0fb3c25589ac08eaf5b210e91100e3ae19c87e4e49"
+        }
+    },
+    "entry_point": "Billing::record",
+    "payment": {
+        "amount": "6000.00",
+        "vat_amount": "900.00",
+        "total": "6900.00",
+        "period_start": "2026-09-25",
+        "period_end": "2027-09-25",
+        "invoice_error": null
+    },
+    "webhooks": [
+        {
+            "event": "invoice.issued",
+            "payload": {
+                "invoice_id": "00000002-0000-4000-8000-000000000003",
+                "invoice_number": "INV-2026-00001",
+                "status": "issued",
+                "type": "standard",
+                "total": "6900.00",
+                "currency": "SAR"
+            }
+        }
+    ],
+    "filing_requests": [
+        {
+            "invoice_id": "00000002-0000-4000-8000-000000000003",
+            "options": {
+                "idempotency_key": null,
+                "async": false
+            }
+        }
+    ]
+}
