@@ -13,7 +13,7 @@ use RuntimeException;
 /**
  * Gives an invoice its number when it is issued.
  *
- * Called by Submitter::generate inside the transaction that holds the
+ * Called by IssuingLifecycle::issue inside the transaction that holds the
  * organization row and allocates the ZATCA counter, which is what makes this
  * safe: every issuance for the organization waits on that lock, so two cannot
  * read the same next number, and a failure after this rolls the counter back
