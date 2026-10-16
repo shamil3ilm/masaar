@@ -11,5 +11,11 @@
     </p>
 </div>
 
+@admincan('platform.configure')
 @include('branding.form')
+@else
+<p class="max-w-2xl rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 text-sm text-gray-600 dark:text-gray-300">
+    Your admin role can see the platform's branding but not change it. An owner can.
+</p>
+@endadmincan
 @endsection

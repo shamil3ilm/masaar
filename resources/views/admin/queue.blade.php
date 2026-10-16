@@ -8,10 +8,12 @@
         <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Offline Queue</h2>
         <p class="text-gray-500 dark:text-gray-400">Queued invoices pending ZATCA submission</p>
     </div>
+    @admincan('operations.run')
     <form action="{{ route('admin.queue.process') }}" method="POST" class="inline">
         @csrf
         <x-ui.button>Process Queue</x-ui.button>
     </form>
+    @endadmincan
 </div>
 
 <!-- Stats -->
@@ -84,10 +86,12 @@
             <td class="px-6 py-4 text-sm text-red-600 dark:text-red-400">{{ Str::limit($item->last_error, 50) }}</td>
             <td class="px-6 py-4">
                 @if($item->state === 'failed')
+                @admincan('operations.run')
                 <form action="{{ route('admin.queue.retry', $item->id) }}" method="POST" class="inline">
                     @csrf
                     <button type="submit" class="text-teal-700 dark:text-teal-300 hover:text-teal-900 dark:hover:text-teal-200 text-sm">Retry</button>
                 </form>
+                @endadmincan
                 @endif
             </td>
         </tr>

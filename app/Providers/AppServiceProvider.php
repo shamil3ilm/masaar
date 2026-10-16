@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Domains\Auth\Contracts\Authenticator;
+use App\Domains\Auth\Http\Middleware\AdminCan;
 use App\Domains\Auth\Http\Middleware\IsPlatformAdmin;
 use App\Domains\Auth\Http\Middleware\JwtGuard;
 use App\Domains\Auth\Services\JwtAuthenticator;
@@ -27,6 +28,7 @@ use App\Domains\Platform\Http\Middleware\MetricsAccess;
 use App\Domains\Platform\Http\Middleware\RateLimitApi;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
@@ -43,6 +45,7 @@ class AppServiceProvider extends ServiceProvider
     public const MIDDLEWARE_ALIASES = [
         'jwt.auth' => JwtGuard::class,
         'platform.admin' => IsPlatformAdmin::class,
+        'admin.can' => AdminCan::class,
         'admin.audit' => AuditAdminAction::class,
         'portal.tenant' => PortalTenant::class,
         'org.admin' => IsOrgAdmin::class,
@@ -128,6 +131,11 @@ class AppServiceProvider extends ServiceProvider
         }
 
         $this->reclaimMiddlewareAliases();
+
+        // @admincan('licences.manage') ... @endadmincan: an action shown only
+        // to an admin whose role allows it. The route refuses the rest
+        // anyway (admin.can); this keeps them from a button that only 403s.
+        Blade::if('admincan', fn (string $permission): bool => (bool) auth()->user()?->canAdmin($permission));
 
         // Links in mail - password resets, email verification, enrolment -
         // are built from APP_URL, never from the request's Host header. From

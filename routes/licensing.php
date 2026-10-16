@@ -34,31 +34,31 @@ use Illuminate\Support\Facades\Route;
 |
 */
 Route::prefix('api/admin/licenses')
-    ->middleware(['jwt.auth', 'platform.admin'])
+    ->middleware(['jwt.auth', 'platform.admin', 'admin.can:console.view'])
     ->group(function () {
         // Statistics endpoint (before {id} routes)
         Route::get('statistics', [LicenseController::class, 'statistics']);
 
         // Cleanup endpoint
-        Route::post('cleanup', [LicenseController::class, 'cleanup']);
+        Route::post('cleanup', [LicenseController::class, 'cleanup'])->middleware('admin.can:licences.manage');
 
         // CRUD operations
         Route::get('/', [LicenseController::class, 'index']);
-        Route::post('/', [LicenseController::class, 'store']);
+        Route::post('/', [LicenseController::class, 'store'])->middleware('admin.can:licences.manage');
         Route::get('{id}', [LicenseController::class, 'show']);
 
         // License actions
-        Route::post('{id}/activate', [LicenseController::class, 'activate']);
-        Route::post('{id}/suspend', [LicenseController::class, 'suspend']);
-        Route::post('{id}/reactivate', [LicenseController::class, 'reactivate']);
-        Route::post('{id}/revoke', [LicenseController::class, 'revoke']);
-        Route::post('{id}/extend', [LicenseController::class, 'extend']);
-        Route::post('{id}/upgrade', [LicenseController::class, 'upgrade']);
-        Route::post('{id}/regenerate-secret', [LicenseController::class, 'regenerateSecret']);
+        Route::post('{id}/activate', [LicenseController::class, 'activate'])->middleware('admin.can:licences.manage');
+        Route::post('{id}/suspend', [LicenseController::class, 'suspend'])->middleware('admin.can:licences.manage');
+        Route::post('{id}/reactivate', [LicenseController::class, 'reactivate'])->middleware('admin.can:licences.manage');
+        Route::post('{id}/revoke', [LicenseController::class, 'revoke'])->middleware('admin.can:licences.manage');
+        Route::post('{id}/extend', [LicenseController::class, 'extend'])->middleware('admin.can:licences.manage');
+        Route::post('{id}/upgrade', [LicenseController::class, 'upgrade'])->middleware('admin.can:licences.manage');
+        Route::post('{id}/regenerate-secret', [LicenseController::class, 'regenerateSecret'])->middleware('admin.can:licences.manage');
 
         // License configuration
-        Route::patch('{id}/limits', [LicenseController::class, 'updateLimits']);
-        Route::patch('{id}/features', [LicenseController::class, 'updateFeatures']);
+        Route::patch('{id}/limits', [LicenseController::class, 'updateLimits'])->middleware('admin.can:licences.manage');
+        Route::patch('{id}/features', [LicenseController::class, 'updateFeatures'])->middleware('admin.can:licences.manage');
 
         // License data
         Route::get('{id}/usage', [LicenseController::class, 'usage']);

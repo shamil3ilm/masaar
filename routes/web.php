@@ -20,6 +20,7 @@ use App\Domains\Organization\Http\Controllers\CustomerPortalController;
 use App\Domains\Organization\Http\Controllers\InvitationController;
 use App\Domains\Organization\Http\Controllers\PortalCompanyController;
 use App\Domains\Organization\Http\Controllers\PortalTeamController;
+use App\Domains\Platform\Http\Controllers\AdminAdminsController;
 use App\Domains\Platform\Http\Controllers\AdminAuditController;
 use App\Domains\Platform\Http\Controllers\AdminController;
 use App\Domains\Platform\Http\Controllers\AdminOrganizationReviewController;
@@ -150,7 +151,9 @@ Route::prefix('admin')->name('admin.')
     // without anyone having to remember it.
     // auth.session ends this session when the account's password changes
     // elsewhere - a reset is how someone takes an account back.
-    ->middleware(['auth', 'auth.session', 'platform.admin', 'admin.audit'])
+    // admin.can:console.view for every page; each action names its own
+    // permission, which the admin's role has to cover (PlatformRole).
+    ->middleware(['auth', 'auth.session', 'platform.admin', 'admin.can:console.view', 'admin.audit'])
     // Every identifier in this group names a HasUuids model, so anything that
     // is not a UUID is a mistyped URL and is a 404 at the router, before a
     // query is built from it. Two reasons beyond tidiness:
@@ -171,27 +174,32 @@ Route::prefix('admin')->name('admin.')
         Route::get('/organizations/{id}', [AdminController::class, 'organizationDetail'])->name('organization.detail');
         // A business that signed itself up: approve it and assign its plan,
         // or turn it down with a reason. Either way its admins are emailed.
-        Route::post('/organizations/{id}/approve', [AdminOrganizationReviewController::class, 'approve'])->name('organizations.approve');
-        Route::post('/organizations/{id}/reject', [AdminOrganizationReviewController::class, 'reject'])->name('organizations.reject');
+        Route::post('/organizations/{id}/approve', [AdminOrganizationReviewController::class, 'approve'])->middleware('admin.can:organizations.review')->name('organizations.approve');
+        Route::post('/organizations/{id}/reject', [AdminOrganizationReviewController::class, 'reject'])->middleware('admin.can:organizations.review')->name('organizations.reject');
         Route::get('/users', [AdminUserController::class, 'index'])->name('users.index');
         Route::get('/users/{userId}', [AdminUserController::class, 'show'])->name('users.show');
         // Suspending locks someone out of everything at once, so it is a POST
         // behind a confirmation and a required reason.
-        Route::post('/users/{userId}/suspend', [AdminUserController::class, 'suspend'])->name('users.suspend');
-        Route::post('/users/{userId}/reactivate', [AdminUserController::class, 'reactivate'])->name('users.reactivate');
-        Route::post('/users/{userId}/reset-two-factor', [AdminUserController::class, 'resetTwoFactor'])->name('users.reset-two-factor');
-        Route::post('/users/{userId}/enrolment-link', [AdminUserController::class, 'issueEnrolmentLink'])->name('users.enrolment-link');
-        Route::get('/audit', [AdminAuditController::class, 'index'])->name('audit');
+        Route::post('/users/{userId}/suspend', [AdminUserController::class, 'suspend'])->middleware('admin.can:users.manage')->name('users.suspend');
+        Route::post('/users/{userId}/reactivate', [AdminUserController::class, 'reactivate'])->middleware('admin.can:users.manage')->name('users.reactivate');
+        Route::post('/users/{userId}/reset-two-factor', [AdminUserController::class, 'resetTwoFactor'])->middleware('admin.can:users.two_factor')->name('users.reset-two-factor');
+        Route::post('/users/{userId}/enrolment-link', [AdminUserController::class, 'issueEnrolmentLink'])->middleware('admin.can:users.two_factor')->name('users.enrolment-link');
+        // Who runs the platform and in which role. Owners only.
+        Route::get('/admins', [AdminAdminsController::class, 'index'])->middleware('admin.can:admins.manage')->name('admins.index');
+        Route::post('/admins', [AdminAdminsController::class, 'grant'])->middleware('admin.can:admins.manage')->name('admins.grant');
+        Route::post('/admins/{userId}/role', [AdminAdminsController::class, 'role'])->middleware('admin.can:admins.manage')->name('admins.role');
+        Route::post('/admins/{userId}/revoke', [AdminAdminsController::class, 'revoke'])->middleware('admin.can:admins.manage')->name('admins.revoke');
+        Route::get('/audit', [AdminAuditController::class, 'index'])->middleware('admin.can:audit.view')->name('audit');
         Route::get('/licences', [AdminLicenceController::class, 'index'])->name('licences.index');
         // Before the {licenceId} route below, or "create" is taken for an id
         // and the form never renders.
-        Route::get('/licences/create', [AdminLicenceController::class, 'create'])->name('licences.create');
-        Route::post('/licences', [AdminLicenceController::class, 'store'])->name('licences.store');
+        Route::get('/licences/create', [AdminLicenceController::class, 'create'])->middleware('admin.can:licences.manage')->name('licences.create');
+        Route::post('/licences', [AdminLicenceController::class, 'store'])->middleware('admin.can:licences.manage')->name('licences.store');
         Route::get('/licences/{licenceId}', [AdminLicenceController::class, 'show'])->name('licences.show');
-        Route::post('/licences/{licenceId}/suspend', [AdminLicenceController::class, 'suspend'])->name('licences.suspend');
-        Route::post('/licences/{licenceId}/reactivate', [AdminLicenceController::class, 'reactivate'])->name('licences.reactivate');
-        Route::post('/licences/{licenceId}/revoke', [AdminLicenceController::class, 'revoke'])->name('licences.revoke');
-        Route::post('/licences/{licenceId}/rotate', [AdminLicenceController::class, 'rotate'])->name('licences.rotate');
+        Route::post('/licences/{licenceId}/suspend', [AdminLicenceController::class, 'suspend'])->middleware('admin.can:licences.manage')->name('licences.suspend');
+        Route::post('/licences/{licenceId}/reactivate', [AdminLicenceController::class, 'reactivate'])->middleware('admin.can:licences.manage')->name('licences.reactivate');
+        Route::post('/licences/{licenceId}/revoke', [AdminLicenceController::class, 'revoke'])->middleware('admin.can:licences.manage')->name('licences.revoke');
+        Route::post('/licences/{licenceId}/rotate', [AdminLicenceController::class, 'rotate'])->middleware('admin.can:licences.manage')->name('licences.rotate');
         Route::get('/alerts', [AdminAlertController::class, 'index'])->name('alerts');
 
         // The thresholds the dashboard judges by, and the certificate
@@ -200,20 +208,20 @@ Route::prefix('admin')->name('admin.')
 
         // The platform's look: colours, name, logo and favicon.
         Route::get('/branding', [AdminBrandingController::class, 'edit'])->name('branding.edit');
-        Route::post('/branding', [AdminBrandingController::class, 'update'])->name('branding.update');
-        Route::post('/branding/import', [AdminBrandingController::class, 'import'])->name('branding.import');
+        Route::post('/branding', [AdminBrandingController::class, 'update'])->middleware('admin.can:platform.configure')->name('branding.update');
+        Route::post('/branding/import', [AdminBrandingController::class, 'import'])->middleware('admin.can:platform.configure')->name('branding.import');
         Route::get('/branding/export', [AdminBrandingController::class, 'export'])->name('branding.export');
-        Route::post('/branding/reset', [AdminBrandingController::class, 'reset'])->name('branding.reset');
-        Route::post('/settings', [AdminSettingsController::class, 'update'])->name('settings.update');
+        Route::post('/branding/reset', [AdminBrandingController::class, 'reset'])->middleware('admin.can:platform.configure')->name('branding.reset');
+        Route::post('/settings', [AdminSettingsController::class, 'update'])->middleware('admin.can:platform.configure')->name('settings.update');
 
         // The kill switches. Every one of these is a POST: they change what
         // the platform will do for every taxpayer on it, so none of them is
         // something a crawler or a prefetch should be able to follow.
         Route::get('/kill-switches', [AdminKillSwitchController::class, 'index'])->name('kill-switches');
-        Route::post('/kill-switches/enable', [AdminKillSwitchController::class, 'enable'])->name('kill-switches.enable');
-        Route::post('/kill-switches/disable', [AdminKillSwitchController::class, 'disable'])->name('kill-switches.disable');
-        Route::post('/kill-switches/stop', [AdminKillSwitchController::class, 'stop'])->name('kill-switches.stop');
-        Route::post('/kill-switches/resume', [AdminKillSwitchController::class, 'resume'])->name('kill-switches.resume');
+        Route::post('/kill-switches/enable', [AdminKillSwitchController::class, 'enable'])->middleware('admin.can:platform.configure')->name('kill-switches.enable');
+        Route::post('/kill-switches/disable', [AdminKillSwitchController::class, 'disable'])->middleware('admin.can:platform.configure')->name('kill-switches.disable');
+        Route::post('/kill-switches/stop', [AdminKillSwitchController::class, 'stop'])->middleware('admin.can:platform.configure')->name('kill-switches.stop');
+        Route::post('/kill-switches/resume', [AdminKillSwitchController::class, 'resume'])->middleware('admin.can:platform.configure')->name('kill-switches.resume');
         Route::get('/webhooks', [AdminWebhookController::class, 'index'])->name('webhooks.index');
         // {webhookId} rather than {webhook}: route model binding would resolve
         // through TenantScope, and a platform admin holds no tenant, so every
@@ -226,13 +234,13 @@ Route::prefix('admin')->name('admin.')
         // is what authorizes it: AdminWebhookController refuses a log that
         // belongs to another one.
         Route::post('/webhooks/{webhookId}/replay/{logId}', [AdminWebhookController::class, 'replay'])
-            ->name('webhooks.replay');
+            ->middleware('admin.can:operations.run')->name('webhooks.replay');
         Route::get('/queue', [AdminController::class, 'queue'])->name('queue');
         Route::get('/logs', [AdminController::class, 'logs'])->name('logs');
 
         // Actions
-        Route::post('/queue/process', [AdminController::class, 'processQueue'])->name('queue.process');
-        Route::post('/queue/{id}/retry', [AdminController::class, 'retryQueueItem'])->name('queue.retry');
+        Route::post('/queue/process', [AdminController::class, 'processQueue'])->middleware('admin.can:operations.run')->name('queue.process');
+        Route::post('/queue/{id}/retry', [AdminController::class, 'retryQueueItem'])->middleware('admin.can:operations.run')->name('queue.retry');
     });
 
 /*

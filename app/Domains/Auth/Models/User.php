@@ -2,6 +2,8 @@
 
 namespace App\Domains\Auth\Models;
 
+use App\Domains\Auth\Enums\AdminPermission;
+use App\Domains\Auth\Enums\PlatformRole;
 use App\Domains\Organization\Models\Organization;
 use Database\Factories\UserFactory;
 use Illuminate\Auth\MustVerifyEmail;
@@ -69,6 +71,32 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmailContrac
     public function isPlatformAdmin(): bool
     {
         return $this->isActive() && $this->is_platform_admin === true;
+    }
+
+    /**
+     * What this platform admin is for, or null for anyone who is not one.
+     *
+     * An admin with no role recorded - made before roles existed, or by the
+     * server's masaar:create-admin - is an owner, which is what every admin
+     * was until roles existed. The console's Admins page always sets one.
+     */
+    public function platformRole(): ?PlatformRole
+    {
+        if (! $this->isPlatformAdmin()) {
+            return null;
+        }
+
+        return PlatformRole::tryFrom((string) $this->platform_role) ?? PlatformRole::Owner;
+    }
+
+    /**
+     * Whether this account may do one thing in the admin console or API.
+     */
+    public function canAdmin(AdminPermission|string $permission): bool
+    {
+        $permission = $permission instanceof AdminPermission ? $permission : AdminPermission::tryFrom($permission);
+
+        return $permission !== null && ($this->platformRole()?->allows($permission) ?? false);
     }
 
     /**

@@ -11,6 +11,7 @@
     </p>
 </div>
 
+@admincan('platform.configure')
 <form method="POST" action="{{ route('admin.settings.update') }}" class="max-w-2xl">
     @csrf
 
@@ -68,4 +69,5 @@
         <x-ui.button variant="quiet" :href="route('admin.settings')">Discard</x-ui.button>
     </div>
 </form>
+@endadmincan
 @endsection

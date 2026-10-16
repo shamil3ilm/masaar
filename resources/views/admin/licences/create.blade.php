@@ -12,6 +12,7 @@
     </p>
 </div>
 
+@admincan('licences.manage')
 <form method="POST" action="{{ route('admin.licences.store') }}" class="max-w-3xl space-y-6">
     @csrf
 
@@ -115,4 +116,5 @@
         <p class="text-xs text-gray-500 dark:text-gray-400">The licence starts active and the partner can call the API immediately.</p>
     </div>
 </form>
+@endadmincan
 @endsection

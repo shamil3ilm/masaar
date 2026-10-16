@@ -182,6 +182,7 @@
             <h3 class="border-b px-6 py-4 text-sm font-semibold uppercase text-gray-500 dark:text-gray-400">Lifecycle</h3>
             <div class="space-y-6 px-6 py-4">
                 @if($canSuspend)
+                    @admincan('licences.manage')
                     <form method="POST" action="{{ route('admin.licences.suspend', $row['id']) }}"
                           data-confirm-tone="danger" data-confirm-action="Suspend"
                           data-confirm="Suspend this licence? The partner stops being able to call the API the moment you confirm.">
@@ -195,9 +196,11 @@
                         </button>
                         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Reversible. Invoices already submitted are untouched.</p>
                     </form>
+                    @endadmincan
                 @endif
 
                 @if($canReactivate)
+                    @admincan('licences.manage')
                     <form method="POST" action="{{ route('admin.licences.reactivate', $row['id']) }}">
                         @csrf
                         <button type="submit"
@@ -206,9 +209,11 @@
                         </button>
                         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Clears the suspension and lets the partner call again.</p>
                     </form>
+                    @endadmincan
                 @endif
 
                 @if($canRevoke)
+                    @admincan('licences.manage')
                     <form method="POST" action="{{ route('admin.licences.revoke', $row['id']) }}"
                           data-confirm-tone="danger" data-confirm-action="Revoke"
                           data-confirm="Revoke this licence? This is permanent and the partner integration stops working now.">
@@ -219,10 +224,12 @@
                         <x-ui.button variant="danger" class="mt-2 w-full">Revoke licence</x-ui.button>
                         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Permanent. This key can never be used again.</p>
                     </form>
+                    @endadmincan
                 @endif
 
                 {{-- Rotating is offered whatever the status: a leaked secret
                      on a suspended licence still wants replacing. --}}
+                @admincan('licences.manage')
                 <form method="POST" action="{{ route('admin.licences.rotate', $row['id']) }}"
                       data-confirm-tone="danger" data-confirm-action="Regenerate"
                       data-confirm="Regenerate this secret? The current secret stops working immediately, with no grace period for the partner to update it.">
@@ -235,6 +242,7 @@
                         Shown once, here, and never again. The partner must update their integration before their next call.
                     </p>
                 </form>
+                @endadmincan
 
                 @if(! $canSuspend && ! $canReactivate && ! $canRevoke)
                     <p class="text-sm text-gray-500 dark:text-gray-400">

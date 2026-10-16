@@ -90,6 +90,7 @@
                      stored event to the customer's live server the moment
                      it is pressed, and nothing a browser prefetches or a
                      crawler follows should be able to do that. --}}
+                @admincan('operations.run')
                 <form method="POST" action="{{ route('admin.webhooks.replay', [$endpoint->id, $delivery['id']]) }}"
                       data-confirm-action="Replay"
                       data-confirm="Replay this delivery? It posts the stored event to the live endpoint now, and the receiver may process it a second time.">
@@ -99,6 +100,7 @@
                         Replay
                     </button>
                 </form>
+                @endadmincan
             </td>
         </tr>
         @empty

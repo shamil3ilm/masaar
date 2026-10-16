@@ -8,7 +8,9 @@
         <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Licences</h2>
         <p class="text-gray-500 dark:text-gray-400">Partner API keys, their tier and their quota</p>
     </div>
+    @admincan('licences.manage')
     <x-ui.button :href="route('admin.licences.create')">Issue licence</x-ui.button>
+    @endadmincan
 </div>
 
 <form method="GET" action="{{ route('admin.licences.index') }}" class="mb-6 bg-white dark:bg-gray-900 rounded-lg shadow p-4 flex flex-wrap items-end gap-4">
