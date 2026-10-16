@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Kill Switches - Masaar Admin')
+@section('title', 'Kill Switches')
 
 @section('content')
 {{--

@@ -23,6 +23,25 @@ class AccountRegistrar
     ) {}
 
     /**
+     * Send the verification link again, to an account that has not used it.
+     * Nothing happens for an address with no account or a verified one.
+     */
+    public function resendVerification(string $email): void
+    {
+        $user = User::query()->where('email', $email)->first();
+
+        if ($user === null || $user->hasVerifiedEmail()) {
+            return;
+        }
+
+        try {
+            $user->sendEmailVerificationNotification();
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
+
+    /**
      * Create an active account and record its registration.
      */
     public function register(RegistrationData $data): User

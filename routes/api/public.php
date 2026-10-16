@@ -33,6 +33,9 @@ Route::middleware('rate.api')->group(function () {
         'status' => 'ok',
         'version' => '1.0.0',
         'timestamp' => now()->toISOString(),
+        // Which ZATCA environment this deployment files with, so monitoring
+        // can alert on a live server left on simulation or the sandbox.
+        'zatca_environment' => (string) config('fatoora.environment'),
     ]));
 
     // Liveness above, for the container: it answers while PHP does, because
@@ -65,6 +68,7 @@ Route::middleware('rate.api')->group(function () {
     Route::prefix('auth')->group(function () {
         Route::post('/register', [AuthController::class, 'register']);
         Route::post('/login', [AuthController::class, 'login']);
+        Route::post('/email/resend', [AuthController::class, 'resendVerification'])->middleware('throttle:5,1');
     });
 
 });

@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Audit log - Masaar Admin')
+@section('title', 'Audit log')
 
 @php
     $when = fn ($value) => $value ? \Carbon\Carbon::parse($value)->format('M d, Y H:i:s') : '-';

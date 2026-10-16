@@ -13,9 +13,11 @@ use App\Domains\Auth\Services\AccountRegistrar;
 use App\Domains\Auth\Services\SignInRecorder;
 use App\Domains\Auth\Services\SignInThrottle;
 use App\Domains\Auth\Services\TwoFactor;
+use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 /**
@@ -41,20 +43,14 @@ class AuthController extends Controller
     {
         $user = $this->registrar->register(RegistrationData::from($request->validated()));
 
-        // The portal waits for a verified address, so an account made here
-        // gets the link too; without it, it could never open the portal.
+        // Signing in waits for a verified address, on the API as in the
+        // portal, so the account gets the link and no token yet: a token here
+        // would be a way around the verification login asks for.
         try {
             $user->sendEmailVerificationNotification();
         } catch (\Throwable $e) {
             report($e);
         }
-
-        $token = $this->auth->attempt(
-            LoginData::from([
-                'email' => $request->email,
-                'password' => $request->password,
-            ])
-        );
 
         return ApiResponse::created([
             'user' => [
@@ -62,8 +58,8 @@ class AuthController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
             ],
-            'token' => $token?->toArray(),
-        ], 'User registered');
+            'token' => null,
+        ], 'User registered. Verify the email address, then sign in.');
     }
 
     /**
@@ -104,6 +100,17 @@ class AuthController extends Controller
             $this->signIns->failed($email, 'api');
 
             return ApiResponse::unauthorized('Invalid credentials');
+        }
+
+        // After the password, so this says nothing about an address to
+        // someone who does not hold its password. API keys are unaffected:
+        // they are the company's credential, not a person's.
+        if (! $this->auth->user()->hasVerifiedEmail()) {
+            return ApiResponse::error(
+                'Verify the email address first. POST /api/auth/email/resend sends the link again.',
+                403,
+                code: ErrorCode::AUTH_EMAIL_NOT_VERIFIED->value,
+            );
         }
 
         $this->throttle->passwordSucceeded($email, $request->ip());
@@ -160,6 +167,23 @@ class AuthController extends Controller
         $this->throttle->codeSucceeded($user);
 
         return null;
+    }
+
+    /**
+     * The verification link again, for an account that has not used it.
+     *
+     * POST /api/auth/email/resend
+     *
+     * The same answer whether or not the address has an account, or is
+     * verified already, so it tells nobody which addresses do.
+     */
+    public function resendVerification(Request $request): JsonResponse
+    {
+        $request->validate(['email' => ['required', 'email']]);
+
+        $this->registrar->resendVerification((string) $request->input('email'));
+
+        return ApiResponse::success(null, 'If that address has an unverified account, a verification link is on its way.');
     }
 
     private function tooManyAttempts(int $seconds): JsonResponse

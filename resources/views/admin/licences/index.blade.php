@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Licences - Masaar Admin')
+@section('title', 'Licences')
 
 @section('content')
 <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
