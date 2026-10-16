@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Invoice;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Invoice\Mail\InvoiceMail;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
@@ -12,6 +13,7 @@ use App\Domains\Invoice\Models\InvoiceLine;
 use App\Domains\Invoice\Services\InvoicePdf;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -94,6 +96,16 @@ class InvoicePdfTest extends TestCase
 
         $invoice->forceFill(['cleared_xml' => self::XML])->save();
         $this->portal()->get(route('portal.invoices.pdf', $invoice->id))->assertOk();
+    }
+
+    /**
+     * ZATCA rejected it, so it is not a tax invoice to hand anyone.
+     */
+    public function test_a_rejected_invoice_is_withheld(): void
+    {
+        $invoice = $this->invoice('simplified', ['status' => 'rejected']);
+
+        $this->portal()->get(route('portal.invoices.pdf', $invoice->id))->assertSessionHas('error');
     }
 
     public function test_another_company_cannot_have_it(): void
@@ -190,9 +202,65 @@ class InvoicePdfTest extends TestCase
     }
 
     /**
-     * @param  array<string, mixed>  $overrides
+     * A note is titled as one, and the time of issue is printed beside the
+     * date, on the clock the XML's IssueTime uses.
      */
-    private function invoice(string $type, array $overrides = []): Invoice
+    public function test_the_page_names_note_and_time(): void
+    {
+        $this->travelTo(Carbon::parse('2026-03-01 10:15:30', 'UTC'));
+        $invoice = $this->invoice('standard', ['document_type' => 'credit_note', 'billing_ref' => 'ACME-0', 'adjustment_reason' => 'Returned']);
+
+        $html = $this->page($invoice);
+
+        $this->assertStringContainsString('إشعار دائن', $html);
+        $this->assertStringContainsString('2026-03-01 13:15:30', $html);
+    }
+
+    /**
+     * BT-111 and the rate, on a foreign-currency invoice: 15.00 USD at 3.75.
+     */
+    public function test_the_page_states_vat_in_riyals(): void
+    {
+        $html = $this->page($this->invoice('standard', ['currency' => 'USD', 'exchange_rate' => '3.750000']));
+
+        $this->assertStringContainsString('VAT (SAR)', $html);
+        $this->assertStringContainsString('56.25 SAR', $html);
+        $this->assertStringContainsString('1 USD = 3.75 SAR', $html);
+    }
+
+    /**
+     * The buyer's other identifier, the authority's Arabic for an exemption
+     * code, and the net unit price on a standard invoice priced with VAT in.
+     */
+    public function test_the_page_carries_standard_fields(): void
+    {
+        $html = $this->page($this->invoice(
+            'standard',
+            ['buyer_id' => '1010010000', 'buyer_id_scheme' => 'CRN', 'prices_include_vat' => true],
+            ['exempt_code' => 'VATEX-SA-32', 'exempt_reason' => 'Export'],
+        ));
+
+        $this->assertStringContainsString('Commercial registration / السجل التجاري', $html);
+        $this->assertStringContainsString('صادرات السلع من المملكة', $html);
+        $this->assertStringNotContainsString('Unit price (incl. VAT)', $html);
+    }
+
+    private function page(Invoice $invoice): string
+    {
+        return view('pdf.invoice', [
+            'invoice' => $invoice,
+            'organization' => $this->acme,
+            'simplified' => $invoice->type === InvoiceType::Simplified,
+            'qr' => null,
+            'logo' => null,
+        ])->render();
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     * @param  array<string, mixed>  $line
+     */
+    private function invoice(string $type, array $overrides = [], array $line = []): Invoice
     {
         // A draft first, because an issued invoice refuses new lines; then
         // issued, as Submitter leaves it.
@@ -219,6 +287,7 @@ class InvoicePdfTest extends TestCase
             'tax_rate' => '15',
             'tax_amount' => '15.00',
             'line_total' => '115.00',
+            ...$line,
         ]);
 
         $invoice->forceFill(array_merge([

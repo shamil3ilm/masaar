@@ -187,7 +187,7 @@ class InvoiceValidator
             // so we can compute SAR amounts for VAT reporting
             $hasExchangeRate = isset($invoice->exchange_rate) && $invoice->exchange_rate > 0;
             if (! $hasExchangeRate) {
-                $errors[] = 'BR-KSA-CU-01: Foreign currency invoices require exchange_rate to SAR';
+                $errors[] = 'BR-53: Foreign currency invoices require exchange_rate to SAR';
             }
         }
 
@@ -373,20 +373,19 @@ class InvoiceValidator
             $errors[] = "BR-CO-15: Invoice total {$invoice->total} does not match subtotal less discount plus VAT ({$expectedTotal})";
         }
 
-        // Discount validation (BR-KSA-DEC-01)
+        // A discount is an allowance: never negative, and never more than
+        // the lines, or the totals turn negative (BR-KSA-F-04).
         if (bccomp($discount, '0', 2) < 0) {
-            $errors[] = 'BR-KSA-DEC-01: Discount amount cannot be negative';
+            $errors[] = 'BR-KSA-F-04: Discount amount cannot be negative';
         }
         if (bccomp($discount, $totals->subtotal, 2) > 0) {
-            $errors[] = 'BR-KSA-DEC-01: Discount cannot exceed invoice subtotal';
+            $errors[] = 'BR-KSA-F-04: Discount cannot exceed invoice subtotal';
         }
 
-        // Amounts must be positive (except credit notes)
+        // BR-KSA-F-04: every amount is positive, a credit note's included.
+        // A reduction is expressed by the document type, never by a sign.
         if ((float) $invoice->total < 0) {
-            // ZATCA does not allow negative invoices - must use Credit Note
-            if ($invoice->document_type !== DocumentType::CreditNote) {
-                $errors[] = 'BR-04: Negative amounts require Credit Note (type 381), not negative invoice';
-            }
+            $errors[] = 'BR-KSA-F-04: Amounts must be positive; a reduction is a credit note (type 381) with positive amounts';
         }
 
         return $errors;

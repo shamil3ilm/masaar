@@ -337,6 +337,10 @@ Route::prefix('portal')->name('portal.')
         Route::post('/invoices', [PortalInvoiceDraftController::class, 'store'])->name('invoices.store');
         Route::get('/invoices/{invoiceId}', [PortalInvoiceController::class, 'show'])->name('invoices.show');
         Route::post('/invoices/{invoiceId}/issue', [PortalInvoiceFilingController::class, 'issue'])->name('invoices.issue');
+        // A note correcting an issued invoice, its form filled in from it.
+        Route::get('/invoices/{invoiceId}/{note}', [PortalInvoiceDraftController::class, 'adjust'])
+            ->whereIn('note', ['credit_note', 'debit_note'])
+            ->name('invoices.adjust');
         Route::get('/invoices/{invoiceId}/print', [PortalInvoiceFilingController::class, 'print'])->name('invoices.print');
         // The PDF the buyer keeps, and sending it to them.
         Route::get('/invoices/{invoiceId}/pdf', [PortalInvoiceDocumentController::class, 'download'])->name('invoices.pdf');

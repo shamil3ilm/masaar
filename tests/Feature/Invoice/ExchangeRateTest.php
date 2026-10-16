@@ -15,7 +15,7 @@ use Tests\TestCase;
 /**
  * VAT is reported in SAR, so a foreign-currency invoice records its rate.
  *
- * InvoiceValidator has always enforced BR-KSA-CU-01, reading
+ * InvoiceValidator has always enforced BR-53, reading
  * $invoice->exchange_rate — which was neither a column, a cast, nor a field any
  * request accepted. isset() on it was therefore always false, so the rule could
  * never be satisfied: a non-SAR invoice passed request validation and was then
@@ -43,7 +43,7 @@ class ExchangeRateTest extends TestCase
         $result = app(InvoiceValidator::class)->validate($invoice->fresh(), $this->org);
 
         $this->assertNotContains(
-            'BR-KSA-CU-01: Foreign currency invoices require exchange_rate to SAR',
+            'BR-53: Foreign currency invoices require exchange_rate to SAR',
             $result['errors'] ?? []
         );
     }
@@ -55,7 +55,7 @@ class ExchangeRateTest extends TestCase
         $result = app(InvoiceValidator::class)->validate($invoice->fresh(), $this->org);
 
         $this->assertContains(
-            'BR-KSA-CU-01: Foreign currency invoices require exchange_rate to SAR',
+            'BR-53: Foreign currency invoices require exchange_rate to SAR',
             $result['errors'] ?? []
         );
     }

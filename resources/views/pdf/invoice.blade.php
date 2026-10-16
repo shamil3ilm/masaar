@@ -18,6 +18,18 @@
     ];
     [$titleEn, $titleAr] = $titles[$documentType] ?? $titles['invoice'];
     $money = fn ($amount): string => number_format((float) ($amount ?? 0), 2).' '.$invoice->currency;
+    // The time the XML's IssueTime and the QR carry, on the Kingdom's clock.
+    $issueTime = $invoice->created_at
+        ? \App\Domains\Compliance\Fatoora\Helpers\FatooraTime::toSaudiTime($invoice->issuedMoment())->format('H:i:s')
+        : null;
+    // BT-111, converted as InvoiceXmlData::convertToSar converts it.
+    $inSar = $invoice->currency !== 'SAR' && $invoice->exchange_rate !== null;
+    $vatSar = $inSar ? round((float) $invoice->tax_amount * (float) $invoice->exchange_rate, 2) : null;
+    $buyerScheme = \App\Domains\Compliance\Fatoora\Config\FatooraConfig::BUYER_ID_SCHEME_LABELS[$invoice->buyer_id_scheme ?? '']
+        ?? [(string) $invoice->buyer_id_scheme, 'رقم تعريف المشتري'];
+    // BT-146: a standard invoice prints the net price; a receipt may keep
+    // the price its customer saw.
+    $inclusivePrice = $simplified && $invoice->prices_include_vat;
     $buyerAddress = (array) ($invoice->buyer_address ?? []);
     $address = fn (array $parts): string => implode(', ', array_filter(array_map(fn ($part) => trim((string) $part), $parts)));
 @endphp
@@ -51,8 +63,8 @@
         <td width="40%" style="vertical-align: top; text-align: right;">
             <span class="label">Invoice number / رقم الفاتورة</span><br>
             <span dir="ltr" style="font-size: 11pt; font-weight: bold;">{{ $invoice->invoice_number }}</span><br><br>
-            <span class="label">Issue date / تاريخ الإصدار</span><br>
-            <span dir="ltr">{{ $invoice->issue_date?->toDateString() }}</span>
+            <span class="label">Issue date and time / تاريخ ووقت الإصدار</span><br>
+            <span dir="ltr">{{ $invoice->issue_date?->toDateString() }} {{ $issueTime }}</span>
             @if ($invoice->supply_date)
                 <br><span class="label">Supply date / تاريخ التوريد</span><br>
                 <span dir="ltr">{{ $invoice->supply_date->toDateString() }}</span>
@@ -89,6 +101,9 @@
             @if ($invoice->buyer_vat_number)
                 <span class="label">VAT number / الرقم الضريبي</span> <span dir="ltr">{{ $invoice->buyer_vat_number }}</span><br>
             @endif
+            @if ($invoice->buyer_id)
+                <span class="label">{{ $buyerScheme[0] }} / {{ $buyerScheme[1] }}</span> <span dir="ltr">{{ $invoice->buyer_id }}</span><br>
+            @endif
             @if (! $simplified)
                 <span class="muted">{{ $address([trim(($buyerAddress['building_number'] ?? '').' '.($buyerAddress['street'] ?? '')), $buyerAddress['additional_street'] ?? null, $buyerAddress['district'] ?? null, trim(($buyerAddress['city'] ?? '').' '.($buyerAddress['postal_code'] ?? '')), $buyerAddress['country_code'] ?? null]) }}</span>
             @endif
@@ -101,7 +116,11 @@
         <tr>
             <th scope="col" width="34%">Description<br><span class="ar">تفاصيل السلع أو الخدمات</span></th>
             <th scope="col" class="num">Qty<br><span class="ar">الكمية</span></th>
-            <th scope="col" class="num">{{ $invoice->prices_include_vat ? 'Unit price (incl. VAT)' : 'Unit price' }}<br><span class="ar">سعر الوحدة</span></th>
+            @if ($inclusivePrice)
+                <th scope="col" class="num">Unit price (incl. VAT)<br><span class="ar">سعر الوحدة شامل ضريبة القيمة المضافة</span></th>
+            @else
+                <th scope="col" class="num">Unit price<br><span class="ar">سعر الوحدة</span></th>
+            @endif
             @if (! $simplified)
                 <th scope="col" class="num">Net<br><span class="ar">الإجمالي غير شامل</span></th>
                 <th scope="col" class="num">VAT %<br><span class="ar">نسبة الضريبة</span></th>
@@ -123,13 +142,16 @@
                     @endif
                     @if (! $simplified && $line->exempt_reason)
                         <br><span class="muted" style="font-size: 7.5pt;">{{ $line->exempt_reason }}</span>
+                        @if ($exemptAr = \App\Domains\Compliance\Fatoora\Config\FatooraConfig::EXEMPTION_REASONS_AR[$line->exempt_code ?? ''] ?? null)
+                            <br><span class="ar" style="font-size: 7.5pt;">{{ $exemptAr }}</span>
+                        @endif
                     @endif
                 </td>
                 <td class="num">
                     {{ rtrim(rtrim((string) $line->quantity, '0'), '.') }}
                     <span class="muted">{{ \App\Domains\Invoice\Support\UnitCode::label(\App\Domains\Invoice\Support\UnitCode::normalise($line->unit_code)) }}</span>
                 </td>
-                <td class="num">{{ $money($line->priceAsEntered((bool) $invoice->prices_include_vat)) }}</td>
+                <td class="num">{{ $money($line->priceAsEntered($inclusivePrice)) }}</td>
                 @if (! $simplified)
                     <td class="num">{{ $money((float) $line->line_total - (float) $line->tax_amount) }}</td>
                     <td class="num">{{ (string) (float) $line->tax_rate }}%</td>
@@ -174,10 +196,22 @@
                     <td>VAT <span class="ar">مجموع ضريبة القيمة المضافة</span></td>
                     <td class="num">{{ $money($invoice->tax_amount) }}</td>
                 </tr>
+                @if ($inSar)
+                    <tr>
+                        <td>VAT (SAR) <span class="ar">ضريبة القيمة المضافة بالريال</span></td>
+                        <td class="num">{{ number_format((float) $vatSar, 2) }} SAR</td>
+                    </tr>
+                @endif
                 <tr class="grand">
                     <td>Total due <span class="ar">إجمالي المبلغ المستحق</span></td>
                     <td class="num">{{ $money($invoice->total) }}</td>
                 </tr>
+                @if ($inSar)
+                    <tr>
+                        <td class="muted">Exchange rate <span class="ar">سعر الصرف</span></td>
+                        <td class="num muted">1 {{ $invoice->currency }} = {{ rtrim(rtrim((string) $invoice->exchange_rate, '0'), '.') }} SAR</td>
+                    </tr>
+                @endif
             </table>
         </td>
     </tr>

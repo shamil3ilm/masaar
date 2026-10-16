@@ -20,7 +20,9 @@ use Tests\TestCase;
  *
  * A standard invoice is different. The authority stamps it and notifies the
  * issuer before it may be shared with the buyer, so until a cleared copy comes
- * back the printable view withholds the document rather than pretending.
+ * back there is no printable copy at all - the same gate as the PDF. The page
+ * used to render the uncleared invoice with a notice on it, which is still a
+ * printable invoice.
  */
 class InvoicePrintTest extends TestCase
 {
@@ -106,9 +108,21 @@ class InvoicePrintTest extends TestCase
 
         $this->asRequest(fn () => $this->actingAs($this->member)
             ->get('/portal/invoices/'.$invoice->id.'/print')
-            ->assertOk()
-            ->assertSee('not yet cleared')
-            ->assertDontSee('<svg', false));
+            ->assertRedirect(route('portal.invoices.show', $invoice->id))
+            ->assertSessionHas('error', __('ZATCA has not cleared this invoice yet. A standard invoice may not be given to the buyer until it is.')));
+    }
+
+    /**
+     * A draft is not a tax invoice, so it has no printed copy either.
+     */
+    public function test_a_draft_does_not_print(): void
+    {
+        $invoice = $this->makeInvoice($this->acme, 'ACME-4', ['type' => 'simplified']);
+
+        $this->asRequest(fn () => $this->actingAs($this->member)
+            ->get('/portal/invoices/'.$invoice->id.'/print')
+            ->assertRedirect(route('portal.invoices.show', $invoice->id))
+            ->assertSessionHas('error'));
     }
 
     /**
@@ -129,6 +143,6 @@ class InvoicePrintTest extends TestCase
             ->get('/portal/invoices/'.$invoice->id.'/print')
             ->assertOk()
             ->assertSee('<svg', false)
-            ->assertDontSee('not yet cleared'));
+            ->assertSee('فاتورة ضريبية', false));
     }
 }

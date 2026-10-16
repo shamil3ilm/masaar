@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Fatoora\Services;
 
 use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
 use App\Domains\Invoice\Models\Invoice;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -162,7 +163,7 @@ class DeadlineReport
             // owes nothing, and accepted means they have it.
             ->whereNotNull('hash')
             ->whereIn('status', ['issued', 'submitted'])
-            ->where('created_at', '<=', now()->subMinutes((int) round($hours * 60)))
+            ->where(fn (Builder $query) => $this->issuedBefore($query, now()->subMinutes((int) round($hours * 60))))
             ->whereDoesntHave('submissions');
     }
 
@@ -226,7 +227,15 @@ class DeadlineReport
         return InvoiceSubmission::query()
             ->where('submission_type', 'reporting')
             ->whereNotIn('state', self::ACCEPTED)
-            ->where('created_at', '<=', Carbon::now()->subMinutes((int) round($hours * 60)));
+            // From the invoice's issue or the submission's creation, whichever
+            // came first: a submission made hours after issue is no later in
+            // ZATCA's eyes than the issue it reports.
+            ->where(fn (Builder $query) => $query
+                ->where('created_at', '<=', Carbon::now()->subMinutes((int) round($hours * 60)))
+                ->orWhereHas('invoice', fn (Builder $query) => $this->issuedBefore(
+                    $query->withoutGlobalScopes(),
+                    Carbon::now()->subMinutes((int) round($hours * 60)),
+                )));
     }
 
     /**
@@ -258,5 +267,16 @@ class DeadlineReport
         return $submission->created_at === null
             ? 0.0
             : abs((float) $submission->created_at->diffInMinutes(Carbon::now())) / 60;
+    }
+
+    /**
+     * Issued at or before the cut-off: issued_at, or created_at for an
+     * invoice issued before issued_at was recorded.
+     */
+    private function issuedBefore(Builder $query, CarbonInterface $cutoff): Builder
+    {
+        return $query->where(fn (Builder $query) => $query
+            ->where('issued_at', '<=', $cutoff)
+            ->orWhere(fn (Builder $query) => $query->whereNull('issued_at')->where('created_at', '<=', $cutoff)));
     }
 }

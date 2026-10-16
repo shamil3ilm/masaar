@@ -53,6 +53,13 @@ class Product extends Model
             // 15, not 15.00; and 0, not an empty string.
             'tax_rate' => (string) (float) $this->tax_rate,
             'unit_code' => (string) $this->unit_code,
+            // Cleared: a product is standard-rated at its own rate, and a
+            // line prefilled from a zero-rated original must not keep that
+            // original's category under the product's price.
+            'tax_category' => '',
+            'exempt_code' => '',
+            'exempt_reason' => '',
+            'class_code' => '',
         ];
     }
 }

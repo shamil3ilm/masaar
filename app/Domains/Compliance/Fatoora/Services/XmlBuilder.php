@@ -11,6 +11,7 @@ use App\Domains\Invoice\Services\InvoiceTotals;
 use App\Domains\Invoice\Support\UnitCode;
 use DOMDocument;
 use DOMElement;
+use InvalidArgumentException;
 
 /**
  * ZATCA invoice XML builder.
@@ -396,12 +397,26 @@ class XmlBuilder
      */
     private function addDelivery(InvoiceXmlData $data): void
     {
+        // The drafter refuses a period without a start or ending before it
+        // (BR-KSA-35, BR-KSA-36). This is the last line before a signature,
+        // for data that did not come through it: dropping the end date
+        // silently would misstate the supply.
+        if ($data->supplyEndDate !== null && ($data->supplyDate === null || $data->supplyEndDate < $data->supplyDate)) {
+            throw new InvalidArgumentException('The supply end date (KSA-24) needs a supply date (KSA-5) on or before it.');
+        }
+
         if ($data->supplyDate === null) {
             return;
         }
 
         $delivery = $this->dom->createElementNS(self::CAC_NS, 'cac:Delivery');
         $delivery->appendChild($this->dom->createElementNS(self::CBC_NS, 'cbc:ActualDeliveryDate', $data->supplyDate));
+
+        // KSA-24, after the start date as UBL orders them.
+        if ($data->supplyEndDate !== null) {
+            $delivery->appendChild($this->dom->createElementNS(self::CBC_NS, 'cbc:LatestDeliveryDate', $data->supplyEndDate));
+        }
+
         $this->root->appendChild($delivery);
     }
 

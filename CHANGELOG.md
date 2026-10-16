@@ -62,6 +62,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Signed invoice PDFs**: an invoice PDF is stamped with a PAdES B-B
+  signature (ETSI.CAdES.detached) using the issuing device's ZATCA
+  certificate, as the Security Features Implementation Standards require for
+  a PDF/A-3 invoice. A company not yet connected to ZATCA gets the PDF
+  unsigned.
+- **ZATCA compliance review** of the documents people see, against the
+  Guideline for Tax Invoicing and Records, the XML Implementation Standard
+  and the Data Dictionary:
+  - Credit and debit notes follow their invoice's type, are refused against
+    a rejected invoice or another note, may not credit more than the
+    invoice, carry its discount and each line's tax category and
+    exemption, and take one of ZATCA's five official reasons, in English
+    and Arabic.
+  - The printed copy and the PDF title notes as notes, print the issue
+    time, the VAT in SAR on a foreign-currency invoice, the buyer's other
+    identifier, the seller's CR number, Arabic for every label and each
+    exemption reason, and the net unit price on a standard invoice. Only an
+    invoice that may be shared prints, and a cleared invoice prints the QR
+    code ZATCA returned.
+  - The VAT summary puts exports under VATEX-SA-32 and -33 (it had used the
+    international transport codes), shows credit notes for earlier periods
+    as adjustments, places an invoice in the period of its tax point, and
+    lists foreign-currency documents with no exchange rate instead of
+    counting them as riyals. The invoices CSV adds SAR columns and signs
+    credit notes.
+  - An invoice records the moment it was issued (migration 0460): its
+    document's issue time, its QR and the 24-hour reporting clock read that,
+    not when its draft was started.
+  - One note may correct several invoices (their numbers separated by
+    commas), each checked and the credit capped by their combined total.
+    The invoice form takes a buyer identifier for a buyer with no VAT
+    number, a note carries it over, and the form says a note is due within
+    15 days of the end of the month the change happened.
+  - A rejected invoice is not handed out as a PDF or a print, citations name
+    ZATCA's real rules, every amount must be positive including a credit
+    note's, a buyer registered outside the Kingdom is identified by its
+    registration as another ID, and a payment recorded after the 15 days
+    ZATCA allows for invoicing it is flagged.
+  - The platform's own invoices are always standard, identify a customer
+    without a VAT number by its CR number, check its national address
+    first, and carry the subscription's end date (KSA-24, migration 0450).
+- **Credit and debit notes from the invoice**: an issued invoice offers
+  Credit note and Debit note, which open the new-invoice form filled in
+  from it - the buyer, the reference, and for a credit note its lines - so
+  only the reason and what differs is left to type.
 - **Renewals in the console**: a Renewals page lists every plan ending in
   the next 30 days or lapsed in the last 30, with its contact and a link to
   record the payment.

@@ -20,6 +20,11 @@ use Illuminate\Support\LazyCollection;
  * - InvoiceTotals::categories, with the stored VAT - so the boxes add up to
  * the invoices exactly rather than to a recomputation of them.
  *
+ * An invoice belongs to the period of its tax point: the earlier of its
+ * supply date and its issue date (Guideline for Tax Invoicing and Records
+ * §4.5.1). A credit note against an invoice from an earlier period goes in
+ * the box's Adjustments, not its amount (§7.1.1).
+ *
  * Sales only. The return also asks for purchases, which the platform does
  * not see.
  */
@@ -34,21 +39,37 @@ class VatSummary
         5 => 'Exempt sales',
     ];
 
-    /** Zero-rated supplies that are exports for the return. */
-    private const EXPORTS = ['VATEX-SA-34-3', 'VATEX-SA-34-4', 'VATEX-SA-34-5'];
+    /**
+     * Zero-rated supplies that are exports for the return: export of goods
+     * and export of services (XML Implementation Standard §11.2.4).
+     *
+     * International transport (VATEX-SA-34-1 to 34-5), medicines (35),
+     * qualifying metals (36) and military goods (MLTRY) are zero-rated
+     * supplies the standard lists apart from the two exports, and neither it
+     * nor the Guideline puts them under Exports, so they are box 3.
+     */
+    private const EXPORTS = ['VATEX-SA-32', 'VATEX-SA-33'];
 
     /** Zero-rated supplies to citizens, box 2. */
     private const CITIZENS = ['VATEX-SA-EDU', 'VATEX-SA-HEA'];
 
+    private const NOTES = [DocumentType::CreditNote, DocumentType::DebitNote];
+
     /**
      * @return array{
-     *     boxes: array<int, array{label: string, base: float, vat: float}>,
+     *     boxes: array<int, array{label: string, base: float, vat: float, adjustment_base: float, adjustment_vat: float}>,
      *     out_of_scope: float,
      *     total_base: float,
      *     total_vat: float,
+     *     total_adjustment_base: float,
+     *     total_adjustment_vat: float,
+     *     net_base: float,
+     *     net_vat: float,
      *     documents: int,
      *     credit_notes: int,
-     *     converted: int
+     *     adjustments: int,
+     *     converted: int,
+     *     missing_rate: list<string>
      * }
      */
     public function for(string $organizationId, CarbonImmutable $from, CarbonImmutable $to): array
@@ -56,23 +77,38 @@ class VatSummary
         $boxes = [];
 
         foreach (self::BOXES as $box => $label) {
-            $boxes[$box] = ['label' => $label, 'base' => 0.0, 'vat' => 0.0];
+            $boxes[$box] = ['label' => $label, 'base' => 0.0, 'vat' => 0.0, 'adjustment_base' => 0.0, 'adjustment_vat' => 0.0];
         }
 
         $outOfScope = 0.0;
         $documents = 0;
         $creditNotes = 0;
+        $adjustments = 0;
         $converted = 0;
+        $missingRate = [];
+        $earlier = $this->earlierOriginals($organizationId, $from, $to);
 
         foreach ($this->documents($organizationId, $from, $to) as $invoice) {
+            // The return is in riyals. Converting at 1 would misstate it, so
+            // a document without its rate is left out and named instead.
+            $rate = $this->rate($invoice);
+
+            if ($rate === null) {
+                $missingRate[] = (string) $invoice->invoice_number;
+
+                continue;
+            }
+
             $documents++;
+            $converted += $rate !== 1.0 ? 1 : 0;
             $sign = $invoice->document_type === DocumentType::CreditNote ? -1 : 1;
             $creditNotes += $sign < 0 ? 1 : 0;
 
-            // The return is in riyals. A foreign-currency invoice carries the
-            // rate it was issued at.
-            $rate = strtoupper((string) $invoice->currency) === 'SAR' ? 1.0 : (float) ($invoice->exchange_rate ?: 1);
-            $converted += $rate !== 1.0 ? 1 : 0;
+            // A credit note only: a debit note after the original's return
+            // goes in the amount of the period it is raised in (§7.1.1).
+            $adjusts = $sign < 0 && isset($earlier[(string) $invoice->billing_ref]);
+            $adjustments += $adjusts ? 1 : 0;
+            [$baseKey, $vatKey] = $adjusts ? ['adjustment_base', 'adjustment_vat'] : ['base', 'vat'];
 
             foreach ($this->categories($invoice) as $category) {
                 $base = $sign * $category['base'] * $rate;
@@ -85,24 +121,33 @@ class VatSummary
                 }
 
                 $box = $this->boxFor($category['code'], $category['exempt']);
-                $boxes[$box]['base'] += $base;
-                $boxes[$box]['vat'] += $vat;
+                $boxes[$box][$baseKey] += $base;
+                $boxes[$box][$vatKey] += $vat;
             }
         }
 
         foreach ($boxes as $box => $values) {
-            $boxes[$box]['base'] = round($values['base'], 2);
-            $boxes[$box]['vat'] = round($values['vat'], 2);
+            foreach (['base', 'vat', 'adjustment_base', 'adjustment_vat'] as $key) {
+                $boxes[$box][$key] = round($values[$key], 2);
+            }
         }
+
+        $total = fn (string $key): float => round(array_sum(array_column($boxes, $key)), 2);
 
         return [
             'boxes' => $boxes,
             'out_of_scope' => round($outOfScope, 2),
-            'total_base' => round(array_sum(array_column($boxes, 'base')), 2),
-            'total_vat' => round(array_sum(array_column($boxes, 'vat')), 2),
+            'total_base' => $total('base'),
+            'total_vat' => $total('vat'),
+            'total_adjustment_base' => $total('adjustment_base'),
+            'total_adjustment_vat' => $total('adjustment_vat'),
+            'net_base' => round($total('base') + $total('adjustment_base'), 2),
+            'net_vat' => round($total('vat') + $total('adjustment_vat'), 2),
             'documents' => $documents,
             'credit_notes' => $creditNotes,
+            'adjustments' => $adjustments,
             'converted' => $converted,
+            'missing_rate' => $missingRate,
         ];
     }
 
@@ -121,16 +166,87 @@ class VatSummary
     }
 
     /**
+     * The document's rate to riyals, or null for a foreign currency without
+     * one: the tax must be stated in riyals ([GL] §4.2.2).
+     */
+    public function rate(Invoice $invoice): ?float
+    {
+        if (strtoupper((string) ($invoice->currency ?: 'SAR')) === 'SAR') {
+            return 1.0;
+        }
+
+        $rate = (float) $invoice->exchange_rate;
+
+        return $rate > 0 ? $rate : null;
+    }
+
+    /**
+     * The documents whose tax point falls in the period.
+     *
+     * The tax point is the issue date for a note (its supply is the
+     * original's), for a supply over a period (continuous supplies, [GL]
+     * §4.5.2), and for an invoice issued no later than its supply; otherwise
+     * it is the supply date. Two plain ranges rather than a computed date, so
+     * it reads the same on SQLite and MySQL. Half-open, so the last day
+     * counts whether the column holds a date or a datetime.
+     *
      * @return Builder<Invoice>
      */
     private function query(string $organizationId, CarbonImmutable $from, CarbonImmutable $to): Builder
     {
+        $start = $from->toDateString();
+        $until = $to->addDay()->toDateString();
+
         return Invoice::query()
             ->where('org_id', $organizationId)
             ->whereNotNull('hash')
             ->where('status', '!=', InvoiceStatus::Rejected)
             ->where('document_type', '!=', DocumentType::Proforma)
-            ->whereBetween('issue_date', [$from->toDateString(), $to->toDateString()]);
+            ->where(fn (Builder $query) => $query
+                ->where(fn (Builder $onIssue) => $onIssue
+                    ->where(fn (Builder $kind) => $kind
+                        ->whereIn('document_type', self::NOTES)
+                        ->orWhereNull('supply_date')
+                        ->orWhereNotNull('supply_end_date')
+                        ->orWhereColumn('supply_date', '>=', 'issue_date'))
+                    ->where('issue_date', '>=', $start)
+                    ->where('issue_date', '<', $until))
+                ->orWhere(fn (Builder $onSupply) => $onSupply
+                    ->whereNotIn('document_type', self::NOTES)
+                    ->whereNull('supply_end_date')
+                    ->whereColumn('supply_date', '<', 'issue_date')
+                    ->where('supply_date', '>=', $start)
+                    ->where('supply_date', '<', $until)));
+    }
+
+    /**
+     * The invoice numbers, among those the period's credit notes adjust,
+     * whose own tax point is before the period - a return already filed. A
+     * note whose original is not found here nets against the period as
+     * before.
+     *
+     * @return array<string, true>
+     */
+    private function earlierOriginals(string $organizationId, CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        $start = $from->toDateString();
+
+        return Invoice::withoutTenantScope(fn () => Invoice::query()
+            ->where('org_id', $organizationId)
+            ->whereNotNull('hash')
+            ->where('status', '!=', InvoiceStatus::Rejected)
+            ->whereIn('document_type', [DocumentType::Invoice, DocumentType::Prepayment])
+            ->whereIn('invoice_number', $this->query($organizationId, $from, $to)
+                ->where('document_type', DocumentType::CreditNote)
+                ->select('billing_ref'))
+            ->where(fn (Builder $query) => $query
+                ->where('issue_date', '<', $start)
+                ->orWhere(fn (Builder $supply) => $supply
+                    ->whereNull('supply_end_date')
+                    ->where('supply_date', '<', $start)))
+            ->pluck('invoice_number')
+            ->mapWithKeys(fn ($number): array => [(string) $number => true])
+            ->all());
     }
 
     /**

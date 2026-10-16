@@ -5,7 +5,11 @@ declare(strict_types=1);
 namespace App\Domains\Invoice\Services;
 
 use App\Domains\Branding\Services\ThemeService;
+use App\Domains\Compliance\Fatoora\Exceptions\SigningException;
+use App\Domains\Compliance\Fatoora\Helpers\CertificatePem;
+use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use App\Domains\Compliance\Fatoora\Services\QrCodeRenderer;
+use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
@@ -29,10 +33,13 @@ class InvoicePdf
     public function __construct(
         private readonly QrCodeRenderer $qr,
         private readonly ThemeService $themes,
+        private readonly CredentialStore $credentials,
+        private readonly PdfStamp $stamp,
     ) {}
 
     /**
      * @throws DomainException when the invoice may not be given out yet
+     * @throws SigningException when the stored key cannot sign
      */
     public function render(Invoice $invoice, Organization $organization): string
     {
@@ -80,7 +87,30 @@ class InvoicePdf
             ]]);
         }
 
-        return $mpdf->Output('', 'S');
+        return $this->stamped($mpdf->Output('', 'S'), $invoice, $organization);
+    }
+
+    /**
+     * The PDF with the device's PAdES stamp, which ZATCA requires on a PDF/A-3
+     * invoice; as it is when the device has no certificate to stamp with.
+     *
+     * The same credentials the XML was signed with, resolved the same way: the
+     * branch's own, else the organization's. With none it is Phase 1, where
+     * nothing is signed, and that is not a reason to withhold the invoice.
+     *
+     * @throws SigningException when the stored key cannot sign
+     */
+    private function stamped(string $pdf, Invoice $invoice, Organization $organization): string
+    {
+        $signing = $this->credentials->signing((string) $organization->id, $invoice->branch_id);
+        $privateKey = $signing['privateKey'] ?? null;
+        $certificate = CertificatePem::from($signing['pcsid'] ?? null);
+
+        if (empty($privateKey) || $certificate === null) {
+            return $pdf;
+        }
+
+        return $this->stamp->sign($pdf, (string) $privateKey, $certificate);
     }
 
     public function fileName(Invoice $invoice, string $extension = 'pdf'): string
@@ -97,8 +127,12 @@ class InvoicePdf
      */
     public function assertShareable(Invoice $invoice): void
     {
-        if ($invoice->hash === null || $invoice->qr_code === null) {
+        if ($invoice->hash === null || $invoice->qr_code === null || $invoice->status === InvoiceStatus::Draft) {
             throw new DomainException(__('Issue the invoice first. A draft has no QR code and is not a tax invoice.'));
+        }
+
+        if ($invoice->status === InvoiceStatus::Rejected) {
+            throw new DomainException(__('ZATCA rejected this invoice, so it is not a valid tax invoice. Correct it and issue a new one.'));
         }
 
         if ($invoice->type === InvoiceType::Standard && $invoice->cleared_xml === null) {

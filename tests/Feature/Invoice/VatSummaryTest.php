@@ -34,8 +34,11 @@ class VatSummaryTest extends TestCase
     public function test_sales_land_in_their_boxes(): void
     {
         $this->issued([['net' => 100, 'rate' => 15, 'category' => 'S']]);
-        $this->issued([['net' => 50, 'rate' => 0, 'category' => 'Z', 'exempt' => 'VATEX-SA-34-3']]);
+        $this->issued([['net' => 35, 'rate' => 0, 'category' => 'Z', 'exempt' => 'VATEX-SA-32']]);
+        $this->issued([['net' => 15, 'rate' => 0, 'category' => 'Z', 'exempt' => 'VATEX-SA-33']]);
         $this->issued([['net' => 30, 'rate' => 0, 'category' => 'Z', 'exempt' => 'VATEX-SA-35']]);
+        // International transport is zero rated, not an export.
+        $this->issued([['net' => 5, 'rate' => 0, 'category' => 'Z', 'exempt' => 'VATEX-SA-34-3']]);
         $this->issued([['net' => 40, 'rate' => 0, 'category' => 'Z', 'exempt' => 'VATEX-SA-HEA']]);
         $this->issued([['net' => 20, 'rate' => 0, 'category' => 'E', 'exempt' => 'VATEX-SA-29']]);
         $this->issued([['net' => 10, 'rate' => 0, 'category' => 'O', 'exempt' => 'VATEX-SA-OOS']]);
@@ -44,11 +47,11 @@ class VatSummaryTest extends TestCase
 
         $this->assertSame(['base' => 100.0, 'vat' => 15.0], $this->box($summary, 1));
         $this->assertSame(['base' => 40.0, 'vat' => 0.0], $this->box($summary, 2));
-        $this->assertSame(['base' => 30.0, 'vat' => 0.0], $this->box($summary, 3));
+        $this->assertSame(['base' => 35.0, 'vat' => 0.0], $this->box($summary, 3));
         $this->assertSame(['base' => 50.0, 'vat' => 0.0], $this->box($summary, 4));
         $this->assertSame(['base' => 20.0, 'vat' => 0.0], $this->box($summary, 5));
         $this->assertSame(10.0, $summary['out_of_scope']);
-        $this->assertSame(240.0, $summary['total_base']);
+        $this->assertSame(245.0, $summary['total_base']);
     }
 
     public function test_a_credit_note_is_taken_off(): void
@@ -96,6 +99,90 @@ class VatSummaryTest extends TestCase
         $this->assertSame(1, $summary['converted']);
     }
 
+    /**
+     * A credit note against an invoice from a period already returned goes
+     * in Adjustments; a debit note stays in the amount ([GL] §7.1.1).
+     */
+    public function test_earlier_period_credits_are_adjustments(): void
+    {
+        $this->issued([['net' => 100, 'rate' => 15, 'category' => 'S']], ['issue_date' => now()->subMonthNoOverflow()->toDateString()]);
+        $this->issued([['net' => 200, 'rate' => 15, 'category' => 'S']]);
+        $this->issued([['net' => 20, 'rate' => 15, 'category' => 'S']], ['document_type' => 'credit_note', 'billing_ref' => 'ACME-1']);
+        $this->issued([['net' => 50, 'rate' => 15, 'category' => 'S']], ['document_type' => 'credit_note', 'billing_ref' => 'ACME-2']);
+        $this->issued([['net' => 10, 'rate' => 15, 'category' => 'S']], ['document_type' => 'debit_note', 'billing_ref' => 'ACME-1']);
+
+        $summary = $this->summary();
+
+        $this->assertSame(['base' => 160.0, 'vat' => 24.0], $this->box($summary, 1));
+        $this->assertSame(-20.0, $summary['boxes'][1]['adjustment_base']);
+        $this->assertSame(-3.0, $summary['boxes'][1]['adjustment_vat']);
+        $this->assertSame(140.0, $summary['net_base']);
+        $this->assertSame(21.0, $summary['net_vat']);
+        $this->assertSame(1, $summary['adjustments']);
+
+        $this->portal('viewer')->get(route('portal.reports'))
+            ->assertOk()
+            ->assertSee('Adjustments (SAR)')
+            ->assertSee('-20.00');
+    }
+
+    /**
+     * The tax point is the earlier of supply and issue ([GL] §4.5.1); a
+     * note stays on its issue date.
+     */
+    public function test_an_invoice_counts_when_supplied(): void
+    {
+        $lastMonth = now()->subMonthNoOverflow()->toDateString();
+
+        $this->issued([['net' => 100, 'rate' => 15, 'category' => 'S']], ['issue_date' => now()->addMonthNoOverflow()->toDateString(), 'supply_date' => now()->toDateString()]);
+        $this->issued([['net' => 999, 'rate' => 15, 'category' => 'S']], ['supply_date' => $lastMonth]);
+        $this->issued([['net' => 20, 'rate' => 15, 'category' => 'S']], ['document_type' => 'credit_note', 'supply_date' => $lastMonth]);
+        // A supply over a period is due when invoiced ([GL] §4.5.2).
+        $this->issued([['net' => 50, 'rate' => 15, 'category' => 'S']], ['supply_date' => $lastMonth, 'supply_end_date' => now()->toDateString()]);
+
+        $this->assertSame(['base' => 130.0, 'vat' => 19.5], $this->box($this->summary(), 1));
+    }
+
+    /**
+     * Converting at 1 would misstate the return, so the document is named.
+     */
+    public function test_a_missing_rate_is_flagged(): void
+    {
+        $this->issued([['net' => 100, 'rate' => 15, 'category' => 'S']]);
+        $this->issued([['net' => 100, 'rate' => 15, 'category' => 'S']], ['currency' => 'USD', 'exchange_rate' => null]);
+
+        $summary = $this->summary();
+
+        $this->assertSame(['base' => 100.0, 'vat' => 15.0], $this->box($summary, 1));
+        $this->assertSame(['ACME-2'], $summary['missing_rate']);
+        $this->assertSame(1, $summary['documents']);
+
+        $this->portal('viewer')->get(route('portal.reports'))
+            ->assertOk()
+            ->assertSee('have no exchange rate')
+            ->assertSee('ACME-2');
+
+        $csv = $this->portal('member')->get(route('portal.reports.invoices'))->assertOk()->streamedContent();
+
+        $this->assertMatchesRegularExpression('/ACME-2,.*,USD,100\.00,15\.00,115\.00,,,,issued/', $csv);
+    }
+
+    /**
+     * Riyal columns, and credit notes taken off, so the file adds up to the
+     * summary.
+     */
+    public function test_the_csv_reconciles_in_riyals(): void
+    {
+        $this->issued([['net' => 100, 'rate' => 15, 'category' => 'S']], ['currency' => 'USD', 'exchange_rate' => '3.75']);
+        $this->issued([['net' => 20, 'rate' => 15, 'category' => 'S']], ['document_type' => 'credit_note']);
+
+        $csv = $this->portal('member')->get(route('portal.reports.invoices'))->assertOk()->streamedContent();
+
+        $this->assertStringContainsString('"Total (SAR)"', $csv);
+        $this->assertMatchesRegularExpression('/ACME-1,.*,USD,100\.00,15\.00,115\.00,375\.00,56\.25,431\.25,issued/', $csv);
+        $this->assertMatchesRegularExpression('/ACME-2,.*,SAR,-20\.00,-3\.00,-23\.00,-20\.00,-3\.00,-23\.00,issued/', $csv);
+    }
+
     public function test_a_viewer_sees_the_report(): void
     {
         $this->issued([['net' => 100, 'rate' => 15, 'category' => 'S']]);
@@ -126,7 +213,8 @@ class VatSummaryTest extends TestCase
 
         $csv = $this->portal('member')->get(route('portal.reports.vat'))->assertOk()->streamedContent();
 
-        $this->assertStringContainsString('1,"Standard rated sales",100.00,15.00', $csv);
+        $this->assertStringContainsString('1,"Standard rated sales",100.00,0.00,15.00,0.00', $csv);
+        $this->assertStringContainsString(',"Net of adjustments",100.00,,15.00,', $csv);
     }
 
     /**
@@ -139,13 +227,15 @@ class VatSummaryTest extends TestCase
         $net = array_sum(array_column($lines, 'net'));
         $tax = array_sum(array_map(fn (array $line): float => $line['net'] * $line['rate'] / 100, $lines));
 
+        $note = in_array($overrides['document_type'] ?? 'invoice', ['credit_note', 'debit_note'], true);
+
         $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->create([
             'org_id' => $this->acme->id,
             'invoice_number' => 'ACME-'.$this->counter,
             'type' => 'simplified',
             'document_type' => $overrides['document_type'] ?? 'invoice',
-            'billing_ref' => ($overrides['document_type'] ?? 'invoice') === 'credit_note' ? 'ACME-1' : null,
-            'adjustment_reason' => ($overrides['document_type'] ?? 'invoice') === 'credit_note' ? 'Returned goods' : null,
+            'billing_ref' => $note ? ($overrides['billing_ref'] ?? 'ACME-1') : null,
+            'adjustment_reason' => $note ? 'Returned goods' : null,
             'status' => 'draft',
             'issue_date' => now()->toDateString(),
             'currency' => 'SAR',

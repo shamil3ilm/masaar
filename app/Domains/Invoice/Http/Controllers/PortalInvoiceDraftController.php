@@ -4,12 +4,17 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Http\Controllers;
 
+use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Http\Requests\CreatePortalInvoiceRequest;
+use App\Domains\Invoice\Services\AdjustmentDraft;
 use App\Domains\Invoice\Services\Catalogue;
 use App\Domains\Invoice\Services\InvoiceDrafter;
+use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
+use DomainException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -38,7 +43,37 @@ class PortalInvoiceDraftController extends Controller
         private readonly TenantResolver $tenant,
         private readonly InvoiceDrafter $drafter,
         private readonly Catalogue $catalogue,
+        private readonly InvoiceFinder $invoices,
+        private readonly AdjustmentDraft $adjustments,
     ) {}
+
+    /**
+     * A credit or debit note, started from the invoice it corrects: the
+     * new-invoice form opens filled in from it.
+     */
+    public function adjust(Request $request, string $invoiceId, string $note): RedirectResponse
+    {
+        $organizationId = $request->attributes->get(PortalTenant::ORG_ID);
+
+        if (! is_string($organizationId)) {
+            return redirect()->route('portal.invoices.index');
+        }
+
+        abort_if($request->user()?->roleIn($organizationId) === 'viewer', 403, __('Your role in this organization is read-only.'));
+
+        try {
+            $fields = $this->adjustments->fields(
+                $this->invoices->findWithLines($organizationId, $invoiceId),
+                DocumentType::from($note),
+            );
+        } catch (ModelNotFoundException) {
+            abort(404);
+        } catch (DomainException $e) {
+            return redirect()->route('portal.invoices.show', $invoiceId)->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('portal.invoices.create')->withInput($fields);
+    }
 
     public function create(Request $request): View|RedirectResponse
     {

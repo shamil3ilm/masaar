@@ -11,6 +11,7 @@ use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Fixtures\SigningCredentials;
 use Tests\Fixtures\ZatcaSdk;
@@ -214,7 +215,7 @@ class ZatcaConformanceTest extends TestCase
     /**
      * A foreign-currency invoice, which ZATCA reads in two currencies at once.
      *
-     * BR-KSA-CU-01: VAT is reported in SAR whatever the invoice is billed in,
+     * BR-KSA-EN16931-02 and BR-53: VAT is reported in SAR whatever the invoice is billed in,
      * so the document carries the total twice — once in its own currency and
      * once converted. The exchange_rate column that makes the conversion
      * possible was added recently, and InvoiceValidator had been demanding a
@@ -401,6 +402,67 @@ class ZatcaConformanceTest extends TestCase
         );
 
         $this->assertSame([], $result['warnings'], 'an advisory fired on a drafted invoice.');
+    }
+
+    /**
+     * A subscription, as the platform bills one: a standard invoice for a
+     * period (KSA-5 to KSA-24), to a company identified by its commercial
+     * registration because it has no VAT number (BR-KSA-81).
+     */
+    public function test_a_subscription_period_validates(): void
+    {
+        $invoice = app(InvoiceDrafter::class)->draft([
+            'invoice_number' => 'PERIOD-1',
+            'type' => 'standard',
+            'document_type' => 'invoice',
+            'issue_date' => now()->toDateString(),
+            'supply_date' => now()->toDateString(),
+            'supply_end_date' => now()->addYear()->toDateString(),
+            'buyer_name' => 'Beta Industries',
+            'buyer_id' => '1010202020',
+            'buyer_id_scheme' => 'CRN',
+            'buyer_address' => [
+                'street' => 'Olaya Street',
+                'building_number' => '4321',
+                'district' => 'Al Murooj',
+                'city' => 'Riyadh',
+                'postal_code' => '11564',
+                'country_code' => 'SA',
+            ],
+            'lines' => [['description' => 'Starter plan, 12 months', 'quantity' => 1, 'unit_price' => '6000.00']],
+        ], $this->organization->id);
+
+        $signed = app(Submitter::class)->generate($invoice->fresh(['lines']), $this->organization)['signed_xml'];
+
+        $this->assertMatchesRegularExpression('#<cbc:LatestDeliveryDate[^>]*>'.now()->addYear()->toDateString().'</cbc:LatestDeliveryDate>#', $signed);
+
+        $result = $this->validate($signed);
+
+        $this->assertSame([], $this->businessRules($result['errors']), 'ZATCA rejected a supply period.');
+        $this->assertSame([], $result['warnings'], 'an advisory fired on a supply period.');
+    }
+
+    /**
+     * BR-KSA-36: refused when drafted, not when ZATCA reads it.
+     */
+    public function test_a_period_ending_before_it_starts(): void
+    {
+        $this->expectException(ValidationException::class);
+
+        try {
+            app(InvoiceDrafter::class)->draft([
+                'type' => 'standard',
+                'document_type' => 'invoice',
+                'issue_date' => now()->toDateString(),
+                'supply_date' => now()->toDateString(),
+                'supply_end_date' => now()->subDay()->toDateString(),
+                'buyer_name' => 'Beta Industries',
+                'buyer_vat_number' => '399999999800003',
+                'lines' => [['description' => 'Widget', 'quantity' => 1, 'unit_price' => '10.00']],
+            ], $this->organization->id);
+        } finally {
+            $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        }
     }
 
     /**

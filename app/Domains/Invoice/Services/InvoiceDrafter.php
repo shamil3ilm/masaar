@@ -10,7 +10,9 @@ use App\Domains\Invoice\Exceptions\InvoiceNotEditableException;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Support\UnitCode;
 use App\Domains\Organization\Models\Organization;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Creates, revises and discards draft invoices.
@@ -66,6 +68,8 @@ class InvoiceDrafter
 
     public function draft(array $data, string $organizationId, ?string $branchId = null): Invoice
     {
+        $this->assertSupplyPeriod($data['supply_date'] ?? null, $data['supply_end_date'] ?? null);
+
         // The invoice says whether its prices include VAT; if it does not,
         // the organization's setting decides.
         $inclusive = array_key_exists('prices_include_vat', $data) && $data['prices_include_vat'] !== null
@@ -84,6 +88,7 @@ class InvoiceDrafter
                 'status' => InvoiceStatus::Draft,
                 'issue_date' => $data['issue_date'],
                 'supply_date' => $data['supply_date'] ?? null,
+                'supply_end_date' => $data['supply_end_date'] ?? null,
                 'currency' => $data['currency'] ?? 'SAR',
                 'exchange_rate' => $data['exchange_rate'] ?? null,
                 'payment_means_code' => $data['payment_means_code'] ?? '10',
@@ -169,6 +174,33 @@ class InvoiceDrafter
             $this->audit->logDeleted($draft);
             $draft->delete();
         });
+    }
+
+    /**
+     * A supply period has to start, and cannot end before it does.
+     *
+     * BR-KSA-35 and BR-KSA-36. Checked before anything is written, so a
+     * period ZATCA would reject never becomes a draft that cannot be issued.
+     *
+     * @throws ValidationException
+     */
+    private function assertSupplyPeriod(mixed $start, mixed $end): void
+    {
+        if ($end === null || $end === '') {
+            return;
+        }
+
+        if ($start === null || $start === '') {
+            throw ValidationException::withMessages([
+                'supply_end_date' => __('A supply end date needs a supply date.'),
+            ]);
+        }
+
+        if (CarbonImmutable::parse($end)->startOfDay()->lt(CarbonImmutable::parse($start)->startOfDay())) {
+            throw ValidationException::withMessages([
+                'supply_end_date' => __('The supply end date cannot be before the supply date.'),
+            ]);
+        }
     }
 
     /**

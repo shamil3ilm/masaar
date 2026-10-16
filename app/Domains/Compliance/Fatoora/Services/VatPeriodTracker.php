@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Fatoora\Services;
 
 use App\Domains\Compliance\Fatoora\Helpers\FatooraTime;
+use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use Illuminate\Support\Carbon;
@@ -29,6 +30,10 @@ class VatPeriodTracker
     public const PERIOD_MONTHLY = 'monthly';
 
     public const PERIOD_QUARTERLY = 'quarterly';
+
+    public function __construct(
+        private readonly InvoiceValidator $validator,
+    ) {}
 
     /**
      * Get VAT period for a given date.
@@ -158,6 +163,14 @@ class VatPeriodTracker
             ];
         }
 
+        // One note may correct several invoices: BT-25 is text, and ZATCA's
+        // guidelines (4.3) let it carry more than one reference.
+        $references = $this->references((string) $note->billing_ref);
+
+        if (count($references) > 1) {
+            return $this->validateSeveral($note, $references);
+        }
+
         $originalInvoice = $this->original($note);
         if (! $originalInvoice) {
             return [
@@ -175,6 +188,11 @@ class VatPeriodTracker
             ];
         }
 
+        $refusal = $this->refusalAgainst($note, $originalInvoice);
+        if ($refusal !== null) {
+            return ['valid' => false, 'warning' => $refusal, 'suggested_period' => null];
+        }
+
         $reporting = $this->determineReportingPeriod($note, $originalInvoice);
 
         if ($reporting['is_cross_period']) {
@@ -187,6 +205,157 @@ class VatPeriodTracker
         }
 
         return ['valid' => true, 'warning' => null, 'suggested_period' => null];
+    }
+
+    /**
+     * Why this note cannot stand against this original, or null if it can.
+     *
+     * ZATCA's Detailed Guidelines (4.3): "The type of credit/debit note
+     * follows the type of invoice that they are issued against" - a
+     * simplified note against a standard invoice is reported where the
+     * original was cleared, or the other way round. A note corrects an
+     * invoice, not another note. A rejected original was never accepted, so
+     * there is nothing on record to correct: it is reissued, not adjusted.
+     */
+    private function refusalAgainst(Invoice $note, Invoice $original): ?string
+    {
+        if ($original->status === InvoiceStatus::Rejected) {
+            return "Original invoice {$note->billing_ref} was rejected by ZATCA, so there is nothing on record to adjust";
+        }
+
+        if ($original->document_type?->requiresBillingReference() === true) {
+            return "{$note->billing_ref} is itself a credit or debit note; a note must reference the original invoice";
+        }
+
+        if ($note->type !== $original->type) {
+            return "This note is {$note->type?->value} but original invoice {$note->billing_ref} is {$original->type?->value}; ".
+                'a credit or debit note takes the type of the invoice it is issued against';
+        }
+
+        if ($note->document_type === DocumentType::CreditNote && ! $this->creditFits($note, $original)) {
+            return "Credit notes against {$note->billing_ref} would exceed its total of {$original->total}";
+        }
+
+        return null;
+    }
+
+    /**
+     * Whether this credit note, with the credit notes already issued against
+     * the same original, stays within the original's total.
+     *
+     * Every other issued credit note counts, filed or not: once issued it is
+     * on the record. Drafts are not documents yet and rejected ones never
+     * stood, so neither uses up the original.
+     */
+    private function creditFits(Invoice $note, Invoice $original): bool
+    {
+        $references = array_values(array_filter([$original->invoice_number, $original->id]));
+
+        $previous = Invoice::withoutTenantScope(fn () => Invoice::where('org_id', $note->org_id)
+            ->where('document_type', DocumentType::CreditNote->value)
+            ->whereIn('billing_ref', $references)
+            ->whereNotIn('status', [InvoiceStatus::Draft->value, InvoiceStatus::Rejected->value])
+            ->when($note->exists, fn ($query) => $query->whereKeyNot($note->getKey()))
+            ->sum('total'));
+
+        return $this->validator->validateCreditNoteTotal((float) $note->total, (float) $original->total, (float) $previous);
+    }
+
+    /**
+     * The references a note's BT-25 holds, separated by commas or semicolons.
+     *
+     * @return list<string>
+     */
+    private function references(string $billingRef): array
+    {
+        return array_values(array_unique(array_filter(array_map('trim', preg_split('/[,;]/', $billingRef) ?: []), fn (string $ref): bool => $ref !== '')));
+    }
+
+    /**
+     * A note against several invoices: each must stand as an original on its
+     * own, and a credit note must fit within their combined total.
+     *
+     * @param  list<string>  $references
+     * @return array{valid: bool, warning: string|null, suggested_period: string|null}
+     */
+    private function validateSeveral(Invoice $note, array $references): array
+    {
+        $originals = [];
+
+        foreach ($references as $reference) {
+            $original = $this->lookup((string) $note->org_id, $reference);
+
+            if ($original === null) {
+                return ['valid' => false, 'warning' => "Original invoice {$reference} was not found in this organization", 'suggested_period' => null];
+            }
+
+            if ($original->status === InvoiceStatus::Draft) {
+                return ['valid' => false, 'warning' => "Original invoice {$reference} has not been issued, so there is nothing to adjust", 'suggested_period' => null];
+            }
+
+            $refusal = $this->standingRefusal($note, $original, $reference);
+
+            if ($refusal !== null) {
+                return ['valid' => false, 'warning' => $refusal, 'suggested_period' => null];
+            }
+
+            $originals[] = $original;
+        }
+
+        if ($note->document_type === DocumentType::CreditNote) {
+            $combined = array_sum(array_map(fn (Invoice $original): float => (float) $original->total, $originals));
+
+            $previous = Invoice::withoutTenantScope(fn () => Invoice::where('org_id', $note->org_id)
+                ->where('document_type', DocumentType::CreditNote->value)
+                ->where('billing_ref', $note->billing_ref)
+                ->whereNotIn('status', [InvoiceStatus::Draft->value, InvoiceStatus::Rejected->value])
+                ->when($note->exists, fn ($query) => $query->whereKeyNot($note->getKey()))
+                ->sum('total'));
+
+            if (! $this->validator->validateCreditNoteTotal((float) $note->total, $combined, (float) $previous)) {
+                return ['valid' => false, 'warning' => 'Credit notes against '.implode(', ', $references).' would exceed their combined total of '.number_format($combined, 2, '.', ''), 'suggested_period' => null];
+            }
+        }
+
+        // Reported against the earliest original, which is the period most
+        // likely to have closed.
+        usort($originals, fn (Invoice $a, Invoice $b): int => $a->issue_date <=> $b->issue_date);
+        $reporting = $this->determineReportingPeriod($note, $originals[0]);
+
+        return $reporting['is_cross_period']
+            ? ['valid' => true, 'warning' => "Cross-period adjustment: earliest original invoice from {$reporting['original_period']}, note will be reported in {$reporting['report_in_period']}", 'suggested_period' => $reporting['report_in_period']]
+            : ['valid' => true, 'warning' => null, 'suggested_period' => null];
+    }
+
+    /**
+     * The rules every original must meet, the credit cap aside.
+     */
+    private function standingRefusal(Invoice $note, Invoice $original, string $reference): ?string
+    {
+        if ($original->status === InvoiceStatus::Rejected) {
+            return "Original invoice {$reference} was rejected by ZATCA, so there is nothing on record to adjust";
+        }
+
+        if ($original->document_type?->requiresBillingReference() === true) {
+            return "{$reference} is itself a credit or debit note; a note must reference the original invoice";
+        }
+
+        if ($note->type !== $original->type) {
+            return "This note is {$note->type?->value} but original invoice {$reference} is {$original->type?->value}; ".
+                'a credit or debit note takes the type of the invoice it is issued against';
+        }
+
+        return null;
+    }
+
+    private function lookup(string $organizationId, string $reference): ?Invoice
+    {
+        return Invoice::withoutTenantScope(fn () => Invoice::where('org_id', $organizationId)
+            ->where(fn ($query) => $query
+                ->where('invoice_number', $reference)
+                ->orWhere('id', $reference))
+            ->orderByRaw('invoice_number = ? desc', [$reference])
+            ->first());
     }
 
     /**

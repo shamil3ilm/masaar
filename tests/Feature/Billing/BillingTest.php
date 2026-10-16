@@ -7,14 +7,17 @@ namespace Tests\Feature\Billing;
 use App\Domains\Auth\Models\User;
 use App\Domains\Billing\Mail\RenewalReminderMail;
 use App\Domains\Billing\Models\Payment;
+use App\Domains\Billing\Services\Billing;
 use App\Domains\Billing\Services\RenewalReminders;
 use App\Domains\Compliance\Fatoora\DTOs\IssueOutcome;
 use App\Domains\Compliance\Fatoora\Services\InvoiceIssuer;
+use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Licensing\Models\License;
 use App\Domains\Organization\Models\Organization;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Testing\TestResponse;
@@ -137,25 +140,70 @@ class BillingTest extends TestCase
      */
     public function test_the_platform_invoices_the_payment(): void
     {
-        $platform = Organization::create([
-            'name' => 'Masaar Platform',
-            'country' => 'SA',
-            'vat_number' => '300000000000003',
-            'compliance_profile' => ['zatca_onboarded' => true],
-        ]);
-        config(['billing.organization_id' => $platform->id]);
-        $this->mock(InvoiceIssuer::class, fn ($mock) => $mock->shouldReceive('issue')->once()->andReturn(IssueOutcome::issuedOnly()));
+        $platform = $this->platform();
 
         $this->record()->assertSessionHas('success');
 
         $payment = Payment::withoutTenantScope(fn () => Payment::query()->firstOrFail());
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->with('lines')->findOrFail($payment->invoice_id));
+        $invoice = $this->invoiceFor($payment);
 
         $this->assertSame($platform->id, $invoice->org_id);
+        $this->assertSame(InvoiceType::Standard, $invoice->type);
         $this->assertSame('Acme Trading', $invoice->buyer_name);
         $this->assertSame('310122393500003', $invoice->buyer_vat_number);
         $this->assertSame('6000.00', (string) $invoice->subtotal);
         $this->assertSame('900.00', (string) $invoice->tax_amount);
+        // KSA-5 to KSA-24: the period the payment bought.
+        $this->assertSame($payment->period_start->toDateString(), $invoice->supply_date->toDateString());
+        $this->assertSame($payment->period_end->toDateString(), $invoice->supply_end_date->toDateString());
+    }
+
+    /**
+     * A company without a VAT number still gets a standard invoice, naming
+     * it by its commercial registration (BR-KSA-81).
+     */
+    public function test_no_vat_number_uses_the_cr(): void
+    {
+        $this->acme->forceFill(['vat_number' => null, 'cr_number' => '1010101010'])->save();
+        $this->platform();
+
+        $this->record()->assertSessionHas('success');
+
+        $invoice = $this->invoiceFor(Payment::withoutTenantScope(fn () => Payment::query()->firstOrFail()));
+
+        $this->assertSame(InvoiceType::Standard, $invoice->type);
+        $this->assertNull($invoice->buyer_vat_number);
+        $this->assertSame('1010101010', $invoice->buyer_id);
+        $this->assertSame('CRN', $invoice->buyer_id_scheme);
+    }
+
+    public function test_no_vat_nor_cr_is_explained(): void
+    {
+        $this->acme->forceFill(['vat_number' => null, 'cr_number' => null])->save();
+        $this->platform(issues: false);
+
+        $this->record()->assertSessionHas('error');
+
+        $payment = Payment::withoutTenantScope(fn () => Payment::query()->firstOrFail());
+        $this->assertNull($payment->invoice_id);
+        $this->assertStringContainsString('neither a VAT number nor a CR number', (string) $payment->invoice_error);
+    }
+
+    /**
+     * BR-KSA-63: no invoice to a Saudi buyer without its national address,
+     * and the reason names what is missing so it can be completed.
+     */
+    public function test_an_incomplete_address_is_not_invoiced(): void
+    {
+        $this->acme->forceFill(['district' => null, 'postal_code' => ''])->save();
+        $this->platform(issues: false);
+
+        $this->record()->assertSessionHas('error');
+
+        $payment = Payment::withoutTenantScope(fn () => Payment::query()->firstOrFail());
+        $this->assertNull($payment->invoice_id);
+        $this->assertStringContainsString('postal code, district', (string) $payment->invoice_error);
+        $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
     }
 
     public function test_the_portal_shows_the_plan(): void
@@ -214,6 +262,43 @@ class BillingTest extends TestCase
         $this->assertSame(1, app(RenewalReminders::class)->send());
 
         Mail::assertSent(RenewalReminderMail::class, fn (RenewalReminderMail $mail): bool => $mail->hasTo('owner@acme.test') && $mail->days === 14);
+    }
+
+    /**
+     * The billing organization, onboarded, with issuing stubbed out.
+     */
+    private function platform(bool $issues = true): Organization
+    {
+        $platform = Organization::create([
+            'name' => 'Masaar Platform',
+            'country' => 'SA',
+            'vat_number' => '300000000000003',
+            'compliance_profile' => ['zatca_onboarded' => true],
+        ]);
+        config(['billing.organization_id' => $platform->id]);
+        $this->mock(InvoiceIssuer::class, fn ($mock) => $issues
+            ? $mock->shouldReceive('issue')->once()->andReturn(IssueOutcome::issuedOnly())
+            : $mock->shouldNotReceive('issue'));
+
+        return $platform;
+    }
+
+    private function invoiceFor(Payment $payment): Invoice
+    {
+        return Invoice::withoutTenantScope(fn () => Invoice::query()->with('lines')->findOrFail($payment->invoice_id));
+    }
+
+    /**
+     * A payment invoiced after the fifteen days ZATCA allows still counts,
+     * and the admin is told it is late.
+     */
+    public function test_a_late_payment_is_flagged(): void
+    {
+        $this->record(['paid_at' => now()->subMonths(3)->toDateString()])
+            ->assertSessionHas('error', fn (string $message): bool => str_contains($message, 'fifteen days'));
+
+        $this->assertTrue(app(Billing::class)->invoicedLate(CarbonImmutable::now()->subMonths(3)));
+        $this->assertFalse(app(Billing::class)->invoicedLate(CarbonImmutable::now()));
     }
 
     /**
