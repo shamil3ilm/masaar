@@ -71,7 +71,7 @@ class InvoiceQrPanelTest extends TestCase
      * A standard invoice ZATCA has not cleared shows its QR, and gives no
      * copy of it away.
      */
-    public function test_an_uncleared_qr_is_not_handed_out(): void
+    public function test_an_uncleared_qr_stays_inside(): void
     {
         $invoice = $this->sampleInvoice($this->organization, 'standard', 2);
         $invoice->forceFill(['cleared_xml' => null])->saveQuietly();
