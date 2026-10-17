@@ -351,15 +351,6 @@ final class FatooraConfig
     public const DEFAULT_IDEMPOTENCY_WINDOW_HOURS = 24;
 
     // ============================================================
-    // THRESHOLDS (Configurable)
-    // ============================================================
-    public const LARGE_INVOICE_THRESHOLD = 1000000.00; // SAR
-
-    public const CERTIFICATE_EXPIRY_WARNING_DAYS = 30;
-
-    public const CERTIFICATE_EXPIRY_CRITICAL_DAYS = 7;
-
-    // ============================================================
     // CRYPTOGRAPHY
     //
     // ZATCA mandates these, so they are constants rather than configuration.
@@ -436,8 +427,6 @@ final class FatooraConfig
     // OFFLINE MODE SETTINGS
     // ============================================================
     public const OFFLINE_QUEUE_MAX_SIZE = 10000;
-
-    public const OFFLINE_RETRY_INTERVAL = 300;      // 5 minutes
 
     // ============================================================
     // KILL SWITCH FLAGS

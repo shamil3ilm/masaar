@@ -44,7 +44,8 @@ use Tymon\JWTAuth\Facades\JWTAuth;
  * documents cover a simplified and a standard invoice, a credit and a debit
  * note against an original, zero-rated and exempt lines, a document-level
  * discount across two categories, a foreign currency, prices that include
- * VAT, and a branch signing with its own certificate.
+ * VAT, a branch signing with its own certificate, and an invoice sent with
+ * no payment means.
  *
  * Per document, tests/Fixtures/golden/<case>/<label>.xml holds the signed XML
  * and <label>.json the hash, the decoded QR, invoice_number, icv, issued_at,
@@ -151,6 +152,20 @@ class SaudiIssuingGoldenTest extends TestCase
             ['description' => 'Coffee beans 1kg', 'quantity' => 2, 'unit_price' => '45.50'],
             ['description' => 'Paper filters', 'quantity' => 3, 'unit_price' => '7.33'],
         ]));
+
+        $this->finishGolden();
+    }
+
+    /**
+     * Every other pipeline case names its payment means, so the code an ERP
+     * caller's document gets when it sends none was pinned only incidentally,
+     * by Billing's own invoice.
+     */
+    public function test_pipeline_default_payment_means_golden(): void
+    {
+        $this->viaPipeline('pipeline-default-payment-means', 'invoice', array_diff_key($this->simplified('GM-PM-1', [
+            ['description' => 'Notebook A5', 'quantity' => 4, 'unit_price' => '12.25'],
+        ]), ['payment_means_code' => true]));
 
         $this->finishGolden();
     }

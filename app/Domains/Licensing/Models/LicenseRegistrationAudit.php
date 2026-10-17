@@ -45,21 +45,6 @@ class LicenseRegistrationAudit extends Model
         'changes' => 'array',
     ];
 
-    // Action constants
-    public const ACTION_CREATED = 'created';
-
-    public const ACTION_APPROVED = 'approved';
-
-    public const ACTION_REJECTED = 'rejected';
-
-    public const ACTION_SUSPENDED = 'suspended';
-
-    public const ACTION_REVOKED = 'revoked';
-
-    public const ACTION_UPDATED = 'updated';
-
-    public const ACTION_VERIFIED = 'verified';
-
     /**
      * Get the registration this audit belongs to.
      */

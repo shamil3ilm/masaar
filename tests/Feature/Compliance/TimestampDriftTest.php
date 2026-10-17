@@ -15,9 +15,8 @@ use Tests\TestCase;
  * pre-submission checks. It had no tests.
  *
  * The distinctions it draws are the point: a future timestamp beyond tolerance
- * is refused, a past one never is, and the two other clocks it compares against
- * are weighted differently — a TSA disagreeing is an error because the TSA is
- * authoritative, while an ERP disagreeing is a warning because the ERP is not.
+ * is refused, a past one never is, and an ERP clock disagreeing is only a
+ * warning because the ERP is not authoritative.
  */
 class TimestampDriftTest extends TestCase
 {
@@ -106,22 +105,6 @@ class TimestampDriftTest extends TestCase
 
         $this->assertFalse($result['valid']);
         $this->assertSame('invalid_timestamp_format', $result['result_code']);
-    }
-
-    /**
-     * A timestamp authority is authoritative by definition, so its
-     * disagreement means the local clock is wrong and the document must not go.
-     */
-    public function test_tsa_disagreement_is_an_error(): void
-    {
-        $result = $this->validator->validateTimestamps(
-            $this->at(0),
-            null,
-            $this->at(300),
-        );
-
-        $this->assertFalse($result['valid']);
-        $this->assertStringContainsString('TSA', $result['errors'][0]);
     }
 
     /**

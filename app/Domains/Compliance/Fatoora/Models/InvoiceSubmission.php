@@ -123,22 +123,6 @@ class InvoiceSubmission extends Model
     }
 
     /**
-     * Valid state transitions.
-     */
-    public const STATE_TRANSITIONS = [
-        'draft' => ['queued', 'pending_submission', 'cancelled'],
-        'queued' => ['pending_submission', 'cancelled', 'failed'],
-        'pending_submission' => ['submitted', 'failed'],
-        'submitted' => ['cleared', 'reported', 'warning', 'rejected', 'failed'],
-        'warning' => [], // Terminal state (accepted with warnings)
-        'cleared' => [], // Terminal state
-        'reported' => [], // Terminal state
-        'rejected' => ['pending_submission'], // Can retry
-        'failed' => ['pending_submission', 'cancelled'], // Can retry or cancel
-        'cancelled' => [], // Terminal state
-    ];
-
-    /**
      * Terminal states.
      */
     public const TERMINAL_STATES = ['cleared', 'reported', 'warning', 'cancelled'];

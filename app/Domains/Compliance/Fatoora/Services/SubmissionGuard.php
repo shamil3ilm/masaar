@@ -152,7 +152,6 @@ class SubmissionGuard
         $validation = $this->timestampValidator->validateTimestamps(
             $invoiceTimestamp,
             null,
-            null, // TSA timestamp added during signing
             null  // ZATCA received timestamp not yet known
         );
 

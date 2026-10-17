@@ -9,10 +9,9 @@ use Illuminate\Support\Facades\Log;
 /**
  * Timestamp Validator Service.
  *
- * Enforces the timestamp authority policy:
- * 1. TSA (XAdES-T) is highest priority if enabled
- * 2. System UTC is default issuance time
- * 3. ERP timestamp is informational only
+ * Enforces the timestamp policy:
+ * 1. System UTC is the issuance time; no timestamp authority is used
+ * 2. ERP timestamp is informational only
  *
  * Clock drift tolerance: ±30 seconds between sources.
  *
@@ -28,8 +27,6 @@ class TimestampValidator
     /**
      * Timestamp authority types.
      */
-    public const AUTHORITY_TSA = 'tsa';
-
     public const AUTHORITY_LOCAL = 'local';
 
     public const AUTHORITY_ERP = 'erp';
@@ -52,14 +49,12 @@ class TimestampValidator
      *
      * @param  \DateTimeInterface|string|null  $invoiceTimestamp  The invoice's claimed issue time
      * @param  \DateTimeInterface|string|null  $erpTimestamp  ERP-provided timestamp (if any)
-     * @param  \DateTimeInterface|string|null  $tsaTimestamp  TSA response timestamp (if XAdES-T)
      * @param  \DateTimeInterface|string|null  $zatcaReceivedAt  ZATCA's received timestamp (from clearance response)
      * @return array{valid: bool, authority: string, drift_seconds: int, warnings: array, errors: array}
      */
     public function validateTimestamps(
         \DateTimeInterface|string|null $invoiceTimestamp,
         \DateTimeInterface|string|null $erpTimestamp = null,
-        \DateTimeInterface|string|null $tsaTimestamp = null,
         \DateTimeInterface|string|null $zatcaReceivedAt = null
     ): array {
         // Handle null/empty invoice timestamp
@@ -90,7 +85,6 @@ class TimestampValidator
         }
 
         $erpTimestamp = $this->parseTimestamp($erpTimestamp);
-        $tsaTimestamp = $this->parseTimestamp($tsaTimestamp);
         $zatcaReceivedAt = $this->parseTimestamp($zatcaReceivedAt);
         $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
         $warnings = [];
@@ -100,11 +94,6 @@ class TimestampValidator
         // Determine authoritative timestamp
         $authority = self::AUTHORITY_LOCAL;
         $authoritativeTime = $invoiceTimestamp;
-
-        if ($tsaTimestamp !== null) {
-            $authority = self::AUTHORITY_TSA;
-            $authoritativeTime = $tsaTimestamp;
-        }
 
         // Check 1: Invoice timestamp should not be in the future
         $futureCheck = $this->checkFutureTimestamp($invoiceTimestamp, $now);
@@ -138,20 +127,7 @@ class TimestampValidator
             }
         }
 
-        // Check 3: TSA vs local time drift
-        if ($tsaTimestamp !== null) {
-            $tsaDrift = $this->calculateDrift($invoiceTimestamp, $tsaTimestamp);
-
-            if (abs($tsaDrift) > self::MAX_DRIFT_SECONDS) {
-                $errors[] = sprintf(
-                    'TSA timestamp differs from local timestamp by %d seconds. TSA is authoritative. Local clock may be drifting.',
-                    $tsaDrift
-                );
-                $maxDriftFound = max($maxDriftFound, abs($tsaDrift));
-            }
-        }
-
-        // Check 4: ZATCA received timestamp (for dispute resolution)
+        // Check 3: ZATCA received timestamp (for dispute resolution)
         if ($zatcaReceivedAt !== null) {
             $zatcaDrift = $this->calculateDrift($authoritativeTime, $zatcaReceivedAt);
 
@@ -164,7 +140,7 @@ class TimestampValidator
             }
         }
 
-        // Check 5: Staleness (invoice too old)
+        // Check 4: Staleness (invoice too old)
         $ageSeconds = $now->getTimestamp() - $invoiceTimestamp->getTimestamp();
         if ($ageSeconds > 86400) { // More than 24 hours old
             $warnings[] = sprintf(
@@ -183,7 +159,6 @@ class TimestampValidator
                 'errors' => $errors,
                 'invoice_timestamp' => $invoiceTimestamp->format('c'),
                 'erp_timestamp' => $erpTimestamp?->format('c'),
-                'tsa_timestamp' => $tsaTimestamp?->format('c'),
             ]);
         }
 
