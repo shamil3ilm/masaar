@@ -6,12 +6,12 @@
 
 @section('content')
 <p class="mb-6 text-sm">
-    <a href="{{ $user->is_platform_admin ? route('admin.dashboard') : route('portal.dashboard') }}" class="text-teal-700 dark:text-teal-300 hover:underline"><span class="inline-block rtl:rotate-180">&larr;</span> {{ __('Back') }}</a>
+    <a href="{{ $user->is_platform_admin ? route('admin.dashboard') : route('portal.dashboard') }}" class="text-accent hover:underline"><span class="inline-block rtl:rotate-180">&larr;</span> {{ __('Back') }}</a>
 </p>
 
 @foreach (['success' => 'green', 'error' => 'red'] as $key => $tone)
     @if (session($key))
-        <div class="mb-6 rounded border px-4 py-3 text-sm {{ $tone === 'green' ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/40 text-green-800 dark:text-green-200' : 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300' }}">
+        <div class="mb-6 rounded border px-4 py-3 text-sm {{ $tone === 'green' ? 'border-success-line bg-success-soft text-success' : 'border-danger-line bg-danger-soft text-danger' }}">
             {{ session($key) }}
         </div>
     @endif
@@ -20,17 +20,17 @@
 <div class="space-y-8">
     <form method="POST" action="{{ route('account.name') }}" class="space-y-3">
         @csrf
-        <h3 class="font-semibold text-gray-800 dark:text-gray-100">{{ __('Name') }}</h3>
+        <h3 class="font-semibold text-fg">{{ __('Name') }}</h3>
         <x-ui.field :label="__('Your name')">
             <x-ui.input type="text" name="name" maxlength="255" required value="{{ old('name', $user->name) }}" />
         </x-ui.field>
-        <x-ui.button variant="outline">{{ __('Save name') }}</x-ui.button>
+        <x-ui.button variant="secondary">{{ __('Save name') }}</x-ui.button>
     </form>
 
     <form method="POST" action="{{ route('account.email') }}" class="space-y-3 border-t pt-6">
         @csrf
-        <h3 class="font-semibold text-gray-800 dark:text-gray-100">{{ __('Email address') }}</h3>
-        <p class="text-sm text-gray-600 dark:text-gray-300">
+        <h3 class="font-semibold text-fg">{{ __('Email address') }}</h3>
+        <p class="text-sm text-muted">
             {{ __('Now :email.', ['email' => $user->email]) }}
             @if ($user->pending_email)
                 {{ __('Waiting for you to open the link sent to :email.', ['email' => $user->pending_email]) }}
@@ -44,12 +44,12 @@
                 <x-ui.input type="password" name="password" required autocomplete="current-password" />
             </x-ui.field>
         </div>
-        <x-ui.button variant="outline">{{ __('Send confirmation link') }}</x-ui.button>
+        <x-ui.button variant="secondary">{{ __('Send confirmation link') }}</x-ui.button>
     </form>
 
     <form method="POST" action="{{ route('account.password') }}" class="space-y-3 border-t pt-6">
         @csrf
-        <h3 class="font-semibold text-gray-800 dark:text-gray-100">{{ __('Password') }}</h3>
+        <h3 class="font-semibold text-fg">{{ __('Password') }}</h3>
         <x-ui.field :label="__('Current password')">
             <x-ui.input type="password" name="current_password" required autocomplete="current-password" />
         </x-ui.field>
@@ -61,16 +61,16 @@
                 <x-ui.input type="password" name="password_confirmation" required autocomplete="new-password" />
             </x-ui.field>
         </div>
-        <x-ui.button variant="outline">{{ __('Change password') }}</x-ui.button>
+        <x-ui.button variant="secondary">{{ __('Change password') }}</x-ui.button>
     </form>
 
     <section id="two-factor" class="space-y-3 border-t pt-6">
-        <h3 class="font-semibold text-gray-800 dark:text-gray-100">{{ __('Two-factor authentication') }}</h3>
+        <h3 class="font-semibold text-fg">{{ __('Two-factor authentication') }}</h3>
 
         @if (session('recovery_codes'))
-            <div class="rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 p-4">
-                <p class="mb-2 text-sm font-medium text-amber-900 dark:text-amber-100">{{ __('Recovery codes - each works once, shown only now:') }}</p>
-                <ul class="grid grid-cols-2 gap-1 font-mono text-sm text-amber-900 dark:text-amber-100">
+            <div class="rounded border border-warning-line bg-warning-soft p-4">
+                <p class="mb-2 text-sm font-medium text-warning">{{ __('Recovery codes - each works once, shown only now:') }}</p>
+                <ul class="grid grid-cols-2 gap-1 font-mono text-sm text-warning">
                     @foreach (session('recovery_codes') as $code)
                         <li>{{ $code }}</li>
                     @endforeach
@@ -79,22 +79,22 @@
         @endif
 
         @if ($user->hasTwoFactor())
-            <p class="text-sm text-gray-600 dark:text-gray-300">{{ __('On. Signing in asks for a code from your authenticator app.') }}</p>
+            <p class="text-sm text-muted">{{ __('On. Signing in asks for a code from your authenticator app.') }}</p>
             @if ($cannotTurnOff)
-                <p class="text-sm text-gray-500 dark:text-gray-400">{{ $cannotTurnOff }}</p>
+                <p class="text-sm text-muted">{{ $cannotTurnOff }}</p>
             @else
                 <form method="POST" action="{{ route('account.two-factor.off') }}" class="space-y-3">
                     @csrf
                     <x-ui.field :label="__('A code from your app, to turn it off')">
                         <x-ui.input type="text" name="code" inputmode="numeric" maxlength="32" autocomplete="one-time-code" required />
                     </x-ui.field>
-                    <x-ui.button variant="outline">{{ __('Turn off two-factor') }}</x-ui.button>
+                    <x-ui.button variant="secondary">{{ __('Turn off two-factor') }}</x-ui.button>
                 </form>
             @endif
         @elseif ($setupSecret)
-            <p class="text-sm text-gray-600 dark:text-gray-300">{{ __('Scan this in your authenticator app, or enter the key, then type the code it shows.') }}</p>
+            <p class="text-sm text-muted">{{ __('Scan this in your authenticator app, or enter the key, then type the code it shows.') }}</p>
             <div>{!! $setupQr !!}</div>
-            <p class="font-mono text-sm text-gray-700 dark:text-gray-200 break-all">{{ $setupSecret }}</p>
+            <p class="font-mono text-sm text-fg break-all">{{ $setupSecret }}</p>
             <form method="POST" action="{{ route('account.two-factor.confirm') }}" class="space-y-3">
                 @csrf
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -108,30 +108,30 @@
                 <x-ui.button variant="primary">{{ __('Turn on two-factor') }}</x-ui.button>
             </form>
         @else
-            <p class="text-sm text-gray-600 dark:text-gray-300">{{ __('Off. With it on, signing in also asks for a code from an authenticator app on your phone.') }}</p>
+            <p class="text-sm text-muted">{{ __('Off. With it on, signing in also asks for a code from an authenticator app on your phone.') }}</p>
             <form method="POST" action="{{ route('account.two-factor.start') }}">
                 @csrf
-                <x-ui.button variant="outline">{{ __('Set up two-factor') }}</x-ui.button>
+                <x-ui.button variant="secondary">{{ __('Set up two-factor') }}</x-ui.button>
             </form>
         @endif
     </section>
 
     <form method="POST" action="{{ route('account.sessions') }}" class="space-y-3 border-t pt-6">
         @csrf
-        <h3 class="font-semibold text-gray-800 dark:text-gray-100">{{ __('Other sessions') }}</h3>
-        <p class="text-sm text-gray-600 dark:text-gray-300">{{ __('Sign out of every other browser and device - after using a shared computer, say.') }}</p>
+        <h3 class="font-semibold text-fg">{{ __('Other sessions') }}</h3>
+        <p class="text-sm text-muted">{{ __('Sign out of every other browser and device - after using a shared computer, say.') }}</p>
         <x-ui.field :label="__('Your password')">
             <x-ui.input type="password" name="password" required autocomplete="current-password" />
         </x-ui.field>
-        <x-ui.button variant="outline">{{ __('Sign out everywhere else') }}</x-ui.button>
+        <x-ui.button variant="secondary">{{ __('Sign out everywhere else') }}</x-ui.button>
     </form>
 
     <form method="POST" action="{{ route('account.destroy') }}" class="space-y-3 border-t pt-6"
           data-confirm-tone="danger" data-confirm-action="{{ __('Delete my account') }}"
           data-confirm="{{ __('Delete your account? Your name, email and sign-in are erased and cannot be recovered. Invoices you issued stay with the company, as the law requires.') }}">
         @csrf
-        <h3 class="font-semibold text-red-700 dark:text-red-300">{{ __('Delete my account') }}</h3>
-        <p class="text-sm text-gray-600 dark:text-gray-300">
+        <h3 class="font-semibold text-danger">{{ __('Delete my account') }}</h3>
+        <p class="text-sm text-muted">
             {{ __('Your name, email address and sign-in are erased. Invoices and records the law requires a company to keep stay with that company, no longer linked to you by name.') }}
         </p>
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">

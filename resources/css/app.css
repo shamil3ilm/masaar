@@ -357,7 +357,8 @@
 @utility route-stop {
     position: absolute;
     inset-inline-start: calc(-1.5rem - 0.6875rem - 1px);
-    top: 0.25rem;
+    /* Level with the eyebrow, under the section's top padding. */
+    top: 3.25rem;
     width: 1.375rem;
     height: 1.375rem;
     border-radius: 9999px;
@@ -366,5 +367,6 @@
 
     @variant sm {
         inset-inline-start: calc(-2.5rem - 0.6875rem - 1px);
+        top: 3.75rem;
     }
 }

@@ -19,21 +19,18 @@
     @param int   $index  Position in the lines array.
     @param array $row    Previously submitted values, or empty.
 --}}
-<div data-line-row class="rounded border border-gray-200 dark:border-gray-700 p-4">
+<div data-line-row class="rounded border border-line p-4">
     <div class="mb-3 flex items-center justify-between">
-        <span class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+        <span class="text-xs font-semibold uppercase tracking-wider text-subtle">
             {{ __('Line') }} <span data-line-number>{{ $index + 1 }}</span>
         </span>
-        <button type="button" data-remove-line
-                class="text-xs text-gray-500 dark:text-gray-400 transition-colors hover:text-red-700 dark:hover:text-red-300 disabled:cursor-not-allowed disabled:text-gray-300 dark:disabled:text-gray-600 disabled:hover:text-gray-300 dark:disabled:hover:text-gray-600">
-            {{ __('Remove') }}
-        </button>
+        <x-ui.button type="button" size="sm" variant="ghost" data-remove-line class="-me-2 text-danger">{{ __('Remove') }}</x-ui.button>
     </div>
 
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         @if (($products ?? collect())->isNotEmpty())
             {{-- Fills this row's fields and submits nothing itself. --}}
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 sm:col-span-2 lg:col-span-6">
+            <label class="block text-xs font-medium text-muted sm:col-span-2 lg:col-span-6">
                 {{ __('Product') }}
                 <x-ui.select data-product-picker>
                     <option value="">{{ __('Choose to fill in this line...') }}</option>
@@ -46,38 +43,38 @@
             </label>
         @endif
 
-        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 lg:col-span-2">
+        <label class="block text-xs font-medium text-muted lg:col-span-2">
             {{ __('Description') }}
             <x-ui.input type="text" name="lines[{{ $index }}][description]"
                    value="{{ $row['description'] ?? '' }}" />
         </label>
 
-        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 lg:col-span-2">
+        <label class="block text-xs font-medium text-muted lg:col-span-2">
             {{ __('Description in Arabic') }}
             <x-ui.input type="text" name="lines[{{ $index }}][description_ar]"
                    value="{{ $row['description_ar'] ?? '' }}"
                    dir="rtl" lang="ar" />
         </label>
 
-        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300">
+        <label class="block text-xs font-medium text-muted">
             {{ __('Quantity') }}
             <x-ui.input type="number" step="0.001" min="0" name="lines[{{ $index }}][quantity]"
                    value="{{ $row['quantity'] ?? '' }}" />
         </label>
 
-        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300">
+        <label class="block text-xs font-medium text-muted">
             {{ __('Unit price') }}
             <x-ui.input type="number" step="0.01" min="0" name="lines[{{ $index }}][unit_price]"
                    value="{{ $row['unit_price'] ?? '' }}" />
         </label>
 
-        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300">
+        <label class="block text-xs font-medium text-muted">
             {{ __('VAT %') }}
             <x-ui.input type="number" step="0.01" min="0" max="100" name="lines[{{ $index }}][tax_rate]"
                    value="{{ $row['tax_rate'] ?? '15' }}" />
         </label>
 
-        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300">
+        <label class="block text-xs font-medium text-muted">
             {{ __('Unit') }}
             {{-- Grouped, and read from App\Domains\Invoice\Support\UnitCode.
 

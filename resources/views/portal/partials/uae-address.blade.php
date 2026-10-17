@@ -43,5 +43,5 @@
 <x-ui.field :label="__('P.O. box or postal code')">
     <x-ui.input type="text" name="postal_code" maxlength="20"
                 value="{{ old('postal_code', $values['postal_code'] ?? null) }}" />
-    <span class="mt-1 block text-xs font-normal text-gray-500 dark:text-gray-400">{{ __('Optional.') }}</span>
+    <span class="mt-1 block text-xs font-normal text-muted">{{ __('Optional.') }}</span>
 </x-ui.field>

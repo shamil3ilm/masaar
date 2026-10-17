@@ -4,7 +4,7 @@
 
     @param $invoice  \App\Domains\Invoice\Models\Invoice
 --}}
-            <p class="text-sm font-semibold tracking-wide text-gray-500 dark:text-gray-400 uppercase">
+            <p class="text-sm font-semibold tracking-wide text-muted uppercase">
                 {{ match ($invoice->jurisdiction_data['document_category'] ?? null) {
                     'tax_credit_note' => __('Tax credit note'),
                     'commercial_invoice' => __('Commercial invoice'),

@@ -4,13 +4,13 @@
 
 @section('content')
 <div class="mb-6">
-    <p class="text-sm"><a href="{{ route('portal.support.index') }}" class="text-teal-700 dark:text-teal-300 hover:underline"><span class="inline-block rtl:rotate-180">&larr;</span> {{ __('Support') }}</a></p>
-    <h2 class="mt-2 text-2xl font-bold text-gray-800 dark:text-gray-100">{{ __('New ticket') }}</h2>
-    <p class="text-gray-500 dark:text-gray-400">{{ __('Tell us what happened. An invoice number and the message ZATCA gave help us answer faster.') }}</p>
+    <p class="text-sm"><a href="{{ route('portal.support.index') }}" class="text-accent hover:underline"><span class="inline-block rtl:rotate-180">&larr;</span> {{ __('Support') }}</a></p>
+    <h2 class="mt-2 text-2xl font-semibold text-fg">{{ __('New ticket') }}</h2>
+    <p class="text-muted">{{ __('Tell us what happened. An invoice number and the message ZATCA gave help us answer faster.') }}</p>
 </div>
 
 <form method="POST" action="{{ route('portal.support.store') }}" enctype="multipart/form-data"
-      class="max-w-3xl space-y-4 rounded-lg bg-white dark:bg-gray-900 p-6 shadow">
+      class="max-w-3xl space-y-4 rounded-card bg-surface p-6 border border-line shadow-card">
     @csrf
     <x-ui.field :label="__('Subject')">
         <x-ui.input type="text" name="subject" maxlength="160" required value="{{ old('subject') }}" />
@@ -39,7 +39,7 @@
 
     <x-ui.field :label="__('Attachments (optional)')">
         <x-ui.input type="file" name="files[]" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.csv,.xml" />
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Up to :count files, 5 MB each: PDF, images, XML, CSV or text.', ['count' => $maxFiles]) }}</p>
+        <p class="mt-1 text-xs text-muted">{{ __('Up to :count files, 5 MB each: PDF, images, XML, CSV or text.', ['count' => $maxFiles]) }}</p>
     </x-ui.field>
 
     <x-ui.button>{{ __('Open ticket') }}</x-ui.button>
