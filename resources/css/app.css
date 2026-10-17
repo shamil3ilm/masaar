@@ -120,6 +120,9 @@
     --color-highlight: var(--color-sand-200);
     --color-highlight-soft: var(--color-sand-100);
 
+    /* Paper: what a printed invoice is drawn on, in either mode. */
+    --color-paper: #faf8f4;
+
     --color-focus: var(--color-teal-600);
 
     --color-success: #166534;

@@ -8,12 +8,14 @@
     action. This is that button, drawn as the text around it - and still 44px
     tall to the touch, because it is still something a thumb has to hit.
 
-    tone: accent (the link colour), muted (secondary text), danger.
+    tone: accent (the link colour), muted (secondary text), danger, and
+    inverse for a navy surface.
 --}}
 @php
     $colour = match ($tone) {
         'muted' => 'text-muted hover:text-fg',
         'danger' => 'text-danger',
+        'inverse' => 'text-white/80 hover:text-white',
         default => 'text-accent hover:text-accent-strong',
     };
 @endphp

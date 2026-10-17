@@ -14,10 +14,10 @@
     $company = config('company');
     $who = $company['legal_name'];
 @endphp
-<article class="px-6 py-10 sm:px-10">
-    <div class="mx-auto max-w-3xl space-y-6 text-white/80 [&_h2]:mt-10 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-white [&_li]:ms-5 [&_li]:list-disc [&_a]:text-teal-300">
-        <h1 class="text-3xl font-semibold text-white">{{ $title }}</h1>
-        <p class="text-sm text-white/50">{{ __('Version :version', ['version' => $version]) }}</p>
+<article class="px-4 py-12 sm:px-6 sm:py-16">
+    <div class="mx-auto max-w-3xl space-y-6 leading-relaxed text-muted [&_h2]:mt-10 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-fg [&_li]:ms-5 [&_li]:list-disc [&_a]:text-accent [&_a]:underline [&_a]:underline-offset-4">
+        <h1 class="text-title font-semibold text-fg">{{ $title }}</h1>
+        <p class="text-sm text-subtle">{{ __('Version :version', ['version' => $version]) }}</p>
 
         @include('legal.'.$page.'-'.(app()->getLocale() === 'ar' ? 'ar' : 'en'), ['company' => $company, 'who' => $who])
 

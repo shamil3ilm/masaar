@@ -1,4 +1,4 @@
-@props(['title', 'pair' => null, 'eyebrow' => null, 'level' => 2, 'inverse' => false])
+@props(['title', 'pair' => null, 'eyebrow' => null, 'level' => 2, 'inverse' => false, 'id' => null])
 
 {{--
     A section's heading, in both languages.
@@ -15,6 +15,7 @@
              other locale passed to the translator. Left out, or the same as the title, and only one is shown.
     eyebrow  a small accent line above, naming the section.
     inverse  for a section on navy.
+    id       given to the heading itself, for a section's aria-labelledby.
 --}}
 @php
     $here = app()->getLocale();
@@ -27,7 +28,7 @@
         <p @class(['text-eyebrow font-semibold uppercase', 'text-accent' => ! $inverse, 'text-teal-300' => $inverse])>{{ $eyebrow }}</p>
     @endif
     <div class="flex flex-wrap items-baseline justify-between gap-x-8 gap-y-1">
-        <{{ $tag }} @class(['text-title font-semibold', 'text-fg' => ! $inverse, 'text-white' => $inverse])>{{ $title }}</{{ $tag }}>
+        <{{ $tag }} @if ($id) id="{{ $id }}" @endif @class(['text-title font-semibold', 'text-fg' => ! $inverse, 'text-white' => $inverse])>{{ $title }}</{{ $tag }}>
         @if ($pair !== null && $pair !== $title)
             <p lang="{{ $there }}" dir="{{ $there === 'ar' ? 'rtl' : 'ltr' }}" @class(['text-heading font-semibold', 'text-subtle' => ! $inverse, 'text-white/60' => $inverse])>{{ $pair }}</p>
         @endif
