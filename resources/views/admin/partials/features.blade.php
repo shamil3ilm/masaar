@@ -7,10 +7,10 @@
     on a feature whose every path honours it; a reason is required, and the
     change is audited with the state before and after.
 --}}
-<div id="features" class="bg-white dark:bg-gray-900 rounded-lg shadow mb-6">
+<div id="features" class="bg-surface rounded-card border border-line shadow-card mb-6">
     <div class="p-6 border-b">
-        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">Features</h3>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        <h3 class="text-lg font-semibold text-fg">Features</h3>
+        <p class="mt-1 text-sm text-muted">
             What this company can use now, and why not. Checked in order - platform, country, plan, organization - and the first that says no decides.
         </p>
     </div>
@@ -30,20 +30,20 @@
                 $decision = $row['decision'];
                 $override = $row['override'];
             @endphp
-            <tr class="hover:bg-gray-50 dark:hover:bg-gray-950 align-top">
-                <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{{ $feature->label() }}</td>
+            <tr class="hover:bg-sunken align-top">
+                <td class="px-6 py-4 text-sm font-medium text-fg">{{ $feature->label() }}</td>
                 <td class="px-6 py-4">
                     <x-ui.badge :tone="$decision->allowed ? 'success' : 'danger'" :label="$decision->allowed ? 'On' : 'Off'" />
                 </td>
-                <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{{ $decision->source?->label() ?? 'Every level' }}</td>
-                <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-200">
+                <td class="px-6 py-4 text-sm text-muted">{{ $decision->source?->label() ?? 'Every level' }}</td>
+                <td class="px-6 py-4 text-sm text-fg">
                     {{ $decision->reason }}
-                    <div class="text-xs text-gray-400 dark:text-gray-500 font-mono">{{ $decision->code }}</div>
+                    <div class="text-xs text-subtle font-mono">{{ $decision->code }}</div>
                 </td>
-                <td class="px-6 py-4 text-xs text-gray-500 dark:text-gray-400">{{ implode(' · ', $row['governed']) }}</td>
-                <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                <td class="px-6 py-4 text-xs text-muted">{{ implode(' · ', $row['governed']) }}</td>
+                <td class="px-6 py-4 text-sm text-muted">
                     @if ($override)
-                        <div class="mb-2 text-gray-700 dark:text-gray-200">
+                        <div class="mb-2 text-fg">
                             {{ ($override['state'] === 'off' ? 'Switched off' : 'Granted beyond the plan').' by '.($override['by'] ?? 'unknown').($override['at'] ? ' at '.$override['at'] : '').':' }}
                             {{ $override['reason'] }}
                         </div>
@@ -70,7 +70,7 @@
                             <x-ui.field label="Reason">
                                 <x-ui.input name="reason" maxlength="500" required />
                             </x-ui.field>
-                            <x-ui.button variant="outline">Save</x-ui.button>
+                            <x-ui.button variant="secondary">Save</x-ui.button>
                         </form>
                         @endadmincan
                     @else

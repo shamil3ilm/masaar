@@ -4,15 +4,15 @@
 
 @section('content')
 <div class="mb-6">
-    <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Organizations</h2>
-    <p class="text-gray-500 dark:text-gray-400">Manage all registered organizations</p>
+    <h1 class="text-2xl font-semibold tracking-tight text-fg">Organizations</h1>
+    <p class="mt-1 max-w-3xl text-sm text-muted">Manage all registered organizations</p>
     <div class="mt-3 flex gap-4 text-sm">
-        <a href="{{ route('admin.organizations') }}" class="{{ request('status') ? 'text-gray-500 dark:text-gray-400' : 'font-semibold text-teal-700 dark:text-teal-300' }} hover:underline">All</a>
-        <a href="{{ route('admin.organizations', ['status' => 'pending_review']) }}" class="{{ request('status') === 'pending_review' ? 'font-semibold text-teal-700 dark:text-teal-300' : 'text-gray-500 dark:text-gray-400' }} hover:underline">Awaiting review</a>
+        <a href="{{ route('admin.organizations') }}" class="{{ request('status') ? 'text-muted' : 'font-semibold text-accent' }} hover:underline">All</a>
+        <a href="{{ route('admin.organizations', ['status' => 'pending_review']) }}" class="{{ request('status') === 'pending_review' ? 'font-semibold text-accent' : 'text-muted' }} hover:underline">Awaiting review</a>
     </div>
 </div>
 
-<div class="bg-white dark:bg-gray-900 rounded-lg shadow overflow-hidden">
+<div class="bg-surface rounded-card border border-line shadow-card overflow-hidden">
     <x-ui.table>
         <x-slot:head>
             <x-ui.th>Organization</x-ui.th>
@@ -24,12 +24,12 @@
         </x-slot:head>
 
         @forelse($organizations as $org)
-        <tr class="hover:bg-gray-50 dark:hover:bg-gray-950">
+        <tr class="hover:bg-sunken">
             <td class="px-6 py-4">
-                <div class="font-medium text-gray-900 dark:text-gray-100">{{ $org->name }}</div>
-                <div class="text-xs text-gray-500 dark:text-gray-400">{{ Str::limit($org->id, 8) }}</div>
+                <div class="font-medium text-fg">{{ $org->name }}</div>
+                <div class="text-xs text-muted">{{ Str::limit($org->id, 8) }}</div>
             </td>
-            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{{ $org->vat_number ?? '-' }}</td>
+            <td class="px-6 py-4 text-sm text-muted">{{ $org->vat_number ?? '-' }}</td>
             <td class="px-6 py-4">
                 <x-ui.badge :state="$org->status" />
             </td>
@@ -45,11 +45,11 @@
                     <x-ui.badge label="No cert" />
                 @endif
             </td>
-            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+            <td class="px-6 py-4 text-sm text-muted">
                 {{ $submissionStats[$org->id] ?? 0 }} successful
             </td>
             <td class="px-6 py-4">
-                <a href="{{ route('admin.organization.detail', $org->id) }}" class="text-teal-700 dark:text-teal-300 hover:text-teal-900 dark:hover:text-teal-200 text-sm">View</a>
+                <a href="{{ route('admin.organization.detail', $org->id) }}" class="text-accent hover:text-accent-strong text-sm">View</a>
             </td>
         </tr>
         @empty

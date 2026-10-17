@@ -6,7 +6,7 @@
     reader. Its numbers are set in tabular figures and read left to right in
     either language, as a printed invoice's do.
 --}}
-<section class="mx-auto max-w-page px-4 pb-16 pt-12 sm:px-6 sm:pb-24 sm:pt-20" aria-labelledby="hero-title">
+<section class="mx-auto max-w-page overflow-x-clip px-4 pb-16 pt-12 sm:px-6 sm:pb-24 sm:pt-20" aria-labelledby="hero-title">
     <div class="grid items-center gap-14 lg:grid-cols-[1.15fr_1fr]">
         <div class="min-w-0">
             @if ($countries !== [])
@@ -53,7 +53,7 @@
                         <p class="text-xs font-semibold uppercase tracking-wider text-ink-700">Tax invoice</p>
                         <p class="mt-0.5 text-sm text-ink-700" lang="ar" dir="rtl">فاتورة ضريبية</p>
                     </div>
-                    <span class="inline-flex items-center gap-1.5 rounded-full bg-teal-100 px-2.5 py-1 font-mono text-[0.6875rem] font-semibold uppercase tracking-wider text-teal-800">
+                    <span class="inline-flex items-center gap-1.5 rounded-full bg-teal-100 px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-teal-800">
                         <svg class="size-3.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5" /></svg>
                         {{ __('Cleared') }}
                     </span>

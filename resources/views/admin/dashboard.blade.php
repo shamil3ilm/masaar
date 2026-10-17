@@ -33,16 +33,16 @@
     <!-- Issues Alert -->
     @if ($overallStatus !== 'healthy')
         @php $critical = $overallStatus === 'critical'; @endphp
-        <div class="mb-6 p-4 rounded-lg {{ $critical ? 'bg-red-100 dark:bg-red-900/40 border border-red-400' : 'bg-yellow-100 dark:bg-yellow-900/40 border border-yellow-400' }}">
+        <div class="mb-6 p-4 rounded-lg {{ $critical ? 'bg-danger-soft border border-danger-line text-danger' : 'bg-warning-soft border border-warning-line text-warning' }}">
             <div class="flex items-center">
-                <svg class="w-5 h-5 mr-2 {{ $critical ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400' }}" fill="currentColor" viewBox="0 0 20 20">
+                <svg class="w-5 h-5 mr-2 {{ $critical ? 'text-danger' : 'text-warning' }}" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
                 </svg>
-                <span class="font-medium {{ $critical ? 'text-red-800 dark:text-red-200' : 'text-yellow-800 dark:text-yellow-200' }}">
+                <span class="font-medium {{ $critical ? 'text-danger' : 'text-warning' }}">
                     Platform status: {{ $overallStatus }}
                 </span>
             </div>
-            <ul class="mt-2 ml-7 text-sm {{ $critical ? 'text-red-700 dark:text-red-300' : 'text-yellow-700 dark:text-yellow-300' }}">
+            <ul class="mt-2 ml-7 text-sm {{ $critical ? 'text-danger' : 'text-warning' }}">
                 @foreach ($degraded as $dependency => $status)
                     <li>{{ $dependency }} is {{ $status }}</li>
                 @endforeach
@@ -59,66 +59,66 @@
     <!-- Stats Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         <!-- Organizations -->
-        <div class="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
+        <div class="bg-surface rounded-card border border-line shadow-card p-6">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Organizations</p>
-                    <p class="text-2xl font-bold">{{ $overview['organizations']['total'] }}</p>
+                    <p class="text-sm text-muted">Organizations</p>
+                    <p class="text-2xl font-semibold">{{ $overview['organizations']['total'] }}</p>
                 </div>
-                <div class="p-3 bg-teal-100 dark:bg-teal-900/40 rounded-full">
-                    <svg class="w-6 h-6 text-teal-700 dark:text-teal-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                <div class="p-3 bg-accent-soft rounded-full">
+                    <svg class="w-6 h-6 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
                 </div>
             </div>
-            <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">
+            <p class="text-xs text-subtle mt-2">
                 {{ $overview['organizations']['active'] }} active,
                 {{ $overview['organizations']['with_certificate'] }} with certificates
             </p>
         </div>
 
         <!-- Invoices Today -->
-        <div class="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
+        <div class="bg-surface rounded-card border border-line shadow-card p-6">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Invoices Today</p>
-                    <p class="text-2xl font-bold">{{ $overview['invoices']['today'] }}</p>
+                    <p class="text-sm text-muted">Invoices Today</p>
+                    <p class="text-2xl font-semibold">{{ $overview['invoices']['today'] }}</p>
                 </div>
-                <div class="p-3 bg-green-100 dark:bg-green-900/40 rounded-full">
-                    <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                <div class="p-3 bg-success-soft rounded-full">
+                    <svg class="w-6 h-6 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                 </div>
             </div>
-            <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">
+            <p class="text-xs text-subtle mt-2">
                 {{ $overview['invoices']['total'] }} total,
                 {{ $overview['invoices']['this_hour'] }} this hour
             </p>
         </div>
 
         <!-- Submissions -->
-        <div class="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
+        <div class="bg-surface rounded-card border border-line shadow-card p-6">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Submissions</p>
-                    <p class="text-2xl font-bold">{{ $overview['submissions']['cleared'] + $overview['submissions']['reported'] }}</p>
+                    <p class="text-sm text-muted">Submissions</p>
+                    <p class="text-2xl font-semibold">{{ $overview['submissions']['cleared'] + $overview['submissions']['reported'] }}</p>
                 </div>
-                <div class="p-3 bg-purple-100 dark:bg-purple-900/40 rounded-full">
-                    <svg class="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <div class="p-3 bg-accent-soft rounded-full">
+                    <svg class="w-6 h-6 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 </div>
             </div>
-            <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">
+            <p class="text-xs text-subtle mt-2">
                 {{ $overview['submissions']['cleared'] }} cleared,
                 {{ $overview['submissions']['reported'] }} reported,
-                <span class="text-red-500">{{ $overview['submissions']['rejected'] }}</span> rejected
+                <span class="text-danger">{{ $overview['submissions']['rejected'] }}</span> rejected
             </p>
         </div>
 
         <!-- Offline Queue -->
-        <div class="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
+        <div class="bg-surface rounded-card border border-line shadow-card p-6">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Offline Queue</p>
-                    <p class="text-2xl font-bold {{ $queuePending > 0 ? 'text-orange-600 dark:text-orange-400' : '' }}">{{ $queuePending }}</p>
+                    <p class="text-sm text-muted">Offline Queue</p>
+                    <p class="text-2xl font-semibold {{ $queuePending > 0 ? 'text-warning' : '' }}">{{ $queuePending }}</p>
                 </div>
-                <div class="p-3 rounded-full {{ $queuePending > 0 ? 'bg-orange-100 dark:bg-orange-900/40' : 'bg-gray-100 dark:bg-gray-800' }}">
-                    <svg class="w-6 h-6 {{ $queuePending > 0 ? 'text-orange-600 dark:text-orange-400' : 'text-gray-600 dark:text-gray-300' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+                <div class="p-3 rounded-full {{ $queuePending > 0 ? 'bg-warning-soft' : 'bg-sunken' }}">
+                    <svg class="w-6 h-6 {{ $queuePending > 0 ? 'text-warning' : 'text-muted' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
                 </div>
             </div>
             {{--
@@ -127,8 +127,8 @@
                 is not on this page; `stuck` is pending items that have waited
                 over 30 minutes, which is what health() actually measures.
             --}}
-            <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">
-                <span class="text-red-500">{{ $health['queue']['stuck'] ?? 0 }}</span> stuck over 30 min
+            <p class="text-xs text-subtle mt-2">
+                <span class="text-danger">{{ $health['queue']['stuck'] ?? 0 }}</span> stuck over 30 min
             </p>
         </div>
     </div>
@@ -136,7 +136,7 @@
     <!-- System Health & ZATCA Circuit Breaker -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <!-- System Health -->
-        <div class="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
+        <div class="bg-surface rounded-card border border-line shadow-card p-6">
             <h3 class="text-lg font-semibold mb-4">System Health</h3>
             <div class="space-y-3">
                 @php
@@ -150,7 +150,7 @@
                 @endphp
                 @foreach ($dependencies as $label => $status)
                     <div class="flex items-center justify-between">
-                        <span class="text-sm text-gray-600 dark:text-gray-300">{{ $label }}</span>
+                        <span class="text-sm text-muted">{{ $label }}</span>
                         @php
                             $healthTone = in_array($status, $good, true)
                                 ? 'success'
@@ -160,7 +160,7 @@
                     </div>
                 @endforeach
                 @if (isset($health['database']['latency_ms']))
-                    <p class="text-xs text-gray-400 dark:text-gray-500">Database latency {{ $health['database']['latency_ms'] }}ms</p>
+                    <p class="text-xs text-subtle">Database latency {{ $health['database']['latency_ms'] }}ms</p>
                 @endif
             </div>
         </div>
@@ -175,11 +175,11 @@
             is what the card shows now. The Refresh / Reset buttons went with the
             fetch calls; the breaker closes on its own after its timeout.
         --}}
-        <div class="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
+        <div class="bg-surface rounded-card border border-line shadow-card p-6">
             <h3 class="text-lg font-semibold mb-4">ZATCA Circuit Breaker</h3>
             <div class="text-center py-4">
-                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full mb-3 {{ $breakerClosed ? 'bg-green-100 dark:bg-green-900/40' : 'bg-red-100 dark:bg-red-900/40' }}">
-                    <svg class="w-8 h-8 {{ $breakerClosed ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full mb-3 {{ $breakerClosed ? 'bg-success-soft' : 'bg-danger-soft' }}">
+                    <svg class="w-8 h-8 {{ $breakerClosed ? 'text-success' : 'text-danger' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         @if ($breakerClosed)
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                         @else
@@ -187,15 +187,15 @@
                         @endif
                     </svg>
                 </div>
-                <p class="text-lg font-semibold {{ $breakerClosed ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
+                <p class="text-lg font-semibold {{ $breakerClosed ? 'text-success' : 'text-danger' }}">
                     {{ $breakerClosed ? 'Closed - submissions flowing' : 'Breaker '.$breakerState }}
                 </p>
-                <p class="text-sm text-gray-500 dark:text-gray-400">
+                <p class="text-sm text-muted">
                     {{ $breaker['failures'] ?? 0 }} failure(s) of {{ $breaker['failure_threshold'] ?? 0 }} before it opens,
                     {{ $breaker['successes'] ?? 0 }} of {{ $breaker['success_threshold'] ?? 0 }} before it closes
                 </p>
                 @if (! empty($breaker['last_failure']))
-                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                    <p class="text-sm text-muted">
                         Last failure {{ \Illuminate\Support\Carbon::createFromTimestamp($breaker['last_failure'])->diffForHumans() }}
                     </p>
                 @endif
@@ -204,7 +204,7 @@
     </div>
 
     <!-- Quick Actions -->
-    <div class="bg-white dark:bg-gray-900 rounded-lg shadow p-6 mb-6">
+    <div class="bg-surface rounded-card border border-line shadow-card p-6 mb-6">
         <h3 class="text-lg font-semibold mb-4">Quick Actions</h3>
         {{--
             Process Offline Queue now posts to the console's own route, which
@@ -227,7 +227,7 @@
         </div>
     </div>
 
-    <p class="text-xs text-gray-400 dark:text-gray-500">
+    <p class="text-xs text-subtle">
         Counted {{ $overview['generated_at'] }}, dependencies checked {{ $health['checked_at'] }}.
     </p>
 </div>

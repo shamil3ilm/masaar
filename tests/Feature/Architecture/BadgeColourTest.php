@@ -36,10 +36,10 @@ class BadgeColourTest extends TestCase
 
     /**
      * The pill palette: a tinted background with text dark enough to sit on
-     * it - in the stock ramps, or in the design system's state roles on a
-     * rounded-full pill.
+     * it - in the stock ramps, or a rounded-full span in the design system's
+     * state roles (an icon circle carries no text colour and is not a pill).
      */
-    private const PALETTE = '/bg-[a-z]+-100\s+text-[a-z]+-800|rounded-full[^"]*bg-(?:success|warning|danger|info)-soft|bg-(?:success|warning|danger|info)-soft[^"]*rounded-full/';
+    private const PALETTE = '/bg-[a-z]+-100\s+text-[a-z]+-800|<span\b[^>]*class="(?=[^"]*rounded-full)(?=[^"]*bg-(?:success|warning|danger|info)-soft)(?=[^"]*text-(?:success|warning|danger|info)\b)/';
 
     /**
      * Only the badge names a pill colour.

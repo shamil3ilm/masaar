@@ -15,8 +15,8 @@
     (resources/js/confirm.js) - the content policy allows no inline handler.
 --}}
 <div class="mb-6">
-    <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Countries</h2>
-    <p class="text-gray-500 dark:text-gray-400">
+    <h1 class="text-2xl font-semibold tracking-tight text-fg">Countries</h1>
+    <p class="mt-1 max-w-3xl text-sm text-muted">
         Where the platform issues e-invoices. Switching a country off stops new issuing there on the next
         request and is recorded with who did it; invoices already issued keep being filed or sent.
     </p>
@@ -34,28 +34,28 @@
                 .'Invoices already issued keep being filed or sent.';
         @endphp
 
-        <div class="rounded-lg bg-white dark:bg-gray-900 px-6 py-5 shadow">
+        <div class="rounded-card bg-surface px-6 py-5 border border-line shadow-card">
             <div class="flex flex-wrap items-start justify-between gap-4">
                 <div class="min-w-0">
                     <div class="flex items-center gap-3">
-                        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">{{ $country['name'] }}</h3>
-                        <span class="text-sm text-gray-500 dark:text-gray-400">{{ $country['code'] }}</span>
+                        <h3 class="text-lg font-semibold text-fg">{{ $country['name'] }}</h3>
+                        <span class="text-sm text-muted">{{ $country['code'] }}</span>
                         <x-ui.badge :tone="$country['enabled'] ? 'success' : 'neutral'"
                             :label="$country['enabled'] ? 'On' : 'Off'" />
                     </div>
 
                     <dl class="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
                         <div class="flex gap-2">
-                            <dt class="text-gray-500 dark:text-gray-400">E-invoicing</dt>
-                            <dd class="text-gray-800 dark:text-gray-100">{{ $country['system'] }}</dd>
+                            <dt class="text-muted">E-invoicing</dt>
+                            <dd class="text-fg">{{ $country['system'] }}</dd>
                         </div>
                         <div class="flex gap-2">
-                            <dt class="text-gray-500 dark:text-gray-400">Organizations</dt>
-                            <dd class="text-gray-800 dark:text-gray-100">{{ $count }}</dd>
+                            <dt class="text-muted">Organizations</dt>
+                            <dd class="text-fg">{{ $count }}</dd>
                         </div>
                         <div class="flex gap-2">
-                            <dt class="text-gray-500 dark:text-gray-400">Set by</dt>
-                            <dd class="text-gray-800 dark:text-gray-100">
+                            <dt class="text-muted">Set by</dt>
+                            <dd class="text-fg">
                                 @if ($switch)
                                     Admin switch, {{ $switch['by'] ?? 'unknown' }} at {{ $switch['at'] ?? 'unknown' }}
                                 @else
@@ -65,14 +65,14 @@
                         </div>
                         @foreach ($country['readiness'] as $label => $value)
                             <div class="flex gap-2">
-                                <dt class="text-gray-500 dark:text-gray-400">{{ $label }}</dt>
-                                <dd class="text-gray-800 dark:text-gray-100">{{ $value }}</dd>
+                                <dt class="text-muted">{{ $label }}</dt>
+                                <dd class="text-fg">{{ $value }}</dd>
                             </div>
                         @endforeach
                     </dl>
 
                     @if ($country['billing'])
-                        <p class="mt-3 text-sm text-amber-700 dark:text-amber-300">
+                        <p class="mt-3 text-sm text-warning">
                             The platform's billing organization is registered here: platform billing invoices are issued in this country.
                         </p>
                     @endif
