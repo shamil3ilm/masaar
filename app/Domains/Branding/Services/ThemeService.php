@@ -24,7 +24,8 @@ use Throwable;
  * stylesheet of colour variables loaded after the application's own: the
  * interface reads every colour through those variables, so overriding them
  * recolours it without rebuilding anything, and a stylesheet from this origin
- * is what the content policy already allows - no inline style needed.
+ * is what the content policy already allows - no inline style needed. The
+ * typeface is chosen the same way, as two font variables.
  *
  * Only what a theme sets is written out. With nothing customised the
  * stylesheet is empty and the application looks exactly as it ships.
@@ -91,7 +92,7 @@ final class ThemeService
             $custom = $custom->under($this->definitionOf($this->row($scope)));
         }
 
-        $css = $this->block(':root', $this->variables($custom));
+        $css = $this->block(':root', [...$this->variables($custom), ...$this->fonts($custom)]);
 
         // Dark-only colours, for the two ways a page is dark: fixed by the
         // theme (.dark), or left to a device that prefers it (.theme-system).
@@ -133,6 +134,23 @@ final class ThemeService
         }
 
         return $variables;
+    }
+
+    /**
+     * The typeface variables a definition sets: one family for Latin and one
+     * for Arabic, which resources/css/app.css orders by the page's language.
+     *
+     * @return array<string, string>
+     */
+    private function fonts(ThemeDefinition $definition): array
+    {
+        $font = ThemeDefinition::FONTS[$definition->font ?? ''] ?? null;
+
+        if ($font === null) {
+            return [];
+        }
+
+        return ['--font-latin' => $font['latin'], '--font-arabic' => $font['arabic']];
     }
 
     /**

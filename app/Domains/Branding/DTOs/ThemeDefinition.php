@@ -13,10 +13,14 @@ use App\Domains\Branding\Services\Palette;
  *     {
  *       "name": "Masaar",
  *       "mode": "light",
+ *       "font": "inter",
  *       "colors": { "primary": "#14B8A6", "navigation": "#1A1F36", "highlight": "#EADBC8" },
  *       "shades": { "primary-600": "#0D9488" },
  *       "dark": { "colors": { "primary": "#2DD4BF" }, "shades": {} }
  *     }
+ *
+ * "font" is one of the typefaces the application bundles (FONTS), or the
+ * device's own: a name, never a font stack, because it reaches a stylesheet.
  *
  * Every key is optional: what a theme leaves out it inherits - an
  * organization's from the platform's, the platform's from the shipped one.
@@ -33,6 +37,19 @@ final readonly class ThemeDefinition
 {
     public const MODES = ['light', 'dark', 'system'];
 
+    /**
+     * The typefaces a theme may choose, and the stylesheet families each sets
+     * for Latin and for Arabic: Inter with Plex for Arabic as shipped, Plex
+     * for both, or the device's own. resources/css/fonts.css bundles them.
+     *
+     * @var array<string, array{latin: string, arabic: string}>
+     */
+    public const FONTS = [
+        'inter' => ['latin' => "'Inter'", 'arabic' => "'IBM Plex Sans Arabic'"],
+        'plex' => ['latin' => "'IBM Plex Sans Arabic'", 'arabic' => "'IBM Plex Sans Arabic'"],
+        'system' => ['latin' => 'system-ui', 'arabic' => 'system-ui'],
+    ];
+
     // \A and \z, not ^ and $: $ also matches before a final newline.
     private const HEX = '/\A#[0-9A-Fa-f]{6}\z/';
 
@@ -46,6 +63,7 @@ final readonly class ThemeDefinition
         public array $colors,
         public array $shades,
         public ?self $dark = null,
+        public ?string $font = null,
     ) {}
 
     /**
@@ -57,7 +75,7 @@ final readonly class ThemeDefinition
             'primary' => '#14B8A6',
             'navigation' => '#1A1F36',
             'highlight' => '#EADBC8',
-        ], []);
+        ], [], null, 'inter');
     }
 
     public static function empty(): self
@@ -72,7 +90,7 @@ final readonly class ThemeDefinition
      */
     public static function fromArray(array $input): self
     {
-        return self::parse($input, ['name', 'mode', 'colors', 'shades', 'dark']);
+        return self::parse($input, ['name', 'mode', 'font', 'colors', 'shades', 'dark']);
     }
 
     /**
@@ -97,6 +115,11 @@ final readonly class ThemeDefinition
         $mode = $input['mode'] ?? null;
         if ($mode !== null && ! in_array($mode, self::MODES, true)) {
             $errors[] = 'The mode must be one of: '.implode(', ', self::MODES).'.';
+        }
+
+        $font = $input['font'] ?? null;
+        if ($font !== null && ! array_key_exists($font, self::FONTS)) {
+            $errors[] = 'The font must be one of: '.implode(', ', array_keys(self::FONTS)).'.';
         }
 
         $colors = ['primary' => null, 'navigation' => null, 'highlight' => null];
@@ -157,7 +180,7 @@ final readonly class ThemeDefinition
             throw new InvalidThemeException(array_map(fn (string $e): string => $prefix.$e, $errors));
         }
 
-        return new self($name === null ? null : trim($name), $mode, $colors, $shades, $dark);
+        return new self($name === null ? null : trim($name), $mode, $colors, $shades, $dark, $font);
     }
 
     /**
@@ -191,6 +214,7 @@ final readonly class ThemeDefinition
             $colors,
             [...self::withoutRamps($this->shades, $replaced), ...$over->shades],
             $dark,
+            $over->font ?? $this->font,
         );
     }
 
@@ -207,7 +231,7 @@ final readonly class ThemeDefinition
             $colors[$ramp] = null;
         }
 
-        return new self($this->name, $this->mode, $colors, self::withoutRamps($this->shades, $ramps), $this->dark);
+        return new self($this->name, $this->mode, $colors, self::withoutRamps($this->shades, $ramps), $this->dark, $this->font);
     }
 
     /**
@@ -235,6 +259,7 @@ final readonly class ThemeDefinition
         return array_filter([
             'name' => $this->name,
             'mode' => $this->mode,
+            'font' => $this->font,
             'colors' => array_filter($this->colors, fn (?string $c): bool => $c !== null) ?: null,
             'shades' => $this->shades ?: null,
             'dark' => $this->dark?->toArray() ?: null,

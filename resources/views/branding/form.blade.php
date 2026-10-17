@@ -56,6 +56,17 @@
                     <option value="system" @selected(old('mode', $stored->mode) === 'system')>{{ __('Follow the device') }}</option>
                 </x-ui.select>
             </x-ui.field>
+
+            {{-- The bundled typefaces, or the device's own. Arabic text is
+                 always set in an Arabic face; this picks which. --}}
+            <x-ui.field :label="__('Typeface')">
+                <x-ui.select name="font">
+                    <option value="" @selected(old('font', $stored->font) === null)>{{ $inherits ? __('Inherit (the platform\'s)') : __('Inherit (the shipped)') }}</option>
+                    <option value="inter" @selected(old('font', $stored->font) === 'inter')>{{ __('Inter, with IBM Plex Sans Arabic for Arabic') }}</option>
+                    <option value="plex" @selected(old('font', $stored->font) === 'plex')>{{ __('IBM Plex Sans Arabic for both languages') }}</option>
+                    <option value="system" @selected(old('font', $stored->font) === 'system')>{{ __('The device\'s own typeface') }}</option>
+                </x-ui.select>
+            </x-ui.field>
         </div>
     </div>
 

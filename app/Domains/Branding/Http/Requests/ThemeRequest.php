@@ -12,7 +12,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\ValidationException;
 
 /**
- * The branding form: name, mode, colours, logo and favicon.
+ * The branding form: name, mode, typeface, colours, logo and favicon.
  *
  * A colour picker always posts a colour, so each one has a "customise" box
  * beside it; unticked, the colour is inherited rather than pinned to whatever
@@ -36,6 +36,7 @@ class ThemeRequest extends FormRequest
         return [
             'name' => ['nullable', 'string', 'max:40'],
             'mode' => ['nullable', 'in:'.implode(',', ThemeDefinition::MODES)],
+            'font' => ['nullable', 'in:'.implode(',', array_keys(ThemeDefinition::FONTS))],
             'colors' => ['nullable', 'array'],
             'colors.*' => ['nullable', 'string'],
             'custom' => ['nullable', 'array'],
@@ -63,6 +64,7 @@ class ThemeRequest extends FormRequest
             return ThemeDefinition::fromArray([
                 'name' => $this->filled('name') ? $this->string('name')->toString() : null,
                 'mode' => $this->filled('mode') ? $this->string('mode')->toString() : null,
+                'font' => $this->filled('font') ? $this->string('font')->toString() : null,
                 'colors' => $colors,
                 // Pinned shades and dark-mode colours are edited as JSON;
                 // the form keeps them rather than dropping them on save.
