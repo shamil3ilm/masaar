@@ -127,7 +127,9 @@ class SecurityHeaders
         $policy = self::POLICY;
 
         if (($origin = $this->devServerOrigin()) !== null) {
-            foreach (['script-src', 'style-src', 'connect-src'] as $directive) {
+            // font-src too: the bundled typefaces are served by the dev
+            // server while it runs, like the stylesheet that declares them.
+            foreach (['script-src', 'style-src', 'font-src', 'connect-src'] as $directive) {
                 $policy[$directive] .= ' '.$origin;
             }
 
