@@ -29,6 +29,12 @@ class PrintAssets
         return $png === '' ? null : 'data:image/png;base64,'.base64_encode($png);
     }
 
+    /** The QR code as a file to download: 'png' or 'svg'; '' for no payload. */
+    public function qrFile(string $payload, string $format): string
+    {
+        return $format === 'svg' ? $this->qr->svg($payload) : $this->qr->png($payload);
+    }
+
     /** The QR code as SVG markup, for the browser; '' for no payload. */
     public function qrSvg(string $payload): string
     {

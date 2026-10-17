@@ -13,6 +13,7 @@ use App\Http\Controllers\Controller;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\View\View;
 
 /**
@@ -48,5 +49,34 @@ class PortalInvoicePrintController extends Controller
         } catch (DomainException $e) {
             return redirect()->route('portal.invoices.show', $invoiceId)->with('error', $e->getMessage());
         }
+    }
+
+    /**
+     * The country's QR code as a PNG or SVG file, to put on a sign or send
+     * on: a copy of the invoice's QR, under the printed copy's gate.
+     */
+    public function qr(Request $request, string $invoiceId, string $format): Response|RedirectResponse
+    {
+        $orgId = $request->attributes->get(PortalTenant::ORG_ID);
+        abort_unless(is_string($orgId), 404);
+
+        $invoice = $this->invoices->findWithLines($orgId, $invoiceId);
+        $organization = $this->tenant->getOrganization() ?? abort(404);
+
+        try {
+            $file = $this->printView->qrFile($invoice, $organization, $format);
+        } catch (DomainException $e) {
+            return redirect()->route('portal.invoices.show', $invoiceId)->with('error', $e->getMessage());
+        }
+
+        abort_if($file === '', 404);
+        $name = preg_replace('/[^A-Za-z0-9._-]+/', '-', (string) $invoice->invoice_number);
+
+        return response($file, 200, [
+            'Content-Type' => $format === 'svg' ? 'image/svg+xml' : 'image/png',
+            'Content-Disposition' => 'attachment; filename="'.trim((string) $name, '-').'-qr.'.$format.'"',
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, no-store',
+        ]);
     }
 }

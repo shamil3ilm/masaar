@@ -1102,5 +1102,8 @@
     "As the organization": "كما في المنشأة",
     "Your paper is saved.": "تم حفظ ورقك.",
     "Only an administrator of this organization can change its printing.": "لا يمكن تغيير إعدادات الطباعة إلا لمسؤول هذه المنشأة.",
-    "Printing settings saved.": "تم حفظ إعدادات الطباعة."
+    "Printing settings saved.": "تم حفظ إعدادات الطباعة.",
+    "Download QR (PNG)": "تنزيل رمز QR بصيغة PNG",
+    "Download QR (SVG)": "تنزيل رمز QR بصيغة SVG",
+    "Technical details": "التفاصيل التقنية"
 }

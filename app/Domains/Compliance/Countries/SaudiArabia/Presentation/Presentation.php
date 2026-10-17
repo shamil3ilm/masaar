@@ -16,6 +16,7 @@ use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
+use App\Support\QrCodeRenderer;
 use BackedEnum;
 use DomainException;
 
@@ -36,6 +37,7 @@ class Presentation implements PresentationPort
         private readonly CredentialStore $credentials,
         private readonly PdfStamp $stamp,
         private readonly ReceiptContent $receipts,
+        private readonly QrCodeRenderer $qr,
     ) {}
 
     public function tagline(): string
@@ -70,7 +72,9 @@ class Presentation implements PresentationPort
                 ? __('VAT reported in SAR at :rate', ['rate' => $invoice->exchange_rate])
                 : null,
             shareable: $shareable,
-            data: ['simplified' => $simplified, 'shareable' => $shareable],
+            // The QR as a picture a phone can scan from the screen, not its
+            // base64 payload.
+            data: ['simplified' => $simplified, 'shareable' => $shareable, 'qrSvg' => $this->qr->svg((string) $invoice->qr_code)],
         );
     }
 

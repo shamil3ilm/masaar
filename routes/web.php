@@ -359,6 +359,10 @@ Route::prefix('portal')->name('portal.')
             ->whereIn('note', ['credit_note', 'debit_note'])
             ->name('invoices.adjust');
         Route::get('/invoices/{invoiceId}/print', [PortalInvoicePrintController::class, 'print'])->name('invoices.print');
+        // The invoice's QR code as a picture to download.
+        Route::get('/invoices/{invoiceId}/qr.{format}', [PortalInvoicePrintController::class, 'qr'])
+            ->whereIn('format', ['png', 'svg'])
+            ->name('invoices.qr');
         // The PDF the buyer keeps, and sending it to them.
         Route::get('/invoices/{invoiceId}/pdf', [PortalInvoiceDocumentController::class, 'download'])->name('invoices.pdf');
         Route::post('/invoices/{invoiceId}/send', [PortalInvoiceDocumentController::class, 'send'])->middleware('throttle:20,1')->name('invoices.send');

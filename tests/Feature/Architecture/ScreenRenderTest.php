@@ -81,6 +81,8 @@ class ScreenRenderTest extends TestCase
         // Prints only a shareable invoice, and the fixture here is a draft so
         // the Issue button renders. InvoicePrintTest and PrintFieldTest cover it.
         'portal.invoices.print',
+        // The QR as an image file. InvoiceQrPanelTest covers it.
+        'portal.invoices.qr',
         // A UAE e-invoice's XML. UaePortalTest and ReceivedInvoicesTest cover them.
         'portal.invoices.xml',
         'portal.received.xml',

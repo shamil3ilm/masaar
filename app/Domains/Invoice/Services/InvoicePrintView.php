@@ -46,4 +46,17 @@ class InvoicePrintView
             'logo' => $paper->isRoll() ? $this->assets->logo((string) $organization->id, monochrome: true) : null,
         ];
     }
+
+    /**
+     * The invoice's QR code as an image file, 'png' or 'svg': '' when it has
+     * none. Under the same gate as a printed copy.
+     *
+     * @throws DomainException when the invoice may not be given out yet
+     */
+    public function qrFile(Invoice $invoice, Organization $organization, string $format): string
+    {
+        $this->jurisdictions->forRules($organization)->presentation()->assertShareable($invoice);
+
+        return $this->assets->qrFile((string) $invoice->qr_code, $format);
+    }
 }
