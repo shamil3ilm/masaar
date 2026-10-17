@@ -127,6 +127,17 @@ class IssuingStep implements IssuingJurisdiction
     }
 
     /**
+     * The device: ZATCA keeps one counter and one chain per EGS unit, so a
+     * device issues one document at a time and devices issue at once. A
+     * document already placed in a chain - a reissue finishing what was
+     * interrupted - stays in the one it was placed in.
+     */
+    public function lockScope(Invoice $invoice, mixed $context): string
+    {
+        return (string) ($invoice->device_id ?? $context['device']);
+    }
+
+    /**
      * @return array{hash: string, qr_code: ?string, signed_xml: ?string}|null
      */
     public function finished(Invoice $invoice): ?array

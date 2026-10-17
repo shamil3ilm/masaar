@@ -10,16 +10,21 @@ use App\Domains\Organization\Models\Organization;
 use App\Support\CountryClock;
 use Carbon\Carbon;
 use DateTimeInterface;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 /**
  * Gives an invoice its number when it is issued.
  *
  * Called by IssuingLifecycle::issue inside the transaction that holds the
- * organization row and allocates the ZATCA counter, which is what makes this
- * safe: every issuance for the organization waits on that lock, so two cannot
- * read the same next number, and a failure after this rolls the counter back
- * with everything else. Issued invoices therefore run without gaps.
+ * chain's issuing lock and allocates the counter. The sequence row is locked
+ * until that transaction ends, so two issuances drawing on one sequence -
+ * two devices sharing the organization's, say - cannot read the same next
+ * number, and a failure after this rolls the number back with everything
+ * else. Issued invoices therefore run without gaps.
+ *
+ * Devices that share a sequence wait for each other here, for the rest of
+ * the issuance. A branch with a sequence of its own does not.
  *
  * A number already taken - typed into an earlier draft by hand, say - is
  * skipped rather than repeated: ZATCA requires the number to identify the
@@ -31,8 +36,8 @@ class InvoiceNumbering
     private const MAX_SKIPPED = 1000;
 
     /**
-     * The next number for this invoice. The caller holds the organization
-     * lock and saves the invoice.
+     * The next number for this invoice. The caller holds the issuing lock
+     * and saves the invoice.
      */
     public function allocate(Invoice $invoice): string
     {
@@ -92,22 +97,38 @@ class InvoiceNumbering
     /**
      * The branch's own sequence for this kind of document, else the
      * organization's, created with the defaults the first time.
+     *
+     * Found first without a lock and then locked by key, so a sequence that
+     * is not there takes no lock on the gap where it would be: two issuances
+     * of different devices both holding that gap and both inserting into it
+     * deadlock. Created under the organization row, the lock
+     * NumberingSettings::save takes, looking again under it - a locking read
+     * sees what another issuance created meanwhile.
      */
     private function sequenceFor(Invoice $invoice): InvoiceSequence
     {
         $type = $invoice->document_type->value;
 
         return InvoiceSequence::withoutTenantScope(function () use ($invoice, $type): InvoiceSequence {
-            $query = fn (string $scope) => InvoiceSequence::query()
+            $query = fn (string $scope, bool $lock) => InvoiceSequence::query()
                 ->where('org_id', $invoice->org_id)
                 ->where('scope', $scope)
                 ->where('document_type', $type)
-                ->lockForUpdate()
+                ->when($lock, fn ($query) => $query->lockForUpdate())
                 ->first();
 
-            return ($invoice->branch_id ? $query((string) $invoice->branch_id) : null)
-                ?? $query(InvoiceSequence::ORGANIZATION)
-                ?? InvoiceSequence::create(self::defaults((string) $invoice->org_id, $type));
+            $find = fn (bool $lock): ?InvoiceSequence => ($invoice->branch_id ? $query((string) $invoice->branch_id, $lock) : null)
+                ?? $query(InvoiceSequence::ORGANIZATION, $lock);
+
+            $found = $find(false);
+
+            if ($found !== null) {
+                return InvoiceSequence::query()->whereKey($found->getKey())->lockForUpdate()->firstOrFail();
+            }
+
+            DB::table('organizations')->where('id', $invoice->org_id)->lockForUpdate()->first();
+
+            return $find(true) ?? InvoiceSequence::create(self::defaults((string) $invoice->org_id, $type));
         });
     }
 

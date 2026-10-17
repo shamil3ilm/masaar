@@ -17,7 +17,6 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Invoice aggregate root.
@@ -172,8 +171,8 @@ class Invoice extends Model
         // nothing and cannot block the tenant — which matters because there is
         // no cancelled status to release a number with.
         //
-        // Submitter::generate() allocates, under the same organization-row
-        // lock that reads the PIH, so the pair is decided together.
+        // Submitter::generate() allocates, under the same device lock that
+        // reads the PIH, so the pair is decided together.
         // ChainForkTest holds this.
 
         // A counter belongs to a device's sequence. Something that sets one
@@ -231,44 +230,30 @@ class Invoice extends Model
      * must never receive the same value. A device is head office (its id is
      * the organization's) or a branch with its own certificate (the branch's).
      *
-     * The lock is taken on the organization row rather than on the invoice
-     * rows. Locking `SELECT MAX(icv) ... FOR UPDATE` looks equivalent but has
-     * a hole: for an organization's first invoice there are no invoice rows to
-     * lock, so two concurrent requests both read no rows and both allocate 1.
-     * The organization row always exists, so it serialises every case.
+     * The caller holds the device's issuing lock (IssuingLifecycle, scoped by
+     * the jurisdiction to the device), which is what makes reading the
+     * highest counter and taking the next one safe: every issuance into this
+     * device's chain waits on that lock, and issuances into other devices'
+     * chains read other counters. Locking `SELECT MAX(icv) ... FOR UPDATE`
+     * instead has a hole - a device's first invoice has no rows to lock, so
+     * two requests both read none and both allocate 1.
      *
-     * Callers must create the invoice inside a transaction. Laravel turns this
-     * nested transaction into a savepoint, which keeps the lock held until the
-     * outer commit — that is, until after the INSERT. Without an outer
-     * transaction the lock is released here and the window reopens.
-     * `invoices_device_icv_unique` is the backstop either way: a collision fails
-     * the insert rather than corrupting the chain.
-     *
-     * Still locked on the organization row, so issuance is serialised per
-     * taxpayer across all its devices: simpler than a lock per device, and
-     * the same guarantee.
+     * `invoices_device_icv_unique` is the backstop: a collision fails the
+     * write rather than corrupting the chain.
      */
     public static function generateNextIcv(string $organizationId, ?string $deviceId = null): int
     {
         $deviceId ??= $organizationId;
+        // Outside the tenant scope: the organization is given explicitly,
+        // and the counter must reflect every invoice that organization
+        // holds regardless of who is asking. Left scoped, a request with
+        // no tenant context reads zero rows, restarts the counter at 1,
+        // and the unique index rejects the insert.
+        $highest = static::withoutTenantScope(
+            fn () => static::query()->where('org_id', $organizationId)->where('device_id', $deviceId)->max('icv')
+        );
 
-        return DB::transaction(function () use ($organizationId, $deviceId) {
-            DB::table('organizations')
-                ->where('id', $organizationId)
-                ->lockForUpdate()
-                ->first();
-
-            // Outside the tenant scope: the organization is given explicitly,
-            // and the counter must reflect every invoice that organization
-            // holds regardless of who is asking. Left scoped, a request with
-            // no tenant context reads zero rows, restarts the counter at 1,
-            // and the unique index rejects the insert.
-            $highest = static::withoutTenantScope(
-                fn () => static::query()->where('org_id', $organizationId)->where('device_id', $deviceId)->max('icv')
-            );
-
-            return ((int) $highest) + 1;
-        });
+        return ((int) $highest) + 1;
     }
 
     /**

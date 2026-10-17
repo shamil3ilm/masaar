@@ -392,7 +392,8 @@ from `issuingStep()`.
 owns what every country shares:
 
 - the guard against issuing an invoice that is no longer a draft;
-- the transaction, holding the organization row's lock;
+- the transaction, holding the issuing lock of the chain the jurisdiction
+  names (`lockScope()`: a Saudi device, a UAE organization);
 - the number, from `InvoiceNumbering`, when the draft has none;
 - the moment of issue, set once;
 - status `issued`, saved with the columns the country's seal returns.

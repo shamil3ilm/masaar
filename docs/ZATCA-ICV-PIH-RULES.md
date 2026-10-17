@@ -84,8 +84,9 @@ Invoice 3 (ICV=3): PIH = DEF456 (hash of rejected Invoice 2)
 ### One lock for counter, number and chain
 
 Issuing runs through the shared `App\Domains\Invoice\Services\IssuingLifecycle`,
-which holds the organization's database row (`SELECT ... FOR UPDATE`) for the
-whole issue. Inside that lock, in this order:
+which holds the issuing lock of the document's device - a row of
+`issuing_locks`, one per device, named by the Saudi step's `lockScope()` -
+for the whole issue. Inside that lock, in this order:
 
 1. **ICV:** the Saudi step (`Countries/SaudiArabia/Issuing/IssuingStep::beforeNumbering`)
    allocates the next counter with `Invoice::generateNextIcv()`, per device - the
@@ -99,7 +100,12 @@ whole issue. Inside that lock, in this order:
    invoice's hash and its predecessor, with the certificate that signed it.
 
 Because the counter, the number and the chain entry are decided under the same
-row lock, two issuances for one organization cannot claim the same predecessor.
+lock, two issuances for one device cannot claim the same predecessor. Devices
+have separate counters and chains, so two devices - two tills of one company -
+issue at the same time. Devices that share a numbering sequence (the
+organization's, when a branch has none of its own) wait for each other while
+the number is taken and until their issuance commits; a branch with its own
+sequence does not.
 There is no separate counter store: a failure rolls the counter back with
 everything else. `php artisan fatoora:verify-hash-chain` checks a chain end to
 end.

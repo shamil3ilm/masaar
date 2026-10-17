@@ -15,6 +15,7 @@ use App\Domains\Invoice\Services\IssuanceNotifier;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Platform\Services\KillSwitch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -55,6 +56,22 @@ class UaeIssuingTest extends TestCase
         $this->assertSame($first->id, $second->id);
         $this->assertSame(1, PeppolDocument::query()->count());
         Queue::assertPushed(SendPeppolDocument::class, 1);
+    }
+
+    /**
+     * No device chains in the UAE: an organization's documents are issued
+     * one at a time under the organization's own issuing lock.
+     */
+    public function test_issuing_lock_is_the_organization(): void
+    {
+        $organization = $this->uaeOrganization();
+
+        app(InvoiceIssuer::class)->issue($this->draft($organization));
+
+        $this->assertSame(
+            [(string) $organization->id],
+            DB::table('issuing_locks')->where('org_id', $organization->id)->pluck('scope')->all(),
+        );
     }
 
     public function test_problems_refuse_and_leave_draft(): void

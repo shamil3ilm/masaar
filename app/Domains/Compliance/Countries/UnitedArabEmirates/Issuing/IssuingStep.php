@@ -24,7 +24,7 @@ use Throwable;
  * The UAE's part of issuing an invoice: a Peppol PINT AE document.
  *
  * The shared IssuingLifecycle numbers the invoice, sets its moment of issue
- * and marks it issued under the organization's lock. This adds the guards
+ * and marks it issued under the organization's issuing lock. This adds the guards
  * every issuance passes, the mandatory-field and totals check once the
  * number exists, the document stored in the same transaction, and - after
  * commit - invoice.issued. Queueing the send is the caller's
@@ -80,6 +80,16 @@ class IssuingStep implements IssuingJurisdiction
         }
 
         return null;
+    }
+
+    /**
+     * The organization: a UAE document has no counter or chain of a device,
+     * so one organization's documents are issued one at a time, as before
+     * there were scopes.
+     */
+    public function lockScope(Invoice $invoice, mixed $context): string
+    {
+        return (string) $invoice->org_id;
     }
 
     /** An issued invoice's document, stored by the issuance that issued it. */

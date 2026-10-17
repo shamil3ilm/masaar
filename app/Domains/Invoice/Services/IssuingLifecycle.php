@@ -11,8 +11,8 @@ use App\Domains\Organization\Models\Organization;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Issuing as every country has it: under the organization row's lock a draft
- * takes its number and its moment of issue and becomes Issued. What a country
+ * Issuing as every country has it: under its chain's lock a draft takes its
+ * number and its moment of issue and becomes Issued. What a country
  * adds - checks, a counter, a signature, a document of its own - arrives
  * through the IssuingJurisdiction it is given, at the points that contract
  * lists.
@@ -45,37 +45,48 @@ class IssuingLifecycle
         }
 
         $context = $jurisdiction->prepare($invoice, $organization, $reissue);
+        $scope = $jurisdiction->lockScope($invoice, $context);
 
         // Counter, predecessor, document and chain entry are decided together,
-        // inside one transaction holding the organization row.
+        // inside one transaction holding the chain's lock.
         //
         // Reading the PIH outside this block is what let the chain fork: two
-        // issuances for one tenant both read the head before either wrote, and
+        // issuances for one chain both read the head before either wrote, and
         // both claimed it. Allocating the counter here as well closes the
-        // other way in — a document issued ahead of a lower-numbered draft,
+        // other way in - a document issued ahead of a lower-numbered draft,
         // which needs no concurrency at all to produce the same break.
         //
-        // The lock is the organization row rather than the invoice rows, for
-        // the reason generateNextIcv() gives: there are no invoice rows to
-        // lock for a tenant's first document, so two requests would both find
-        // nothing and both allocate 1. The organization row always exists.
+        // The lock is a row of its own (issuing_locks), one per chain, rather
+        // than the invoice rows: there are none to lock for a chain's first
+        // document, so two requests would both find nothing and both
+        // allocate 1. The upsert creates the row or waits for whoever holds
+        // it, in one statement.
         //
-        // Signing happens under that lock, which is the cost. It serialises
-        // issuance per tenant — correct, and worth measuring if a tenant ever
-        // issues fast enough to feel it. An advisory lock keyed on org_id
-        // would free the row without changing the guarantee.
-        [$result, $issuedNow] = DB::transaction(function () use ($invoice, $organization, $jurisdiction, $context, $reissue): array {
-            DB::table('organizations')
-                ->where('id', $invoice->org_id)
-                ->lockForUpdate()
-                ->first();
+        // It was the organization row, which serialised every till of a
+        // tenant behind every other although each device keeps its own chain
+        // - and an exclusive lock on that row also held up every insert whose
+        // foreign key checks it. The jurisdiction names the chain, so a
+        // country with a chain per device lets its devices issue at once.
+        // Signing still happens under the lock: one chain issues one document
+        // at a time, which is what a chain is.
+        [$result, $issuedNow] = DB::transaction(function () use ($invoice, $organization, $jurisdiction, $context, $reissue, $scope): array {
+            DB::table('issuing_locks')->upsert(
+                [['org_id' => $invoice->org_id, 'scope' => $scope, 'held_at' => now()]],
+                ['org_id', 'scope'],
+                ['held_at'],
+            );
 
             // Decided again here, on the row as it stands. The check above
             // read the caller's copy before the lock: two requests issuing one
             // draft both saw a draft, took the lock in turn, and the second -
             // still holding icv = null - allocated another counter and
-            // re-signed a document already issued. Every issuance holds this
-            // lock, so the row read under it is final.
+            // re-signed a document already issued.
+            //
+            // The row itself is locked as well. Two requests for one draft
+            // normally name the same chain and wait on it, but a device
+            // onboarded between their prepare() calls would give them
+            // different scopes, and only the row is common to both.
+            Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoice->getKey())->lockForUpdate()->first());
             $invoice->refresh();
 
             if ($invoice->status !== InvoiceStatus::Draft) {

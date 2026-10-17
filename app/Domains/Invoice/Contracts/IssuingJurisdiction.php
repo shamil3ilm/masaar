@@ -12,12 +12,13 @@ use Throwable;
  * One country's part of issuing an invoice.
  *
  * IssuingLifecycle owns what every country shares - the already-issued guard,
- * the organization-row lock, the number, the moment of issue, status Issued
- * and the transaction - and calls these at fixed points:
+ * the issuing lock, the number, the moment of issue, status Issued and the
+ * transaction - and calls these at fixed points:
  *
  *   refuseIssued()           before anything, for a non-draft not being finished
  *   prepare()                before the lock; throws to refuse, nothing written
- *   -- transaction, organization row locked, invoice refreshed --
+ *   lockScope()              which chain the document is issued into
+ *   -- transaction, that chain's lock held, invoice row locked and refreshed --
  *   refuseIssuedMeanwhile()  the row is no longer a draft and this is no reissue
  *   finished()               the row is no longer a draft and this is a reissue
  *   beforeNumbering()        a draft (or unfinished reissue), before its number
@@ -45,6 +46,17 @@ interface IssuingJurisdiction
      * @return mixed the context handed to every later step
      */
     public function prepare(Invoice $invoice, Organization $organization, bool $reissue): mixed;
+
+    /**
+     * The chain this document is issued into, within its organization.
+     *
+     * Documents of one scope are issued strictly one at a time, each seeing
+     * everything the one before it wrote; documents of different scopes are
+     * issued at the same time. A country whose documents form one sequence
+     * per device names the device; one with nothing of the kind names the
+     * organization.
+     */
+    public function lockScope(Invoice $invoice, mixed $context): string;
 
     /**
      * Asked to finish an issuance the row shows is no longer a draft: what
