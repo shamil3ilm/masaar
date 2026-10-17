@@ -1,11 +1,13 @@
-<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Invoice {{ $invoiceNumber }}</title></head>
-<body style="margin:0;padding:24px;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#111827;">
-    <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:8px;padding:32px;">
-        <h1 style="margin:0 0 16px;font-size:20px;">Invoice {{ $invoiceNumber }}</h1>
-        <p style="margin:0 0 16px;line-height:1.5;">{{ $sellerName }} has sent you invoice {{ $invoiceNumber }} for {{ $total }}. It is attached as a PDF, with the e-invoice filed with ZATCA inside it.</p>
-        <p style="margin:0;line-height:1.5;color:#6b7280;" dir="rtl" lang="ar">مرفق الفاتورة الضريبية بصيغة PDF.</p>
-    </div>
-</body>
-</html>
+{{--
+    An issued invoice sent to its buyer, with the PDF attached. Written in
+    English with an Arabic line, as before; in the shared email frame.
+--}}
+@extends('emails.layout')
+
+@section('title', 'Invoice '.$invoiceNumber)
+
+@section('content')
+    <h1 style="margin:0 0 12px;font-size:22px;line-height:1.3;font-weight:600;" dir="ltr">Invoice <span style="font-family:Menlo,Consolas,monospace;">{{ $invoiceNumber }}</span></h1>
+    <p style="margin:0 0 16px;color:#4a5170;" dir="ltr" lang="en">{{ $sellerName }} has sent you invoice {{ $invoiceNumber }} for {{ $total }}. It is attached as a PDF, with the e-invoice filed with ZATCA inside it.</p>
+    <p style="margin:0;color:#6b7190;font-family:Tahoma,Arial,sans-serif;" dir="rtl" lang="ar">مرفق الفاتورة الضريبية بصيغة PDF.</p>
+@endsection
