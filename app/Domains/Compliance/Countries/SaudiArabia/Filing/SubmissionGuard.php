@@ -6,12 +6,10 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Filing;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
-use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\VatPeriodTracker;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificatePem;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateService;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
-use App\Domains\Compliance\Countries\SaudiArabia\Support\FatooraTime;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\FilingClearance;
@@ -46,6 +44,7 @@ class SubmissionGuard
         private readonly CredentialStore $credentials,
         private readonly KillSwitch $killSwitch,
         private readonly FilingClearance $clearance,
+        private readonly SubmissionRate $rate,
     ) {}
 
     /**
@@ -83,8 +82,8 @@ class SubmissionGuard
         // 2. Check certificate validity
         $this->checkCertificateHealth($organization);
 
-        // 3. Check rate limits
-        $this->checkRateLimits($organization);
+        // 3. Check rate limits: the device's, then the organization's.
+        $this->rate->assertWithin($invoice);
 
         // 4. Check concurrent submissions
         $this->checkConcurrentSubmissions($organization);
@@ -250,51 +249,6 @@ class SubmissionGuard
                 'org_id' => $organization->id,
                 'error' => $e->getMessage(),
             ]);
-        }
-    }
-
-    /**
-     * Check rate limits.
-     */
-    private function checkRateLimits(Organization $organization): void
-    {
-        // Check per-minute rate limit
-        $recentSubmissions = InvoiceSubmission::where('org_id', $organization->id)
-            ->where('created_at', '>=', now()->subMinute())
-            ->count();
-
-        // From config, not a literal. FatooraConfig has had getters for both
-        // of these for as long as the keys have existed and this read neither,
-        // so ZATCA_RATE_LIMIT_PER_MINUTE and ZATCA_RATE_LIMIT_PER_DAY changed
-        // nothing and the figure in the error message was the only place the
-        // real limit was written down.
-        $perMinute = FatooraConfig::getRateLimitPerMinute();
-
-        if ($recentSubmissions >= $perMinute) {
-            throw new FatooraException(
-                "Rate limit exceeded ({$perMinute}/minute)",
-                ErrorCode::RATE_LIMIT_EXCEEDED
-            );
-        }
-
-        // Check daily limit, where the day is the Kingdom's.
-        //
-        // created_at is stored in UTC, so the Kingdom's midnight has to be
-        // handed over as the instant it is - utc() - and not as a Riyadh-zoned
-        // Carbon, which the query grammar formats in its own timezone and so
-        // would send as though Riyadh midnight were UTC midnight, moving the
-        // window three hours the wrong way instead of fixing it.
-        $dailySubmissions = InvoiceSubmission::where('org_id', $organization->id)
-            ->where('created_at', '>=', FatooraTime::saudiNow()->startOfDay()->utc())
-            ->count();
-
-        $perDay = FatooraConfig::getRateLimitPerDay();
-
-        if ($dailySubmissions >= $perDay) {
-            throw new FatooraException(
-                "Daily submission limit exceeded ({$perDay}/day)",
-                ErrorCode::RATE_DAILY_LIMIT
-            );
         }
     }
 

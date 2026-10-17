@@ -46,6 +46,8 @@ class ComposeEnvTest extends TestCase
             ['RATE_LIMIT_DEFAULT', 'ordinary API traffic would run at the config default'],
             ['RATE_LIMIT_SUBMISSION', 'submissions would run at the config default'],
             ['ZATCA_RATE_LIMIT_PER_MINUTE', 'SubmissionGuard and the edge limiter would disagree'],
+            ['ZATCA_DEVICE_RATE_LIMIT_PER_MINUTE', 'each till would run at the config default'],
+            ['ZATCA_DEVICE_RATE_LIMIT_PER_DAY', 'each till would run at the config default'],
             ['RATE_LIMIT_ANONYMOUS', 'the credential endpoints would run at the config default'],
 
             // Not silent: the boot guard refuses a sandbox authority under

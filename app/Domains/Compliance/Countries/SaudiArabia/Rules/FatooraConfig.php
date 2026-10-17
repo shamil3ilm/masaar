@@ -295,9 +295,13 @@ final class FatooraConfig
     // ============================================================
     // RATE LIMITS (Configurable)
     // ============================================================
-    public const DEFAULT_RATE_LIMIT_PER_MINUTE = 60;
+    public const DEFAULT_RATE_LIMIT_PER_MINUTE = 300;
 
-    public const DEFAULT_RATE_LIMIT_PER_DAY = 10000;
+    public const DEFAULT_RATE_LIMIT_PER_DAY = 100000;
+
+    public const DEFAULT_DEVICE_RATE_LIMIT_PER_MINUTE = 120;
+
+    public const DEFAULT_DEVICE_RATE_LIMIT_PER_DAY = 10000;
 
     public const DEFAULT_MAX_CONCURRENT_SUBMISSIONS = 10;
 
@@ -398,7 +402,7 @@ final class FatooraConfig
     }
 
     /**
-     * Get rate limit per minute.
+     * The organization's submissions a minute, across all its devices.
      */
     public static function getRateLimitPerMinute(): int
     {
@@ -406,11 +410,27 @@ final class FatooraConfig
     }
 
     /**
-     * Get rate limit per day.
+     * The organization's submissions a day, across all its devices.
      */
     public static function getRateLimitPerDay(): int
     {
         return (int) self::get('rate_limits.per_day', self::DEFAULT_RATE_LIMIT_PER_DAY);
+    }
+
+    /**
+     * One device's submissions a minute, within the organization's.
+     */
+    public static function getDeviceRateLimitPerMinute(): int
+    {
+        return (int) self::get('rate_limits.device_per_minute', self::DEFAULT_DEVICE_RATE_LIMIT_PER_MINUTE);
+    }
+
+    /**
+     * One device's submissions a day, within the organization's.
+     */
+    public static function getDeviceRateLimitPerDay(): int
+    {
+        return (int) self::get('rate_limits.device_per_day', self::DEFAULT_DEVICE_RATE_LIMIT_PER_DAY);
     }
 
     /**

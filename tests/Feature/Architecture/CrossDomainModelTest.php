@@ -65,6 +65,7 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Countries/SaudiArabia/Filing/OfflineFallback.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Filing/OfflineQueue.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Filing/SubmissionGuard.php' => 'Invoice',
+        'Domains/Compliance/Countries/SaudiArabia/Filing/SubmissionRate.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Filing/SubmissionTracker.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Filing/Submitter.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Http/Controllers/BranchOnboardingController.php' => 'Organization',

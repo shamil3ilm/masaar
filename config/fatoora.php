@@ -151,10 +151,16 @@ return [
     |
     */
     'rate_limits' => [
-        // Must agree with security.rate_limits.submission, which throttles the
-        // same traffic at the edge. Two keys, one thing.
-        'per_minute' => env('ZATCA_RATE_LIMIT_PER_MINUTE', 120),
-        'per_day' => env('ZATCA_RATE_LIMIT_PER_DAY', 10000),
+        // The organization's ceiling, across all its devices. Must agree with
+        // security.rate_limits.submission, which throttles the same traffic
+        // per organization at the edge. Two keys, one thing.
+        'per_minute' => env('ZATCA_RATE_LIMIT_PER_MINUTE', 300),
+        'per_day' => env('ZATCA_RATE_LIMIT_PER_DAY', 100000),
+        // Each device (EGS unit - a branch with its own certificate, or head
+        // office) within that ceiling, so one busy till cannot spend the
+        // others' allowance (SubmissionRate).
+        'device_per_minute' => env('ZATCA_DEVICE_RATE_LIMIT_PER_MINUTE', 120),
+        'device_per_day' => env('ZATCA_DEVICE_RATE_LIMIT_PER_DAY', 10000),
         'max_concurrent' => env('ZATCA_MAX_CONCURRENT', 10),
     ],
 
