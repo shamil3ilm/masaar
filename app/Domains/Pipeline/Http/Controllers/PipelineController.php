@@ -5,13 +5,19 @@ declare(strict_types=1);
 namespace App\Domains\Pipeline\Http\Controllers;
 
 use App\Domains\Invoice\Services\InvoiceFinder;
+use App\Domains\Licensing\Http\Middleware\RequireLicenseFeature;
 use App\Domains\Organization\Services\TenantResolver;
+use App\Domains\Pipeline\Http\Requests\PipelineBatchRequest;
 use App\Domains\Pipeline\Http\Requests\PipelineSubmitRequest;
 use App\Domains\Pipeline\Services\PipelineService;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Redirector;
+use Symfony\Component\HttpFoundation\InputBag;
+use Throwable;
 
 /**
  * Pipeline API controller for atomic ERP-ZATCA integration.
@@ -41,12 +47,134 @@ class PipelineController extends Controller
         $data = $request->validated();
 
         $organizationId = $data['org_id'];
-        $branchId = $data['branch_id'] ?? null;
 
-        // The body names an organization; the credential decides which one is
-        // allowed. Missing context is refused rather than waved through — the
-        // previous guard skipped itself when the tenant was null, so the one
-        // case where it could not tell was the one it let past.
+        if ($refusal = $this->refuseOrganization($organizationId)) {
+            return $refusal;
+        }
+
+        $result = $this->pipelineService->submitInvoice(
+            data: $data,
+            organizationId: $organizationId,
+            branchId: $data['branch_id'] ?? null,
+            // An ERP retrying a timed-out call sends the same key and gets the
+            // original outcome rather than filing the invoice a second time.
+            // A blank header is none: stored, it would make every other
+            // blank-keyed request a retry of the first.
+            idempotencyKey: $request->header('Idempotency-Key') ?: null,
+        );
+
+        [$status, $message] = $this->outcome($result);
+
+        return $status === 201
+            ? ApiResponse::created(data: $result, message: $message)
+            : ApiResponse::success(data: $result, message: $message, status: $status);
+    }
+
+    /**
+     * Submit many invoices, each as its own pipeline request.
+     *
+     * POST /api/v1/pipeline/batch
+     *
+     * Each invoice is licensed, validated, drafted, issued and filed on its
+     * own, under its own idempotency_key, exactly as /pipeline/submit would
+     * take it - and answered on its own line with the status that endpoint
+     * would have given it, and its result or its error. One that fails does
+     * not stop the rest. 201 when every invoice was submitted cleanly, 207
+     * when any was not.
+     */
+    public function batch(PipelineBatchRequest $request): JsonResponse
+    {
+        $organizationId = (string) $request->validated('org_id');
+
+        if ($refusal = $this->refuseOrganization($organizationId)) {
+            return $refusal;
+        }
+
+        $results = [];
+
+        // The bodies as sent: validated() holds only the fields the envelope
+        // checks, and each invoice is checked whole below.
+        foreach ((array) $request->input('invoices') as $index => $item) {
+            $results[] = $this->batchItem($request, $index, [...$item, 'org_id' => $organizationId]);
+        }
+
+        $failed = count(array_filter($results, fn (array $result): bool => $result['http_status'] !== 201));
+        $data = [
+            'results' => $results,
+            'summary' => ['total' => count($results), 'succeeded' => count($results) - $failed, 'failed' => $failed],
+        ];
+
+        return $failed === 0
+            ? ApiResponse::created(data: $data, message: 'Every invoice was submitted through the pipeline')
+            : ApiResponse::success(data: $data, message: 'Some invoices were not submitted cleanly. See each result.', status: 207);
+    }
+
+    /**
+     * One invoice of a batch, as /pipeline/submit takes it.
+     *
+     * Its body becomes a PipelineSubmitRequest of its own, so it meets the
+     * same rules, and the licence is asked about its document as
+     * license.feature:documents asks on the single endpoint. A refusal is
+     * rendered by the application's exception handler, as the single
+     * endpoint's would be, and becomes this item's status and error.
+     *
+     * @param  array<string, mixed>  $item
+     * @return array{index: int, idempotency_key: ?string, http_status: int, message: string, data: ?array, error: ?array}
+     */
+    private function batchItem(Request $batch, int $index, array $item): array
+    {
+        $key = filled($item['idempotency_key'] ?? null) ? (string) $item['idempotency_key'] : null;
+
+        try {
+            $request = $this->itemRequest($batch, $item);
+
+            app(RequireLicenseFeature::class)->handle($request, fn () => null, RequireLicenseFeature::DOCUMENTS);
+            $request->validateResolved();
+            $data = $request->validated();
+
+            $result = $this->pipelineService->submitInvoice($data, (string) $data['org_id'], $data['branch_id'] ?? null, $key);
+            [$status, $message] = $this->outcome($result);
+
+            return ['index' => $index, 'idempotency_key' => $key, 'http_status' => $status, 'message' => $message, 'data' => $result, 'error' => null];
+        } catch (Throwable $e) {
+            $response = app(ExceptionHandler::class)->render($batch, $e);
+            $body = json_decode((string) $response->getContent(), true);
+
+            return [
+                'index' => $index,
+                'idempotency_key' => $key,
+                'http_status' => $response->getStatusCode(),
+                'message' => (string) ($body['error']['message'] ?? $body['message'] ?? ''),
+                'data' => null,
+                'error' => is_array($body['error'] ?? null) ? $body['error'] : null,
+            ];
+        }
+    }
+
+    /**
+     * The batch's request, carrying one invoice's body: its credential,
+     * licence and tenant, and nothing of the other invoices.
+     *
+     * @param  array<string, mixed>  $item
+     */
+    private function itemRequest(Request $batch, array $item): PipelineSubmitRequest
+    {
+        $request = PipelineSubmitRequest::createFrom($batch);
+        $request->setJson(new InputBag($item));
+        $request->request = new InputBag($item);
+        $request->setContainer(app())->setRedirector(app(Redirector::class));
+
+        return $request;
+    }
+
+    /**
+     * The body names an organization; the credential decides which one is
+     * allowed. Missing context is refused rather than waved through — the
+     * previous guard skipped itself when the tenant was null, so the one
+     * case where it could not tell was the one it let past.
+     */
+    private function refuseOrganization(string $organizationId): ?JsonResponse
+    {
         $authenticatedOrgId = $this->tenant->getOrganizationId();
 
         if ($authenticatedOrgId === null) {
@@ -59,43 +187,31 @@ class PipelineController extends Controller
             );
         }
 
-        $result = $this->pipelineService->submitInvoice(
-            data: $data,
-            organizationId: $organizationId,
-            branchId: $branchId,
-            // An ERP retrying a timed-out call sends the same key and gets the
-            // original outcome rather than filing the invoice a second time.
-            // A blank header is none: stored, it would make every other
-            // blank-keyed request a retry of the first.
-            idempotencyKey: $request->header('Idempotency-Key') ?: null,
-        );
+        return null;
+    }
 
+    /**
+     * The status and message a pipeline result answers with.
+     *
+     * @param  array<string, mixed>  $result
+     * @return array{0: int, 1: string}
+     */
+    private function outcome(array $result): array
+    {
         $hasErrors = ! empty($result['errors']);
         $status = $result['status'];
 
-        // Determine HTTP status code based on outcome
-        if ($hasErrors && in_array($status, ['draft'], true)) {
-            // Invoice created but compliance generation failed
-            return ApiResponse::success(
-                data: $result,
-                message: 'Invoice created but compliance generation failed. See errors for details.',
-                status: 207,
-            );
+        // Invoice created but compliance generation failed
+        if ($hasErrors && $status === 'draft') {
+            return [207, 'Invoice created but compliance generation failed. See errors for details.'];
         }
 
+        // Invoice issued but ZATCA submission had issues
         if ($hasErrors && in_array($status, ['issued', 'rejected'], true)) {
-            // Invoice issued but ZATCA submission had issues
-            return ApiResponse::success(
-                data: $result,
-                message: 'Invoice processed with warnings or errors. See errors for details.',
-                status: 207,
-            );
+            return [207, 'Invoice processed with warnings or errors. See errors for details.'];
         }
 
-        return ApiResponse::created(
-            data: $result,
-            message: 'Invoice submitted through the pipeline',
-        );
+        return [201, 'Invoice submitted through the pipeline'];
     }
 
     /**

@@ -371,6 +371,8 @@ class GenerateOpenapi extends Command
             return null;
         }
 
+        $properties = $this->members($rules, $properties);
+
         $schema = ['type' => 'object', 'properties' => $properties];
 
         if ($required !== []) {
@@ -381,6 +383,32 @@ class GenerateOpenapi extends Command
             'required' => true,
             'content' => ['application/json' => ['schema' => $schema]],
         ];
+    }
+
+    /**
+     * The members of a top-level array, one level down, from its "x.*.y"
+     * rules: what a line of an invoice holds, or an invoice of a batch.
+     * Deeper keys are left out, as nested keys were before.
+     *
+     * @param  array<string, mixed>  $rules
+     * @param  array<string, array<string, mixed>>  $properties
+     * @return array<string, array<string, mixed>>
+     */
+    private function members(array $rules, array $properties): array
+    {
+        foreach ($rules as $field => $rule) {
+            if (preg_match('/^([^.]+)\.\*\.([^.*]+)$/', (string) $field, $m) !== 1
+                || ($properties[$m[1]]['type'] ?? null) !== 'array') {
+                continue;
+            }
+
+            $rule = array_map(fn ($r) => is_string($r) ? $r : '', is_array($rule) ? $rule : explode('|', (string) $rule));
+
+            $properties[$m[1]]['items']['type'] = 'object';
+            $properties[$m[1]]['items']['properties'][$m[2]] = ['type' => $this->typeFor($rule)];
+        }
+
+        return $properties;
     }
 
     /**

@@ -138,7 +138,7 @@ return [
         // budget. Patterns stay narrow for that reason; anything they do not
         // match draws on 'default'.
         'bands' => [
-            'submission' => ['pipeline/submit', 'compliance/sa/submit', 'compliance/ae/submit'],
+            'submission' => ['pipeline/submit', 'pipeline/batch', 'compliance/sa/submit', 'compliance/ae/submit'],
             'onboarding' => ['onboarding', 'ccsid', 'pcsid'],
             'read' => ['status', 'health', 'dashboard'],
         ],
