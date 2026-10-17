@@ -77,6 +77,12 @@
             </div>
 
             <div>
+                <label for="supply_end_date" class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('Supply end date') }}</label>
+                <x-ui.input type="date" name="supply_end_date" id="supply_end_date" value="{{ old('supply_end_date') }}" />
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('For a supply over a period, such as a subscription.') }}</p>
+            </div>
+
+            <div>
                 <label for="currency" class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('Currency') }}</label>
                 <x-ui.input type="text" name="currency" id="currency" maxlength="3" value="{{ old('currency', 'SAR') }}" class="uppercase" />
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Anything but SAR needs an exchange rate.') }}</p>

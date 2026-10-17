@@ -1668,6 +1668,8 @@ paths:
                   type: string
                 supply_date:
                   type: string
+                supply_end_date:
+                  type: string
                 currency:
                   type: string
                 exchange_rate:
@@ -1788,6 +1790,8 @@ paths:
                   type: string
                 supply_date:
                   type: string
+                supply_end_date:
+                  type: string
                 currency:
                   type: string
                 exchange_rate:
@@ -1880,6 +1884,8 @@ paths:
                 issue_date:
                   type: string
                 supply_date:
+                  type: string
+                supply_end_date:
                   type: string
                 currency:
                   type: string
@@ -3021,6 +3027,8 @@ paths:
                   type: string
                 supply_date:
                   type: string
+                supply_end_date:
+                  type: string
                 currency:
                   type: string
                 exchange_rate:
@@ -3144,6 +3152,8 @@ paths:
                 issue_date:
                   type: string
                 supply_date:
+                  type: string
+                supply_end_date:
                   type: string
                 currency:
                   type: string
@@ -3291,6 +3301,8 @@ paths:
                 issue_date:
                   type: string
                 supply_date:
+                  type: string
+                supply_end_date:
                   type: string
                 currency:
                   type: string

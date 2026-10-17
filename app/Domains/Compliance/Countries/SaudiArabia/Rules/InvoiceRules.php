@@ -136,7 +136,11 @@ class InvoiceRules implements InvoiceRulesPort
             // Proforma (document_type=325) is not valid for ZATCA VAT reporting
             'document_type' => ['nullable', Rule::enum(DocumentType::class), Rule::notIn(['proforma'])],
             'issue_date' => ['required', 'date'],
-            'supply_date' => ['nullable', 'date'],
+            // KSA-5 and KSA-24: a supply over a period, such as a
+            // subscription or a month's summary, starts and does not end
+            // before it starts (BR-KSA-35, BR-KSA-36).
+            'supply_date' => ['nullable', 'date', 'required_with:supply_end_date'],
+            'supply_end_date' => ['nullable', 'date', Rule::when($request->filled('supply_date'), ['after_or_equal:supply_date'])],
             'currency' => ['nullable', 'string', 'size:3'],
             // BR-KSA-EN16931-02 and BR-53: VAT is reported in SAR, so a foreign-currency
             // invoice has to say what rate it was converted at. InvoiceValidator
@@ -277,6 +281,9 @@ class InvoiceRules implements InvoiceRulesPort
     public function messages(): array
     {
         return [
+            // Supply period
+            'supply_date.required_with' => __('A supply end date needs a supply date (BR-KSA-35).'),
+            'supply_end_date.after_or_equal' => __('The supply end date cannot be before the supply date (BR-KSA-36).'),
             // Buyer
             'exchange_rate.required' => __('Exchange rate to SAR is required for foreign-currency invoices (BR-53).'),
             // BT-48, not BT-46: BT-46 is the other buyer identifier, which

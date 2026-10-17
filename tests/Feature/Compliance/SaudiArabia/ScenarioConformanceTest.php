@@ -99,6 +99,29 @@ class ScenarioConformanceTest extends TestCase
     }
 
     /**
+     * A month's sales summarised on one simplified invoice: BR-KSA-72 wants
+     * the period it covers, and the period sent through the API is the one
+     * the document states.
+     */
+    public function test_a_simplified_summary_states_its_period(): void
+    {
+        $start = now()->startOfMonth()->toDateString();
+        $end = now()->toDateString();
+
+        $xml = $this->signedFrom(self::simplified([
+            'is_summary' => true,
+            'buyer_name' => 'Beta Industries',
+            'supply_date' => $start,
+            'supply_end_date' => $end,
+        ]));
+
+        $this->assertStringContainsString('<cbc:InvoiceTypeCode name="0200010">', $xml);
+        $this->assertMatchesRegularExpression("#<cbc:ActualDeliveryDate[^>]*>{$start}</cbc:ActualDeliveryDate>#", $xml);
+        $this->assertMatchesRegularExpression("#<cbc:LatestDeliveryDate[^>]*>{$end}</cbc:LatestDeliveryDate>#", $xml);
+        $this->assertAccepted($xml);
+    }
+
+    /**
      * POST the payload to the API, then sign what was drafted.
      *
      * @param  array<string, mixed>  $payload
