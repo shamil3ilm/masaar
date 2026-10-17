@@ -275,6 +275,10 @@ Route::prefix('admin')->name('admin.')
         Route::post('/branding/import', [AdminBrandingController::class, 'import'])->middleware('admin.can:platform.configure')->name('branding.import');
         Route::get('/branding/export', [AdminBrandingController::class, 'export'])->name('branding.export');
         Route::post('/branding/reset', [AdminBrandingController::class, 'reset'])->middleware('admin.can:platform.configure')->name('branding.reset');
+
+        // The design system: every token and component, drawn by the
+        // components themselves, in light and dark and in both directions.
+        Route::view('/design-system', 'admin.design-system')->name('design-system');
         Route::post('/settings', [AdminSettingsController::class, 'update'])->middleware('admin.can:platform.configure')->name('settings.update');
 
         // Which countries the platform issues in. One switch per country,
