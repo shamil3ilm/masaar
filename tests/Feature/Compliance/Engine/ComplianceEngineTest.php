@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Compliance\Engine;
 
-use App\Domains\Compliance\Countries\SaudiArabia\Issuing\InvoiceIssuer;
+use App\Domains\Compliance\Countries\SaudiArabia\Issuing\InvoiceIssuer as SaudiArabiaIssuer;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Issuing\InvoiceIssuer as UnitedArabEmiratesIssuer;
 use App\Domains\Compliance\Engine\DTOs\IssueOptions;
 use App\Domains\Compliance\Engine\DTOs\IssueOutcome;
 use App\Domains\Compliance\Engine\Exceptions\JurisdictionUnavailableException;
 use App\Domains\Compliance\Engine\Services\ComplianceEngine;
-use App\Domains\Compliance\Peppol\Jobs\SendPeppolDocument;
-use App\Domains\Compliance\Peppol\Models\PeppolDocument;
-use App\Domains\Compliance\Peppol\Services\UaeInvoiceIssuer;
+use App\Domains\Compliance\Networks\Peppol\Jobs\SendPeppolDocument;
+use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Pipeline\Services\PipelineService;
@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Monolog\Handler\TestHandler;
-use Tests\Feature\Compliance\Peppol\PintInvoices;
+use Tests\Feature\Compliance\UnitedArabEmirates\PintInvoices;
 use Tests\TestCase;
 
 /**
@@ -42,8 +42,8 @@ class ComplianceEngineTest extends TestCase
 
     public function test_saudi_organization_reaches_saudi_issuing(): void
     {
-        $this->mock(UaeInvoiceIssuer::class)->shouldNotReceive('issue');
-        $this->mock(InvoiceIssuer::class)->shouldReceive('issue')->once()
+        $this->mock(UnitedArabEmiratesIssuer::class)->shouldNotReceive('issue');
+        $this->mock(SaudiArabiaIssuer::class)->shouldReceive('issue')->once()
             ->withArgs(fn (Invoice $invoice, Organization $organization, bool $file, ?string $key): bool => $invoice->id === 'inv-1' && $file && $key === 'erp-1')
             ->andReturn(IssueOutcome::issuedOnly());
 
@@ -55,7 +55,7 @@ class ComplianceEngineTest extends TestCase
 
     public function test_uae_organization_reaches_uae_issuing(): void
     {
-        $this->mock(InvoiceIssuer::class)->shouldNotReceive('issue');
+        $this->mock(SaudiArabiaIssuer::class)->shouldNotReceive('issue');
         $organization = $this->uaeOrganization();
         $invoice = $this->uaeInvoice($organization, ['invoice_number' => null]);
         Invoice::query()->whereKey($invoice->id)->update([
@@ -75,7 +75,7 @@ class ComplianceEngineTest extends TestCase
     public function test_switched_off_country_is_refused(): void
     {
         config(['peppol.countries.AE.enabled' => false]);
-        $this->mock(UaeInvoiceIssuer::class)->shouldNotReceive('issue');
+        $this->mock(UnitedArabEmiratesIssuer::class)->shouldNotReceive('issue');
 
         $this->expectException(JurisdictionUnavailableException::class);
 
@@ -104,7 +104,7 @@ class ComplianceEngineTest extends TestCase
         Log::driver()->getLogger()->pushHandler($handler);
         $seen = [];
 
-        $this->mock(InvoiceIssuer::class)->shouldReceive('issue')->once()->andReturnUsing(function () use (&$seen): IssueOutcome {
+        $this->mock(SaudiArabiaIssuer::class)->shouldReceive('issue')->once()->andReturnUsing(function () use (&$seen): IssueOutcome {
             $seen = Context::all();
             Log::warning('filing probe');
 

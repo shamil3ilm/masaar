@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Compliance\SaudiArabia;
 
-use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\FatooraClient;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\SubmissionTracker;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\Submitter;
@@ -14,6 +13,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Platform\Services\KillSwitch;
+use App\Support\Errors\ComplianceException;
 use App\Support\Errors\ErrorCode;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -230,7 +230,7 @@ class KillSwitchTest extends TestCase
     /**
      * Asserting the specific refusal, not merely that something was refused.
      *
-     * expectException(FatooraException::class) alone passed with the wiring
+     * expectException(ComplianceException::class) alone passed with the wiring
      * removed: an invoice for an organization with no onboarding is refused
      * anyway, by a different check, for a different reason. The error code is
      * what distinguishes "the switch stopped this" from "it was never going to
@@ -240,7 +240,7 @@ class KillSwitchTest extends TestCase
     {
         try {
             $operation();
-        } catch (FatooraException $e) {
+        } catch (ComplianceException $e) {
             $this->assertSame(
                 ErrorCode::SYS_MAINTENANCE_MODE,
                 $e->getErrorCode(),

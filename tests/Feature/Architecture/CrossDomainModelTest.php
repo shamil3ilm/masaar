@@ -18,10 +18,12 @@ use RecursiveIteratorIterator;
  * Organization and User are the shared kernel every domain is scoped by and
  * acts as, so importing them is not counted.
  *
- * Compliance holds one engine per jurisdiction, each with models of its own,
- * and each engine counts as a domain here: Compliance\Countries\SaudiArabia's
- * models are no more Compliance\FTA's to import (Compliance\Peppol's, once
- * renamed) than Invoice's are. Matching only the segment after Domains\ missed
+ * Compliance holds one module per country and one per network, each with
+ * models of its own, and each counts as a domain here:
+ * Compliance\Countries\SaudiArabia's models are no more
+ * Compliance\Countries\UnitedArabEmirates' to import than Invoice's are, and
+ * a country importing Compliance\Networks\Peppol's is listed like any other
+ * domain's. Matching only the segment after Domains\ missed
  * every such import, since
  * App\Domains\Compliance\Countries\SaudiArabia\Models\X has no Models segment
  * directly under Compliance.
@@ -37,7 +39,7 @@ class CrossDomainModelTest extends TestCase
     /**
      * Engines inside a domain that are domains in their own right.
      */
-    private const NESTED = ['Compliance/Countries/SaudiArabia', 'Compliance/FTA', 'Compliance/Peppol'];
+    private const NESTED = ['Compliance/Countries/SaudiArabia', 'Compliance/Countries/UnitedArabEmirates', 'Compliance/FTA', 'Compliance/Networks/Peppol'];
 
     private const SHARED = [
         'App\\Domains\\Organization\\Models\\Organization',
@@ -79,25 +81,32 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Countries/SaudiArabia/Rules/InvoiceValidator.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Rules/VatPeriodTracker.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Signing/SigningCredentials.php' => 'Invoice, Organization',
+        // A UAE document is built from an invoice and its organization's UAE
+        // settings, and stored as the network's PeppolDocument.
+        'Domains/Compliance/Countries/UnitedArabEmirates/Document/PeppolPreparer.php' => 'Compliance\Networks\Peppol, Invoice, Organization',
+        'Domains/Compliance/Countries/UnitedArabEmirates/Document/PintMapper.php' => 'Invoice, Organization',
+        // The API's document listing and download: the network's PeppolDocument.
+        'Domains/Compliance/Countries/UnitedArabEmirates/Http/Controllers/UaeDocumentController.php' => 'Compliance\Networks\Peppol',
+        // Issues a UAE invoice through the lifecycle every country shares, and
+        // queues its PeppolDocument.
+        'Domains/Compliance/Countries/UnitedArabEmirates/Issuing/InvoiceIssuer.php' => 'Compliance\Networks\Peppol, Invoice',
+        // The UAE's step in that lifecycle: guards, checks, the stored document.
+        'Domains/Compliance/Countries/UnitedArabEmirates/Issuing/IssuingStep.php' => 'Compliance\Networks\Peppol, Invoice',
+        // The UAE's engine module: issues and sends an invoice.
+        'Domains/Compliance/Countries/UnitedArabEmirates/Module.php' => 'Invoice',
+        // An organization's Peppol documents, for its screens and dashboards.
+        'Domains/Compliance/Countries/UnitedArabEmirates/Reports/UaeDocuments.php' => 'Compliance\Networks\Peppol',
+        // The 14 days are counted from an invoice's supply and issue dates,
+        // and a late PeppolDocument says so.
+        'Domains/Compliance/Countries/UnitedArabEmirates/Rules/IssueDeadline.php' => 'Compliance\Networks\Peppol, Invoice',
+        // Drafts a UAE invoice through the shared InvoiceDrafter, for the API and the portal.
+        'Domains/Compliance/Countries/UnitedArabEmirates/Support/UaeDrafts.php' => 'Invoice',
         // The compliance engine issues an invoice in its organization's jurisdiction.
         'Domains/Compliance/Engine/Contracts/Transmission.php' => 'Invoice',
         'Domains/Compliance/Engine/Services/ComplianceEngine.php' => 'Invoice',
         'Domains/Compliance/Engine/Services/JurisdictionResolver.php' => 'Invoice',
         // The receiver of an inbound document is the endpoint on a compliance profile.
-        'Domains/Compliance/Peppol/Services/InboundDocuments.php' => 'Organization',
-        // The 14 days are counted from an invoice's supply and issue dates.
-        'Domains/Compliance/Peppol/Services/IssueDeadline.php' => 'Invoice',
-        // A UAE document is built from an invoice and its organization's UAE settings.
-        'Domains/Compliance/Peppol/Services/PeppolPreparer.php' => 'Invoice, Organization',
-        'Domains/Compliance/Peppol/Services/PintMapper.php' => 'Invoice, Organization',
-        // Drafts a UAE invoice through the shared InvoiceDrafter, for the API and the portal.
-        'Domains/Compliance/Peppol/Services/UaeDrafts.php' => 'Invoice',
-        // Issues a UAE invoice through the lifecycle every country shares.
-        'Domains/Compliance/Peppol/Services/UaeInvoiceIssuer.php' => 'Invoice',
-        // The UAE's step in that lifecycle: guards, checks, the stored document.
-        'Domains/Compliance/Peppol/Services/UaeJurisdiction.php' => 'Invoice',
-        // The UAE's engine module: issues and sends an invoice.
-        'Domains/Compliance/Peppol/UnitedArabEmirates.php' => 'Invoice',
+        'Domains/Compliance/Networks/Peppol/Receiving/InboundDocuments.php' => 'Organization',
         'Domains/Invoice/Models/Invoice.php' => 'Compliance\Countries\SaudiArabia, Organization',
         'Domains/Licensing/Http/Middleware/RequireLicenseFeature.php' => 'Invoice',
         'Domains/Organization/Models/Branch.php' => 'Invoice',

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Services;
 
-use App\Domains\Compliance\Peppol\Profiles\PintAe;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe;
 use App\Domains\Organization\DTOs\AddressFields;
 use App\Domains\Organization\DTOs\OrganizationChangesData;
 use App\Domains\Organization\Models\ComplianceProfile;

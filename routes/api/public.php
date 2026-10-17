@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use App\Domains\Auth\Http\Controllers\AuthController;
-use App\Domains\Compliance\Peppol\Http\Controllers\InboundWebhookController;
-use App\Domains\Compliance\Peppol\Http\Controllers\StatusWebhookController;
+use App\Domains\Compliance\Networks\Peppol\Http\Controllers\InboundWebhookController;
+use App\Domains\Compliance\Networks\Peppol\Http\Controllers\StatusWebhookController;
 use App\Domains\Licensing\Services\PlatformLicenseService;
 use App\Domains\Platform\Http\Controllers\MetricsController;
 use App\Domains\Platform\Http\Controllers\ReadinessController;

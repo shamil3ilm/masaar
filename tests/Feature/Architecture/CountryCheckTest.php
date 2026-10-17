@@ -27,11 +27,15 @@ class CountryCheckTest extends TestCase
 {
     private const APP = __DIR__.'/../../../app';
 
-    /** Country modules and the engine: where a country's code belongs. */
+    /**
+     * Country modules, the networks they send through, and the engine: where
+     * a country's code belongs. ModuleBoundaryTest keeps each of them to its
+     * own side.
+     */
     private const EXEMPT = [
         'Domains/Compliance/Engine/',
         'Domains/Compliance/Countries/',
-        'Domains/Compliance/Peppol/',
+        'Domains/Compliance/Networks/',
     ];
 
     private const ENGINE = 'Domains/Compliance/Engine/';
@@ -95,8 +99,8 @@ class CountryCheckTest extends TestCase
         $this->assertNotSame([], $engine, 'The engine was not found.');
 
         foreach ($engine as $relative => $source) {
-            if (preg_match('/App\\\\Domains\\\\Compliance\\\\(Countries|Peppol)\\\\/', $source) === 1) {
-                $offenders[] = $relative.' references a country module';
+            if (preg_match('/App\\\\Domains\\\\Compliance\\\\(Countries|Networks)\\\\/', $source) === 1) {
+                $offenders[] = $relative.' references a country or network module';
             }
 
             if (preg_match('/([\'"])[A-Z]{2}\1/', $source) === 1) {

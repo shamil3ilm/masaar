@@ -90,10 +90,10 @@ abstract class BaseInvoiceEvent
      * Get the webhook payload data.
      *
      * ZATCA's only: every one of these events is raised from an
-     * InvoiceSubmission, which a UAE invoice never has, so icv, zatca_uuid
-     * and the riyal default describe a Saudi filing. A UAE invoice's webhook
-     * is invoice.issued, with its own currency and its e-invoice's status
-     * (UaeJurisdiction::afterCommit, docs/WEBHOOKS.md).
+     * InvoiceSubmission, which only a ZATCA filing has, so icv, zatca_uuid
+     * and the riyal default describe a Saudi filing. An invoice filed
+     * elsewhere is announced by the shared invoice.issued instead
+     * (docs/WEBHOOKS.md).
      */
     public function getWebhookPayload(): array
     {

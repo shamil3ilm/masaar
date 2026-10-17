@@ -10,14 +10,14 @@ use App\Domains\Organization\Models\Organization;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
-use Tests\Feature\Compliance\Peppol\PintInvoices;
+use Tests\Feature\Compliance\UnitedArabEmirates\PintInvoices;
 use Tests\TestCase;
 
 /**
  * A UAE organization's customers keep the buyer's Peppol endpoint and
  * emirate, from the customer form and from "Save this buyer" on the UAE
  * invoice form, so the invoice form's picker fills them in. A Saudi
- * organization's customers are as they were.
+ * organization's customers are in JurisdictionIsolationTest.
  */
 class UaeCustomerTest extends TestCase
 {
@@ -105,29 +105,6 @@ class UaeCustomerTest extends TestCase
         $this->assertSame(['Noor Electronics LLC', '100765432100003', 'Abu Dhabi'], [$customer->name, $customer->vat_number, $customer->city]);
         $this->assertSame(['0235:1007654321', 'AUH'], [$customer->peppol_endpoint, $customer->subdivision]);
         $this->assertSame('0235:1007654321', $customer->uaeBuyerFields()['buyer_endpoint']);
-    }
-
-    public function test_saudi_customers_are_unchanged(): void
-    {
-        $acme = Organization::create(['name' => 'Acme Trading', 'country' => 'SA']);
-        $saudi = $this->member($acme);
-
-        $this->actingAs($saudi)->withSession(['portal_org_id' => $acme->id])
-            ->post('/portal/customers', [
-                'name' => 'Gulf Supplies', 'vat_number' => '310122393500003', 'city' => 'Riyadh', 'postal_code' => '12345',
-                'country_code' => 'SA', 'peppol_endpoint' => 'anything', 'subdivision' => 'anything',
-            ])
-            ->assertSessionHasNoErrors();
-
-        $customer = $this->customers()->sole();
-        $this->assertNull($customer->peppol_endpoint);
-        $this->assertNull($customer->subdivision);
-
-        $this->asRequest(fn () => $this->actingAs($saudi)->withSession(['portal_org_id' => $acme->id])
-            ->get('/portal/customers/new')
-            ->assertOk()
-            ->assertDontSee('name="peppol_endpoint"', false)
-            ->assertSee('value="SA"', false));
     }
 
     /**

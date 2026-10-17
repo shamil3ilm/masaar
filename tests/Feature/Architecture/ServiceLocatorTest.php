@@ -32,9 +32,10 @@ class ServiceLocatorTest extends TestCase
 
     /**
      * Where services live: each domain's Services, and the folders a country
-     * module keeps its services in (docs/architecture/JURISDICTION-ROUTING.md).
+     * or network module keeps its services in
+     * (docs/architecture/JURISDICTION-ROUTING.md).
      */
-    private const SERVICES = '#/Services/|/Compliance/Countries/\w+/(Issuing|Document|Signing|Onboarding|Filing|Rules|Reports)/#';
+    private const SERVICES = '#/Services/|/Compliance/(Countries|Networks)/\w+/(Issuing|Document|Signing|Onboarding|Filing|Rules|Reports|Support|Gateways|Sending|Receiving)/#';
 
     public function test_services_take_dependencies_by_injection(): void
     {

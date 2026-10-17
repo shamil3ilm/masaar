@@ -12,6 +12,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Models\SubmissionIdempotency;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Licensing\Services\UsageMeteringService;
+use App\Support\Errors\ComplianceException;
 use App\Support\Errors\ErrorCode;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -188,9 +189,8 @@ class SubmissionTracker
 
             // The invoice allowance, here rather than in middleware.
             //
-            // license.quota is on two partner routes, so the tenant API, the
-            // UAE FTA route and portal issuance all filed without ever
-            // checking it. This is the one place every submission path
+            // license.quota is on two partner routes, so the tenant API and
+            // portal issuance both filed without ever checking it. This is the one place every submission path
             // passes - the offline queue reaches it through recordOffline -
             // and it is already a transaction, so the slot is taken under the
             // same commit as the row that uses it.
@@ -315,7 +315,7 @@ class SubmissionTracker
      */
     private function handleSubmissionError(InvoiceSubmission $submission, \Throwable $e): array
     {
-        $errorCode = $e instanceof FatooraException
+        $errorCode = $e instanceof ComplianceException
             ? $e->getErrorCode()
             : ErrorCode::SYS_INTERNAL_ERROR;
 

@@ -20,17 +20,17 @@
     $rows = old('lines', [[]]);
     $flags = array_map('strval', (array) old('flags', []));
     $choice = old('buyer_endpoint_choice', 'own');
-    $rates = ['S' => \App\Domains\Compliance\Peppol\Profiles\PintAe::STANDARD_RATE, 'Z' => '0', 'E' => '', 'O' => '', 'AE' => \App\Domains\Compliance\Peppol\Profiles\PintAe::STANDARD_RATE, 'N' => \App\Domains\Compliance\Peppol\Profiles\PintAe::STANDARD_RATE];
+    $rates = ['S' => \App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe::STANDARD_RATE, 'Z' => '0', 'E' => '', 'O' => '', 'AE' => \App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe::STANDARD_RATE, 'N' => \App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe::STANDARD_RATE];
     // The positions of the eight-character transaction-type code (BTAE-02), in its order.
     $flagLabels = [
-        \App\Domains\Compliance\Peppol\Profiles\PintAe::FLAG_FREE_ZONE => __('Free zone'),
-        \App\Domains\Compliance\Peppol\Profiles\PintAe::FLAG_DEEMED_SUPPLY => __('Deemed supply'),
-        \App\Domains\Compliance\Peppol\Profiles\PintAe::FLAG_MARGIN_SCHEME => __('Margin scheme'),
-        \App\Domains\Compliance\Peppol\Profiles\PintAe::FLAG_SUMMARY => __('Summary invoice'),
-        \App\Domains\Compliance\Peppol\Profiles\PintAe::FLAG_CONTINUOUS => __('Continuous supply'),
-        \App\Domains\Compliance\Peppol\Profiles\PintAe::FLAG_DISCLOSED_AGENT => __('Disclosed agent billing'),
-        \App\Domains\Compliance\Peppol\Profiles\PintAe::FLAG_ECOMMERCE => __('E-commerce supply'),
-        \App\Domains\Compliance\Peppol\Profiles\PintAe::FLAG_EXPORT => __('Export'),
+        \App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe::FLAG_FREE_ZONE => __('Free zone'),
+        \App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe::FLAG_DEEMED_SUPPLY => __('Deemed supply'),
+        \App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe::FLAG_MARGIN_SCHEME => __('Margin scheme'),
+        \App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe::FLAG_SUMMARY => __('Summary invoice'),
+        \App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe::FLAG_CONTINUOUS => __('Continuous supply'),
+        \App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe::FLAG_DISCLOSED_AGENT => __('Disclosed agent billing'),
+        \App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe::FLAG_ECOMMERCE => __('E-commerce supply'),
+        \App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe::FLAG_EXPORT => __('Export'),
     ];
 @endphp
 
@@ -339,7 +339,7 @@
                 <label for="credit_reason" class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('Reason') }}</label>
                 <x-ui.select name="credit_reason" id="credit_reason">
                     <option value="">{{ __('Choose for a credit note...') }}</option>
-                    @foreach (\App\Domains\Compliance\Peppol\Profiles\PintAe::CREDIT_REASONS as $reason)
+                    @foreach (\App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe::CREDIT_REASONS as $reason)
                         <option value="{{ $reason }}" @selected(old('credit_reason') === $reason)>{{ $reason === 'VD' ? 'VD · '.__('Volume discount') : $reason }}</option>
                     @endforeach
                 </x-ui.select>

@@ -30,7 +30,7 @@ them.
 2. **When seller details are saved** (`CompanyProfileRules` for `AE`, and
    `UaeTin`). The TRN, TIN, endpoint, emirate and legal registration are
    checked in PINT AE's shapes.
-3. **When an invoice is sent** (`UaeInvoiceIssuer`, `PintMapper`,
+3. **When an invoice is sent** (`InvoiceIssuer`, `PintMapper`,
    `MandatoryFields`). The invoice is mapped to a PINT document and checked
    against the Ministry's mandatory-field list and the scenario rules. Its
    totals must also match the invoice's stored totals. If any check fails, the

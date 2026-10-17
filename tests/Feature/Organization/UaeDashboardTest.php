@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace Tests\Feature\Organization;
 
 use App\Domains\Auth\Models\User;
-use App\Domains\Compliance\Peppol\Models\PeppolDocument;
+use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
  * A UAE organization's dashboard counts its e-invoices, not ZATCA
- * submissions; a Saudi one's is as it was.
+ * submissions; a Saudi one's is in JurisdictionIsolationTest.
  */
 class UaeDashboardTest extends TestCase
 {
@@ -44,21 +44,6 @@ class UaeDashboardTest extends TestCase
             ->assertDontSee('Your ZATCA compliance overview')
             ->assertDontSee('Recent Submissions')
             ->assertDontSee('Activity by User (7 days)'));
-    }
-
-    public function test_saudi_dashboard_is_unchanged(): void
-    {
-        $acme = Organization::create(['name' => 'Acme', 'country' => 'SA']);
-
-        $this->asRequest(fn () => $this->actingAs($this->member($acme))
-            ->get('/portal')
-            ->assertOk()
-            ->assertViewMissing('einvoices')
-            ->assertViewHas('certificate', null)
-            ->assertSee('Your ZATCA compliance overview')
-            ->assertSee('Recent Submissions')
-            ->assertSee('Activity by User (7 days)')
-            ->assertDontSee('Recent e-invoices'));
     }
 
     private function member(Organization $organization): User

@@ -16,6 +16,7 @@ use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\IssuingLifecycle;
 use App\Domains\Licensing\Enums\LicenseEnvironment;
 use App\Domains\Organization\Models\Organization;
+use App\Support\Errors\ComplianceException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -245,7 +246,7 @@ class Submitter
                     'warnings' => $validation['warnings'] ?? [],
                 ]);
             }
-        } catch (FatooraException $e) {
+        } catch (ComplianceException $e) {
             throw $e;
         } catch (\Exception $e) {
             // Log but don't block submission if validation fails unexpectedly

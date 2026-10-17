@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Services;
 
-use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Models\InvoiceSequence;
 use App\Domains\Invoice\Models\Product;
 use App\Domains\Organization\Models\Organization;
+use App\Support\Errors\ComplianceException;
 
 /**
  * What a new organization still has to do before it invoices, in order.
@@ -84,7 +84,7 @@ class SetupChecklist
             $this->clearance->assertCleared($organization);
 
             return true;
-        } catch (FatooraException) {
+        } catch (ComplianceException) {
             return false;
         }
     }

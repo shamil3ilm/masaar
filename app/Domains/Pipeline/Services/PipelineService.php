@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Pipeline\Services;
 
-use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Compliance\Engine\DTOs\IssueOptions;
 use App\Domains\Compliance\Engine\DTOs\IssueOutcome;
 use App\Domains\Compliance\Engine\Exceptions\JurisdictionUnavailableException;
@@ -14,6 +13,8 @@ use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
+use App\Support\Errors\ComplianceException;
+use App\Support\Errors\ErrorCode;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Validation\ValidationException;
 
@@ -223,7 +224,7 @@ class PipelineService
      * another's credentials. Looked up through the tenant scope, so a branch
      * belonging to anyone else is simply not found.
      *
-     * @throws FatooraException When the branch is not this organization's
+     * @throws ComplianceException When the branch is not this organization's
      */
     private function resolveBranch(?string $branchId, string $organizationId): ?string
     {
@@ -236,8 +237,9 @@ class PipelineService
             ->exists();
 
         if (! $exists) {
-            throw FatooraException::validation(
-                "Branch {$branchId} does not belong to this organization."
+            throw new ComplianceException(
+                "Branch {$branchId} does not belong to this organization.",
+                ErrorCode::VAL_INVALID_FORMAT,
             );
         }
 

@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
-use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\OrganizationOnboarding;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\FilingClearance;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
+use App\Support\Errors\ComplianceException;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -137,7 +137,7 @@ class PortalZatcaController extends Controller
             $this->clearance->assertCleared($organization);
 
             return null;
-        } catch (FatooraException $e) {
+        } catch (ComplianceException $e) {
             return $e->getMessage();
         }
     }

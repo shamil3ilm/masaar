@@ -10,7 +10,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Reports\QueueBacklog;
 use App\Domains\Compliance\Countries\SaudiArabia\Reports\SubmissionReport;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateService;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
-use App\Domains\Compliance\Peppol\Services\UaeDocuments;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\UaeDocuments;
 use App\Domains\Invoice\Services\InvoiceReport;
 use App\Domains\Organization\Models\Organization;
 

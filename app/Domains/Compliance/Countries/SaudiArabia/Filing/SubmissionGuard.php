@@ -16,6 +16,7 @@ use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\FilingClearance;
 use App\Domains\Platform\Services\KillSwitch;
+use App\Support\Errors\ComplianceException;
 use App\Support\Errors\ErrorCode;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -242,7 +243,7 @@ class SubmissionGuard
                     ErrorCode::CERT_REVOKED
                 );
             }
-        } catch (FatooraException $e) {
+        } catch (ComplianceException $e) {
             throw $e;
         } catch (\Exception $e) {
             Log::warning('Certificate revocation check failed', [

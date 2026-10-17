@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia\Http\Middleware;
 
-use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Organization\Services\FilingClearance;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Responses\ApiResponse;
+use App\Support\Errors\ComplianceException;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -36,7 +36,7 @@ class FilingCleared
 
         try {
             $this->clearance->assertCleared($organization);
-        } catch (FatooraException $e) {
+        } catch (ComplianceException $e) {
             return ApiResponse::fromFatoora($e);
         }
 

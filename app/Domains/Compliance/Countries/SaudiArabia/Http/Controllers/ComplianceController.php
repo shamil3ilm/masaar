@@ -2,7 +2,6 @@
 
 namespace App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers;
 
-use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\SubmissionTracker;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\Submitter;
 use App\Domains\Invoice\Enums\InvoiceStatus;
@@ -10,6 +9,7 @@ use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
+use App\Support\Errors\ComplianceException;
 use App\Support\Errors\ErrorCode;
 use Illuminate\Http\JsonResponse;
 
@@ -44,7 +44,7 @@ class ComplianceController extends Controller
         // like a crash.
         try {
             $result = $this->submission->generate($invoice, $organization);
-        } catch (FatooraException $e) {
+        } catch (ComplianceException $e) {
             // Only this refusal is answered here. Everything else generate()
             // throws goes to the bootstrap handler, which carries the error
             // code, category and retry guidance - a kill switch is a

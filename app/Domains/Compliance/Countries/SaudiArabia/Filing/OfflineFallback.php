@@ -9,6 +9,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificatePem;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Invoice\Models\Invoice;
+use App\Support\Errors\ComplianceException;
 use App\Support\Errors\ErrorCode;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -63,7 +64,7 @@ class OfflineFallback
             // Attempt normal submission
             return $this->submissionService->submit($invoice, $idempotencyKey, $async);
 
-        } catch (FatooraException $e) {
+        } catch (ComplianceException $e) {
             // Check if error is connectivity-related and should trigger offline mode
             if ($this->shouldFallbackToOffline($e)) {
                 Log::warning('Submission failed, falling back to offline queue', [
@@ -230,7 +231,7 @@ class OfflineFallback
     /**
      * Check if exception should trigger offline fallback.
      */
-    private function shouldFallbackToOffline(FatooraException $e): bool
+    private function shouldFallbackToOffline(ComplianceException $e): bool
     {
         // Three of these named cases that do not exist —
         // NET_CONNECTION_TIMEOUT, NET_CONNECTION_REFUSED and

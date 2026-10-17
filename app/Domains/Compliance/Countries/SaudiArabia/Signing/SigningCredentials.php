@@ -8,6 +8,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Services\BranchService;
+use App\Support\Errors\ComplianceException;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -147,7 +148,7 @@ class SigningCredentials
                 'certificate' => $certificate,
                 'device' => $organizationId,
             ];
-        } catch (FatooraException $e) {
+        } catch (ComplianceException $e) {
             throw $e;
         } catch (\Exception $e) {
             if ($required) {

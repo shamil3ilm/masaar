@@ -7,7 +7,7 @@
     provider said when they refused it.
 
     @param $invoice   \App\Domains\Invoice\Models\Invoice
-    @param $document  \App\Domains\Compliance\Peppol\Models\PeppolDocument|null
+    @param $document  \App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument|null
 --}}
 <div class="rounded-lg bg-white dark:bg-gray-900 p-6 shadow">
     <h3 class="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ __('UAE e-invoice') }}</h3>
@@ -22,7 +22,7 @@
         </p>
     @else
         {{-- Issued past the UAE's 14 days (IssueDeadline): sent all the same. --}}
-        @foreach (\App\Domains\Compliance\Peppol\Services\IssueDeadline::warnings($document) as $warning)
+        @foreach (\App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\IssueDeadline::warnings($document) as $warning)
             <p class="mb-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 p-3 text-sm text-amber-800 dark:text-amber-200" data-issued-late>{{ $warning }}</p>
         @endforeach
 

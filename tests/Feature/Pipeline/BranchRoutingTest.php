@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Pipeline;
 
-use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Pipeline\Services\PipelineService;
+use App\Support\Errors\ComplianceException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -80,14 +80,14 @@ class BranchRoutingTest extends TestCase
     {
         $theirs = $this->makeBranch($this->rival, 'Rival Jeddah');
 
-        $this->expectException(FatooraException::class);
+        $this->expectException(ComplianceException::class);
 
         $this->submit(['branch' => $theirs->id]);
     }
 
     public function test_unknown_branch_is_refused(): void
     {
-        $this->expectException(FatooraException::class);
+        $this->expectException(ComplianceException::class);
 
         $this->submit(['branch' => '00000000-0000-0000-0000-000000000000']);
     }
@@ -101,7 +101,7 @@ class BranchRoutingTest extends TestCase
 
         try {
             $this->submit(['branch' => $theirs->id]);
-        } catch (FatooraException) {
+        } catch (ComplianceException) {
             // expected
         }
 

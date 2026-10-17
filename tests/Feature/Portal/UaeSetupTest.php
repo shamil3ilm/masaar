@@ -9,12 +9,12 @@ use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\SetupChecklist;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
-use Tests\Feature\Compliance\Peppol\PintInvoices;
+use Tests\Feature\Compliance\UnitedArabEmirates\PintInvoices;
 use Tests\TestCase;
 
 /**
  * Getting set up, for a UAE organization: its seller details and endpoint,
- * never ZATCA. A Saudi organization's steps are as they were.
+ * never ZATCA. A Saudi organization's steps are in JurisdictionIsolationTest.
  */
 class UaeSetupTest extends TestCase
 {
@@ -54,17 +54,6 @@ class UaeSetupTest extends TestCase
         $this->uaeInvoice($gulf);
 
         $this->assertTrue(app(SetupChecklist::class)->steps($gulf)[4]['done']);
-    }
-
-    public function test_saudi_steps_are_unchanged(): void
-    {
-        $acme = Organization::create(['name' => 'Acme', 'country' => 'SA']);
-
-        $this->dashboard($acme)->assertSee('Connect to ZATCA')->assertDontSee('Complete your UAE seller details');
-        $this->assertSame(
-            ['company', 'approved', 'zatca', 'numbering', 'catalogue', 'invoice'],
-            array_column(app(SetupChecklist::class)->steps($acme), 'key'),
-        );
     }
 
     private function dashboard(Organization $organization): TestResponse

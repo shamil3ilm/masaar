@@ -26,7 +26,11 @@ specification, which is the trade we do not want.
 
 The UAE has no authority API, so UAE code is named after the specification it
 follows (`PintMapper`, `PintAe`, `MandatoryFields`) or after the country
-(`UaeInvoiceIssuer`, `UaeSellerDetails`), never after the authority. The
+(`UaeVatSummary`, `UaeSellerDetails`), never after the authority. A
+country module's entry points are named the same in every module, since
+the namespace says which country: `Module`, `ModuleServiceProvider`,
+`Issuing\IssuingStep` and `Issuing\InvoiceIssuer`. A network module names no
+country: `Networks\Peppol\NetworkServiceProvider`, `PeppolSender`. The
 retired `FTA` domain and its `UAE_FTA_*` settings are gone. A service provider
 is never named after a vendor: say `Asp` or "service provider"
 (`PEPPOL_ASP_*`, `AspGateway`).

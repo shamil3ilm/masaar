@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Services;
 
-use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Licensing\Services\LicenseValidationService;
 use App\Domains\Organization\Models\Organization;
+use App\Support\Errors\ComplianceException;
 use App\Support\Errors\ErrorCode;
 
 /**
@@ -17,9 +17,9 @@ use App\Support\Errors\ErrorCode;
  * and assign its plan; until then it can draft, and cannot obtain a
  * certificate, give an invoice its counter or send one to the authority.
  *
- * Every country passes it. It still throws FatooraException because callers
- * catch that type - UaeJurisdiction, SetupChecklist, the API's error
- * envelope - so changing it is a change to their contract, not a move.
+ * Every country passes it, so it throws the neutral ComplianceException,
+ * which each country's step, SetupChecklist and the API's error envelope
+ * catch; the error codes and statuses are the taxonomy's.
  */
 class FilingClearance
 {
@@ -28,16 +28,16 @@ class FilingClearance
     ) {}
 
     /**
-     * For new work with ZATCA: obtaining a certificate, and issuing.
+     * For new work with the authority: obtaining a certificate, and issuing.
      *
-     * @throws FatooraException
+     * @throws ComplianceException
      */
     public function assertCleared(Organization $organization): void
     {
         $this->assertMayFile($organization);
 
         if (config('licensing.filing_requires_licence') && ! $this->licences->organizationIsLicensed((string) $organization->id)) {
-            throw new FatooraException(
+            throw new ComplianceException(
                 __('This company has no active plan. A platform admin assigns one when approving it.'),
                 ErrorCode::AUTH_LICENSE_REQUIRED,
             );
@@ -52,23 +52,23 @@ class FilingClearance
      * since lapsed. Withholding it would make the lapse their compliance
      * failure.
      *
-     * @throws FatooraException
+     * @throws ComplianceException
      */
     public function assertMayFile(Organization $organization): void
     {
         if ($organization->isSuspended()) {
-            throw new FatooraException('Organization is suspended', ErrorCode::AUTH_ORGANIZATION_SUSPENDED);
+            throw new ComplianceException('Organization is suspended', ErrorCode::AUTH_ORGANIZATION_SUSPENDED);
         }
 
         if ($organization->isPendingReview()) {
-            throw new FatooraException(
+            throw new ComplianceException(
                 __('This company is being reviewed. Connecting to e-invoicing and issuing open once it is approved.'),
                 ErrorCode::AUTH_ORGANIZATION_UNDER_REVIEW,
             );
         }
 
         if ($organization->status === Organization::STATUS_REJECTED) {
-            throw new FatooraException(
+            throw new ComplianceException(
                 __('This company was not approved to file. Contact support to review it again.'),
                 ErrorCode::AUTH_ORGANIZATION_UNDER_REVIEW,
             );

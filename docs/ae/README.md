@@ -131,7 +131,7 @@ The provider integration (`HttpAspGateway`) is a generic REST shape: an OAuth2
 token, `POST /documents`, `GET /documents/{id}`, and signed callbacks. No
 provider has been chosen yet. Once one is chosen, check its API against
 `HttpAspGateway`, `WebhookSignature` and `WebhookPayload` in
-`app/Domains/Compliance/Peppol/Gateways/`, and adapt those three classes only.
+`app/Domains/Compliance/Networks/Peppol/Gateways/`, and adapt those three classes only.
 
 ## Testing without a provider
 
@@ -144,7 +144,9 @@ provider has been chosen yet. Once one is chosen, check its API against
   `peppol:poll-status` does not run.
 - **Automated tests** replace the provider with `FakeAspGateway`. It returns
   scripted answers, records every call, and checks callbacks with the real
-  signature code. The tests are in `tests/Feature/Compliance/Peppol/`.
+  signature code. The UAE's tests are in
+  `tests/Feature/Compliance/UnitedArabEmirates/`, and the shared transport's
+  in `tests/Feature/Compliance/Networks/Peppol/`.
 - **Conformance with the official rules.** `PintConformanceTest` runs the
   published PINT AE validation artefacts (billing and self-billing
   schematrons, and the UBL 2.1 schema when it is present) over documents this

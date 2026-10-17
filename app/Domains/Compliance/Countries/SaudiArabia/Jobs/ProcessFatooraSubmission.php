@@ -7,7 +7,6 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Jobs;
 use App\Domains\Compliance\Countries\SaudiArabia\DTOs\FatooraResponse;
 use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceFailed;
 use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceSubmitted;
-use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FilingRetryException;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\FatooraClient;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\SubmissionLedger;
@@ -18,6 +17,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Licensing\Services\UsageMeteringService;
 use App\Domains\Platform\Services\KillSwitch;
+use App\Support\Errors\ComplianceException;
 use App\Support\Errors\ErrorCode;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -282,7 +282,7 @@ class ProcessFatooraSubmission implements ShouldQueue
      */
     private function handleError(InvoiceSubmission $submission, Throwable $e): void
     {
-        $errorCode = $e instanceof FatooraException
+        $errorCode = $e instanceof ComplianceException
             ? $e->getErrorCode()
             : ErrorCode::SYS_INTERNAL_ERROR;
 

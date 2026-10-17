@@ -2,7 +2,6 @@
 
 use App\Domains\Auth\Http\Middleware\ActiveAccount;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
-use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\SigningException;
 use App\Domains\Compliance\Engine\Exceptions\JurisdictionUnavailableException;
 use App\Domains\Licensing\Exceptions\LicenseException;
@@ -12,6 +11,7 @@ use App\Domains\Platform\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetLocale;
 use App\Http\Responses\ApiResponse;
 use App\Providers\AppServiceProvider;
+use App\Support\Errors\ComplianceException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -43,7 +43,7 @@ return Application::configure(basePath: dirname(__DIR__))
         __DIR__.'/../app/Domains/Licensing/Console',
         __DIR__.'/../app/Domains/Billing/Console',
         __DIR__.'/../app/Domains/Compliance/Countries/SaudiArabia/Console',
-        __DIR__.'/../app/Domains/Compliance/Peppol/Console',
+        __DIR__.'/../app/Domains/Compliance/Networks/Peppol/Console',
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         // Single source of truth. AppServiceProvider::boot() reasserts these
@@ -96,7 +96,7 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Handle ZATCA-specific exceptions with structured responses
-        $exceptions->render(function (FatooraException $e, Request $request) {
+        $exceptions->render(function (ComplianceException $e, Request $request) {
             if ($request->is('api/*') || $request->is('v1/*')) {
                 Log::warning('ZATCA Exception', [
                     'code' => $e->getErrorCode()?->value,

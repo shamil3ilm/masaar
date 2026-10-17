@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Feature\Organization;
 
 use App\Domains\Auth\Models\User;
-use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\Submitter;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Licensing\Enums\LicenseTier;
@@ -13,6 +12,7 @@ use App\Domains\Licensing\Models\License;
 use App\Domains\Organization\Mail\OrganizationReviewedMail;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\FilingClearance;
+use App\Support\Errors\ComplianceException;
 use App\Support\Errors\ErrorCode;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -77,7 +77,7 @@ class OrganizationReviewTest extends TestCase
         try {
             app(Submitter::class)->generate($draft, $this->acme);
             $this->fail('A company awaiting review issued an invoice.');
-        } catch (FatooraException $e) {
+        } catch (ComplianceException $e) {
             $this->assertSame(ErrorCode::AUTH_ORGANIZATION_UNDER_REVIEW, $e->getErrorCode());
         }
 
@@ -234,7 +234,7 @@ class OrganizationReviewTest extends TestCase
         try {
             app(FilingClearance::class)->assertCleared($this->acme->fresh());
             $this->fail('The organization was cleared to file.');
-        } catch (FatooraException $e) {
+        } catch (ComplianceException $e) {
             $this->assertSame($code, $e->getErrorCode());
         }
     }

@@ -1,0 +1,265 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature\Architecture;
+
+use PHPUnit\Framework\TestCase;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
+
+/**
+ * Who reaches into a country or network module, so the list can only get
+ * shorter.
+ *
+ * Compliance is three layers (docs/architecture/JURISDICTION-ROUTING.md):
+ * the engine, which names no country; one module per country under
+ * Compliance/Countries; and the networks those countries send through under
+ * Compliance/Networks. Four boundaries, each checked here:
+ *
+ * - Shared code - everything outside the three - still names module classes
+ *   in places. Each is a place the platform assumes a country or a network
+ *   instead of asking the engine, and the list of them is a ratchet.
+ * - A country module never names another country's classes, nor, in its
+ *   code, comments or messages, the other country at all.
+ * - A network never names a country: any Peppol country uses it.
+ * - The engine names neither.
+ *
+ * The class lists are file => the module classes it references, relative to
+ * App\Domains\Compliance; the word list is file => the foreign words it
+ * holds. The assertion is equality: a new reference fails
+ * until it is listed, and one removed fails until it is delisted, so the
+ * dependencies are seen to shrink rather than assumed to.
+ *
+ * Any reference counts - a use statement, a fully-qualified name, a Blade
+ * view's - because each is a dependency whatever its spelling. Tests are not
+ * scanned: they are allowed to reach into what they test.
+ */
+class ModuleBoundaryTest extends TestCase
+{
+    private const ROOT = __DIR__.'/../../..';
+
+    /** Where the platform's own PHP lives, Blade views included. */
+    private const SCANNED = ['app', 'bootstrap', 'config', 'database', 'resources', 'routes'];
+
+    private const COUNTRIES = 'app/Domains/Compliance/Countries/';
+
+    private const NETWORKS = 'app/Domains/Compliance/Networks/';
+
+    private const ENGINE = 'app/Domains/Compliance/Engine/';
+
+    /**
+     * Shared files referencing a country or network module, and what they reference.
+     *
+     * @var array<string, string>
+     */
+    private const SHARED = [
+        'app/Domains/Invoice/Http/Controllers/PortalCustomerController.php' => 'Countries\UnitedArabEmirates\Rules\PintAe, Countries\UnitedArabEmirates\Support\UaePortal',
+        'app/Domains/Invoice/Http/Controllers/PortalInvoiceController.php' => 'Countries\UnitedArabEmirates\Reports\UaeDocuments',
+        'app/Domains/Invoice/Http/Controllers/PortalReportController.php' => 'Countries\UnitedArabEmirates\Reports\UaeVatSummary',
+        'app/Domains/Invoice/Http/Requests/CreateInvoiceRequest.php' => 'Countries\SaudiArabia\Rules\FatooraConfig',
+        'app/Domains/Invoice/Models/Customer.php' => 'Countries\UnitedArabEmirates\Rules\PintAe',
+        'app/Domains/Invoice/Models/Invoice.php' => 'Countries\SaudiArabia\Models\InvoiceSubmission',
+        'app/Domains/Invoice/Services/CadesSignature.php' => 'Countries\SaudiArabia\Exceptions\SigningException, Countries\SaudiArabia\Signing\EcdsaSigner',
+        'app/Domains/Invoice/Services/InvoicePdf.php' => 'Countries\SaudiArabia\Exceptions\SigningException, Countries\SaudiArabia\Signing\CertificatePem, Countries\SaudiArabia\Signing\CredentialStore',
+        'app/Domains/Invoice/Services/PdfStamp.php' => 'Countries\SaudiArabia\Exceptions\SigningException, Countries\SaudiArabia\Signing\CertificateChain',
+        'app/Domains/Organization/Http/Controllers/CustomerPortalController.php' => 'Countries\SaudiArabia\DTOs\SubmissionFilterData, Countries\SaudiArabia\Reports\SubmissionReport, Countries\SaudiArabia\Signing\CertificateService, Countries\SaudiArabia\Signing\CredentialStore, Countries\UnitedArabEmirates\Reports\UaeDocuments',
+        'app/Domains/Organization/Models/Branch.php' => 'Countries\SaudiArabia\DTOs\AddressData, Countries\SaudiArabia\DTOs\CsrData',
+        'app/Domains/Organization/Models/Organization.php' => 'Countries\SaudiArabia\DTOs\AddressData',
+        'app/Domains/Organization/Rules/CompanyProfileRules.php' => 'Countries\UnitedArabEmirates\Rules\PintAe',
+        'app/Domains/Organization/Services/BranchService.php' => 'Countries\SaudiArabia\Signing\CredentialStore',
+        'app/Domains/Organization/Services/UaeSellerDetails.php' => 'Countries\UnitedArabEmirates\Rules\PintAe',
+        'app/Domains/Platform/Http/Controllers/AdminController.php' => 'Countries\SaudiArabia\Enums\RequeueOutcome, Countries\SaudiArabia\Filing\Requeuer',
+        'app/Domains/Platform/Http/Controllers/AdminDashboardController.php' => 'Countries\SaudiArabia\Enums\RequeueOutcome, Countries\SaudiArabia\Filing\CircuitBreaker, Countries\SaudiArabia\Filing\Connectivity, Countries\SaudiArabia\Filing\Requeuer',
+        'app/Domains/Platform/Http/Controllers/DashboardController.php' => 'Countries\SaudiArabia\Reports\SubmissionReport',
+        'app/Domains/Platform/Services/IssueDetector.php' => 'Countries\SaudiArabia\Filing\CircuitBreaker, Countries\SaudiArabia\Filing\Connectivity, Countries\SaudiArabia\Filing\OfflineQueue',
+        'app/Domains/Platform/Services/MetricsCollector.php' => 'Countries\SaudiArabia\Filing\CircuitBreaker',
+        'app/Domains/Platform/Services/OrganizationReport.php' => 'Countries\SaudiArabia\Signing\CertificateService, Countries\SaudiArabia\Signing\CredentialStore',
+        'app/Domains/Platform/Services/PlatformStatus.php' => 'Countries\SaudiArabia\Filing\CircuitBreaker, Countries\SaudiArabia\Signing\CertificateService, Countries\SaudiArabia\Signing\CredentialStore',
+        'app/Domains/Platform/Services/QueueReport.php' => 'Countries\SaudiArabia\Filing\OfflineQueue',
+        'app/Domains/Platform/Services/TenantDashboard.php' => 'Countries\SaudiArabia\Filing\CircuitBreaker, Countries\SaudiArabia\Reports\ChainReport, Countries\SaudiArabia\Reports\QueueBacklog, Countries\SaudiArabia\Reports\SubmissionReport, Countries\SaudiArabia\Signing\CertificateService, Countries\SaudiArabia\Signing\CredentialStore, Countries\UnitedArabEmirates\Reports\UaeDocuments',
+        'app/Http/Responses/ApiResponse.php' => 'Countries\SaudiArabia\Exceptions\CertificateException, Countries\SaudiArabia\Exceptions\FatooraException',
+        'app/Providers/AppServiceProvider.php' => 'Countries\SaudiArabia\Filing\CircuitBreaker, Countries\SaudiArabia\Filing\TimestampValidator, Countries\SaudiArabia\Http\Middleware\FilingCleared, Countries\SaudiArabia\Rules\FatooraConfig, Countries\UnitedArabEmirates\Http\Middleware\UaeInvoicing',
+        'app/Providers/EventServiceProvider.php' => 'Countries\SaudiArabia\Events\InvoiceCleared, Countries\SaudiArabia\Events\InvoiceFailed, Countries\SaudiArabia\Events\InvoiceRejected, Countries\SaudiArabia\Events\InvoiceReported, Countries\SaudiArabia\Events\InvoiceSubmitted, Countries\SaudiArabia\Events\InvoiceWarning, Countries\SaudiArabia\Listeners\DispatchInvoiceWebhook',
+        'bootstrap/app.php' => 'Countries\SaudiArabia\Exceptions\CertificateException, Countries\SaudiArabia\Exceptions\SigningException',
+        // Each module's provider, registering it, and the network's.
+        'bootstrap/providers.php' => 'Countries\SaudiArabia\ModuleServiceProvider, Countries\UnitedArabEmirates\ModuleServiceProvider, Networks\Peppol\NetworkServiceProvider',
+        'resources/views/layouts/portal.blade.php' => 'Countries\UnitedArabEmirates\Support\UaePortal',
+        'resources/views/pdf/invoice.blade.php' => 'Countries\SaudiArabia\Rules\FatooraConfig, Countries\SaudiArabia\Support\FatooraTime',
+        'resources/views/portal/invoices/create-uae.blade.php' => 'Countries\UnitedArabEmirates\Rules\PintAe',
+        'resources/views/portal/invoices/create.blade.php' => 'Countries\SaudiArabia\Rules\FatooraConfig',
+        'resources/views/portal/invoices/partials/peppol.blade.php' => 'Countries\UnitedArabEmirates\Rules\IssueDeadline, Networks\Peppol\Models\PeppolDocument',
+        'resources/views/portal/invoices/partials/uae-line-row.blade.php' => 'Countries\UnitedArabEmirates\Rules\PintAe',
+        'resources/views/portal/invoices/print.blade.php' => 'Countries\SaudiArabia\Rules\FatooraConfig, Countries\SaudiArabia\Support\FatooraTime',
+        'resources/views/portal/partials/dashboard-uae.blade.php' => 'Countries\UnitedArabEmirates\Support\UaePortal',
+        'routes/api/partner.php' => 'Countries\SaudiArabia\Http\Controllers\ComplianceController',
+        'routes/api/public.php' => 'Networks\Peppol\Http\Controllers\InboundWebhookController, Networks\Peppol\Http\Controllers\StatusWebhookController',
+        'routes/api/tenant.php' => 'Countries\SaudiArabia\Http\Controllers\BranchOnboardingController, Countries\SaudiArabia\Http\Controllers\ComplianceController, Countries\SaudiArabia\Http\Controllers\OnboardingController, Countries\UnitedArabEmirates\Http\Controllers\UaeDocumentController, Countries\UnitedArabEmirates\Http\Controllers\UaeInvoiceController, Countries\UnitedArabEmirates\Http\Controllers\UaeProfileController',
+        'routes/web.php' => 'Countries\SaudiArabia\Http\Controllers\AdminAlertController, Countries\SaudiArabia\Http\Controllers\AdminKillSwitchController, Countries\SaudiArabia\Http\Controllers\PortalZatcaController, Countries\UnitedArabEmirates\Http\Controllers\PortalReceivedController, Countries\UnitedArabEmirates\Http\Controllers\PortalUaeInvoiceController',
+    ];
+
+    /**
+     * Country modules referencing another country's, and what they reference.
+     *
+     * @var array<string, string>
+     */
+    private const ACROSS_COUNTRIES = [];
+
+    /**
+     * What names another country, by the module it must not appear in: a
+     * country module describes itself in its own terms or the engine's, and
+     * a network names no country, so any country can send through it.
+     *
+     * @var array<string, string>
+     */
+    private const FOREIGN_WORDS = [
+        self::COUNTRIES.'SaudiArabia/' => '/\buae\b|peppol|\bpint\b|emirat|dubai/i',
+        self::COUNTRIES.'UnitedArabEmirates/' => '/zatca|fatoora|saudi|VATEX-SA/i',
+        self::NETWORKS.'Peppol/' => '/zatca|fatoora|saudi|\buae\b|emirat|dubai|dirham|\bAED\b|[\'"]AE[\'"]|0235/i',
+    ];
+
+    /**
+     * Module files that still name another country, and the words.
+     *
+     * @var array<string, string>
+     */
+    private const FOREIGN_DECLARED = [];
+
+    public function test_modules_name_no_other_country(): void
+    {
+        $found = [];
+
+        foreach (self::FOREIGN_WORDS as $module => $pattern) {
+            foreach ($this->files() as $relative => $path) {
+                if (! str_starts_with($relative, $module)) {
+                    continue;
+                }
+
+                preg_match_all($pattern, (string) file_get_contents($path), $matches);
+                $words = array_values(array_unique(array_map('strtolower', $matches[0])));
+
+                if ($words !== []) {
+                    sort($words);
+                    $found[$relative] = implode(', ', $words);
+                }
+            }
+        }
+
+        ksort($found);
+
+        $this->assertSame(self::FOREIGN_DECLARED, $found, "A module names another country. Found:\n".var_export($found, true));
+    }
+
+    public function test_shared_code_only_shrinks(): void
+    {
+        $found = $this->references(fn (string $file): bool => ! $this->inModule($file), '(?:Countries|Networks)');
+
+        $this->assertSame(self::SHARED, $found, "References to the modules from shared code changed. Found:\n".var_export($found, true));
+    }
+
+    public function test_countries_stay_apart(): void
+    {
+        $found = [];
+
+        foreach ($this->countries() as $country) {
+            $found += $this->references(
+                fn (string $file): bool => str_starts_with($file, self::COUNTRIES.$country.'/'),
+                'Countries\\\\(?!'.$country.'\\\\)\w+',
+            );
+        }
+
+        ksort($found);
+
+        $this->assertNotSame([], $this->countries(), 'No country module was found.');
+        $this->assertSame(self::ACROSS_COUNTRIES, $found, "References between country modules changed. Found:\n".var_export($found, true));
+    }
+
+    public function test_networks_name_no_country(): void
+    {
+        $found = $this->references(fn (string $file): bool => str_starts_with($file, self::NETWORKS), 'Countries');
+
+        $this->assertSame([], $found, "A network references a country module:\n".var_export($found, true));
+    }
+
+    public function test_engine_names_no_module(): void
+    {
+        $found = $this->references(fn (string $file): bool => str_starts_with($file, self::ENGINE), '(?:Countries|Networks)');
+
+        $this->assertSame([], $found, "The engine references a country or network module:\n".var_export($found, true));
+    }
+
+    private function inModule(string $file): bool
+    {
+        foreach ([self::COUNTRIES, self::NETWORKS, self::ENGINE] as $prefix) {
+            if (str_starts_with($file, $prefix)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return list<string> the country modules, by folder
+     */
+    private function countries(): array
+    {
+        $root = str_replace('\\', '/', (string) realpath(self::ROOT)).'/';
+        $folders = glob($root.self::COUNTRIES.'*', GLOB_ONLYDIR) ?: [];
+
+        return array_map('basename', $folders);
+    }
+
+    /**
+     * Module classes the selected files name, with $layer the regex for the
+     * first segment after App\Domains\Compliance.
+     *
+     * @param  callable(string): bool  $select
+     * @return array<string, string> file => its references, sorted
+     */
+    private function references(callable $select, string $layer): array
+    {
+        $found = [];
+
+        foreach ($this->files() as $relative => $path) {
+            if (! $select($relative)) {
+                continue;
+            }
+
+            preg_match_all('/App\\\\Domains\\\\Compliance\\\\('.$layer.'(?:\\\\\w+)+)/', (string) file_get_contents($path), $matches);
+
+            $classes = array_values(array_unique($matches[1]));
+
+            if ($classes !== []) {
+                sort($classes);
+                $found[$relative] = implode(', ', $classes);
+            }
+        }
+
+        ksort($found);
+
+        return $found;
+    }
+
+    /**
+     * @return array<string, string> relative path => absolute path
+     */
+    private function files(): array
+    {
+        $root = str_replace('\\', '/', (string) realpath(self::ROOT)).'/';
+        $files = [];
+
+        foreach (self::SCANNED as $directory) {
+            $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root.$directory));
+
+            foreach ($it as $file) {
+                if ($file->isFile() && $file->getExtension() === 'php') {
+                    $path = str_replace('\\', '/', (string) $file->getRealPath());
+                    $files[str_replace($root, '', $path)] = $path;
+                }
+            }
+        }
+
+        return $files;
+    }
+}

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Platform;
 
 use App\Domains\Auth\Models\User;
-use App\Domains\Compliance\Peppol\Models\PeppolDocument;
+use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -13,8 +13,8 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 
 /**
  * A UAE organization's API dashboard counts its e-invoices, as the portal's
- * does, and its portal names UAE e-invoicing; a Saudi organization's are as
- * they were (TenantDashboardTest pins the Saudi answer).
+ * does, and its portal names UAE e-invoicing. TenantDashboardTest pins the
+ * Saudi answer, and JurisdictionIsolationTest the Saudi tagline.
  */
 class UaeTenantDashboardTest extends TestCase
 {
@@ -73,17 +73,6 @@ class UaeTenantDashboardTest extends TestCase
             ->assertOk()
             ->assertSee('UAE E-invoicing Portal')
             ->assertDontSee('ZATCA Portal'));
-    }
-
-    public function test_saudi_tagline_is_unchanged(): void
-    {
-        $acme = Organization::create(['name' => 'Acme', 'country' => 'SA']);
-
-        $this->asRequest(fn () => $this->actingAs($this->member($acme))
-            ->get('/portal')
-            ->assertOk()
-            ->assertSee('ZATCA Portal')
-            ->assertDontSee('UAE E-invoicing Portal'));
     }
 
     private function api(): static

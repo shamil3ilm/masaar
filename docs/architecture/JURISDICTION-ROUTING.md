@@ -104,7 +104,7 @@ after boot still reaches the module.
 | Country | Module | Registered by |
 |---|---|---|
 | Saudi Arabia (`SA`, default) | `Compliance\Countries\SaudiArabia\Module` | `Compliance\Countries\SaudiArabia\ModuleServiceProvider` |
-| United Arab Emirates (`AE`) | `Compliance\Peppol\UnitedArabEmirates` | `App\Providers\PeppolServiceProvider` |
+| United Arab Emirates (`AE`) | `Compliance\Countries\UnitedArabEmirates\Module` | `Compliance\Countries\UnitedArabEmirates\ModuleServiceProvider` |
 
 Each module adapts the issuer it already had:
 
@@ -112,7 +112,7 @@ Each module adapts the issuer it already had:
   file through `Filing\OfflineFallback`). `resume()` files an issued invoice that
   was not filed, unless it waits in the offline queue. `readyToFile()` is
   `zatca_onboarded`.
-- **United Arab Emirates.** `issue()` and `resume()` call `UaeInvoiceIssuer`,
+- **United Arab Emirates.** `issue()` and `resume()` call `Issuing\InvoiceIssuer`,
   which queues the Peppol document once when `file` is true. The document
   and any late-issue warnings are mapped into `IssueOutcome`. `readyToFile()`
   is always true, because the service provider carries every document.
@@ -131,44 +131,72 @@ app/Domains/Compliance/
   Engine/                   the core; names no country
   Countries/
     SaudiArabia/            ZATCA (Fatoora)
-    UnitedArabEmirates/     PINT AE (still app/Domains/Compliance/Peppol/)
+    UnitedArabEmirates/     PINT AE
   Networks/
-    Peppol/                 shared Peppol transport (still in Peppol/)
+    Peppol/                 shared Peppol transport, for any Peppol country
 ```
+
+A country that files with its authority's own API is a module under
+`Countries/`. A Peppol country is a module under `Countries/` plus the shared
+`Networks/Peppol/`: the module builds and checks the country's document, and
+the network sends and receives it. `ModuleBoundaryTest` holds the lines: the
+engine names neither layer, a country module never names another country
+(its classes, or the country itself in code, comments or messages), and the
+network names no country.
 
 Every country module has the same top level, and the Saudi module is the
 template. The namespace says which country, so the names at the root and the
 issuing step are the same in every module.
 
-| Entry | Holds | Saudi Arabia |
+| Entry | Holds | Saudi Arabia | United Arab Emirates |
+|---|---|---|---|
+| `Module.php` | `Module`: the engine's `Jurisdiction`, with its `Transmission` and `IssueNotices` ports | Identity, switch, and issue and resume through `InvoiceIssuer` | The same, through its `InvoiceIssuer` |
+| `ModuleServiceProvider.php` | Registers `Module` with `JurisdictionRegistry`. Listed in `bootstrap/providers.php` | `SA`, the default | `AE` |
+| `Issuing/` | `IssuingStep`, the country's `IssuingJurisdiction`; the issuer that calls `IssuingLifecycle`; what the step records at issue | `IssuingStep`, `InvoiceIssuer`, `ChainRecorder` | `IssuingStep`, `InvoiceIssuer` |
+| `Document/` | The document the authority or network receives, built from an invoice | `DocumentBuilder`, `XmlBuilder`, the four `Ubl*Builder` parts, `Ubl` | `PintMapper`, `PintUblBuilder`, `PeppolPreparer` |
+| `Filing/` | Transmission: the client, sending, tracking, retries, offline handling, the verdict | `FatooraClient`, `Submitter`, `SubmissionTracker`, `SubmissionLedger`, `SubmissionGuard`, `ClearanceState`, `InvoiceVerdict`, `OfflineFallback`, `OfflineQueue`, `Requeuer`, `CircuitBreaker`, `Connectivity`, `DuplicateDetector`, `TimestampValidator` | None: the network sends |
+| `Rules/` | The country's validation, tax rules and constants | `FatooraConfig`, `InvoiceValidator`, `VatPeriodTracker` | `PintAe`, `MandatoryFields`, `IssueDeadline` |
+| `Reports/` | What dashboards and reports read | `ChainReport`, `DeadlineReport`, `SubmissionReport`, `QueueBacklog` | `UaeDocuments`, `UaeVatSummary` |
+| `Signing/` | Only where the authority requires a cryptographic seal: keys, certificates, signature, hash, QR | `CredentialStore`, `SigningCredentials`, `CertificateService`, `CertificateChain`, `CertificatePem`, `EcdsaSigner`, `XadesSigner`, `XadesVerifier`, `XadesDigest`, `SignedPropertiesBuilder`, `InvoiceHasher`, `QrCodeGenerator`, `QrCodeInjector`, `TlvEncoder` | None |
+| `Onboarding/` | Only where the authority registers each taxpayer or device | `CsidOnboarding`, `OrganizationOnboarding`, `ComplianceSampleSet`, `CsrBuilder`, `Der` | None |
+| `Support/` | Helpers the module's services share | `FatooraTime`, `TextNormalizer` | `UaeDrafts`, `UaePortal` |
+| `Http/`, `Console/`, `Jobs/`, `Events/`, `Listeners/`, `Mail/`, `Models/`, `Enums/`, `DTOs/`, `Contracts/`, `Exceptions/` | Laravel's kinds, as in every domain | | `Http/` (the `/api/compliance/ae` and portal controllers, `UaeInvoicing`, the requests), `Enums/`, `DTOs/` (the PINT document), `Contracts/` (`JurisdictionProfile`) |
+
+The network has the same kinds where it needs them, and capability folders
+of its own:
+
+| Entry | Holds | Peppol |
 |---|---|---|
-| `Module.php` | `Module`: the engine's `Jurisdiction`, with its `Transmission` and `IssueNotices` ports | Identity, switch, and issue and resume through `InvoiceIssuer` |
-| `ModuleServiceProvider.php` | Registers `Module` with `JurisdictionRegistry`. Listed in `bootstrap/providers.php` | `SA`, the default |
-| `Issuing/` | `IssuingStep`, the country's `IssuingJurisdiction`; the issuer that calls `IssuingLifecycle`; what the step records at issue | `IssuingStep`, `InvoiceIssuer`, `ChainRecorder` |
-| `Document/` | The document the authority or network receives, built from an invoice | `DocumentBuilder`, `XmlBuilder`, the four `Ubl*Builder` parts, `Ubl` |
-| `Filing/` | Transmission: the client, sending, tracking, retries, offline handling, the verdict | `FatooraClient`, `Submitter`, `SubmissionTracker`, `SubmissionLedger`, `SubmissionGuard`, `ClearanceState`, `InvoiceVerdict`, `OfflineFallback`, `OfflineQueue`, `Requeuer`, `CircuitBreaker`, `Connectivity`, `DuplicateDetector`, `TimestampValidator` |
-| `Rules/` | The country's validation, tax rules and constants | `FatooraConfig`, `InvoiceValidator`, `VatPeriodTracker` |
-| `Reports/` | What dashboards and reports read | `ChainReport`, `DeadlineReport`, `SubmissionReport`, `QueueBacklog` |
-| `Signing/` | Only where the authority requires a cryptographic seal: keys, certificates, signature, hash, QR | `CredentialStore`, `SigningCredentials`, `CertificateService`, `CertificateChain`, `CertificatePem`, `EcdsaSigner`, `XadesSigner`, `XadesVerifier`, `XadesDigest`, `SignedPropertiesBuilder`, `InvoiceHasher`, `QrCodeGenerator`, `QrCodeInjector`, `TlvEncoder` |
-| `Onboarding/` | Only where the authority registers each taxpayer or device | `CsidOnboarding`, `OrganizationOnboarding`, `ComplianceSampleSet`, `CsrBuilder`, `Der` |
-| `Http/`, `Console/`, `Jobs/`, `Events/`, `Listeners/`, `Mail/`, `Models/`, `Enums/`, `DTOs/`, `Exceptions/`, `Support/` | Laravel's kinds, as in every domain | `Support/` holds `FatooraTime` and `TextNormalizer` |
+| `NetworkServiceProvider.php` | The network's bindings. Listed in `bootstrap/providers.php` | `AspGateway`, from `config/peppol.php` |
+| `Contracts/`, `Gateways/` | The service provider, as the platform needs it | `AspGateway`; `HttpAspGateway`, `NullAspGateway`, `FakeAspGateway`, `WebhookSignature`, `WebhookPayload`, `AspStatus`, `InboundMessage` |
+| `Sending/` | Handing documents over, once, and where each one is | `PeppolSender`, `DocumentStatus` |
+| `Receiving/` | Documents other suppliers send | `InboundDocuments`, `ReceivedReader` |
+| `Http/`, `Console/`, `Jobs/`, `Models/`, `DTOs/`, `Exceptions/` | Laravel's kinds | The status and inbound callbacks, `peppol:poll-status`, `peppol:resend`, `SendPeppolDocument`, `PeppolDocument` |
 
 - A module leaves out a folder it does not need. It has no `Services/`: the
-  folders from `Issuing/` to `Onboarding/` are its services, and
-  `WiredDependencyTest`, `ServiceLocatorTest` and `CommandConstructionTest`
-  scan them as they scan `Services/`.
+  folders from `Issuing/` to `Support/`, and the network's `Gateways/`,
+  `Sending/` and `Receiving/`, are its services, and `WiredDependencyTest`,
+  `ServiceLocatorTest` and `CommandConstructionTest` scan them as they scan
+  `Services/`.
 - Inside the module, other classes keep the authority's vocabulary
   (`FatooraClient`, `FatooraException`), as [NAMING.md](../NAMING.md) says.
 - A file that names two modules' `Module` or `ModuleServiceProvider` imports
   them with an alias.
 - What every country uses lives outside the modules:
-  `App\Support\Errors\ErrorCode` (the API's error taxonomy),
+  `App\Support\Errors\ErrorCode` (the API's error taxonomy) and
+  `App\Support\Errors\ComplianceException` (what the shared clearance,
+  kill switch and pipeline refuse with, and the base of each country's own
+  compliance exception),
   `Platform\Services\KillSwitch` (the issuing and filing switches, with the
   same switch names as before) and `Invoice\Support\AllowanceApportionment`
   (how a document discount is shared across tax categories).
-- Tests follow the module: `tests/Feature/Compliance/<Country>/` and
+- Tests follow the module: `tests/Feature/Compliance/<Country>/`,
+  `tests/Feature/Compliance/Networks/<Network>/` and
   `tests/Unit/Domains/Compliance/Countries/<Country>/`. Engine tests stay in
-  `tests/Feature/Compliance/Engine/`.
+  `tests/Feature/Compliance/Engine/`; portal screens stay in
+  `tests/Feature/Portal/`. A country's tests use only its own
+  organizations. A test that brings in the other country as a control is in
+  `tests/Feature/Compliance/JurisdictionIsolationTest.php`.
 
 ## Who calls the engine
 
@@ -197,7 +225,7 @@ from `issuingStep()`.
 | Jurisdiction | Implementation | Called from |
 |---|---|---|
 | Saudi Arabia | `Compliance\Countries\SaudiArabia\Issuing\IssuingStep` | `Submitter::generate()` |
-| United Arab Emirates | `Compliance\Peppol\Services\UaeJurisdiction` | `UaeInvoiceIssuer::issue()` |
+| United Arab Emirates | `Compliance\Countries\UnitedArabEmirates\Issuing\IssuingStep` | `Issuing\InvoiceIssuer::issue()` |
 
 `IssuingLifecycle::issue($invoice, $organization, $jurisdiction, $reissue)`
 owns what every country shares:
@@ -237,8 +265,11 @@ later by callbacks.
   on the organization's own clock (`App\Support\CountryClock`: Riyadh for
   `SA`, Dubai for `AE`).
 - **Clearance.** `Organization\Services\FilingClearance` decides whether an
-  organization is approved, not suspended and on a plan. It still throws
-  `FatooraException`, because its callers catch that type.
+  organization is approved, not suspended and on a plan. It and the kill
+  switch refuse with `App\Support\Errors\ComplianceException`, the neutral
+  base of `FatooraException`, so every country catches it without naming
+  another; the error codes, statuses and messages are the taxonomy's, as
+  before.
 - **Notification.** `Invoice\Services\IssuanceNotifier` raises
   `invoice.issued`.
 

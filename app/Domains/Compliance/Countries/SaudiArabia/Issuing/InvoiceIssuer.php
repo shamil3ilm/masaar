@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia\Issuing;
 
-use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\OfflineFallback;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\Submitter;
 use App\Domains\Compliance\Engine\DTOs\IssueOutcome;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\IssuanceNotifier;
 use App\Domains\Organization\Models\Organization;
+use App\Support\Errors\ComplianceException;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -78,7 +78,7 @@ class InvoiceIssuer
             $this->notifier->issued($invoice);
 
             return null;
-        } catch (FatooraException $e) {
+        } catch (ComplianceException $e) {
             Log::error('Issuance: compliance generation failed', [
                 'invoice_id' => $invoice->id,
                 'org_id' => $organization->id,
@@ -172,7 +172,7 @@ class InvoiceIssuer
                 $outcome['errors'] ?? [],
                 $outcome['warnings'] ?? [],
             );
-        } catch (FatooraException $e) {
+        } catch (ComplianceException $e) {
             Log::warning('Issuance: ZATCA submission failed, invoice remains issued', [
                 'invoice_id' => $invoice->id,
                 'error' => $e->getMessage(),

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Models;
 
-use App\Domains\Compliance\Peppol\Profiles\PintAe;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe;
 use App\Domains\Organization\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;

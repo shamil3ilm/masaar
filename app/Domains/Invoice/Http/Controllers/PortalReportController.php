@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Http\Controllers;
 
-use App\Domains\Compliance\Peppol\Services\UaeVatSummary;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\UaeVatSummary;
 use App\Domains\Invoice\Services\InvoiceCsv;
 use App\Domains\Invoice\Services\VatSummary;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;

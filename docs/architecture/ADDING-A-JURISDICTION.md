@@ -21,7 +21,7 @@ what goes in each.
 
 1. **Module class.** `Module.php`, class `Module`, implements
    `Engine\Contracts\Jurisdiction`, as `Countries\SaudiArabia\Module` and
-   `Peppol\UnitedArabEmirates` do:
+   `Countries\UnitedArabEmirates\Module` do:
    - `code()`, `name()`, `timezone()`, `currency()` and `filingSystem()`;
    - `enabled()`, as `JurisdictionAvailability::enabled($this->code(), <the
      country's configured default>)`, so the admin console's Countries page
@@ -35,7 +35,7 @@ what goes in each.
    - `notices()`, the portal's wording after issuing.
 2. **Registration.** In `ModuleServiceProvider.php`, register it with the
    registry, as `Countries\SaudiArabia\ModuleServiceProvider` and
-   `PeppolServiceProvider` do:
+   `Countries\UnitedArabEmirates\ModuleServiceProvider` do:
 
    ```php
    $this->app->afterResolving(JurisdictionRegistry::class, function (JurisdictionRegistry $registry): void {
@@ -59,36 +59,36 @@ module that a country has to touch.
 | Model | Example | What the platform builds |
 |---|---|---|
 | **The authority's own API** (clearance or reporting) | Saudi Arabia (ZATCA) | The client for the authority, onboarding and credentials, and whatever the authority requires on each document: signing, hashing, QR codes. Lives in the country's module, like `app/Domains/Compliance/Countries/SaudiArabia/` |
-| **Peppol through an accredited service provider** | United Arab Emirates (PINT AE) | The PINT document and the country's field rules. Transport goes through the existing `AspGateway`. Lives in `app/Domains/Compliance/Peppol/` |
+| **Peppol through an accredited service provider** | United Arab Emirates (PINT AE) | The PINT document and the country's field rules, in the country's module (`app/Domains/Compliance/Countries/UnitedArabEmirates/`). Transport goes through the shared network, `app/Domains/Compliance/Networks/Peppol/` |
 
 ## A country on Peppol PINT
 
-The Peppol module is built for the UAE. The parts written so another country
-can use them are:
+A Peppol country is a module under `Countries/` plus the shared
+`Networks/Peppol/`. The network is written for any country and names none
+(`ModuleBoundaryTest` keeps it so):
 
-- the `JurisdictionProfile` contract;
-- the PINT DTOs;
-- `PintUblBuilder`;
-- the transport (`AspGateway`, `PeppolSender`, `DocumentStatus`, the
-  callbacks, `peppol:poll-status` and `peppol:resend`);
-- the `peppol_documents` table, which has a `country` column.
+- the transport: `AspGateway` and its gateways, `PeppolSender`,
+  `DocumentStatus`, `SendPeppolDocument`, the status and inbound callbacks,
+  `peppol:poll-status` and `peppol:resend`;
+- receiving: `InboundDocuments`, which stores a received document in the
+  country of the profile holding its endpoint (any country in
+  `config/peppol.php`), and `ReceivedReader`;
+- the `peppol_documents` table (`PeppolDocument`), which has a `country`
+  column.
 
-Several parts are still tied to the UAE, and need to be generalised before a
-second country can use them:
-
-- `PintMapper`, `MandatoryFields` and `CreateUaeInvoiceRequest` read
-  `PintAe` constants, such as reserved endpoints, flags, emirates and code
-  lists.
-- `InboundDocuments` stores every received document as `AE`.
-- `UaeInvoicing` checks `country === 'AE'`.
-- `UaeJurisdiction` and `UaeInvoiceIssuer` issue UAE invoices, and
-  `UnitedArabEmirates` is the UAE's module. A second country has a module of
-  its own, implements its own `IssuingJurisdiction` and calls the same
-  `IssuingLifecycle`.
+The PINT document itself is still in the UAE's module, because its types are
+PINT AE's: the `JurisdictionProfile` contract and the `PintDocumentCategory`
+and `PintTaxCategory` enums it names, the PINT DTOs (AED line amounts, the
+BTAE-02 flags), `PintUblBuilder`, `PintMapper` and `MandatoryFields`, which
+read `PintAe` constants such as reserved endpoints, flags, emirates and code
+lists. A second country has a module of its own, with its own `Module`,
+`ModuleServiceProvider`, `Issuing/IssuingStep` and `Issuing/InvoiceIssuer`
+calling the same `IssuingLifecycle`, and the parts above that it shares move
+to `Networks/Peppol/` once they take a profile instead of PINT AE's values.
 
 Steps:
 
-1. **Profile.** Add `Profiles/Pint<Cc>` implementing `JurisdictionProfile`:
+1. **Profile.** Add `Rules/Pint<Cc>` implementing `JurisdictionProfile`:
    - customization and profile IDs for each document kind;
    - type codes;
    - the endpoint scheme;
@@ -122,12 +122,14 @@ Steps:
    (`Signing/`).
 2. Implement `App\Domains\Invoice\Contracts\IssuingJurisdiction` as
    `Issuing/IssuingStep.php`, as `Countries\SaudiArabia\Issuing\IssuingStep`
-   and `UaeJurisdiction` do. Put
+   and `Countries\UnitedArabEmirates\Issuing\IssuingStep` do. Put
    the country's checks in `prepare()` and its document in `seal()`, and
    pass `FilingClearance` and the kill switch in `prepare()` like the others.
+   Both refuse with the neutral `App\Support\Errors\ComplianceException`,
+   which a country catches without naming another's exception.
 3. Write the issuer and routes (`/api/compliance/<cc>/*`). The issuer calls
-   `IssuingLifecycle::issue()` with that jurisdiction, as `UaeInvoiceIssuer`
-   does, and the module's transmission calls the issuer. Reuse `InvoiceDrafter` and `IssuanceNotifier` rather than copying
+   `IssuingLifecycle::issue()` with that jurisdiction, as each module's
+   `Issuing\InvoiceIssuer` does, and the module's transmission calls the issuer. Reuse `InvoiceDrafter` and `IssuanceNotifier` rather than copying
    them; numbering already comes with the lifecycle.
 4. Add the authority's credentials and switch to `config/` and the env
    templates, named by purpose, with a production guard for anything required.

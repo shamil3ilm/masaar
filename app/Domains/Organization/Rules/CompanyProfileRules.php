@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Rules;
 
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe;
 use App\Domains\Compliance\Engine\Services\JurisdictionRegistry;
-use App\Domains\Compliance\Peppol\Profiles\PintAe;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\Registrar;
 use Closure;

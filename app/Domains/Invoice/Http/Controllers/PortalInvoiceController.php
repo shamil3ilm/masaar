@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Http\Controllers;
 
-use App\Domains\Compliance\Peppol\Services\UaeDocuments;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\UaeDocuments;
 use App\Domains\Invoice\Services\Catalogue;
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Organization\Http\Middleware\PortalTenant;

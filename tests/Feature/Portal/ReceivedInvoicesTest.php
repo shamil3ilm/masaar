@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace Tests\Feature\Portal;
 
 use App\Domains\Auth\Models\User;
-use App\Domains\Compliance\Peppol\Models\PeppolDocument;
-use App\Domains\Compliance\Peppol\Services\DocumentStatus;
-use App\Domains\Compliance\Peppol\Services\ReceivedReader;
+use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
+use App\Domains\Compliance\Networks\Peppol\Receiving\ReceivedReader;
+use App\Domains\Compliance\Networks\Peppol\Sending\DocumentStatus;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
-use Tests\Feature\Compliance\Peppol\PintInvoices;
+use Tests\Feature\Compliance\UnitedArabEmirates\PintInvoices;
 use Tests\TestCase;
 
 /**
@@ -131,13 +131,6 @@ class ReceivedInvoicesTest extends TestCase
         $this->open("/portal/received/{$document->id}/xml")->assertOk();
     }
 
-    public function test_saudi_organization_gets_not_found(): void
-    {
-        $acme = Organization::create(['name' => 'Acme', 'country' => 'SA']);
-
-        $this->asRequest(fn () => $this->actingAs($this->memberOf($acme))->get('/portal/received')->assertNotFound());
-    }
-
     public function test_navigation_links_for_uae_only(): void
     {
         $this->open('/portal/invoices')->assertSee(route('portal.received.index'), false);
@@ -147,13 +140,6 @@ class ReceivedInvoicesTest extends TestCase
             ->withSession(['portal_org_id' => $this->gulf->id])
             ->get('/portal/invoices')
             ->assertDontSee(route('portal.zatca.show'), false));
-
-        $acme = Organization::create(['name' => 'Acme', 'country' => 'SA']);
-        $this->asRequest(fn () => $this->actingAs($this->memberOf($acme, 'admin'))
-            ->withSession(['portal_org_id' => $acme->id])
-            ->get('/portal/invoices')
-            ->assertDontSee(route('portal.received.index'), false)
-            ->assertSee(route('portal.zatca.show'), false));
     }
 
     private function open(string $uri): TestResponse

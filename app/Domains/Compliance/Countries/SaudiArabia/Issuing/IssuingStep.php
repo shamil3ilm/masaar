@@ -61,8 +61,8 @@ class IssuingStep implements IssuingJurisdiction
     public function prepare(Invoice $invoice, Organization $organization, bool $reissue): array
     {
         // ZATCA issues Saudi invoices. An organization registered elsewhere is
-        // issued by its own country's rules - a UAE one by UaeInvoiceIssuer -
-        // and must never take a ZATCA counter, hash or signature. A blank
+        // issued by its own country's module, through the engine, and must
+        // never take a ZATCA counter, hash or signature. A blank
         // country is a row from before the column was set, which was Saudi.
         if (filled($organization->country) && $organization->country !== 'SA') {
             throw new FatooraException(

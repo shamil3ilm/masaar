@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Http\Controllers;
 
-use App\Domains\Compliance\Peppol\Profiles\PintAe;
-use App\Domains\Compliance\Peppol\Services\UaePortal;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaePortal;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Services\Catalogue;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;

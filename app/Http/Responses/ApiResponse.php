@@ -6,6 +6,7 @@ namespace App\Http\Responses;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
+use App\Support\Errors\ComplianceException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -158,7 +159,7 @@ class ApiResponse
      * on only getMessage() with a hardcoded 422, which threw away the code the
      * enum exists to publish.
      */
-    public static function fromFatoora(FatooraException $e): JsonResponse
+    public static function fromFatoora(ComplianceException $e): JsonResponse
     {
         $code = $e->getErrorCode();
 

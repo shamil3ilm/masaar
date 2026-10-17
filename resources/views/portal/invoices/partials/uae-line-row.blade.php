@@ -92,7 +92,7 @@
         <label class="block text-xs font-medium text-gray-600 dark:text-gray-300">
             {{ __('VAT %') }}
             <x-ui.input type="number" step="0.01" min="0" max="100" name="lines[{{ $index }}][tax_rate]"
-                   value="{{ $row['tax_rate'] ?? \App\Domains\Compliance\Peppol\Profiles\PintAe::STANDARD_RATE }}" />
+                   value="{{ $row['tax_rate'] ?? \App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe::STANDARD_RATE }}" />
         </label>
     </div>
 
@@ -113,7 +113,7 @@
             {{ __('Goods type (reverse charge)') }}
             <x-ui.select name="lines[{{ $index }}][goods_type]">
                 <option value="">{{ __('None') }}</option>
-                @foreach (\App\Domains\Compliance\Peppol\Profiles\PintAe::REVERSE_CHARGE_GOODS as $goods)
+                @foreach (\App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe::REVERSE_CHARGE_GOODS as $goods)
                     <option value="{{ $goods }}" @selected(($row['goods_type'] ?? '') === $goods)>{{ $goods }}</option>
                 @endforeach
             </x-ui.select>

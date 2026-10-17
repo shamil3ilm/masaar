@@ -14,7 +14,7 @@ use Illuminate\Support\ServiceProvider;
  * before the column was set, and those were Saudi.
  *
  * Registered whether or not Saudi Arabia is on; the module answers enabled()
- * from the admin console's switch, else ZATCA_ENABLED, exactly as the UAE's
+ * from the admin console's switch, else ZATCA_ENABLED, as every module
  * does, and the engine refuses a switched-off country.
  */
 class ModuleServiceProvider extends ServiceProvider

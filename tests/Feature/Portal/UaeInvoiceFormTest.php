@@ -5,20 +5,21 @@ declare(strict_types=1);
 namespace Tests\Feature\Portal;
 
 use App\Domains\Auth\Models\User;
-use App\Domains\Compliance\Peppol\Jobs\SendPeppolDocument;
-use App\Domains\Compliance\Peppol\Models\PeppolDocument;
+use App\Domains\Compliance\Networks\Peppol\Jobs\SendPeppolDocument;
+use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Testing\TestResponse;
-use Tests\Feature\Compliance\Peppol\PintInvoices;
+use Tests\Feature\Compliance\UnitedArabEmirates\PintInvoices;
 use Tests\TestCase;
 
 /**
  * A UAE organization's "New invoice": its own form, validated by the API's
- * rules and drafted the API's way, so the draft is one UaeInvoiceIssuer
- * issues. A Saudi organization's form is as it was.
+ * rules and drafted the API's way, so the draft is one the UAE's
+ * InvoiceIssuer issues. A Saudi organization's form, and the Saudi form's
+ * route, are in JurisdictionIsolationTest.
  */
 class UaeInvoiceFormTest extends TestCase
 {
@@ -55,20 +56,6 @@ class UaeInvoiceFormTest extends TestCase
             ->assertSee('lines[0][tax_category]', false)
             ->assertDontSee('value="debit_note"', false)
             ->assertDontSee('value="simplified"', false));
-    }
-
-    public function test_saudi_form_is_unchanged(): void
-    {
-        $acme = Organization::create(['name' => 'Acme', 'country' => 'SA']);
-
-        $this->asRequest(fn () => $this->actingAs($this->member($acme))
-            ->get('/portal/invoices/create')
-            ->assertOk()
-            ->assertSee(route('portal.invoices.store'), false)
-            ->assertSee('value="debit_note"', false)
-            ->assertSee('value="simplified"', false)
-            ->assertSee('lines[0][description_ar]', false)
-            ->assertDontSee('name="buyer_endpoint_choice"', false));
     }
 
     /** Drafted from the form, issued from the invoice page, queued to send. */
@@ -150,23 +137,6 @@ class UaeInvoiceFormTest extends TestCase
         ]);
     }
 
-    /** The Saudi form's route drafts nothing for a UAE organization. */
-    public function test_saudi_route_refuses_uae_organization(): void
-    {
-        $this->asRequest(fn () => $this->actingAs($this->admin)->withSession(['portal_org_id' => $this->gulf->id, '_token' => self::TOKEN])
-            ->post('/portal/invoices', [
-                '_token' => self::TOKEN,
-                'type' => 'standard', 'document_type' => 'invoice', 'issue_date' => now()->toDateString(), 'currency' => 'SAR',
-                'buyer_name' => 'Noor', 'buyer_vat_number' => '300000000000003',
-                'buyer_address' => ['street' => 'X', 'building_number' => '1234', 'district' => 'Y', 'city' => 'Z', 'postal_code' => '12345', 'country_code' => 'SA'],
-                'lines' => [['description' => 'Consulting', 'quantity' => '1', 'unit_price' => '100', 'tax_rate' => '15']],
-            ])
-            ->assertRedirect(route('portal.invoices.create'))
-            ->assertSessionHas('error'));
-
-        $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
-    }
-
     /**
      * Switched off, a draft is still saved, as on the Saudi form: issuing it
      * is what the engine refuses.
@@ -176,16 +146,6 @@ class UaeInvoiceFormTest extends TestCase
         config(['peppol.countries.AE.enabled' => false]);
 
         $this->submit($this->form())->assertSessionHas('success');
-    }
-
-    public function test_saudi_organization_gets_not_found(): void
-    {
-        $acme = Organization::create(['name' => 'Acme', 'country' => 'SA']);
-
-        $this->asRequest(fn () => $this->actingAs($this->member($acme))
-            ->withSession(['_token' => self::TOKEN])
-            ->post('/portal/invoices/uae', [...$this->form(), '_token' => self::TOKEN])
-            ->assertNotFound());
     }
 
     private function drafted(): Invoice

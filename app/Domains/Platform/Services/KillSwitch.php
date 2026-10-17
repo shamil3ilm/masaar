@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Services;
 
-use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
+use App\Support\Errors\ComplianceException;
 use App\Support\Errors\ErrorCode;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -318,7 +318,7 @@ class KillSwitch
     /**
      * Assert that a switch is not enabled (throw if it is).
      *
-     * @throws FatooraException
+     * @throws ComplianceException
      */
     public function assertNotEnabled(
         string $switch,
@@ -327,7 +327,7 @@ class KillSwitch
         if ($this->isEnabled($switch, $tenantId)) {
             $info = $this->getSwitchInfo($switch, $tenantId);
 
-            throw new FatooraException(
+            throw new ComplianceException(
                 "Operation blocked: {$switch} kill switch is enabled".
                     ($info['reason'] ? " - Reason: {$info['reason']}" : ''),
                 ErrorCode::SYS_MAINTENANCE_MODE,

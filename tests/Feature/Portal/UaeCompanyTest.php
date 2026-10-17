@@ -13,7 +13,8 @@ use Tests\TestCase;
 
 /**
  * The company page of a UAE organization: the seller details PINT AE needs,
- * saved where the API saves them. A Saudi organization's page is as it was.
+ * saved where the API saves them. A Saudi organization's page is in
+ * JurisdictionIsolationTest.
  */
 class UaeCompanyTest extends TestCase
 {
@@ -45,19 +46,6 @@ class UaeCompanyTest extends TestCase
             ->assertSee('name="legal_registration_type"', false)
             ->assertDontSee('name="vat_number"', false)
             ->assertDontSee('National address'));
-    }
-
-    public function test_saudi_page_is_unchanged(): void
-    {
-        $acme = Organization::create(['name' => 'Acme', 'country' => 'SA']);
-
-        $this->asRequest(fn () => $this->open($this->member($acme, 'admin'), $acme)
-            ->assertOk()
-            ->assertSee('National address')
-            ->assertSee('name="vat_number"', false)
-            ->assertSee('15 digits, starting and ending with 3.')
-            ->assertDontSee('name="endpoint_id"', false)
-            ->assertDontSee('name="emirate"', false));
     }
 
     public function test_uae_details_saved_to_profile(): void

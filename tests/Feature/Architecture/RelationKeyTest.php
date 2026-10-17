@@ -7,7 +7,7 @@ namespace Tests\Feature\Architecture;
 use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\SubmissionIdempotency;
-use App\Domains\Compliance\Peppol\Models\PeppolDocument;
+use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Licensing\Models\LicenseRegistration;
 use App\Domains\Organization\Models\Branch;
