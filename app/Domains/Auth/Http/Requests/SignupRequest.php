@@ -16,25 +16,13 @@ use Illuminate\Validation\Rules\Password;
  * so an approved sign-up can go straight on to its OTP. The company's name
  * fields are prefixed, since the person has a name too.
  *
- * The company is checked in its own country's shapes. Where the deployment
- * registers more than one country the form asks which; otherwise nothing is
- * sent and it is Saudi Arabia. A UAE company gives everything its documents
- * need except the Peppol endpoint, which its service provider issues after
- * sign-up and the company page takes; issuing still checks for it.
+ * The company is checked in its own country's shapes, and only the fields
+ * that country's sign-up section sends (its module's SellerRules). Where the
+ * deployment registers more than one country the form asks which; otherwise
+ * nothing is sent and it is the default country.
  */
 class SignupRequest extends FormRequest
 {
-    /** A Saudi company's details beyond its name, as ZATCA onboarding needs them. */
-    private const SAUDI_FIELDS = [
-        'vat_number', 'cr_number', 'street', 'building_number', 'additional_street', 'district', 'city', 'postal_code',
-    ];
-
-    /** A UAE company's details beyond its name. Not the Peppol endpoint, nor the optional payment account. */
-    private const UAE_FIELDS = [
-        'trn', 'tin', 'street', 'building_number', 'additional_street', 'district', 'city', 'postal_code', 'emirate',
-        'legal_registration_type', 'legal_registration_id', 'legal_registration_authority',
-    ];
-
     public function authorize(): bool
     {
         return true;
@@ -47,6 +35,7 @@ class SignupRequest extends FormRequest
     {
         $country = $this->companyCountry();
         $company = CompanyProfileRules::rules($country, complete: true);
+        $fields = CompanyProfileRules::jurisdiction($country)->sellerRules()->signupFields();
 
         return [
             'name' => ['required', 'string', 'max:255'],
@@ -60,7 +49,7 @@ class SignupRequest extends FormRequest
             ...CompanyProfileRules::country(),
             'company_name' => $company['name'],
             'company_name_ar' => $company['name_ar'],
-            ...Arr::only($company, $country === 'AE' ? self::UAE_FIELDS : self::SAUDI_FIELDS),
+            ...Arr::only($company, $fields),
 
             'terms' => ['accepted'],
         ];
@@ -69,13 +58,13 @@ class SignupRequest extends FormRequest
     /**
      * The country the company is registered in: the one chosen, if this
      * deployment registers it. One it does not is refused by the country
-     * rule, and the rest is checked as Saudi meanwhile.
+     * rule, and the rest is checked as the default country's meanwhile.
      */
-    private function companyCountry(): string
+    private function companyCountry(): ?string
     {
         $chosen = $this->input('country');
 
-        return in_array($chosen, CompanyProfileRules::countries(), true) ? $chosen : 'SA';
+        return in_array($chosen, CompanyProfileRules::countries(), true) ? $chosen : null;
     }
 
     /**
@@ -84,7 +73,7 @@ class SignupRequest extends FormRequest
     public function messages(): array
     {
         return [
-            ...CompanyProfileRules::messages(),
+            ...CompanyProfileRules::messages($this->companyCountry()),
             'password.uncompromised' => __('This password has appeared in a data breach. Please choose a different password.'),
             'terms.accepted' => __('Accept the terms to create an account.'),
         ];

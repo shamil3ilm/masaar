@@ -6,8 +6,8 @@
     the tax identity is a TRN for a VAT-registered seller, otherwise a TIN
     (IBR-132-AE, IBR-148-AE); the Peppol endpoint is the one the service
     provider issued; and the legal registration goes on every document
-    (IBR-172-AE, IBR-173-AE). Validated by CompanyProfileRules for 'AE' and
-    saved by UaeSellerDetails, as the API does.
+    (IBR-172-AE, IBR-173-AE). Validated and saved by the UAE module's
+    SellerRules (through UaeSellerDetails), as the API does.
 
     @param \App\Domains\Organization\Models\Organization $organization
     @param array<string, string|null>                    $uae  the stored UAE settings

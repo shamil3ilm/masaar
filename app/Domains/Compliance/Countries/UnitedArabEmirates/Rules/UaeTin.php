@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Domains\Organization\Rules;
+namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Rules;
 
 use Closure;
 use Illuminate\Contracts\Validation\DataAwareRule;

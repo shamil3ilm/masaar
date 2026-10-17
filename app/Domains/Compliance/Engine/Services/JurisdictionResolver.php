@@ -39,6 +39,17 @@ class JurisdictionResolver
     }
 
     /**
+     * The module whose rules an organization's forms and requests follow:
+     * its country's, whether or not the country is switched on, since a
+     * switched-off country's drafts can still be saved. The default module
+     * for no organization, a blank country, or a country with no module.
+     */
+    public function forRules(?Organization $organization): Jurisdiction
+    {
+        return $this->registry->orDefault(blank($organization?->country) ? null : (string) $organization->country);
+    }
+
+    /**
      * Whether the organization's country is registered and switched on, for
      * a screen that says so rather than refusing.
      */

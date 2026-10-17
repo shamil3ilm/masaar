@@ -11,9 +11,10 @@ use App\Domains\Invoice\Services\InvoiceDrafter;
 /**
  * Drafts a UAE invoice from a validated CreateUaeInvoiceRequest.
  *
- * The API and the portal both draft through this, so the request's mapping -
- * invoice() for the shared columns, jurisdictionFields() for the UAE's - is
- * applied one way. The draft itself is the shared InvoiceDrafter's.
+ * The API and the portal both draft through this, so the mapping of the
+ * module's InvoiceRules - draft() for the shared columns, countryFields()
+ * for the UAE's - is applied one way. The draft itself is the shared
+ * InvoiceDrafter's.
  */
 class UaeDrafts
 {
@@ -24,9 +25,9 @@ class UaeDrafts
     public function draft(CreateUaeInvoiceRequest $request, string $organizationId): Invoice
     {
         return $this->drafter->draft(
-            $request->invoice(),
+            $request->draft(),
             $organizationId,
-            countryFields: $request->jurisdictionFields(),
+            countryFields: $request->countryFields(),
         );
     }
 }

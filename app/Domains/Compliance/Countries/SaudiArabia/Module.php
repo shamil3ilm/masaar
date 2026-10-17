@@ -8,9 +8,13 @@ use App\Domains\Compliance\Countries\SaudiArabia\Filing\OfflineQueue;
 use App\Domains\Compliance\Countries\SaudiArabia\Issuing\InvoiceIssuer;
 use App\Domains\Compliance\Countries\SaudiArabia\Issuing\IssuingStep;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\InvoiceRules;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\SellerRules;
 use App\Domains\Compliance\Engine\Contracts\FeatureSupport;
+use App\Domains\Compliance\Engine\Contracts\InvoiceRules as InvoiceRulesPort;
 use App\Domains\Compliance\Engine\Contracts\IssueNotices;
 use App\Domains\Compliance\Engine\Contracts\Jurisdiction;
+use App\Domains\Compliance\Engine\Contracts\SellerRules as SellerRulesPort;
 use App\Domains\Compliance\Engine\Contracts\Transmission;
 use App\Domains\Compliance\Engine\DTOs\IssueOptions;
 use App\Domains\Compliance\Engine\DTOs\IssueOutcome;
@@ -25,8 +29,8 @@ use App\Domains\Platform\Services\KillSwitch;
  * Saudi Arabia's module: ZATCA's issuing step, and InvoiceIssuer to sign and
  * file. The default jurisdiction, for an organization with no country.
  *
- * One class answers every port because each is a line or two of adapting
- * what Fatoora already does. A port that grows gets a class of its own.
+ * One class answers the ports that are a line or two of adapting what
+ * Fatoora already does. The rules ports are classes of their own, in Rules/.
  */
 class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
 {
@@ -35,6 +39,8 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
         private readonly OfflineQueue $offline,
         private readonly IssuingStep $step,
         private readonly JurisdictionAvailability $availability,
+        private readonly SellerRules $seller,
+        private readonly InvoiceRules $invoices,
     ) {}
 
     public function code(): string
@@ -91,6 +97,16 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
     public function features(): FeatureSupport
     {
         return $this;
+    }
+
+    public function sellerRules(): SellerRulesPort
+    {
+        return $this->seller;
+    }
+
+    public function invoiceRules(): InvoiceRulesPort
+    {
+        return $this->invoices;
     }
 
     /**

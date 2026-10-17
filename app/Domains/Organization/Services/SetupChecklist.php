@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Services;
 
+use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
@@ -26,7 +27,7 @@ class SetupChecklist
 {
     public function __construct(
         private readonly FilingClearance $clearance,
-        private readonly UaeSellerDetails $uae,
+        private readonly JurisdictionResolver $jurisdictions,
     ) {}
 
     /**
@@ -35,13 +36,15 @@ class SetupChecklist
     public function steps(Organization $organization): array
     {
         $id = (string) $organization->id;
+        // Whether the seller details its country's documents need are there.
+        $company = $this->jurisdictions->forRules($organization)->sellerRules()->complete($organization);
 
         // A UAE organization never onboards with ZATCA. Its seller details
         // and the Peppol endpoint its service provider issued are what its
         // documents need, and an issued invoice has no hash.
         if ($organization->country === 'AE') {
             return [
-                ['key' => 'uae_company', 'done' => $this->uae->complete($organization), 'required' => true, 'route' => 'portal.company.edit'],
+                ['key' => 'uae_company', 'done' => $company, 'required' => true, 'route' => 'portal.company.edit'],
                 ['key' => 'approved', 'done' => $this->approved($organization), 'required' => true, 'route' => null],
                 ['key' => 'numbering', 'done' => $this->numbered($id), 'required' => false, 'route' => 'portal.numbering.edit'],
                 ['key' => 'catalogue', 'done' => $this->catalogued($id), 'required' => false, 'route' => 'portal.customers.index'],
@@ -50,7 +53,7 @@ class SetupChecklist
         }
 
         return [
-            ['key' => 'company', 'done' => $organization->hasCompleteZatcaProfile(), 'required' => true, 'route' => 'portal.company.edit'],
+            ['key' => 'company', 'done' => $company, 'required' => true, 'route' => 'portal.company.edit'],
             ['key' => 'approved', 'done' => $this->approved($organization), 'required' => true, 'route' => null],
             ['key' => 'zatca', 'done' => $organization->zatca_onboarded, 'required' => true, 'route' => 'portal.zatca.show'],
             ['key' => 'numbering', 'done' => $this->numbered($id), 'required' => false, 'route' => 'portal.numbering.edit'],

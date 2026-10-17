@@ -64,8 +64,10 @@ $org->complianceProfiles()->create([
 ]);
 ```
 
-A UAE profile is not created by hand. `PUT /api/compliance/ae/profile` saves
-the seller details through `UaeSellerDetails`, which creates the profile
+A UAE profile is not created by hand. `PUT /api/compliance/ae/profile`, the
+company page, sign-up and the organization API save the seller details
+through the UAE module's `SellerRules` and `Support\UaeSellerDetails`, which
+creates the profile
 active, with engine `peppol`, on the first save. It keeps the UAE tax identity
 in `settings`, where `PintMapper` reads it: `trn`, `tin`, `endpoint_id`,
 `emirate`, `legal_registration_type`, `legal_registration_id`,

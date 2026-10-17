@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Http\Controllers;
 
+use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Http\Requests\CreatePortalInvoiceRequest;
 use App\Domains\Invoice\Services\AdjustmentDraft;
@@ -41,6 +42,7 @@ class PortalInvoiceDraftController extends Controller
 {
     public function __construct(
         private readonly TenantResolver $tenant,
+        private readonly JurisdictionResolver $jurisdictions,
         private readonly InvoiceDrafter $drafter,
         private readonly Catalogue $catalogue,
         private readonly InvoiceFinder $invoices,
@@ -87,17 +89,9 @@ class PortalInvoiceDraftController extends Controller
         $organizationId = (string) $request->attributes->get(PortalTenant::ORG_ID);
         $organization = $this->tenant->getOrganization();
 
-        // A UAE organization's invoice is a UAE e-invoice: its own form, its
-        // own rules (CreateUaeInvoiceRequest), posted to its own route.
-        if ($organization?->country === 'AE') {
-            return view('portal.invoices.create-uae', [
-                'organization' => $organization,
-                'customers' => $this->catalogue->customerChoices($organizationId),
-                'products' => $this->catalogue->productChoices($organizationId),
-            ]);
-        }
-
-        return view('portal.invoices.create', [
+        // The organization's country's form, which posts to the route its
+        // rules are checked on (InvoiceRules::portalView(), portalRoute()).
+        return view($this->jurisdictions->forRules($organization)->invoiceRules()->portalView(), [
             'organization' => $organization,
             'customers' => $this->catalogue->customerChoices($organizationId),
             'products' => $this->catalogue->productChoices($organizationId),
@@ -112,13 +106,8 @@ class PortalInvoiceDraftController extends Controller
             return redirect()->route('portal.invoices.index');
         }
 
-        // Drafted by Saudi rules, a UAE invoice would only be refused when it
-        // is issued. Its form posts to portal.invoices.uae.store.
-        if ($this->tenant->getOrganization()?->country === 'AE') {
-            return redirect()->route('portal.invoices.create')
-                ->with('error', __('A UAE invoice is written on the UAE invoice form.'));
-        }
-
+        // An organization whose country's form posts elsewhere was sent back
+        // to it by CreatePortalInvoiceRequest, before anything was checked.
         try {
             $invoice = $this->drafter->draft($request->validated(), (string) $orgId);
         } catch (\Throwable $e) {

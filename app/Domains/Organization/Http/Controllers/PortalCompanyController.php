@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Http\Controllers;
 
-use App\Domains\Organization\DTOs\AddressFields;
-use App\Domains\Organization\DTOs\OrganizationChangesData;
+use App\Domains\Compliance\Engine\Contracts\SellerRules;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Rules\CompanyProfileRules;
 use App\Domains\Organization\Services\Registrar;
 use App\Domains\Organization\Services\TenantResolver;
-use App\Domains\Organization\Services\UaeSellerDetails;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,6 +22,9 @@ use Illuminate\View\View;
  * are complete, and there was no screen to complete them on - only an API
  * that accepted a name and a VAT number. Its administrators only; the
  * organization is the one the session works in.
+ *
+ * The form, its rules and where the details are kept are the organization's
+ * country's (its module's SellerRules).
  */
 class PortalCompanyController extends Controller
 {
@@ -32,18 +33,17 @@ class PortalCompanyController extends Controller
     public function __construct(
         private readonly TenantResolver $tenant,
         private readonly Registrar $registrar,
-        private readonly UaeSellerDetails $uae,
     ) {}
 
     public function edit(Request $request): View
     {
         $organization = $this->organization($request);
+        $seller = $this->seller($organization);
 
         return view('portal.company', [
             'organization' => $organization,
-            'onboarded' => (bool) ($organization->compliance_profile['zatca_onboarded'] ?? false),
-            // A UAE seller's tax identity is kept on its UAE compliance profile.
-            'uae' => $organization->country === 'AE' ? $this->uae->current($organization) : null,
+            'form' => $seller->companyView(),
+            'formData' => $seller->companyData($organization),
         ]);
     }
 
@@ -52,24 +52,13 @@ class PortalCompanyController extends Controller
         $organization = $this->organization($request);
 
         $validated = $request->validate(
-            CompanyProfileRules::rules((string) $organization->country, complete: true, existing: $organization),
-            CompanyProfileRules::messages(),
+            CompanyProfileRules::rules($organization->country, complete: true, existing: $organization),
+            CompanyProfileRules::messages($organization->country),
         );
 
         // Saved the way the API saves it, so the two cannot disagree about
-        // where a TRN or an endpoint is kept.
-        if ($organization->country === 'AE') {
-            $this->uae->save($organization, $validated);
-
-            return redirect()->route('portal.company.edit')->with('success', __('Company details saved.'));
-        }
-
-        $this->registrar->amend($organization, new OrganizationChangesData(
-            name: $validated['name'],
-            nameAr: $validated['name_ar'] ?? null,
-            vatNumber: $validated['vat_number'],
-            address: AddressFields::from($validated),
-        ));
+        // where a detail is kept.
+        $this->seller($organization)->save($organization, $validated);
 
         return redirect()->route('portal.company.edit')->with('success', __('Company details saved.'));
     }
@@ -95,6 +84,11 @@ class PortalCompanyController extends Controller
         return redirect()->route('portal.company.edit')->with('success', $required
             ? __('Two-factor is now required. Members without it are asked to set it up when they next open the portal.')
             : __('Two-factor is no longer required.'));
+    }
+
+    private function seller(Organization $organization): SellerRules
+    {
+        return CompanyProfileRules::jurisdiction($organization->country)->sellerRules();
     }
 
     private function organization(Request $request): Organization

@@ -35,15 +35,17 @@ class SignupController extends Controller
         }
 
         $countries = CompanyProfileRules::countries();
+        $default = CompanyProfileRules::jurisdiction(null)->code();
         $chosen = old('country');
-        $preferred = in_array('SA', $countries, true) ? 'SA' : ($countries[0] ?? 'SA');
+        $preferred = in_array($default, $countries, true) ? $default : ($countries[0] ?? $default);
 
         return view('auth.register', [
             'termsUrl' => config('signup.terms_url'),
-            // The Saudi-only form where Saudi Arabia is all there is; the
+            // The default country's own form where it is all there is; the
             // chooser, listing only the countries offered, anywhere else.
-            'choice' => $countries !== ['SA'],
+            'choice' => $countries !== [$default],
             'countries' => $countries,
+            'sections' => $this->sections($countries, $default),
             'country' => in_array($chosen, $countries, true) ? $chosen : $preferred,
         ]);
     }
@@ -60,5 +62,23 @@ class SignupController extends Controller
         $this->signIns->succeeded($user, 'console', ['signup' => true]);
 
         return redirect()->route('verification.notice');
+    }
+
+    /**
+     * Each country offered, the default first: its code, its name and the
+     * form section its module provides.
+     *
+     * @param  list<string>  $countries
+     * @return list<array{code: string, name: string, view: string}>
+     */
+    private function sections(array $countries, string $default): array
+    {
+        usort($countries, fn (string $a, string $b): int => [$a !== $default, $a] <=> [$b !== $default, $b]);
+
+        return array_map(function (string $code): array {
+            $jurisdiction = CompanyProfileRules::jurisdiction($code);
+
+            return ['code' => $code, 'name' => $jurisdiction->name(), 'view' => $jurisdiction->sellerRules()->signupView()];
+        }, $countries);
     }
 }

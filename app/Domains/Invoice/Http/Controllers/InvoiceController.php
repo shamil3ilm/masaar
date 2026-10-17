@@ -63,7 +63,8 @@ class InvoiceController extends Controller
      */
     public function store(CreateInvoiceRequest $request): JsonResponse
     {
-        $invoice = $this->drafter->draft($request->validated(), $this->tenant->getOrganizationId());
+        // As the organization's country's rules map the request.
+        $invoice = $this->drafter->draft($request->draft(), $this->tenant->getOrganizationId(), countryFields: $request->countryFields());
 
         return ApiResponse::created([
             'invoice' => $invoice->load('lines'),

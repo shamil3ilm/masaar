@@ -16,7 +16,7 @@ use App\Domains\Invoice\Contracts\IssuingJurisdiction;
  * talks to its ports.
  *
  * Each port is an interface of its own, so a module can answer one with a
- * class of its own as that port grows. Later phases add ports here - rules,
+ * class of its own as that port grows. Later phases add ports here -
  * presentation, reports - rather than methods to an existing one.
  */
 interface Jurisdiction
@@ -63,4 +63,10 @@ interface Jurisdiction
 
     /** Which of the platform's features exist here, for Access. */
     public function features(): FeatureSupport;
+
+    /** What the seller's details have to be, and where they are kept. */
+    public function sellerRules(): SellerRules;
+
+    /** What an invoice draft has to be, and the columns only this country's invoices carry. */
+    public function invoiceRules(): InvoiceRules;
 }

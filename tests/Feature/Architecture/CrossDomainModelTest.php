@@ -101,6 +101,8 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Countries/UnitedArabEmirates/Rules/IssueDeadline.php' => 'Compliance\Networks\Peppol, Invoice',
         // Drafts a UAE invoice through the shared InvoiceDrafter, for the API and the portal.
         'Domains/Compliance/Countries/UnitedArabEmirates/Support/UaeDrafts.php' => 'Invoice',
+        // Keeps a UAE seller's tax identity on its UAE ComplianceProfile.
+        'Domains/Compliance/Countries/UnitedArabEmirates/Support/UaeSellerDetails.php' => 'Organization',
         // The compliance engine issues an invoice in its organization's jurisdiction.
         'Domains/Compliance/Engine/Contracts/Transmission.php' => 'Invoice',
         'Domains/Compliance/Engine/Services/ComplianceEngine.php' => 'Invoice',

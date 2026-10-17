@@ -54,10 +54,8 @@ class ModuleBoundaryTest extends TestCase
      * @var array<string, string>
      */
     private const SHARED = [
-        'app/Domains/Invoice/Http/Controllers/PortalCustomerController.php' => 'Countries\UnitedArabEmirates\Rules\PintAe, Countries\UnitedArabEmirates\Support\UaePortal',
         'app/Domains/Invoice/Http/Controllers/PortalInvoiceController.php' => 'Countries\UnitedArabEmirates\Reports\UaeDocuments',
         'app/Domains/Invoice/Http/Controllers/PortalReportController.php' => 'Countries\UnitedArabEmirates\Reports\UaeVatSummary',
-        'app/Domains/Invoice/Http/Requests/CreateInvoiceRequest.php' => 'Countries\SaudiArabia\Rules\FatooraConfig',
         'app/Domains/Invoice/Models/Customer.php' => 'Countries\UnitedArabEmirates\Rules\PintAe',
         'app/Domains/Invoice/Models/Invoice.php' => 'Countries\SaudiArabia\Models\InvoiceSubmission',
         'app/Domains/Invoice/Services/CadesSignature.php' => 'Countries\SaudiArabia\Exceptions\SigningException, Countries\SaudiArabia\Signing\EcdsaSigner',
@@ -66,9 +64,7 @@ class ModuleBoundaryTest extends TestCase
         'app/Domains/Organization/Http/Controllers/CustomerPortalController.php' => 'Countries\SaudiArabia\DTOs\SubmissionFilterData, Countries\SaudiArabia\Reports\SubmissionReport, Countries\SaudiArabia\Signing\CertificateService, Countries\SaudiArabia\Signing\CredentialStore, Countries\UnitedArabEmirates\Reports\UaeDocuments',
         'app/Domains/Organization/Models/Branch.php' => 'Countries\SaudiArabia\DTOs\AddressData, Countries\SaudiArabia\DTOs\CsrData',
         'app/Domains/Organization/Models/Organization.php' => 'Countries\SaudiArabia\DTOs\AddressData',
-        'app/Domains/Organization/Rules/CompanyProfileRules.php' => 'Countries\UnitedArabEmirates\Rules\PintAe',
         'app/Domains/Organization/Services/BranchService.php' => 'Countries\SaudiArabia\Signing\CredentialStore',
-        'app/Domains/Organization/Services/UaeSellerDetails.php' => 'Countries\UnitedArabEmirates\Rules\PintAe',
         'app/Domains/Platform/Http/Controllers/AdminController.php' => 'Countries\SaudiArabia\Enums\RequeueOutcome, Countries\SaudiArabia\Filing\Requeuer',
         'app/Domains/Platform/Http/Controllers/AdminDashboardController.php' => 'Countries\SaudiArabia\Enums\RequeueOutcome, Countries\SaudiArabia\Filing\CircuitBreaker, Countries\SaudiArabia\Filing\Connectivity, Countries\SaudiArabia\Filing\Requeuer',
         'app/Domains/Platform/Http/Controllers/DashboardController.php' => 'Countries\SaudiArabia\Reports\SubmissionReport',

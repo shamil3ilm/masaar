@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Compliance\UnitedArabEmirates;
 
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaeSellerDetails;
 use App\Domains\Organization\Models\ComplianceProfile;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Rules\CompanyProfileRules;
-use App\Domains\Organization\Services\UaeSellerDetails;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Validator;
 use Tests\TestCase;
@@ -87,7 +87,7 @@ class UaeSellerDetailsTest extends TestCase
      */
     private function errors(array $details): array
     {
-        return Validator::make($details, CompanyProfileRules::rules('AE', complete: true), CompanyProfileRules::messages())->errors()->toArray();
+        return Validator::make($details, CompanyProfileRules::rules('AE', complete: true), CompanyProfileRules::messages('AE'))->errors()->toArray();
     }
 
     /**

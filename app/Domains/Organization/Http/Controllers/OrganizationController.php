@@ -3,20 +3,17 @@
 namespace App\Domains\Organization\Http\Controllers;
 
 use App\Domains\Organization\DTOs\AddressFields;
-use App\Domains\Organization\DTOs\OrganizationChangesData;
 use App\Domains\Organization\DTOs\OrganizationData;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Rules\CompanyProfileRules;
 use App\Domains\Organization\Services\Membership;
 use App\Domains\Organization\Services\Registrar;
 use App\Domains\Organization\Services\TenantResolver;
-use App\Domains\Organization\Services\UaeSellerDetails;
 use App\Domains\Organization\ValueObjects\OrganizationContext;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
 
 /**
  * Organization management API controller.
@@ -27,7 +24,6 @@ class OrganizationController extends Controller
         private readonly TenantResolver $tenant,
         private readonly Membership $membership,
         private readonly Registrar $registrar,
-        private readonly UaeSellerDetails $uaeSeller,
     ) {}
 
     /**
@@ -49,30 +45,35 @@ class OrganizationController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $country = (string) ($request->input('country') ?: 'SA');
+        $country = $request->input('country') ?: null;
+        $jurisdiction = CompanyProfileRules::jurisdiction(is_string($country) ? $country : null);
 
         // The seller's address and registration may come now or later; each is
-        // checked against ZATCA's shape when it is sent. Onboarding refuses
-        // until all of it is there.
+        // checked against its country's shape when it is sent. Onboarding
+        // refuses until all of it is there.
         $validated = $request->validate(
             [
-                ...CompanyProfileRules::rules($country, complete: false),
+                ...CompanyProfileRules::rules($jurisdiction->code(), complete: false),
                 ...CompanyProfileRules::country(),
                 'name' => ['required', 'string', 'max:255'],
             ],
-            CompanyProfileRules::messages(),
+            CompanyProfileRules::messages($jurisdiction->code()),
         );
+
+        $seller = $jurisdiction->sellerRules();
 
         $organization = $this->registrar->register(auth()->user(), new OrganizationData(
             name: $validated['name'],
             nameAr: $validated['name_ar'] ?? null,
-            country: $country,
-            vatNumber: $validated['vat_number'] ?? null,
+            country: $jurisdiction->code(),
+            vatNumber: $seller->vatNumber($validated),
             address: AddressFields::from($validated),
             // Reviewed before it can onboard or issue, as one signed up from
             // the portal is: otherwise this was the way around the review.
             status: Organization::STATUS_PENDING_REVIEW,
         ));
+
+        $seller->registered($organization, $validated);
 
         return ApiResponse::created([
             'organization' => $organization,
@@ -110,44 +111,23 @@ class OrganizationController extends Controller
 
         $organization = $this->membership->organization(auth()->user(), $id);
 
-        // The seller's details, in ZATCA's shapes, each checked when sent. The
-        // address had no way in at all, so no organization could complete
-        // the profile onboarding requires. The VAT number is fixed once the
-        // organization is onboarded.
+        // The seller's details, in its country's shapes, each checked when
+        // sent. The address had no way in at all, so no organization could
+        // complete the profile onboarding requires.
         $validated = $request->validate(
             [
-                ...CompanyProfileRules::rules((string) $organization->country, complete: false, existing: $organization),
+                ...CompanyProfileRules::rules($organization->country, complete: false, existing: $organization),
                 // Whether invoices' prices include VAT unless an invoice says
                 // otherwise.
                 'prices_include_vat' => ['sometimes', 'boolean'],
             ],
-            CompanyProfileRules::messages(),
+            CompanyProfileRules::messages($organization->country),
         );
 
-        $pricesIncludeVat = $request->has('prices_include_vat') ? $request->boolean('prices_include_vat') : null;
-
-        // A UAE seller's tax identity, endpoint and emirate, validated in
-        // PINT AE's shapes above, are saved where its documents read them -
-        // the UAE compliance profile - by the service
-        // PUT /api/compliance/ae/profile uses, as a Saudi seller's VAT number
-        // and address are saved here. They used to be validated and dropped.
-        // The service amends the name and address too, so only the pricing
-        // mode is left to amend.
-        if ($organization->country === UaeSellerDetails::JURISDICTION && Arr::hasAny($validated, UaeSellerDetails::SETTINGS)) {
-            $this->uaeSeller->save($organization, $validated);
-
-            if ($pricesIncludeVat !== null) {
-                $this->registrar->amend($organization, new OrganizationChangesData(pricesIncludeVat: $pricesIncludeVat));
-            }
-        } else {
-            $this->registrar->amend($organization, new OrganizationChangesData(
-                name: $validated['name'] ?? null,
-                nameAr: $validated['name_ar'] ?? null,
-                vatNumber: $validated['vat_number'] ?? null,
-                pricesIncludeVat: $pricesIncludeVat,
-                address: AddressFields::from($validated),
-            ));
-        }
+        // Saved where the country keeps each detail, as the company page and
+        // the country's own profile route save them; they used to be
+        // validated and dropped for a country that keeps them elsewhere.
+        CompanyProfileRules::jurisdiction($organization->country)->sellerRules()->save($organization, $validated);
 
         return ApiResponse::success([
             'organization' => $organization->fresh(),

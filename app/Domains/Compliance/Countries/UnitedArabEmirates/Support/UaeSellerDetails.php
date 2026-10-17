@@ -2,25 +2,27 @@
 
 declare(strict_types=1);
 
-namespace App\Domains\Organization\Services;
+namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Support;
 
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe;
 use App\Domains\Organization\DTOs\AddressFields;
 use App\Domains\Organization\DTOs\OrganizationChangesData;
 use App\Domains\Organization\Models\ComplianceProfile;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\Registrar;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Saves a UAE seller's details, validated by CompanyProfileRules for 'AE'.
+ * Saves a UAE seller's details, validated by the module's SellerRules.
  *
- * The name and address go on the organization, as a Saudi seller's do. The
+ * The name and address go on the organization, as every country's do. The
  * UAE tax identity goes in the settings of the organization's UAE compliance
  * profile, which is where PintMapper reads it; the profile is created active
  * the first time. Its TRN is also the organization's VAT number, so one TRN
  * cannot be claimed by two organizations.
  *
- * The API and the portal both save through this, so they cannot disagree.
+ * The API, the portal and sign-up all save through this, so they cannot
+ * disagree.
  */
 class UaeSellerDetails
 {
@@ -45,7 +47,7 @@ class UaeSellerDetails
     ) {}
 
     /**
-     * @param  array<string, mixed>  $details  validated by CompanyProfileRules::rules('AE', ...)
+     * @param  array<string, mixed>  $details  validated by SellerRules::rules()
      */
     public function save(Organization $organization, array $details): ComplianceProfile
     {
@@ -56,6 +58,7 @@ class UaeSellerDetails
                 name: self::text($details['name'] ?? null),
                 nameAr: self::text($details['name_ar'] ?? null),
                 vatNumber: $trn,
+                pricesIncludeVat: array_key_exists('prices_include_vat', $details) ? (bool) $details['prices_include_vat'] : null,
                 address: AddressFields::from($details),
             ));
 

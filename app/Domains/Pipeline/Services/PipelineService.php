@@ -27,7 +27,8 @@ use Illuminate\Validation\ValidationException;
  * sequences the steps and owns what happens when one of them fails. Each step
  * belongs to a collaborator:
  *
- *   InvoiceDrafter    payload -> draft invoice with priced lines
+ *   InvoiceDrafter    payload -> draft invoice with priced lines, mapped by
+ *                     the country's InvoiceRules
  *   ComplianceEngine  issues the draft in the organization's jurisdiction,
  *                     then files it with the authority (see
  *                     docs/architecture/JURISDICTION-ROUTING.md)
@@ -62,7 +63,9 @@ class PipelineService
 
         // A country this deployment does not issue in is refused before
         // anything is drafted, rather than leaving a draft nothing can issue.
-        $this->engine->jurisdictionFor($organization);
+        // PipelineSubmitRequest has refused it already; a caller that comes
+        // here directly is refused the same way.
+        $rules = $this->engine->jurisdictionFor($organization)->invoiceRules();
 
         // A platform admin can switch the pipeline off for this organization
         // alone (docs/architecture/ACCESS.md): refused, as the country is,
@@ -90,10 +93,18 @@ class PipelineService
         }
 
         try {
+            // Drafted as the country's rules map the request, with the ERP's
+            // reference and key beside it: a country's draft names only its
+            // invoice's own fields.
             $invoice = $this->drafter->draft(
-                [...$data, 'idempotency_key' => $idempotencyKey],
+                [
+                    ...$rules->draft($data),
+                    'erp_reference_id' => $data['erp_reference_id'] ?? null,
+                    'idempotency_key' => $idempotencyKey,
+                ],
                 $organizationId,
-                $this->resolveBranch($branchId, $organizationId)
+                $this->resolveBranch($branchId, $organizationId),
+                $rules->countryFields($data),
             );
         } catch (UniqueConstraintViolationException $e) {
             // Two retries raced past the check above; the unique index let one

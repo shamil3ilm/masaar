@@ -52,17 +52,11 @@ class CountryCheckTest extends TestCase
      * @var array<string, int>
      */
     private const DECLARED = [
-        'Domains/Auth/Http/Requests/SignupRequest.php' => 1,
         // The buyer's country, for how a standard invoice identifies the buyer.
         'Domains/Billing/Services/Billing.php' => 2,
-        'Domains/Invoice/Http/Controllers/PortalCustomerController.php' => 2,
         'Domains/Invoice/Http/Controllers/PortalInvoiceController.php' => 1,
-        'Domains/Invoice/Http/Controllers/PortalInvoiceDraftController.php' => 2,
         'Domains/Invoice/Http/Controllers/PortalReportController.php' => 1,
-        'Domains/Invoice/Http/Requests/CreateInvoiceRequest.php' => 1,
         'Domains/Organization/Http/Controllers/CustomerPortalController.php' => 1,
-        'Domains/Organization/Http/Controllers/PortalCompanyController.php' => 2,
-        'Domains/Organization/Rules/CompanyProfileRules.php' => 2,
         'Domains/Organization/Services/SetupChecklist.php' => 1,
         'Domains/Platform/Services/TenantDashboard.php' => 1,
     ];

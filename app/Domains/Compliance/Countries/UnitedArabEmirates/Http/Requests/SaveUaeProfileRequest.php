@@ -10,7 +10,8 @@ use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * A UAE seller's details, every one of them: CompanyProfileRules for 'AE',
- * as the portal checks them too.
+ * which is the module's SellerRules beside the names, as the portal checks
+ * them too.
  */
 class SaveUaeProfileRequest extends FormRequest
 {
@@ -26,6 +27,6 @@ class SaveUaeProfileRequest extends FormRequest
 
     public function messages(): array
     {
-        return CompanyProfileRules::messages();
+        return CompanyProfileRules::messages('AE');
     }
 }

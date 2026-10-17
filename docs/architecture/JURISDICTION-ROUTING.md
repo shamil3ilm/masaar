@@ -5,8 +5,8 @@ country is a module plugged into one engine, and shared code asks the engine
 rather than asking "which country is this?".
 
 The engine is being built in phases. This page describes what exists now
-(phase 1: the engine core and the issue and transmit routing) and marks what
-later phases add.
+(phase 1: the engine core and the issue and transmit routing; phase 2: the
+rules ports) and marks what later phases add.
 
 ## The engine
 
@@ -21,10 +21,12 @@ imports nothing from a country module. `CountryCheckTest` asserts both.
 | Transmission port | `Engine\Contracts\Transmission` | `issue()` issues a draft and, when asked, files or sends it. `resume()` handles an invoice that is already issued. `readyToFile()` says whether the organization can file now |
 | Notices port | `Engine\Contracts\IssueNotices` | What the portal tells a person after issuing: `filed()` and `notFiled()` |
 | Features port | `Engine\Contracts\FeatureSupport` (returned by `features()`) | Which of the platform's features exist in the country (`supportsFeature()`) and the kill switches its own steps obey (`killSwitchesFor()`), for [Access](ACCESS.md) |
+| Seller rules port | `Engine\Contracts\SellerRules` (returned by `sellerRules()`) | The seller's details, described in [The rules ports](#the-rules-ports) |
+| Invoice rules port | `Engine\Contracts\InvoiceRules` (returned by `invoiceRules()`) | Drafting an invoice, described in [The rules ports](#the-rules-ports) |
 | Options | `Engine\DTOs\IssueOptions` | `file` (no default: filing is irreversible) and `idempotencyKey` |
 | Outcome | `Engine\DTOs\IssueOutcome` | One neutral answer for every country: `issued`, `attemptedFiling`, `errors`, `warnings`, and the raw `submission` |
-| Registry | `Engine\Services\JurisdictionRegistry` | The modules registered with this deployment, and which of them are enabled |
-| Resolver | `Engine\Services\JurisdictionResolver` | `forOrganization()` and `forInvoice()`. `available()` answers the same question without throwing, for the portal's banner |
+| Registry | `Engine\Services\JurisdictionRegistry` | The modules registered with this deployment, and which of them are enabled. `orDefault()` is a country code's module, or the default for a blank or unregistered code |
+| Resolver | `Engine\Services\JurisdictionResolver` | `forOrganization()` and `forInvoice()`. `available()` answers the same question without throwing, for the portal's banner. `forRules()` is the module whose rules a form or request follows: the organization's, switched on or not, else the default |
 | API gate | `Engine\Http\Middleware\JurisdictionAvailable` (`jurisdiction.available`) | On each country's routes that start new work. Refuses a switched-off country with `422 JURISDICTION_UNAVAILABLE` |
 | Entry point | `Engine\Services\ComplianceEngine` | `issue()` and `resume()`, which resolve the country and delegate to its transmission. `jurisdictionFor()` gives a caller the module itself |
 | Refusal | `Engine\Exceptions\JurisdictionUnavailableException` | No module for the country, or a module this deployment has switched off |
@@ -42,8 +44,8 @@ imports nothing from a country module. `CountryCheckTest` asserts both.
   See [Switching a country on and off](#switching-a-country-on-and-off).
 
 The pipeline API answers a refusal with `422 JURISDICTION_UNAVAILABLE`
-before anything is drafted. The portal's issue button answers with a
-message, and the draft stays a draft.
+before any field is validated and before anything is drafted. The portal's
+issue button answers with a message, and the draft stays a draft.
 
 ### Switching a country on and off
 
@@ -125,6 +127,77 @@ For the length of each `ComplianceEngine` call, every log line carries
 values are set with `Context::scope()`, which restores the previous context
 when the call returns. A job queued during the call carries them too.
 
+## The rules ports
+
+Where the rules differ by country, shared code asks the organization's
+module, or the country chosen at sign-up, and never names a country.
+
+### Seller rules
+
+`SellerRules` is what the seller's details have to be and where they are
+kept. `Organization\Rules\CompanyProfileRules` is the shared part: the
+company's names, the country choice (`countries()`, `country()`), and the
+one-VAT-number-one-taxpayer check (`unclaimed()`), which each country puts on
+the number it registers under. `CompanyProfileRules::rules($country, ...)`
+and `messages($country)` add the country's own, and
+`CompanyProfileRules::jurisdiction($country)` is the module for a country
+code (the default for a blank or unregistered one).
+
+| Method | What it answers | Saudi Arabia | United Arab Emirates |
+|---|---|---|---|
+| `rules(bool $complete, ?Organization $existing): array` | The details beyond the names. `$complete` is the company page and sign-up; otherwise each field is checked when sent, as the API allows | VAT number (BR-KSA-40, fixed once onboarded), CR number, the national address (BR-KSA-37, BR-KSA-66) | Address with its emirate, TRN or TIN (`UaeTin`), Peppol endpoint, legal registration, payment account |
+| `messages(): array` | The messages for those rules | | |
+| `signupFields(): array` | The keys sign-up's section sends | VAT number, CR number, address | Everything but the endpoint and the payment account |
+| `signupView(): string` | Sign-up's section, a Blade view | `auth.partials.saudi-signup` | `auth.partials.uae-signup` |
+| `companyView(): string`, `companyData(Organization): array` | The company page's form, and what it shows beside the organization's columns | `portal.partials.company-saudi`, `onboarded` | `portal.partials.company-uae`, the stored `uae` settings |
+| `vatNumber(array $details): ?string` | The VAT number the organization registers under | `vat_number` | The TRN; none for a seller with only a TIN |
+| `save(Organization, array $details): void` | Saves the company page's or the API's details, `prices_include_vat` included | The organization's columns | With any UAE setting, `UaeSellerDetails` (the organization and its UAE compliance profile); otherwise the columns only |
+| `registered(Organization, array $details): void` | After sign-up or `POST /api/organizations` registered the organization, what else the country keeps | Nothing | The settings, on the UAE profile |
+| `complete(Organization): bool` | Whether the documents have every seller detail they need, for the setup checklist | `hasCompleteZatcaProfile()` | `UaeSellerDetails::complete()` |
+
+Asked by `SignupRequest`, `SelfSignup`, `SignupController` (one section per
+country offered, the default first), `PortalCompanyController`,
+`OrganizationController::store()` and `update()`, the UAE's
+`SaveUaeProfileRequest`, and `SetupChecklist`.
+
+### Invoice rules
+
+`InvoiceRules` is what an invoice draft has to be, and the columns only the
+country's invoices carry. `Invoice\Http\Requests\CountryInvoiceRequest` asks
+one country's rules for its `rules()`, `messages()`, `withValidator()` and
+`prepareForValidation()`, and maps the validated request with `draft()` and
+`countryFields()`. Its subclasses say only which country:
+`CreateInvoiceRequest` (the API), `PipelineSubmitRequest` and
+`CreatePortalInvoiceRequest` take the organization's
+(`JurisdictionResolver::forRules()`, or `forOrganization()` for the
+pipeline); the UAE's `CreateUaeInvoiceRequest` takes its own module's.
+
+| Method | What it answers | Saudi Arabia | United Arab Emirates |
+|---|---|---|---|
+| `defaults(Request): array` | What is filled in before validation | Document type, `SAR`, payment means `10`; each line's unit, category and rate from its exemption code | Document type and category, `AED`, no transaction flags, buyer country `AE` |
+| `rules(Request): array`, `messages(): array` | The request's rules and messages | ZATCA's, as `CreateInvoiceRequest` had them | PINT AE's, as `CreateUaeInvoiceRequest` had them |
+| `after(Validator, Request): void` | The checks across fields | An exemption code for Z, E and O lines; no discount past the lines (BR-KSA-F-04) | Once every field is well-formed: each line's category in its document and scenario, the 5% rate, no discount past the lines |
+| `draft(array $validated): array` | The draft as `InvoiceDrafter` takes it | The validated request as it is | Net prices, the item name as the description, only standard lines taxed |
+| `countryFields(array $validated): array` | The columns only this country's invoices carry | None | `due_date` and `jurisdiction_data` |
+| `standardRate()`, `taxCategories()`, `exemptionCodes()`, `documentTypes()`, `invoiceTypes()` | The country's defaults and code lists | `15`; S, Z, E, O; `VATEX-SA-*`; every kind but proforma; standard and simplified | `5`; PINT AE's; its exemption reasons; invoice and credit note; standard |
+| `portalView()`, `portalRoute()` | The portal's new-invoice form and the route it posts to | `portal.invoices.create`, `portal.invoices.store` | `portal.invoices.create-uae`, `portal.invoices.uae.store` |
+| `buyerRules(Request)`, `buyerMessages()`, `buyerView()` | A customer's buyer details beyond the shared ones, replacing a shared rule in place | A Saudi buyer's postal code is 5 digits (BR-KSA-67); no extra fields | Peppol endpoint and emirate, in `portal.customers.partials.uae-buyer` |
+
+Asked by the API's `InvoiceController`, the pipeline (`PipelineSubmitRequest`
+validates, `PipelineService` drafts with `draft()` and `countryFields()`),
+the portal's `PortalInvoiceDraftController` (the form) and
+`CreatePortalInvoiceRequest` (which sends an organization whose country's
+form posts elsewhere back to that form before checking anything), and
+`PortalCustomerController`.
+
+The pipeline resolves the organization's country first, in
+`PipelineSubmitRequest`: a country this deployment does not issue in is
+refused with `422 JURISDICTION_UNAVAILABLE` before any field is checked.
+ERP aliases are kept where the country's rules do not name the field
+themselves: `invoice_type` becomes `type`, and `due_date` becomes the supply
+date only for a country whose invoices have no due date of their own (Saudi
+Arabia); a UAE invoice keeps its due date.
+
 ## Where a country lives
 
 ```
@@ -151,16 +224,16 @@ issuing step are the same in every module.
 
 | Entry | Holds | Saudi Arabia | United Arab Emirates |
 |---|---|---|---|
-| `Module.php` | `Module`: the engine's `Jurisdiction`, with its `Transmission` and `IssueNotices` ports | Identity, switch, and issue and resume through `InvoiceIssuer` | The same, through its `InvoiceIssuer` |
+| `Module.php` | `Module`: the engine's `Jurisdiction`, with its `Transmission`, `IssueNotices` and `FeatureSupport` ports; the rules ports are classes in `Rules/` | Identity, switch, and issue and resume through `InvoiceIssuer` | The same, through its `InvoiceIssuer` |
 | `ModuleServiceProvider.php` | Registers `Module` with `JurisdictionRegistry`. Listed in `bootstrap/providers.php` | `SA`, the default | `AE` |
 | `Issuing/` | `IssuingStep`, the country's `IssuingJurisdiction`; the issuer that calls `IssuingLifecycle`; what the step records at issue | `IssuingStep`, `InvoiceIssuer`, `ChainRecorder` | `IssuingStep`, `InvoiceIssuer` |
 | `Document/` | The document the authority or network receives, built from an invoice | `DocumentBuilder`, `XmlBuilder`, the four `Ubl*Builder` parts, `Ubl` | `PintMapper`, `PintUblBuilder`, `PeppolPreparer` |
 | `Filing/` | Transmission: the client, sending, tracking, retries, offline handling, the verdict | `FatooraClient`, `Submitter`, `SubmissionTracker`, `SubmissionLedger`, `SubmissionGuard`, `ClearanceState`, `InvoiceVerdict`, `OfflineFallback`, `OfflineQueue`, `Requeuer`, `CircuitBreaker`, `Connectivity`, `DuplicateDetector`, `TimestampValidator` | None: the network sends |
-| `Rules/` | The country's validation, tax rules and constants | `FatooraConfig`, `InvoiceValidator`, `VatPeriodTracker` | `PintAe`, `MandatoryFields`, `IssueDeadline` |
+| `Rules/` | The country's validation, tax rules and constants, and the rules ports | `SellerRules`, `InvoiceRules`, `FatooraConfig`, `InvoiceValidator`, `VatPeriodTracker` | `SellerRules`, `InvoiceRules`, `PintAe`, `MandatoryFields`, `IssueDeadline`, `UaeTin` |
 | `Reports/` | What dashboards and reports read | `ChainReport`, `DeadlineReport`, `SubmissionReport`, `QueueBacklog` | `UaeDocuments`, `UaeVatSummary` |
 | `Signing/` | Only where the authority requires a cryptographic seal: keys, certificates, signature, hash, QR | `CredentialStore`, `SigningCredentials`, `CertificateService`, `CertificateChain`, `CertificatePem`, `EcdsaSigner`, `XadesSigner`, `XadesVerifier`, `XadesDigest`, `SignedPropertiesBuilder`, `InvoiceHasher`, `QrCodeGenerator`, `QrCodeInjector`, `TlvEncoder` | None |
 | `Onboarding/` | Only where the authority registers each taxpayer or device | `CsidOnboarding`, `OrganizationOnboarding`, `ComplianceSampleSet`, `CsrBuilder`, `Der` | None |
-| `Support/` | Helpers the module's services share | `FatooraTime`, `TextNormalizer` | `UaeDrafts`, `UaePortal` |
+| `Support/` | Helpers the module's services share | `FatooraTime`, `TextNormalizer` | `UaeDrafts`, `UaePortal`, `UaeSellerDetails` |
 | `Http/`, `Console/`, `Jobs/`, `Events/`, `Listeners/`, `Mail/`, `Models/`, `Enums/`, `DTOs/`, `Contracts/`, `Exceptions/` | Laravel's kinds, as in every domain | | `Http/` (the `/api/compliance/ae` and portal controllers, `UaeInvoicing`, the requests), `Enums/`, `DTOs/` (the PINT document), `Contracts/` (`JurisdictionProfile`) |
 
 The network has the same kinds where it needs them, and capability folders
@@ -203,7 +276,7 @@ of its own:
 
 | Caller | Call |
 |---|---|
-| `Pipeline\Services\PipelineService` | `issue()` for a draft. `resume()` for a retry that finds the invoice issued. `file` is the request's `auto_submit` |
+| `Pipeline\Services\PipelineService` | `jurisdictionFor()` first, then the module's `InvoiceRules` to draft. `issue()` for a draft. `resume()` for a retry that finds the invoice issued. `file` is the request's `auto_submit` |
 | `Invoice\Http\Controllers\PortalInvoiceFilingController` | `issue()`, with `file` from the module's `readyToFile()` and the flash text from its notices |
 | `Billing\Services\Billing` | `issue()` with `file: true`, for the billing organization's own invoice |
 
@@ -258,7 +331,9 @@ later by callbacks.
 ## What every country shares
 
 - **Drafting.** `InvoiceDrafter` makes the draft for both. Only the request
-  rules and `jurisdiction_data` are country-specific.
+  rules and the country's columns (`jurisdiction_data`, a UAE invoice's due
+  date) are country-specific, and both come from the module's
+  `InvoiceRules`.
 - **Issuing.** `IssuingLifecycle`, described above, reached through the
   engine.
 - **Numbering.** `InvoiceNumbering` allocates from the organization's
@@ -280,15 +355,17 @@ later by callbacks.
 comparison (`country === 'AE'` and the like) left in `app/` outside the
 country modules and the engine. The list must match exactly, so it can only
 shrink: a new check fails the build, and a removed one fails until it is
-delisted. The issuing callers above have none left.
+delisted. The issuing callers above have none left, and neither do sign-up,
+the company page, the organization API, invoice drafting or customers since
+the rules ports. What is left (the billing organization's buyer, the
+dashboard, the invoice pages, reports and the setup checklist) belongs to the
+phases below.
 
 ## Later phases
 
 These are not built yet. Each adds a port to `Jurisdiction` and moves the
 matching country checks out of shared code:
 
-- **Rules.** Drafting and request validation (`CreateInvoiceRequest`,
-  `CompanyProfileRules`, signup and customer fields) ask the module.
 - **Presentation.** Forms, invoice pages, the dashboard and the setup
   checklist. `IssueNotices` becomes part of this port.
 - **Reports.** VAT summaries and the portal's reports.

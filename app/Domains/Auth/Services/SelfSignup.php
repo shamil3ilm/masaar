@@ -9,9 +9,8 @@ use App\Domains\Auth\Models\User;
 use App\Domains\Organization\DTOs\AddressFields;
 use App\Domains\Organization\DTOs\OrganizationData;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Rules\CompanyProfileRules;
 use App\Domains\Organization\Services\Registrar;
-use App\Domains\Organization\Services\UaeSellerDetails;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -26,17 +25,16 @@ use Throwable;
  * cannot onboard with ZATCA or issue. The account waits for its owner to
  * prove the email address is theirs.
  *
- * The company is registered in the country chosen, Saudi Arabia unless the
- * form offered another. A UAE company's tax identity and legal registration
- * are saved where the company page and the API save them, on its UAE
- * compliance profile.
+ * The company is registered in the country chosen, the default country
+ * unless the form offered another. Whatever that country keeps beyond the
+ * organization's own columns is saved by its SellerRules, where the company
+ * page and the API save it.
  */
 class SelfSignup
 {
     public function __construct(
         private readonly AccountRegistrar $accounts,
         private readonly Registrar $organizations,
-        private readonly UaeSellerDetails $uaeSeller,
     ) {}
 
     /**
@@ -52,23 +50,21 @@ class SelfSignup
                 'terms_version' => (string) config('signup.terms_version'),
             ])->save();
 
-            $country = (string) ($input['country'] ?? 'SA');
-            $uae = $country === UaeSellerDetails::JURISDICTION;
+            $jurisdiction = CompanyProfileRules::jurisdiction($input['country'] ?? null);
+            $seller = $jurisdiction->sellerRules();
 
             $organization = $this->organizations->register($user, new OrganizationData(
                 name: (string) $input['company_name'],
                 nameAr: $input['company_name_ar'] ?? null,
-                country: $country,
-                // A UAE seller's TRN is its VAT number; one with only a TIN has none.
-                vatNumber: $uae ? ($input['trn'] ?? null) : (string) $input['vat_number'],
+                country: $jurisdiction->code(),
+                vatNumber: $seller->vatNumber($input),
                 address: AddressFields::from($input),
                 status: Organization::STATUS_PENDING_REVIEW,
             ));
 
-            // Only the UAE settings: the form's 'name' is the person's, not the company's.
-            if ($uae) {
-                $this->uaeSeller->save($organization, Arr::only($input, UaeSellerDetails::SETTINGS));
-            }
+            // The form's 'name' is the person's, not the company's: the
+            // country keeps only what it stores beyond the organization.
+            $seller->registered($organization, $input);
 
             return $user;
         });

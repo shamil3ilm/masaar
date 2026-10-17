@@ -34,7 +34,19 @@ what goes in each.
      `Engine\DTOs\IssueOutcome`;
    - `notices()`, the portal's wording after issuing;
    - `features()`, which of the platform's features exist in the country
-     and the kill switches its own steps obey ([ACCESS.md](ACCESS.md)).
+     and the kill switches its own steps obey ([ACCESS.md](ACCESS.md));
+   - `sellerRules()`, a `Rules/SellerRules` implementing
+     `Engine\Contracts\SellerRules`: the seller's details beyond its names,
+     sign-up's fields and section, the company page's form, the VAT number it
+     registers under, and where the details are saved;
+   - `invoiceRules()`, a `Rules/InvoiceRules` implementing
+     `Engine\Contracts\InvoiceRules`: the draft's defaults, rules, messages
+     and checks across fields, its mapping to `InvoiceDrafter`'s draft and
+     the country's own columns, the country's rate and code lists, the
+     portal's new-invoice form, and a customer's buyer fields.
+
+   See [The rules ports](JURISDICTION-ROUTING.md#the-rules-ports) for what
+   each method answers in the two countries there are.
 2. **Registration.** In `ModuleServiceProvider.php`, register it with the
    registry, as `Countries\SaudiArabia\ModuleServiceProvider` and
    `Countries\UnitedArabEmirates\ModuleServiceProvider` do:
@@ -48,13 +60,18 @@ what goes in each.
    A new provider goes in `bootstrap/providers.php`, imported with an alias
    because every module's provider has the same name.
 3. **Nothing else in shared code.** The pipeline, the portal's issue action
-   and billing reach the new country through `ComplianceEngine`. Do not add
-   a `country === '<CC>'` branch anywhere. `CountryCheckTest` fails the
-   build on one.
+   and billing reach the new country through `ComplianceEngine`; sign-up,
+   the company page, the organization API, the API's and the pipeline's
+   invoice requests, the portal's invoice form and customers reach it
+   through its rules ports. Do not add a `country === '<CC>'` branch
+   anywhere. `CountryCheckTest` fails the build on one.
+4. **Views.** The Blade views the rules ports name (`signupView()`,
+   `companyView()`, `portalView()`, `buyerView()`) live under
+   `resources/views`, named for the country, as the Saudi and UAE ones are.
 
-Later phases add more ports to `Jurisdiction` (rules, presentation and
-reports). Until then, the steps below still name the places outside the
-module that a country has to touch.
+Later phases add more ports to `Jurisdiction` (presentation and reports).
+Until then, the steps below still name the places outside the module that a
+country has to touch.
 
 ## First, decide which of two models the country follows
 
@@ -140,9 +157,16 @@ Steps:
 
 ## For every country
 
-- **Organization.** Add the country's seller details and their validation to
-  `CompanyProfileRules`, stored on that country's `ComplianceProfile` (see
-  [ORGANIZATION-MODEL.md](ORGANIZATION-MODEL.md)).
+- **Organization.** Put the country's seller details and their validation in
+  the module's `Rules/SellerRules`, stored on the organization or on that
+  country's `ComplianceProfile` (see
+  [ORGANIZATION-MODEL.md](ORGANIZATION-MODEL.md)). `CompanyProfileRules`
+  keeps the names and the country choice, and needs nothing added.
+- **Drafting.** Put the country's invoice request rules in the module's
+  `Rules/InvoiceRules`. `POST /api/invoices` and
+  `POST /api/v1/pipeline/submit` then take the country's invoices with no
+  change; document the pipeline's fields for the country in its
+  `INTEGRATION-GUIDE.md`.
 - **Clock.** Add the country's time zone to `App\Support\CountryClock`, as
   well as to the module's `timezone()`. Without it, the date in an invoice
   number and the period its counter restarts at are read on Riyadh's clock.
@@ -156,7 +180,8 @@ Steps:
   `tests/Feature/Compliance/<Country>/` (unit tests in
   `tests/Unit/Domains/Compliance/Countries/<Country>/`), as Saudi Arabia's
   are, covering the following:
-  - rules refused at draft time and at send time;
+  - rules refused at draft time and at send time, on the country's API and
+    on the pipeline;
   - one document per invoice;
   - retries that never file twice;
   - another tenant's records answering `404`;

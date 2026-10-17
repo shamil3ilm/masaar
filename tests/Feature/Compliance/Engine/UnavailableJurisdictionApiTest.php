@@ -12,7 +12,8 @@ use Tests\TestCase;
 
 /**
  * An ERP filing for a country this deployment has switched off is told so,
- * in the API's error envelope, before anything is drafted.
+ * in the API's error envelope, before any field is validated and before
+ * anything is drafted.
  */
 class UnavailableJurisdictionApiTest extends TestCase
 {
@@ -31,21 +32,13 @@ class UnavailableJurisdictionApiTest extends TestCase
         ]);
 
         $this->withHeaders(['X-API-Key' => $issued['api_key'], 'X-API-Secret' => $issued['api_secret']])
-            ->postJson('/api/v1/pipeline/submit', [
-                'org_id' => $organization->id,
-                'type' => 'simplified',
-                'document_type' => 'invoice',
-                'issue_date' => now()->toDateString(),
-                'currency' => 'AED',
-                // The pipeline still validates as Saudi (exchange rate to SAR);
-                // per-country request rules arrive with the engine's rules port.
-                'exchange_rate' => 1.02,
-                'buyer_name' => 'Buyer',
-                'lines' => [['description' => 'Item', 'quantity' => 1, 'unit_price' => 100, 'tax_rate' => 5]],
-            ])
+            // Nothing but the organization: the country is refused before any
+            // field is checked, since no field could make the invoice issuable.
+            ->postJson('/api/v1/pipeline/submit', ['org_id' => $organization->id])
             ->assertStatus(422)
             ->assertJsonPath('success', false)
-            ->assertJsonPath('error.code', 'JURISDICTION_UNAVAILABLE');
+            ->assertJsonPath('error.code', 'JURISDICTION_UNAVAILABLE')
+            ->assertJsonMissingPath('error.details.lines');
 
         $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
     }

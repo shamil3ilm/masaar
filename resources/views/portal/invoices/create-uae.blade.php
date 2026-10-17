@@ -9,8 +9,8 @@
     invoice or a credit note and nothing else (an increase is a new invoice),
     never simplified (every e-invoice names its buyer), a tax, commercial or
     self-billed category, and the eight-flag transaction type. Validated by
-    CreateUaeInvoiceRequest's rules (PortalUaeInvoiceRequest) and drafted by
-    UaeDrafts, as the API's invoices are.
+    the UAE module's InvoiceRules (PortalUaeInvoiceRequest) and drafted by
+    UaeDrafts, as the API's and the pipeline's invoices are.
 
     The line rows, the pickers and the add-a-line script are the Saudi form's.
 --}}

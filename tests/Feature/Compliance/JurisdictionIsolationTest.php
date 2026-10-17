@@ -15,6 +15,7 @@ use App\Domains\Invoice\Enums\TaxCategory;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\IssuanceNotifier;
+use App\Domains\Licensing\Models\License;
 use App\Domains\Organization\Models\ComplianceProfile;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Rules\CompanyProfileRules;
@@ -76,6 +77,26 @@ class JurisdictionIsolationTest extends TestCase
 
         $this->api($saudi)->getJson('/api/compliance/ae/documents')->assertForbidden();
         $this->api($saudi)->postJson('/api/compliance/ae/invoices', $this->apiPayload())->assertForbidden();
+    }
+
+    /** The pipeline checks it by the Saudi rules while the UAE is on (UaePipelineTest). */
+    public function test_saudi_pipeline_keeps_saudi_rules(): void
+    {
+        config(['peppol.countries.AE.enabled' => true]);
+        $saudi = Organization::create(['name' => 'Acme', 'country' => 'SA']);
+
+        $this->partner($saudi)->postJson('/api/v1/pipeline/submit', [
+            'org_id' => $saudi->id,
+            'type' => 'simplified',
+            'issue_date' => now()->toDateString(),
+            'currency' => 'USD',
+            'lines' => [['description' => 'Widget', 'quantity' => 1, 'unit_price' => 100]],
+        ])
+            ->assertUnprocessable()
+            ->assertJsonPath('error.code', 'VALIDATION_ERROR')
+            ->assertJsonPath('error.details.exchange_rate.0', 'Exchange rate to SAR is required for foreign-currency invoices (BR-53).')
+            ->assertJsonMissingPath('error.details.buyer_endpoint')
+            ->assertJsonMissingPath('error.details.buyer_subdivision');
     }
 
     /** No e-invoice, no deadline of the UAE's, and no new warning (UaeIssueDeadlineTest). */
@@ -169,7 +190,7 @@ class JurisdictionIsolationTest extends TestCase
             'name' => 'Acme', 'vat_number' => '300000000000003', 'street' => 'King Fahd Road', 'building_number' => '1234',
             'district' => 'Al Olaya', 'city' => 'Riyadh', 'postal_code' => '12345',
         ];
-        $errors = fn (array $data): array => Validator::make($data, CompanyProfileRules::rules('SA', complete: true), CompanyProfileRules::messages())->errors()->toArray();
+        $errors = fn (array $data): array => Validator::make($data, CompanyProfileRules::rules('SA', complete: true), CompanyProfileRules::messages('SA'))->errors()->toArray();
 
         $this->assertSame([], $errors($saudi));
         $refused = $errors(array_merge($saudi, ['building_number' => '12', 'postal_code' => '1234', 'vat_number' => '100123456700003']));
@@ -361,6 +382,30 @@ class JurisdictionIsolationTest extends TestCase
         $this->assertNull(Invoice::query()->findOrFail($invoice->id)->icv);
     }
 
+    /** The pipeline no longer checks it by the Saudi rules (UaePipelineTest). */
+    public function test_uae_pipeline_skips_saudi_rules(): void
+    {
+        config(['peppol.countries.AE.enabled' => true]);
+        $gulf = $this->uaeOrganization();
+
+        $details = $this->partner($gulf)->postJson('/api/v1/pipeline/submit', [
+            'org_id' => $gulf->id,
+            'type' => 'standard',
+            'issue_date' => now()->toDateString(),
+            'currency' => 'USD',
+            'buyer_name' => 'Noor Electronics LLC',
+            'buyer_address' => ['street' => 'Khalifa Street', 'city' => 'Abu Dhabi'],
+            'lines' => [['item_name' => 'Consulting', 'quantity' => 1, 'unit_price' => 100, 'tax_category' => 'S']],
+        ])
+            ->assertUnprocessable()
+            ->assertJsonPath('error.details.exchange_rate.0', 'An invoice in another currency needs its exchange rate to AED.')
+            ->json('error.details');
+
+        $this->assertArrayNotHasKey('buyer_address.building_number', $details);
+        $this->assertArrayNotHasKey('lines.0.description', $details);
+        $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+    }
+
     /** The Saudi form's route drafts nothing for it (UaeInvoiceFormTest). */
     public function test_saudi_route_refuses_uae_organization(): void
     {
@@ -388,6 +433,19 @@ class JurisdictionIsolationTest extends TestCase
         $user->organizations()->attach($organization->id, ['role' => $role, 'status' => 'active']);
 
         return $user;
+    }
+
+    /** An ERP with a licence for the organization, on the partner API. */
+    private function partner(Organization $organization): static
+    {
+        $issued = License::createWithCredentials([
+            'org_id' => $organization->id,
+            'organization_name' => $organization->name,
+            'contact_email' => 'erp@isolation.test',
+            'tier' => 'professional',
+        ]);
+
+        return $this->withHeaders(['X-API-Key' => $issued['api_key'], 'X-API-Secret' => $issued['api_secret']]);
     }
 
     private function api(Organization $organization, string $role = 'admin'): static

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Http\Controllers;
 
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe;
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaePortal;
+use App\Domains\Compliance\Engine\Contracts\Jurisdiction;
+use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Services\Catalogue;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
@@ -22,9 +22,10 @@ use Illuminate\View\View;
  *
  * Anyone who writes invoices keeps them; a viewer reads (org.writer).
  *
- * A UAE organization's customers also keep the two buyer details its
- * invoice form fills in: the Peppol endpoint the buyer's service provider
- * issued, and the emirate. A Saudi organization's are as they were.
+ * The buyer details every country keeps are checked here; what else a
+ * customer keeps, and how its postal code is checked, are the
+ * organization's country's (InvoiceRules::buyerRules(), buyerView()), so a
+ * customer holds what that country's invoice form fills in.
  */
 class PortalCustomerController extends Controller
 {
@@ -35,6 +36,7 @@ class PortalCustomerController extends Controller
     public function __construct(
         private readonly Catalogue $catalogue,
         private readonly TenantResolver $tenant,
+        private readonly JurisdictionResolver $jurisdictions,
     ) {}
 
     public function index(Request $request): View
@@ -51,9 +53,11 @@ class PortalCustomerController extends Controller
 
     public function create(): View
     {
-        $uae = $this->uae();
-
-        return view('portal.customers.form', ['customer' => new Customer(['country_code' => $uae ? 'AE' : 'SA']), 'uae' => $uae]);
+        // A new customer is in the organization's own country until it says otherwise.
+        return view('portal.customers.form', [
+            'customer' => new Customer(['country_code' => $this->jurisdiction()->code()]),
+            'buyerFields' => $this->jurisdiction()->invoiceRules()->buyerView(),
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -67,7 +71,10 @@ class PortalCustomerController extends Controller
 
     public function edit(Request $request, string $customerId): View
     {
-        return view('portal.customers.form', ['customer' => $this->customer($request, $customerId), 'uae' => $this->uae()]);
+        return view('portal.customers.form', [
+            'customer' => $this->customer($request, $customerId),
+            'buyerFields' => $this->jurisdiction()->invoiceRules()->buyerView(),
+        ]);
     }
 
     public function update(Request $request, string $customerId): RedirectResponse
@@ -96,9 +103,11 @@ class PortalCustomerController extends Controller
      */
     private function validated(Request $request, string $organizationId, ?Customer $customer = null): array
     {
-        $saudi = strtoupper((string) $request->input('country_code', 'SA')) === 'SA';
+        $rules = $this->jurisdiction()->invoiceRules();
 
-        return $request->validate([
+        // The country's buyer rules replace a shared one in its place, and
+        // add their own after.
+        return $request->validate([...[
             'name' => ['required', 'string', 'max:255'],
             'name_ar' => ['nullable', 'string', 'max:255'],
             'vat_number' => [
@@ -109,39 +118,20 @@ class PortalCustomerController extends Controller
             'building_number' => ['nullable', 'string', 'max:20'],
             'district' => ['nullable', 'string', 'max:100'],
             'city' => ['nullable', 'string', 'max:100'],
-            // BR-KSA-67, as the invoice checks it.
-            'postal_code' => $saudi ? ['nullable', 'digits:5'] : ['nullable', 'string', 'max:10'],
+            'postal_code' => ['nullable', 'string', 'max:10'],
             'country_code' => ['required', 'string', 'size:2', 'regex:/^[A-Z]{2}$/'],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:30'],
-            ...($this->uae() ? self::uaeRules($request) : []),
-        ], [
+        ], ...$rules->buyerRules($request)], [
             'vat_number.unique' => __('Another customer already has this VAT number.'),
-            'peppol_endpoint.regex' => __('The Peppol endpoint is :scheme: followed by 10 digits, as the service provider issued it.', ['scheme' => PintAe::SCHEME]),
-            'subdivision.in' => __('The emirate is one of :codes.', ['codes' => implode(', ', PintAe::EMIRATES)]),
+            ...$rules->buyerMessages(),
         ]);
     }
 
-    /**
-     * The endpoint as the service provider issued it - 0235: and ten digits,
-     * which the three reserved addresses also are - and, for a buyer in the
-     * UAE, the emirate code the invoice form takes.
-     *
-     * @return array<string, list<mixed>>
-     */
-    private static function uaeRules(Request $request): array
+    /** The organization's country's module, switched on or not. */
+    private function jurisdiction(): Jurisdiction
     {
-        $inUae = strtoupper((string) $request->input('country_code', 'AE')) === 'AE';
-
-        return [
-            'peppol_endpoint' => ['nullable', 'string', 'regex:'.Customer::UAE_ENDPOINT],
-            'subdivision' => ['nullable', 'string', 'max:50', ...($inUae ? [Rule::in(PintAe::EMIRATES)] : [])],
-        ];
-    }
-
-    private function uae(): bool
-    {
-        return UaePortal::offers($this->tenant->getOrganization());
+        return $this->jurisdictions->forRules($this->tenant->getOrganization());
     }
 
     private function customer(Request $request, string $customerId): Customer

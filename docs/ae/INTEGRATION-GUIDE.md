@@ -260,14 +260,59 @@ sent again.
 
 ### Through the pipeline
 
-`POST /api/v1/pipeline/submit` routes a UAE organization's invoice to UAE
-issuing and answers in the pipeline's usual shape. `zatca_response.submission_id`
-is the document's id and `zatca_response.state` its status. The pipeline's
-payload has no UAE fields yet (`buyer_endpoint`, `buyer_subdivision`,
-`transaction_flags` and the rest), so an invoice it drafts is refused for the
-missing fields. Draft UAE invoices with `POST /api/compliance/ae/invoices`.
-When the pipeline does issue one, for example retrying a draft under the same
-`Idempotency-Key`:
+`POST /api/v1/pipeline/submit` drafts, issues and sends a UAE organization's
+invoice in one call, authenticated with the licence's `X-API-Key` and
+`X-API-Secret`. The invoice is checked by the same rules as
+`POST /api/compliance/ae/invoices`, so its body is that endpoint's body (see
+[2. Draft an invoice](#2-draft-an-invoice) for every field) with the
+pipeline's own fields beside it:
+
+| Field | Required | Meaning |
+|---|---|---|
+| `org_id` | Yes | The organization, which must be the licence's |
+| `auto_submit` | No, default `true` | Queue the document for the service provider once issued |
+| `erp_reference_id` | No | Your ERP's reference. Sent without an `invoice_number` or `Idempotency-Key`, a second call with the same reference answers with the first invoice |
+| `branch_id` | No | A branch of the organization |
+| `invoice_type` | No | Taken as `type`, which is only ever `standard` |
+| `due_date` | Unless a credit note or a deemed supply | The payment due date (IBR-127-AE). It stays the due date; it is not taken as the supply date |
+
+The UAE fields are the endpoint's: `document_category`, `transaction_flags`,
+`buyer_endpoint`, `buyer_subdivision`, `buyer_legal_registration`,
+`credit_reason`, `beneficiary_id`, `principal_id`, `delivery_address`, and on
+each line `item_name`, `tax_category`, `exempt_code`, `goods_type`, `item_id`
+and `hs_code`. Left out, `document_type` is `invoice`, `document_category`
+`tax`, `currency` `AED`, `transaction_flags` `00000000` and the buyer's
+`country_code` `AE`.
+
+```json
+{
+  "org_id": "9d3a...",
+  "erp_reference_id": "ERP-AE-1",
+  "issue_date": "2026-10-10",
+  "due_date": "2026-11-09",
+  "payment_means_code": "30",
+  "buyer_name": "Noor Electronics LLC",
+  "buyer_vat_number": "100765432100003",
+  "buyer_address": { "street": "Khalifa Street", "city": "Abu Dhabi" },
+  "buyer_endpoint": "0235:1007654321",
+  "buyer_subdivision": "AUH",
+  "lines": [
+    { "item_name": "Consulting", "quantity": 2, "unit_code": "DAY", "unit_price": 500, "tax_category": "S", "tax_rate": 5 }
+  ]
+}
+```
+
+The answer is the pipeline's usual shape. `zatca_response.submission_id` is
+the document's id and `zatca_response.state` its status. A field that fails
+the rules answers `422 VALIDATION_ERROR` with `error.details` mapping each
+field to its messages, as the endpoint does, and nothing is drafted. While
+the UAE is switched off on this deployment, every call answers
+`422 JURISDICTION_UNAVAILABLE` before any field is checked. A document that
+would be refused once drafted (a seller detail missing, say) answers `207`
+with the invoice still a draft and the problems in `errors`; retry under the
+same `Idempotency-Key` once it is fixed.
+
+Once the invoice is issued:
 
 - `auto_submit` `true`, or left out: the invoice is issued and its document
   queued for the service provider.

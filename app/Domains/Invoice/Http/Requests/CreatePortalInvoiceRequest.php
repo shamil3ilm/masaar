@@ -5,16 +5,22 @@ declare(strict_types=1);
 namespace App\Domains\Invoice\Http\Requests;
 
 use App\Domains\Invoice\Support\AdjustmentReason;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Validation\Rule;
 
 /**
  * The same invoice rules, reached from a form instead of JSON.
  *
- * rules(), messages() and withValidator() are inherited, so a ZATCA rule
- * added once reaches the API, the ERP pipeline and this form together - which
- * is the whole reason PipelineSubmitRequest extends the same class rather
- * than restating it. The one rule added here narrows, never replaces: the
- * form offers ZATCA's listed reasons for a note, so it accepts only those.
+ * rules(), messages() and withValidator() are inherited - the organization's
+ * country's InvoiceRules - so a rule added once reaches the API, the ERP
+ * pipeline and this form together, which is the whole reason
+ * PipelineSubmitRequest extends the same class rather than restating it.
+ * The one rule added here narrows, never replaces: the form offers ZATCA's
+ * listed reasons for a note, so it accepts only those.
+ *
+ * Only for a country whose portal form posts here (InvoiceRules::
+ * portalRoute()). Any other is sent back to its own form before anything is
+ * checked.
  *
  * What a form sends that JSON does not:
  *
@@ -71,6 +77,14 @@ class CreatePortalInvoiceRequest extends CreateInvoiceRequest
 
     protected function prepareForValidation(): void
     {
+        // A country whose portal form posts somewhere else writes its
+        // invoices there: checked by these rules, it would be refused for
+        // fields the form never asked for, or drafted without its own.
+        if ($this->invoiceRules()->portalRoute() !== $this->route()?->getName()) {
+            throw new HttpResponseException(redirect()->route('portal.invoices.create')
+                ->with('error', __('Write this invoice on the form below: it asks for what your country\'s invoices need.')));
+        }
+
         $this->merge([
             'lines' => $this->usedLines(),
             'buyer_address' => $this->addressOrNull(),

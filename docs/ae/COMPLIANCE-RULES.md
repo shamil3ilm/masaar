@@ -24,12 +24,13 @@ schematron rules. Each one has a page under the specification's `rule/` path.
 The rules are checked in four places, and a document must get past all of
 them.
 
-1. **When an invoice is drafted** (`CreateUaeInvoiceRequest`). The request is
-   checked for shapes and for combinations the UAE does not allow. A failure
-   answers 422 with field errors, and nothing is stored.
-2. **When seller details are saved** (`CompanyProfileRules` for `AE`, and
-   `UaeTin`). The TRN, TIN, endpoint, emirate and legal registration are
-   checked in PINT AE's shapes.
+1. **When an invoice is drafted** (the UAE module's `Rules\InvoiceRules`, on
+   `POST /api/compliance/ae/invoices`, the ERP pipeline and the portal form).
+   The request is checked for shapes and for combinations the UAE does not
+   allow. A failure answers 422 with field errors, and nothing is stored.
+2. **When seller details are saved** (the UAE module's `Rules\SellerRules`
+   and `UaeTin`, on the company page, sign-up and the API). The TRN, TIN,
+   endpoint, emirate and legal registration are checked in PINT AE's shapes.
 3. **When an invoice is sent** (`InvoiceIssuer`, `PintMapper`,
    `MandatoryFields`). The invoice is mapped to a PINT document and checked
    against the Ministry's mandatory-field list and the scenario rules. Its

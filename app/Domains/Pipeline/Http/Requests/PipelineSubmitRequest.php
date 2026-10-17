@@ -4,34 +4,66 @@ declare(strict_types=1);
 
 namespace App\Domains\Pipeline\Http\Requests;
 
+use App\Domains\Compliance\Engine\Contracts\Jurisdiction;
+use App\Domains\Compliance\Engine\Exceptions\JurisdictionUnavailableException;
+use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Http\Requests\CreateInvoiceRequest;
+use App\Domains\Organization\Services\TenantResolver;
 
 /**
  * Pipeline submit request validation.
  *
- * Extends CreateInvoiceRequest with pipeline-specific fields:
+ * The invoice is checked by the rules of the organization's country, as
+ * CreateInvoiceRequest checks it, with pipeline-specific fields beside them:
  * - org_id: required for multi-tenant routing
- * - auto_submit: whether to immediately submit to ZATCA after generation
+ * - auto_submit: whether to file or send it straight after issuing
  * - branch_id: optional branch for credential resolution
  * - erp_reference_id: opaque reference ID from the calling ERP system
  *
+ * The country is resolved before anything else: one this deployment does not
+ * issue in is refused (422 JURISDICTION_UNAVAILABLE) before any field is
+ * checked, since no field could make that invoice issuable.
+ *
  * Designed for atomic ERP integration where one request covers
- * invoice creation, compliance generation, and optional ZATCA submission.
+ * invoice creation, compliance generation, and optional submission.
  */
 class PipelineSubmitRequest extends CreateInvoiceRequest
 {
-    public function authorize(): bool
+    /**
+     * ERP field names the pipeline also takes, checked only where the
+     * country's rules do not name the field themselves.
+     */
+    private const ALIASES = [
+        // An ERP's name for the invoice type
+        'invoice_type' => ['nullable', 'string'],
+        // An ERP's due date, stored as the supply date by a country whose
+        // invoices have no due date of their own
+        'due_date' => ['nullable', 'date'],
+    ];
+
+    /**
+     * The organization's country, switched on: refused here, before
+     * validation, when this deployment does not issue in it.
+     *
+     * @throws JurisdictionUnavailableException
+     */
+    protected function jurisdiction(): Jurisdiction
     {
-        return true;
+        $organization = app(TenantResolver::class)->getOrganization();
+        $resolver = app(JurisdictionResolver::class);
+
+        return $organization === null ? $resolver->forRules(null) : $resolver->forOrganization($organization);
     }
 
     public function rules(): array
     {
-        return array_merge(parent::rules(), [
-            // Accept ERP field name alias for invoice type
-            'invoice_type' => ['nullable', 'string'],
-            // Accept due_date as ZATCA supply_date alias
-            'due_date' => ['nullable', 'date'],
+        $rules = parent::rules();
+
+        foreach (self::ALIASES as $field => $rule) {
+            $rules[$field] ??= $rule;
+        }
+
+        return array_merge($rules, [
             // Pipeline-specific fields
             'org_id' => ['required', 'string', 'uuid'],
             'auto_submit' => ['nullable', 'boolean'],
@@ -41,18 +73,7 @@ class PipelineSubmitRequest extends CreateInvoiceRequest
     }
 
     /**
-     * Configure the validator instance.
-     *
-     * Delegates to parent for per-line exemption validation,
-     * preserving all CreateInvoiceRequest after-hooks.
-     */
-    public function withValidator($validator): void
-    {
-        parent::withValidator($validator);
-    }
-
-    /**
-     * Custom validation messages — pipeline fields merged with parent messages.
+     * Custom validation messages — pipeline fields merged with the country's.
      */
     public function messages(): array
     {
@@ -67,8 +88,8 @@ class PipelineSubmitRequest extends CreateInvoiceRequest
     /**
      * Prepare data for validation.
      *
-     * Calls parent prepareForValidation (sets document_type, currency,
-     * payment_means_code, and line defaults) then adds pipeline defaults.
+     * The country's defaults first (CreateInvoiceRequest), then the
+     * pipeline's.
      */
     protected function prepareForValidation(): void
     {
@@ -78,13 +99,15 @@ class PipelineSubmitRequest extends CreateInvoiceRequest
             'auto_submit' => $this->auto_submit ?? true,
         ];
 
-        // Gap 3: ERP sends `invoice_type`, ZATCA request validates `type`
+        // Gap 3: ERP sends `invoice_type`, the rules validate `type`
         if ($this->invoice_type !== null && $this->type === null) {
             $merges['type'] = $this->invoice_type;
         }
 
-        // Gap 4: ERP sends `due_date`, ZATCA model stores it as `supply_date`
-        if ($this->due_date !== null && $this->supply_date === null) {
+        // Gap 4: ERP sends `due_date`; a country with no due date of its own
+        // stores it as `supply_date`
+        if ($this->due_date !== null && $this->supply_date === null
+            && ! array_key_exists('due_date', $this->invoiceRules()->rules($this))) {
             $merges['supply_date'] = $this->due_date;
         }
 

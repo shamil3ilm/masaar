@@ -67,6 +67,18 @@ class JurisdictionRegistry
     }
 
     /**
+     * The module for the code, switched on or not; the default module for a
+     * blank code or one no module is registered for. For rules a form or a
+     * request follows, which apply whether or not the country issues now.
+     *
+     * @throws JurisdictionUnavailableException when no module is the default
+     */
+    public function orDefault(?string $code): Jurisdiction
+    {
+        return $this->get($code !== null && isset($this->factories[$code]) ? $code : $this->defaultCode());
+    }
+
+    /**
      * @throws JurisdictionUnavailableException when no module is the default
      */
     public function defaultCode(): string

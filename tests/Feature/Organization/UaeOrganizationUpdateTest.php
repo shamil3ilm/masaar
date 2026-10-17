@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Organization;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaeSellerDetails;
 use App\Domains\Organization\Models\Organization;
-use App\Domains\Organization\Services\UaeSellerDetails;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use Tymon\JWTAuth\Facades\JWTAuth;

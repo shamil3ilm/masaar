@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers;
 
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Requests\SaveUaeProfileRequest;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaeSellerDetails;
 use App\Domains\Organization\Services\TenantResolver;
-use App\Domains\Organization\Services\UaeSellerDetails;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;

@@ -45,6 +45,38 @@ class JurisdictionResolverTest extends TestCase
         $this->assertSame(['AE', 'United Arab Emirates', 'Asia/Dubai', 'AED'], [$uae->code(), $uae->name(), $uae->timezone(), $uae->currency()]);
     }
 
+    /** Each module answers the rules ports in its own country's terms. */
+    public function test_each_module_answers_rules_ports(): void
+    {
+        $saudi = $this->resolve('SA');
+        $uae = $this->resolve('AE');
+
+        $this->assertSame(['15', 'portal.invoices.store'], [$saudi->invoiceRules()->standardRate(), $saudi->invoiceRules()->portalRoute()]);
+        $this->assertSame(['5', 'portal.invoices.uae.store'], [$uae->invoiceRules()->standardRate(), $uae->invoiceRules()->portalRoute()]);
+        $this->assertSame(['invoice', 'credit_note', 'debit_note', 'prepayment'], $saudi->invoiceRules()->documentTypes());
+        $this->assertSame(['invoice', 'credit_note'], $uae->invoiceRules()->documentTypes());
+        $this->assertSame(['standard'], $uae->invoiceRules()->invoiceTypes());
+        $this->assertSame([], $saudi->invoiceRules()->countryFields(['lines' => []]));
+        $this->assertSame('300000000000003', $saudi->sellerRules()->vatNumber(['vat_number' => '300000000000003']));
+        $this->assertNull($uae->sellerRules()->vatNumber(['tin' => '1001234567']));
+        $this->assertNotContains('endpoint_id', $uae->sellerRules()->signupFields());
+    }
+
+    /**
+     * A form's rules are its country's whether or not the country is on, so
+     * a switched-off country's drafts can still be saved; anything else
+     * takes the default's.
+     */
+    public function test_rules_ignore_the_switch(): void
+    {
+        config(['peppol.countries.AE.enabled' => false]);
+        $resolver = app(JurisdictionResolver::class);
+
+        $this->assertSame('AE', $resolver->forRules((new Organization)->forceFill(['country' => 'AE']))->code());
+        $this->assertSame('SA', $resolver->forRules((new Organization)->forceFill(['country' => 'XX']))->code());
+        $this->assertSame('SA', $resolver->forRules(null)->code());
+    }
+
     public function test_switched_off_uae_is_refused(): void
     {
         config(['peppol.countries.AE.enabled' => false]);

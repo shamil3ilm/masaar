@@ -6,10 +6,14 @@ namespace App\Domains\Compliance\Countries\UnitedArabEmirates;
 
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Issuing\InvoiceIssuer;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Issuing\IssuingStep;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\InvoiceRules;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\IssueDeadline;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\SellerRules;
 use App\Domains\Compliance\Engine\Contracts\FeatureSupport;
+use App\Domains\Compliance\Engine\Contracts\InvoiceRules as InvoiceRulesPort;
 use App\Domains\Compliance\Engine\Contracts\IssueNotices;
 use App\Domains\Compliance\Engine\Contracts\Jurisdiction;
+use App\Domains\Compliance\Engine\Contracts\SellerRules as SellerRulesPort;
 use App\Domains\Compliance\Engine\Contracts\Transmission;
 use App\Domains\Compliance\Engine\DTOs\IssueOptions;
 use App\Domains\Compliance\Engine\DTOs\IssueOutcome;
@@ -25,8 +29,8 @@ use App\Domains\Platform\Access\Feature;
  * InvoiceIssuer and sent through the accredited service provider over the
  * shared Peppol network.
  *
- * One class answers every port because each is a line or two of adapting
- * what Peppol already does. A port that grows gets a class of its own.
+ * One class answers the ports that are a line or two of adapting what
+ * Peppol already does. The rules ports are classes of their own, in Rules/.
  */
 class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
 {
@@ -34,6 +38,8 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
         private readonly InvoiceIssuer $issuer,
         private readonly IssuingStep $step,
         private readonly JurisdictionAvailability $availability,
+        private readonly SellerRules $seller,
+        private readonly InvoiceRules $invoices,
     ) {}
 
     public function code(): string
@@ -92,6 +98,16 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
     public function features(): FeatureSupport
     {
         return $this;
+    }
+
+    public function sellerRules(): SellerRulesPort
+    {
+        return $this->seller;
+    }
+
+    public function invoiceRules(): InvoiceRulesPort
+    {
+        return $this->invoices;
     }
 
     /**
