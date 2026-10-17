@@ -77,6 +77,11 @@
                     <svg class="w-5 h-5 me-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                     {{ __('Printing') }}
                 </a>
+                <a href="{{ route('portal.qr-codes.index') }}"
+                   class="flex items-center px-4 py-2 rounded-lg mb-1 {{ request()->routeIs('portal.qr-codes.*') ? 'bg-teal-50 dark:bg-teal-950/40 font-medium text-teal-800 dark:text-teal-200' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-950' }}">
+                    <svg class="w-5 h-5 me-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h2m4 0v2m-4 4h4m-6-2v2"></path></svg>
+                    {{ __('QR codes') }}
+                </a>
                 {{-- Its administrators only; the page itself refuses anyone else. --}}
                 @if (auth()->user()?->roleIn((string) request()->attributes->get(\App\Domains\Organization\Http\Middleware\PortalTenant::ORG_ID)) === 'admin')
                 <a href="{{ route('portal.company.edit') }}"

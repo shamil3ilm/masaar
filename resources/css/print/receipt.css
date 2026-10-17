@@ -120,9 +120,12 @@
     margin: 1.5mm auto 0;
 }
 
-.receipt .r-qr-label {
-    font-size: 7pt;
-    text-align: center;
+/* The organization's own QR: smaller, so the two are not mistaken. */
+.receipt [data-print-extra-qr] img,
+.receipt [data-print-extra-qr] svg {
+    width: 24mm;
+    height: 24mm;
+    margin: 1mm auto 0;
 }
 
 .receipt .r-footer {

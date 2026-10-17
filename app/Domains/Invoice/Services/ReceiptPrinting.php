@@ -32,6 +32,7 @@ class ReceiptPrinting
         private readonly PrintAssets $assets,
         private readonly ReceiptImage $images,
         private readonly EscPos $escPos,
+        private readonly InvoiceExtraQr $extraQr,
     ) {}
 
     /**
@@ -50,7 +51,14 @@ class ReceiptPrinting
         // the edges.
         $logo = $this->assets->logoImage((string) $organization->id, intdiv($dots * 2, 3));
 
-        return $this->images->render($country->receipt($invoice, $organization), $roll, $dots, $dpi, $logo);
+        return $this->images->render(
+            $country->receipt($invoice, $organization),
+            $roll,
+            $dots,
+            $dpi,
+            $logo,
+            $this->extraQr->for($invoice, $organization, $roll, $userId),
+        );
     }
 
     public function png(GdImage $image): string

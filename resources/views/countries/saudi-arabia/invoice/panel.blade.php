@@ -30,15 +30,25 @@
         </dl>
 
         @if ($qrSvg !== '')
-            <figure class="mt-4">
-                {{-- Unescaped: markup QrCodeRenderer drew from the stored
-                     payload. White in both themes: a reader needs the
-                     contrast. --}}
-                <div class="inline-block bg-white dark:bg-white p-2" data-invoice-qr>{!! $qrSvg !!}</div>
-                <figcaption class="mt-2 text-sm text-gray-700 dark:text-gray-200">
-                    <x-caption en="ZATCA QR code" ar="رمز الاستجابة السريعة للفاتورة" />
-                </figcaption>
-            </figure>
+            <div class="mt-4 flex flex-wrap items-start gap-4">
+                <figure>
+                    {{-- Unescaped: markup QrCodeRenderer drew from the stored
+                         payload. White in both themes: a reader needs the
+                         contrast. --}}
+                    <div class="inline-block bg-white dark:bg-white p-2" data-invoice-qr>{!! $qrSvg !!}</div>
+                    <figcaption class="mt-2 text-sm text-gray-700 dark:text-gray-200">
+                        <x-caption en="ZATCA QR code" ar="رمز الاستجابة السريعة للفاتورة" />
+                    </figcaption>
+                </figure>
+                {{-- The organization's own QR its invoices carry, apart and
+                     labelled: never part of ZATCA's. --}}
+                @if (! empty($businessQr))
+                    <figure>
+                        <div class="inline-block w-32 bg-white dark:bg-white p-2 [&_svg]:h-auto [&_svg]:w-full" data-business-qr>{!! $businessQr['svg'] !!}</div>
+                        <figcaption class="mt-2 max-w-32 text-sm text-gray-700 dark:text-gray-200">{{ $businessQr['label'] }}</figcaption>
+                    </figure>
+                @endif
+            </div>
             @if ($shareable)
                 <p class="mt-2 flex flex-wrap gap-2">
                     <x-ui.button variant="outline" :href="route('portal.invoices.qr', [$invoice->id, 'png'])">{{ __('Download QR (PNG)') }}</x-ui.button>

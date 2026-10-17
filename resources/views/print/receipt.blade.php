@@ -14,6 +14,7 @@
     @param \App\Domains\Compliance\Engine\DTOs\Receipt $receipt
     @param string $qr      the country's QR code as markup (an <svg> or an <img>), or ''
     @param string|null $logo  the seller's logo in black and white, as a data URI
+    @param array|null $extraQr  the organization's own QR: label, and image markup
 --}}
 @php
     // Right-aligned and right-to-left when it starts in Arabic: a name or a
@@ -110,6 +111,14 @@
         {{-- Unescaped: markup QrCodeRenderer drew from the stored payload,
              not anything a person typed. --}}
         <div class="r-center" data-print-qr>{!! $qr !!}</div>
+    @endif
+
+    {{-- The organization's own QR, apart from the country's and labelled:
+         nothing is added to the QR the authority defines. --}}
+    @if (! empty($extraQr))
+        <div class="r-rule"></div>
+        <div class="r-center r-strong r-small">{{ $extraQr['label'] }}</div>
+        <div class="r-center" data-print-extra-qr>{!! $extraQr['image'] !!}</div>
     @endif
 
     @foreach ($receipt->footer as $line)

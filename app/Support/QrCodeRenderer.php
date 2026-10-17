@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use BaconQrCode\Encoder\Encoder;
 use BaconQrCode\Renderer\GDLibRenderer;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
@@ -28,7 +29,12 @@ class QrCodeRenderer
     /** 32 mm on the page at about 475 dpi: sharp on any printer. */
     private const PRINT_SIZE = 600;
 
-    public function svg(string $payload): string
+    /**
+     * @param  string  $encoding  how the payload's bytes are read: Latin-1, as
+     *                            the country's base64 payload is, or UTF-8 for
+     *                            text in Arabic, which the code then declares
+     */
+    public function svg(string $payload, string $encoding = Encoder::DEFAULT_BYTE_MODE_ENCODING): string
     {
         if (trim($payload) === '') {
             return '';
@@ -41,7 +47,7 @@ class QrCodeRenderer
             )
         );
 
-        return $writer->writeString($payload);
+        return $writer->writeString($payload, $encoding);
     }
 
     /**
@@ -51,12 +57,12 @@ class QrCodeRenderer
      * not declare in that form's own resources, and the PDF fails PDF/A
      * (ISO 19005-3, 6.2.2). A raster image carries no such references.
      */
-    public function png(string $payload): string
+    public function png(string $payload, string $encoding = Encoder::DEFAULT_BYTE_MODE_ENCODING): string
     {
         if (trim($payload) === '') {
             return '';
         }
 
-        return (new Writer(new GDLibRenderer(self::PRINT_SIZE)))->writeString($payload);
+        return (new Writer(new GDLibRenderer(self::PRINT_SIZE)))->writeString($payload, $encoding);
     }
 }

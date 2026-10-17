@@ -30,8 +30,9 @@ class ReceiptImage
 
     /**
      * @param  int  $dots  the printer's dots across: 576 for an 80 mm roll at 203 dpi, 384 for 58 mm
+     * @param  array{label: string, payload: string, encoding: string}|null  $extraQr  the organization's own QR (InvoiceExtraQr)
      */
-    public function render(Receipt $receipt, PaperSize $paper, int $dots, int $dpi, ?GdImage $logo = null): GdImage
+    public function render(Receipt $receipt, PaperSize $paper, int $dots, int $dpi, ?GdImage $logo = null, ?array $extraQr = null): GdImage
     {
         $small = $paper === PaperSize::Roll58;
         $body = $small ? 7.0 : 8.0;
@@ -114,6 +115,14 @@ class ReceiptImage
         if ($receipt->qrPayload !== '') {
             $canvas->rule();
             $canvas->qr($receipt->qrPayload, self::QR_MM);
+        }
+
+        // The organization's own QR, apart and labelled: never in the
+        // country's.
+        if ($extraQr !== null && $extraQr['payload'] !== '') {
+            $canvas->rule();
+            $canvas->text($extraQr['label'], $label, true, ReceiptCanvas::CENTER);
+            $canvas->qr($extraQr['payload'], InvoiceExtraQr::SIZE_MM, $extraQr['encoding']);
         }
 
         foreach ($receipt->footer as $line) {

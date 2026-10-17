@@ -44,6 +44,7 @@ class InvoicePrintView
             'qr' => $this->assets->qrSvg((string) $invoice->qr_code),
             'receipt' => $paper->isRoll() ? $country->receipt($invoice, $organization) : null,
             'logo' => $paper->isRoll() ? $this->assets->logo((string) $organization->id, monochrome: true) : null,
+            'extraQr' => $this->assets->extraQr($invoice, $organization, $paper, 'svg'),
         ];
     }
 

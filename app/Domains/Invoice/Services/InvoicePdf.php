@@ -71,6 +71,7 @@ class InvoicePdf
                 'qr' => $this->assets->qrPng((string) $invoice->qr_code),
                 'logo' => $this->assets->logo((string) $organization->id),
                 'paper' => $paper,
+                'extraQr' => $this->assets->extraQr($invoice, $organization, $paper, 'png'),
             ])->render();
 
         $mpdf = $this->document($paper, $paper->isRoll() ? $this->rollLength($html, $paper) : null);
@@ -161,8 +162,13 @@ class InvoicePdf
     private function receiptHtml(Presentation $country, Invoice $invoice, Organization $organization, PaperSize $paper): string
     {
         $qr = $this->assets->qrPng((string) $invoice->qr_code);
+        $extra = $this->assets->extraQr($invoice, $organization, $paper, 'png');
 
         return view('pdf.receipt', [
+            'extraQr' => $extra === null ? null : [
+                'label' => $extra['label'],
+                'image' => '<img src="'.$extra['image'].'" alt="" style="width: 24mm; height: 24mm;">',
+            ],
             'receipt' => $country->receipt($invoice, $organization),
             'paper' => $paper,
             // Sized here too: the renderer reads an image's size more surely

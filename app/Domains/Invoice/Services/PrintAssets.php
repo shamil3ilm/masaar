@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Domains\Invoice\Services;
 
 use App\Domains\Branding\Services\ThemeService;
+use App\Domains\Invoice\Enums\PaperSize;
+use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Organization\Models\Organization;
 use App\Support\MonochromeImage;
 use App\Support\QrCodeRenderer;
 use GdImage;
@@ -19,6 +22,7 @@ class PrintAssets
         private readonly QrCodeRenderer $qr,
         private readonly ThemeService $themes,
         private readonly MonochromeImage $monochrome,
+        private readonly InvoiceExtraQr $extraQr,
     ) {}
 
     /** The QR code as a PNG data URI; null for no payload. */
@@ -27,6 +31,27 @@ class PrintAssets
         $png = $this->qr->png($payload);
 
         return $png === '' ? null : 'data:image/png;base64,'.base64_encode($png);
+    }
+
+    /**
+     * The organization's extra QR for this paper (InvoiceExtraQr), as a PNG
+     * data URI ('png') or SVG markup ('svg'), with its label; null for none.
+     *
+     * @return array{label: string, image: string}|null
+     */
+    public function extraQr(Invoice $invoice, Organization $organization, PaperSize $paper, string $format): ?array
+    {
+        $extra = $this->extraQr->for($invoice, $organization, $paper);
+
+        if ($extra === null || $extra['payload'] === '') {
+            return null;
+        }
+
+        $image = $format === 'svg'
+            ? $this->qr->svg($extra['payload'], $extra['encoding'])
+            : 'data:image/png;base64,'.base64_encode($this->qr->png($extra['payload'], $extra['encoding']));
+
+        return ['label' => $extra['label'], 'image' => $image];
     }
 
     /** The QR code as a file to download: 'png' or 'svg'; '' for no payload. */

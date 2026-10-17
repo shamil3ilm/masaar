@@ -282,6 +282,13 @@
                  stored TLV payload, not anything a user typed. --}}
             <div class="inline-block" data-print-qr>{!! $qr !!}</div>
         @endif
+        {{-- The organization's own QR, apart from ZATCA's and labelled. --}}
+        @if (! empty($extraQr))
+            <figure class="ms-6 inline-block align-top">
+                <div data-print-extra-qr>{!! $extraQr['image'] !!}</div>
+                <figcaption class="mt-1 text-xs">{{ $extraQr['label'] }}</figcaption>
+            </figure>
+        @endif
 
         @if ($invoice->icv)
             <p class="mt-3 text-xs text-gray-500">

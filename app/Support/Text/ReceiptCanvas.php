@@ -126,9 +126,9 @@ class ReceiptCanvas
      * a module of uneven dots is what makes a printed QR unreadable. Encoded
      * as QrCodeRenderer encodes it, so it holds the same data.
      */
-    public function qr(string $payload, float $mm): void
+    public function qr(string $payload, float $mm, string $encoding = Encoder::DEFAULT_BYTE_MODE_ENCODING): void
     {
-        $matrix = Encoder::encode($payload, ErrorCorrectionLevel::L(), Encoder::DEFAULT_BYTE_MODE_ENCODING)->getMatrix();
+        $matrix = Encoder::encode($payload, ErrorCorrectionLevel::L(), $encoding)->getMatrix();
         $modules = $matrix->getWidth();
         // Four modules of white around it, the quiet zone a reader needs.
         $module = max(2, (int) round($this->dots($mm) / ($modules + 8)));

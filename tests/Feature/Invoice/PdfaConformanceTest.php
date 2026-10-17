@@ -8,6 +8,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Models\InvoiceLine;
+use App\Domains\Invoice\Services\InvoiceExtraQr;
 use App\Domains\Invoice\Services\InvoicePdf;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -123,6 +124,19 @@ class PdfaConformanceTest extends TestCase
 
         $this->assertStringContainsString('/ETSI.CAdES.detached', $pdf);
         $this->assertConforms($pdf);
+    }
+
+    /**
+     * With the organization's own QR printed beside ZATCA's, on a sheet and
+     * on a roll.
+     */
+    public function test_an_extra_qr_stays_pdfa(): void
+    {
+        app(InvoiceExtraQr::class)->setChoices($this->acme, [PaperSize::A4->value => InvoiceExtraQr::INVOICE_LINK, PaperSize::Roll58->value => InvoiceExtraQr::INVOICE_LINK]);
+        $invoice = $this->sampleInvoice($this->acme, 'simplified', 3);
+
+        $this->assertConforms(app(InvoicePdf::class)->render($invoice, $this->acme->fresh(), PaperSize::A4));
+        $this->assertConforms(app(InvoicePdf::class)->render($invoice, $this->acme->fresh(), PaperSize::Roll58));
     }
 
     private function assertConforms(string $pdf): void

@@ -43,6 +43,10 @@ class RouteAuthPostureTest extends TestCase
         // is the credential, and it is hashed, single-use and expiring.
         'invitations/{token}' => 'Invitation landing page, from the emailed link',
         'invitations/{token}/join' => 'Creating the invited account, with the emailed token',
+        // An issued invoice from the QR code on it: the 256-bit token is the
+        // credential, revocable, rate limited, and opens that invoice only.
+        'i/{token}' => 'An invoice opened from its link',
+        'i/{token}/pdf' => 'That invoice\'s PDF, from the same link',
         // Reached after the password, before sign-in: someone with a second factor is not
         // authenticated until this checks the second factor. Each refuses
         // anyone without a fresh pending sign-in in the session.

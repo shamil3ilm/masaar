@@ -13,4 +13,10 @@
         width: 32mm;
         height: 32mm;
     }
+
+    /* The organization's own QR, smaller than the country's. */
+    [data-print-extra-qr] svg {
+        width: 24mm;
+        height: 24mm;
+    }
 }

@@ -183,6 +183,14 @@
             @if ($qr)
                 <img src="{{ $qr }}" style="width: 32mm; height: 32mm;">
             @endif
+            {{-- The organization's own QR, apart from ZATCA's and labelled:
+                 nothing is added to the QR the authority defines. --}}
+            @if (! empty($extraQr))
+                <table style="margin-top: 4pt;"><tr>
+                    <td style="vertical-align: middle;"><img src="{{ $extraQr['image'] }}" style="width: 24mm; height: 24mm;"></td>
+                    <td style="vertical-align: middle; padding-left: 4pt; font-size: 7.5pt;">{{ $extraQr['label'] }}</td>
+                </tr></table>
+            @endif
         </td>
         <td width="60%" style="vertical-align: top;">
             <table class="totals" align="right" style="width: 100%;">
