@@ -9,6 +9,7 @@ use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Http\Requests\CreatePortalInvoiceRequest;
 use App\Domains\Invoice\Services\AdjustmentDraft;
 use App\Domains\Invoice\Services\Catalogue;
+use App\Domains\Invoice\Services\ChargePresets;
 use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
@@ -47,6 +48,7 @@ class PortalInvoiceDraftController extends Controller
         private readonly Catalogue $catalogue,
         private readonly InvoiceFinder $invoices,
         private readonly AdjustmentDraft $adjustments,
+        private readonly ChargePresets $chargePresets,
     ) {}
 
     /**
@@ -95,6 +97,9 @@ class PortalInvoiceDraftController extends Controller
             'organization' => $organization,
             'customers' => $this->catalogue->customerChoices($organizationId),
             'products' => $this->catalogue->productChoices($organizationId),
+            // The common charges: the platform's, the organization's and
+            // this person's own.
+            'chargePresets' => $this->chargePresets->for($organizationId, $request->user()?->getAuthIdentifier()),
         ]);
     }
 

@@ -19,6 +19,8 @@ use App\Domains\Compliance\Countries\SaudiArabia\Support\FatooraTime;
 use App\Domains\Compliance\Countries\SaudiArabia\Support\TextNormalizer;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Models\InvoiceCharge;
+use App\Domains\Invoice\Models\InvoiceLine;
 use App\Domains\Invoice\Support\UnitCode;
 use App\Domains\Organization\Models\Organization;
 
@@ -198,6 +200,12 @@ class DocumentBuilder
             // The exact net, where the line has one. A net price backed out
             // of a VAT-inclusive one is rounded; this is not.
             'lineNet' => $line->net_amount !== null ? (float) $line->net_amount : null,
+            // The line's own discount, already off its net, stated as its
+            // allowance (BT-136). Not on an invoice priced with VAT in it:
+            // that discount is gross, and the net price the document states
+            // already has it taken off.
+            'discount' => $invoice->prices_include_vat ? 0.0 : (float) ($line->discount_amount ?? 0),
+            'charges' => $this->lineCharges($invoice, $line),
             'taxRate' => (float) $line->tax_rate,
             'taxAmount' => (float) $line->tax_amount,
             'lineTotal' => (float) $line->line_total,
@@ -276,9 +284,58 @@ class DocumentBuilder
             // that keeps the customer's total exact, and the document
             // declares it rather than recomputing it.
             isTaxInclusive: (bool) $invoice->prices_include_vat,
+            charges: $this->documentCharges($invoice),
             orderReference: $this->filledOrNull($invoice->order_reference),
             contractReference: $this->filledOrNull($invoice->contract_reference),
         );
+    }
+
+    /**
+     * The charges on the whole invoice (BG-21) as the document states them:
+     * each at its net. A percentage and its base are stated only on an
+     * invoice priced without VAT, where the net is the percentage of the
+     * base (BR-KSA-EN16931-03); with VAT in the prices both are gross, and
+     * the net alone is stated, as BR-KSA-EN16931-04 and -05 allow.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function documentCharges(Invoice $invoice): array
+    {
+        $inclusive = (bool) $invoice->prices_include_vat;
+
+        return $invoice->charges->map(fn (InvoiceCharge $charge): array => [
+            'amount' => (float) $charge->net_amount,
+            'percent' => $inclusive || $charge->percent === null ? null : (float) $charge->percent,
+            'base' => $inclusive || $charge->base_amount === null ? null : (float) $charge->base_amount,
+            'reasonCode' => $charge->reason_code,
+            'reason' => $charge->reason,
+            'taxCategory' => (string) ($charge->tax_category ?: FatooraConfig::TAX_CATEGORY_STANDARD),
+            'taxRate' => (float) ($charge->tax_rate ?? 0),
+            'exemptionCode' => $charge->exempt_code,
+            'exemptionReason' => $charge->exempt_reason,
+        ])->values()->all();
+    }
+
+    /**
+     * A line's own charges (BG-28), on an invoice priced without VAT: each
+     * as an amount, with its percentage and base when it is one. With VAT in
+     * the prices they are in the line's net and its stated price instead.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function lineCharges(Invoice $invoice, InvoiceLine $line): array
+    {
+        if ($invoice->prices_include_vat) {
+            return [];
+        }
+
+        return $line->charges->map(fn (InvoiceCharge $charge): array => [
+            'amount' => (float) $charge->amount,
+            'percent' => $charge->percent === null ? null : (float) $charge->percent,
+            'base' => $charge->base_amount === null ? null : (float) $charge->base_amount,
+            'reasonCode' => $charge->reason_code,
+            'reason' => $charge->reason,
+        ])->values()->all();
     }
 
     /** Trimmed, or null for nothing: an empty reference element is no reference. */

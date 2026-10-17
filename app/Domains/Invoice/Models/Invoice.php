@@ -316,6 +316,15 @@ class Invoice extends Model
     }
 
     /**
+     * The charges on the whole invoice (BG-21), in the order entered. A
+     * line's own are its charges().
+     */
+    public function charges(): HasMany
+    {
+        return $this->hasMany(InvoiceCharge::class)->whereNull('invoice_line_id')->orderBy('position');
+    }
+
+    /**
      * Check if invoice can be edited.
      */
     public function isEditable(): bool

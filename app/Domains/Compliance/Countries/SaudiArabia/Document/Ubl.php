@@ -53,8 +53,9 @@ final class Ubl
     }
 
     /**
-     * A line's net: the stored figure when there is one, otherwise quantity
-     * times the unit price.
+     * A line's net (BT-131): the stored figure when there is one, otherwise
+     * quantity times the unit price less the line's own discount plus its
+     * own charges.
      *
      * @param  array<string, mixed>  $line
      */
@@ -62,6 +63,44 @@ final class Ubl
     {
         return isset($line['lineNet'])
             ? (float) $line['lineNet']
-            : round((float) $line['quantity'] * (float) $line['unitPrice'], 2);
+            : round(round((float) $line['quantity'] * (float) $line['unitPrice'], 2) - (float) ($line['discount'] ?? 0) + self::lineCharges($line), 2);
+    }
+
+    /**
+     * A charge's figures, in UBL's order: the percentage (BT-101, BT-143)
+     * when it is one, the amount, then the base (BT-100, BT-142) the
+     * percentage was taken of. The percentage and the base travel together
+     * (BR-KSA-EN16931-04, -05).
+     *
+     * @param  array<string, mixed>  $charge  {amount, percent?, base?}
+     */
+    public static function chargeAmounts(DOMDocument $dom, DOMElement $element, array $charge, string $currency): void
+    {
+        $percent = $charge['percent'] ?? null;
+        $base = $charge['base'] ?? null;
+
+        if ($percent !== null && $base !== null) {
+            $element->appendChild(self::element($dom, self::CBC_NS, 'cbc:MultiplierFactorNumeric', self::amount((float) $percent)));
+        }
+
+        $amount = self::element($dom, self::CBC_NS, 'cbc:Amount', self::amount((float) $charge['amount']));
+        $amount->setAttribute('currencyID', $currency);
+        $element->appendChild($amount);
+
+        if ($percent !== null && $base !== null) {
+            $baseAmount = self::element($dom, self::CBC_NS, 'cbc:BaseAmount', self::amount((float) $base));
+            $baseAmount->setAttribute('currencyID', $currency);
+            $element->appendChild($baseAmount);
+        }
+    }
+
+    /**
+     * A line's own charges (BG-28), together.
+     *
+     * @param  array<string, mixed>  $line
+     */
+    public static function lineCharges(array $line): float
+    {
+        return round(array_sum(array_map(fn (array $charge): float => (float) $charge['amount'], (array) ($line['charges'] ?? []))), 2);
     }
 }

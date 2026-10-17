@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Requests;
 
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaePortal;
+use App\Domains\Invoice\Support\ChargeRules;
 use Illuminate\Validation\Rule;
 
 /**
@@ -75,6 +76,9 @@ class PortalUaeInvoiceRequest extends CreateUaeInvoiceRequest
                 : $this->input('buyer_address'),
             'buyer_legal_registration' => self::given($this->input('buyer_legal_registration')),
             'delivery_address' => self::given($this->input('delivery_address')),
+            // The charge rows used: an empty one waiting to be filled in is
+            // not a charge.
+            'charges' => ChargeRules::used($this->input('charges')),
         ]);
 
         parent::prepareForValidation();

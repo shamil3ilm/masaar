@@ -151,6 +151,9 @@ stored totals: here `subtotal` `1000.00`, `tax_amount` `50.00` and `total`
 | `invoice_number` | | Leave it out and a number is allocated from the organization's sequence when the invoice is sent |
 | `type` | | Only `standard`. The UAE has no simplified invoice |
 | `discount_amount`, `notes` | | A document-level discount, which may not exceed the lines |
+| `charges` | | Charges on the whole invoice, such as delivery. See [Discounts and charges](#discounts-and-charges) |
+| `payment_terms` | | The payment terms in words, up to 1000 characters (IBT-020) |
+| `buyer_reference`, `order_reference`, `contract_reference` | | The buyer's reference, purchase order and contract, up to 127 characters each (IBT-010, IBT-013, IBT-012) |
 
 ### Buyer fields
 
@@ -202,6 +205,37 @@ invoice form. There is no customer API.
 | `exempt_code` | For an `E` line | `DL8.46.1` to `DL8.46.4`. `exempt_reason` is optional free text |
 | `goods_type`, `item_id` | For an `AE` line | The reverse-charge goods code and the GTIN (8 to 14 digits) |
 | `hs_code`, `class_code` | | Item classification |
+| `discount_amount` | | The line's own discount (IBT-136), taken off its net. It may not exceed the line |
+| `charges` | | The line's own charges (IBG-28), up to 5, each as below without a tax category: a line charge is taxed as its line is |
+
+### Discounts and charges
+
+A charge is an amount or a percentage of a base, never both, with its reason
+in words and, optionally, as a UNCL 7161 code (`reason_code`, default `ABK`,
+miscellaneous). Common codes: `DL` delivery, `ADR` other services (a service
+charge), `PC` packing, `IAA` installation, `FC` freight.
+
+| Charge field | Required | Notes |
+|---|---|---|
+| `reason` | Yes | Up to 255 characters |
+| `reason_code` | | A UNCL 7161 code PINT AE accepts (IBR-CL-20) |
+| `amount` | Unless `percent` is given | Up to 2 decimals |
+| `percent` | Unless `amount` is given | Up to 2 decimals. The amount is the percentage of `base_amount`, rounded half up to the fils (IBR-146-AE) |
+| `base_amount` | | With `percent` only. Defaults to the line's quantity times price, or for a document charge the lines' total |
+| `tax_category` | Document charges | `S` (default), `Z`, `E` or `O`. A commercial document takes no `S` charge (IBR-122-AE), and a margin-scheme invoice takes no document charge |
+| `tax_rate` | Document charges | `5` for `S` (default), `0` otherwise |
+| `exempt_code` | An `E` document charge | `DL8.46.1` to `DL8.46.4` (IBR-169-AE). `exempt_reason` is optional |
+
+```json
+"charges": [
+  { "reason": "Delivery", "reason_code": "DL", "amount": "35.00" },
+  { "reason": "Service charge", "reason_code": "ADR", "percent": "10" }
+]
+```
+
+A document charge adds to the taxable amount of its tax category; one at a
+category no line has is a VAT breakdown of its own, and takes no share of the
+document discount.
 
 ## 3. Send it
 

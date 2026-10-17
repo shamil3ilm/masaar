@@ -8,6 +8,7 @@ use App\Domains\Compliance\Engine\Contracts\InvoiceRules as InvoiceRulesPort;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Invoice\Enums\TaxCategory;
+use App\Domains\Invoice\Support\ChargeRules;
 use App\Domains\Invoice\Support\UnitCode;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Rules\VatNumber;
@@ -96,6 +97,24 @@ class InvoiceRules implements InvoiceRulesPort
                     'tax_rate' => $category === FatooraConfig::TAX_CATEGORY_STANDARD ? (int) self::STANDARD_RATE : 0,
                 ], $line);
             })->toArray();
+        }
+
+        // A document charge is made at the standard rate unless it says
+        // otherwise; one in another category is not taxed.
+        if (is_array($request->input('charges'))) {
+            $defaults['charges'] = array_map(function ($charge) {
+                if (! is_array($charge)) {
+                    return $charge;
+                }
+
+                $category = $charge['tax_category'] ?? FatooraConfig::TAX_CATEGORY_STANDARD;
+
+                return [
+                    'tax_category' => $category,
+                    'tax_rate' => $category === FatooraConfig::TAX_CATEGORY_STANDARD ? (int) self::STANDARD_RATE : 0,
+                    ...$charge,
+                ];
+            }, $request->input('charges'));
         }
 
         return $defaults;
@@ -291,6 +310,10 @@ class InvoiceRules implements InvoiceRulesPort
                 // Required when exemption code is provided
                 'required_with:lines.*.exempt_code',
             ],
+
+            // A line's own discount and charges, and the document's charges:
+            // delivery, a service charge. Codes from BR-KSA-CL-06's list.
+            ...ChargeRules::rules(FatooraConfig::CHARGE_REASON_CODES, $this->taxCategories(), $this->exemptionCodes()),
         ];
     }
 
@@ -323,6 +346,10 @@ class InvoiceRules implements InvoiceRulesPort
             'lines.*.exempt_reason.required_with' => __('Exemption reason is required when exemption code is provided.'),
             // Units
             'lines.*.unit_code.in' => __('Invalid unit code. Must be a UN/ECE Recommendation 20 code, or a Recommendation 21 packaging code written with an X prefix.'),
+            // Charges
+            ...ChargeRules::messages(),
+            'charges.*.reason_code.in' => __('The charge reason code is a UNCL 7161 code ZATCA accepts (BR-KSA-CL-06).'),
+            'lines.*.charges.*.reason_code.in' => __('The charge reason code is a UNCL 7161 code ZATCA accepts (BR-KSA-CL-06).'),
         ];
     }
 
@@ -346,6 +373,42 @@ class InvoiceRules implements InvoiceRulesPort
 
         $this->refuseDiscountBeyondLines($validator, $request);
         $this->transactionFlags($validator, $request);
+        ChargeRules::after($validator, $request);
+        $this->chargeCategories($validator, $request);
+    }
+
+    /**
+     * A document charge's rate is its category's: above zero when standard
+     * (BR-S-07), zero otherwise (BR-Z-07, BR-E-07, BR-KSA-13). One
+     * that is not standard-rated names the exemption it falls under, from
+     * that category's codes (BR-KSA-CL-04), which its breakdown carries when
+     * no line is in that category (BR-KSA-23, BR-KSA-24, BR-KSA-69).
+     */
+    private function chargeCategories(Validator $validator, Request $request): void
+    {
+        $errors = $validator->errors();
+
+        foreach ((array) $request->input('charges', []) as $index => $charge) {
+            if (! is_array($charge) || $errors->has("charges.{$index}.tax_category") || $errors->has("charges.{$index}.tax_rate")) {
+                continue;
+            }
+
+            $category = (string) $charge['tax_category'];
+            $rate = (string) $charge['tax_rate'];
+            $standard = $category === FatooraConfig::TAX_CATEGORY_STANDARD;
+
+            if ($standard !== (bccomp($rate, '0', 2) > 0)) {
+                $errors->add("charges.{$index}.tax_rate", $standard
+                    ? __('A standard-rated charge has a rate above zero.')
+                    : __('A charge that is zero-rated, exempt or out of scope has a rate of zero.'));
+            }
+
+            $code = $charge['exempt_code'] ?? null;
+
+            if (! $standard && (blank($code) || FatooraConfig::taxCategoryFor($code, 0) !== $category)) {
+                $errors->add("charges.{$index}.exempt_code", __('A charge in tax category :category names its exemption code from that category (BR-KSA-CL-04).', ['category' => $category]));
+            }
+        }
     }
 
     /** The validated request, as it is. */
@@ -566,8 +629,9 @@ class InvoiceRules implements InvoiceRulesPort
 
         $lines = '0';
 
+        // Each line after its own discount and charges.
         foreach ((array) $request->input('lines', []) as $line) {
-            $lines = bcadd($lines, bcmul((string) $line['quantity'], (string) $line['unit_price'], 6), 6);
+            $lines = bcadd($lines, ChargeRules::lineTotal($line), 6);
         }
 
         if (bccomp((string) $discount, $lines, 6) > 0) {

@@ -51,17 +51,48 @@ class UblTotalsBuilder
      */
     private function addAllowanceCharge(DOMDocument $dom, InvoiceXmlData $data): void
     {
-        if ($data->discount <= 0) {
-            return;
-        }
+        if ($data->discount > 0) {
+            foreach ($this->breakdown($data) as $part) {
+                if ($part['share'] <= 0.0) {
+                    continue;
+                }
 
-        foreach ($this->breakdown($data->lines, (float) $data->discount, $this->fixedTax($data)) as $part) {
-            if ($part['share'] <= 0.0) {
-                continue;
+                $dom->documentElement->appendChild($this->buildAllowance($dom, $data, $part));
             }
-
-            $dom->documentElement->appendChild($this->buildAllowance($dom, $data, $part));
         }
+
+        foreach ($data->charges as $charge) {
+            $dom->documentElement->appendChild($this->buildCharge($dom, $charge, $data->currency));
+        }
+    }
+
+    /**
+     * BG-21, a charge on the whole invoice, in the shape of ZATCA's own
+     * document-level charge sample: the indicator, the reason as a UNCL
+     * 7161 code and in words (BR-KSA-19, BR-KSA-21, BR-KSA-CL-06), the
+     * percentage, amount and base (Ubl::chargeAmounts()), and the category
+     * and rate it is charged at (BT-102, BT-103).
+     *
+     * @param  array<string, mixed>  $charge
+     */
+    private function buildCharge(DOMDocument $dom, array $charge, string $currency): DOMElement
+    {
+        $element = $dom->createElementNS(Ubl::CAC_NS, 'cac:AllowanceCharge');
+        $element->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:ChargeIndicator', 'true'));
+        $element->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:AllowanceChargeReasonCode', (string) $charge['reasonCode']));
+        $element->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:AllowanceChargeReason', (string) $charge['reason']));
+
+        Ubl::chargeAmounts($dom, $element, $charge, $currency);
+
+        $taxCategory = $dom->createElementNS(Ubl::CAC_NS, 'cac:TaxCategory');
+        $taxCategory->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:ID', (string) $charge['taxCategory']));
+        $taxCategory->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:Percent', Ubl::amount((float) $charge['taxRate'])));
+        $taxScheme = $dom->createElementNS(Ubl::CAC_NS, 'cac:TaxScheme');
+        $taxScheme->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:ID', 'VAT'));
+        $taxCategory->appendChild($taxScheme);
+        $element->appendChild($taxCategory);
+
+        return $element;
     }
 
     /**
@@ -157,7 +188,7 @@ class UblTotalsBuilder
             }
         } else {
             // Aggregate tax subtotals from invoice lines by category and rate
-            $aggregated = array_values($this->breakdown($data->lines, (float) $data->discount, $this->fixedTax($data)));
+            $aggregated = array_values($this->breakdown($data));
             foreach ($aggregated as $subtotal) {
                 $taxTotal->appendChild($this->buildTaxSubtotal($dom, $subtotal, $data->currency));
             }
@@ -185,14 +216,17 @@ class UblTotalsBuilder
      * They describe the same discount from two directions and ZATCA checks
      * that they agree, so they are computed once.
      *
-     * @param  array<int, array<string, mixed>>  $lines
+     * A document charge is added to the base of the group it is charged at.
+     *
      * @return array<string, array{category: string, rate: float, net: float, share: float, taxableAmount: float, taxAmount: float, taxExemptionReason: ?string, taxExemptionReasonCode: ?string}>
      */
-    private function breakdown(array $lines, float $allowance, ?float $tax = null): array
+    private function breakdown(InvoiceXmlData $data): array
     {
+        $allowance = (float) $data->discount;
+        $tax = $this->fixedTax($data);
         $groups = [];
 
-        foreach ($lines as $line) {
+        foreach ($data->lines as $line) {
             $category = $line['taxCategory'] ?? 'S';
             $rate = (float) ($line['taxRate'] ?? 15.0);
             $key = $category.'_'.$rate;
@@ -222,15 +256,41 @@ class UblTotalsBuilder
             $groups[$key]['net'] += Ubl::lineNet($line);
         }
 
+        $nets = array_map(static fn (array $g): float => $g['net'], $groups);
+        $charges = [];
+
+        // A document charge adds to the base of its category. One at a
+        // category no line has is a breakdown of its own, which names the
+        // charge's exemption where it is not standard-rated (BR-KSA-23,
+        // BR-KSA-24, BR-KSA-69).
+        foreach ($data->charges as $charge) {
+            $rate = (float) $charge['taxRate'];
+            $key = $charge['taxCategory'].'_'.$rate;
+            $charges[$key] = ($charges[$key] ?? 0.0) + (float) $charge['amount'];
+            $groups[$key] ??= [
+                'category' => $charge['taxCategory'],
+                'rate' => $rate,
+                'taxCategory' => $charge['taxCategory'],
+                'taxPercent' => $rate,
+                'net' => 0.0,
+                'share' => 0.0,
+                'taxableAmount' => 0.0,
+                'taxAmount' => 0.0,
+                'taxExemptionReason' => $charge['exemptionReason'] ?? null,
+                'taxExemptionReasonCode' => $charge['exemptionCode'] ?? null,
+            ];
+        }
+
         // A discount on the whole invoice reaches every category in proportion
         // to what that category contributed. Tax is then recomputed on the
         // reduced base rather than carried over from the lines, which were
         // priced before the discount existed.
         $categories = InvoiceTotals::categories(
-            array_map(static fn (array $g): float => $g['net'], $groups),
+            $nets,
             array_map(static fn (array $g): float => $g['rate'], $groups),
             $allowance,
-            $tax
+            $tax,
+            $charges,
         );
 
         foreach ($categories as $key => $category) {
@@ -312,8 +372,8 @@ class UblTotalsBuilder
 
         // Tax exclusive amount
         // BR-CO-13: the taxable total is the line extension less any
-        // allowance, not the line extension itself.
-        $taxExcl = Ubl::element($dom, Ubl::CBC_NS, 'cbc:TaxExclusiveAmount', Ubl::amount($data->subtotal - $data->discount));
+        // allowance plus any charge, not the line extension itself.
+        $taxExcl = Ubl::element($dom, Ubl::CBC_NS, 'cbc:TaxExclusiveAmount', Ubl::amount($data->subtotal - $data->discount + $data->chargeTotal()));
         $taxExcl->setAttribute('currencyID', $data->currency);
         $total->appendChild($taxExcl);
 
@@ -327,6 +387,13 @@ class UblTotalsBuilder
             $allowance = Ubl::element($dom, Ubl::CBC_NS, 'cbc:AllowanceTotalAmount', Ubl::amount($data->discount));
             $allowance->setAttribute('currencyID', $data->currency);
             $total->appendChild($allowance);
+        }
+
+        // BT-108, after the allowance total as UBL orders them.
+        if ($data->charges !== []) {
+            $chargeTotal = Ubl::element($dom, Ubl::CBC_NS, 'cbc:ChargeTotalAmount', Ubl::amount($data->chargeTotal()));
+            $chargeTotal->setAttribute('currencyID', $data->currency);
+            $total->appendChild($chargeTotal);
         }
 
         // Prepaid amount

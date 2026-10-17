@@ -211,6 +211,74 @@ class ScenarioConformanceTest extends TestCase
     }
 
     /**
+     * Discounts and charges, on lines and on the whole invoice, each shape
+     * ZATCA has a rule about: an amount, a percentage of a base, a charge at
+     * a category no line has, mixed categories under a document discount,
+     * and the same with prices that include VAT.
+     *
+     * @return iterable<string, array{array<string, mixed>, int}>
+     */
+    public static function charged(): iterable
+    {
+        $delivery = ['reason' => 'Delivery', 'reason_code' => 'DL', 'amount' => '25.00'];
+        $zero = ['tax_category' => 'Z', 'tax_rate' => 0, 'exempt_code' => 'VATEX-SA-32', 'exempt_reason' => 'Export of goods'];
+
+        yield 'delivery on a simplified invoice' => [self::simplified([
+            'lines' => [['description' => 'Groceries', 'quantity' => 3, 'unit_price' => '12.49']],
+            'charges' => [$delivery],
+        ]), 1];
+        yield 'service charge percentage on a standard invoice' => [self::standard([
+            'lines' => [
+                ['description' => 'Dinner', 'quantity' => 4, 'unit_price' => '87.35'],
+                ['description' => 'Drinks', 'quantity' => 7, 'unit_price' => '13.99'],
+            ],
+            'charges' => [['reason' => 'Service charge', 'reason_code' => 'ADR', 'percent' => '12.5']],
+        ]), 1];
+        yield 'line discount and line charges' => [self::standard([
+            'lines' => [
+                ['description' => 'Sofa', 'quantity' => 1, 'unit_price' => '2499.99', 'discount_amount' => '250.00', 'charges' => [
+                    ['reason' => 'Installation', 'reason_code' => 'IAA', 'amount' => '150.00'],
+                    ['reason' => 'Packing', 'reason_code' => 'PC', 'percent' => '2.5'],
+                ]],
+                ['description' => 'Cushion', 'quantity' => 3, 'unit_price' => '45.50', 'discount_amount' => '13.65'],
+            ],
+        ]), 2];
+        yield 'mixed categories, a discount and two charges' => [self::standard([
+            'discount_amount' => '33.33',
+            'lines' => [
+                ['description' => 'Consulting', 'quantity' => 2, 'unit_price' => '499.95'],
+                ['description' => 'Exported parts', 'quantity' => 5, 'unit_price' => '81.17', 'tax_rate' => 0, 'tax_category' => 'Z', 'exempt_code' => 'VATEX-SA-32', 'exempt_reason' => 'Export of goods'],
+            ],
+            'charges' => [$delivery, ['reason' => 'Freight abroad', 'reason_code' => 'FC', 'amount' => '60.00', ...$zero]],
+        ]), 2];
+        yield 'a charge at a category no line has' => [self::standard([
+            'charges' => [['reason' => 'International freight', 'reason_code' => 'FC', 'amount' => '120.00', 'tax_category' => 'Z', 'tax_rate' => 0, 'exempt_code' => 'VATEX-SA-34-1', 'exempt_reason' => 'International transport of goods']],
+        ]), 1];
+        yield 'prices with VAT in them' => [self::standard([
+            'prices_include_vat' => true,
+            'discount_amount' => '10.00',
+            'lines' => [
+                ['description' => 'Shirt', 'quantity' => 3, 'unit_price' => '79.99', 'discount_amount' => '20.00', 'charges' => [['reason' => 'Gift wrap', 'reason_code' => 'PC', 'amount' => '5.75']]],
+                ['description' => 'Belt', 'quantity' => 1, 'unit_price' => '49.90'],
+            ],
+            'charges' => [$delivery, ['reason' => 'Service charge', 'reason_code' => 'ADR', 'percent' => '5']],
+        ]), 2];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    #[DataProvider('charged')]
+    public function test_discounts_and_charges_validate(array $payload, int $charges): void
+    {
+        $xml = $this->signedFrom($payload);
+
+        // Every charge stated, as a charge (ChargeIndicator true).
+        $this->assertSame($charges, preg_match_all('#<cbc:ChargeIndicator[^>]*>true</cbc:ChargeIndicator>#', $xml));
+        $this->assertAccepted($xml);
+    }
+
+    /**
      * POST the payload to the API, then sign what was drafted.
      *
      * @param  array<string, mixed>  $payload

@@ -86,6 +86,20 @@ export function registerCataloguePickers() {
             if (row) {
                 fillLine(row, fieldsOf(target));
             }
+
+            return;
+        }
+
+        // A common charge fills its row the way a product fills a line,
+        // by the end of each field's name: charges[1][reason].
+        if (target.matches('[data-charge-picker]')) {
+            const row = target.closest('[data-charge-row]');
+
+            if (row) {
+                Object.entries(fieldsOf(target)).forEach(([key, value]) => {
+                    fill(row.querySelector(`[name$="[${CSS.escape(key)}]"]`), String(value));
+                });
+            }
         }
     });
 }

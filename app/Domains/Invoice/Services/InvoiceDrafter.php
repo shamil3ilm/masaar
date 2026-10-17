@@ -8,6 +8,7 @@ use App\Domains\Audit\Services\AuditService;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Exceptions\InvoiceNotEditableException;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Models\InvoiceCharge;
 use App\Domains\Invoice\Support\UnitCode;
 use App\Domains\Organization\Models\Organization;
 use Carbon\CarbonImmutable;
@@ -26,6 +27,9 @@ use Illuminate\Validation\ValidationException;
  */
 class InvoiceDrafter
 {
+    /** UNCL 7161's "Miscellaneous", a document charge's reason code when it names none. */
+    public const CHARGE_REASON = 'ABK';
+
     public function __construct(
         private readonly AuditService $audit,
     ) {}
@@ -85,7 +89,7 @@ class InvoiceDrafter
             ? (bool) $data['prices_include_vat']
             : (bool) Organization::query()->whereKey($organizationId)->value('prices_include_vat');
 
-        $totals = InvoiceTotals::of($data['lines'], (string) ($data['discount_amount'] ?? '0'), $inclusive);
+        $totals = InvoiceTotals::of($data['lines'], (string) ($data['discount_amount'] ?? '0'), $inclusive, array_values((array) ($data['charges'] ?? [])));
 
         return DB::transaction(function () use ($data, $organizationId, $branchId, $totals, $inclusive, $countryFields) {
             $invoice = Invoice::create([
@@ -123,7 +127,7 @@ class InvoiceDrafter
             foreach (array_values($data['lines']) as $index => $line) {
                 $priced = $totals->lines[$index];
 
-                $invoice->lines()->create([
+                $created = $invoice->lines()->create([
                     'description' => $line['description'],
                     'description_ar' => $line['description_ar'] ?? null,
                     // PINT AE's item name; no Saudi request carries one.
@@ -134,6 +138,8 @@ class InvoiceDrafter
                     // Net, with the exact net beside it: a price entered with
                     // VAT in it is stored as the net it contains.
                     'unit_price' => $priced['unit_price'],
+                    // As entered, and already off the net.
+                    'discount_amount' => bccomp($priced['discount'], '0', 2) > 0 ? $priced['discount'] : null,
                     'net_amount' => $priced['net'],
                     'tax_rate' => $priced['rate'],
                     'tax_amount' => $priced['tax'],
@@ -141,6 +147,23 @@ class InvoiceDrafter
                     'exempt_code' => $line['exempt_code'] ?? null,
                     'exempt_reason' => $line['exempt_reason'] ?? null,
                     'line_total' => $priced['total'],
+                ]);
+
+                // Taxed as the line is; on an invoice priced with VAT in it
+                // its net is in the line's.
+                foreach (array_values((array) ($line['charges'] ?? [])) as $position => $charge) {
+                    $resolved = $priced['charges'][$position];
+                    $this->addCharge($invoice, $charge, $resolved, $position, $created->id, $inclusive ? null : $resolved['amount']);
+                }
+            }
+
+            foreach (array_values((array) ($data['charges'] ?? [])) as $position => $charge) {
+                $resolved = $totals->charges[$position];
+                $this->addCharge($invoice, $charge, $resolved, $position, null, $resolved['net'], [
+                    'tax_category' => $resolved['category'],
+                    'tax_rate' => $resolved['rate'],
+                    'exempt_code' => $charge['exempt_code'] ?? null,
+                    'exempt_reason' => $charge['exempt_reason'] ?? null,
                 ]);
             }
 
@@ -190,6 +213,31 @@ class InvoiceDrafter
             $this->audit->logDeleted($draft);
             $draft->delete();
         });
+    }
+
+    /**
+     * Keep a charge as InvoiceTotals priced it.
+     *
+     * @param  array<string, mixed>  $charge  As the request gave it
+     * @param  array{amount: string, percent: ?string, base: ?string}  $resolved
+     * @param  string|null  $net  What the document states; null for a line
+     *                            charge folded into its line's net
+     * @param  array<string, mixed>  $tax  A document charge's category, rate and exemption
+     */
+    private function addCharge(Invoice $invoice, array $charge, array $resolved, int $position, ?string $lineId, ?string $net, array $tax = []): void
+    {
+        InvoiceCharge::query()->create([
+            'invoice_id' => $invoice->id,
+            'invoice_line_id' => $lineId,
+            'position' => $position,
+            'reason' => (string) $charge['reason'],
+            'reason_code' => (string) ($charge['reason_code'] ?? self::CHARGE_REASON),
+            'percent' => $resolved['percent'],
+            'base_amount' => $resolved['base'],
+            'amount' => $resolved['amount'],
+            'net_amount' => $net ?? '0.00',
+            ...$tax,
+        ]);
     }
 
     /**

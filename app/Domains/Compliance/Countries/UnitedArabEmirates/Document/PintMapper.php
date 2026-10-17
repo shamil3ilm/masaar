@@ -7,6 +7,7 @@ namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Document;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Contracts\JurisdictionProfile;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\DTOs\PintAddress;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\DTOs\PintAllowance;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\DTOs\PintCharge;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\DTOs\PintDocument;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\DTOs\PintLine;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\DTOs\PintParty;
@@ -16,6 +17,7 @@ use App\Domains\Compliance\Countries\UnitedArabEmirates\Enums\PintTaxCategory;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Models\InvoiceCharge;
 use App\Domains\Invoice\Models\InvoiceLine;
 use App\Domains\Invoice\Support\UnitCode;
 use App\Domains\Organization\Models\ComplianceProfile;
@@ -74,10 +76,13 @@ class PintMapper
 
         $lines = $this->lines($invoice, $data, $profile, $foreign ? ($rate ?? '0') : null);
         $discount = bcadd((string) ($invoice->discount_amount ?? '0'), '0', 2);
-        [$allowances, $subtotals] = $this->breakdown($lines, $discount);
+        $charges = $this->charges($invoice, $profile);
+        [$allowances, $subtotals] = $this->breakdown($lines, $discount, $charges);
 
         $lineExtension = array_reduce($lines, fn (string $sum, PintLine $line): string => bcadd($sum, $line->netAmount, 2), '0');
-        $exclusive = bcsub($lineExtension, $discount, 2);
+        $chargeTotal = array_reduce($charges, fn (string $sum, PintCharge $charge): string => bcadd($sum, $charge->amount, 2), '0.00');
+        // IBT-109: the lines, less the allowances, plus the charges.
+        $exclusive = bcadd(bcsub($lineExtension, $discount, 2), $chargeTotal, 2);
         $tax = self::round(array_reduce($subtotals, fn (string $sum, PintTaxSubtotal $s): string => bcadd($sum, $s->taxAmount, self::SCALE), '0'));
         $inclusive = bcadd($exclusive, $tax, 2);
         $credit = $category->isCreditNote();
@@ -126,7 +131,51 @@ class PintMapper
             orderReference: self::text($invoice->order_reference),
             contractReference: self::text($invoice->contract_reference),
             paymentTerms: self::text($invoice->payment_terms),
+            charges: $charges,
+            chargeTotal: $chargeTotal,
         );
+    }
+
+    /**
+     * The charges on the whole document, each at its net, at the category
+     * and rate it is made at: a rate as a line in that category states one
+     * (ALIGNED-IBRP-S-07, -Z-07, -E-07, -O-07), and for an exempt one its
+     * exemption code (IBR-169-AE).
+     *
+     * @return list<PintCharge>
+     */
+    private function charges(Invoice $invoice, JurisdictionProfile $profile): array
+    {
+        return $invoice->charges->map(function (InvoiceCharge $charge) use ($profile): PintCharge {
+            $category = PintTaxCategory::fromStored($charge->tax_category)
+                ?? throw new DomainException(__('A charge\'s ":category" is not a UAE tax category.', ['category' => $charge->tax_category]));
+
+            return new PintCharge(
+                amount: bcadd((string) $charge->net_amount, '0', 2),
+                reasonCode: (string) $charge->reason_code,
+                reason: (string) $charge->reason,
+                percent: $charge->percent === null ? null : self::trim((string) $charge->percent),
+                base: $charge->base_amount === null ? null : bcadd((string) $charge->base_amount, '0', 2),
+                category: $category,
+                rate: $this->rateOf($category, (string) $charge->tax_rate, $profile),
+                exemptionCode: $category === PintTaxCategory::Exempt ? self::text($charge->exempt_code) : null,
+            );
+        })->values()->all();
+    }
+
+    /**
+     * The rate a category states: a standard line's own, zero for a
+     * zero-rated one, the standard rate where the category names it (reverse
+     * charge, margin scheme), and none for exempt or out of scope.
+     */
+    private function rateOf(PintTaxCategory $category, string $rate, JurisdictionProfile $profile): ?string
+    {
+        return match (true) {
+            $category === PintTaxCategory::Standard => self::trim($rate),
+            $category === PintTaxCategory::ZeroRated => '0',
+            $category->hasRate() => $profile->standardRate(),
+            default => null,
+        };
     }
 
     /**
@@ -142,7 +191,7 @@ class PintMapper
     {
         $lines = $this->lines($invoice, (array) ($invoice->jurisdiction_data ?? []), $profile, null);
 
-        return $this->breakdown($lines, bcadd((string) ($invoice->discount_amount ?? '0'), '0', 2))[1];
+        return $this->breakdown($lines, bcadd((string) ($invoice->discount_amount ?? '0'), '0', 2), $this->charges($invoice, $profile))[1];
     }
 
     /**
@@ -299,13 +348,19 @@ class PintMapper
             $net = $line->net_amount !== null
                 ? bcadd((string) $line->net_amount, '0', 2)
                 : self::round(bcmul($quantity, (string) $line->unit_price, self::SCALE));
-            $rate = match (true) {
-                $category === PintTaxCategory::Standard => self::trim((string) $line->tax_rate),
-                $category === PintTaxCategory::ZeroRated => '0',
-                $category->hasRate() => $profile->standardRate(),
-                default => null,
-            };
+            $rate = $this->rateOf($category, (string) $line->tax_rate, $profile);
             $vat = $category->chargesTax() ? bcdiv(bcmul($net, (string) $rate, self::SCALE), '100', self::SCALE) : '0';
+            $discount = bccomp((string) ($line->discount_amount ?? '0'), '0', 2) > 0 ? bcadd((string) $line->discount_amount, '0', 2) : null;
+            $charges = $line->charges->map(fn (InvoiceCharge $charge): PintCharge => new PintCharge(
+                amount: bcadd((string) $charge->amount, '0', 2),
+                reasonCode: (string) $charge->reason_code,
+                reason: (string) $charge->reason,
+                percent: $charge->percent === null ? null : self::trim((string) $charge->percent),
+                base: $charge->base_amount === null ? null : bcadd((string) $charge->base_amount, '0', 2),
+            ))->values()->all();
+            // IBR-147-AE: quantity times price, plus the line's charges, less
+            // its discount, is the net; the price is found from what is left.
+            $priced = bcsub(bcadd($net, (string) ($discount ?? '0'), 2), array_reduce($charges, fn (string $s, PintCharge $c): string => bcadd($s, $c->amount, 2), '0'), 2);
 
             return new PintLine(
                 id: $position,
@@ -314,7 +369,7 @@ class PintMapper
                 quantity: self::trim($quantity),
                 unitCode: UnitCode::normalise($line->unit_code),
                 netAmount: $net,
-                price: $this->price($quantity, (string) $line->unit_price, $net),
+                price: $this->price($quantity, (string) $line->unit_price, $priced),
                 category: $category,
                 rate: $rate,
                 vatAed: $category === PintTaxCategory::Exempt ? null : self::inAed($vat, $toAed),
@@ -324,6 +379,8 @@ class PintMapper
                 classificationCode: self::text($extra['hs_code'] ?? null) ?? self::text($line->class_code),
                 standardItemId: self::text($extra['item_id'] ?? null),
                 goodsType: self::text($extra['goods_type'] ?? null),
+                discount: $discount,
+                charges: $charges,
             );
         })->all();
     }
@@ -351,28 +408,40 @@ class PintMapper
      * no share: an allowance in N is refused (IBR-115-AE), and one in AE
      * states a zero rate that would leave the breakdown's base unreduced.
      *
+     * A document charge adds to the base of the category it is made at
+     * (ALIGNED-IBRP-S-08, -Z-08, -E-08, -O-08); one at a category no line
+     * has is a breakdown of its own, which takes no share of the discount.
+     *
      * @param  list<PintLine>  $lines
+     * @param  list<PintCharge>  $charges
      * @return array{list<PintAllowance>, list<PintTaxSubtotal>}
      */
-    private function breakdown(array $lines, string $discount): array
+    private function breakdown(array $lines, string $discount, array $charges = []): array
     {
         $groups = [];
 
         foreach ($lines as $line) {
             $key = $line->category->value.'|'.$line->rate;
-            $groups[$key] ??= ['category' => $line->category, 'rate' => $line->rate, 'net' => '0', 'code' => null, 'reason' => null];
+            $groups[$key] ??= ['category' => $line->category, 'rate' => $line->rate, 'net' => '0', 'code' => null, 'reason' => null, 'charges' => '0'];
             $groups[$key]['net'] = bcadd($groups[$key]['net'], $line->netAmount, 2);
             $groups[$key]['code'] ??= $line->exemptionCode;
             $groups[$key]['reason'] ??= $line->exemptionReason;
         }
 
         $shares = $this->shares($groups, $discount);
+
+        foreach ($charges as $charge) {
+            $key = $charge->category?->value.'|'.$charge->rate;
+            $groups[$key] ??= ['category' => $charge->category, 'rate' => $charge->rate, 'net' => '0', 'code' => $charge->exemptionCode, 'reason' => null, 'charges' => '0'];
+            $groups[$key]['charges'] = bcadd($groups[$key]['charges'], $charge->amount, 2);
+        }
+
         $allowances = [];
         $subtotals = [];
 
         foreach ($groups as $key => $group) {
             $share = $shares[$key] ?? '0';
-            $taxable = bcsub($group['net'], $share, 2);
+            $taxable = bcadd(bcsub($group['net'], $share, 2), $group['charges'], 2);
             /** @var PintTaxCategory $category */
             $category = $group['category'];
 

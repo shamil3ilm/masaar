@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Document;
 
 use App\Domains\Compliance\Countries\UnitedArabEmirates\DTOs\PintAddress;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\DTOs\PintAllowance;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\DTOs\PintCharge;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\DTOs\PintDocument;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\DTOs\PintLine;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\DTOs\PintParty;
@@ -216,6 +217,40 @@ class PintUblBuilder
             $this->add($node, 'cbc:Amount', $allowance->amount, ['currencyID' => $d->currency]);
             $this->taxCategory($node, 'cac:TaxCategory', $allowance->category, $allowance->rate, $this->allowanceExemption($allowance));
         }
+
+        // IBG-21, each with its category (ALIGNED-IBRP-037) and, when exempt,
+        // its exemption (IBR-169-AE). The rate as an allowance states it: a
+        // zero for zero-rated and exempt (ALIGNED-IBRP-Z-07, -E-07), none out
+        // of scope (ALIGNED-IBRP-O-07).
+        foreach ($d->charges as $charge) {
+            $node = $this->charge($root, $charge, $d->currency);
+            $rate = match ($charge->category) {
+                PintTaxCategory::Standard => $charge->rate,
+                PintTaxCategory::OutOfScope => null,
+                default => '0',
+            };
+            $this->taxCategory($node, 'cac:TaxCategory', $charge->category, $rate, $charge->exemptionCode);
+        }
+    }
+
+    /**
+     * A charge, on the document (IBG-21) or a line (IBG-28): the indicator,
+     * its UNCL 7161 code (IBR-CL-20) and reason, then the percentage, amount
+     * and base - the percentage and base together (ALIGNED-IBRP-058) and
+     * their product the amount (IBR-146-AE).
+     */
+    private function charge(DOMElement $parent, PintCharge $charge, string $currency): DOMElement
+    {
+        $node = $this->add($parent, 'cac:AllowanceCharge');
+        $this->add($node, 'cbc:ChargeIndicator', 'true');
+        $this->add($node, 'cbc:AllowanceChargeReasonCode', $charge->reasonCode);
+        $this->add($node, 'cbc:AllowanceChargeReason', $charge->reason);
+        $percentage = $charge->percent !== null && $charge->base !== null;
+        $this->add($node, 'cbc:MultiplierFactorNumeric', $percentage ? $charge->percent : null);
+        $this->add($node, 'cbc:Amount', $charge->amount, ['currencyID' => $currency]);
+        $this->add($node, 'cbc:BaseAmount', $percentage ? $charge->base : null, ['currencyID' => $currency]);
+
+        return $node;
     }
 
     /** IBR-168-AE: an exempt allowance names its exemption. */
@@ -266,6 +301,11 @@ class PintUblBuilder
             $this->add($total, 'cbc:AllowanceTotalAmount', $d->allowanceTotal, $currency);
         }
 
+        // IBT-108, after the allowances as UBL orders them.
+        if ($d->charges !== []) {
+            $this->add($total, 'cbc:ChargeTotalAmount', $d->chargeTotal, $currency);
+        }
+
         $this->add($total, 'cbc:PayableAmount', $d->payableAmount, $currency);
     }
 
@@ -275,6 +315,21 @@ class PintUblBuilder
         $this->add($node, 'cbc:ID', $line->id);
         $this->add($node, $credit ? 'cbc:CreditedQuantity' : 'cbc:InvoicedQuantity', $line->quantity, ['unitCode' => $line->unitCode]);
         $this->add($node, 'cbc:LineExtensionAmount', $line->netAmount, ['currencyID' => $currency]);
+
+        // IBG-27, the line's own discount (95 is UNCL5189's "Discount",
+        // IBR-CL-19), and IBG-28, its charges: before the item, as UBL
+        // orders them.
+        if ($line->discount !== null) {
+            $discount = $this->add($node, 'cac:AllowanceCharge');
+            $this->add($discount, 'cbc:ChargeIndicator', 'false');
+            $this->add($discount, 'cbc:AllowanceChargeReasonCode', '95');
+            $this->add($discount, 'cbc:AllowanceChargeReason', 'Discount');
+            $this->add($discount, 'cbc:Amount', $line->discount, ['currencyID' => $currency]);
+        }
+
+        foreach ($line->charges as $charge) {
+            $this->charge($node, $charge, $currency);
+        }
 
         $item = $this->add($node, 'cac:Item');
         $this->add($item, 'cbc:Description', $line->description);

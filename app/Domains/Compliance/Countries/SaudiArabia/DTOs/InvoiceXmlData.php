@@ -124,7 +124,22 @@ final readonly class InvoiceXmlData
         // BT-13 and BT-12: the buyer's purchase order and the contract.
         public ?string $orderReference = null,
         public ?string $contractReference = null,
+        // BG-21, the charges on the whole invoice, each {amount, percent,
+        // base, reasonCode, reason, taxCategory, taxRate, exemptionCode,
+        // exemptionReason}: its net (BT-99), its percentage and base
+        // (BT-101, BT-100) when it is one, why in words and as a UNCL 7161
+        // code (BT-104, BT-105), and the category and rate it is charged at
+        // (BT-102, BT-103).
+        public array $charges = [],
     ) {}
+
+    /**
+     * BT-108, the document charges together.
+     */
+    public function chargeTotal(): float
+    {
+        return round(array_sum(array_map(fn (array $charge): float => (float) $charge['amount'], $this->charges)), 2);
+    }
 
     /**
      * Check if this is a standard (B2B) invoice.

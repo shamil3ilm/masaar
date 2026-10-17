@@ -68,6 +68,10 @@ final readonly class PintDocument
         public ?string $contractReference = null,
         // IBT-020, the payment terms in words.
         public ?string $paymentTerms = null,
+        // IBG-21, the charges on the whole document, and IBT-108, their sum.
+        /** @var list<PintCharge> */
+        public array $charges = [],
+        public string $chargeTotal = '0.00',
     ) {}
 
     /**

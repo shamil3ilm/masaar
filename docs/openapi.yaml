@@ -1128,6 +1128,8 @@ paths:
                   type: string
                 lines:
                   type: array
+                charges:
+                  type: array
               required:
                 - document_type
                 - document_category
@@ -1728,6 +1730,8 @@ paths:
                   type: string
                 lines:
                   type: array
+                charges:
+                  type: array
               required:
                 - type
                 - issue_date
@@ -1860,6 +1864,8 @@ paths:
                   type: string
                 lines:
                   type: array
+                charges:
+                  type: array
               required:
                 - type
                 - issue_date
@@ -1964,6 +1970,8 @@ paths:
                 notes:
                   type: string
                 lines:
+                  type: array
+                charges:
                   type: array
               required:
                 - type
@@ -3117,6 +3125,8 @@ paths:
                   type: string
                 lines:
                   type: array
+                charges:
+                  type: array
               required:
                 - type
                 - issue_date
@@ -3252,6 +3262,8 @@ paths:
                 notes:
                   type: string
                 lines:
+                  type: array
+                charges:
                   type: array
               required:
                 - type
@@ -3411,6 +3423,8 @@ paths:
                 notes:
                   type: string
                 lines:
+                  type: array
+                charges:
                   type: array
                 invoice_type:
                   type: string

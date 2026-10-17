@@ -281,6 +281,12 @@
         </template>
     </div>
 
+    @include('portal.invoices.partials.charges', [
+        'chargePresets' => $chargePresets ?? [],
+        'chargeCategories' => ['S' => __('Standard-rated'), 'Z' => __('Zero-rated'), 'E' => __('Exempt'), 'O' => __('Out of scope')],
+        'standardRate' => '15',
+    ])
+
     <div class="mb-6 rounded-lg bg-white dark:bg-gray-900 p-6 shadow">
         <h3 class="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ __('Totals and notes') }}</h3>
 

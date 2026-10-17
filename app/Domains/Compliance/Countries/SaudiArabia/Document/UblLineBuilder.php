@@ -61,17 +61,21 @@ class UblLineBuilder
         // that had VAT in it was converted when the invoice was drafted.
         // This converted again from the unit price, which by then was net.
         $netUnitPrice = $this->formatPrice($unitPrice);
-        // Quantity times price, not lineTotal: that carries the tax. The
-        // stored net when there is one.
-        $lineNet = ($isFreeItem ? round($unitPrice * (float) $line['quantity'], 2) : Ubl::lineNet($line)) - $lineDiscount;
+        // Quantity times price less the line's discount, not lineTotal: that
+        // carries the tax. The stored net when there is one, which is
+        // already less the discount.
+        $lineNet = $isFreeItem ? round($unitPrice * (float) $line['quantity'], 2) - $lineDiscount : Ubl::lineNet($line);
         $lineTaxAmount = (float) ($line['taxAmount'] ?? InvoiceXmlData::calculateTaxFromNet($lineNet, $taxRate));
 
         // A net backed out of a gross price is rounded to the halalah, so
-        // the price that reproduces the line net (BR-KSA-EN16931-11) may
-        // need more places. ZATCA sets no limit on the price's decimals.
-        if (! $isFreeItem && $lineDiscount === 0.0 && (float) $line['quantity'] > 0
-            && round($unitPrice * (float) $line['quantity'], 2) !== round($lineNet, 2)) {
-            $netUnitPrice = $this->priceFor($lineNet, (float) $line['quantity']);
+        // the price that reproduces the line net (BR-KSA-EN16931-11:
+        // quantity times price, less the line's allowance) may need more
+        // places. ZATCA sets no limit on the price's decimals.
+        $beforeAdjustments = round($lineNet + $lineDiscount - Ubl::lineCharges($line), 2);
+
+        if (! $isFreeItem && (float) $line['quantity'] > 0
+            && round($unitPrice * (float) $line['quantity'], 2) !== $beforeAdjustments) {
+            $netUnitPrice = $this->priceFor($beforeAdjustments, (float) $line['quantity']);
         }
 
         // For free items: lineNet = 0 but VAT still calculated on market value
@@ -97,6 +101,13 @@ class UblLineBuilder
                 $line['discountReason'] ?? 'Line discount',
                 $data->currency
             ));
+        }
+
+        // The line's own charges (BG-28): each with its UNCL 7161 code and
+        // its reason (BR-KSA-20, BR-KSA-22, BR-KSA-CL-06), after the
+        // allowance and before the line's tax total, as UBL orders them.
+        foreach ((array) ($line['charges'] ?? []) as $charge) {
+            $invoiceLine->appendChild($this->buildLineCharge($dom, $charge, $data->currency));
         }
 
         $invoiceLine->appendChild($this->buildLineTaxTotal($dom, $data->currency, $displayLineNet, $lineTaxAmount));
@@ -213,6 +224,26 @@ class UblLineBuilder
         $allowanceCharge->appendChild($amountEl);
 
         return $allowanceCharge;
+    }
+
+    /**
+     * A line charge: the indicator, its code and reason, then its
+     * percentage, amount and base - the percentage and base only together
+     * (BR-KSA-EN16931-04, -05), and the amount their product
+     * (BR-KSA-EN16931-03).
+     *
+     * @param  array<string, mixed>  $charge
+     */
+    private function buildLineCharge(DOMDocument $dom, array $charge, string $currency): DOMElement
+    {
+        $element = $dom->createElementNS(Ubl::CAC_NS, 'cac:AllowanceCharge');
+        $element->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:ChargeIndicator', 'true'));
+        $element->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:AllowanceChargeReasonCode', (string) $charge['reasonCode']));
+        $element->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:AllowanceChargeReason', (string) $charge['reason']));
+
+        Ubl::chargeAmounts($dom, $element, $charge, $currency);
+
+        return $element;
     }
 
     /**

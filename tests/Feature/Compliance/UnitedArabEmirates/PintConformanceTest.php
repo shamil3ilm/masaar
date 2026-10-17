@@ -100,6 +100,87 @@ class PintConformanceTest extends TestCase
     }
 
     /**
+     * Discounts and charges, drafted through the API: line discounts and
+     * line charges (IBG-27, IBG-28, IBR-147-AE), a document charge as an
+     * amount and as a percentage of a base (IBG-21, ALIGNED-IBRP-058,
+     * IBR-146-AE), a charge at each category including an exempt one with
+     * its reason (IBR-169-AE) and an out-of-scope one with no rate
+     * (ALIGNED-IBRP-O-07), and a charge on a credit note.
+     *
+     * @return iterable<string, array{array<string, mixed>}>
+     */
+    public static function charged(): iterable
+    {
+        $delivery = ['reason' => 'Delivery', 'reason_code' => 'DL', 'amount' => '35.00'];
+
+        yield 'delivery and a service charge' => [[
+            'charges' => [$delivery, ['reason' => 'Service charge', 'reason_code' => 'ADR', 'percent' => '10']],
+        ]];
+        yield 'line discount and line charges' => [[
+            'lines' => [
+                ['item_name' => 'Sofa', 'quantity' => 1, 'unit_code' => 'H87', 'unit_price' => '2499.99', 'tax_category' => 'S', 'discount_amount' => '250.00', 'charges' => [
+                    ['reason' => 'Installation', 'reason_code' => 'IAA', 'amount' => '150.00'],
+                    ['reason' => 'Packing', 'reason_code' => 'PC', 'percent' => '2.5'],
+                ]],
+                ['item_name' => 'Medicine', 'quantity' => 3, 'unit_code' => 'H87', 'unit_price' => '33.33', 'tax_category' => 'Z', 'discount_amount' => '3.33'],
+            ],
+        ]];
+        yield 'charges at every category' => [[
+            'discount_amount' => '20.00',
+            'charges' => [
+                $delivery,
+                ['reason' => 'Freight', 'reason_code' => 'FC', 'amount' => '40.00', 'tax_category' => 'Z'],
+                ['reason' => 'Bank fee', 'reason_code' => 'FI', 'amount' => '15.00', 'tax_category' => 'E', 'exempt_code' => 'DL8.46.1', 'exempt_reason' => 'Financial services'],
+                ['reason' => 'Government fee', 'reason_code' => 'ABK', 'amount' => '10.00', 'tax_category' => 'O'],
+            ],
+        ]];
+        yield 'a credit note with a charge' => [[
+            'document_type' => 'credit_note',
+            'billing_ref' => 'AE-INV-0001',
+            'credit_reason' => 'DL8.61.1.A',
+            'due_date' => null,
+            'charges' => [$delivery],
+        ]];
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     */
+    #[DataProvider('charged')]
+    public function test_charges_pass_official_rules(array $overrides): void
+    {
+        [$artefacts, $jar] = $this->requireArtefacts();
+        config(['peppol.countries.AE.enabled' => true]);
+        Queue::fake();
+
+        $organization = $this->uaeOrganization();
+        $user = User::factory()->create();
+        $user->organizations()->attach($organization->id, ['role' => 'admin', 'status' => 'active']);
+        $api = $this->withToken(JWTAuth::claims(['org_id' => $organization->id, 'role' => 'admin'])->fromUser($user));
+
+        $id = $api->postJson('/api/compliance/ae/invoices', array_filter([
+            'issue_date' => '2026-10-10',
+            'due_date' => '2026-11-09',
+            'payment_means_code' => '30',
+            'buyer_name' => 'Noor Electronics LLC',
+            'buyer_vat_number' => '100765432100003',
+            'buyer_address' => ['street' => 'Khalifa Street', 'city' => 'Abu Dhabi'],
+            'buyer_endpoint' => '0235:1007654321',
+            'buyer_subdivision' => 'AUH',
+            'lines' => [['item_name' => 'Consulting', 'quantity' => 2, 'unit_code' => 'DAY', 'unit_price' => 500, 'tax_category' => 'S']],
+            ...$overrides,
+        ], fn (mixed $value): bool => $value !== null))->assertCreated()->json('data.invoice.id');
+        $documentId = $api->postJson("/api/compliance/ae/invoices/{$id}/send")->assertOk()->json('data.document_id');
+
+        $xml = PeppolDocument::query()->findOrFail($documentId)->xml;
+        $this->assertStringContainsString('<cbc:ChargeIndicator>true</cbc:ChargeIndicator>', $xml);
+
+        $failures = $this->validate($xml, $artefacts, $jar);
+
+        $this->assertSame([], $failures, "PINT AE refused the charges:\n".implode("\n", $failures)."\n\n".$xml);
+    }
+
+    /**
      * The specification's own examples, through the same validator: if
      * these fail, the harness is wrong rather than the documents.
      */

@@ -76,6 +76,30 @@ final class PintAe implements JurisdictionProfile
     /** Exemption reasons (IBT-186), from the Aligned-TaxExemptionCodes list. */
     public const EXEMPTION_REASONS = ['DL8.46.1', 'DL8.46.2', 'DL8.46.3', 'DL8.46.4'];
 
+    /**
+     * IBT-105 and IBT-145, the reason codes a charge may carry: UNCL 7161, as
+     * IBR-CL-20 of the PINT schematron lists it.
+     *
+     * @var list<string>
+     */
+    public const CHARGE_REASON_CODES = [
+        'AA', 'AAA', 'AAC', 'AAD', 'AAE', 'AAF', 'AAH', 'AAI', 'AAS', 'AAT', 'AAV', 'AAY',
+        'AAZ', 'ABA', 'ABB', 'ABC', 'ABD', 'ABF', 'ABK', 'ABL', 'ABN', 'ABR', 'ABS', 'ABT',
+        'ABU', 'ACF', 'ACG', 'ACH', 'ACI', 'ACJ', 'ACK', 'ACL', 'ACM', 'ACS', 'ADC', 'ADE',
+        'ADJ', 'ADK', 'ADL', 'ADM', 'ADN', 'ADO', 'ADP', 'ADQ', 'ADR', 'ADT', 'ADW', 'ADY',
+        'ADZ', 'AEA', 'AEB', 'AEC', 'AED', 'AEF', 'AEH', 'AEI', 'AEJ', 'AEK', 'AEL', 'AEM',
+        'AEN', 'AEO', 'AEP', 'AES', 'AET', 'AEU', 'AEV', 'AEW', 'AEX', 'AEY', 'AEZ', 'AJ',
+        'AU', 'CA', 'CAB', 'CAD', 'CAE', 'CAF', 'CAI', 'CAJ', 'CAK', 'CAL', 'CAM', 'CAN',
+        'CAO', 'CAP', 'CAQ', 'CAR', 'CAS', 'CAT', 'CAU', 'CAV', 'CAW', 'CAX', 'CAY', 'CAZ',
+        'CD', 'CG', 'CS', 'CT', 'DAB', 'DAD', 'DAC', 'DAF', 'DAG', 'DAH', 'DAI', 'DAJ',
+        'DAK', 'DAL', 'DAM', 'DAN', 'DAO', 'DAP', 'DAQ', 'DL', 'EG', 'EP', 'ER', 'FAA',
+        'FAB', 'FAC', 'FC', 'FH', 'FI', 'GAA', 'HAA', 'HD', 'HH', 'IAA', 'IAB', 'ID',
+        'IF', 'IR', 'IS', 'KO', 'L1', 'LA', 'LAA', 'LAB', 'LF', 'MAE', 'MI', 'ML',
+        'NAA', 'OA', 'PA', 'PAA', 'PC', 'PL', 'PRV', 'RAB', 'RAC', 'RAD', 'RAF', 'RE',
+        'RF', 'RH', 'RV', 'SA', 'SAA', 'SAD', 'SAE', 'SAI', 'SG', 'SH', 'SM', 'SU',
+        'TAB', 'TAC', 'TT', 'TV', 'V1', 'V2', 'WH', 'XAA', 'YY', 'ZZZ',
+    ];
+
     /** Goods under the domestic reverse charge (BTAE-09), from the GoodsType list. */
     public const REVERSE_CHARGE_GOODS = ['DL8.48.8.2', 'DL8.48.8.1', 'DL8.48.3.1', 'DL8.48.3.2', 'DL8.48.3.3'];
 

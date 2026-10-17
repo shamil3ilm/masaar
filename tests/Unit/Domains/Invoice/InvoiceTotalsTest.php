@@ -178,6 +178,88 @@ class InvoiceTotalsTest extends TestCase
     /**
      * @return array{quantity: string, unit_price: string, tax_rate: string, tax_category: string}
      */
+    /**
+     * A line's own discount and charge are in its net, and its VAT is on
+     * what is left: 2 x 49.99 less 10.00 plus 5.00 is 94.98.
+     */
+    public function test_line_adjustments_are_in_the_net(): void
+    {
+        $totals = InvoiceTotals::of([[
+            ...$this->line('2', '49.99'),
+            'discount_amount' => '10.00',
+            'charges' => [['amount' => '5.00']],
+        ]]);
+
+        $this->assertSame(['94.98', '14.25', '109.23'], [$totals->lines[0]['net'], $totals->lines[0]['tax'], $totals->total]);
+    }
+
+    /**
+     * A percentage is of its base, rounded half up to the halalah: 12.5% of
+     * 447.33 is 55.91625, so 55.92 - the line's quantity times price unless
+     * it names its own base.
+     */
+    public function test_a_percentage_rounds_half_up(): void
+    {
+        $this->assertSame(['amount' => '55.92', 'percent' => '12.50', 'base' => '447.33'], InvoiceTotals::chargeAmount(['percent' => '12.5'], '447.33'));
+        $this->assertSame('0.01', InvoiceTotals::chargeAmount(['percent' => '0.5', 'base_amount' => '1.00'], '999.00')['amount']);
+        $this->assertSame('0.00', InvoiceTotals::chargeAmount(['percent' => '0.4', 'base_amount' => '1.00'], '999.00')['amount']);
+    }
+
+    /**
+     * A document charge adds to its own category's base: a delivery at 15%
+     * beside a zero-rated line, and a zero-rated freight at a category no
+     * line has, which takes none of the discount.
+     */
+    public function test_charges_follow_their_category(): void
+    {
+        $totals = InvoiceTotals::of([
+            $this->line('1', '100.00'),
+            ['quantity' => '1', 'unit_price' => '50.00', 'tax_rate' => '0', 'tax_category' => 'Z'],
+        ], '30.00', false, [
+            ['amount' => '20.00', 'tax_category' => 'S', 'tax_rate' => '15'],
+            ['amount' => '40.00', 'tax_category' => 'O', 'tax_rate' => '0'],
+        ]);
+
+        // S: 100 - 20 (two thirds of the discount) + 20 = 100, VAT 15.00.
+        $this->assertSame(['150.00', '30.00', '15.00', '195.00'], $this->figures($totals));
+        $this->assertSame('60.00', $totals->chargeTotal);
+
+        $categories = InvoiceTotals::categories(['S_15' => 100.0, 'Z_0' => 50.0], ['S_15' => 15.0, 'Z_0' => 0.0, 'O_0' => 0.0], 30.0, null, ['S_15' => 20.0, 'O_0' => 40.0]);
+        $this->assertSame(['S_15' => 100.0, 'Z_0' => 40.0, 'O_0' => 40.0], array_map(fn (array $c): float => $c['base'], $categories));
+        $this->assertSame(0.0, $categories['O_0']['share']);
+    }
+
+    /**
+     * With VAT in the prices, every figure the customer sees stays exact
+     * whatever the discounts and charges: the total is the lines' gross,
+     * less the discount, plus the charges' gross, and the categories add up
+     * to the VAT.
+     */
+    public function test_inclusive_charges_keep_the_total(): void
+    {
+        for ($cents = 1; $cents <= 2000; $cents += 37) {
+            $price = number_format($cents / 100, 2, '.', '');
+            $totals = InvoiceTotals::of([
+                [...$this->line('3', '19.99'), 'discount_amount' => '1.37', 'charges' => [['amount' => $price]]],
+                [...$this->line('1', $price), 'charges' => [['percent' => '7.5']]],
+            ], '0.99', true, [
+                ['amount' => '12.34', 'tax_category' => 'S', 'tax_rate' => '15'],
+                ['percent' => '3', 'tax_category' => 'S', 'tax_rate' => '15'],
+            ]);
+
+            $lineCharge = InvoiceTotals::chargeAmount(['percent' => '7.5'], $price)['amount'];
+            $lines = bcadd(bcadd(bcsub('59.97', '1.37', 2), $price, 2), bcadd($price, $lineCharge, 2), 2);
+            $documentCharge = InvoiceTotals::chargeAmount(['percent' => '3'], $lines)['amount'];
+            $expected = bcadd(bcadd(bcsub($lines, '0.99', 2), '12.34', 2), $documentCharge, 2);
+
+            $this->assertSame($expected, $totals->total, "price {$price}");
+            $this->assertSame($totals->total, bcadd(bcadd(bcsub($totals->subtotal, $totals->discount, 2), $totals->chargeTotal, 2), $totals->tax, 2));
+
+            $categories = InvoiceTotals::categories(['S_15' => (float) $totals->subtotal], ['S_15' => 15.0], (float) $totals->discount, (float) $totals->tax, ['S_15' => (float) $totals->chargeTotal]);
+            $this->assertSame((float) $totals->tax, $categories['S_15']['tax'], "price {$price}");
+        }
+    }
+
     private function line(string $quantity, string $price): array
     {
         return ['quantity' => $quantity, 'unit_price' => $price, 'tax_rate' => '15', 'tax_category' => 'S'];

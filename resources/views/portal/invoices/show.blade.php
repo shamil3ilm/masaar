@@ -112,6 +112,13 @@
                             @if ($line->exempt_code)
                                 <span class="ms-1 text-xs text-gray-400 dark:text-gray-500">({{ $line->exempt_code }})</span>
                             @endif
+                            {{-- The line's own discount and charges, in its total. --}}
+                            @if ($line->discount_amount !== null)
+                                <span class="block text-xs text-gray-500 dark:text-gray-400">{{ __('Discount') }}: @include('portal.partials.money', ['amount' => $line->discount_amount, 'currency' => $invoice->currency])</span>
+                            @endif
+                            @foreach ($line->charges as $charge)
+                                <span class="block text-xs text-gray-500 dark:text-gray-400">{{ $charge->reason }}{{ $charge->percent !== null ? ' ('.rtrim(rtrim((string) $charge->percent, '0'), '.').'%)' : '' }}: @include('portal.partials.money', ['amount' => $charge->amount, 'currency' => $invoice->currency])</span>
+                            @endforeach
                         </td>
                         <td class="px-6 py-3 text-end text-sm tabular-nums text-gray-700 dark:text-gray-200">
                             {{ rtrim(rtrim((string) $line->quantity, '0'), '.') }}
@@ -150,6 +157,13 @@
                             <dd class="tabular-nums">@include('portal.partials.money', ['amount' => $invoice->discount_amount, 'currency' => $invoice->currency])</dd>
                         </div>
                     @endif
+                    {{-- Each charge on the whole invoice, at its net. --}}
+                    @foreach ($invoice->charges as $charge)
+                        <div class="flex justify-between">
+                            <dt class="text-gray-500 dark:text-gray-400">{{ $charge->reason }}{{ $charge->percent !== null ? ' ('.rtrim(rtrim((string) $charge->percent, '0'), '.').'%)' : '' }}</dt>
+                            <dd class="tabular-nums">@include('portal.partials.money', ['amount' => $charge->net_amount, 'currency' => $invoice->currency])</dd>
+                        </div>
+                    @endforeach
                     <div class="flex justify-between">
                         <dt class="text-gray-500 dark:text-gray-400">
                             <x-caption en="VAT" ar="مجموع ضريبة القيمة المضافة" />

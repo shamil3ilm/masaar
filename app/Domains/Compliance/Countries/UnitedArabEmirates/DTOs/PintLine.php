@@ -33,5 +33,9 @@ final readonly class PintLine
         public ?string $classificationCode = null,
         public ?string $standardItemId = null,
         public ?string $goodsType = null,
+        // IBT-136, the line's own discount, and its own charges (IBG-28).
+        public ?string $discount = null,
+        /** @var list<PintCharge> */
+        public array $charges = [],
     ) {}
 }
