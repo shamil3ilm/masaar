@@ -188,6 +188,8 @@
     </div>
 </div>
 
+@include('admin.partials.features')
+
 <!-- Members -->
 <div class="bg-white dark:bg-gray-900 rounded-lg shadow mb-6">
     <div class="p-6 border-b">

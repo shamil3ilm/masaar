@@ -60,4 +60,7 @@ interface Jurisdiction
 
     /** What a person is told once an invoice is issued. */
     public function notices(): IssueNotices;
+
+    /** Which of the platform's features exist here, for Access. */
+    public function features(): FeatureSupport;
 }

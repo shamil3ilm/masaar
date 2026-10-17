@@ -32,7 +32,9 @@ what goes in each.
    - `transmission()`, an `Engine\Contracts\Transmission` that issues
      through the lifecycle and files or sends, answering an
      `Engine\DTOs\IssueOutcome`;
-   - `notices()`, the portal's wording after issuing.
+   - `notices()`, the portal's wording after issuing;
+   - `features()`, which of the platform's features exist in the country
+     and the kill switches its own steps obey ([ACCESS.md](ACCESS.md)).
 2. **Registration.** In `ModuleServiceProvider.php`, register it with the
    registry, as `Countries\SaudiArabia\ModuleServiceProvider` and
    `Countries\UnitedArabEmirates\ModuleServiceProvider` do:

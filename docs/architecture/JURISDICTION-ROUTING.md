@@ -20,6 +20,7 @@ imports nothing from a country module. `CountryCheckTest` asserts both.
 | Issuing step | `Invoice\Contracts\IssuingJurisdiction` (returned by `issuingStep()`) | The country's steps inside `IssuingLifecycle`, described below |
 | Transmission port | `Engine\Contracts\Transmission` | `issue()` issues a draft and, when asked, files or sends it. `resume()` handles an invoice that is already issued. `readyToFile()` says whether the organization can file now |
 | Notices port | `Engine\Contracts\IssueNotices` | What the portal tells a person after issuing: `filed()` and `notFiled()` |
+| Features port | `Engine\Contracts\FeatureSupport` (returned by `features()`) | Which of the platform's features exist in the country (`supportsFeature()`) and the kill switches its own steps obey (`killSwitchesFor()`), for [Access](ACCESS.md) |
 | Options | `Engine\DTOs\IssueOptions` | `file` (no default: filing is irreversible) and `idempotencyKey` |
 | Outcome | `Engine\DTOs\IssueOutcome` | One neutral answer for every country: `issued`, `attemptedFiling`, `errors`, `warnings`, and the raw `submission` |
 | Registry | `Engine\Services\JurisdictionRegistry` | The modules registered with this deployment, and which of them are enabled |
@@ -307,5 +308,7 @@ country's law, not by this platform:
 - **The UAE** applies to anyone doing business in the UAE (see
   [the UAE README](../ae/README.md)).
 
-See also [ADDING-A-JURISDICTION.md](ADDING-A-JURISDICTION.md) and
-[ORGANIZATION-MODEL.md](ORGANIZATION-MODEL.md).
+See also [ADDING-A-JURISDICTION.md](ADDING-A-JURISDICTION.md),
+[ORGANIZATION-MODEL.md](ORGANIZATION-MODEL.md) and
+[ACCESS.md](ACCESS.md), which answers whether an organization may use a
+feature in its country and why not.

@@ -8,6 +8,8 @@ use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Exceptions\LicenseException;
 use App\Domains\Licensing\Models\License;
 use App\Support\LogSanitizer;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
@@ -158,11 +160,29 @@ class LicenseValidationService
      */
     public function organizationIsLicensed(string $organizationId): bool
     {
+        return $this->licensed($organizationId)->exists();
+    }
+
+    /**
+     * The licences an organization holds and can use: active, and not past
+     * their expiry. Its plan is what they grant between them.
+     *
+     * @return Collection<int, License>
+     */
+    public function organizationLicences(string $organizationId): Collection
+    {
+        return $this->licensed($organizationId)->get();
+    }
+
+    /**
+     * @return Builder<License>
+     */
+    private function licensed(string $organizationId): Builder
+    {
         return License::query()
             ->active()
             ->where('org_id', $organizationId)
-            ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))
-            ->exists();
+            ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()));
     }
 
     public function invalidateCache(string $apiKey): void

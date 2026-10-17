@@ -13,6 +13,8 @@ use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Platform\Access\Feature;
+use App\Domains\Platform\Access\FeatureOverrides;
 use App\Support\Errors\ComplianceException;
 use App\Support\Errors\ErrorCode;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -41,6 +43,7 @@ class PipelineService
         private readonly InvoiceDrafter $drafter,
         private readonly ComplianceEngine $engine,
         private readonly PipelineResult $result,
+        private readonly FeatureOverrides $overrides,
     ) {}
 
     /**
@@ -60,6 +63,11 @@ class PipelineService
         // A country this deployment does not issue in is refused before
         // anything is drafted, rather than leaving a draft nothing can issue.
         $this->engine->jurisdictionFor($organization);
+
+        // A platform admin can switch the pipeline off for this organization
+        // alone (docs/architecture/ACCESS.md): refused, as the country is,
+        // before anything is drafted.
+        $this->overrides->assertNotSwitchedOff($organization, Feature::ErpPipeline);
 
         // A retry: answer with what the first call made, and do nothing again.
         // The key only reached filing before, so the retry drafted a second

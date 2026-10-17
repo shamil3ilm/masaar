@@ -8,6 +8,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Filing\OfflineQueue;
 use App\Domains\Compliance\Countries\SaudiArabia\Issuing\InvoiceIssuer;
 use App\Domains\Compliance\Countries\SaudiArabia\Issuing\IssuingStep;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
+use App\Domains\Compliance\Engine\Contracts\FeatureSupport;
 use App\Domains\Compliance\Engine\Contracts\IssueNotices;
 use App\Domains\Compliance\Engine\Contracts\Jurisdiction;
 use App\Domains\Compliance\Engine\Contracts\Transmission;
@@ -17,6 +18,8 @@ use App\Domains\Compliance\Engine\Services\JurisdictionAvailability;
 use App\Domains\Invoice\Contracts\IssuingJurisdiction;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Platform\Access\Feature;
+use App\Domains\Platform\Services\KillSwitch;
 
 /**
  * Saudi Arabia's module: ZATCA's issuing step, and InvoiceIssuer to sign and
@@ -25,7 +28,7 @@ use App\Domains\Organization\Models\Organization;
  * One class answers every port because each is a line or two of adapting
  * what Fatoora already does. A port that grows gets a class of its own.
  */
-class Module implements IssueNotices, Jurisdiction, Transmission
+class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
 {
     public function __construct(
         private readonly InvoiceIssuer $issuer,
@@ -83,6 +86,34 @@ class Module implements IssueNotices, Jurisdiction, Transmission
     public function notices(): IssueNotices
     {
         return $this;
+    }
+
+    public function features(): FeatureSupport
+    {
+        return $this;
+    }
+
+    /**
+     * Everything but receiving: ZATCA clears and reports a seller's invoices
+     * and hands nothing on to the buyer, so there is nothing to receive.
+     */
+    public function supportsFeature(Feature $feature): bool
+    {
+        return $feature !== Feature::ReceiveInvoices;
+    }
+
+    /**
+     * Issuing signs, so the signing switch stops it (IssuingStep::prepare);
+     * filing stops at the submission switch (SubmissionGuard), which also
+     * checks clearance or reporting by the invoice's type.
+     */
+    public function killSwitchesFor(Feature $feature): array
+    {
+        return match (true) {
+            $feature->issues() => [KillSwitch::SWITCH_SIGNING],
+            $feature === Feature::FileWithAuthority => [KillSwitch::SWITCH_SUBMISSION],
+            default => [],
+        };
     }
 
     public function issue(Invoice $invoice, Organization $organization, IssueOptions $options): IssueOutcome

@@ -48,14 +48,21 @@
         @include('portal.partials.invoice-status', ['status' => $invoice->status])
 
         @if ($invoice->status === \App\Domains\Invoice\Enums\InvoiceStatus::Draft)
-            @if (auth()->user()?->roleIn((string) request()->attributes->get(\App\Domains\Organization\Http\Middleware\PortalTenant::ORG_ID)) !== 'viewer')
+            {{-- Access decides (docs/architecture/ACCESS.md): a viewer sees no
+                 button; anyone else who cannot issue now is told why. --}}
+            @canuse('issue_invoices')
             <form method="POST" action="{{ route('portal.invoices.issue', $invoice->id) }}"
                   data-confirm-action="{{ __('Issue invoice') }}"
                   data-confirm="{{ ($uae ?? false) ? __('Issue this invoice? It takes its number, is sent to the buyer as a UAE e-invoice, and cannot be issued again.') : __('Issue this invoice? It gets a counter and a hash, joins the chain, and cannot be issued again.') }}">
                 @csrf
                 <x-ui.button>{{ __('Issue') }}</x-ui.button>
             </form>
-            @endif
+            @else
+                @php($issuing = app(\App\Domains\Platform\Access\PortalAccess::class)->decision('issue_invoices'))
+                @if ($issuing !== null && $issuing->source !== \App\Domains\Platform\Access\Level::Role)
+                    <p class="max-w-xs text-sm text-amber-700 dark:text-amber-300">{{ __('Cannot be issued now: :reason', ['reason' => $issuing->reason]) }}</p>
+                @endif
+            @endcanuse
         @elseif ($uae ?? false)
             {{-- No print, PDF or note here: each is built on the ZATCA hash
                  and QR a UAE invoice does not have (InvoicePdf::assertShareable,

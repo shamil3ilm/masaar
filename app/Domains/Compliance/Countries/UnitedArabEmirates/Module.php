@@ -7,6 +7,7 @@ namespace App\Domains\Compliance\Countries\UnitedArabEmirates;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Issuing\InvoiceIssuer;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Issuing\IssuingStep;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\IssueDeadline;
+use App\Domains\Compliance\Engine\Contracts\FeatureSupport;
 use App\Domains\Compliance\Engine\Contracts\IssueNotices;
 use App\Domains\Compliance\Engine\Contracts\Jurisdiction;
 use App\Domains\Compliance\Engine\Contracts\Transmission;
@@ -17,6 +18,7 @@ use App\Domains\Compliance\Exceptions\IssuanceRefusedException;
 use App\Domains\Invoice\Contracts\IssuingJurisdiction;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Platform\Access\Feature;
 
 /**
  * The United Arab Emirates' module: a Peppol PINT AE document, issued by
@@ -26,7 +28,7 @@ use App\Domains\Organization\Models\Organization;
  * One class answers every port because each is a line or two of adapting
  * what Peppol already does. A port that grows gets a class of its own.
  */
-class Module implements IssueNotices, Jurisdiction, Transmission
+class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
 {
     public function __construct(
         private readonly InvoiceIssuer $issuer,
@@ -85,6 +87,29 @@ class Module implements IssueNotices, Jurisdiction, Transmission
     public function notices(): IssueNotices
     {
         return $this;
+    }
+
+    public function features(): FeatureSupport
+    {
+        return $this;
+    }
+
+    /**
+     * PINT AE is business to business: no simplified invoice and no debit
+     * note (a correction is a credit note). The document is the e-invoice, so
+     * there is no PDF to share or email (InvoicePdf needs a seal it does not
+     * have), and the service provider carries every document, so nothing
+     * waits offline. Receiving is the network's inbound documents.
+     */
+    public function supportsFeature(Feature $feature): bool
+    {
+        return ! in_array($feature, [Feature::IssueSimplified, Feature::DebitNotes, Feature::PdfAndEmail, Feature::OfflineMode], true);
+    }
+
+    /** None beyond the shared issuance switch: sending is the network's, which no switch stops. */
+    public function killSwitchesFor(Feature $feature): array
+    {
+        return [];
     }
 
     /**

@@ -7,6 +7,7 @@ namespace App\Domains\Platform\Http\Controllers;
 use App\Domains\Compliance\Countries\SaudiArabia\Enums\RequeueOutcome;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\Requeuer;
 use App\Domains\Platform\DTOs\FilterData;
+use App\Domains\Platform\Services\FeatureReport;
 use App\Domains\Platform\Services\OrganizationReport;
 use App\Domains\Platform\Services\PlatformStatus;
 use App\Domains\Platform\Services\QueueReport;
@@ -33,6 +34,7 @@ class AdminController extends Controller
         private readonly SubmissionLog $submissionLog,
         private readonly Requeuer $requeuer,
         private readonly PlatformStatus $status,
+        private readonly FeatureReport $features,
     ) {}
 
     /**
@@ -79,8 +81,9 @@ class AdminController extends Controller
         $recentSubmissions = $this->organizations->recentSubmissions($id, 20);
         $certificate = $this->organizations->certificate($id);
         $members = $this->organizations->members($id);
+        $features = $this->features->rows($id);
 
-        return view('admin.organization-detail', compact('organization', 'stats', 'recentSubmissions', 'certificate', 'members'));
+        return view('admin.organization-detail', compact('organization', 'stats', 'recentSubmissions', 'certificate', 'members', 'features'));
     }
 
     /**

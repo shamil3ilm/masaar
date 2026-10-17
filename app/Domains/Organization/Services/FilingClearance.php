@@ -35,7 +35,17 @@ class FilingClearance
     public function assertCleared(Organization $organization): void
     {
         $this->assertMayFile($organization);
+        $this->assertLicensed($organization);
+    }
 
+    /**
+     * On a plan, when this deployment requires one for new work. Access asks
+     * this on its own, as the plan level, ahead of the organization's status.
+     *
+     * @throws ComplianceException
+     */
+    public function assertLicensed(Organization $organization): void
+    {
         if (config('licensing.filing_requires_licence') && ! $this->licences->organizationIsLicensed((string) $organization->id)) {
             throw new ComplianceException(
                 __('This company has no active plan. A platform admin assigns one when approving it.'),

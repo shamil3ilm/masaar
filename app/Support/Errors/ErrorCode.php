@@ -31,6 +31,7 @@ enum ErrorCode: string
     case AUTH_ORGANIZATION_UNDER_REVIEW = 'AUTH_011';
     case AUTH_LICENSE_REQUIRED = 'AUTH_012';
     case AUTH_EMAIL_NOT_VERIFIED = 'AUTH_013';
+    case AUTH_FEATURE_SWITCHED_OFF = 'AUTH_014';
 
     // ============================================================
     // VALIDATION ERRORS (VAL_*) - Not retryable without changes
@@ -203,6 +204,7 @@ enum ErrorCode: string
             self::AUTH_ORGANIZATION_UNDER_REVIEW,
             self::AUTH_LICENSE_REQUIRED,
             self::AUTH_EMAIL_NOT_VERIFIED,
+            self::AUTH_FEATURE_SWITCHED_OFF,
             self::CERT_EXPIRED,
             self::CERT_REVOKED => 403,
 
@@ -276,6 +278,7 @@ enum ErrorCode: string
             self::AUTH_ORGANIZATION_UNDER_REVIEW => 'Organization has not been approved to file yet',
             self::AUTH_LICENSE_REQUIRED => 'Organization has no active plan',
             self::AUTH_EMAIL_NOT_VERIFIED => 'Email address has not been verified',
+            self::AUTH_FEATURE_SWITCHED_OFF => 'Feature is switched off for this organization',
 
             // Validation
             self::VAL_MISSING_REQUIRED_FIELD => 'Required field is missing',

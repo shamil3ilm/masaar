@@ -115,6 +115,9 @@ class CrossDomainModelTest extends TestCase
         'Domains/Organization/Services/SetupChecklist.php' => 'Invoice',
         'Domains/Pipeline/Services/PipelineResult.php' => 'Invoice',
         'Domains/Pipeline/Services/PipelineService.php' => 'Invoice, Organization',
+        // The plan level reads the organization's licences, found through
+        // LicenseValidationService; the partner API hands it the request's.
+        'Domains/Platform/Access/Access.php' => 'Licensing',
     ];
 
     public function test_domains_keep_their_models_to_themselves(): void

@@ -7,6 +7,8 @@ namespace App\Domains\Licensing\Http\Middleware;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Licensing\Exceptions\LicenseException;
 use App\Domains\Licensing\Models\License;
+use App\Domains\Platform\Access\Access;
+use App\Domains\Platform\Access\Feature;
 use Closure;
 use Illuminate\Http\Request;
 
@@ -31,6 +33,8 @@ class RequireLicenseFeature
      */
     public const DOCUMENTS = 'documents';
 
+    public function __construct(private readonly Access $access) {}
+
     public function handle(Request $request, Closure $next, string $feature): mixed
     {
         $license = $request->attributes->get('license');
@@ -42,12 +46,24 @@ class RequireLicenseFeature
         $required = $feature === self::DOCUMENTS ? self::forDocument($request) : [$feature];
 
         foreach ($required as $name) {
-            if (! $license->hasFeature($name)) {
+            if (! $this->grants($license, $name)) {
                 throw LicenseException::featureNotAvailable($name);
             }
         }
 
         return $next($request);
+    }
+
+    /**
+     * A feature in Access's catalogue is answered by its plan level, which
+     * reads the licence's features and lets a platform admin grant one to
+     * the organization beyond its plan. Anything else is the licence's own.
+     */
+    private function grants(License $license, string $name): bool
+    {
+        $catalogued = Feature::forLicenceFeature($name);
+
+        return $catalogued === null ? $license->hasFeature($name) : $this->access->licenceAllows($license, $catalogued);
     }
 
     /**
@@ -76,19 +92,12 @@ class RequireLicenseFeature
             $documentType = self::value($invoice->document_type);
         }
 
-        $documentType ??= 'invoice';
-
-        $features = match ($type) {
-            'standard' => ['standard_invoices'],
-            'simplified' => ['simplified_invoices'],
-            default => [],
-        };
-
-        return match ($documentType) {
-            'credit_note' => [...$features, 'credit_notes'],
-            'debit_note' => [...$features, 'debit_notes'],
-            default => $features,
-        };
+        // Issuing itself needs no licence feature, so it drops out; the
+        // invoice type's feature comes before the note's, as it always has.
+        return array_values(array_filter(array_map(
+            fn (Feature $feature): ?string => $feature->licenceFeature(),
+            Feature::forDocument(is_string($type) ? $type : null, is_string($documentType) ? $documentType : null),
+        )));
     }
 
     private static function value(mixed $attribute): ?string

@@ -12,6 +12,8 @@ use App\Domains\Invoice\Contracts\Seal;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\FilingClearance;
+use App\Domains\Platform\Access\Feature;
+use App\Domains\Platform\Access\FeatureOverrides;
 use App\Domains\Platform\Services\KillSwitch;
 use App\Support\Errors\ErrorCode;
 
@@ -30,6 +32,7 @@ class IssuingStep implements IssuingJurisdiction
         private readonly FilingClearance $clearance,
         private readonly SigningCredentials $signing,
         private readonly ChainRecorder $chain,
+        private readonly FeatureOverrides $overrides,
     ) {}
 
     public function refuseIssued(Invoice $invoice): FatooraException
@@ -85,6 +88,10 @@ class IssuingStep implements IssuingJurisdiction
         // so an organization not yet approved - or without a plan - drafts
         // and stops there.
         $this->clearance->assertCleared($organization);
+
+        // A platform admin can switch issuing - or one kind of document -
+        // off for this organization alone (docs/architecture/ACCESS.md).
+        $this->overrides->assertNotSwitchedOff($organization, ...Feature::forDocument($invoice->type, $invoice->document_type));
 
         // ZATCA's rules, before a counter is spent. InvoiceValidator held them
         // and nothing called it, so an invoice that broke them was signed,

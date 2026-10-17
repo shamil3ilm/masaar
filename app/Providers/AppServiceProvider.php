@@ -26,6 +26,7 @@ use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Http\Middleware\TwoFactorRequired;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\TenantResolver;
+use App\Domains\Platform\Access\PortalAccess;
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
 use App\Domains\Platform\Http\Middleware\MetricsAccess;
 use App\Domains\Platform\Http\Middleware\RateLimitApi;
@@ -142,6 +143,11 @@ class AppServiceProvider extends ServiceProvider
         // to an admin whose role allows it. The route refuses the rest
         // anyway (admin.can); this keeps them from a button that only 403s.
         Blade::if('admincan', fn (string $permission): bool => (bool) auth()->user()?->canAdmin($permission));
+
+        // @canuse('issue_invoices') ... @endcanuse: a portal action shown only
+        // when Access lets this person in this organization take it. The
+        // action still checks; this keeps people from a button that refuses.
+        Blade::if('canuse', fn (string $feature): bool => $this->app->make(PortalAccess::class)->allows($feature));
 
         // Links in mail - password resets, email verification, enrolment -
         // are built from APP_URL, never from the request's Host header. From

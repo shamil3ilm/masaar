@@ -32,6 +32,7 @@ enum PlatformRole: string
                 AdminPermission::View,
                 AdminPermission::AuditView,
                 AdminPermission::OrganizationsReview,
+                AdminPermission::FeaturesManage,
                 AdminPermission::LicencesManage,
                 AdminPermission::BillingManage,
                 AdminPermission::UsersManage,

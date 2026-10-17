@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Domains\Invoice\Http\Controllers;
 
 use App\Domains\Compliance\Engine\DTOs\IssueOptions;
-use App\Domains\Compliance\Engine\Exceptions\JurisdictionUnavailableException;
 use App\Domains\Compliance\Engine\Services\ComplianceEngine;
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Invoice\Services\InvoicePdf;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Services\TenantResolver;
+use App\Domains\Platform\Access\Access;
+use App\Domains\Platform\Access\Feature;
 use App\Http\Controllers\Controller;
 use App\Support\QrCodeRenderer;
 use DomainException;
@@ -39,6 +40,7 @@ class PortalInvoiceFilingController extends Controller
         private readonly ComplianceEngine $engine,
         private readonly QrCodeRenderer $qr,
         private readonly InvoicePdf $pdf,
+        private readonly Access $access,
     ) {}
 
     public function issue(Request $request, string $invoiceId): RedirectResponse
@@ -52,16 +54,24 @@ class PortalInvoiceFilingController extends Controller
         $invoice = $this->invoices->findWithLines($orgId, $invoiceId);
         $organization = $this->tenant->getOrganization();
 
-        // A country this deployment does not issue in - switched off on the
-        // admin console's Countries page, or off by default - is said so, and
-        // the draft stays a draft. The layout's banner says it on every page.
-        try {
-            $jurisdiction = $this->engine->jurisdictionFor($organization);
-        } catch (JurisdictionUnavailableException) {
+        // Access answers first: a kill switch, the country, the plan, the
+        // company's review or a platform admin's switch for it. A refusal is
+        // said with its reason and the draft stays a draft. A country this
+        // deployment does not issue in - switched off on the admin console's
+        // Countries page, or off by default - is worded as it always was; the
+        // layout's banner says it on every page. The country's issuing step
+        // still checks the same switches, on every path.
+        $decision = $this->access->decide($organization, $request->user(), Feature::IssueInvoices);
+
+        if (! $decision->allowed) {
             return redirect()
                 ->route('portal.invoices.show', $invoiceId)
-                ->with('error', __('E-invoicing in your country is switched off on this platform, so the invoice was not issued. It stays a draft until it is switched back on.'));
+                ->with('error', $decision->code === 'country_off' || $decision->code === 'no_module'
+                    ? __('E-invoicing in your country is switched off on this platform, so the invoice was not issued. It stays a draft until it is switched back on.')
+                    : __('The invoice was not issued: :reason', ['reason' => $decision->reason]));
         }
+
+        $jurisdiction = $this->engine->jurisdictionFor($organization);
 
         $outcome = $this->engine->issue($invoice, $organization, new IssueOptions(
             file: $jurisdiction->transmission()->readyToFile($organization),

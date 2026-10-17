@@ -20,6 +20,9 @@ enum AdminPermission: string
     /** Approve or turn down a company that signed itself up. */
     case OrganizationsReview = 'organizations.review';
 
+    /** Switch a feature off for one company, or grant it beyond its plan. */
+    case FeaturesManage = 'features.manage';
+
     /** Issue, suspend, revoke and rotate licences; change their limits. */
     case LicencesManage = 'licences.manage';
 

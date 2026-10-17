@@ -33,6 +33,7 @@ use App\Domains\Platform\Http\Controllers\AdminAdminsController;
 use App\Domains\Platform\Http\Controllers\AdminAuditController;
 use App\Domains\Platform\Http\Controllers\AdminController;
 use App\Domains\Platform\Http\Controllers\AdminCountryController;
+use App\Domains\Platform\Http\Controllers\AdminFeatureController;
 use App\Domains\Platform\Http\Controllers\AdminOrganizationReviewController;
 use App\Domains\Platform\Http\Controllers\AdminSettingsController;
 use App\Domains\Platform\Http\Controllers\AdminUserController;
@@ -223,6 +224,10 @@ Route::prefix('admin')->name('admin.')
         // or turn it down with a reason. Either way its admins are emailed.
         Route::post('/organizations/{id}/approve', [AdminOrganizationReviewController::class, 'approve'])->middleware('admin.can:organizations.review')->name('organizations.approve');
         Route::post('/organizations/{id}/reject', [AdminOrganizationReviewController::class, 'reject'])->middleware('admin.can:organizations.review')->name('organizations.reject');
+        // One feature off for one organization, or granted beyond its plan,
+        // with a reason. Every role sees the Features section; changing it
+        // takes features.manage.
+        Route::post('/organizations/{id}/features', [AdminFeatureController::class, 'update'])->middleware('admin.can:features.manage')->name('organizations.features');
         // Support tickets. Everyone in the console reads them; answering
         // takes support.manage.
         Route::get('/support', [AdminSupportController::class, 'index'])->name('support.index');

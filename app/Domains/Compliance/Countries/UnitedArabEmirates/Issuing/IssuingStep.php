@@ -14,6 +14,8 @@ use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\IssuanceNotifier;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\FilingClearance;
+use App\Domains\Platform\Access\Feature;
+use App\Domains\Platform\Access\FeatureOverrides;
 use App\Domains\Platform\Services\KillSwitch;
 use App\Support\Errors\ComplianceException;
 use Throwable;
@@ -40,6 +42,7 @@ class IssuingStep implements IssuingJurisdiction
         private readonly IssuanceNotifier $notifier,
         private readonly FilingClearance $clearance,
         private readonly KillSwitch $killSwitch,
+        private readonly FeatureOverrides $overrides,
     ) {}
 
     /** Not reached: a UAE issue is always asked as a reissue, so a repeat answers with its document. */
@@ -69,6 +72,9 @@ class IssuingStep implements IssuingJurisdiction
         try {
             $this->killSwitch->assertNotEnabled(KillSwitch::SWITCH_ISSUANCE, (string) $organization->id);
             $this->clearance->assertCleared($organization);
+            // A platform admin's switch for this organization alone
+            // (docs/architecture/ACCESS.md).
+            $this->overrides->assertNotSwitchedOff($organization, ...Feature::forDocument($invoice->type, $invoice->document_type));
         } catch (ComplianceException $e) {
             throw new IssuanceRefusedException([$e->getMessage()]);
         }
