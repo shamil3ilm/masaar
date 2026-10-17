@@ -122,6 +122,9 @@ class PintMapper
             taxAmountInTaxCurrency: $foreign ? self::round(bcmul($tax, $rate ?? '0', self::SCALE)) : null,
             totalInTaxCurrency: $foreign ? self::round(bcmul($inclusive, $rate ?? '0', self::SCALE)) : null,
             lines: $lines,
+            buyerReference: self::text($invoice->buyer_reference),
+            orderReference: self::text($invoice->order_reference),
+            contractReference: self::text($invoice->contract_reference),
         );
     }
 

@@ -103,6 +103,12 @@ class InvoiceRules implements InvoiceRulesPort
             'delivery_address.country_code' => ['required_with:delivery_address', 'string', 'regex:/^[A-Z]{2}$/'],
             'delivery_address.postal_code' => ['nullable', 'string', 'max:20'],
 
+            // IBT-010, IBT-013 and IBT-012: the buyer's reference, purchase
+            // order and contract, as the buyer's paperwork names the sale.
+            'buyer_reference' => ['nullable', 'string', 'max:127'],
+            'order_reference' => ['nullable', 'string', 'max:127'],
+            'contract_reference' => ['nullable', 'string', 'max:127'],
+
             'discount_amount' => ['nullable', 'numeric', 'min:0', 'decimal:0,2'],
             'notes' => ['nullable', 'string', 'max:5000'],
 
@@ -183,6 +189,7 @@ class InvoiceRules implements InvoiceRulesPort
                 'invoice_number', 'document_type', 'issue_date', 'supply_date', 'supply_end_date', 'currency',
                 'exchange_rate', 'payment_means_code', 'buyer_name', 'buyer_name_ar', 'buyer_vat_number',
                 'buyer_address', 'billing_ref', 'discount_amount', 'notes',
+                'buyer_reference', 'order_reference', 'contract_reference',
             ])),
             'type' => InvoiceType::Standard->value,
             'prices_include_vat' => false,

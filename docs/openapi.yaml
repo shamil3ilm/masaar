@@ -1114,6 +1114,12 @@ paths:
                   type: string
                 delivery_address:
                   type: array
+                buyer_reference:
+                  type: string
+                order_reference:
+                  type: string
+                contract_reference:
+                  type: string
                 discount_amount:
                   type: number
                 notes:
@@ -1690,6 +1696,12 @@ paths:
                   type: array
                 billing_ref:
                   type: string
+                order_reference:
+                  type: string
+                contract_reference:
+                  type: string
+                buyer_reference:
+                  type: string
                 adjustment_reason:
                   type: string
                 prices_include_vat:
@@ -1812,6 +1824,12 @@ paths:
                   type: array
                 billing_ref:
                   type: string
+                order_reference:
+                  type: string
+                contract_reference:
+                  type: string
+                buyer_reference:
+                  type: string
                 adjustment_reason:
                   type: string
                 prices_include_vat:
@@ -1906,6 +1924,12 @@ paths:
                 buyer_address:
                   type: array
                 billing_ref:
+                  type: string
+                order_reference:
+                  type: string
+                contract_reference:
+                  type: string
+                buyer_reference:
                   type: string
                 adjustment_reason:
                   type: string
@@ -3049,6 +3073,12 @@ paths:
                   type: array
                 billing_ref:
                   type: string
+                order_reference:
+                  type: string
+                contract_reference:
+                  type: string
+                buyer_reference:
+                  type: string
                 adjustment_reason:
                   type: string
                 prices_include_vat:
@@ -3174,6 +3204,12 @@ paths:
                 buyer_address:
                   type: array
                 billing_ref:
+                  type: string
+                order_reference:
+                  type: string
+                contract_reference:
+                  type: string
+                buyer_reference:
                   type: string
                 adjustment_reason:
                   type: string
@@ -3323,6 +3359,12 @@ paths:
                 buyer_address:
                   type: array
                 billing_ref:
+                  type: string
+                order_reference:
+                  type: string
+                contract_reference:
+                  type: string
+                buyer_reference:
                   type: string
                 adjustment_reason:
                   type: string

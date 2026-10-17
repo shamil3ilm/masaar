@@ -273,7 +273,17 @@ class DocumentBuilder
             // that keeps the customer's total exact, and the document
             // declares it rather than recomputing it.
             isTaxInclusive: (bool) $invoice->prices_include_vat,
+            orderReference: $this->filledOrNull($invoice->order_reference),
+            contractReference: $this->filledOrNull($invoice->contract_reference),
         );
+    }
+
+    /** Trimmed, or null for nothing: an empty reference element is no reference. */
+    private function filledOrNull(?string $value): ?string
+    {
+        $value = trim((string) $value);
+
+        return $value === '' ? null : $value;
     }
 
     /**

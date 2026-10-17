@@ -121,6 +121,9 @@ final readonly class InvoiceXmlData
         public bool $isInterBranch = false,   // Internal transfer between branches (still taxable)
         public bool $isConsignment = false,   // Drop-ship / consignment
         public bool $isDeferredVat = false,   // Deferred VAT scheme (metadata only - actual handling is manual)
+        // BT-13 and BT-12: the buyer's purchase order and the contract.
+        public ?string $orderReference = null,
+        public ?string $contractReference = null,
     ) {}
 
     /**

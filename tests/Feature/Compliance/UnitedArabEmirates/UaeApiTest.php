@@ -160,6 +160,32 @@ class UaeApiTest extends TestCase
         Queue::assertNothingPushed();
     }
 
+    /**
+     * The buyer's reference, purchase order and contract are kept, and the
+     * e-invoice states them as IBT-010, IBT-013 and IBT-012, in UBL's order.
+     */
+    public function test_buyer_references_reach_the_einvoice(): void
+    {
+        $references = ['buyer_reference' => 'BR-001/23', 'order_reference' => 'PO-001/23', 'contract_reference' => 'CT-2026-07'];
+        $id = $this->api()->postJson('/api/compliance/ae/invoices', $this->payload($references))->assertCreated()->json('data.invoice.id');
+
+        $this->assertSame($references, Invoice::query()->findOrFail($id)->only(array_keys($references)));
+
+        $xml = app(PeppolPreparer::class)->prepare($this->uaeInvoice($this->gulf, $references))->xml;
+        $order = array_map(fn (string $element): int|false => strpos($xml, $element), [
+            '<cbc:BuyerReference>BR-001/23</cbc:BuyerReference>',
+            '<cac:OrderReference>',
+            '<cac:ContractDocumentReference>',
+            '<cac:AccountingSupplierParty>',
+        ]);
+
+        $this->assertNotContains(false, $order, $xml);
+        $this->assertSame($order, array_values(array_unique($order)));
+        $sorted = $order;
+        sort($sorted);
+        $this->assertSame($sorted, $order, 'the references are out of UBL order');
+    }
+
     public function test_documents_list_filter_and_download(): void
     {
         $document = app(PeppolPreparer::class)->prepare($this->uaeInvoice($this->gulf));

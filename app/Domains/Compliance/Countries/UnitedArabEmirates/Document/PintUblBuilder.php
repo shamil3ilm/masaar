@@ -100,6 +100,8 @@ class PintUblBuilder
 
         $this->add($root, 'cbc:DocumentCurrencyCode', $d->currency);
         $this->add($root, 'cbc:TaxCurrencyCode', $d->taxCurrency);
+        // IBT-010, the buyer's own reference.
+        $this->add($root, 'cbc:BuyerReference', $d->buyerReference);
 
         if ($d->periodStart !== null || $d->periodEnd !== null) {
             $period = $this->add($root, 'cac:InvoicePeriod');
@@ -111,8 +113,18 @@ class PintUblBuilder
             $this->add($this->add($root, 'cac:DiscrepancyResponse'), 'cbc:ResponseCode', $d->creditReason);
         }
 
+        // IBT-013, the purchase order.
+        if ($d->orderReference !== null) {
+            $this->add($this->add($root, 'cac:OrderReference'), 'cbc:ID', $d->orderReference);
+        }
+
         foreach ($d->billingReferences as $reference) {
             $this->add($this->add($this->add($root, 'cac:BillingReference'), 'cac:InvoiceDocumentReference'), 'cbc:ID', $reference);
+        }
+
+        // IBT-012, the contract, at most once (IBR-094).
+        if ($d->contractReference !== null) {
+            $this->add($this->add($root, 'cac:ContractDocumentReference'), 'cbc:ID', $d->contractReference);
         }
 
         // BTAE-20: the total with VAT in dirhams, for a document that is not.

@@ -20,13 +20,16 @@ use InvalidArgumentException;
 class UblHeaderBuilder
 {
     /**
-     * Identification, billing references, document references and the
-     * signature reference, in that order.
+     * Identification, the purchase order, billing references, the contract,
+     * document references and the signature reference, in that order: the
+     * order UBL 2.1's Invoice schema gives them.
      */
     public function addHeader(DOMDocument $dom, InvoiceXmlData $data): void
     {
         $this->addInvoiceIdentification($dom, $data);
+        $this->addReference($dom, 'cac:OrderReference', $data->orderReference);
         $this->addBillingReference($dom, $data);
+        $this->addReference($dom, 'cac:ContractDocumentReference', $data->contractReference);
         $this->addAdditionalDocumentReferences($dom, $data);
         $this->addSignatureReference($dom);
     }
@@ -98,6 +101,22 @@ class UblHeaderBuilder
         // BT-6: When document is in foreign currency, tax amounts must still be reported in SAR
         $taxCurrency = $data->isMultiCurrency() ? 'SAR' : $data->currency;
         $this->addElement($dom, 'cbc:TaxCurrencyCode', $taxCurrency);
+    }
+
+    /**
+     * BT-13 (cac:OrderReference) or BT-12 (cac:ContractDocumentReference),
+     * an identifier and nothing else - the two ZATCA's data dictionary and
+     * its length rules (BR-KSA-F-06-C3, -C5) name. Nothing for none.
+     */
+    private function addReference(DOMDocument $dom, string $element, ?string $id): void
+    {
+        if ($id === null) {
+            return;
+        }
+
+        $reference = $dom->createElementNS(Ubl::CAC_NS, $element);
+        $reference->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:ID', $id));
+        $dom->documentElement->appendChild($reference);
     }
 
     /**

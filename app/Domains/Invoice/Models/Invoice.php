@@ -65,6 +65,11 @@ class Invoice extends Model
         'buyer_address',
         'payment_means_code',
         'billing_ref',
+        // The buyer's purchase order (BT-13), contract (BT-12) and own
+        // reference (BT-10), for matching the invoice on their side.
+        'order_reference',
+        'contract_reference',
+        'buyer_reference',
         'adjustment_reason',
         'subtotal',
         'discount_amount',

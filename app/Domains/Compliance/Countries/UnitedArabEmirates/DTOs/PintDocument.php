@@ -61,6 +61,11 @@ final readonly class PintDocument
         public ?string $taxAmountInTaxCurrency,
         public ?string $totalInTaxCurrency,
         public array $lines,
+        // IBT-010, IBT-013 and IBT-012: the buyer's reference, purchase
+        // order and contract.
+        public ?string $buyerReference = null,
+        public ?string $orderReference = null,
+        public ?string $contractReference = null,
     ) {}
 
     /**

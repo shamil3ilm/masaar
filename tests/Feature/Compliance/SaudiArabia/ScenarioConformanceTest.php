@@ -122,6 +122,41 @@ class ScenarioConformanceTest extends TestCase
     }
 
     /**
+     * The buyer's purchase order and contract, where UBL puts them - around
+     * the billing reference, which a note carries too. The buyer's own
+     * reference is kept off the document: ZATCA's data dictionary has no
+     * BT-10.
+     *
+     * @return iterable<string, array{array<string, mixed>}>
+     */
+    public static function referenced(): iterable
+    {
+        $references = ['order_reference' => 'PO-2026-0042', 'contract_reference' => 'CT-2026-07', 'buyer_reference' => 'AP-77'];
+
+        yield 'invoice' => [self::standard($references)];
+        yield 'credit note' => [self::standard([
+            ...$references,
+            'document_type' => 'credit_note',
+            'billing_ref' => 'INV-ORIGINAL-1',
+            'adjustment_reason' => 'Correction of quantity',
+        ])];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    #[DataProvider('referenced')]
+    public function test_buyer_references_validate(array $payload): void
+    {
+        $xml = $this->signedFrom($payload);
+
+        $this->assertMatchesRegularExpression('#<cac:OrderReference[^>]*>\s*<cbc:ID[^>]*>PO-2026-0042</cbc:ID>#', $xml);
+        $this->assertMatchesRegularExpression('#<cac:ContractDocumentReference[^>]*>\s*<cbc:ID[^>]*>CT-2026-07</cbc:ID>#', $xml);
+        $this->assertStringNotContainsString('BuyerReference', $xml);
+        $this->assertAccepted($xml);
+    }
+
+    /**
      * POST the payload to the API, then sign what was drafted.
      *
      * @param  array<string, mixed>  $payload

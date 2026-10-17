@@ -73,6 +73,12 @@
             @foreach ($page->buyerDetails as $detail)
                 <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ $detail }}</p>
             @endforeach
+            {{-- What the buyer's own paperwork calls the sale. --}}
+            @foreach (['order_reference' => __('Purchase order'), 'contract_reference' => __('Contract'), 'buyer_reference' => __('Buyer reference')] as $field => $label)
+                @if (filled($invoice->{$field}))
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ $label }}: {{ $invoice->{$field} }}</p>
+                @endif
+            @endforeach
         </div>
 
         <div class="overflow-hidden rounded-lg bg-white dark:bg-gray-900 shadow">

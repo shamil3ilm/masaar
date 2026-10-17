@@ -1096,5 +1096,8 @@
     "Self-billed": "فوترة ذاتية",
     "A supply end date needs a supply date (BR-KSA-35).": "يتطلب تاريخ انتهاء التوريد تاريخ توريد (BR-KSA-35).",
     "The supply end date cannot be before the supply date (BR-KSA-36).": "لا يجوز أن يسبق تاريخ انتهاء التوريد تاريخ التوريد (BR-KSA-36).",
-    "For a supply over a period, such as a subscription.": "للتوريد الممتد على فترة، مثل الاشتراك."
+    "For a supply over a period, such as a subscription.": "للتوريد الممتد على فترة، مثل الاشتراك.",
+    "Purchase order": "أمر الشراء",
+    "Contract": "العقد",
+    "Buyer reference": "مرجع المشتري"
 }

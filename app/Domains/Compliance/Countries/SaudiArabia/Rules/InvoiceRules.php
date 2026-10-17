@@ -217,6 +217,14 @@ class InvoiceRules implements InvoiceRulesPort
                 // Required for credit/debit notes
                 Rule::requiredIf($isNote),
             ],
+            // The buyer's purchase order (BT-13) and contract (BT-12), at
+            // most 127 characters each (BR-KSA-F-06-C3, -C5), and its own
+            // reference (BT-10), which ZATCA's document has no place for
+            // and the invoice page shows.
+            'order_reference' => ['nullable', 'string', 'max:127'],
+            'contract_reference' => ['nullable', 'string', 'max:127'],
+            'buyer_reference' => ['nullable', 'string', 'max:127'],
+
             // BR-KSA-17: the authority rejects a note that does not say why.
             // Optional here, a note without one was signed - spending its
             // counter - and only then refused.

@@ -100,6 +100,8 @@
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Required for a credit or debit note.') }}</p>
             </div>
 
+            @include('portal.invoices.partials.references')
+
             {{-- The reasons ZATCA's data dictionary lists for KSA-10, read
                  from App\Domains\Invoice\Support\AdjustmentReason. Each is
                  stored and printed in both languages, exactly as written

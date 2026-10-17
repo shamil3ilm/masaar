@@ -133,6 +133,8 @@
                 </x-ui.select>
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('A transfer prints the IBAN from your company details.') }}</p>
             </div>
+
+            @include('portal.invoices.partials.references')
         </div>
     </div>
 
