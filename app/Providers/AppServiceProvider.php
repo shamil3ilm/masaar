@@ -149,17 +149,7 @@ class AppServiceProvider extends ServiceProvider
         // action still checks; this keeps people from a button that refuses.
         Blade::if('canuse', fn (string $feature): bool => $this->app->make(PortalAccess::class)->allows($feature));
 
-        // Links in mail - password resets, email verification, enrolment -
-        // are built from APP_URL, never from the request's Host header. From
-        // the header, anyone could ask for a victim's reset link and have it
-        // point at a host they control.
-        if (filled(config('app.url'))) {
-            URL::forceRootUrl((string) config('app.url'));
-
-            if (str_starts_with((string) config('app.url'), 'https://')) {
-                URL::forceScheme('https');
-            }
-        }
+        $this->configureRootUrl();
 
         // The platform's colours, name and logo - and an organization's over
         // them on its own pages - for every view that draws a page's frame.
@@ -179,6 +169,32 @@ class AppServiceProvider extends ServiceProvider
         // Off in production: a deployment that meets an unexpected attribute
         // should drop it and keep serving rather than throw at the caller.
         Model::preventSilentlyDiscardingAttributes(! $this->app->isProduction());
+    }
+
+    /**
+     * Where the URLs the application builds - links, form actions, assets,
+     * mail - point.
+     *
+     * Everywhere but a developer's machine they are built from APP_URL, never
+     * from the request's Host header: from the header, anyone could ask for a
+     * victim's password-reset link and have it point at a host they control.
+     *
+     * On a local machine (APP_ENV=local) they follow the address being
+     * browsed, so php artisan serve on 127.0.0.1:8000, localhost or a local
+     * virtual host all work without editing APP_URL. A request-less context -
+     * a queued mail, a command - still falls back to APP_URL.
+     */
+    public function configureRootUrl(): void
+    {
+        if (blank(config('app.url')) || $this->app->environment('local')) {
+            return;
+        }
+
+        URL::forceRootUrl((string) config('app.url'));
+
+        if (str_starts_with((string) config('app.url'), 'https://')) {
+            URL::forceScheme('https');
+        }
     }
 
     /**
