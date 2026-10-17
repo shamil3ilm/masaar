@@ -67,6 +67,13 @@ class AdjustmentDraft
             'buyer_id_scheme' => (string) $invoice->buyer_id_scheme,
             'buyer_address' => (array) ($invoice->buyer_address ?? []),
             'discount_amount' => $credit ? $this->discountAsEntered($invoice, $inclusive) : null,
+            // The note is the same kind of transaction as what it corrects:
+            // an export's credit note is an export's too. Ticked boxes, and
+            // an unticked one is absent, as the form sends it.
+            ...array_map(
+                fn (): string => '1',
+                array_filter($invoice->only(['is_third_party', 'is_nominal', 'is_export', 'is_summary', 'is_self_billed'])),
+            ),
             // The category and exemption go with the line: without them a
             // zero-rated or exempt line came back as standard-rated at 0%,
             // which is not what the original said and not a valid line.

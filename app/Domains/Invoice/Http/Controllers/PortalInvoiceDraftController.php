@@ -108,8 +108,9 @@ class PortalInvoiceDraftController extends Controller
 
         // An organization whose country's form posts elsewhere was sent back
         // to it by CreatePortalInvoiceRequest, before anything was checked.
+        // As the country's rules map the request, as the API drafts it.
         try {
-            $invoice = $this->drafter->draft($request->validated(), (string) $orgId);
+            $invoice = $this->drafter->draft($request->draft(), (string) $orgId, countryFields: $request->countryFields());
         } catch (\Throwable $e) {
             // bootstrap/app.php registers the exception renderer only for
             // api/* and v1/*, so anything raised here is an error page rather

@@ -1084,5 +1084,14 @@
     "ZATCA rejected this invoice, so it is not a valid tax invoice. Correct it and issue a new one.": "رفضت الهيئة هذه الفاتورة، فهي ليست فاتورة ضريبية صالحة. صححها وأصدر فاتورة جديدة.",
     "ZATCA said": "رد الهيئة",
     "Zero rated domestic sales": "المبيعات المحلية الخاضعة لنسبة الصفر",
-    "Zero-rated": "خاضع لنسبة الصفر"
+    "Zero-rated": "خاضع لنسبة الصفر",
+    "An export invoice cannot be self-billed (BR-KSA-07).": "لا يجوز أن تكون فاتورة التصدير فاتورة فوترة ذاتية (BR-KSA-07).",
+    "A simplified invoice cannot be self-billed (BR-KSA-31).": "لا يجوز أن تكون الفاتورة المبسطة فاتورة فوترة ذاتية (BR-KSA-31).",
+    "An export is invoiced on a standard tax invoice, not a simplified one (BR-KSA-31).": "يُفوتر التصدير بفاتورة ضريبية قياسية لا بفاتورة مبسطة (BR-KSA-31).",
+    "A simplified summary invoice names its buyer (BR-KSA-71).": "يجب أن تتضمن الفاتورة المبسطة المجمّعة اسم المشتري (BR-KSA-71).",
+    "A simplified summary invoice states the period it covers: a supply date and a supply end date (BR-KSA-72).": "يجب أن تحدد الفاتورة المبسطة المجمّعة الفترة التي تغطيها: تاريخ التوريد وتاريخ انتهاء التوريد (BR-KSA-72).",
+    "Line :line: an export invoice zero-rates its lines as an export of goods (VATEX-SA-32) or of services (VATEX-SA-33).": "السطر :line: تخضع بنود فاتورة التصدير لنسبة الصفر بوصفها تصديراً للسلع (VATEX-SA-32) أو للخدمات (VATEX-SA-33).",
+    "Nominal supply": "توريد اعتباري",
+    "Third party": "طرف ثالث",
+    "Self-billed": "فوترة ذاتية"
 }

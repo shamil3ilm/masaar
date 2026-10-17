@@ -22,8 +22,9 @@ use Illuminate\Validation\Validator;
  * remedy for a rejection is a credit note.
  *
  * The API, the ERP pipeline and the portal's form all draft by these rules.
- * The validated request is the draft as it is: a Saudi invoice has no
- * columns of its own.
+ * The validated request is the draft as it is; the transaction types of
+ * KSA-2 are the one set of columns only a Saudi invoice carries, and go
+ * through countryFields().
  */
 class InvoiceRules implements InvoiceRulesPort
 {
@@ -49,6 +50,20 @@ class InvoiceRules implements InvoiceRulesPort
         'PAS',   // Passport
         'OTH',   // Other
     ];
+
+    /**
+     * KSA-2 positions 3 to 7, the transaction types an invoice can also be,
+     * as the invoice's own columns name them. Each is a bit of the type
+     * name that is signed (InvoiceXmlData::getInvoiceTypeName()).
+     */
+    public const TRANSACTION_FLAGS = ['is_third_party', 'is_nominal', 'is_export', 'is_summary', 'is_self_billed'];
+
+    /**
+     * BT-121 on an export: VAT Implementing Regulations Articles 32 and 33
+     * zero-rate the export of goods and of services, and ZATCA's own export
+     * sample carries VATEX-SA-32.
+     */
+    private const EXPORT_EXEMPTIONS = ['VATEX-SA-32', 'VATEX-SA-33'];
 
     /**
      * Fill in what the caller left out, without contradicting what they
@@ -212,6 +227,10 @@ class InvoiceRules implements InvoiceRulesPort
             // the organization's own setting decides.
             'prices_include_vat' => ['sometimes', 'boolean'],
 
+            // KSA-2 positions 3 to 7. Which combinations ZATCA accepts is
+            // checked after (transactionFlags()). Null is not set.
+            ...array_fill_keys(self::TRANSACTION_FLAGS, ['sometimes', 'nullable', 'boolean']),
+
             // Discount
             // Two places, as stored; never more than the lines (checked after).
             'discount_amount' => ['nullable', 'numeric', 'min:0', 'decimal:0,2'],
@@ -302,6 +321,7 @@ class InvoiceRules implements InvoiceRulesPort
         }
 
         $this->refuseDiscountBeyondLines($validator, $request);
+        $this->transactionFlags($validator, $request);
     }
 
     /** The validated request, as it is. */
@@ -310,10 +330,16 @@ class InvoiceRules implements InvoiceRulesPort
         return $validated;
     }
 
-    /** None: every Saudi field is one of the invoice's shared columns. */
+    /** The transaction types (KSA-2), each false unless the request set it. */
     public function countryFields(array $validated): array
     {
-        return [];
+        $flags = [];
+
+        foreach (self::TRANSACTION_FLAGS as $flag) {
+            $flags[$flag] = filter_var($validated[$flag] ?? false, FILTER_VALIDATE_BOOLEAN);
+        }
+
+        return $flags;
     }
 
     public function standardRate(): string
@@ -434,6 +460,57 @@ class InvoiceRules implements InvoiceRulesPort
 
         if ($missing !== []) {
             throw new DomainException("{$buyer->name}'s national address has no ".implode(', ', $missing).', so no invoice was issued. Try again once the company has completed it.');
+        }
+    }
+
+    /**
+     * The transaction types ZATCA refuses together, read from the Schematron
+     * in its SDK (20210819_ZATCA_E-invoice_Validation_Rules.xsl):
+     *
+     *   BR-KSA-07  an export is not self-billed.
+     *   BR-KSA-31  a simplified invoice is neither self-billed nor, as the
+     *              rule's stated test has it, an export: an export goes to a
+     *              business abroad on a tax invoice, as ZATCA's sample does.
+     *   BR-KSA-71  a simplified summary invoice names its buyer, and
+     *   BR-KSA-72  states the period it summarises.
+     *
+     * And one from the VAT law the flag stands for: an export is zero-rated
+     * as one, so each line carries VATEX-SA-32 or VATEX-SA-33. A flag that
+     * says export over a line taxed at 15% declares two things at once.
+     */
+    private function transactionFlags(Validator $validator, Request $request): void
+    {
+        $errors = $validator->errors();
+        $simplified = $request->input('type') === 'simplified';
+
+        if ($request->boolean('is_export') && $request->boolean('is_self_billed')) {
+            $errors->add('is_self_billed', __('An export invoice cannot be self-billed (BR-KSA-07).'));
+        }
+
+        if ($simplified && $request->boolean('is_self_billed')) {
+            $errors->add('is_self_billed', __('A simplified invoice cannot be self-billed (BR-KSA-31).'));
+        }
+
+        if ($simplified && $request->boolean('is_export')) {
+            $errors->add('is_export', __('An export is invoiced on a standard tax invoice, not a simplified one (BR-KSA-31).'));
+        }
+
+        if ($simplified && $request->boolean('is_summary')) {
+            if (! $request->filled('buyer_name')) {
+                $errors->add('buyer_name', __('A simplified summary invoice names its buyer (BR-KSA-71).'));
+            }
+
+            if (! $request->filled('supply_end_date')) {
+                $errors->add('supply_end_date', __('A simplified summary invoice states the period it covers: a supply date and a supply end date (BR-KSA-72).'));
+            }
+        }
+
+        if ($request->boolean('is_export')) {
+            foreach ((array) $request->input('lines', []) as $index => $line) {
+                if (! in_array(is_array($line) ? ($line['exempt_code'] ?? null) : null, self::EXPORT_EXEMPTIONS, true)) {
+                    $errors->add("lines.{$index}.exempt_code", __('Line :line: an export invoice zero-rates its lines as an export of goods (VATEX-SA-32) or of services (VATEX-SA-33).', ['line' => $index + 1]));
+                }
+            }
         }
     }
 

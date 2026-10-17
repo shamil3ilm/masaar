@@ -113,6 +113,20 @@
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Issue a note within 15 days of the end of the month in which the change happened. One note may correct several invoices: separate their numbers with commas.') }}</p>
             </div>
         </div>
+
+        {{-- KSA-2 positions 3 to 7. An unticked box sends nothing, which is
+             what "not this kind" is. --}}
+        <fieldset class="mt-4">
+            <legend class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('Transaction type') }}</legend>
+            <div class="mt-2 flex flex-wrap gap-x-6 gap-y-2">
+                @foreach (['is_export' => __('Export'), 'is_summary' => __('Summary invoice'), 'is_nominal' => __('Nominal supply'), 'is_third_party' => __('Third party'), 'is_self_billed' => __('Self-billed')] as $flag => $label)
+                    <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                        <input type="checkbox" name="{{ $flag }}" value="1" @checked(old($flag))>
+                        {{ $label }}
+                    </label>
+                @endforeach
+            </div>
+        </fieldset>
     </div>
 
     <div class="mb-6 rounded-lg bg-white dark:bg-gray-900 p-6 shadow">

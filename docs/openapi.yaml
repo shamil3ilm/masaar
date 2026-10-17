@@ -1692,6 +1692,16 @@ paths:
                   type: string
                 prices_include_vat:
                   type: boolean
+                is_third_party:
+                  type: boolean
+                is_nominal:
+                  type: boolean
+                is_export:
+                  type: boolean
+                is_summary:
+                  type: boolean
+                is_self_billed:
+                  type: boolean
                 discount_amount:
                   type: number
                 notes:
@@ -1802,6 +1812,16 @@ paths:
                   type: string
                 prices_include_vat:
                   type: boolean
+                is_third_party:
+                  type: boolean
+                is_nominal:
+                  type: boolean
+                is_export:
+                  type: boolean
+                is_summary:
+                  type: boolean
+                is_self_billed:
+                  type: boolean
                 discount_amount:
                   type: number
                 notes:
@@ -1884,6 +1904,16 @@ paths:
                 adjustment_reason:
                   type: string
                 prices_include_vat:
+                  type: boolean
+                is_third_party:
+                  type: boolean
+                is_nominal:
+                  type: boolean
+                is_export:
+                  type: boolean
+                is_summary:
+                  type: boolean
+                is_self_billed:
                   type: boolean
                 discount_amount:
                   type: number
@@ -3015,6 +3045,16 @@ paths:
                   type: string
                 prices_include_vat:
                   type: boolean
+                is_third_party:
+                  type: boolean
+                is_nominal:
+                  type: boolean
+                is_export:
+                  type: boolean
+                is_summary:
+                  type: boolean
+                is_self_billed:
+                  type: boolean
                 discount_amount:
                   type: number
                 notes:
@@ -3128,6 +3168,16 @@ paths:
                 adjustment_reason:
                   type: string
                 prices_include_vat:
+                  type: boolean
+                is_third_party:
+                  type: boolean
+                is_nominal:
+                  type: boolean
+                is_export:
+                  type: boolean
+                is_summary:
+                  type: boolean
+                is_self_billed:
                   type: boolean
                 discount_amount:
                   type: number
@@ -3265,6 +3315,16 @@ paths:
                 adjustment_reason:
                   type: string
                 prices_include_vat:
+                  type: boolean
+                is_third_party:
+                  type: boolean
+                is_nominal:
+                  type: boolean
+                is_export:
+                  type: boolean
+                is_summary:
+                  type: boolean
+                is_self_billed:
                   type: boolean
                 discount_amount:
                   type: number
