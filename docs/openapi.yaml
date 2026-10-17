@@ -1651,6 +1651,14 @@ paths:
         - Invoice
       operationId: invoiceController.store
       summary: 'Store — Invoice Controller'
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again; the same key sent with a different invoice is refused (422).'
+          schema:
+            type: string
+            maxLength: 255
       requestBody:
         required: true
         content:
@@ -1698,6 +1706,8 @@ paths:
                   type: string
                 lines:
                   type: array
+                branch_id:
+                  type: string
                 issued_at:
                   type: string
               required:
@@ -1810,6 +1820,8 @@ paths:
                   type: string
                 lines:
                   type: array
+                branch_id:
+                  type: string
                 issued_at:
                   type: string
               required:
@@ -1895,6 +1907,8 @@ paths:
                   type: string
                 lines:
                   type: array
+                branch_id:
+                  type: string
                 issued_at:
                   type: string
               required:
@@ -2980,6 +2994,14 @@ paths:
         - Invoice
       operationId: v1.invoiceController.store
       summary: 'Store — Invoice Controller'
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again; the same key sent with a different invoice is refused (422).'
+          schema:
+            type: string
+            maxLength: 255
       requestBody:
         required: true
         content:
@@ -3027,6 +3049,8 @@ paths:
                   type: string
                 lines:
                   type: array
+                branch_id:
+                  type: string
                 issued_at:
                   type: string
               required:
@@ -3143,6 +3167,8 @@ paths:
                   type: string
                 lines:
                   type: array
+                branch_id:
+                  type: string
                 issued_at:
                   type: string
               required:
@@ -3235,6 +3261,14 @@ paths:
         - Pipeline
       operationId: v1.pipelineController.submit
       summary: 'Submit — Pipeline Controller'
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again; the same key sent with a different invoice is refused (422).'
+          schema:
+            type: string
+            maxLength: 255
       requestBody:
         required: true
         content:
@@ -3282,6 +3316,8 @@ paths:
                   type: string
                 lines:
                   type: array
+                branch_id:
+                  type: string
                 issued_at:
                   type: string
                 invoice_type:
@@ -3292,8 +3328,6 @@ paths:
                   type: string
                 auto_submit:
                   type: boolean
-                branch_id:
-                  type: string
                 erp_reference_id:
                   type: string
               required:

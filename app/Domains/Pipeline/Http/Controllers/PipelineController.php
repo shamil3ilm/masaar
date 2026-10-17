@@ -65,7 +65,9 @@ class PipelineController extends Controller
             branchId: $branchId,
             // An ERP retrying a timed-out call sends the same key and gets the
             // original outcome rather than filing the invoice a second time.
-            idempotencyKey: $request->header('Idempotency-Key'),
+            // A blank header is none: stored, it would make every other
+            // blank-keyed request a retry of the first.
+            idempotencyKey: $request->header('Idempotency-Key') ?: null,
         );
 
         $hasErrors = ! empty($result['errors']);

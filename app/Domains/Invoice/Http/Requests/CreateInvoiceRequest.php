@@ -10,6 +10,7 @@ use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Support\CountryClock;
 use Carbon\CarbonImmutable;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 /**
@@ -21,10 +22,14 @@ use Illuminate\Validation\Validator;
  * saved while it is switched off; with no organization, the default
  * country's do.
  *
- * Beside the country's fields, one every API invoice may carry: issued_at,
- * the moment a till made the sale, for a till issuing what it sold while it
- * was offline. Whether a country takes it, and within what bound, is its
- * issuing step's to say; the date it falls on is the invoice's issue date.
+ * Beside the country's fields, two every API invoice may carry:
+ *
+ *   branch_id  the branch it comes from, one of the organization's own: the
+ *              branch decides which certificate signs it
+ *   issued_at  the moment a till made the sale, for a till issuing what it
+ *              sold while it was offline. Whether a country takes it, and
+ *              within what bound, is its issuing step's to say; the date it
+ *              falls on is the invoice's issue date.
  */
 class CreateInvoiceRequest extends CountryInvoiceRequest
 {
@@ -43,6 +48,11 @@ class CreateInvoiceRequest extends CountryInvoiceRequest
     {
         return [
             ...parent::rules(),
+            // Looked up within the caller's organization, so a branch of
+            // anyone else's is not found: its certificate is not theirs to
+            // sign with.
+            'branch_id' => ['nullable', 'string', 'uuid', Rule::exists('branches', 'id')
+                ->where('org_id', app(TenantResolver::class)->getOrganizationId())],
             // An instant, so it names its offset: a bare local time would be
             // read on the server's clock, which is not the till's.
             'issued_at' => ['nullable', 'date', 'regex:/(Z|[+-]\d{2}:?\d{2})$/'],

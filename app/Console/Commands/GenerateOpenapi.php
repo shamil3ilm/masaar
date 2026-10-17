@@ -54,6 +54,9 @@ class GenerateOpenapi extends Command
      * integrator reading it - sent no secret, and every partner call was
      * refused.
      */
+    /** The header a retry repeats so it is answered rather than acted on again. */
+    private const IDEMPOTENCY_HEADER = 'Idempotency-Key';
+
     private const SECURITY = [
         'JwtGuard' => ['bearerAuth'],
         'ValidateLicense' => ['apiKey', 'apiSecret'],
@@ -295,11 +298,13 @@ class GenerateOpenapi extends Command
     }
 
     /**
+     * The path's parameters, and the headers the controller method reads.
+     *
      * @return list<array<string, mixed>>
      */
     private function parameters(Route $route): array
     {
-        return array_map(
+        $parameters = array_map(
             fn (string $name) => [
                 'name' => $name,
                 'in' => 'path',
@@ -308,6 +313,21 @@ class GenerateOpenapi extends Command
             ],
             $route->parameterNames()
         );
+
+        // Read from the method's source, as the envelope is: a header the
+        // method asks the request for is one it acts on.
+        if (str_contains($this->methodBody($route), "header('".self::IDEMPOTENCY_HEADER."')")) {
+            $parameters[] = [
+                'name' => self::IDEMPOTENCY_HEADER,
+                'in' => 'header',
+                'required' => false,
+                'description' => 'Names one request. A retry with the same key answers with what the first '
+                    .'request made instead of making it again; the same key sent with a different invoice is refused (422).',
+                'schema' => ['type' => 'string', 'maxLength' => 255],
+            ];
+        }
+
+        return $parameters;
     }
 
     /**
