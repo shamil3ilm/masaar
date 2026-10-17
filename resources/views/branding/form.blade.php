@@ -128,7 +128,9 @@
         <h3 class="font-semibold text-fg">{{ __('Theme as JSON') }}</h3>
         <p class="text-xs text-muted">
             {{ __('The whole theme in one file: name, mode, colours, and "shades" to pin any single step, such as') }}
-            <code dir="ltr">"primary-600": "#0D9488"</code>. {{ __('Importing replaces the colours, name and mode; the logo and favicon stay.') }}
+            {{-- The example is the primary colour in effect, rather than a
+                 colour written into the view. --}}
+            <code dir="ltr">"primary-600": "{{ $effective->definition->colors['primary'] }}"</code>. {{ __('Importing replaces the colours, name and mode; the logo and favicon stay.') }}
         </p>
     </div>
     <form method="POST" action="{{ route($route.'.import') }}" class="space-y-4 p-4">
