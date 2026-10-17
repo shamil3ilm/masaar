@@ -82,6 +82,7 @@ class CrossDomainModelTest extends TestCase
         // first invoice was issued, for the setup steps.
         'Domains/Compliance/Countries/SaudiArabia/Presentation/Presentation.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Presentation/SetupSteps.php' => 'Invoice',
+        'Domains/Compliance/Countries/SaudiArabia/Reports/DailyClose.php' => 'Invoice, Organization',
         'Domains/Compliance/Countries/SaudiArabia/Reports/DeadlineReport.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Rules/InvoiceValidator.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Rules/VatPeriodTracker.php' => 'Invoice',

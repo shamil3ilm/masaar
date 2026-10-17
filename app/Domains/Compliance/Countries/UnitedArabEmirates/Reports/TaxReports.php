@@ -38,4 +38,15 @@ class TaxReports implements TaxReportsPort
     {
         return $this->csv->uaeSummary($this->summary->for($organizationId, $from, $to), $from, $to, $fileName);
     }
+
+    /** None: a UAE document carries no device counter to close. */
+    public function dailyClose(string $organizationId, CarbonImmutable $day): ?Panel
+    {
+        return null;
+    }
+
+    public function dailyCloseCsv(string $organizationId, CarbonImmutable $day, string $fileName): ?StreamedResponse
+    {
+        return null;
+    }
 }

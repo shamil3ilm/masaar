@@ -76,6 +76,7 @@ class ScreenRenderTest extends TestCase
         'portal.billing.invoice',
         'portal.reports.invoices',
         'portal.reports.vat',
+        'portal.reports.close.csv',
         // Not a screen: it fills the new-invoice form and redirects there.
         'portal.invoices.adjust',
         // Prints only a shareable invoice, and the fixture here is a draft so

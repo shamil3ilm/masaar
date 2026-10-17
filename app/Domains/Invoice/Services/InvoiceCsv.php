@@ -103,6 +103,22 @@ class InvoiceCsv
     }
 
     /**
+     * Rows a report has already laid out, written the way every file here
+     * is: a byte-order mark first, and a cell that starts like a formula
+     * defused.
+     *
+     * @param  iterable<list<string>>  $rows
+     */
+    public function table(string $fileName, iterable $rows): StreamedResponse
+    {
+        return $this->stream($fileName, function ($out) use ($rows): void {
+            foreach ($rows as $row) {
+                $this->row($out, $row);
+            }
+        });
+    }
+
+    /**
      * A document's row, its amounts also in the tax currency.
      *
      * @return list<string>

@@ -9,6 +9,7 @@ use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
+use App\Support\CountryClock;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -64,6 +65,38 @@ class PortalReportController extends Controller
         $fileName = 'vat-summary-'.$from->toDateString().'-to-'.$to->toDateString().'.csv';
 
         return $this->reports($request)->summaryCsv($this->portalOrganizationId($request), $from, $to, $fileName);
+    }
+
+    /**
+     * One day's close by device and by branch, where the country counts its
+     * documents per device (TaxReports::dailyClose); not found elsewhere.
+     */
+    public function close(Request $request): View
+    {
+        $day = $this->day($request);
+        $page = $this->reports($request)->dailyClose($this->portalOrganizationId($request), $day) ?? abort(404);
+
+        return view($page->view, ['day' => $day, ...$page->data]);
+    }
+
+    public function closeCsv(Request $request): StreamedResponse
+    {
+        $day = $this->day($request);
+
+        return $this->reports($request)->dailyCloseCsv($this->portalOrganizationId($request), $day, 'daily-close-'.$day->toDateString().'.csv')
+            ?? abort(404);
+    }
+
+    /**
+     * The day asked for, or today where the organization trades.
+     */
+    private function day(Request $request): CarbonImmutable
+    {
+        $data = $request->validate(['day' => ['nullable', 'date']]);
+
+        return isset($data['day'])
+            ? CarbonImmutable::parse($data['day'])->startOfDay()
+            : CarbonImmutable::now(CountryClock::timeZone($this->portalOrganization($this->tenant, $request)?->country))->startOfDay();
     }
 
     /** The organization's country's return, switched on or not: reading stays open. */

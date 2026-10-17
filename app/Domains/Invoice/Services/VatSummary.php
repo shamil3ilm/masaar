@@ -278,7 +278,7 @@ class VatSummary
      *
      * @return list<array{code: string, exempt: string|null, base: float, tax: float}>
      */
-    private function categories(Invoice $invoice): array
+    public function categories(Invoice $invoice): array
     {
         $nets = [];
         $rates = [];
