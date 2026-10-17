@@ -11,7 +11,7 @@
                 :title="__('Your first month is on us.')"
                 :pair="__('Your first month is on us.', [], $pair)" />
             <p class="mt-5 max-w-xl text-lead text-white/75">
-                {{ __('After that, we agree a plan with you around your volume, your branches and the countries you file in. There is no price list, and nothing is charged without a plan you have agreed to.') }}
+                {{ __('After that, we shape a plan around your needs: your volume, your branches and the countries you file in. There is no price list, and nothing is charged without a plan you have agreed to.') }}
             </p>
         </div>
         <div class="flex flex-col gap-3 sm:flex-row lg:flex-col">

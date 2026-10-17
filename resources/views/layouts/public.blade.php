@@ -19,7 +19,9 @@
     they work from the terms page too. Below md they give way to the two
     actions that matter on a phone: sign in, and start.
 --}}
-<body class="min-h-screen bg-ground text-fg">
+@php($eggs = $publicSite->easterEggs())
+{{-- data-easter-eggs turns on resources/js/easter-eggs.js: public pages only. --}}
+<body class="min-h-screen bg-ground text-fg" @if ($eggs) data-easter-eggs data-easter-close="{{ __('Close') }}" @endif>
     <a href="#content" class="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-50 focus:rounded-button focus:bg-surface focus:px-4 focus:py-3 focus:shadow-raised">{{ __('Skip to content') }}</a>
 
     <header class="sticky top-0 z-30 border-b border-line bg-ground/90 backdrop-blur">
@@ -70,6 +72,11 @@
                 @endif
                 @if (config('company.vat_number'))
                     &middot; {{ __('VAT number') }} <span dir="ltr">{{ config('company.vat_number') }}</span>
+                @endif
+                {{-- The line's last character, quietly the parent brand's; the
+                     negative margin takes back the space the line break leaves. --}}
+                @if ($eggs)
+                    <x-parent-brand as="period" class="-ms-1" />
                 @endif
             </p>
             <nav class="flex flex-wrap items-center gap-x-5" aria-label="{{ __('Legal') }}">

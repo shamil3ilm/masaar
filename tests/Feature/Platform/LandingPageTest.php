@@ -58,7 +58,9 @@ class LandingPageTest extends TestCase
 
         $this->assertIsString($body);
 
-        preg_match_all('/(?:src|href)=["\'](https?:\/\/[^"\']+)["\']/i', $body, $matches);
+        // What the browser fetches: a src, or a <link>'s href. An <a> is a
+        // link someone may choose to follow, and fetches nothing.
+        preg_match_all('/(?:\bsrc=|<link\b[^>]*\bhref=)["\'](https?:\/\/[^"\']+)["\']/i', $body, $matches);
 
         // route() and asset() render absolute URLs on this application's own
         // host, so the test is about the host and not about the scheme.

@@ -24,7 +24,7 @@
             </h1>
 
             <p class="mt-6 max-w-xl text-lead text-muted">
-                {{ __('Issue invoices in the portal or send them from your ERP. Masaar checks, files and keeps each one the way your tax authority expects - in Arabic and English.') }}
+                {{ __('Issue invoices in the portal or send them from your ERP. Masaar checks, sends and keeps each one the way your tax authority expects - in Arabic and English.') }}
             </p>
 
             <div class="mt-9 flex flex-wrap gap-3">

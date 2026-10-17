@@ -19,7 +19,7 @@
     <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2" @change="choose">
         @foreach ($sections as $section)
             <x-ui.radio tile name="country" value="{{ $section['code'] }}" :checked="$country === $section['code']"
-                        :description="__('Files through :system.', ['system' => $section['system']])">
+                        :description="__('Invoices go through :system.', ['system' => $section['system']])">
                 {{ __($section['name']) }}
             </x-ui.radio>
         @endforeach

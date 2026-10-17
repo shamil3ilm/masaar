@@ -30,6 +30,7 @@ use App\Domains\Platform\Access\PortalAccess;
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
 use App\Domains\Platform\Http\Middleware\MetricsAccess;
 use App\Domains\Platform\Http\Middleware\RateLimitApi;
+use App\Domains\Platform\Services\PublicSite;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Routing\Router;
@@ -160,6 +161,10 @@ class AppServiceProvider extends ServiceProvider
         // framework's stock-grey one with its arrows the wrong way in Arabic.
         Paginator::defaultView('components.ui.pagination');
         Paginator::defaultSimpleView('components.ui.pagination');
+
+        // The public site's switches - the parent brand's signs, where contact
+        // goes - for the public pages that show them, and only those.
+        View::composer(['layouts.public', 'home.contact', 'errors::404'], fn (\Illuminate\View\View $view) => $view->with('publicSite', $this->app->make(PublicSite::class)));
 
         // After the delete has happened - an organization with invoices
         // cannot be deleted, and its branding should not go if it stays.

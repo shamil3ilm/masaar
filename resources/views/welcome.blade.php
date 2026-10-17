@@ -30,7 +30,7 @@
 
 <div class="mx-auto max-w-page px-4 sm:px-6">
     <div class="route-line">
-        @foreach (['countries', 'business', 'features', 'steps', 'plans', 'faq', 'contact'] as $section)
+        @foreach (['countries', 'business', 'custom', 'features', 'steps', 'plans', 'faq', 'contact'] as $section)
             @include('home.'.$section)
         @endforeach
     </div>

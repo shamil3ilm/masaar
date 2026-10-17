@@ -45,6 +45,10 @@
                                 <x-ui.input type="number" name="{{ $key }}"
                                             min="{{ $definition['min'] }}" max="{{ $definition['max'] }}" required
                                             value="{{ old($key, $settings->display($key)) }}" />
+                            @elseif ($definition['type'] === 'url')
+                                {{-- Empty is a value here: it means none. --}}
+                                <x-ui.input type="url" name="{{ $key }}" dir="ltr" placeholder="https://"
+                                            value="{{ old($key, $settings->display($key)) }}" />
                             @else
                                 <x-ui.input type="text" name="{{ $key }}" required
                                             value="{{ old($key, $settings->display($key)) }}" />

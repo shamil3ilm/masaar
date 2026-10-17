@@ -14,7 +14,7 @@
         [\App\Domains\Platform\Access\Feature::IssueSimplified, __('Simplified invoices for walk-in customers')],
         [\App\Domains\Platform\Access\Feature::CreditNotes, __('Credit notes')],
         [\App\Domains\Platform\Access\Feature::DebitNotes, __('Debit notes')],
-        [\App\Domains\Platform\Access\Feature::FileWithAuthority, __('Filed with the authority for you')],
+        [\App\Domains\Platform\Access\Feature::FileWithAuthority, __('Sent the way the country requires, with its status shown')],
         [\App\Domains\Platform\Access\Feature::ReceiveInvoices, __('Invoices your suppliers send you')],
         [\App\Domains\Platform\Access\Feature::OfflineMode, __('Queued while the authority cannot be reached')],
         [\App\Domains\Platform\Access\Feature::PdfAndEmail, __('A PDF to print or email')],
@@ -24,6 +24,8 @@
     foreach ($countries as $country) {
         $tabs[strtolower($country->code())] = __($country->name());
     }
+    // The last tab is an invitation: a country that is not here yet.
+    $tabs['other'] = __('Other countries');
 @endphp
 
 <section id="countries" class="relative scroll-mt-20 py-14 sm:py-16" aria-labelledby="countries-title">
@@ -48,7 +50,7 @@
                                     <span class="text-sm text-subtle" lang="ar" dir="rtl">{{ __($country->name(), [], 'ar') }}</span>
                                 @endif
                             </div>
-                            <p class="mt-2 text-sm text-muted">{{ __('Files through :system.', ['system' => $country->filingSystem()]) }}</p>
+                            <p class="mt-2 text-sm text-muted">{{ __('Invoices go through :system.', ['system' => $country->filingSystem()]) }}</p>
                             <p @class(['mt-5 inline-flex items-center gap-2 text-sm font-semibold', 'text-accent' => $country->enabled(), 'text-warning' => ! $country->enabled()])>
                                 <span @class(['size-2 rounded-full', 'bg-teal-500' => $country->enabled(), 'bg-sand-200 ring-2 ring-warning/40' => ! $country->enabled()]) aria-hidden="true"></span>
                                 {{ $country->enabled() ? __('Available now') : __('Coming soon') }}
@@ -67,6 +69,15 @@
                     </div>
                 </x-ui.tab-panel>
             @endforeach
+            <x-ui.tab-panel id="country" name="other">
+                <div class="flex flex-wrap items-center justify-between gap-4 rounded-card border border-dashed border-line-strong bg-surface p-6">
+                    <div class="max-w-xl">
+                        <h3 class="text-heading font-semibold">{{ __('Other countries: ask us') }}</h3>
+                        <p class="mt-2 text-sm text-muted">{{ __('We can add another country\'s e-invoicing rules to the platform. Tell us where you need to file.') }}</p>
+                    </div>
+                    <x-ui.button variant="secondary" :href="url('/').'?topic=country#contact'" data-contact-topic="country">{{ __('Ask about a country') }}</x-ui.button>
+                </div>
+            </x-ui.tab-panel>
         </x-ui.tabs>
     @endif
 </section>
