@@ -7,6 +7,7 @@ namespace Tests\Feature\Compliance\SaudiArabia;
 use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Countries\SaudiArabia\Reports\DailyClose;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Services\VatSummary;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use Carbon\CarbonImmutable;
@@ -71,6 +72,37 @@ class DailyCloseTest extends TestCase
         $this->assertSame([7, 9], [$shop['first']['counter'], $shop['last']['counter']]);
         $this->assertFalse($shop['contiguous'], 'counter 8 is missing and the close did not say so');
         $this->assertSame(['0 (Z)', '15'], array_column($shop['rates'], 'rate'));
+    }
+
+    /**
+     * The close reconciles with the documents: devices and branches add up
+     * to the same figures, to the VAT summary for the day, and to the
+     * invoices' own totals less the credit notes'.
+     */
+    public function test_the_close_reconciles_exactly(): void
+    {
+        $this->document('R-1', $this->acme->id, null, 10, '2026-10-20 06:00:00', '123.45');
+        $this->document('R-2', $this->acme->id, $this->lobby->id, 11, '2026-10-20 07:00:00', '0.10');
+        $this->document('R-3', $this->jeddah->id, $this->jeddah->id, 10, '2026-10-20 08:00:00', '999.99');
+        $this->document('R-4', $this->jeddah->id, $this->jeddah->id, 11, '2026-10-20 09:00:00', '77.70', zeroRated: true);
+        $this->document('R-CN', $this->acme->id, null, 12, '2026-10-20 10:00:00', '23.45', 'credit_note');
+
+        $close = app(DailyClose::class)->for($this->acme->id, CarbonImmutable::parse('2026-10-20'));
+        $sum = fn (array $groups, callable $of): float => round(array_sum(array_map($of, $groups)), 2);
+        $net = fn (array $group): float => $group['sales']['net'] - $group['returns']['net'];
+        $vat = fn (array $group): float => $group['sales']['vat'] - $group['returns']['vat'];
+
+        $summary = app(VatSummary::class)->for($this->acme->id, CarbonImmutable::parse('2026-10-20'), CarbonImmutable::parse('2026-10-20'));
+        $documents = Invoice::withoutTenantScope(fn () => Invoice::query()->where('invoice_number', 'like', 'R-%')->get());
+        $filed = round($documents->sum(fn (Invoice $i): float => ($i->document_type->value === 'credit_note' ? -1 : 1) * (float) $i->total), 2);
+
+        $this->assertSame($summary['net_base'], $sum($close['devices'], $net));
+        $this->assertSame($summary['net_vat'], $sum($close['devices'], $vat));
+        $this->assertSame($sum($close['devices'], $net), $sum($close['branches'], $net));
+        $this->assertSame($sum($close['devices'], $vat), $sum($close['branches'], $vat));
+        $this->assertSame($filed, $sum($close['devices'], fn (array $group): float => $group['net']));
+        $this->assertSame($filed, $sum($close['branches'], fn (array $group): float => $group['net']));
+        $this->assertSame(5, array_sum(array_column($close['devices'], 'documents')));
     }
 
     public function test_each_branch_closes_its_own(): void
