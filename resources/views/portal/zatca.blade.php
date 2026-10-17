@@ -91,7 +91,7 @@
 
         @if (session('checks'))
             <div class="border-t p-4">
-                <x-ui.table>
+                <x-ui.table :primary="[0, 1]">
                     <x-slot:head>
                         <x-ui.th>{{ __('Document') }}</x-ui.th>
                         <x-ui.th>{{ __('Result') }}</x-ui.th>

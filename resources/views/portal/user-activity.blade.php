@@ -42,7 +42,7 @@
     <div class="p-6 border-b">
         <h3 class="text-lg font-semibold text-fg">{{ __('Submission History') }}</h3>
     </div>
-    <x-ui.table>
+    <x-ui.table :primary="[0, 3, 2]">
         <x-slot:head>
             <x-ui.th>{{ __('Invoice') }}</x-ui.th>
             <x-ui.th>{{ __('Type') }}</x-ui.th>

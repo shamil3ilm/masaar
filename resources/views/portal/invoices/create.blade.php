@@ -239,8 +239,8 @@
         </template>
     </div>
 
-    <div class="mb-6 rounded-card bg-surface p-6 border border-line shadow-card">
-        <h3 class="mb-4 text-xs font-semibold uppercase tracking-wider text-muted">{{ __('Totals and notes') }}</h3>
+    {{-- Optional: folded away on a phone until wanted, opened by an error inside. --}}
+    <x-ui.section :title="__('Totals and notes')" collapse class="mb-6">
 
         <div class="grid gap-4 sm:grid-cols-2">
             {{-- A select, not a checkbox: an unticked box sends nothing, which
@@ -267,7 +267,7 @@
                 <x-ui.textarea name="notes" id="notes" rows="3">{{ old('notes') }}</x-ui.textarea>
             </div>
         </div>
-    </div>
+    </x-ui.section>
 
     <div class="flex items-center gap-4">
         <x-ui.button>{{ __('Save as draft') }}</x-ui.button>

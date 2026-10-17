@@ -75,7 +75,7 @@
 
 <!-- Submissions Table -->
 <div class="bg-surface rounded-card border border-line shadow-card overflow-hidden">
-    <x-ui.table>
+    <x-ui.table :primary="[0, 4, 3]">
         <x-slot:head>
             <x-ui.th>{{ __('Invoice') }}</x-ui.th>
             <x-ui.th>{{ __('User') }}</x-ui.th>

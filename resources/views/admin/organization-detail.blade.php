@@ -87,11 +87,8 @@
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
     <!-- Organization Details -->
-    <div class="lg:col-span-2 bg-surface rounded-card border border-line shadow-card">
-        <div class="p-6 border-b">
-            <h3 class="text-lg font-semibold text-fg">Organization Details</h3>
-        </div>
-        <div class="p-6">
+    <x-ui.section title="Organization Details" collapse class="lg:col-span-2">
+        <div>
             <dl class="grid grid-cols-2 gap-4">
                 <div>
                     <dt class="text-sm font-medium text-muted">ID</dt>
@@ -129,7 +126,7 @@
                 </div>
             </dl>
         </div>
-    </div>
+    </x-ui.section>
 
     <!-- Certificate Status -->
     <div class="bg-surface rounded-card border border-line shadow-card">
@@ -191,11 +188,8 @@
 @include('admin.partials.features')
 
 <!-- Members -->
-<div class="bg-surface rounded-card border border-line shadow-card mb-6">
-    <div class="p-6 border-b">
-        <h3 class="text-lg font-semibold text-fg">Members</h3>
-    </div>
-    <x-ui.table>
+<x-ui.section title="Members" collapse flush class="mb-6">
+    <x-ui.table :primary="[0, 1, 2]">
         <x-slot:head>
             <x-ui.th>User</x-ui.th>
             <x-ui.th>Role</x-ui.th>
@@ -219,15 +213,12 @@
         <x-ui.empty :columns="5">No members</x-ui.empty>
         @endforelse
     </x-ui.table>
-</div>
+</x-ui.section>
 
 <!-- Recent Submissions -->
-<div class="bg-surface rounded-card border border-line shadow-card">
-    <div class="p-6 border-b flex justify-between items-center">
-        <h3 class="text-lg font-semibold text-fg">Recent Submissions</h3>
-        <a href="{{ route('admin.logs', ['org_id' => $organization->id]) }}" class="text-sm text-accent hover:text-accent-strong">View All</a>
-    </div>
-    <x-ui.table>
+<x-ui.section title="Recent Submissions" collapse flush>
+    <p class="px-5 pt-3 text-sm"><a href="{{ route('admin.logs', ['org_id' => $organization->id]) }}" class="inline-flex min-h-11 items-center text-accent hover:text-accent-strong">View All</a></p>
+    <x-ui.table :primary="[0, 1, 3]">
         <x-slot:head>
             <x-ui.th>Invoice ID</x-ui.th>
             <x-ui.th>State</x-ui.th>
@@ -248,5 +239,5 @@
         <x-ui.empty :columns="4">No submissions found</x-ui.empty>
         @endforelse
     </x-ui.table>
-</div>
+</x-ui.section>
 @endsection

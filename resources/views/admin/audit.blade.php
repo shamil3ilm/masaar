@@ -47,7 +47,7 @@
 </form>
 
 <div class="bg-surface rounded-card border border-line shadow-card overflow-hidden">
-    <x-ui.table>
+    <x-ui.table :primary="[2, 1, 0]">
         <x-slot:head>
             <x-ui.th>When</x-ui.th>
             <x-ui.th>Who</x-ui.th>

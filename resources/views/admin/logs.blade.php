@@ -50,7 +50,7 @@
 
 <!-- Logs Table -->
 <div class="bg-surface rounded-card border border-line shadow-card overflow-hidden">
-    <x-ui.table>
+    <x-ui.table :primary="[0, 1, 3]">
         <x-slot:head>
             <x-ui.th>Submission</x-ui.th>
             <x-ui.th>Organization</x-ui.th>

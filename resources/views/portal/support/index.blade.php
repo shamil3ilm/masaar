@@ -12,7 +12,7 @@
 </div>
 
 <div class="bg-surface rounded-card border border-line shadow-card overflow-hidden">
-    <x-ui.table>
+    <x-ui.table :primary="[1, 2, 0]">
         <x-slot:head>
             <x-ui.th>{{ __('Ticket') }}</x-ui.th>
             <x-ui.th>{{ __('Subject') }}</x-ui.th>

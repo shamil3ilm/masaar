@@ -95,7 +95,7 @@
     <div class="p-6 border-b">
         <h3 class="text-lg font-semibold text-fg">Payments</h3>
     </div>
-    <x-ui.table>
+    <x-ui.table :primary="[0, 3, 1]">
         <x-slot:head>
             <x-ui.th>Received</x-ui.th>
             <x-ui.th>Plan</x-ui.th>

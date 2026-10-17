@@ -43,7 +43,7 @@
         <div class="border-b p-4">
             <h3 class="font-semibold text-fg">{{ __('Members') }}</h3>
         </div>
-        <x-ui.table>
+        <x-ui.table :primary="[0, 2]">
             <x-slot:head>
                 <x-ui.th>{{ __('Name') }}</x-ui.th>
                 <x-ui.th>{{ __('Email') }}</x-ui.th>
@@ -75,7 +75,7 @@
             <div class="border-b p-4">
                 <h3 class="font-semibold text-fg">{{ __('Invitations waiting') }}</h3>
             </div>
-            <x-ui.table>
+            <x-ui.table :primary="[0, 1]">
                 <x-slot:head>
                     <x-ui.th>{{ __('Email') }}</x-ui.th>
                     <x-ui.th>{{ __('Role') }}</x-ui.th>

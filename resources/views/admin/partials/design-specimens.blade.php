@@ -253,7 +253,7 @@
             <x-slot:actions>
                 <x-ui.button type="button" size="sm" variant="secondary" data-modal-open="{{ $scope }}-modal">{{ $t('Open a dialog', 'افتح نافذة') }}</x-ui.button>
             </x-slot:actions>
-            <x-ui.table>
+            <x-ui.table :primary="[0, 1, 2, 3]">
                 <x-slot:head>
                     <x-ui.th>{{ $t('Number', 'الرقم') }}</x-ui.th>
                     <x-ui.th>{{ $t('Buyer', 'المشتري') }}</x-ui.th>
@@ -271,6 +271,47 @@
         </x-ui.card>
 
         {{ $sample->links() }}
+
+        {{-- What a list and a long page do on a phone, drawn compact here
+             at any width: the first row expanded, the second collapsed. --}}
+        <h3 class="pt-4 text-sm font-semibold text-subtle">{{ $t('On a small screen: rows collapse to their key fields, and open in place', 'على الشاشات الصغيرة: تُطوى الصفوف إلى حقولها الأساسية وتُفتح في مكانها') }}</h3>
+        <div class="max-w-sm overflow-hidden rounded-card border border-line">
+            <x-ui.table :primary="[0, 1, 4, 3]" collapsible="always">
+                <x-slot:head>
+                    <x-ui.th>{{ $t('Invoice', 'الفاتورة') }}</x-ui.th>
+                    <x-ui.th>{{ $t('Buyer', 'المشتري') }}</x-ui.th>
+                    <x-ui.th>{{ $t('Issued', 'تاريخ الإصدار') }}</x-ui.th>
+                    <x-ui.th>{{ $t('Status', 'الحالة') }}</x-ui.th>
+                    <x-ui.th align="right">{{ $t('Total', 'الإجمالي') }}</x-ui.th>
+                    <x-ui.th>{{ $t('Actions', 'الإجراءات') }}</x-ui.th>
+                </x-slot:head>
+                <tr data-expanded>
+                    <td class="px-6 py-4 font-mono tabular-nums" dir="ltr">INV-2026-00418</td>
+                    <td class="px-6 py-4 text-muted">{{ $t('Northwind Trading', 'نورثويند للتجارة') }}</td>
+                    <td class="px-6 py-4 text-muted">2026-10-14</td>
+                    <td class="px-6 py-4"><x-ui.badge state="cleared" /></td>
+                    <td class="px-6 py-4 font-mono tabular-nums" dir="ltr">1,150.00</td>
+                    <td class="px-6 py-4"><x-ui.button size="sm" variant="secondary" href="#">{{ $t('Download PDF', 'تنزيل PDF') }}</x-ui.button></td>
+                </tr>
+                <tr>
+                    <td class="px-6 py-4 font-mono tabular-nums" dir="ltr">INV-2026-00419</td>
+                    <td class="px-6 py-4 text-muted">{{ $t('Gulf Supplies', 'إمدادات الخليج') }}</td>
+                    <td class="px-6 py-4 text-muted">2026-10-15</td>
+                    <td class="px-6 py-4"><x-ui.badge state="pending" /></td>
+                    <td class="px-6 py-4 font-mono tabular-nums" dir="ltr">420.00</td>
+                    <td class="px-6 py-4"><x-ui.button size="sm" variant="secondary" href="#">{{ $t('Download PDF', 'تنزيل PDF') }}</x-ui.button></td>
+                </tr>
+            </x-ui.table>
+        </div>
+
+        <div class="grid gap-3 lg:grid-cols-2">
+            <x-ui.section :title="$t('Buyer', 'المشتري')" :description="$t('Open: a section that matters on every screen.', 'مفتوح: قسم مهم على كل شاشة.')">
+                <p class="text-sm text-muted">{{ $t('Its fields are here.', 'حقوله هنا.') }}</p>
+            </x-ui.section>
+            <x-ui.section closed :title="$t('Notes and discount', 'الملاحظات والخصم')" :description="$t('Closed: optional, folded away on a small screen.', 'مغلق: اختياري، يُطوى على الشاشة الصغيرة.')">
+                <p class="text-sm text-muted">{{ $t('Opened by its heading, or by an error inside it.', 'يُفتح من عنوانه أو عند وجود خطأ بداخله.') }}</p>
+            </x-ui.section>
+        </div>
 
         <div class="rounded-card border border-line bg-surface px-5">
             <x-ui.disclosure :summary="$t('Do I need my own ERP?', 'هل أحتاج إلى نظام خاص بي؟')" open>

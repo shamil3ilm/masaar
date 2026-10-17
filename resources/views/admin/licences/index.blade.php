@@ -34,7 +34,7 @@
 </form>
 
 <div class="bg-surface rounded-card border border-line shadow-card overflow-hidden">
-    <x-ui.table>
+    <x-ui.table :primary="[0, 2, 1]">
         <x-slot:head>
             <x-ui.th>Organization</x-ui.th>
             <x-ui.th>Tier</x-ui.th>

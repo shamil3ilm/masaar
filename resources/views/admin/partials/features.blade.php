@@ -14,7 +14,7 @@
             What this company can use now, and why not. Checked in order - platform, country, plan, organization - and the first that says no decides.
         </p>
     </div>
-    <x-ui.table>
+    <x-ui.table :primary="[0, 1]">
         <x-slot:head>
             <x-ui.th>Feature</x-ui.th>
             <x-ui.th>State</x-ui.th>

@@ -250,9 +250,7 @@
         </div>
     </div>
 
-    <div class="mb-6 rounded-card bg-surface p-6 border border-line shadow-card">
-        <h3 class="mb-1 text-xs font-semibold uppercase tracking-wider text-muted">{{ __('Transaction type') }}</h3>
-        <p class="mb-4 text-sm text-muted">{{ __('Tick each that applies. Most invoices need none.') }}</p>
+    <x-ui.section :title="__('Transaction type')" :description="__('Tick each that applies. Most invoices need none.')" collapse class="mb-6">
 
         {{-- Positions in the eight-character transaction-type code
              (BTAE-02), in the code's order. --}}
@@ -298,7 +296,7 @@
                 <x-ui.input type="text" name="delivery_address[country_code]" id="delivery_address_country_code" maxlength="2" class="uppercase" value="{{ old('delivery_address.country_code') }}" />
             </div>
         </div>
-    </div>
+    </x-ui.section>
 
     <div class="mb-6 rounded-card bg-surface p-6 border border-line shadow-card">
         <div class="mb-4 flex items-baseline justify-between">
@@ -341,8 +339,8 @@
         </div>
     </div>
 
-    <div class="mb-6 rounded-card bg-surface p-6 border border-line shadow-card">
-        <h3 class="mb-4 text-xs font-semibold uppercase tracking-wider text-muted">{{ __('Totals and notes') }}</h3>
+    {{-- Optional: folded away on a phone until wanted, opened by an error inside. --}}
+    <x-ui.section :title="__('Totals and notes')" collapse class="mb-6">
 
         <div class="grid gap-4 sm:grid-cols-2">
             <div>
@@ -357,7 +355,7 @@
                 <x-ui.textarea name="notes" id="notes" rows="3">{{ old('notes') }}</x-ui.textarea>
             </div>
         </div>
-    </div>
+    </x-ui.section>
 
     <div class="flex items-center gap-4">
         <x-ui.button>{{ __('Save as draft') }}</x-ui.button>

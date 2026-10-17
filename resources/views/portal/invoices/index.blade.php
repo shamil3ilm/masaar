@@ -44,7 +44,7 @@
 </form>
 
 <div class="overflow-hidden rounded-card bg-surface border border-line shadow-card">
-    <x-ui.table>
+    <x-ui.table :primary="[0, 1, 4, 3]">
         <x-slot:head>
             <x-ui.th>{{ __('Invoice') }}</x-ui.th>
             <x-ui.th>{{ __('Buyer') }}</x-ui.th>

@@ -123,6 +123,15 @@
     /* Paper: what a printed invoice is drawn on, in either mode. */
     --color-paper: #faf8f4;
 
+    /*
+     * just let me know., the business behind Masaar: its ink, its coral
+     * period and its paper, for x-parent-brand and nothing else. Never
+     * recoloured, so not redefined for dark mode.
+     */
+    --color-jlmk-ink: #1e1b3a;
+    --color-jlmk-coral: #f97362;
+    --color-jlmk-paper: #fafaf7;
+
     --color-focus: var(--color-teal-600);
 
     --color-success: #166534;
@@ -369,4 +378,95 @@
         inset-inline-start: calc(-2.5rem - 0.6875rem - 1px);
         top: 3.75rem;
     }
+}
+
+/*
+ * A table on a small screen: each row a compact line of its key fields,
+ * opened in place to show the rest.
+ *
+ * x-ui.table declares which columns are key (data-primary); resources/js/ui.js
+ * labels every cell with its column's heading, adds a disclosure button to
+ * each row and sets data-compact on the box below 640px (or always, for a
+ * table that asks). Without script none of this applies and the table keeps
+ * its scroll box, which still works.
+ *
+ * Unlayered, so these win over the cells' own padding and nowrap utilities.
+ */
+[data-row-toggle] {
+    display: none;
+}
+
+[data-compact] thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+[data-compact] table,
+[data-compact] tbody {
+    display: block;
+    width: 100%;
+}
+
+[data-compact] tr[data-row] {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.75rem;
+    padding-block: 0.875rem;
+    padding-inline: 1rem 3.5rem;
+    cursor: pointer;
+}
+
+[data-compact] tr[data-row] > td {
+    display: block;
+    padding: 0;
+    border: 0;
+    white-space: normal;
+    text-align: start;
+}
+
+[data-compact] tr[data-row] > td[data-primary='lead'] {
+    flex-basis: 100%;
+    font-weight: 600;
+    color: var(--color-fg);
+}
+
+[data-compact] tr[data-row]:not([data-expanded]) > td:not([data-primary]):not([data-row-toggle]) {
+    display: none;
+}
+
+[data-compact] tr[data-row][data-expanded] > td:not([data-primary]):not([data-row-toggle]) {
+    flex-basis: 100%;
+}
+
+[data-compact] tr[data-row][data-expanded] > td:not([data-primary]):not([data-row-toggle])[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-top: 0.375rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-subtle);
+}
+
+[data-compact] tr[data-row][data-expanded] {
+    background-color: var(--color-sunken);
+}
+
+[data-compact] [data-row-toggle] {
+    position: absolute;
+    top: 0.25rem;
+    inset-inline-end: 0.25rem;
+    display: block;
+    padding: 0;
+}
+
+:lang(ar) [data-compact] tr[data-row][data-expanded] > td[data-label]::before {
+    letter-spacing: 0;
 }

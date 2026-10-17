@@ -184,7 +184,7 @@
     <div class="p-6 border-b">
         <h3 class="text-lg font-semibold text-fg">Organizations</h3>
     </div>
-    <x-ui.table>
+    <x-ui.table :primary="[0, 1]">
         <x-slot:head>
             <x-ui.th>Organization</x-ui.th>
             <x-ui.th>Role</x-ui.th>
@@ -212,7 +212,7 @@
         <h3 class="text-lg font-semibold text-fg">Sign-ins</h3>
         <p class="text-sm text-muted">Console and API, including attempts against this account that failed</p>
     </div>
-    <x-ui.table>
+    <x-ui.table :primary="[0, 4]">
         <x-slot:head>
             <x-ui.th>Event</x-ui.th>
             <x-ui.th>Surface</x-ui.th>
@@ -241,7 +241,7 @@
         <h3 class="text-lg font-semibold text-fg">Account history</h3>
         <p class="text-sm text-muted">What platform admins have done to this account, and why</p>
     </div>
-    <x-ui.table>
+    <x-ui.table :primary="[0, 1, 4]">
         <x-slot:head>
             <x-ui.th>Action</x-ui.th>
             <x-ui.th>Outcome</x-ui.th>
@@ -269,7 +269,7 @@
         <h3 class="text-lg font-semibold text-fg">Activity</h3>
         <a href="{{ route('admin.audit', ['actor' => $user->email]) }}" class="text-sm text-accent hover:text-accent-strong">Full audit log</a>
     </div>
-    <x-ui.table>
+    <x-ui.table :primary="[0, 1, 4]">
         <x-slot:head>
             <x-ui.th>Action</x-ui.th>
             <x-ui.th>Organization</x-ui.th>
@@ -301,7 +301,7 @@
     <div class="p-6 border-b">
         <h3 class="text-lg font-semibold text-fg">Submissions started</h3>
     </div>
-    <x-ui.table>
+    <x-ui.table :primary="[0, 1, 3]">
         <x-slot:head>
             <x-ui.th>Invoice</x-ui.th>
             <x-ui.th>Organization</x-ui.th>

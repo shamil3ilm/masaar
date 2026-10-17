@@ -28,7 +28,7 @@
 </form>
 
 <div class="bg-surface rounded-card border border-line shadow-card overflow-hidden">
-    <x-ui.table>
+    <x-ui.table :primary="[0, 1]">
         <x-slot:head>
             <x-ui.th>User</x-ui.th>
             <x-ui.th>Status</x-ui.th>

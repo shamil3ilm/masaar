@@ -47,7 +47,7 @@
             <x-ui.button variant="secondary" :href="route('portal.reports.invoices', ['from' => $from->toDateString(), 'to' => $to->toDateString()])">{{ __('Invoices CSV') }}</x-ui.button>
         </div>
     </div>
-    <x-ui.table>
+    <x-ui.table :primary="[0, 2, 4]">
         <x-slot:head>
             <x-ui.th>{{ __('Box') }}</x-ui.th>
             <x-ui.th>{{ __('Sales') }}</x-ui.th>

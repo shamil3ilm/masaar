@@ -48,7 +48,7 @@
 </form>
 
 <div class="max-w-3xl rounded-card bg-surface border border-line shadow-card overflow-hidden">
-    <x-ui.table>
+    <x-ui.table :primary="[0, 2]">
         <x-slot:head>
             <x-ui.th>Admin</x-ui.th>
             <x-ui.th>Two-factor</x-ui.th>

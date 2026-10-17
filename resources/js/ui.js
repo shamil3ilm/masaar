@@ -440,8 +440,185 @@ function markServerErrors() {
     }
 }
 
+/* ---------------------------------------------------- small screens -- */
+
+/** Tailwind's sm. Below it, tables collapse and optional sections close. */
+const SMALL = '(max-width: 639.98px)';
+
+let rowSequence = 0;
+
+const CHEVRON =
+    '<svg class="size-5 transition-transform group-aria-expanded:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg>';
+
+/**
+ * Prepare one x-ui.table for compact rows: label each cell with its column,
+ * mark the key cells, and give every row with something to hide a real
+ * disclosure button. The row is a <tr>, so the button sits in a cell of its
+ * own that only shows when the table is compact.
+ *
+ * @param {HTMLElement} box  the element carrying data-collapsible
+ */
+function prepareTable(box) {
+    const table = box.querySelector('table');
+
+    if (!table || box.dataset.collapsible === 'never') {
+        return;
+    }
+
+    const labels = Array.from(table.querySelectorAll('thead th')).map((th) => th.textContent.trim());
+    const primary = (box.dataset.primary || '0,1').split(',').map(Number);
+
+    for (const row of table.tBodies[0]?.rows ?? []) {
+        // The empty-state row is one cell across every column.
+        if (row.cells.length < 2 || row.hasAttribute('data-row')) {
+            continue;
+        }
+
+        Array.from(row.cells).forEach((cell, index) => {
+            if (labels[index]) {
+                cell.dataset.label = labels[index];
+            }
+
+            if (primary.includes(index)) {
+                cell.dataset.primary = index === primary[0] ? 'lead' : 'key';
+            }
+        });
+
+        row.setAttribute('data-row', '');
+
+        const hidden = Array.from(row.cells).some((_, index) => !primary.includes(index));
+
+        if (!hidden) {
+            continue;
+        }
+
+        const expanded = row.hasAttribute('data-expanded');
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.dataset.rowToggleButton = '';
+        button.className =
+            'group inline-flex size-11 items-center justify-center rounded-button text-subtle hover:bg-line hover:text-fg focus-visible:outline-2 focus-visible:outline-focus';
+        button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        button.setAttribute('aria-label', expanded ? box.dataset.collapseLabel : box.dataset.expandLabel);
+        row.id ||= `row-${++rowSequence}`;
+        button.setAttribute('aria-describedby', primaryCellId(row));
+        button.innerHTML = CHEVRON;
+
+        const cell = document.createElement('td');
+        cell.dataset.rowToggle = '';
+        cell.append(button);
+        row.append(cell);
+    }
+}
+
+/** The row's title cell, which names the row its button belongs to. */
+function primaryCellId(row) {
+    const lead = row.querySelector('[data-primary="lead"]') ?? row.cells[0];
+    lead.id ||= `${row.id}-title`;
+
+    return lead.id;
+}
+
+/** @param {HTMLTableRowElement} row */
+function toggleRow(row) {
+    const button = row.querySelector('[data-row-toggle-button]');
+    const box = row.closest('[data-collapsible]');
+    const open = !row.hasAttribute('data-expanded');
+
+    row.toggleAttribute('data-expanded', open);
+    button.setAttribute('aria-expanded', open ? 'true' : 'false');
+    button.setAttribute('aria-label', open ? box.dataset.collapseLabel : box.dataset.expandLabel);
+}
+
+/**
+ * Sections that can wait on a small screen (x-ui.section with collapse):
+ * closed there unless they hold an error, open everywhere else.
+ */
+function prepareSections(small) {
+    for (const section of document.querySelectorAll('details[data-section-collapse]')) {
+        const failing = section.querySelector('[data-field-error], [aria-invalid="true"]');
+        section.open = failing !== null || !small;
+    }
+}
+
+function registerSmallScreens() {
+    const query = window.matchMedia(SMALL);
+    const boxes = Array.from(document.querySelectorAll('[data-collapsible]'));
+
+    const apply = () => {
+        for (const box of boxes) {
+            const compact = box.dataset.collapsible === 'always' || (box.dataset.collapsible === 'small' && query.matches);
+            box.toggleAttribute('data-compact', compact);
+        }
+    };
+
+    boxes.forEach(prepareTable);
+    apply();
+    prepareSections(query.matches);
+
+    query.addEventListener('change', () => {
+        apply();
+        prepareSections(query.matches);
+    });
+
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-row-toggle-button]');
+
+        if (button) {
+            toggleRow(button.closest('tr'));
+
+            return;
+        }
+
+        // A tap anywhere on a compact row opens it, except on something
+        // that does its own thing - a link, a button, a field.
+        const row = event.target.closest('[data-compact] tr[data-row]');
+
+        if (row?.querySelector('[data-row-toggle-button]') && !event.target.closest('a, button, input, select, textarea, label, form')) {
+            toggleRow(row);
+        }
+    });
+
+    // A field the browser finds invalid inside a closed section opens it,
+    // or the browser could not point to the field it is complaining about.
+    document.addEventListener(
+        'invalid',
+        (event) => {
+            const section = event.target.closest?.('details');
+
+            if (section && !section.open) {
+                section.open = true;
+            }
+        },
+        true
+    );
+}
+
+/**
+ * "Ask us" links on the home page: on the same page, choose the topic in the
+ * contact form and go to it without a reload. Without script the link's own
+ * ?topic= does the same through the server.
+ */
+function registerContactTopics() {
+    document.addEventListener('click', (event) => {
+        const link = event.target.closest('[data-contact-topic]');
+        const select = document.getElementById('contact-topic');
+
+        if (!link || !(select instanceof HTMLSelectElement)) {
+            return;
+        }
+
+        event.preventDefault();
+        select.value = link.dataset.contactTopic;
+        document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        select.focus({ preventScroll: true });
+    });
+}
+
 export function registerInterface() {
     markServerErrors();
+    registerContactTopics();
+    registerSmallScreens();
     registerTabs();
     registerMenus();
     registerModals();

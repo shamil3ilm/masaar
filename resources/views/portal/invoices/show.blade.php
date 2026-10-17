@@ -59,10 +59,10 @@
 
 <div class="grid gap-6 lg:grid-cols-3">
     <div class="space-y-6 lg:col-span-2">
-        <div class="rounded-card bg-surface p-6 border border-line shadow-card">
-            <h3 class="mb-4 text-xs font-semibold uppercase tracking-wider text-muted">
-                <x-caption en="Buyer" ar="العميل" />
-            </h3>
+        {{-- Secondary on a phone: the totals, the status, the QR and the
+             actions are what stay in view. --}}
+        <x-ui.section collapse>
+            <x-slot:caption><x-caption en="Buyer" ar="العميل" /></x-slot:caption>
             @if ($invoice->buyer_name_ar)
                 <p class="font-medium text-fg" dir="rtl" lang="ar">{{ $invoice->buyer_name_ar }}</p>
                 <p class="text-sm text-muted">{{ $invoice->buyer_name }}</p>
@@ -73,13 +73,13 @@
             @foreach ($page->buyerDetails as $detail)
                 <p class="mt-1 text-sm text-muted">{{ $detail }}</p>
             @endforeach
-        </div>
+        </x-ui.section>
 
         <div class="overflow-hidden rounded-card bg-surface border border-line shadow-card">
             <h3 class="border-b border-line px-6 py-4 text-xs font-semibold uppercase tracking-wider text-muted">
                 {{ __('Lines') }}
             </h3>
-            <x-ui.table>
+            <x-ui.table :primary="[0, 5, 1]">
                 <x-slot:head>
                     <x-ui.th><x-caption en="Description" ar="تفاصيل السلع أو الخدمات" /></x-ui.th>
                     <x-ui.th align="right"><x-caption en="Qty" ar="الكمية" /></x-ui.th>
