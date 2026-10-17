@@ -70,7 +70,7 @@ class ReceiptCanvas
      * A paragraph, wrapped to the width: right-aligned when it reads right
      * to left and no alignment is given.
      */
-    public function text(string $text, float $points, bool $bold = false, ?string $align = null): void
+    public function text(string $text, float $points, bool $bold = false, ?string $align = null, ?bool $rtl = null): void
     {
         $text = trim($text);
 
@@ -78,7 +78,7 @@ class ReceiptCanvas
             return;
         }
 
-        $rtl = $this->order->isRtl($text);
+        $rtl ??= $this->order->isRtl($text);
         $align ??= $rtl ? self::RIGHT : self::LEFT;
 
         foreach ($this->wrap($this->shaper->shape($text), $points, $bold, $this->width - 2 * $this->padding) as $line) {
@@ -89,20 +89,25 @@ class ReceiptCanvas
     /**
      * Two texts on one line, one at each side - a caption and its amount -
      * or one under the other when they do not fit side by side.
+     *
+     * @param  bool|null  $startRtl  the first text's direction, when its first
+     *                               letter does not decide it: a quantity whose
+     *                               unit is in Arabic still reads left to right
      */
-    public function pair(string $start, string $end, float $points, bool $bold = false): void
+    public function pair(string $start, string $end, float $points, bool $bold = false, ?bool $startRtl = null): void
     {
         $start = $this->shaper->shape(trim($start));
         $end = $this->shaper->shape(trim($end));
+        $startRtl ??= $this->order->isRtl($start);
         $gap = $this->dots(2);
 
         if ($this->measure($start, $points, $bold) + $gap + $this->measure($end, $points, $bold) <= $this->width - 2 * $this->padding) {
-            $this->line([[$start, self::LEFT, $this->order->isRtl($start)], [$end, self::RIGHT, $this->order->isRtl($end)]], $points, $bold);
+            $this->line([[$start, self::LEFT, $startRtl], [$end, self::RIGHT, $this->order->isRtl($end)]], $points, $bold);
 
             return;
         }
 
-        $this->text($start, $points, $bold, self::LEFT);
+        $this->text($start, $points, $bold, self::LEFT, $startRtl);
         $this->text($end, $points, $bold, self::RIGHT);
     }
 

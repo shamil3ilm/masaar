@@ -92,7 +92,7 @@ class PaperSizeTest extends TestCase
             'Tax invoice', 'فاتورة ضريبية', $this->organization->name_ar, '300000000000003', '1010101010',
             'King Fahd Road', 'Invoice number', $invoice->invoice_number, 'تاريخ ووقت الإصدار', 'Supply date',
             'مجموعة النور للضيافة', '310122393500003', 'Prince Sultan Road',
-            'قهوة عربية محمصة', 'unit / وحدة', 'الإجمالي غير شامل', 'ضريبة 15%',
+            'قهوة عربية محمصة', 'وحدة / unit', 'الإجمالي غير شامل', 'VAT 15%',
             'Taxable amount', 'إجمالي المبلغ المستحق', number_format((float) $invoice->total, 2).' SAR',
             'Counter '.$invoice->icv, $invoice->hash,
         ] as $field) {

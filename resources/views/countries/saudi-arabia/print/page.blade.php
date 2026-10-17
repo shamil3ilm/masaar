@@ -262,7 +262,7 @@
         {{-- Charges on the whole document, each with its VAT rate. --}}
         @foreach (\App\Domains\Invoice\Support\PrintedAmounts::documentCharges($invoice) as $charge)
             <div class="flex justify-between">
-                <dt>{{ $charge['reason'] }} <span dir="rtl" lang="ar">رسوم إضافية</span> ({{ $charge['rate'] }}%)</dt>
+                <dt>{{ $charge['reason'] }} ({{ $charge['rate'] }}%) <span dir="rtl" lang="ar">رسوم إضافية</span></dt>
                 <dd class="shrink-0 pl-4 tabular-nums whitespace-nowrap">@include('portal.partials.money', ['amount' => $charge['amount'], 'currency' => $invoice->currency])</dd>
             </div>
         @endforeach

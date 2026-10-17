@@ -218,7 +218,7 @@
                 @endif
 @foreach (\App\Domains\Invoice\Support\PrintedAmounts::documentCharges($invoice) as $charge)
                     <tr>
-                        <td>{{ $charge['reason'] }} <span class="ar">رسوم إضافية</span> ({{ $charge['rate'] }}%)</td>
+                        <td>{{ $charge['reason'] }} ({{ $charge['rate'] }}%) <span class="ar">رسوم إضافية</span></td>
                         <td class="num">{{ $money($charge['amount']) }}</td>
                     </tr>
 @endforeach

@@ -166,12 +166,20 @@ final class UnitCode
      * The unit beside a quantity on a printed invoice, short and in both
      * languages - "kg / كغ" - so "2" means two kilograms in either. A code
      * not below prints as itself.
+     *
+     * Arabic first where more follows on the same line - "3 كغ / kg × 42.50
+     * SAR" - because a number written straight after Arabic is laid out as
+     * part of the Arabic, and the price would land before the unit.
      */
-    public static function printed(?string $code): string
+    public static function printed(?string $code, bool $arabicFirst = false): string
     {
         $code = self::normalise($code);
 
-        return isset(self::PRINTED[$code]) ? implode(' / ', self::PRINTED[$code]) : $code;
+        if (! isset(self::PRINTED[$code])) {
+            return $code;
+        }
+
+        return implode(' / ', $arabicFirst ? array_reverse(self::PRINTED[$code]) : self::PRINTED[$code]);
     }
 
     /**

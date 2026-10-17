@@ -141,7 +141,7 @@ class ReceiptContent
             $rate = (string) (float) $line->tax_rate.'%';
             $details = [
                 new ReceiptRow(new PrintLabel('Net', 'الإجمالي غير شامل'), $this->money($invoice, (float) $line->line_total - (float) $line->tax_amount)),
-                new ReceiptRow(new PrintLabel('VAT '.$rate, 'ضريبة '.$rate), $this->money($invoice, $line->tax_amount)),
+                new ReceiptRow(new PrintLabel('VAT '.$rate, 'ضريبة القيمة المضافة'), $this->money($invoice, $line->tax_amount)),
             ];
 
             // BT-120, with the authority's Arabic for the code.
@@ -158,7 +158,7 @@ class ReceiptContent
             // The Arabic description only: a receipt keeps each line short,
             // and the Arabic is the document's.
             description: $line->documentDescription(),
-            quantity: rtrim(rtrim((string) $line->quantity, '0'), '.').' '.UnitCode::printed($line->unit_code),
+            quantity: rtrim(rtrim((string) $line->quantity, '0'), '.').' '.UnitCode::printed($line->unit_code, arabicFirst: true),
             unitPrice: $this->money($invoice, $line->priceAsEntered($inclusivePrice)),
             total: $this->money($invoice, $line->line_total),
             discount: ($discount = PrintedAmounts::lineDiscount($line)) === null ? null : '-'.$this->money($invoice, $discount),

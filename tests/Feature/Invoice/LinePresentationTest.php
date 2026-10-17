@@ -69,7 +69,7 @@ class LinePresentationTest extends TestCase
         $html = $this->html($invoice, $paper);
 
         foreach ([
-            '3 unit / وحدة' => $paper->isRoll() ? '3 unit / وحدة' : 'unit / وحدة',
+            'unit' => $paper->isRoll() ? '3 وحدة / unit' : 'unit / وحدة',
             'unit price' => '42.50 SAR',
             'net' => '127.50 SAR',
             'rate' => '15%',
