@@ -4,7 +4,8 @@
     service provider issues after sign-up and the company page takes.
 --}}
 <fieldset class="space-y-4">
-    <legend class="mb-2 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ __('Registration') }}</legend>
+    <legend class="text-base font-semibold text-fg">{{ __('Registration') }}</legend>
+    <p class="-mt-2 text-sm text-muted">{{ __('Your tax registration and the licence your company trades under, as the authority holds them. They are carried on every e-invoice you send.') }}</p>
 
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         @include('portal.partials.uae-tax-identity', ['values' => []])
@@ -13,7 +14,8 @@
 </fieldset>
 
 <fieldset class="space-y-4">
-    <legend class="mb-2 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ __('Address') }}</legend>
+    <legend class="text-base font-semibold text-fg">{{ __('Address') }}</legend>
+    <p class="-mt-2 text-sm text-muted">{{ __('Where your company is registered, including its emirate.') }}</p>
 
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         @include('portal.partials.uae-address', ['values' => []])

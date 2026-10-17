@@ -65,11 +65,12 @@ class SignupController extends Controller
     }
 
     /**
-     * Each country offered, the default first: its code, its name and the
-     * form section its module provides.
+     * Each country offered, the default first: its code, its name, the system
+     * it files through (which the chooser names) and the form section its
+     * module provides.
      *
      * @param  list<string>  $countries
-     * @return list<array{code: string, name: string, view: string}>
+     * @return list<array{code: string, name: string, system: string, view: string}>
      */
     private function sections(array $countries, string $default): array
     {
@@ -78,7 +79,12 @@ class SignupController extends Controller
         return array_map(function (string $code): array {
             $jurisdiction = CompanyProfileRules::jurisdiction($code);
 
-            return ['code' => $code, 'name' => $jurisdiction->name(), 'view' => $jurisdiction->sellerRules()->signupView()];
+            return [
+                'code' => $code,
+                'name' => $jurisdiction->name(),
+                'system' => $jurisdiction->filingSystem(),
+                'view' => $jurisdiction->sellerRules()->signupView(),
+            ];
         }, $countries);
     }
 }

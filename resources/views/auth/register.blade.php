@@ -1,83 +1,165 @@
 @extends('layouts.guest')
 
 @section('title', __('Create an account'))
-@section('subtitle', $choice ? __('Register your business for e-invoicing') : __('Register your business for ZATCA e-invoicing'))
-@section('width', 'max-w-2xl')
+@section('subtitle', $choice ? __('Register your business for e-invoicing. It takes four short steps, and your first month is free.') : __('Register your business for ZATCA e-invoicing. It takes four short steps, and your first month is free.'))
+@section('width', 'max-w-3xl')
 
 @section('content')
-<form method="POST" action="{{ route('register.store') }}" class="space-y-6"
+{{--
+    Sign-up, in four steps: who you are, your company, what the country's
+    authority needs to know it, and a review before anything is sent.
+
+    One form throughout. resources/js/ui.js shows a step at a time (data-steps
+    on the form, data-step on each part), checks each step with the browser's
+    own validation before moving on, and fills the review from what was
+    entered; without it every step shows at once and the form sends exactly
+    as it did. A form sent back with errors opens on the first step that has
+    one - data-step-errors names the fields - and each field shows its own
+    message.
+
+    Every field and every rule is the country module's, as before: the
+    chooser and the sections come from SignupController, the fields from
+    SellerRules::signupView(). Only the layout around them changed.
+--}}
+@php
+    $steps = [
+        ['title' => __('Your account'), 'hint' => __('Who will sign in')],
+        ['title' => __('Your company'), 'hint' => __('Its legal name')],
+        ['title' => __('Registration'), 'hint' => __('What the authority knows')],
+        ['title' => __('Review'), 'hint' => __('Check and create')],
+    ];
+@endphp
+
+<form method="POST" action="{{ route('register.store') }}" data-steps
+      data-step-errors="{{ json_encode($errors->keys()) }}"
       @if ($choice) x-data="signupCountry" data-country="{{ $country }}" @endif>
     @csrf
 
-    <fieldset class="space-y-4">
-        <legend class="mb-2 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ __('You') }}</legend>
+    <x-ui.stepper :steps="$steps" :current="0" :label="__('Sign-up steps')" class="mb-8" />
 
-        <x-ui.field :label="__('Your name')">
+    {{-- 1. The person --}}
+    <section data-step="0" class="space-y-5" aria-labelledby="step-account">
+        <header>
+            <p class="text-eyebrow font-semibold uppercase text-accent">{{ __('Step :number of :total', ['number' => 1, 'total' => 4]) }}</p>
+            <h2 id="step-account" data-step-heading tabindex="-1" class="mt-1 text-xl font-semibold focus:outline-none">{{ __('Your account') }}</h2>
+            <p class="mt-1 text-sm text-muted">{{ __('The person who will run this account. You can invite your colleagues once you are in.') }}</p>
+        </header>
+
+        <x-ui.field :label="__('Your name')" error="name">
             <x-ui.input type="text" name="name" maxlength="255" required autocomplete="name" value="{{ old('name') }}" />
         </x-ui.field>
 
-        <x-ui.field :label="__('Work email')">
+        <x-ui.field :label="__('Work email')" error="email" :hint="__('You sign in with this email, and we send a link to it to confirm it is yours.')">
             <x-ui.input type="email" name="email" maxlength="255" required autocomplete="email" value="{{ old('email') }}" />
         </x-ui.field>
 
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <x-ui.field :label="__('Password')">
-                <x-ui.input type="password" name="password" required autocomplete="new-password" />
+            <x-ui.field :label="__('Password')" error="password">
+                <x-ui.input type="password" name="password" required minlength="8" autocomplete="new-password" />
             </x-ui.field>
             <x-ui.field :label="__('Confirm password')">
                 <x-ui.input type="password" name="password_confirmation" required autocomplete="new-password" />
             </x-ui.field>
         </div>
-        <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('At least 8 characters, with upper and lower case letters, a number and a symbol.') }}</p>
-    </fieldset>
+        <p class="-mt-2 text-xs text-subtle">{{ __('At least 8 characters, with upper and lower case letters, a number and a symbol.') }}</p>
 
-    <fieldset class="space-y-4">
-        <legend class="mb-2 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ $choice ? __('Your company') : __('Your company, as registered with ZATCA') }}</legend>
+        @include('auth.partials.register-nav', ['first' => true])
+    </section>
+
+    {{-- 2. The company --}}
+    <section data-step="1" class="space-y-5 border-t border-line pt-8 mt-8" aria-labelledby="step-company">
+        <header>
+            <p class="text-eyebrow font-semibold uppercase text-accent">{{ __('Step :number of :total', ['number' => 2, 'total' => 4]) }}</p>
+            <h2 id="step-company" data-step-heading tabindex="-1" class="mt-1 text-xl font-semibold focus:outline-none">{{ $choice ? __('Your company') : __('Your company, as registered with ZATCA') }}</h2>
+            <p class="mt-1 text-sm text-muted">{{ __('The company whose invoices you will issue.') }}</p>
+        </header>
 
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <x-ui.field :label="__('Legal name')">
+            <x-ui.field :label="__('Legal name')" error="company_name" :hint="__('Printed on every invoice you issue, exactly as on your commercial registration.')">
                 <x-ui.input type="text" name="company_name" maxlength="255" required value="{{ old('company_name') }}" />
             </x-ui.field>
-            <x-ui.field :label="__('Legal name in Arabic')">
-                <x-ui.input type="text" name="company_name_ar" maxlength="255" dir="rtl" value="{{ old('company_name_ar') }}" />
+            <x-ui.field :label="__('Legal name in Arabic')" error="company_name_ar" optional :hint="__('Printed beside the English name. Arabic is the authoritative text on an invoice.')">
+                <x-ui.input type="text" name="company_name_ar" maxlength="255" dir="rtl" lang="ar" value="{{ old('company_name_ar') }}" />
             </x-ui.field>
-            @unless ($choice)
-                @include('auth.partials.saudi-registration')
-            @endunless
         </div>
-    </fieldset>
 
-    @if ($choice)
-        @include('auth.partials.country-sections')
-    @else
-        @include('auth.partials.saudi-address')
-    @endif
+        @if ($choice)
+            @include('auth.partials.country-choice')
+        @endif
 
-    <label class="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-300">
-        <input type="checkbox" name="terms" value="1" class="mt-1 text-teal-600 dark:text-teal-400" @checked(old('terms')) required>
-        <span>
+        @include('auth.partials.register-nav')
+    </section>
+
+    {{-- 3. What the country's authority needs --}}
+    <section data-step="2" class="space-y-6 border-t border-line pt-8 mt-8" aria-labelledby="step-registration">
+        <header>
+            <p class="text-eyebrow font-semibold uppercase text-accent">{{ __('Step :number of :total', ['number' => 3, 'total' => 4]) }}</p>
+            <h2 id="step-registration" data-step-heading tabindex="-1" class="mt-1 text-xl font-semibold focus:outline-none">{{ __('Registration') }}</h2>
+            <p class="mt-1 text-sm text-muted">{{ __('What the tax authority needs to know your company, exactly as it is registered. We only ask for what its rules require.') }}</p>
+        </header>
+
+        @if ($choice)
+            @include('auth.partials.country-sections')
+        @else
+            <fieldset class="space-y-4">
+                <legend class="text-base font-semibold text-fg">{{ __('Your company, as registered with ZATCA') }}</legend>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    @include('auth.partials.saudi-registration')
+                </div>
+            </fieldset>
+            @include('auth.partials.saudi-address')
+        @endif
+
+        @include('auth.partials.register-nav')
+    </section>
+
+    {{-- 4. Review and create --}}
+    <section data-step="3" class="space-y-5 border-t border-line pt-8 mt-8" aria-labelledby="step-review">
+        <header>
+            <p class="text-eyebrow font-semibold uppercase text-accent">{{ __('Step :number of :total', ['number' => 4, 'total' => 4]) }}</p>
+            <h2 id="step-review" data-step-heading tabindex="-1" class="mt-1 text-xl font-semibold focus:outline-none">{{ __('Review') }}</h2>
+            <p class="mt-1 text-sm text-muted">{{ __('Check what you entered. You can go back to any step before you create the account.') }}</p>
+        </header>
+
+        <div data-step-review data-step-review-class="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]"
+             class="rounded-tile border border-line bg-sunken p-5" aria-live="polite">
+            <p class="text-sm text-subtle">{{ __('Everything you entered above is sent when you create the account.') }}</p>
+        </div>
+
+        <x-ui.alert tone="info" :title="__('What happens next')">
+            <span @if ($choice) :hidden="notSaudi" @if ($country !== 'SA') hidden @endif @endif>
+                {{ __('We review every company before it connects to ZATCA. You can sign in and prepare invoices straight away; connecting to ZATCA and issuing open once your company is approved.') }}
+            </span>
+            @if ($choice)
+                <span :hidden="notUae" @if ($country !== 'AE') hidden @endif>
+                    {{ __('We review every company before it can issue. You can sign in and prepare invoices straight away; issuing opens once your company is approved and you have added the Peppol endpoint your service provider issues you on your company page.') }}
+                </span>
+            @endif
+        </x-ui.alert>
+
+        <x-ui.checkbox name="terms" value="1" :checked="(bool) old('terms')" required>
             {{ __('I accept the') }}
             @if ($termsUrl)
-                <a href="{{ $termsUrl }}" target="_blank" rel="noopener" class="text-teal-700 dark:text-teal-300 underline">{{ __('terms of service') }}</a>.
+                <a href="{{ $termsUrl }}" target="_blank" rel="noopener" class="text-accent underline underline-offset-4">{{ __('terms of service') }}</a>.
             @else
                 {{ __('terms of service') }}.
             @endif
-        </span>
-    </label>
+        </x-ui.checkbox>
+        @error('terms')
+            <p class="-mt-3 text-xs font-medium text-danger" data-field-error>{{ $message }}</p>
+        @enderror
 
-    <p class="text-xs text-gray-500 dark:text-gray-400" @if ($choice) :hidden="notSaudi" @if ($country !== 'SA') hidden @endif @endif>
-        {{ __('We review every company before it connects to ZATCA. You can sign in and prepare invoices straight away; connecting to ZATCA and issuing open once your company is approved.') }}
-    </p>
-    @if ($choice)
-        <p class="text-xs text-gray-500 dark:text-gray-400" :hidden="notUae" @if ($country !== 'AE') hidden @endif>
-            {{ __('We review every company before it can issue. You can sign in and prepare invoices straight away; issuing opens once your company is approved and you have added the Peppol endpoint your service provider issues you on your company page.') }}
-        </p>
-    @endif
+        <div class="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
+            <x-ui.button type="button" variant="ghost" data-step-back hidden>
+                <svg class="size-4 rtl:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 18l-6-6 6-6" /></svg>
+                {{ __('Back') }}
+            </x-ui.button>
+            <x-ui.button size="lg">{{ __('Create account') }}</x-ui.button>
+        </div>
+    </section>
 
-    <x-ui.button class="w-full">{{ __('Create account') }}</x-ui.button>
-
-    <p class="text-center text-sm text-gray-500 dark:text-gray-400">
-        {{ __('Already registered?') }} <a href="{{ route('login') }}" class="text-teal-700 dark:text-teal-300 hover:underline">{{ __('Sign in') }}</a>
+    <p class="mt-8 text-center text-sm text-muted">
+        {{ __('Already registered?') }} <a href="{{ route('login') }}" class="font-medium text-accent hover:underline underline-offset-4">{{ __('Sign in') }}</a>
     </p>
 </form>
 @endsection

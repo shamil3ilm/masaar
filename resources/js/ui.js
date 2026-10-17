@@ -251,17 +251,20 @@ function showStep(form, index, focus = true) {
 }
 
 /**
- * Check the part being left with the browser's own validation.
+ * Check the part being left with the browser's own validation, and point
+ * at the first problem unless only asked whether there is one.
  *
  * @param {HTMLElement} part
  */
-function valid(part) {
+function valid(part, report = true) {
     const controls = Array.from(part.querySelectorAll('input, select, textarea')).filter((c) => !c.disabled);
 
     for (const control of controls) {
         if (!control.checkValidity()) {
-            control.reportValidity();
-            control.focus();
+            if (report) {
+                control.reportValidity();
+                control.focus();
+            }
 
             return false;
         }
@@ -344,11 +347,43 @@ function registerSteps() {
             control.removeAttribute('hidden');
         }
 
-        // Back from a failed submission: open where the first error is.
+        // Back from a failed submission: open where the first error is. The
+        // server names the fields (data-step-errors), since a field shared
+        // with another form may not draw its own message.
         const all = parts(form);
+        const named = JSON.parse(form.dataset.stepErrors || '[]');
+
+        for (const name of named) {
+            for (const control of form.querySelectorAll(`[name="${CSS.escape(name)}"]:not(:disabled)`)) {
+                control.setAttribute('aria-invalid', 'true');
+            }
+        }
+
         const failed = all.findIndex((part) => part.querySelector('[data-field-error], [aria-invalid="true"]'));
 
         showStep(form, failed === -1 ? 0 : failed, false);
+
+        // A step left invalid after going back is somewhere the browser
+        // cannot point to while it is hidden, so it would refuse to send
+        // without saying why. Open that step and say it there instead. On the
+        // click, because the browser validates before any submit event.
+        form.addEventListener(
+            'click',
+            (event) => {
+                if (!event.target.closest('[type="submit"]')) {
+                    return;
+                }
+
+                const broken = all.findIndex((part) => !valid(part, false));
+
+                if (broken !== -1 && all[broken].hidden) {
+                    event.preventDefault();
+                    showStep(form, broken);
+                    valid(all[broken]);
+                }
+            },
+            true
+        );
     }
 
     document.addEventListener('click', (event) => {
