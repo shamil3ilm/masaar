@@ -34,6 +34,11 @@ use RecursiveIteratorIterator;
  * Any reference counts - a use statement, a fully-qualified name, a Blade
  * view's - because each is a dependency whatever its spelling. Tests are not
  * scanned: they are allowed to reach into what they test.
+ *
+ * A country's Blade views are part of its module: they live in
+ * resources/views/countries/<country>/, the module's folder name in kebab
+ * case (SaudiArabia's in saudi-arabia/), and are held to the same lines as
+ * its classes.
  */
 class ModuleBoundaryTest extends TestCase
 {
@@ -48,50 +53,42 @@ class ModuleBoundaryTest extends TestCase
 
     private const ENGINE = 'app/Domains/Compliance/Engine/';
 
+    /** Each country module's views, in a folder of its own. */
+    private const COUNTRY_VIEWS = 'resources/views/countries/';
+
     /**
      * Shared files referencing a country or network module, and what they reference.
      *
      * @var array<string, string>
      */
     private const SHARED = [
-        'app/Domains/Invoice/Http/Controllers/PortalInvoiceController.php' => 'Countries\UnitedArabEmirates\Reports\UaeDocuments',
-        'app/Domains/Invoice/Http/Controllers/PortalReportController.php' => 'Countries\UnitedArabEmirates\Reports\UaeVatSummary',
         'app/Domains/Invoice/Models/Customer.php' => 'Countries\UnitedArabEmirates\Rules\PintAe',
         'app/Domains/Invoice/Models/Invoice.php' => 'Countries\SaudiArabia\Models\InvoiceSubmission',
-        'app/Domains/Invoice/Services/CadesSignature.php' => 'Countries\SaudiArabia\Exceptions\SigningException, Countries\SaudiArabia\Signing\EcdsaSigner',
-        'app/Domains/Invoice/Services/InvoicePdf.php' => 'Countries\SaudiArabia\Exceptions\SigningException, Countries\SaudiArabia\Signing\CertificatePem, Countries\SaudiArabia\Signing\CredentialStore',
-        'app/Domains/Invoice/Services/PdfStamp.php' => 'Countries\SaudiArabia\Exceptions\SigningException, Countries\SaudiArabia\Signing\CertificateChain',
-        'app/Domains/Organization/Http/Controllers/CustomerPortalController.php' => 'Countries\SaudiArabia\DTOs\SubmissionFilterData, Countries\SaudiArabia\Reports\SubmissionReport, Countries\SaudiArabia\Signing\CertificateService, Countries\SaudiArabia\Signing\CredentialStore, Countries\UnitedArabEmirates\Reports\UaeDocuments',
         'app/Domains/Organization/Models/Branch.php' => 'Countries\SaudiArabia\DTOs\AddressData, Countries\SaudiArabia\DTOs\CsrData',
         'app/Domains/Organization/Models/Organization.php' => 'Countries\SaudiArabia\DTOs\AddressData',
         'app/Domains/Organization/Services/BranchService.php' => 'Countries\SaudiArabia\Signing\CredentialStore',
         'app/Domains/Platform/Http/Controllers/AdminController.php' => 'Countries\SaudiArabia\Enums\RequeueOutcome, Countries\SaudiArabia\Filing\Requeuer',
         'app/Domains/Platform/Http/Controllers/AdminDashboardController.php' => 'Countries\SaudiArabia\Enums\RequeueOutcome, Countries\SaudiArabia\Filing\CircuitBreaker, Countries\SaudiArabia\Filing\Connectivity, Countries\SaudiArabia\Filing\Requeuer',
-        'app/Domains/Platform/Http/Controllers/DashboardController.php' => 'Countries\SaudiArabia\Reports\SubmissionReport',
         'app/Domains/Platform/Services/IssueDetector.php' => 'Countries\SaudiArabia\Filing\CircuitBreaker, Countries\SaudiArabia\Filing\Connectivity, Countries\SaudiArabia\Filing\OfflineQueue',
         'app/Domains/Platform/Services/MetricsCollector.php' => 'Countries\SaudiArabia\Filing\CircuitBreaker',
         'app/Domains/Platform/Services/OrganizationReport.php' => 'Countries\SaudiArabia\Signing\CertificateService, Countries\SaudiArabia\Signing\CredentialStore',
         'app/Domains/Platform/Services/PlatformStatus.php' => 'Countries\SaudiArabia\Filing\CircuitBreaker, Countries\SaudiArabia\Signing\CertificateService, Countries\SaudiArabia\Signing\CredentialStore',
         'app/Domains/Platform/Services/QueueReport.php' => 'Countries\SaudiArabia\Filing\OfflineQueue',
-        'app/Domains/Platform/Services/TenantDashboard.php' => 'Countries\SaudiArabia\Filing\CircuitBreaker, Countries\SaudiArabia\Reports\ChainReport, Countries\SaudiArabia\Reports\QueueBacklog, Countries\SaudiArabia\Reports\SubmissionReport, Countries\SaudiArabia\Signing\CertificateService, Countries\SaudiArabia\Signing\CredentialStore, Countries\UnitedArabEmirates\Reports\UaeDocuments',
         'app/Http/Responses/ApiResponse.php' => 'Countries\SaudiArabia\Exceptions\CertificateException, Countries\SaudiArabia\Exceptions\FatooraException',
         'app/Providers/AppServiceProvider.php' => 'Countries\SaudiArabia\Filing\CircuitBreaker, Countries\SaudiArabia\Filing\TimestampValidator, Countries\SaudiArabia\Http\Middleware\FilingCleared, Countries\SaudiArabia\Rules\FatooraConfig, Countries\UnitedArabEmirates\Http\Middleware\UaeInvoicing',
         'app/Providers/EventServiceProvider.php' => 'Countries\SaudiArabia\Events\InvoiceCleared, Countries\SaudiArabia\Events\InvoiceFailed, Countries\SaudiArabia\Events\InvoiceRejected, Countries\SaudiArabia\Events\InvoiceReported, Countries\SaudiArabia\Events\InvoiceSubmitted, Countries\SaudiArabia\Events\InvoiceWarning, Countries\SaudiArabia\Listeners\DispatchInvoiceWebhook',
         'bootstrap/app.php' => 'Countries\SaudiArabia\Exceptions\CertificateException, Countries\SaudiArabia\Exceptions\SigningException',
         // Each module's provider, registering it, and the network's.
         'bootstrap/providers.php' => 'Countries\SaudiArabia\ModuleServiceProvider, Countries\UnitedArabEmirates\ModuleServiceProvider, Networks\Peppol\NetworkServiceProvider',
-        'resources/views/layouts/portal.blade.php' => 'Countries\UnitedArabEmirates\Support\UaePortal',
         'resources/views/pdf/invoice.blade.php' => 'Countries\SaudiArabia\Rules\FatooraConfig, Countries\SaudiArabia\Support\FatooraTime',
         'resources/views/portal/invoices/create-uae.blade.php' => 'Countries\UnitedArabEmirates\Rules\PintAe',
         'resources/views/portal/invoices/create.blade.php' => 'Countries\SaudiArabia\Rules\FatooraConfig',
-        'resources/views/portal/invoices/partials/peppol.blade.php' => 'Countries\UnitedArabEmirates\Rules\IssueDeadline, Networks\Peppol\Models\PeppolDocument',
         'resources/views/portal/invoices/partials/uae-line-row.blade.php' => 'Countries\UnitedArabEmirates\Rules\PintAe',
         'resources/views/portal/invoices/print.blade.php' => 'Countries\SaudiArabia\Rules\FatooraConfig, Countries\SaudiArabia\Support\FatooraTime',
-        'resources/views/portal/partials/dashboard-uae.blade.php' => 'Countries\UnitedArabEmirates\Support\UaePortal',
         'routes/api/partner.php' => 'Countries\SaudiArabia\Http\Controllers\ComplianceController',
         'routes/api/public.php' => 'Networks\Peppol\Http\Controllers\InboundWebhookController, Networks\Peppol\Http\Controllers\StatusWebhookController',
         'routes/api/tenant.php' => 'Countries\SaudiArabia\Http\Controllers\BranchOnboardingController, Countries\SaudiArabia\Http\Controllers\ComplianceController, Countries\SaudiArabia\Http\Controllers\OnboardingController, Countries\UnitedArabEmirates\Http\Controllers\UaeDocumentController, Countries\UnitedArabEmirates\Http\Controllers\UaeInvoiceController, Countries\UnitedArabEmirates\Http\Controllers\UaeProfileController',
-        'routes/web.php' => 'Countries\SaudiArabia\Http\Controllers\AdminAlertController, Countries\SaudiArabia\Http\Controllers\AdminKillSwitchController, Countries\SaudiArabia\Http\Controllers\PortalZatcaController, Countries\UnitedArabEmirates\Http\Controllers\PortalReceivedController, Countries\UnitedArabEmirates\Http\Controllers\PortalUaeInvoiceController',
+        'routes/web.php' => 'Countries\SaudiArabia\Http\Controllers\AdminAlertController, Countries\SaudiArabia\Http\Controllers\AdminKillSwitchController, Countries\SaudiArabia\Http\Controllers\PortalSubmissionController, Countries\SaudiArabia\Http\Controllers\PortalZatcaController, Countries\UnitedArabEmirates\Http\Controllers\PortalReceivedController, Countries\UnitedArabEmirates\Http\Controllers\PortalUaeInvoiceController',
     ];
 
     /**
@@ -110,7 +107,9 @@ class ModuleBoundaryTest extends TestCase
      */
     private const FOREIGN_WORDS = [
         self::COUNTRIES.'SaudiArabia/' => '/\buae\b|peppol|\bpint\b|emirat|dubai/i',
+        self::COUNTRY_VIEWS.'saudi-arabia/' => '/\buae\b|peppol|\bpint\b|emirat|dubai/i',
         self::COUNTRIES.'UnitedArabEmirates/' => '/zatca|fatoora|saudi|VATEX-SA/i',
+        self::COUNTRY_VIEWS.'united-arab-emirates/' => '/zatca|fatoora|saudi|VATEX-SA/i',
         self::NETWORKS.'Peppol/' => '/zatca|fatoora|saudi|\buae\b|emirat|dubai|dirham|\bAED\b|[\'"]AE[\'"]|0235/i',
     ];
 
@@ -159,7 +158,8 @@ class ModuleBoundaryTest extends TestCase
 
         foreach ($this->countries() as $country) {
             $found += $this->references(
-                fn (string $file): bool => str_starts_with($file, self::COUNTRIES.$country.'/'),
+                fn (string $file): bool => str_starts_with($file, self::COUNTRIES.$country.'/')
+                    || str_starts_with($file, self::COUNTRY_VIEWS.$this->viewFolder($country).'/'),
                 'Countries\\\\(?!'.$country.'\\\\)\w+',
             );
         }
@@ -168,6 +168,20 @@ class ModuleBoundaryTest extends TestCase
 
         $this->assertNotSame([], $this->countries(), 'No country module was found.');
         $this->assertSame(self::ACROSS_COUNTRIES, $found, "References between country modules changed. Found:\n".var_export($found, true));
+    }
+
+    /**
+     * Every folder of country views is a module's, so none escapes the lines
+     * above by being named for a country that has no module.
+     */
+    public function test_country_views_have_a_module(): void
+    {
+        $root = str_replace('\\', '/', (string) realpath(self::ROOT)).'/';
+        $folders = array_map('basename', glob($root.self::COUNTRY_VIEWS.'*', GLOB_ONLYDIR) ?: []);
+        $modules = array_map(fn (string $country): string => $this->viewFolder($country), $this->countries());
+
+        $this->assertNotSame([], $folders, 'No country views were found.');
+        $this->assertSame([], array_values(array_diff($folders, $modules)), 'These view folders have no country module.');
     }
 
     public function test_networks_name_no_country(): void
@@ -186,7 +200,7 @@ class ModuleBoundaryTest extends TestCase
 
     private function inModule(string $file): bool
     {
-        foreach ([self::COUNTRIES, self::NETWORKS, self::ENGINE] as $prefix) {
+        foreach ([self::COUNTRIES, self::NETWORKS, self::ENGINE, self::COUNTRY_VIEWS] as $prefix) {
             if (str_starts_with($file, $prefix)) {
                 return true;
             }
@@ -204,6 +218,12 @@ class ModuleBoundaryTest extends TestCase
         $folders = glob($root.self::COUNTRIES.'*', GLOB_ONLYDIR) ?: [];
 
         return array_map('basename', $folders);
+    }
+
+    /** A country module's folder of views: SaudiArabia's is saudi-arabia. */
+    private function viewFolder(string $country): string
+    {
+        return strtolower((string) preg_replace('/(?<!^)[A-Z]/', '-$0', $country));
     }
 
     /**

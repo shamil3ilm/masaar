@@ -21,7 +21,8 @@ use RecursiveIteratorIterator;
  * for everything under app/ except the country modules and the engine. The
  * assertion is equality: a new comparison fails until it is listed, and one
  * removed fails until it is delisted, so the checks are seen to shrink.
- * Later phases move these behind the engine's ports.
+ * It is empty: every country's rule now sits behind one of the engine's
+ * ports, and a new comparison belongs behind one too.
  */
 class CountryCheckTest extends TestCase
 {
@@ -51,15 +52,7 @@ class CountryCheckTest extends TestCase
      *
      * @var array<string, int>
      */
-    private const DECLARED = [
-        // The buyer's country, for how a standard invoice identifies the buyer.
-        'Domains/Billing/Services/Billing.php' => 2,
-        'Domains/Invoice/Http/Controllers/PortalInvoiceController.php' => 1,
-        'Domains/Invoice/Http/Controllers/PortalReportController.php' => 1,
-        'Domains/Organization/Http/Controllers/CustomerPortalController.php' => 1,
-        'Domains/Organization/Services/SetupChecklist.php' => 1,
-        'Domains/Platform/Services/TenantDashboard.php' => 1,
-    ];
+    private const DECLARED = [];
 
     public function test_country_checks_only_shrink(): void
     {

@@ -49,7 +49,7 @@ class CommandConstructionTest extends TestCase
 
             // A domain's Services or Client, or the folders a country or
             // network module keeps its services in.
-            preg_match_all('/^use App\\\\Domains\\\\(?:[\w\\\\]+\\\\(?:Services|Client)|Compliance\\\\(?:Countries|Networks)\\\\\w+\\\\(?:Issuing|Document|Signing|Onboarding|Filing|Rules|Reports|Support|Gateways|Sending|Receiving))\\\\(\w+)(?: as (\w+))?;/m', $source, $imports, PREG_SET_ORDER);
+            preg_match_all('/^use App\\\\Domains\\\\(?:[\w\\\\]+\\\\(?:Services|Client)|Compliance\\\\(?:Countries|Networks)\\\\\w+\\\\(?:Issuing|Document|Signing|Onboarding|Filing|Rules|Reports|Presentation|Support|Gateways|Sending|Receiving))\\\\(\w+)(?: as (\w+))?;/m', $source, $imports, PREG_SET_ORDER);
 
             foreach ($imports as $import) {
                 $name = ($import[2] ?? '') !== '' ? $import[2] : $import[1];

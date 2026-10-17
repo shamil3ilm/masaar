@@ -16,8 +16,8 @@ use App\Domains\Invoice\Contracts\IssuingJurisdiction;
  * talks to its ports.
  *
  * Each port is an interface of its own, so a module can answer one with a
- * class of its own as that port grows. Later phases add ports here -
- * presentation, reports - rather than methods to an existing one.
+ * class of its own as that port grows. A new concern is a new port here
+ * rather than methods on an existing one.
  */
 interface Jurisdiction
 {
@@ -69,4 +69,16 @@ interface Jurisdiction
 
     /** What an invoice draft has to be, and the columns only this country's invoices carry. */
     public function invoiceRules(): InvoiceRules;
+
+    /** How the portal shows the country, and when and how an invoice is handed to the buyer. */
+    public function presentation(): Presentation;
+
+    /** The tax report and its CSVs. */
+    public function reports(): TaxReports;
+
+    /** The dashboard figures that depend on how the country files. */
+    public function dashboard(): Dashboard;
+
+    /** The country's steps in the setup checklist. */
+    public function setup(): SetupSteps;
 }

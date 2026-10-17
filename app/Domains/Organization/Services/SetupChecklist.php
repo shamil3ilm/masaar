@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domains\Organization\Services;
 
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
-use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Models\InvoiceSequence;
@@ -16,9 +15,10 @@ use App\Support\Errors\ComplianceException;
 /**
  * What a new organization still has to do before it invoices, in order.
  *
- * A company that signed up landed on a dashboard of zeros and a red banner
- * saying it had no certificate - true, and no help, because nothing said
- * that connecting to ZATCA was the next step or where to do it.
+ * The steps every country shares - approval, numbering, the catalogue - are
+ * here; the seller's details, what the country registers with its authority
+ * and the first invoice are the country's (SetupSteps, from the
+ * organization's module), with what the dashboard says about each.
  *
  * Optional steps are listed but do not keep the list on screen: once the
  * required ones are done it goes away.
@@ -31,34 +31,35 @@ class SetupChecklist
     ) {}
 
     /**
-     * @return list<array{key: string, done: bool, required: bool, route: string|null}>
+     * @return list<array{key: string, done: bool, required: bool, route: string|null, title: string, detail: string, member: bool}>
      */
     public function steps(Organization $organization): array
     {
         $id = (string) $organization->id;
-        // Whether the seller details its country's documents need are there.
-        $company = $this->jurisdictions->forRules($organization)->sellerRules()->complete($organization);
-
-        // A UAE organization never onboards with ZATCA. Its seller details
-        // and the Peppol endpoint its service provider issued are what its
-        // documents need, and an issued invoice has no hash.
-        if ($organization->country === 'AE') {
-            return [
-                ['key' => 'uae_company', 'done' => $company, 'required' => true, 'route' => 'portal.company.edit'],
-                ['key' => 'approved', 'done' => $this->approved($organization), 'required' => true, 'route' => null],
-                ['key' => 'numbering', 'done' => $this->numbered($id), 'required' => false, 'route' => 'portal.numbering.edit'],
-                ['key' => 'catalogue', 'done' => $this->catalogued($id), 'required' => false, 'route' => 'portal.customers.index'],
-                ['key' => 'uae_invoice', 'done' => $this->issued($id), 'required' => true, 'route' => 'portal.invoices.create'],
-            ];
-        }
+        $country = $this->jurisdictions->forRules($organization)->setup();
 
         return [
-            ['key' => 'company', 'done' => $company, 'required' => true, 'route' => 'portal.company.edit'],
-            ['key' => 'approved', 'done' => $this->approved($organization), 'required' => true, 'route' => null],
-            ['key' => 'zatca', 'done' => $organization->zatca_onboarded, 'required' => true, 'route' => 'portal.zatca.show'],
-            ['key' => 'numbering', 'done' => $this->numbered($id), 'required' => false, 'route' => 'portal.numbering.edit'],
-            ['key' => 'catalogue', 'done' => $this->catalogued($id), 'required' => false, 'route' => 'portal.customers.index'],
-            ['key' => 'invoice', 'done' => $this->invoiced($id), 'required' => true, 'route' => 'portal.invoices.create'],
+            $country->company($organization),
+            [
+                'key' => 'approved', 'done' => $this->approved($organization), 'required' => true, 'route' => null,
+                'title' => __('Wait for approval'),
+                'detail' => __('We review new companies and start their plan, usually within one working day.'),
+                'member' => false,
+            ],
+            ...$country->onboarding($organization),
+            [
+                'key' => 'numbering', 'done' => $this->numbered($id), 'required' => false, 'route' => 'portal.numbering.edit',
+                'title' => __('Check how invoices are numbered'),
+                'detail' => __('Optional: the defaults work, or set your own prefix and pattern.'),
+                'member' => false,
+            ],
+            [
+                'key' => 'catalogue', 'done' => $this->catalogued($id), 'required' => false, 'route' => 'portal.customers.index',
+                'title' => __('Add your customers and products'),
+                'detail' => __('Optional: so invoices fill themselves in.'),
+                'member' => true,
+            ],
+            $country->firstInvoice($organization),
         ];
     }
 
@@ -93,7 +94,8 @@ class SetupChecklist
     }
 
     /**
-     * Numbering was looked at, or the defaults have already been used.
+     * Numbering was looked at, or the defaults have already been used: an
+     * invoice with a hash has its number.
      */
     private function numbered(string $organizationId): bool
     {
@@ -110,11 +112,5 @@ class SetupChecklist
     private function invoiced(string $organizationId): bool
     {
         return Invoice::withoutTenantScope(fn () => Invoice::query()->where('org_id', $organizationId)->whereNotNull('hash')->exists());
-    }
-
-    /** Any invoice past draft: a UAE invoice is issued without a hash. */
-    private function issued(string $organizationId): bool
-    {
-        return Invoice::withoutTenantScope(fn () => Invoice::query()->where('org_id', $organizationId)->where('status', '!=', InvoiceStatus::Draft->value)->exists());
     }
 }

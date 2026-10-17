@@ -2,10 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Domains\Invoice\Services;
+namespace App\Domains\Compliance\Countries\SaudiArabia\Signing;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\SigningException;
-use App\Domains\Compliance\Countries\SaudiArabia\Signing\EcdsaSigner;
 use phpseclib3\File\ASN1;
 
 /**

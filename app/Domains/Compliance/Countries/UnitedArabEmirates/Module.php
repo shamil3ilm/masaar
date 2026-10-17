@@ -6,14 +6,22 @@ namespace App\Domains\Compliance\Countries\UnitedArabEmirates;
 
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Issuing\InvoiceIssuer;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Issuing\IssuingStep;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation\Presentation;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation\SetupSteps;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\Dashboard;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\TaxReports;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\InvoiceRules;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\IssueDeadline;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\SellerRules;
+use App\Domains\Compliance\Engine\Contracts\Dashboard as DashboardPort;
 use App\Domains\Compliance\Engine\Contracts\FeatureSupport;
 use App\Domains\Compliance\Engine\Contracts\InvoiceRules as InvoiceRulesPort;
 use App\Domains\Compliance\Engine\Contracts\IssueNotices;
 use App\Domains\Compliance\Engine\Contracts\Jurisdiction;
+use App\Domains\Compliance\Engine\Contracts\Presentation as PresentationPort;
 use App\Domains\Compliance\Engine\Contracts\SellerRules as SellerRulesPort;
+use App\Domains\Compliance\Engine\Contracts\SetupSteps as SetupStepsPort;
+use App\Domains\Compliance\Engine\Contracts\TaxReports as TaxReportsPort;
 use App\Domains\Compliance\Engine\Contracts\Transmission;
 use App\Domains\Compliance\Engine\DTOs\IssueOptions;
 use App\Domains\Compliance\Engine\DTOs\IssueOutcome;
@@ -30,7 +38,9 @@ use App\Domains\Platform\Access\Feature;
  * shared Peppol network.
  *
  * One class answers the ports that are a line or two of adapting what
- * Peppol already does. The rules ports are classes of their own, in Rules/.
+ * Peppol already does. The rules ports are classes of their own, in Rules/;
+ * the presentation and setup ports in Presentation/; the tax report and the
+ * dashboard in Reports/.
  */
 class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
 {
@@ -40,6 +50,10 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
         private readonly JurisdictionAvailability $availability,
         private readonly SellerRules $seller,
         private readonly InvoiceRules $invoices,
+        private readonly Presentation $presentation,
+        private readonly TaxReports $reports,
+        private readonly Dashboard $dashboard,
+        private readonly SetupSteps $setup,
     ) {}
 
     public function code(): string
@@ -108,6 +122,26 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
     public function invoiceRules(): InvoiceRulesPort
     {
         return $this->invoices;
+    }
+
+    public function presentation(): PresentationPort
+    {
+        return $this->presentation;
+    }
+
+    public function reports(): TaxReportsPort
+    {
+        return $this->reports;
+    }
+
+    public function dashboard(): DashboardPort
+    {
+        return $this->dashboard;
+    }
+
+    public function setup(): SetupStepsPort
+    {
+        return $this->setup;
     }
 
     /**

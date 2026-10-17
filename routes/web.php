@@ -13,6 +13,7 @@ use App\Domains\Branding\Http\Controllers\PortalBrandingController;
 use App\Domains\Branding\Http\Controllers\ThemeAssetController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\AdminAlertController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\AdminKillSwitchController;
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalSubmissionController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalZatcaController;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalReceivedController;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalUaeInvoiceController;
@@ -369,9 +370,9 @@ Route::prefix('portal')->name('portal.')
         Route::get('/received/{documentId}', [PortalReceivedController::class, 'show'])->name('received.show');
         Route::get('/received/{documentId}/xml', [PortalReceivedController::class, 'xml'])->name('received.xml');
 
-        Route::get('/submissions', [CustomerPortalController::class, 'submissions'])->name('submissions');
-        Route::get('/certificates', [CustomerPortalController::class, 'certificates'])->name('certificates');
-        Route::get('/users/{userId}/activity', [CustomerPortalController::class, 'userActivity'])->name('user.activity');
+        Route::get('/submissions', [PortalSubmissionController::class, 'submissions'])->name('submissions');
+        Route::get('/certificates', [PortalSubmissionController::class, 'certificates'])->name('certificates');
+        Route::get('/users/{userId}/activity', [PortalSubmissionController::class, 'userActivity'])->name('user.activity');
 
         // The seller details on every invoice, which ZATCA onboarding needs
         // complete. Administrators only; the controller checks the role.

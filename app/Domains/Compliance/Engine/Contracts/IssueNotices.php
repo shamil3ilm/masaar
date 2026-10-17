@@ -6,7 +6,8 @@ namespace App\Domains\Compliance\Engine\Contracts;
 
 /**
  * What a person is told after issuing from the portal, in the country's own
- * words. The first of the presentation port a later phase builds out.
+ * words. Part of how the portal shows the country (Presentation), kept a port
+ * of its own because the issue action asks for it alone.
  */
 interface IssueNotices
 {

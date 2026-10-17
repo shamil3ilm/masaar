@@ -112,18 +112,19 @@ class PortalInvoiceFilingController extends Controller
         }
 
         $invoice = $this->invoices->findWithLines($orgId, $invoiceId);
+        $organization = $this->tenant->getOrganization() ?? abort(404);
 
         // The same gate as the PDF: a printed copy is a copy handed to the
-        // buyer, so a draft or an uncleared standard invoice has none.
+        // buyer, so one the country would not hand over has none.
         try {
-            $this->pdf->assertShareable($invoice);
+            $this->pdf->assertShareable($invoice, $organization);
         } catch (DomainException $e) {
             return redirect()->route('portal.invoices.show', $invoiceId)->with('error', $e->getMessage());
         }
 
         return view('portal.invoices.print', [
             'invoice' => $invoice,
-            'organization' => $this->tenant->getOrganization(),
+            'organization' => $organization,
             'qr' => $this->qr->svg((string) $invoice->qr_code),
         ]);
     }

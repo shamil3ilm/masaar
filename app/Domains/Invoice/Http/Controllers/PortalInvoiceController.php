@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Http\Controllers;
 
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\UaeDocuments;
+use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Services\Catalogue;
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
@@ -32,6 +32,10 @@ use Illuminate\View\View;
  * model binding would rely on the scope alone, and the scope stands down in
  * console context - so a foreign id must be unfindable by the query itself,
  * not merely by a scope that is sometimes absent.
+ *
+ * What an invoice's page shows beyond the invoice itself - what it is
+ * called, what can be done with it, where it stands with the authority or
+ * the network - is its country's (Presentation::invoicePage).
  */
 class PortalInvoiceController extends Controller
 {
@@ -45,7 +49,7 @@ class PortalInvoiceController extends Controller
         private readonly Membership $membership,
         private readonly InvoiceFinder $invoices,
         private readonly Catalogue $catalogue,
-        private readonly UaeDocuments $documents,
+        private readonly JurisdictionResolver $jurisdictions,
     ) {}
 
     public function index(Request $request): View
@@ -87,15 +91,12 @@ class PortalInvoiceController extends Controller
         }
 
         $organization = $this->tenant->getOrganization();
-        // A UAE organization's invoice has a Peppol document, not a ZATCA hash.
-        $uae = $organization?->country === 'AE';
 
         return view('portal.invoices.show', [
             'organization' => $organization,
             'invoice' => $invoice,
             'sendTo' => $this->catalogue->emailFor((string) $orgId, $invoice->buyer_vat_number),
-            'uae' => $uae,
-            'document' => $uae ? $this->documents->outboundFor((string) $orgId, (string) $invoice->id) : null,
+            'page' => $this->jurisdictions->forRules($organization)->presentation()->invoicePage($invoice),
         ]);
     }
 

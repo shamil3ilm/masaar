@@ -8,6 +8,7 @@ use App\Domains\Billing\Enums\PaymentMethod;
 use App\Domains\Billing\Models\Payment;
 use App\Domains\Compliance\Engine\DTOs\IssueOptions;
 use App\Domains\Compliance\Engine\Services\ComplianceEngine;
+use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Licensing\Enums\LicenseStatus;
@@ -39,6 +40,7 @@ class Billing
         private readonly InvoiceDrafter $drafter,
         private readonly ComplianceEngine $engine,
         private readonly TenantResolver $tenant,
+        private readonly JurisdictionResolver $jurisdictions,
     ) {}
 
     /**
@@ -243,8 +245,10 @@ class Billing
 
         $buyer = $payment->organization ?? throw new DomainException('The organization that paid no longer exists.');
         $tier = LicenseTier::from((string) $payment->tier);
-        $identity = $this->buyerIdentity($buyer);
-        $this->assertNationalAddress($buyer);
+        // How the seller's country identifies the buyer, and what it needs of
+        // the buyer's details: billing drafts directly, past the request
+        // rules that check this for invoices entered by hand.
+        $identity = $this->jurisdictions->forRules($seller)->invoiceRules()->billedBuyer($buyer);
 
         return $this->tenant->runAs((string) $seller->id, function () use ($payment, $seller, $buyer, $tier, $identity): string {
             $invoice = $this->drafter->draft([
@@ -289,61 +293,6 @@ class Billing
 
             return (string) $invoice->id;
         });
-    }
-
-    /**
-     * How the invoice identifies the buyer: its VAT number, or failing that
-     * its commercial registration (BT-46, scheme CRN), which BR-KSA-81 needs
-     * on a standard invoice to a buyer without one.
-     *
-     * @return array{buyer_vat_number: string|null, buyer_id: string|null, buyer_id_scheme: string|null}
-     *
-     * @throws DomainException when it has neither
-     */
-    private function buyerIdentity(Organization $buyer): array
-    {
-        // A registration outside the Kingdom is not a Saudi VAT number: BT-48
-        // takes only the 15-digit 3...3 form (BR-KSA-44), so a UAE TRN, say,
-        // identifies the buyer as another ID instead.
-        if (filled($buyer->vat_number) && strtoupper((string) ($buyer->country ?: 'SA')) !== 'SA') {
-            return ['buyer_vat_number' => null, 'buyer_id' => preg_replace('/[^A-Za-z0-9]/', '', (string) $buyer->vat_number), 'buyer_id_scheme' => 'OTH'];
-        }
-
-        if (filled($buyer->vat_number)) {
-            return ['buyer_vat_number' => (string) $buyer->vat_number, 'buyer_id' => null, 'buyer_id_scheme' => null];
-        }
-
-        if (filled($buyer->cr_number)) {
-            return ['buyer_vat_number' => null, 'buyer_id' => (string) $buyer->cr_number, 'buyer_id_scheme' => 'CRN'];
-        }
-
-        throw new DomainException($buyer->name.' has neither a VAT number nor a CR number, so no invoice was issued. Try again once the company has added one.');
-    }
-
-    /**
-     * BR-KSA-63: a standard invoice to a buyer in the Kingdom carries its
-     * full national address. Billing drafts directly, past the request
-     * validation that checks this for invoices entered by hand.
-     *
-     * @throws DomainException naming what is missing
-     */
-    private function assertNationalAddress(Organization $buyer): void
-    {
-        if (($buyer->country ?: 'SA') !== 'SA') {
-            return;
-        }
-
-        $missing = array_keys(array_filter([
-            'street' => $buyer->street,
-            'building number' => $buyer->building_number,
-            'postal code' => $buyer->postal_code,
-            'city' => $buyer->city,
-            'district' => $buyer->district,
-        ], fn ($value): bool => blank($value)));
-
-        if ($missing !== []) {
-            throw new DomainException("{$buyer->name}'s national address has no ".implode(', ', $missing).', so no invoice was issued. Try again once the company has completed it.');
-        }
     }
 
     private function money(float $value): string

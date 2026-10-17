@@ -6,6 +6,7 @@ namespace Tests\Feature\Compliance;
 
 use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Countries\SaudiArabia\Issuing\InvoiceIssuer;
+use App\Domains\Compliance\Countries\SaudiArabia\Module as SaudiModule;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Enums\PintTaxCategory;
 use App\Domains\Compliance\Networks\Peppol\Contracts\AspGateway;
 use App\Domains\Compliance\Networks\Peppol\Gateways\FakeAspGateway;
@@ -425,6 +426,22 @@ class JurisdictionIsolationTest extends TestCase
             ->assertSessionHas('error'));
 
         $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+    }
+
+    /**
+     * Billed by a Saudi seller - the platform's own invoice for a plan - its
+     * TRN is not a Saudi VAT number (BR-KSA-44), so it is another ID, and it
+     * has no national address to check (BillingTest).
+     */
+    public function test_uae_buyer_billed_as_other(): void
+    {
+        $gulf = $this->uaeOrganization();
+        $gulf->forceFill(['vat_number' => '100123456700003', 'building_number' => null, 'postal_code' => null])->save();
+
+        $this->assertSame(
+            ['buyer_vat_number' => null, 'buyer_id' => '100123456700003', 'buyer_id_scheme' => 'OTH'],
+            app(SaudiModule::class)->invoiceRules()->billedBuyer($gulf),
+        );
     }
 
     private function member(Organization $organization, string $role): User

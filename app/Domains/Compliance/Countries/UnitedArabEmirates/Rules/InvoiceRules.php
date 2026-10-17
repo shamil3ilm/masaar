@@ -10,6 +10,8 @@ use App\Domains\Compliance\Engine\Contracts\InvoiceRules as InvoiceRulesPort;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Invoice\Support\UnitCode;
+use App\Domains\Organization\Models\Organization;
+use DomainException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -280,6 +282,20 @@ class InvoiceRules implements InvoiceRulesPort
     public function buyerView(): ?string
     {
         return 'portal.customers.partials.uae-buyer';
+    }
+
+    /**
+     * A UAE e-invoice names its buyer by TRN: the buyer's VAT number is that,
+     * whatever country it registered in. One without names no buyer the
+     * document can carry.
+     */
+    public function billedBuyer(Organization $buyer): array
+    {
+        if (blank($buyer->vat_number)) {
+            throw new DomainException($buyer->name.' has no TRN, so no invoice was issued. Try again once the company has added one.');
+        }
+
+        return ['buyer_vat_number' => (string) $buyer->vat_number, 'buyer_id' => null, 'buyer_id_scheme' => null];
     }
 
     private static function category(?string $documentType, ?string $documentCategory): PintDocumentCategory

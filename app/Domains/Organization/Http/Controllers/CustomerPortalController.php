@@ -4,20 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Http\Controllers;
 
-use App\Domains\Compliance\Countries\SaudiArabia\DTOs\SubmissionFilterData;
-use App\Domains\Compliance\Countries\SaudiArabia\Reports\SubmissionReport;
-use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateService;
-use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\UaeDocuments;
-use App\Domains\Invoice\Services\InvoiceReport;
+use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
-use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\Membership;
 use App\Domains\Organization\Services\SetupChecklist;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
@@ -33,18 +26,17 @@ use Illuminate\View\View;
  * PortalTenant puts the resolved tenant into TenantResolver, so the reports
  * called here are confined to it by BelongsToTenant's global scope rather than
  * by a filter each of them has to remember.
+ *
+ * Below the setup steps the dashboard is the organization's country's
+ * (Dashboard::portal): what it files, and how that went.
  */
 class CustomerPortalController extends Controller
 {
     public function __construct(
-        private readonly CredentialStore $credentials,
-        private readonly CertificateService $certificates,
         private readonly TenantResolver $tenant,
         private readonly Membership $membership,
-        private readonly SubmissionReport $submissionReport,
-        private readonly InvoiceReport $invoiceReport,
         private readonly SetupChecklist $setup,
-        private readonly UaeDocuments $uaeDocuments,
+        private readonly JurisdictionResolver $jurisdictions,
     ) {}
 
     /**
@@ -82,7 +74,7 @@ class CustomerPortalController extends Controller
     }
 
     /**
-     * Customer dashboard - overview of their ZATCA compliance status.
+     * Customer dashboard - overview of their compliance status.
      */
     public function dashboard(Request $request): View
     {
@@ -98,153 +90,17 @@ class CustomerPortalController extends Controller
             return $this->organizationPicker(__('Organization not found'));
         }
 
-        if ($organization->country === 'AE') {
-            return $this->uaeDashboard($organization);
-        }
-
-        $stats = [
-            'invoices_today' => $this->invoiceReport->countSince(now()->startOfDay()),
-            'invoices_month' => $this->invoiceReport->countSince(now()->startOfMonth()),
-            ...Arr::only($this->submissionReport->summary(), ['cleared', 'reported', 'rejected', 'pending']),
-        ];
-
-        $certificate = $this->activeCertificate($orgId);
-        $userActivity = $this->submissionReport->activityByUser(now()->subDays(7), 10);
-        $recentSubmissions = $this->submissionReport->recent(10);
-        $setup = $this->setup->steps($organization);
-        $settingUp = $this->setup->unfinished($setup);
-
-        return view('portal.dashboard', compact(
-            'organization',
-            'stats',
-            'certificate',
-            'userActivity',
-            'recentSubmissions',
-            'setup',
-            'settingUp'
-        ));
-    }
-
-    /**
-     * A UAE organization's dashboard: its invoices and where their e-invoices
-     * are. It has no ZATCA certificate, submissions or per-user submission
-     * activity, so none of those is looked up or shown.
-     */
-    private function uaeDashboard(Organization $organization): View
-    {
+        $country = $this->jurisdictions->forRules($organization)->dashboard();
+        $panel = $country->portal($organization);
         $setup = $this->setup->steps($organization);
 
         return view('portal.dashboard', [
+            ...$panel->data,
             'organization' => $organization,
-            'stats' => [
-                'invoices_today' => $this->invoiceReport->countSince(now()->startOfDay()),
-                'invoices_month' => $this->invoiceReport->countSince(now()->startOfMonth()),
-            ],
+            'heading' => $country->heading(),
+            'countryDashboard' => $panel->view,
             'setup' => $setup,
             'settingUp' => $this->setup->unfinished($setup),
-            'uae' => true,
-            'einvoices' => $this->uaeDocuments->counts((string) $organization->id),
-            'recentDocuments' => $this->uaeDocuments->recentSent((string) $organization->id, 10),
         ]);
-    }
-
-    /**
-     * Submissions list - filterable by user.
-     */
-    public function submissions(Request $request): View
-    {
-        $orgId = $this->getOrganizationId($request);
-
-        if (! $orgId) {
-            return $this->organizationPicker();
-        }
-
-        $organization = $this->tenant->getOrganization();
-        $userId = $request->query('user_id');
-        $state = $request->query('state');
-        $dateFrom = $request->query('date_from');
-        $dateTo = $request->query('date_to');
-
-        $submissions = $this->submissionReport
-            ->search(SubmissionFilterData::fromQuery($userId, $state, $dateFrom, $dateTo), 25)
-            ->withQueryString();
-
-        $users = $this->membership->members($orgId);
-        $stateCounts = $this->submissionReport->countByState();
-
-        return view('portal.submissions', compact(
-            'organization',
-            'submissions',
-            'users',
-            'stateCounts',
-            'userId',
-            'state',
-            'dateFrom',
-            'dateTo'
-        ));
-    }
-
-    /**
-     * Certificate status and history.
-     */
-    public function certificates(Request $request): View
-    {
-        $orgId = $this->getOrganizationId($request);
-
-        if (! $orgId) {
-            return $this->organizationPicker();
-        }
-
-        $organization = $this->tenant->getOrganization();
-        $activeCert = $this->activeCertificate($orgId);
-
-        return view('portal.certificates', compact('organization', 'activeCert'));
-    }
-
-    /**
-     * User-specific activity log.
-     */
-    public function userActivity(Request $request, string $userId): View
-    {
-        $orgId = $this->getOrganizationId($request);
-
-        if (! $orgId) {
-            return $this->organizationPicker();
-        }
-
-        $organization = $this->tenant->getOrganization();
-
-        // Membership of this organization is what makes the user visible here;
-        // without it the id is just an unrelated account.
-        $user = $this->membership->member($orgId, $userId);
-
-        if (! $user) {
-            abort(404, __('User not found'));
-        }
-
-        $submissions = $this->submissionReport->byUser($userId, 25)->withQueryString();
-        $userStats = $this->submissionReport->userTotals($userId);
-
-        return view('portal.user-activity', compact('organization', 'user', 'submissions', 'userStats'));
-    }
-
-    /**
-     * The certificate this organization signs with, or null before onboarding.
-     *
-     * Read from the credential store, which is where onboarding writes. The
-     * store holds the certificate an organization currently signs with and no
-     * history of previous ones, so there is nothing further to show.
-     */
-    private function activeCertificate(?string $organizationId): ?object
-    {
-        if ($organizationId === null) {
-            return null;
-        }
-
-        $details = $this->certificates->details(
-            $this->credentials->certificate($organizationId)
-        );
-
-        return $details === null ? null : (object) $details;
     }
 }

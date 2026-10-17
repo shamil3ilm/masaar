@@ -1,7 +1,8 @@
 {{--
-    A UAE organization's dashboard figures: its invoices, and where their
-    e-invoices are (UaeDocuments::counts). Delivered includes those the
-    authority has confirmed; Not sent is a document the queue gave up on.
+    A UAE organization's dashboard figures (Reports\Dashboard::portal): its
+    invoices, and where their e-invoices are (UaeDocuments::counts). Delivered
+    includes those the authority has confirmed; Not sent is a document the
+    queue gave up on.
 
     @param \App\Domains\Organization\Models\Organization $organization
     @param array $stats             invoices_today, invoices_month

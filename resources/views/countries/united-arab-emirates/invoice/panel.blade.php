@@ -1,6 +1,6 @@
 {{--
-    What became of a UAE invoice's e-invoice: in place of the ZATCA counter,
-    hash and QR a Saudi invoice has (compliance.blade.php).
+    What became of a UAE invoice's e-invoice, beside the invoice's page
+    (Presentation::invoicePage).
 
     The status is the document's (DocumentStatus), the message id the one the
     service provider gave it, and the errors what the provider or the buyer's

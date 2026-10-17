@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Http\Controllers;
 
-use App\Domains\Compliance\Countries\SaudiArabia\Reports\SubmissionReport;
 use App\Domains\Invoice\Services\InvoiceReport;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Platform\Services\TenantDashboard;
@@ -29,7 +28,6 @@ class DashboardController extends Controller
         private readonly TenantResolver $tenant,
         private readonly TenantDashboard $dashboard,
         private readonly InvoiceReport $invoiceReport,
-        private readonly SubmissionReport $submissionReport,
     ) {}
 
     /**
@@ -140,7 +138,7 @@ class DashboardController extends Controller
         $data = Cache::remember(
             "dashboard:usage:{$organizationId}:{$days}",
             300,
-            fn () => $this->dashboard->usage($days)
+            fn () => $this->dashboard->usage($organizationId, $days)
         );
 
         return ApiResponse::success($data);
@@ -157,7 +155,7 @@ class DashboardController extends Controller
     {
         $limit = min((int) $request->query('limit', 20), 100);
 
-        $activities = $this->submissionReport->activity($limit);
+        $activities = $this->dashboard->activity($this->tenant->getOrganizationId(), $limit);
 
         return ApiResponse::success([
             'activities' => $activities,

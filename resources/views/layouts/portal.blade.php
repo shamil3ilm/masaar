@@ -15,11 +15,12 @@
         <!-- Sidebar -->
         <aside id="sidebar" :class="panel"
                class="fixed inset-y-0 start-0 z-40 flex flex-col overflow-y-auto border-e bg-white dark:bg-gray-900 transition-transform duration-300 md:static md:z-auto md:min-h-screen">
-            {{-- Which country's tagline and links to show. Not every screen passes the organization. --}}
+            {{-- Which country's tagline and links to show (Presentation). Not every screen passes the organization. --}}
             @php($navOrganization = $organization ?? app(\App\Domains\Organization\Services\TenantResolver::class)->getOrganization())
+            @php($navCountry = app(\App\Domains\Compliance\Engine\Services\JurisdictionResolver::class)->forRules($navOrganization)->presentation())
             <div class="border-b p-6">
                 <x-logo :size="30" name name-class="text-base font-semibold tracking-tight text-ink-900 dark:text-gray-100" />
-                <p class="mt-2 text-xs tracking-wide text-gray-400 dark:text-gray-500 uppercase">{{ $navOrganization?->country === 'AE' ? __('UAE E-invoicing Portal') : __('ZATCA Portal') }}</p>
+                <p class="mt-2 text-xs tracking-wide text-gray-400 dark:text-gray-500 uppercase">{{ $navCountry->tagline() }}</p>
                 @if(isset($organization))
                 <p class="mt-2 text-sm font-medium text-ink-900 dark:text-gray-100">{{ $organization->name }}</p>
                 @endif
@@ -36,13 +37,9 @@
                     <svg class="w-5 h-5 me-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14h6m-6-4h6m4 10H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v12a2 2 0 01-2 2z"></path></svg>
                     {{ __('Invoices') }}
                 </a>
-                {{-- A UAE organization's received e-invoices; nobody else has any. --}}
-                @if (\App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaePortal::offers($navOrganization))
-                <a href="{{ route('portal.received.index') }}"
-                   class="flex items-center px-4 py-2 rounded-lg mb-1 {{ request()->routeIs('portal.received.*') ? 'bg-teal-50 dark:bg-teal-950/40 font-medium text-teal-800 dark:text-teal-200' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-950' }}">
-                    <svg class="w-5 h-5 me-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
-                    {{ __('Received invoices') }}
-                </a>
+                {{-- The links the country adds for everyone. --}}
+                @if ($navLinks = $navCountry->navigation(\App\Domains\Compliance\Engine\Contracts\Presentation::NAV_MAIN))
+                @include($navLinks)
                 @endif
                 <a href="{{ route('portal.customers.index') }}"
                    class="flex items-center px-4 py-2 rounded-lg mb-1 {{ request()->routeIs('portal.customers.*') ? 'bg-teal-50 dark:bg-teal-950/40 font-medium text-teal-800 dark:text-teal-200' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-950' }}">
@@ -86,13 +83,9 @@
                     <svg class="w-5 h-5 me-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                     {{ __('Team') }}
                 </a>
-                {{-- A UAE organization does not onboard with ZATCA. --}}
-                @if ($navOrganization?->country !== 'AE')
-                <a href="{{ route('portal.zatca.show') }}"
-                   class="flex items-center px-4 py-2 rounded-lg mb-1 {{ request()->routeIs('portal.zatca.*') ? 'bg-teal-50 dark:bg-teal-950/40 font-medium text-teal-800 dark:text-teal-200' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-950' }}">
-                    <svg class="w-5 h-5 me-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
-                    {{ __('ZATCA') }}
-                </a>
+                {{-- And for its administrators. --}}
+                @if ($navLinks = $navCountry->navigation(\App\Domains\Compliance\Engine\Contracts\Presentation::NAV_ADMIN))
+                @include($navLinks)
                 @endif
                 <a href="{{ route('portal.numbering.edit') }}"
                    class="flex items-center px-4 py-2 rounded-lg mb-1 {{ request()->routeIs('portal.numbering.*') ? 'bg-teal-50 dark:bg-teal-950/40 font-medium text-teal-800 dark:text-teal-200' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-950' }}">

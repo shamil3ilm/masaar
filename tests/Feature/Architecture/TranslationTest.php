@@ -24,6 +24,7 @@ class TranslationTest extends TestCase
     /** Directories and files whose wrapped strings must have Arabic. */
     private const SCOPE = [
         'resources/views/portal',
+        'resources/views/countries',
         'resources/views/auth',
         'resources/views/account',
         'resources/views/components',

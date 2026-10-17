@@ -77,6 +77,10 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Countries/SaudiArabia/Models/SubmissionIdempotency.php' => 'Invoice',
         // Saudi Arabia's engine module: issues and files an invoice.
         'Domains/Compliance/Countries/SaudiArabia/Module.php' => 'Invoice',
+        // An invoice's page and the copies of it a buyer is given; whether a
+        // first invoice was issued, for the setup steps.
+        'Domains/Compliance/Countries/SaudiArabia/Presentation/Presentation.php' => 'Invoice',
+        'Domains/Compliance/Countries/SaudiArabia/Presentation/SetupSteps.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Reports/DeadlineReport.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Rules/InvoiceValidator.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Rules/VatPeriodTracker.php' => 'Invoice',
@@ -94,6 +98,9 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Countries/UnitedArabEmirates/Issuing/IssuingStep.php' => 'Compliance\Networks\Peppol, Invoice',
         // The UAE's engine module: issues and sends an invoice.
         'Domains/Compliance/Countries/UnitedArabEmirates/Module.php' => 'Invoice',
+        // An invoice's page; whether a first invoice was issued, for the setup steps.
+        'Domains/Compliance/Countries/UnitedArabEmirates/Presentation/Presentation.php' => 'Invoice',
+        'Domains/Compliance/Countries/UnitedArabEmirates/Presentation/SetupSteps.php' => 'Invoice',
         // An organization's Peppol documents, for its screens and dashboards.
         'Domains/Compliance/Countries/UnitedArabEmirates/Reports/UaeDocuments.php' => 'Compliance\Networks\Peppol',
         // The 14 days are counted from an invoice's supply and issue dates,
@@ -104,6 +111,7 @@ class CrossDomainModelTest extends TestCase
         // Keeps a UAE seller's tax identity on its UAE ComplianceProfile.
         'Domains/Compliance/Countries/UnitedArabEmirates/Support/UaeSellerDetails.php' => 'Organization',
         // The compliance engine issues an invoice in its organization's jurisdiction.
+        'Domains/Compliance/Engine/Contracts/Presentation.php' => 'Invoice',
         'Domains/Compliance/Engine/Contracts/Transmission.php' => 'Invoice',
         'Domains/Compliance/Engine/Services/ComplianceEngine.php' => 'Invoice',
         'Domains/Compliance/Engine/Services/JurisdictionResolver.php' => 'Invoice',

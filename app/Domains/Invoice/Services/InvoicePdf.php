@@ -5,15 +5,14 @@ declare(strict_types=1);
 namespace App\Domains\Invoice\Services;
 
 use App\Domains\Branding\Services\ThemeService;
-use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\SigningException;
-use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificatePem;
-use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
-use App\Domains\Invoice\Enums\InvoiceStatus;
+use App\Domains\Compliance\Engine\Contracts\Presentation;
+use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use App\Support\QrCodeRenderer;
 use DomainException;
+use Exception;
 use Mpdf\Mpdf;
 
 /**
@@ -27,23 +26,27 @@ use Mpdf\Mpdf;
  * Built from its own template rather than the browser print view: the PDF
  * renderer does not run the stylesheet the screens use. Arabic is shaped by
  * the renderer, which plain browser-print-to-PDF tooling does not do.
+ *
+ * When an invoice may be given out, and the seal the country puts on the
+ * file, are the organization's country's (Presentation): this renders, and
+ * the country decides.
  */
 class InvoicePdf
 {
     public function __construct(
         private readonly QrCodeRenderer $qr,
         private readonly ThemeService $themes,
-        private readonly CredentialStore $credentials,
-        private readonly PdfStamp $stamp,
+        private readonly JurisdictionResolver $jurisdictions,
     ) {}
 
     /**
      * @throws DomainException when the invoice may not be given out yet
-     * @throws SigningException when the stored key cannot sign
+     * @throws Exception when the country's seal cannot be made with the stored credentials
      */
     public function render(Invoice $invoice, Organization $organization): string
     {
-        $this->assertShareable($invoice);
+        $country = $this->country($organization);
+        $country->assertShareable($invoice);
 
         $mpdf = new Mpdf([
             'mode' => 'utf-8',
@@ -87,30 +90,7 @@ class InvoicePdf
             ]]);
         }
 
-        return $this->stamped($mpdf->Output('', 'S'), $invoice, $organization);
-    }
-
-    /**
-     * The PDF with the device's PAdES stamp, which ZATCA requires on a PDF/A-3
-     * invoice; as it is when the device has no certificate to stamp with.
-     *
-     * The same credentials the XML was signed with, resolved the same way: the
-     * branch's own, else the organization's. With none it is Phase 1, where
-     * nothing is signed, and that is not a reason to withhold the invoice.
-     *
-     * @throws SigningException when the stored key cannot sign
-     */
-    private function stamped(string $pdf, Invoice $invoice, Organization $organization): string
-    {
-        $signing = $this->credentials->signing((string) $organization->id, $invoice->branch_id);
-        $privateKey = $signing['privateKey'] ?? null;
-        $certificate = CertificatePem::from($signing['pcsid'] ?? null);
-
-        if (empty($privateKey) || $certificate === null) {
-            return $pdf;
-        }
-
-        return $this->stamp->sign($pdf, (string) $privateKey, $certificate);
+        return $country->sealPdf($mpdf->Output('', 'S'), $invoice, $organization);
     }
 
     public function fileName(Invoice $invoice, string $extension = 'pdf'): string
@@ -121,23 +101,23 @@ class InvoicePdf
     }
 
     /**
-     * Only an issued invoice; a standard one only once ZATCA has cleared it.
+     * Whether the invoice may be given to the buyer yet, by its country's
+     * rule: the PDF and the printed copy are both copies handed over.
      *
-     * @throws DomainException
+     * @throws DomainException saying why not
      */
-    public function assertShareable(Invoice $invoice): void
+    public function assertShareable(Invoice $invoice, Organization $organization): void
     {
-        if ($invoice->hash === null || $invoice->qr_code === null || $invoice->status === InvoiceStatus::Draft) {
-            throw new DomainException(__('Issue the invoice first. A draft has no QR code and is not a tax invoice.'));
-        }
+        $this->country($organization)->assertShareable($invoice);
+    }
 
-        if ($invoice->status === InvoiceStatus::Rejected) {
-            throw new DomainException(__('ZATCA rejected this invoice, so it is not a valid tax invoice. Correct it and issue a new one.'));
-        }
-
-        if ($invoice->type === InvoiceType::Standard && $invoice->cleared_xml === null) {
-            throw new DomainException(__('ZATCA has not cleared this invoice yet. A standard invoice may not be given to the buyer until it is.'));
-        }
+    /**
+     * The organization's country, whether or not it is switched on: a
+     * switched-off country stops new issuing, not copies of what was issued.
+     */
+    private function country(Organization $organization): Presentation
+    {
+        return $this->jurisdictions->forRules($organization)->presentation();
     }
 
     private function qrImage(string $payload): ?string

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Engine\Contracts;
 
+use App\Domains\Organization\Models\Organization;
+use DomainException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Validator;
 
@@ -109,4 +111,16 @@ interface InvoiceRules
 
     /** The Blade view of the customer form's extra fields, given $customer; null when there are none. */
     public function buyerView(): ?string;
+
+    /**
+     * How a seller in this country identifies an organization as its buyer
+     * on an invoice drafted straight from the organization's own details,
+     * past the request rules - the platform's invoice for a plan - and the
+     * check that those details are enough for this country's invoice.
+     *
+     * @return array{buyer_vat_number: string|null, buyer_id: string|null, buyer_id_scheme: string|null}
+     *
+     * @throws DomainException naming what the buyer is missing
+     */
+    public function billedBuyer(Organization $buyer): array;
 }

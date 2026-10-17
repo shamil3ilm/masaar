@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Http\Controllers;
 
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\UaeVatSummary;
-use App\Domains\Invoice\Services\InvoiceCsv;
-use App\Domains\Invoice\Services\VatSummary;
+use App\Domains\Compliance\Engine\Contracts\TaxReports;
+use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
@@ -22,9 +21,9 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * Everyone in the organization, viewers included: a viewer is usually that
  * accountant.
  *
- * A UAE organization's sales are summarised by UAE tax category in dirhams
- * instead (UaeVatSummary): the Saudi return's boxes, riyals and ZATCA hash
- * describe none of its invoices.
+ * The return, its currency and which documents count are the
+ * organization's country's (TaxReports): the page, its summary and both
+ * files come from there. The period is this page's.
  */
 class PortalReportController extends Controller
 {
@@ -34,29 +33,19 @@ class PortalReportController extends Controller
     private const MAX_DAYS = 400;
 
     public function __construct(
-        private readonly VatSummary $summary,
-        private readonly UaeVatSummary $uaeSummary,
-        private readonly InvoiceCsv $csv,
         private readonly TenantResolver $tenant,
+        private readonly JurisdictionResolver $jurisdictions,
     ) {}
 
     public function index(Request $request): View
     {
         [$from, $to] = $this->period($request);
+        $page = $this->reports($request)->page($this->portalOrganizationId($request), $from, $to);
 
-        if ($this->inUae($request)) {
-            return view('portal.reports-uae', [
-                'from' => $from,
-                'to' => $to,
-                'summary' => $this->uaeSummary->for($this->portalOrganizationId($request), $from, $to),
-                'presets' => $this->presets(),
-            ]);
-        }
-
-        return view('portal.reports', [
+        return view($page->view, [
             'from' => $from,
             'to' => $to,
-            'summary' => $this->summary->for($this->portalOrganizationId($request), $from, $to),
+            ...$page->data,
             'presets' => $this->presets(),
         ]);
     }
@@ -66,11 +55,7 @@ class PortalReportController extends Controller
         [$from, $to] = $this->period($request);
         $fileName = 'invoices-'.$from->toDateString().'-to-'.$to->toDateString().'.csv';
 
-        if ($this->inUae($request)) {
-            return $this->csv->uaeInvoices($this->portalOrganizationId($request), $from, $to, $this->uaeSummary->currency(), $fileName);
-        }
-
-        return $this->csv->invoices($this->portalOrganizationId($request), $from, $to, $fileName);
+        return $this->reports($request)->invoicesCsv($this->portalOrganizationId($request), $from, $to, $fileName);
     }
 
     public function vat(Request $request): StreamedResponse
@@ -78,16 +63,13 @@ class PortalReportController extends Controller
         [$from, $to] = $this->period($request);
         $fileName = 'vat-summary-'.$from->toDateString().'-to-'.$to->toDateString().'.csv';
 
-        if ($this->inUae($request)) {
-            return $this->csv->uaeSummary($this->uaeSummary->for($this->portalOrganizationId($request), $from, $to), $from, $to, $fileName);
-        }
-
-        return $this->csv->summary($this->portalOrganizationId($request), $from, $to, $fileName);
+        return $this->reports($request)->summaryCsv($this->portalOrganizationId($request), $from, $to, $fileName);
     }
 
-    private function inUae(Request $request): bool
+    /** The organization's country's return, switched on or not: reading stays open. */
+    private function reports(Request $request): TaxReports
     {
-        return $this->portalOrganization($this->tenant, $request)->country === 'AE';
+        return $this->jurisdictions->forRules($this->portalOrganization($this->tenant, $request))->reports();
     }
 
     /**

@@ -41,7 +41,7 @@ class WiredDependencyTest extends TestCase
      * or network module keeps its services in
      * (docs/architecture/JURISDICTION-ROUTING.md).
      */
-    private const SERVICES = '#/Services/|/Compliance/(Countries|Networks)/\w+/(Issuing|Document|Signing|Onboarding|Filing|Rules|Reports|Support|Gateways|Sending|Receiving)/#';
+    private const SERVICES = '#/Services/|/Compliance/(Countries|Networks)/\w+/(Issuing|Document|Signing|Onboarding|Filing|Rules|Reports|Presentation|Support|Gateways|Sending|Receiving)/#';
 
     /**
      * No service may take an optional collaborator.

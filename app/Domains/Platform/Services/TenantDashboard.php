@@ -4,117 +4,70 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Services;
 
-use App\Domains\Compliance\Countries\SaudiArabia\Filing\CircuitBreaker;
-use App\Domains\Compliance\Countries\SaudiArabia\Reports\ChainReport;
-use App\Domains\Compliance\Countries\SaudiArabia\Reports\QueueBacklog;
-use App\Domains\Compliance\Countries\SaudiArabia\Reports\SubmissionReport;
-use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateService;
-use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\UaeDocuments;
+use App\Domains\Compliance\Engine\Contracts\Dashboard;
+use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Services\InvoiceReport;
 use App\Domains\Organization\Models\Organization;
+use Illuminate\Support\Collection;
 
 /**
  * One organization's dashboard, assembled from the domains that own each part.
  *
  * Every figure comes from a tenant-scoped report, so the caller must have
- * resolved the organization before asking. The id is taken only where a
- * lookup needs it by name: the credential store.
+ * resolved the organization before asking. The invoices are every
+ * country's; what became of their filings - and what filing depends on - is
+ * the organization's country's (Dashboard).
  */
 class TenantDashboard
 {
-    /**
-     * A queue with more stuck items than this is a warning.
-     */
-    private const STUCK_WARNING = 10;
-
     public function __construct(
         private readonly InvoiceReport $invoices,
-        private readonly SubmissionReport $submissions,
-        private readonly ChainReport $chain,
-        private readonly QueueBacklog $backlog,
-        private readonly CircuitBreaker $circuitBreaker,
-        private readonly CertificateService $certificates,
-        private readonly CredentialStore $credentials,
-        private readonly UaeDocuments $uaeDocuments,
+        private readonly JurisdictionResolver $jurisdictions,
     ) {}
 
     /**
-     * Invoices, submissions, chain and certificate at a glance.
-     *
-     * A UAE organization has no ZATCA submissions, chain or certificate: its
-     * invoices go out as Peppol documents, counted as the portal dashboard
-     * counts them.
+     * Invoices, and the country's filings, at a glance.
      */
     public function overview(string $organizationId): array
     {
-        if ($this->inUae($organizationId)) {
-            return [
-                'invoices' => $this->invoices->summary(),
-                'e_invoices' => $this->uaeDocuments->counts($organizationId),
-                'generated_at' => now()->toIso8601String(),
-            ];
-        }
-
         return [
             'invoices' => $this->invoices->summary(),
-            'submissions' => $this->submissions->summary(),
-            'compliance' => [
-                'hash_chain_intact' => $this->chain->isIntact(),
-                'latest_icv' => $this->chain->latestIcv(),
-            ],
-            'certificates' => $this->certificateSummary($organizationId),
+            ...$this->country($organizationId)->overview($organizationId),
             'generated_at' => now()->toIso8601String(),
         ];
     }
 
     /**
-     * The state of what submission depends on, and an overall verdict.
+     * The state of what filing depends on, and an overall verdict.
      */
     public function health(string $organizationId): array
     {
-        if ($this->inUae($organizationId)) {
-            return $this->uaeHealth($organizationId);
-        }
+        $health = $this->country($organizationId)->health($organizationId);
 
-        $backlog = $this->backlog->measure();
-
-        $data = [
-            'circuit_breaker' => $this->circuitBreaker->getMetrics('zatca_api'),
-            'queue' => [
-                'pending' => $backlog['pending'],
-                'stuck' => $backlog['stuck'],
-                'healthy' => $backlog['stuck'] === 0,
-            ],
-            'certificates' => $this->certificates->status($this->credentials->certificate($organizationId)),
+        return [
+            ...$health['checks'],
             'checked_at' => now()->toIso8601String(),
+            'status' => $health['status'],
         ];
-
-        $data['status'] = $this->verdict($data);
-
-        return $data;
     }
 
     /**
-     * What became of the organization's filings: ZATCA submissions, or for a
-     * UAE organization its e-invoices.
+     * What became of the organization's filings.
      */
     public function submissions(string $organizationId): array
     {
-        return $this->inUae($organizationId)
-            ? $this->uaeDocuments->counts($organizationId)
-            : $this->submissions->summary();
+        return $this->country($organizationId)->filings($organizationId);
     }
 
     /**
-     * Invoices and submissions per day over the last given days, oldest first,
+     * Invoices and filings per day over the last given days, oldest first,
      * with every day present.
      */
-    public function usage(int $days): array
+    public function usage(string $organizationId, int $days): array
     {
         $since = now()->subDays($days)->startOfDay();
         $invoices = $this->invoices->dailyCounts($since);
-        $submissions = $this->submissions->dailyCounts($since);
+        $submissions = $this->country($organizationId)->dailyFilings($since);
 
         $dates = [];
 
@@ -134,68 +87,23 @@ class TenantDashboard
     }
 
     /**
-     * Whether the organization holds a certificate, and how long it has left.
-     *
-     * The platform keeps the certificate an organization signs with, not a
-     * history of them, so there is no count of certificates held or invoices
-     * signed per certificate to report.
-     *
-     * @return array{active: bool, days_until_expiry: ?int}
+     * The latest filing events, newest first. Asked with or without an
+     * organization, as the activity route always has been; with none, the
+     * default country's events in whatever the tenant scope allows.
      */
-    private function certificateSummary(string $organizationId): array
+    public function activity(?string $organizationId, int $limit): Collection
     {
-        $status = $this->certificates->status($this->credentials->certificate($organizationId));
-
-        return [
-            'active' => $status['status'] !== 'missing',
-            'days_until_expiry' => $status['days_remaining'] ?? null,
-        ];
+        return $this->country($organizationId)->activity($limit);
     }
 
     /**
-     * A UAE organization's e-invoices, and a verdict from them: a warning
-     * while any was refused or given up on, since each needs someone to act.
-     * The ZATCA circuit breaker, queue and certificate are not its.
+     * The organization's country, switched on or not: a dashboard reads what
+     * was filed, which a switch does not take away.
      */
-    private function uaeHealth(string $organizationId): array
+    private function country(?string $organizationId): Dashboard
     {
-        $counts = $this->uaeDocuments->counts($organizationId);
+        $organization = $organizationId === null ? null : Organization::query()->find($organizationId);
 
-        return [
-            'e_invoices' => $counts,
-            'checked_at' => now()->toIso8601String(),
-            'status' => $counts['failed'] + $counts['rejected'] > 0 ? 'warning' : 'healthy',
-        ];
-    }
-
-    private function inUae(string $organizationId): bool
-    {
-        return Organization::query()->whereKey($organizationId)->value('country') === 'AE';
-    }
-
-    /**
-     * Critical when submission cannot work, warning when it soon may not.
-     */
-    private function verdict(array $data): string
-    {
-        if (($data['circuit_breaker']['state'] ?? 'closed') === 'open') {
-            return 'critical';
-        }
-
-        $certificate = $data['certificates']['status'] ?? 'unknown';
-
-        if (in_array($certificate, ['expired', 'missing', 'critical'], true)) {
-            return 'critical';
-        }
-
-        if (($data['queue']['stuck'] ?? 0) > self::STUCK_WARNING) {
-            return 'warning';
-        }
-
-        if ($certificate === 'warning') {
-            return 'warning';
-        }
-
-        return 'healthy';
+        return $this->jurisdictions->forRules($organization)->dashboard();
     }
 }

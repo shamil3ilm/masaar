@@ -14,8 +14,9 @@ Every country, whichever model it follows, starts here. The module lives in
 `app/Domains/Compliance/Countries/<Country>/`, with the country's English
 name in PascalCase (`SaudiArabia`), and copies the Saudi module's top level:
 `Module.php`, `ModuleServiceProvider.php`, `Issuing/`, `Document/`,
-`Filing/`, `Rules/`, `Reports/`, then Laravel's own folders. Add `Signing/`
-or `Onboarding/` only if the authority requires them. See
+`Filing/`, `Rules/`, `Reports/`, `Presentation/`, then Laravel's own
+folders, and its views in `resources/views/countries/<country>/`. Add
+`Signing/` or `Onboarding/` only if the authority requires them. See
 [Where a country lives](JURISDICTION-ROUTING.md#where-a-country-lives) for
 what goes in each.
 
@@ -43,10 +44,33 @@ what goes in each.
      `Engine\Contracts\InvoiceRules`: the draft's defaults, rules, messages
      and checks across fields, its mapping to `InvoiceDrafter`'s draft and
      the country's own columns, the country's rate and code lists, the
-     portal's new-invoice form, and a customer's buyer fields.
+     portal's new-invoice form, a customer's buyer fields, and
+     `billedBuyer()`, how the country's seller names an organization as its
+     buyer on the platform's invoice for a plan;
+   - `presentation()`, a `Presentation/Presentation` implementing
+     `Engine\Contracts\Presentation`: the portal's tagline, the sidebar links
+     the country adds, an invoice's page (`invoicePage()`, an
+     `Engine\DTOs\InvoicePage` naming the heading, actions and panel views),
+     when an invoice may be given to the buyer (`assertShareable()`), and the
+     seal on its PDF (`sealPdf()`, the PDF as it is where there is none). Keep
+     the actions consistent with `features()`: a country without
+     `pdf_and_email` offers no PDF and is never `shareable`;
+   - `reports()`, a `Reports/TaxReports` implementing
+     `Engine\Contracts\TaxReports`: the Reports page, as an
+     `Engine\DTOs\Panel`, and its two CSVs;
+   - `dashboard()`, a `Reports/Dashboard` implementing
+     `Engine\Contracts\Dashboard`: the portal dashboard's subheading and its
+     country part, and `/api/dashboard`'s overview, health and verdict,
+     filings, usage and activity;
+   - `setup()`, a `Presentation/SetupSteps` implementing
+     `Engine\Contracts\SetupSteps`: the seller's-details step, what the
+     country registers with its authority (none for a Peppol country), and
+     the first invoice, each with its title, detail and whether a member may
+     start it.
 
-   See [The rules ports](JURISDICTION-ROUTING.md#the-rules-ports) for what
-   each method answers in the two countries there are.
+   See [The rules ports](JURISDICTION-ROUTING.md#the-rules-ports) and
+   [The presentation ports](JURISDICTION-ROUTING.md#the-presentation-ports)
+   for what each method answers in the two countries there are.
 2. **Registration.** In `ModuleServiceProvider.php`, register it with the
    registry, as `Countries\SaudiArabia\ModuleServiceProvider` and
    `Countries\UnitedArabEmirates\ModuleServiceProvider` do:
@@ -62,16 +86,24 @@ what goes in each.
 3. **Nothing else in shared code.** The pipeline, the portal's issue action
    and billing reach the new country through `ComplianceEngine`; sign-up,
    the company page, the organization API, the API's and the pipeline's
-   invoice requests, the portal's invoice form and customers reach it
-   through its rules ports. Do not add a `country === '<CC>'` branch
-   anywhere. `CountryCheckTest` fails the build on one.
-4. **Views.** The Blade views the rules ports name (`signupView()`,
-   `companyView()`, `portalView()`, `buyerView()`) live under
-   `resources/views`, named for the country, as the Saudi and UAE ones are.
-
-Later phases add more ports to `Jurisdiction` (presentation and reports).
-Until then, the steps below still name the places outside the module that a
-country has to touch.
+   invoice requests, the portal's invoice form, customers and the billing
+   organization's buyer reach it through its rules ports; the portal's
+   layout, invoice page, PDF, print view, Reports page and CSVs, the portal
+   and API dashboards and the setup checklist reach it through the
+   presentation ports. Do not add a `country === '<CC>'` branch anywhere.
+   `CountryCheckTest` fails the build on one, and its list is empty.
+4. **Views.** The views the presentation ports name live in
+   `resources/views/countries/<country>/`, the module's folder name in kebab
+   case (`saudi-arabia/`, `united-arab-emirates/`), and are named
+   `countries.<country>.<view>`: `navigation`, `dashboard`, `reports`,
+   `invoice/heading`, `invoice/actions` and `invoice/panel`, as the two
+   countries have them. They are the module's: `ModuleBoundaryTest` holds
+   them to its lines, words included, and fails for a folder no module
+   owns. The views the rules ports name (`signupView()`, `companyView()`,
+   `portalView()`, `buyerView()`) are still under `resources/views/auth` and
+   `resources/views/portal`, named for the country; a new country can put
+   its own in its folder. New portal strings need their Arabic in
+   `lang/ar.json` (`TranslationTest` reads the country folders too).
 
 ## First, decide which of two models the country follows
 
@@ -175,8 +207,12 @@ Steps:
   `INTEGRATION-GUIDE.md`, as `docs/ae/` and `docs/sa/` have.
   - README files carry no dates. Regulatory timelines go in
     `COMPLIANCE-RULES.md`, with their source.
-- **Tests.** Extend `tests/Feature/Compliance/Engine/` so the engine routes
-  the new country and refuses it while switched off. Add
+- **Tests.** `tests/Feature/Compliance/Engine/` reads the registry, so a
+  new country is held to the engine's tests the day it registers:
+  `PresentationPortsTest` checks that every port is answered with views in
+  its own folder, `FeatureSupportTest` the features port. Extend the engine
+  tests so the engine routes the new country and refuses it while switched
+  off. Add
   `tests/Feature/Compliance/<Country>/` (unit tests in
   `tests/Unit/Domains/Compliance/Countries/<Country>/`), as Saudi Arabia's
   are, covering the following:
