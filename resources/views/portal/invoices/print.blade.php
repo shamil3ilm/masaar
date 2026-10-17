@@ -38,6 +38,7 @@
         </x-ui.select>
     </x-ui.field>
     <x-ui.button variant="secondary">{{ __('Change paper') }}</x-ui.button>
+    <x-ui.button variant="outline" :href="route('portal.invoices.pdf', ['invoiceId' => $invoice->id, 'paper' => $paper->value])">{{ __('Download PDF') }}</x-ui.button>
 </form>
 @include($layout)
 </body>

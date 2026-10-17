@@ -10,6 +10,7 @@ use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Invoice\Services\InvoicePdf;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\PrintPreferences;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use DomainException;
@@ -41,12 +42,18 @@ class PortalInvoiceDocumentController extends Controller
         private readonly InvoicePdf $pdf,
     ) {}
 
-    public function download(Request $request, string $invoiceId): Response|RedirectResponse
+    /**
+     * On the paper asked for (?paper=), else the person's, the invoice's
+     * branch's or the organization's (PrintPreferences).
+     */
+    public function download(Request $request, string $invoiceId, PrintPreferences $preferences): Response|RedirectResponse
     {
         $invoice = $this->invoice($request, $invoiceId);
+        $organization = $this->organization();
+        $paper = $preferences->paper($organization, $invoice->branch_id, $request->user()?->id, (string) $request->query('paper'));
 
         try {
-            $pdf = $this->pdf->render($invoice, $this->organization());
+            $pdf = $this->pdf->render($invoice, $organization, $paper);
         } catch (DomainException $e) {
             return redirect()->route('portal.invoices.show', $invoiceId)->with('error', $e->getMessage());
         }

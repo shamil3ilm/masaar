@@ -30,6 +30,7 @@ use App\Domains\Licensing\Http\Controllers\AdminLicenceController;
 use App\Domains\Organization\Http\Controllers\CustomerPortalController;
 use App\Domains\Organization\Http\Controllers\InvitationController;
 use App\Domains\Organization\Http\Controllers\PortalCompanyController;
+use App\Domains\Organization\Http\Controllers\PortalPrintingController;
 use App\Domains\Organization\Http\Controllers\PortalTeamController;
 use App\Domains\Platform\Http\Controllers\AdminAdminsController;
 use App\Domains\Platform\Http\Controllers\AdminAuditController;
@@ -433,6 +434,13 @@ Route::prefix('portal')->name('portal.')
         // only; the controller checks the role.
         Route::get('/numbering', [PortalNumberingController::class, 'edit'])->name('numbering.edit');
         Route::post('/numbering/{documentType}', [PortalNumberingController::class, 'update'])->name('numbering.update');
+
+        // The paper invoices print on: each person's own, and the
+        // organization's and its branches' for its administrators (the
+        // controller checks the role).
+        Route::get('/printing', [PortalPrintingController::class, 'edit'])->name('printing.edit');
+        Route::post('/printing/mine', [PortalPrintingController::class, 'updateMine'])->name('printing.mine');
+        Route::post('/printing', [PortalPrintingController::class, 'update'])->name('printing.update');
 
         // The organization's own look over the platform's. Administrators
         // of the organization only; the controller checks the role.

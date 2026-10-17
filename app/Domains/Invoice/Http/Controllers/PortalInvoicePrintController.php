@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Http\Controllers;
 
-use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Invoice\Services\InvoicePrintView;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
+use App\Domains\Organization\Services\PrintPreferences;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use DomainException;
@@ -24,6 +24,7 @@ class PortalInvoicePrintController extends Controller
         private readonly TenantResolver $tenant,
         private readonly InvoiceFinder $invoices,
         private readonly InvoicePrintView $printView,
+        private readonly PrintPreferences $preferences,
     ) {}
 
     public function print(Request $request, string $invoiceId): View|RedirectResponse
@@ -36,7 +37,9 @@ class PortalInvoicePrintController extends Controller
 
         $invoice = $this->invoices->findWithLines($orgId, $invoiceId);
         $organization = $this->tenant->getOrganization() ?? abort(404);
-        $paper = PaperSize::tryFrom((string) $request->query('paper')) ?? PaperSize::A4;
+        // The paper chosen on this screen, else the person's, the till's or
+        // the organization's.
+        $paper = $this->preferences->paper($organization, $invoice->branch_id, $request->user()?->id, (string) $request->query('paper'));
 
         // The same gate as the PDF: a printed copy is a copy handed to the
         // buyer, so one the country would not hand over has none.

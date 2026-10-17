@@ -39,13 +39,15 @@ trait PrintSamples
     }
 
     /**
-     * An issued invoice: 'simplified' (a till's receipt) or 'standard'.
+     * An issued invoice: 'simplified' (a till's receipt) or 'standard',
+     * issued by a branch when one is given.
      */
-    private function sampleInvoice(Organization $organization, string $type, int $lines = 14): Invoice
+    private function sampleInvoice(Organization $organization, string $type, int $lines = 14, ?string $branchId = null): Invoice
     {
         $number = 'INV-2026-'.str_pad((string) ++$this->sampleCounter, 6, '0', STR_PAD_LEFT);
         $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->create([
             'org_id' => $organization->id,
+            'branch_id' => $branchId,
             'invoice_number' => $number,
             'type' => $type,
             'document_type' => 'invoice',
