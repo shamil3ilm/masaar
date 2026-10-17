@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Fatoora\Services;
 
-use App\Domains\Compliance\Fatoora\DTOs\IssueOutcome;
+use App\Domains\Compliance\Engine\DTOs\IssueOutcome;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\IssuanceNotifier;

@@ -6,7 +6,8 @@ namespace App\Domains\Billing\Services;
 
 use App\Domains\Billing\Enums\PaymentMethod;
 use App\Domains\Billing\Models\Payment;
-use App\Domains\Compliance\Fatoora\Services\InvoiceIssuer;
+use App\Domains\Compliance\Engine\DTOs\IssueOptions;
+use App\Domains\Compliance\Engine\Services\ComplianceEngine;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Licensing\Enums\LicenseStatus;
@@ -36,7 +37,7 @@ class Billing
 {
     public function __construct(
         private readonly InvoiceDrafter $drafter,
-        private readonly InvoiceIssuer $issuer,
+        private readonly ComplianceEngine $engine,
         private readonly TenantResolver $tenant,
     ) {}
 
@@ -280,7 +281,7 @@ class Billing
                 ]],
             ], (string) $seller->id);
 
-            $outcome = $this->issuer->issue($invoice, $seller, file: true);
+            $outcome = $this->engine->issue($invoice, $seller, new IssueOptions(file: true));
 
             if (! $outcome->issued) {
                 throw new DomainException($outcome->errors[0] ?? 'The invoice could not be issued.');

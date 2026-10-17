@@ -9,7 +9,7 @@ use App\Domains\Billing\Mail\RenewalReminderMail;
 use App\Domains\Billing\Models\Payment;
 use App\Domains\Billing\Services\Billing;
 use App\Domains\Billing\Services\RenewalReminders;
-use App\Domains\Compliance\Fatoora\DTOs\IssueOutcome;
+use App\Domains\Compliance\Engine\DTOs\IssueOutcome;
 use App\Domains\Compliance\Fatoora\Services\InvoiceIssuer;
 use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Invoice\Models\Invoice;

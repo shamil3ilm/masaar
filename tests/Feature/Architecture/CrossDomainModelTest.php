@@ -52,6 +52,10 @@ class CrossDomainModelTest extends TestCase
         'Domains/Billing/Models/Payment.php' => 'Invoice',
         'Domains/Billing/Services/Billing.php' => 'Invoice, Licensing',
         'Domains/Billing/Services/RenewalReminders.php' => 'Licensing',
+        // The compliance engine issues an invoice in its organization's jurisdiction.
+        'Domains/Compliance/Engine/Contracts/Transmission.php' => 'Invoice',
+        'Domains/Compliance/Engine/Services/ComplianceEngine.php' => 'Invoice',
+        'Domains/Compliance/Engine/Services/JurisdictionResolver.php' => 'Invoice',
         // Moved from app/Console/Commands, where the import was not counted.
         'Domains/Compliance/Fatoora/Console/FatooraSandboxFiling.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Console/ProcessOfflineQueue.php' => 'Invoice',
@@ -61,6 +65,8 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Fatoora/Models/InvoiceSubmission.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Models/OfflineItem.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Models/SubmissionIdempotency.php' => 'Invoice',
+        // Saudi Arabia's engine module: issues and files an invoice.
+        'Domains/Compliance/Fatoora/SaudiArabia.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Services/ChainRecorder.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Services/DeadlineReport.php' => 'Invoice',
         'Domains/Compliance/Fatoora/Services/DocumentBuilder.php' => 'Invoice',
@@ -89,6 +95,8 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Peppol/Services/UaeInvoiceIssuer.php' => 'Invoice',
         // The UAE's step in that lifecycle: guards, checks, the stored document.
         'Domains/Compliance/Peppol/Services/UaeJurisdiction.php' => 'Invoice',
+        // The UAE's engine module: issues and sends an invoice.
+        'Domains/Compliance/Peppol/UnitedArabEmirates.php' => 'Invoice',
         'Domains/Invoice/Models/Invoice.php' => 'Compliance\Fatoora, Organization',
         'Domains/Licensing/Http/Middleware/RequireLicenseFeature.php' => 'Invoice',
         'Domains/Organization/Models/Branch.php' => 'Invoice',

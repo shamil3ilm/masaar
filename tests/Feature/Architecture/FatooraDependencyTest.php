@@ -43,10 +43,8 @@ class FatooraDependencyTest extends TestCase
      */
     private const DECLARED = [
         'app/Domains/Auth/Http/Controllers/AuthController.php' => 'Enums\\ErrorCode',
-        'app/Domains/Billing/Services/Billing.php' => 'Services\\InvoiceIssuer',
         // The kill switch, and the exception the shared clearance still throws.
         'app/Domains/Compliance/Peppol/Services/UaeJurisdiction.php' => 'Exceptions\\FatooraException, Services\\KillSwitch',
-        'app/Domains/Invoice/Http/Controllers/PortalInvoiceFilingController.php' => 'Services\\InvoiceIssuer',
         'app/Domains/Invoice/Http/Requests/CreateInvoiceRequest.php' => 'Config\\FatooraConfig',
         'app/Domains/Invoice/Models/Invoice.php' => 'Models\\InvoiceSubmission',
         'app/Domains/Invoice/Services/CadesSignature.php' => 'Exceptions\\SigningException, Services\\EcdsaSigner',
@@ -60,7 +58,7 @@ class FatooraDependencyTest extends TestCase
         // Moved out of Fatoora; still throws FatooraException, which its callers catch.
         'app/Domains/Organization/Services/FilingClearance.php' => 'Enums\\ErrorCode, Exceptions\\FatooraException',
         'app/Domains/Organization/Services/SetupChecklist.php' => 'Exceptions\\FatooraException',
-        'app/Domains/Pipeline/Services/PipelineService.php' => 'DTOs\\IssueOutcome, Exceptions\\FatooraException, Services\\InvoiceIssuer, Services\\OfflineQueue',
+        'app/Domains/Pipeline/Services/PipelineService.php' => 'Exceptions\\FatooraException',
         'app/Domains/Platform/Http/Controllers/AdminController.php' => 'Enums\\RequeueOutcome, Services\\Requeuer',
         'app/Domains/Platform/Http/Controllers/AdminDashboardController.php' => 'Enums\\RequeueOutcome, Services\\CircuitBreaker, Services\\Connectivity, Services\\Requeuer',
         'app/Domains/Platform/Http/Controllers/DashboardController.php' => 'Services\\SubmissionReport',
@@ -74,6 +72,8 @@ class FatooraDependencyTest extends TestCase
         'app/Providers/AppServiceProvider.php' => 'Config\\FatooraConfig, Http\\Middleware\\FilingCleared, Services\\CircuitBreaker, Services\\TimestampValidator',
         'app/Providers/EventServiceProvider.php' => 'Events\\InvoiceCleared, Events\\InvoiceFailed, Events\\InvoiceRejected, Events\\InvoiceReported, Events\\InvoiceSubmitted, Events\\InvoiceWarning, Listeners\\DispatchInvoiceWebhook',
         'bootstrap/app.php' => 'Exceptions\\CertificateException, Exceptions\\FatooraException, Exceptions\\SigningException',
+        // The Saudi module's own provider, registering it with the compliance engine.
+        'bootstrap/providers.php' => 'FatooraServiceProvider',
         'resources/views/pdf/invoice.blade.php' => 'Config\\FatooraConfig, Helpers\\FatooraTime',
         'resources/views/portal/invoices/create.blade.php' => 'Config\\FatooraConfig',
         'resources/views/portal/invoices/print.blade.php' => 'Config\\FatooraConfig, Helpers\\FatooraTime',

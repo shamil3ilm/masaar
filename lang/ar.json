@@ -418,6 +418,7 @@
     "Issued late: more than 14 days after the date of supply. A UAE e-invoice is issued and sent within 14 days of the transaction (Ministerial Decision No. 243 of 2025, Article 6).": "صدرت متأخرة: بعد أكثر من 14 يوماً من تاريخ التوريد. تُصدر الفاتورة الإلكترونية الإماراتية وتُرسل خلال 14 يوماً من تاريخ المعاملة (القرار الوزاري رقم 243 لسنة 2025، المادة 6).",
     "Issued, and filing did not succeed: :error The invoice keeps its counter and will be retried.": "صدرت الفاتورة، ولم ينجح الإرسال إلى الهيئة: :error تحتفظ الفاتورة بعدادها وستُعاد المحاولة.",
     "Issued, and its UAE e-invoice is queued for sending.": "صدرت الفاتورة، وأُدرجت فاتورتها الإلكترونية الإماراتية في قائمة الإرسال.",
+    "Issued. Its UAE e-invoice is ready and has not been queued for sending.": "صدرت الفاتورة. فاتورتها الإلكترونية الإماراتية جاهزة ولم تُدرج بعد في قائمة الإرسال.",
     "Issued. It has not been filed with ZATCA: this organization has no certificate yet, so complete onboarding before the reporting deadline.": "صدرت الفاتورة. لم تُرسل إلى هيئة الزكاة والضريبة والجمارك: لا توجد شهادة لهذه الشركة بعد، لذا أكمل الربط مع الهيئة قبل الموعد النهائي للإبلاغ.",
     "Issuing authority": "جهة الإصدار",
     "it is negative; a reduction is a credit note.": "المبلغ سالب؛ التخفيض يكون بإشعار دائن.",

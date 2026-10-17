@@ -2,9 +2,44 @@
 
 This page covers what adding a country involves today. Read
 [JURISDICTION-ROUTING.md](JURISDICTION-ROUTING.md) first. The short version
-is that each country has its own routes, and every country issues through
-the same `IssuingLifecycle`. A new country implements `IssuingJurisdiction`
-for its own steps and keeps the shared lifecycle as it is.
+is that each country is a module plugged into the compliance engine in
+`app/Domains/Compliance/Engine/`. The module implements the engine's
+`Jurisdiction` contract and registers itself from its own service provider.
+Every country issues through the same `IssuingLifecycle`, with an
+`IssuingJurisdiction` of its own for its steps.
+
+## The module
+
+Every country, whichever model it follows, starts here:
+
+1. **Module class.** In the country's folder, implement
+   `Engine\Contracts\Jurisdiction`, as `Fatoora\SaudiArabia` and
+   `Peppol\UnitedArabEmirates` do:
+   - `code()`, `name()`, `timezone()` and `currency()`;
+   - `enabled()`, read from the country's switch;
+   - `issuingStep()`, the country's `IssuingJurisdiction`;
+   - `transmission()`, an `Engine\Contracts\Transmission` that issues
+     through the lifecycle and files or sends, answering an
+     `Engine\DTOs\IssueOutcome`;
+   - `notices()`, the portal's wording after issuing.
+2. **Registration.** In the module's service provider, register it with the
+   registry, as `FatooraServiceProvider` and `PeppolServiceProvider` do:
+
+   ```php
+   $this->app->afterResolving(JurisdictionRegistry::class, function (JurisdictionRegistry $registry): void {
+       $registry->register('<CC>', fn () => $this->app->make(<Module>::class));
+   });
+   ```
+
+   A new provider goes in `bootstrap/providers.php`.
+3. **Nothing else in shared code.** The pipeline, the portal's issue action
+   and billing reach the new country through `ComplianceEngine`. Do not add
+   a `country === '<CC>'` branch anywhere. `CountryCheckTest` fails the
+   build on one.
+
+Later phases add more ports to `Jurisdiction` (rules, presentation and
+reports). Until then, the steps below still name the places outside the
+module that a country has to touch.
 
 ## First, decide which of two models the country follows
 
@@ -33,8 +68,9 @@ second country can use them:
   lists.
 - `InboundDocuments` stores every received document as `AE`.
 - `UaeInvoicing` checks `peppol.countries.AE.enabled` and `country === 'AE'`.
-- `UaeJurisdiction` and `UaeInvoiceIssuer` issue UAE invoices. A second
-  country implements its own `IssuingJurisdiction` and calls the same
+- `UaeJurisdiction` and `UaeInvoiceIssuer` issue UAE invoices, and
+  `UnitedArabEmirates` is the UAE's module. A second country has a module of
+  its own, implements its own `IssuingJurisdiction` and calls the same
   `IssuingLifecycle`.
 
 Steps:
@@ -74,7 +110,7 @@ Steps:
    pass `FilingClearance` and the kill switch in `prepare()` like the others.
 3. Write the issuer and routes (`/api/compliance/<cc>/*`). The issuer calls
    `IssuingLifecycle::issue()` with that jurisdiction, as `UaeInvoiceIssuer`
-   does. Reuse `InvoiceDrafter` and `IssuanceNotifier` rather than copying
+   does, and the module's transmission calls the issuer. Reuse `InvoiceDrafter` and `IssuanceNotifier` rather than copying
    them; numbering already comes with the lifecycle.
 4. Add the authority's credentials and switch to `config/` and the env
    templates, named by purpose, with a production guard for anything required.
@@ -86,14 +122,17 @@ Steps:
 - **Organization.** Add the country's seller details and their validation to
   `CompanyProfileRules`, stored on that country's `ComplianceProfile` (see
   [ORGANIZATION-MODEL.md](ORGANIZATION-MODEL.md)).
-- **Clock.** Add the country's time zone to `App\Support\CountryClock`.
-  Without it, the date in an invoice number and the period its counter
-  restarts at are read on Riyadh's clock.
+- **Clock.** Add the country's time zone to `App\Support\CountryClock`, as
+  well as to the module's `timezone()`. Without it, the date in an invoice
+  number and the period its counter restarts at are read on Riyadh's clock.
+  A later phase has `CountryClock` read the module instead.
 - **Docs.** Add `docs/<cc>/README.md`, `COMPLIANCE-RULES.md` and
   `INTEGRATION-GUIDE.md`, as `docs/ae/` and `docs/sa/` have.
   - README files carry no dates. Regulatory timelines go in
     `COMPLIANCE-RULES.md`, with their source.
-- **Tests.** Add `tests/Feature/Compliance/<Domain>/` covering the following:
+- **Tests.** Extend `tests/Feature/Compliance/Engine/` so the engine routes
+  the new country and refuses it while switched off. Add
+  `tests/Feature/Compliance/<Domain>/` covering the following:
   - rules refused at draft time and at send time;
   - one document per invoice;
   - retries that never file twice;

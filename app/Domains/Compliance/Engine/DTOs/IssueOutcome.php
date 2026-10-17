@@ -2,30 +2,29 @@
 
 declare(strict_types=1);
 
-namespace App\Domains\Compliance\Fatoora\DTOs;
+namespace App\Domains\Compliance\Engine\DTOs;
 
 /**
- * What one issuance did.
+ * What one issuance did, in any jurisdiction.
  *
- * Carries the raw submission array rather than a tidied subset. OfflineFallback
- * answers in six different shapes - the online record, the offline queue entry,
- * an async queue entry, a submission error, and two idempotency replies - and
- * each holds keys the others do not: queue_id, job_id, check_status_url,
- * can_retry, retry_after, cached. A DTO that picked a few would silently drop
- * the rest, and PipelineService has to rebuild its zatca_response block from
- * exactly four of them.
+ * Carries the raw submission array rather than a tidied subset. A country's
+ * filing answers in shapes of its own - Saudi filing alone has six: the online
+ * record, the offline queue entry, an async queue entry, a submission error
+ * and two idempotency replies - and each holds keys the others do not:
+ * queue_id, job_id, check_status_url, can_retry, retry_after, cached. A DTO
+ * that picked a few would silently drop the rest, and PipelineService has to
+ * rebuild its zatca_response block from exactly four of them. A module whose
+ * transport answers differently maps its answer into those keys.
  *
- * Under Fatoora/DTOs/ because a DTO belongs to the domain that produces it,
- * not the one it describes: InvoiceIssuer returns this, so Compliance\Fatoora
- * owns it even though what it reports on is an invoice. That is where the
- * other seven DTOs in this domain sit.
+ * Under Engine/DTOs/ because every jurisdiction module returns it through the
+ * Transmission port, so it belongs to the engine rather than to one country.
  */
 final readonly class IssueOutcome
 {
     /**
      * @param  list<string>  $errors  Stage-prefixed, as PipelineService worded them.
      * @param  list<string>  $warnings
-     * @param  array<string, mixed>|null  $submission  Raw, as OfflineFallback returned it.
+     * @param  array<string, mixed>|null  $submission  Raw, as the jurisdiction's filing returned it.
      */
     private function __construct(
         public bool $issued,
@@ -36,12 +35,11 @@ final readonly class IssueOutcome
     ) {}
 
     /**
-     * Signing did not happen. The invoice is unchanged.
+     * Issuing did not happen. The invoice is unchanged.
      *
-     * There is deliberately no separate "refused" state. Re-issuing will be
-     * refused by Submitter::generate() itself in a later task, which throws,
-     * so it arrives here as a generation failure like any other - and the
-     * caller's question is the same either way: was it issued?
+     * There is deliberately no separate "refused" state. A refused issuance -
+     * a re-issue, or a country's rules - arrives here as a failure like any
+     * other, and the caller's question is the same either way: was it issued?
      */
     public static function notIssued(string $error): self
     {

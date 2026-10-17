@@ -1,6 +1,7 @@
 <?php
 
 use App\Domains\Auth\Http\Middleware\ActiveAccount;
+use App\Domains\Compliance\Engine\Exceptions\JurisdictionUnavailableException;
 use App\Domains\Compliance\Fatoora\Exceptions\CertificateException;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Exceptions\SigningException;
@@ -161,6 +162,15 @@ return Application::configure(basePath: dirname(__DIR__))
                     'license',
                     isset($e->context['retry_after']) ? (int) $e->context['retry_after'] : null,
                 );
+            }
+        });
+
+        // An organization in a country this deployment does not issue in. The
+        // request is well formed and refused by configuration, so 422 rather
+        // than the 500 an unhandled exception answers.
+        $exceptions->render(function (JurisdictionUnavailableException $e, Request $request) {
+            if ($request->is('api/*') || $request->is('v1/*')) {
+                return ApiResponse::error($e->getMessage(), 422, [], 'JURISDICTION_UNAVAILABLE');
             }
         });
 

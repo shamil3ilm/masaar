@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Http\Controllers;
 
-use App\Domains\Compliance\Exceptions\IssuanceRefusedException;
-use App\Domains\Compliance\Fatoora\Services\InvoiceIssuer;
-use App\Domains\Compliance\Peppol\Services\UaeInvoiceIssuer;
-use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Compliance\Engine\DTOs\IssueOptions;
+use App\Domains\Compliance\Engine\Exceptions\JurisdictionUnavailableException;
+use App\Domains\Compliance\Engine\Services\ComplianceEngine;
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Invoice\Services\InvoicePdf;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
@@ -26,21 +25,20 @@ use Illuminate\View\View;
  * chain - so it is a POST behind a confirmation, never a link a browser or a
  * crawler can follow.
  *
- * Filing is attempted only when the organization is onboarded. Without a
- * certificate SubmissionGuard throws CERT_NOT_FOUND, which is not in
- * OfflineFallback's connectivity list, so nothing queues and the exception
- * escapes. A Phase 1 invoice is still valid - five TLV tags, no cryptographic
- * ones - and the screen says it has not been filed rather than pretending.
+ * Issued through the compliance engine, in the organization's jurisdiction.
+ * Filing is attempted only when that jurisdiction says the organization is
+ * ready to file: for Saudi Arabia, onboarded. A Saudi invoice issued without
+ * a certificate is still valid - five TLV tags, no cryptographic ones - and
+ * the screen says it has not been filed rather than pretending.
  */
 class PortalInvoiceFilingController extends Controller
 {
     public function __construct(
         private readonly TenantResolver $tenant,
         private readonly InvoiceFinder $invoices,
-        private readonly InvoiceIssuer $issuer,
+        private readonly ComplianceEngine $engine,
         private readonly QrCodeRenderer $qr,
         private readonly InvoicePdf $pdf,
-        private readonly UaeInvoiceIssuer $uae,
     ) {}
 
     public function issue(Request $request, string $invoiceId): RedirectResponse
@@ -54,22 +52,22 @@ class PortalInvoiceFilingController extends Controller
         $invoice = $this->invoices->findWithLines($orgId, $invoiceId);
         $organization = $this->tenant->getOrganization();
 
-        // A UAE organization's invoice is issued and sent as a Peppol
-        // document, never signed for ZATCA.
-        if ($organization?->country === 'AE') {
-            return $this->issueInUae($invoice);
+        // A country this deployment does not issue in answers as if the
+        // action did not exist.
+        try {
+            $jurisdiction = $this->engine->jurisdictionFor($organization);
+        } catch (JurisdictionUnavailableException) {
+            abort(404);
         }
 
-        $outcome = $this->issuer->issue(
-            $invoice,
-            $organization,
-            file: (bool) $organization->zatca_onboarded,
-        );
+        $outcome = $this->engine->issue($invoice, $organization, new IssueOptions(
+            file: $jurisdiction->transmission()->readyToFile($organization),
+        ));
 
         if (! $outcome->issued) {
-            // Covers both a signing failure and a refused re-issue: the guard
-            // in Submitter::generate() throws, so it reaches here as an error
-            // like any other, already worded for a person to read.
+            // Covers both a failure and a refusal - a re-issue, or the
+            // country's rules: each reaches here as an error like any other,
+            // already worded for a person to read.
             return redirect()
                 ->route('portal.invoices.show', $invoiceId)
                 ->with('error', $outcome->errors[0] ?? __('The invoice could not be issued.'));
@@ -78,7 +76,7 @@ class PortalInvoiceFilingController extends Controller
         if (! $outcome->attemptedFiling) {
             return redirect()
                 ->route('portal.invoices.show', $invoiceId)
-                ->with('warning', __('Issued. It has not been filed with ZATCA: this organization has no certificate yet, so complete onboarding before the reporting deadline.'));
+                ->with('warning', $jurisdiction->notices()->notFiled());
         }
 
         if ($outcome->errors !== []) {
@@ -89,22 +87,7 @@ class PortalInvoiceFilingController extends Controller
 
         return redirect()
             ->route('portal.invoices.show', $invoiceId)
-            ->with('success', __('Issued and filed with ZATCA.'));
-    }
-
-    private function issueInUae(Invoice $invoice): RedirectResponse
-    {
-        abort_unless((bool) config('peppol.countries.AE.enabled'), 404);
-
-        $back = redirect()->route('portal.invoices.show', $invoice->id);
-
-        try {
-            $this->uae->issue($invoice);
-        } catch (IssuanceRefusedException $e) {
-            return $back->with('error', $e->getMessage());
-        }
-
-        return $back->with('success', __('Issued, and its UAE e-invoice is queued for sending.'));
+            ->with('success', $jurisdiction->notices()->filed());
     }
 
     public function print(Request $request, string $invoiceId): View|RedirectResponse

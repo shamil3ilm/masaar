@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domains\Pipeline\Services;
 
-use App\Domains\Compliance\Exceptions\IssuanceRefusedException;
-use App\Domains\Compliance\Fatoora\DTOs\IssueOutcome;
+use App\Domains\Compliance\Engine\DTOs\IssueOptions;
+use App\Domains\Compliance\Engine\DTOs\IssueOutcome;
+use App\Domains\Compliance\Engine\Exceptions\JurisdictionUnavailableException;
+use App\Domains\Compliance\Engine\Services\ComplianceEngine;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
-use App\Domains\Compliance\Fatoora\Services\InvoiceIssuer;
-use App\Domains\Compliance\Fatoora\Services\OfflineQueue;
-use App\Domains\Compliance\Peppol\Services\IssueDeadline;
-use App\Domains\Compliance\Peppol\Services\UaeInvoiceIssuer;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\InvoiceDrafter;
@@ -27,12 +25,9 @@ use Illuminate\Validation\ValidationException;
  * belongs to a collaborator:
  *
  *   InvoiceDrafter    payload -> draft invoice with priced lines
- *   InvoiceIssuer     signs the draft, then files it with the authority
- *     Submitter          compliance documents: XML, hash, QR, signature
- *     OfflineFallback    files it, or queues it when ZATCA is unreachable
- *       SubmissionTracker  idempotency, submission record, state machine
- *         FatooraClient      the call to ZATCA
- *     IssuanceNotifier   tells the ERP what happened
+ *   ComplianceEngine  issues the draft in the organization's jurisdiction,
+ *                     then files it with the authority (see
+ *                     docs/architecture/JURISDICTION-ROUTING.md)
  *   PipelineResult    shapes the reply
  *
  * The failure rule throughout: once an invoice is issued it stays issued. A
@@ -43,15 +38,15 @@ class PipelineService
 {
     public function __construct(
         private readonly InvoiceDrafter $drafter,
-        private readonly InvoiceIssuer $issuer,
-        private readonly OfflineQueue $offline,
+        private readonly ComplianceEngine $engine,
         private readonly PipelineResult $result,
-        private readonly UaeInvoiceIssuer $uae,
     ) {}
 
     /**
      * @param  array  $data  Validated request payload
      * @param  string|null  $idempotencyKey  Caller's Idempotency-Key, if sent
+     *
+     * @throws JurisdictionUnavailableException for a country this deployment does not issue in
      */
     public function submitInvoice(
         array $data,
@@ -60,6 +55,10 @@ class PipelineService
         ?string $idempotencyKey = null,
     ): array {
         $organization = Organization::findOrFail($organizationId);
+
+        // A country this deployment does not issue in is refused before
+        // anything is drafted, rather than leaving a draft nothing can issue.
+        $this->engine->jurisdictionFor($organization);
 
         // A retry: answer with what the first call made, and do nothing again.
         // The key only reached filing before, so the retry drafted a second
@@ -110,44 +109,20 @@ class PipelineService
      */
     private function issue(Invoice $invoice, Organization $organization, array $data, ?string $idempotencyKey): array
     {
-        if ($organization->country === 'AE') {
-            return $this->answer($invoice, $this->issueInUae($invoice, (bool) ($data['auto_submit'] ?? true)));
-        }
+        return $this->answer($invoice, $this->engine->issue($invoice, $organization, $this->options($data, $idempotencyKey)));
+    }
 
-        $outcome = $this->issuer->issue(
-            $invoice,
-            $organization,
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function options(array $data, ?string $idempotencyKey): IssueOptions
+    {
+        return new IssueOptions(
             // The gate an ERP sets to take the invoice now and file it later.
             // It lives here rather than in the issuer because it is a property
             // of this request, not of issuance.
             file: (bool) ($data['auto_submit'] ?? true),
             idempotencyKey: $idempotencyKey,
-        );
-
-        return $this->answer($invoice, $outcome);
-    }
-
-    /**
-     * A UAE organization's invoice is issued as a Peppol document, never
-     * signed for ZATCA. Its document stands in for the submission.
-     *
-     * auto_submit false issues it and prepares its document ('ready') but
-     * does not queue it; POST /api/compliance/ae/invoices/{invoice}/send, or
-     * this call again with auto_submit true, queues it once. Issuing an
-     * issued one answers with its document. A late issue is a warning.
-     */
-    private function issueInUae(Invoice $invoice, bool $send): IssueOutcome
-    {
-        try {
-            $document = $this->uae->issue($invoice, $send);
-        } catch (IssuanceRefusedException $e) {
-            return IssueOutcome::notIssued($e->getMessage());
-        }
-
-        return IssueOutcome::filed(
-            ['submission_id' => $document->id, 'state' => $document->status],
-            [],
-            IssueDeadline::warnings($document),
         );
     }
 
@@ -217,16 +192,12 @@ class PipelineService
         // Issued and not filed - the filing failed, or was refused before it
         // began. This answered with no errors whenever the invoice was past
         // draft, so a 207 on the first call became a 201 on the retry and the
-        // ERP marked an unfiled invoice done. Filed now, unless it is waiting
-        // in the offline queue, where sending it again would file it twice.
-        if ($invoice->status === InvoiceStatus::Issued && $organization->country === 'AE') {
-            return $this->answer($invoice, $this->issueInUae($invoice, (bool) ($data['auto_submit'] ?? true)));
-        }
-
+        // ERP marked an unfiled invoice done. The jurisdiction files it now if
+        // that is still owed and asked for; null is nothing to do, and the
+        // answer comes from the record below.
         if ($invoice->status === InvoiceStatus::Issued
-            && (bool) ($data['auto_submit'] ?? true)
-            && ! $this->offline->isQueued($invoice)) {
-            return $this->answer($invoice, $this->issuer->file($invoice, $idempotencyKey));
+            && ($outcome = $this->engine->resume($invoice, $organization, $this->options($data, $idempotencyKey))) !== null) {
+            return $this->answer($invoice, $outcome);
         }
 
         $submission = $invoice->latestSubmission;
