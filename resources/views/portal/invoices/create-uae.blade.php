@@ -244,6 +244,11 @@
             </div>
         </div>
         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Required on a commercial document.') }}</p>
+
+        <label class="mt-4 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+            <input type="checkbox" name="save_customer" value="1" @checked(old('save_customer'))>
+            {{ __('Save this buyer to Customers') }}
+        </label>
     </div>
 
     <div class="mb-6 rounded-lg bg-white dark:bg-gray-900 p-6 shadow">

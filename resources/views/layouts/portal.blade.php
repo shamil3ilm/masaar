@@ -15,17 +15,17 @@
         <!-- Sidebar -->
         <aside id="sidebar" :class="panel"
                class="fixed inset-y-0 start-0 z-40 flex flex-col overflow-y-auto border-e bg-white dark:bg-gray-900 transition-transform duration-300 md:static md:z-auto md:min-h-screen">
+            {{-- Which country's tagline and links to show. Not every screen passes the organization. --}}
+            @php($navOrganization = $organization ?? app(\App\Domains\Organization\Services\TenantResolver::class)->getOrganization())
             <div class="border-b p-6">
                 <x-logo :size="30" name name-class="text-base font-semibold tracking-tight text-ink-900 dark:text-gray-100" />
-                <p class="mt-2 text-xs tracking-wide text-gray-400 dark:text-gray-500 uppercase">{{ __('ZATCA Portal') }}</p>
+                <p class="mt-2 text-xs tracking-wide text-gray-400 dark:text-gray-500 uppercase">{{ $navOrganization?->country === 'AE' ? __('UAE E-invoicing Portal') : __('ZATCA Portal') }}</p>
                 @if(isset($organization))
                 <p class="mt-2 text-sm font-medium text-ink-900 dark:text-gray-100">{{ $organization->name }}</p>
                 @endif
             </div>
             <nav class="flex-1 p-4">
                 {{-- The active organization lives in the session; links carry no tenant identifier. --}}
-                {{-- Which country's links to show. Not every screen passes the organization. --}}
-                @php($navOrganization = $organization ?? app(\App\Domains\Organization\Services\TenantResolver::class)->getOrganization())
                 <a href="{{ route('portal.dashboard') }}"
                    class="flex items-center px-4 py-2 rounded-lg mb-1 {{ request()->routeIs('portal.dashboard') ? 'bg-teal-50 dark:bg-teal-950/40 font-medium text-teal-800 dark:text-teal-200' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-950' }}">
                     <svg class="w-5 h-5 me-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>

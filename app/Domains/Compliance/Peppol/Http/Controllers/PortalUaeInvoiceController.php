@@ -8,6 +8,7 @@ use App\Domains\Compliance\Peppol\Http\Requests\PortalUaeInvoiceRequest;
 use App\Domains\Compliance\Peppol\Services\UaeDocuments;
 use App\Domains\Compliance\Peppol\Services\UaeDrafts;
 use App\Domains\Compliance\Peppol\Services\UaePortal;
+use App\Domains\Invoice\Services\Catalogue;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
@@ -28,6 +29,7 @@ class PortalUaeInvoiceController extends Controller
         private readonly UaePortal $portal,
         private readonly UaeDrafts $drafts,
         private readonly UaeDocuments $documents,
+        private readonly Catalogue $catalogue,
     ) {}
 
     public function store(PortalUaeInvoiceRequest $request): RedirectResponse
@@ -47,6 +49,16 @@ class PortalUaeInvoiceController extends Controller
             return back()
                 ->withInput()
                 ->with('error', __('The invoice could not be saved. Nothing was written, and what you typed is still here. If this keeps happening, the detail is in the application log.'));
+        }
+
+        // As on the Saudi form: after the draft and never at its expense.
+        // The customer keeps the buyer's endpoint and emirate as well.
+        if ($request->boolean('save_customer')) {
+            try {
+                $this->catalogue->rememberBuyer((string) $organization->id, $request->validated());
+            } catch (\Throwable $e) {
+                report($e);
+            }
         }
 
         return redirect()

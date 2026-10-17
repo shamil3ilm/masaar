@@ -16,25 +16,33 @@ use DomainException;
  *
  * The issuing lifecycle is the one Saudi invoices go through
  * (IssuingLifecycle); the UAE's own steps are UaeJurisdiction. Asked as a
- * reissue, so a second call on an issued invoice issues nothing and queues
- * nothing: it answers with the document the first one stored.
+ * reissue, so a second call on an issued invoice issues nothing: it answers
+ * with the document the first one stored.
+ *
+ * Sending is queueing that document, once (PeppolSender::queueOnce). A
+ * caller may issue without sending - the pipeline's auto_submit false - and
+ * a later call that sends queues the document then; one already queued, or
+ * past ready, is never queued again.
  */
 class UaeInvoiceIssuer
 {
     public function __construct(
         private readonly IssuingLifecycle $lifecycle,
         private readonly UaeJurisdiction $uae,
+        private readonly PeppolSender $sender,
     ) {}
 
     /**
+     * @param  bool  $send  queue the document for the service provider
+     *
      * @throws IssuanceRefusedException listing every problem; the invoice is still a draft
      */
-    public function issue(Invoice $invoice): PeppolDocument
+    public function issue(Invoice $invoice, bool $send = true): PeppolDocument
     {
         $organization = Organization::query()->findOrFail($invoice->org_id);
 
         try {
-            return $this->lifecycle->issue($invoice, $organization, $this->uae, reissue: true);
+            $document = $this->lifecycle->issue($invoice, $organization, $this->uae, reissue: true);
         } catch (DomainException $e) {
             // The number and moment were set on this model and rolled back in
             // the database; the caller must not read them.
@@ -42,5 +50,11 @@ class UaeInvoiceIssuer
 
             throw $e instanceof IssuanceRefusedException ? $e : new IssuanceRefusedException([$e->getMessage()]);
         }
+
+        if ($send) {
+            $this->sender->queueOnce($document);
+        }
+
+        return $document;
     }
 }

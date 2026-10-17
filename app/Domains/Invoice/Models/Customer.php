@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Models;
 
+use App\Domains\Compliance\Peppol\Profiles\PintAe;
 use App\Domains\Organization\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -21,6 +22,19 @@ class Customer extends Model
 
     /** The invoice form's buyer address keys, in the order it shows them. */
     public const ADDRESS = ['street', 'building_number', 'district', 'city', 'postal_code', 'country_code'];
+
+    /**
+     * A UAE buyer's Peppol endpoint: 0235: and ten digits, as the service
+     * provider issued it. The three reserved addresses have that shape too.
+     */
+    public const UAE_ENDPOINT = '/^'.PintAe::SCHEME.':\d{10}$/';
+
+    /** The reserved endpoints, by the UAE invoice form's name for them. */
+    private const RESERVED_ENDPOINTS = [
+        PintAe::SCHEME.':'.PintAe::BUYER_NOT_YET_ON_EINVOICING => 'not_yet',
+        PintAe::SCHEME.':'.PintAe::DEEMED_SUPPLY_BUYER => 'deemed',
+        PintAe::SCHEME.':'.PintAe::EXPORT_BUYER => 'export',
+    ];
 
     protected $fillable = [
         'org_id',
@@ -69,8 +83,9 @@ class Customer extends Model
 
     /**
      * What the UAE invoice form's buyer fields are filled with: the same,
-     * less the Saudi district, plus the emirate and the buyer's own Peppol
-     * endpoint.
+     * less the Saudi district, plus the emirate and the buyer's Peppol
+     * endpoint: its own, or the reserved address chosen by name, so the form
+     * sets that scenario's flag as it does when the address is picked.
      *
      * @return array<string, string>
      */
@@ -78,13 +93,14 @@ class Customer extends Model
     {
         $fields = $this->buyerFields();
         unset($fields['buyer_address_district']);
+        $reserved = self::RESERVED_ENDPOINTS[(string) $this->peppol_endpoint] ?? null;
 
         return [
             ...$fields,
             'buyer_address_country_code' => (string) ($this->country_code ?: 'AE'),
             'buyer_subdivision' => (string) $this->subdivision,
-            'buyer_endpoint_choice' => 'own',
-            'buyer_endpoint' => (string) $this->peppol_endpoint,
+            'buyer_endpoint_choice' => $reserved ?? 'own',
+            'buyer_endpoint' => $reserved === null ? (string) $this->peppol_endpoint : '',
         ];
     }
 }

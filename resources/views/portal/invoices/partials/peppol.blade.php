@@ -21,6 +21,11 @@
             {{ __('No e-invoice has been made for this invoice.') }}
         </p>
     @else
+        {{-- Issued past the UAE's 14 days (IssueDeadline): sent all the same. --}}
+        @foreach (\App\Domains\Compliance\Peppol\Services\IssueDeadline::warnings($document) as $warning)
+            <p class="mb-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 p-3 text-sm text-amber-800 dark:text-amber-200" data-issued-late>{{ $warning }}</p>
+        @endforeach
+
         <dl class="space-y-3 text-sm">
             <div>
                 <dt class="text-gray-500 dark:text-gray-400">{{ __('Status') }}</dt>

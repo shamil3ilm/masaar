@@ -44,6 +44,8 @@ class PeppolDocument extends Model
         'receiver_endpoint',
         'attempts',
         'last_error',
+        // Issued more than 14 days after the transaction (IssueDeadline).
+        'issued_late',
     ];
 
     protected function casts(): array
@@ -51,6 +53,8 @@ class PeppolDocument extends Model
         return [
             'errors' => 'array',
             'attempts' => 'integer',
+            'queued_at' => 'datetime',
+            'issued_late' => 'boolean',
         ];
     }
 

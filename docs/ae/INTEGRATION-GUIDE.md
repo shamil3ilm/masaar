@@ -90,6 +90,10 @@ A successful save answers `200` with `data.organization` and `data.settings`
 (the stored `trn`, `tin`, `endpoint_id`, `emirate`, `legal_registration_*`
 and `payment_account` values).
 
+`PUT /api/organizations/{id}` takes the same fields for a UAE organization,
+each checked only when sent, and saves them the same way. It answers with
+`data.organization` only.
+
 ## 2. Draft an invoice
 
 ```http
@@ -158,6 +162,18 @@ the organization is the buyer.
 | `buyer_endpoint` | Except on a deemed supply or an export | `0235:` plus 10 digits, a reserved endpoint (see [COMPLIANCE-RULES.md](COMPLIANCE-RULES.md#buyer-endpoints)), or another Peppol scheme, for example `9930:...` |
 | `buyer_legal_registration` | On a commercial document | `{ "type": "TL", "id": "...", "authority": "..." }` |
 
+#### Saved customers
+
+The portal's customers keep two UAE buyer fields, which its UAE invoice form
+fills in when a customer is picked. A customer is saved from the
+**Customers** page, or by ticking **Save this buyer to Customers** on the UAE
+invoice form. There is no customer API.
+
+| Customer field | Invoice field | Rule |
+|---|---|---|
+| `peppol_endpoint` | `buyer_endpoint` | `0235:` followed by 10 digits, as the buyer's service provider issued it. The reserved `0235:9900000097`, `0235:9900000098` and `0235:9900000099` have that shape too, and picking such a customer selects that reserved address on the form. An endpoint in another scheme is not saved |
+| `subdivision` | `buyer_subdivision` | For a customer in the UAE, one of `AUH`, `DXB`, `SHJ`, `UAQ`, `FUJ`, `AJM`, `RAK`. For a customer abroad, the region, up to 50 characters |
+
 ### Scenario and credit-note fields
 
 | Field | When |
@@ -207,7 +223,8 @@ Sending does the following:
     "invoice_number": "INV-000123",
     "invoice_status": "issued",
     "document_id": "9d3d...",
-    "status": "ready"
+    "status": "ready",
+    "warnings": []
   }
 }
 ```
@@ -218,7 +235,43 @@ you can correct it and send it again. A problem can be a missing mandatory
 field, a scenario rule, or stored totals that differ from the document's.
 
 Sending is idempotent. A second call on an issued invoice issues nothing and
-queues nothing, and answers with the document the first call stored.
+answers with the document the first call stored. A document is queued once:
+the call queues it only if it is `ready` and was never queued, which is the
+case for an invoice issued through the pipeline with `auto_submit` false.
+A document already queued, or past `ready`, is never queued again.
+
+### Issued late
+
+A UAE e-invoice is due within 14 days of the transaction (see
+[COMPLIANCE-RULES.md](COMPLIANCE-RULES.md#the-14-day-deadline)). An invoice
+issued later than that is still issued and sent, and `warnings` says so:
+
+```json
+"warnings": ["Issued late: more than 14 days after the date of supply. A UAE e-invoice is issued and sent within 14 days of the transaction (Ministerial Decision No. 243 of 2025, Article 6)."]
+```
+
+The same warning is in the status answer below and in the pipeline's
+`warnings`. It is an answer about timing, not an error: nothing needs to be
+sent again.
+
+### Through the pipeline
+
+`POST /api/v1/pipeline/submit` routes a UAE organization's invoice to UAE
+issuing and answers in the pipeline's usual shape. `zatca_response.submission_id`
+is the document's id and `zatca_response.state` its status. The pipeline's
+payload has no UAE fields yet (`buyer_endpoint`, `buyer_subdivision`,
+`transaction_flags` and the rest), so an invoice it drafts is refused for the
+missing fields. Draft UAE invoices with `POST /api/compliance/ae/invoices`.
+When the pipeline does issue one, for example retrying a draft under the same
+`Idempotency-Key`:
+
+- `auto_submit` `true`, or left out: the invoice is issued and its document
+  queued for the service provider.
+- `auto_submit` `false`: the invoice is issued and its document built,
+  checked and stored as `ready`, but not queued. Send it later with
+  `POST /api/compliance/ae/invoices/{invoice}/send`, or by repeating the
+  pipeline call with the same `Idempotency-Key` and `auto_submit` `true`.
+  The 14-day deadline covers sending too, so do not hold it back for long.
 
 ## 4. Follow its status
 
@@ -238,12 +291,14 @@ Authorization: Bearer <token>
     "message_id": "provider-message-id",
     "mls_code": "AP",
     "errors": [],
-    "last_error": null
+    "last_error": null,
+    "warnings": []
   }
 }
 ```
 
-The document fields are `null` until the invoice has been sent. The statuses
+The document fields are `null` until the invoice has been sent. `warnings`
+holds the late-issue warning when it applies. The statuses
 mean the following:
 
 | `status` | Meaning | What to do |

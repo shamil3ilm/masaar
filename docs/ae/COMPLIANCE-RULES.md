@@ -192,10 +192,31 @@ amounts.
 | Rule | Source | Platform behaviour |
 |---|---|---|
 | The issuer must appoint exactly one accredited service provider, for both sending and receiving | MD 243/2025 Art. 5; Guidelines 6.1 | A deployment configures one provider. Organizations are told apart by their endpoint |
-| A VAT registrant issues within the VAT Law's timeline. Anyone else issues within 14 days of the transaction | MD 243/2025 Art. 6(4), 6(5) | **Not enforced.** The platform records `issue_date` and `issued_at` but does not warn about late issue |
+| An e-invoice or e-credit note is issued and transmitted within 14 days of the Date of Business Transaction: the earlier of the date the transaction occurred and the date payment was received. A VAT registrant follows the VAT Law's timeline, which for a tax invoice is also 14 days from the date of supply | MD 243/2025 Art. 6(5), 6(4) | **Recorded, not refused**, because issuing late is still better than not issuing. See [The 14-day deadline](#the-14-day-deadline) |
 | One document per invoice | — | `PeppolPreparer` locks the invoice row and returns the existing document. Sending twice never makes a second document |
+| Each document carries a UUID (`cbc:UUID`) | PINT AE IBR-193-AE (fatal); Guidelines 5.2, row 7 | The Guidelines make the service provider responsible for generating it. Because the schematron refuses a document without one, the platform writes the invoice's own UUID, so the document is valid as stored. A provider may assign its own |
 | A failure of the issuer's system is reported to the authority within 2 business days | MD 243/2025 Art. 12 | An operator's obligation. The platform logs provider failures but does not notify the authority |
 | Penalties apply only once implementation is mandatory for the Person | Guidelines 8.2, 11 | — |
+
+### The 14-day deadline
+
+The source is MD 243/2025 Art. 6(5), with Art. 6(4) for a VAT registrant.
+`IssueDeadline` applies it as follows:
+
+- **The transaction date** is the invoice's `supply_date`, or its
+  `issue_date` when there is no supply date. The platform does not record
+  payments, so an earlier payment date cannot move it.
+- **The issue date** is the date of `issued_at`, the moment the invoice was
+  issued, read on the UAE's clock (Asia/Dubai).
+- **On time** means 14 days or fewer between them. 15 days or more is late.
+- **A late invoice is still issued and sent.** Its document is stored with
+  `issued_late` set, and the platform says so in the `warnings` of
+  `POST /api/compliance/ae/invoices/{invoice}/send`, of
+  `GET /api/compliance/ae/invoices/{invoice}/status` and of the pipeline's
+  result. The portal's invoice page shows it too.
+- **It is decided at issue.** An invoice issued with `auto_submit` false is
+  sent later, but the deadline covers transmission as well, so send it
+  within the same 14 days.
 
 ## Retention
 

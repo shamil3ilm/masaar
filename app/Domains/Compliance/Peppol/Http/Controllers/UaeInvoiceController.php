@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Peppol\Http\Controllers;
 
 use App\Domains\Compliance\Exceptions\IssuanceRefusedException;
 use App\Domains\Compliance\Peppol\Http\Requests\CreateUaeInvoiceRequest;
+use App\Domains\Compliance\Peppol\Services\IssueDeadline;
 use App\Domains\Compliance\Peppol\Services\UaeDocuments;
 use App\Domains\Compliance\Peppol\Services\UaeDrafts;
 use App\Domains\Compliance\Peppol\Services\UaeInvoiceIssuer;
@@ -48,7 +49,9 @@ class UaeInvoiceController extends Controller
      *
      * Issues the draft and queues its Peppol document. 422 with every problem
      * when the document would be refused, and the invoice stays a draft. A
-     * second call sends nothing new and reports the document already made.
+     * second call sends nothing new and reports the document already made;
+     * an invoice issued without sending (the pipeline's auto_submit false)
+     * is queued by it, once. warnings says when it was issued late.
      */
     public function send(string $invoice): JsonResponse
     {
@@ -66,6 +69,7 @@ class UaeInvoiceController extends Controller
             'invoice_status' => $found->status->value,
             'document_id' => $document->id,
             'status' => $document->status,
+            'warnings' => IssueDeadline::warnings($document),
         ], 'Invoice issued');
     }
 
@@ -90,6 +94,7 @@ class UaeInvoiceController extends Controller
             'mls_code' => $document?->mls_code,
             'errors' => $document?->errors ?? [],
             'last_error' => $document?->last_error,
+            'warnings' => IssueDeadline::warnings($document),
         ]);
     }
 }

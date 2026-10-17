@@ -24,7 +24,8 @@ use Throwable;
  * issued under the organization's lock, as it does for Saudi Arabia. This
  * adds the guards every issuance passes, the mandatory-field and totals
  * check once the number exists, the document stored in the same transaction,
- * and - after commit - invoice.issued and the queued send.
+ * and - after commit - invoice.issued. Queueing the send is the caller's
+ * (UaeInvoiceIssuer), since a caller may issue now and send later.
  *
  * Nothing of ZATCA's runs: no counter, hash, signature, QR or chain. The
  * kill switch still lives in Fatoora, and the clearance still throws
@@ -34,7 +35,6 @@ class UaeJurisdiction implements IssuingJurisdiction
 {
     public function __construct(
         private readonly PeppolPreparer $preparer,
-        private readonly PeppolSender $sender,
         private readonly IssuanceNotifier $notifier,
         private readonly FilingClearance $clearance,
         private readonly KillSwitch $killSwitch,
@@ -121,10 +121,6 @@ class UaeJurisdiction implements IssuingJurisdiction
                 'status' => $result->status,
                 'message_id' => $result->asp_message_id,
             ]]);
-        }
-
-        if ($result->wasRecentlyCreated) {
-            $this->sender->queue($result);
         }
     }
 

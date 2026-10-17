@@ -9,6 +9,7 @@ use App\Domains\Compliance\Fatoora\DTOs\IssueOutcome;
 use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Compliance\Fatoora\Services\InvoiceIssuer;
 use App\Domains\Compliance\Fatoora\Services\OfflineQueue;
+use App\Domains\Compliance\Peppol\Services\IssueDeadline;
 use App\Domains\Compliance\Peppol\Services\UaeInvoiceIssuer;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
@@ -110,7 +111,7 @@ class PipelineService
     private function issue(Invoice $invoice, Organization $organization, array $data, ?string $idempotencyKey): array
     {
         if ($organization->country === 'AE') {
-            return $this->answer($invoice, $this->issueInUae($invoice));
+            return $this->answer($invoice, $this->issueInUae($invoice, (bool) ($data['auto_submit'] ?? true)));
         }
 
         $outcome = $this->issuer->issue(
@@ -127,20 +128,27 @@ class PipelineService
     }
 
     /**
-     * A UAE organization's invoice is issued and sent as a Peppol document,
-     * never signed for ZATCA. Its document stands in for the submission.
-     * Sending is what issuing a UAE invoice means, so auto_submit does not
-     * hold it back. Issuing an issued one answers with its document.
+     * A UAE organization's invoice is issued as a Peppol document, never
+     * signed for ZATCA. Its document stands in for the submission.
+     *
+     * auto_submit false issues it and prepares its document ('ready') but
+     * does not queue it; POST /api/compliance/ae/invoices/{invoice}/send, or
+     * this call again with auto_submit true, queues it once. Issuing an
+     * issued one answers with its document. A late issue is a warning.
      */
-    private function issueInUae(Invoice $invoice): IssueOutcome
+    private function issueInUae(Invoice $invoice, bool $send): IssueOutcome
     {
         try {
-            $document = $this->uae->issue($invoice);
+            $document = $this->uae->issue($invoice, $send);
         } catch (IssuanceRefusedException $e) {
             return IssueOutcome::notIssued($e->getMessage());
         }
 
-        return IssueOutcome::filed(['submission_id' => $document->id, 'state' => $document->status], [], []);
+        return IssueOutcome::filed(
+            ['submission_id' => $document->id, 'state' => $document->status],
+            [],
+            IssueDeadline::warnings($document),
+        );
     }
 
     /**
@@ -212,7 +220,7 @@ class PipelineService
         // ERP marked an unfiled invoice done. Filed now, unless it is waiting
         // in the offline queue, where sending it again would file it twice.
         if ($invoice->status === InvoiceStatus::Issued && $organization->country === 'AE') {
-            return $this->answer($invoice, $this->issueInUae($invoice));
+            return $this->answer($invoice, $this->issueInUae($invoice, (bool) ($data['auto_submit'] ?? true)));
         }
 
         if ($invoice->status === InvoiceStatus::Issued
