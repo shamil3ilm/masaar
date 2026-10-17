@@ -77,7 +77,8 @@ class DashboardController extends Controller
     }
 
     /**
-     * Get submission statistics.
+     * Get submission statistics: ZATCA submissions, or a UAE organization's
+     * e-invoices.
      *
      * GET /api/dashboard/submissions
      */
@@ -92,7 +93,7 @@ class DashboardController extends Controller
         $data = Cache::remember(
             "dashboard:submissions:{$organizationId}",
             60,
-            fn () => $this->submissionReport->summary()
+            fn () => $this->dashboard->submissions($organizationId)
         );
 
         return ApiResponse::success($data);

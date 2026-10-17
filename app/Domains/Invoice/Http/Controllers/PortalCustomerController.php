@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Http\Controllers;
 
+use App\Domains\Compliance\Peppol\Profiles\PintAe;
+use App\Domains\Compliance\Peppol\Services\UaePortal;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Services\Catalogue;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Rules\VatNumber;
+use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,6 +21,10 @@ use Illuminate\View\View;
  * The organization's customers, so an invoice starts with its buyer filled in.
  *
  * Anyone who writes invoices keeps them; a viewer reads (org.writer).
+ *
+ * A UAE organization's customers also keep the two buyer details its
+ * invoice form fills in: the Peppol endpoint the buyer's service provider
+ * issued, and the emirate. A Saudi organization's are as they were.
  */
 class PortalCustomerController extends Controller
 {
@@ -27,6 +34,7 @@ class PortalCustomerController extends Controller
 
     public function __construct(
         private readonly Catalogue $catalogue,
+        private readonly TenantResolver $tenant,
     ) {}
 
     public function index(Request $request): View
@@ -43,7 +51,9 @@ class PortalCustomerController extends Controller
 
     public function create(): View
     {
-        return view('portal.customers.form', ['customer' => new Customer(['country_code' => 'SA'])]);
+        $uae = $this->uae();
+
+        return view('portal.customers.form', ['customer' => new Customer(['country_code' => $uae ? 'AE' : 'SA']), 'uae' => $uae]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -57,7 +67,7 @@ class PortalCustomerController extends Controller
 
     public function edit(Request $request, string $customerId): View
     {
-        return view('portal.customers.form', ['customer' => $this->customer($request, $customerId)]);
+        return view('portal.customers.form', ['customer' => $this->customer($request, $customerId), 'uae' => $this->uae()]);
     }
 
     public function update(Request $request, string $customerId): RedirectResponse
@@ -104,9 +114,34 @@ class PortalCustomerController extends Controller
             'country_code' => ['required', 'string', 'size:2', 'regex:/^[A-Z]{2}$/'],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:30'],
+            ...($this->uae() ? self::uaeRules($request) : []),
         ], [
             'vat_number.unique' => __('Another customer already has this VAT number.'),
+            'peppol_endpoint.regex' => __('The Peppol endpoint is :scheme: followed by 10 digits, as the service provider issued it.', ['scheme' => PintAe::SCHEME]),
+            'subdivision.in' => __('The emirate is one of :codes.', ['codes' => implode(', ', PintAe::EMIRATES)]),
         ]);
+    }
+
+    /**
+     * The endpoint as the service provider issued it - 0235: and ten digits,
+     * which the three reserved addresses also are - and, for a buyer in the
+     * UAE, the emirate code the invoice form takes.
+     *
+     * @return array<string, list<mixed>>
+     */
+    private static function uaeRules(Request $request): array
+    {
+        $inUae = strtoupper((string) $request->input('country_code', 'AE')) === 'AE';
+
+        return [
+            'peppol_endpoint' => ['nullable', 'string', 'regex:'.Customer::UAE_ENDPOINT],
+            'subdivision' => ['nullable', 'string', 'max:50', ...($inUae ? [Rule::in(PintAe::EMIRATES)] : [])],
+        ];
+    }
+
+    private function uae(): bool
+    {
+        return UaePortal::offers($this->tenant->getOrganization());
     }
 
     private function customer(Request $request, string $customerId): Customer

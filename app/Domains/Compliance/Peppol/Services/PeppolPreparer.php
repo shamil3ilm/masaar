@@ -17,7 +17,8 @@ use Illuminate\Support\Facades\DB;
 /**
  * Turns an issued UAE invoice into the document the transport sends.
  *
- * Map, check the mandatory fields, build the XML, store it 'ready'. A
+ * Map, check the mandatory fields, build the XML, store it 'ready' - and
+ * whether it was issued past the 14-day deadline (IssueDeadline). A
  * document that fails the check is never stored: the caller gets every
  * problem at once, as a DomainException, and nothing half-made is left for
  * the transport to send.
@@ -36,6 +37,7 @@ class PeppolPreparer
         private readonly PintUblBuilder $builder,
         private readonly MandatoryFields $mandatoryFields,
         private readonly PintAe $profile,
+        private readonly IssueDeadline $deadline,
     ) {}
 
     /**
@@ -77,6 +79,7 @@ class PeppolPreparer
                 'status' => self::STATUS_READY,
                 'sender_endpoint' => $this->sender($document)->endpoint(),
                 'receiver_endpoint' => $this->receiver($document)->endpoint(),
+                'issued_late' => $this->deadline->isLate($invoice),
             ]);
         });
     }

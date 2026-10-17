@@ -15,6 +15,9 @@ use Illuminate\Support\Facades\Log;
 /**
  * Hands ready documents to the provider, each exactly once.
  *
+ * A document is queued once (queueOnce, on queued_at): at issue, or on an
+ * explicit send when the invoice was issued with auto_submit false.
+ *
  * A document is claimed - ready to sending, under its row lock - before the
  * call and outside any transaction during it, so two workers cannot both
  * send it and no lock is held while the provider thinks. Once the provider
@@ -41,6 +44,31 @@ final class PeppolSender
     public function queue(PeppolDocument $document): void
     {
         SendPeppolDocument::dispatch((string) $document->id)->afterCommit();
+    }
+
+    /**
+     * Queue a ready document that has never been queued.
+     *
+     * queued_at is claimed in one conditional update, so two callers - a
+     * double-clicked send, a retried pipeline call - cannot both queue it.
+     * A document already queued, or past ready, is left alone.
+     *
+     * @return bool whether this call queued it
+     */
+    public function queueOnce(PeppolDocument $document): bool
+    {
+        $claimed = PeppolDocument::withoutTenantScope(fn (): int => PeppolDocument::query()
+            ->whereKey($document->id)
+            ->where('direction', PeppolDocument::DIRECTION_OUT)
+            ->where('status', DocumentStatus::READY)
+            ->whereNull('queued_at')
+            ->update(['queued_at' => now()])) === 1;
+
+        if ($claimed) {
+            $this->queue($document);
+        }
+
+        return $claimed;
     }
 
     /**

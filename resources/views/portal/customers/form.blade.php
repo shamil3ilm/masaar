@@ -55,6 +55,20 @@
             <x-ui.field :label="__('Country')">
                 <x-ui.input type="text" name="country_code" maxlength="2" required class="uppercase" value="{{ old('country_code', $customer->country_code ?? 'SA') }}" />
             </x-ui.field>
+            {{-- A UAE organization's buyer details the UAE invoice form fills in. --}}
+            @if ($uae ?? false)
+                <x-ui.field :label="__('Emirate or region')">
+                    <x-ui.input type="text" name="subdivision" maxlength="50" list="emirate_codes" dir="ltr" value="{{ old('subdivision', $customer->subdivision) }}" />
+                    <span class="mt-1 block font-normal text-gray-500 dark:text-gray-400">{{ __('In the UAE, the emirate code: AUH, DXB, SHJ, AJM, UAQ, RAK or FUJ. Abroad, the buyer\'s region.') }}</span>
+                </x-ui.field>
+                <datalist id="emirate_codes">
+                    @include('portal.partials.emirate-options', ['selected' => null])
+                </datalist>
+                <x-ui.field :label="__('Peppol endpoint')">
+                    <x-ui.input type="text" name="peppol_endpoint" maxlength="15" dir="ltr" placeholder="0235:1234567890" value="{{ old('peppol_endpoint', $customer->peppol_endpoint) }}" />
+                    <span class="mt-1 block font-normal text-gray-500 dark:text-gray-400">{{ __('As the buyer\'s service provider issued it: 0235: followed by 10 digits. A buyer with none takes a reserved address: 0235:9900000098 (not yet on e-invoicing), 0235:9900000097 (deemed supply) or 0235:9900000099 (export).') }}</span>
+                </x-ui.field>
+            @endif
         </div>
     </div>
 

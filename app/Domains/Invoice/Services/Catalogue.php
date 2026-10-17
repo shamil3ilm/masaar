@@ -133,7 +133,8 @@ class Catalogue
      * Keep the buyer an invoice was just written for, when asked to.
      *
      * Matched by VAT number when there is one, so saving the same buyer twice
-     * updates them rather than making a second record.
+     * updates them rather than making a second record. From a UAE invoice,
+     * the buyer's Peppol endpoint and emirate are kept too.
      *
      * @param  array<string, mixed>  $invoice  The validated invoice fields
      */
@@ -158,8 +159,29 @@ class Catalogue
             'name_ar' => ($invoice['buyer_name_ar'] ?? null) ?: null,
             'vat_number' => $vat,
             ...array_intersect_key($address, array_flip(Customer::ADDRESS)),
+            ...$this->uaeBuyer($invoice),
             'archived_at' => null,
         ], $existing);
+    }
+
+    /**
+     * A UAE invoice's buyer endpoint and emirate, as a customer keeps them;
+     * a Saudi invoice has neither, so nothing is added. An endpoint in
+     * another Peppol scheme (a buyer abroad) is not the shape a customer
+     * keeps, and is left as it was.
+     *
+     * @param  array<string, mixed>  $invoice
+     * @return array<string, string>
+     */
+    private function uaeBuyer(array $invoice): array
+    {
+        $endpoint = (string) ($invoice['buyer_endpoint'] ?? '');
+        $subdivision = (string) ($invoice['buyer_subdivision'] ?? '');
+
+        return array_filter([
+            'peppol_endpoint' => preg_match(Customer::UAE_ENDPOINT, $endpoint) === 1 ? $endpoint : '',
+            'subdivision' => $subdivision,
+        ], fn (string $value): bool => $value !== '');
     }
 
     private function escapeLike(string $value): string

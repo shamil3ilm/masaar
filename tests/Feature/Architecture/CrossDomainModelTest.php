@@ -78,6 +78,8 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Fatoora/Services/ZatcaJurisdiction.php' => 'Invoice',
         // The receiver of an inbound document is the endpoint on a compliance profile.
         'Domains/Compliance/Peppol/Services/InboundDocuments.php' => 'Organization',
+        // The 14 days are counted from an invoice's supply and issue dates.
+        'Domains/Compliance/Peppol/Services/IssueDeadline.php' => 'Invoice',
         // A UAE document is built from an invoice and its organization's UAE settings.
         'Domains/Compliance/Peppol/Services/PeppolPreparer.php' => 'Invoice, Organization',
         'Domains/Compliance/Peppol/Services/PintMapper.php' => 'Invoice, Organization',

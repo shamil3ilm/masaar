@@ -10,11 +10,13 @@ use App\Domains\Organization\Rules\CompanyProfileRules;
 use App\Domains\Organization\Services\Membership;
 use App\Domains\Organization\Services\Registrar;
 use App\Domains\Organization\Services\TenantResolver;
+use App\Domains\Organization\Services\UaeSellerDetails;
 use App\Domains\Organization\ValueObjects\OrganizationContext;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 
 /**
  * Organization management API controller.
@@ -25,6 +27,7 @@ class OrganizationController extends Controller
         private readonly TenantResolver $tenant,
         private readonly Membership $membership,
         private readonly Registrar $registrar,
+        private readonly UaeSellerDetails $uaeSeller,
     ) {}
 
     /**
@@ -121,13 +124,30 @@ class OrganizationController extends Controller
             CompanyProfileRules::messages(),
         );
 
-        $organization = $this->registrar->amend($organization, new OrganizationChangesData(
-            name: $validated['name'] ?? null,
-            nameAr: $validated['name_ar'] ?? null,
-            vatNumber: $validated['vat_number'] ?? null,
-            pricesIncludeVat: $request->has('prices_include_vat') ? $request->boolean('prices_include_vat') : null,
-            address: AddressFields::from($validated),
-        ));
+        $pricesIncludeVat = $request->has('prices_include_vat') ? $request->boolean('prices_include_vat') : null;
+
+        // A UAE seller's tax identity, endpoint and emirate, validated in
+        // PINT AE's shapes above, are saved where its documents read them -
+        // the UAE compliance profile - by the service
+        // PUT /api/compliance/ae/profile uses, as a Saudi seller's VAT number
+        // and address are saved here. They used to be validated and dropped.
+        // The service amends the name and address too, so only the pricing
+        // mode is left to amend.
+        if ($organization->country === UaeSellerDetails::JURISDICTION && Arr::hasAny($validated, UaeSellerDetails::SETTINGS)) {
+            $this->uaeSeller->save($organization, $validated);
+
+            if ($pricesIncludeVat !== null) {
+                $this->registrar->amend($organization, new OrganizationChangesData(pricesIncludeVat: $pricesIncludeVat));
+            }
+        } else {
+            $this->registrar->amend($organization, new OrganizationChangesData(
+                name: $validated['name'] ?? null,
+                nameAr: $validated['name_ar'] ?? null,
+                vatNumber: $validated['vat_number'] ?? null,
+                pricesIncludeVat: $pricesIncludeVat,
+                address: AddressFields::from($validated),
+            ));
+        }
 
         return ApiResponse::success([
             'organization' => $organization->fresh(),
