@@ -75,9 +75,11 @@ services:
 
       # ZATCA Configuration
       ZATCA_ENVIRONMENT: ${ZATCA_ENVIRONMENT:-sandbox}
+      # Defaults only: the admin console's Countries page overrides both.
+      ZATCA_ENABLED: ${ZATCA_ENABLED:-true}
 
-      # Peppol e-invoicing (UAE). Off unless the host .env turns it on; the
-      # provider settings are read only then.
+      # Peppol e-invoicing (UAE). Off unless the host .env, or the admin
+      # console, turns it on.
       PEPPOL_AE_ENABLED: ${PEPPOL_AE_ENABLED:-false}
       PEPPOL_ASP_BASE_URL: ${PEPPOL_ASP_BASE_URL:-}
       PEPPOL_ASP_CLIENT_ID: ${PEPPOL_ASP_CLIENT_ID:-}

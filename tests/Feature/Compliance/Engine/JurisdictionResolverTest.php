@@ -9,6 +9,7 @@ use App\Domains\Compliance\Engine\Exceptions\JurisdictionUnavailableException;
 use App\Domains\Compliance\Engine\Services\JurisdictionRegistry;
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Organization\Models\Organization;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use LogicException;
 use Tests\TestCase;
 
@@ -18,6 +19,9 @@ use Tests\TestCase;
  */
 class JurisdictionResolverTest extends TestCase
 {
+    // Whether a country is on is a stored admin switch before it is a default.
+    use RefreshDatabase;
+
     protected function setUp(): void
     {
         parent::setUp();

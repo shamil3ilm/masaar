@@ -154,6 +154,15 @@
                         {{ __('You can complete its details and prepare invoices now. Connecting to e-invoicing and issuing open once it is approved.') }}
                     </div>
                 @endif
+                {{-- The organization's country switched off on the admin
+                     console's Countries page (or off by default): the same
+                     words for every country. --}}
+                @if ($navOrganization && ! app(\App\Domains\Compliance\Engine\Services\JurisdictionResolver::class)->available($navOrganization))
+                    <div role="status" class="mb-6 rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+                        <strong>{{ __('E-invoicing in your country is switched off on this platform.') }}</strong>
+                        {{ __('No new invoice can be issued until it is switched back on. Invoices already issued are still filed or sent, and you can view and download them.') }}
+                    </div>
+                @endif
                 @yield('content')
             </div>
         </main>

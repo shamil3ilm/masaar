@@ -15,14 +15,16 @@ imports nothing from a country module. `CountryCheckTest` asserts both.
 
 | Part | Class | What it does |
 |---|---|---|
-| Module contract | `Engine\Contracts\Jurisdiction` | A country's identity (`code()`, `name()`, `timezone()`, `currency()`), whether this deployment offers it (`enabled()`), and its ports |
+| Module contract | `Engine\Contracts\Jurisdiction` | A country's identity (`code()`, `name()`, `timezone()`, `currency()`, `filingSystem()`), whether this deployment offers it (`enabled()`), what an operator checks before switching it on (`readiness()`), and its ports |
+| Availability | `Engine\Services\JurisdictionAvailability` | Every country's on/off switch: a platform admin's, else the module's configured default |
 | Issuing step | `Invoice\Contracts\IssuingJurisdiction` (returned by `issuingStep()`) | The country's steps inside `IssuingLifecycle`, described below |
 | Transmission port | `Engine\Contracts\Transmission` | `issue()` issues a draft and, when asked, files or sends it. `resume()` handles an invoice that is already issued. `readyToFile()` says whether the organization can file now |
 | Notices port | `Engine\Contracts\IssueNotices` | What the portal tells a person after issuing: `filed()` and `notFiled()` |
 | Options | `Engine\DTOs\IssueOptions` | `file` (no default: filing is irreversible) and `idempotencyKey` |
 | Outcome | `Engine\DTOs\IssueOutcome` | One neutral answer for every country: `issued`, `attemptedFiling`, `errors`, `warnings`, and the raw `submission` |
 | Registry | `Engine\Services\JurisdictionRegistry` | The modules registered with this deployment, and which of them are enabled |
-| Resolver | `Engine\Services\JurisdictionResolver` | `forOrganization()` and `forInvoice()` |
+| Resolver | `Engine\Services\JurisdictionResolver` | `forOrganization()` and `forInvoice()`. `available()` answers the same question without throwing, for the portal's banner |
+| API gate | `Engine\Http\Middleware\JurisdictionAvailable` (`jurisdiction.available`) | On each country's routes that start new work. Refuses a switched-off country with `422 JURISDICTION_UNAVAILABLE` |
 | Entry point | `Engine\Services\ComplianceEngine` | `issue()` and `resume()`, which resolve the country and delegate to its transmission. `jurisdictionFor()` gives a caller the module itself |
 | Refusal | `Engine\Exceptions\JurisdictionUnavailableException` | No module for the country, or a module this deployment has switched off |
 
@@ -36,11 +38,61 @@ imports nothing from a country module. `CountryCheckTest` asserts both.
 - A country with no registered module is refused with
   `JurisdictionUnavailableException`.
 - A registered module whose `enabled()` is false is refused the same way.
-  Saudi Arabia is always enabled. The UAE is enabled by `PEPPOL_AE_ENABLED`.
+  See [Switching a country on and off](#switching-a-country-on-and-off).
 
 The pipeline API answers a refusal with `422 JURISDICTION_UNAVAILABLE`
-before anything is drafted. The portal answers `404`, as it did while the
-UAE was switched off.
+before anything is drafted. The portal's issue button answers with a
+message, and the draft stays a draft.
+
+### Switching a country on and off
+
+Every country has the same switch, and every module reads it the same way:
+its `enabled()` asks `JurisdictionAvailability` for the country's code and
+passes its own configured default.
+
+| Country | Default | Read from |
+|---|---|---|
+| Saudi Arabia | on | `ZATCA_ENABLED` (`fatoora.enabled`) |
+| United Arab Emirates | off | `PEPPOL_AE_ENABLED` (`peppol.countries.AE.enabled`) |
+
+A platform admin overrides the default on the admin console's **Countries**
+page (`/admin/countries`, `AdminCountryController`, permission
+`platform.configure`). The page lists every registered module with its
+filing system, whether it is on and whether an admin switch or the default
+decided that, how many organizations are registered in it, and its
+`readiness()`. Switching a country off asks for confirmation, says how many
+organizations will stop issuing, and warns when the billing organization is
+in that country, since platform billing stops too.
+
+The switch is a row in `settings` (key `jurisdiction.<CC>.enabled`, with
+`updated_by` and `updated_at`), cached as one entry and forgotten on write.
+`AuditAdminAction` records each switch with the value before and after.
+
+Nothing reads the environment variables directly any more. Everything that
+needs to know whether a country is on asks the engine:
+
+| Place | How it asks |
+|---|---|
+| Issuing (pipeline, portal, billing) | `JurisdictionResolver::forOrganization()` |
+| Each country's API write routes | `jurisdiction.available` |
+| Sign-up and the company country list | `CompanyProfileRules::countries()`, which is `JurisdictionRegistry::enabled()` |
+| Portal banner | `JurisdictionResolver::available()` |
+
+The production boot guard no longer looks at the UAE's switch. A connected
+service provider needs its credentials whether or not the UAE is on, because
+an admin can switch it on after boot.
+
+When a country is off, the behaviour is the same for every country:
+
+- New issuing is refused. The portal says so on the issue button and in a
+  banner on every page; the API answers `422 JURISDICTION_UNAVAILABLE`.
+- Sign-up and the company page do not offer the country.
+- Portal drafts can still be saved, and every screen and read route stays
+  open. The pipeline still refuses before drafting.
+- Work already in flight is not stranded. The background paths do not go
+  through the engine's check: the ZATCA offline queue, submission recovery
+  and the submission job keep filing, and Peppol sending, resending, status
+  polling and callbacks keep running.
 
 ### How modules register
 
@@ -82,8 +134,9 @@ when the call returns. A job queued during the call carries them too.
 
 The country APIs keep their own routes. `/api/compliance/sa/*` reaches
 Fatoora directly. `/api/compliance/ae/*` sits behind the `uae.invoicing`
-middleware, which answers `404` while `PEPPOL_AE_ENABLED` is off and `403`
-for an organization whose `country` is not `AE`.
+middleware, which answers `403` for an organization whose `country` is not
+`AE`. In both, the routes that start new work also carry
+`jurisdiction.available`.
 
 An organization has one country. Issuing for a second jurisdiction from the
 same organization is not supported.

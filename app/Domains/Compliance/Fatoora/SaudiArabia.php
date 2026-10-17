@@ -9,6 +9,7 @@ use App\Domains\Compliance\Engine\Contracts\Jurisdiction;
 use App\Domains\Compliance\Engine\Contracts\Transmission;
 use App\Domains\Compliance\Engine\DTOs\IssueOptions;
 use App\Domains\Compliance\Engine\DTOs\IssueOutcome;
+use App\Domains\Compliance\Engine\Services\JurisdictionAvailability;
 use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\Services\InvoiceIssuer;
 use App\Domains\Compliance\Fatoora\Services\OfflineQueue;
@@ -30,6 +31,7 @@ class SaudiArabia implements IssueNotices, Jurisdiction, Transmission
         private readonly InvoiceIssuer $issuer,
         private readonly OfflineQueue $offline,
         private readonly ZatcaJurisdiction $step,
+        private readonly JurisdictionAvailability $availability,
     ) {}
 
     public function code(): string
@@ -52,10 +54,20 @@ class SaudiArabia implements IssueNotices, Jurisdiction, Transmission
         return FatooraConfig::CURRENCY_SAR;
     }
 
-    /** Always: the platform was built for Saudi Arabia and has no switch for it. */
+    public function filingSystem(): string
+    {
+        return 'ZATCA (Fatoora)';
+    }
+
+    /** The admin console's switch, else ZATCA_ENABLED: on unless a deployment turns it off. */
     public function enabled(): bool
     {
-        return true;
+        return $this->availability->enabled($this->code(), (bool) config('fatoora.enabled'));
+    }
+
+    public function readiness(): array
+    {
+        return ['ZATCA environment' => (string) config('fatoora.environment')];
     }
 
     public function issuingStep(): IssuingJurisdiction

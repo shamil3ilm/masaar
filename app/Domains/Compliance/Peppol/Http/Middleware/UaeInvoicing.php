@@ -11,12 +11,15 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * UAE e-invoicing, for a UAE organization on a deployment that offers it.
+ * UAE e-invoicing, for a UAE organization.
  *
- * Until PEPPOL_AE_ENABLED is on the routes answer as if they did not exist,
- * rather than accepting work nobody has set up to carry. Where it is on, an
- * organization registered elsewhere is refused: its invoices are filed by its
- * own country's rules, and a UAE document from it would be neither.
+ * An organization registered elsewhere is refused: its invoices are filed by
+ * its own country's rules, and a UAE document from it would be neither.
+ *
+ * Whether the deployment issues in the UAE at all is the engine's answer, not
+ * this middleware's: the routes that start new work also carry
+ * jurisdiction.available, as Saudi Arabia's do, so a country switched off
+ * answers 422 JURISDICTION_UNAVAILABLE in both, and the reads stay open.
  */
 class UaeInvoicing
 {
@@ -26,8 +29,6 @@ class UaeInvoicing
 
     public function handle(Request $request, Closure $next): Response
     {
-        abort_unless((bool) config('peppol.countries.AE.enabled'), 404);
-
         if ($this->tenant->getOrganization()?->country !== 'AE') {
             return ApiResponse::forbidden(__('UAE e-invoicing is for an organization registered in the UAE.'));
         }

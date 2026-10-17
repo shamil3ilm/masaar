@@ -86,18 +86,35 @@ Three buyer endpoints are reserved:
 
 ## Enabling it
 
-UAE e-invoicing is off unless a deployment switches it on.
+UAE e-invoicing is off unless a deployment switches it on. It has the same
+switch as Saudi Arabia: a platform admin turns it on or off on the admin
+console's **Countries** page (`/admin/countries`, permission
+`platform.configure`), and that switch wins over `PEPPOL_AE_ENABLED`. The
+variable is only the default until someone throws the switch. Each switch is
+stored with who threw it and when, and is on the audit record.
+
+While the UAE is off:
+
+- nothing new is issued there. The portal says so on the issue button and in
+  a banner on every page. The API's routes that start new work
+  (`POST /api/compliance/ae/invoices`, `.../send`) and the pipeline answer
+  `422 JURISDICTION_UNAVAILABLE`;
+- sign-up and the company country list do not offer it;
+- what was already issued is not stranded. Ready documents are still sent,
+  status is still polled, callbacks are still recorded, and the read routes
+  and portal screens stay open.
 
 | Variable | Purpose |
 |---|---|
-| `PEPPOL_AE_ENABLED` | `true` makes the `/api/compliance/ae` routes available and lets organizations register in the UAE. While it is `false`, those routes answer 404 |
+| `PEPPOL_AE_ENABLED` | The default: `true` issues in the UAE and lets organizations register there until an admin switches it on the Countries page |
 | `PEPPOL_ASP_BASE_URL` | The service provider's API. Leave it empty to run with no provider (see below) |
 | `PEPPOL_ASP_CLIENT_ID`, `PEPPOL_ASP_CLIENT_SECRET` | OAuth2 client credentials for the provider |
 | `PEPPOL_ASP_WEBHOOK_SECRET` | The shared secret that signs the provider's callbacks. With no secret set, every callback is refused |
 | `PEPPOL_QUEUE` | The queue for outgoing documents (default `peppol`). The container runs a dedicated worker for it, so a slow UAE provider never delays ZATCA work |
 
 If `PEPPOL_ASP_BASE_URL` is set, production refuses to start unless the client
-ID, client secret and webhook secret are also set.
+ID, client secret and webhook secret are also set, whether or not the UAE is
+on yet: an admin can switch it on later without a restart.
 
 To set up an organization:
 

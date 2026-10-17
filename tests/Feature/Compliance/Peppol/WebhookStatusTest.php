@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Compliance\Peppol;
 
+use App\Domains\Compliance\Engine\Services\JurisdictionAvailability;
 use App\Domains\Compliance\Peppol\Contracts\AspGateway;
 use App\Domains\Compliance\Peppol\Gateways\AspStatus;
 use App\Domains\Compliance\Peppol\Gateways\FakeAspGateway;
@@ -142,6 +143,19 @@ class WebhookStatusTest extends TestCase
         $this->assertSame(['msg-old'], $this->asp->queried);
         $this->assertSame('delivered', $quiet->fresh()->status);
         $this->assertSame('sent', $recent->fresh()->status);
+    }
+
+    /** Status polling for documents already sent carries on with the UAE switched off. */
+    public function test_poll_continues_while_switched_off(): void
+    {
+        $quiet = $this->document('sent', 'msg-old');
+        $quiet->forceFill(['updated_at' => now()->subHour()])->saveQuietly();
+        $this->asp->answer(new AspStatus('msg-old', 'delivered', 'AP'));
+        app(JurisdictionAvailability::class)->set('AE', false, 'ops@masaar.test');
+
+        $this->artisan('peppol:poll-status')->assertSuccessful();
+
+        $this->assertSame('delivered', $quiet->fresh()->status);
     }
 
     /**

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Compliance;
 
+use App\Domains\Compliance\Engine\Services\JurisdictionAvailability;
 use App\Domains\Compliance\Fatoora\Models\OfflineItem;
 use App\Domains\Compliance\Fatoora\Services\CredentialStore;
 use App\Domains\Compliance\Fatoora\Services\OfflineQueue;
@@ -204,6 +205,21 @@ class OfflineReplayTest extends TestCase
         // And kept: the held item is the record of an unfiled invoice.
         app(OfflineQueue::class)->cleanup(0);
         $this->assertNotNull($this->item->fresh());
+    }
+
+    /**
+     * Saudi Arabia switched off stops new issuing, not filing what was
+     * already issued: the queued invoice still reaches the authority.
+     */
+    public function test_replay_continues_while_switched_off(): void
+    {
+        app(JurisdictionAvailability::class)->set('SA', false, 'ops@masaar.test');
+        $this->authorityAccepts();
+
+        $this->replay();
+
+        $this->assertSame(OfflineQueue::STATE_COMPLETED, $this->item->fresh()->state);
+        $this->assertSame(InvoiceStatus::Accepted, $this->invoice->fresh()->status);
     }
 
     private function authorityAccepts(): void

@@ -39,6 +39,21 @@ class JurisdictionResolver
     }
 
     /**
+     * Whether the organization's country is registered and switched on, for
+     * a screen that says so rather than refusing.
+     */
+    public function available(Organization $organization): bool
+    {
+        try {
+            $this->forOrganization($organization);
+
+            return true;
+        } catch (JurisdictionUnavailableException) {
+            return false;
+        }
+    }
+
+    /**
      * @throws JurisdictionUnavailableException
      */
     public function forInvoice(Invoice $invoice): Jurisdiction

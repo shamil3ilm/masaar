@@ -36,12 +36,15 @@ class SignupController extends Controller
 
         $countries = CompanyProfileRules::countries();
         $chosen = old('country');
+        $preferred = in_array('SA', $countries, true) ? 'SA' : ($countries[0] ?? 'SA');
 
         return view('auth.register', [
             'termsUrl' => config('signup.terms_url'),
-            // The country is asked only where there is a choice to make.
-            'choice' => count($countries) > 1,
-            'country' => in_array($chosen, $countries, true) ? $chosen : 'SA',
+            // The Saudi-only form where Saudi Arabia is all there is; the
+            // chooser, listing only the countries offered, anywhere else.
+            'choice' => $countries !== ['SA'],
+            'countries' => $countries,
+            'country' => in_array($chosen, $countries, true) ? $chosen : $preferred,
         ]);
     }
 

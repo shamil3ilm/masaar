@@ -16,8 +16,11 @@ return [
     | Countries
     |--------------------------------------------------------------------------
     |
-    | Off unless a deployment files in that country. While AE is off an
-    | organization cannot be registered there.
+    | Off unless a deployment files in that country. The default only: a
+    | platform admin's switch on the console's Countries page overrides it,
+    | as ZATCA_ENABLED is overridden for Saudi Arabia. While AE is off an
+    | organization cannot be registered there and nothing new is issued; what
+    | is already issued keeps being sent.
     |
     */
     'countries' => [

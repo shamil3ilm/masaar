@@ -43,6 +43,25 @@ been run and what has not.
 | Simulation | `https://gw-fatoora.zatca.gov.sa/e-invoicing/simulation` |
 | Production | `https://gw-fatoora.zatca.gov.sa/e-invoicing/core` |
 
+## Switching Saudi Arabia on and off
+Saudi Arabia has the same switch as the UAE. A platform admin turns it on or
+off on the admin console's **Countries** page (`/admin/countries`, permission
+`platform.configure`), and that switch wins over `ZATCA_ENABLED`, which is
+only the default (on) until someone throws it. Each switch is stored with who
+threw it and when, and is on the audit record.
+
+While Saudi Arabia is off:
+
+- nothing new is issued there. The portal says so on the issue button and in
+  a banner on every page. `POST /api/compliance/sa/generate`, `validate` and
+  `submit`, and the pipeline, answer `422 JURISDICTION_UNAVAILABLE`;
+- sign-up and the company country list do not offer it;
+- platform billing stops too, if the billing organization
+  (`BILLING_ORGANIZATION_ID`) is Saudi. The page warns before switching;
+- what was already issued is not stranded. The offline queue is still
+  replayed, submissions are still recovered and retried, and the status
+  route and portal screens stay open.
+
 ## Artisan Commands
 | Command | Description |
 |---------|-------------|

@@ -33,8 +33,24 @@ interface Jurisdiction
     /** The ISO 4217 code of the country's tax currency. */
     public function currency(): string;
 
-    /** Whether this deployment issues invoices in the country. */
+    /** The e-invoicing system the country's documents go through, as an operator calls it. */
+    public function filingSystem(): string;
+
+    /**
+     * Whether this deployment issues invoices in the country: a platform
+     * admin's switch when one is thrown, otherwise the module's configured
+     * default. Every module answers it through JurisdictionAvailability.
+     */
     public function enabled(): bool;
+
+    /**
+     * What an operator checks before switching the country on, label =>
+     * value. Read from configuration only - no network, no query - because
+     * the admin console asks every module on every render.
+     *
+     * @return array<string, string>
+     */
+    public function readiness(): array;
 
     /** The country's steps inside IssuingLifecycle. */
     public function issuingStep(): IssuingJurisdiction;

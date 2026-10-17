@@ -10,10 +10,14 @@ use App\Domains\Organization\Services\TenantResolver;
 /**
  * Whether the portal's UAE screens are open to the organization in session.
  *
- * Only on a deployment that offers UAE e-invoicing, and only to an
- * organization registered in the UAE. Anywhere else the screens answer as
- * if they did not exist, as the API does (UaeInvoicing): a Saudi
+ * Only to an organization registered in the UAE. Anywhere else the screens
+ * answer as if they did not exist, as the API does (UaeInvoicing): a Saudi
  * organization's invoices are filed by its own country's rules.
+ *
+ * Open whether or not the deployment issues in the UAE right now, as the
+ * Saudi screens are for a Saudi organization: a country switched off stops
+ * new issuing (the engine refuses it, and the layout says so), not a UAE
+ * organization's view of what it has already sent and received.
  */
 class UaePortal
 {
@@ -23,7 +27,7 @@ class UaePortal
 
     public static function offers(?Organization $organization): bool
     {
-        return (bool) config('peppol.countries.AE.enabled') && $organization?->country === 'AE';
+        return $organization?->country === 'AE';
     }
 
     /**

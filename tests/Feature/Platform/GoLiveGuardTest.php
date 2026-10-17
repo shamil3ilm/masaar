@@ -62,7 +62,7 @@ class GoLiveGuardTest extends TestCase
     }
 
     /**
-     * No provider connected, or the UAE off: nothing more to supply.
+     * No provider connected: nothing more to supply.
      */
     public function test_unconnected_provider_needs_nothing(): void
     {
@@ -72,10 +72,23 @@ class GoLiveGuardTest extends TestCase
         config(['peppol.countries.AE.enabled' => true, 'peppol.asp.base_url' => null]);
         $this->guard('assertProductionSettingsAreFilledIn');
 
-        config(['peppol.countries.AE.enabled' => false, 'peppol.asp.base_url' => 'https://asp.example.ae']);
-        $this->guard('assertProductionSettingsAreFilledIn');
-
         $this->addToAssertionCount(1);
+    }
+
+    /**
+     * A connected provider needs its credentials with the UAE off by default
+     * too: an admin can switch the country on from the console after boot.
+     */
+    public function test_provider_needs_credentials_while_off(): void
+    {
+        $this->servingInProduction();
+        $this->filledIn();
+        config(['peppol.countries.AE.enabled' => false, 'peppol.asp.base_url' => 'https://asp.example.ae']);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageMatches('/PEPPOL_ASP_CLIENT_ID/');
+
+        $this->guard('assertProductionSettingsAreFilledIn');
     }
 
     public function test_production_needs_the_operator_settings(): void

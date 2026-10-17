@@ -60,24 +60,28 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
 
     /* Compliance — Saudi Arabia (ZATCA Fatoora, Phase 2) ------------------ */
 
+    // jurisdiction.available, on each country's routes that start new work:
+    // 422 JURISDICTION_UNAVAILABLE while the country is switched off (the
+    // admin console's Countries page, or its default). Reads stay open.
     Route::prefix('compliance/sa')->middleware('org.writer')->group(function () {
-        Route::post('/generate/{invoiceId}', [ComplianceController::class, 'generate']);
-        Route::post('/validate/{invoiceId}', [ComplianceController::class, 'validate']);
-        Route::post('/submit/{invoiceId}', [ComplianceController::class, 'submit']);
+        Route::middleware('jurisdiction.available')->group(function () {
+            Route::post('/generate/{invoiceId}', [ComplianceController::class, 'generate']);
+            Route::post('/validate/{invoiceId}', [ComplianceController::class, 'validate']);
+            Route::post('/submit/{invoiceId}', [ComplianceController::class, 'submit']);
+        });
         Route::get('/status/{submissionId}', [ComplianceController::class, 'status']);
     });
 
     /* Compliance — United Arab Emirates (Peppol PINT AE) ---------------- */
 
-    // uae.invoicing: 404 while the deployment does not offer the UAE, 403 for
-    // an organization registered elsewhere.
+    // uae.invoicing: 403 for an organization registered elsewhere.
     Route::prefix('compliance/ae')->middleware('uae.invoicing')->group(function () {
         Route::get('/documents', [UaeDocumentController::class, 'index']);
         Route::get('/documents/{document}', [UaeDocumentController::class, 'show']);
         Route::get('/documents/{document}/xml', [UaeDocumentController::class, 'xml']);
         Route::get('/invoices/{invoice}/status', [UaeInvoiceController::class, 'status']);
 
-        Route::middleware('org.writer')->group(function () {
+        Route::middleware(['org.writer', 'jurisdiction.available'])->group(function () {
             Route::post('/invoices', [UaeInvoiceController::class, 'store']);
             Route::post('/invoices/{invoice}/send', [UaeInvoiceController::class, 'send']);
         });

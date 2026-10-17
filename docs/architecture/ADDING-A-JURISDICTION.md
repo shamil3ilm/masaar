@@ -15,8 +15,12 @@ Every country, whichever model it follows, starts here:
 1. **Module class.** In the country's folder, implement
    `Engine\Contracts\Jurisdiction`, as `Fatoora\SaudiArabia` and
    `Peppol\UnitedArabEmirates` do:
-   - `code()`, `name()`, `timezone()` and `currency()`;
-   - `enabled()`, read from the country's switch;
+   - `code()`, `name()`, `timezone()`, `currency()` and `filingSystem()`;
+   - `enabled()`, as `JurisdictionAvailability::enabled($this->code(), <the
+     country's configured default>)`, so the admin console's Countries page
+     can switch it like every other;
+   - `readiness()`, what an operator checks before switching it on, from
+     configuration only;
    - `issuingStep()`, the country's `IssuingJurisdiction`;
    - `transmission()`, an `Engine\Contracts\Transmission` that issues
      through the lifecycle and files or sends, answering an
@@ -67,7 +71,7 @@ second country can use them:
   `PintAe` constants, such as reserved endpoints, flags, emirates and code
   lists.
 - `InboundDocuments` stores every received document as `AE`.
-- `UaeInvoicing` checks `peppol.countries.AE.enabled` and `country === 'AE'`.
+- `UaeInvoicing` checks `country === 'AE'`.
 - `UaeJurisdiction` and `UaeInvoiceIssuer` issue UAE invoices, and
   `UnitedArabEmirates` is the UAE's module. A second country has a module of
   its own, implements its own `IssuingJurisdiction` and calls the same
@@ -91,10 +95,12 @@ Steps:
    profile.
 4. **Switch.** Add `countries.<CC>.enabled` (from `PEPPOL_<CC>_ENABLED`) to
    `config/peppol.php`, to `.env.example` and to `docker/.env.template`, off by
-   default. Allow the country in `CompanyProfileRules::countries()` only while
-   the switch is on.
+   default. It is the default the module passes to `JurisdictionAvailability`;
+   `CompanyProfileRules::countries()` and the Countries page follow it with
+   nothing more to add.
 5. **API.** Add `/api/compliance/<cc>/*` routes behind a gate middleware like
-   `uae.invoicing`, and add them to `docs/openapi.yaml`.
+   `uae.invoicing`, with `jurisdiction.available` on the routes that start new
+   work, and add them to `docs/openapi.yaml`.
 6. **Conformance.** Extend `PintConformanceTest` and the CI job to run that
    country's official artefacts. Pin each downloaded file by hash.
 

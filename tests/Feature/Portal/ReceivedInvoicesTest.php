@@ -117,14 +117,18 @@ class ReceivedInvoicesTest extends TestCase
         $this->assertSame($document->xml, $response->getContent());
     }
 
-    public function test_switched_off_answers_not_found(): void
+    /**
+     * Switching the UAE off stops new issuing, not a UAE organization's view
+     * of what it received - and the portal says the country is off.
+     */
+    public function test_switched_off_still_shows_received(): void
     {
         $document = $this->received($this->gulf, $this->ubl());
         config(['peppol.countries.AE.enabled' => false]);
 
-        $this->open('/portal/received')->assertNotFound();
-        $this->open("/portal/received/{$document->id}")->assertNotFound();
-        $this->open("/portal/received/{$document->id}/xml")->assertNotFound();
+        $this->open('/portal/received')->assertOk()->assertSee('E-invoicing in your country is switched off on this platform.');
+        $this->open("/portal/received/{$document->id}")->assertOk();
+        $this->open("/portal/received/{$document->id}/xml")->assertOk();
     }
 
     public function test_saudi_organization_gets_not_found(): void

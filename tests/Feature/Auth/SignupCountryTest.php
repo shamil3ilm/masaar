@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Auth;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Compliance\Engine\Services\JurisdictionAvailability;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\UaeSellerDetails;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -107,6 +108,23 @@ class SignupCountryTest extends TestCase
         $this->assertSame('SA', $organization->country);
         $this->assertTrue($organization->hasCompleteZatcaProfile());
         $this->assertSame(0, $organization->complianceProfiles()->count());
+    }
+
+    /**
+     * The console's switches decide what sign-up offers: Saudi Arabia off
+     * leaves the UAE alone in the chooser, and a Saudi company is refused.
+     */
+    public function test_signup_follows_the_admin_switches(): void
+    {
+        app(JurisdictionAvailability::class)->set('SA', false, 'ops@masaar.test');
+
+        $this->get('/register')
+            ->assertOk()
+            ->assertSee('name="country" value="AE"', false)
+            ->assertDontSee('name="country" value="SA"', false);
+
+        $this->post('/register', $this->saudiForm(['country' => 'SA']))->assertSessionHasErrors('country');
+        $this->assertSame(0, Organization::count());
     }
 
     /** With only Saudi Arabia there is nothing to choose, and the page is as it was. */

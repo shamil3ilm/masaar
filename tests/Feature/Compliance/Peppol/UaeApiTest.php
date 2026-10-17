@@ -35,12 +35,18 @@ class UaeApiTest extends TestCase
         $this->gulf = $this->uaeOrganization();
     }
 
-    public function test_switched_off_answers_not_found(): void
+    /**
+     * Switched off, new work is refused as Saudi Arabia's is, and what was
+     * already sent can still be read.
+     */
+    public function test_switched_off_refuses_new_work(): void
     {
         config(['peppol.countries.AE.enabled' => false]);
 
-        $this->api()->getJson('/api/compliance/ae/documents')->assertNotFound();
-        $this->api()->postJson('/api/compliance/ae/invoices', $this->payload())->assertNotFound();
+        $this->api()->getJson('/api/compliance/ae/documents')->assertOk();
+        $this->api()->postJson('/api/compliance/ae/invoices', $this->payload())
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'JURISDICTION_UNAVAILABLE');
     }
 
     public function test_saudi_organization_is_forbidden(): void

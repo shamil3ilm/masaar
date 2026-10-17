@@ -32,6 +32,7 @@ use App\Domains\Organization\Http\Controllers\PortalTeamController;
 use App\Domains\Platform\Http\Controllers\AdminAdminsController;
 use App\Domains\Platform\Http\Controllers\AdminAuditController;
 use App\Domains\Platform\Http\Controllers\AdminController;
+use App\Domains\Platform\Http\Controllers\AdminCountryController;
 use App\Domains\Platform\Http\Controllers\AdminOrganizationReviewController;
 use App\Domains\Platform\Http\Controllers\AdminSettingsController;
 use App\Domains\Platform\Http\Controllers\AdminUserController;
@@ -270,6 +271,12 @@ Route::prefix('admin')->name('admin.')
         Route::post('/branding/reset', [AdminBrandingController::class, 'reset'])->middleware('admin.can:platform.configure')->name('branding.reset');
         Route::post('/settings', [AdminSettingsController::class, 'update'])->middleware('admin.can:platform.configure')->name('settings.update');
 
+        // Which countries the platform issues in. One switch per country,
+        // the same for every one; switching off stops new issuing there and
+        // lets what was already issued finish.
+        Route::get('/countries', [AdminCountryController::class, 'index'])->name('countries');
+        Route::post('/countries', [AdminCountryController::class, 'update'])->middleware('admin.can:platform.configure')->name('countries.update');
+
         // The kill switches. Every one of these is a POST: they change what
         // the platform will do for every taxpayer on it, so none of them is
         // something a crawler or a prefetch should be able to follow.
@@ -350,8 +357,7 @@ Route::prefix('portal')->name('portal.')
 
         // UAE e-invoicing: the UAE invoice form's draft, the e-invoice an
         // issued invoice was sent as, and invoices other suppliers sent. A
-        // UAE organization's only, on a deployment that offers it; anyone
-        // else gets a 404 (UaePortal).
+        // UAE organization's only; anyone else gets a 404 (UaePortal).
         Route::post('/invoices/uae', [PortalUaeInvoiceController::class, 'store'])->name('invoices.uae.store');
         Route::get('/invoices/{invoiceId}/e-invoice', [PortalUaeInvoiceController::class, 'xml'])->name('invoices.xml');
         Route::get('/received', [PortalReceivedController::class, 'index'])->name('received.index');

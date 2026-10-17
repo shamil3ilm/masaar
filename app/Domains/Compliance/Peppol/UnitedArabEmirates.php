@@ -9,6 +9,7 @@ use App\Domains\Compliance\Engine\Contracts\Jurisdiction;
 use App\Domains\Compliance\Engine\Contracts\Transmission;
 use App\Domains\Compliance\Engine\DTOs\IssueOptions;
 use App\Domains\Compliance\Engine\DTOs\IssueOutcome;
+use App\Domains\Compliance\Engine\Services\JurisdictionAvailability;
 use App\Domains\Compliance\Exceptions\IssuanceRefusedException;
 use App\Domains\Compliance\Peppol\Services\IssueDeadline;
 use App\Domains\Compliance\Peppol\Services\UaeInvoiceIssuer;
@@ -30,6 +31,7 @@ class UnitedArabEmirates implements IssueNotices, Jurisdiction, Transmission
     public function __construct(
         private readonly UaeInvoiceIssuer $issuer,
         private readonly UaeJurisdiction $step,
+        private readonly JurisdictionAvailability $availability,
     ) {}
 
     public function code(): string
@@ -52,10 +54,22 @@ class UnitedArabEmirates implements IssueNotices, Jurisdiction, Transmission
         return 'AED';
     }
 
-    /** PEPPOL_AE_ENABLED: off unless the deployment files in the UAE. */
+    public function filingSystem(): string
+    {
+        return 'Peppol PINT AE';
+    }
+
+    /** The admin console's switch, else PEPPOL_AE_ENABLED: off unless a deployment turns it on. */
     public function enabled(): bool
     {
-        return (bool) config('peppol.countries.AE.enabled');
+        return $this->availability->enabled($this->code(), (bool) config('peppol.countries.AE.enabled'));
+    }
+
+    public function readiness(): array
+    {
+        return ['Service provider' => filled(config('peppol.asp.base_url'))
+            ? 'Connected'
+            : 'None: documents wait to be uploaded by hand'];
     }
 
     public function issuingStep(): IssuingJurisdiction

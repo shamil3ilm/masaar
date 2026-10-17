@@ -9,6 +9,7 @@ use App\Domains\Auth\Http\Middleware\JwtGuard;
 use App\Domains\Auth\Services\JwtAuthenticator;
 use App\Domains\Branding\Http\ThemeComposer;
 use App\Domains\Branding\Services\ThemeService;
+use App\Domains\Compliance\Engine\Http\Middleware\JurisdictionAvailable;
 use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
 use App\Domains\Compliance\Fatoora\Http\Middleware\FilingCleared;
 use App\Domains\Compliance\Fatoora\Services\CircuitBreaker;
@@ -62,6 +63,7 @@ class AppServiceProvider extends ServiceProvider
         'platform.license' => PlatformLicense::class,
         'filing.cleared' => FilingCleared::class,
         'uae.invoicing' => UaeInvoicing::class,
+        'jurisdiction.available' => JurisdictionAvailable::class,
     ];
 
     /**
@@ -318,16 +320,20 @@ class AppServiceProvider extends ServiceProvider
     /**
      * A connected UAE service provider has its credentials.
      *
-     * Only when AE is on and a provider's base URL is set. With no URL the
-     * platform keeps documents for upload by hand, which needs nothing; with
-     * one, a missing secret means every send is refused at the provider and
-     * every callback is unverifiable - found at the first invoice, not here.
+     * Only when a provider's base URL is set. With no URL the platform keeps
+     * documents for upload by hand, which needs nothing; with one, a missing
+     * secret means every send is refused at the provider and every callback
+     * is unverifiable - found at the first invoice, not here.
+     *
+     * Whether the UAE is on does not enter into it. A platform admin can
+     * switch the country on from the console at any time, long after this
+     * guard ran, and boot is no place to ask the database for that switch.
      *
      * @return array<string, bool>
      */
     private function peppolProviderUnset(): array
     {
-        if (! config('peppol.countries.AE.enabled') || $this->blank(config('peppol.asp.base_url'))) {
+        if ($this->blank(config('peppol.asp.base_url'))) {
             return [];
         }
 

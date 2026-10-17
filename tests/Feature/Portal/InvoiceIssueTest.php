@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Portal;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Compliance\Engine\Services\JurisdictionAvailability;
 use App\Domains\Compliance\Fatoora\Services\Connectivity;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
@@ -146,6 +147,32 @@ class InvoiceIssueTest extends TestCase
         }
 
         $this->assertSame([1, 2, 3, 4, 5], array_keys($tags));
+    }
+
+    /**
+     * Saudi Arabia switched off in the console: the portal says so, rather
+     * than a bare 404, and the draft stays a draft. Switched back on, the
+     * same button issues it.
+     */
+    public function test_switched_off_country_is_told(): void
+    {
+        $invoice = $this->draft('ACME-9');
+        $switches = app(JurisdictionAvailability::class);
+        $switches->set('SA', false, 'ops@masaar.test');
+
+        $this->issue($invoice)
+            ->assertRedirect(route('portal.invoices.show', $invoice->id))
+            ->assertSessionHas('error', fn (string $m): bool => str_contains($m, 'switched off'));
+        $this->assertSame(InvoiceStatus::Draft, $invoice->fresh()->status);
+
+        $this->asRequest(fn () => $this->actingAs($this->member)->get('/portal/invoices/'.$invoice->id))
+            ->assertOk()
+            ->assertSee('E-invoicing in your country is switched off on this platform.');
+
+        $switches->set('SA', true, 'ops@masaar.test');
+
+        $this->issue($invoice)->assertSessionMissing('error');
+        $this->assertSame(InvoiceStatus::Issued, $invoice->fresh()->status);
     }
 
     private function draft(string $number): Invoice

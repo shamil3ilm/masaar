@@ -16,9 +16,9 @@ use Illuminate\Support\ServiceProvider;
  * Peppol: the UAE's registration with the compliance engine, and which
  * service provider the platform talks to.
  *
- * The UAE module is registered whether or not PEPPOL_AE_ENABLED is on; the
- * module answers enabled() from it, and the engine refuses a switched-off
- * country.
+ * The UAE module is registered whether or not the UAE is on; the module
+ * answers enabled() from the admin console's switch, else PEPPOL_AE_ENABLED,
+ * and the engine refuses a switched-off country.
  *
  * The transport is decided by configuration alone. No base URL is a
  * deployment without a provider, where documents wait for a manual upload;

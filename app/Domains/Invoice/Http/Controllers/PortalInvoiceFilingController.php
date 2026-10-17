@@ -52,12 +52,15 @@ class PortalInvoiceFilingController extends Controller
         $invoice = $this->invoices->findWithLines($orgId, $invoiceId);
         $organization = $this->tenant->getOrganization();
 
-        // A country this deployment does not issue in answers as if the
-        // action did not exist.
+        // A country this deployment does not issue in - switched off on the
+        // admin console's Countries page, or off by default - is said so, and
+        // the draft stays a draft. The layout's banner says it on every page.
         try {
             $jurisdiction = $this->engine->jurisdictionFor($organization);
         } catch (JurisdictionUnavailableException) {
-            abort(404);
+            return redirect()
+                ->route('portal.invoices.show', $invoiceId)
+                ->with('error', __('E-invoicing in your country is switched off on this platform, so the invoice was not issued. It stays a draft until it is switched back on.'));
         }
 
         $outcome = $this->engine->issue($invoice, $organization, new IssueOptions(

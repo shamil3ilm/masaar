@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Compliance\Peppol;
 
+use App\Domains\Compliance\Engine\Services\JurisdictionAvailability;
 use App\Domains\Compliance\Peppol\Contracts\AspGateway;
 use App\Domains\Compliance\Peppol\Exceptions\AspRefusedException;
 use App\Domains\Compliance\Peppol\Exceptions\AspUnavailableException;
@@ -45,6 +46,21 @@ class SenderTest extends TestCase
         $this->assertSame('sent', $document->status);
         $this->assertSame('fake-'.$document->id, $document->asp_message_id);
         $this->assertSame(1, $document->attempts);
+        $this->assertSame([$document->id], $this->asp->submitted);
+    }
+
+    /**
+     * The UAE switched off stops new issuing, not sending what was already
+     * issued: a ready document still goes to the service provider.
+     */
+    public function test_sending_continues_while_switched_off(): void
+    {
+        $document = $this->readyDocument();
+        app(JurisdictionAvailability::class)->set('AE', false, 'ops@masaar.test');
+
+        SendPeppolDocument::dispatch($document->id);
+
+        $this->assertSame('sent', $document->fresh()->status);
         $this->assertSame([$document->id], $this->asp->submitted);
     }
 

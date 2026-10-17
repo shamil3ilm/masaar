@@ -22,6 +22,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Saudi Arabia on this deployment
+    |--------------------------------------------------------------------------
+    |
+    | The default only: a platform admin's switch on the console's Countries
+    | page overrides it, as PEPPOL_AE_ENABLED is overridden for the UAE.
+    | Off, nothing new is issued in Saudi Arabia and an organization cannot
+    | be registered there; what is already issued keeps being filed.
+    |
+    */
+    'enabled' => (bool) env('ZATCA_ENABLED', true),
+
+    /*
+    |--------------------------------------------------------------------------
     | API Endpoints
     |--------------------------------------------------------------------------
     */

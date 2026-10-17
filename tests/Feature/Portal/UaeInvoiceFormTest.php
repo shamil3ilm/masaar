@@ -167,11 +167,15 @@ class UaeInvoiceFormTest extends TestCase
         $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
     }
 
-    public function test_switched_off_answers_not_found(): void
+    /**
+     * Switched off, a draft is still saved, as on the Saudi form: issuing it
+     * is what the engine refuses.
+     */
+    public function test_switched_off_still_saves_drafts(): void
     {
         config(['peppol.countries.AE.enabled' => false]);
 
-        $this->submit($this->form())->assertNotFound();
+        $this->submit($this->form())->assertSessionHas('success');
     }
 
     public function test_saudi_organization_gets_not_found(): void

@@ -12,6 +12,10 @@ use Illuminate\Support\ServiceProvider;
  *
  * The default jurisdiction: an organization with no country is a row from
  * before the column was set, and those were Saudi.
+ *
+ * Registered whether or not Saudi Arabia is on; the module answers enabled()
+ * from the admin console's switch, else ZATCA_ENABLED, exactly as the UAE's
+ * does, and the engine refuses a switched-off country.
  */
 class FatooraServiceProvider extends ServiceProvider
 {

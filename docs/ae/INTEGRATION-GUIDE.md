@@ -15,8 +15,12 @@ call acts for. Another organization's invoice or document answers `404`.
 **Availability:** every route below answers as follows when it is not
 available:
 
-- `404` while the deployment has `PEPPOL_AE_ENABLED=false`.
 - `403` for an organization that is not registered in the UAE (country `AE`).
+- `422 JURISDICTION_UNAVAILABLE`, for the routes that start new work
+  (`POST /invoices` and `POST /invoices/{invoice}/send`), while the UAE is
+  switched off on this deployment: by a platform admin on the console's
+  Countries page, or by default (`PEPPOL_AE_ENABLED=false`). The read routes
+  stay open, so documents already sent can still be followed.
 
 ## Responses and errors
 

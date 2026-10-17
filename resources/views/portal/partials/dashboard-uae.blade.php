@@ -36,7 +36,7 @@
     <div class="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
         <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Received invoices') }}</p>
         <p class="text-3xl font-bold text-gray-800 dark:text-gray-100">{{ $einvoices['received'] }}</p>
-        {{-- The received screens are open only where the deployment offers the UAE. --}}
+        {{-- The received screens are a UAE organization's. --}}
         @if (\App\Domains\Compliance\Peppol\Services\UaePortal::offers($organization))
             <a href="{{ route('portal.received.index') }}" class="text-teal-700 dark:text-teal-300 hover:text-teal-900 dark:hover:text-teal-200 text-sm">{{ __('View') }}</a>
         @endif

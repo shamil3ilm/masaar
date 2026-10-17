@@ -103,8 +103,8 @@ class ProductionGuardTest extends TestCase
         }
 
         // The same guard, for a connected UAE service provider: a base URL
-        // set with AE on needs the credentials beside it.
-        if (($env['PEPPOL_AE_ENABLED'] ?? 'false') === 'true' && ($env['PEPPOL_ASP_BASE_URL'] ?? '') !== '') {
+        // needs the credentials beside it, whether or not AE is on yet.
+        if (($env['PEPPOL_ASP_BASE_URL'] ?? '') !== '') {
             foreach (['PEPPOL_ASP_CLIENT_ID', 'PEPPOL_ASP_CLIENT_SECRET', 'PEPPOL_ASP_WEBHOOK_SECRET'] as $setting) {
                 $this->assertArrayHasKey($setting, $env,
                     $template.' connects a service provider without '.$setting.', which production requires.');

@@ -53,7 +53,8 @@ class ComposeEnvTest extends TestCase
             // that restart-loops whatever the host .env says.
             ['ZATCA_ENVIRONMENT', 'the container would boot against the sandbox default and refuse to start'],
 
-            // Silent default: off, so a UAE deployment would quietly not file.
+            // Silent defaults: each country's, until an admin switches it.
+            ['ZATCA_ENABLED', 'a deployment that turned Saudi Arabia off would issue there'],
             ['PEPPOL_AE_ENABLED', 'UAE e-invoicing would stay off'],
             ['PEPPOL_ASP_BASE_URL', 'no service provider would be connected'],
             ['PEPPOL_ASP_CLIENT_SECRET', 'the service provider would receive no credential'],
