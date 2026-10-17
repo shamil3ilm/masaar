@@ -91,6 +91,9 @@ class CreatePortalInvoiceRequest extends CreateInvoiceRequest
             'buyer_address' => $this->addressOrNull(),
             // The charge rows used, as the lines are.
             'charges' => ChargeRules::used($this->input('charges')),
+            // The prepayment invoices settled, typed as their numbers
+            // separated by commas.
+            'prepayments' => $this->prepaymentNumbers(),
         ]);
 
         $this->replace($this->withoutBlanks($this->all()));
@@ -136,6 +139,18 @@ class CreatePortalInvoiceRequest extends CreateInvoiceRequest
 
             return $charges === null ? $line : [...$line, 'charges' => $charges];
         }, array_values($used));
+    }
+
+    /**
+     * "ADV-1, ADV-2" as the prepayments the rules take, or null for none.
+     *
+     * @return list<array{invoice_number: string}>|null
+     */
+    private function prepaymentNumbers(): ?array
+    {
+        $numbers = array_values(array_filter(array_map('trim', explode(',', (string) $this->input('prepayment_numbers', '')))));
+
+        return $numbers === [] ? null : array_map(fn (string $number): array => ['invoice_number' => $number], $numbers);
     }
 
     /**

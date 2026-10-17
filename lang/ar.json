@@ -1131,5 +1131,16 @@
     "Delivery": "التوصيل",
     "Service charge": "رسوم الخدمة",
     "Installation": "التركيب",
-    "Other charge": "رسم آخر"
+    "Other charge": "رسم آخر",
+    "There is no invoice :number.": "لا توجد فاتورة برقم :number.",
+    "Invoice :number is not a prepayment invoice.": "الفاتورة :number ليست فاتورة دفعة مقدمة.",
+    "Prepayment invoice :number has not been issued.": "لم تصدر فاتورة الدفعة المقدمة :number بعد.",
+    "Prepayment invoice :number is in :currency.": "فاتورة الدفعة المقدمة :number بعملة :currency.",
+    "Prepayment invoice :number is already settled.": "سُوّيت فاتورة الدفعة المقدمة :number من قبل.",
+    "The prepayments come to more than this invoice.": "تزيد الدفعات المقدمة على قيمة هذه الفاتورة.",
+    "Only a final tax invoice settles prepayments (BR-KSA-73).": "لا تُسوّى الدفعات المقدمة إلا بفاتورة ضريبية نهائية (BR-KSA-73).",
+    "Prepayment :number": "الدفعة المقدمة :number",
+    "Amount due": "المبلغ المستحق",
+    "Settles prepayment invoices": "تسوّي فواتير الدفعات المقدمة",
+    "On a final invoice: the numbers of the prepayment invoices it settles, separated by commas.": "في الفاتورة النهائية: أرقام فواتير الدفعات المقدمة التي تسوّيها، مفصولة بفواصل."
 }

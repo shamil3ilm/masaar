@@ -28,6 +28,102 @@ class UblLineBuilder
         foreach ($data->lines as $index => $line) {
             $dom->documentElement->appendChild($this->buildLine($dom, $data, $index, $line));
         }
+
+        foreach ($data->prepayments as $offset => $prepayment) {
+            $dom->documentElement->appendChild($this->buildPrepaymentLine($dom, $data, count($data->lines) + $offset, $prepayment));
+        }
+    }
+
+    /**
+     * A prepayment settled, as ZATCA's "Advance Payment adjustments" sample
+     * writes it: a line of nothing - no quantity, net, VAT or price
+     * (BR-KSA-82) - naming the prepayment invoice (KSA-26 to KSA-30, its
+     * type 386 by BR-KSA-74), with what was prepaid at its category in the
+     * line's tax subtotal (KSA-31 to KSA-34, BR-KSA-75, and the exemption
+     * KSA-41 and KSA-42 where it is not standard-rated, BR-KSA-93 to -96).
+     *
+     * @param  array<string, mixed>  $prepayment
+     */
+    private function buildPrepaymentLine(DOMDocument $dom, InvoiceXmlData $data, int $index, array $prepayment): DOMElement
+    {
+        $currency = $data->currency;
+        $line = $dom->createElementNS(Ubl::CAC_NS, 'cac:InvoiceLine');
+        $line->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:ID', (string) ($index + 1)));
+
+        $quantity = Ubl::element($dom, Ubl::CBC_NS, 'cbc:InvoicedQuantity', $this->formatQuantity(0.0));
+        $quantity->setAttribute('unitCode', UnitCode::normalise(null));
+        $line->appendChild($quantity);
+
+        $net = Ubl::element($dom, Ubl::CBC_NS, 'cbc:LineExtensionAmount', Ubl::amount(0.0));
+        $net->setAttribute('currencyID', $currency);
+        $line->appendChild($net);
+
+        $reference = $dom->createElementNS(Ubl::CAC_NS, 'cac:DocumentReference');
+        $reference->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:ID', (string) $prepayment['number']));
+        $reference->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:UUID', (string) $prepayment['uuid']));
+        $reference->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:IssueDate', (string) $prepayment['issueDate']));
+        $reference->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:IssueTime', (string) $prepayment['issueTime']));
+        $reference->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:DocumentTypeCode', '386'));
+        $line->appendChild($reference);
+
+        $taxTotal = $dom->createElementNS(Ubl::CAC_NS, 'cac:TaxTotal');
+
+        foreach (['cbc:TaxAmount' => 0.0, 'cbc:RoundingAmount' => 0.0] as $name => $value) {
+            $amount = Ubl::element($dom, Ubl::CBC_NS, $name, Ubl::amount($value));
+            $amount->setAttribute('currencyID', $currency);
+            $taxTotal->appendChild($amount);
+        }
+
+        $subtotal = $dom->createElementNS(Ubl::CAC_NS, 'cac:TaxSubtotal');
+
+        foreach (['cbc:TaxableAmount' => $prepayment['taxable'], 'cbc:TaxAmount' => $prepayment['tax']] as $name => $value) {
+            $amount = Ubl::element($dom, Ubl::CBC_NS, $name, Ubl::amount((float) $value));
+            $amount->setAttribute('currencyID', $currency);
+            $subtotal->appendChild($amount);
+        }
+
+        $subtotal->appendChild($this->taxCategory($dom, 'cac:TaxCategory', $prepayment, true));
+        $taxTotal->appendChild($subtotal);
+        $line->appendChild($taxTotal);
+
+        $item = $dom->createElementNS(Ubl::CAC_NS, 'cac:Item');
+        // In both languages, as the sample's is, and never in the reader's
+        // locale: what is signed cannot depend on who issued it.
+        $item->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:Name', 'Prepayment '.$prepayment['number'].' | دفعة مقدمة '.$prepayment['number']));
+        $item->appendChild($this->taxCategory($dom, 'cac:ClassifiedTaxCategory', $prepayment, false));
+        $line->appendChild($item);
+
+        $price = $dom->createElementNS(Ubl::CAC_NS, 'cac:Price');
+        $priceAmount = Ubl::element($dom, Ubl::CBC_NS, 'cbc:PriceAmount', Ubl::amount(0.0));
+        $priceAmount->setAttribute('currencyID', $currency);
+        $price->appendChild($priceAmount);
+        $line->appendChild($price);
+
+        return $line;
+    }
+
+    /**
+     * A prepaid category: its code and rate, and on the tax subtotal its
+     * exemption where it is not standard-rated.
+     *
+     * @param  array<string, mixed>  $prepayment
+     */
+    private function taxCategory(DOMDocument $dom, string $element, array $prepayment, bool $withExemption): DOMElement
+    {
+        $category = $dom->createElementNS(Ubl::CAC_NS, $element);
+        $category->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:ID', (string) $prepayment['taxCategory']));
+        $category->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:Percent', Ubl::amount((float) $prepayment['taxRate'])));
+
+        if ($withExemption && filled($prepayment['exemptionCode'] ?? null)) {
+            $category->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:TaxExemptionReasonCode', (string) $prepayment['exemptionCode']));
+            $category->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:TaxExemptionReason', (string) $prepayment['exemptionReason']));
+        }
+
+        $scheme = $dom->createElementNS(Ubl::CAC_NS, 'cac:TaxScheme');
+        $scheme->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:ID', 'VAT'));
+        $category->appendChild($scheme);
+
+        return $category;
     }
 
     /**

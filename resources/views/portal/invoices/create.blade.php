@@ -118,6 +118,12 @@
             @include('portal.invoices.partials.references')
             @include('portal.invoices.partials.payment-terms')
 
+            <div>
+                <label for="prepayment_numbers" class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('Settles prepayment invoices') }}</label>
+                <x-ui.input type="text" name="prepayment_numbers" id="prepayment_numbers" value="{{ old('prepayment_numbers') }}" />
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('On a final invoice: the numbers of the prepayment invoices it settles, separated by commas.') }}</p>
+            </div>
+
             {{-- The reasons ZATCA's data dictionary lists for KSA-10, read
                  from App\Domains\Invoice\Support\AdjustmentReason. Each is
                  stored and printed in both languages, exactly as written

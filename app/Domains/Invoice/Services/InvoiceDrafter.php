@@ -9,6 +9,7 @@ use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Exceptions\InvoiceNotEditableException;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Models\InvoiceCharge;
+use App\Domains\Invoice\Models\InvoicePrepayment;
 use App\Domains\Invoice\Support\UnitCode;
 use App\Domains\Organization\Models\Organization;
 use Carbon\CarbonImmutable;
@@ -32,6 +33,7 @@ class InvoiceDrafter
 
     public function __construct(
         private readonly AuditService $audit,
+        private readonly PrepaymentSettlement $settlement,
     ) {}
 
     /**
@@ -91,7 +93,9 @@ class InvoiceDrafter
 
         $totals = InvoiceTotals::of($data['lines'], (string) ($data['discount_amount'] ?? '0'), $inclusive, array_values((array) ($data['charges'] ?? [])));
 
-        return DB::transaction(function () use ($data, $organizationId, $branchId, $totals, $inclusive, $countryFields) {
+        $prepayments = $this->prepayments($data, $organizationId, $totals->total);
+
+        return DB::transaction(function () use ($data, $organizationId, $branchId, $totals, $inclusive, $countryFields, $prepayments) {
             $invoice = Invoice::create([
                 ...$countryFields,
                 'org_id' => $organizationId,
@@ -167,11 +171,19 @@ class InvoiceDrafter
                 ]);
             }
 
+            $prepaid = '0.00';
+
+            foreach ($prepayments as $position => $row) {
+                InvoicePrepayment::query()->create(['invoice_id' => $invoice->id, 'position' => $position, ...$row]);
+                $prepaid = bcadd($prepaid, bcadd($row['taxable_amount'], $row['tax_amount'], 2), 2);
+            }
+
             $invoice->update([
                 'subtotal' => $totals->subtotal,
                 'discount_amount' => $totals->discount,
                 'tax_amount' => $totals->tax,
                 'total' => $totals->total,
+                ...($prepayments === [] ? [] : ['prepaid_amount' => $prepaid]),
             ]);
 
             $this->audit->logCreated($invoice);
@@ -213,6 +225,48 @@ class InvoiceDrafter
             $this->audit->logDeleted($draft);
             $draft->delete();
         });
+    }
+
+    /**
+     * The prepayment invoices this one settles, by number: what each
+     * prepaid per tax category, as it said. Refused before anything is
+     * written when one cannot be settled, or when together they come to
+     * more than this invoice, which would leave a negative amount to pay.
+     *
+     * @param  array<string, mixed>  $data
+     * @return list<array<string, mixed>>
+     *
+     * @throws ValidationException
+     */
+    private function prepayments(array $data, string $organizationId, string $total): array
+    {
+        $rows = [];
+        $prepaid = '0';
+
+        foreach (array_values((array) ($data['prepayments'] ?? [])) as $index => $reference) {
+            $prepayment = $this->settlement->settleable($organizationId, (string) ($reference['invoice_number'] ?? ''), (string) ($data['currency'] ?? 'SAR'));
+
+            if (is_string($prepayment)) {
+                throw ValidationException::withMessages(["prepayments.{$index}.invoice_number" => $prepayment]);
+            }
+
+            foreach ($this->settlement->prepaid($prepayment) as $category) {
+                $rows[] = [
+                    'prepayment_invoice_id' => $prepayment->id,
+                    'invoice_number' => (string) $prepayment->invoice_number,
+                    'issue_date' => $prepayment->issue_date->toDateString(),
+                    'issued_at' => $prepayment->issuedMoment(),
+                    ...$category,
+                ];
+                $prepaid = bcadd($prepaid, bcadd($category['taxable_amount'], $category['tax_amount'], 2), 2);
+            }
+        }
+
+        if (bccomp($prepaid, $total, 2) > 0) {
+            throw ValidationException::withMessages(['prepayments' => __('The prepayments come to more than this invoice.')]);
+        }
+
+        return $rows;
     }
 
     /**

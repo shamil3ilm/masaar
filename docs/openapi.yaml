@@ -1730,6 +1730,8 @@ paths:
                   type: string
                 lines:
                   type: array
+                prepayments:
+                  type: array
                 charges:
                   type: array
               required:
@@ -1864,6 +1866,8 @@ paths:
                   type: string
                 lines:
                   type: array
+                prepayments:
+                  type: array
                 charges:
                   type: array
               required:
@@ -1970,6 +1974,8 @@ paths:
                 notes:
                   type: string
                 lines:
+                  type: array
+                prepayments:
                   type: array
                 charges:
                   type: array
@@ -3125,6 +3131,8 @@ paths:
                   type: string
                 lines:
                   type: array
+                prepayments:
+                  type: array
                 charges:
                   type: array
               required:
@@ -3262,6 +3270,8 @@ paths:
                 notes:
                   type: string
                 lines:
+                  type: array
+                prepayments:
                   type: array
                 charges:
                   type: array
@@ -3423,6 +3433,8 @@ paths:
                 notes:
                   type: string
                 lines:
+                  type: array
+                prepayments:
                   type: array
                 charges:
                   type: array

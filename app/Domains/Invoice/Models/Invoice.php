@@ -78,6 +78,9 @@ class Invoice extends Model
         'discount_amount',
         'tax_amount',
         'total',
+        // What its prepayments came to with their VAT (BT-113); the buyer
+        // pays the total less it.
+        'prepaid_amount',
         'hash',
         'qr_code',
         'signed_xml',
@@ -115,6 +118,7 @@ class Invoice extends Model
             'discount_amount' => 'decimal:2',
             'tax_amount' => 'decimal:2',
             'total' => 'decimal:2',
+            'prepaid_amount' => 'decimal:2',
             'exchange_rate' => 'decimal:6',
             'icv' => 'integer',
             'zatca_response' => 'array',
@@ -322,6 +326,23 @@ class Invoice extends Model
     public function charges(): HasMany
     {
         return $this->hasMany(InvoiceCharge::class)->whereNull('invoice_line_id')->orderBy('position');
+    }
+
+    /**
+     * The prepayments this final invoice settles, a row per prepaid tax
+     * category.
+     */
+    public function prepayments(): HasMany
+    {
+        return $this->hasMany(InvoicePrepayment::class)->orderBy('position');
+    }
+
+    /**
+     * What the buyer pays: the total less any prepayments (BT-115).
+     */
+    public function payable(): string
+    {
+        return bcsub((string) $this->total, (string) ($this->prepaid_amount ?? '0'), 2);
     }
 
     /**

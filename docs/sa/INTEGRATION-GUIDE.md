@@ -131,6 +131,25 @@ and `is_self_billed` (KSA-2), and the buyer's `order_reference` (BT-13),
 `contract_reference` (BT-12) and `buyer_reference` (shown, not in the
 document).
 
+### Prepayments
+
+An advance is invoiced when it is received, as a prepayment invoice
+(`"document_type": "prepayment"`, type 386). The final invoice names the
+prepayment invoices it settles:
+
+```json
+"prepayments": [{ "invoice_number": "ADV-1" }]
+```
+
+Each must be the organization's own, issued, in the same currency and not
+settled already, and only a final tax invoice settles them (BR-KSA-73). The
+final invoice states the whole supply and its VAT, a line per prepaid tax
+category naming the prepayment invoice (KSA-26 to KSA-34), the prepaid
+amount (BT-113, `prepaid_amount`) and what is left to pay; its QR's total is
+that amount. The VAT summary takes the prepaid VAT off the final invoice, as
+it was declared on the prepayment invoice. The portal's form takes the
+numbers separated by commas.
+
 ### 5. Check Status
 
 ```http

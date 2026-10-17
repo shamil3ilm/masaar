@@ -278,6 +278,73 @@ class ScenarioConformanceTest extends TestCase
         $this->assertAccepted($xml);
     }
 
+    /** A prepayment invoice (386) for an advance, as the buyer is billed for it. */
+    public function test_a_prepayment_invoice_validates(): void
+    {
+        $xml = $this->signedFrom(self::standard([
+            'document_type' => 'prepayment',
+            'lines' => [['description' => 'Advance for a laptop', 'quantity' => 1, 'unit_price' => '1000.00']],
+        ]));
+
+        $this->assertMatchesRegularExpression('#<cbc:InvoiceTypeCode[^>]*>386</cbc:InvoiceTypeCode>#', $xml);
+        $this->assertAccepted($xml);
+    }
+
+    /**
+     * The final invoice settling it, in the shape of ZATCA's "Advance
+     * Payment adjustments" sample: the full supply and its VAT, a line per
+     * prepaid category naming the prepayment invoice (KSA-26 to KSA-30) with
+     * what was prepaid (KSA-31 to KSA-34), the prepaid amount (BT-113) and
+     * what is left to pay. One prepayment mixes two categories.
+     */
+    public function test_a_final_invoice_settles_prepayments(): void
+    {
+        $this->requireSdk();
+        $this->prepaid('ADV-1', [['description' => 'Advance', 'quantity' => 1, 'unit_price' => '1000.00']]);
+        $this->prepaid('ADV-2', [
+            ['description' => 'Advance', 'quantity' => 1, 'unit_price' => '200.00'],
+            ['description' => 'Advance, export', 'quantity' => 1, 'unit_price' => '100.00', 'tax_rate' => 0, 'tax_category' => 'Z', 'exempt_code' => 'VATEX-SA-32', 'exempt_reason' => 'Export of goods'],
+        ]);
+
+        $xml = $this->signedFrom(self::standard([
+            'discount_amount' => '100.00',
+            'lines' => [
+                ['description' => 'Laptop', 'quantity' => 1, 'unit_price' => '2000.00'],
+                ['description' => 'Exported parts', 'quantity' => 1, 'unit_price' => '300.00', 'tax_rate' => 0, 'tax_category' => 'Z', 'exempt_code' => 'VATEX-SA-32', 'exempt_reason' => 'Export of goods'],
+            ],
+            'prepayments' => [['invoice_number' => 'ADV-1'], ['invoice_number' => 'ADV-2']],
+        ]));
+
+        // 1000 + 150, 200 + 30, 100 + 0.
+        $this->assertMatchesRegularExpression('#<cbc:PrepaidAmount[^>]*>1480.00</cbc:PrepaidAmount>#', $xml);
+        $this->assertSame(3, preg_match_all('#<cbc:DocumentTypeCode[^>]*>386</cbc:DocumentTypeCode>#', $xml));
+        $this->assertAccepted($xml);
+    }
+
+    /**
+     * An issued prepayment invoice, outside the device's chain so the final
+     * invoice is the first in it, as the SDK's PIH check expects.
+     *
+     * @param  list<array<string, mixed>>  $lines
+     */
+    private function prepaid(string $number, array $lines): void
+    {
+        $user = User::factory()->create();
+        $user->organizations()->attach($this->organization->id, ['role' => 'admin', 'status' => 'active']);
+        $token = JWTAuth::claims(['org_id' => $this->organization->id, 'role' => 'admin'])->fromUser($user);
+
+        $id = $this->withToken($token)->postJson('/api/invoices', [
+            ...self::standard(['document_type' => 'prepayment', 'lines' => $lines]),
+            'invoice_number' => $number,
+            'issue_date' => now()->subDays(10)->toDateString(),
+            'supply_date' => now()->subDays(10)->toDateString(),
+        ])->assertCreated()->json('data.invoice.id');
+
+        Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($id))
+            ->forceFill(['status' => 'accepted', 'hash' => base64_encode(hash('sha256', $number, true)), 'issued_at' => now()->subDays(10)->setTime(12, 28, 17)])
+            ->save();
+    }
+
     /**
      * POST the payload to the API, then sign what was drafted.
      *

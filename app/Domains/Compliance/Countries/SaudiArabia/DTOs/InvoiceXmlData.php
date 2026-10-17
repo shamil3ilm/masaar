@@ -131,6 +131,11 @@ final readonly class InvoiceXmlData
         // code (BT-104, BT-105), and the category and rate it is charged at
         // (BT-102, BT-103).
         public array $charges = [],
+        // The prepayments settled, each {number, uuid, issueDate, issueTime,
+        // taxCategory, taxRate, exemptionCode, exemptionReason, taxable,
+        // tax}: written as a line each (KSA-26 to KSA-34, KSA-41, KSA-42),
+        // together the prepaidAmount (BR-KSA-80).
+        public array $prepayments = [],
     ) {}
 
     /**

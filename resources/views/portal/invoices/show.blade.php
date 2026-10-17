@@ -174,6 +174,19 @@
                         <dt><x-caption en="Total" ar="إجمالي المبلغ المستحق" /></dt>
                         <dd class="tabular-nums">@include('portal.partials.money', ['amount' => $invoice->total, 'currency' => $invoice->currency])</dd>
                     </div>
+                    {{-- A final invoice: what its prepayments settled, and what is left to pay. --}}
+                    @if ($invoice->prepaid_amount !== null)
+                        @foreach ($invoice->prepayments->unique('invoice_number') as $prepayment)
+                            <div class="flex justify-between">
+                                <dt class="text-gray-500 dark:text-gray-400">{{ __('Prepayment :number', ['number' => $prepayment->invoice_number]) }}</dt>
+                                <dd class="tabular-nums">@include('portal.partials.money', ['amount' => $invoice->prepayments->where('invoice_number', $prepayment->invoice_number)->sum(fn ($p) => (float) $p->taxable_amount + (float) $p->tax_amount), 'currency' => $invoice->currency])</dd>
+                            </div>
+                        @endforeach
+                        <div class="flex justify-between font-bold">
+                            <dt>{{ __('Amount due') }}</dt>
+                            <dd class="tabular-nums">@include('portal.partials.money', ['amount' => $invoice->payable(), 'currency' => $invoice->currency])</dd>
+                        </div>
+                    @endif
                     @if ($page->exchangeNote)
                         <p class="pt-2 text-xs text-gray-400 dark:text-gray-500">
                             {{ $page->exchangeNote }}

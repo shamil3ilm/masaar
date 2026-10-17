@@ -8,10 +8,12 @@ use App\Domains\Compliance\Engine\Contracts\InvoiceRules as InvoiceRulesPort;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Invoice\Enums\TaxCategory;
+use App\Domains\Invoice\Services\PrepaymentSettlement;
 use App\Domains\Invoice\Support\ChargeRules;
 use App\Domains\Invoice\Support\UnitCode;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Rules\VatNumber;
+use App\Domains\Organization\Services\TenantResolver;
 use DomainException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -65,6 +67,11 @@ class InvoiceRules implements InvoiceRulesPort
      * sample carries VATEX-SA-32.
      */
     private const EXPORT_EXEMPTIONS = ['VATEX-SA-32', 'VATEX-SA-33'];
+
+    public function __construct(
+        private readonly TenantResolver $tenant,
+        private readonly PrepaymentSettlement $settlement,
+    ) {}
 
     /**
      * Fill in what the caller left out, without contradicting what they
@@ -311,6 +318,11 @@ class InvoiceRules implements InvoiceRulesPort
                 'required_with:lines.*.exempt_code',
             ],
 
+            // The prepayment invoices (386) a final invoice settles, by
+            // number (KSA-26). Each is settled once (prepayments()).
+            'prepayments' => ['nullable', 'array', 'max:20'],
+            'prepayments.*.invoice_number' => ['required', 'string', 'max:255', 'distinct'],
+
             // A line's own discount and charges, and the document's charges:
             // delivery, a service charge. Codes from BR-KSA-CL-06's list.
             ...ChargeRules::rules(FatooraConfig::CHARGE_REASON_CODES, $this->taxCategories(), $this->exemptionCodes()),
@@ -375,6 +387,38 @@ class InvoiceRules implements InvoiceRulesPort
         $this->transactionFlags($validator, $request);
         ChargeRules::after($validator, $request);
         $this->chargeCategories($validator, $request);
+        $this->prepayments($validator, $request);
+    }
+
+    /**
+     * A final tax invoice settles prepayment invoices (BR-KSA-73): a note
+     * or another prepayment does not, and each one named must be this
+     * organization's, issued, in this currency and not settled already.
+     */
+    private function prepayments(Validator $validator, Request $request): void
+    {
+        $references = $request->input('prepayments');
+
+        if (! is_array($references) || $references === [] || $validator->errors()->has('prepayments.*')) {
+            return;
+        }
+
+        if (($request->input('document_type') ?? 'invoice') !== DocumentType::Invoice->value) {
+            $validator->errors()->add('prepayments', __('Only a final tax invoice settles prepayments (BR-KSA-73).'));
+
+            return;
+        }
+
+        $organizationId = $this->tenant->getOrganizationId();
+
+        foreach ($references as $index => $reference) {
+            $found = $organizationId === null ? __('There is no invoice :number.', ['number' => $reference['invoice_number'] ?? ''])
+                : $this->settlement->settleable($organizationId, (string) ($reference['invoice_number'] ?? ''), (string) $request->input('currency', FatooraConfig::CURRENCY_SAR));
+
+            if (is_string($found)) {
+                $validator->errors()->add("prepayments.{$index}.invoice_number", $found);
+            }
+        }
     }
 
     /**

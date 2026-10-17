@@ -21,6 +21,7 @@ use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Models\InvoiceCharge;
 use App\Domains\Invoice\Models\InvoiceLine;
+use App\Domains\Invoice\Models\InvoicePrepayment;
 use App\Domains\Invoice\Support\UnitCode;
 use App\Domains\Organization\Models\Organization;
 
@@ -105,7 +106,10 @@ class DocumentBuilder
             sellerName: $this->normalizeName($organization->documentName()),
             vatNumber: $organization->vat_number ?? '',
             timestamp: $this->issuedAt($invoice),
-            invoiceTotal: number_format((float) $invoice->total, 2, '.', ''),
+            // What is to be paid: on a final invoice settling prepayments,
+            // the total less them, as ZATCA's own advance-payment sample
+            // carries tag 4 (1035 of a 2185 total with 1150 prepaid).
+            invoiceTotal: number_format((float) $invoice->payable(), 2, '.', ''),
             vatTotal: number_format((float) $invoice->tax_amount, 2, '.', ''),
             invoiceHash: $hash,
             signature: $signature,
@@ -260,6 +264,8 @@ class DocumentBuilder
             buyerIdScheme: $invoice->buyer_id_scheme,
             buyerAddress: $invoice->buyer_address ? AddressData::fromArray($invoice->buyer_address) : null,
             discount: (float) ($invoice->discount_amount ?? 0),
+            // BT-113, what the prepayments settled came to.
+            prepaidAmount: (float) ($invoice->prepaid_amount ?? 0),
             paymentMeansCode: $invoice->payment_means_code ?? '10',
             // KSA-22. InvoiceXmlData has always had a place for the terms,
             // and nothing filled it.
@@ -285,6 +291,7 @@ class DocumentBuilder
             // declares it rather than recomputing it.
             isTaxInclusive: (bool) $invoice->prices_include_vat,
             charges: $this->documentCharges($invoice),
+            prepayments: $this->prepayments($invoice),
             orderReference: $this->filledOrNull($invoice->order_reference),
             contractReference: $this->filledOrNull($invoice->contract_reference),
         );
@@ -313,6 +320,31 @@ class DocumentBuilder
             'taxRate' => (float) ($charge->tax_rate ?? 0),
             'exemptionCode' => $charge->exempt_code,
             'exemptionReason' => $charge->exempt_reason,
+        ])->values()->all();
+    }
+
+    /**
+     * The prepayments a final invoice settles, as the document names each:
+     * the prepayment invoice's number, UUID, issue date and its issue time on
+     * the Kingdom's clock (KSA-26 to KSA-29), and what was prepaid at each
+     * category (KSA-31 to KSA-34), with the exemption where it is not
+     * standard-rated (KSA-41, KSA-42).
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function prepayments(Invoice $invoice): array
+    {
+        return $invoice->prepayments->map(fn (InvoicePrepayment $prepayment): array => [
+            'number' => $prepayment->invoice_number,
+            'uuid' => $prepayment->prepayment_invoice_id,
+            'issueDate' => $prepayment->issue_date->format('Y-m-d'),
+            'issueTime' => FatooraTime::toSaudiTime($prepayment->issued_at)->format('H:i:s'),
+            'taxCategory' => $prepayment->tax_category,
+            'taxRate' => (float) $prepayment->tax_rate,
+            'exemptionCode' => $prepayment->exempt_code,
+            'exemptionReason' => $prepayment->exempt_reason,
+            'taxable' => (float) $prepayment->taxable_amount,
+            'tax' => (float) $prepayment->tax_amount,
         ])->values()->all();
     }
 
