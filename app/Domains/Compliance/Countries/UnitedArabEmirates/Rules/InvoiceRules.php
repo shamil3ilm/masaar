@@ -70,6 +70,8 @@ class InvoiceRules implements InvoiceRulesPort
             'currency' => ['required', 'string', 'regex:/^[A-Z]{3}$/'],
             'exchange_rate' => ['nullable', 'numeric', 'gt:0', Rule::requiredIf(fn (): bool => $request->input('currency') !== 'AED')],
             'payment_means_code' => ['nullable', 'string', 'regex:/^[0-9A-Z]{1,3}$/'],
+            // IBT-020, the payment terms in words.
+            'payment_terms' => ['nullable', 'string', 'max:1000'],
 
             'buyer_name' => ['required', 'string', 'max:255'],
             'buyer_name_ar' => ['nullable', 'string', 'max:255'],
@@ -189,7 +191,7 @@ class InvoiceRules implements InvoiceRulesPort
                 'invoice_number', 'document_type', 'issue_date', 'supply_date', 'supply_end_date', 'currency',
                 'exchange_rate', 'payment_means_code', 'buyer_name', 'buyer_name_ar', 'buyer_vat_number',
                 'buyer_address', 'billing_ref', 'discount_amount', 'notes',
-                'buyer_reference', 'order_reference', 'contract_reference',
+                'buyer_reference', 'order_reference', 'contract_reference', 'payment_terms',
             ])),
             'type' => InvoiceType::Standard->value,
             'prices_include_vat' => false,

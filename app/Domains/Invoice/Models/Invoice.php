@@ -50,7 +50,8 @@ class Invoice extends Model
         // subscription. Needs supply_date beside it (BR-KSA-35).
         'supply_end_date',
         'issued_at',
-        // PINT AE's payment due date. Null on a Saudi invoice.
+        // When payment is due: PINT AE's IBT-009, and on a Saudi invoice
+        // kept and shown, since ZATCA's document has no due date.
         'due_date',
         // A country's own document fields - for the UAE the transaction
         // flags, buyer endpoint and emirate.
@@ -64,6 +65,8 @@ class Invoice extends Model
         'buyer_id_scheme',
         'buyer_address',
         'payment_means_code',
+        // The terms it is to be paid on, in words (KSA-22, IBT-020).
+        'payment_terms',
         'billing_ref',
         // The buyer's purchase order (BT-13), contract (BT-12) and own
         // reference (BT-10), for matching the invoice on their side.

@@ -135,6 +135,7 @@
             </div>
 
             @include('portal.invoices.partials.references')
+            @include('portal.invoices.partials.payment-terms')
         </div>
     </div>
 

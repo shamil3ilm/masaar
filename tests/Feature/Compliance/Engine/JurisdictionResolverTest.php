@@ -56,7 +56,7 @@ class JurisdictionResolverTest extends TestCase
         $this->assertSame(['invoice', 'credit_note', 'debit_note', 'prepayment'], $saudi->invoiceRules()->documentTypes());
         $this->assertSame(['invoice', 'credit_note'], $uae->invoiceRules()->documentTypes());
         $this->assertSame(['standard'], $uae->invoiceRules()->invoiceTypes());
-        $this->assertSame(['is_third_party' => false, 'is_nominal' => false, 'is_export' => true, 'is_summary' => false, 'is_self_billed' => false], $saudi->invoiceRules()->countryFields(['lines' => [], 'is_export' => '1']));
+        $this->assertSame(['due_date' => null, 'is_third_party' => false, 'is_nominal' => false, 'is_export' => true, 'is_summary' => false, 'is_self_billed' => false], $saudi->invoiceRules()->countryFields(['lines' => [], 'is_export' => '1']));
         $this->assertSame('300000000000003', $saudi->sellerRules()->vatNumber(['vat_number' => '300000000000003']));
         $this->assertNull($uae->sellerRules()->vatNumber(['tin' => '1001234567']));
         $this->assertNotContains('endpoint_id', $uae->sellerRules()->signupFields());

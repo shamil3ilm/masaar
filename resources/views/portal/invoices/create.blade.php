@@ -100,7 +100,13 @@
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Required for a credit or debit note.') }}</p>
             </div>
 
+            <div>
+                <label for="due_date" class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('Due date') }}</label>
+                <x-ui.input type="date" name="due_date" id="due_date" value="{{ old('due_date') }}" />
+            </div>
+
             @include('portal.invoices.partials.references')
+            @include('portal.invoices.partials.payment-terms')
 
             {{-- The reasons ZATCA's data dictionary lists for KSA-10, read
                  from App\Domains\Invoice\Support\AdjustmentReason. Each is

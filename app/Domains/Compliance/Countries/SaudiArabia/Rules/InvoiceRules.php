@@ -154,6 +154,11 @@ class InvoiceRules implements InvoiceRulesPort
                 Rule::requiredIf(fn () => strtoupper((string) $request->input('currency', FatooraConfig::CURRENCY_SAR)) !== FatooraConfig::CURRENCY_SAR),
             ],
             'payment_means_code' => ['nullable', 'string', 'size:2'],
+            // When it is to be paid, and on what terms. ZATCA's document has
+            // the terms (KSA-22, at most 1000 characters by BR-KSA-F-06-C14)
+            // and no due date, which the invoice keeps and shows.
+            'due_date' => ['nullable', 'date', 'after_or_equal:issue_date'],
+            'payment_terms' => ['nullable', 'string', 'max:1000'],
 
             // Buyer information
             'buyer_name' => ['nullable', 'string', 'max:255', Rule::requiredIf($mustNameBuyer)],
@@ -345,16 +350,19 @@ class InvoiceRules implements InvoiceRulesPort
         return $validated;
     }
 
-    /** The transaction types (KSA-2), each false unless the request set it. */
+    /**
+     * The transaction types (KSA-2), each false unless the request set it,
+     * and the due date, a column the drafter takes only from a country.
+     */
     public function countryFields(array $validated): array
     {
-        $flags = [];
+        $fields = ['due_date' => $validated['due_date'] ?? null];
 
         foreach (self::TRANSACTION_FLAGS as $flag) {
-            $flags[$flag] = filter_var($validated[$flag] ?? false, FILTER_VALIDATE_BOOLEAN);
+            $fields[$flag] = filter_var($validated[$flag] ?? false, FILTER_VALIDATE_BOOLEAN);
         }
 
-        return $flags;
+        return $fields;
     }
 
     public function standardRate(): string

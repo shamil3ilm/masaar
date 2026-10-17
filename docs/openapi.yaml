@@ -1088,6 +1088,8 @@ paths:
                   type: number
                 payment_means_code:
                   type: string
+                payment_terms:
+                  type: string
                 buyer_name:
                   type: string
                 buyer_name_ar:
@@ -1682,6 +1684,10 @@ paths:
                   type: number
                 payment_means_code:
                   type: string
+                due_date:
+                  type: string
+                payment_terms:
+                  type: string
                 buyer_name:
                   type: string
                 buyer_name_ar:
@@ -1810,6 +1816,10 @@ paths:
                   type: number
                 payment_means_code:
                   type: string
+                due_date:
+                  type: string
+                payment_terms:
+                  type: string
                 buyer_name:
                   type: string
                 buyer_name_ar:
@@ -1910,6 +1920,10 @@ paths:
                 exchange_rate:
                   type: number
                 payment_means_code:
+                  type: string
+                due_date:
+                  type: string
+                payment_terms:
                   type: string
                 buyer_name:
                   type: string
@@ -3059,6 +3073,10 @@ paths:
                   type: number
                 payment_means_code:
                   type: string
+                due_date:
+                  type: string
+                payment_terms:
+                  type: string
                 buyer_name:
                   type: string
                 buyer_name_ar:
@@ -3190,6 +3208,10 @@ paths:
                 exchange_rate:
                   type: number
                 payment_means_code:
+                  type: string
+                due_date:
+                  type: string
+                payment_terms:
                   type: string
                 buyer_name:
                   type: string
@@ -3346,6 +3368,10 @@ paths:
                   type: number
                 payment_means_code:
                   type: string
+                due_date:
+                  type: string
+                payment_terms:
+                  type: string
                 buyer_name:
                   type: string
                 buyer_name_ar:
@@ -3387,8 +3413,6 @@ paths:
                 lines:
                   type: array
                 invoice_type:
-                  type: string
-                due_date:
                   type: string
                 org_id:
                   type: string

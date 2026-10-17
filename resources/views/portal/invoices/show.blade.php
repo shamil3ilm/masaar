@@ -73,10 +73,10 @@
             @foreach ($page->buyerDetails as $detail)
                 <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ $detail }}</p>
             @endforeach
-            {{-- What the buyer's own paperwork calls the sale. --}}
-            @foreach (['order_reference' => __('Purchase order'), 'contract_reference' => __('Contract'), 'buyer_reference' => __('Buyer reference')] as $field => $label)
+            {{-- What the buyer's own paperwork calls the sale, and when and how it is to be paid. --}}
+            @foreach (['order_reference' => __('Purchase order'), 'contract_reference' => __('Contract'), 'buyer_reference' => __('Buyer reference'), 'due_date' => __('Due date'), 'payment_terms' => __('Payment terms')] as $field => $label)
                 @if (filled($invoice->{$field}))
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ $label }}: {{ $invoice->{$field} }}</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ $label }}: {{ $invoice->{$field} instanceof \Carbon\CarbonInterface ? $invoice->{$field}->toDateString() : $invoice->{$field} }}</p>
                 @endif
             @endforeach
         </div>

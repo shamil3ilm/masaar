@@ -183,8 +183,8 @@ class PintConformanceTest extends TestCase
             ),
             'deemed supply' => $this->uaeInvoice($this->uaeOrganization(), ['due_date' => null], null, ['transaction_flags' => '01000000', 'buyer_endpoint' => null]),
             'free zone' => $this->uaeInvoice($this->uaeOrganization(), [], null, ['transaction_flags' => '10000000', 'beneficiary_id' => '100765432100003']),
-            'buyer references' => $this->uaeInvoice($this->uaeOrganization(), ['buyer_reference' => 'BR-001/23', 'order_reference' => 'PO-001/23', 'contract_reference' => 'CT-2026-07']),
-            'credit note with references' => $this->uaeInvoice($this->uaeOrganization(), ['document_type' => 'credit_note', 'billing_ref' => 'AE-INV-0001', 'due_date' => null, 'buyer_reference' => 'BR-001/23', 'order_reference' => 'PO-001/23', 'contract_reference' => 'CT-2026-07'], null, ['credit_reason' => 'DL8.61.1.D']),
+            'buyer references' => $this->uaeInvoice($this->uaeOrganization(), ['buyer_reference' => 'BR-001/23', 'order_reference' => 'PO-001/23', 'contract_reference' => 'CT-2026-07', 'payment_terms' => '30 days net']),
+            'credit note with references' => $this->uaeInvoice($this->uaeOrganization(), ['document_type' => 'credit_note', 'billing_ref' => 'AE-INV-0001', 'due_date' => null, 'buyer_reference' => 'BR-001/23', 'order_reference' => 'PO-001/23', 'contract_reference' => 'CT-2026-07', 'payment_terms' => '30 days net'], null, ['credit_reason' => 'DL8.61.1.D']),
         };
     }
 

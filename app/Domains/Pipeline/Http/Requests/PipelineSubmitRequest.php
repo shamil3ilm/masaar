@@ -36,9 +36,10 @@ class PipelineSubmitRequest extends CreateInvoiceRequest
     private const ALIASES = [
         // An ERP's name for the invoice type
         'invoice_type' => ['nullable', 'string'],
-        // An ERP's due date, stored as the supply date by a country whose
-        // invoices have no due date of their own
-        'due_date' => ['nullable', 'date'],
+        // Not due_date: every country's rules take it as the due date. It
+        // was stored as the supply date, and an ERP's payment due date went
+        // into the document as the date of delivery. An ERP that means the
+        // supply date sends supply_date.
     ];
 
     /**
@@ -102,13 +103,6 @@ class PipelineSubmitRequest extends CreateInvoiceRequest
         // Gap 3: ERP sends `invoice_type`, the rules validate `type`
         if ($this->invoice_type !== null && $this->type === null) {
             $merges['type'] = $this->invoice_type;
-        }
-
-        // Gap 4: ERP sends `due_date`; a country with no due date of its own
-        // stores it as `supply_date`
-        if ($this->due_date !== null && $this->supply_date === null
-            && ! array_key_exists('due_date', $this->invoiceRules()->rules($this))) {
-            $merges['supply_date'] = $this->due_date;
         }
 
         // An ERP that sends no invoice_number has the invoice numbered at

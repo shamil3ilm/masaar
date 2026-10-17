@@ -67,8 +67,9 @@ class InvoiceDrafter
     }
 
     /**
-     * $countryFields are header columns only one country's documents carry -
-     * a UAE invoice's due_date, jurisdiction_data and profile_id. They are
+     * $countryFields are header columns a country decides for itself - the
+     * due_date, a UAE invoice's jurisdiction_data and profile_id, a Saudi
+     * invoice's transaction types. They are
      * taken as given and apart from $data, so a caller names them on purpose
      * and nothing a Saudi request validated can reach them.
      *
@@ -101,6 +102,7 @@ class InvoiceDrafter
                 'currency' => $data['currency'] ?? 'SAR',
                 'exchange_rate' => $data['exchange_rate'] ?? null,
                 'payment_means_code' => $data['payment_means_code'] ?? '10',
+                'payment_terms' => $data['payment_terms'] ?? null,
                 'buyer_name' => $data['buyer_name'] ?? null,
                 'buyer_name_ar' => $data['buyer_name_ar'] ?? null,
                 'buyer_vat_number' => $data['buyer_vat_number'] ?? null,

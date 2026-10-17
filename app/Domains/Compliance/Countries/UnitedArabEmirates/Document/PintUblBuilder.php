@@ -62,6 +62,11 @@ class PintUblBuilder
 
         $this->paymentMeans($root, $document);
 
+        // IBT-020, once (IBR-SR-05), after the payment means on either root.
+        if ($document->paymentTerms !== null) {
+            $this->add($this->add($root, 'cac:PaymentTerms'), 'cbc:Note', $document->paymentTerms);
+        }
+
         // The two roots disagree on where the exchange rate goes.
         if ($credit) {
             $this->exchangeRate($root, $document);

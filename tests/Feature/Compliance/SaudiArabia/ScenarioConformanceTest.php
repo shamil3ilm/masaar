@@ -157,6 +157,39 @@ class ScenarioConformanceTest extends TestCase
     }
 
     /**
+     * Payment terms (KSA-22) where ZATCA's Schematron reads them, on an
+     * invoice and on a note that states its reason (KSA-10) beside them;
+     * the due date is kept on the invoice and stays off the document.
+     *
+     * @return iterable<string, array{array<string, mixed>}>
+     */
+    public static function payable(): iterable
+    {
+        $terms = ['payment_terms' => '30 days net', 'due_date' => now()->addDays(30)->toDateString(), 'payment_means_code' => '30'];
+
+        yield 'invoice' => [self::standard($terms)];
+        yield 'credit note' => [self::standard([
+            ...$terms,
+            'document_type' => 'credit_note',
+            'billing_ref' => 'INV-ORIGINAL-1',
+            'adjustment_reason' => 'Correction of quantity',
+        ])];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    #[DataProvider('payable')]
+    public function test_payment_terms_validate(array $payload): void
+    {
+        $xml = $this->signedFrom($payload);
+
+        $this->assertMatchesRegularExpression('#<cbc:PaymentNote[^>]*>30 days net</cbc:PaymentNote>#', $xml);
+        $this->assertStringNotContainsString('DueDate', $xml);
+        $this->assertAccepted($xml);
+    }
+
+    /**
      * POST the payload to the API, then sign what was drafted.
      *
      * @param  array<string, mixed>  $payload

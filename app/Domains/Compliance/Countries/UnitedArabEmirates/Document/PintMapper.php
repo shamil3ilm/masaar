@@ -125,6 +125,7 @@ class PintMapper
             buyerReference: self::text($invoice->buyer_reference),
             orderReference: self::text($invoice->order_reference),
             contractReference: self::text($invoice->contract_reference),
+            paymentTerms: self::text($invoice->payment_terms),
         );
     }
 

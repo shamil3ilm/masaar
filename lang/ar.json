@@ -1099,5 +1099,7 @@
     "For a supply over a period, such as a subscription.": "للتوريد الممتد على فترة، مثل الاشتراك.",
     "Purchase order": "أمر الشراء",
     "Contract": "العقد",
-    "Buyer reference": "مرجع المشتري"
+    "Buyer reference": "مرجع المشتري",
+    "Payment terms": "شروط الدفع",
+    "For example: 30 days net": "مثال: صافي 30 يوماً"
 }

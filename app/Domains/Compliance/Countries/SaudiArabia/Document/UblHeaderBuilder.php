@@ -251,15 +251,21 @@ class UblHeaderBuilder
 
         // KSA-10. BR-KSA-17 requires a credit or debit note to say why it was
         // issued, and this is the element it reads — ZATCA's own samples carry
-        // the reason here and nowhere else. On an ordinary invoice the same
-        // element carries the payment terms, so the reason takes precedence
-        // when there is one: a note without it is rejected, terms are optional.
-        $instruction = $data->creditDebitReason ?? $data->paymentTerms;
-
-        if ($instruction !== null) {
+        // the reason here and nowhere else.
+        if ($data->creditDebitReason !== null) {
             $paymentMeans->appendChild(
-                Ubl::element($dom, Ubl::CBC_NS, 'cbc:InstructionNote', $instruction)
+                Ubl::element($dom, Ubl::CBC_NS, 'cbc:InstructionNote', $data->creditDebitReason)
             );
+        }
+
+        // KSA-22, the payment terms, where ZATCA's Schematron reads them
+        // (BR-KSA-F-06-C14): the payee account's payment note, after the
+        // instruction note as UBL orders them. Not in the instruction note,
+        // which a note's reason already holds.
+        if ($data->paymentTerms !== null) {
+            $account = $dom->createElementNS(Ubl::CAC_NS, 'cac:PayeeFinancialAccount');
+            $account->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:PaymentNote', $data->paymentTerms));
+            $paymentMeans->appendChild($account);
         }
 
         $dom->documentElement->appendChild($paymentMeans);

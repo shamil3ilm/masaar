@@ -253,6 +253,9 @@ class DocumentBuilder
             buyerAddress: $invoice->buyer_address ? AddressData::fromArray($invoice->buyer_address) : null,
             discount: (float) ($invoice->discount_amount ?? 0),
             paymentMeansCode: $invoice->payment_means_code ?? '10',
+            // KSA-22. InvoiceXmlData has always had a place for the terms,
+            // and nothing filled it.
+            paymentTerms: $this->filledOrNull($invoice->payment_terms),
             previousInvoiceHash: $previousInvoiceHash,
             billingReferenceId: $invoice->billing_ref,
             // Without the rate there is nothing to convert the tax with, and

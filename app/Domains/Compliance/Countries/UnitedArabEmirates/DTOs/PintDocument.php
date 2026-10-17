@@ -66,6 +66,8 @@ final readonly class PintDocument
         public ?string $buyerReference = null,
         public ?string $orderReference = null,
         public ?string $contractReference = null,
+        // IBT-020, the payment terms in words.
+        public ?string $paymentTerms = null,
     ) {}
 
     /**
