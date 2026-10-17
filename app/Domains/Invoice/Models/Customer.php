@@ -41,6 +41,10 @@ class Customer extends Model
         'name',
         'name_ar',
         'vat_number',
+        // The identifier a buyer without a VAT number is known by, and the
+        // register it is from (BT-46, BT-46-1).
+        'buyer_id',
+        'buyer_id_scheme',
         'street',
         'building_number',
         'district',
@@ -49,6 +53,8 @@ class Customer extends Model
         'country_code',
         'email',
         'phone',
+        // The terms its invoices are usually paid on, filled into a new one.
+        'payment_terms',
         // As the service provider issued it (0235:...), never derived.
         'peppol_endpoint',
         // The emirate, for a UAE buyer.
@@ -72,11 +78,17 @@ class Customer extends Model
             'buyer_name' => (string) $this->name,
             'buyer_name_ar' => (string) $this->name_ar,
             'buyer_vat_number' => (string) $this->vat_number,
+            'buyer_id_scheme' => (string) $this->buyer_id_scheme,
+            'buyer_id' => (string) $this->buyer_id,
         ];
 
         foreach (self::ADDRESS as $key) {
             $fields['buyer_address_'.$key] = (string) $this->{$key};
         }
+
+        // Not a buyer field, and filled the same way: the terms this
+        // customer is usually paid on.
+        $fields['payment_terms'] = (string) $this->payment_terms;
 
         return $fields;
     }
@@ -92,7 +104,7 @@ class Customer extends Model
     public function uaeBuyerFields(): array
     {
         $fields = $this->buyerFields();
-        unset($fields['buyer_address_district']);
+        unset($fields['buyer_address_district'], $fields['buyer_id_scheme'], $fields['buyer_id']);
         $reserved = self::RESERVED_ENDPOINTS[(string) $this->peppol_endpoint] ?? null;
 
         return [

@@ -405,24 +405,32 @@ class InvoiceRules implements InvoiceRulesPort
         return 'portal.invoices.store';
     }
 
-    /** BR-KSA-67, as the invoice checks it: a Saudi buyer's postal code is five digits. */
+    /**
+     * BR-KSA-67, as the invoice checks it: a Saudi buyer's postal code is
+     * five digits. And the other identifier a buyer without a VAT number is
+     * invoiced by (BT-46), held to the shapes the invoice holds it to.
+     */
     public function buyerRules(Request $request): array
     {
         $saudi = strtoupper((string) $request->input('country_code', 'SA')) === 'SA';
 
         return [
             'postal_code' => $saudi ? ['nullable', 'digits:5'] : ['nullable', 'string', 'max:10'],
+            'buyer_id' => ['nullable', 'string', 'max:50', 'regex:/^[A-Za-z0-9]+$/', 'required_with:buyer_id_scheme'],
+            'buyer_id_scheme' => ['nullable', Rule::in(self::VALID_BUYER_ID_SCHEMES), 'required_with:buyer_id'],
         ];
     }
 
     public function buyerMessages(): array
     {
-        return [];
+        return [
+            'buyer_id.regex' => __('The identifier is letters and digits only, with no spaces.'),
+        ];
     }
 
     public function buyerView(): ?string
     {
-        return null;
+        return 'countries.saudi-arabia.customer-buyer';
     }
 
     /**

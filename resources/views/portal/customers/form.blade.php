@@ -29,6 +29,9 @@
             <x-ui.field :label="__('Phone')">
                 <x-ui.input type="text" name="phone" maxlength="30" value="{{ old('phone', $customer->phone) }}" />
             </x-ui.field>
+            <x-ui.field :label="__('Payment terms (filled into new invoices)')">
+                <x-ui.input type="text" name="payment_terms" maxlength="1000" placeholder="{{ __('For example: 30 days net') }}" value="{{ old('payment_terms', $customer->payment_terms) }}" />
+            </x-ui.field>
         </div>
     </div>
 

@@ -1105,5 +1105,7 @@
     "Instrument not defined": "وسيلة غير محددة",
     "The payment means is a UNTDID 4461 code ZATCA accepts, such as 10 (cash), 30 (credit transfer), 42 (bank account), 48 (bank card) or 1 (not defined) (BR-KSA-16).": "وسيلة الدفع رمز من قائمة UNTDID 4461 تقبله الهيئة، مثل 10 (نقداً) أو 30 (تحويل دائن) أو 42 (حساب بنكي) أو 48 (بطاقة بنكية) أو 1 (غير محددة) (BR-KSA-16).",
     "Pricing saved. New invoices follow it unless they say otherwise.": "حُفظ التسعير. تتبعه الفواتير الجديدة ما لم تنص على خلافه.",
-    "New invoices follow this unless they say otherwise. Issued invoices keep what they were issued with.": "تتبع الفواتير الجديدة هذا الإعداد ما لم تنص على خلافه، وتحتفظ الفواتير الصادرة بما صدرت به."
+    "New invoices follow this unless they say otherwise. Issued invoices keep what they were issued with.": "تتبع الفواتير الجديدة هذا الإعداد ما لم تنص على خلافه، وتحتفظ الفواتير الصادرة بما صدرت به.",
+    "The identifier is letters and digits only, with no spaces.": "يتكون المعرّف من حروف وأرقام فقط، دون مسافات.",
+    "Payment terms (filled into new invoices)": "شروط الدفع (تُعبأ في الفواتير الجديدة)"
 }
