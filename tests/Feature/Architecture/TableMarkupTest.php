@@ -34,14 +34,15 @@ class TableMarkupTest extends TestCase
     private const VIEWS = __DIR__.'/../../../resources/views';
 
     /**
-     * The receipt keeps its own table on purpose.
+     * A printed invoice keeps its own tables on purpose.
      *
      * It is standalone HTML with no layout, no card and no scroll area,
      * printed rather than browsed, and its padding is deliberately tighter
      * than a screen's. Wrapping it in x-ui.table would give a printed page a
-     * scroll bar.
+     * scroll bar. Every printed layout sits in a print/ folder: the shared
+     * receipt's, and each country's pages.
      */
-    private const STANDALONE = 'portal/invoices/print.blade.php';
+    private const PRINTED = '#(^|/)print/#';
 
     /**
      * Emails are laid out with tables because mail clients support little
@@ -68,7 +69,7 @@ class TableMarkupTest extends TestCase
         $offenders = [];
 
         foreach ($this->views() as $relative => $contents) {
-            if (str_starts_with($relative, 'components/ui/') || $relative === self::STANDALONE
+            if (str_starts_with($relative, 'components/ui/') || preg_match(self::PRINTED, $relative) === 1
                 || str_starts_with($relative, self::EMAILS) || str_starts_with($relative, self::PDFS)) {
                 continue;
             }

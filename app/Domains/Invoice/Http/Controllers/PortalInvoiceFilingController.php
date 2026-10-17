@@ -7,20 +7,16 @@ namespace App\Domains\Invoice\Http\Controllers;
 use App\Domains\Compliance\Engine\DTOs\IssueOptions;
 use App\Domains\Compliance\Engine\Services\ComplianceEngine;
 use App\Domains\Invoice\Services\InvoiceFinder;
-use App\Domains\Invoice\Services\InvoicePdf;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Platform\Access\Access;
 use App\Domains\Platform\Access\Feature;
 use App\Http\Controllers\Controller;
-use App\Support\QrCodeRenderer;
-use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
 
 /**
- * Issuing and printing, from the browser.
+ * Issuing, from the browser. Printing is PortalInvoicePrintController's.
  *
  * Issuing is the irreversible step - a counter, a hash and a place in the
  * chain - so it is a POST behind a confirmation, never a link a browser or a
@@ -38,8 +34,6 @@ class PortalInvoiceFilingController extends Controller
         private readonly TenantResolver $tenant,
         private readonly InvoiceFinder $invoices,
         private readonly ComplianceEngine $engine,
-        private readonly QrCodeRenderer $qr,
-        private readonly InvoicePdf $pdf,
         private readonly Access $access,
     ) {}
 
@@ -101,31 +95,5 @@ class PortalInvoiceFilingController extends Controller
         return redirect()
             ->route('portal.invoices.show', $invoiceId)
             ->with('success', $jurisdiction->notices()->filed());
-    }
-
-    public function print(Request $request, string $invoiceId): View|RedirectResponse
-    {
-        $orgId = $request->attributes->get(PortalTenant::ORG_ID);
-
-        if (! $orgId) {
-            return redirect()->route('portal.invoices.index');
-        }
-
-        $invoice = $this->invoices->findWithLines($orgId, $invoiceId);
-        $organization = $this->tenant->getOrganization() ?? abort(404);
-
-        // The same gate as the PDF: a printed copy is a copy handed to the
-        // buyer, so one the country would not hand over has none.
-        try {
-            $this->pdf->assertShareable($invoice, $organization);
-        } catch (DomainException $e) {
-            return redirect()->route('portal.invoices.show', $invoiceId)->with('error', $e->getMessage());
-        }
-
-        return view('portal.invoices.print', [
-            'invoice' => $invoice,
-            'organization' => $organization,
-            'qr' => $this->qr->svg((string) $invoice->qr_code),
-        ]);
     }
 }

@@ -1,0 +1,16 @@
+/* The print view on US Letter; see a4.css. */
+@page {
+    size: letter;
+    margin: 12.7mm;
+}
+
+@media print {
+    body {
+        padding: 0 !important;
+    }
+
+    [data-print-qr] svg {
+        width: 32mm;
+        height: 32mm;
+    }
+}

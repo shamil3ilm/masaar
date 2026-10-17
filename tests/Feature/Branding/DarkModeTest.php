@@ -86,7 +86,8 @@ class DarkModeTest extends TestCase
         foreach ($files as $file) {
             $path = str_replace('\\', '/', (string) $file);
 
-            if (! str_ends_with($path, '.blade.php') || str_ends_with($path, 'portal/invoices/print.blade.php')) {
+            // The print view and the layouts it draws, in print/ folders.
+            if (! str_ends_with($path, '.blade.php') || str_ends_with($path, 'portal/invoices/print.blade.php') || str_contains($path, '/print/')) {
                 continue;
             }
 

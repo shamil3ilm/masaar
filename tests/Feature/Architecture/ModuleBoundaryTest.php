@@ -80,11 +80,9 @@ class ModuleBoundaryTest extends TestCase
         'bootstrap/app.php' => 'Countries\SaudiArabia\Exceptions\CertificateException, Countries\SaudiArabia\Exceptions\SigningException',
         // Each module's provider, registering it, and the network's.
         'bootstrap/providers.php' => 'Countries\SaudiArabia\ModuleServiceProvider, Countries\UnitedArabEmirates\ModuleServiceProvider, Networks\Peppol\NetworkServiceProvider',
-        'resources/views/pdf/invoice.blade.php' => 'Countries\SaudiArabia\Rules\FatooraConfig, Countries\SaudiArabia\Support\FatooraTime',
         'resources/views/portal/invoices/create-uae.blade.php' => 'Countries\UnitedArabEmirates\Rules\PintAe',
         'resources/views/portal/invoices/create.blade.php' => 'Countries\SaudiArabia\Rules\FatooraConfig',
         'resources/views/portal/invoices/partials/uae-line-row.blade.php' => 'Countries\UnitedArabEmirates\Rules\PintAe',
-        'resources/views/portal/invoices/print.blade.php' => 'Countries\SaudiArabia\Rules\FatooraConfig, Countries\SaudiArabia\Support\FatooraTime',
         'routes/api/partner.php' => 'Countries\SaudiArabia\Http\Controllers\ComplianceController',
         'routes/api/public.php' => 'Networks\Peppol\Http\Controllers\InboundWebhookController, Networks\Peppol\Http\Controllers\StatusWebhookController',
         'routes/api/tenant.php' => 'Countries\SaudiArabia\Http\Controllers\BranchOnboardingController, Countries\SaudiArabia\Http\Controllers\ComplianceController, Countries\SaudiArabia\Http\Controllers\OnboardingController, Countries\UnitedArabEmirates\Http\Controllers\UaeDocumentController, Countries\UnitedArabEmirates\Http\Controllers\UaeInvoiceController, Countries\UnitedArabEmirates\Http\Controllers\UaeProfileController',

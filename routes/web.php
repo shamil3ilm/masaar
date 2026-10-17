@@ -22,6 +22,7 @@ use App\Domains\Invoice\Http\Controllers\PortalInvoiceController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceDocumentController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceDraftController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceFilingController;
+use App\Domains\Invoice\Http\Controllers\PortalInvoicePrintController;
 use App\Domains\Invoice\Http\Controllers\PortalNumberingController;
 use App\Domains\Invoice\Http\Controllers\PortalProductController;
 use App\Domains\Invoice\Http\Controllers\PortalReportController;
@@ -356,7 +357,7 @@ Route::prefix('portal')->name('portal.')
         Route::get('/invoices/{invoiceId}/{note}', [PortalInvoiceDraftController::class, 'adjust'])
             ->whereIn('note', ['credit_note', 'debit_note'])
             ->name('invoices.adjust');
-        Route::get('/invoices/{invoiceId}/print', [PortalInvoiceFilingController::class, 'print'])->name('invoices.print');
+        Route::get('/invoices/{invoiceId}/print', [PortalInvoicePrintController::class, 'print'])->name('invoices.print');
         // The PDF the buyer keeps, and sending it to them.
         Route::get('/invoices/{invoiceId}/pdf', [PortalInvoiceDocumentController::class, 'download'])->name('invoices.pdf');
         Route::post('/invoices/{invoiceId}/send', [PortalInvoiceDocumentController::class, 'send'])->middleware('throttle:20,1')->name('invoices.send');

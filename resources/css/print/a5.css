@@ -1,0 +1,23 @@
+/*
+ * The print view on A5; see a4.css. A third narrower than A4, so the type is
+ * a size smaller: every size on the page is in rem, and this scales them all.
+ */
+@page {
+    size: A5;
+    margin: 10mm;
+}
+
+@media print {
+    html {
+        font-size: 12px;
+    }
+
+    body {
+        padding: 0 !important;
+    }
+
+    [data-print-qr] svg {
+        width: 32mm;
+        height: 32mm;
+    }
+}

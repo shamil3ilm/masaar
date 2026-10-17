@@ -5,8 +5,10 @@
     and none of the stylesheet the screens use. Every label carries its Arabic
     beside it, as ZATCA's own illustrative invoices do.
 
-    The fields follow resources/views/portal/invoices/print.blade.php, which
-    notes why each is there.
+    The fields follow countries/saudi-arabia/print/page.blade.php, which
+    notes why each is there. One template for A4, Letter and A5: the page
+    size is the renderer's (InvoicePdf), and only A5, a third narrower, sets
+    smaller type so the seven columns of a standard invoice still fit.
 --}}
 @php
     $documentType = $invoice->document_type instanceof \BackedEnum ? $invoice->document_type->value : (string) $invoice->document_type;
@@ -48,6 +50,14 @@
     table.totals td { padding: 3pt 4pt; }
     .grand td { border-top: 1px solid #111827; font-weight: bold; }
 </style>
+@if (($paper ?? null) === \App\Domains\Invoice\Enums\PaperSize::A5)
+<style>
+    body { font-size: 7.5pt; }
+    .label { font-size: 6.5pt; }
+    table.items th { font-size: 6.5pt; padding: 4pt 2pt; }
+    table.items td { padding: 4pt 2pt; }
+</style>
+@endif
 </head>
 <body>
 

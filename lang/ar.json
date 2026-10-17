@@ -1084,5 +1084,12 @@
     "ZATCA rejected this invoice, so it is not a valid tax invoice. Correct it and issue a new one.": "رفضت الهيئة هذه الفاتورة، فهي ليست فاتورة ضريبية صالحة. صححها وأصدر فاتورة جديدة.",
     "ZATCA said": "رد الهيئة",
     "Zero rated domestic sales": "المبيعات المحلية الخاضعة لنسبة الصفر",
-    "Zero-rated": "خاضع لنسبة الصفر"
+    "Zero-rated": "خاضع لنسبة الصفر",
+    "A4": "A4",
+    "Letter": "Letter",
+    "A5": "A5",
+    "80 mm receipt roll": "لفافة إيصالات 80 مم",
+    "58 mm receipt roll": "لفافة إيصالات 58 مم",
+    "Paper": "الورق",
+    "Change paper": "تغيير الورق"
 }

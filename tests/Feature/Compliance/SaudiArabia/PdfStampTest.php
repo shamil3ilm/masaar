@@ -7,6 +7,7 @@ namespace Tests\Feature\Compliance\SaudiArabia;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\SigningException;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\PdfStamp;
+use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Models\InvoiceLine;
 use App\Domains\Invoice\Services\InvoicePdf;
@@ -15,6 +16,7 @@ use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use phpseclib3\File\ASN1;
+use PHPUnit\Framework\Attributes\DataProvider;
 use setasign\Fpdi\PdfParser\PdfParser;
 use setasign\Fpdi\PdfParser\StreamReader;
 use setasign\Fpdi\PdfParser\Type\PdfDictionary;
@@ -222,6 +224,33 @@ class PdfStampTest extends TestCase
 
         $this->assertTrue($this->opensslVerifies($this->signedBytes($pdf), $this->cms($pdf), $signer));
         $this->assertSame($this->der($jeddah['certificate']), $this->der((string) $signer));
+    }
+
+    /**
+     * @return array<string, array{PaperSize}>
+     */
+    public static function papers(): array
+    {
+        return array_combine(
+            array_map(fn (PaperSize $paper): string => $paper->value, PaperSize::cases()),
+            array_map(fn (PaperSize $paper): array => [$paper], PaperSize::cases()),
+        );
+    }
+
+    /**
+     * The stamp on every paper's PDF verifies, covers the whole file but its
+     * own signature, and leaves the XML inside.
+     */
+    #[DataProvider('papers')]
+    public function test_every_paper_is_stamped(PaperSize $paper): void
+    {
+        $pdf = app(InvoicePdf::class)->render($this->invoice(), $this->acme, $paper);
+        [$first, , $end, $rest] = $this->byteRange($pdf);
+
+        $this->assertTrue($this->opensslVerifies($this->signedBytes($pdf), $this->cms($pdf), $signer), (string) openssl_error_string());
+        $this->assertSame($this->der($this->head['certificate']), $this->der((string) $signer));
+        $this->assertSame([0, strlen($pdf)], [$first, $end + $rest]);
+        $this->assertStringContainsString('/Names << /EmbeddedFiles << /Names [(ACME-1.xml)', $pdf);
     }
 
     /**
