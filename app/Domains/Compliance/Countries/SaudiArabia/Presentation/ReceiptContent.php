@@ -14,6 +14,7 @@ use App\Domains\Compliance\Engine\DTOs\ReceiptSection;
 use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Models\InvoiceLine;
+use App\Domains\Invoice\Support\PrintedAmounts;
 use App\Domains\Invoice\Support\UnitCode;
 use App\Domains\Organization\Models\Organization;
 use BackedEnum;
@@ -131,16 +132,16 @@ class ReceiptContent
 
     private function item(Invoice $invoice, InvoiceLine $line, bool $simplified, bool $inclusivePrice): ReceiptItem
     {
-        $description = $line->documentDescription();
         $details = [];
         $notes = [];
 
         if (! $simplified) {
-            // BT-131, BT-152 and KSA-11, required on a standard invoice.
+            // BT-131, BT-152 and KSA-11, required on a standard invoice: the
+            // net, and the rate with the VAT it gives, on two short lines.
+            $rate = (string) (float) $line->tax_rate.'%';
             $details = [
                 new ReceiptRow(new PrintLabel('Net', 'الإجمالي غير شامل'), $this->money($invoice, (float) $line->line_total - (float) $line->tax_amount)),
-                new ReceiptRow(new PrintLabel('VAT %', 'نسبة الضريبة'), (string) (float) $line->tax_rate.'%'),
-                new ReceiptRow(new PrintLabel('VAT', 'مبلغ الضريبة'), $this->money($invoice, $line->tax_amount)),
+                new ReceiptRow(new PrintLabel('VAT '.$rate, 'ضريبة '.$rate), $this->money($invoice, $line->tax_amount)),
             ];
 
             // BT-120, with the authority's Arabic for the code.
@@ -154,11 +155,13 @@ class ReceiptContent
         }
 
         return new ReceiptItem(
-            description: $description,
-            secondary: $line->description_ar && $line->description && $line->description !== $description ? (string) $line->description : null,
-            quantity: trim(rtrim(rtrim((string) $line->quantity, '0'), '.').' '.UnitCode::label(UnitCode::normalise($line->unit_code))),
+            // The Arabic description only: a receipt keeps each line short,
+            // and the Arabic is the document's.
+            description: $line->documentDescription(),
+            quantity: rtrim(rtrim((string) $line->quantity, '0'), '.').' '.UnitCode::printed($line->unit_code),
             unitPrice: $this->money($invoice, $line->priceAsEntered($inclusivePrice)),
             total: $this->money($invoice, $line->line_total),
+            discount: ($discount = PrintedAmounts::lineDiscount($line)) === null ? null : '-'.$this->money($invoice, $discount),
             details: $details,
             notes: $notes,
         );
@@ -178,6 +181,11 @@ class ReceiptContent
         if ((float) $invoice->discount_amount > 0) {
             $rows[] = new ReceiptRow(new PrintLabel('Subtotal', 'المجموع'), $this->money($invoice, $invoice->subtotal));
             $rows[] = new ReceiptRow(new PrintLabel('Discount', 'الخصم'), '-'.$this->money($invoice, $invoice->discount_amount));
+        }
+
+        // Charges on the whole document, each with its VAT rate.
+        foreach (PrintedAmounts::documentCharges($invoice) as $charge) {
+            $rows[] = new ReceiptRow(new PrintLabel(trim($charge['reason'].' ('.$charge['rate'].'%)'), 'رسوم إضافية'), $this->money($invoice, $charge['amount']));
         }
 
         $rows[] = new ReceiptRow(new PrintLabel('Taxable amount', 'الإجمالي غير شامل الضريبة'), $this->money($invoice, (float) $invoice->subtotal - (float) $invoice->discount_amount));

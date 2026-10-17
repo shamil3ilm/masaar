@@ -88,6 +88,9 @@
                     @else
                         <x-ui.th align="right"><x-caption en="Unit price" ar="سعر الوحدة" /></x-ui.th>
                     @endif
+                    @if ($lineDiscounts = \App\Domains\Invoice\Support\PrintedAmounts::anyLineDiscount($invoice->lines))
+                        <x-ui.th align="right"><x-caption en="Discount" ar="الخصم" /></x-ui.th>
+                    @endif
                     {{-- The column is the line's VAT amount. Its Arabic caption
                          said "tax rate", which is the receipt's other column. --}}
                     <x-ui.th align="right"><x-caption en="VAT" ar="مبلغ الضريبة" /></x-ui.th>
@@ -109,10 +112,18 @@
                         </td>
                         <td class="px-6 py-3 text-end text-sm tabular-nums text-gray-700 dark:text-gray-200">
                             {{ rtrim(rtrim((string) $line->quantity, '0'), '.') }}
+                            <span class="text-gray-500 dark:text-gray-400">{{ \App\Domains\Invoice\Support\UnitCode::printed($line->unit_code) }}</span>
                         </td>
                         <td class="px-6 py-3 text-end text-sm tabular-nums text-gray-700 dark:text-gray-200">
                             @include('portal.partials.money', ['amount' => $line->priceAsEntered((bool) $invoice->prices_include_vat), 'currency' => $invoice->currency])
                         </td>
+                        @if ($lineDiscounts)
+                            <td class="px-6 py-3 text-end text-sm tabular-nums text-gray-700 dark:text-gray-200">
+                                @if ($discount = \App\Domains\Invoice\Support\PrintedAmounts::lineDiscount($line))
+                                    -@include('portal.partials.money', ['amount' => $discount, 'currency' => $invoice->currency])
+                                @endif
+                            </td>
+                        @endif
                         <td class="px-6 py-3 text-end text-sm tabular-nums text-gray-700 dark:text-gray-200">
                             @include('portal.partials.money', ['amount' => $line->tax_amount, 'currency' => $invoice->currency])
                         </td>

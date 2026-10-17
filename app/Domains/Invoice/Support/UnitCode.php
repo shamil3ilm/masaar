@@ -162,6 +162,64 @@ final class UnitCode
         return self::all()[$code] ?? $code;
     }
 
+    /**
+     * The unit beside a quantity on a printed invoice, short and in both
+     * languages - "kg / كغ" - so "2" means two kilograms in either. A code
+     * not below prints as itself.
+     */
+    public static function printed(?string $code): string
+    {
+        $code = self::normalise($code);
+
+        return isset(self::PRINTED[$code]) ? implode(' / ', self::PRINTED[$code]) : $code;
+    }
+
+    /**
+     * English and Arabic abbreviations, as a receipt prints them.
+     *
+     * @var array<string, array{0: string, 1: string}>
+     */
+    private const PRINTED = [
+        'H87' => ['pc', 'قطعة'],
+        'EA' => ['ea', 'وحدة'],
+        'C62' => ['unit', 'وحدة'],
+        'SET' => ['set', 'طقم'],
+        'KGM' => ['kg', 'كغ'],
+        'GRM' => ['g', 'غ'],
+        'MGM' => ['mg', 'ملغ'],
+        'TNE' => ['t', 'طن'],
+        'LBR' => ['lb', 'رطل'],
+        'ONZ' => ['oz', 'أونصة'],
+        'LTR' => ['L', 'لتر'],
+        'MLT' => ['mL', 'مل'],
+        'MTQ' => ['m³', 'م³'],
+        'MTR' => ['m', 'م'],
+        'CMT' => ['cm', 'سم'],
+        'MMT' => ['mm', 'مم'],
+        'KMT' => ['km', 'كم'],
+        'YRD' => ['yd', 'ياردة'],
+        'SMI' => ['mi', 'ميل'],
+        'MTK' => ['m²', 'م²'],
+        'HUR' => ['hr', 'ساعة'],
+        'MIN' => ['min', 'دقيقة'],
+        'DAY' => ['day', 'يوم'],
+        'WEE' => ['wk', 'أسبوع'],
+        'MON' => ['mo', 'شهر'],
+        'ANN' => ['yr', 'سنة'],
+        'XBX' => ['box', 'صندوق'],
+        'XCT' => ['carton', 'كرتون'],
+        'XPK' => ['pkg', 'عبوة'],
+        'XPA' => ['pkt', 'رزمة'],
+        'XBG' => ['bag', 'كيس'],
+        'XCS' => ['case', 'علبة'],
+        'XCR' => ['crate', 'قفص'],
+        'XPX' => ['pallet', 'منصة'],
+        'XRO' => ['roll', 'لفة'],
+        'XTN' => ['tin', 'علبة معدنية'],
+        'KWH' => ['kWh', 'كيلوواط ساعة'],
+        'MTS' => ['m/s', 'م/ث'],
+    ];
+
     /** Codes a request may send: the conformant ones, plus what we used to emit. */
     public static function accepted(): array
     {

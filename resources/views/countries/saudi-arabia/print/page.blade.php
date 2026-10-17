@@ -45,6 +45,9 @@
     $inclusivePrice = $simplified && $invoice->prices_include_vat;
 
     $buyerAddress = (array) ($invoice->buyer_address ?? []);
+
+    // A discount column only when a line has a discount.
+    $lineDiscounts = \App\Domains\Invoice\Support\PrintedAmounts::anyLineDiscount($invoice->lines);
 @endphp
 <div class="mx-auto max-w-2xl">
     <header class="mb-6 border-b border-gray-300 pb-4">
@@ -160,6 +163,10 @@
                 @else
                     <th scope="col" class="py-2 text-right"><x-caption en="Unit price" ar="سعر الوحدة" /></th>
                 @endif
+                {{-- Only when a line has a discount. --}}
+                @if ($lineDiscounts)
+                    <th scope="col" class="py-2 text-right"><x-caption en="Discount" ar="الخصم" /></th>
+                @endif
                 @if (! $simplified)
                     {{-- BT-131, BT-152 and KSA-11, all required on a standard
                          invoice and none of them shown before. --}}
@@ -194,11 +201,18 @@
                         {{-- normalise first: a line stored before the unit
                              codes were corrected holds PCE, which label()
                              cannot name because it is not a real code. --}}
-                        <span class="text-gray-500">{{ \App\Domains\Invoice\Support\UnitCode::label(\App\Domains\Invoice\Support\UnitCode::normalise($line->unit_code)) }}</span>
+                        <span class="text-gray-500">{{ \App\Domains\Invoice\Support\UnitCode::printed($line->unit_code) }}</span>
                     </td>
                     <td class="py-2 text-right tabular-nums">
                         @include('portal.partials.money', ['amount' => $line->priceAsEntered($inclusivePrice), 'currency' => $invoice->currency])
                     </td>
+                    @if ($lineDiscounts)
+                        <td class="py-2 text-right tabular-nums">
+                            @if ($discount = \App\Domains\Invoice\Support\PrintedAmounts::lineDiscount($line))
+                                -@include('portal.partials.money', ['amount' => $discount, 'currency' => $invoice->currency])
+                            @endif
+                        </td>
+                    @endif
                     @if (! $simplified)
                         <td class="py-2 text-right tabular-nums">
                             @include('portal.partials.money', [
@@ -245,6 +259,13 @@
                 <dd class="shrink-0 pl-4 tabular-nums whitespace-nowrap">-@include('portal.partials.money', ['amount' => $invoice->discount_amount, 'currency' => $invoice->currency])</dd>
             </div>
         @endif
+        {{-- Charges on the whole document, each with its VAT rate. --}}
+        @foreach (\App\Domains\Invoice\Support\PrintedAmounts::documentCharges($invoice) as $charge)
+            <div class="flex justify-between">
+                <dt>{{ $charge['reason'] }} <span dir="rtl" lang="ar">رسوم إضافية</span> ({{ $charge['rate'] }}%)</dt>
+                <dd class="shrink-0 pl-4 tabular-nums whitespace-nowrap">@include('portal.partials.money', ['amount' => $charge['amount'], 'currency' => $invoice->currency])</dd>
+            </div>
+        @endforeach
         <div class="flex justify-between">
             <dt><x-caption en="Taxable amount" ar="الإجمالي (باستثناء ضريبة القيمة المضافة)" /></dt>
             <dd class="shrink-0 pl-4 tabular-nums whitespace-nowrap">@include('portal.partials.money', ['amount' => (float) $invoice->subtotal - (float) $invoice->discount_amount, 'currency' => $invoice->currency])</dd>

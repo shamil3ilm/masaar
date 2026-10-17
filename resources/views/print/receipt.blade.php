@@ -61,13 +61,17 @@
     @foreach ($receipt->items as $item)
         <div class="r-item">
             <div class="r-description r-{{ $dir($item->description) }}" dir="{{ $dir($item->description) }}">{{ $item->description }}</div>
-            @if ($item->secondary)
-                <div class="r-small r-{{ $dir($item->secondary) }}" dir="{{ $dir($item->secondary) }}">{{ $item->secondary }}</div>
-            @endif
             <table class="r-row"><tr>
                 <td class="r-start" dir="ltr">{{ $item->quantity }} &times; {{ $item->unitPrice }}</td>
-                <td class="r-end r-amount" dir="ltr">{{ $item->total }}</td>
+                <td class="r-end r-amount" dir="ltr">= {{ $item->total }}</td>
             </tr></table>
+            @if ($item->discount)
+                <table class="r-row r-small"><tr>
+                    <td class="r-start">Discount</td>
+                    <td class="r-end" dir="rtl" lang="ar">الخصم</td>
+                    <td class="r-end r-amount" dir="ltr">{{ $item->discount }}</td>
+                </tr></table>
+            @endif
             @foreach ($item->details as $detail)
                 {{-- Each language in a cell of its own: a renderer laying
                      out English and Arabic in one cell may order them by

@@ -250,18 +250,18 @@ class PrintFieldTest extends TestCase
      */
     public function test_a_line_names_its_unit(): void
     {
-        $this->print($this->invoice('simplified', line: ['unit_code' => 'KGM']))->assertSee('Kilogram');
+        $this->print($this->invoice('simplified', line: ['unit_code' => 'KGM']))->assertSee('kg / كغ');
     }
 
     /**
      * Including a line stored before the unit codes were corrected.
      *
-     * label() cannot name PCE, because PCE is not a code in either list - so
+     * printed() cannot name PCE, because PCE is not a code in either list - so
      * without normalising first the receipt printed the raw value back.
      */
     public function test_a_legacy_unit_is_named(): void
     {
-        $this->print($this->invoice('simplified', line: ['unit_code' => 'PCE']))->assertSee('Piece')->assertDontSee('PCE');
+        $this->print($this->invoice('simplified', line: ['unit_code' => 'PCE']))->assertSee('pc / قطعة')->assertDontSee('PCE');
     }
 
     /**

@@ -78,11 +78,11 @@ class ReceiptImage
             $canvas->space(1.2);
             $canvas->text($item->description, $body, true);
 
-            if ($item->secondary) {
-                $canvas->text($item->secondary, $label);
-            }
+            $canvas->pair($item->quantity.' × '.$item->unitPrice, '= '.$item->total, $body);
 
-            $canvas->pair($item->quantity.' × '.$item->unitPrice, $item->total, $body);
+            if ($item->discount) {
+                $canvas->pair('Discount  الخصم', $item->discount, $label);
+            }
 
             foreach ($item->details as $detail) {
                 $this->detail($canvas, $detail, $label);
