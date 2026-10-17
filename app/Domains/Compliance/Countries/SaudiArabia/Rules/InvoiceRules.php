@@ -153,7 +153,10 @@ class InvoiceRules implements InvoiceRulesPort
                 'gt:0',
                 Rule::requiredIf(fn () => strtoupper((string) $request->input('currency', FatooraConfig::CURRENCY_SAR)) !== FatooraConfig::CURRENCY_SAR),
             ],
-            'payment_means_code' => ['nullable', 'string', 'size:2'],
+            // BR-KSA-16's UNTDID 4461 subset. Two characters exactly used
+            // to refuse "1", which ZATCA names, and take "99", which it
+            // does not.
+            'payment_means_code' => ['nullable', 'string', Rule::in(FatooraConfig::acceptedPaymentMeans())],
             // When it is to be paid, and on what terms. ZATCA's document has
             // the terms (KSA-22, at most 1000 characters by BR-KSA-F-06-C14)
             // and no due date, which the invoice keeps and shows.
@@ -294,6 +297,7 @@ class InvoiceRules implements InvoiceRulesPort
     public function messages(): array
     {
         return [
+            'payment_means_code.in' => __('The payment means is a UNTDID 4461 code ZATCA accepts, such as 10 (cash), 30 (credit transfer), 42 (bank account), 48 (bank card) or 1 (not defined) (BR-KSA-16).'),
             // Supply period
             'supply_date.required_with' => __('A supply end date needs a supply date (BR-KSA-35).'),
             'supply_end_date.after_or_equal' => __('The supply end date cannot be before the supply date (BR-KSA-36).'),

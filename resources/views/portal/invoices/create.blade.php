@@ -94,6 +94,16 @@
                        value="{{ old('exchange_rate') }}" />
             </div>
 
+            {{-- BT-81, the codes ZATCA names (FatooraConfig::PAYMENT_MEANS). --}}
+            <div>
+                <label for="payment_means_code" class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('Payment means') }}</label>
+                <x-ui.select name="payment_means_code" id="payment_means_code">
+                    @foreach (['10' => __('Cash'), '30' => __('Credit transfer'), '42' => __('Payment to bank account'), '48' => __('Bank card'), '1' => __('Instrument not defined')] as $code => $label)
+                        <option value="{{ $code }}" @selected((string) old('payment_means_code', '10') === (string) $code)>{{ $label }}</option>
+                    @endforeach
+                </x-ui.select>
+            </div>
+
             <div>
                 <label for="billing_ref" class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('Billed document') }}</label>
                 <x-ui.input type="text" name="billing_ref" id="billing_ref" value="{{ old('billing_ref') }}" />

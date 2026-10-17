@@ -1101,5 +1101,7 @@
     "Contract": "العقد",
     "Buyer reference": "مرجع المشتري",
     "Payment terms": "شروط الدفع",
-    "For example: 30 days net": "مثال: صافي 30 يوماً"
+    "For example: 30 days net": "مثال: صافي 30 يوماً",
+    "Instrument not defined": "وسيلة غير محددة",
+    "The payment means is a UNTDID 4461 code ZATCA accepts, such as 10 (cash), 30 (credit transfer), 42 (bank account), 48 (bank card) or 1 (not defined) (BR-KSA-16).": "وسيلة الدفع رمز من قائمة UNTDID 4461 تقبله الهيئة، مثل 10 (نقداً) أو 30 (تحويل دائن) أو 42 (حساب بنكي) أو 48 (بطاقة بنكية) أو 1 (غير محددة) (BR-KSA-16)."
 }

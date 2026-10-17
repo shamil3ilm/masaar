@@ -292,6 +292,33 @@ final class FatooraConfig
 
     public const PAYMENT_DIRECT_DEBIT = '49';
 
+    /**
+     * BT-81, the payment means ZATCA names, as the portal offers them: the
+     * subset BR-KSA-16 states in its test (' 10 30 42 48 1 ') - cash,
+     * credit transfer, payment to a bank account, bank card, and an
+     * instrument not defined.
+     *
+     * @var list<string>
+     */
+    public const PAYMENT_MEANS = ['10', '30', '42', '48', '1'];
+
+    /**
+     * BT-81, every code BR-KSA-16 lets through without a finding: the
+     * UNTDID 4461 subset its assertion actually checks, read from the
+     * Schematron in ZATCA's SDK. An API caller may send any of these.
+     *
+     * @return list<string>
+     */
+    public static function acceptedPaymentMeans(): array
+    {
+        return [
+            ...array_map('strval', range(1, 68)),
+            '70', '74', '75', '76', '77', '78',
+            '91', '92', '93', '94', '95', '96', '97',
+            'ZZZ',
+        ];
+    }
+
     // ============================================================
     // RATE LIMITS (Configurable)
     // ============================================================

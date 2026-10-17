@@ -190,6 +190,27 @@ class ScenarioConformanceTest extends TestCase
     }
 
     /**
+     * Each payment means the portal offers, as ZATCA reads it.
+     *
+     * @return iterable<string, array{string}>
+     */
+    public static function paymentMeans(): iterable
+    {
+        foreach (['10', '30', '42', '48', '1'] as $code) {
+            yield "code {$code}" => [$code];
+        }
+    }
+
+    #[DataProvider('paymentMeans')]
+    public function test_payment_means_validate(string $code): void
+    {
+        $xml = $this->signedFrom(self::simplified(['payment_means_code' => $code]));
+
+        $this->assertMatchesRegularExpression("#<cbc:PaymentMeansCode[^>]*>{$code}</cbc:PaymentMeansCode>#", $xml);
+        $this->assertAccepted($xml);
+    }
+
+    /**
      * POST the payload to the API, then sign what was drafted.
      *
      * @param  array<string, mixed>  $payload
