@@ -187,8 +187,13 @@
 /*
  * The same roles after dark. The ground is the logo's navy, nearly black;
  * the main action turns teal, because navy on navy is no action at all.
+ *
+ * On the root, and on any element marked data-theme-scope: the admin
+ * console's style guide draws a dark specimen beside a light one, and the
+ * roles have to be redefined where that specimen starts for it to be dark.
  */
-:root {
+:root,
+[data-theme-scope] {
     @variant dark {
         --color-ground: #0e111b;
         --color-surface: #161a2b;
@@ -240,6 +245,14 @@
 :root:lang(ar) {
     --font-sans: var(--font-arabic), var(--font-latin), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
         'Helvetica Neue', Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+}
+
+@layer base {
+    /* And an Arabic span inside an English page - a bilingual heading, a
+       country's name - leads with it too. In base, so font-mono still wins. */
+    :lang(ar) {
+        font-family: var(--font-arabic), var(--font-latin), ui-sans-serif, system-ui, sans-serif;
+    }
 }
 
 :lang(ar) {

@@ -31,6 +31,7 @@ use App\Domains\Platform\Http\Middleware\AuditAdminAction;
 use App\Domains\Platform\Http\Middleware\MetricsAccess;
 use App\Domains\Platform\Http\Middleware\RateLimitApi;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Log;
@@ -154,6 +155,11 @@ class AppServiceProvider extends ServiceProvider
         // The platform's colours, name and logo - and an organization's over
         // them on its own pages - for every view that draws a page's frame.
         View::composer(ThemeComposer::VIEWS, ThemeComposer::class);
+
+        // Every ->links() in the design system's pagination, rather than the
+        // framework's stock-grey one with its arrows the wrong way in Arabic.
+        Paginator::defaultView('components.ui.pagination');
+        Paginator::defaultSimpleView('components.ui.pagination');
 
         // After the delete has happened - an organization with invoices
         // cannot be deleted, and its branding should not go if it stays.

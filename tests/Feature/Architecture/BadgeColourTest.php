@@ -34,8 +34,12 @@ class BadgeColourTest extends TestCase
 {
     private const VIEWS = __DIR__.'/../../../resources/views';
 
-    /** The pill palette: a tinted background with text dark enough to sit on it. */
-    private const PALETTE = '/bg-[a-z]+-100\s+text-[a-z]+-800/';
+    /**
+     * The pill palette: a tinted background with text dark enough to sit on
+     * it - in the stock ramps, or in the design system's state roles on a
+     * rounded-full pill.
+     */
+    private const PALETTE = '/bg-[a-z]+-100\s+text-[a-z]+-800|rounded-full[^"]*bg-(?:success|warning|danger|info)-soft|bg-(?:success|warning|danger|info)-soft[^"]*rounded-full/';
 
     /**
      * Only the badge names a pill colour.
@@ -100,8 +104,8 @@ class BadgeColourTest extends TestCase
         $rejected = $this->badge('rejected');
 
         $this->assertNotSame($failed, $rejected);
-        $this->assertStringContainsString('amber', $failed);
-        $this->assertStringContainsString('red', $rejected);
+        $this->assertStringContainsString('bg-warning-soft', $failed);
+        $this->assertStringContainsString('bg-danger-soft', $rejected);
     }
 
     /**
@@ -115,7 +119,7 @@ class BadgeColourTest extends TestCase
     {
         $rendered = $this->badge('something_new');
 
-        $this->assertStringContainsString('bg-gray-100', $rendered);
+        $this->assertStringContainsString('bg-sunken', $rendered);
         $this->assertStringContainsString('Something new', $rendered);
     }
 

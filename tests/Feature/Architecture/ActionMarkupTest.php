@@ -39,7 +39,7 @@ class ActionMarkupTest extends TestCase
      * Deliberately not every bg-*: a tinted card, a stat tile and an icon
      * circle are not actions and are left alone.
      */
-    private const FILLS = '/<(?:button|a)\b[^>]*\bclass="[^"]*bg-(?:teal|gray|red)-(?:200|600)/s';
+    private const FILLS = '/<(?:button|a)\b[^>]*\bclass="[^"]*bg-(?:(?:teal|gray|red)-(?:200|600)|action|danger)\b/s';
 
     public function test_one_action_shell(): void
     {

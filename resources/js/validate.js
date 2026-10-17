@@ -23,9 +23,9 @@
  * so a listener on the document only sees it on the way down.
  */
 
-const MESSAGE_CLASS = 'mt-1 text-sm font-medium text-red-700';
+const MESSAGE_CLASS = 'mt-1 text-xs font-medium text-danger';
 
-const INVALID_CONTROL_CLASSES = ['border-red-500', 'ring-1', 'ring-red-500'];
+const INVALID_CONTROL_CLASSES = ['border-danger'];
 
 /**
  * What to say, in order of specificity.
@@ -100,6 +100,14 @@ function labelFor(control) {
         : null;
 
     const label = paired ?? control.closest('label');
+
+    // x-ui.field marks its label's words, which sit in a span beside a
+    // hint and an error rather than as the label's own text.
+    const marked = label?.querySelector('[data-field-label]');
+
+    if (marked?.textContent.trim()) {
+        return marked.textContent.trim();
+    }
 
     if (label) {
         // A nested label contains the control, and on x-ui.field it contains

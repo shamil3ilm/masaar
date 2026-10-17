@@ -5,6 +5,7 @@ import { registerConfirmations } from './confirm.js';
 import { registerInvoiceLines } from './invoice-lines.js';
 import { signupCountry } from './signup-country.js';
 import { registerUaeInvoice } from './uae-invoice.js';
+import { registerInterface } from './ui.js';
 import { registerValidation } from './validate.js';
 import { drawer, sidebar } from './sidebar.js';
 
@@ -31,5 +32,6 @@ registerInvoiceLines();
 registerCataloguePickers();
 registerUaeInvoice();
 registerValidation();
+registerInterface();
 
 Alpine.start();

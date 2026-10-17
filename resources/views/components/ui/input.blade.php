@@ -4,17 +4,14 @@
     A control someone types into.
 
     Forty-nine of these were written by hand in thirteen class strings, and
-    the differences were all accidents rather than decisions: rounded against
-    rounded-md, with and without shadow-sm, with and without the font-normal
-    that stops a control inheriting its label's weight, and four different
-    focus treatments including two with none at all.
+    the differences were all accidents rather than decisions. Every one was
+    between thirty-six and thirty-eight pixels tall; this is forty-four, the
+    same as x-ui.button, because a date filter is harder to hit accurately
+    than a button, not easier.
 
-    Every one of them was between thirty-six and thirty-eight pixels tall. The
-    usual minimum for a touch target is forty-four, same as x-ui.button - and
-    a date filter is harder to hit accurately than a button, not easier.
-
-    The focus ring matches the button's, so focus looks like one thing moving
-    through the page rather than a different idea per control.
+    Drawn from the colour roles, so it sits on a card in light or dark without
+    a dark: pair, and marked invalid by aria-invalid, so the red border and
+    the announced error are one fact rather than two that can disagree.
 
     Attributes pass straight through, so type, name, value, required,
     maxlength, step, dir and autocomplete all work as they did. A caller that
@@ -22,6 +19,9 @@
     with class, and it lands after the base.
 --}}
 <input type="{{ $type }}" {{ $attributes->merge([
-    'class' => 'mt-1 block min-h-11 w-full rounded border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-sm font-normal text-gray-900 dark:text-gray-100 shadow-sm'
-        .' focus:border-teal-600 focus:ring-1 focus:ring-teal-600',
+    'class' => 'mt-1 block min-h-11 w-full rounded-control border border-line-strong bg-surface px-3 py-2 text-sm font-normal text-fg shadow-card'
+        .' placeholder:text-subtle transition-colors'
+        .' focus:border-focus focus:outline-none focus:ring-3 focus:ring-focus/25'
+        .' disabled:cursor-not-allowed disabled:bg-sunken disabled:text-subtle aria-invalid:border-danger'
+        .' file:me-3 file:rounded-control file:border-0 file:bg-sunken file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-fg',
 ]) }}>
