@@ -47,7 +47,9 @@ class CommandConstructionTest extends TestCase
 
             $source = (string) file_get_contents($file->getPathname());
 
-            preg_match_all('/^use App\\\\Domains\\\\[\w\\\\]+\\\\(?:Services|Client)\\\\(\w+)(?: as (\w+))?;/m', $source, $imports, PREG_SET_ORDER);
+            // A domain's Services or Client, or the folders a country module
+            // keeps its services in.
+            preg_match_all('/^use App\\\\Domains\\\\(?:[\w\\\\]+\\\\(?:Services|Client)|Compliance\\\\Countries\\\\\w+\\\\(?:Issuing|Document|Signing|Onboarding|Filing|Rules|Reports))\\\\(\w+)(?: as (\w+))?;/m', $source, $imports, PREG_SET_ORDER);
 
             foreach ($imports as $import) {
                 $name = ($import[2] ?? '') !== '' ? $import[2] : $import[1];

@@ -55,8 +55,8 @@ for them last.
 
 ### Do not repeat the enclosing namespace
 
-`Domains/Compliance/Fatoora/Services/FatooraSubmissionService` says "Fatoora"
-twice and "Service" once more than needed. The exception is a class referred to
+`Domains/Compliance/Countries/SaudiArabia/Filing/SaudiArabiaFilingService` says
+"SaudiArabia" and "Filing" twice and "Service" once more than needed. The exception is a class referred to
 from *outside* its domain, where the prefix is what makes the import readable —
 `FatooraException` and `InvoiceStatus` keep theirs deliberately.
 

@@ -20,7 +20,7 @@
     // [GL] §4.2.3: the date and the time of issue. The time is the one the
     // XML's IssueTime and the QR carry, on the Kingdom's clock.
     $issueTime = $invoice->created_at
-        ? \App\Domains\Compliance\Fatoora\Helpers\FatooraTime::toSaudiTime($invoice->issuedMoment())->format('H:i:s')
+        ? \App\Domains\Compliance\Countries\SaudiArabia\Support\FatooraTime::toSaudiTime($invoice->issuedMoment())->format('H:i:s')
         : null;
 
     // Saudi VAT is owed in riyals. Converted as InvoiceXmlData::convertToSar
@@ -29,7 +29,7 @@
     $vatSar = $inSar ? round((float) $invoice->tax_amount * (float) $invoice->exchange_rate, 2) : null;
 
     // BT-46, the buyer's other identifier, under its register's name.
-    $buyerScheme = \App\Domains\Compliance\Fatoora\Config\FatooraConfig::BUYER_ID_SCHEME_LABELS[$invoice->buyer_id_scheme ?? '']
+    $buyerScheme = \App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig::BUYER_ID_SCHEME_LABELS[$invoice->buyer_id_scheme ?? '']
         ?? [(string) $invoice->buyer_id_scheme, 'رقم تعريف المشتري'];
 
     // BT-146 is the item net price, and a standard invoice prints it. Only a
@@ -187,7 +187,7 @@
                             <span class="block text-xs text-gray-500">{{ $line->exempt_reason }}</span>
                             {{-- With the authority's own Arabic for the code:
                                  the reason typed may be English only. --}}
-                            @if ($exemptAr = \App\Domains\Compliance\Fatoora\Config\FatooraConfig::EXEMPTION_REASONS_AR[$line->exempt_code ?? ''] ?? null)
+                            @if ($exemptAr = \App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig::EXEMPTION_REASONS_AR[$line->exempt_code ?? ''] ?? null)
                                 <span class="block text-xs text-gray-500" dir="rtl" lang="ar">{{ $exemptAr }}</span>
                             @endif
                         @endif

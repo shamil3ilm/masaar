@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use App\Domains\Compliance\Fatoora\Events\InvoiceCleared;
-use App\Domains\Compliance\Fatoora\Events\InvoiceFailed;
-use App\Domains\Compliance\Fatoora\Events\InvoiceRejected;
-use App\Domains\Compliance\Fatoora\Events\InvoiceReported;
-use App\Domains\Compliance\Fatoora\Events\InvoiceSubmitted;
-use App\Domains\Compliance\Fatoora\Events\InvoiceWarning;
-use App\Domains\Compliance\Fatoora\Listeners\DispatchInvoiceWebhook;
+use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceCleared;
+use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceFailed;
+use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceRejected;
+use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceReported;
+use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceSubmitted;
+use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceWarning;
+use App\Domains\Compliance\Countries\SaudiArabia\Listeners\DispatchInvoiceWebhook;
 use App\Domains\Platform\Listeners\AlertOnBackupTrouble;
 use App\Domains\Platform\Listeners\RefuseUnencryptedBackup;
 use App\Domains\Webhook\Events\CertificateExpiring;

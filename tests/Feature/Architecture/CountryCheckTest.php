@@ -30,7 +30,7 @@ class CountryCheckTest extends TestCase
     /** Country modules and the engine: where a country's code belongs. */
     private const EXEMPT = [
         'Domains/Compliance/Engine/',
-        'Domains/Compliance/Fatoora/',
+        'Domains/Compliance/Countries/',
         'Domains/Compliance/Peppol/',
     ];
 
@@ -95,7 +95,7 @@ class CountryCheckTest extends TestCase
         $this->assertNotSame([], $engine, 'The engine was not found.');
 
         foreach ($engine as $relative => $source) {
-            if (preg_match('/App\\\\Domains\\\\Compliance\\\\(Fatoora|Peppol)\\\\/', $source) === 1) {
+            if (preg_match('/App\\\\Domains\\\\Compliance\\\\(Countries|Peppol)\\\\/', $source) === 1) {
                 $offenders[] = $relative.' references a country module';
             }
 

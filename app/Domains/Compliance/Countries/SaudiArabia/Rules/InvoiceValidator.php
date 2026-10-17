@@ -1,0 +1,692 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domains\Compliance\Countries\SaudiArabia\Rules;
+
+use App\Domains\Invoice\Enums\DocumentType;
+use App\Domains\Invoice\Enums\InvoiceStatus;
+use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Services\InvoiceTotals;
+use App\Domains\Organization\Models\Organization;
+use App\Support\Xml;
+
+/**
+ * ZATCA validation service.
+ *
+ * Validates invoices against ZATCA business rules before submission.
+ * Implements BR-KSA-01 through BR-KSA-80 compliance checks.
+ *
+ * Validation rules are config-driven for regulatory flexibility.
+ * See config/zatca.php 'validation' section.
+ */
+class InvoiceValidator
+{
+    /**
+     * Get allowed tax rates from config.
+     * Default: [0, 15] for standard KSA rates.
+     */
+    private function getAllowedTaxRates(): array
+    {
+        return config('fatoora.validation.allowed_tax_rates', [0, 15]);
+    }
+
+    /**
+     * The exemption codes ZATCA accepts.
+     *
+     * Was array_keys(config('fatoora.validation.exemption_codes')) - a second,
+     * 19-code list that still carried VATEX-SA-31 after the request layer had
+     * been corrected against ZATCA's Schematron for accepting exactly that.
+     * So this validator admitted a code the authority refuses while the API
+     * in front of it rejected the same code.
+     *
+     * @return list<string>
+     */
+    private function getValidExemptionCodes(): array
+    {
+        return FatooraConfig::exemptionCodes();
+    }
+
+    /**
+     * Get valid invoice type codes from config.
+     * Returns associative array: code => name.
+     */
+    private function getValidInvoiceTypeCodes(): array
+    {
+        return config('fatoora.validation.invoice_type_codes', [
+            '388' => 'Invoice',
+            '381' => 'Credit Note',
+            '383' => 'Debit Note',
+        ]);
+    }
+
+    /**
+     * Check if strict exemption code validation is enabled.
+     */
+    private function isStrictExemptionMode(): bool
+    {
+        return (bool) config('fatoora.validation.strict_exemption_codes', false);
+    }
+
+    /**
+     * Validate invoice for ZATCA compliance.
+     *
+     * @return array{valid: bool, errors: array, warnings: array}
+     */
+    public function validate(Invoice $invoice, Organization $organization): array
+    {
+        $errors = [];
+        $warnings = [];
+
+        // Validate organization profile
+        $errors = array_merge($errors, $this->validateOrganization($organization));
+
+        // Validate invoice fields
+        $errors = array_merge($errors, $this->validateInvoice($invoice));
+
+        // Validate buyer information
+        $errors = array_merge($errors, $this->validateBuyer($invoice));
+
+        // Validate line items
+        $errors = array_merge($errors, $this->validateLines($invoice));
+
+        // Validate amounts
+        $errors = array_merge($errors, $this->validateAmounts($invoice));
+
+        // Check for warnings
+        $warnings = array_merge($warnings, $this->checkWarnings($invoice, $organization));
+
+        return [
+            'valid' => empty($errors),
+            'errors' => $errors,
+            'warnings' => $warnings,
+        ];
+    }
+
+    /**
+     * Validate organization (seller) information.
+     */
+    private function validateOrganization(Organization $organization): array
+    {
+        $errors = [];
+
+        // VAT number (BR-KSA-14)
+        if (! $organization->vat_number) {
+            $errors[] = 'BR-KSA-14: Seller VAT number is required';
+        } elseif (! $this->isValidVatNumber($organization->vat_number)) {
+            $errors[] = 'BR-KSA-14: Seller VAT number must be 15 digits starting with 3';
+        }
+
+        // Seller name
+        if (! $organization->name) {
+            $errors[] = 'BR-S-01: Seller name is required';
+        }
+
+        // Address (BR-KSA-09)
+        if (! $organization->street) {
+            $errors[] = 'BR-KSA-09: Seller street is required';
+        }
+        if (! $organization->city) {
+            $errors[] = 'BR-KSA-09: Seller city is required';
+        }
+        if (! $organization->postal_code) {
+            $errors[] = 'BR-KSA-09: Seller postal code is required';
+        } elseif (! $this->isValidPostalCode($organization->postal_code)) {
+            $errors[] = 'BR-KSA-09: Postal code must be 5 digits';
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Validate invoice fields.
+     */
+    private function validateInvoice(Invoice $invoice): array
+    {
+        $errors = [];
+
+        // Invoice number (BT-1). A draft may be unnumbered: issuing it takes
+        // the next number from the organization's sequence, before the
+        // document is built.
+        if (! $invoice->invoice_number && $invoice->status !== InvoiceStatus::Draft) {
+            $errors[] = 'BT-1: Invoice number is required';
+        }
+
+        // UUID validation (BR-KSA-03). BT-124 is the invoice's primary key,
+        // generated by HasUuids.
+        if (! $this->isValidUuid((string) $invoice->id)) {
+            $errors[] = 'BR-KSA-03: Invoice UUID must be a UUID of letters, digits and dashes';
+        }
+
+        // Issue date (BT-2)
+        if (! $invoice->issue_date) {
+            $errors[] = 'BT-2: Issue date is required';
+        }
+
+        // Invoice type (BT-3)
+        if (! $invoice->type) {
+            $errors[] = 'BT-3: Invoice type is required';
+        }
+
+        // Invoice type code validation (BR-KSA-02)
+        $docType = $invoice->document_type ?? DocumentType::Invoice;
+        $typeCode = $docType->getTypeCode();
+        if (! $this->isValidInvoiceTypeCode($typeCode)) {
+            $errors[] = "BR-KSA-02: Invoice type code must be 388, 381, or 383 (got {$typeCode})";
+        }
+
+        // Currency (BT-5) - SAR required, or foreign currency with exchange rate
+        // Per ZATCA: Foreign currency invoices allowed if TaxCurrencyCode is SAR
+        // and exchange rate is provided for conversion
+        if (! $invoice->currency) {
+            $errors[] = 'BT-5: Currency code is required';
+        } elseif ($invoice->currency !== 'SAR') {
+            // Foreign currency is allowed if exchange rate is provided
+            // The caller must provide amounts in foreign currency + exchange rate
+            // so we can compute SAR amounts for VAT reporting
+            $hasExchangeRate = isset($invoice->exchange_rate) && $invoice->exchange_rate > 0;
+            if (! $hasExchangeRate) {
+                $errors[] = 'BR-53: Foreign currency invoices require exchange_rate to SAR';
+            }
+        }
+
+        // Billing reference for credit/debit notes
+        if ($docType->requiresBillingReference() && ! $invoice->billing_ref) {
+            $errors[] = 'BT-25: Billing reference is required for credit/debit notes';
+        }
+
+        // ICV must be positive (BR-KSA-25)
+        if ($invoice->icv !== null && $invoice->icv <= 0) {
+            $errors[] = 'BR-KSA-25: Invoice Counter Value (ICV) must be a positive integer';
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Validate buyer information.
+     */
+    /**
+     * What the authority requires of the buyer, and no more.
+     *
+     * This refused every invoice without a buyer name and every standard
+     * invoice without a buyer VAT number. Both are stricter than ZATCA:
+     *
+     *   BR-KSA-25  a simplified invoice names its buyer only when a line is
+     *              exempt as private education or healthcare to a Saudi
+     *              citizen. A walk-in sale names nobody - the authority's own
+     *              sample simplified invoice has an empty customer party.
+     *   BR-KSA-81  a standard invoice identifies its buyer by VAT number or,
+     *              failing that, by another identifier (BT-46). A business
+     *              that is not VAT-registered can still be invoiced.
+     *
+     * The messages cited BR-KSA-15 for the buyer VAT number. BR-KSA-15 is the
+     * rule that a standard invoice carries a supply date, so anyone following
+     * the citation to the rule found nothing about VAT numbers at all.
+     */
+    private function validateBuyer(Invoice $invoice): array
+    {
+        $errors = [];
+        $standard = $invoice->type->value === 'standard';
+
+        $exemptForNamedBuyer = $invoice->lines->contains(
+            fn ($line): bool => in_array($line->exempt_code, FatooraConfig::NAMED_BUYER_EXEMPTIONS, true)
+        );
+
+        if (! $invoice->buyer_name && ($standard || $exemptForNamedBuyer)) {
+            $errors[] = $standard
+                ? 'BT-44: Buyer name is required on a standard invoice'
+                : 'BR-KSA-25: Buyer name is required when a line is exempt as private education or healthcare';
+        }
+
+        if ($invoice->buyer_vat_number !== null && $invoice->buyer_vat_number !== '') {
+            if (! $this->isValidVatNumber($invoice->buyer_vat_number)) {
+                $errors[] = 'BR-KSA-44: Buyer VAT number must be 15 digits, starting and ending with 3';
+            }
+        } elseif ($standard && ! $invoice->buyer_id) {
+            $errors[] = 'BR-KSA-81: A standard invoice needs the buyer VAT number (BT-48) or another buyer identifier (BT-46)';
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Validate invoice lines.
+     */
+    private function validateLines(Invoice $invoice): array
+    {
+        $errors = [];
+
+        if ($invoice->lines->isEmpty()) {
+            $errors[] = 'BR-16: Invoice must have at least one line item';
+
+            return $errors;
+        }
+
+        foreach ($invoice->lines as $index => $line) {
+            $lineNum = $index + 1;
+
+            // Description (BT-153)
+            if (! $line->description) {
+                $errors[] = "BT-153: Line {$lineNum} description is required";
+            }
+
+            // Quantity (BT-129)
+            if ($line->quantity <= 0) {
+                $errors[] = "BT-129: Line {$lineNum} quantity must be positive";
+            }
+
+            // Unit price (BT-146)
+            if ($line->unit_price < 0) {
+                $errors[] = "BT-146: Line {$lineNum} unit price cannot be negative";
+            }
+
+            // Tax rate validation - must be one of allowed rates (BR-KSA-DEC-02)
+            $taxRate = (int) $line->tax_rate;
+            $allowedRates = $this->getAllowedTaxRates();
+            if (! in_array($taxRate, $allowedRates, true)) {
+                $ratesStr = implode('% or ', $allowedRates).'%';
+                $errors[] = "BR-KSA-DEC-02: Line {$lineNum} tax rate must be {$ratesStr} (got {$taxRate}%)";
+            }
+
+            // Tax category validation (BR-KSA-33, BR-KSA-34, BR-KSA-35, BR-KSA-40)
+            $taxCategory = $line->tax_category ?? 'S';
+
+            // BR-KSA-40: Tax category must be one of S, Z, E, O
+            if (! in_array($taxCategory, ['S', 'Z', 'E', 'O'])) {
+                $errors[] = "BR-KSA-40: Line {$lineNum} tax category must be S, Z, E, or O (got {$taxCategory})";
+            }
+
+            if (in_array($taxCategory, ['Z', 'E', 'O'])) {
+                // Zero-rated, Exempt, and Out-of-scope require exemption reason
+                if (empty($line->exempt_code)) {
+                    $errors[] = "BR-KSA-33: Line {$lineNum} requires exemption reason code for tax category {$taxCategory}";
+                } elseif (! $this->isValidExemptionCode($line->exempt_code)) {
+                    $errors[] = "BR-KSA-46: Line {$lineNum} has invalid exemption code '{$line->exempt_code}'. Must be a valid VATEX-SA-* code";
+                }
+                if (empty($line->exempt_reason)) {
+                    $errors[] = "BR-KSA-34: Line {$lineNum} requires exemption reason text for tax category {$taxCategory}";
+                }
+            }
+
+            // Validate tax category matches rate (BR-KSA-35)
+            if ($taxCategory === 'S' && $taxRate !== 15) {
+                $errors[] = "BR-KSA-35: Line {$lineNum} standard rated (S) must have 15% tax rate";
+            }
+            if (in_array($taxCategory, ['Z', 'E', 'O']) && $taxRate !== 0) {
+                $errors[] = "BR-KSA-35: Line {$lineNum} tax category {$taxCategory} must have 0% tax rate";
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Validate invoice amounts.
+     *
+     * Recomputed by InvoiceTotals, the rule the document declares its totals
+     * by: each line rounded to the halalah, VAT per tax category after the
+     * document discount is shared out. This summed the lines' own VAT and
+     * multiplied unrounded floats, which disagrees with that rule on any
+     * discounted invoice - so as a gate it would have refused documents that
+     * were right.
+     */
+    private function validateAmounts(Invoice $invoice): array
+    {
+        $errors = [];
+        $discount = (string) ($invoice->discount_amount ?? '0');
+
+        $totals = InvoiceTotals::of($invoice->lines->map(fn ($line): array => [
+            'quantity' => (string) $line->quantity,
+            'unit_price' => (string) $line->unit_price,
+            // The exact net where the line has one: a net price backed out of
+            // a VAT-inclusive one is rounded.
+            'net' => $line->net_amount,
+            'tax_rate' => (string) $line->tax_rate,
+            'tax_category' => $line->tax_category,
+        ])->all(), $discount);
+
+        // Prices entered with VAT in them keep the customer's total exact,
+        // and the VAT is what that leaves over the net. It may sit a halalah
+        // per tax category from the categories' own rounding (BR-S-09, within
+        // ZATCA's halalah-per-line tolerance), and the total is then net plus
+        // that VAT.
+        $inclusive = (bool) $invoice->prices_include_vat;
+        $categories = $invoice->lines->map(fn ($line): string => ($line->tax_category ?? 'S').'_'.(float) $line->tax_rate)->unique()->count();
+        $expectedTotal = $inclusive
+            ? bcadd(bcsub($totals->subtotal, $discount, 2), (string) ($invoice->tax_amount ?? '0'), 2)
+            : $totals->total;
+
+        // BR-CO-10
+        if (! $this->agrees($invoice->subtotal, $totals->subtotal)) {
+            $errors[] = "BR-CO-10: Subtotal {$invoice->subtotal} does not match its lines ({$totals->subtotal})";
+        }
+
+        // BR-CO-14
+        if (! $this->agrees($invoice->tax_amount, $totals->tax, $inclusive ? max(1, $categories) : 1)) {
+            $errors[] = "BR-CO-14: VAT total {$invoice->tax_amount} does not match its tax categories ({$totals->tax})";
+        }
+
+        // BR-CO-15
+        if (! $this->agrees($invoice->total, $expectedTotal)) {
+            $errors[] = "BR-CO-15: Invoice total {$invoice->total} does not match subtotal less discount plus VAT ({$expectedTotal})";
+        }
+
+        // A discount is an allowance: never negative, and never more than
+        // the lines, or the totals turn negative (BR-KSA-F-04).
+        if (bccomp($discount, '0', 2) < 0) {
+            $errors[] = 'BR-KSA-F-04: Discount amount cannot be negative';
+        }
+        if (bccomp($discount, $totals->subtotal, 2) > 0) {
+            $errors[] = 'BR-KSA-F-04: Discount cannot exceed invoice subtotal';
+        }
+
+        // BR-KSA-F-04: every amount is positive, a credit note's included.
+        // A reduction is expressed by the document type, never by a sign.
+        if ((float) $invoice->total < 0) {
+            $errors[] = 'BR-KSA-F-04: Amounts must be positive; a reduction is a credit note (type 381) with positive amounts';
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Within a halalah - the tolerance this check has always allowed - or a
+     * halalah per tax category where the VAT is fixed by a gross total.
+     */
+    private function agrees(mixed $stored, string $computed, int $halalahs = 1): bool
+    {
+        $difference = bcsub((string) ($stored ?? '0'), $computed, 2);
+
+        return bccomp(ltrim($difference, '-'), bcmul('0.01', (string) $halalahs, 2), 2) <= 0;
+    }
+
+    /**
+     * Check for warnings (non-blocking issues).
+     */
+    private function checkWarnings(Invoice $invoice, Organization $organization): array
+    {
+        $warnings = [];
+
+        // No warning about Latin names here, deliberately, and this is a
+        // correction rather than an omission.
+        //
+        // Article 66(2) of the VAT Implementing Regulations requires invoices
+        // to be issued in Arabic, and ZATCA's Guideline for Tax Invoicing and
+        // Records (v3, May 2026) section 4.2.1 says all fields must be
+        // completed in Arabic. The same section then sets out what that means
+        // field by field, and exempts the ones this application stores:
+        //
+        //   "Proper names include the names of persons and places, the
+        //   registered branch, and product names ... ZATCA approves the use of
+        //   Latin characters for writing such names as part of the Arabic
+        //   language requirements in the tax invoice."
+        //
+        // Numerals, currency codes and symbols, dates and invoice numbers are
+        // exempted in the same way. So a seller name, a buyer name and a line
+        // description written in Latin satisfy the requirement, and an earlier
+        // version of this method warned that they did not - which would have
+        // told every organization in the Kingdom it was non-compliant for
+        // something the authority explicitly approves.
+        //
+        // Where the requirement does bite is the rendition: the document
+        // title and the field captions on the human-readable invoice, which
+        // ZATCA's own illustrative invoices print bilingually. That is a
+        // template concern, not a validation one, and it lives in
+        // resources/views/portal/invoices.
+
+        // BR-KSA-80: Organization compliance status check
+        if (! $organization->zatca_onboarded) {
+            $warnings[] = 'Organization has not completed ZATCA onboarding - invoice may be rejected';
+        }
+
+        // Large invoice warning - requires additional audit trail
+        if ((float) $invoice->total > config('fatoora.thresholds.large_invoice_amount', 1000000)) {
+            $warnings[] = 'Large invoice amount exceeds threshold - additional audit trail recommended';
+        }
+
+        // Zero-rated items warning
+        foreach ($invoice->lines as $line) {
+            if ($line->tax_rate == 0) {
+                $warnings[] = "Line {$line->description} has 0% VAT - ensure exemption reason is provided";
+                break;
+            }
+        }
+
+        // Future date warning
+        if ($invoice->issue_date->isFuture()) {
+            $warnings[] = 'Invoice date is in the future';
+        }
+
+        // Free goods carry VAT on their market value, so ZATCA wants that value
+        // stated. It is not modelled: invoice_lines has neither is_free_item nor
+        // market_value, and no request accepts them. This read both from the
+        // line behind an isset, so the check silently never ran. Marking a line
+        // as free is a column, a request field and a rule — not a fix here.
+
+        return $warnings;
+    }
+
+    /**
+     * Validate buyer identification scheme.
+     * Per ZATCA: Non-VAT buyers must have alternative ID.
+     *
+     * Valid schemes: TIN, CRN, MOM, MLS, SAG, NAT, GCC, IQA, PAS, OTH
+     */
+    public function isValidBuyerIdScheme(?string $scheme): bool
+    {
+        if ($scheme === null) {
+            return true; // Optional if buyer has VAT
+        }
+
+        $validSchemes = ['TIN', 'CRN', 'MOM', 'MLS', 'SAG', 'NAT', 'GCC', 'IQA', 'PAS', 'OTH'];
+
+        return in_array($scheme, $validSchemes, true);
+    }
+
+    /**
+     * Validate that credit note total doesn't exceed original invoice.
+     *
+     * @param  float  $creditNoteTotal  Credit note total
+     * @param  float  $originalInvoiceTotal  Original invoice total
+     * @param  float  $previousCreditNotesTotal  Sum of previous credit notes for same invoice
+     * @return bool True if valid
+     */
+    public function validateCreditNoteTotal(
+        float $creditNoteTotal,
+        float $originalInvoiceTotal,
+        float $previousCreditNotesTotal = 0.0
+    ): bool {
+        $maxAllowed = $originalInvoiceTotal - $previousCreditNotesTotal;
+
+        return $creditNoteTotal <= $maxAllowed + 0.01; // Allow 0.01 tolerance for rounding
+    }
+
+    /**
+     * Validate VAT number format.
+     * Must be 15 digits starting AND ending with 3 per ZATCA requirements.
+     */
+    public function isValidVatNumber(?string $vatNumber): bool
+    {
+        if ($vatNumber === null) {
+            return false;
+        }
+
+        // Saudi VAT numbers must be 15 digits, start with 3, and end with 3
+        return strlen($vatNumber) === 15
+            && ctype_digit($vatNumber)
+            && str_starts_with($vatNumber, '3')
+            && str_ends_with($vatNumber, '3');
+    }
+
+    /**
+     * Validate postal code format.
+     * Must be 5 digits.
+     */
+    public function isValidPostalCode(?string $postalCode): bool
+    {
+        if ($postalCode === null) {
+            return false;
+        }
+
+        return preg_match('/^\d{5}$/', $postalCode) === 1;
+    }
+
+    /**
+     * Validate tax exemption code against ZATCA whitelist.
+     * Must be a valid VATEX-SA-* code from config.
+     *
+     * When strict mode is disabled, also accepts any VATEX-SA-* pattern.
+     */
+    public function isValidExemptionCode(?string $code): bool
+    {
+        if ($code === null) {
+            return false;
+        }
+
+        // Check against configured codes
+        if (in_array($code, $this->getValidExemptionCodes(), true)) {
+            return true;
+        }
+
+        // In non-strict mode, accept any VATEX-SA-* pattern for forward compatibility
+        if (! $this->isStrictExemptionMode() && preg_match('/^VATEX-SA-/', $code)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Validate invoice type code.
+     * Must be 388 (Invoice), 381 (Credit Note), or 383 (Debit Note).
+     * Valid codes are defined in config/zatca.php.
+     */
+    public function isValidInvoiceTypeCode(?string $typeCode): bool
+    {
+        if ($typeCode === null) {
+            return false;
+        }
+
+        return array_key_exists($typeCode, $this->getValidInvoiceTypeCodes());
+    }
+
+    /**
+     * Validate UUID format.
+     *
+     * Any version. BR-KSA-03 asks for letters, digits and dashes; this required
+     * version 4, which every invoice key fails - HasUuids generates version 7 -
+     * so as a gate it would have refused every invoice.
+     */
+    public function isValidUuid(?string $uuid): bool
+    {
+        if ($uuid === null) {
+            return false;
+        }
+
+        return preg_match(
+            '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i',
+            $uuid
+        ) === 1;
+    }
+
+    /**
+     * Validate decimal precision.
+     * ZATCA requires max 2 decimal places for amounts.
+     */
+    public function isValidDecimalPrecision(float $amount): bool
+    {
+        $rounded = round($amount, 2);
+
+        return abs($amount - $rounded) < 0.001;
+    }
+
+    /**
+     * Check invoice XML: well-formed always, against the UBL schema when it is
+     * present.
+     *
+     * The schema is not in the repository. ZATCA publishes the UBL 2.1 schema
+     * set with its SDK, which is a licensed download, so this reads a path from
+     * config and validates only if something is there.
+     *
+     * Until it is, this establishes that the document parses and nothing more.
+     * That distinction matters enough to return rather than leave implied:
+     * every caller can see which of the two checks it got, instead of reading
+     * an empty error list as a document that satisfies the specification.
+     *
+     * Give it a signed document. Before signing, XmlBuilder leaves a comment
+     * where the XAdES signature goes, and the schema wants an element there,
+     * so an unsigned document always reports one error against
+     * ext:ExtensionContent however correct the rest of it is. With the
+     * signature in place both invoice types validate clean.
+     *
+     * @return array{schema_checked: bool, errors: list<string>}
+     */
+    public function validateXml(string $xml): array
+    {
+        $dom = new \DOMDocument;
+
+        $errors = array_map(
+            static fn (string $error): string => "XML Error {$error}",
+            Xml::errors($dom, $xml)
+        );
+
+        if ($errors !== []) {
+            return ['schema_checked' => false, 'errors' => $errors];
+        }
+
+        $schema = $this->schemaPath();
+
+        if ($schema === null) {
+            return ['schema_checked' => false, 'errors' => []];
+        }
+
+        return ['schema_checked' => true, 'errors' => $this->schemaErrors($dom, $schema)];
+    }
+
+    /**
+     * The UBL schema to validate against, or null when none is installed.
+     */
+    private function schemaPath(): ?string
+    {
+        $path = config('fatoora.validation.schema_path');
+
+        if (! is_string($path) || $path === '') {
+            return null;
+        }
+
+        $path = str_starts_with($path, '/') || preg_match('/^[A-Za-z]:/', $path) === 1
+            ? $path
+            : base_path($path);
+
+        return is_file($path) ? $path : null;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function schemaErrors(\DOMDocument $dom, string $schema): array
+    {
+        $previous = libxml_use_internal_errors(true);
+        libxml_clear_errors();
+
+        // Load by path, not by string: UBL's main document imports the common
+        // component schemas beside it, and libxml resolves those relative to
+        // the file it was given.
+        $dom->schemaValidate($schema);
+
+        $errors = array_map(
+            static fn (\LibXMLError $e): string => sprintf(
+                'Schema line %d: %s',
+                $e->line,
+                trim($e->message)
+            ),
+            libxml_get_errors()
+        );
+
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+
+        return $errors;
+    }
+}

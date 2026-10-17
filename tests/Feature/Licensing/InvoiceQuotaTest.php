@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Licensing;
 
-use App\Domains\Compliance\Fatoora\Client\FatooraClient;
-use App\Domains\Compliance\Fatoora\DTOs\FatooraResponse;
-use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
-use App\Domains\Compliance\Fatoora\Services\CredentialStore;
-use App\Domains\Compliance\Fatoora\Services\OfflineFallback;
-use App\Domains\Compliance\Fatoora\Services\SubmissionTracker;
-use App\Domains\Compliance\Fatoora\Services\Submitter;
+use App\Domains\Compliance\Countries\SaudiArabia\DTOs\FatooraResponse;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\FatooraClient;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\OfflineFallback;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\SubmissionTracker;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\Submitter;
+use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Licensing\Models\License;
 use App\Domains\Licensing\Models\LicenseUsage;

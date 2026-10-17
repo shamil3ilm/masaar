@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Platform;
 
 use App\Domains\Auth\Models\User;
-use App\Domains\Compliance\Fatoora\Models\ChainState;
+use App\Domains\Compliance\Countries\SaudiArabia\Models\ChainState;
 use App\Domains\Licensing\Models\License;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;

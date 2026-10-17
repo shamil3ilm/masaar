@@ -19,10 +19,11 @@ use RecursiveIteratorIterator;
  * acts as, so importing them is not counted.
  *
  * Compliance holds one engine per jurisdiction, each with models of its own,
- * and each engine counts as a domain here: Compliance\Fatoora's models are no
- * more Compliance\FTA's to import (Compliance\Peppol's, once renamed) than
- * Invoice's are. Matching only the segment after Domains\ missed every such
- * import, since App\Domains\Compliance\Fatoora\Models\X has no Models segment
+ * and each engine counts as a domain here: Compliance\Countries\SaudiArabia's
+ * models are no more Compliance\FTA's to import (Compliance\Peppol's, once
+ * renamed) than Invoice's are. Matching only the segment after Domains\ missed
+ * every such import, since
+ * App\Domains\Compliance\Countries\SaudiArabia\Models\X has no Models segment
  * directly under Compliance.
  *
  * The list below is a ratchet of file => domains whose models it imports: the
@@ -36,7 +37,7 @@ class CrossDomainModelTest extends TestCase
     /**
      * Engines inside a domain that are domains in their own right.
      */
-    private const NESTED = ['Compliance/Fatoora', 'Compliance/FTA', 'Compliance/Peppol'];
+    private const NESTED = ['Compliance/Countries/SaudiArabia', 'Compliance/FTA', 'Compliance/Peppol'];
 
     private const SHARED = [
         'App\\Domains\\Organization\\Models\\Organization',
@@ -52,36 +53,36 @@ class CrossDomainModelTest extends TestCase
         'Domains/Billing/Models/Payment.php' => 'Invoice',
         'Domains/Billing/Services/Billing.php' => 'Invoice, Licensing',
         'Domains/Billing/Services/RenewalReminders.php' => 'Licensing',
+        // Moved from app/Console/Commands, where the import was not counted.
+        'Domains/Compliance/Countries/SaudiArabia/Console/FatooraSandboxFiling.php' => 'Invoice',
+        'Domains/Compliance/Countries/SaudiArabia/Console/ProcessOfflineQueue.php' => 'Invoice',
+        'Domains/Compliance/Countries/SaudiArabia/Console/VerifyHashChain.php' => 'Invoice',
+        'Domains/Compliance/Countries/SaudiArabia/Document/DocumentBuilder.php' => 'Invoice',
+        'Domains/Compliance/Countries/SaudiArabia/Filing/DuplicateDetector.php' => 'Invoice',
+        'Domains/Compliance/Countries/SaudiArabia/Filing/InvoiceVerdict.php' => 'Invoice',
+        'Domains/Compliance/Countries/SaudiArabia/Filing/OfflineFallback.php' => 'Invoice',
+        'Domains/Compliance/Countries/SaudiArabia/Filing/OfflineQueue.php' => 'Invoice',
+        'Domains/Compliance/Countries/SaudiArabia/Filing/SubmissionGuard.php' => 'Invoice',
+        'Domains/Compliance/Countries/SaudiArabia/Filing/SubmissionTracker.php' => 'Invoice',
+        'Domains/Compliance/Countries/SaudiArabia/Filing/Submitter.php' => 'Invoice',
+        'Domains/Compliance/Countries/SaudiArabia/Http/Controllers/BranchOnboardingController.php' => 'Organization',
+        'Domains/Compliance/Countries/SaudiArabia/Issuing/ChainRecorder.php' => 'Invoice',
+        'Domains/Compliance/Countries/SaudiArabia/Issuing/InvoiceIssuer.php' => 'Invoice',
+        'Domains/Compliance/Countries/SaudiArabia/Issuing/IssuingStep.php' => 'Invoice',
+        'Domains/Compliance/Countries/SaudiArabia/Models/ChainEntry.php' => 'Invoice',
+        'Domains/Compliance/Countries/SaudiArabia/Models/InvoiceSubmission.php' => 'Invoice',
+        'Domains/Compliance/Countries/SaudiArabia/Models/OfflineItem.php' => 'Invoice',
+        'Domains/Compliance/Countries/SaudiArabia/Models/SubmissionIdempotency.php' => 'Invoice',
+        // Saudi Arabia's engine module: issues and files an invoice.
+        'Domains/Compliance/Countries/SaudiArabia/Module.php' => 'Invoice',
+        'Domains/Compliance/Countries/SaudiArabia/Reports/DeadlineReport.php' => 'Invoice',
+        'Domains/Compliance/Countries/SaudiArabia/Rules/InvoiceValidator.php' => 'Invoice',
+        'Domains/Compliance/Countries/SaudiArabia/Rules/VatPeriodTracker.php' => 'Invoice',
+        'Domains/Compliance/Countries/SaudiArabia/Signing/SigningCredentials.php' => 'Invoice, Organization',
         // The compliance engine issues an invoice in its organization's jurisdiction.
         'Domains/Compliance/Engine/Contracts/Transmission.php' => 'Invoice',
         'Domains/Compliance/Engine/Services/ComplianceEngine.php' => 'Invoice',
         'Domains/Compliance/Engine/Services/JurisdictionResolver.php' => 'Invoice',
-        // Moved from app/Console/Commands, where the import was not counted.
-        'Domains/Compliance/Fatoora/Console/FatooraSandboxFiling.php' => 'Invoice',
-        'Domains/Compliance/Fatoora/Console/ProcessOfflineQueue.php' => 'Invoice',
-        'Domains/Compliance/Fatoora/Console/VerifyHashChain.php' => 'Invoice',
-        'Domains/Compliance/Fatoora/Http/Controllers/BranchOnboardingController.php' => 'Organization',
-        'Domains/Compliance/Fatoora/Models/ChainEntry.php' => 'Invoice',
-        'Domains/Compliance/Fatoora/Models/InvoiceSubmission.php' => 'Invoice',
-        'Domains/Compliance/Fatoora/Models/OfflineItem.php' => 'Invoice',
-        'Domains/Compliance/Fatoora/Models/SubmissionIdempotency.php' => 'Invoice',
-        // Saudi Arabia's engine module: issues and files an invoice.
-        'Domains/Compliance/Fatoora/SaudiArabia.php' => 'Invoice',
-        'Domains/Compliance/Fatoora/Services/ChainRecorder.php' => 'Invoice',
-        'Domains/Compliance/Fatoora/Services/DeadlineReport.php' => 'Invoice',
-        'Domains/Compliance/Fatoora/Services/DocumentBuilder.php' => 'Invoice',
-        'Domains/Compliance/Fatoora/Services/DuplicateDetector.php' => 'Invoice',
-        'Domains/Compliance/Fatoora/Services/InvoiceIssuer.php' => 'Invoice',
-        'Domains/Compliance/Fatoora/Services/InvoiceValidator.php' => 'Invoice',
-        'Domains/Compliance/Fatoora/Services/InvoiceVerdict.php' => 'Invoice',
-        'Domains/Compliance/Fatoora/Services/OfflineFallback.php' => 'Invoice',
-        'Domains/Compliance/Fatoora/Services/OfflineQueue.php' => 'Invoice',
-        'Domains/Compliance/Fatoora/Services/SigningCredentials.php' => 'Invoice, Organization',
-        'Domains/Compliance/Fatoora/Services/SubmissionGuard.php' => 'Invoice',
-        'Domains/Compliance/Fatoora/Services/SubmissionTracker.php' => 'Invoice',
-        'Domains/Compliance/Fatoora/Services/Submitter.php' => 'Invoice',
-        'Domains/Compliance/Fatoora/Services/VatPeriodTracker.php' => 'Invoice',
-        'Domains/Compliance/Fatoora/Services/ZatcaJurisdiction.php' => 'Invoice',
         // The receiver of an inbound document is the endpoint on a compliance profile.
         'Domains/Compliance/Peppol/Services/InboundDocuments.php' => 'Organization',
         // The 14 days are counted from an invoice's supply and issue dates.
@@ -97,7 +98,7 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Peppol/Services/UaeJurisdiction.php' => 'Invoice',
         // The UAE's engine module: issues and sends an invoice.
         'Domains/Compliance/Peppol/UnitedArabEmirates.php' => 'Invoice',
-        'Domains/Invoice/Models/Invoice.php' => 'Compliance\Fatoora, Organization',
+        'Domains/Invoice/Models/Invoice.php' => 'Compliance\Countries\SaudiArabia, Organization',
         'Domains/Licensing/Http/Middleware/RequireLicenseFeature.php' => 'Invoice',
         'Domains/Organization/Models/Branch.php' => 'Invoice',
         'Domains/Organization/Models/ComplianceProfile.php' => 'Invoice',

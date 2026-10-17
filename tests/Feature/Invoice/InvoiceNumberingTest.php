@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Invoice;
 
 use App\Domains\Auth\Models\User;
-use App\Domains\Compliance\Fatoora\Services\CredentialStore;
-use App\Domains\Compliance\Fatoora\Services\Submitter;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\Submitter;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\InvoiceNumbering;

@@ -352,7 +352,7 @@ docker-compose exec app php artisan queue:failed
 # lives in the Connectivity service, and the admin dashboard exposes it at
 # GET /api/admin/dashboard/connectivity.
 docker-compose exec app php artisan tinker
->>> app(App\Domains\Compliance\Fatoora\Services\Connectivity::class)->getDetailedStatus()
+>>> app(App\Domains\Compliance\Countries\SaudiArabia\Filing\Connectivity::class)->getDetailedStatus()
 
 # Check environment. The config file is fatoora.php, not zatca.php, so
 # config('zatca.environment') returns null rather than an answer.

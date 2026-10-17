@@ -20,12 +20,12 @@
     $money = fn ($amount): string => number_format((float) ($amount ?? 0), 2).' '.$invoice->currency;
     // The time the XML's IssueTime and the QR carry, on the Kingdom's clock.
     $issueTime = $invoice->created_at
-        ? \App\Domains\Compliance\Fatoora\Helpers\FatooraTime::toSaudiTime($invoice->issuedMoment())->format('H:i:s')
+        ? \App\Domains\Compliance\Countries\SaudiArabia\Support\FatooraTime::toSaudiTime($invoice->issuedMoment())->format('H:i:s')
         : null;
     // BT-111, converted as InvoiceXmlData::convertToSar converts it.
     $inSar = $invoice->currency !== 'SAR' && $invoice->exchange_rate !== null;
     $vatSar = $inSar ? round((float) $invoice->tax_amount * (float) $invoice->exchange_rate, 2) : null;
-    $buyerScheme = \App\Domains\Compliance\Fatoora\Config\FatooraConfig::BUYER_ID_SCHEME_LABELS[$invoice->buyer_id_scheme ?? '']
+    $buyerScheme = \App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig::BUYER_ID_SCHEME_LABELS[$invoice->buyer_id_scheme ?? '']
         ?? [(string) $invoice->buyer_id_scheme, 'رقم تعريف المشتري'];
     // BT-146: a standard invoice prints the net price; a receipt may keep
     // the price its customer saw.
@@ -142,7 +142,7 @@
                     @endif
                     @if (! $simplified && $line->exempt_reason)
                         <br><span class="muted" style="font-size: 7.5pt;">{{ $line->exempt_reason }}</span>
-                        @if ($exemptAr = \App\Domains\Compliance\Fatoora\Config\FatooraConfig::EXEMPTION_REASONS_AR[$line->exempt_code ?? ''] ?? null)
+                        @if ($exemptAr = \App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig::EXEMPTION_REASONS_AR[$line->exempt_code ?? ''] ?? null)
                             <br><span class="ar" style="font-size: 7.5pt;">{{ $exemptAr }}</span>
                         @endif
                     @endif

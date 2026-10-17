@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Services;
 
-use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
-use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
+use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Licensing\Services\LicenseValidationService;
 use App\Domains\Organization\Models\Organization;
+use App\Support\Errors\ErrorCode;
 
 /**
  * Whether an organization may deal with its tax authority at all.

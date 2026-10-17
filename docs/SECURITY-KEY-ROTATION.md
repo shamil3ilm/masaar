@@ -11,7 +11,7 @@ This document outlines the key and credential rotation policies for the Masaar Z
 ZATCA-issued certificates have a defined validity period. Monitor certificate expiry and plan rotation in advance.
 
 ```php
-use App\Domains\Compliance\Fatoora\Services\CertificateService;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateService;
 
 $certificateService = app(CertificateService::class);
 

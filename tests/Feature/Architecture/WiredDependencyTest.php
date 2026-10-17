@@ -37,6 +37,12 @@ class WiredDependencyTest extends TestCase
     private const REACHED_BY_NAME = ['/Console/'];
 
     /**
+     * Where services live: each domain's Services, and the folders a country
+     * module keeps its services in (docs/architecture/JURISDICTION-ROUTING.md).
+     */
+    private const SERVICES = '#/Services/|/Compliance/Countries/\w+/(Issuing|Document|Signing|Onboarding|Filing|Rules|Reports)/#';
+
+    /**
      * No service may take an optional collaborator.
      *
      * Nullable-with-default is how a dependency goes missing without anything
@@ -47,7 +53,7 @@ class WiredDependencyTest extends TestCase
     {
         $offenders = [];
 
-        foreach ($this->classesIn('/Services/') as $class) {
+        foreach ($this->classesIn(self::SERVICES) as $class) {
             $constructor = (new ReflectionClass($class))->getConstructor();
 
             if ($constructor === null) {
@@ -129,12 +135,12 @@ class WiredDependencyTest extends TestCase
     /**
      * @return list<class-string>
      */
-    private function classesIn(string $segment): array
+    private function classesIn(string $pattern): array
     {
         $classes = [];
 
         foreach ($this->phpFiles() as $path) {
-            if (! str_contains(str_replace('\\', '/', $path), $segment)) {
+            if (preg_match($pattern, str_replace('\\', '/', $path)) !== 1) {
                 continue;
             }
 

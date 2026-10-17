@@ -103,13 +103,13 @@ after boot still reaches the module.
 
 | Country | Module | Registered by |
 |---|---|---|
-| Saudi Arabia (`SA`, default) | `Compliance\Fatoora\SaudiArabia` | `Compliance\Fatoora\FatooraServiceProvider` |
+| Saudi Arabia (`SA`, default) | `Compliance\Countries\SaudiArabia\Module` | `Compliance\Countries\SaudiArabia\ModuleServiceProvider` |
 | United Arab Emirates (`AE`) | `Compliance\Peppol\UnitedArabEmirates` | `App\Providers\PeppolServiceProvider` |
 
 Each module adapts the issuer it already had:
 
-- **Saudi Arabia.** `issue()` calls the Fatoora `InvoiceIssuer` (sign, then
-  file through `OfflineFallback`). `resume()` files an issued invoice that
+- **Saudi Arabia.** `issue()` calls `Issuing\InvoiceIssuer` (sign, then
+  file through `Filing\OfflineFallback`). `resume()` files an issued invoice that
   was not filed, unless it waits in the offline queue. `readyToFile()` is
   `zatca_onboarded`.
 - **United Arab Emirates.** `issue()` and `resume()` call `UaeInvoiceIssuer`,
@@ -124,6 +124,52 @@ For the length of each `ComplianceEngine` call, every log line carries
 values are set with `Context::scope()`, which restores the previous context
 when the call returns. A job queued during the call carries them too.
 
+## Where a country lives
+
+```
+app/Domains/Compliance/
+  Engine/                   the core; names no country
+  Countries/
+    SaudiArabia/            ZATCA (Fatoora)
+    UnitedArabEmirates/     PINT AE (still app/Domains/Compliance/Peppol/)
+  Networks/
+    Peppol/                 shared Peppol transport (still in Peppol/)
+```
+
+Every country module has the same top level, and the Saudi module is the
+template. The namespace says which country, so the names at the root and the
+issuing step are the same in every module.
+
+| Entry | Holds | Saudi Arabia |
+|---|---|---|
+| `Module.php` | `Module`: the engine's `Jurisdiction`, with its `Transmission` and `IssueNotices` ports | Identity, switch, and issue and resume through `InvoiceIssuer` |
+| `ModuleServiceProvider.php` | Registers `Module` with `JurisdictionRegistry`. Listed in `bootstrap/providers.php` | `SA`, the default |
+| `Issuing/` | `IssuingStep`, the country's `IssuingJurisdiction`; the issuer that calls `IssuingLifecycle`; what the step records at issue | `IssuingStep`, `InvoiceIssuer`, `ChainRecorder` |
+| `Document/` | The document the authority or network receives, built from an invoice | `DocumentBuilder`, `XmlBuilder`, the four `Ubl*Builder` parts, `Ubl` |
+| `Filing/` | Transmission: the client, sending, tracking, retries, offline handling, the verdict | `FatooraClient`, `Submitter`, `SubmissionTracker`, `SubmissionLedger`, `SubmissionGuard`, `ClearanceState`, `InvoiceVerdict`, `OfflineFallback`, `OfflineQueue`, `Requeuer`, `CircuitBreaker`, `Connectivity`, `DuplicateDetector`, `TimestampValidator` |
+| `Rules/` | The country's validation, tax rules and constants | `FatooraConfig`, `InvoiceValidator`, `VatPeriodTracker` |
+| `Reports/` | What dashboards and reports read | `ChainReport`, `DeadlineReport`, `SubmissionReport`, `QueueBacklog` |
+| `Signing/` | Only where the authority requires a cryptographic seal: keys, certificates, signature, hash, QR | `CredentialStore`, `SigningCredentials`, `CertificateService`, `CertificateChain`, `CertificatePem`, `EcdsaSigner`, `XadesSigner`, `XadesVerifier`, `XadesDigest`, `SignedPropertiesBuilder`, `InvoiceHasher`, `QrCodeGenerator`, `QrCodeInjector`, `TlvEncoder` |
+| `Onboarding/` | Only where the authority registers each taxpayer or device | `CsidOnboarding`, `OrganizationOnboarding`, `ComplianceSampleSet`, `CsrBuilder`, `Der` |
+| `Http/`, `Console/`, `Jobs/`, `Events/`, `Listeners/`, `Mail/`, `Models/`, `Enums/`, `DTOs/`, `Exceptions/`, `Support/` | Laravel's kinds, as in every domain | `Support/` holds `FatooraTime` and `TextNormalizer` |
+
+- A module leaves out a folder it does not need. It has no `Services/`: the
+  folders from `Issuing/` to `Onboarding/` are its services, and
+  `WiredDependencyTest`, `ServiceLocatorTest` and `CommandConstructionTest`
+  scan them as they scan `Services/`.
+- Inside the module, other classes keep the authority's vocabulary
+  (`FatooraClient`, `FatooraException`), as [NAMING.md](../NAMING.md) says.
+- A file that names two modules' `Module` or `ModuleServiceProvider` imports
+  them with an alias.
+- What every country uses lives outside the modules:
+  `App\Support\Errors\ErrorCode` (the API's error taxonomy),
+  `Platform\Services\KillSwitch` (the issuing and filing switches, with the
+  same switch names as before) and `Invoice\Support\AllowanceApportionment`
+  (how a document discount is shared across tax categories).
+- Tests follow the module: `tests/Feature/Compliance/<Country>/` and
+  `tests/Unit/Domains/Compliance/Countries/<Country>/`. Engine tests stay in
+  `tests/Feature/Compliance/Engine/`.
+
 ## Who calls the engine
 
 | Caller | Call |
@@ -133,7 +179,7 @@ when the call returns. A job queued during the call carries them too.
 | `Billing\Services\Billing` | `issue()` with `file: true`, for the billing organization's own invoice |
 
 The country APIs keep their own routes. `/api/compliance/sa/*` reaches
-Fatoora directly. `/api/compliance/ae/*` sits behind the `uae.invoicing`
+the Saudi module directly. `/api/compliance/ae/*` sits behind the `uae.invoicing`
 middleware, which answers `403` for an organization whose `country` is not
 `AE`. In both, the routes that start new work also carry
 `jurisdiction.available`.
@@ -150,7 +196,7 @@ from `issuingStep()`.
 
 | Jurisdiction | Implementation | Called from |
 |---|---|---|
-| Saudi Arabia | `Compliance\Fatoora\Services\ZatcaJurisdiction` | `Submitter::generate()` |
+| Saudi Arabia | `Compliance\Countries\SaudiArabia\Issuing\IssuingStep` | `Submitter::generate()` |
 | United Arab Emirates | `Compliance\Peppol\Services\UaeJurisdiction` | `UaeInvoiceIssuer::issue()` |
 
 `IssuingLifecycle::issue($invoice, $organization, $jurisdiction, $reissue)`

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Services;
 
-use App\Domains\Compliance\Fatoora\Services\CircuitBreaker;
-use App\Domains\Compliance\Fatoora\Services\Connectivity;
-use App\Domains\Compliance\Fatoora\Services\OfflineQueue;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\CircuitBreaker;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\Connectivity;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\OfflineQueue;
 
 /**
  * Turns the platform's health signals into a list of problems to act on.

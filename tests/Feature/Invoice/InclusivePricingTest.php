@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Invoice;
 
 use App\Domains\Auth\Models\User;
-use App\Domains\Compliance\Fatoora\Services\DocumentBuilder;
-use App\Domains\Compliance\Fatoora\Services\InvoiceValidator;
+use App\Domains\Compliance\Countries\SaudiArabia\Document\DocumentBuilder;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\InvoiceValidator;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use DOMDocument;

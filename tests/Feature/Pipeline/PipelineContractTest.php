@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Pipeline;
 
-use App\Domains\Compliance\Fatoora\Services\Connectivity;
-use App\Domains\Compliance\Fatoora\Services\OfflineFallback;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\Connectivity;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\OfflineFallback;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Pipeline\Services\PipelineService;
 use Illuminate\Foundation\Testing\RefreshDatabase;

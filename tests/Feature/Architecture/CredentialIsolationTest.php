@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Architecture;
 
-use App\Domains\Compliance\Fatoora\Services\CredentialStore;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 

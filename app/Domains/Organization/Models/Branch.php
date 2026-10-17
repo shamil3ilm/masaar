@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Models;
 
-use App\Domains\Compliance\Fatoora\DTOs\AddressData;
-use App\Domains\Compliance\Fatoora\DTOs\CsrData;
+use App\Domains\Compliance\Countries\SaudiArabia\DTOs\AddressData;
+use App\Domains\Compliance\Countries\SaudiArabia\DTOs\CsrData;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Concerns\BelongsToTenant;
 use Carbon\Carbon;

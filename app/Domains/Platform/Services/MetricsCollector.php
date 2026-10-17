@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Services;
 
-use App\Domains\Compliance\Fatoora\Services\CircuitBreaker;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\CircuitBreaker;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;

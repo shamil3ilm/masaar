@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Domains\Compliance\Fatoora\Http\Controllers\ComplianceController;
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\ComplianceController;
 use App\Domains\Invoice\Http\Controllers\InvoiceController;
 use App\Domains\Pipeline\Http\Controllers\PipelineController;
 use App\Domains\Platform\Http\Controllers\DashboardController;

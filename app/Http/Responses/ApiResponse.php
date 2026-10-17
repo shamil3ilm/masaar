@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Responses;
 
-use App\Domains\Compliance\Fatoora\Exceptions\CertificateException;
-use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
+use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
+use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Pagination\LengthAwarePaginator;
 

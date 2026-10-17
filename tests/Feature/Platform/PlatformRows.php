@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature\Platform;
 
 use App\Domains\Auth\Models\User;
-use App\Domains\Compliance\Fatoora\Models\ChainEntry;
-use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
-use App\Domains\Compliance\Fatoora\Models\OfflineItem;
+use App\Domains\Compliance\Countries\SaudiArabia\Models\ChainEntry;
+use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
+use App\Domains\Compliance\Countries\SaudiArabia\Models\OfflineItem;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Tymon\JWTAuth\Facades\JWTAuth;

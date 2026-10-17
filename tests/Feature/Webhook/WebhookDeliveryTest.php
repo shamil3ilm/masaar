@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Webhook;
 
-use App\Domains\Compliance\Fatoora\Events\InvoiceCleared;
-use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
+use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceCleared;
+use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Webhook\Models\Webhook;

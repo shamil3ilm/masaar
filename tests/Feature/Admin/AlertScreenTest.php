@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Admin;
 
 use App\Domains\Auth\Models\User;
-use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
+use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;

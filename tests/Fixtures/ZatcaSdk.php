@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Fixtures;
 
-use App\Domains\Compliance\Fatoora\Console\SdkValidator;
+use App\Domains\Compliance\Countries\SaudiArabia\Console\SdkValidator;
 
 /**
  * ZATCA's own validator, run against a document we produced.

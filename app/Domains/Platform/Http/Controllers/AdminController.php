@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Http\Controllers;
 
-use App\Domains\Compliance\Fatoora\Enums\RequeueOutcome;
-use App\Domains\Compliance\Fatoora\Services\Requeuer;
+use App\Domains\Compliance\Countries\SaudiArabia\Enums\RequeueOutcome;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\Requeuer;
 use App\Domains\Platform\DTOs\FilterData;
 use App\Domains\Platform\Services\OrganizationReport;
 use App\Domains\Platform\Services\PlatformStatus;

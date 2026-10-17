@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Admin;
 
 use App\Domains\Auth\Models\User;
-use App\Domains\Compliance\Fatoora\Services\KillSwitch;
+use App\Domains\Platform\Services\KillSwitch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;

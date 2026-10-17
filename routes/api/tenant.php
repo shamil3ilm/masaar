@@ -3,9 +3,9 @@
 declare(strict_types=1);
 
 use App\Domains\Auth\Http\Controllers\AuthController;
-use App\Domains\Compliance\Fatoora\Http\Controllers\BranchOnboardingController;
-use App\Domains\Compliance\Fatoora\Http\Controllers\ComplianceController;
-use App\Domains\Compliance\Fatoora\Http\Controllers\OnboardingController;
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\BranchOnboardingController;
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\ComplianceController;
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\OnboardingController;
 use App\Domains\Compliance\Peppol\Http\Controllers\UaeDocumentController;
 use App\Domains\Compliance\Peppol\Http\Controllers\UaeInvoiceController;
 use App\Domains\Compliance\Peppol\Http\Controllers\UaeProfileController;

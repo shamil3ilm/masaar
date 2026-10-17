@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Architecture;
 
-use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
-use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
+use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Http\Responses\ApiResponse;
+use App\Support\Errors\ErrorCode;
 use Tests\Fixtures\ReadsSourceCalls;
 use Tests\TestCase;
 

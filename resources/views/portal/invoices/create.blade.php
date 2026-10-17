@@ -167,7 +167,7 @@
                 <label for="buyer_id_scheme" class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('Other identifier (if no VAT number)') }}</label>
                 <x-ui.select name="buyer_id_scheme" id="buyer_id_scheme">
                     <option value="">{{ __('None') }}</option>
-                    @foreach (\App\Domains\Compliance\Fatoora\Config\FatooraConfig::BUYER_ID_SCHEME_LABELS as $scheme => [$english, $arabicLabel])
+                    @foreach (\App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig::BUYER_ID_SCHEME_LABELS as $scheme => [$english, $arabicLabel])
                         <option value="{{ $scheme }}" @selected(old('buyer_id_scheme') === $scheme)>{{ app()->getLocale() === 'ar' ? $arabicLabel : $english }}</option>
                     @endforeach
                 </x-ui.select>

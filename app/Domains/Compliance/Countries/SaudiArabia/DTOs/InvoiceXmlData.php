@@ -1,0 +1,257 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domains\Compliance\Countries\SaudiArabia\DTOs;
+
+/**
+ * Complete data required for ZATCA invoice XML generation.
+ *
+ * Includes all mandatory fields for Phase 2 compliance.
+ *
+ * Supports edge cases:
+ * - Non-VAT buyer identification (TIN, CRN, NAT, IQA, PAS, GCC, MOM, MLS, OTH)
+ * - Free goods / promotional items (market value for deemed supply)
+ * - Deposit/prepayment invoice linking
+ * - Multi-currency with exchange rates
+ * - Bundle/composite discount allocation
+ *
+ * @see https://zatca.gov.sa/en/E-Invoicing/Introduction/Guidelines
+ */
+final readonly class InvoiceXmlData
+{
+    /**
+     * Valid buyer identification schemes per ZATCA.
+     * Used when buyer is NOT VAT-registered.
+     */
+    public const BUYER_ID_SCHEMES = [
+        'TIN' => 'Tax Identification Number',
+        'CRN' => 'Commercial Registration Number',
+        'MOM' => 'Momra License',
+        'MLS' => 'MLSD License',
+        'SAG' => 'Sagia License',
+        'NAT' => 'National ID (Saudis)',
+        'GCC' => 'GCC ID',
+        'IQA' => 'Iqama Number',
+        'PAS' => 'Passport Number',
+        'OTH' => 'Other ID',
+    ];
+
+    /**
+     * @param array<int, array{
+     *   description: string,
+     *   quantity: float,
+     *   unitPrice: float,
+     *   lineNet?: float|null,
+     *   taxRate: float,
+     *   taxAmount: float,
+     *   lineTotal: float,
+     *   taxCategory: string,
+     *   taxExemptionReasonCode?: string,
+     *   taxExemptionReason?: string,
+     *   unitCode?: string,
+     *   discount?: float,
+     *   discountReason?: string,
+     *   itemClassificationCode?: string,
+     *   isFreeItem?: bool,
+     *   marketValue?: float
+     * }> $lines
+     * @param  array<int, string>  $prepaymentInvoiceIds  References to deposit/prepayment invoices
+     */
+    public function __construct(
+        // Required fields first
+        public string $uuid,
+        public string $invoiceNumber,
+        public int $icv,
+        public string $issueDate,
+        public string $issueTime,
+        public string $invoiceTypeCode,
+        public string $invoiceSubtype,
+        public string $currency,
+        public string $sellerName,
+        public string $sellerVatNumber,
+        public AddressData $sellerAddress,
+        // Null for a walk-in sale: BR-KSA-25 makes it optional on a
+        // simplified invoice outside the EDU and HEA exemptions.
+        public ?string $buyerName,
+        public float $subtotal,
+        public float $taxAmount,
+        public float $total,
+        public array $lines,
+        // Optional fields with defaults
+        public ?string $supplyDate = null,
+        // KSA-24, the end of a supply over a period. Only beside supplyDate.
+        public ?string $supplyEndDate = null,
+        public ?string $sellerCrNumber = null,
+        public ?string $buyerVatNumber = null,
+        public ?AddressData $buyerAddress = null,
+        public float $discount = 0.0,
+        public ?string $discountReason = null,
+        public ?string $discountTaxCategory = null,
+        public ?float $discountTaxRate = null,
+        public float $prepaidAmount = 0.0,
+        public array $taxSubtotals = [],
+        public ?string $paymentMeansCode = null,
+        public ?string $paymentTerms = null,
+        public ?string $previousInvoiceHash = null,
+        public ?string $billingReferenceId = null,
+        public ?string $creditDebitReason = null,  // KSA-10: Required for credit/debit notes (BR-KSA-17)
+        // Invoice type sub-flags (bits 3-7 per ZATCA specification)
+        public bool $isThirdParty = false,    // Bit 3: Third party invoice
+        public bool $isNominal = false,       // Bit 4: Nominal invoice
+        public bool $isExport = false,        // Bit 5: Export invoice
+        public bool $isSummary = false,       // Bit 6: Summary invoice
+        public bool $isSelfBilled = false,    // Bit 7: Self-billed invoice
+        // Prices were entered with VAT in them. Amounts are already net; the
+        // document VAT (taxAmount) is fixed, and the categories add up to it.
+        public bool $isTaxInclusive = false,
+        // === NEW: Buyer identification for non-VAT registered buyers ===
+        // Per ZATCA: When buyer has no VAT, must provide alternative ID
+        public ?string $buyerIdScheme = null,  // One of: TIN, CRN, MOM, MLS, SAG, NAT, GCC, IQA, PAS, OTH
+        public ?string $buyerId = null,        // The actual ID value
+        // === NEW: Prepayment/deposit invoice references ===
+        // Links final invoice to original deposit invoices for audit trail
+        public array $prepaymentInvoiceIds = [],
+        // === NEW: Multi-currency support ===
+        // VAT must be in SAR; these fields support foreign currency display
+        public ?float $exchangeRate = null,         // Exchange rate to SAR (e.g., 3.75 for USD)
+        public ?string $exchangeRateDate = null,    // Date of exchange rate (YYYY-MM-DD)
+        // === NEW: Special invoice flags ===
+        public bool $isProforma = false,      // Proforma invoices excluded from VAT reporting
+        public bool $isInterBranch = false,   // Internal transfer between branches (still taxable)
+        public bool $isConsignment = false,   // Drop-ship / consignment
+        public bool $isDeferredVat = false,   // Deferred VAT scheme (metadata only - actual handling is manual)
+    ) {}
+
+    /**
+     * Check if this is a standard (B2B) invoice.
+     */
+    public function isStandard(): bool
+    {
+        return $this->invoiceSubtype === '01';
+    }
+
+    /**
+     * Check if this is a simplified (B2C) invoice.
+     */
+    public function isSimplified(): bool
+    {
+        return $this->invoiceSubtype === '02';
+    }
+
+    /**
+     * Check if this is a credit note.
+     */
+    public function isCreditNote(): bool
+    {
+        return $this->invoiceTypeCode === '381';
+    }
+
+    /**
+     * Get invoice type name attribute per ZATCA specification.
+     *
+     * Format: TTNNNNN where:
+     * - TT (bits 1-2): Transaction type (01 = Standard, 02 = Simplified)
+     * - N (bit 3): Third party invoice (0 or 1)
+     * - N (bit 4): Nominal invoice (0 or 1)
+     * - N (bit 5): Export invoice (0 or 1)
+     * - N (bit 6): Summary invoice (0 or 1)
+     * - N (bit 7): Self-billed invoice (0 or 1)
+     *
+     * Example: "0100000" = Standard invoice with no special flags
+     * Example: "0200100" = Simplified export invoice
+     */
+    public function getInvoiceTypeName(): string
+    {
+        // Bits 1-2: Transaction type
+        $transactionType = $this->isSimplified() ? '02' : '01';
+
+        // Bits 3-7: Sub-type flags
+        $bit3 = $this->isThirdParty ? '1' : '0';
+        $bit4 = $this->isNominal ? '1' : '0';
+        $bit5 = $this->isExport ? '1' : '0';
+        $bit6 = $this->isSummary ? '1' : '0';
+        $bit7 = $this->isSelfBilled ? '1' : '0';
+
+        return $transactionType.$bit3.$bit4.$bit5.$bit6.$bit7;
+    }
+
+    /**
+     * Calculate tax amount from net (tax-exclusive) price.
+     *
+     * Formula: Tax = Net × (taxRate/100)
+     *
+     * @param  float  $netPrice  Tax-exclusive price
+     * @param  float  $taxRate  Tax rate percentage (e.g., 15 for 15%)
+     * @return float Tax amount
+     */
+    public static function calculateTaxFromNet(float $netPrice, float $taxRate): float
+    {
+        return round($netPrice * $taxRate / 100, 2);
+    }
+
+    /**
+     * Check if buyer has VAT registration.
+     */
+    public function buyerHasVat(): bool
+    {
+        return $this->buyerVatNumber !== null && $this->buyerVatNumber !== '';
+    }
+
+    /**
+     * Check if buyer has alternative identification (non-VAT).
+     */
+    public function buyerHasAlternativeId(): bool
+    {
+        return $this->buyerIdScheme !== null
+            && $this->buyerId !== null
+            && $this->buyerId !== '';
+    }
+
+    /**
+     * Validate buyer identification scheme.
+     */
+    public function isValidBuyerIdScheme(): bool
+    {
+        if ($this->buyerIdScheme === null) {
+            return true;
+        }
+
+        return array_key_exists($this->buyerIdScheme, self::BUYER_ID_SCHEMES);
+    }
+
+    /**
+     * Check if this invoice has prepayment references.
+     */
+    public function hasPrepaymentReferences(): bool
+    {
+        return ! empty($this->prepaymentInvoiceIds);
+    }
+
+    /**
+     * Check if this is a multi-currency invoice.
+     */
+    public function isMultiCurrency(): bool
+    {
+        // Saudi VAT is owed in riyals whatever the document is written in, so
+        // the question is whether this one is written in something else and
+        // there is a rate to convert with. Both conditions, from fields the
+        // invoice actually carries.
+        return $this->currency !== 'SAR' && $this->exchangeRate !== null;
+    }
+
+    /**
+     * Convert amount from original currency to SAR.
+     *
+     * @param  float  $amount  Amount in original currency
+     * @return float Amount in SAR
+     */
+    public function convertToSar(float $amount): float
+    {
+        if (! $this->isMultiCurrency() || $this->exchangeRate === null) {
+            return $amount;
+        }
+
+        return round($amount * $this->exchangeRate, 2);
+    }
+}

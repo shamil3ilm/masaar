@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Services;
 
-use App\Domains\Compliance\Fatoora\Services\CertificateService;
-use App\Domains\Compliance\Fatoora\Services\ChainReport;
-use App\Domains\Compliance\Fatoora\Services\CircuitBreaker;
-use App\Domains\Compliance\Fatoora\Services\CredentialStore;
-use App\Domains\Compliance\Fatoora\Services\QueueBacklog;
-use App\Domains\Compliance\Fatoora\Services\SubmissionReport;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\CircuitBreaker;
+use App\Domains\Compliance\Countries\SaudiArabia\Reports\ChainReport;
+use App\Domains\Compliance\Countries\SaudiArabia\Reports\QueueBacklog;
+use App\Domains\Compliance\Countries\SaudiArabia\Reports\SubmissionReport;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateService;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Compliance\Peppol\Services\UaeDocuments;
 use App\Domains\Invoice\Services\InvoiceReport;
 use App\Domains\Organization\Models\Organization;

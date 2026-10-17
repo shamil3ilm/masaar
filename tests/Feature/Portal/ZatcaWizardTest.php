@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Portal;
 
 use App\Domains\Auth\Models\User;
-use App\Domains\Compliance\Fatoora\Services\CredentialStore;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;

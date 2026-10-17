@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Architecture;
 
-use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
+use App\Support\Errors\ErrorCode;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -34,7 +34,7 @@ use PHPUnit\Framework\TestCase;
  */
 class ErrorTaxonomyTest extends TestCase
 {
-    private const ENUM = __DIR__.'/../../../app/Domains/Compliance/Fatoora/Enums/ErrorCode.php';
+    private const ENUM = __DIR__.'/../../../app/Support/Errors/ErrorCode.php';
 
     /**
      * Statuses that promise the caller the attempt is worth repeating.

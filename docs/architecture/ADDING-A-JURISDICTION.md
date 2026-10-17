@@ -10,10 +10,17 @@ Every country issues through the same `IssuingLifecycle`, with an
 
 ## The module
 
-Every country, whichever model it follows, starts here:
+Every country, whichever model it follows, starts here. The module lives in
+`app/Domains/Compliance/Countries/<Country>/`, with the country's English
+name in PascalCase (`SaudiArabia`), and copies the Saudi module's top level:
+`Module.php`, `ModuleServiceProvider.php`, `Issuing/`, `Document/`,
+`Filing/`, `Rules/`, `Reports/`, then Laravel's own folders. Add `Signing/`
+or `Onboarding/` only if the authority requires them. See
+[Where a country lives](JURISDICTION-ROUTING.md#where-a-country-lives) for
+what goes in each.
 
-1. **Module class.** In the country's folder, implement
-   `Engine\Contracts\Jurisdiction`, as `Fatoora\SaudiArabia` and
+1. **Module class.** `Module.php`, class `Module`, implements
+   `Engine\Contracts\Jurisdiction`, as `Countries\SaudiArabia\Module` and
    `Peppol\UnitedArabEmirates` do:
    - `code()`, `name()`, `timezone()`, `currency()` and `filingSystem()`;
    - `enabled()`, as `JurisdictionAvailability::enabled($this->code(), <the
@@ -26,16 +33,18 @@ Every country, whichever model it follows, starts here:
      through the lifecycle and files or sends, answering an
      `Engine\DTOs\IssueOutcome`;
    - `notices()`, the portal's wording after issuing.
-2. **Registration.** In the module's service provider, register it with the
-   registry, as `FatooraServiceProvider` and `PeppolServiceProvider` do:
+2. **Registration.** In `ModuleServiceProvider.php`, register it with the
+   registry, as `Countries\SaudiArabia\ModuleServiceProvider` and
+   `PeppolServiceProvider` do:
 
    ```php
    $this->app->afterResolving(JurisdictionRegistry::class, function (JurisdictionRegistry $registry): void {
-       $registry->register('<CC>', fn () => $this->app->make(<Module>::class));
+       $registry->register('<CC>', fn (): Module => $this->app->make(Module::class));
    });
    ```
 
-   A new provider goes in `bootstrap/providers.php`.
+   A new provider goes in `bootstrap/providers.php`, imported with an alias
+   because every module's provider has the same name.
 3. **Nothing else in shared code.** The pipeline, the portal's issue action
    and billing reach the new country through `ComplianceEngine`. Do not add
    a `country === '<CC>'` branch anywhere. `CountryCheckTest` fails the
@@ -49,7 +58,7 @@ module that a country has to touch.
 
 | Model | Example | What the platform builds |
 |---|---|---|
-| **The authority's own API** (clearance or reporting) | Saudi Arabia (ZATCA) | The client for the authority, onboarding and credentials, and whatever the authority requires on each document: signing, hashing, QR codes. Lives in a domain folder like `app/Domains/Compliance/Fatoora/` |
+| **The authority's own API** (clearance or reporting) | Saudi Arabia (ZATCA) | The client for the authority, onboarding and credentials, and whatever the authority requires on each document: signing, hashing, QR codes. Lives in the country's module, like `app/Domains/Compliance/Countries/SaudiArabia/` |
 | **Peppol through an accredited service provider** | United Arab Emirates (PINT AE) | The PINT document and the country's field rules. Transport goes through the existing `AspGateway`. Lives in `app/Domains/Compliance/Peppol/` |
 
 ## A country on Peppol PINT
@@ -106,12 +115,14 @@ Steps:
 
 ## A country with its own authority API
 
-1. Create `app/Domains/Compliance/<Authority>/` with the client, DTOs,
-   exceptions, jobs, models and services the authority needs. Use the Fatoora
-   domain as the reference for retries, idempotency, offline handling and
-   certificate storage.
-2. Implement `App\Domains\Invoice\Contracts\IssuingJurisdiction` in the
-   country's folder, as `ZatcaJurisdiction` and `UaeJurisdiction` do. Put
+1. Create `app/Domains/Compliance/Countries/<Country>/` in the layout above,
+   with the client, DTOs, exceptions, jobs, models and services the
+   authority needs. Use the Saudi module as the reference for retries,
+   idempotency, offline handling (`Filing/`) and certificate storage
+   (`Signing/`).
+2. Implement `App\Domains\Invoice\Contracts\IssuingJurisdiction` as
+   `Issuing/IssuingStep.php`, as `Countries\SaudiArabia\Issuing\IssuingStep`
+   and `UaeJurisdiction` do. Put
    the country's checks in `prepare()` and its document in `seal()`, and
    pass `FilingClearance` and the kill switch in `prepare()` like the others.
 3. Write the issuer and routes (`/api/compliance/<cc>/*`). The issuer calls
@@ -138,7 +149,9 @@ Steps:
     `COMPLIANCE-RULES.md`, with their source.
 - **Tests.** Extend `tests/Feature/Compliance/Engine/` so the engine routes
   the new country and refuses it while switched off. Add
-  `tests/Feature/Compliance/<Domain>/` covering the following:
+  `tests/Feature/Compliance/<Country>/` (unit tests in
+  `tests/Unit/Domains/Compliance/Countries/<Country>/`), as Saudi Arabia's
+  are, covering the following:
   - rules refused at draft time and at send time;
   - one document per invoice;
   - retries that never file twice;

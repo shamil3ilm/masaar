@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Domains\Invoice\Services;
 
 use App\Domains\Branding\Services\ThemeService;
-use App\Domains\Compliance\Fatoora\Exceptions\SigningException;
-use App\Domains\Compliance\Fatoora\Helpers\CertificatePem;
-use App\Domains\Compliance\Fatoora\Services\CredentialStore;
+use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\SigningException;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificatePem;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Invoice\Models\Invoice;

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Http\Controllers;
 
-use App\Domains\Compliance\Fatoora\Services\SubmissionReport;
+use App\Domains\Compliance\Countries\SaudiArabia\Reports\SubmissionReport;
 use App\Domains\Invoice\Services\InvoiceReport;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Platform\Services\TenantDashboard;

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Platform;
 
-use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
 use App\Providers\AppServiceProvider;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use ReflectionMethod;

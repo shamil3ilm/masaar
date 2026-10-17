@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Services;
 
-use App\Domains\Compliance\Fatoora\Services\CertificateService;
-use App\Domains\Compliance\Fatoora\Services\CredentialStore;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateService;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Security;
 
-use App\Domains\Compliance\Fatoora\Helpers\CertificatePem;
-use App\Domains\Compliance\Fatoora\Services\CredentialStore;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificatePem;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use Illuminate\Encryption\EncryptionServiceProvider;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Storage;

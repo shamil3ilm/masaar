@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Http\Controllers;
 
-use App\Domains\Compliance\Fatoora\DTOs\SubmissionFilterData;
-use App\Domains\Compliance\Fatoora\Services\CertificateService;
-use App\Domains\Compliance\Fatoora\Services\CredentialStore;
-use App\Domains\Compliance\Fatoora\Services\SubmissionReport;
+use App\Domains\Compliance\Countries\SaudiArabia\DTOs\SubmissionFilterData;
+use App\Domains\Compliance\Countries\SaudiArabia\Reports\SubmissionReport;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateService;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Compliance\Peppol\Services\UaeDocuments;
 use App\Domains\Invoice\Services\InvoiceReport;
 use App\Domains\Organization\Http\Middleware\PortalTenant;

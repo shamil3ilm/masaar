@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Portal;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\Connectivity;
 use App\Domains\Compliance\Engine\Services\JurisdictionAvailability;
-use App\Domains\Compliance\Fatoora\Services\Connectivity;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Models\InvoiceLine;

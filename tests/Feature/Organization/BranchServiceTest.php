@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Organization;
 
-use App\Domains\Compliance\Fatoora\Services\CredentialStore;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\BranchService;

@@ -81,17 +81,28 @@ Invoice 3 (ICV=3): PIH = DEF456 (hash of rejected Invoice 2)
 
 ## Implementation in This Codebase
 
-### AtomicIcvManager (`app/Domains/Compliance/Fatoora/Services/AtomicIcvManager.php`)
+### One lock for counter, number and chain
 
-- Manages ICV per organization (maps to CSID)
-- Uses Redis for atomic increments (falls back to DB)
-- Ensures strict monotonicity even at millisecond precision
+Issuing runs through the shared `App\Domains\Invoice\Services\IssuingLifecycle`,
+which holds the organization's database row (`SELECT ... FOR UPDATE`) for the
+whole issue. Inside that lock, in this order:
 
-### HashChainManager (`app/Domains/Compliance/Fatoora/Services/HashChainManager.php`)
+1. **ICV:** the Saudi step (`Countries/SaudiArabia/Issuing/IssuingStep::beforeNumbering`)
+   allocates the next counter with `Invoice::generateNextIcv()`, per device - the
+   branch when it has its own certificate, head office otherwise - because ZATCA
+   keeps one counter and one chain per EGS unit.
+2. **Invoice number and moment of issue,** set by the lifecycle.
+3. **PIH and the signed document:** the step reads the previous invoice's hash,
+   builds and signs the XML, and the lifecycle saves the hash, QR and document
+   with the status in one update.
+4. **Chain entry:** `Countries/SaudiArabia/Issuing/ChainRecorder` records the
+   invoice's hash and its predecessor, with the certificate that signed it.
 
-- Manages PIH chain per organization
-- Provides exclusive locking to prevent race conditions
-- Tracks certificate transitions for audit
+Because the counter, the number and the chain entry are decided under the same
+row lock, two issuances for one organization cannot claim the same predecessor.
+There is no separate counter store: a failure rolls the counter back with
+everything else. `php artisan fatoora:verify-hash-chain` checks a chain end to
+end.
 
 ### Default PIH
 

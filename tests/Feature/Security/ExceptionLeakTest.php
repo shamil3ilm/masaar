@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Security;
 
 use App\Domains\Auth\Models\User;
-use App\Domains\Compliance\Fatoora\Services\CsidOnboarding;
+use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\CsidOnboarding;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;

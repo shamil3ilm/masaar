@@ -26,8 +26,8 @@ declare(strict_types=1);
 
 use App\Domains\Auth\Models\User;
 use App\Domains\Auth\Support\Totp;
-use App\Domains\Compliance\Fatoora\Services\DocumentBuilder;
-use App\Domains\Compliance\Fatoora\Services\Submitter;
+use App\Domains\Compliance\Countries\SaudiArabia\Document\DocumentBuilder;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\Submitter;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Licensing\Models\License;

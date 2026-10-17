@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Invoice;
 
-use App\Domains\Compliance\Fatoora\Exceptions\SigningException;
-use App\Domains\Compliance\Fatoora\Services\CertificateChain;
+use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\SigningException;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateChain;
 use App\Domains\Invoice\Services\CadesSignature;
 use OpenSSLAsymmetricKey;
 use phpseclib3\File\ASN1;

@@ -5,15 +5,15 @@ declare(strict_types=1);
 namespace Tests\Feature\Organization;
 
 use App\Domains\Auth\Models\User;
-use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
-use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
-use App\Domains\Compliance\Fatoora\Services\Submitter;
+use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\Submitter;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Licensing\Models\License;
 use App\Domains\Organization\Mail\OrganizationReviewedMail;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\FilingClearance;
+use App\Support\Errors\ErrorCode;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;

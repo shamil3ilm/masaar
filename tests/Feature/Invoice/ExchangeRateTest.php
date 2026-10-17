@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Invoice;
 
-use App\Domains\Compliance\Fatoora\Services\InvoiceValidator;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\InvoiceValidator;
 use App\Domains\Invoice\Http\Requests\CreateInvoiceRequest;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\InvoiceDrafter;

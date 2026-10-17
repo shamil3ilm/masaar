@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domains\Pipeline\Services;
 
+use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Compliance\Engine\DTOs\IssueOptions;
 use App\Domains\Compliance\Engine\DTOs\IssueOutcome;
 use App\Domains\Compliance\Engine\Exceptions\JurisdictionUnavailableException;
 use App\Domains\Compliance\Engine\Services\ComplianceEngine;
-use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\InvoiceDrafter;

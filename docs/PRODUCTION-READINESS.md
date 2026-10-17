@@ -55,19 +55,19 @@ infrastructure and not the logic:
 - [ ] ICV allocation continues during failover (DB fallback) — allocation under
       contention is covered by `tests/Feature/Invoice/IcvAllocationTest.php`
 - [ ] Circuit breaker state persists after failover — state transitions by
-      `tests/Feature/Compliance/CircuitBreakerTest.php`
+      `tests/Feature/Compliance/SaudiArabia/CircuitBreakerTest.php`
 - [ ] Offline queue processing resumes correctly — drain and retry by
-      `tests/Feature/Compliance/OfflineFallbackTest.php`
+      `tests/Feature/Compliance/SaudiArabia/OfflineFallbackTest.php`
 - [ ] No duplicate ICVs issued during failover window — uniqueness under
       concurrent allocation by `IcvAllocationTest` and
-      `tests/Feature/Compliance/SubmissionRaceTest.php`
+      `tests/Feature/Compliance/SaudiArabia/SubmissionRaceTest.php`
 
 ### 1.4 Database Failover Testing
 
 **Test Cases** — again a drill, with the logic covered beforehand:
 
 - [ ] Read replica promotion maintains hash chain integrity — a fork in the
-      chain is detected by `tests/Feature/Compliance/ChainForkTest.php`
+      chain is detected by `tests/Feature/Compliance/SaudiArabia/ChainForkTest.php`
 - [ ] Pending transactions rollback cleanly
 - [ ] Lock ownership tokens invalidate correctly
 
@@ -356,7 +356,7 @@ config already runs php-fpm, nginx, two default workers, three
       and again against MySQL 8.4, so a migration that only works on one driver
       fails the build. See the `mysql` job in `.github/workflows/ci.yml`.
 - [ ] Feature flags set for production
-- [x] **Kill switch tested** — `tests/Feature/Compliance/KillSwitchTest.php`.
+- [x] **Kill switch tested** — `tests/Feature/Compliance/SaudiArabia/KillSwitchTest.php`.
       Still to do: a runbook entry saying who may throw it and what it stops.
 - [x] **Rate limits configured and enforced** — `RateLimitApi` is attached to
       the api middleware group in `bootstrap/app.php` and reads

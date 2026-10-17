@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Platform;
 
-use App\Domains\Compliance\Fatoora\Jobs\ProcessFatooraSubmission;
-use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
-use App\Domains\Compliance\Fatoora\Services\CredentialStore;
+use App\Domains\Compliance\Countries\SaudiArabia\Jobs\ProcessFatooraSubmission;
+use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Exception;

@@ -26,7 +26,7 @@ class OpenSslLookupTest extends TestCase
 {
     private const APP = __DIR__.'/../../../app';
 
-    private const HOME = 'Domains/Compliance/Fatoora/Console/Concerns/FindsOpenSsl.php';
+    private const HOME = 'Domains/Compliance/Countries/SaudiArabia/Console/Concerns/FindsOpenSsl.php';
 
     /**
      * Matched on a path from the list rather than on the function name, because

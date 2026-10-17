@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Services;
 
-use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
+use App\Domains\Invoice\Support\AllowanceApportionment;
 
 /**
  * What an invoice's lines and discount add up to.
@@ -173,7 +173,7 @@ final readonly class InvoiceTotals
         $grossDiscount = bcadd($grossDiscount, '0', 2);
         $discount = '0';
 
-        foreach (FatooraConfig::apportionAllowance($grossByKey, (float) $grossDiscount) as $key => $share) {
+        foreach (AllowanceApportionment::apportion($grossByKey, (float) $grossDiscount) as $key => $share) {
             $discount = bcadd($discount, self::netOf(number_format($share, 2, '.', ''), $rates[$key]), 2);
         }
 
@@ -196,7 +196,7 @@ final readonly class InvoiceTotals
      */
     public static function categories(array $nets, array $rates, float $discount, ?float $tax = null): array
     {
-        $shares = FatooraConfig::apportionAllowance($nets, $discount);
+        $shares = AllowanceApportionment::apportion($nets, $discount);
         $categories = [];
         $largest = null;
 

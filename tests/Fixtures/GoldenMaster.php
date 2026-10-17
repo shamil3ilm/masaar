@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Fixtures;
 
-use App\Domains\Compliance\Fatoora\Models\ChainEntry;
+use App\Domains\Compliance\Countries\SaudiArabia\Models\ChainEntry;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Webhook\Jobs\DeliverWebhook;
 use DOMDocument;

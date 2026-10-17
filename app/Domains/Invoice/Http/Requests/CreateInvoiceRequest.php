@@ -2,7 +2,7 @@
 
 namespace App\Domains\Invoice\Http\Requests;
 
-use App\Domains\Compliance\Fatoora\Config\FatooraConfig;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Invoice\Enums\TaxCategory;

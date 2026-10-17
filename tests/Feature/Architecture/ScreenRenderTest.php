@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Architecture;
 
 use App\Domains\Auth\Models\User;
-use App\Domains\Compliance\Fatoora\Models\InvoiceSubmission;
-use App\Domains\Compliance\Fatoora\Models\OfflineItem;
+use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
+use App\Domains\Compliance\Countries\SaudiArabia\Models\OfflineItem;
 use App\Domains\Compliance\Peppol\Models\PeppolDocument;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;

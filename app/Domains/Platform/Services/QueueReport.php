@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Services;
 
-use App\Domains\Compliance\Fatoora\Services\OfflineQueue;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\OfflineQueue;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Platform\DTOs\FilterData;
 use Illuminate\Database\Query\Builder;

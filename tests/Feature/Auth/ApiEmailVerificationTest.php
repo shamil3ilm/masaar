@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Auth;
 
 use App\Domains\Auth\Models\User;
-use App\Domains\Compliance\Fatoora\Enums\ErrorCode;
+use App\Support\Errors\ErrorCode;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;

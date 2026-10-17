@@ -1,10 +1,10 @@
 <?php
 
 use App\Domains\Auth\Http\Middleware\ActiveAccount;
+use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
+use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
+use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\SigningException;
 use App\Domains\Compliance\Engine\Exceptions\JurisdictionUnavailableException;
-use App\Domains\Compliance\Fatoora\Exceptions\CertificateException;
-use App\Domains\Compliance\Fatoora\Exceptions\FatooraException;
-use App\Domains\Compliance\Fatoora\Exceptions\SigningException;
 use App\Domains\Licensing\Exceptions\LicenseException;
 use App\Domains\Licensing\Http\Middleware\PlatformLicense;
 use App\Domains\Platform\Http\Middleware\LogContext;
@@ -42,7 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
         __DIR__.'/../app/Domains/Auth/Console',
         __DIR__.'/../app/Domains/Licensing/Console',
         __DIR__.'/../app/Domains/Billing/Console',
-        __DIR__.'/../app/Domains/Compliance/Fatoora/Console',
+        __DIR__.'/../app/Domains/Compliance/Countries/SaudiArabia/Console',
         __DIR__.'/../app/Domains/Compliance/Peppol/Console',
     ])
     ->withMiddleware(function (Middleware $middleware): void {

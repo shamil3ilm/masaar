@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Platform;
 
-use App\Domains\Compliance\Fatoora\Services\CircuitBreaker;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\CircuitBreaker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;

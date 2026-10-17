@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Platform;
 
-use App\Domains\Compliance\Fatoora\Services\CircuitBreaker;
-use App\Domains\Compliance\Fatoora\Services\Connectivity;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\CircuitBreaker;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\Connectivity;
 use Illuminate\Foundation\Console\QueuedCommand;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;

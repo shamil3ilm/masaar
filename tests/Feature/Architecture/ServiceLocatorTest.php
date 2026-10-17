@@ -30,6 +30,12 @@ class ServiceLocatorTest extends TestCase
         'Domains/Audit/Services/AuditService.php',
     ];
 
+    /**
+     * Where services live: each domain's Services, and the folders a country
+     * module keeps its services in (docs/architecture/JURISDICTION-ROUTING.md).
+     */
+    private const SERVICES = '#/Services/|/Compliance/Countries/\w+/(Issuing|Document|Signing|Onboarding|Filing|Rules|Reports)/#';
+
     public function test_services_take_dependencies_by_injection(): void
     {
         $found = [];
@@ -63,7 +69,7 @@ class ServiceLocatorTest extends TestCase
         foreach ($it as $file) {
             $path = str_replace('\\', '/', $file->getPathname());
 
-            if ($file->isFile() && str_ends_with($path, '.php') && str_contains($path, '/Services/')) {
+            if ($file->isFile() && str_ends_with($path, '.php') && preg_match(self::SERVICES, $path) === 1) {
                 $files[] = $path;
             }
         }

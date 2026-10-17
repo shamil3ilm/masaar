@@ -67,7 +67,7 @@ class RawTenantQueryTest extends TestCase
         // Finding which organizations have queued work is the one genuinely
         // cross-tenant step; the draining that follows runs inside
         // TenantResolver::runAs(), so it is scoped per organization.
-        'Domains/Compliance/Fatoora/Console/ProcessOfflineQueue.php' => 'discovers tenants with pending work, then scopes per tenant',
+        'Domains/Compliance/Countries/SaudiArabia/Console/ProcessOfflineQueue.php' => 'discovers tenants with pending work, then scopes per tenant',
 
     ];
 

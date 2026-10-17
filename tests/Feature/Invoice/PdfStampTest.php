@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Invoice;
 
-use App\Domains\Compliance\Fatoora\Exceptions\SigningException;
-use App\Domains\Compliance\Fatoora\Services\CredentialStore;
+use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\SigningException;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Models\InvoiceLine;
 use App\Domains\Invoice\Services\InvoicePdf;
