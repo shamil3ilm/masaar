@@ -7,7 +7,6 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Console;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
 use App\Domains\Compliance\Countries\SaudiArabia\Reports\DeadlineReport;
 use Illuminate\Console\Command;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
@@ -107,10 +106,12 @@ class ReportOverdueSubmissions extends Command
         );
     }
 
+    /**
+     * As the deadline screen counts it: from the sale, or the submission if
+     * that came first.
+     */
     private function ageInHours(InvoiceSubmission $submission): float
     {
-        return $submission->created_at === null
-            ? 0.0
-            : abs((float) $submission->created_at->diffInMinutes(Carbon::now())) / 60;
+        return app(DeadlineReport::class)->ageInHours($submission);
     }
 }

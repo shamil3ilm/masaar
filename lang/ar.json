@@ -1084,5 +1084,7 @@
     "ZATCA rejected this invoice, so it is not a valid tax invoice. Correct it and issue a new one.": "رفضت الهيئة هذه الفاتورة، فهي ليست فاتورة ضريبية صالحة. صححها وأصدر فاتورة جديدة.",
     "ZATCA said": "رد الهيئة",
     "Zero rated domestic sales": "المبيعات المحلية الخاضعة لنسبة الصفر",
-    "Zero-rated": "خاضع لنسبة الصفر"
+    "Zero-rated": "خاضع لنسبة الصفر",
+    "The sale time (issued_at) must include its UTC offset, as in 2026-10-16T23:30:00+03:00.": "يجب أن يتضمن وقت البيع (issued_at) فرقه عن التوقيت العالمي المنسق، مثل 2026-10-16T23:30:00+03:00.",
+    "The issue date must be the date of the sale time (issued_at), on the organization's clock.": "يجب أن يكون تاريخ الإصدار هو تاريخ وقت البيع (issued_at) بحسب توقيت المنشأة."
 }

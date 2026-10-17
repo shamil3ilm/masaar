@@ -109,6 +109,17 @@ return [
         'deadline_hours' => (float) env('ZATCA_REPORTING_DEADLINE_HOURS', 24),
     ],
 
+    /*
+    | A till's own sale time, sent as issued_at, is the moment of issue when
+    | it is no older than this - the reporting deadline by default - and no
+    | further ahead than the clock tolerance (TimestampValidator). Outside the
+    | bound the invoice is refused, with the reason, before a counter is spent.
+    */
+    'sale_time' => [
+        'max_age_minutes' => (int) env('ZATCA_SALE_TIME_MAX_AGE_MINUTES', 1440),
+        'max_ahead_seconds' => (int) env('ZATCA_SALE_TIME_MAX_AHEAD_SECONDS', 30),
+    ],
+
     'signing' => [
         'disk' => env('ZATCA_CREDENTIAL_DISK', 'local'),
 

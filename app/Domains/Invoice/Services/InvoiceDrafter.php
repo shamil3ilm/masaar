@@ -112,6 +112,10 @@ class InvoiceDrafter
                 'notes' => $data['notes'] ?? null,
                 'erp_reference_id' => $data['erp_reference_id'] ?? null,
                 'idempotency_key' => $data['idempotency_key'] ?? null,
+                // The till's sale time, where the country's rules take one:
+                // the moment of issue, which IssuingLifecycle otherwise sets.
+                // An instant, so held in UTC whatever offset it was sent with.
+                'issued_at' => filled($data['issued_at'] ?? null) ? CarbonImmutable::parse($data['issued_at'])->utc() : null,
                 'prices_include_vat' => $inclusive,
             ]);
 

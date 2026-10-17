@@ -176,8 +176,8 @@ class DeadlineReport
             'invoice_id' => $invoice->id,
             'invoice_number' => $invoice->invoice_number,
             'organization' => $invoice->org?->name,
-            'issued_at' => $invoice->created_at,
-            'age_hours' => $invoice->created_at?->diffInMinutes(now()) / 60,
+            'issued_at' => $invoice->issuedMoment(),
+            'age_hours' => abs((float) $invoice->issuedMoment()->diffInMinutes(now())) / 60,
         ]);
     }
 
@@ -259,14 +259,23 @@ class DeadlineReport
     }
 
     /**
+     * From the invoice's issue or the submission's creation, whichever came
+     * first - the moment late() measures from. A till catching up issues and
+     * submits a sale hours after it was made, and counted from the
+     * submission that sale looked as if its clock had only just started.
+     *
+     * Public so fatoora:overdue-submissions prints the same age.
+     *
      * Carbon 3 returns a signed difference, and a row created in the past
      * would otherwise age backwards.
      */
-    private function ageInHours(InvoiceSubmission $submission): float
+    public function ageInHours(InvoiceSubmission $submission): float
     {
-        return $submission->created_at === null
+        $since = collect([$submission->created_at, $submission->invoice?->issuedMoment()])->filter()->min();
+
+        return $since === null
             ? 0.0
-            : abs((float) $submission->created_at->diffInMinutes(Carbon::now())) / 60;
+            : abs((float) $since->diffInMinutes(Carbon::now())) / 60;
     }
 
     /**

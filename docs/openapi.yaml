@@ -1698,6 +1698,8 @@ paths:
                   type: string
                 lines:
                   type: array
+                issued_at:
+                  type: string
               required:
                 - type
                 - issue_date
@@ -1808,6 +1810,8 @@ paths:
                   type: string
                 lines:
                   type: array
+                issued_at:
+                  type: string
               required:
                 - type
                 - issue_date
@@ -1891,6 +1895,8 @@ paths:
                   type: string
                 lines:
                   type: array
+                issued_at:
+                  type: string
               required:
                 - type
                 - issue_date
@@ -3021,6 +3027,8 @@ paths:
                   type: string
                 lines:
                   type: array
+                issued_at:
+                  type: string
               required:
                 - type
                 - issue_date
@@ -3135,6 +3143,8 @@ paths:
                   type: string
                 lines:
                   type: array
+                issued_at:
+                  type: string
               required:
                 - type
                 - issue_date
@@ -3272,6 +3282,8 @@ paths:
                   type: string
                 lines:
                   type: array
+                issued_at:
+                  type: string
                 invoice_type:
                   type: string
                 due_date:
