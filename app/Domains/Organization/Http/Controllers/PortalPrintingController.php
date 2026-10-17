@@ -61,12 +61,22 @@ class PortalPrintingController extends Controller
             'paper' => ['required', Rule::enum(PaperSize::class)],
             'branches' => ['array'],
             'branches.*' => ['nullable', Rule::enum(PaperSize::class)],
+            'printers' => ['array'],
+            'printers.*.dpi' => ['nullable', 'integer', 'between:100,600'],
+            'printers.*.dots' => ['nullable', 'integer', 'between:64,1280', 'multiple_of:8'],
         ]);
 
         $this->preferences->setOrganizationPaper($organization, PaperSize::from($validated['paper']));
 
         foreach ($this->preferences->branches($organizationId) as $branch) {
+            $printer = $validated['printers'][$branch['id']] ?? [];
             $this->preferences->setBranchPaper($organizationId, $branch['id'], PaperSize::tryFrom((string) ($validated['branches'][$branch['id']] ?? '')));
+            $this->preferences->setReceiptPrinter(
+                $organizationId,
+                $branch['id'],
+                isset($printer['dpi']) ? (int) $printer['dpi'] : null,
+                isset($printer['dots']) ? (int) $printer['dots'] : null,
+            );
         }
 
         return redirect()->route('portal.printing.edit')->with('success', __('Printing settings saved.'));

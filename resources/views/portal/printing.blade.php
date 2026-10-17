@@ -48,7 +48,11 @@
                     </x-ui.select>
                 </x-ui.field>
 
-                @foreach ($branches as $branch)
+            </div>
+
+            @foreach ($branches as $branch)
+                <fieldset class="grid grid-cols-1 gap-4 border-t p-4 sm:grid-cols-3">
+                    <legend class="sr-only">{{ $branch['name'] }}</legend>
                     <x-ui.field :label="$branch['name']">
                         <x-ui.select name="branches[{{ $branch['id'] }}]">
                             <option value="" @selected($branch['paper'] === null)>{{ __('As the organization') }}</option>
@@ -57,8 +61,17 @@
                             @endforeach
                         </x-ui.select>
                     </x-ui.field>
-                @endforeach
-            </div>
+                    {{-- For the printer image and ESC/POS: most receipt
+                         printers are 203 dpi, 576 dots across on 80 mm and
+                         384 on 58 mm. --}}
+                    <x-ui.field :label="__('Receipt printer dpi')">
+                        <x-ui.input type="number" name="printers[{{ $branch['id'] }}][dpi]" min="100" max="600" placeholder="203" value="{{ $branch['dpi'] }}" />
+                    </x-ui.field>
+                    <x-ui.field :label="__('Dots across the head')">
+                        <x-ui.input type="number" name="printers[{{ $branch['id'] }}][dots]" min="64" max="1280" step="8" placeholder="576" value="{{ $branch['dots'] }}" />
+                    </x-ui.field>
+                </fieldset>
+            @endforeach
             <div class="border-t p-4">
                 <x-ui.button variant="primary">{{ __('Save') }}</x-ui.button>
             </div>

@@ -83,6 +83,8 @@ class ScreenRenderTest extends TestCase
         'portal.invoices.print',
         // The QR as an image file. InvoiceQrPanelTest covers it.
         'portal.invoices.qr',
+        // The receipt as a printer image. ReceiptPrintingTest covers it.
+        'portal.invoices.receipt-image',
         // A UAE e-invoice's XML. UaePortalTest and ReceivedInvoicesTest cover them.
         'portal.invoices.xml',
         'portal.received.xml',

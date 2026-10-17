@@ -27,7 +27,9 @@ class MonochromeImage
      */
     public function image(string $contents, ?int $maxWidth = null): ?GdImage
     {
-        $source = $contents === '' ? false : @imagecreatefromstring($contents);
+        // Known by their first bytes, so what GD cannot read - an SVG logo -
+        // is a null rather than a warning.
+        $source = preg_match('/^(\x89PNG|\xFF\xD8\xFF|GIF8|RIFF....WEBP|BM)/s', $contents) === 1 ? imagecreatefromstring($contents) : false;
 
         if ($source === false) {
             return null;

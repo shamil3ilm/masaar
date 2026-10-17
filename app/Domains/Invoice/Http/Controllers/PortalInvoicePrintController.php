@@ -6,6 +6,7 @@ namespace App\Domains\Invoice\Http\Controllers;
 
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Invoice\Services\InvoicePrintView;
+use App\Domains\Invoice\Services\ReceiptPrinting;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Services\PrintPreferences;
 use App\Domains\Organization\Services\TenantResolver;
@@ -49,6 +50,32 @@ class PortalInvoicePrintController extends Controller
         } catch (DomainException $e) {
             return redirect()->route('portal.invoices.show', $invoiceId)->with('error', $e->getMessage());
         }
+    }
+
+    /**
+     * The receipt as an image at the till printer's dots (?paper=80mm|58mm),
+     * for a printer the browser does not drive.
+     */
+    public function receiptImage(Request $request, string $invoiceId, ReceiptPrinting $printing): Response|RedirectResponse
+    {
+        $orgId = $request->attributes->get(PortalTenant::ORG_ID);
+        abort_unless(is_string($orgId), 404);
+
+        $invoice = $this->invoices->findWithLines($orgId, $invoiceId);
+        $organization = $this->tenant->getOrganization() ?? abort(404);
+
+        try {
+            $image = $printing->image($invoice, $organization, $request->user()?->id, (string) $request->query('paper'));
+        } catch (DomainException $e) {
+            return redirect()->route('portal.invoices.show', $invoiceId)->with('error', $e->getMessage());
+        }
+
+        return response($printing->png($image), 200, [
+            'Content-Type' => 'image/png',
+            'Content-Disposition' => 'attachment; filename="'.$printing->fileName($invoice, 'png').'"',
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, no-store',
+        ]);
     }
 
     /**

@@ -76,13 +76,19 @@ enum PaperSize: string
         };
     }
 
-    /** The dots across a roll printer's head at 203 dpi; null for a sheet. */
-    public function printerDots(): ?int
+    /**
+     * The dots across a roll printer's head: the printable width at the
+     * printer's resolution, in whole bytes of eight dots as the printer is
+     * sent them - 576 and 384 at the usual 203 dpi. Null for a sheet.
+     */
+    public function printerDots(int $dpi = 203): ?int
     {
-        return match ($this) {
-            self::Roll80 => 576,
-            self::Roll58 => 384,
+        $printable = match ($this) {
+            self::Roll80 => 72.0,
+            self::Roll58 => 48.0,
             default => null,
         };
+
+        return $printable === null ? null : 8 * (int) round($printable / 25.4 * $dpi / 8);
     }
 }

@@ -53,6 +53,28 @@ class PrintPreferences
         $this->branch($organizationId, $branchId)?->forceFill(['paper_size' => $paper?->value])->save();
     }
 
+    /**
+     * The branch's receipt printer, as far as it differs from the common
+     * one: its resolution and the dots across its head, each null when it is
+     * the common printer's.
+     *
+     * @return array{dpi: int|null, dots: int|null}
+     */
+    public function receiptPrinter(string $organizationId, ?string $branchId): array
+    {
+        $branch = $branchId === null ? null : $this->branch($organizationId, $branchId);
+
+        return [
+            'dpi' => $branch?->receipt_dpi === null ? null : (int) $branch->receipt_dpi,
+            'dots' => $branch?->receipt_dots === null ? null : (int) $branch->receipt_dots,
+        ];
+    }
+
+    public function setReceiptPrinter(string $organizationId, string $branchId, ?int $dpi, ?int $dots): void
+    {
+        $this->branch($organizationId, $branchId)?->forceFill(['receipt_dpi' => $dpi, 'receipt_dots' => $dots])->save();
+    }
+
     /** The person's own paper in this organization; null when they have none. */
     public function userPaper(string $organizationId, string $userId): ?PaperSize
     {
@@ -67,7 +89,7 @@ class PrintPreferences
     /**
      * The organization's branches with their own paper, for its settings.
      *
-     * @return list<array{id: string, name: string, paper: PaperSize|null}>
+     * @return list<array{id: string, name: string, paper: PaperSize|null, dpi: int|null, dots: int|null}>
      */
     public function branches(string $organizationId): array
     {
@@ -76,6 +98,8 @@ class PrintPreferences
                 'id' => (string) $branch->id,
                 'name' => (string) $branch->name,
                 'paper' => PaperSize::tryFrom((string) $branch->paper_size),
+                'dpi' => $branch->receipt_dpi === null ? null : (int) $branch->receipt_dpi,
+                'dots' => $branch->receipt_dots === null ? null : (int) $branch->receipt_dots,
             ])
             ->values()
             ->all();

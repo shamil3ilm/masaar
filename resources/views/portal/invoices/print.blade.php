@@ -39,6 +39,10 @@
     </x-ui.field>
     <x-ui.button variant="secondary">{{ __('Change paper') }}</x-ui.button>
     <x-ui.button variant="outline" :href="route('portal.invoices.pdf', ['invoiceId' => $invoice->id, 'paper' => $paper->value])">{{ __('Download PDF') }}</x-ui.button>
+    @if ($paper->isRoll())
+        {{-- For a receipt printer the browser does not drive. --}}
+        <x-ui.button variant="outline" :href="route('portal.invoices.receipt-image', ['invoiceId' => $invoice->id, 'paper' => $paper->value])">{{ __('Download printer image') }}</x-ui.button>
+    @endif
 </form>
 @include($layout)
 </body>

@@ -359,6 +359,8 @@ Route::prefix('portal')->name('portal.')
             ->whereIn('note', ['credit_note', 'debit_note'])
             ->name('invoices.adjust');
         Route::get('/invoices/{invoiceId}/print', [PortalInvoicePrintController::class, 'print'])->name('invoices.print');
+        // The receipt as an image at a till printer's dots.
+        Route::get('/invoices/{invoiceId}/receipt.png', [PortalInvoicePrintController::class, 'receiptImage'])->name('invoices.receipt-image');
         // The invoice's QR code as a picture to download.
         Route::get('/invoices/{invoiceId}/qr.{format}', [PortalInvoicePrintController::class, 'qr'])
             ->whereIn('format', ['png', 'svg'])

@@ -1105,5 +1105,8 @@
     "Printing settings saved.": "تم حفظ إعدادات الطباعة.",
     "Download QR (PNG)": "تنزيل رمز QR بصيغة PNG",
     "Download QR (SVG)": "تنزيل رمز QR بصيغة SVG",
-    "Technical details": "التفاصيل التقنية"
+    "Technical details": "التفاصيل التقنية",
+    "Download printer image": "تنزيل صورة الطابعة",
+    "Receipt printer dpi": "دقة طابعة الإيصالات (نقطة لكل بوصة)",
+    "Dots across the head": "عدد النقاط بعرض رأس الطباعة"
 }
