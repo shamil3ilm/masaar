@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia\Jobs;
 
+use App\Domains\Audit\Attribution\Origin;
 use App\Domains\Compliance\Countries\SaudiArabia\DTOs\FatooraResponse;
 use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceFailed;
 use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceSubmitted;
@@ -366,6 +367,8 @@ class ProcessFatooraSubmission implements ShouldQueue
             'actor_type' => 'system',
             'actor_id' => null,
             'ip_address' => null,
+            // The request that queued this job, carried into it.
+            ...app(Origin::class)->columns(['request_id']),
             'created_at' => now(),
             'updated_at' => now(),
         ]);

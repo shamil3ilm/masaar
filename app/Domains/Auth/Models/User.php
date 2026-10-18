@@ -4,6 +4,8 @@ namespace App\Domains\Auth\Models;
 
 use App\Domains\Auth\Enums\AdminPermission;
 use App\Domains\Auth\Enums\PlatformRole;
+use App\Domains\Organization\Concerns\RecordsActors;
+use App\Domains\Organization\Models\Membership;
 use App\Domains\Organization\Models\Organization;
 use Database\Factories\UserFactory;
 use Illuminate\Auth\MustVerifyEmail;
@@ -12,6 +14,7 @@ use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Tymon\JWTAuth\Contracts\JWTSubject;
@@ -25,6 +28,12 @@ use Tymon\JWTAuth\Contracts\JWTSubject;
 class User extends Authenticatable implements HasLocalePreference, JWTSubject, MustVerifyEmailContract
 {
     use HasFactory, HasUuids, MustVerifyEmail, Notifiable;
+    use RecordsActors;
+
+    // Deleting an account anonymises it (AccountDeletion) and then removes
+    // it: the row stays, so what it did still points at someone, and it
+    // can no longer sign in or be found by its address.
+    use SoftDeletes;
 
     /**
      * `is_platform_admin` is deliberately absent: it is a cross-tenant
@@ -205,6 +214,7 @@ class User extends Authenticatable implements HasLocalePreference, JWTSubject, M
     public function organizations(): BelongsToMany
     {
         return $this->belongsToMany(Organization::class)
+            ->using(Membership::class)
             ->withPivot(['role', 'status'])
             ->withTimestamps();
     }

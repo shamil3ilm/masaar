@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Domains\Organization\Models;
 
 use App\Domains\Organization\Concerns\BelongsToTenant;
+use App\Domains\Organization\Concerns\RecordsActors;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * An invitation to join an organization, until it is accepted or lapses.
@@ -16,6 +18,8 @@ class OrganizationInvitation extends Model
 {
     use BelongsToTenant;
     use HasUuids;
+    use RecordsActors;
+    use SoftDeletes;
 
     /** Admin runs the organization; member invoices; viewer reads. */
     public const ROLES = ['admin', 'member', 'viewer'];
@@ -33,6 +37,16 @@ class OrganizationInvitation extends Model
     ];
 
     protected $hidden = ['token_hash'];
+
+    /**
+     * Who sent it is who created it.
+     *
+     * @return array<string, string>
+     */
+    public function attributionColumns(): array
+    {
+        return ['created_by' => 'invited_by', 'updated_by' => 'updated_by', 'deleted_by' => 'deleted_by'];
+    }
 
     protected function casts(): array
     {

@@ -6,13 +6,13 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Models;
 
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Concerns\BelongsToTenant;
+use App\Domains\Organization\Concerns\RecordsActors;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
 /**
@@ -29,7 +29,7 @@ class InvoiceSubmission extends Model
 {
     use BelongsToTenant;
     use HasUuids;
-    use SoftDeletes;
+    use RecordsActors;
 
     protected $table = 'invoice_submissions';
 
@@ -63,6 +63,17 @@ class InvoiceSubmission extends Model
         'completed_at',
     ];
 
+    /**
+     * A compliance record: who started the filing and in which request,
+     * never who changed it after.
+     *
+     * @return array<string, string>
+     */
+    public function attributionColumns(): array
+    {
+        return ['created_by' => 'created_by', 'request_id' => 'request_id'];
+    }
+
     protected function casts(): array
     {
         return [
@@ -91,10 +102,13 @@ class InvoiceSubmission extends Model
     {
         parent::boot();
 
-        // Prevent force deletion - soft delete only
-        static::forceDeleting(function ($model) {
+        // Never deleted, softly or otherwise: a submission is the evidence of
+        // what was filed (ZATCA Detailed Guidelines p26, p27). Its table has
+        // a deleted_at from 0140 that nothing ever wrote; the model no longer
+        // soft-deletes, so nothing can reach it.
+        static::deleting(function ($model) {
             throw new \RuntimeException(
-                'InvoiceSubmission records cannot be permanently deleted. '.
+                'InvoiceSubmission records cannot be deleted. '.
                 'This is a ZATCA compliance requirement to preserve audit trails.'
             );
         });

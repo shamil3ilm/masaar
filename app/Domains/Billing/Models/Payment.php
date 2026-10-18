@@ -7,6 +7,7 @@ namespace App\Domains\Billing\Models;
 use App\Domains\Billing\Enums\PaymentMethod;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Concerns\BelongsToTenant;
+use App\Domains\Organization\Concerns\RecordsActors;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -19,6 +20,7 @@ class Payment extends Model
 {
     use BelongsToTenant;
     use HasUuids;
+    use RecordsActors;
 
     protected $fillable = [
         'org_id',
@@ -39,6 +41,18 @@ class Payment extends Model
         'invoice_id',
         'invoice_error',
     ];
+
+    /**
+     * A financial record: who recorded it and how, never who changed it
+     * after. Its license_id is the licence it pays for, so the channel's
+     * licence is not stamped on it.
+     *
+     * @return array<string, string>
+     */
+    public function attributionColumns(): array
+    {
+        return ['created_by' => 'recorded_by', 'created_via' => 'created_via'];
+    }
 
     protected function casts(): array
     {

@@ -126,16 +126,16 @@ class UserScreenTest extends TestCase
 
     private function signIn(string $action, \DateTimeInterface $at, string $ip = '198.51.100.20'): void
     {
-        $entry = AuditLog::create([
+        // Written at its time: an audit entry cannot be changed afterwards.
+        (new AuditLog)->forceFill([
             'user_id' => $action === 'security.login.succeeded' ? $this->clerk->id : null,
             'action' => $action,
             'entity_type' => 'User',
             'entity_id' => $this->clerk->id,
             'ip_address' => $ip,
             'metadata' => ['surface' => 'portal'],
-        ]);
-
-        $entry->forceFill(['created_at' => $at])->save();
+            'created_at' => $at,
+        ])->save();
     }
 
     private function screen(string $uri): TestResponse

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia\Filing;
 
+use App\Domains\Audit\Attribution\Origin;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -32,6 +33,8 @@ class ReportingAttempts
     /** Reported or cleared. */
     public const FILED = 'filed';
 
+    public function __construct(private readonly Origin $origin) {}
+
     public function record(string $organizationId, string $invoiceId, string $outcome, ?string $detail = null): void
     {
         DB::table('reporting_attempts')->insert([
@@ -40,6 +43,8 @@ class ReportingAttempts
             'attempted_at' => now(),
             'outcome' => $outcome,
             'detail' => $detail === null ? null : mb_substr($detail, 0, 1000),
+            // The request, or the job a request queued, that tried.
+            ...$this->origin->columns(['request_id']),
         ]);
     }
 

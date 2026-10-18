@@ -15,6 +15,9 @@ class SupportAttachment extends Model
 {
     use HasUuids;
 
+    /** Written once and never changed. */
+    public const UPDATED_AT = null;
+
     protected $fillable = [
         'message_id',
         'path',

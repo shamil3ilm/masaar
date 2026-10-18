@@ -38,6 +38,22 @@
         @empty
             <p class="p-5 text-sm text-muted">{{ __('No QR codes yet.') }}</p>
         @endforelse
+        @if ($admin && $removed->isNotEmpty())
+            <x-ui.disclosure :summary="__('Removed (:count)', ['count' => $removed->count()])" class="border-b-0 px-5" data-removed-qr-codes>
+                @foreach ($removed as $code)
+                    <div class="flex flex-wrap items-center gap-3 border-t border-line py-3">
+                        <div class="min-w-0 flex-1">
+                            <p class="font-medium text-fg">{{ $code->label }}</p>
+                            <p class="text-xs text-muted">{{ $kinds[$code->kind] ?? $code->kind }} &middot; {{ __('Removed :date', ['date' => $code->deleted_at?->toDateString()]) }}</p>
+                        </div>
+                        <form method="POST" action="{{ route('portal.qr-codes.restore', $code->id) }}">
+                            @csrf
+                            <x-ui.button variant="secondary" size="sm">{{ __('Restore') }}</x-ui.button>
+                        </form>
+                    </div>
+                @endforeach
+            </x-ui.disclosure>
+        @endif
     </section>
 
     @if ($admin)

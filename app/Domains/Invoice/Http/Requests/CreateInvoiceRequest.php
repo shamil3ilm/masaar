@@ -55,7 +55,7 @@ class CreateInvoiceRequest extends CountryInvoiceRequest
             // anyone else's is not found: its certificate is not theirs to
             // sign with.
             'branch_id' => ['nullable', 'string', 'uuid', Rule::exists('branches', 'id')
-                ->where('org_id', app(TenantResolver::class)->getOrganizationId())],
+                ->where('org_id', app(TenantResolver::class)->getOrganizationId())->withoutTrashed()],
             // An instant, so it names its offset: a bare local time would be
             // read on the server's clock, which is not the till's.
             'sold_at' => ['nullable', 'date', 'regex:/(Z|[+-]\d{2}:?\d{2})$/'],

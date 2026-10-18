@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Licensing\Models;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Organization\Concerns\RecordsActors;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -46,7 +47,19 @@ class LicenseRegistration extends Model
 {
     use HasFactory;
     use HasUuids;
+    use RecordsActors;
     use SoftDeletes;
+
+    /**
+     * An applicant has no account, so nobody is recorded as creating one;
+     * who changed or removed it is.
+     *
+     * @return array<string, string>
+     */
+    public function attributionColumns(): array
+    {
+        return ['updated_by' => 'updated_by', 'deleted_by' => 'deleted_by'];
+    }
 
     protected $fillable = [
         'org_id',
@@ -124,7 +137,7 @@ class LicenseRegistration extends Model
      */
     public function approver(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'approved_by');
+        return $this->belongsTo(User::class, 'approved_by')->withTrashed();
     }
 
     /**

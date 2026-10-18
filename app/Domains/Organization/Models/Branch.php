@@ -8,6 +8,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\DTOs\AddressData;
 use App\Domains\Compliance\Countries\SaudiArabia\DTOs\CsrData;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Concerns\BelongsToTenant;
+use App\Domains\Organization\Concerns\RecordsActors;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -48,6 +49,7 @@ class Branch extends Model
 {
     use BelongsToTenant;
     use HasUuids;
+    use RecordsActors;
     use SoftDeletes;
 
     protected $fillable = [

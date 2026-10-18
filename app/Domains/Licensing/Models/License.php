@@ -9,6 +9,7 @@ use App\Domains\Licensing\Enums\LicenseEnvironment;
 use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Licensing\Exceptions\LicenceStateException;
+use App\Domains\Organization\Concerns\RecordsActors;
 use Carbon\Carbon;
 use Closure;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -59,6 +60,7 @@ use Illuminate\Support\Str;
 class License extends Model
 {
     use HasUuids;
+    use RecordsActors;
     use SoftDeletes;
 
     /**
@@ -78,6 +80,16 @@ class License extends Model
     public const LIMITS = ['invoices_per_month', 'calls_per_day', 'max_organizations'];
 
     protected $table = 'licenses';
+
+    /**
+     * Who issued it is who created it.
+     *
+     * @return array<string, string>
+     */
+    public function attributionColumns(): array
+    {
+        return ['created_by' => 'issued_by', 'updated_by' => 'updated_by', 'deleted_by' => 'deleted_by'];
+    }
 
     protected $fillable = [
         'api_key',

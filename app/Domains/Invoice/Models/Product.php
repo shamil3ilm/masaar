@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Domains\Invoice\Models;
 
 use App\Domains\Organization\Concerns\BelongsToTenant;
+use App\Domains\Organization\Concerns\RecordsActors;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Something an organization sells, kept so an invoice line starts filled in.
@@ -18,6 +20,8 @@ class Product extends Model
 {
     use BelongsToTenant;
     use HasUuids;
+    use RecordsActors;
+    use SoftDeletes;
 
     protected $fillable = [
         'org_id',
@@ -30,12 +34,32 @@ class Product extends Model
         'archived_at',
     ];
 
+    /** Computed from deleted_at for the unique indexes (0960); never written. */
+    protected $hidden = ['not_deleted'];
+
     protected function casts(): array
     {
         return [
             'unit_price' => 'decimal:2',
             'tax_rate' => 'decimal:2',
             'archived_at' => 'datetime',
+        ];
+    }
+
+    /**
+     * As a customer's (Customer::attributionColumns): archiving is not
+     * removal.
+     *
+     * @return array<string, string>
+     */
+    public function attributionColumns(): array
+    {
+        return [
+            'created_by' => 'created_by',
+            'updated_by' => 'updated_by',
+            'deleted_by' => 'deleted_by',
+            'created_via' => 'created_via',
+            'license_id' => 'license_id',
         ];
     }
 

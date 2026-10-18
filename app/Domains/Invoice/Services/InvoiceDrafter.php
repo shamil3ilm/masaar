@@ -227,7 +227,13 @@ class InvoiceDrafter
         DB::transaction(function () use ($invoice): void {
             $draft = $this->lockDraft($invoice);
 
-            $this->audit->logDeleted($draft);
+            // Deleted outright, not soft-deleted: a draft has no number, no
+            // counter and no hash, so it is not yet an invoice ZATCA forbids
+            // deleting (Detailed Guidelines 5.4 p26, 5.6 p27), and a removed
+            // row in invoices would sit beside every issued one in every
+            // query that must never miss one. It is not deleted undetected:
+            // the audit entry keeps all of it, lines and charges included.
+            $this->audit->logDeleted($draft->load(['lines', 'charges', 'prepayments']));
             $draft->delete();
         });
     }

@@ -487,6 +487,7 @@ Route::prefix('portal')->name('portal.')
         Route::get('/qr-codes/links/{linkId}.{format}', [PortalQrCodeController::class, 'downloadLink'])
             ->whereUuid('linkId')->whereIn('format', ['png', 'svg'])->name('qr-codes.links.download');
         Route::post('/qr-codes/{qrCodeId}/delete', [PortalQrCodeController::class, 'destroy'])->whereUuid('qrCodeId')->name('qr-codes.destroy');
+        Route::post('/qr-codes/{qrCodeId}/restore', [PortalQrCodeController::class, 'restore'])->whereUuid('qrCodeId')->name('qr-codes.restore');
         Route::get('/qr-codes/{qrCodeId}.{format}', [PortalQrCodeController::class, 'download'])
             ->whereUuid('qrCodeId')->whereIn('format', ['png', 'svg'])->name('qr-codes.download');
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Domains\Audit\Attribution\Origin;
 use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceCleared;
 use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceFailed;
 use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceRejected;
@@ -79,6 +80,10 @@ class EventServiceProvider extends ServiceProvider
     public function boot(): void
     {
         parent::boot();
+
+        // Who acted, how and in which request, carried into the jobs a
+        // request queues, and a job's own writes known as the platform's.
+        Origin::listen();
     }
 
     /**

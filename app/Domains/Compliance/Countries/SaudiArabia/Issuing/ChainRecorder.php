@@ -94,6 +94,8 @@ final class ChainRecorder
                         'last_invoice_id' => $invoice->id,
                         'certificate_id' => $certificateId,
                         'updated_at' => now(),
+                        // When the device's chain began: set once, with its first entry.
+                        ...($state === null ? ['created_at' => now()] : []),
                     ]
                 );
             });

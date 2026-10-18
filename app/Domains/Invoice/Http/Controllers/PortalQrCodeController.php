@@ -59,6 +59,7 @@ class PortalQrCodeController extends Controller
             ]),
             'papers' => PaperSize::cases(),
             'choices' => $this->extraQr->choices($organization),
+            'removed' => $this->codes->removed($organizationId),
         ]);
     }
 
@@ -81,6 +82,16 @@ class PortalQrCodeController extends Controller
         $this->extraQr->setChoices($organization, $this->extraQr->choices($organization));
 
         return redirect()->route('portal.qr-codes.index')->with('success', __('QR code deleted.'));
+    }
+
+    /** A removed code, back as it was. Not printed again until chosen. */
+    public function restore(Request $request, string $qrCodeId): RedirectResponse
+    {
+        $organizationId = $this->portalOrganizationId($request, __('Only an administrator of this organization can change its QR codes.'));
+
+        $this->codes->restore($organizationId, $qrCodeId) ?? abort(404);
+
+        return redirect()->route('portal.qr-codes.index')->with('success', __('QR code restored.'));
     }
 
     public function download(Request $request, string $qrCodeId, string $format): Response

@@ -7,6 +7,7 @@ namespace App\Domains\Organization\Models;
 use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Countries\SaudiArabia\DTOs\AddressData;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Organization\Concerns\RecordsActors;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -22,6 +23,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Organization extends Model
 {
     use HasUuids;
+    use RecordsActors;
 
     /** Named to match Branch and ComplianceProfile, which use the same values. */
     public const STATUS_ACTIVE = 'active';
@@ -79,6 +81,7 @@ class Organization extends Model
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class)
+            ->using(Membership::class)
             ->withPivot(['role', 'status'])
             ->withTimestamps();
     }

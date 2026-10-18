@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Domains\Webhook\Models;
 
 use App\Domains\Organization\Concerns\BelongsToTenant;
+use App\Domains\Organization\Concerns\RecordsActors;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 /**
@@ -22,6 +24,8 @@ class Webhook extends Model
 {
     use BelongsToTenant;
     use HasUuids;
+    use RecordsActors;
+    use SoftDeletes;
 
     public const FAILURES_BEFORE_DISABLE = 10;
 

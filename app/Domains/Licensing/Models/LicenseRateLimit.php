@@ -17,8 +17,6 @@ class LicenseRateLimit extends Model
 
     protected $table = 'license_rate_limits';
 
-    public $timestamps = false;
-
     protected $fillable = [
         'license_id',
         'window_type',
