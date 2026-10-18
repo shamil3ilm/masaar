@@ -138,6 +138,25 @@ class BillingTest extends TestCase
     }
 
     /**
+     * The billing organization's Arabic seller name is its organizations.name_ar,
+     * kept on its company page. Missing, the billing page and the Countries
+     * page both say so before a payment finds out.
+     */
+    public function test_setup_reports_a_missing_arabic_name(): void
+    {
+        $platform = $this->platform(issues: false);
+        $platform->forceFill(['name_ar' => null])->save();
+        $owner = $this->admin('owner');
+
+        $this->assertStringContainsString('has no Arabic name', implode(' ', app(Billing::class)->readiness()));
+        $this->actingAs($owner)->get(route('admin.billing.show', $this->acme->id))->assertOk()->assertSee('The billing organization has no Arabic name');
+        $this->actingAs($owner)->get(route('admin.countries'))->assertOk()->assertSee('The billing organization has no Arabic name');
+
+        $platform->forceFill(['name_ar' => 'منصة مسار'])->save();
+        $this->assertSame([], app(Billing::class)->readiness());
+    }
+
+    /**
      * With one, the platform invoices the payer from its own organization.
      */
     public function test_the_platform_invoices_the_payment(): void

@@ -75,6 +75,9 @@
                         <p class="mt-3 text-sm text-warning">
                             The platform's billing organization is registered here: platform billing invoices are issued in this country.
                         </p>
+                        @foreach ($country['billing_problems'] as $problem)
+                            <p class="mt-1 text-sm text-warning">{{ $problem }}</p>
+                        @endforeach
                     @endif
                 </div>
 

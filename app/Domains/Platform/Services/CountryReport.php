@@ -26,7 +26,7 @@ final class CountryReport
     ) {}
 
     /**
-     * @return list<array{code: string, name: string, system: string, enabled: bool, switch: array{enabled: bool, by: string|null, at: string|null}|null, organizations: int, readiness: array<string, string>, billing: bool}>
+     * @return list<array{code: string, name: string, system: string, enabled: bool, switch: array{enabled: bool, by: string|null, at: string|null}|null, organizations: int, readiness: array<string, string>, billing_problems: list<string>, billing: bool}>
      */
     public function rows(): array
     {
@@ -45,6 +45,7 @@ final class CountryReport
                 'switch' => $this->availability->switched($code),
                 'organizations' => $organizations[$code] ?? 0,
                 'readiness' => $jurisdiction->readiness(),
+                'billing_problems' => $billingCountry === $code ? $this->billing->readiness() : [],
                 'billing' => $billingCountry === $code,
             ];
         }

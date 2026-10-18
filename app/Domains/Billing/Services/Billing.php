@@ -234,6 +234,36 @@ class Billing
     }
 
     /**
+     * What stops the platform invoicing for a plan, as the console's setup
+     * screens say it: no billing organization set, one not connected to its
+     * country's authority yet, or one without the Arabic name its country
+     * requires of a seller (organizations.name_ar, on its company page).
+     * Empty when it can issue.
+     *
+     * @return list<string>
+     */
+    public function readiness(): array
+    {
+        $seller = $this->billingOrganization();
+
+        if ($seller === null) {
+            return ['No billing organization is set (BILLING_ORGANIZATION_ID). Payments renew plans, and no invoice is issued for them until one is.'];
+        }
+
+        $problems = [];
+
+        if (! $seller->zatca_onboarded) {
+            $problems[] = 'The billing organization is not connected to its tax authority yet, so no invoice is issued for a payment.';
+        }
+
+        if ($this->jurisdictions->forRules($seller)->languageRules()->requiresArabic() && blank($seller->name_ar)) {
+            $problems[] = 'The billing organization has no Arabic name, which its country requires of the seller on every invoice. Add it on its company page; until then no invoice is issued for a payment.';
+        }
+
+        return $problems;
+    }
+
+    /**
      * @throws DomainException
      */
     private function issue(Payment $payment): string

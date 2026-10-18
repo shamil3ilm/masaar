@@ -15,11 +15,11 @@
     <p class="text-muted">Recording a payment renews the plan and issues the platform's invoice for it.</p>
 </div>
 
-@if ($billingOrganization === null)
+@foreach ($billingProblems as $problem)
     <div class="mb-6 rounded border border-warning-line bg-warning-soft px-4 py-3 text-sm text-warning">
-        No billing organization is set (BILLING_ORGANIZATION_ID). Payments renew plans, and no invoice is issued for them until one is.
+        {{ $problem }}
     </div>
-@endif
+@endforeach
 
 <div class="mb-6 grid grid-cols-1 gap-6 md:grid-cols-3">
     <div class="rounded-card bg-surface p-6 border border-line shadow-card">

@@ -66,6 +66,7 @@ class AdminBillingController extends Controller
             'prices' => collect(LicenseTier::cases())->mapWithKeys(fn (LicenseTier $tier): array => [$tier->value => $this->billing->monthlyPrice($tier)])->all(),
             'methods' => PaymentMethod::cases(),
             'billingOrganization' => $this->billing->billingOrganization(),
+            'billingProblems' => $this->billing->readiness(),
         ]);
     }
 
