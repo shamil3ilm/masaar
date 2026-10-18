@@ -97,9 +97,10 @@ class NumberingSettings
     public function save(string $organizationId, string $documentType, array $settings, ?string $branchId = null): InvoiceSequence
     {
         return DB::transaction(function () use ($organizationId, $documentType, $settings, $branchId): InvoiceSequence {
-            // The lock issuance holds while it allocates. Without it a first
-            // save and a first issue could both create the same sequence and
-            // one would fail on the unique index - the issue, possibly.
+            // The lock issuance takes to create a sequence. Without it a
+            // first save and a first issue could both create the same
+            // sequence and one would fail on the unique index - the issue,
+            // possibly.
             DB::table('organizations')->where('id', $organizationId)->lockForUpdate()->first();
 
             $sequence = $this->effective($organizationId, $documentType, $branchId, lock: true);

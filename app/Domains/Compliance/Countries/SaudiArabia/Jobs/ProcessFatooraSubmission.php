@@ -246,7 +246,7 @@ class ProcessFatooraSubmission implements ShouldQueue
         // Issue the document first if it has not been issued.
         //
         // Submitter::generate() is the one place that allocates a counter and
-        // fixes a predecessor, under the organization-row lock that also reads
+        // fixes a predecessor, under the device's issuing lock that also reads
         // the predecessor.
         //
         // It refuses a non-draft, because re-signing forks the chain. The

@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Issuing;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Document\DocumentBuilder;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\TimestampValidator;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\SigningCredentials;
 use App\Domains\Invoice\Contracts\IssuingJurisdiction;
 use App\Domains\Invoice\Contracts\Seal;
@@ -33,6 +34,7 @@ class IssuingStep implements IssuingJurisdiction
         private readonly SigningCredentials $signing,
         private readonly ChainRecorder $chain,
         private readonly FeatureOverrides $overrides,
+        private readonly TimestampValidator $timestamps,
     ) {}
 
     public function refuseIssued(Invoice $invoice): FatooraException
@@ -99,6 +101,8 @@ class IssuingStep implements IssuingJurisdiction
         // its counter gone for good. Not on a reissue, which finishes an
         // issuance that already passed here.
         if (! $reissue) {
+            $this->assertSaleTime($invoice);
+
             $check = $this->compliance->validateInvoice($invoice, $organization);
 
             if (! $check['valid']) {
@@ -124,6 +128,17 @@ class IssuingStep implements IssuingJurisdiction
             $this->signing->branchOf($invoice),
             required: $organization->zatca_onboarded,
         );
+    }
+
+    /**
+     * The device: ZATCA keeps one counter and one chain per EGS unit, so a
+     * device issues one document at a time and devices issue at once. A
+     * document already placed in a chain - a reissue finishing what was
+     * interrupted - stays in the one it was placed in.
+     */
+    public function lockScope(Invoice $invoice, mixed $context): string
+    {
+        return (string) ($invoice->device_id ?? $context['device']);
     }
 
     /**
@@ -203,6 +218,30 @@ class IssuingStep implements IssuingJurisdiction
      * Nothing: filing is the caller's to start (InvoiceIssuer, Submitter::submit).
      */
     public function afterCommit(Invoice $invoice, mixed $result, bool $issuedNow): void {}
+
+    /**
+     * A draft that carries the till's sale time is issued at that time, and
+     * only within TimestampValidator's bound: checked here, before a counter
+     * is spent, so a refused sale stays a draft with nothing taken.
+     *
+     * @throws FatooraException
+     */
+    private function assertSaleTime(Invoice $invoice): void
+    {
+        if ($invoice->issued_at === null) {
+            return;
+        }
+
+        $problem = $this->timestamps->saleTimeProblem($invoice->issued_at);
+
+        if ($problem !== null) {
+            throw new FatooraException(
+                "Invoice {$this->label($invoice)}: {$problem}",
+                ErrorCode::VALIDATION_FAILED,
+                ['issued_at' => $invoice->issued_at->toIso8601String()],
+            );
+        }
+    }
 
     /**
      * How an invoice is named in a message: its number, or for a draft not

@@ -89,8 +89,8 @@ class IssuingLifecycleTest extends TestCase
     }
 
     /**
-     * The organization row is read inside the transaction before the invoice
-     * is refreshed, and the draft check is made again on the refreshed row:
+     * The chain's lock is taken inside the transaction before the invoice is
+     * refreshed, and the draft check is made again on the refreshed row:
      * a copy loaded before another request issued it is refused under the
      * lock, without numbering or sealing anything.
      */
@@ -120,12 +120,28 @@ class IssuingLifecycleTest extends TestCase
         $this->assertSame(['prepare'], array_column($fake->calls, 'hook'));
         $this->assertSame($number, $draft->fresh()->invoice_number);
 
-        // Either quoting: SQLite writes "organizations", MySQL `organizations`.
+        // Either quoting: SQLite writes "issuing_locks", MySQL `issuing_locks`.
         $names = fn (string $table): string => '/["`]'.$table.'["`]/';
-        $lock = array_search(true, array_map(fn (array $q): bool => preg_match($names('organizations'), $q['sql']) === 1, $queries), true);
-        $this->assertNotFalse($lock, 'the organization row was not read');
-        $this->assertGreaterThan($outside, $queries[$lock]['level'], 'the organization row was read outside the transaction');
+        $lock = array_search(true, array_map(fn (array $q): bool => preg_match($names('issuing_locks'), $q['sql']) === 1, $queries), true);
+        $this->assertNotFalse($lock, 'the issuing lock was not taken');
+        $this->assertGreaterThan($outside, $queries[$lock]['level'], 'the issuing lock was taken outside the transaction');
         $this->assertMatchesRegularExpression($names('invoices'), $queries[$lock + 1]['sql'] ?? '', 'the invoice was not refreshed after the lock');
+    }
+
+    /**
+     * The lock is the chain the jurisdiction names, one row per scope within
+     * the organization: two scopes are two locks.
+     */
+    public function test_lock_is_the_jurisdictions_scope(): void
+    {
+        $this->lifecycle()->issue($this->draft(), $this->acme, new RecordingJurisdiction(scope: 'till-1'));
+        $this->lifecycle()->issue($this->draft(), $this->acme, new RecordingJurisdiction(scope: 'till-2'));
+        $this->lifecycle()->issue($this->draft(), $this->acme, new RecordingJurisdiction(scope: 'till-1'));
+
+        $this->assertSame(
+            ['till-1', 'till-2'],
+            DB::table('issuing_locks')->where('org_id', $this->acme->id)->orderBy('scope')->pluck('scope')->all(),
+        );
     }
 
     /**
@@ -265,6 +281,7 @@ class RecordingJurisdiction implements IssuingJurisdiction
         private readonly ?array $finished = null,
         private readonly bool $refuse = false,
         private readonly bool $failSeal = false,
+        private readonly string $scope = 'device-1',
     ) {}
 
     public function refuseIssued(Invoice $invoice): Throwable
@@ -286,6 +303,11 @@ class RecordingJurisdiction implements IssuingJurisdiction
         }
 
         return 'context';
+    }
+
+    public function lockScope(Invoice $invoice, mixed $context): string
+    {
+        return $this->scope;
     }
 
     public function finished(Invoice $invoice): mixed

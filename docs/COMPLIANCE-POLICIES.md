@@ -231,7 +231,7 @@ legal_hold_metadata:
 
 ### Policy Statement
 
-**Invoice issuance time is determined by the system clock at signing. No timestamp authority is used: ZATCA's security features standard requires XAdES baseline level B-B, which carries no signature timestamp, so signatures are never upgraded to XAdES-T.**
+**Invoice issuance time is determined by the system clock at signing, unless a till sends the time it made the sale (`issued_at`) and that time falls within the configured bound. No timestamp authority is used: ZATCA's security features standard requires XAdES baseline level B-B, which carries no signature timestamp, so signatures are never upgraded to XAdES-T.**
 
 ### Rationale
 
@@ -241,8 +241,18 @@ ZATCA may later dispute invoice timestamp correctness. System clocks can drift. 
 
 | Source | Priority | Use Case |
 |--------|----------|----------|
-| System clock | 1 (highest) | Issuance time |
-| ERP timestamp | 2 (lowest) | Informational only |
+| Till sale time (`issued_at`), within the bound | 1 (highest) | Issuance time of a sale made while the till was offline |
+| System clock | 2 | Issuance time otherwise; the XAdES signing time always |
+| ERP timestamp | 3 (lowest) | Informational only |
+
+A sale time is accepted when it is no older than
+`ZATCA_SALE_TIME_MAX_AGE_MINUTES` (default 1440, the reporting deadline) and
+no further ahead of the system clock than `ZATCA_SALE_TIME_MAX_AHEAD_SECONDS`
+(default 30). Outside that bound the invoice is refused before it takes a
+counter, with the reason. Accepted, it is the invoice's IssueTime, its QR
+timestamp and the start of its reporting deadline, so the deadline screen
+and the overdue alert count from the sale, not from when the till caught up.
+Its date, on the organization's clock, is the issue date.
 
 ### Dispute Resolution
 
@@ -257,8 +267,9 @@ Resolution Path:
 
 ### Configuration
 
-There is nothing to configure. Keep the host clock synchronised (see the
-deployment guide's time synchronisation section).
+`ZATCA_SALE_TIME_MAX_AGE_MINUTES` and `ZATCA_SALE_TIME_MAX_AHEAD_SECONDS`, for
+the till's sale time. Keep the host clock synchronised (see the deployment
+guide's time synchronisation section).
 
 ---
 

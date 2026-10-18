@@ -109,6 +109,17 @@ return [
         'deadline_hours' => (float) env('ZATCA_REPORTING_DEADLINE_HOURS', 24),
     ],
 
+    /*
+    | A till's own sale time, sent as issued_at, is the moment of issue when
+    | it is no older than this - the reporting deadline by default - and no
+    | further ahead than the clock tolerance (TimestampValidator). Outside the
+    | bound the invoice is refused, with the reason, before a counter is spent.
+    */
+    'sale_time' => [
+        'max_age_minutes' => (int) env('ZATCA_SALE_TIME_MAX_AGE_MINUTES', 1440),
+        'max_ahead_seconds' => (int) env('ZATCA_SALE_TIME_MAX_AHEAD_SECONDS', 30),
+    ],
+
     'signing' => [
         'disk' => env('ZATCA_CREDENTIAL_DISK', 'local'),
 
@@ -151,10 +162,16 @@ return [
     |
     */
     'rate_limits' => [
-        // Must agree with security.rate_limits.submission, which throttles the
-        // same traffic at the edge. Two keys, one thing.
-        'per_minute' => env('ZATCA_RATE_LIMIT_PER_MINUTE', 120),
-        'per_day' => env('ZATCA_RATE_LIMIT_PER_DAY', 10000),
+        // The organization's ceiling, across all its devices. Must agree with
+        // security.rate_limits.submission, which throttles the same traffic
+        // per organization at the edge. Two keys, one thing.
+        'per_minute' => env('ZATCA_RATE_LIMIT_PER_MINUTE', 300),
+        'per_day' => env('ZATCA_RATE_LIMIT_PER_DAY', 100000),
+        // Each device (EGS unit - a branch with its own certificate, or head
+        // office) within that ceiling, so one busy till cannot spend the
+        // others' allowance (SubmissionRate).
+        'device_per_minute' => env('ZATCA_DEVICE_RATE_LIMIT_PER_MINUTE', 120),
+        'device_per_day' => env('ZATCA_DEVICE_RATE_LIMIT_PER_DAY', 10000),
         'max_concurrent' => env('ZATCA_MAX_CONCURRENT', 10),
     ],
 

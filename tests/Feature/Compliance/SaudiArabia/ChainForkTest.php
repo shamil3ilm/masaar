@@ -29,8 +29,8 @@ use Tests\TestCase;
  * may share a previous_hash. Concurrency was one way in and out-of-order
  * issuance was the other, needing no concurrency at all.
  *
- * The counter is allocated at issuance now, under the same organization-row
- * lock that reads the predecessor, so a draft holds no position in the chain
+ * The counter is allocated at issuance now, under the same device lock that
+ * reads the predecessor, so a draft holds no position in the chain
  * and there is nothing to chain past.
  */
 class ChainForkTest extends TestCase

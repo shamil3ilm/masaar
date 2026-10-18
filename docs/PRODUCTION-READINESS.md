@@ -364,12 +364,15 @@ config already runs php-fpm, nginx, two default workers, three
       limited; `tests/Feature/Security/AuthThrottleTest.php` holds that.
 
       The bands are ordered by what a request costs - onboarding 5, anonymous
-      20, submission 120, default 300, read 600 - so a band is never tighter
+      20, submission 300, default 300, read 600 - so a band is never tighter
       than the fallback its traffic would otherwise drop through to, which
-      `RateLimitConfigTest` asserts. `RATE_LIMIT_SUBMISSION` is 120 to make
-      section 1.1's thousand-a-minute target reachable across ten
-      organizations, and it is a platform ceiling rather than an ambition: a
-      limit above what ZATCA's API accepts does not buy throughput, it moves
+      `RateLimitConfigTest` asserts. `RATE_LIMIT_SUBMISSION` is an
+      organization's ceiling across all its devices; inside it each device (a
+      branch with its own certificate, or head office) has its own budget,
+      `ZATCA_DEVICE_RATE_LIMIT_PER_MINUTE` (120) and
+      `ZATCA_DEVICE_RATE_LIMIT_PER_DAY` (10,000), so one busy till cannot spend
+      the others' allowance. It is a platform ceiling rather than an ambition:
+      a limit above what ZATCA's API accepts does not buy throughput, it moves
       the refusal from a cheap local 429 to a failed submission against the
       24-hour reporting deadline. **Confirm the authority's published figure
       and keep this under it.**
@@ -382,8 +385,8 @@ config already runs php-fpm, nginx, two default workers, three
       ```
       RATE_LIMIT_DEFAULT=300
       RATE_LIMIT_READ=600
-      RATE_LIMIT_SUBMISSION=120
-      ZATCA_RATE_LIMIT_PER_MINUTE=120
+      RATE_LIMIT_SUBMISSION=300
+      ZATCA_RATE_LIMIT_PER_MINUTE=300
       ```
 
       The last two throttle the same traffic and the lower silently decides, so

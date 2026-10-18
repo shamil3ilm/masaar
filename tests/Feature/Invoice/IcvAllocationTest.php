@@ -18,7 +18,7 @@ use Tests\TestCase;
  * duplicate or a gap is a compliance failure rather than a cosmetic one.
  *
  * The counter is taken at issuance, not at creation — Submitter::generate()
- * allocates it under the organization-row lock that also reads the
+ * allocates it under the device's issuing lock that also reads the
  * predecessor, so the two are decided together and a draft holds no position
  * in the chain. These tests drive the allocator the way issuance does.
  * ChainForkTest covers what that ordering buys.

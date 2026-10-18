@@ -4,6 +4,7 @@ namespace App\Domains\Invoice\Http\Controllers;
 
 use App\Domains\Invoice\Exceptions\InvoiceNotEditableException;
 use App\Domains\Invoice\Http\Requests\CreateInvoiceRequest;
+use App\Domains\Invoice\Services\IdempotentDraft;
 use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Invoice\Services\InvoicePdf;
@@ -38,6 +39,7 @@ class InvoiceController extends Controller
         private readonly InvoiceDrafter $drafter,
         private readonly InvoiceFinder $invoices,
         private readonly InvoicePdf $pdf,
+        private readonly IdempotentDraft $once,
     ) {}
 
     /**
@@ -60,11 +62,29 @@ class InvoiceController extends Controller
      * Create a new invoice.
      *
      * POST /api/invoices
+     *
+     * An Idempotency-Key header makes a retry answer with the invoice the
+     * first request created - 200 and Idempotent-Replayed: true, where the
+     * first was 201 - instead of drafting the sale again. The key means what
+     * it means on the pipeline (IdempotentDraft). branch_id names the branch
+     * the invoice comes from, which decides the certificate that signs it.
      */
     public function store(CreateInvoiceRequest $request): JsonResponse
     {
+        $organizationId = $this->tenant->getOrganizationId();
+        $key = $request->header('Idempotency-Key') ?: null;
+
         // As the organization's country's rules map the request.
-        $invoice = $this->drafter->draft($request->draft(), $this->tenant->getOrganizationId(), countryFields: $request->countryFields());
+        $draft = $request->draft();
+
+        $invoice = $this->once->earlier($organizationId, $key, $draft)
+            ?? $this->once->draft($draft, $organizationId, $request->validated('branch_id'), $request->countryFields(), $key);
+
+        if (! $invoice->wasRecentlyCreated) {
+            return ApiResponse::success([
+                'invoice' => $invoice->load('lines'),
+            ], 'Invoice already created under this Idempotency-Key')->header('Idempotent-Replayed', 'true');
+        }
 
         return ApiResponse::created([
             'invoice' => $invoice->load('lines'),

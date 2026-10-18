@@ -10,6 +10,7 @@ use App\Domains\Compliance\Engine\Exceptions\JurisdictionUnavailableException;
 use App\Domains\Compliance\Engine\Services\ComplianceEngine;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Services\IdempotentDraft;
 use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
@@ -17,7 +18,6 @@ use App\Domains\Platform\Access\Feature;
 use App\Domains\Platform\Access\FeatureOverrides;
 use App\Support\Errors\ComplianceException;
 use App\Support\Errors\ErrorCode;
-use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -28,7 +28,8 @@ use Illuminate\Validation\ValidationException;
  * belongs to a collaborator:
  *
  *   InvoiceDrafter    payload -> draft invoice with priced lines, mapped by
- *                     the country's InvoiceRules
+ *                     the country's InvoiceRules, once per Idempotency-Key
+ *                     (IdempotentDraft)
  *   ComplianceEngine  issues the draft in the organization's jurisdiction,
  *                     then files it with the authority (see
  *                     docs/architecture/JURISDICTION-ROUTING.md)
@@ -42,6 +43,7 @@ class PipelineService
 {
     public function __construct(
         private readonly InvoiceDrafter $drafter,
+        private readonly IdempotentDraft $once,
         private readonly ComplianceEngine $engine,
         private readonly PipelineResult $result,
         private readonly FeatureOverrides $overrides,
@@ -76,7 +78,7 @@ class PipelineService
         // The key only reached filing before, so the retry drafted a second
         // invoice - colliding on the invoice number, or, with a fresh one,
         // billing the sale twice.
-        if ($idempotencyKey !== null && ($earlier = $this->drafter->createdUnder($organizationId, $idempotencyKey))) {
+        if ($earlier = $this->once->earlier($organizationId, $idempotencyKey, $data)) {
             return $this->replay($earlier, $data, $organization, $idempotencyKey);
         }
 
@@ -92,30 +94,24 @@ class PipelineService
             return $this->replay($earlier, $data, $organization, null);
         }
 
-        try {
-            // Drafted as the country's rules map the request, with the ERP's
-            // reference and key beside it: a country's draft names only its
-            // invoice's own fields.
-            $invoice = $this->drafter->draft(
-                [
-                    ...$rules->draft($data),
-                    'erp_reference_id' => $data['erp_reference_id'] ?? null,
-                    'idempotency_key' => $idempotencyKey,
-                ],
-                $organizationId,
-                $this->resolveBranch($branchId, $organizationId),
-                $rules->countryFields($data),
-            );
-        } catch (UniqueConstraintViolationException $e) {
-            // Two retries raced past the check above; the unique index let one
-            // draft. The other answers with that one.
-            $earlier = $idempotencyKey === null ? null : $this->drafter->createdUnder($organizationId, $idempotencyKey);
+        // Drafted as the country's rules map the request, with the ERP's
+        // reference and key beside it: a country's draft names only its
+        // invoice's own fields.
+        $invoice = $this->once->draft(
+            [
+                ...$rules->draft($data),
+                'erp_reference_id' => $data['erp_reference_id'] ?? null,
+            ],
+            $organizationId,
+            $this->resolveBranch($branchId, $organizationId),
+            $rules->countryFields($data),
+            $idempotencyKey,
+        );
 
-            if ($earlier === null) {
-                throw $e;
-            }
-
-            return $this->replay($earlier, $data, $organization, $idempotencyKey);
+        // Two retries raced past the check above; the unique index let one
+        // draft. The other answers with that one.
+        if (! $invoice->wasRecentlyCreated) {
+            return $this->replay($invoice, $data, $organization, $idempotencyKey);
         }
 
         return $this->issue($invoice, $organization, $data, $idempotencyKey);
@@ -178,8 +174,8 @@ class PipelineService
     /**
      * What the first request with this key produced, as it stands now.
      *
-     * A key names one request. Sent with a different invoice it is an
-     * integrator's bug, and answering with the other invoice would hide it.
+     * A key names one request, so the request is checked to be the first
+     * one's (IdempotentDraft::assertSameRequest) before anything is done.
      *
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
@@ -188,18 +184,7 @@ class PipelineService
      */
     private function replay(Invoice $invoice, array $data, Organization $organization, ?string $idempotencyKey): array
     {
-        // The request's own number, or failing that its ERP reference, has to
-        // be the first call's. A request that sent no number was numbered at
-        // issue, so its number is compared with nothing.
-        $sent = $data['invoice_number'] ?? null;
-        $reference = $data['erp_reference_id'] ?? null;
-
-        if (filled($sent) ? $invoice->invoice_number !== $sent : (filled($reference) && $invoice->erp_reference_id !== $reference)) {
-            throw ValidationException::withMessages([
-                'invoice_number' => 'This Idempotency-Key was already used for invoice '.$invoice->invoice_number
-                    .'. Send a new key for a new invoice.',
-            ]);
-        }
+        $this->once->assertSameRequest($invoice, $data);
 
         // The first call drafted and then failed to issue. Answering with the
         // stored draft and no errors reported a clean success for an invoice

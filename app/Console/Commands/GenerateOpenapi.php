@@ -54,6 +54,9 @@ class GenerateOpenapi extends Command
      * integrator reading it - sent no secret, and every partner call was
      * refused.
      */
+    /** The header a retry repeats so it is answered rather than acted on again. */
+    private const IDEMPOTENCY_HEADER = 'Idempotency-Key';
+
     private const SECURITY = [
         'JwtGuard' => ['bearerAuth'],
         'ValidateLicense' => ['apiKey', 'apiSecret'],
@@ -295,11 +298,13 @@ class GenerateOpenapi extends Command
     }
 
     /**
+     * The path's parameters, and the headers the controller method reads.
+     *
      * @return list<array<string, mixed>>
      */
     private function parameters(Route $route): array
     {
-        return array_map(
+        $parameters = array_map(
             fn (string $name) => [
                 'name' => $name,
                 'in' => 'path',
@@ -308,6 +313,21 @@ class GenerateOpenapi extends Command
             ],
             $route->parameterNames()
         );
+
+        // Read from the method's source, as the envelope is: a header the
+        // method asks the request for is one it acts on.
+        if (str_contains($this->methodBody($route), "header('".self::IDEMPOTENCY_HEADER."')")) {
+            $parameters[] = [
+                'name' => self::IDEMPOTENCY_HEADER,
+                'in' => 'header',
+                'required' => false,
+                'description' => 'Names one request. A retry with the same key answers with what the first '
+                    .'request made instead of making it again; the same key sent with a different invoice is refused (422).',
+                'schema' => ['type' => 'string', 'maxLength' => 255],
+            ];
+        }
+
+        return $parameters;
     }
 
     /**
@@ -351,6 +371,8 @@ class GenerateOpenapi extends Command
             return null;
         }
 
+        $properties = $this->members($rules, $properties);
+
         $schema = ['type' => 'object', 'properties' => $properties];
 
         if ($required !== []) {
@@ -361,6 +383,32 @@ class GenerateOpenapi extends Command
             'required' => true,
             'content' => ['application/json' => ['schema' => $schema]],
         ];
+    }
+
+    /**
+     * The members of a top-level array, one level down, from its "x.*.y"
+     * rules: what a line of an invoice holds, or an invoice of a batch.
+     * Deeper keys are left out, as nested keys were before.
+     *
+     * @param  array<string, mixed>  $rules
+     * @param  array<string, array<string, mixed>>  $properties
+     * @return array<string, array<string, mixed>>
+     */
+    private function members(array $rules, array $properties): array
+    {
+        foreach ($rules as $field => $rule) {
+            if (preg_match('/^([^.]+)\.\*\.([^.*]+)$/', (string) $field, $m) !== 1
+                || ($properties[$m[1]]['type'] ?? null) !== 'array') {
+                continue;
+            }
+
+            $rule = array_map(fn ($r) => is_string($r) ? $r : '', is_array($rule) ? $rule : explode('|', (string) $rule));
+
+            $properties[$m[1]]['items']['type'] = 'object';
+            $properties[$m[1]]['items']['properties'][$m[2]] = ['type' => $this->typeFor($rule)];
+        }
+
+        return $properties;
     }
 
     /**

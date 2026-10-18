@@ -1120,6 +1120,7 @@ paths:
                   type: string
                 lines:
                   type: array
+                  items: { type: object, properties: { item_name: { type: string }, description: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string }, goods_type: { type: string }, item_id: { type: string }, hs_code: { type: string } } }
               required:
                 - document_type
                 - document_category
@@ -1651,6 +1652,14 @@ paths:
         - Invoice
       operationId: invoiceController.store
       summary: 'Store — Invoice Controller'
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again; the same key sent with a different invoice is refused (422).'
+          schema:
+            type: string
+            maxLength: 255
       requestBody:
         required: true
         content:
@@ -1698,6 +1707,11 @@ paths:
                   type: string
                 lines:
                   type: array
+                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string } } }
+                branch_id:
+                  type: string
+                issued_at:
+                  type: string
               required:
                 - type
                 - issue_date
@@ -1808,6 +1822,11 @@ paths:
                   type: string
                 lines:
                   type: array
+                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string } } }
+                branch_id:
+                  type: string
+                issued_at:
+                  type: string
               required:
                 - type
                 - issue_date
@@ -1891,6 +1910,11 @@ paths:
                   type: string
                 lines:
                   type: array
+                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string } } }
+                branch_id:
+                  type: string
+                issued_at:
+                  type: string
               required:
                 - type
                 - issue_date
@@ -2974,6 +2998,14 @@ paths:
         - Invoice
       operationId: v1.invoiceController.store
       summary: 'Store — Invoice Controller'
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again; the same key sent with a different invoice is refused (422).'
+          schema:
+            type: string
+            maxLength: 255
       requestBody:
         required: true
         content:
@@ -3021,6 +3053,11 @@ paths:
                   type: string
                 lines:
                   type: array
+                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string } } }
+                branch_id:
+                  type: string
+                issued_at:
+                  type: string
               required:
                 - type
                 - issue_date
@@ -3135,6 +3172,11 @@ paths:
                   type: string
                 lines:
                   type: array
+                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string } } }
+                branch_id:
+                  type: string
+                issued_at:
+                  type: string
               required:
                 - type
                 - issue_date
@@ -3190,6 +3232,50 @@ paths:
         - apiKey: []
           apiSecret: []
       description: 'Requires scope: invoice.cancel'
+  /api/v1/pipeline/batch:
+    post:
+      tags:
+        - Pipeline
+      operationId: v1.pipelineController.batch
+      summary: 'Batch — Pipeline Controller'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                org_id:
+                  type: string
+                invoices:
+                  type: array
+                  items: { type: object, properties: { idempotency_key: { type: string } } }
+              required:
+                - org_id
+                - invoices
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - apiKey: []
+          apiSecret: []
+      description: 'Requires scope: invoice.submit'
   '/api/v1/pipeline/status/{invoiceId}':
     get:
       tags:
@@ -3225,6 +3311,14 @@ paths:
         - Pipeline
       operationId: v1.pipelineController.submit
       summary: 'Submit — Pipeline Controller'
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again; the same key sent with a different invoice is refused (422).'
+          schema:
+            type: string
+            maxLength: 255
       requestBody:
         required: true
         content:
@@ -3272,6 +3366,11 @@ paths:
                   type: string
                 lines:
                   type: array
+                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string } } }
+                branch_id:
+                  type: string
+                issued_at:
+                  type: string
                 invoice_type:
                   type: string
                 due_date:
@@ -3280,8 +3379,6 @@ paths:
                   type: string
                 auto_submit:
                   type: boolean
-                branch_id:
-                  type: string
                 erp_reference_id:
                   type: string
               required:

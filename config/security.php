@@ -103,19 +103,21 @@ return [
 
         // Signing and an outbound call to the authority.
         //
-        // Must agree with fatoora.rate_limits.per_minute, which
-        // SubmissionGuard enforces on the same traffic per organization: two
+        // Must agree with fatoora.rate_limits.per_minute, the organization's
+        // ceiling that SubmissionGuard enforces on the same traffic: two
         // keys, one thing, set together or the tighter one silently wins.
+        // Each device is held to its own, lower figure inside
+        // (fatoora.rate_limits.device_per_minute), which the edge cannot see.
         //
-        // A hundred and twenty makes the thousand-invoices-a-minute target in
-        // PRODUCTION-READINESS.md section 1.1 reachable across ten
-        // organizations. It is deliberately a platform ceiling and not an
-        // ambition: a limit set above what ZATCA's own API accepts does not
-        // buy throughput, it moves the refusal from a cheap local 429 to a
-        // failed submission against the twenty-four hour reporting deadline.
-        // Confirm the authority's published figure before production and keep
-        // this under it.
-        'submission' => (int) env('RATE_LIMIT_SUBMISSION', 120),
+        // Three hundred is a chain of shops' ceiling: two and a half devices
+        // at their own cap, or many quieter tills. No higher than default,
+        // which this band may not exceed. It is deliberately a platform
+        // ceiling and not an ambition: a limit set above what ZATCA's own
+        // API accepts does not buy throughput, it moves the refusal from a
+        // cheap local 429 to a failed submission against the twenty-four hour
+        // reporting deadline. Confirm the authority's published figure
+        // before production and keep this under it.
+        'submission' => (int) env('RATE_LIMIT_SUBMISSION', 300),
 
         // Certificate issuance: rare, expensive, and security sensitive. The
         // tightest band on purpose - an OTP is spent whether the request
@@ -136,7 +138,7 @@ return [
         // budget. Patterns stay narrow for that reason; anything they do not
         // match draws on 'default'.
         'bands' => [
-            'submission' => ['pipeline/submit', 'compliance/sa/submit', 'compliance/ae/submit'],
+            'submission' => ['pipeline/submit', 'pipeline/batch', 'compliance/sa/submit', 'compliance/ae/submit'],
             'onboarding' => ['onboarding', 'ccsid', 'pcsid'],
             'read' => ['status', 'health', 'dashboard'],
         ],

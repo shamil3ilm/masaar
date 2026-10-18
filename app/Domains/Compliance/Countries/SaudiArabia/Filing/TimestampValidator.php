@@ -11,7 +11,9 @@ use Illuminate\Support\Facades\Log;
  *
  * Enforces the timestamp policy:
  * 1. System UTC is the issuance time; no timestamp authority is used
- * 2. ERP timestamp is informational only
+ * 2. A till's own sale time is the issuance time instead, when it falls
+ *    within the bound saleTimeProblem() checks
+ * 3. ERP timestamp is informational only
  *
  * Clock drift tolerance: ±30 seconds between sources.
  *
@@ -171,6 +173,48 @@ class TimestampValidator
             'errors' => $errors,
             'result_code' => $this->determineResultCode($isValid, $maxDriftFound, $warnings),
         ];
+    }
+
+    /**
+     * Why a till's sale time cannot be the moment of issue, or null when it
+     * can.
+     *
+     * A till that was offline issues its sales when it reconnects, and the
+     * document has to say when the sale was made: IssueTime, the QR's
+     * timestamp and the start of the reporting clock. Taken back no further
+     * than the reporting deadline by default - a sale older than that is
+     * already late, and a document claiming it is a document nobody can file
+     * in time - and ahead no further than the clock tolerance, since a sale
+     * cannot have been made after the platform issues it.
+     */
+    public function saleTimeProblem(\DateTimeInterface $saleTime, ?\DateTimeInterface $now = null): ?string
+    {
+        $now ??= new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+        $behind = $now->getTimestamp() - $saleTime->getTimestamp();
+        $maxAge = (int) config('fatoora.sale_time.max_age_minutes', 1440);
+        $maxAhead = (int) config('fatoora.sale_time.max_ahead_seconds', self::MAX_DRIFT_SECONDS);
+
+        if ($behind > $maxAge * 60) {
+            return sprintf(
+                'The sale time %s is %d minutes before the moment of issue; a sale time may be at most %d minutes old. '
+                .'Send the invoice without issued_at to issue it at the current time.',
+                $saleTime->format(DATE_ATOM),
+                intdiv($behind, 60),
+                $maxAge,
+            );
+        }
+
+        if (-$behind > $maxAhead) {
+            return sprintf(
+                'The sale time %s is %d seconds ahead of the platform\'s clock; at most %d seconds are allowed. '
+                .'Check the till\'s clock.',
+                $saleTime->format(DATE_ATOM),
+                -$behind,
+                $maxAhead,
+            );
+        }
+
+        return null;
     }
 
     /**

@@ -398,6 +398,9 @@ Route::prefix('portal')->name('portal.')
         Route::get('/reports', [PortalReportController::class, 'index'])->name('reports');
         Route::get('/reports/invoices.csv', [PortalReportController::class, 'invoices'])->middleware('throttle:20,1')->name('reports.invoices');
         Route::get('/reports/vat.csv', [PortalReportController::class, 'vat'])->middleware('throttle:20,1')->name('reports.vat');
+        // A day's close by device and branch, where the country counts per device.
+        Route::get('/reports/close', [PortalReportController::class, 'close'])->name('reports.close');
+        Route::get('/reports/close.csv', [PortalReportController::class, 'closeCsv'])->middleware('throttle:20,1')->name('reports.close.csv');
 
         // The plan, its usage and its payments. Administrators only.
         Route::get('/billing', [PortalBillingController::class, 'show'])->name('billing');

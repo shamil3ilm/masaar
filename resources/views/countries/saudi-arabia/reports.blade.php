@@ -43,6 +43,7 @@
             </p>
         </div>
         <div class="flex flex-wrap gap-2">
+            <x-ui.button variant="outline" :href="route('portal.reports.close')">{{ __('Daily close by device') }}</x-ui.button>
             <x-ui.button variant="outline" :href="route('portal.reports.vat', ['from' => $from->toDateString(), 'to' => $to->toDateString()])">{{ __('VAT summary CSV') }}</x-ui.button>
             <x-ui.button variant="outline" :href="route('portal.reports.invoices', ['from' => $from->toDateString(), 'to' => $to->toDateString()])">{{ __('Invoices CSV') }}</x-ui.button>
         </div>
