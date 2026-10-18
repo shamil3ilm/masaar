@@ -66,16 +66,18 @@ class PortalPrintingController extends Controller
             'printers.*.dots' => ['nullable', 'integer', 'between:64,1280', 'multiple_of:8'],
         ]);
 
-        $this->preferences->setOrganizationPaper($organization, PaperSize::from($validated['paper']));
+        $actorId = (string) $request->user()?->id;
+        $this->preferences->setOrganizationPaper($organization, PaperSize::from($validated['paper']), $actorId);
 
         foreach ($this->preferences->branches($organizationId) as $branch) {
             $printer = $validated['printers'][$branch['id']] ?? [];
-            $this->preferences->setBranchPaper($organizationId, $branch['id'], PaperSize::tryFrom((string) ($validated['branches'][$branch['id']] ?? '')));
+            $this->preferences->setBranchPaper($organizationId, $branch['id'], PaperSize::tryFrom((string) ($validated['branches'][$branch['id']] ?? '')), $actorId);
             $this->preferences->setReceiptPrinter(
                 $organizationId,
                 $branch['id'],
                 isset($printer['dpi']) ? (int) $printer['dpi'] : null,
                 isset($printer['dots']) ? (int) $printer['dots'] : null,
+                $actorId,
             );
         }
 

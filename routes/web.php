@@ -32,12 +32,15 @@ use App\Domains\Licensing\Http\Controllers\AdminLicenceController;
 use App\Domains\Organization\Http\Controllers\CustomerPortalController;
 use App\Domains\Organization\Http\Controllers\InvitationController;
 use App\Domains\Organization\Http\Controllers\PortalCompanyController;
+use App\Domains\Organization\Http\Controllers\PortalPreferencesController;
 use App\Domains\Organization\Http\Controllers\PortalPrintingController;
+use App\Domains\Organization\Http\Controllers\PortalSettingsController;
 use App\Domains\Organization\Http\Controllers\PortalTeamController;
 use App\Domains\Platform\Http\Controllers\AdminAdminsController;
 use App\Domains\Platform\Http\Controllers\AdminAuditController;
 use App\Domains\Platform\Http\Controllers\AdminController;
 use App\Domains\Platform\Http\Controllers\AdminCountryController;
+use App\Domains\Platform\Http\Controllers\AdminCustomizationController;
 use App\Domains\Platform\Http\Controllers\AdminFeatureController;
 use App\Domains\Platform\Http\Controllers\AdminOrganizationReviewController;
 use App\Domains\Platform\Http\Controllers\AdminSettingsController;
@@ -296,6 +299,8 @@ Route::prefix('admin')->name('admin.')
         // components themselves, in light and dark and in both directions.
         Route::view('/design-system', 'admin.design-system')->name('design-system');
         Route::post('/settings', [AdminSettingsController::class, 'update'])->middleware('admin.can:platform.configure')->name('settings.update');
+        // The platform's default for one customization, or its reset.
+        Route::post('/customizations/{key}', [AdminCustomizationController::class, 'update'])->middleware('admin.can:platform.configure')->name('customizations.update');
 
         // Which countries the platform issues in. One switch per country,
         // the same for every one; switching off stops new issuing there and
@@ -469,6 +474,11 @@ Route::prefix('portal')->name('portal.')
         Route::post('/numbering-mode', [PortalNumberingController::class, 'mode'])->name('numbering.mode');
         Route::post('/numbering/{documentType}', [PortalNumberingController::class, 'update'])->name('numbering.update');
 
+        // The organization's own value for each customization, against the
+        // platform's. Administrators only; the controller checks the role.
+        Route::get('/settings', [PortalSettingsController::class, 'edit'])->name('settings.edit');
+        Route::post('/settings/{key}', [PortalSettingsController::class, 'update'])->name('settings.update');
+
         // The paper invoices print on: each person's own, and the
         // organization's and its branches' for its administrators (the
         // controller checks the role).
@@ -497,4 +507,13 @@ Route::prefix('portal')->name('portal.')
         Route::post('/branding/import', [PortalBrandingController::class, 'import'])->name('branding.import');
         Route::get('/branding/export', [PortalBrandingController::class, 'export'])->name('branding.export');
         Route::post('/branding/reset', [PortalBrandingController::class, 'reset'])->name('branding.reset');
+    });
+
+// A person's own preferences. Outside org.writer: a viewer chooses their own
+// paper and language too, and nothing here changes the organization's.
+Route::prefix('portal')->name('portal.')
+    ->middleware(['auth', 'auth.session', 'verified', 'portal.tenant', 'org.two_factor'])
+    ->group(function () {
+        Route::get('/preferences', [PortalPreferencesController::class, 'edit'])->name('preferences.edit');
+        Route::post('/preferences/{key}', [PortalPreferencesController::class, 'update'])->name('preferences.update');
     });

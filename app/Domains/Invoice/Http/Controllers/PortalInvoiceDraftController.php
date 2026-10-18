@@ -14,6 +14,8 @@ use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Services\TenantResolver;
+use App\Domains\Platform\Customization\Customizations;
+use App\Domains\Platform\Customization\Scope;
 use App\Http\Controllers\Controller;
 use DomainException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -49,6 +51,7 @@ class PortalInvoiceDraftController extends Controller
         private readonly InvoiceFinder $invoices,
         private readonly AdjustmentDraft $adjustments,
         private readonly ChargePresets $chargePresets,
+        private readonly Customizations $customizations,
     ) {}
 
     /**
@@ -100,6 +103,9 @@ class PortalInvoiceDraftController extends Controller
             // The common charges: the platform's, the organization's and
             // this person's own.
             'chargePresets' => $this->chargePresets->for($organizationId, $request->user()?->getAuthIdentifier()),
+            // What the form starts on: this person's own choice, else the
+            // organization's or the platform's.
+            'pricesIncludeVat' => (bool) $this->customizations->get('invoices.prices_include_vat', Scope::member($organizationId, (string) $request->user()?->getAuthIdentifier())),
         ]);
     }
 

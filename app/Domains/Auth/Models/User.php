@@ -228,10 +228,11 @@ class User extends Authenticatable implements HasLocalePreference, JWTSubject, M
      */
     public function lacksRequiredTwoFactor(string $organizationId): bool
     {
-        return ! $this->hasTwoFactor() && $this->activeOrganizations()
+        // Its own choice or the platform's: the attribute, not the column.
+        return ! $this->hasTwoFactor() && (bool) $this->activeOrganizations()
             ->whereKey($organizationId)
-            ->where('require_two_factor', true)
-            ->exists();
+            ->first()
+            ?->require_two_factor;
     }
 
     public function belongsToOrganization(string $organizationId): bool

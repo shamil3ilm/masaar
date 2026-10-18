@@ -12,6 +12,7 @@ use App\Domains\Organization\Rules\CompanyProfileRules;
 use App\Domains\Organization\Services\Registrar;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
+use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -80,7 +81,11 @@ class PortalCompanyController extends Controller
                 ->with('error', __('Turn on two-factor for your own account first, on My account.'));
         }
 
-        $this->registrar->requireTwoFactor($organization, $required);
+        try {
+            $this->registrar->requireTwoFactor($organization, $required, (string) $request->user()->id);
+        } catch (DomainException $e) {
+            return redirect()->route('portal.company.edit')->with('error', $e->getMessage());
+        }
 
         return redirect()->route('portal.company.edit')->with('success', $required
             ? __('Two-factor is now required. Members without it are asked to set it up when they next open the portal.')

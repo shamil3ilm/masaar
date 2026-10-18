@@ -7,6 +7,10 @@ namespace App\Domains\Organization\Models;
 use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Countries\SaudiArabia\DTOs\AddressData;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Platform\Customization\Customizations;
+use App\Domains\Platform\Customization\Level;
+use App\Domains\Platform\Customization\Scope;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -70,6 +74,33 @@ class Organization extends Model
             'shared_numbering' => 'boolean',
             'reviewed_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Whether its prices include VAT unless an invoice says otherwise: its
+     * own choice, or the platform's (invoices.prices_include_vat). The column
+     * keeps the organization's own; null there is "as the platform".
+     */
+    protected function pricesIncludeVat(): Attribute
+    {
+        return Attribute::get(fn (mixed $own): bool => (bool) $this->customized('invoices.prices_include_vat', $own));
+    }
+
+    /**
+     * Whether everyone in it must sign in with a second factor: its own
+     * choice, or the platform's - which wins when the platform locked it
+     * (security.require_two_factor).
+     */
+    protected function requireTwoFactor(): Attribute
+    {
+        return Attribute::get(fn (mixed $own): bool => (bool) $this->customized('security.require_two_factor', $own));
+    }
+
+    private function customized(string $key, mixed $own): mixed
+    {
+        return app(Customizations::class)
+            ->resolve($key, Scope::organization((string) $this->getKey()), [Level::Organization->value => $own])
+            ->value;
     }
 
     /**

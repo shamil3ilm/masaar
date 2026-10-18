@@ -179,6 +179,38 @@ class AuditService
     }
 
     /**
+     * Record a change to something that is not a model of its own - a
+     * customization's value at one level - with who made it.
+     *
+     * @param  array<string, mixed>|null  $oldValues
+     * @param  array<string, mixed>|null  $newValues
+     * @param  array<string, mixed>  $metadata
+     */
+    public function logChange(
+        string $action,
+        string $entityType,
+        ?string $entityId,
+        ?array $oldValues,
+        ?array $newValues,
+        array $metadata = [],
+        ?string $userId = null,
+        ?string $organizationId = null,
+    ): AuditLog {
+        return AuditLog::create([
+            'org_id' => $organizationId ?? $this->getOrganizationId(),
+            'user_id' => $userId ?? auth()->id(),
+            'action' => $action,
+            'entity_type' => $entityType,
+            'entity_id' => $entityId,
+            'old_values' => $oldValues,
+            'new_values' => $newValues,
+            'ip_address' => request()?->ip(),
+            'user_agent' => request()?->userAgent(),
+            'metadata' => $metadata,
+        ]);
+    }
+
+    /**
      * Get current organization ID from tenant context.
      */
     private function getOrganizationId(): ?string

@@ -293,7 +293,7 @@
         <div class="grid gap-4 sm:grid-cols-2">
             {{-- A select, not a checkbox: an unticked box sends nothing, which
                  would quietly fall back to the organization's own setting. --}}
-            @php($inclusive = (string) old('prices_include_vat', $organization->prices_include_vat ? '1' : '0'))
+            @php($inclusive = (string) old('prices_include_vat', ($pricesIncludeVat ?? $organization->prices_include_vat) ? '1' : '0'))
             <div class="sm:col-span-2">
                 <label for="prices_include_vat" class="block text-sm font-medium text-fg">{{ __('Prices') }}</label>
                 <x-ui.select name="prices_include_vat" id="prices_include_vat">

@@ -9,6 +9,10 @@ use App\Domains\Auth\Models\User;
 use App\Domains\Organization\DTOs\OrganizationChangesData;
 use App\Domains\Organization\DTOs\OrganizationData;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Platform\Customization\Customizations;
+use App\Domains\Platform\Customization\Level;
+use App\Domains\Platform\Customization\Scope;
+use DomainException;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -21,6 +25,7 @@ class Registrar
 {
     public function __construct(
         private readonly AuditService $audit,
+        private readonly Customizations $customizations,
     ) {}
 
     /**
@@ -119,26 +124,17 @@ class Registrar
     }
 
     /**
-     * Whether everyone in the organization must sign in with a second factor.
+     * Whether everyone in the organization must sign in with a second factor:
+     * the organization's level of security.require_two_factor, recorded as
+     * a security event.
+     *
+     * @throws DomainException when the platform has locked it
      */
-    public function requireTwoFactor(Organization $organization, bool $required): Organization
+    public function requireTwoFactor(Organization $organization, bool $required, ?string $actorId = null): Organization
     {
-        return DB::transaction(function () use ($organization, $required): Organization {
-            $locked = Organization::query()
-                ->whereKey($organization->getKey())
-                ->lockForUpdate()
-                ->firstOrFail();
+        $this->customizations->set('security.require_two_factor', Level::Organization, Scope::organization((string) $organization->id), $required, $actorId);
 
-            $oldValues = $locked->toArray();
-
-            // Not mass-assignable: only this, an administrator's choice,
-            // sets it.
-            $locked->forceFill(['require_two_factor' => $required])->save();
-
-            $this->audit->logUpdated($locked, $oldValues);
-
-            return $locked;
-        });
+        return $organization->refresh();
     }
 
     public function amend(Organization $organization, OrganizationChangesData $changes): Organization
@@ -154,7 +150,9 @@ class Registrar
             $locked->update([
                 'name' => $changes->name ?? $locked->name,
                 'name_ar' => $changes->nameAr ?? $locked->name_ar,
-                'prices_include_vat' => $changes->pricesIncludeVat ?? $locked->prices_include_vat,
+                // Only when given: the column's null is "as the platform",
+                // and the attribute reads the value inherited from there.
+                ...($changes->pricesIncludeVat === null ? [] : ['prices_include_vat' => $changes->pricesIncludeVat]),
                 ...($changes->address?->given() ?? []),
                 'compliance_profile' => array_merge(
                     $locked->compliance_profile ?? [],
