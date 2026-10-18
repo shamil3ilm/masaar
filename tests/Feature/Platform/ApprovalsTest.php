@@ -131,13 +131,13 @@ class ApprovalsTest extends TestCase
 
     /**
      * With bypass off, a request nobody else could approve waits like any
-     * other.
+     * other. Turned off while another admin could approve (OwnerLockoutTest),
+     * it stays off once they are gone.
      */
     public function test_bypass_off_makes_it_wait(): void
     {
+        app(ApprovalPolicies::class)->save(ApprovalPolicies::BYPASS, app(ApprovalPolicies::class)->clean(ApprovalPolicies::BYPASS, ['enabled' => false]), (string) $this->owner->id);
         $this->alone();
-
-        $this->actingAs($this->owner)->post(route('admin.approval-policies.bypass'), ['enabled' => '0'])->assertSessionHas('success');
         $this->assertFalse(app(ApprovalPolicies::class)->allowsBypass());
 
         User::factory()->create(['email' => 'new@masaar.test']);

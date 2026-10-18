@@ -170,6 +170,32 @@ class Approvals
     }
 
     /**
+     * Break-glass for a sole owner nobody else can approve for
+     * (masaar:owner-recover): one pending request approved from the server.
+     * On the security record as such, with the reason; no admin approved it,
+     * so approved_by stays empty.
+     *
+     * @return ActionResult|null what the action did, once it ran
+     *
+     * @throws DomainException when it is no longer open
+     */
+    public function approveFromServer(string $requestId, string $reason): ?ActionResult
+    {
+        $this->expireDue();
+
+        [$request, $result] = DB::transaction(function () use ($requestId, $reason): array {
+            $request = $this->open($requestId);
+            $this->record('approval.approved_from_server', $request, null, ['reason' => $reason]);
+
+            return [$request, $this->run($request, null)];
+        });
+
+        $this->tell(collect([$request->requester])->filter(), $request, ApprovalMail::DECIDED);
+
+        return $result;
+    }
+
+    /**
      * @throws DomainException when this approver may not decide it, or it is no longer open
      */
     public function reject(string $requestId, User $approver, string $reason): ApprovalRequest
@@ -298,7 +324,7 @@ class Approvals
      * The action an approved request asked for, run as its requester - who
      * must still hold the permission it takes.
      */
-    private function run(ApprovalRequest $request, User $approver): ?ActionResult
+    private function run(ApprovalRequest $request, ?User $approver): ?ActionResult
     {
         $family = $this->catalogue->family($request->action);
         $requester = $request->requester;
@@ -326,11 +352,11 @@ class Approvals
         return $result;
     }
 
-    private function finish(ApprovalRequest $request, string $status, User $approver, string $outcome): void
+    private function finish(ApprovalRequest $request, string $status, ?User $approver, string $outcome): void
     {
-        $request->forceFill(['status' => $status, 'decided_at' => now(), 'approved_by' => $approver->id, 'outcome' => mb_substr($outcome, 0, 2000)])->save();
+        $request->forceFill(['status' => $status, 'decided_at' => now(), 'approved_by' => $approver?->id, 'outcome' => mb_substr($outcome, 0, 2000)])->save();
 
-        $this->record($status === ApprovalRequest::EXECUTED ? 'approval.executed' : 'approval.failed', $request, (string) $approver->id, ['outcome' => $request->outcome]);
+        $this->record($status === ApprovalRequest::EXECUTED ? 'approval.executed' : 'approval.failed', $request, $approver?->id === null ? null : (string) $approver->id, ['outcome' => $request->outcome]);
     }
 
     /**

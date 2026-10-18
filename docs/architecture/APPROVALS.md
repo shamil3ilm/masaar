@@ -54,6 +54,31 @@ someone else can approve.
 Possible approvers are counted whatever their status, so suspending the only
 other approver does not open the bypass.
 
+Bypass is turned off only while at least one other active admin, in a role
+that decides approvals, exists. Otherwise the change is refused, saying why:
+with nobody else to approve, every action a policy holds, the owner's own
+included, would wait until it lapsed.
+
+### Recovering a locked-out owner
+
+If a sole owner is locked out all the same (bypass off and no other admin
+left who could approve), someone with access to the server runs:
+
+```
+php artisan masaar:owner-recover --enable-bypass
+php artisan masaar:owner-recover --approve=<request id>
+```
+
+It does one thing per run: turns **Allow bypass when no other approver
+exists** back on, or approves one pending request (recorded as approved from
+the server, with no admin as its approver). It refuses while another admin
+could approve, since the owner is then not locked out. It asks for a reason
+and a confirmation; for automation, `--force` skips the confirmation and then
+requires `--reason`. Every run goes on the security record
+(`platform_owner.recovered`, with the reason) and the owner is emailed, so a
+run they did not make is noticed. It is a command and not a console screen
+on purpose: only server access reaches it.
+
 ## One platform owner
 
 The admin console has exactly one owner (`PlatformOwnership`). Ownership is
@@ -69,7 +94,7 @@ the owner's own permission; `masaar:create-admin` makes the first owner and
 refuses, with or without `--promote`, once there is one. The owner is never
 demoted, revoked or suspended directly.
 
-Existing data was brought to one owner by migration 0860: the earliest-created
+Existing data was brought to one owner by migration 0940: the earliest-created
 active owner stays, every other became operations, each demotion on the
 security record (`security.platform_owner.demoted_to_single_owner`).
 

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Approvals;
 
+use App\Domains\Auth\Enums\AdminPermission;
+use App\Domains\Auth\Models\User;
 use App\Domains\Auth\Services\AdminRoles;
 use App\Domains\Platform\Models\ApprovalPolicy;
 use Illuminate\Support\Facades\Cache;
@@ -202,6 +204,21 @@ class ApprovalPolicies
      *
      * @return list<string>
      */
+    /**
+     * Whether anyone besides this admin could decide a held action: an
+     * active platform admin whose role decides approvals. With nobody, bypass
+     * off would leave every held action waiting for good (PolicyActions,
+     * masaar:owner-recover).
+     */
+    public function anotherApproverExists(User $admin): bool
+    {
+        return User::query()
+            ->where('is_platform_admin', true)
+            ->whereKeyNot($admin->getKey())
+            ->get()
+            ->contains(fn (User $other): bool => $other->isActive() && $other->canAdmin(AdminPermission::ApprovalsDecide));
+    }
+
     public function roleKeys(): array
     {
         return $this->roles->keys();

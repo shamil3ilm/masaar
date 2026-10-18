@@ -13,6 +13,7 @@ use App\Domains\Platform\Approvals\Approvals;
 use App\Domains\Platform\Http\Concerns\HoldsForApproval;
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
 use App\Http\Controllers\Controller;
+use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -60,8 +61,12 @@ class AdminApprovalPolicyController extends Controller
         $request->attributes->set(AuditAdminAction::TARGET, ['ApprovalPolicy', null]);
         $request->attributes->set(AuditAdminAction::CHANGES, [['enabled' => $this->policies->allowsBypass()], ['enabled' => $values['enabled']]]);
 
-        return $this->holdOrRun($this->approvals, $request, ApprovalPolicies::POLICIES, ['action' => ApprovalPolicies::BYPASS, 'values' => $values],
-            fn (ActionResult $done): RedirectResponse => redirect()->route('admin.approval-policies.index')->with('success', $done->message));
+        try {
+            return $this->holdOrRun($this->approvals, $request, ApprovalPolicies::POLICIES, ['action' => ApprovalPolicies::BYPASS, 'values' => $values],
+                fn (ActionResult $done): RedirectResponse => redirect()->route('admin.approval-policies.index')->with('success', $done->message));
+        } catch (DomainException $e) {
+            return redirect()->route('admin.approval-policies.index')->with('error', $e->getMessage());
+        }
     }
 
     public function update(Request $request, string $action): RedirectResponse
