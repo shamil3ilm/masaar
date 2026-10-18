@@ -1390,5 +1390,15 @@
     "Pay by bank transfer": "ادفع بالتحويل البنكي",
     "Visit us": "تفضل بزيارتنا",
     "That is not an IBAN.": "هذا ليس رقم آيبان صحيحاً.",
-    "That IBAN's check digits are wrong. Check it against your bank statement.": "أرقام التحقق في رقم الآيبان غير صحيحة. طابقه مع كشف حسابك البنكي."
+    "That IBAN's check digits are wrong. Check it against your bank statement.": "أرقام التحقق في رقم الآيبان غير صحيحة. طابقه مع كشف حسابك البنكي.",
+    "Series": "سلسلة الترقيم",
+    "Each till numbers from a series of its own unless you choose one series for the whole organization.": "تُرقِّم كل نقطة بيع من سلسلة خاصة بها ما لم تختر سلسلة واحدة للمنشأة كلها.",
+    "Recommended. A till's numbers carry its till number, such as INV-T01-2026-00001, and tills never wait for each other.": "الخيار الموصى به. تحمل أرقام كل نقطة بيع رقمها، مثل INV-T01-2026-00001، ولا تنتظر نقاط البيع بعضها بعضاً.",
+    "Each till its own series": "لكل نقطة بيع سلسلتها الخاصة",
+    "One run of numbers across every branch. Tills take turns for the next number.": "تسلسل واحد من الأرقام لجميع الفروع، وتتناوب نقاط البيع على الرقم التالي.",
+    "One series for the whole organization": "سلسلة واحدة للمنشأة كلها",
+    "Series of": "سلسلة",
+    "The organization (head office)": "المنشأة (المركز الرئيسي)",
+    "Till :number - :name": "نقطة البيع :number - :name",
+    "Numbering saved.": "حُفظ الترقيم."
 }

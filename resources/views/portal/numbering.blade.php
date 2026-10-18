@@ -2,17 +2,21 @@
 
 @section('title', __('Numbering'))
 
+{{--
+    @param list<array<string, mixed>> $sequences  NumberingSettings::sequences
+    @param bool $shared  every branch numbers from the organization's series
+    @param list<array{id: string, name: string, till_number: int|null}> $branches  BranchService::tills
+    @param string|null $branchId  the till whose series is shown, or null
+--}}
+
 @section('content')
-<div class="mb-6">
-    <h1 class="text-2xl font-semibold tracking-tight text-fg">{{ __('Numbering') }}</h1>
-    <p class="mt-1 max-w-3xl text-sm text-muted">
-        {{ __('How documents are numbered when they are issued without a number of their own. Numbers are given at issue, so issued documents run without gaps.') }}
-    </p>
-    <p class="mt-2 text-sm text-muted">
-        {{ __('Tokens:') }} <code>{YYYY}</code> {{ __('year,') }} <code>{YY}</code> {{ __('two-digit year,') }} <code>{MM}</code> {{ __('month,') }}
-        <code>{SEQ}</code> {{ __('the counter, padded with zeros to the width you choose.') }}
-    </p>
-</div>
+<x-ui.page-header :title="__('Numbering')"
+                  :description="__('How documents are numbered when they are issued without a number of their own. Numbers are given at issue, so issued documents run without gaps.')" />
+
+<p class="-mt-3 mb-6 text-sm text-muted">
+    {{ __('Tokens:') }} <code>{YYYY}</code> {{ __('year,') }} <code>{YY}</code> {{ __('two-digit year,') }} <code>{MM}</code> {{ __('month,') }}
+    <code>{SEQ}</code> {{ __('the counter, padded with zeros to the width you choose.') }}
+</p>
 
 @php
     $labels = [
@@ -24,54 +28,86 @@
 @endphp
 
 <div class="max-w-2xl space-y-6">
+    {{-- Each till its own series, so two tills never wait for each other
+         for a number; or one run of numbers for the whole organization. --}}
+    <form method="POST" action="{{ route('portal.numbering.mode') }}">
+        @csrf
+        <x-ui.section :title="__('Series')" :description="__('Each till numbers from a series of its own unless you choose one series for the whole organization.')">
+            <div class="space-y-1">
+                <x-ui.radio name="shared_numbering" value="0" :checked="! $shared" :description="__('Recommended. A till\'s numbers carry its till number, such as INV-T01-2026-00001, and tills never wait for each other.')">
+                    {{ __('Each till its own series') }}
+                </x-ui.radio>
+                <x-ui.radio name="shared_numbering" value="1" :checked="$shared" :description="__('One run of numbers across every branch. Tills take turns for the next number.')">
+                    {{ __('One series for the whole organization') }}
+                </x-ui.radio>
+            </div>
+            <x-ui.button variant="secondary" class="mt-4">{{ __('Save') }}</x-ui.button>
+        </x-ui.section>
+    </form>
+
+    @if ($branches !== [] && ! $shared)
+        <form method="GET" action="{{ route('portal.numbering.edit') }}" class="flex flex-wrap items-end gap-3">
+            <x-ui.field :label="__('Series of')">
+                <x-ui.select name="branch">
+                    <option value="">{{ __('The organization (head office)') }}</option>
+                    @foreach ($branches as $branch)
+                        <option value="{{ $branch['id'] }}" @selected($branchId === $branch['id'])>{{ __('Till :number - :name', ['number' => $branch['till_number'], 'name' => $branch['name']]) }}</option>
+                    @endforeach
+                </x-ui.select>
+            </x-ui.field>
+            <x-ui.button variant="secondary">{{ __('Show') }}</x-ui.button>
+        </form>
+    @endif
+
     @foreach ($sequences as $sequence)
         @php($type = $sequence['document_type'])
         @php($bag = $errors->getBag($type))
-        <form method="POST" action="{{ route('portal.numbering.update', $type) }}" class="rounded-card bg-surface border border-line shadow-card">
+        <form method="POST" action="{{ route('portal.numbering.update', $type) }}">
             @csrf
-            <div class="flex items-center justify-between border-b p-4">
-                <h3 class="font-semibold text-fg">{{ $labels[$type] ?? $type }}</h3>
-                <span class="text-sm text-muted">{{ __('Next:') }} <span class="font-mono text-fg" dir="ltr">{{ $sequence['next'] }}</span></span>
-            </div>
-
-            @if ($bag->any())
-                <div class="mx-4 mt-4 rounded border border-danger-line bg-danger-soft px-4 py-3 text-sm text-danger">
-                    <ul class="list-disc ps-5">
-                        @foreach ($bag->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                </div>
+            @if ($branchId)
+                <input type="hidden" name="branch_id" value="{{ $branchId }}">
             @endif
+            <x-ui.card :title="$labels[$type] ?? $type">
+                <x-slot:actions>
+                    <span class="text-sm text-muted">{{ __('Next:') }} <span class="font-mono text-fg" dir="ltr">{{ $sequence['next'] }}</span></span>
+                </x-slot:actions>
 
-            <div class="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2">
-                <x-ui.field :label="__('Pattern')">
-                    <x-ui.input type="text" name="pattern" maxlength="60" required class="font-mono" dir="ltr"
-                                value="{{ $bag->any() ? old('pattern') : $sequence['pattern'] }}" />
-                </x-ui.field>
+                @if ($bag->any())
+                    <div class="mb-4 rounded-control border border-danger-line bg-danger-soft px-4 py-3 text-sm text-danger">
+                        <ul class="list-disc ps-5">
+                            @foreach ($bag->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
 
-                <x-ui.field :label="__('Counter digits')">
-                    <x-ui.input type="number" name="padding" min="1" max="10" required
-                                value="{{ $bag->any() ? old('padding') : $sequence['padding'] }}" />
-                </x-ui.field>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <x-ui.field :label="__('Pattern')">
+                        <x-ui.input type="text" name="pattern" maxlength="60" required class="font-mono" dir="ltr"
+                                    value="{{ $bag->any() ? old('pattern') : $sequence['pattern'] }}" />
+                    </x-ui.field>
 
-                <x-ui.field :label="__('Restart the counter')">
-                    <x-ui.select name="reset">
-                        @foreach (['yearly' => __('Each year'), 'monthly' => __('Each month'), 'never' => __('Never')] as $value => $label)
-                            <option value="{{ $value }}" @selected(($bag->any() ? old('reset') : $sequence['reset']) === $value)>{{ $label }}</option>
-                        @endforeach
-                    </x-ui.select>
-                </x-ui.field>
+                    <x-ui.field :label="__('Counter digits')">
+                        <x-ui.input type="number" name="padding" min="1" max="10" required
+                                    value="{{ $bag->any() ? old('padding') : $sequence['padding'] }}" />
+                    </x-ui.field>
 
-                <x-ui.field :label="__('Start the counter at')">
-                    <x-ui.input type="number" name="next_number" min="1" placeholder="{{ __('Unchanged') }}" />
-                    <span class="mt-1 block text-xs font-normal text-muted">{{ __('To continue from a previous system\'s numbers.') }}</span>
-                </x-ui.field>
-            </div>
+                    <x-ui.field :label="__('Restart the counter')">
+                        <x-ui.select name="reset">
+                            @foreach (['yearly' => __('Each year'), 'monthly' => __('Each month'), 'never' => __('Never')] as $value => $label)
+                                <option value="{{ $value }}" @selected(($bag->any() ? old('reset') : $sequence['reset']) === $value)>{{ $label }}</option>
+                            @endforeach
+                        </x-ui.select>
+                    </x-ui.field>
 
-            <div class="border-t p-4">
-                <x-ui.button variant="primary">{{ __('Save') }}</x-ui.button>
-            </div>
+                    <x-ui.field :label="__('Start the counter at')" :hint="__('To continue from a previous system\'s numbers.')">
+                        <x-ui.input type="number" name="next_number" min="1" placeholder="{{ __('Unchanged') }}" />
+                    </x-ui.field>
+                </div>
+
+                <x-ui.button variant="primary" class="mt-4">{{ __('Save') }}</x-ui.button>
+            </x-ui.card>
         </form>
     @endforeach
 </div>

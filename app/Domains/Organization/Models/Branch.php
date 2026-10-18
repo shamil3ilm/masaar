@@ -42,6 +42,7 @@ use Illuminate\Support\Facades\DB;
  * @property Carbon|null $last_invoice_at
  * @property bool $is_active
  * @property bool $is_default
+ * @property int|null $till_number
  */
 class Branch extends Model
 {
@@ -76,6 +77,7 @@ class Branch extends Model
         'cert_expires_at' => 'datetime',
         'last_invoice_at' => 'datetime',
         'invoice_count' => 'integer',
+        'till_number' => 'integer',
         'is_active' => 'boolean',
         'is_default' => 'boolean',
     ];
@@ -101,6 +103,20 @@ class Branch extends Model
     public const STATUS_SUSPENDED = 'suspended';
 
     public const STATUS_REVOKED = 'revoked';
+
+    /**
+     * A new branch is the organization's next till: its number follows the
+     * highest given, a removed branch's included, so a till's numbering
+     * series (InvoiceNumbering) is never another's.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (Branch $branch): void {
+            $branch->till_number ??= 1 + (int) static::withoutTenantScope(fn () => static::withTrashed()
+                ->where('org_id', $branch->org_id)
+                ->max('till_number'));
+        });
+    }
 
     /**
      * Get the organization that owns this branch.

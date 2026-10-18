@@ -99,21 +99,61 @@ class InvoiceNumberingTest extends TestCase
     }
 
     /**
-     * A branch without a sequence of its own is numbered from the
-     * organization's, and its preview says so.
+     * Each till numbers from a series of its own unless the organization
+     * chooses one: its own pattern - the organization's with the till's
+     * number in it - so two tills never wait for each other for a number.
      */
-    public function test_a_branch_inherits_the_organization_series(): void
+    public function test_each_till_has_its_own_series(): void
     {
-        $branch = Branch::withoutTenantScope(fn () => Branch::create([
-            'org_id' => $this->acme->id,
-            'name' => 'Jeddah',
-            'device_serial' => 'EGS-JED',
-            'street' => 'Corniche Road',
-            'building_number' => '4321',
-            'district' => 'Al Hamra',
-            'city' => 'Jeddah',
-            'postal_code' => '23234',
-        ]));
+        $jeddah = $this->branch('Jeddah');
+        $dammam = $this->branch('Dammam');
+
+        $this->assertSame('INV-T01-2026-00001', $this->allocate('invoice', branchId: $jeddah->id));
+        $this->assertSame('INV-T02-2026-00001', $this->allocate('invoice', branchId: $dammam->id));
+        $this->assertSame('INV-T01-2026-00002', $this->allocate('invoice', branchId: $jeddah->id));
+        $this->assertSame('CN-T02-2026-00001', $this->allocate('credit_note', branchId: $dammam->id));
+        $this->assertSame('INV-2026-00001', $this->allocate('invoice'));
+
+        $this->withToken($this->token('member'))
+            ->getJson('/api/settings/numbering?branch_id='.$dammam->id)
+            ->assertOk()
+            ->assertJsonPath('data.sequences.0.inherited', false)
+            ->assertJsonPath('data.sequences.0.next', 'INV-T02-2026-00002');
+    }
+
+    /**
+     * A till's own series never takes a pattern another series has, and
+     * follows the organization's own pattern.
+     */
+    public function test_a_till_series_avoids_used_patterns(): void
+    {
+        $jeddah = $this->branch('Jeddah');
+        $dammam = $this->branch('Dammam');
+
+        $this->withToken($this->token('admin'))
+            ->putJson('/api/settings/numbering/invoice', ['branch_id' => $dammam->id, 'pattern' => 'INV-T01-{YYYY}-{SEQ}', 'padding' => 5, 'reset' => 'yearly'])
+            ->assertOk();
+        $this->withToken($this->token('admin'))
+            ->putJson('/api/settings/numbering/credit_note', ['pattern' => 'ACME/CN/{YYYY}-{SEQ}', 'padding' => 4, 'reset' => 'yearly'])
+            ->assertOk();
+
+        $this->assertSame('INV-T02-2026-00001', $this->allocate('invoice', branchId: $jeddah->id));
+        $this->assertSame('ACME/CN/T01-2026-0001', $this->allocate('credit_note', branchId: $jeddah->id));
+    }
+
+    /**
+     * An organization that chooses one shared series numbers every branch
+     * from it, and the branch's preview says so.
+     */
+    public function test_a_shared_series_numbers_every_till(): void
+    {
+        $branch = $this->branch('Jeddah');
+        $admin = User::factory()->create();
+        $admin->organizations()->attach($this->acme->id, ['role' => 'admin', 'status' => 'active']);
+
+        $this->actingAs($admin)->withSession(['portal_org_id' => $this->acme->id])
+            ->post('/portal/numbering-mode', ['shared_numbering' => '1'])
+            ->assertRedirect(route('portal.numbering.edit'));
 
         $this->withToken($this->token('admin'))
             ->putJson('/api/settings/numbering/invoice', ['pattern' => 'ACME-{YYYY}-{SEQ}', 'padding' => 5, 'reset' => 'yearly'])
@@ -124,6 +164,28 @@ class InvoiceNumberingTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.sequences.0.inherited', true)
             ->assertJsonPath('data.sequences.0.next', 'ACME-2026-00001');
+
+        $this->assertSame('ACME-2026-00001', $this->allocate('invoice', branchId: $branch->id));
+        $this->assertSame('ACME-2026-00002', $this->allocate('invoice'));
+    }
+
+    /** The portal sets a till's own series, under the same rules. */
+    public function test_the_portal_sets_a_tills_series(): void
+    {
+        $branch = $this->branch('Jeddah');
+        $admin = User::factory()->create();
+        $admin->organizations()->attach($this->acme->id, ['role' => 'admin', 'status' => 'active']);
+        $portal = fn () => $this->actingAs($admin)->withSession(['portal_org_id' => $this->acme->id]);
+
+        $portal()->get('/portal/numbering?branch='.$branch->id)->assertOk()->assertSee('INV-T01-2026-00001');
+
+        $portal()->post('/portal/numbering/invoice', ['branch_id' => $branch->id, 'pattern' => 'INV-{YYYY}-{SEQ}', 'padding' => 5, 'reset' => 'yearly'])
+            ->assertSessionHasErrorsIn('invoice', ['pattern']);
+
+        $portal()->post('/portal/numbering/invoice', ['branch_id' => $branch->id, 'pattern' => 'JED-{YYYY}-{SEQ}', 'padding' => 4, 'reset' => 'yearly'])
+            ->assertRedirect(route('portal.numbering.edit', ['branch' => $branch->id]));
+
+        $this->assertSame('JED-2026-0001', $this->allocate('invoice', branchId: $branch->id));
     }
 
     public function test_each_document_type_has_its_series(): void
@@ -265,9 +327,9 @@ class InvoiceNumberingTest extends TestCase
         $this->assertSame('ACME-2026-000001', $this->allocate('invoice'));
     }
 
-    private function allocate(string $documentType, ?Organization $organization = null): string
+    private function allocate(string $documentType, ?Organization $organization = null, ?string $branchId = null): string
     {
-        $invoice = new Invoice(['org_id' => ($organization ?? $this->acme)->id, 'document_type' => $documentType]);
+        $invoice = new Invoice(['org_id' => ($organization ?? $this->acme)->id, 'branch_id' => $branchId, 'document_type' => $documentType]);
 
         return app(InvoiceNumbering::class)->allocate($invoice);
     }
@@ -305,6 +367,20 @@ class InvoiceNumberingTest extends TestCase
         ]);
 
         return $invoice->fresh(['lines']);
+    }
+
+    private function branch(string $name): Branch
+    {
+        return Branch::withoutTenantScope(fn () => Branch::create([
+            'org_id' => $this->acme->id,
+            'name' => $name,
+            'device_serial' => 'EGS-'.strtoupper($name),
+            'street' => 'Corniche Road',
+            'building_number' => '4321',
+            'district' => 'Al Hamra',
+            'city' => $name,
+            'postal_code' => '23234',
+        ]));
     }
 
     private function token(string $role): string

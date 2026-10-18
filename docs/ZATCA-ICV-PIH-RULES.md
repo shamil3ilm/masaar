@@ -102,10 +102,12 @@ for the whole issue. Inside that lock, in this order:
 Because the counter, the number and the chain entry are decided under the same
 lock, two issuances for one device cannot claim the same predecessor. Devices
 have separate counters and chains, so two devices - two tills of one company -
-issue at the same time. Devices that share a numbering sequence (the
-organization's, when a branch has none of its own) wait for each other while
-the number is taken and until their issuance commits; a branch with its own
-sequence does not.
+issue at the same time. Each till (branch) numbers from a series of its own
+by default - the organization's pattern with its till number in it, such as
+`INV-T01-{YYYY}-{SEQ}` - so tills do not wait for each other for a number
+either. An organization that chooses one shared series (Numbering in the
+portal) has its tills wait for each other while the number is taken and until
+their issuance commits. Two series never share a pattern.
 There is no separate counter store: a failure rolls the counter back with
 everything else. `php artisan fatoora:verify-hash-chain` checks a chain end to
 end.

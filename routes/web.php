@@ -460,6 +460,7 @@ Route::prefix('portal')->name('portal.')
         // How documents issued without a number are numbered. Administrators
         // only; the controller checks the role.
         Route::get('/numbering', [PortalNumberingController::class, 'edit'])->name('numbering.edit');
+        Route::post('/numbering-mode', [PortalNumberingController::class, 'mode'])->name('numbering.mode');
         Route::post('/numbering/{documentType}', [PortalNumberingController::class, 'update'])->name('numbering.update');
 
         // The paper invoices print on: each person's own, and the

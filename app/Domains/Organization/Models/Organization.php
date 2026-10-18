@@ -66,6 +66,8 @@ class Organization extends Model
             'invoice_qr' => 'array',
             'prices_include_vat' => 'boolean',
             'require_two_factor' => 'boolean',
+            // One numbering series for every branch, instead of one per till.
+            'shared_numbering' => 'boolean',
             'reviewed_at' => 'datetime',
         ];
     }

@@ -216,6 +216,28 @@ class BranchService
             ->exists());
     }
 
+    /**
+     * The organization's tills, in the order they were added: id, name and
+     * till number.
+     *
+     * @return list<array{id: string, name: string, till_number: int|null}>
+     */
+    public function tills(string $organizationId): array
+    {
+        return Branch::withoutTenantScope(fn (): array => Branch::query()
+            ->where('org_id', $organizationId)
+            ->orderBy('till_number')
+            ->get(['id', 'name', 'till_number'])
+            ->map(fn (Branch $branch): array => ['id' => (string) $branch->id, 'name' => (string) $branch->name, 'till_number' => $branch->till_number])
+            ->all());
+    }
+
+    /** A branch's till number, a removed branch's included; null for none. */
+    public function tillNumber(string $branchId): ?int
+    {
+        return Branch::withoutTenantScope(fn (): ?int => Branch::withTrashed()->whereKey($branchId)->value('till_number'));
+    }
+
     public function storeCredentials(Branch $branch, string $type, array $data): void
     {
         $this->credentials->put($branch->org_id, $branch->id, $type, $data);

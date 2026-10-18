@@ -17,6 +17,7 @@ use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Tests\Fixtures\SigningCredentials;
 use Tests\TestCase;
 use Throwable;
@@ -33,9 +34,10 @@ use Throwable;
  * issuance does while it signs. MySQL only - SQLite takes one lock for the
  * whole database, so it cannot show two writers at once.
  *
- * The branch numbers its documents in a sequence of its own. Devices sharing
- * one sequence also wait for each other while the number is taken, which is
- * InvoiceNumbering's to say.
+ * Each till numbers its documents from a series of its own by default
+ * (InvoiceNumbering), so two tills do not wait for each other for a number
+ * either. An organization that chooses one shared series has its tills take
+ * turns for it.
  */
 class DeviceConcurrencyTest extends TestCase
 {
@@ -47,6 +49,8 @@ class DeviceConcurrencyTest extends TestCase
     private Organization $acme;
 
     private Branch $jeddah;
+
+    private Branch $dammam;
 
     private ?Connection $holder = null;
 
@@ -87,12 +91,21 @@ class DeviceConcurrencyTest extends TestCase
             'postal_code' => '23234',
         ]));
 
+        $this->dammam = Branch::withoutTenantScope(fn () => Branch::create([
+            'org_id' => $this->acme->id,
+            'name' => 'Dammam Till',
+            'device_serial' => 'EGS-DMM-'.uniqid(),
+            'industry' => 'Retail',
+            'street' => 'King Saud Street',
+            'building_number' => '5678',
+            'district' => 'Al Faisaliyah',
+            'city' => 'Dammam',
+            'postal_code' => '32272',
+        ]));
+
         $this->onboard(null);
         $this->onboard($this->jeddah->id);
-
-        InvoiceSequence::withoutTenantScope(fn () => InvoiceSequence::create(
-            ['pattern' => 'JED-{SEQ}'] + InvoiceNumbering::defaults($this->acme->id, 'invoice', $this->jeddah->id)
-        ));
+        $this->onboard($this->dammam->id);
 
         // A waiting issuance gives up after a second instead of fifty.
         $this->timeout = (int) DB::selectOne('SELECT @@SESSION.innodb_lock_wait_timeout AS t')->t;
@@ -138,7 +151,7 @@ class DeviceConcurrencyTest extends TestCase
         $this->assertSame(InvoiceStatus::Issued, $invoice->status);
         $this->assertSame($this->jeddah->id, $invoice->device_id);
         $this->assertSame(1, $invoice->icv);
-        $this->assertSame('JED-00001', $invoice->invoice_number);
+        $this->assertSame('INV-T01-'.$this->year().'-00001', $invoice->invoice_number);
         $this->assertSame([], array_values(array_filter($locks, fn (string $sql): bool => str_contains($sql, '`organizations`'))));
     }
 
@@ -174,6 +187,45 @@ class DeviceConcurrencyTest extends TestCase
     }
 
     /**
+     * Another till is part-way through issuing and has taken its next
+     * number: its chain and its numbering series are held. This till takes
+     * neither - its own series is a row of its own - and issues at once.
+     */
+    public function test_two_tills_never_wait_to_number(): void
+    {
+        $this->hold($this->dammam->id);
+        $this->holdSeries($this->dammam->id);
+        $this->holdSeries(InvoiceSequence::ORGANIZATION);
+
+        $invoice = $this->issue($this->draft(branchId: $this->jeddah->id));
+
+        $this->assertSame(InvoiceStatus::Issued, $invoice->status);
+        $this->assertSame('INV-T01-'.$this->year().'-00001', $invoice->invoice_number);
+        $this->assertSame(1, $invoice->icv);
+    }
+
+    /**
+     * With one series for the whole organization, a till waits while head
+     * office has the next number, though their chains are apart - which is
+     * why each till numbering from its own series is the default.
+     */
+    public function test_a_shared_series_makes_tills_wait(): void
+    {
+        $this->acme->forceFill(['shared_numbering' => true])->save();
+        $this->holdSeries(InvoiceSequence::ORGANIZATION);
+        $waiting = $this->draft(branchId: $this->jeddah->id);
+
+        try {
+            $this->issue($waiting);
+            $this->fail('A till took a number from the shared series while head office held it.');
+        } catch (Throwable $e) {
+            $this->assertStringContainsString('Lock wait timeout', $e->getMessage());
+        }
+
+        $this->assertSame(InvoiceStatus::Draft, Invoice::withoutTenantScope(fn () => $waiting->fresh())->status);
+    }
+
+    /**
      * A second connection holding one device's issuing lock, the way an
      * issuance holds it while it signs.
      */
@@ -188,6 +240,39 @@ class DeviceConcurrencyTest extends TestCase
             ['org_id', 'scope'],
             ['held_at'],
         );
+    }
+
+    /**
+     * The same connection holding a numbering series, the way an issuance
+     * holds it from taking the number until it commits: here by creating it,
+     * uncommitted, which locks its row as taking a number does.
+     *
+     * The organization and its branches exist only in this test's own open
+     * transaction, so the holder writes without checking foreign keys.
+     */
+    private function holdSeries(string $scope): void
+    {
+        if ($this->holder === null) {
+            config(['database.connections.'.self::HOLDER => config('database.connections.'.config('database.default'))]);
+            $this->holder = DB::connection(self::HOLDER);
+            $this->holder->beginTransaction();
+        }
+
+        $this->holder->statement('SET FOREIGN_KEY_CHECKS = 0');
+        $this->holder->table('invoice_sequences')->insert([
+            'id' => (string) Str::uuid(),
+            ...($scope === InvoiceSequence::ORGANIZATION
+                ? InvoiceNumbering::defaults($this->acme->id, 'invoice')
+                : app(InvoiceNumbering::class)->tillDefaults($this->acme->id, 'invoice', $scope)),
+            'next_number' => 7,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    private function year(): string
+    {
+        return app(InvoiceNumbering::class)->now($this->acme->id)->format('Y');
     }
 
     private function release(): void

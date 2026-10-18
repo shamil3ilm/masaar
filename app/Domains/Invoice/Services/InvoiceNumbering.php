@@ -7,10 +7,12 @@ namespace App\Domains\Invoice\Services;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Models\InvoiceSequence;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\BranchService;
 use App\Support\CountryClock;
 use Carbon\Carbon;
 use DateTimeInterface;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
@@ -23,8 +25,11 @@ use RuntimeException;
  * number, and a failure after this rolls the number back with everything
  * else. Issued invoices therefore run without gaps.
  *
- * Devices that share a sequence wait for each other here, for the rest of
- * the issuance. A branch with a sequence of its own does not.
+ * Each till (branch) numbers from a series of its own by default - the
+ * organization's pattern with the till's number in it, INV-T01-{YYYY}-{SEQ}
+ * - so two tills never wait for each other here. An organization that turns
+ * on shared_numbering numbers every document from its one series instead,
+ * and then its tills do wait for each other, for the rest of the issuance.
  *
  * A number already taken - typed into an earlier draft by hand, say - is
  * skipped rather than repeated: ZATCA requires the number to identify the
@@ -34,6 +39,10 @@ class InvoiceNumbering
 {
     /** More numbers than this already taken in a row is a misconfiguration. */
     private const MAX_SKIPPED = 1000;
+
+    public function __construct(
+        private readonly BranchService $branches,
+    ) {}
 
     /**
      * The next number for this invoice. The caller holds the issuing lock
@@ -95,41 +104,109 @@ class InvoiceNumbering
     }
 
     /**
-     * The branch's own sequence for this kind of document, else the
-     * organization's, created with the defaults the first time.
+     * The sequence this invoice is numbered from, locked: the till's own
+     * unless the organization shares one series, else the organization's.
      *
      * Found first without a lock and then locked by key, so a sequence that
      * is not there takes no lock on the gap where it would be: two issuances
      * of different devices both holding that gap and both inserting into it
-     * deadlock. Created under the organization row, the lock
-     * NumberingSettings::save takes, looking again under it - a locking read
-     * sees what another issuance created meanwhile.
+     * deadlock. A till's series is created with an insert that does nothing
+     * if another issuance created it first; the organization's under the
+     * organization row, the lock NumberingSettings::save takes, looking again
+     * under it - a locking read sees what another issuance created meanwhile.
      */
     private function sequenceFor(Invoice $invoice): InvoiceSequence
     {
         $type = $invoice->document_type->value;
+        $organizationId = (string) $invoice->org_id;
+        $till = $invoice->branch_id !== null && ! self::shared($organizationId) ? (string) $invoice->branch_id : null;
 
-        return InvoiceSequence::withoutTenantScope(function () use ($invoice, $type): InvoiceSequence {
+        return InvoiceSequence::withoutTenantScope(function () use ($organizationId, $till, $type): InvoiceSequence {
             $query = fn (string $scope, bool $lock) => InvoiceSequence::query()
-                ->where('org_id', $invoice->org_id)
+                ->where('org_id', $organizationId)
                 ->where('scope', $scope)
                 ->where('document_type', $type)
                 ->when($lock, fn ($query) => $query->lockForUpdate())
                 ->first();
 
-            $find = fn (bool $lock): ?InvoiceSequence => ($invoice->branch_id ? $query((string) $invoice->branch_id, $lock) : null)
-                ?? $query(InvoiceSequence::ORGANIZATION, $lock);
-
-            $found = $find(false);
+            $scope = $till ?? InvoiceSequence::ORGANIZATION;
+            $found = $query($scope, false);
 
             if ($found !== null) {
                 return InvoiceSequence::query()->whereKey($found->getKey())->lockForUpdate()->firstOrFail();
             }
 
-            DB::table('organizations')->where('id', $invoice->org_id)->lockForUpdate()->first();
+            if ($till !== null) {
+                $now = now();
+                InvoiceSequence::query()->insertOrIgnore([
+                    'id' => (string) Str::uuid(),
+                    ...$this->tillDefaults($organizationId, $type, $till),
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
 
-            return $find(true) ?? InvoiceSequence::create(self::defaults((string) $invoice->org_id, $type));
+                return $query($till, true) ?? throw new RuntimeException('The numbering series of till '.$till.' could not be created.');
+            }
+
+            DB::table('organizations')->where('id', $organizationId)->lockForUpdate()->first();
+
+            return $query(InvoiceSequence::ORGANIZATION, true) ?? InvoiceSequence::create(self::defaults($organizationId, $type));
         });
+    }
+
+    /** Whether the organization numbers every branch from one series. */
+    public static function shared(string $organizationId): bool
+    {
+        return (bool) Organization::query()->whereKey($organizationId)->value('shared_numbering');
+    }
+
+    /**
+     * A till's own series before anyone configures it: the organization's,
+     * with the till's number after its first part - INV-{YYYY}-{SEQ} becomes
+     * INV-T01-{YYYY}-{SEQ} - and never a pattern another series of the
+     * organization already has, which would count through the same numbers.
+     *
+     * @return array<string, mixed>
+     */
+    public function tillDefaults(string $organizationId, string $documentType, string $branchId): array
+    {
+        $organization = InvoiceSequence::withoutTenantScope(fn () => InvoiceSequence::query()
+            ->where('org_id', $organizationId)
+            ->where('scope', InvoiceSequence::ORGANIZATION)
+            ->where('document_type', $documentType)
+            ->first()) ?? new InvoiceSequence(self::defaults($organizationId, $documentType));
+
+        $used = InvoiceSequence::withoutTenantScope(fn () => InvoiceSequence::query()
+            ->where('org_id', $organizationId)
+            ->where('scope', '!=', $branchId)
+            ->pluck('pattern')
+            ->all());
+        $used = [...$used, ...array_values(InvoiceSequence::DEFAULT_PATTERNS)];
+
+        $till = $this->branches->tillNumber($branchId) ?? 1;
+
+        do {
+            $pattern = self::withTill((string) $organization->pattern, $till++);
+        } while (in_array($pattern, $used, true));
+
+        return [
+            ...self::defaults($organizationId, $documentType, $branchId),
+            'pattern' => $pattern,
+            'padding' => $organization->padding,
+            'reset' => $organization->reset,
+        ];
+    }
+
+    /**
+     * The till's mark before the pattern's first token: after its fixed
+     * prefix, so the numbers of every till still start alike.
+     */
+    private static function withTill(string $pattern, int $till): string
+    {
+        $mark = 'T'.str_pad((string) $till, 2, '0', STR_PAD_LEFT).'-';
+        $token = (int) strpos($pattern, '{');
+
+        return substr($pattern, 0, $token).$mark.substr($pattern, $token);
     }
 
     /**

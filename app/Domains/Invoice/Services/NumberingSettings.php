@@ -34,14 +34,15 @@ class NumberingSettings
      */
     public function sequences(string $organizationId, ?string $branchId = null): array
     {
-        return array_map(function (string $type) use ($organizationId, $branchId): array {
+        $shared = $branchId !== null && InvoiceNumbering::shared($organizationId);
+
+        return array_map(function (string $type) use ($organizationId, $branchId, $shared): array {
             $own = $this->effective($organizationId, $type, $branchId);
 
-            // A branch with no sequence of its own is numbered from the
-            // organization's, so that is what it shows.
-            $sequence = $own->exists || $branchId === null
-                ? $own
-                : $this->effective($organizationId, $type, null);
+            // A till numbers from its own series - the one it has, or the
+            // one it will be given at its first issue - unless the
+            // organization shares one series, which is then what it shows.
+            $sequence = $shared ? $this->effective($organizationId, $type, null) : $own;
 
             return [
                 'document_type' => $type,
@@ -51,9 +52,18 @@ class NumberingSettings
                 'reset' => $sequence->reset,
                 'next' => $this->numbering->preview($sequence),
                 'configured' => $own->exists,
-                'inherited' => $branchId !== null && ! $own->exists,
+                'inherited' => $shared,
             ];
         }, self::TYPES);
+    }
+
+    /**
+     * Number every branch from the organization's one series, or each till
+     * from its own. Taken by the next issue; numbers already given stay.
+     */
+    public function share(string $organizationId, bool $shared): void
+    {
+        DB::table('organizations')->where('id', $organizationId)->update(['shared_numbering' => $shared]);
     }
 
     /**
@@ -134,7 +144,9 @@ class NumberingSettings
                 ->where('document_type', $documentType);
 
             return ($lock ? $query->lockForUpdate() : $query)->first()
-                ?? new InvoiceSequence(InvoiceNumbering::defaults($organizationId, $documentType, $branchId));
+                ?? new InvoiceSequence($branchId === null
+                    ? InvoiceNumbering::defaults($organizationId, $documentType)
+                    : $this->numbering->tillDefaults($organizationId, $documentType, $branchId));
         });
     }
 
