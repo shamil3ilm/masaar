@@ -74,7 +74,7 @@ class CertificateRenewalTest extends TestCase
         ]);
 
         $this->original = $this->selfSignedCredentials(serial: 1);
-        $this->renewed = $this->selfSignedCredentials(serial: 2);
+        $this->renewed = $this->selfSignedCredentials(serial: 2, days: 730);
 
         $this->store($this->original, 'original-secret');
 
@@ -331,6 +331,18 @@ class CertificateRenewalTest extends TestCase
             [CertificateVersion::SUPERSEDED, CertificateVersion::ACTIVE],
             app(CredentialStore::class)->versions($this->acme->id, $branch->id)->pluck('status')->all()
         );
+    }
+
+    /**
+     * The expiry check reads the certificate the device signs with now.
+     */
+    public function test_expiry_check_reads_the_renewed_certificate(): void
+    {
+        $this->renew();
+
+        $this->artisan('fatoora:check-certificate', ['--organization' => $this->acme->id])
+            ->expectsOutputToContain(now()->addDays(730)->format('Y-m-d'))
+            ->assertSuccessful();
     }
 
     private function renew(): void
