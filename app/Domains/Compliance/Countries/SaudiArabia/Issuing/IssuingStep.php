@@ -7,6 +7,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Issuing;
 use App\Domains\Compliance\Countries\SaudiArabia\Document\DocumentBuilder;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\TimestampValidator;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\RevocationCheck;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\SigningCredentials;
 use App\Domains\Compliance\Countries\SaudiArabia\Support\FatooraTime;
 use App\Domains\Invoice\Contracts\IssuingJurisdiction;
@@ -36,6 +37,7 @@ class IssuingStep implements IssuingJurisdiction
         private readonly ChainRecorder $chain,
         private readonly FeatureOverrides $overrides,
         private readonly TimestampValidator $timestamps,
+        private readonly RevocationCheck $revocation,
     ) {}
 
     public function refuseIssued(Invoice $invoice): FatooraException
@@ -124,11 +126,20 @@ class IssuingStep implements IssuingJurisdiction
         // Required once the organization is onboarded. Unsigned is Phase 1 and
         // correct before onboarding; after it, it is a document no device can
         // file, and it was issued without a word.
-        return $this->signing->for(
+        $credentials = $this->signing->for(
             $organization->id,
             $this->signing->branchOf($invoice),
             required: $organization->zatca_onboarded,
         );
+
+        // Before a counter is spent: a certificate is checked against its
+        // CA's revocation list before it stamps (Security Features
+        // Implementation Standard v1.2, section 2.2.1, requirement 14).
+        if (! empty($credentials['certificate'])) {
+            $this->revocation->assertMayStamp((string) $credentials['certificate']);
+        }
+
+        return $credentials;
     }
 
     /**

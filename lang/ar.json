@@ -1437,5 +1437,7 @@
     "Credit card": "بطاقة ائتمان",
     "Debit card": "بطاقة خصم مباشر",
     "Cheque": "شيك",
-    "Online payment service": "خدمة دفع إلكتروني"
+    "Online payment service": "خدمة دفع إلكتروني",
+    "This device's ZATCA certificate has been revoked, so it cannot sign invoices. Onboard the device again to obtain a new certificate.": "أُلغيت شهادة هيئة الزكاة والضريبة والجمارك لهذا الجهاز، ولذلك لا يمكنه توقيع الفواتير. أعد تسجيل الجهاز للحصول على شهادة جديدة.",
+    "The ZATCA certificate revocation list could not be obtained, and the last one held is more than seven days old or missing. Invoices cannot be signed until it can be checked again.": "تعذّر الحصول على قائمة الشهادات الملغاة الصادرة عن هيئة الزكاة والضريبة والجمارك، وآخر قائمة محفوظة مضى عليها أكثر من سبعة أيام أو غير موجودة. لا يمكن توقيع الفواتير حتى يتسنى التحقق منها مجددًا."
 }

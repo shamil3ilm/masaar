@@ -7,10 +7,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Signing;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\Der;
 use App\Domains\Compliance\Countries\SaudiArabia\Support\FatooraTime;
-use App\Support\SafeFetch;
 use Illuminate\Support\Facades\Log;
-use phpseclib3\File\X509;
-use phpseclib3\Math\BigInteger;
 
 /**
  * Certificate management service.
@@ -20,6 +17,8 @@ use phpseclib3\Math\BigInteger;
  */
 class CertificateService
 {
+    public function __construct(private readonly RevocationCheck $revocation) {}
+
     /**
      * Parse certificate and extract details.
      *
@@ -201,204 +200,26 @@ class CertificateService
     /**
      * Check certificate revocation status against the issuer's CRL.
      *
-     * OCSP is not consulted, though certificates commonly advertise it and it
-     * carries fresher status than a list published on a schedule. Answering an
-     * OCSP query safely means verifying the responder's signature over the
-     * response, and until that exists an answer cannot be distinguished from
-     * one an attacker supplied.
-     *
-     * That is not a neutral gap. This method returned on the first OCSP answer
-     * and never reached the CRL, so an unverified "good" suppressed the check
-     * that would have found the certificate revoked. A slightly staler answer
-     * that is actually the issuer's beats a fresh one from anybody.
+     * RevocationCheck decides, so the check before filing reads the same
+     * lists, with the same trust and the same seven-day limit, as the check
+     * before stamping. A list that cannot be had is reported as a warning,
+     * not as revoked: the stamp was already checked when it was applied.
      *
      * @param  string  $certificatePem  PEM-encoded certificate to check
-     * @return array{revoked: bool, method: string, reason: string|null, revokedAt: string|null}
-     *
-     * @throws CertificateException
+     * @return array{revoked: bool, method: string, reason: string|null, revokedAt: string|null, warning?: string}
      */
     public function checkRevocationStatus(string $certificatePem): array
     {
-        $details = $this->parseCertificate($certificatePem);
-        $extensions = $details['extensions'] ?? [];
+        $status = $this->revocation->status($certificatePem);
 
-        $crlUrls = $this->extractCrlUrls($extensions);
-        foreach ($crlUrls as $crlUrl) {
-            try {
-                $crlResult = $this->checkCrl($certificatePem, $crlUrl);
-                if ($crlResult !== null) {
-                    return $crlResult;
-                }
-            } catch (\Exception $e) {
-                Log::warning('CRL check failed', [
-                    'error' => $e->getMessage(),
-                    'crl_url' => $crlUrl,
-                ]);
-
-                continue;
-            }
-        }
-
-        // No revocation information available
-        return [
-            'revoked' => false,
-            'method' => 'none',
-            'reason' => null,
-            'revokedAt' => null,
-            'warning' => 'Certificate advertises no reachable CRL distribution point',
-        ];
-    }
-
-    /**
-     * Check certificate revocation via CRL (Certificate Revocation List).
-     *
-     * @param  string  $certificatePem  Certificate to check
-     * @param  string  $crlUrl  CRL distribution point URL
-     * @return array|null Revocation status or null if check failed
-     */
-    private function checkCrl(string $certificatePem, string $crlUrl): ?array
-    {
-        // The address came out of the certificate being checked, so the fetch
-        // is bounded: allowlisted host, https, no redirects, capped size.
-        $crlData = SafeFetch::get($crlUrl, 'security.revocation_hosts');
-
-        if ($crlData === null) {
-            return null;
-        }
-
-        // Get certificate serial number. The hex form is required: X.509
-        // serials run to 20 octets and will not fit in a PHP int.
-        $details = $this->parseCertificate($certificatePem);
-        $serialHex = $details['serialNumberHex'] ?? null;
-
-        if ($serialHex === null) {
-            // Inconclusive, not "not revoked" — the caller must not read a
-            // missing serial as a clean bill of health.
-            Log::warning('CRL check skipped: certificate has no readable hex serial');
-
-            return null;
-        }
-
-        $revoked = $this->revokedSerialsFrom($crlData);
-        $ours = $this->normalizeSerial($serialHex, 16);
-
-        if (array_key_exists($ours, $revoked)) {
-            return [
-                'revoked' => true,
-                'method' => 'crl',
-                'reason' => 'Certificate found in CRL',
-                'revokedAt' => $revoked[$ours],
-            ];
-        }
-
-        return [
-            'revoked' => false,
-            'method' => 'crl',
-            'reason' => null,
-            'revokedAt' => null,
-        ];
-    }
-
-    /**
-     * Build a serial => revocation date map from a CRL.
-     *
-     * Parsed with phpseclib rather than by running `openssl crl -text` and
-     * reading its report. Whether a certificate may still sign is not a
-     * decision to take from the formatting of a command's output: that output
-     * is meant for people, and an OpenSSL upgrade or a translated locale
-     * changes it without changing anything about the certificate.
-     *
-     * DER and PEM are both accepted; loadCRL detects which it was given, so
-     * the encoding a distribution point happens to serve does not matter.
-     *
-     * @return array<string, string|null> Normalized serial => revocation date
-     */
-    private function revokedSerialsFrom(string $crlData): array
-    {
-        $crl = new X509;
-
-        // loadCRL returns false for some malformed input and throws for the
-        // rest — a distribution point answering with an HTML error page raises
-        // SodiumException from the base64 decode. Either way this is
-        // "could not read the list", not "nothing is revoked", and it must not
-        // travel up as an exception from the middle of a submission.
-        try {
-            $parsed = $crl->loadCRL($crlData) !== false;
-        } catch (\Throwable $e) {
-            Log::warning('CRL could not be parsed', ['error' => $e->getMessage()]);
-
-            return [];
-        }
-
-        if (! $parsed) {
-            Log::warning('CRL could not be parsed');
-
-            return [];
-        }
-
-        $revoked = [];
-
-        foreach ($crl->listRevoked() ?: [] as $decimalSerial) {
-            $entry = $crl->getRevoked($decimalSerial);
-
-            $revoked[$this->normalizeSerial($decimalSerial, 10)] =
-                $entry['revocationDate']['utcTime']
-                ?? $entry['revocationDate']['generalTime']
-                ?? null;
-        }
-
-        return $revoked;
-    }
-
-    /**
-     * Reduce a serial to one comparable form: uppercase hex, no 0x, no
-     * leading zeros.
-     *
-     * The base is a parameter rather than something to detect, because the
-     * two sides disagree and the forms overlap: openssl_x509_parse() gives the
-     * certificate's serial in hex, phpseclib gives the CRL's in decimal, and
-     * "1000" is a valid spelling in either. Guessing reads that hex serial as
-     * decimal, normalises it to 3E8, and reports a revoked certificate as
-     * good — the exact failure this check exists to prevent.
-     *
-     * @param  int  $base  16 for a certificate serial, 10 for a CRL entry
-     */
-    private function normalizeSerial(string $serial, int $base): string
-    {
-        $serial = preg_replace('/^0x/i', '', trim($serial));
-
-        if ($base === 10) {
-            $serial = (new BigInteger($serial, 10))->toHex();
-        }
-
-        $serial = ltrim(strtoupper((string) $serial), '0');
-
-        return $serial === '' ? '0' : $serial;
-    }
-
-    /**
-     * Extract CRL distribution point URLs from certificate extensions.
-     *
-     * @param  array  $extensions  Certificate extensions
-     * @return array List of CRL URLs
-     */
-    private function extractCrlUrls(array $extensions): array
-    {
-        $urls = [];
-
-        // CRL Distribution Points extension
-        $crlDist = $extensions['crlDistributionPoints'] ?? null;
-
-        if ($crlDist === null) {
-            return $urls;
-        }
-
-        // Parse for URIs
-        if (preg_match_all('/URI:(\S+)/i', $crlDist, $matches)) {
-            $urls = array_map('trim', $matches[1]);
-        }
-
-        return $urls;
+        return match ($status['state']) {
+            RevocationCheck::REVOKED => ['revoked' => true, 'method' => 'crl', 'reason' => 'Certificate found in CRL', 'revokedAt' => $status['revoked_at']],
+            RevocationCheck::GOOD => ['revoked' => false, 'method' => 'crl', 'reason' => null, 'revokedAt' => null],
+            RevocationCheck::NO_SOURCE => ['revoked' => false, 'method' => 'none', 'reason' => null, 'revokedAt' => null,
+                'warning' => 'Certificate advertises no CRL distribution point and none is configured'],
+            default => ['revoked' => false, 'method' => 'none', 'reason' => null, 'revokedAt' => null,
+                'warning' => 'No current revocation list could be obtained'],
+        };
     }
 
     /**

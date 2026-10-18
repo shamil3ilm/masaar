@@ -349,9 +349,23 @@ Every filing path - the submission tracker, the queued job and its recovery, the
 | expired | Yes - the platform does not block it; ZATCA's response decides |
 | `revoked` | No - refused with `CERT_REVOKED` before anything is sent |
 
+### Revocation Check Before Stamping
+
+Security Features Implementation Standard v1.2, section 2.2.1, requirement 14: "Before using the certificate for stamping, EGS/ZATCA e-invoicing platform shall check certificate's validity against any of the above mentioned sources" (the CA's CRLs or OCSP responders), and "CRLs shall be valid for seven (7) days which would allow EGSs to work fully offline for seven (7) days".
+
+| Question | Answer |
+|----------|--------|
+| What is checked | The device certificate that stamps - the XML signature at issue, the offline path's signature, and the PAdES stamp on a PDF. Path validation up the chain is the verifier's, as of the signing time (requirement 17). |
+| Against what | The CRL distribution points the certificate names (the profile in section 2.2.2 lists them as HTTP URLs); `ZATCA_CRL_URLS` when it names none. OCSP is not used: the profile marks it optional, and requirement 14 is met by either source. |
+| Which lists count | One issued by the certificate's issuer whose signature verifies against the issuing CA from `ZATCA_CA_CHAIN_PATH`. Without the CA certificate, only a list fetched over https counts. |
+| Caching | A list is refreshed hourly while the CA is reachable and relied on up to its next update, never more than seven days after it was issued. |
+| CA unreachable | Stamping continues on the held list for up to seven days, then stops (`CERT_REVOCATION_UNVERIFIED`, retryable) until a current list is obtained. |
+| No list named or configured | Stamping continues and the certificate is reported as unverified, in the readiness report and on the certificates page. |
+| Revoked | Stamping is refused with `CERT_REVOKED` before a counter is spent. |
+
 ### What ZATCA's Documents Say
 
-- The Security Features Implementation Standard (section 2.1.2) describes renewal through the taxpayer portal: the CA "validates that the existing certificate is not revoked or renewed before then revoke existing certificate", and issues a new one. Section 2.1.3 describes revocation, and its requirements table (item 14) requires the certificate's validity to be checked against the CA's CRL or OCSP before it is used for stamping.
+- The Security Features Implementation Standard (section 2.1.2) describes renewal through the taxpayer portal: the CA "validates that the existing certificate is not revoked or renewed before then revoke existing certificate", and issues a new one. Section 2.1.3 describes revocation and says the revocation status is published as CRLs and through OCSP. Section 2.2.1, requirement 14, requires the certificate's validity to be checked against those sources before it is used for stamping, and lets a CRL stand for seven days.
 - The E-Invoicing Detailed Guidelines answer HTTP 401 with "Check authentication certificate and secret and resubmit".
 - Neither the Detailed Guidelines nor the SDK documentation says how a document stamped with a since-renewed, revoked or expired certificate is to be reported late. The platform therefore files it with the certificate that signed it and records ZATCA's answer, rather than re-signing it (which would change its hash and break the chain) or filing it under a certificate that did not sign it.
 

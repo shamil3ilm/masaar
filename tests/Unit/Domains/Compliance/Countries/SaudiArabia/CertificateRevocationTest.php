@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Compliance\Countries\SaudiArabia;
 
-use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateService;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\RevocationList;
 use PHPUnit\Framework\Attributes\DataProvider;
-use ReflectionMethod;
 use Tests\TestCase;
 
 /**
@@ -23,8 +22,8 @@ use Tests\TestCase;
  *
  * Fixtures: tests/Fixtures/Certificates — serial 1000 revoked, 1001 not.
  *
- * The private methods are driven directly because the surrounding method
- * fetches a URL taken from the certificate.
+ * RevocationList is driven directly because the check around it fetches a
+ * URL taken from the certificate.
  */
 class CertificateRevocationTest extends TestCase
 {
@@ -59,26 +58,19 @@ class CertificateRevocationTest extends TestCase
     #[DataProvider('crlEncodings')]
     public function test_revoked_serial_found(string $file): void
     {
-        $revoked = $this->revokedSerials($file);
-
-        $this->assertArrayHasKey($this->normalize(self::REVOKED_HEX, 16), $revoked);
+        $this->assertNotNull($this->list($file)->revocationOf(self::REVOKED_HEX));
     }
 
     #[DataProvider('crlEncodings')]
     public function test_good_serial_absent(string $file): void
     {
-        $this->assertArrayNotHasKey(
-            $this->normalize(self::GOOD_HEX, 16),
-            $this->revokedSerials($file)
-        );
+        $this->assertNull($this->list($file)->revocationOf(self::GOOD_HEX));
     }
 
     #[DataProvider('crlEncodings')]
     public function test_revocation_date_captured(string $file): void
     {
-        $revoked = $this->revokedSerials($file);
-
-        $this->assertNotNull($revoked[$this->normalize(self::REVOKED_HEX, 16)]);
+        $this->assertNotSame('', (string) $this->list($file)->revocationOf(self::REVOKED_HEX));
     }
 
     /**
@@ -108,7 +100,7 @@ class CertificateRevocationTest extends TestCase
 
     public function test_unparseable_crl_yields_nothing(): void
     {
-        $this->assertSame([], $this->invokePrivate('revokedSerialsFrom', 'not a CRL', null));
+        $this->assertNull(RevocationList::parse('not a CRL'));
     }
 
     /**
@@ -139,30 +131,38 @@ class CertificateRevocationTest extends TestCase
     }
 
     /**
-     * @return array<string, string|null>
+     * A list is evidence only from its own CA.
      */
-    private function revokedSerials(string $file): array
+    #[DataProvider('crlEncodings')]
+    public function test_list_verifies_against_its_ca(string $file): void
     {
-        return $this->invokePrivate(
-            'revokedSerialsFrom',
-            (string) file_get_contents(self::FIXTURES.'/'.$file),
-            null
-        );
+        $this->assertTrue($this->list($file)->signedBy((string) file_get_contents(self::FIXTURES.'/ca.pem')));
+        $this->assertFalse($this->list($file)->signedBy((string) file_get_contents(self::FIXTURES.'/good.pem')));
+    }
+
+    /**
+     * Seven days from issue at most, though this list names a next update
+     * ten years on (Security Features Implementation Standard v1.2, section
+     * 2.2.1, requirement 14).
+     */
+    public function test_list_lapses_after_seven_days(): void
+    {
+        $list = $this->list('crl.der');
+
+        $this->assertTrue($list->usableAt($list->thisUpdate->addDays(6)));
+        $this->assertFalse($list->usableAt($list->thisUpdate->addDays(7)));
+    }
+
+    private function list(string $file): RevocationList
+    {
+        $list = RevocationList::parse((string) file_get_contents(self::FIXTURES.'/'.$file));
+        $this->assertNotNull($list, "{$file} did not parse");
+
+        return $list;
     }
 
     private function normalize(string $serial, int $base): string
     {
-        return $this->invokePrivate('normalizeSerial', $serial, $base);
-    }
-
-    private function invokePrivate(string $method, string $argument, ?int $base): mixed
-    {
-        // setAccessible() is a no-op since PHP 8.1 and deprecated in 8.4;
-        // reflection reaches private methods without it.
-        $reflection = new ReflectionMethod(CertificateService::class, $method);
-
-        $arguments = $base === null ? [$argument] : [$argument, $base];
-
-        return $reflection->invokeArgs(new CertificateService, $arguments);
+        return RevocationList::serial($serial, $base);
     }
 }

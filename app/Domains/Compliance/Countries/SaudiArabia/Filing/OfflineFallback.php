@@ -8,6 +8,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Document\DocumentBuilder;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificatePem;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\RevocationCheck;
 use App\Domains\Invoice\Models\Invoice;
 use App\Support\Errors\ComplianceException;
 use App\Support\Errors\ErrorCode;
@@ -36,6 +37,7 @@ class OfflineFallback
         private readonly DocumentBuilder $complianceService,
         private readonly CredentialStore $credentials,
         private readonly ReportingAttempts $attempts,
+        private readonly RevocationCheck $revocation,
     ) {}
 
     /**
@@ -146,6 +148,14 @@ class OfflineFallback
         }
 
         if ($invoice->hash === null) {
+            // Checked before it stamps, as issuing does (Security Features
+            // Implementation Standard v1.2, section 2.2.1, requirement 14).
+            $stampWith = CertificatePem::from($signing['pcsid'] ?? null);
+
+            if ($stampWith !== null) {
+                $this->revocation->assertMayStamp($stampWith);
+            }
+
             $complianceData = $this->complianceService->generateComplianceData(
                 invoice: $invoice,
                 organization: $organization,

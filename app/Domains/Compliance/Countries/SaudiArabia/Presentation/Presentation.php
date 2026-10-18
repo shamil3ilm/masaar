@@ -9,6 +9,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificatePem;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\PdfStamp;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\RevocationCheck;
 use App\Domains\Compliance\Engine\Contracts\Presentation as PresentationPort;
 use App\Domains\Compliance\Engine\DTOs\InvoicePage;
 use App\Domains\Compliance\Engine\DTOs\Receipt;
@@ -42,6 +43,7 @@ class Presentation implements PresentationPort
         private readonly QrCodeRenderer $qr,
         private readonly InvoiceExtraQr $extraQr,
         private readonly PrintPreferences $preferences,
+        private readonly RevocationCheck $revocation,
     ) {}
 
     public function tagline(): string
@@ -140,6 +142,10 @@ class Presentation implements PresentationPort
         if (empty($privateKey) || $certificate === null) {
             return $pdf;
         }
+
+        // A PAdES stamp is a stamp: checked like the XML's (Security Features
+        // Implementation Standard v1.2, section 2.2.1, requirements 10 and 14).
+        $this->revocation->assertMayStamp($certificate);
 
         return $this->stamp->sign($pdf, (string) $privateKey, $certificate);
     }
