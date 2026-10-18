@@ -73,6 +73,39 @@ final class PintAe implements JurisdictionProfile
     /** Credit note reasons (BTAE-03), from the CreditReason code list. VD is a volume discount. */
     public const CREDIT_REASONS = ['DL8.61.1.A', 'DL8.61.1.B', 'DL8.61.1.C', 'DL8.61.1.D', 'DL8.61.1.E', 'VD'];
 
+    /**
+     * Payment means (IBT-081), from PINT AE's code list "Payment means codes
+     * used in AE" (UNCL4461.gc, UNCL 4461 D.16B). IBR-CL-16 lets through a
+     * wider set, but this is the list the specification names for the UAE.
+     *
+     * @var list<string>
+     */
+    public const PAYMENT_MEANS = ['1', '10', '20', '21', '30', '49', '54', '55', '68'];
+
+    /**
+     * Currencies (IBT-005, IBT-006), from PINT AE's ISO4217.gc, which
+     * IBR-CL-04 and IBR-CL-05 check against.
+     *
+     * @var list<string>
+     */
+    public const CURRENCIES = [
+        'AED', 'AFN', 'ALL', 'AMD', 'AOA', 'ARS', 'AUD', 'AWG', 'AZN', 'BAM', 'BBD', 'BDT',
+        'BHD', 'BIF', 'BMD', 'BND', 'BOB', 'BOV', 'BRL', 'BSD', 'BTN', 'BWP', 'BYN', 'BZD',
+        'CAD', 'CDF', 'CHE', 'CHF', 'CHW', 'CLF', 'CLP', 'CNH', 'CNY', 'COP', 'COU', 'CRC',
+        'CUP', 'CVE', 'CZK', 'DJF', 'DKK', 'DOP', 'DZD', 'EGP', 'ERN', 'ETB', 'EUR', 'FJD',
+        'FKP', 'GBP', 'GEL', 'GHS', 'GIP', 'GMD', 'GNF', 'GTQ', 'GYD', 'HKD', 'HNL', 'HTG',
+        'HUF', 'IDR', 'ILS', 'INR', 'IQD', 'IRR', 'ISK', 'JMD', 'JOD', 'JPY', 'KES', 'KGS',
+        'KHR', 'KMF', 'KPW', 'KRW', 'KWD', 'KYD', 'KZT', 'LAK', 'LBP', 'LKR', 'LRD', 'LSL',
+        'LYD', 'MAD', 'MDL', 'MGA', 'MKD', 'MMK', 'MNT', 'MOP', 'MRU', 'MUR', 'MVR', 'MWK',
+        'MXN', 'MXV', 'MYR', 'MZN', 'NAD', 'NGN', 'NIO', 'NOK', 'NPR', 'NZD', 'OMR', 'PAB',
+        'PEN', 'PGK', 'PHP', 'PKR', 'PLN', 'PYG', 'QAR', 'RON', 'RSD', 'RUB', 'RWF', 'SAR',
+        'SBD', 'SCR', 'SDG', 'SEK', 'SGD', 'SHP', 'SLE', 'SOS', 'SRD', 'SSP', 'STN', 'SVC',
+        'SYP', 'SZL', 'THB', 'TJS', 'TMT', 'TND', 'TOP', 'TRY', 'TTD', 'TWD', 'TZS', 'UAH',
+        'UGX', 'USD', 'USN', 'UYI', 'UYU', 'UYW', 'UZS', 'VED', 'VES', 'VND', 'VUV', 'WST',
+        'XAF', 'XAG', 'XAU', 'XBA', 'XBB', 'XBC', 'XBD', 'XCD', 'XCG', 'XDR', 'XOF', 'XPD',
+        'XPF', 'XPT', 'XSU', 'XTS', 'XUA', 'YER', 'ZAR', 'ZMW', 'ZWG',
+    ];
+
     /** Exemption reasons (IBT-186), from the Aligned-TaxExemptionCodes list. */
     public const EXEMPTION_REASONS = ['DL8.46.1', 'DL8.46.2', 'DL8.46.3', 'DL8.46.4'];
 

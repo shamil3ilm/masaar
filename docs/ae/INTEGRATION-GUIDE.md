@@ -100,6 +100,7 @@ each checked only when sent, and saves them the same way. It answers with
 
 ## 2. Draft an invoice
 
+<!-- example: POST /api/compliance/ae/invoices ae -->
 ```http
 POST /api/compliance/ae/invoices
 Authorization: Bearer <token>
@@ -226,6 +227,7 @@ charge), `PC` packing, `IAA` installation, `FC` freight.
 | `tax_rate` | Document charges | `5` for `S` (default), `0` otherwise |
 | `exempt_code` | An `E` document charge | `DL8.46.1` to `DL8.46.4` (IBR-169-AE). `exempt_reason` is optional |
 
+<!-- example: POST /api/compliance/ae/invoices ae fragment -->
 ```json
 "charges": [
   { "reason": "Delivery", "reason_code": "DL", "amount": "35.00" },
@@ -318,6 +320,7 @@ and `hs_code`. Left out, `document_type` is `invoice`, `document_category`
 `tax`, `currency` `AED`, `transaction_flags` `00000000` and the buyer's
 `country_code` `AE`.
 
+<!-- example: POST /api/v1/pipeline/submit ae -->
 ```json
 {
   "org_id": "9d3a...",

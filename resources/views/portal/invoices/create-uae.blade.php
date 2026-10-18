@@ -127,9 +127,13 @@
                 <x-ui.select name="payment_means_code" id="payment_means_code">
                     <option value="10" @selected(old('payment_means_code', '10') === '10')>{{ __('Cash') }}</option>
                     <option value="30" @selected(old('payment_means_code') === '30')>{{ __('Credit transfer') }}</option>
-                    <option value="42" @selected(old('payment_means_code') === '42')>{{ __('Payment to bank account') }}</option>
-                    <option value="48" @selected(old('payment_means_code') === '48')>{{ __('Bank card') }}</option>
+                    {{-- PINT AE's code list of payment means used in the UAE (PintAe::PAYMENT_MEANS). --}}
                     <option value="49" @selected(old('payment_means_code') === '49')>{{ __('Direct debit') }}</option>
+                    <option value="54" @selected(old('payment_means_code') === '54')>{{ __('Credit card') }}</option>
+                    <option value="55" @selected(old('payment_means_code') === '55')>{{ __('Debit card') }}</option>
+                    <option value="20" @selected(old('payment_means_code') === '20')>{{ __('Cheque') }}</option>
+                    <option value="68" @selected(old('payment_means_code') === '68')>{{ __('Online payment service') }}</option>
+                    <option value="1" @selected(old('payment_means_code') === '1')>{{ __('Instrument not defined') }}</option>
                 </x-ui.select>
                 <p class="mt-1 text-xs text-muted">{{ __('A transfer prints the IBAN from your company details.') }}</p>
             </div>

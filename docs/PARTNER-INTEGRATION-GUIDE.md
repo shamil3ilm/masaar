@@ -15,6 +15,7 @@ Complete guide for integrating the Masaar ZATCA E-Invoicing API into a partner's
 9. [Testing & Validation](#9-testing--validation)
 10. [Migration Checklist](#10-migration-checklist)
 11. [Troubleshooting](#11-troubleshooting)
+12. [Changes for integrators](#changes-for-integrators)
 
 ---
 
@@ -49,7 +50,7 @@ Replace the partner system's own ZATCA handling with Masaar API calls while keep
 - JSON extension
 
 ### Required Credentials
-1. **Masaar API Key** - Obtain from Masaar registration
+1. **Masaar access token** - A JWT from `POST /api/auth/login` for a user of the organization (an administrator, for onboarding); renew it with `POST /api/auth/refresh`
 2. **ZATCA OTP** - From ZATCA Fatoora Portal for onboarding
 3. **Organization VAT Number** - Valid Saudi VAT registration
 
@@ -89,7 +90,7 @@ return [
 
     'base_url' => env('MASAAR_BASE_URL', 'https://sandbox.example.com'),
 
-    'api_key' => env('MASAAR_API_KEY'),
+    'token' => env('MASAAR_API_TOKEN'),
 
     'timeout' => env('MASAAR_TIMEOUT', 30),
 
@@ -134,7 +135,7 @@ Add to `.env`:
 ```env
 # Masaar Configuration
 MASAAR_BASE_URL=https://sandbox.example.com
-MASAAR_API_KEY=your_api_key_here
+MASAAR_API_TOKEN=your_access_token_here
 MASAAR_WEBHOOK_SECRET=your_webhook_secret_here
 MASAAR_TIMEOUT=30
 ```
@@ -142,6 +143,16 @@ MASAAR_TIMEOUT=30
 ---
 
 ## 4. API Authentication
+
+The endpoints under `/api` act for the organization of the JWT they are called
+with, sent as `Authorization: Bearer <token>`. A system holding a licence key
+and secret instead sends them as `X-API-Key` and `X-API-Secret` to the
+versioned endpoints under `/api/v1`: `/api/v1/invoices`,
+`/api/v1/compliance/generate/{invoiceId}`, `/api/v1/compliance/validate/{invoiceId}`,
+`/api/v1/compliance/submit/{invoiceId}`, `/api/v1/compliance/status/{invoiceId}`
+and `/api/v1/pipeline/submit`, which drafts, issues and submits in one call.
+The invoice body is the same on both. Onboarding and organization registration
+are under `/api` only.
 
 ### Masaar API Client
 
@@ -161,18 +172,21 @@ class MasaarClient
 {
     private Client $http;
     private string $baseUrl;
-    private string $apiKey;
+    private string $token;
 
-    public function __construct()
+    /**
+     * The token decides the organization every call acts for.
+     */
+    public function __construct(?string $token = null)
     {
         $this->baseUrl = config('masaar.base_url');
-        $this->apiKey = config('masaar.api_key');
+        $this->token = $token ?? config('masaar.token');
 
         $this->http = new Client([
             'base_uri' => $this->baseUrl,
             'timeout' => config('masaar.timeout', 30),
             'headers' => [
-                'X-API-Key' => $this->apiKey,
+                'Authorization' => 'Bearer '.$this->token,
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
             ],
@@ -254,9 +268,9 @@ class MasaarClient
             );
 
             throw new MasaarException(
-                $errorBody['message'] ?? $lastException->getMessage(),
+                $errorBody['error']['message'] ?? $lastException->getMessage(),
                 $lastException->getResponse()->getStatusCode(),
-                $errorBody['errors'] ?? []
+                $errorBody['error']['details'] ?? []
             );
         }
 
@@ -332,32 +346,30 @@ class InvoiceService
 
         // Step 2: Create invoice in Masaar
         $created = $this->client->post('/api/invoices', $invoiceData);
+        $masaarId = $created['data']['invoice']['id'];
 
         Log::info('Invoice created in Masaar', [
             'partner_invoice_id' => $invoice->id,
-            'masaar_invoice_id' => $created['id'],
+            'masaar_invoice_id' => $masaarId,
         ]);
 
-        // Step 3: Generate compliance data (XML, hash, QR)
-        $compliance = $this->client->post(
-            "/api/compliance/zatca/generate/{$created['id']}"
-        );
+        // Step 3: Issue it: number, sign, hash and QR
+        $compliance = $this->client->post("/api/compliance/sa/generate/{$masaarId}")['data'];
 
-        // Step 4: Submit to ZATCA
-        $submission = $this->client->post(
-            "/api/compliance/zatca/submit/{$created['id']}"
-        );
+        // Step 4: Submit to ZATCA (clearance for standard, reporting for simplified)
+        $submission = $this->client->post("/api/compliance/sa/submit/{$masaarId}")['data'];
+        $standard = $invoiceData['type'] === 'standard';
 
         return [
-            'masaar_id' => $created['id'],
+            'masaar_id' => $masaarId,
             'zatca_status' => $submission['status'],
-            'clearance_status' => $submission['clearance_status'] ?? null,
-            'reporting_status' => $submission['reporting_status'] ?? null,
-            'xml' => $compliance['xml'],
+            'clearance_status' => $standard ? $submission['status'] : null,
+            'reporting_status' => $standard ? null : $submission['status'],
+            'xml' => $compliance['signed_xml'],
             'hash' => $compliance['hash'],
             'qr_code' => $compliance['qr_code'],
             'warnings' => $submission['warnings'] ?? [],
-            'errors' => $submission['errors'] ?? [],
+            'errors' => [], // a refusal is thrown as a MasaarException
         ];
     }
 
@@ -387,17 +399,16 @@ class InvoiceService
             // Line items
             'lines' => $this->mapLineItems($invoice),
 
-            // Totals (calculated by Masaar, but can be provided)
-            'subtotal' => (float) $invoice->subtotal,
+            // A discount on the whole invoice. The subtotal, VAT and total
+            // are computed by Masaar from the lines; they are not sent.
             'discount_amount' => (float) ($invoice->discount ?? 0),
-            'tax_amount' => (float) $invoice->vat_amount,
-            'total' => (float) $invoice->total,
 
             // Payment
             'payment_means_code' => $this->mapPaymentMethod($invoice),
 
-            // References (for credit/debit notes)
-            'billing_reference_id' => $invoice->original_invoice_number,
+            // Credit and debit notes: the invoice corrected, and why (BR-KSA-17)
+            'billing_ref' => $invoice->original_invoice_number,
+            'adjustment_reason' => $invoice->adjustment_reason,
 
             // Invoice sub-types
             'is_export' => (bool) ($invoice->is_export ?? false),
@@ -445,23 +456,25 @@ class InvoiceService
             return null;
         }
 
-        // The partner model may store the address as a string or structured
+        // The partner model may store the address as a string or structured.
+        // Send what the buyer's address says and nothing invented: a Saudi
+        // buyer's postal code is its real five digits (BR-KSA-67), and a
+        // standard invoice needs the street, building number and city.
         if (is_string($invoice->customer_address)) {
             return [
                 'street' => $invoice->customer_address,
-                'city' => $invoice->customer_city ?? 'Riyadh',
-                'postal_code' => $invoice->customer_postal_code ?? '00000',
+                'city' => $invoice->customer_city,
+                'postal_code' => $invoice->customer_postal_code,
                 'country_code' => 'SA',
             ];
         }
 
         return [
-            'street' => $invoice->customer_address['street'] ?? '',
-            'building_number' => $invoice->customer_address['building'] ?? '',
-            'additional_number' => $invoice->customer_address['additional'] ?? '',
-            'district' => $invoice->customer_address['district'] ?? '',
-            'city' => $invoice->customer_address['city'] ?? 'Riyadh',
-            'postal_code' => $invoice->customer_address['postal_code'] ?? '00000',
+            'street' => $invoice->customer_address['street'] ?? null,
+            'building_number' => $invoice->customer_address['building'] ?? null,
+            'district' => $invoice->customer_address['district'] ?? null,
+            'city' => $invoice->customer_address['city'] ?? null,
+            'postal_code' => $invoice->customer_address['postal_code'] ?? null,
             'country_code' => $invoice->customer_address['country'] ?? 'SA',
         ];
     }
@@ -475,19 +488,22 @@ class InvoiceService
             return [
                 'description' => $item->description ?? $item->item_name,
                 'quantity' => (float) $item->quantity,
-                'unit_code' => $item->unit ?? 'PCE',
+                'unit_code' => $item->unit ?? 'H87', // UN/ECE Rec 20: H87 is "piece"
                 'unit_price' => (float) $item->unit_price,
                 'tax_rate' => (float) ($item->vat_rate ?? 15),
                 'tax_category' => $this->mapTaxCategory($item),
-                'tax_exemption_code' => $item->exemption_code,
-                'tax_exemption_reason' => $item->exemption_reason,
-                'discount' => (float) ($item->discount ?? 0),
+                'exempt_code' => $item->exemption_code,
+                'exempt_reason' => $item->exemption_reason,
+                'discount_amount' => (float) ($item->discount ?? 0),
             ];
         })->toArray();
     }
 
     /**
      * Map tax category
+     *
+     * ZATCA decides the category by the exemption code (BR-KSA-CL-04), and
+     * refuses a code under another category's.
      */
     private function mapTaxCategory($item): string
     {
@@ -497,19 +513,16 @@ class InvoiceService
             return 'S'; // Standard rated
         }
 
-        // Check for exemption codes
-        if (!empty($item->exemption_code)) {
-            if (str_starts_with($item->exemption_code, 'VATEX-SA-OOS')) {
-                return 'O'; // Out of scope
-            }
-            if (str_contains($item->exemption_code, 'HEA') ||
-                str_contains($item->exemption_code, 'EDU')) {
-                return 'Z'; // Zero-rated
-            }
-            return 'E'; // Exempt
-        }
-
-        return 'Z'; // Default zero-rated for 0%
+        return match ($item->exemption_code) {
+            'VATEX-SA-29', 'VATEX-SA-29-7', 'VATEX-SA-30' => 'E', // Exempt: financial services, life insurance, real estate
+            'VATEX-SA-OOS' => 'O', // Out of scope
+            // Every other code is zero-rated: exports (VATEX-SA-32, -33),
+            // international transport (-34-1 to -34-5), medicines (-35),
+            // qualifying metals (-36), private education and healthcare
+            // (EDU, HEA) and the rest. A zero-rated line without a code is
+            // refused: every Z, E or O line names one.
+            default => 'Z',
+        };
     }
 
     /**
@@ -531,18 +544,67 @@ class InvoiceService
      */
     public function getStatus(string $masaarId): array
     {
-        return $this->client->get("/api/compliance/zatca/status/{$masaarId}");
+        return $this->client->get("/api/compliance/sa/status/{$masaarId}")['data'];
     }
 
     /**
-     * Validate invoice before submission
+     * Validate an issued invoice with ZATCA without submitting it
      */
     public function validate(string $masaarId): array
     {
-        return $this->client->post("/api/compliance/zatca/validate/{$masaarId}");
+        return $this->client->post("/api/compliance/sa/validate/{$masaarId}")['data'];
     }
 }
 ```
+
+For a standard invoice to a VAT-registered buyer, `mapInvoiceData()` sends a
+request like this one to `POST /api/invoices`:
+
+<!-- example: POST /api/invoices sa -->
+```json
+{
+  "invoice_number": "INV-1001",
+  "type": "standard",
+  "document_type": "invoice",
+  "issue_date": "2026-10-15",
+  "supply_date": "2026-10-15",
+  "currency": "SAR",
+  "buyer_name": "Beta Industries",
+  "buyer_vat_number": "399999999800003",
+  "buyer_address": {
+    "street": "Olaya Street",
+    "building_number": "4321",
+    "district": "Al Murooj",
+    "city": "Riyadh",
+    "postal_code": "11564",
+    "country_code": "SA"
+  },
+  "lines": [
+    {
+      "description": "Office chair",
+      "quantity": 2,
+      "unit_code": "H87",
+      "unit_price": 450.00,
+      "tax_rate": 15,
+      "tax_category": "S",
+      "exempt_code": null,
+      "exempt_reason": null,
+      "discount_amount": 50.00
+    }
+  ],
+  "discount_amount": 0,
+  "payment_means_code": "30",
+  "billing_ref": null,
+  "adjustment_reason": null,
+  "is_export": false,
+  "is_third_party": false,
+  "is_summary": false,
+  "is_self_billed": false
+}
+```
+
+Masaar answers `201` with the draft in `data.invoice`, its subtotal, VAT and
+total computed from the lines.
 
 ### Organization Service
 
@@ -569,41 +631,50 @@ class OrganizationService
      */
     public function register(Company $company): array
     {
+        // The address fields sit beside the others, not under an "address" key.
         return $this->client->post('/api/organizations', [
+            'country' => 'SA',
             'name' => $company->name,
             'name_ar' => $company->name_ar ?? $company->name,
             'vat_number' => $company->vat_number,
             'cr_number' => $company->cr_number,
-            'address' => [
-                'street' => $company->street,
-                'building_number' => $company->building_number,
-                'additional_number' => $company->additional_number,
-                'district' => $company->district,
-                'city' => $company->city,
-                'postal_code' => $company->postal_code,
-                'country_code' => 'SA',
-            ],
+            'street' => $company->street,
+            'building_number' => $company->building_number,
+            'district' => $company->district,
+            'city' => $company->city,
+            'postal_code' => $company->postal_code,
         ]);
     }
 
-    /**
-     * Start ZATCA onboarding process
+    /*
+     * Onboarding acts for the organization of the token it is called with,
+     * and needs an administrator's.
      */
-    public function startOnboarding(string $organizationId, string $otp): array
+
+    /**
+     * Step 1: request the compliance CSID with the OTP from the Fatoora portal
+     */
+    public function startOnboarding(string $otp, string $deviceName, string $serialNumber): array
     {
-        return $this->client->post("/api/organizations/{$organizationId}/onboarding", [
+        return $this->client->post('/api/compliance/onboarding/ccsid', [
             'otp' => $otp,
+            'common_name' => $deviceName,
+            'serial_number' => $serialNumber, // 1-<solution>|2-<model>|3-<serial>
         ]);
     }
 
     /**
-     * Complete compliance check
+     * Step 2: run the compliance checks; step 3: request the production CSID
      */
-    public function completeCompliance(string $organizationId): array
+    public function completeCompliance(): array
     {
-        return $this->client->post(
-            "/api/organizations/{$organizationId}/onboarding/complete-compliance"
-        );
+        $checks = $this->client->post('/api/compliance/onboarding/compliance-check');
+
+        if (! ($checks['data']['passed'] ?? false)) {
+            return $checks;
+        }
+
+        return $this->client->post('/api/compliance/onboarding/pcsid');
     }
 
     /**
@@ -1187,14 +1258,16 @@ After deployment, register webhook URL:
 
 ```bash
 curl -X POST https://api.example.com/api/webhooks \
-  -H "X-API-Key: your_api_key" \
+  -H "Authorization: Bearer your_access_token" \
   -H "Content-Type: application/json" \
   -d '{
     "url": "https://partner.example.com/api/webhooks/masaar",
-    "events": ["invoice.cleared", "invoice.reported", "invoice.rejected", "certificate.expiring"],
-    "secret": "your_webhook_secret"
+    "events": ["invoice.cleared", "invoice.reported", "invoice.rejected", "certificate.expiring"]
   }'
 ```
+
+The answer carries the webhook's `secret` in `data.webhook.secret`, once; store
+it as `MASAAR_WEBHOOK_SECRET`.
 
 ---
 
@@ -1360,11 +1433,11 @@ class MasaarIntegrationTest extends TestCase
 
 ### Common Issues
 
-#### 1. "Invalid API Key" Error
+#### 1. "Unauthorized" Error
 ```
-Error: Authentication failed
+HTTP 401  {"error": {"code": "UNAUTHORIZED"}}
 ```
-**Solution**: Verify API key in `.env` and ensure no extra spaces.
+**Solution**: Verify the token in `.env` and ensure no extra spaces. A token expires: renew it with `POST /api/auth/refresh`, or sign in again.
 
 #### 2. "Organization not found"
 ```
@@ -1437,6 +1510,36 @@ tail -f storage/logs/laravel.log | grep -i masaar
 
 ---
 
+## Changes for integrators
+
+The API now follows the official rules more closely. What it refuses, and
+what to send instead:
+
+| Refused | Rule | Send instead |
+|---|---|---|
+| A Saudi payment means outside ZATCA's list, such as `99` | BR-KSA-16 | A listed code; the error names them all |
+| A Saudi currency outside ZATCA's ISO 4217:2005 list, such as `VES` | BR-KSA-CL-01 | A listed code; the error names them all |
+| A buyer VAT number on a Saudi export | BR-KSA-46 | `buyer_id` with `buyer_id_scheme`, such as `OTH` |
+| A Saudi government invoice without its contract | BR-KSA-92 | `is_government: true` with `contract_reference` |
+| A UAE payment means outside PINT AE's list, such as `42` or `48` | IBR-CL-16 | One of `1`, `10`, `20`, `21`, `30`, `49`, `54`, `55`, `68`: `30` for a transfer to a bank account, `54` or `55` for a card |
+| A UAE currency outside PINT AE's ISO 4217 list | IBR-CL-04 | A listed code; the error names them all |
+| A till sale time more than 30 seconds in the future | BR-KSA-04 | The till's time with its UTC offset |
+
+What is no longer refused:
+
+- The lines of a Saudi export may carry any category and exemption code
+  ZATCA accepts, such as international transport (`VATEX-SA-34-1` to
+  `34-5`) and standard-rated services, not only `VATEX-SA-32` and `33`.
+- A till's late sale is issued however late it is sent. A Saudi invoice is
+  dated when Masaar issues it; the sale time is its supply date. Send the
+  sale time as `sold_at`; `issued_at` is still accepted with the same meaning.
+- Batch submission (`POST /api/v1/pipeline/batch`) needs no particular
+  licence tier.
+
+Send `H87` for a piece. `PCE` is still accepted and sent as `H87`.
+
+---
+
 ## Appendix A: API Reference
 
 ### Invoices
@@ -1446,10 +1549,10 @@ tail -f storage/logs/laravel.log | grep -i masaar
 | `/api/invoices` | POST | Create invoice |
 | `/api/invoices/{id}` | GET | Get invoice |
 | `/api/invoices` | GET | List invoices |
-| `/api/compliance/zatca/generate/{id}` | POST | Generate compliance data |
-| `/api/compliance/zatca/validate/{id}` | POST | Validate invoice |
-| `/api/compliance/zatca/submit/{id}` | POST | Submit to ZATCA |
-| `/api/compliance/zatca/status/{id}` | GET | Check status |
+| `/api/compliance/sa/generate/{invoiceId}` | POST | Issue: number, sign, hash and QR |
+| `/api/compliance/sa/validate/{invoiceId}` | POST | Validate an issued invoice with ZATCA |
+| `/api/compliance/sa/submit/{invoiceId}` | POST | Submit to ZATCA |
+| `/api/compliance/sa/status/{invoiceId}` | GET | Check status |
 
 ### Organizations
 
@@ -1457,8 +1560,10 @@ tail -f storage/logs/laravel.log | grep -i masaar
 |----------|--------|-------------|
 | `/api/organizations` | POST | Register organization |
 | `/api/organizations/{id}` | GET | Get organization |
-| `/api/organizations/{id}/onboarding` | POST | Start onboarding |
-| `/api/organizations/{id}/onboarding/complete-compliance` | POST | Complete compliance |
+| `/api/compliance/onboarding/ccsid` | POST | Request the compliance CSID (OTP) |
+| `/api/compliance/onboarding/compliance-check` | POST | Run the compliance checks |
+| `/api/compliance/onboarding/pcsid` | POST | Request the production CSID |
+| `/api/compliance/onboarding/status` | GET | Onboarding status |
 
 ### Branches (EGS Units)
 
@@ -1493,7 +1598,6 @@ Per ZATCA official guidelines, foreign currency invoices are supported:
 |-------|----------|-------------|
 | `currency` | Yes | Document currency (SAR, USD, EUR, etc.) |
 | `exchange_rate` | If non-SAR | Exchange rate to SAR |
-| `exchange_rate_date` | Recommended | Date of exchange rate |
 
 **ZATCA Requirements:**
 - `DocumentCurrencyCode` (BT-5): Can be foreign currency
@@ -1505,9 +1609,8 @@ Per ZATCA official guidelines, foreign currency invoices are supported:
 $invoiceData = [
     'currency' => 'USD',
     'exchange_rate' => 3.75,
-    'subtotal' => 1000.00,  // USD
-    'tax_amount' => 150.00, // USD - converted to 562.50 SAR for VAT
-    'total' => 1150.00,
+    'lines' => [['description' => 'Consulting', 'quantity' => 1, 'unit_price' => 1000.00, 'tax_rate' => 15]],
+    // Computed by Masaar: subtotal 1000.00 USD, VAT 150.00 USD (562.50 SAR), total 1150.00 USD.
 ];
 ```
 
@@ -1515,14 +1618,21 @@ $invoiceData = [
 
 ## Appendix C: ZATCA Error Codes
 
-| Code | Description | Resolution |
-|------|-------------|------------|
-| BR-KSA-01 | Invalid VAT number | Ensure 15 digits, starts with 3 |
-| BR-KSA-02 | Missing seller address | Provide complete address |
-| BR-KSA-08 | Invalid ICV | ICV must be sequential |
-| BR-KSA-31 | Tax calculation error | Verify line item totals |
-| BR-KSA-40 | Invalid QR code | Re-generate through Masaar |
-| BR-KSA-52 | Certificate expired | Renew ZATCA certificate |
+Some of the rules ZATCA's validator applies, as its Schematron states them.
+Masaar refuses most of them before an invoice is drafted, naming the rule in
+`error.details`.
+
+| Code | Rule | Resolution |
+|------|------|------------|
+| BR-KSA-04 | The issue date is not after today | Masaar dates an invoice when it issues it |
+| BR-KSA-07 | An export is not self-billed | Send `is_export` or `is_self_billed`, not both |
+| BR-KSA-16 | The payment means is a UNTDID 4461 code ZATCA accepts | Send one of 1-68, 70, 74-78, 91-97 or ZZZ, e.g. `10` cash, `30` credit transfer |
+| BR-KSA-17 | A credit or debit note gives its reason | Send `adjustment_reason` |
+| BR-KSA-31 | A simplified invoice is not self-billed or an export | Send exports and self-billed invoices as `standard` |
+| BR-KSA-40 | The seller VAT number is 15 digits, starting and ending with 3 | Correct the organization's VAT number |
+| BR-KSA-46 | An export names no buyer VAT number | Identify the buyer by `buyer_id` with `buyer_id_scheme`, e.g. `OTH` |
+| BR-KSA-92 | A government (B2G) invoice names its contract | Send `contract_reference` with `is_government` |
+| BR-KSA-CL-01 | The currency is an ISO 4217:2005 code | The error lists the codes ZATCA takes |
 
 ---
 

@@ -147,22 +147,18 @@ class MultiBusinessService
             }
 
             // Register each business as separate organization
-            $org = $this->orgService->register([
-                'name' => $business->name,
-                'name_ar' => $business->name_ar,
-                'vat_number' => $business->vat_number,
-                'cr_number' => $business->cr_number,
-                'address' => $this->mapAddress($business),
-            ]);
+            // (OrganizationService::register() in the main guide)
+            $org = $this->orgService->register($business);
+            $orgId = $org['data']['organization']['id'];
 
             $business->update([
-                'masaar_org_id' => $org['id'],
+                'masaar_org_id' => $orgId,
                 'zatca_onboarding_status' => 'pending',
             ]);
 
             $results[$business->id] = [
                 'status' => 'registered',
-                'org_id' => $org['id'],
+                'org_id' => $orgId,
             ];
         }
 
@@ -190,6 +186,10 @@ class MultiBusinessService
 
 ### 2.4 Invoice Routing by Business
 
+An invoice is created for the organization of the token it is sent with; the
+request names no organization. A user who belongs to several gets a token for
+each from `POST /api/organizations/{id}/switch` (`data.token`).
+
 ```php
 class InvoiceService
 {
@@ -209,11 +209,18 @@ class InvoiceService
             throw new Exception("Business {$business->name} ZATCA onboarding incomplete");
         }
 
-        // Submit to Masaar with organization context
-        return $this->client->post('/api/invoices', [
-            'organization_id' => $business->masaar_org_id,
-            'invoice_data' => $this->mapInvoiceData($invoice),
-        ]);
+        // Submit to Masaar with a token for the business's organization
+        return $this->clientFor($business)->post('/api/invoices', $this->mapInvoiceData($invoice));
+    }
+
+    /**
+     * A client whose token acts for the business's organization
+     */
+    private function clientFor(Business $business): MasaarClient
+    {
+        $switched = $this->client->post("/api/organizations/{$business->masaar_org_id}/switch");
+
+        return new MasaarClient($switched['data']['token']); // the main guide's client, given this token
     }
 }
 ```
@@ -249,7 +256,7 @@ Schema::create('branches', function (Blueprint $table) {
 
     // ZATCA EGS identification
     $table->string('device_serial')->unique();
-    $table->string('masaar_egs_id')->nullable();
+    $table->string('masaar_branch_id')->nullable();
     $table->boolean('is_active')->default(true);
 
     // Invoice counters (managed by Masaar, but track locally)
@@ -273,6 +280,9 @@ class BranchService
 
     /**
      * Register branch as EGS device
+     *
+     * The branch is created in the organization of the client's token (an
+     * administrator's, to onboard it).
      */
     public function registerBranch(Branch $branch): array
     {
@@ -282,29 +292,41 @@ class BranchService
             throw new Exception("Business must be registered first");
         }
 
-        $response = $this->client->post(
-            "/api/organizations/{$business->masaar_org_id}/egs-units",
-            [
-                'device_serial' => $branch->device_serial,
-                'branch_name' => $branch->name,
-                'branch_industry' => $business->business_category,
-                'address' => [
-                    'street' => $branch->street,
-                    'building_number' => $branch->building_number,
-                    'additional_number' => $branch->additional_number,
-                    'district' => $branch->district,
-                    'city' => $branch->city,
-                    'postal_code' => $branch->postal_code,
-                    'country_code' => 'SA',
-                ],
-            ]
-        );
+        $response = $this->client->post('/api/organizations/branches', [
+            'name' => $branch->name,
+            'name_ar' => $branch->name_ar,
+            'industry' => $business->business_category,
+            'device_serial' => $branch->device_serial,
+            'street' => $branch->street,
+            'building_number' => $branch->building_number,
+            'additional_number' => $branch->additional_number,
+            'district' => $branch->district,
+            'city' => $branch->city,
+            'postal_code' => $branch->postal_code,
+        ]);
 
         $branch->update([
-            'masaar_egs_id' => $response['egs_id'],
+            'masaar_branch_id' => $response['data']['branch']['id'],
         ]);
 
         return $response;
+    }
+
+    /**
+     * Onboard the branch's own device: the CSIDs it signs with
+     */
+    public function onboardBranch(Branch $branch, string $otp): array
+    {
+        $path = "/api/organizations/branches/{$branch->masaar_branch_id}/onboarding";
+
+        $this->client->post("{$path}/ccsid", ['otp' => $otp]);
+        $checks = $this->client->post("{$path}/compliance-check");
+
+        if (! ($checks['data']['passed'] ?? false)) {
+            return $checks;
+        }
+
+        return $this->client->post("{$path}/pcsid");
     }
 
     /**
@@ -345,15 +367,38 @@ class InvoiceService
 
     /**
      * Submit invoice with branch EGS unit
+     *
+     * The invoice's fields at the top level, and the branch beside them.
+     * The organization is the token's (section 2.4).
      */
     private function submit(Invoice $invoice, Branch $branch): array
     {
         return $this->client->post('/api/invoices', [
-            'organization_id' => $branch->business->masaar_org_id,
-            'egs_unit_id' => $branch->masaar_egs_id,
-            'invoice_data' => $this->mapInvoiceData($invoice),
+            ...$this->mapInvoiceData($invoice),
+            'branch_id' => $branch->masaar_branch_id,
         ]);
     }
+}
+```
+
+`branch_id` is the `data.branch.id` that `POST /api/organizations/branches`
+answered with, and must be a branch of the token's organization. The branch
+decides the device that signs the invoice, so its counter (ICV) and hash chain
+(PIH) are that branch's; a branch not yet onboarded has its invoices signed by
+the head office's device. A simplified invoice from a branch's till is this
+request with `"branch_id": "<the branch's id>"` added:
+
+<!-- example: POST /api/invoices sa -->
+```json
+{
+  "invoice_number": "BR2-000451",
+  "type": "simplified",
+  "issue_date": "2026-10-15",
+  "payment_means_code": "10",
+  "lines": [
+    { "description": "Coffee beans 1 kg", "quantity": 2, "unit_code": "H87", "unit_price": "60.00", "tax_rate": 15 },
+    { "description": "Paper filters", "quantity": 1, "unit_code": "H87", "unit_price": "12.50", "tax_rate": 15 }
+  ]
 }
 ```
 
@@ -369,11 +414,15 @@ ZATCA treats different business types differently:
 |---------------|--------------|---------------|---------------|
 | **Retail (B2C)** | Simplified | Standard 15% | Report within 24 hours |
 | **Wholesale (B2B)** | Standard | Standard 15% | Clearance required |
-| **Healthcare** | Mixed | Zero-rated (VATEX-SA-HEA) | Exemption codes required |
-| **Education** | Mixed | Zero-rated (VATEX-SA-EDU) | Exemption codes required |
-| **Export** | Standard | Zero-rated (VATEX-SA-OOS-2) | Export documentation |
-| **Real Estate** | Standard | Exempt (VATEX-SA-33) | Property details required |
-| **Financial Services** | Standard | Exempt (VATEX-SA-34-1) | Service classification |
+| **Healthcare** | Mixed | Zero-rated (Z, VATEX-SA-HEA) for private healthcare to a citizen | Buyer named, by national ID (BR-KSA-25, BR-KSA-49) |
+| **Education** | Mixed | Zero-rated (Z, VATEX-SA-EDU) for private education to a citizen | Buyer named, by national ID (BR-KSA-25, BR-KSA-49) |
+| **Export** | Standard, `is_export` | Zero-rated (Z, VATEX-SA-32 goods, VATEX-SA-33 services) | No buyer VAT number; buyer identified by `buyer_id` (BR-KSA-46) |
+| **Real Estate** | Standard | Exempt (E, VATEX-SA-30) | Exempt real estate transactions only |
+| **Financial Services** | Standard | Exempt (E, VATEX-SA-29; life insurance VATEX-SA-29-7) | Exempt financial services only |
+
+The category is the code's: ZATCA refuses a code under another category's
+(BR-KSA-CL-04), and every Z, E or O line names its code and reason
+(`exempt_code`, `exempt_reason`).
 
 ### 4.2 Business Type Configuration Model
 
@@ -415,29 +464,37 @@ class Business extends Model
                 'invoice_type' => 'standard',
                 'tax_category' => 'Z',
                 'tax_rate' => 0,
-                'exemption_code' => 'VATEX-SA-HEA',
-                'exemption_reason' => 'Healthcare services',
+                'exempt_code' => 'VATEX-SA-HEA',
+                'exempt_reason' => 'Private healthcare to citizen',
             ],
             'education' => [
                 'invoice_type' => 'standard',
                 'tax_category' => 'Z',
                 'tax_rate' => 0,
-                'exemption_code' => 'VATEX-SA-EDU',
-                'exemption_reason' => 'Qualifying education services',
+                'exempt_code' => 'VATEX-SA-EDU',
+                'exempt_reason' => 'Private education to citizen',
             ],
             'export' => [
                 'invoice_type' => 'standard',
-                'tax_category' => 'O',
+                'is_export' => true,
+                'tax_category' => 'Z',
                 'tax_rate' => 0,
-                'exemption_code' => 'VATEX-SA-OOS-2',
-                'exemption_reason' => 'Export of goods',
+                'exempt_code' => 'VATEX-SA-32',
+                'exempt_reason' => 'Export of goods',
             ],
             'real_estate' => [
                 'invoice_type' => 'standard',
                 'tax_category' => 'E',
                 'tax_rate' => 0,
-                'exemption_code' => 'VATEX-SA-33',
-                'exemption_reason' => 'Real estate transaction',
+                'exempt_code' => 'VATEX-SA-30',
+                'exempt_reason' => 'Real estate transactions',
+            ],
+            'financial_services' => [
+                'invoice_type' => 'standard',
+                'tax_category' => 'E',
+                'tax_rate' => 0,
+                'exempt_code' => 'VATEX-SA-29',
+                'exempt_reason' => 'Financial services',
             ],
             default => [
                 'invoice_type' => 'simplified',
@@ -486,23 +543,19 @@ class MixedBusinessService
     private function getTreatmentByCategory(string $category): array
     {
         return match ($category) {
-            'medicine' => [
+            // One code covers qualifying medicines and medical equipment.
+            'medicine', 'medical_equipment' => [
                 'tax_category' => 'Z',
                 'tax_rate' => 0,
-                'exemption_code' => 'VATEX-SA-30',
-                'exemption_reason' => 'Qualifying medicines',
+                'exempt_code' => 'VATEX-SA-35',
+                'exempt_reason' => 'Medicines and medical equipment',
             ],
-            'medical_equipment' => [
-                'tax_category' => 'Z',
-                'tax_rate' => 0,
-                'exemption_code' => 'VATEX-SA-31',
-                'exemption_reason' => 'Qualifying medical equipment',
-            ],
+            // Zero-rated, not exempt.
             'gold_silver' => [
-                'tax_category' => 'E',
+                'tax_category' => 'Z',
                 'tax_rate' => 0,
-                'exemption_code' => 'VATEX-SA-36',
-                'exemption_reason' => 'Qualifying metals (gold, silver, platinum)',
+                'exempt_code' => 'VATEX-SA-36',
+                'exempt_reason' => 'Qualifying metals',
             ],
             default => [
                 'tax_category' => 'S',
@@ -523,10 +576,17 @@ class MixedBusinessService
 |----------|----------------|----------------|---------------|
 | **Domestic B2B** | Saudi Arabia | Saudi Arabia | 15% VAT, clearance |
 | **Domestic B2C** | Saudi Arabia | Saudi Arabia | 15% VAT, reporting |
-| **Export to GCC** | Saudi Arabia | GCC Country | 0% (VATEX-SA-OOS) |
-| **Export outside GCC** | Saudi Arabia | Non-GCC | 0% (VATEX-SA-OOS-2) |
+| **Export of goods** | Saudi Arabia | Outside SA | 0%, zero-rated (Z, VATEX-SA-32) |
+| **Export of services** | Saudi Arabia | Outside SA | 0%, zero-rated (Z, VATEX-SA-33) |
+| **International transport of goods** | Saudi Arabia | Outside SA | 0%, zero-rated (Z, VATEX-SA-34-1) |
 | **Reverse Charge** | Outside SA | Saudi Arabia | Buyer accounts for VAT |
-| **International Services** | Saudi Arabia | Outside SA | 0% (VATEX-SA-OOS-1) |
+
+An export is a standard invoice with `is_export` true (an export is not
+invoiced on a simplified invoice, BR-KSA-31). It carries no buyer VAT number
+(BR-KSA-46): the buyer abroad is identified by `buyer_id` and
+`buyer_id_scheme`, for example `OTH` with its foreign tax number, letters and
+digits only. The buyer's address is its own, with its `country_code`; a
+postal code outside the Kingdom is not held to five digits.
 
 ### 5.2 Cross-Border Invoice Configuration
 
@@ -552,28 +612,28 @@ class CrossBorderInvoiceService
                 'is_export' => false,
                 'tax_category' => 'S',
                 'tax_rate' => 15,
-                'exemption_code' => null,
+                'exempt_code' => null,
             ];
         }
 
-        // Export from Saudi Arabia
+        // Export from Saudi Arabia: zero-rated, not out of scope
         if ($sellerCountry === 'SA' && $buyerCountry !== 'SA') {
             if ($transactionType === 'goods') {
                 return [
                     'is_export' => true,
-                    'tax_category' => 'O',
+                    'tax_category' => 'Z',
                     'tax_rate' => 0,
-                    'exemption_code' => 'VATEX-SA-OOS-2',
-                    'exemption_reason' => 'Export of goods',
+                    'exempt_code' => 'VATEX-SA-32',
+                    'exempt_reason' => 'Export of goods',
                 ];
             }
 
             return [
                 'is_export' => true,
-                'tax_category' => 'O',
+                'tax_category' => 'Z',
                 'tax_rate' => 0,
-                'exemption_code' => 'VATEX-SA-OOS-1',
-                'exemption_reason' => 'Services to non-GCC customers',
+                'exempt_code' => 'VATEX-SA-33',
+                'exempt_reason' => 'Export of services',
             ];
         }
 
@@ -591,39 +651,64 @@ class CrossBorderInvoiceService
         return [
             'tax_category' => 'O',
             'tax_rate' => 0,
-            'exemption_code' => 'VATEX-SA-OOS',
-            'exemption_reason' => 'Out of scope transaction',
+            'exempt_code' => 'VATEX-SA-OOS',
+            'exempt_reason' => 'Out of scope transaction',
         ];
     }
 
     /**
-     * Create export invoice
+     * The request for an export invoice (POST /api/invoices)
      */
     public function createExportInvoice(Invoice $invoice): array
     {
         $buyer = $invoice->customer;
-        $treatment = $this->determineCrossBorderTreatment(
-            'SA',
-            $buyer->country_code ?? 'SA',
-            $this->getTransactionType($invoice)
-        );
 
         return [
-            'type' => 'standard', // Exports always standard
+            'invoice_number' => $invoice->invoice_number,
+            'type' => 'standard', // an export is a standard invoice (BR-KSA-31)
             'is_export' => true,
-            'tax_category' => $treatment['tax_category'],
-            'tax_rate' => $treatment['tax_rate'],
-            'exemption_code' => $treatment['exemption_code'],
-            'exemption_reason' => $treatment['exemption_reason'],
+            'issue_date' => $invoice->invoice_date->format('Y-m-d'),
+            'supply_date' => $invoice->shipping_date?->format('Y-m-d'),
 
-            // Export-specific fields
-            'export_documentation' => [
-                'customs_declaration' => $invoice->customs_declaration_number,
-                'shipping_date' => $invoice->shipping_date,
-                'destination_country' => $buyer->country_code,
-                'incoterms' => $invoice->incoterms ?? 'FOB',
+            // No buyer VAT number on an export (BR-KSA-46): another identifier
+            'buyer_name' => $buyer->name,
+            'buyer_id' => preg_replace('/[^A-Za-z0-9]/', '', $buyer->tax_number),
+            'buyer_id_scheme' => 'OTH',
+            'buyer_address' => [
+                'street' => $buyer->street,
+                'building_number' => $buyer->building_number,
+                'city' => $buyer->city,
+                'postal_code' => $buyer->postal_code,
+                'country_code' => $buyer->country_code,
             ],
+
+            // Each line zero-rated under its own code
+            'lines' => $invoice->items->map(fn ($item) => [
+                'description' => $item->description,
+                'quantity' => (float) $item->quantity,
+                'unit_price' => (float) $item->unit_price,
+                ...$this->lineTreatment($item, $buyer->country_code),
+            ])->all(),
+
+            // Masaar keeps no customs fields: the declaration number can go in the notes
+            'notes' => $invoice->customs_declaration_number
+                ? 'Customs declaration '.$invoice->customs_declaration_number
+                : null,
         ];
+    }
+
+    /**
+     * A line's category, rate and exemption on an export
+     */
+    private function lineTreatment($item, string $buyerCountry): array
+    {
+        if ($item->item_category === 'freight') {
+            return ['tax_category' => 'Z', 'tax_rate' => 0, 'exempt_code' => 'VATEX-SA-34-1', 'exempt_reason' => 'International transport of goods'];
+        }
+
+        $treatment = $this->determineCrossBorderTreatment('SA', $buyerCountry, $item->is_service ? 'services' : 'goods');
+
+        return array_intersect_key($treatment, array_flip(['tax_category', 'tax_rate', 'exempt_code', 'exempt_reason']));
     }
 
     /**
@@ -656,6 +741,50 @@ class CrossBorderInvoiceService
 }
 ```
 
+An export of goods with its freight, as `createExportInvoice()` sends it:
+
+<!-- example: POST /api/invoices sa -->
+```json
+{
+  "invoice_number": "EXP-000318",
+  "type": "standard",
+  "is_export": true,
+  "issue_date": "2026-10-15",
+  "supply_date": "2026-10-14",
+  "buyer_name": "Delta Imports Ltd",
+  "buyer_id": "EG482915736",
+  "buyer_id_scheme": "OTH",
+  "buyer_address": {
+    "street": "Corniche El Nil",
+    "building_number": "12",
+    "city": "Cairo",
+    "postal_code": "11511",
+    "country_code": "EG"
+  },
+  "lines": [
+    {
+      "description": "Steel pipes, 6 m",
+      "quantity": 100,
+      "unit_price": "45.00",
+      "tax_category": "Z",
+      "tax_rate": 0,
+      "exempt_code": "VATEX-SA-32",
+      "exempt_reason": "Export of goods"
+    },
+    {
+      "description": "Sea freight, Jeddah to Alexandria",
+      "quantity": 1,
+      "unit_price": "1200.00",
+      "tax_category": "Z",
+      "tax_rate": 0,
+      "exempt_code": "VATEX-SA-34-1",
+      "exempt_reason": "International transport of goods"
+    }
+  ],
+  "notes": "Customs declaration 40017893"
+}
+```
+
 ### 5.3 Multi-Currency Support
 
 **ZATCA Official Requirements (per E-Invoicing Guidelines):**
@@ -677,11 +806,9 @@ When submitting a foreign currency invoice:
 $invoiceData = [
     'currency' => 'USD',
     'exchange_rate' => 3.75,        // USD to SAR rate
-    'exchange_rate_date' => 'YYYY-MM-DD',
-    'subtotal' => 1000.00,          // In USD
-    'tax_amount' => 150.00,         // In USD
-    'total' => 1150.00,             // In USD
-    // ... other fields
+    'lines' => [['description' => 'Consulting', 'quantity' => 1, 'unit_price' => 1000.00, 'tax_rate' => 15]],
+    // ... other fields. The subtotal (1000.00), VAT (150.00) and total
+    // (1150.00), in USD, are computed by Masaar, not sent.
 ];
 
 // Masaar will:
@@ -721,24 +848,15 @@ class MultiCurrencyService
         if ($currency === 'SAR') {
             return [
                 'currency' => 'SAR',
-                'exchange_rate' => null,
-                'amounts_in_sar' => null,
             ];
         }
 
-        // Get exchange rate (from config or API)
-        $rate = $this->getExchangeRate($currency);
-
-        // Calculate SAR equivalents (ZATCA requires SAR for tax purposes)
+        // The currency and its rate to SAR are all that is sent: Masaar
+        // computes the VAT in SAR (BT-111) from them, and the tax currency
+        // is always SAR.
         return [
             'currency' => $currency,
-            'tax_currency' => 'SAR', // Tax always in SAR
-            'exchange_rate' => $rate,
-            'amounts_in_sar' => [
-                'subtotal' => round($invoice->subtotal * $rate, 2),
-                'tax_amount' => round($invoice->vat_amount * $rate, 2),
-                'total' => round($invoice->total * $rate, 2),
-            ],
+            'exchange_rate' => $this->getExchangeRate($currency),
         ];
     }
 
@@ -790,7 +908,7 @@ Schema::create('branches', function (Blueprint $table) {
     $table->string('name');
     $table->string('name_ar')->nullable();
     $table->string('device_serial')->unique();
-    $table->string('masaar_egs_id')->nullable();
+    $table->string('masaar_branch_id')->nullable();
 
     // Address fields
     $table->string('street');
@@ -900,7 +1018,7 @@ class Branch extends Model
         'name',
         'name_ar',
         'device_serial',
-        'masaar_egs_id',
+        'masaar_branch_id',
         'street',
         'building_number',
         'additional_number',
@@ -1375,45 +1493,46 @@ class ZatcaOnboardingService
     /**
      * Complete onboarding workflow
      */
-    public function onboard(Business $business, string $otp): array
+    public function onboard(Business $business, string $otp, string $serialNumber): array
     {
         // Step 1: Register if not already
         if (!$business->masaar_org_id) {
             $org = $this->orgService->register($business);
             $business->update([
-                'masaar_org_id' => $org['id'],
+                'masaar_org_id' => $org['data']['organization']['id'],
                 'zatca_onboarding_status' => 'pending',
             ]);
         }
 
-        // Step 2: Start onboarding with OTP
-        $csr = $this->client->post(
-            "/api/organizations/{$business->masaar_org_id}/onboarding",
-            ['otp' => $otp]
-        );
+        // The onboarding endpoints act for the organization of the token,
+        // which must be an administrator's: clientFor() as in section 2.4
+        $client = $this->clientFor($business);
+
+        // Step 2: Request the compliance CSID with the OTP
+        $csr = $client->post('/api/compliance/onboarding/ccsid', [
+            'otp' => $otp,
+            'common_name' => $business->name,
+            'serial_number' => $serialNumber, // 1-<solution>|2-<model>|3-<serial>
+        ]);
 
         $business->update(['zatca_onboarding_status' => 'csr_generated']);
 
         // Step 3: Run compliance checks
-        $compliance = $this->client->post(
-            "/api/organizations/{$business->masaar_org_id}/onboarding/compliance-check"
-        );
+        $compliance = $client->post('/api/compliance/onboarding/compliance-check')['data'];
 
-        if (!$compliance['all_passed']) {
+        if (!$compliance['passed']) {
             $business->update(['zatca_onboarding_status' => 'failed']);
             return [
                 'success' => false,
                 'step' => 'compliance',
-                'errors' => $compliance['failures'],
+                'errors' => $compliance['results'],
             ];
         }
 
         $business->update(['zatca_onboarding_status' => 'compliance_passed']);
 
         // Step 4: Get production CSID
-        $pcsid = $this->client->post(
-            "/api/organizations/{$business->masaar_org_id}/onboarding/complete"
-        );
+        $pcsid = $client->post('/api/compliance/onboarding/pcsid');
 
         $business->update(['zatca_onboarding_status' => 'completed']);
 

@@ -78,9 +78,9 @@ class InvoiceRules implements InvoiceRulesPort
             // IBR-127-AE: not on a credit note or a deemed supply.
             'due_date' => ['nullable', 'date', 'after_or_equal:issue_date',
                 Rule::requiredIf(fn (): bool => ! $credit() && ! $flag(PintAe::FLAG_DEEMED_SUPPLY))],
-            'currency' => ['required', 'string', 'regex:/^[A-Z]{3}$/'],
+            'currency' => ['required', 'string', 'regex:/^[A-Z]{3}$/', Rule::in(PintAe::CURRENCIES)],
             'exchange_rate' => ['nullable', 'numeric', 'gt:0', Rule::requiredIf(fn (): bool => $request->input('currency') !== 'AED')],
-            'payment_means_code' => ['nullable', 'string', 'regex:/^[0-9A-Z]{1,3}$/'],
+            'payment_means_code' => ['nullable', 'string', Rule::in(PintAe::PAYMENT_MEANS)],
             // IBT-020, the payment terms in words.
             'payment_terms' => ['nullable', 'string', 'max:1000'],
 
@@ -155,6 +155,8 @@ class InvoiceRules implements InvoiceRulesPort
             'type.in' => __('A UAE e-invoice has no simplified type: every one names its buyer.'),
             'document_type.in' => __('A UAE e-invoice is an invoice or a credit note. An increase is invoiced, not debited.'),
             'currency.regex' => __('The currency is a three-letter ISO 4217 code.'),
+            'currency.in' => __('The currency is an ISO 4217 code PINT AE accepts (IBR-CL-04): :codes.', ['codes' => implode(', ', PintAe::CURRENCIES)]),
+            'payment_means_code.in' => __('The payment means is a code of PINT AE\'s list of UNCL 4461 (D.16B) codes used in the UAE: :codes (IBR-CL-16). For example 10 cash, 30 credit transfer, 54 credit card, 55 debit card.', ['codes' => implode(', ', PintAe::PAYMENT_MEANS)]),
             'exchange_rate.required' => __('An invoice in another currency needs its exchange rate to AED.'),
             'buyer_vat_number.regex' => __('A TRN is 15 digits that start with 1 and end with 03.'),
             'principal_id.regex' => __('A TRN is 15 digits that start with 1 and end with 03.'),

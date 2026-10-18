@@ -6,6 +6,7 @@ namespace Tests\Feature\Compliance\UnitedArabEmirates;
 
 use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Document\PeppolPreparer;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use App\Domains\Invoice\Models\Invoice;
 use DOMDocument;
@@ -97,6 +98,53 @@ class PintConformanceTest extends TestCase
         $failures = $this->validate($xml, $artefacts, $jar);
 
         $this->assertSame([], $failures, "PINT AE refused the API invoice:\n".implode("\n", $failures)."\n\n".$xml);
+    }
+
+    /**
+     * Each payment means of PINT AE's list of codes used in the UAE
+     * (UNCL4461.gc), drafted through the API: the codes the API takes are
+     * codes the official rules pass (IBR-CL-16, IBR-192-AE for a transfer).
+     *
+     * @return iterable<string, array{string}>
+     */
+    public static function paymentMeans(): iterable
+    {
+        foreach (PintAe::PAYMENT_MEANS as $code) {
+            yield "code {$code}" => [$code];
+        }
+    }
+
+    #[DataProvider('paymentMeans')]
+    public function test_payment_means_pass_official_rules(string $code): void
+    {
+        [$artefacts, $jar] = $this->requireArtefacts();
+        config(['peppol.countries.AE.enabled' => true]);
+        Queue::fake();
+
+        $organization = $this->uaeOrganization();
+        $user = User::factory()->create();
+        $user->organizations()->attach($organization->id, ['role' => 'admin', 'status' => 'active']);
+        $api = $this->withToken(JWTAuth::claims(['org_id' => $organization->id, 'role' => 'admin'])->fromUser($user));
+
+        $id = $api->postJson('/api/compliance/ae/invoices', [
+            'issue_date' => '2026-10-10',
+            'due_date' => '2026-11-09',
+            'payment_means_code' => $code,
+            'buyer_name' => 'Noor Electronics LLC',
+            'buyer_vat_number' => '100765432100003',
+            'buyer_address' => ['street' => 'Khalifa Street', 'city' => 'Abu Dhabi'],
+            'buyer_endpoint' => '0235:1007654321',
+            'buyer_subdivision' => 'AUH',
+            'lines' => [['item_name' => 'Consulting', 'quantity' => 2, 'unit_code' => 'DAY', 'unit_price' => 500, 'tax_category' => 'S']],
+        ])->assertCreated()->json('data.invoice.id');
+        $documentId = $api->postJson("/api/compliance/ae/invoices/{$id}/send")->assertOk()->json('data.document_id');
+
+        $xml = PeppolDocument::query()->findOrFail($documentId)->xml;
+        $this->assertMatchesRegularExpression("#<cbc:PaymentMeansCode[^>]*>{$code}</cbc:PaymentMeansCode>#", $xml);
+
+        $failures = $this->validate($xml, $artefacts, $jar);
+
+        $this->assertSame([], $failures, "PINT AE refused payment means {$code}:\n".implode("\n", $failures)."\n\n".$xml);
     }
 
     /**

@@ -42,10 +42,20 @@ Content-Type: application/json
 ### 3. Onboard (CSID)
 
 ```http
-POST /api/compliance/onboarding/request-csid
+POST /api/compliance/onboarding/ccsid
 Authorization: Bearer <token>
-{ "otp": "123456" }
+{ "otp": "123456", "common_name": "<a name for this device>", "serial_number": "1-<solution>|2-<model>|3-<serial>" }
+
+POST /api/compliance/onboarding/compliance-check
+POST /api/compliance/onboarding/pcsid
+GET  /api/compliance/onboarding/status
 ```
+
+The compliance CSID (`ccsid`) is requested with the OTP and the device's
+`common_name` and `serial_number`; the compliance checks then run against it,
+and the production CSID (`pcsid`) is requested once they pass. A branch with
+its own device is onboarded the same way under
+`/api/organizations/branches/{branch}/onboarding/`.
 
 The OTP above is a placeholder. ZATCA's developer-portal sandbox carries no
 taxpayer identity and takes any value, which is why examples of this call are
@@ -113,6 +123,7 @@ A document charge is made at its own `tax_category` and `tax_rate` (default
 charge is taxed as its line is. On an invoice priced with VAT in it, every
 amount is given with VAT in it too.
 
+<!-- example: POST /api/invoices sa fragment -->
 ```json
 "lines": [
   { "description": "Sofa", "quantity": 1, "unit_price": "2499.99", "discount_amount": "250.00",
@@ -137,6 +148,7 @@ An advance is invoiced when it is received, as a prepayment invoice
 (`"document_type": "prepayment"`, type 386). The final invoice names the
 prepayment invoices it settles:
 
+<!-- example: POST /api/invoices sa fragment -->
 ```json
 "prepayments": [{ "invoice_number": "ADV-1" }]
 ```
@@ -153,7 +165,7 @@ numbers separated by commas.
 ### 5. Check Status
 
 ```http
-GET /api/compliance/sa/status/{submission_id}
+GET /api/compliance/sa/status/{invoice_id}
 ```
 
 ---
@@ -166,12 +178,3 @@ GET /api/compliance/sa/status/{submission_id}
 | `FATOORA_UNAVAILABLE` | ZATCA API unreachable — invoice queued for offline retry |
 | `CERT_EXPIRED` | CSID certificate expired — run `fatoora:check-certificate`, then onboard again for a new CSID |
 | `INVALID_VAT` | VAT number format invalid (must be 15 digits, start+end with 3) |
-
-## Deprecated Endpoints
-
-The following endpoints are kept for v1 backward compatibility and will be removed in v2.0:
-
-```
-POST /api/compliance/zatca/submit/{id}  →  Use /api/compliance/sa/submit/{id}
-GET  /api/compliance/zatca/status/{id}  →  Use /api/compliance/sa/status/{id}
-```

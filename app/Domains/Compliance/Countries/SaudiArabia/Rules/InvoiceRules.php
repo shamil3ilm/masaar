@@ -163,7 +163,8 @@ class InvoiceRules implements InvoiceRulesPort
             // before it starts (BR-KSA-35, BR-KSA-36).
             'supply_date' => ['nullable', 'date', 'required_with:supply_end_date'],
             'supply_end_date' => ['nullable', 'date', Rule::when($request->filled('supply_date'), ['after_or_equal:supply_date'])],
-            'currency' => ['nullable', 'string', 'size:3'],
+            // BR-KSA-CL-01: ISO 4217:2005, as ZATCA's SDK checks it.
+            'currency' => ['nullable', 'string', 'size:3', Rule::in(FatooraConfig::CURRENCIES)],
             // BR-KSA-EN16931-02 and BR-53: VAT is reported in SAR, so a foreign-currency
             // invoice has to say what rate it was converted at. InvoiceValidator
             // enforces this at compliance, so it has to be accepted here -
@@ -329,7 +330,8 @@ class InvoiceRules implements InvoiceRulesPort
     public function messages(): array
     {
         return [
-            'payment_means_code.in' => __('The payment means is a UNTDID 4461 code ZATCA accepts, such as 10 (cash), 30 (credit transfer), 42 (bank account), 48 (bank card) or 1 (not defined) (BR-KSA-16).'),
+            'payment_means_code.in' => __('The payment means is a UNTDID 4461 (D.16B) code ZATCA accepts: :codes (BR-KSA-16). For example 10 cash, 30 credit transfer, 42 bank account, 48 bank card, 1 not defined.', ['codes' => '1-68, 70, 74-78, 91-97, ZZZ']),
+            'currency.in' => __('The currency is an ISO 4217 code ZATCA accepts (BR-KSA-CL-01): :codes.', ['codes' => implode(', ', FatooraConfig::CURRENCIES)]),
             // Supply period
             'supply_date.required_with' => __('A supply end date needs a supply date (BR-KSA-35).'),
             'supply_end_date.after_or_equal' => __('The supply end date cannot be before the supply date (BR-KSA-36).'),

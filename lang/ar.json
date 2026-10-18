@@ -1287,7 +1287,6 @@
     "Payment terms": "شروط الدفع",
     "For example: 30 days net": "مثال: صافي 30 يوماً",
     "Instrument not defined": "وسيلة غير محددة",
-    "The payment means is a UNTDID 4461 code ZATCA accepts, such as 10 (cash), 30 (credit transfer), 42 (bank account), 48 (bank card) or 1 (not defined) (BR-KSA-16).": "وسيلة الدفع رمز من قائمة UNTDID 4461 تقبله الهيئة، مثل 10 (نقداً) أو 30 (تحويل دائن) أو 42 (حساب بنكي) أو 48 (بطاقة بنكية) أو 1 (غير محددة) (BR-KSA-16).",
     "Pricing saved. New invoices follow it unless they say otherwise.": "حُفظ التسعير. تتبعه الفواتير الجديدة ما لم تنص على خلافه.",
     "New invoices follow this unless they say otherwise. Issued invoices keep what they were issued with.": "تتبع الفواتير الجديدة هذا الإعداد ما لم تنص على خلافه، وتحتفظ الفواتير الصادرة بما صدرت به.",
     "The identifier is letters and digits only, with no spaces.": "يتكون المعرّف من حروف وأرقام فقط، دون مسافات.",
@@ -1430,5 +1429,13 @@
     "An export invoice names no buyer VAT number (BR-KSA-46). Identify a buyer abroad by another identifier (buyer_id), such as OTH.": "لا تتضمن فاتورة التصدير الرقم الضريبي للمشتري (BR-KSA-46). عرّف المشتري في الخارج بمعرّف آخر (buyer_id)، مثل OTH.",
     "Government buyer (B2G)": "مشترٍ حكومي (B2G)",
     "A government buyer needs the contract the sale falls under, in Contract.": "يتطلب المشتري الحكومي ذكر العقد الذي يندرج تحته البيع، في حقل العقد.",
-    "A government (B2G) invoice names the contract it falls under (BR-KSA-92).": "تذكر الفاتورة الحكومية (B2G) العقد الذي تندرج تحته (BR-KSA-92)."
+    "A government (B2G) invoice names the contract it falls under (BR-KSA-92).": "تذكر الفاتورة الحكومية (B2G) العقد الذي تندرج تحته (BR-KSA-92).",
+    "The payment means is a UNTDID 4461 (D.16B) code ZATCA accepts: :codes (BR-KSA-16). For example 10 cash, 30 credit transfer, 42 bank account, 48 bank card, 1 not defined.": "وسيلة الدفع رمز من قائمة UNTDID 4461 (D.16B) تقبله الهيئة: :codes (BR-KSA-16). مثل 10 نقداً، و30 تحويل دائن، و42 حساب بنكي، و48 بطاقة بنكية، و1 غير محددة.",
+    "The currency is an ISO 4217 code ZATCA accepts (BR-KSA-CL-01): :codes.": "العملة رمز من رموز ISO 4217 تقبله الهيئة (BR-KSA-CL-01): :codes.",
+    "The currency is an ISO 4217 code PINT AE accepts (IBR-CL-04): :codes.": "العملة رمز من رموز ISO 4217 تقبله مواصفة PINT AE (IBR-CL-04): :codes.",
+    "The payment means is a code of PINT AE's list of UNCL 4461 (D.16B) codes used in the UAE: :codes (IBR-CL-16). For example 10 cash, 30 credit transfer, 54 credit card, 55 debit card.": "وسيلة الدفع رمز من قائمة رموز UNCL 4461 (D.16B) المستخدمة في الإمارات ضمن مواصفة PINT AE: :codes (IBR-CL-16). مثل 10 نقداً، و30 تحويل دائن، و54 بطاقة ائتمان، و55 بطاقة خصم.",
+    "Credit card": "بطاقة ائتمان",
+    "Debit card": "بطاقة خصم مباشر",
+    "Cheque": "شيك",
+    "Online payment service": "خدمة دفع إلكتروني"
 }
