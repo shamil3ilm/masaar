@@ -11,6 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 /**
  * Every change a platform admin makes is on the record.
@@ -59,6 +60,41 @@ class AdminAuditTest extends TestCase
         }
 
         $this->assertSame([], $unaudited, 'These admin actions change something and are not audited.');
+    }
+
+    /**
+     * The admin API changes the same things the console does, so it is on
+     * the same record: every route behind platform.admin that is not a read.
+     */
+    public function test_the_admin_api_is_audited(): void
+    {
+        $unaudited = [];
+
+        foreach (Route::getRoutes() as $route) {
+            $middleware = $route->gatherMiddleware();
+
+            if (! in_array('platform.admin', $middleware, true) || $route->methods() === ['GET', 'HEAD']) {
+                continue;
+            }
+
+            if (! in_array('admin.audit', $middleware, true)) {
+                $unaudited[] = implode('|', $route->methods()).' /'.$route->uri();
+            }
+        }
+
+        $this->assertSame([], $unaudited, 'These admin routes change something and are not audited.');
+    }
+
+    public function test_an_api_change_names_its_admin(): void
+    {
+        $token = JWTAuth::fromUser($this->admin);
+
+        $this->withToken($token)->postJson('/api/admin/dashboard/offline-queue/process')->assertSuccessful();
+
+        $entry = AuditLog::where('action', 'admin.api/admin/dashboard/offline-queue/process')->sole();
+        $this->assertSame((string) $this->admin->id, $entry->user_id);
+        $this->assertSame('AdminApi', $entry->entity_type);
+        $this->assertSame('succeeded', $entry->metadata['outcome']);
     }
 
     /**

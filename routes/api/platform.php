@@ -20,7 +20,9 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware(['jwt.auth', 'platform.admin', 'admin.can:console.view', 'rate.api'])
+// admin.audit: every change made through this API is on the admin record, as
+// it is through the console.
+Route::middleware(['jwt.auth', 'platform.admin', 'admin.can:console.view', 'admin.audit', 'rate.api'])
     ->prefix('admin/dashboard')
     ->group(function () {
 
