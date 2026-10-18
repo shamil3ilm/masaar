@@ -60,7 +60,7 @@ class ScreenRenderTest extends TestCase
      * as one. Every other portal screen is rendered as a plain member, so a
      * screen that needs more than that still fails here.
      */
-    private const ORG_ADMIN_ONLY = ['portal.branding.edit', 'portal.company.edit', 'portal.numbering.edit', 'portal.zatca.show', 'portal.zatca.late', 'portal.team.index', 'portal.billing'];
+    private const ORG_ADMIN_ONLY = ['portal.branding.edit', 'portal.company.edit', 'portal.numbering.edit', 'portal.zatca.show', 'portal.zatca.certificates', 'portal.zatca.late', 'portal.team.index', 'portal.billing'];
 
     /**
      * GET routes that answer with a file rather than a page. ThemeTest covers

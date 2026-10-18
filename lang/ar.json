@@ -1448,5 +1448,13 @@
     "It was the certificate the device signs with, so the device cannot issue invoices until it is onboarded again.": "كانت هذه هي الشهادة التي يوقّع بها الجهاز، ولذلك لا يستطيع الجهاز إصدار الفواتير حتى يُعاد تسجيله.",
     "Onboard the device again through ZATCA onboarding": "أعد تسجيل الجهاز عبر خطوات الربط مع هيئة الزكاة والضريبة والجمارك",
     "One document signed with the current certificate has not been filed with ZATCA yet: :list. Renewing revokes that certificate, so file it first, or give a reason to renew anyway.|:count documents signed with the current certificate have not been filed with ZATCA yet: :list. Renewing revokes that certificate, so file them first, or give a reason to renew anyway.": "لا توجد مستندات موقّعة بالشهادة الحالية لم تُرسل بعد إلى هيئة الزكاة والضريبة والجمارك: :list.|مستند واحد موقّع بالشهادة الحالية لم يُرسل بعد إلى هيئة الزكاة والضريبة والجمارك: :list. التجديد يلغي هذه الشهادة، فأرسله أولًا، أو اذكر سببًا للتجديد على الرغم من ذلك.|مستندان موقّعان بالشهادة الحالية لم يُرسلا بعد إلى هيئة الزكاة والضريبة والجمارك: :list. التجديد يلغي هذه الشهادة، فأرسلهما أولًا، أو اذكر سببًا للتجديد على الرغم من ذلك.|:count مستندات موقّعة بالشهادة الحالية لم تُرسل بعد إلى هيئة الزكاة والضريبة والجمارك: :list. التجديد يلغي هذه الشهادة، فأرسلها أولًا، أو اذكر سببًا للتجديد على الرغم من ذلك.|:count مستندًا موقّعًا بالشهادة الحالية لم تُرسل بعد إلى هيئة الزكاة والضريبة والجمارك: :list. التجديد يلغي هذه الشهادة، فأرسلها أولًا، أو اذكر سببًا للتجديد على الرغم من ذلك.|:count مستند موقّع بالشهادة الحالية لم تُرسل بعد إلى هيئة الزكاة والضريبة والجمارك: :list. التجديد يلغي هذه الشهادة، فأرسلها أولًا، أو اذكر سببًا للتجديد على الرغم من ذلك.",
-    ":list and :more more": ":list و:more غيرها"
+    ":list and :more more": ":list و:more غيرها",
+    "Version": "الإصدار",
+    "Valid from": "صالحة من",
+    "Valid until": "صالحة حتى",
+    "Superseded": "مستبدلة",
+    "Issuer and serial": "جهة الإصدار والرقم التسلسلي",
+    "Waiting to file": "بانتظار الإرسال",
+    "Each device signs with its active certificate. A renewal supersedes the old one, which still files what it signed; a revoked one files nothing.": "يوقّع كل جهاز بشهادته السارية. التجديد يستبدل الشهادة القديمة، وتظل تُرسل بها المستندات التي وقّعتها، أما الشهادة الملغاة فلا يُرسل بها شيء.",
+    "No device holds a ZATCA production certificate yet. Connect to ZATCA to obtain one.": "لا يملك أي جهاز بعدُ شهادة إنتاج من هيئة الزكاة والضريبة والجمارك. اربط المنشأة بالهيئة للحصول على شهادة."
 }

@@ -8,6 +8,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\LateReporting;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\ReportingAttempts;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\OrganizationOnboarding;
+use App\Domains\Compliance\Countries\SaudiArabia\Reports\CertificateVersions;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\FilingClearance;
@@ -125,6 +126,19 @@ class PortalZatcaController extends Controller
         } catch (DomainException|CertificateException $e) {
             return back()->withInput()->with('error', $e->getMessage());
         }
+    }
+
+    /**
+     * Every certificate each of the organization's devices has held: its
+     * status, validity, issuer and serial, and how many documents still wait
+     * to be filed under it - the ones a renewal or a revocation of it puts at
+     * risk. Its administrators only.
+     */
+    public function certificates(Request $request, CertificateVersions $versions): View
+    {
+        return view('countries.saudi-arabia.certificates', [
+            'devices' => $versions->forOrganization($this->organization($request)),
+        ]);
     }
 
     /**
