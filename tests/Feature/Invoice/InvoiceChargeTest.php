@@ -170,8 +170,9 @@ class InvoiceChargeTest extends TestCase
         $this->portal()->get(route('portal.invoices.adjust', [$invoice->id, 'credit_note']));
         $fields = session()->getOldInput();
 
-        $this->assertSame([['reason' => 'Packing', 'reason_code' => 'PC', 'amount' => '3.00']], $fields['lines'][0]['charges']);
-        $this->assertSame(['reason' => 'Service charge', 'reason_code' => 'ADR', 'percent' => '10', 'base_amount' => '98.00'], array_intersect_key($fields['charges'][0], array_flip(['reason', 'reason_code', 'percent', 'base_amount'])));
+        // The code's Arabic beside the reason (FatooraConfig::CHARGE_REASONS_AR).
+        $this->assertSame([['reason' => 'Packing / رسوم التغليف', 'reason_code' => 'PC', 'amount' => '3.00']], $fields['lines'][0]['charges']);
+        $this->assertSame(['reason' => 'Service charge / رسوم الخدمات', 'reason_code' => 'ADR', 'percent' => '10', 'base_amount' => '98.00'], array_intersect_key($fields['charges'][0], array_flip(['reason', 'reason_code', 'percent', 'base_amount'])));
 
         $this->portal()->post('/portal/invoices', [...$fields, 'issue_date' => now()->toDateString(), 'adjustment_reason' => AdjustmentReason::values()[3]])
             ->assertSessionHasNoErrors();

@@ -16,7 +16,7 @@
         {{ __('Saved as a draft. It has no counter, no hash and no QR until it is issued, and a draft can be changed.') }}
     </p>
     <p class="mt-2 text-sm text-muted">
-        {{ __('The invoice must be in Arabic: the description of each line, any notes, and on a standard invoice the name of the buyer. English may go beside it. A saved customer or product fills in its Arabic name.') }}
+        {{ __('The invoice must be in Arabic: the description of each line, any notes, payment terms and charge reasons, the reason for a credit or debit note, and on a standard invoice the name of the buyer. English may go beside it. A saved customer or product fills in its Arabic.') }}
     </p>
 </div>
 

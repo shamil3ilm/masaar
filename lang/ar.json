@@ -1446,7 +1446,7 @@
     "There is no saved product with this code.": "لا يوجد منتج محفوظ بهذا الرمز.",
     "Draft saved with Arabic text missing. It is accepted only while your grace period lasts: add the Arabic before then.": "حُفظت المسودة دون النص العربي المطلوب. وهي مقبولة خلال المهلة الممنوحة لكم فقط، فأضيفوا النص العربي قبل انتهائها.",
     "Arabic text missing": "النص العربي ناقص",
-    "The invoice must be in Arabic: the description of each line, any notes, and on a standard invoice the name of the buyer. English may go beside it. A saved customer or product fills in its Arabic name.": "يجب أن تكون الفاتورة باللغة العربية: وصف كل بند، وأي ملاحظات، واسم المشتري في الفاتورة الضريبية. ويجوز أن تُكتب الإنجليزية بجانبها. ويُملأ الاسم العربي من العميل أو المنتج المحفوظ.",
+    "The invoice must be in Arabic: the description of each line, any notes, payment terms and charge reasons, the reason for a credit or debit note, and on a standard invoice the name of the buyer. English may go beside it. A saved customer or product fills in its Arabic.": "يجب أن تكون الفاتورة باللغة العربية: وصف كل بند، وأي ملاحظات وشروط دفع وأسباب رسوم، وسبب إصدار الإشعار الدائن أو المدين، واسم المشتري في الفاتورة الضريبية. ويجوز أن تُكتب الإنجليزية بجانبها. ويُملأ النص العربي من العميل أو المنتج المحفوظ.",
     "Required on a standard invoice.": "مطلوب في الفاتورة الضريبية.",
     "Name in Arabic, as printed on the invoice": "الاسم بالعربية كما يُطبع على الفاتورة",
     "Printed on every invoice and in its QR code. Required: the invoice must be in Arabic.": "يُطبع على كل فاتورة وفي رمز الاستجابة السريعة الخاص بها. وهو مطلوب لأن الفاتورة يجب أن تكون باللغة العربية.",
@@ -1454,5 +1454,9 @@
     "Both languages are printed on every invoice, PDF and receipt.": "تُطبع اللغتان على كل فاتورة وملف PDF وإيصال.",
     "Platform default (Arabic first)": "الإعداد الافتراضي للمنصة (العربية أولاً)",
     "Arabic first, right to left": "العربية أولاً، من اليمين إلى اليسار",
-    "English first, left to right": "الإنجليزية أولاً، من اليسار إلى اليمين"
+    "English first, left to right": "الإنجليزية أولاً، من اليسار إلى اليمين",
+    "Arabic reason required (ZATCA: the invoice must be in Arabic)": "سبب الإصدار بالعربية مطلوب (هيئة الزكاة والضريبة والجمارك: يجب أن تكون الفاتورة باللغة العربية)",
+    "Arabic payment terms required (ZATCA: the invoice must be in Arabic)": "شروط الدفع بالعربية مطلوبة (هيئة الزكاة والضريبة والجمارك: يجب أن تكون الفاتورة باللغة العربية)",
+    "Arabic charge reason required (ZATCA: the invoice must be in Arabic)": "سبب الرسوم بالعربية مطلوب (هيئة الزكاة والضريبة والجمارك: يجب أن تكون الفاتورة باللغة العربية)",
+    "Arabic text required (ZATCA: the invoice must be in Arabic)": "النص بالعربية مطلوب (هيئة الزكاة والضريبة والجمارك: يجب أن تكون الفاتورة باللغة العربية)"
 }

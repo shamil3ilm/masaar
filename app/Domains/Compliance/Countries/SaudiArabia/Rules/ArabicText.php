@@ -27,10 +27,20 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Rules;
  * checked here, on the draft, and nothing in the signed XML changes.
  *
  * The owner's decision, from those pages: the seller's Arabic name (sign-up
- * and the company page, SellerRules), each line's description, the notes
- * when there are any, and the buyer's Arabic name on a standard invoice and
- * the notes against one. Arabic means Arabic letters: a Latin name typed
- * into the Arabic field is not a translation.
+ * and the company page, SellerRules), each line's description, the buyer's
+ * Arabic name on a standard invoice and the notes against one, and every
+ * free text the invoice prints when it is given - the notes, the reason for
+ * a credit or debit note (KSA-10), the payment terms (KSA-22) and the reason
+ * for each charge, the document's and a line's. Arabic means Arabic letters:
+ * a Latin name typed into the Arabic field is not a translation.
+ *
+ * What is not free text is not checked here: references and identifiers
+ * (order, contract, buyer reference, VAT and CR numbers), dates, amounts and
+ * addresses, which the Guideline for Tax Invoicing and Records lets be
+ * written in Latin characters as names of places and numbers; and coded
+ * values, which print their Arabic beside them - an exemption code ZATCA's
+ * own Arabic (XML Implementation Standard p32-33, FatooraConfig::
+ * EXEMPTION_REASONS_AR), a unit code its Arabic unit (UnitCode::printed).
  */
 final class ArabicText
 {
@@ -66,7 +76,48 @@ final class ArabicText
             $missing['buyer_name_ar'] = self::message(__('Arabic buyer name required (ZATCA: the invoice must be in Arabic)', [], 'en'));
         }
 
+        if (filled($draft['adjustment_reason'] ?? null) && ! self::isArabic($draft['adjustment_reason'])) {
+            $missing['adjustment_reason'] = self::message(__('Arabic reason required (ZATCA: the invoice must be in Arabic)', [], 'en'));
+        }
+
+        if (filled($draft['payment_terms'] ?? null) && ! self::isArabic($draft['payment_terms'])) {
+            $missing['payment_terms'] = self::message(__('Arabic payment terms required (ZATCA: the invoice must be in Arabic)', [], 'en'));
+        }
+
+        foreach (self::chargeReasons($draft) as $field => $reason) {
+            if (filled($reason) && ! self::isArabic($reason)) {
+                $missing[$field] = self::message(__('Arabic charge reason required (ZATCA: the invoice must be in Arabic)', [], 'en'));
+            }
+        }
+
         return $missing;
+    }
+
+    /**
+     * Every charge's reason, the document's and each line's, by field.
+     *
+     * @param  array<string, mixed>  $draft
+     * @return array<string, mixed>
+     */
+    private static function chargeReasons(array $draft): array
+    {
+        $reasons = [];
+
+        foreach (array_values((array) ($draft['charges'] ?? [])) as $index => $charge) {
+            if (is_array($charge)) {
+                $reasons["charges.{$index}.reason"] = $charge['reason'] ?? null;
+            }
+        }
+
+        foreach (array_values((array) ($draft['lines'] ?? [])) as $line => $row) {
+            foreach (array_values(is_array($row) ? (array) ($row['charges'] ?? []) : []) as $index => $charge) {
+                if (is_array($charge)) {
+                    $reasons["lines.{$line}.charges.{$index}.reason"] = $charge['reason'] ?? null;
+                }
+            }
+        }
+
+        return $reasons;
     }
 
     /**

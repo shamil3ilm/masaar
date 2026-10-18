@@ -129,7 +129,7 @@ class ScenarioConformanceTest extends TestCase
             'contract_reference' => 'MOF-2026-118',
             'document_type' => 'credit_note',
             'billing_ref' => 'INV-B2G-1',
-            'adjustment_reason' => 'Returned goods',
+            'adjustment_reason' => 'إرجاع البضاعة / Returned goods',
         ]));
 
         $this->assertStringContainsString('<cbc:InvoiceTypeCode name="010000001">381</cbc:InvoiceTypeCode>', $xml);
@@ -228,7 +228,7 @@ class ScenarioConformanceTest extends TestCase
             ...$references,
             'document_type' => 'credit_note',
             'billing_ref' => 'INV-ORIGINAL-1',
-            'adjustment_reason' => 'Correction of quantity',
+            'adjustment_reason' => 'تصحيح الكمية / Correction of quantity',
         ])];
     }
 
@@ -255,14 +255,14 @@ class ScenarioConformanceTest extends TestCase
      */
     public static function payable(): iterable
     {
-        $terms = ['payment_terms' => '30 days net', 'due_date' => now()->addDays(30)->toDateString(), 'payment_means_code' => '30'];
+        $terms = ['payment_terms' => 'صافي ٣٠ يوماً / 30 days net', 'due_date' => now()->addDays(30)->toDateString(), 'payment_means_code' => '30'];
 
         yield 'invoice' => [self::standard($terms)];
         yield 'credit note' => [self::standard([
             ...$terms,
             'document_type' => 'credit_note',
             'billing_ref' => 'INV-ORIGINAL-1',
-            'adjustment_reason' => 'Correction of quantity',
+            'adjustment_reason' => 'تصحيح الكمية / Correction of quantity',
         ])];
     }
 
@@ -274,7 +274,7 @@ class ScenarioConformanceTest extends TestCase
     {
         $xml = $this->signedFrom($payload);
 
-        $this->assertMatchesRegularExpression('#<cbc:PaymentNote[^>]*>30 days net</cbc:PaymentNote>#', $xml);
+        $this->assertMatchesRegularExpression('#<cbc:PaymentNote[^>]*>صافي ٣٠ يوماً / 30 days net</cbc:PaymentNote>#', $xml);
         $this->assertStringNotContainsString('DueDate', $xml);
         $this->assertAccepted($xml);
     }

@@ -77,11 +77,11 @@ class DueDateTest extends TestCase
 
     public function test_payment_terms_reach_the_document(): void
     {
-        $this->submit(['payment_terms' => '30 days net'])->assertSuccessful();
+        $this->submit(['payment_terms' => 'صافي ٣٠ يوماً / 30 days net'])->assertSuccessful();
 
         $xml = $this->xml($this->invoice());
 
-        $this->assertMatchesRegularExpression('#<cac:PayeeFinancialAccount[^>]*>\s*<cbc:PaymentNote[^>]*>30 days net</cbc:PaymentNote>#', $xml);
+        $this->assertMatchesRegularExpression('#<cac:PayeeFinancialAccount[^>]*>\s*<cbc:PaymentNote[^>]*>صافي ٣٠ يوماً / 30 days net</cbc:PaymentNote>#', $xml);
         $this->assertStringNotContainsString('InstructionNote', $xml);
     }
 

@@ -94,6 +94,52 @@ class ArabicRequiredTest extends TestCase
         $this->api($this->simplified(['notes' => 'التسليم عند البوابة ٣ / Deliver to gate 3']))->assertCreated();
     }
 
+    /**
+     * Every free text the invoice prints is Arabic too (p63): the payment
+     * terms, a charge's reason, a credit note's reason.
+     */
+    public function test_printed_free_text_must_be_arabic(): void
+    {
+        $this->api($this->simplified([
+            'payment_terms' => 'Net 30',
+            'charges' => [['reason' => 'Handling', 'reason_code' => 'HD', 'amount' => '10.00']],
+        ]))->assertStatus(422)->assertJsonValidationErrors(['payment_terms', 'charges.0.reason'], 'error.details');
+
+        $this->api($this->standard([
+            'document_type' => 'credit_note', 'billing_ref' => 'INV-1', 'adjustment_reason' => 'Goods came back damaged',
+        ]))->assertStatus(422)->assertJsonValidationErrors(['adjustment_reason'], 'error.details');
+
+        $this->api($this->simplified([
+            'payment_terms' => 'خلال ٣٠ يوماً / Net 30',
+            'charges' => [['reason' => 'مناولة / Handling', 'reason_code' => 'HD', 'amount' => '10.00']],
+        ]))->assertCreated();
+    }
+
+    /**
+     * Coded texts carry their Arabic: a credit note reason ZATCA lists takes
+     * the data dictionary's Arabic, a charge its code's, and a saved
+     * customer's terms are taken with it.
+     */
+    public function test_coded_texts_carry_their_arabic(): void
+    {
+        $customer = Customer::withoutTenantScope(fn () => Customer::query()->create([
+            'org_id' => $this->acme->id, 'name' => 'Beta Industries', 'name_ar' => 'شركة بيتا للصناعات', 'country_code' => 'SA',
+            'payment_terms' => 'الدفع خلال ٣٠ يوماً',
+        ]));
+
+        $id = $this->api($this->standard([
+            'document_type' => 'credit_note', 'billing_ref' => 'INV-1', 'customer_id' => $customer->id,
+            'adjustment_reason' => 'In case of goods or services refund.',
+            'charges' => [['reason' => 'Delivery', 'reason_code' => 'DL', 'amount' => '25.00']],
+        ]))->assertCreated()
+            ->assertJsonPath('data.invoice.adjustment_reason', 'In case of goods or services refund. / عند ترجيع السلع أو الخدمات')
+            ->assertJsonPath('data.invoice.payment_terms', 'الدفع خلال ٣٠ يوماً')
+            ->json('data.invoice.id');
+
+        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->with('charges')->findOrFail($id));
+        $this->assertSame('Delivery / رسوم التوصيل', $invoice->charges[0]->reason);
+    }
+
     public function test_credit_note_needs_arabic_buyer(): void
     {
         $this->api($this->standard([

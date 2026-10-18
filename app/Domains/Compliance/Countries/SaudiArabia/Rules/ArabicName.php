@@ -19,13 +19,19 @@ final class ArabicName implements ValidationRule
 
     /**
      * @param  string  $message  in English, as __() returns it; given in both languages
+     * @param  bool  $required  refused when empty; otherwise checked only when given
      */
     public function __construct(
         private readonly string $message,
+        private readonly bool $required = true,
     ) {}
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
+        if (! $this->required && blank($value)) {
+            return;
+        }
+
         if (! ArabicText::isArabic($value)) {
             $fail(ArabicText::message($this->message));
         }

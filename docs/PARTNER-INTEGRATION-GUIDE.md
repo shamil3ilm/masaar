@@ -1448,7 +1448,7 @@ what to send instead:
 
 | Refused | Rule | Send instead |
 |---|---|---|
-| A Saudi invoice without Arabic: a line without `description_ar`, a standard invoice or its note without `buyer_name_ar`, `notes` without Arabic | ZATCA E-Invoicing Detailed Guidelines p60, p63 | The Arabic, in Arabic letters; a translation may follow it. Or name a saved product (`product_id`, `product_code`) or customer (`customer_id`) whose Arabic name is filled in |
+| A Saudi invoice without Arabic: a line without `description_ar`, a standard invoice or its note without `buyer_name_ar`; `notes`, `adjustment_reason`, `payment_terms` or a charge's `reason` without Arabic | ZATCA E-Invoicing Detailed Guidelines p60, p63 | The Arabic, in Arabic letters; a translation may follow it. Or name a saved product (`product_id`, `product_code`) or customer (`customer_id`) whose Arabic name is filled in |
 | A Saudi payment means outside ZATCA's list, such as `99` | BR-KSA-16 | A listed code; the error names them all |
 | A Saudi currency outside ZATCA's ISO 4217:2005 list, such as `VES` | BR-KSA-CL-01 | A listed code; the error names them all |
 | A buyer VAT number on a Saudi export | BR-KSA-46 | `buyer_id` with `buyer_id_scheme`, such as `OTH` |

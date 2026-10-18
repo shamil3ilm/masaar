@@ -64,7 +64,7 @@ class DocumentReferenceTest extends TestCase
      */
     public function test_the_document_states_them_in_order(): void
     {
-        $this->api([...self::REFERENCES, 'billing_ref' => 'INV-1', 'document_type' => 'credit_note', 'adjustment_reason' => 'Correction of quantity'])->assertCreated();
+        $this->api([...self::REFERENCES, 'billing_ref' => 'INV-1', 'document_type' => 'credit_note', 'adjustment_reason' => 'تصحيح الكمية / Correction of quantity'])->assertCreated();
 
         $xml = app(DocumentBuilder::class)->generateComplianceData($this->invoice(), $this->acme)['xml'];
         $order = array_map(fn (string $element): int|false => strpos($xml, $element), [

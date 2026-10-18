@@ -41,7 +41,7 @@ class CustomerTermsTest extends TestCase
         $this->portal()->post('/portal/customers', $this->fields())->assertSessionHasNoErrors();
 
         $customer = $this->customer();
-        $this->assertSame(['1010202020', 'CRN', '30 days net'], [$customer->buyer_id, $customer->buyer_id_scheme, $customer->payment_terms]);
+        $this->assertSame(['1010202020', 'CRN', 'صافي ٣٠ يوماً / 30 days net'], [$customer->buyer_id, $customer->buyer_id_scheme, $customer->payment_terms]);
     }
 
     public function test_the_form_asks_for_them(): void
@@ -70,13 +70,13 @@ class CustomerTermsTest extends TestCase
         $this->portal()->post('/portal/customers', $this->fields());
 
         $this->assertSame(
-            ['buyer_id_scheme' => 'CRN', 'buyer_id' => '1010202020', 'payment_terms' => '30 days net'],
+            ['buyer_id_scheme' => 'CRN', 'buyer_id' => '1010202020', 'payment_terms' => 'صافي ٣٠ يوماً / 30 days net'],
             array_intersect_key($this->customer()->buyerFields(), array_flip(['buyer_id_scheme', 'buyer_id', 'payment_terms'])),
         );
 
         $this->asRequest(fn () => $this->portal()->get('/portal/invoices/create')
             ->assertOk()
-            ->assertSee('&quot;payment_terms&quot;:&quot;30 days net&quot;', false)
+            ->assertSee(substr(e(json_encode(['payment_terms' => 'صافي ٣٠ يوماً / 30 days net'])), 1, -1), false)
             ->assertSee('&quot;buyer_id&quot;:&quot;1010202020&quot;', false));
     }
 
@@ -86,7 +86,7 @@ class CustomerTermsTest extends TestCase
      */
     public function test_an_invoice_remembers_them(): void
     {
-        foreach (['30 days net', '45 days net'] as $terms) {
+        foreach (['صافي ٣٠ يوماً / 30 days net', 'صافي ٤٥ يوماً / 45 days net'] as $terms) {
             $this->portal()->post('/portal/invoices', [
                 'type' => 'standard',
                 'document_type' => 'invoice',
@@ -103,7 +103,7 @@ class CustomerTermsTest extends TestCase
         }
 
         $customer = $this->customer();
-        $this->assertSame(['1010202020', 'CRN', '45 days net'], [$customer->buyer_id, $customer->buyer_id_scheme, $customer->payment_terms]);
+        $this->assertSame(['1010202020', 'CRN', 'صافي ٤٥ يوماً / 45 days net'], [$customer->buyer_id, $customer->buyer_id_scheme, $customer->payment_terms]);
     }
 
     /**
@@ -117,7 +117,7 @@ class CustomerTermsTest extends TestCase
             'name_ar' => 'التوريدات الصغيرة',
             'buyer_id' => '1010202020',
             'buyer_id_scheme' => 'CRN',
-            'payment_terms' => '30 days net',
+            'payment_terms' => 'صافي ٣٠ يوماً / 30 days net',
             'street' => 'Olaya Street',
             'building_number' => '4321',
             'district' => 'Al Murooj',

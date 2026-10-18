@@ -10,6 +10,7 @@ use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Invoice\Enums\TaxCategory;
 use App\Domains\Invoice\Services\Catalogue;
 use App\Domains\Invoice\Services\PrepaymentSettlement;
+use App\Domains\Invoice\Support\AdjustmentReason;
 use App\Domains\Invoice\Support\ChargeRules;
 use App\Domains\Invoice\Support\UnitCode;
 use App\Domains\Organization\Models\Organization;
@@ -98,12 +99,36 @@ class InvoiceRules implements InvoiceRulesPort
                 $category = $line['tax_category']
                     ?? FatooraConfig::taxCategoryFor($exemptionCode, (float) ($line['tax_rate'] ?? self::STANDARD_RATE));
 
-                return $this->productArabic(array_merge([
+                $line = $this->productArabic(array_merge([
                     'unit_code' => UnitCode::DEFAULT,
                     'tax_category' => $category,
                     'tax_rate' => $category === FatooraConfig::TAX_CATEGORY_STANDARD ? (int) self::STANDARD_RATE : 0,
                 ], $line));
+
+                if (is_array($line['charges'] ?? null)) {
+                    $line['charges'] = array_map(fn ($charge) => is_array($charge) ? self::chargeArabic($charge) : $charge, $line['charges']);
+                }
+
+                return $line;
             })->toArray();
+        }
+
+        // A reason ZATCA lists (KSA-10), sent in English, carries the Arabic
+        // the data dictionary gives it.
+        $official = AdjustmentReason::bilingual($request->input('adjustment_reason'));
+
+        if ($official !== null) {
+            $defaults['adjustment_reason'] = $official;
+        }
+
+        // A saved customer's payment terms, when the invoice names the
+        // customer and gives none.
+        if (blank($request->input('payment_terms')) && is_string($request->input('customer_id')) && $this->organizationId() !== null) {
+            $terms = $this->catalogue->customerPaymentTerms($this->organizationId(), $request->input('customer_id'));
+
+            if ($terms !== null) {
+                $defaults['payment_terms'] = $terms;
+            }
         }
 
         // A saved customer's Arabic name, when the invoice names the
@@ -127,15 +152,35 @@ class InvoiceRules implements InvoiceRulesPort
 
                 $category = $charge['tax_category'] ?? FatooraConfig::TAX_CATEGORY_STANDARD;
 
-                return [
+                return self::chargeArabic([
                     'tax_category' => $category,
                     'tax_rate' => $category === FatooraConfig::TAX_CATEGORY_STANDARD ? (int) self::STANDARD_RATE : 0,
                     ...$charge,
-                ];
+                ]);
             }, $request->input('charges'));
         }
 
         return $defaults;
+    }
+
+    /**
+     * A charge whose reason has no Arabic takes the Arabic for its reason
+     * code beside it, where the code has one (FatooraConfig::
+     * CHARGE_REASONS_AR); otherwise it is left for ArabicText to refuse.
+     *
+     * @param  array<string, mixed>  $charge
+     * @return array<string, mixed>
+     */
+    private static function chargeArabic(array $charge): array
+    {
+        $reason = $charge['reason'] ?? null;
+        $arabic = FatooraConfig::CHARGE_REASONS_AR[strtoupper((string) ($charge['reason_code'] ?? 'ABK'))] ?? null;
+
+        if (! is_string($reason) || trim($reason) === '' || ArabicText::isArabic($reason) || $arabic === null) {
+            return $charge;
+        }
+
+        return [...$charge, 'reason' => mb_substr(trim($reason).' / '.$arabic, 0, 255)];
     }
 
     /**

@@ -22,6 +22,12 @@ class LanguageRules implements LanguageRulesPort
         return true;
     }
 
+    /** Arabic letters when given: free text the invoice prints. */
+    public function arabicTextRules(): array
+    {
+        return ['nullable', 'string', new ArabicName(__('Arabic text required (ZATCA: the invoice must be in Arabic)', [], 'en'), required: false)];
+    }
+
     /** Required, in Arabic letters: a line or an invoice takes it as its own. */
     public function arabicNameRules(string $of): array
     {
@@ -48,11 +54,19 @@ class LanguageRules implements LanguageRulesPort
 
     public function missingText(Invoice $invoice): array
     {
+        $invoice->loadMissing(['lines.charges', 'charges']);
+
         return ArabicText::missing([
             'type' => $invoice->type,
             'notes' => $invoice->notes,
             'buyer_name_ar' => $invoice->buyer_name_ar,
-            'lines' => $invoice->lines->map(fn ($line): array => ['description_ar' => $line->description_ar])->all(),
+            'adjustment_reason' => $invoice->adjustment_reason,
+            'payment_terms' => $invoice->payment_terms,
+            'charges' => $invoice->charges->map(fn ($charge): array => ['reason' => $charge->reason])->all(),
+            'lines' => $invoice->lines->map(fn ($line): array => [
+                'description_ar' => $line->description_ar,
+                'charges' => $line->charges->map(fn ($charge): array => ['reason' => $charge->reason])->all(),
+            ])->all(),
         ]);
     }
 }

@@ -27,6 +27,11 @@ class LanguageRules implements LanguageRulesPort
         return ['nullable', 'string', 'max:255'];
     }
 
+    public function arabicTextRules(): array
+    {
+        return ['nullable', 'string'];
+    }
+
     public function missingText(Invoice $invoice): array
     {
         return [];

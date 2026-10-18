@@ -120,6 +120,14 @@ class Catalogue
         return filled($product?->name_ar) ? (string) $product->name_ar : null;
     }
 
+    /** A saved customer's usual payment terms; null when it has none. */
+    public function customerPaymentTerms(string $organizationId, string $customerId): ?string
+    {
+        $customer = Str::isUuid($customerId) ? $this->customer($organizationId, $customerId) : null;
+
+        return filled($customer?->payment_terms) ? (string) $customer->payment_terms : null;
+    }
+
     /** The Arabic name of a saved customer; null when there is none. */
     public function customerArabicName(string $organizationId, string $customerId): ?string
     {

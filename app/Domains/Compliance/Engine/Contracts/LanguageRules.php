@@ -44,6 +44,15 @@ interface LanguageRules
     public function arabicNameRules(string $of): array;
 
     /**
+     * What a free text the invoice prints and the organization keeps - a
+     * customer's payment terms, a QR code's caption - has to be when given,
+     * as validation rules.
+     *
+     * @return list<mixed>
+     */
+    public function arabicTextRules(): array;
+
+    /**
      * What the invoice lacks of the text the country requires, by field, in
      * words a person can act on. Empty when nothing is required or nothing
      * is missing.
