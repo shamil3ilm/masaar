@@ -77,6 +77,12 @@
                    value="{{ $row['unit_price'] ?? '' }}" />
         </label>
 
+        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300">
+            {{ __('Line discount') }}
+            <x-ui.input type="number" step="0.01" min="0" name="lines[{{ $index }}][discount_amount]"
+                   value="{{ $row['discount_amount'] ?? '' }}" />
+        </label>
+
         <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 lg:col-span-2">
             {{ __('Tax category') }}
             <x-ui.select name="lines[{{ $index }}][tax_category]" data-tax-category>

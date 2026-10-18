@@ -72,6 +72,12 @@
         </label>
 
         <label class="block text-xs font-medium text-gray-600 dark:text-gray-300">
+            {{ __('Line discount') }}
+            <x-ui.input type="number" step="0.01" min="0" name="lines[{{ $index }}][discount_amount]"
+                   value="{{ $row['discount_amount'] ?? '' }}" />
+        </label>
+
+        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300">
             {{ __('VAT %') }}
             <x-ui.input type="number" step="0.01" min="0" max="100" name="lines[{{ $index }}][tax_rate]"
                    value="{{ $row['tax_rate'] ?? '15' }}" />
@@ -109,5 +115,11 @@
          blank is treated as absent. --}}
     @foreach (['tax_category', 'exempt_code', 'exempt_reason', 'class_code'] as $carried)
         <input type="hidden" name="lines[{{ $index }}][{{ $carried }}]" value="{{ $row[$carried] ?? '' }}">
+    @endforeach
+    {{-- And its own charges, which the form does not edit line by line. --}}
+    @foreach ((array) ($row['charges'] ?? []) as $position => $charge)
+        @foreach (['reason', 'reason_code', 'amount', 'percent', 'base_amount'] as $carried)
+            <input type="hidden" name="lines[{{ $index }}][charges][{{ $position }}][{{ $carried }}]" value="{{ $charge[$carried] ?? '' }}">
+        @endforeach
     @endforeach
 </div>

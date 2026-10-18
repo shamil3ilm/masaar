@@ -148,20 +148,43 @@ class Catalogue
 
         $vat = ($invoice['buyer_vat_number'] ?? null) ?: null;
         $address = is_array($invoice['buyer_address'] ?? null) ? $invoice['buyer_address'] : [];
-
-        $existing = $vat === null ? null : Customer::withoutTenantScope(fn () => Customer::query()
-            ->where('org_id', $organizationId)
-            ->where('vat_number', $vat)
-            ->first());
+        // Its other identifier (BT-46) when it has one, and the terms it was
+        // invoiced on, for its next invoice.
+        $other = array_filter([
+            'buyer_id' => ($invoice['buyer_id'] ?? null) ?: null,
+            'buyer_id_scheme' => ($invoice['buyer_id_scheme'] ?? null) ?: null,
+            'payment_terms' => ($invoice['payment_terms'] ?? null) ?: null,
+        ]);
 
         return $this->saveCustomer($organizationId, [
             'name' => $name,
             'name_ar' => ($invoice['buyer_name_ar'] ?? null) ?: null,
             'vat_number' => $vat,
             ...array_intersect_key($address, array_flip(Customer::ADDRESS)),
+            ...$other,
             ...$this->uaeBuyer($invoice),
             'archived_at' => null,
-        ], $existing);
+        ], $this->sameBuyer($organizationId, $vat, $other));
+    }
+
+    /**
+     * The customer already kept for this buyer: by VAT number, or, for a
+     * buyer with none, by the identifier and register it is known by.
+     *
+     * @param  array<string, string>  $other
+     */
+    private function sameBuyer(string $organizationId, ?string $vat, array $other): ?Customer
+    {
+        if ($vat === null && ! isset($other['buyer_id'], $other['buyer_id_scheme'])) {
+            return null;
+        }
+
+        return Customer::withoutTenantScope(fn () => Customer::query()
+            ->where('org_id', $organizationId)
+            ->when($vat !== null,
+                fn ($query) => $query->where('vat_number', $vat),
+                fn ($query) => $query->whereNull('vat_number')->where('buyer_id', $other['buyer_id'])->where('buyer_id_scheme', $other['buyer_id_scheme']))
+            ->first());
     }
 
     /**

@@ -133,7 +133,9 @@ class InvoiceCsv
         // guess.
         $sign = $invoice->document_type === DocumentType::CreditNote ? -1 : 1;
         $amounts = [
-            $sign * ((float) $invoice->subtotal - (float) $invoice->discount_amount),
+            // Taxable: the total less its VAT, which is the lines less the
+            // discount plus any charges.
+            $sign * round((float) $invoice->total - (float) $invoice->tax_amount, 2),
             $sign * (float) $invoice->tax_amount,
             $sign * (float) $invoice->total,
         ];

@@ -8,9 +8,12 @@ use App\Domains\Compliance\Engine\Contracts\InvoiceRules as InvoiceRulesPort;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Invoice\Enums\TaxCategory;
+use App\Domains\Invoice\Services\PrepaymentSettlement;
+use App\Domains\Invoice\Support\ChargeRules;
 use App\Domains\Invoice\Support\UnitCode;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Rules\VatNumber;
+use App\Domains\Organization\Services\TenantResolver;
 use DomainException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -22,8 +25,9 @@ use Illuminate\Validation\Validator;
  * remedy for a rejection is a credit note.
  *
  * The API, the ERP pipeline and the portal's form all draft by these rules.
- * The validated request is the draft as it is: a Saudi invoice has no
- * columns of its own.
+ * The validated request is the draft as it is; the transaction types of
+ * KSA-2 are the one set of columns only a Saudi invoice carries, and go
+ * through countryFields().
  */
 class InvoiceRules implements InvoiceRulesPort
 {
@@ -49,6 +53,25 @@ class InvoiceRules implements InvoiceRulesPort
         'PAS',   // Passport
         'OTH',   // Other
     ];
+
+    /**
+     * KSA-2 positions 3 to 7, the transaction types an invoice can also be,
+     * as the invoice's own columns name them. Each is a bit of the type
+     * name that is signed (InvoiceXmlData::getInvoiceTypeName()).
+     */
+    public const TRANSACTION_FLAGS = ['is_third_party', 'is_nominal', 'is_export', 'is_summary', 'is_self_billed'];
+
+    /**
+     * BT-121 on an export: VAT Implementing Regulations Articles 32 and 33
+     * zero-rate the export of goods and of services, and ZATCA's own export
+     * sample carries VATEX-SA-32.
+     */
+    private const EXPORT_EXEMPTIONS = ['VATEX-SA-32', 'VATEX-SA-33'];
+
+    public function __construct(
+        private readonly TenantResolver $tenant,
+        private readonly PrepaymentSettlement $settlement,
+    ) {}
 
     /**
      * Fill in what the caller left out, without contradicting what they
@@ -81,6 +104,24 @@ class InvoiceRules implements InvoiceRulesPort
                     'tax_rate' => $category === FatooraConfig::TAX_CATEGORY_STANDARD ? (int) self::STANDARD_RATE : 0,
                 ], $line);
             })->toArray();
+        }
+
+        // A document charge is made at the standard rate unless it says
+        // otherwise; one in another category is not taxed.
+        if (is_array($request->input('charges'))) {
+            $defaults['charges'] = array_map(function ($charge) {
+                if (! is_array($charge)) {
+                    return $charge;
+                }
+
+                $category = $charge['tax_category'] ?? FatooraConfig::TAX_CATEGORY_STANDARD;
+
+                return [
+                    'tax_category' => $category,
+                    'tax_rate' => $category === FatooraConfig::TAX_CATEGORY_STANDARD ? (int) self::STANDARD_RATE : 0,
+                    ...$charge,
+                ];
+            }, $request->input('charges'));
         }
 
         return $defaults;
@@ -121,7 +162,11 @@ class InvoiceRules implements InvoiceRulesPort
             // Proforma (document_type=325) is not valid for ZATCA VAT reporting
             'document_type' => ['nullable', Rule::enum(DocumentType::class), Rule::notIn(['proforma'])],
             'issue_date' => ['required', 'date'],
-            'supply_date' => ['nullable', 'date'],
+            // KSA-5 and KSA-24: a supply over a period, such as a
+            // subscription or a month's summary, starts and does not end
+            // before it starts (BR-KSA-35, BR-KSA-36).
+            'supply_date' => ['nullable', 'date', 'required_with:supply_end_date'],
+            'supply_end_date' => ['nullable', 'date', Rule::when($request->filled('supply_date'), ['after_or_equal:supply_date'])],
             'currency' => ['nullable', 'string', 'size:3'],
             // BR-KSA-EN16931-02 and BR-53: VAT is reported in SAR, so a foreign-currency
             // invoice has to say what rate it was converted at. InvoiceValidator
@@ -134,7 +179,15 @@ class InvoiceRules implements InvoiceRulesPort
                 'gt:0',
                 Rule::requiredIf(fn () => strtoupper((string) $request->input('currency', FatooraConfig::CURRENCY_SAR)) !== FatooraConfig::CURRENCY_SAR),
             ],
-            'payment_means_code' => ['nullable', 'string', 'size:2'],
+            // BR-KSA-16's UNTDID 4461 subset. Two characters exactly used
+            // to refuse "1", which ZATCA names, and take "99", which it
+            // does not.
+            'payment_means_code' => ['nullable', 'string', Rule::in(FatooraConfig::acceptedPaymentMeans())],
+            // When it is to be paid, and on what terms. ZATCA's document has
+            // the terms (KSA-22, at most 1000 characters by BR-KSA-F-06-C14)
+            // and no due date, which the invoice keeps and shows.
+            'due_date' => ['nullable', 'date', 'after_or_equal:issue_date'],
+            'payment_terms' => ['nullable', 'string', 'max:1000'],
 
             // Buyer information
             'buyer_name' => ['nullable', 'string', 'max:255', Rule::requiredIf($mustNameBuyer)],
@@ -198,6 +251,14 @@ class InvoiceRules implements InvoiceRulesPort
                 // Required for credit/debit notes
                 Rule::requiredIf($isNote),
             ],
+            // The buyer's purchase order (BT-13) and contract (BT-12), at
+            // most 127 characters each (BR-KSA-F-06-C3, -C5), and its own
+            // reference (BT-10), which ZATCA's document has no place for
+            // and the invoice page shows.
+            'order_reference' => ['nullable', 'string', 'max:127'],
+            'contract_reference' => ['nullable', 'string', 'max:127'],
+            'buyer_reference' => ['nullable', 'string', 'max:127'],
+
             // BR-KSA-17: the authority rejects a note that does not say why.
             // Optional here, a note without one was signed - spending its
             // counter - and only then refused.
@@ -211,6 +272,10 @@ class InvoiceRules implements InvoiceRulesPort
             // Whether unit_price and discount_amount include VAT. Left out,
             // the organization's own setting decides.
             'prices_include_vat' => ['sometimes', 'boolean'],
+
+            // KSA-2 positions 3 to 7. Which combinations ZATCA accepts is
+            // checked after (transactionFlags()). Null is not set.
+            ...array_fill_keys(self::TRANSACTION_FLAGS, ['sometimes', 'nullable', 'boolean']),
 
             // Discount
             // Two places, as stored; never more than the lines (checked after).
@@ -252,12 +317,25 @@ class InvoiceRules implements InvoiceRulesPort
                 // Required when exemption code is provided
                 'required_with:lines.*.exempt_code',
             ],
+
+            // The prepayment invoices (386) a final invoice settles, by
+            // number (KSA-26). Each is settled once (prepayments()).
+            'prepayments' => ['nullable', 'array', 'max:20'],
+            'prepayments.*.invoice_number' => ['required', 'string', 'max:255', 'distinct'],
+
+            // A line's own discount and charges, and the document's charges:
+            // delivery, a service charge. Codes from BR-KSA-CL-06's list.
+            ...ChargeRules::rules(FatooraConfig::CHARGE_REASON_CODES, $this->taxCategories(), $this->exemptionCodes()),
         ];
     }
 
     public function messages(): array
     {
         return [
+            'payment_means_code.in' => __('The payment means is a UNTDID 4461 code ZATCA accepts, such as 10 (cash), 30 (credit transfer), 42 (bank account), 48 (bank card) or 1 (not defined) (BR-KSA-16).'),
+            // Supply period
+            'supply_date.required_with' => __('A supply end date needs a supply date (BR-KSA-35).'),
+            'supply_end_date.after_or_equal' => __('The supply end date cannot be before the supply date (BR-KSA-36).'),
             // Buyer
             'exchange_rate.required' => __('Exchange rate to SAR is required for foreign-currency invoices (BR-53).'),
             // BT-48, not BT-46: BT-46 is the other buyer identifier, which
@@ -280,6 +358,10 @@ class InvoiceRules implements InvoiceRulesPort
             'lines.*.exempt_reason.required_with' => __('Exemption reason is required when exemption code is provided.'),
             // Units
             'lines.*.unit_code.in' => __('Invalid unit code. Must be a UN/ECE Recommendation 20 code, or a Recommendation 21 packaging code written with an X prefix.'),
+            // Charges
+            ...ChargeRules::messages(),
+            'charges.*.reason_code.in' => __('The charge reason code is a UNCL 7161 code ZATCA accepts (BR-KSA-CL-06).'),
+            'lines.*.charges.*.reason_code.in' => __('The charge reason code is a UNCL 7161 code ZATCA accepts (BR-KSA-CL-06).'),
         ];
     }
 
@@ -302,6 +384,75 @@ class InvoiceRules implements InvoiceRulesPort
         }
 
         $this->refuseDiscountBeyondLines($validator, $request);
+        $this->transactionFlags($validator, $request);
+        ChargeRules::after($validator, $request);
+        $this->chargeCategories($validator, $request);
+        $this->prepayments($validator, $request);
+    }
+
+    /**
+     * A final tax invoice settles prepayment invoices (BR-KSA-73): a note
+     * or another prepayment does not, and each one named must be this
+     * organization's, issued, in this currency and not settled already.
+     */
+    private function prepayments(Validator $validator, Request $request): void
+    {
+        $references = $request->input('prepayments');
+
+        if (! is_array($references) || $references === [] || $validator->errors()->has('prepayments.*')) {
+            return;
+        }
+
+        if (($request->input('document_type') ?? 'invoice') !== DocumentType::Invoice->value) {
+            $validator->errors()->add('prepayments', __('Only a final tax invoice settles prepayments (BR-KSA-73).'));
+
+            return;
+        }
+
+        $organizationId = $this->tenant->getOrganizationId();
+
+        foreach ($references as $index => $reference) {
+            $found = $organizationId === null ? __('There is no invoice :number.', ['number' => $reference['invoice_number'] ?? ''])
+                : $this->settlement->settleable($organizationId, (string) ($reference['invoice_number'] ?? ''), (string) $request->input('currency', FatooraConfig::CURRENCY_SAR));
+
+            if (is_string($found)) {
+                $validator->errors()->add("prepayments.{$index}.invoice_number", $found);
+            }
+        }
+    }
+
+    /**
+     * A document charge's rate is its category's: above zero when standard
+     * (BR-S-07), zero otherwise (BR-Z-07, BR-E-07, BR-KSA-13). One
+     * that is not standard-rated names the exemption it falls under, from
+     * that category's codes (BR-KSA-CL-04), which its breakdown carries when
+     * no line is in that category (BR-KSA-23, BR-KSA-24, BR-KSA-69).
+     */
+    private function chargeCategories(Validator $validator, Request $request): void
+    {
+        $errors = $validator->errors();
+
+        foreach ((array) $request->input('charges', []) as $index => $charge) {
+            if (! is_array($charge) || $errors->has("charges.{$index}.tax_category") || $errors->has("charges.{$index}.tax_rate")) {
+                continue;
+            }
+
+            $category = (string) $charge['tax_category'];
+            $rate = (string) $charge['tax_rate'];
+            $standard = $category === FatooraConfig::TAX_CATEGORY_STANDARD;
+
+            if ($standard !== (bccomp($rate, '0', 2) > 0)) {
+                $errors->add("charges.{$index}.tax_rate", $standard
+                    ? __('A standard-rated charge has a rate above zero.')
+                    : __('A charge that is zero-rated, exempt or out of scope has a rate of zero.'));
+            }
+
+            $code = $charge['exempt_code'] ?? null;
+
+            if (! $standard && (blank($code) || FatooraConfig::taxCategoryFor($code, 0) !== $category)) {
+                $errors->add("charges.{$index}.exempt_code", __('A charge in tax category :category names its exemption code from that category (BR-KSA-CL-04).', ['category' => $category]));
+            }
+        }
     }
 
     /** The validated request, as it is. */
@@ -310,10 +461,19 @@ class InvoiceRules implements InvoiceRulesPort
         return $validated;
     }
 
-    /** None: every Saudi field is one of the invoice's shared columns. */
+    /**
+     * The transaction types (KSA-2), each false unless the request set it,
+     * and the due date, a column the drafter takes only from a country.
+     */
     public function countryFields(array $validated): array
     {
-        return [];
+        $fields = ['due_date' => $validated['due_date'] ?? null];
+
+        foreach (self::TRANSACTION_FLAGS as $flag) {
+            $fields[$flag] = filter_var($validated[$flag] ?? false, FILTER_VALIDATE_BOOLEAN);
+        }
+
+        return $fields;
     }
 
     public function standardRate(): string
@@ -352,24 +512,32 @@ class InvoiceRules implements InvoiceRulesPort
         return 'portal.invoices.store';
     }
 
-    /** BR-KSA-67, as the invoice checks it: a Saudi buyer's postal code is five digits. */
+    /**
+     * BR-KSA-67, as the invoice checks it: a Saudi buyer's postal code is
+     * five digits. And the other identifier a buyer without a VAT number is
+     * invoiced by (BT-46), held to the shapes the invoice holds it to.
+     */
     public function buyerRules(Request $request): array
     {
         $saudi = strtoupper((string) $request->input('country_code', 'SA')) === 'SA';
 
         return [
             'postal_code' => $saudi ? ['nullable', 'digits:5'] : ['nullable', 'string', 'max:10'],
+            'buyer_id' => ['nullable', 'string', 'max:50', 'regex:/^[A-Za-z0-9]+$/', 'required_with:buyer_id_scheme'],
+            'buyer_id_scheme' => ['nullable', Rule::in(self::VALID_BUYER_ID_SCHEMES), 'required_with:buyer_id'],
         ];
     }
 
     public function buyerMessages(): array
     {
-        return [];
+        return [
+            'buyer_id.regex' => __('The identifier is letters and digits only, with no spaces.'),
+        ];
     }
 
     public function buyerView(): ?string
     {
-        return null;
+        return 'countries.saudi-arabia.customer-buyer';
     }
 
     /**
@@ -438,6 +606,57 @@ class InvoiceRules implements InvoiceRulesPort
     }
 
     /**
+     * The transaction types ZATCA refuses together, read from the Schematron
+     * in its SDK (20210819_ZATCA_E-invoice_Validation_Rules.xsl):
+     *
+     *   BR-KSA-07  an export is not self-billed.
+     *   BR-KSA-31  a simplified invoice is neither self-billed nor, as the
+     *              rule's stated test has it, an export: an export goes to a
+     *              business abroad on a tax invoice, as ZATCA's sample does.
+     *   BR-KSA-71  a simplified summary invoice names its buyer, and
+     *   BR-KSA-72  states the period it summarises.
+     *
+     * And one from the VAT law the flag stands for: an export is zero-rated
+     * as one, so each line carries VATEX-SA-32 or VATEX-SA-33. A flag that
+     * says export over a line taxed at 15% declares two things at once.
+     */
+    private function transactionFlags(Validator $validator, Request $request): void
+    {
+        $errors = $validator->errors();
+        $simplified = $request->input('type') === 'simplified';
+
+        if ($request->boolean('is_export') && $request->boolean('is_self_billed')) {
+            $errors->add('is_self_billed', __('An export invoice cannot be self-billed (BR-KSA-07).'));
+        }
+
+        if ($simplified && $request->boolean('is_self_billed')) {
+            $errors->add('is_self_billed', __('A simplified invoice cannot be self-billed (BR-KSA-31).'));
+        }
+
+        if ($simplified && $request->boolean('is_export')) {
+            $errors->add('is_export', __('An export is invoiced on a standard tax invoice, not a simplified one (BR-KSA-31).'));
+        }
+
+        if ($simplified && $request->boolean('is_summary')) {
+            if (! $request->filled('buyer_name')) {
+                $errors->add('buyer_name', __('A simplified summary invoice names its buyer (BR-KSA-71).'));
+            }
+
+            if (! $request->filled('supply_end_date')) {
+                $errors->add('supply_end_date', __('A simplified summary invoice states the period it covers: a supply date and a supply end date (BR-KSA-72).'));
+            }
+        }
+
+        if ($request->boolean('is_export')) {
+            foreach ((array) $request->input('lines', []) as $index => $line) {
+                if (! in_array(is_array($line) ? ($line['exempt_code'] ?? null) : null, self::EXPORT_EXEMPTIONS, true)) {
+                    $errors->add("lines.{$index}.exempt_code", __('Line :line: an export invoice zero-rates its lines as an export of goods (VATEX-SA-32) or of services (VATEX-SA-33).', ['line' => $index + 1]));
+                }
+            }
+        }
+    }
+
+    /**
      * A discount larger than the lines makes a negative invoice: 100 less 200
      * was drafted, issued and chained with a total of -115.00, which the
      * authority refuses (BR-KSA-F-04). Checked only once the amounts are
@@ -454,8 +673,9 @@ class InvoiceRules implements InvoiceRulesPort
 
         $lines = '0';
 
+        // Each line after its own discount and charges.
         foreach ((array) $request->input('lines', []) as $line) {
-            $lines = bcadd($lines, bcmul((string) $line['quantity'], (string) $line['unit_price'], 6), 6);
+            $lines = bcadd($lines, ChargeRules::lineTotal($line), 6);
         }
 
         if (bccomp((string) $discount, $lines, 6) > 0) {

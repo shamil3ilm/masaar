@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Organization\Http\Controllers;
 
 use App\Domains\Compliance\Engine\Contracts\SellerRules;
+use App\Domains\Organization\DTOs\OrganizationChangesData;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Rules\CompanyProfileRules;
@@ -84,6 +85,23 @@ class PortalCompanyController extends Controller
         return redirect()->route('portal.company.edit')->with('success', $required
             ? __('Two-factor is now required. Members without it are asked to set it up when they next open the portal.')
             : __('Two-factor is no longer required.'));
+    }
+
+    /**
+     * Whether the company's prices include VAT: what an invoice that does
+     * not say is priced by. The API could always set it; the portal could
+     * not, so a shop pricing with VAT in had every invoice add it on top.
+     */
+    public function pricing(Request $request): RedirectResponse
+    {
+        $organization = $this->organization($request);
+        $validated = $request->validate(['prices_include_vat' => ['required', 'boolean']]);
+
+        $this->registrar->amend($organization, new OrganizationChangesData(
+            pricesIncludeVat: (bool) $validated['prices_include_vat'],
+        ));
+
+        return redirect()->route('portal.company.edit')->with('success', __('Pricing saved. New invoices follow it unless they say otherwise.'));
     }
 
     private function seller(Organization $organization): SellerRules

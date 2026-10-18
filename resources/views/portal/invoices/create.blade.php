@@ -77,6 +77,12 @@
             </div>
 
             <div>
+                <label for="supply_end_date" class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('Supply end date') }}</label>
+                <x-ui.input type="date" name="supply_end_date" id="supply_end_date" value="{{ old('supply_end_date') }}" />
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('For a supply over a period, such as a subscription.') }}</p>
+            </div>
+
+            <div>
                 <label for="currency" class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('Currency') }}</label>
                 <x-ui.input type="text" name="currency" id="currency" maxlength="3" value="{{ old('currency', 'SAR') }}" class="uppercase" />
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Anything but SAR needs an exchange rate.') }}</p>
@@ -88,10 +94,34 @@
                        value="{{ old('exchange_rate') }}" />
             </div>
 
+            {{-- BT-81, the codes ZATCA names (FatooraConfig::PAYMENT_MEANS). --}}
+            <div>
+                <label for="payment_means_code" class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('Payment means') }}</label>
+                <x-ui.select name="payment_means_code" id="payment_means_code">
+                    @foreach (['10' => __('Cash'), '30' => __('Credit transfer'), '42' => __('Payment to bank account'), '48' => __('Bank card'), '1' => __('Instrument not defined')] as $code => $label)
+                        <option value="{{ $code }}" @selected((string) old('payment_means_code', '10') === (string) $code)>{{ $label }}</option>
+                    @endforeach
+                </x-ui.select>
+            </div>
+
             <div>
                 <label for="billing_ref" class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('Billed document') }}</label>
                 <x-ui.input type="text" name="billing_ref" id="billing_ref" value="{{ old('billing_ref') }}" />
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Required for a credit or debit note.') }}</p>
+            </div>
+
+            <div>
+                <label for="due_date" class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('Due date') }}</label>
+                <x-ui.input type="date" name="due_date" id="due_date" value="{{ old('due_date') }}" />
+            </div>
+
+            @include('portal.invoices.partials.references')
+            @include('portal.invoices.partials.payment-terms')
+
+            <div>
+                <label for="prepayment_numbers" class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('Settles prepayment invoices') }}</label>
+                <x-ui.input type="text" name="prepayment_numbers" id="prepayment_numbers" value="{{ old('prepayment_numbers') }}" />
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('On a final invoice: the numbers of the prepayment invoices it settles, separated by commas.') }}</p>
             </div>
 
             {{-- The reasons ZATCA's data dictionary lists for KSA-10, read
@@ -113,6 +143,20 @@
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Issue a note within 15 days of the end of the month in which the change happened. One note may correct several invoices: separate their numbers with commas.') }}</p>
             </div>
         </div>
+
+        {{-- KSA-2 positions 3 to 7. An unticked box sends nothing, which is
+             what "not this kind" is. --}}
+        <fieldset class="mt-4">
+            <legend class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('Transaction type') }}</legend>
+            <div class="mt-2 flex flex-wrap gap-x-6 gap-y-2">
+                @foreach (['is_export' => __('Export'), 'is_summary' => __('Summary invoice'), 'is_nominal' => __('Nominal supply'), 'is_third_party' => __('Third party'), 'is_self_billed' => __('Self-billed')] as $flag => $label)
+                    <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                        <input type="checkbox" name="{{ $flag }}" value="1" @checked(old($flag))>
+                        {{ $label }}
+                    </label>
+                @endforeach
+            </div>
+        </fieldset>
     </div>
 
     <div class="mb-6 rounded-lg bg-white dark:bg-gray-900 p-6 shadow">
@@ -242,6 +286,12 @@
             @include('portal.invoices.partials.line-row', ['index' => 0, 'row' => []])
         </template>
     </div>
+
+    @include('portal.invoices.partials.charges', [
+        'chargePresets' => $chargePresets ?? [],
+        'chargeCategories' => ['S' => __('Standard-rated'), 'Z' => __('Zero-rated'), 'E' => __('Exempt'), 'O' => __('Out of scope')],
+        'standardRate' => '15',
+    ])
 
     <div class="mb-6 rounded-lg bg-white dark:bg-gray-900 p-6 shadow">
         <h3 class="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ __('Totals and notes') }}</h3>

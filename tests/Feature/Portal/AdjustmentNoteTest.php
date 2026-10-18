@@ -171,6 +171,23 @@ class AdjustmentNoteTest extends TestCase
     }
 
     /**
+     * An export's note is an export's (KSA-2 applies to the associated
+     * notes too), and the box the form shows for it is ticked.
+     */
+    public function test_an_export_note_stays_export(): void
+    {
+        $invoice = $this->issued(['type' => 'standard', 'is_export' => true]);
+
+        $this->portal()->get(route('portal.invoices.adjust', [$invoice->id, 'credit_note']))
+            ->assertSessionHasInput('is_export', '1');
+
+        $this->assertNull(session()->getOldInput('is_summary'));
+
+        $this->portal()->get(route('portal.invoices.create'))
+            ->assertSee('name="is_export" value="1" checked', false);
+    }
+
+    /**
      * A new row's carried fields are blank, and a blank is absent: the line
      * is categorised from its rate as one typed by hand always was.
      */

@@ -20,13 +20,16 @@ use InvalidArgumentException;
 class UblHeaderBuilder
 {
     /**
-     * Identification, billing references, document references and the
-     * signature reference, in that order.
+     * Identification, the purchase order, billing references, the contract,
+     * document references and the signature reference, in that order: the
+     * order UBL 2.1's Invoice schema gives them.
      */
     public function addHeader(DOMDocument $dom, InvoiceXmlData $data): void
     {
         $this->addInvoiceIdentification($dom, $data);
+        $this->addReference($dom, 'cac:OrderReference', $data->orderReference);
         $this->addBillingReference($dom, $data);
+        $this->addReference($dom, 'cac:ContractDocumentReference', $data->contractReference);
         $this->addAdditionalDocumentReferences($dom, $data);
         $this->addSignatureReference($dom);
     }
@@ -98,6 +101,22 @@ class UblHeaderBuilder
         // BT-6: When document is in foreign currency, tax amounts must still be reported in SAR
         $taxCurrency = $data->isMultiCurrency() ? 'SAR' : $data->currency;
         $this->addElement($dom, 'cbc:TaxCurrencyCode', $taxCurrency);
+    }
+
+    /**
+     * BT-13 (cac:OrderReference) or BT-12 (cac:ContractDocumentReference),
+     * an identifier and nothing else - the two ZATCA's data dictionary and
+     * its length rules (BR-KSA-F-06-C3, -C5) name. Nothing for none.
+     */
+    private function addReference(DOMDocument $dom, string $element, ?string $id): void
+    {
+        if ($id === null) {
+            return;
+        }
+
+        $reference = $dom->createElementNS(Ubl::CAC_NS, $element);
+        $reference->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:ID', $id));
+        $dom->documentElement->appendChild($reference);
     }
 
     /**
@@ -232,15 +251,21 @@ class UblHeaderBuilder
 
         // KSA-10. BR-KSA-17 requires a credit or debit note to say why it was
         // issued, and this is the element it reads — ZATCA's own samples carry
-        // the reason here and nowhere else. On an ordinary invoice the same
-        // element carries the payment terms, so the reason takes precedence
-        // when there is one: a note without it is rejected, terms are optional.
-        $instruction = $data->creditDebitReason ?? $data->paymentTerms;
-
-        if ($instruction !== null) {
+        // the reason here and nowhere else.
+        if ($data->creditDebitReason !== null) {
             $paymentMeans->appendChild(
-                Ubl::element($dom, Ubl::CBC_NS, 'cbc:InstructionNote', $instruction)
+                Ubl::element($dom, Ubl::CBC_NS, 'cbc:InstructionNote', $data->creditDebitReason)
             );
+        }
+
+        // KSA-22, the payment terms, where ZATCA's Schematron reads them
+        // (BR-KSA-F-06-C14): the payee account's payment note, after the
+        // instruction note as UBL orders them. Not in the instruction note,
+        // which a note's reason already holds.
+        if ($data->paymentTerms !== null) {
+            $account = $dom->createElementNS(Ubl::CAC_NS, 'cac:PayeeFinancialAccount');
+            $account->appendChild(Ubl::element($dom, Ubl::CBC_NS, 'cbc:PaymentNote', $data->paymentTerms));
+            $paymentMeans->appendChild($account);
         }
 
         $dom->documentElement->appendChild($paymentMeans);

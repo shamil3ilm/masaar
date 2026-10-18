@@ -344,7 +344,12 @@ class InvoiceValidator
             'net' => $line->net_amount,
             'tax_rate' => (string) $line->tax_rate,
             'tax_category' => $line->tax_category,
-        ])->all(), $discount);
+        ])->all(), $discount, false, $invoice->charges->map(fn ($charge): array => [
+            // The document's own figure for each charge: its net, at its rate.
+            'amount' => (string) $charge->net_amount,
+            'tax_category' => $charge->tax_category,
+            'tax_rate' => (string) $charge->tax_rate,
+        ])->all());
 
         // Prices entered with VAT in them keep the customer's total exact,
         // and the VAT is what that leaves over the net. It may sit a halalah
@@ -354,7 +359,7 @@ class InvoiceValidator
         $inclusive = (bool) $invoice->prices_include_vat;
         $categories = $invoice->lines->map(fn ($line): string => ($line->tax_category ?? 'S').'_'.(float) $line->tax_rate)->unique()->count();
         $expectedTotal = $inclusive
-            ? bcadd(bcsub($totals->subtotal, $discount, 2), (string) ($invoice->tax_amount ?? '0'), 2)
+            ? bcadd(bcadd(bcsub($totals->subtotal, $discount, 2), $totals->chargeTotal, 2), (string) ($invoice->tax_amount ?? '0'), 2)
             : $totals->total;
 
         // BR-CO-10

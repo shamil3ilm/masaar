@@ -1088,6 +1088,8 @@ paths:
                   type: number
                 payment_means_code:
                   type: string
+                payment_terms:
+                  type: string
                 buyer_name:
                   type: string
                 buyer_name_ar:
@@ -1114,13 +1116,22 @@ paths:
                   type: string
                 delivery_address:
                   type: array
+                buyer_reference:
+                  type: string
+                order_reference:
+                  type: string
+                contract_reference:
+                  type: string
                 discount_amount:
                   type: number
                 notes:
                   type: string
                 lines:
                   type: array
-                  items: { type: object, properties: { item_name: { type: string }, description: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string }, goods_type: { type: string }, item_id: { type: string }, hs_code: { type: string } } }
+                  items: { type: object, properties: { item_name: { type: string }, description: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string }, goods_type: { type: string }, item_id: { type: string }, hs_code: { type: string }, discount_amount: { type: number }, charges: { type: array } } }
+                charges:
+                  type: array
+                  items: { type: object, properties: { reason: { type: string }, reason_code: { type: string }, amount: { type: number }, percent: { type: number }, base_amount: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string } } }
               required:
                 - document_type
                 - document_category
@@ -1677,11 +1688,17 @@ paths:
                   type: string
                 supply_date:
                   type: string
+                supply_end_date:
+                  type: string
                 currency:
                   type: string
                 exchange_rate:
                   type: number
                 payment_means_code:
+                  type: string
+                due_date:
+                  type: string
+                payment_terms:
                   type: string
                 buyer_name:
                   type: string
@@ -1697,9 +1714,25 @@ paths:
                   type: array
                 billing_ref:
                   type: string
+                order_reference:
+                  type: string
+                contract_reference:
+                  type: string
+                buyer_reference:
+                  type: string
                 adjustment_reason:
                   type: string
                 prices_include_vat:
+                  type: boolean
+                is_third_party:
+                  type: boolean
+                is_nominal:
+                  type: boolean
+                is_export:
+                  type: boolean
+                is_summary:
+                  type: boolean
+                is_self_billed:
                   type: boolean
                 discount_amount:
                   type: number
@@ -1707,7 +1740,13 @@ paths:
                   type: string
                 lines:
                   type: array
-                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string } } }
+                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array } } }
+                prepayments:
+                  type: array
+                  items: { type: object, properties: { invoice_number: { type: string } } }
+                charges:
+                  type: array
+                  items: { type: object, properties: { reason: { type: string }, reason_code: { type: string }, amount: { type: number }, percent: { type: number }, base_amount: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string } } }
                 branch_id:
                   type: string
                 issued_at:
@@ -1792,11 +1831,17 @@ paths:
                   type: string
                 supply_date:
                   type: string
+                supply_end_date:
+                  type: string
                 currency:
                   type: string
                 exchange_rate:
                   type: number
                 payment_means_code:
+                  type: string
+                due_date:
+                  type: string
+                payment_terms:
                   type: string
                 buyer_name:
                   type: string
@@ -1812,9 +1857,25 @@ paths:
                   type: array
                 billing_ref:
                   type: string
+                order_reference:
+                  type: string
+                contract_reference:
+                  type: string
+                buyer_reference:
+                  type: string
                 adjustment_reason:
                   type: string
                 prices_include_vat:
+                  type: boolean
+                is_third_party:
+                  type: boolean
+                is_nominal:
+                  type: boolean
+                is_export:
+                  type: boolean
+                is_summary:
+                  type: boolean
+                is_self_billed:
                   type: boolean
                 discount_amount:
                   type: number
@@ -1822,7 +1883,13 @@ paths:
                   type: string
                 lines:
                   type: array
-                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string } } }
+                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array } } }
+                prepayments:
+                  type: array
+                  items: { type: object, properties: { invoice_number: { type: string } } }
+                charges:
+                  type: array
+                  items: { type: object, properties: { reason: { type: string }, reason_code: { type: string }, amount: { type: number }, percent: { type: number }, base_amount: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string } } }
                 branch_id:
                   type: string
                 issued_at:
@@ -1880,11 +1947,17 @@ paths:
                   type: string
                 supply_date:
                   type: string
+                supply_end_date:
+                  type: string
                 currency:
                   type: string
                 exchange_rate:
                   type: number
                 payment_means_code:
+                  type: string
+                due_date:
+                  type: string
+                payment_terms:
                   type: string
                 buyer_name:
                   type: string
@@ -1900,9 +1973,25 @@ paths:
                   type: array
                 billing_ref:
                   type: string
+                order_reference:
+                  type: string
+                contract_reference:
+                  type: string
+                buyer_reference:
+                  type: string
                 adjustment_reason:
                   type: string
                 prices_include_vat:
+                  type: boolean
+                is_third_party:
+                  type: boolean
+                is_nominal:
+                  type: boolean
+                is_export:
+                  type: boolean
+                is_summary:
+                  type: boolean
+                is_self_billed:
                   type: boolean
                 discount_amount:
                   type: number
@@ -1910,7 +1999,13 @@ paths:
                   type: string
                 lines:
                   type: array
-                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string } } }
+                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array } } }
+                prepayments:
+                  type: array
+                  items: { type: object, properties: { invoice_number: { type: string } } }
+                charges:
+                  type: array
+                  items: { type: object, properties: { reason: { type: string }, reason_code: { type: string }, amount: { type: number }, percent: { type: number }, base_amount: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string } } }
                 branch_id:
                   type: string
                 issued_at:
@@ -3023,11 +3118,17 @@ paths:
                   type: string
                 supply_date:
                   type: string
+                supply_end_date:
+                  type: string
                 currency:
                   type: string
                 exchange_rate:
                   type: number
                 payment_means_code:
+                  type: string
+                due_date:
+                  type: string
+                payment_terms:
                   type: string
                 buyer_name:
                   type: string
@@ -3043,9 +3144,25 @@ paths:
                   type: array
                 billing_ref:
                   type: string
+                order_reference:
+                  type: string
+                contract_reference:
+                  type: string
+                buyer_reference:
+                  type: string
                 adjustment_reason:
                   type: string
                 prices_include_vat:
+                  type: boolean
+                is_third_party:
+                  type: boolean
+                is_nominal:
+                  type: boolean
+                is_export:
+                  type: boolean
+                is_summary:
+                  type: boolean
+                is_self_billed:
                   type: boolean
                 discount_amount:
                   type: number
@@ -3053,7 +3170,13 @@ paths:
                   type: string
                 lines:
                   type: array
-                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string } } }
+                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array } } }
+                prepayments:
+                  type: array
+                  items: { type: object, properties: { invoice_number: { type: string } } }
+                charges:
+                  type: array
+                  items: { type: object, properties: { reason: { type: string }, reason_code: { type: string }, amount: { type: number }, percent: { type: number }, base_amount: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string } } }
                 branch_id:
                   type: string
                 issued_at:
@@ -3142,11 +3265,17 @@ paths:
                   type: string
                 supply_date:
                   type: string
+                supply_end_date:
+                  type: string
                 currency:
                   type: string
                 exchange_rate:
                   type: number
                 payment_means_code:
+                  type: string
+                due_date:
+                  type: string
+                payment_terms:
                   type: string
                 buyer_name:
                   type: string
@@ -3162,9 +3291,25 @@ paths:
                   type: array
                 billing_ref:
                   type: string
+                order_reference:
+                  type: string
+                contract_reference:
+                  type: string
+                buyer_reference:
+                  type: string
                 adjustment_reason:
                   type: string
                 prices_include_vat:
+                  type: boolean
+                is_third_party:
+                  type: boolean
+                is_nominal:
+                  type: boolean
+                is_export:
+                  type: boolean
+                is_summary:
+                  type: boolean
+                is_self_billed:
                   type: boolean
                 discount_amount:
                   type: number
@@ -3172,7 +3317,13 @@ paths:
                   type: string
                 lines:
                   type: array
-                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string } } }
+                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array } } }
+                prepayments:
+                  type: array
+                  items: { type: object, properties: { invoice_number: { type: string } } }
+                charges:
+                  type: array
+                  items: { type: object, properties: { reason: { type: string }, reason_code: { type: string }, amount: { type: number }, percent: { type: number }, base_amount: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string } } }
                 branch_id:
                   type: string
                 issued_at:
@@ -3336,11 +3487,17 @@ paths:
                   type: string
                 supply_date:
                   type: string
+                supply_end_date:
+                  type: string
                 currency:
                   type: string
                 exchange_rate:
                   type: number
                 payment_means_code:
+                  type: string
+                due_date:
+                  type: string
+                payment_terms:
                   type: string
                 buyer_name:
                   type: string
@@ -3356,9 +3513,25 @@ paths:
                   type: array
                 billing_ref:
                   type: string
+                order_reference:
+                  type: string
+                contract_reference:
+                  type: string
+                buyer_reference:
+                  type: string
                 adjustment_reason:
                   type: string
                 prices_include_vat:
+                  type: boolean
+                is_third_party:
+                  type: boolean
+                is_nominal:
+                  type: boolean
+                is_export:
+                  type: boolean
+                is_summary:
+                  type: boolean
+                is_self_billed:
                   type: boolean
                 discount_amount:
                   type: number
@@ -3366,14 +3539,18 @@ paths:
                   type: string
                 lines:
                   type: array
-                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string } } }
+                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array } } }
+                prepayments:
+                  type: array
+                  items: { type: object, properties: { invoice_number: { type: string } } }
+                charges:
+                  type: array
+                  items: { type: object, properties: { reason: { type: string }, reason_code: { type: string }, amount: { type: number }, percent: { type: number }, base_amount: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string } } }
                 branch_id:
                   type: string
                 issued_at:
                   type: string
                 invoice_type:
-                  type: string
-                due_date:
                   type: string
                 org_id:
                   type: string

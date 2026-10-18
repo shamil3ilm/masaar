@@ -73,6 +73,12 @@
             @foreach ($page->buyerDetails as $detail)
                 <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ $detail }}</p>
             @endforeach
+            {{-- What the buyer's own paperwork calls the sale, and when and how it is to be paid. --}}
+            @foreach (['order_reference' => __('Purchase order'), 'contract_reference' => __('Contract'), 'buyer_reference' => __('Buyer reference'), 'due_date' => __('Due date'), 'payment_terms' => __('Payment terms')] as $field => $label)
+                @if (filled($invoice->{$field}))
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ $label }}: {{ $invoice->{$field} instanceof \Carbon\CarbonInterface ? $invoice->{$field}->toDateString() : $invoice->{$field} }}</p>
+                @endif
+            @endforeach
         </div>
 
         <div class="overflow-hidden rounded-lg bg-white dark:bg-gray-900 shadow">
@@ -106,6 +112,13 @@
                             @if ($line->exempt_code)
                                 <span class="ms-1 text-xs text-gray-400 dark:text-gray-500">({{ $line->exempt_code }})</span>
                             @endif
+                            {{-- The line's own discount and charges, in its total. --}}
+                            @if ($line->discount_amount !== null)
+                                <span class="block text-xs text-gray-500 dark:text-gray-400">{{ __('Discount') }}: @include('portal.partials.money', ['amount' => $line->discount_amount, 'currency' => $invoice->currency])</span>
+                            @endif
+                            @foreach ($line->charges as $charge)
+                                <span class="block text-xs text-gray-500 dark:text-gray-400">{{ $charge->reason }}{{ $charge->percent !== null ? ' ('.rtrim(rtrim((string) $charge->percent, '0'), '.').'%)' : '' }}: @include('portal.partials.money', ['amount' => $charge->amount, 'currency' => $invoice->currency])</span>
+                            @endforeach
                         </td>
                         <td class="px-6 py-3 text-end text-sm tabular-nums text-gray-700 dark:text-gray-200">
                             {{ rtrim(rtrim((string) $line->quantity, '0'), '.') }}
@@ -144,6 +157,13 @@
                             <dd class="tabular-nums">@include('portal.partials.money', ['amount' => $invoice->discount_amount, 'currency' => $invoice->currency])</dd>
                         </div>
                     @endif
+                    {{-- Each charge on the whole invoice, at its net. --}}
+                    @foreach ($invoice->charges as $charge)
+                        <div class="flex justify-between">
+                            <dt class="text-gray-500 dark:text-gray-400">{{ $charge->reason }}{{ $charge->percent !== null ? ' ('.rtrim(rtrim((string) $charge->percent, '0'), '.').'%)' : '' }}</dt>
+                            <dd class="tabular-nums">@include('portal.partials.money', ['amount' => $charge->net_amount, 'currency' => $invoice->currency])</dd>
+                        </div>
+                    @endforeach
                     <div class="flex justify-between">
                         <dt class="text-gray-500 dark:text-gray-400">
                             <x-caption en="VAT" ar="مجموع ضريبة القيمة المضافة" />
@@ -154,6 +174,19 @@
                         <dt><x-caption en="Total" ar="إجمالي المبلغ المستحق" /></dt>
                         <dd class="tabular-nums">@include('portal.partials.money', ['amount' => $invoice->total, 'currency' => $invoice->currency])</dd>
                     </div>
+                    {{-- A final invoice: what its prepayments settled, and what is left to pay. --}}
+                    @if ($invoice->prepaid_amount !== null)
+                        @foreach ($invoice->prepayments->unique('invoice_number') as $prepayment)
+                            <div class="flex justify-between">
+                                <dt class="text-gray-500 dark:text-gray-400">{{ __('Prepayment :number', ['number' => $prepayment->invoice_number]) }}</dt>
+                                <dd class="tabular-nums">@include('portal.partials.money', ['amount' => $invoice->prepayments->where('invoice_number', $prepayment->invoice_number)->sum(fn ($p) => (float) $p->taxable_amount + (float) $p->tax_amount), 'currency' => $invoice->currency])</dd>
+                            </div>
+                        @endforeach
+                        <div class="flex justify-between font-bold">
+                            <dt>{{ __('Amount due') }}</dt>
+                            <dd class="tabular-nums">@include('portal.partials.money', ['amount' => $invoice->payable(), 'currency' => $invoice->currency])</dd>
+                        </div>
+                    @endif
                     @if ($page->exchangeNote)
                         <p class="pt-2 text-xs text-gray-400 dark:text-gray-500">
                             {{ $page->exchangeNote }}

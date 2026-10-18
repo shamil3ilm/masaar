@@ -45,7 +45,7 @@ class PintConformanceTest extends TestCase
     /** @return iterable<string, array{string}> */
     public static function documents(): iterable
     {
-        foreach (['standard', 'foreign currency', 'zero-rated export', 'reverse charge', 'credit note', 'commercial invoice', 'commercial credit note', 'self-billed invoice', 'self-billed credit note', 'discount across categories', 'margin scheme', 'deemed supply', 'free zone'] as $case) {
+        foreach (['standard', 'foreign currency', 'zero-rated export', 'reverse charge', 'credit note', 'commercial invoice', 'commercial credit note', 'self-billed invoice', 'self-billed credit note', 'discount across categories', 'margin scheme', 'deemed supply', 'free zone', 'buyer references', 'credit note with references'] as $case) {
             yield $case => [$case];
         }
     }
@@ -97,6 +97,87 @@ class PintConformanceTest extends TestCase
         $failures = $this->validate($xml, $artefacts, $jar);
 
         $this->assertSame([], $failures, "PINT AE refused the API invoice:\n".implode("\n", $failures)."\n\n".$xml);
+    }
+
+    /**
+     * Discounts and charges, drafted through the API: line discounts and
+     * line charges (IBG-27, IBG-28, IBR-147-AE), a document charge as an
+     * amount and as a percentage of a base (IBG-21, ALIGNED-IBRP-058,
+     * IBR-146-AE), a charge at each category including an exempt one with
+     * its reason (IBR-169-AE) and an out-of-scope one with no rate
+     * (ALIGNED-IBRP-O-07), and a charge on a credit note.
+     *
+     * @return iterable<string, array{array<string, mixed>}>
+     */
+    public static function charged(): iterable
+    {
+        $delivery = ['reason' => 'Delivery', 'reason_code' => 'DL', 'amount' => '35.00'];
+
+        yield 'delivery and a service charge' => [[
+            'charges' => [$delivery, ['reason' => 'Service charge', 'reason_code' => 'ADR', 'percent' => '10']],
+        ]];
+        yield 'line discount and line charges' => [[
+            'lines' => [
+                ['item_name' => 'Sofa', 'quantity' => 1, 'unit_code' => 'H87', 'unit_price' => '2499.99', 'tax_category' => 'S', 'discount_amount' => '250.00', 'charges' => [
+                    ['reason' => 'Installation', 'reason_code' => 'IAA', 'amount' => '150.00'],
+                    ['reason' => 'Packing', 'reason_code' => 'PC', 'percent' => '2.5'],
+                ]],
+                ['item_name' => 'Medicine', 'quantity' => 3, 'unit_code' => 'H87', 'unit_price' => '33.33', 'tax_category' => 'Z', 'discount_amount' => '3.33'],
+            ],
+        ]];
+        yield 'charges at every category' => [[
+            'discount_amount' => '20.00',
+            'charges' => [
+                $delivery,
+                ['reason' => 'Freight', 'reason_code' => 'FC', 'amount' => '40.00', 'tax_category' => 'Z'],
+                ['reason' => 'Bank fee', 'reason_code' => 'FI', 'amount' => '15.00', 'tax_category' => 'E', 'exempt_code' => 'DL8.46.1', 'exempt_reason' => 'Financial services'],
+                ['reason' => 'Government fee', 'reason_code' => 'ABK', 'amount' => '10.00', 'tax_category' => 'O'],
+            ],
+        ]];
+        yield 'a credit note with a charge' => [[
+            'document_type' => 'credit_note',
+            'billing_ref' => 'AE-INV-0001',
+            'credit_reason' => 'DL8.61.1.A',
+            'due_date' => null,
+            'charges' => [$delivery],
+        ]];
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     */
+    #[DataProvider('charged')]
+    public function test_charges_pass_official_rules(array $overrides): void
+    {
+        [$artefacts, $jar] = $this->requireArtefacts();
+        config(['peppol.countries.AE.enabled' => true]);
+        Queue::fake();
+
+        $organization = $this->uaeOrganization();
+        $user = User::factory()->create();
+        $user->organizations()->attach($organization->id, ['role' => 'admin', 'status' => 'active']);
+        $api = $this->withToken(JWTAuth::claims(['org_id' => $organization->id, 'role' => 'admin'])->fromUser($user));
+
+        $id = $api->postJson('/api/compliance/ae/invoices', array_filter([
+            'issue_date' => '2026-10-10',
+            'due_date' => '2026-11-09',
+            'payment_means_code' => '30',
+            'buyer_name' => 'Noor Electronics LLC',
+            'buyer_vat_number' => '100765432100003',
+            'buyer_address' => ['street' => 'Khalifa Street', 'city' => 'Abu Dhabi'],
+            'buyer_endpoint' => '0235:1007654321',
+            'buyer_subdivision' => 'AUH',
+            'lines' => [['item_name' => 'Consulting', 'quantity' => 2, 'unit_code' => 'DAY', 'unit_price' => 500, 'tax_category' => 'S']],
+            ...$overrides,
+        ], fn (mixed $value): bool => $value !== null))->assertCreated()->json('data.invoice.id');
+        $documentId = $api->postJson("/api/compliance/ae/invoices/{$id}/send")->assertOk()->json('data.document_id');
+
+        $xml = PeppolDocument::query()->findOrFail($documentId)->xml;
+        $this->assertStringContainsString('<cbc:ChargeIndicator>true</cbc:ChargeIndicator>', $xml);
+
+        $failures = $this->validate($xml, $artefacts, $jar);
+
+        $this->assertSame([], $failures, "PINT AE refused the charges:\n".implode("\n", $failures)."\n\n".$xml);
     }
 
     /**
@@ -183,6 +264,8 @@ class PintConformanceTest extends TestCase
             ),
             'deemed supply' => $this->uaeInvoice($this->uaeOrganization(), ['due_date' => null], null, ['transaction_flags' => '01000000', 'buyer_endpoint' => null]),
             'free zone' => $this->uaeInvoice($this->uaeOrganization(), [], null, ['transaction_flags' => '10000000', 'beneficiary_id' => '100765432100003']),
+            'buyer references' => $this->uaeInvoice($this->uaeOrganization(), ['buyer_reference' => 'BR-001/23', 'order_reference' => 'PO-001/23', 'contract_reference' => 'CT-2026-07', 'payment_terms' => '30 days net']),
+            'credit note with references' => $this->uaeInvoice($this->uaeOrganization(), ['document_type' => 'credit_note', 'billing_ref' => 'AE-INV-0001', 'due_date' => null, 'buyer_reference' => 'BR-001/23', 'order_reference' => 'PO-001/23', 'contract_reference' => 'CT-2026-07', 'payment_terms' => '30 days net'], null, ['credit_reason' => 'DL8.61.1.D']),
         };
     }
 

@@ -2,6 +2,7 @@ import Alpine from '@alpinejs/csp';
 
 import { registerCataloguePickers } from './catalogue-pickers.js';
 import { registerConfirmations } from './confirm.js';
+import { registerInvoiceCharges } from './invoice-charges.js';
 import { registerInvoiceLines } from './invoice-lines.js';
 import { signupCountry } from './signup-country.js';
 import { registerUaeInvoice } from './uae-invoice.js';
@@ -28,6 +29,7 @@ Alpine.data('signupCountry', signupCountry);
 
 registerConfirmations();
 registerInvoiceLines();
+registerInvoiceCharges();
 registerCataloguePickers();
 registerUaeInvoice();
 registerValidation();

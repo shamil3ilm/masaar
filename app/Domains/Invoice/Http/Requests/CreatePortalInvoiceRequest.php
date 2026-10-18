@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Invoice\Http\Requests;
 
 use App\Domains\Invoice\Support\AdjustmentReason;
+use App\Domains\Invoice\Support\ChargeRules;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Validation\Rule;
 
@@ -88,6 +89,11 @@ class CreatePortalInvoiceRequest extends CreateInvoiceRequest
         $this->merge([
             'lines' => $this->usedLines(),
             'buyer_address' => $this->addressOrNull(),
+            // The charge rows used, as the lines are.
+            'charges' => ChargeRules::used($this->input('charges')),
+            // The prepayment invoices settled, typed as their numbers
+            // separated by commas.
+            'prepayments' => $this->prepaymentNumbers(),
         ]);
 
         $this->replace($this->withoutBlanks($this->all()));
@@ -126,8 +132,25 @@ class CreatePortalInvoiceRequest extends CreateInvoiceRequest
         // Renumbered, because the rules address lines.*.description by
         // position and a gap in the keys makes the array an object in the
         // error bag - so the message would arrive against a field the form
-        // has no input for.
-        return array_values($used);
+        // has no input for. A line's carried charges are kept the same way.
+        return array_map(function (array $line): array {
+            $charges = ChargeRules::used($line['charges'] ?? null);
+            unset($line['charges']);
+
+            return $charges === null ? $line : [...$line, 'charges' => $charges];
+        }, array_values($used));
+    }
+
+    /**
+     * "ADV-1, ADV-2" as the prepayments the rules take, or null for none.
+     *
+     * @return list<array{invoice_number: string}>|null
+     */
+    private function prepaymentNumbers(): ?array
+    {
+        $numbers = array_values(array_filter(array_map('trim', explode(',', (string) $this->input('prepayment_numbers', '')))));
+
+        return $numbers === [] ? null : array_map(fn (string $number): array => ['invoice_number' => $number], $numbers);
     }
 
     /**

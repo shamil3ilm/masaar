@@ -379,6 +379,7 @@ Route::prefix('portal')->name('portal.')
         Route::get('/company', [PortalCompanyController::class, 'edit'])->name('company.edit');
         Route::post('/company', [PortalCompanyController::class, 'update'])->name('company.update');
         Route::post('/company/security', [PortalCompanyController::class, 'security'])->name('company.security');
+        Route::post('/company/pricing', [PortalCompanyController::class, 'pricing'])->name('company.pricing');
 
         // Customers and products, which the invoice form fills itself from.
         Route::get('/customers', [PortalCustomerController::class, 'index'])->name('customers.index');

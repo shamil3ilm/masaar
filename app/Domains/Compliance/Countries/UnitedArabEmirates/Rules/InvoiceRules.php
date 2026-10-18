@@ -9,6 +9,7 @@ use App\Domains\Compliance\Countries\UnitedArabEmirates\Enums\PintTaxCategory;
 use App\Domains\Compliance\Engine\Contracts\InvoiceRules as InvoiceRulesPort;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceType;
+use App\Domains\Invoice\Support\ChargeRules;
 use App\Domains\Invoice\Support\UnitCode;
 use App\Domains\Organization\Models\Organization;
 use DomainException;
@@ -37,6 +38,9 @@ class InvoiceRules implements InvoiceRulesPort
     /** The kinds of document, as the API names them. */
     public const CATEGORIES = ['tax', 'commercial', 'self_billing'];
 
+    /** The tax categories a document charge may be made at. */
+    private const CHARGE_CATEGORIES = ['S', 'Z', 'E', 'O'];
+
     public function defaults(Request $request): array
     {
         $address = $request->input('buyer_address');
@@ -47,6 +51,13 @@ class InvoiceRules implements InvoiceRulesPort
             'currency' => is_string($request->input('currency')) ? strtoupper($request->input('currency')) : 'AED',
             'transaction_flags' => $request->input('transaction_flags') ?? PintAe::NO_FLAGS,
             'buyer_address' => is_array($address) ? ['country_code' => 'AE', ...$address] : $address,
+            // A document charge is made at the standard rate unless it says
+            // otherwise; one in another category states a zero rate.
+            ...(is_array($request->input('charges')) ? ['charges' => array_map(fn ($charge) => is_array($charge) ? [
+                'tax_category' => $charge['tax_category'] ?? PintTaxCategory::Standard->value,
+                'tax_rate' => ($charge['tax_category'] ?? PintTaxCategory::Standard->value) === PintTaxCategory::Standard->value ? PintAe::STANDARD_RATE : '0',
+                ...$charge,
+            ] : $charge, $request->input('charges'))] : []),
         ];
     }
 
@@ -70,6 +81,8 @@ class InvoiceRules implements InvoiceRulesPort
             'currency' => ['required', 'string', 'regex:/^[A-Z]{3}$/'],
             'exchange_rate' => ['nullable', 'numeric', 'gt:0', Rule::requiredIf(fn (): bool => $request->input('currency') !== 'AED')],
             'payment_means_code' => ['nullable', 'string', 'regex:/^[0-9A-Z]{1,3}$/'],
+            // IBT-020, the payment terms in words.
+            'payment_terms' => ['nullable', 'string', 'max:1000'],
 
             'buyer_name' => ['required', 'string', 'max:255'],
             'buyer_name_ar' => ['nullable', 'string', 'max:255'],
@@ -103,6 +116,12 @@ class InvoiceRules implements InvoiceRulesPort
             'delivery_address.country_code' => ['required_with:delivery_address', 'string', 'regex:/^[A-Z]{2}$/'],
             'delivery_address.postal_code' => ['nullable', 'string', 'max:20'],
 
+            // IBT-010, IBT-013 and IBT-012: the buyer's reference, purchase
+            // order and contract, as the buyer's paperwork names the sale.
+            'buyer_reference' => ['nullable', 'string', 'max:127'],
+            'order_reference' => ['nullable', 'string', 'max:127'],
+            'contract_reference' => ['nullable', 'string', 'max:127'],
+
             'discount_amount' => ['nullable', 'numeric', 'min:0', 'decimal:0,2'],
             'notes' => ['nullable', 'string', 'max:5000'],
 
@@ -121,6 +140,12 @@ class InvoiceRules implements InvoiceRulesPort
             'lines.*.goods_type' => ['nullable', 'required_if:lines.*.tax_category,AE', Rule::in(PintAe::REVERSE_CHARGE_GOODS)],
             'lines.*.item_id' => ['nullable', 'required_if:lines.*.tax_category,AE', 'string', 'regex:/^\d{8,14}$/'],
             'lines.*.hs_code' => ['nullable', 'string', 'max:20'],
+
+            // A line's own discount and charges, and the document's charges,
+            // with IBR-CL-20's codes. A document charge is standard-rated,
+            // zero-rated, exempt or out of scope: PINT AE has no charge in
+            // the reverse charge or the margin scheme it could be added to.
+            ...ChargeRules::rules(PintAe::CHARGE_REASON_CODES, self::CHARGE_CATEGORIES, $this->exemptionCodes()),
         ];
     }
 
@@ -142,6 +167,7 @@ class InvoiceRules implements InvoiceRulesPort
             'lines.*.exempt_code.required_if' => __('The exemption reason is one of :codes.', ['codes' => implode(', ', PintAe::EXEMPTION_REASONS)]),
             'lines.*.goods_type.required_if' => __('A reverse-charge line names the type of goods (:codes).', ['codes' => implode(', ', PintAe::REVERSE_CHARGE_GOODS)]),
             'lines.*.item_id.required_if' => __('A reverse-charge line needs the item GTIN.'),
+            ...ChargeRules::messages(),
         ];
     }
 
@@ -154,6 +180,43 @@ class InvoiceRules implements InvoiceRulesPort
 
         $this->checkLines($validator, $request);
         $this->checkDiscount($validator, $request);
+        ChargeRules::after($validator, $request);
+        $this->checkCharges($validator, $request);
+    }
+
+    /**
+     * A document charge's rate is its category's - the standard 5
+     * (IBR-190-AE), zero when zero-rated or exempt (ALIGNED-IBRP-Z-07,
+     * -E-07), and none stated out of scope (ALIGNED-IBRP-O-07) - and an
+     * exempt one names its exemption (IBR-169-AE). A commercial document
+     * charges no VAT (IBR-122-AE), and a margin-scheme one has every amount
+     * in the scheme, which no charge can be.
+     */
+    private function checkCharges(Validator $validator, Request $request): void
+    {
+        $commercial = $request->input('document_category') === 'commercial';
+        $margin = self::flag($request->input('transaction_flags'), PintAe::FLAG_MARGIN_SCHEME);
+
+        foreach ((array) $request->input('charges', []) as $index => $charge) {
+            $category = (string) $charge['tax_category'];
+            $rate = (string) $charge['tax_rate'];
+
+            if ($category === 'S' ? bccomp($rate, PintAe::STANDARD_RATE, 2) !== 0 : bccomp($rate, '0', 2) !== 0) {
+                $validator->errors()->add("charges.{$index}.tax_rate", $category === 'S'
+                    ? __('The UAE standard rate is :rate%.', ['rate' => PintAe::STANDARD_RATE])
+                    : __('A charge that is zero-rated, exempt or out of scope has a rate of zero.'));
+            }
+
+            if ($category === 'E' && blank($charge['exempt_code'] ?? null)) {
+                $validator->errors()->add("charges.{$index}.exempt_code", __('The exemption reason is one of :codes.', ['codes' => implode(', ', PintAe::EXEMPTION_REASONS)]));
+            }
+
+            if (($commercial && $category === 'S') || $margin) {
+                $validator->errors()->add("charges.{$index}.tax_category", $margin
+                    ? __('A margin-scheme invoice takes no document charge: include it in the price of a line.')
+                    : __('A commercial document charges no VAT: a charge on it is zero-rated, exempt or out of scope (IBR-122-AE).'));
+            }
+        }
     }
 
     /**
@@ -183,6 +246,7 @@ class InvoiceRules implements InvoiceRulesPort
                 'invoice_number', 'document_type', 'issue_date', 'supply_date', 'supply_end_date', 'currency',
                 'exchange_rate', 'payment_means_code', 'buyer_name', 'buyer_name_ar', 'buyer_vat_number',
                 'buyer_address', 'billing_ref', 'discount_amount', 'notes',
+                'buyer_reference', 'order_reference', 'contract_reference', 'payment_terms', 'charges',
             ])),
             'type' => InvoiceType::Standard->value,
             'prices_include_vat' => false,
@@ -359,8 +423,9 @@ class InvoiceRules implements InvoiceRulesPort
     {
         $lines = '0';
 
+        // Each line after its own discount and charges.
         foreach ((array) $request->input('lines') as $line) {
-            $lines = bcadd($lines, bcmul((string) $line['quantity'], (string) $line['unit_price'], 6), 6);
+            $lines = bcadd($lines, ChargeRules::lineTotal($line), 6);
         }
 
         if (bccomp((string) ($request->input('discount_amount') ?? '0'), $lines, 6) > 0) {

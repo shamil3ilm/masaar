@@ -19,6 +19,9 @@ use App\Domains\Compliance\Countries\SaudiArabia\Support\FatooraTime;
 use App\Domains\Compliance\Countries\SaudiArabia\Support\TextNormalizer;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Models\InvoiceCharge;
+use App\Domains\Invoice\Models\InvoiceLine;
+use App\Domains\Invoice\Models\InvoicePrepayment;
 use App\Domains\Invoice\Support\UnitCode;
 use App\Domains\Organization\Models\Organization;
 
@@ -103,7 +106,10 @@ class DocumentBuilder
             sellerName: $this->normalizeName($organization->documentName()),
             vatNumber: $organization->vat_number ?? '',
             timestamp: $this->issuedAt($invoice),
-            invoiceTotal: number_format((float) $invoice->total, 2, '.', ''),
+            // What is to be paid: on a final invoice settling prepayments,
+            // the total less them, as ZATCA's own advance-payment sample
+            // carries tag 4 (1035 of a 2185 total with 1150 prepaid).
+            invoiceTotal: number_format((float) $invoice->payable(), 2, '.', ''),
             vatTotal: number_format((float) $invoice->tax_amount, 2, '.', ''),
             invoiceHash: $hash,
             signature: $signature,
@@ -198,6 +204,12 @@ class DocumentBuilder
             // The exact net, where the line has one. A net price backed out
             // of a VAT-inclusive one is rounded; this is not.
             'lineNet' => $line->net_amount !== null ? (float) $line->net_amount : null,
+            // The line's own discount, already off its net, stated as its
+            // allowance (BT-136). Not on an invoice priced with VAT in it:
+            // that discount is gross, and the net price the document states
+            // already has it taken off.
+            'discount' => $invoice->prices_include_vat ? 0.0 : (float) ($line->discount_amount ?? 0),
+            'charges' => $this->lineCharges($invoice, $line),
             'taxRate' => (float) $line->tax_rate,
             'taxAmount' => (float) $line->tax_amount,
             'lineTotal' => (float) $line->line_total,
@@ -252,7 +264,12 @@ class DocumentBuilder
             buyerIdScheme: $invoice->buyer_id_scheme,
             buyerAddress: $invoice->buyer_address ? AddressData::fromArray($invoice->buyer_address) : null,
             discount: (float) ($invoice->discount_amount ?? 0),
+            // BT-113, what the prepayments settled came to.
+            prepaidAmount: (float) ($invoice->prepaid_amount ?? 0),
             paymentMeansCode: $invoice->payment_means_code ?? '10',
+            // KSA-22. InvoiceXmlData has always had a place for the terms,
+            // and nothing filled it.
+            paymentTerms: $this->filledOrNull($invoice->payment_terms),
             previousInvoiceHash: $previousInvoiceHash,
             billingReferenceId: $invoice->billing_ref,
             // Without the rate there is nothing to convert the tax with, and
@@ -273,7 +290,92 @@ class DocumentBuilder
             // that keeps the customer's total exact, and the document
             // declares it rather than recomputing it.
             isTaxInclusive: (bool) $invoice->prices_include_vat,
+            charges: $this->documentCharges($invoice),
+            prepayments: $this->prepayments($invoice),
+            orderReference: $this->filledOrNull($invoice->order_reference),
+            contractReference: $this->filledOrNull($invoice->contract_reference),
         );
+    }
+
+    /**
+     * The charges on the whole invoice (BG-21) as the document states them:
+     * each at its net. A percentage and its base are stated only on an
+     * invoice priced without VAT, where the net is the percentage of the
+     * base (BR-KSA-EN16931-03); with VAT in the prices both are gross, and
+     * the net alone is stated, as BR-KSA-EN16931-04 and -05 allow.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function documentCharges(Invoice $invoice): array
+    {
+        $inclusive = (bool) $invoice->prices_include_vat;
+
+        return $invoice->charges->map(fn (InvoiceCharge $charge): array => [
+            'amount' => (float) $charge->net_amount,
+            'percent' => $inclusive || $charge->percent === null ? null : (float) $charge->percent,
+            'base' => $inclusive || $charge->base_amount === null ? null : (float) $charge->base_amount,
+            'reasonCode' => $charge->reason_code,
+            'reason' => $charge->reason,
+            'taxCategory' => (string) ($charge->tax_category ?: FatooraConfig::TAX_CATEGORY_STANDARD),
+            'taxRate' => (float) ($charge->tax_rate ?? 0),
+            'exemptionCode' => $charge->exempt_code,
+            'exemptionReason' => $charge->exempt_reason,
+        ])->values()->all();
+    }
+
+    /**
+     * The prepayments a final invoice settles, as the document names each:
+     * the prepayment invoice's number, UUID, issue date and its issue time on
+     * the Kingdom's clock (KSA-26 to KSA-29), and what was prepaid at each
+     * category (KSA-31 to KSA-34), with the exemption where it is not
+     * standard-rated (KSA-41, KSA-42).
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function prepayments(Invoice $invoice): array
+    {
+        return $invoice->prepayments->map(fn (InvoicePrepayment $prepayment): array => [
+            'number' => $prepayment->invoice_number,
+            'uuid' => $prepayment->prepayment_invoice_id,
+            'issueDate' => $prepayment->issue_date->format('Y-m-d'),
+            'issueTime' => FatooraTime::toSaudiTime($prepayment->issued_at)->format('H:i:s'),
+            'taxCategory' => $prepayment->tax_category,
+            'taxRate' => (float) $prepayment->tax_rate,
+            'exemptionCode' => $prepayment->exempt_code,
+            'exemptionReason' => $prepayment->exempt_reason,
+            'taxable' => (float) $prepayment->taxable_amount,
+            'tax' => (float) $prepayment->tax_amount,
+        ])->values()->all();
+    }
+
+    /**
+     * A line's own charges (BG-28), on an invoice priced without VAT: each
+     * as an amount, with its percentage and base when it is one. With VAT in
+     * the prices they are in the line's net and its stated price instead.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function lineCharges(Invoice $invoice, InvoiceLine $line): array
+    {
+        if ($invoice->prices_include_vat) {
+            return [];
+        }
+
+        return $line->charges->map(fn (InvoiceCharge $charge): array => [
+            'amount' => (float) $charge->amount,
+            'percent' => $charge->percent === null ? null : (float) $charge->percent,
+            'base' => $charge->base_amount === null ? null : (float) $charge->base_amount,
+            'reasonCode' => $charge->reason_code,
+            'reason' => $charge->reason,
+        ])->values()->all();
+    }
+
+    /** Trimmed, or null for nothing: an empty reference element is no reference. */
+    private function filledOrNull(?string $value): ?string
+    {
+        $value = trim((string) $value);
+
+        return $value === '' ? null : $value;
     }
 
     /**

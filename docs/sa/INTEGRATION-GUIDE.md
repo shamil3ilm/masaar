@@ -97,6 +97,59 @@ POST /api/compliance/sa/submit/{invoice_id}
 → returns { "data": { "clearance_status": "CLEARED", ... } }
 ```
 
+### Discounts and charges
+
+`POST /api/invoices` and the ERP pipeline take a line's own `discount_amount`
+and `charges`, and `charges` on the whole invoice. A charge is an `amount` or
+a `percent` of a `base_amount` (by default the line's quantity times price,
+or for a document charge the lines' total; rounded half up to the halalah,
+BR-KSA-EN16931-03), with its `reason` and a UNCL 7161 `reason_code` ZATCA
+accepts (BR-KSA-CL-06; default `ABK`). Common codes: `DL` delivery, `ADR` a
+service charge, `PC` packing, `IAA` installation, `FC` freight.
+
+A document charge is made at its own `tax_category` and `tax_rate` (default
+`S` at 15); one that is not standard-rated has a zero rate and names its
+`exempt_code` and `exempt_reason` from that category (BR-KSA-CL-04). A line
+charge is taxed as its line is. On an invoice priced with VAT in it, every
+amount is given with VAT in it too.
+
+```json
+"lines": [
+  { "description": "Sofa", "quantity": 1, "unit_price": "2499.99", "discount_amount": "250.00",
+    "charges": [{ "reason": "Installation", "reason_code": "IAA", "amount": "150.00" }] }
+],
+"charges": [
+  { "reason": "Delivery", "reason_code": "DL", "amount": "25.00" },
+  { "reason": "Service charge", "reason_code": "ADR", "percent": "12.5" }
+]
+```
+
+The same request takes `payment_terms` (KSA-22), `due_date` (kept and shown;
+ZATCA's document has no due date), `supply_end_date` (KSA-24), the
+transaction types `is_export`, `is_summary`, `is_nominal`, `is_third_party`
+and `is_self_billed` (KSA-2), and the buyer's `order_reference` (BT-13),
+`contract_reference` (BT-12) and `buyer_reference` (shown, not in the
+document).
+
+### Prepayments
+
+An advance is invoiced when it is received, as a prepayment invoice
+(`"document_type": "prepayment"`, type 386). The final invoice names the
+prepayment invoices it settles:
+
+```json
+"prepayments": [{ "invoice_number": "ADV-1" }]
+```
+
+Each must be the organization's own, issued, in the same currency and not
+settled already, and only a final tax invoice settles them (BR-KSA-73). The
+final invoice states the whole supply and its VAT, a line per prepaid tax
+category naming the prepayment invoice (KSA-26 to KSA-34), the prepaid
+amount (BT-113, `prepaid_amount`) and what is left to pay; its QR's total is
+that amount. The VAT summary takes the prepaid VAT off the final invoice, as
+it was declared on the prepayment invoice. The portal's form takes the
+numbers separated by commas.
+
 ### 5. Check Status
 
 ```http

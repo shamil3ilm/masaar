@@ -122,6 +122,7 @@ class PortalCustomerController extends Controller
             'country_code' => ['required', 'string', 'size:2', 'regex:/^[A-Z]{2}$/'],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:30'],
+            'payment_terms' => ['nullable', 'string', 'max:1000'],
         ], ...$rules->buyerRules($request)], [
             'vat_number.unique' => __('Another customer already has this VAT number.'),
             ...$rules->buyerMessages(),

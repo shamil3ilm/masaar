@@ -7,6 +7,7 @@ namespace Tests\Feature\Compliance\UnitedArabEmirates;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Document\PeppolPreparer;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Document\PintUblBuilder;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Models\InvoiceCharge;
 use DOMDocument;
 use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -74,6 +75,55 @@ class PintUblBuilderTest extends TestCase
         $xpath = $this->xpath($this->uaeInvoice($this->uaeOrganization(), ['buyer_vat_number' => null, 'due_date' => null]));
 
         $this->assertSame(0.0, $xpath->evaluate('count(//*[not(*) and not(normalize-space())])'));
+    }
+
+    /**
+     * A line's discount (IBG-27) and charge (IBG-28) before its item, in its
+     * net (IBR-147-AE); document charges (IBG-21) at each category, the
+     * exempt one naming its exemption (IBR-169-AE) and the out-of-scope one
+     * no rate (ALIGNED-IBRP-O-07), a percentage with its base
+     * (ALIGNED-IBRP-058); and the totals that add them (IBT-108, IBT-109).
+     */
+    public function test_charges_reach_the_einvoice(): void
+    {
+        $invoice = $this->uaeInvoice($this->uaeOrganization(), ['subtotal' => '950.00'], [
+            $this->uaeLine(['net_amount' => 950, 'discount_amount' => 100, 'tax_amount' => 47.5, 'line_total' => 997.5]),
+        ]);
+        $invoice->forceFill(['status' => 'draft'])->save();
+        $line = $invoice->lines->first();
+
+        foreach ([
+            [$line->id, 'IAA', 'Installation', '50.00', null, null, null, null],
+            [null, 'DL', 'Delivery', '35.00', null, null, 'S', '5'],
+            [null, 'FI', 'Bank fee', '15.00', null, null, 'E', '0', 'DL8.46.1'],
+            [null, 'ABK', 'Government fee', '10.00', null, null, 'O', '0'],
+            [null, 'ADR', 'Service charge', '100.00', '10', '1000.00', 'S', '5'],
+        ] as $position => $c) {
+            InvoiceCharge::query()->create([
+                'invoice_id' => $invoice->id, 'invoice_line_id' => $c[0], 'position' => $position,
+                'reason_code' => $c[1], 'reason' => $c[2], 'amount' => $c[3], 'net_amount' => $c[3],
+                'percent' => $c[4], 'base_amount' => $c[5], 'tax_category' => $c[6], 'tax_rate' => $c[7], 'exempt_code' => $c[8] ?? null,
+            ]);
+        }
+
+        $invoice->forceFill(['status' => 'issued'])->save();
+        $xpath = $this->xpath(Invoice::withoutTenantScope(fn () => $invoice->fresh(['lines', 'org'])));
+        $charge = fn (string $code, string $path): string => $xpath->evaluate("string(/*/cac:AllowanceCharge[cbc:AllowanceChargeReasonCode='{$code}']/{$path})");
+
+        $this->assertSame(['false', '100.00'], [$xpath->evaluate('string(//cac:InvoiceLine/cac:AllowanceCharge[1]/cbc:ChargeIndicator)'), $xpath->evaluate('string(//cac:InvoiceLine/cac:AllowanceCharge[1]/cbc:Amount)')]);
+        $this->assertSame('IAA', $xpath->evaluate('string(//cac:InvoiceLine/cac:AllowanceCharge[2]/cbc:AllowanceChargeReasonCode)'));
+        $this->assertSame(1.0, $xpath->evaluate('count(//cac:InvoiceLine/cac:AllowanceCharge[2]/following-sibling::cac:Item)'));
+        $this->assertSame(['950.00', '500.00'], [$xpath->evaluate('string(//cac:InvoiceLine/cbc:LineExtensionAmount)'), $xpath->evaluate('string(//cac:InvoiceLine/cac:Price/cbc:PriceAmount)')]);
+
+        $this->assertSame(['DL8.46.1', '0'], [$charge('FI', 'cac:TaxCategory/cbc:TaxExemptionReasonCode'), $charge('FI', 'cac:TaxCategory/cbc:Percent')]);
+        $this->assertSame(['O', ''], [$charge('ABK', 'cac:TaxCategory/cbc:ID'), $charge('ABK', 'cac:TaxCategory/cbc:Percent')]);
+        $this->assertSame(['10', '100.00', '1000.00'], [$charge('ADR', 'cbc:MultiplierFactorNumeric'), $charge('ADR', 'cbc:Amount'), $charge('ADR', 'cbc:BaseAmount')]);
+        $this->assertSame(0.0, $xpath->evaluate("count(/*/cac:AllowanceCharge[cbc:AllowanceChargeReasonCode='DL']/cbc:BaseAmount)"));
+
+        $this->assertSame(['160.00', '1110.00'], [$xpath->evaluate('string(//cac:LegalMonetaryTotal/cbc:ChargeTotalAmount)'), $xpath->evaluate('string(//cac:LegalMonetaryTotal/cbc:TaxExclusiveAmount)')]);
+        $this->assertSame('1085.00', $xpath->evaluate("string(//cac:TaxSubtotal[cac:TaxCategory/cbc:ID='S']/cbc:TaxableAmount)"));
+        $this->assertSame(['15.00', 'DL8.46.1'], [$xpath->evaluate("string(//cac:TaxSubtotal[cac:TaxCategory/cbc:ID='E']/cbc:TaxableAmount)"), $xpath->evaluate("string(//cac:TaxSubtotal[cac:TaxCategory/cbc:ID='E']/cac:TaxCategory/cbc:TaxExemptionReasonCode)")]);
+        $this->assertSame('10.00', $xpath->evaluate("string(//cac:TaxSubtotal[cac:TaxCategory/cbc:ID='O']/cbc:TaxableAmount)"));
     }
 
     private function xpath(Invoice $invoice): DOMXPath

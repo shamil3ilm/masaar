@@ -159,7 +159,7 @@ class VatSummary
     public function documents(string $organizationId, CarbonImmutable $from, CarbonImmutable $to): LazyCollection
     {
         return Invoice::withoutTenantScope(fn () => $this->query($organizationId, $from, $to)
-            ->with('lines')
+            ->with(['lines', 'charges', 'prepayments'])
             ->orderBy('issue_date')
             ->orderBy('icv')
             ->lazy(200));
@@ -175,7 +175,7 @@ class VatSummary
     public function issued(string $organizationId, CarbonImmutable $from, CarbonImmutable $to): LazyCollection
     {
         return Invoice::withoutTenantScope(fn () => $this->query($organizationId, $from, $to, sealed: false)
-            ->with('lines')
+            ->with(['lines', 'charges', 'prepayments'])
             ->orderBy('issue_date')
             ->orderBy('issued_at')
             ->orderBy('invoice_number')
@@ -294,10 +294,34 @@ class VatSummary
             $codes[$key] = ['code' => $code, 'exempt' => $line->exempt_code];
         }
 
+        // Document charges add to the base of the category they are made
+        // at, which may be one no line has.
+        $charges = [];
+
+        foreach ($invoice->charges as $charge) {
+            $code = (string) ($charge->tax_category ?: 'S');
+            $key = $code.'|'.(string) (float) $charge->tax_rate.'|'.$charge->exempt_code;
+            $charges[$key] = ($charges[$key] ?? 0.0) + (float) $charge->net_amount;
+            $rates[$key] = (float) $charge->tax_rate;
+            $codes[$key] ??= ['code' => $code, 'exempt' => $charge->exempt_code];
+        }
+
         $categories = [];
 
-        foreach (InvoiceTotals::categories($nets, $rates, (float) $invoice->discount_amount, (float) $invoice->tax_amount) as $key => $category) {
+        foreach (InvoiceTotals::categories($nets, $rates, (float) $invoice->discount_amount, (float) $invoice->tax_amount, $charges) as $key => $category) {
             $categories[] = [...$codes[$key], 'base' => $category['base'], 'tax' => $category['tax']];
+        }
+
+        // A final invoice states the whole supply and its VAT; what its
+        // prepayment invoices already declared is taken off, so the advance
+        // is not counted twice.
+        foreach ($invoice->prepayments as $prepayment) {
+            $categories[] = [
+                'code' => (string) $prepayment->tax_category,
+                'exempt' => $prepayment->exempt_code,
+                'base' => -(float) $prepayment->taxable_amount,
+                'tax' => -(float) $prepayment->tax_amount,
+            ];
         }
 
         return $categories;

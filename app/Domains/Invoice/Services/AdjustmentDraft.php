@@ -7,6 +7,7 @@ namespace App\Domains\Invoice\Services;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Models\InvoiceCharge;
 use DomainException;
 
 /**
@@ -67,6 +68,13 @@ class AdjustmentDraft
             'buyer_id_scheme' => (string) $invoice->buyer_id_scheme,
             'buyer_address' => (array) ($invoice->buyer_address ?? []),
             'discount_amount' => $credit ? $this->discountAsEntered($invoice, $inclusive) : null,
+            // The note is the same kind of transaction as what it corrects:
+            // an export's credit note is an export's too. Ticked boxes, and
+            // an unticked one is absent, as the form sends it.
+            ...array_map(
+                fn (): string => '1',
+                array_filter($invoice->only(['is_third_party', 'is_nominal', 'is_export', 'is_summary', 'is_self_billed'])),
+            ),
             // The category and exemption go with the line: without them a
             // zero-rated or exempt line came back as standard-rated at 0%,
             // which is not what the original said and not a valid line.
@@ -82,8 +90,36 @@ class AdjustmentDraft
                     'exempt_code' => (string) $line->exempt_code,
                     'exempt_reason' => (string) $line->exempt_reason,
                     'unit_code' => (string) $line->unit_code,
+                    // Its own discount and charges, as entered, where it has them.
+                    ...($line->discount_amount === null ? [] : ['discount_amount' => (string) $line->discount_amount]),
+                    ...($line->charges->isEmpty() ? [] : ['charges' => $line->charges->map(fn (InvoiceCharge $charge): array => $this->chargeAsEntered($charge))->values()->all()]),
                 ])->values()->all()
                 : [[]],
+            // The charges on the whole invoice are credited with it.
+            ...($credit && $invoice->charges->isNotEmpty() ? ['charges' => $invoice->charges->map(fn (InvoiceCharge $charge): array => [
+                ...$this->chargeAsEntered($charge),
+                'tax_category' => (string) $charge->tax_category,
+                'tax_rate' => (string) (float) $charge->tax_rate,
+                'exempt_code' => (string) $charge->exempt_code,
+                'exempt_reason' => (string) $charge->exempt_reason,
+            ])->values()->all()] : []),
+        ];
+    }
+
+    /**
+     * A charge as the form takes it: its percentage and base when it was
+     * one, which price it again to the same amount, or its amount.
+     *
+     * @return array<string, string>
+     */
+    private function chargeAsEntered(InvoiceCharge $charge): array
+    {
+        return [
+            'reason' => (string) $charge->reason,
+            'reason_code' => (string) $charge->reason_code,
+            ...($charge->percent !== null
+                ? ['percent' => (string) (float) $charge->percent, 'base_amount' => (string) $charge->base_amount]
+                : ['amount' => (string) $charge->amount]),
         ];
     }
 
@@ -97,8 +133,11 @@ class AdjustmentDraft
      */
     private function discountAsEntered(Invoice $invoice, bool $inclusive): ?string
     {
+        // The gross discount is what the lines and the charges, each gross,
+        // came to over the total.
+        $charges = $invoice->charges->reduce(fn (string $sum, InvoiceCharge $charge): string => bcadd($sum, (string) $charge->amount, 2), '0');
         $discount = $inclusive
-            ? bcsub($invoice->lines->reduce(fn (string $sum, $line): string => bcadd($sum, (string) $line->line_total, 2), '0'), (string) $invoice->total, 2)
+            ? bcsub(bcadd($invoice->lines->reduce(fn (string $sum, $line): string => bcadd($sum, (string) $line->line_total, 2), '0'), $charges, 2), (string) $invoice->total, 2)
             : bcadd((string) $invoice->discount_amount, '0', 2);
 
         return bccomp($discount, '0', 2) > 0 ? $discount : null;

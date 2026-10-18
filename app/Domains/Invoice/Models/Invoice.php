@@ -49,7 +49,8 @@ class Invoice extends Model
         // subscription. Needs supply_date beside it (BR-KSA-35).
         'supply_end_date',
         'issued_at',
-        // PINT AE's payment due date. Null on a Saudi invoice.
+        // When payment is due: PINT AE's IBT-009, and on a Saudi invoice
+        // kept and shown, since ZATCA's document has no due date.
         'due_date',
         // A country's own document fields - for the UAE the transaction
         // flags, buyer endpoint and emirate.
@@ -63,12 +64,22 @@ class Invoice extends Model
         'buyer_id_scheme',
         'buyer_address',
         'payment_means_code',
+        // The terms it is to be paid on, in words (KSA-22, IBT-020).
+        'payment_terms',
         'billing_ref',
+        // The buyer's purchase order (BT-13), contract (BT-12) and own
+        // reference (BT-10), for matching the invoice on their side.
+        'order_reference',
+        'contract_reference',
+        'buyer_reference',
         'adjustment_reason',
         'subtotal',
         'discount_amount',
         'tax_amount',
         'total',
+        // What its prepayments came to with their VAT (BT-113); the buyer
+        // pays the total less it.
+        'prepaid_amount',
         'hash',
         'qr_code',
         'signed_xml',
@@ -106,6 +117,7 @@ class Invoice extends Model
             'discount_amount' => 'decimal:2',
             'tax_amount' => 'decimal:2',
             'total' => 'decimal:2',
+            'prepaid_amount' => 'decimal:2',
             'exchange_rate' => 'decimal:6',
             'icv' => 'integer',
             'zatca_response' => 'array',
@@ -290,6 +302,32 @@ class Invoice extends Model
     public function lines(): HasMany
     {
         return $this->hasMany(InvoiceLine::class);
+    }
+
+    /**
+     * The charges on the whole invoice (BG-21), in the order entered. A
+     * line's own are its charges().
+     */
+    public function charges(): HasMany
+    {
+        return $this->hasMany(InvoiceCharge::class)->whereNull('invoice_line_id')->orderBy('position');
+    }
+
+    /**
+     * The prepayments this final invoice settles, a row per prepaid tax
+     * category.
+     */
+    public function prepayments(): HasMany
+    {
+        return $this->hasMany(InvoicePrepayment::class)->orderBy('position');
+    }
+
+    /**
+     * What the buyer pays: the total less any prepayments (BT-115).
+     */
+    public function payable(): string
+    {
+        return bcsub((string) $this->total, (string) ($this->prepaid_amount ?? '0'), 2);
     }
 
     /**

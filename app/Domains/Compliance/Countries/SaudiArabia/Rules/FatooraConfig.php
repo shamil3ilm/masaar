@@ -292,6 +292,59 @@ final class FatooraConfig
 
     public const PAYMENT_DIRECT_DEBIT = '49';
 
+    /**
+     * BT-81, the payment means ZATCA names, as the portal offers them: the
+     * subset BR-KSA-16 states in its test (' 10 30 42 48 1 ') - cash,
+     * credit transfer, payment to a bank account, bank card, and an
+     * instrument not defined.
+     *
+     * @var list<string>
+     */
+    public const PAYMENT_MEANS = ['10', '30', '42', '48', '1'];
+
+    /**
+     * BT-81, every code BR-KSA-16 lets through without a finding: the
+     * UNTDID 4461 subset its assertion actually checks, read from the
+     * Schematron in ZATCA's SDK. An API caller may send any of these.
+     *
+     * @return list<string>
+     */
+    public static function acceptedPaymentMeans(): array
+    {
+        return [
+            ...array_map('strval', range(1, 68)),
+            '70', '74', '75', '76', '77', '78',
+            '91', '92', '93', '94', '95', '96', '97',
+            'ZZZ',
+        ];
+    }
+
+    /**
+     * BT-105 and BT-145, the reason codes a charge may carry: the UNCL 7161
+     * codes BR-KSA-CL-06 accepts, read from its assertion in the Schematron
+     * in ZATCA's SDK. That list joins CAP and CAQ into one token and writes
+     * IAB and TAC as AB and AC; it is kept as the authority checks it, less
+     * the joined token, which is no code.
+     *
+     * @var list<string>
+     */
+    public const CHARGE_REASON_CODES = [
+        'AA', 'AAA', 'AAC', 'AAD', 'AAE', 'AAF', 'AAH', 'AAI', 'AAS', 'AAT', 'AAV', 'AAY',
+        'AAZ', 'ABA', 'ABB', 'ABC', 'ABD', 'ABF', 'ABK', 'ABL', 'ABN', 'ABR', 'ABS', 'ABT',
+        'ABU', 'ACF', 'ACG', 'ACH', 'ACI', 'ACJ', 'ACK', 'ACL', 'ACM', 'ACS', 'ADC', 'ADE',
+        'ADJ', 'ADK', 'ADL', 'ADM', 'ADN', 'ADO', 'ADP', 'ADQ', 'ADR', 'ADT', 'ADW', 'ADY',
+        'ADZ', 'AEA', 'AEB', 'AEC', 'AED', 'AEF', 'AEH', 'AEI', 'AEJ', 'AEK', 'AEL', 'AEM',
+        'AEN', 'AEO', 'AEP', 'AES', 'AET', 'AEU', 'AEV', 'AEW', 'AEX', 'AEY', 'AEZ', 'AJ',
+        'AU', 'CA', 'CAB', 'CAD', 'CAE', 'CAF', 'CAI', 'CAJ', 'CAK', 'CAL', 'CAM', 'CAN',
+        'CAO', 'CAR', 'CAS', 'CAT', 'CAU', 'CAV', 'CAW', 'CD', 'CG', 'CS', 'CT', 'DAB',
+        'DAD', 'DL', 'EG', 'EP', 'ER', 'FAA', 'FAB', 'FAC', 'FC', 'FH', 'FI', 'GAA',
+        'HAA', 'HD', 'HH', 'IAA', 'AB', 'ID', 'IF', 'IR', 'IS', 'KO', 'L1', 'LA',
+        'LAA', 'LAB', 'LF', 'MAE', 'MI', 'ML', 'NAA', 'OA', 'PA', 'PAA', 'PC', 'PL',
+        'RAB', 'RAC', 'RAD', 'RAF', 'RE', 'RF', 'RH', 'RV', 'SA', 'SAA', 'SAD', 'SAE',
+        'SAI', 'SG', 'SH', 'SM', 'SU', 'TAB', 'AC', 'TT', 'TV', 'V1', 'V2', 'WH',
+        'XAA', 'YY', 'ZZZ',
+    ];
+
     // ============================================================
     // RATE LIMITS (Configurable)
     // ============================================================

@@ -9,6 +9,7 @@ use App\Domains\Invoice\Exceptions\InvoiceNotEditableException;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Invoice line item.
@@ -29,6 +30,9 @@ class InvoiceLine extends Model
         'quantity',
         'unit_code',
         'unit_price',
+        // This line's own discount (BT-136), as entered: with VAT in it on
+        // an invoice priced that way. Already off the net.
+        'discount_amount',
         // The exact net. A net price backed out of a VAT-inclusive one is
         // rounded, so quantity times it is not always the line's net.
         'net_amount',
@@ -45,6 +49,7 @@ class InvoiceLine extends Model
         return [
             'quantity' => 'decimal:3',
             'unit_price' => 'decimal:2',
+            'discount_amount' => 'decimal:2',
             'net_amount' => 'decimal:2',
             'tax_rate' => 'decimal:2',
             'tax_amount' => 'decimal:2',
@@ -88,7 +93,18 @@ class InvoiceLine extends Model
             return (string) $this->unit_price;
         }
 
-        return number_format((float) bcdiv((string) $this->line_total, (string) $this->quantity, 6), 2, '.', '');
+        // The line's gross is after its own discount; the price was before.
+        $gross = bcadd((string) $this->line_total, (string) ($this->discount_amount ?? '0'), 2);
+
+        return number_format((float) bcdiv($gross, (string) $this->quantity, 6), 2, '.', '');
+    }
+
+    /**
+     * This line's own charges (BG-28), taxed as the line is.
+     */
+    public function charges(): HasMany
+    {
+        return $this->hasMany(InvoiceCharge::class)->orderBy('position');
     }
 
     /**
