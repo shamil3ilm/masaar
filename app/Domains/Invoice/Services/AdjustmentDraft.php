@@ -73,8 +73,10 @@ class AdjustmentDraft
             // an unticked one is absent, as the form sends it.
             ...array_map(
                 fn (): string => '1',
-                array_filter($invoice->only(['is_third_party', 'is_nominal', 'is_export', 'is_summary', 'is_self_billed'])),
+                array_filter($invoice->only(['is_third_party', 'is_nominal', 'is_export', 'is_summary', 'is_self_billed', 'is_government'])),
             ),
+            // A government invoice's notes name its contract too (BR-KSA-92).
+            ...($invoice->contract_reference ? ['contract_reference' => (string) $invoice->contract_reference] : []),
             // The category and exemption go with the line: without them a
             // zero-rated or exempt line came back as standard-rated at 0%,
             // which is not what the original said and not a valid line.

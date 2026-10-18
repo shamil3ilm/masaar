@@ -100,6 +100,8 @@ class Invoice extends Model
         'is_nominal',
         'is_export',
         'is_summary',
+        // A business-to-government transaction (KSA-2 position 9).
+        'is_government',
         'is_self_billed',
     ];
 
@@ -127,6 +129,7 @@ class Invoice extends Model
             'buyer_address' => 'array',
             'is_third_party' => 'boolean',
             'is_nominal' => 'boolean',
+            'is_government' => 'boolean',
             'is_export' => 'boolean',
             'is_summary' => 'boolean',
             'is_self_billed' => 'boolean',

@@ -102,6 +102,7 @@ final readonly class InvoiceXmlData
         public bool $isExport = false,        // Bit 5: Export invoice
         public bool $isSummary = false,       // Bit 6: Summary invoice
         public bool $isSelfBilled = false,    // Bit 7: Self-billed invoice
+        public bool $isGovernment = false,    // Bit 9: B2G transaction (BR-KSA-06)
         // Prices were entered with VAT in them. Amounts are already net; the
         // document VAT (taxAmount) is fixed, and the categories add up to it.
         public bool $isTaxInclusive = false,
@@ -196,7 +197,13 @@ final readonly class InvoiceXmlData
         $bit6 = $this->isSummary ? '1' : '0';
         $bit7 = $this->isSelfBilled ? '1' : '0';
 
-        return $transactionType.$bit3.$bit4.$bit5.$bit6.$bit7;
+        // Positions 8 (continuous supply) and 9 (B2G) are ZATCA's SDK's
+        // (BR-KSA-06 takes seven, eight or nine characters). Written only
+        // for a B2G transaction, so every other document keeps the seven
+        // its signature already covers.
+        $positions8and9 = $this->isGovernment ? '01' : '';
+
+        return $transactionType.$bit3.$bit4.$bit5.$bit6.$bit7.$positions8and9;
     }
 
     /**

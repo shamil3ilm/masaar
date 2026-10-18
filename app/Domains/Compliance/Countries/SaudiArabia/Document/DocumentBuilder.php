@@ -286,6 +286,7 @@ class DocumentBuilder
             isExport: (bool) ($invoice->is_export ?? false),
             isSummary: (bool) ($invoice->is_summary ?? false),
             isSelfBilled: (bool) ($invoice->is_self_billed ?? false),
+            isGovernment: (bool) ($invoice->is_government ?? false),
             // Prices entered with VAT in them: the stored VAT is the figure
             // that keeps the customer's total exact, and the document
             // declares it rather than recomputing it.

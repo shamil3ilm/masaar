@@ -10,3 +10,7 @@
             {{ $simplified ? 'Simplified tax invoice' : 'Tax invoice' }}
             <span class="text-subtle" dir="rtl" lang="ar">{{ $simplified ? 'فاتورة ضريبية مبسطة' : 'فاتورة ضريبية' }}</span>
         </p>
+        {{-- A business-to-government transaction (KSA-2 position 9). --}}
+        @if ($invoice->is_government)
+            <p class="mt-1 text-sm font-medium text-accent">Government (B2G) <span dir="rtl" lang="ar">جهة حكومية</span></p>
+        @endif

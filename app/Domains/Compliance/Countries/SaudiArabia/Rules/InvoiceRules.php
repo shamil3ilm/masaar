@@ -56,10 +56,13 @@ class InvoiceRules implements InvoiceRulesPort
 
     /**
      * KSA-2 positions 3 to 7, the transaction types an invoice can also be,
-     * as the invoice's own columns name them. Each is a bit of the type
-     * name that is signed (InvoiceXmlData::getInvoiceTypeName()).
+     * as the invoice's own columns name them, and position 9, a
+     * business-to-government transaction, which ZATCA's SDK defines beside
+     * them (BR-KSA-06: "G (position 9) = B2G invoice transaction"). Each is a
+     * bit of the type name that is signed
+     * (InvoiceXmlData::getInvoiceTypeName()).
      */
-    public const TRANSACTION_FLAGS = ['is_third_party', 'is_nominal', 'is_export', 'is_summary', 'is_self_billed'];
+    public const TRANSACTION_FLAGS = ['is_third_party', 'is_nominal', 'is_export', 'is_summary', 'is_self_billed', 'is_government'];
 
     public function __construct(
         private readonly TenantResolver $tenant,
@@ -652,6 +655,14 @@ class InvoiceRules implements InvoiceRulesPort
             if (! $request->filled('supply_end_date')) {
                 $errors->add('supply_end_date', __('A simplified summary invoice states the period it covers: a supply date and a supply end date (BR-KSA-72).'));
             }
+        }
+
+        // BR-KSA-92: a B2G transaction names its contract (BT-12), on the
+        // invoice and on the notes against it. Nothing else of the buyer
+        // is required beyond any invoice's: a government buyer without a
+        // VAT number is named by another identifier, as BR-KSA-81 has it.
+        if ($request->boolean('is_government') && ! $request->filled('contract_reference')) {
+            $errors->add('contract_reference', __('A government (B2G) invoice names the contract it falls under (BR-KSA-92).'));
         }
 
         if ($request->boolean('is_export') && $request->filled('buyer_vat_number')) {

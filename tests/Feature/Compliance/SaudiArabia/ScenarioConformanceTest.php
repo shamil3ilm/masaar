@@ -109,6 +109,58 @@ class ScenarioConformanceTest extends TestCase
     }
 
     /**
+     * A business-to-government transaction: KSA-2 position 9 in ZATCA's SDK
+     * (BR-KSA-06, nine characters), with the contract BR-KSA-92 requires on
+     * the invoice and on its notes.
+     */
+    public function test_a_government_invoice_validates(): void
+    {
+        $xml = $this->signedFrom(self::standard(['is_government' => true, 'contract_reference' => 'MOF-2026-118']));
+
+        $this->assertStringContainsString('<cbc:InvoiceTypeCode name="010000001">388</cbc:InvoiceTypeCode>', $xml);
+        $this->assertMatchesRegularExpression('#<cac:ContractDocumentReference[^>]*>\s*<cbc:ID[^>]*>MOF-2026-118</cbc:ID>#', $xml);
+        $this->assertAccepted($xml);
+    }
+
+    public function test_a_government_credit_note_validates(): void
+    {
+        $xml = $this->signedFrom(self::standard([
+            'is_government' => true,
+            'contract_reference' => 'MOF-2026-118',
+            'document_type' => 'credit_note',
+            'billing_ref' => 'INV-B2G-1',
+            'adjustment_reason' => 'Returned goods',
+        ]));
+
+        $this->assertStringContainsString('<cbc:InvoiceTypeCode name="010000001">381</cbc:InvoiceTypeCode>', $xml);
+        $this->assertAccepted($xml);
+    }
+
+    /**
+     * Without its contract a government invoice is refused here, with
+     * BR-KSA-92, and built anyway ZATCA's validator refuses it the same.
+     */
+    public function test_a_government_invoice_needs_its_contract(): void
+    {
+        $this->requireSdk();
+        $token = $this->token();
+        $dates = ['issue_date' => now()->toDateString(), 'supply_date' => now()->toDateString()];
+
+        $this->withToken($token)->postJson('/api/invoices', ['invoice_number' => 'B2G-REFUSED', ...$dates, ...self::standard(['is_government' => true])])
+            ->assertStatus(422)
+            ->assertJsonPath('error.details.contract_reference.0', 'A government (B2G) invoice names the contract it falls under (BR-KSA-92).');
+
+        $id = $this->withToken($token)->postJson('/api/invoices', ['invoice_number' => 'B2G-FORCED', ...$dates, ...self::standard()])
+            ->assertCreated()->json('data.invoice.id');
+        $invoice = Invoice::withoutTenantScope(fn () => Invoice::with('lines')->findOrFail($id));
+        $invoice->forceFill(['is_government' => true])->saveQuietly();
+
+        $xml = app(DocumentBuilder::class)->generateComplianceData($invoice->fresh('lines'), $this->organization)['xml'];
+
+        $this->assertContains('BR-KSA-92', array_map(fn (string $error): string => explode(':', $error)[0], $this->validate($xml)['errors']));
+    }
+
+    /**
      * What ZATCA refuses on an export, refused here with its rule, and the
      * same document built anyway and put to ZATCA's validator: BR-KSA-07, an
      * export cannot be self-billed.

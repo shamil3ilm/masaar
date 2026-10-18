@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Invoice;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Compliance\Countries\SaudiArabia\Presentation\PrintedTerms;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Licensing\Models\License;
 use App\Domains\Organization\Models\Organization;
@@ -134,6 +135,38 @@ class TransactionFlagTest extends TestCase
             ->assertJsonPath('error.details.buyer_vat_number.0', 'An export invoice names no buyer VAT number (BR-KSA-46). Identify a buyer abroad by another identifier (buyer_id), such as OTH.');
 
         $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+    }
+
+    /**
+     * A government buyer (KSA-2 position 9) through each surface, with the
+     * contract BR-KSA-92 requires, shown on the invoice page and on paper.
+     */
+    public function test_a_government_buyer_through_each_surface(): void
+    {
+        $government = $this->standard(['is_government' => true, 'contract_reference' => 'MOF-2026-118']);
+
+        $this->api([...$government, 'contract_reference' => null])
+            ->assertStatus(422)
+            ->assertJsonPath('error.details.contract_reference.0', 'A government (B2G) invoice names the contract it falls under (BR-KSA-92).');
+        $this->pipeline([...$government, 'invoice_number' => 'INV-P'])->assertSuccessful();
+        $this->api([...$government, 'invoice_number' => 'INV-A'])->assertCreated();
+        $this->asRequest(fn () => $this->actingAs($this->admin)
+            ->withSession(['_token' => self::PORTAL_TOKEN])
+            ->post('/portal/invoices', ['_token' => self::PORTAL_TOKEN, ...$this->base(), ...$government, 'invoice_number' => 'INV-W', 'is_government' => '1'])
+            ->assertSessionHasNoErrors());
+
+        $invoices = Invoice::withoutTenantScope(fn () => Invoice::query()->orderBy('invoice_number')->get());
+        $this->assertSame([true, true, true], $invoices->pluck('is_government')->all());
+
+        $this->actingAs($this->admin)->withSession(['portal_org_id' => $this->acme->id])
+            ->get(route('portal.invoices.show', $invoices->first()->id))
+            ->assertOk()->assertSee('Government (B2G)')->assertSee('MOF-2026-118');
+
+        // Every paper prints the same terms (PrintedTerms): the page, the
+        // PDF and the receipt.
+        $printed = array_map(fn ($row): string => $row->label->en.'='.$row->value, PrintedTerms::of($invoices->first()));
+        $this->assertContains('Transaction=Government (B2G) / جهة حكومية', $printed);
+        $this->assertContains('Contract=MOF-2026-118', $printed);
     }
 
     public function test_a_simplified_summary_names_its_buyer(): void

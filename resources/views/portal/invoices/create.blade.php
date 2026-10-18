@@ -144,15 +144,16 @@
             </div>
         </div>
 
-        {{-- KSA-2 positions 3 to 7. An unticked box sends nothing, which is
-             what "not this kind" is. --}}
+        {{-- KSA-2 positions 3 to 7, and 9 for a government buyer. An
+             unticked box sends nothing, which is what "not this kind" is. --}}
         <fieldset class="mt-4">
             <legend class="block text-sm font-medium text-fg">{{ __('Transaction type') }}</legend>
             <div class="mt-1 flex flex-wrap gap-x-6">
-                @foreach (['is_export' => __('Export'), 'is_summary' => __('Summary invoice'), 'is_nominal' => __('Nominal supply'), 'is_third_party' => __('Third party'), 'is_self_billed' => __('Self-billed')] as $flag => $label)
+                @foreach (['is_export' => __('Export'), 'is_summary' => __('Summary invoice'), 'is_nominal' => __('Nominal supply'), 'is_third_party' => __('Third party'), 'is_self_billed' => __('Self-billed'), 'is_government' => __('Government buyer (B2G)')] as $flag => $label)
                     <x-ui.checkbox name="{{ $flag }}" value="1" :checked="(bool) old($flag)">{{ $label }}</x-ui.checkbox>
                 @endforeach
             </div>
+            <p class="mt-1 text-xs text-muted">{{ __('A government buyer needs the contract the sale falls under, in Contract.') }}</p>
         </fieldset>
     </div>
 

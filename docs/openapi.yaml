@@ -1734,6 +1734,8 @@ paths:
                   type: boolean
                 is_self_billed:
                   type: boolean
+                is_government:
+                  type: boolean
                 discount_amount:
                   type: number
                 notes:
@@ -1879,6 +1881,8 @@ paths:
                   type: boolean
                 is_self_billed:
                   type: boolean
+                is_government:
+                  type: boolean
                 discount_amount:
                   type: number
                 notes:
@@ -1996,6 +2000,8 @@ paths:
                 is_summary:
                   type: boolean
                 is_self_billed:
+                  type: boolean
+                is_government:
                   type: boolean
                 discount_amount:
                   type: number
@@ -3224,6 +3230,8 @@ paths:
                   type: boolean
                 is_self_billed:
                   type: boolean
+                is_government:
+                  type: boolean
                 discount_amount:
                   type: number
                 notes:
@@ -3372,6 +3380,8 @@ paths:
                 is_summary:
                   type: boolean
                 is_self_billed:
+                  type: boolean
+                is_government:
                   type: boolean
                 discount_amount:
                   type: number
@@ -3596,6 +3606,8 @@ paths:
                 is_summary:
                   type: boolean
                 is_self_billed:
+                  type: boolean
+                is_government:
                   type: boolean
                 discount_amount:
                   type: number

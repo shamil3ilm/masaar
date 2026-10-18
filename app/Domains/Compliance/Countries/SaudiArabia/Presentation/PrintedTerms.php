@@ -9,10 +9,11 @@ use App\Domains\Compliance\Engine\DTOs\ReceiptRow;
 use App\Domains\Invoice\Models\Invoice;
 
 /**
- * What a printed Saudi invoice says about the sale beyond its lines: the
- * buyer's purchase order (BT-13), the contract (BT-12) and the buyer's own
- * reference (BT-10), and when and how it is to be paid - the due date (BT-9)
- * and the payment terms (KSA-22). Each only when the invoice has it.
+ * What a printed Saudi invoice says about the sale beyond its lines: that
+ * the buyer is a government (B2G, KSA-2 position 9), the buyer's purchase
+ * order (BT-13), the contract (BT-12) and the buyer's own reference (BT-10),
+ * and when and how it is to be paid - the due date (BT-9) and the payment
+ * terms (KSA-22). Each only when the invoice has it.
  *
  * One list for every layout - the full pages, the PDF and the receipt - so a
  * reference the signed document carries is never missing from one copy.
@@ -25,6 +26,7 @@ final class PrintedTerms
     public static function of(Invoice $invoice): array
     {
         $terms = [
+            [new PrintLabel('Transaction', 'نوع المعاملة'), $invoice->is_government ? 'Government (B2G) / جهة حكومية' : null],
             [new PrintLabel('Purchase order', 'رقم أمر الشراء'), $invoice->order_reference],
             [new PrintLabel('Contract', 'رقم العقد'), $invoice->contract_reference],
             [new PrintLabel('Buyer reference', 'مرجع المشتري'), $invoice->buyer_reference],

@@ -1427,5 +1427,8 @@
     "I notified ZATCA again (one invoice)|I notified ZATCA again (:count invoices)": "أبلغت الهيئة مرة أخرى (فاتورة واحدة)|أبلغت الهيئة مرة أخرى (:count فواتير)",
     "Recorded that ZATCA was notified again, for one invoice.|Recorded that ZATCA was notified again, for :count invoices.": "سُجّل أن الهيئة أُبلغت مرة أخرى، لفاتورة واحدة.|سُجّل أن الهيئة أُبلغت مرة أخرى، لـ :count فواتير.",
     "Recorded that ZATCA was notified of the delay, for one invoice.|Recorded that ZATCA was notified of the delay, for :count invoices.": "سُجّل أن الهيئة أُبلغت بالتأخير، لفاتورة واحدة.|سُجّل أن الهيئة أُبلغت بالتأخير، لـ :count فواتير.",
-    "An export invoice names no buyer VAT number (BR-KSA-46). Identify a buyer abroad by another identifier (buyer_id), such as OTH.": "لا تتضمن فاتورة التصدير الرقم الضريبي للمشتري (BR-KSA-46). عرّف المشتري في الخارج بمعرّف آخر (buyer_id)، مثل OTH."
+    "An export invoice names no buyer VAT number (BR-KSA-46). Identify a buyer abroad by another identifier (buyer_id), such as OTH.": "لا تتضمن فاتورة التصدير الرقم الضريبي للمشتري (BR-KSA-46). عرّف المشتري في الخارج بمعرّف آخر (buyer_id)، مثل OTH.",
+    "Government buyer (B2G)": "مشترٍ حكومي (B2G)",
+    "A government buyer needs the contract the sale falls under, in Contract.": "يتطلب المشتري الحكومي ذكر العقد الذي يندرج تحته البيع، في حقل العقد.",
+    "A government (B2G) invoice names the contract it falls under (BR-KSA-92).": "تذكر الفاتورة الحكومية (B2G) العقد الذي تندرج تحته (BR-KSA-92)."
 }
