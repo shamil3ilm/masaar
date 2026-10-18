@@ -112,6 +112,7 @@ several.
 | `countries.switch` | a country on or off |
 | `kill_switches.enable`, `.disable`, `.stop`, `.resume` | the kill switches |
 | `features.override` | a feature off or on for one organization |
+| `organizations.language_grace` | granting or extending an organization's language grace (withdrawing one is never held) |
 | `admins.grant`, `admins.invite`, `admins.role`, `admins.revoke` | admin access |
 | `admin_roles.save`, `admin_roles.delete` | custom admin roles |
 | `users.suspend`, `users.reactivate` | a person's account |

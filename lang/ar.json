@@ -1933,5 +1933,6 @@
     "Someone with access to the server ran the recovery command for a locked-out owner. It is on the security record.": "شغّل شخص لديه صلاحية الوصول إلى الخادم أمر الاستعادة لمالك مُنع من الوصول. وقد سُجّل ذلك في السجل الأمني.",
     "When: :time": "الوقت: :time",
     "The branch the portal shows and issues from, chosen in its branch switcher. None for every branch you work at.": "الفرع الذي تعرضه البوابة وتُصدر منه، ويُختار من مُبدِّل الفروع فيها. اتركه فارغاً لكل الفروع التي تعمل فيها.",
-    "Working branch": "فرع العمل"
+    "Working branch": "فرع العمل",
+    "Grant or extend a language grace period": "منح مهلة اللغة أو تمديدها"
 }

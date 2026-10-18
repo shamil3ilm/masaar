@@ -20,7 +20,8 @@ use Illuminate\Support\Str;
  * Off unless granted, and over on its own: it is active through the date it
  * names, on the organization's own clock, and nothing has to switch it off.
  * Granting it takes a reason, and the console records who changed it with
- * the state before and after (AuditAdminAction).
+ * the state before and after (AuditAdminAction). Granting or extending it
+ * is an admin action an approval policy can hold (LanguageGraceActions).
  *
  * Kept in language_graces, one row per organization, read and written here
  * and nowhere else, so a settings store can take it over by changing this
@@ -70,43 +71,26 @@ class LanguageGrace
     }
 
     /**
-     * Grant it until a date, or withdraw it with null.
-     *
-     * APPROVAL POLICY HOOK: the platform has no approval policies yet, so a
-     * grant takes effect at once. When they exist, a grant is where one
-     * waits for its approver (see requiresApproval()).
-     *
-     * @return bool whether it applies now, rather than waiting for approval
+     * Grant it until a date, or withdraw it with null. Who did is the person
+     * acting (Origin), unless the caller names the user who did: a grant an
+     * approval policy held (LanguageGraceActions) names who asked.
      */
-    public function set(Organization $organization, ?CarbonImmutable $until, string $reason): bool
+    public function set(Organization $organization, ?CarbonImmutable $until, string $reason, ?string $actorId = null): void
     {
-        if ($this->requiresApproval($organization, $until)) {
-            return false;
-        }
+        $actorId ??= $this->origin->actorId();
 
         $values = [
             'until' => $until?->toDateString(),
             'reason' => $until === null ? null : $reason,
-            ...$this->origin->columns(['updated_by']),
+            'updated_by' => $actorId,
             'updated_at' => now(),
         ];
 
         $updated = DB::table(self::TABLE)->where('org_id', $organization->id)->update($values);
 
         if ($updated === 0 && $until !== null) {
-            DB::table(self::TABLE)->insert([...$values, ...$this->origin->columns(['created_by']), 'id' => (string) Str::uuid7(), 'org_id' => $organization->id, 'created_at' => now()]);
+            DB::table(self::TABLE)->insert([...$values, 'created_by' => $actorId, 'id' => (string) Str::uuid7(), 'org_id' => $organization->id, 'created_at' => now()]);
         }
-
-        return true;
-    }
-
-    /**
-     * Approval-policy hook: whether this grant has to be approved before it
-     * applies. None does until approval policies exist.
-     */
-    protected function requiresApproval(Organization $organization, ?CarbonImmutable $until): bool
-    {
-        return false;
     }
 
     private function row(?Organization $organization): ?object

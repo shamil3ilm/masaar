@@ -11,6 +11,7 @@ use App\Domains\Platform\Approvals\Actions\BillingActions;
 use App\Domains\Platform\Approvals\Actions\CountryActions;
 use App\Domains\Platform\Approvals\Actions\FeatureActions;
 use App\Domains\Platform\Approvals\Actions\KillSwitchActions;
+use App\Domains\Platform\Approvals\Actions\LanguageGraceActions;
 use App\Domains\Platform\Approvals\Actions\LicenceActions;
 use App\Domains\Platform\Approvals\Actions\OrganizationActions;
 use App\Domains\Platform\Approvals\Actions\PolicyActions;
@@ -41,6 +42,7 @@ final class ApprovalCatalogue
         'kill_switches.stop' => KillSwitchActions::class,
         'kill_switches.resume' => KillSwitchActions::class,
         'features.override' => FeatureActions::class,
+        LanguageGraceActions::GRANT => LanguageGraceActions::class,
         'admins.grant' => AdminAccessActions::class,
         'admins.invite' => AdminAccessActions::class,
         'admins.role' => AdminAccessActions::class,
