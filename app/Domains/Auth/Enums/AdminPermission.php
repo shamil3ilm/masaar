@@ -46,4 +46,10 @@ enum AdminPermission: string
 
     /** Grant, change and revoke platform admins. */
     case AdminsManage = 'admins.manage';
+
+    /**
+     * Approve or reject another admin's request where its policy names one's
+     * role, and withdraw one's own (Approvals).
+     */
+    case ApprovalsDecide = 'approvals.decide';
 }

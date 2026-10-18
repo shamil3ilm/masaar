@@ -42,7 +42,8 @@
             </x-ui.select>
         </x-ui.field>
     </div>
-    <div class="border-t p-4">
+    <div class="border-t p-4 space-y-3">
+        @include('admin.partials.approval-reason', ['action' => 'admins.grant'])
         <x-ui.button variant="primary">Add admin</x-ui.button>
     </div>
 </form>
@@ -73,6 +74,7 @@
                                     <option value="{{ $role->value }}" @selected($admin->platformRole() === $role)>{{ $role->label() }}</option>
                                 @endforeach
                             </x-ui.select>
+                            @include('admin.partials.approval-reason', ['action' => 'admins.role', 'compact' => true])
                             <x-ui.button variant="secondary">Save</x-ui.button>
                         </form>
                     @endif
@@ -83,6 +85,7 @@
                               data-confirm-tone="danger" data-confirm-action="Remove access"
                               data-confirm="Remove {{ $admin->email }}'s admin access? Their account stays; the console closes to them.">
                             @csrf
+                            @include('admin.partials.approval-reason', ['action' => 'admins.revoke', 'compact' => true])
                             <x-ui.button variant="secondary">Remove access</x-ui.button>
                         </form>
                     @endif

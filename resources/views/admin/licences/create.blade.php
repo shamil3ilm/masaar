@@ -111,6 +111,7 @@
     </div>
 
     <div class="flex items-center gap-3">
+        @include('admin.partials.approval-reason', ['action' => 'licences.issue'])
         <x-ui.button>Issue licence</x-ui.button>
         <x-ui.button variant="ghost" :href="route('admin.licences.index')">Cancel</x-ui.button>
         <p class="text-xs text-muted">The licence starts active and the partner can call the API immediately.</p>

@@ -89,6 +89,7 @@
                             @csrf
                             <input type="hidden" name="country" value="{{ $country['code'] }}">
                             <input type="hidden" name="enabled" value="0">
+                            @include('admin.partials.approval-reason', ['action' => 'countries.switch', 'compact' => true])
                             <x-ui.button variant="danger">Switch off</x-ui.button>
                         </form>
                     @else
@@ -98,6 +99,7 @@
                             @csrf
                             <input type="hidden" name="country" value="{{ $country['code'] }}">
                             <input type="hidden" name="enabled" value="1">
+                            @include('admin.partials.approval-reason', ['action' => 'countries.switch', 'compact' => true])
                             <x-ui.button>Switch on</x-ui.button>
                         </form>
                     @endif

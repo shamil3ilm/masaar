@@ -164,6 +164,11 @@ class Customizations
                 continue;
             }
 
+            // A console preference is not the portal's to show.
+            if ($definition->console && $scope->organizationId !== null) {
+                continue;
+            }
+
             $resolved = $this->resolve($definition->key, $this->trim($scope, $level, $definition));
 
             if ($resolved->at === $level) {

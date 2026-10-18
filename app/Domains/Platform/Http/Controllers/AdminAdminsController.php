@@ -6,6 +6,9 @@ namespace App\Domains\Platform\Http\Controllers;
 
 use App\Domains\Auth\Enums\PlatformRole;
 use App\Domains\Auth\Services\PlatformAdmins;
+use App\Domains\Platform\Approvals\ActionResult;
+use App\Domains\Platform\Approvals\Approvals;
+use App\Domains\Platform\Http\Concerns\HoldsForApproval;
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
 use App\Http\Controllers\Controller;
 use DomainException;
@@ -19,10 +22,13 @@ use Illuminate\View\View;
  */
 class AdminAdminsController extends Controller
 {
+    use HoldsForApproval;
+
     public const LINK = 'enrolment_link';
 
     public function __construct(
         private readonly PlatformAdmins $admins,
+        private readonly Approvals $approvals,
     ) {}
 
     public function index(): View
@@ -41,14 +47,11 @@ class AdminAdminsController extends Controller
         ]);
 
         try {
-            $link = $this->admins->grant($data['email'], PlatformRole::from($data['role']), $request->user());
+            return $this->holdOrRun($this->approvals, $request, 'admins.grant', ['email' => $data['email'], 'role' => $data['role']],
+                fn (ActionResult $done): RedirectResponse => back()->with('success', $done->message)->with(self::LINK, $done->data['enrolment_link'] ?? null));
         } catch (DomainException $e) {
             return back()->withInput()->with('error', $e->getMessage());
         }
-
-        return back()
-            ->with('success', $data['email'].' is now an admin.'.($link ? ' Send them the enrolment link below; they set up two-factor before they can sign in.' : ''))
-            ->with(self::LINK, $link);
     }
 
     public function role(Request $request, string $userId): RedirectResponse
@@ -58,12 +61,11 @@ class AdminAdminsController extends Controller
         $data = $request->validate(['role' => ['required', Rule::enum(PlatformRole::class)]]);
 
         try {
-            $this->admins->changeRole($userId, PlatformRole::from($data['role']), $request->user());
+            return $this->holdOrRun($this->approvals, $request, 'admins.role', ['user_id' => $userId, 'role' => $data['role']],
+                fn (ActionResult $done): RedirectResponse => back()->with('success', $done->message));
         } catch (DomainException $e) {
             return back()->with('error', $e->getMessage());
         }
-
-        return back()->with('success', 'Role changed.');
     }
 
     public function revoke(Request $request, string $userId): RedirectResponse
@@ -71,11 +73,10 @@ class AdminAdminsController extends Controller
         $request->attributes->set(AuditAdminAction::TARGET, ['User', $userId]);
 
         try {
-            $this->admins->revoke($userId, $request->user());
+            return $this->holdOrRun($this->approvals, $request, 'admins.revoke', ['user_id' => $userId],
+                fn (ActionResult $done): RedirectResponse => back()->with('success', $done->message));
         } catch (DomainException $e) {
             return back()->with('error', $e->getMessage());
         }
-
-        return back()->with('success', 'Admin access removed.');
     }
 }

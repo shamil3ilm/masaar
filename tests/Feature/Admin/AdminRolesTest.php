@@ -8,6 +8,7 @@ use App\Domains\Auth\Enums\PlatformRole;
 use App\Domains\Auth\Models\User;
 use App\Domains\Auth\Services\AccountStatus;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Platform\Approvals\ApprovalPolicies;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -122,6 +123,10 @@ class AdminRolesTest extends TestCase
     {
         $owner = $this->admin(PlatformRole::Owner);
         $second = $this->admin(PlatformRole::Owner);
+
+        // Who may act on whom, not maker-checker: with two owners the role
+        // change would otherwise wait for approval (ApprovalsTest).
+        app(ApprovalPolicies::class)->save('admins.role', ['enabled' => false, 'approvals_required' => 1, 'approver_roles' => ['owner'], 'expires_after_hours' => 72], null);
 
         $this->actingAs($owner)->post("/admin/admins/{$owner->id}/role", ['role' => 'support'])->assertSessionHas('error');
 

@@ -110,6 +110,18 @@ final class Catalogue
                 audit: Definition::AUDIT_NONE,
                 columns: [Level::User->value => 'users.locale'],
             ),
+            new Definition(
+                key: 'notifications.approval_requests',
+                group: __('Notifications'),
+                label: __('Email me approval requests'),
+                help: __('An email when another admin asks for something you may approve, and when a request of yours is decided.'),
+                type: 'bool',
+                default: true,
+                levels: [Level::Platform, Level::User],
+                acrossOrganizations: true,
+                audit: Definition::AUDIT_NONE,
+                console: true,
+            ),
         ];
 
         $byKey = [];

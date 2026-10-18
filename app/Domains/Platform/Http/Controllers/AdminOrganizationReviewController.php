@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace App\Domains\Platform\Http\Controllers;
 
 use App\Domains\Licensing\Enums\LicenseTier;
-use App\Domains\Organization\Services\OrganizationReview;
+use App\Domains\Platform\Approvals\ActionResult;
+use App\Domains\Platform\Approvals\Approvals;
+use App\Domains\Platform\Http\Concerns\HoldsForApproval;
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
 use App\Http\Controllers\Controller;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
 /**
@@ -19,8 +20,10 @@ use Illuminate\Validation\Rule;
  */
 class AdminOrganizationReviewController extends Controller
 {
+    use HoldsForApproval;
+
     public function __construct(
-        private readonly OrganizationReview $review,
+        private readonly Approvals $approvals,
     ) {}
 
     /**
@@ -38,15 +41,17 @@ class AdminOrganizationReviewController extends Controller
         ]);
 
         try {
-            $approved = $this->review->approve($id, (string) Auth::id(), $data['tier'], $data['expires_at'] ?? null);
+            return $this->holdOrRun($this->approvals, $request, 'organizations.approve', [
+                'organization_id' => $id,
+                'tier' => $data['tier'],
+                'expires_at' => $data['expires_at'] ?? null,
+            ], fn (ActionResult $approved): RedirectResponse => redirect()
+                ->route('admin.licences.show', $approved->data['licence_id'])
+                ->with('success', $approved->message)
+                ->with('api_secret', $approved->data['api_secret']));
         } catch (DomainException $e) {
             return redirect()->route('admin.organization.detail', $id)->with('error', $e->getMessage());
         }
-
-        return redirect()
-            ->route('admin.licences.show', $approved['licence_id'])
-            ->with('success', 'Approved. Its admins have been told by email, and this is its plan.')
-            ->with('api_secret', $approved['api_secret']);
     }
 
     public function reject(Request $request, string $id): RedirectResponse
@@ -56,12 +61,11 @@ class AdminOrganizationReviewController extends Controller
         $data = $request->validate(['reason' => ['required', 'string', 'max:1000']]);
 
         try {
-            $this->review->reject($id, (string) Auth::id(), $data['reason']);
+            return $this->holdOrRun($this->approvals, $request, 'organizations.reject', ['organization_id' => $id, 'reason' => $data['reason']],
+                fn (ActionResult $done): RedirectResponse => redirect()->route('admin.organization.detail', $id)->with('success', $done->message),
+                $data['reason']);
         } catch (DomainException $e) {
             return redirect()->route('admin.organization.detail', $id)->with('error', $e->getMessage());
         }
-
-        return redirect()->route('admin.organization.detail', $id)
-            ->with('success', 'Not approved. Its admins have been told why by email.');
     }
 }

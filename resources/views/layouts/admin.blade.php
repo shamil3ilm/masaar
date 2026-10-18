@@ -68,6 +68,16 @@
                     Audit log
                 </x-ui.nav-link>
                 @endadmincan
+                {{-- With the number waiting for this admin: the in-app half of
+                     telling approvers, beside the email. --}}
+                @php($waitingApprovals = auth()->user() ? app(\App\Domains\Platform\Approvals\Approvals::class)->waitingFor(auth()->user())->count() : 0)
+                <x-ui.nav-link :href="route('admin.approvals.index')" :active="request()->routeIs('admin.approvals.*') || request()->routeIs('admin.approval-policies.*')" collapsible>
+                    <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12l2 2 4-4M7 4h10a2 2 0 012 2v14l-7-3-7 3V6a2 2 0 012-2z"></path></svg></x-slot:icon>
+                    {{ __('Approvals') }}
+                    @if ($waitingApprovals > 0)
+                        <x-ui.badge tone="warning" :label="(string) $waitingApprovals" />
+                    @endif
+                </x-ui.nav-link>
                 <x-ui.nav-link :href="route('admin.licences.index')" :active="request()->routeIs('admin.licences.*')" collapsible>
                     <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg></x-slot:icon>
                     Licences

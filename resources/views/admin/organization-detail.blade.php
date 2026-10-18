@@ -44,6 +44,7 @@
             <x-ui.field label="Plan ends (optional)">
                 <x-ui.input type="date" name="expires_at" />
             </x-ui.field>
+            @include('admin.partials.approval-reason', ['action' => 'organizations.approve'])
             <x-ui.button variant="primary" class="w-full">Approve and assign plan</x-ui.button>
         </form>
         @endadmincan

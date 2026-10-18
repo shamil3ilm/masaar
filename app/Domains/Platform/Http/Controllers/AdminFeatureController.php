@@ -6,13 +6,15 @@ namespace App\Domains\Platform\Http\Controllers;
 
 use App\Domains\Platform\Access\Feature;
 use App\Domains\Platform\Access\FeatureOverrides;
+use App\Domains\Platform\Approvals\ActionResult;
+use App\Domains\Platform\Approvals\Approvals;
+use App\Domains\Platform\Http\Concerns\HoldsForApproval;
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
 use App\Domains\Platform\Models\FeatureOverride;
 use App\Domains\Platform\Services\OrganizationReport;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -28,11 +30,14 @@ use Illuminate\Validation\ValidationException;
  */
 class AdminFeatureController extends Controller
 {
+    use HoldsForApproval;
+
     private const DEFAULT = 'default';
 
     public function __construct(
         private readonly OrganizationReport $organizations,
         private readonly FeatureOverrides $overrides,
+        private readonly Approvals $approvals,
     ) {}
 
     public function update(Request $request, string $id): RedirectResponse
@@ -60,20 +65,18 @@ class AdminFeatureController extends Controller
 
         $before = $this->overrides->state($id, $feature) ?? self::DEFAULT;
 
-        // The email, not the id: read by someone asking who switched it, as
-        // the countries and kill switches record it.
-        $this->overrides->set($id, $feature, $state === self::DEFAULT ? null : $state, (string) $validated['reason'], Auth::user()?->email);
-
         $request->attributes->set(AuditAdminAction::TARGET, ['Organization', $id]);
         $request->attributes->set(AuditAdminAction::CHANGES, [
             ['feature' => $feature->value, 'state' => $before],
             ['feature' => $feature->value, 'state' => $state, 'reason' => (string) $validated['reason']],
         ]);
 
-        return redirect()->route('admin.organization.detail', $id)->with('success', match ($state) {
-            FeatureOverride::OFF => $feature->label().' is switched off for this organization.',
-            FeatureOverride::ON => $feature->label().' is granted beyond the plan for this organization.',
-            default => $feature->label().' follows the defaults again.',
-        });
+        return $this->holdOrRun($this->approvals, $request, 'features.override', [
+            'organization_id' => $id,
+            'feature' => $feature->value,
+            'state' => $state,
+            'reason' => (string) $validated['reason'],
+        ], fn (ActionResult $done): RedirectResponse => redirect()->route('admin.organization.detail', $id)->with('success', $done->message),
+            (string) $validated['reason']);
     }
 }

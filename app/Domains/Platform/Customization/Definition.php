@@ -16,6 +16,9 @@ namespace App\Domains\Platform\Customization;
  *   entries  a list of keyed entries, merged by key down the levels: a level
  *            changes an entry above it, adds its own, or hides one
  *
+ * $console marks a person's preference that belongs to the admin console,
+ * left off the portal's preferences.
+ *
  * $columns names a level whose value is kept in an existing column rather
  * than in the store - 'table.column', on the row the level's holder names -
  * so a setting that every issuing path already reads from its column keeps
@@ -52,6 +55,7 @@ final readonly class Definition
         public ?int $max = null,
         public int $step = 1,
         public array $fields = [],
+        public bool $console = false,
     ) {}
 
     public function allows(Level $level): bool

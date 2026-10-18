@@ -10,6 +10,9 @@ use App\Domains\Billing\Services\Billing;
 use App\Domains\Invoice\Services\InvoicePdf;
 use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Platform\Approvals\ActionResult;
+use App\Domains\Platform\Approvals\Approvals;
+use App\Domains\Platform\Http\Concerns\HoldsForApproval;
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
 use App\Http\Controllers\Controller;
 use Carbon\CarbonImmutable;
@@ -25,11 +28,14 @@ use Illuminate\View\View;
  */
 class AdminBillingController extends Controller
 {
+    use HoldsForApproval;
+
     private const RENEWAL_DAYS = 30;
 
     public function __construct(
         private readonly Billing $billing,
         private readonly InvoicePdf $pdf,
+        private readonly Approvals $approvals,
     ) {}
 
     /**
@@ -79,31 +85,20 @@ class AdminBillingController extends Controller
         ]);
 
         try {
-            $payment = $this->billing->record(
-                $organization,
-                LicenseTier::from($data['tier']),
-                (int) $data['months'],
-                number_format((float) $data['amount'], 2, '.', ''),
-                PaymentMethod::from($data['method']),
-                $data['reference'] ?? null,
-                CarbonImmutable::parse($data['paid_at']),
-                $data['notes'] ?? null,
-                (string) $request->user()->id,
-            );
+            return $this->holdOrRun($this->approvals, $request, 'billing.record', [
+                'organization_id' => (string) $organization->id,
+                'tier' => $data['tier'],
+                'months' => (int) $data['months'],
+                'amount' => number_format((float) $data['amount'], 2, '.', ''),
+                'method' => $data['method'],
+                'reference' => $data['reference'] ?? null,
+                'paid_at' => CarbonImmutable::parse($data['paid_at'])->toDateString(),
+                'notes' => $data['notes'] ?? null,
+            ], fn (ActionResult $done): RedirectResponse => redirect()->route('admin.billing.show', $id)
+                ->with(($done->data['tone'] ?? 'success') === 'error' ? 'error' : 'success', $done->message));
         } catch (DomainException $e) {
             return back()->withInput()->with('error', $e->getMessage());
         }
-
-        $message = 'Payment recorded. The plan now runs to '.$payment->period_end->toDateString().'.';
-
-        if ($this->billing->invoicedLate(CarbonImmutable::parse($data['paid_at']))) {
-            $message .= ' This payment is past the fifteen days after its month in which ZATCA expects it invoiced.';
-        }
-
-        return redirect()->route('admin.billing.show', $id)->with(
-            $payment->invoice_id === null ? 'error' : 'success',
-            $payment->invoice_id === null ? $message.' No invoice was issued: '.$payment->invoice_error : $message.' Invoice issued.',
-        );
     }
 
     public function invoice(Request $request, string $id, string $paymentId): RedirectResponse

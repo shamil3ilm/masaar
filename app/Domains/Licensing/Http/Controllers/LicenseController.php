@@ -10,6 +10,7 @@ use App\Domains\Licensing\Exceptions\LicenceStateException;
 use App\Domains\Licensing\Models\License;
 use App\Domains\Licensing\Services\LicenseManagementService;
 use App\Domains\Licensing\Services\UsageMeteringService;
+use App\Domains\Platform\Approvals\Approvals;
 use App\Http\Pagination\PageSize;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -36,6 +37,7 @@ class LicenseController extends Controller
     public function __construct(
         private readonly LicenseManagementService $managementService,
         private readonly UsageMeteringService $meteringService,
+        private readonly Approvals $approvals,
     ) {}
 
     /**
@@ -58,6 +60,10 @@ class LicenseController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        if ($held = $this->heldForApproval($request, 'licences.issue')) {
+            return $held;
+        }
+
         $validated = $request->validate([
             // The organization every partner call on this licence acts for.
             'org_id' => 'required|uuid|exists:organizations,id',
@@ -158,6 +164,10 @@ class LicenseController extends Controller
      */
     public function revoke(Request $request, string $id): JsonResponse
     {
+        if ($held = $this->heldForApproval($request, 'licences.revoke')) {
+            return $held;
+        }
+
         $reason = $request->validate(['reason' => 'sometimes|nullable|string|max:255'])['reason'] ?? null;
 
         return ApiResponse::success($this->managementService->revokeLicense($id, $reason)->toArray(), 'License revoked');
@@ -196,6 +206,10 @@ class LicenseController extends Controller
      */
     public function updateLimits(Request $request, string $id): JsonResponse
     {
+        if ($held = $this->heldForApproval($request, 'licences.allowances')) {
+            return $held;
+        }
+
         $validated = $request->validate([
             'invoices_per_month' => 'sometimes|integer|min:-1|max:4294967295',
             'calls_per_day' => 'sometimes|integer|min:-1|max:4294967295',
@@ -286,5 +300,19 @@ class LicenseController extends Controller
         return ApiResponse::success([
             'rate_limits_deleted' => $this->meteringService->cleanupExpiredRateLimits(),
         ], 'Cleanup completed');
+    }
+
+    /**
+     * An action an approval policy holds back is asked for in the console,
+     * where it carries its reason and its approvers see it. The API does not
+     * run it around the policy.
+     */
+    private function heldForApproval(Request $request, string $action): ?JsonResponse
+    {
+        if (! $this->approvals->holds($action, $request->user())) {
+            return null;
+        }
+
+        return ApiResponse::error(__('This change waits for approval. Ask for it in the admin console, where the approvers see it.'), 409);
     }
 }

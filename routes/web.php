@@ -37,6 +37,8 @@ use App\Domains\Organization\Http\Controllers\PortalPrintingController;
 use App\Domains\Organization\Http\Controllers\PortalSettingsController;
 use App\Domains\Organization\Http\Controllers\PortalTeamController;
 use App\Domains\Platform\Http\Controllers\AdminAdminsController;
+use App\Domains\Platform\Http\Controllers\AdminApprovalPolicyController;
+use App\Domains\Platform\Http\Controllers\AdminApprovalsController;
 use App\Domains\Platform\Http\Controllers\AdminAuditController;
 use App\Domains\Platform\Http\Controllers\AdminController;
 use App\Domains\Platform\Http\Controllers\AdminCountryController;
@@ -227,7 +229,7 @@ Route::prefix('admin')->name('admin.')
     // It also makes the ordering of /licences/create above /licences/{id}
     // a convenience rather than a requirement: "create" is not a UUID, so it
     // can no longer be swallowed as one if the lines are ever reordered.
-    ->whereUuid(['id', 'licenceId', 'webhookId', 'logId', 'userId', 'ticketId', 'attachmentId', 'paymentId'])
+    ->whereUuid(['id', 'licenceId', 'webhookId', 'logId', 'userId', 'ticketId', 'attachmentId', 'paymentId', 'requestId'])
     ->group(function () {
         Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
         Route::get('/organizations', [AdminController::class, 'organizations'])->name('organizations');
@@ -271,6 +273,14 @@ Route::prefix('admin')->name('admin.')
         Route::post('/admins/{userId}/role', [AdminAdminsController::class, 'role'])->middleware('admin.can:admins.manage')->name('admins.role');
         Route::post('/admins/{userId}/revoke', [AdminAdminsController::class, 'revoke'])->middleware('admin.can:admins.manage')->name('admins.revoke');
         Route::get('/audit', [AdminAuditController::class, 'index'])->middleware('admin.can:audit.view')->name('audit');
+        // Maker-checker: what waits for a second admin, and deciding it.
+        // Who may decide one is its policy's; approvals.decide is the least.
+        Route::get('/approvals', [AdminApprovalsController::class, 'index'])->name('approvals.index');
+        Route::post('/approvals/notifications', [AdminApprovalsController::class, 'notifications'])->middleware('admin.can:approvals.decide')->name('approvals.notifications');
+        Route::get('/approvals/{requestId}', [AdminApprovalsController::class, 'show'])->name('approvals.show');
+        Route::post('/approvals/{requestId}/approve', [AdminApprovalsController::class, 'approve'])->middleware('admin.can:approvals.decide')->name('approvals.approve');
+        Route::post('/approvals/{requestId}/reject', [AdminApprovalsController::class, 'reject'])->middleware('admin.can:approvals.decide')->name('approvals.reject');
+        Route::post('/approvals/{requestId}/withdraw', [AdminApprovalsController::class, 'withdraw'])->middleware('admin.can:approvals.decide')->name('approvals.withdraw');
         Route::get('/licences', [AdminLicenceController::class, 'index'])->name('licences.index');
         // Before the {licenceId} route below, or "create" is taken for an id
         // and the form never renders.
@@ -287,6 +297,10 @@ Route::prefix('admin')->name('admin.')
         // The thresholds the dashboard judges by, and the certificate
         // warning schedule. Both were only changeable by shipping.
         Route::get('/settings', [AdminSettingsController::class, 'index'])->name('settings');
+        // Which actions wait for approval. Changing a policy is itself held
+        // for approval once any policy is on.
+        Route::get('/settings/approvals', [AdminApprovalPolicyController::class, 'index'])->name('approval-policies.index');
+        Route::post('/settings/approvals/{action}', [AdminApprovalPolicyController::class, 'update'])->middleware('admin.can:platform.configure')->name('approval-policies.update');
 
         // The platform's look: colours, name, logo and favicon.
         Route::get('/branding', [AdminBrandingController::class, 'edit'])->name('branding.edit');

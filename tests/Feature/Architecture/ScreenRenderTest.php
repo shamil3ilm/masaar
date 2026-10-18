@@ -15,6 +15,7 @@ use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Licensing\Models\License;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Platform\Models\ApprovalRequest;
 use App\Domains\Support\Models\SupportMessage;
 use App\Domains\Support\Models\SupportTicket;
 use App\Domains\Webhook\Models\Webhook;
@@ -401,6 +402,25 @@ class ScreenRenderTest extends TestCase
     }
 
     /**
+     * A change waiting for approval, for Admin › Approvals to open.
+     */
+    private function approvalRequest(): ApprovalRequest
+    {
+        return ApprovalRequest::query()->first() ?? ApprovalRequest::create([
+            'action' => 'admins.role',
+            'payload' => ['user_id' => $this->member->id, 'role' => 'auditor'],
+            'summary' => 'Change a role',
+            'changes' => ['before' => ['role' => 'operations'], 'after' => ['role' => 'auditor']],
+            'reason' => 'Rotation',
+            'requested_by' => $this->member->id,
+            'status' => ApprovalRequest::PENDING,
+            'approvals_required' => 1,
+            'approver_roles' => ['owner'],
+            'expires_at' => now()->addDay(),
+        ]);
+    }
+
+    /**
      * The screens the router knows about, with their parameters filled in.
      *
      * @return array<string, string> route name => URI to open
@@ -416,6 +436,7 @@ class ScreenRenderTest extends TestCase
             'ticketId' => $this->ticket->id,
             'customerId' => $this->customer->id,
             'productId' => $this->product->id,
+            'requestId' => $this->approvalRequest()->id,
         ];
 
         $screens = [];

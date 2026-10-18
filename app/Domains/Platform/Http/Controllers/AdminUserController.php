@@ -7,9 +7,13 @@ namespace App\Domains\Platform\Http\Controllers;
 use App\Domains\Auth\Services\AccountStatus;
 use App\Domains\Auth\Services\EnrolmentLinks;
 use App\Domains\Auth\Services\TwoFactor;
+use App\Domains\Platform\Approvals\ActionResult;
+use App\Domains\Platform\Approvals\Approvals;
+use App\Domains\Platform\Http\Concerns\HoldsForApproval;
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
 use App\Domains\Platform\Services\UserReport;
 use App\Http\Controllers\Controller;
+use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -25,6 +29,8 @@ use Illuminate\View\View;
  */
 class AdminUserController extends Controller
 {
+    use HoldsForApproval;
+
     private const PER_PAGE = 25;
 
     private const HISTORY = 25;
@@ -36,6 +42,7 @@ class AdminUserController extends Controller
         private readonly AccountStatus $accounts,
         private readonly TwoFactor $twoFactor,
         private readonly EnrolmentLinks $links,
+        private readonly Approvals $approvals,
     ) {}
 
     public function index(Request $request): View
@@ -68,20 +75,16 @@ class AdminUserController extends Controller
     {
         $request->attributes->set(AuditAdminAction::TARGET, ['User', $userId]);
 
-        $request->validate(['reason' => ['required', 'string', 'max:255']]);
+        $reason = (string) $request->validate(['reason' => ['required', 'string', 'max:255']])['reason'];
 
-        return $this->outcome(
-            $this->accounts->suspend($userId, (string) Auth::id()),
-            'Account suspended. Its sessions and tokens stop working on their next request.',
-            $userId,
-        );
+        return $this->underApproval($request, 'users.suspend', ['user_id' => $userId, 'reason' => $reason], $userId, $reason);
     }
 
     public function reactivate(Request $request, string $userId): RedirectResponse
     {
         $request->attributes->set(AuditAdminAction::TARGET, ['User', $userId]);
 
-        return $this->outcome($this->accounts->reactivate($userId), 'Account reactivated.', $userId);
+        return $this->underApproval($request, 'users.reactivate', ['user_id' => $userId], $userId);
     }
 
     public function sendPasswordReset(Request $request, string $userId): RedirectResponse
@@ -147,6 +150,19 @@ class AdminUserController extends Controller
         [$refusal, $link] = $issued;
 
         return $this->outcome($refusal, $success, $userId)->with(self::LINK, $link);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function underApproval(Request $request, string $action, array $payload, string $userId, ?string $reason = null): RedirectResponse
+    {
+        try {
+            return $this->holdOrRun($this->approvals, $request, $action, $payload,
+                fn (ActionResult $done): RedirectResponse => $this->outcome(null, $done->message, $userId), $reason);
+        } catch (DomainException $e) {
+            return $this->outcome($e->getMessage(), '', $userId);
+        }
     }
 
     private function outcome(?string $refusal, string $success, string $userId): RedirectResponse

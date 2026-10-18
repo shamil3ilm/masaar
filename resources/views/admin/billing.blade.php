@@ -86,6 +86,7 @@
         </div>
     </div>
     <div class="border-t p-4">
+        @include('admin.partials.approval-reason', ['action' => 'billing.record'])
         <x-ui.button>Record payment</x-ui.button>
     </div>
 </form>
