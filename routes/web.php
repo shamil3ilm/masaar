@@ -45,6 +45,7 @@ use App\Domains\Platform\Http\Controllers\AdminCountryController;
 use App\Domains\Platform\Http\Controllers\AdminCustomizationController;
 use App\Domains\Platform\Http\Controllers\AdminFeatureController;
 use App\Domains\Platform\Http\Controllers\AdminOrganizationReviewController;
+use App\Domains\Platform\Http\Controllers\AdminRolesController;
 use App\Domains\Platform\Http\Controllers\AdminSettingsController;
 use App\Domains\Platform\Http\Controllers\AdminUserController;
 use App\Domains\Support\Http\Controllers\AdminSupportController;
@@ -272,6 +273,12 @@ Route::prefix('admin')->name('admin.')
         Route::post('/admins', [AdminAdminsController::class, 'grant'])->middleware('admin.can:admins.manage')->name('admins.grant');
         Route::post('/admins/{userId}/role', [AdminAdminsController::class, 'role'])->middleware('admin.can:admins.manage')->name('admins.role');
         Route::post('/admins/{userId}/revoke', [AdminAdminsController::class, 'revoke'])->middleware('admin.can:admins.manage')->name('admins.revoke');
+        // Admin roles: the four system roles and custom ones from the
+        // permission set. Owners only; held for approval like access is.
+        Route::get('/roles', [AdminRolesController::class, 'index'])->middleware('admin.can:admins.manage')->name('roles.index');
+        Route::post('/roles', [AdminRolesController::class, 'store'])->middleware('admin.can:admins.manage')->name('roles.store');
+        Route::post('/roles/{key}', [AdminRolesController::class, 'update'])->middleware('admin.can:admins.manage')->name('roles.update');
+        Route::post('/roles/{key}/delete', [AdminRolesController::class, 'destroy'])->middleware('admin.can:admins.manage')->name('roles.destroy');
         Route::get('/audit', [AdminAuditController::class, 'index'])->middleware('admin.can:audit.view')->name('audit');
         // Maker-checker: what waits for a second admin, and deciding it.
         // Who may decide one is its policy's; approvals.decide is the least.

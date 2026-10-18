@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Http\Controllers;
 
+use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Platform\Access\Feature;
 use App\Domains\Platform\Access\FeatureOverrides;
 use App\Domains\Platform\Approvals\ActionResult;
@@ -40,6 +41,37 @@ class AdminFeatureController extends Controller
         private readonly Approvals $approvals,
     ) {}
 
+    /**
+     * A switch for one role or one person: off, or back to the default. Only
+     * for a feature every person-path asks Access about.
+     */
+    private function forPeople(Request $request, string $id, Feature $feature, string $state, string $subject, string $reason): RedirectResponse
+    {
+        $members = $this->organizations->members($id);
+        $known = [
+            ...array_map(fn (string $role): string => FeatureOverrides::role($role), MemberRole::values()),
+            ...$members->map(fn (object $member): string => FeatureOverrides::person((string) $member->id))->all(),
+        ];
+
+        if (! $feature->canSwitchForPeople() || ! in_array($state, [self::DEFAULT, FeatureOverride::OFF], true) || ! in_array($subject, $known, true)) {
+            throw ValidationException::withMessages(['subject' => $feature->label().' cannot be set '.$state.' for that role or person.']);
+        }
+
+        $request->attributes->set(AuditAdminAction::TARGET, ['Organization', $id]);
+        $request->attributes->set(AuditAdminAction::CHANGES, [
+            ['feature' => $feature->value, 'subject' => $subject, 'state' => $this->overrides->forPeople($id)[$subject][$feature->value]['state'] ?? self::DEFAULT],
+            ['feature' => $feature->value, 'subject' => $subject, 'state' => $state, 'reason' => $reason],
+        ]);
+
+        return $this->holdOrRun($this->approvals, $request, 'features.override', [
+            'organization_id' => $id,
+            'feature' => $feature->value,
+            'state' => $state,
+            'reason' => $reason,
+            'subject' => $subject,
+        ], fn (ActionResult $done): RedirectResponse => redirect()->route('admin.organization.detail', $id)->with('success', $done->message), $reason);
+    }
+
     public function update(Request $request, string $id): RedirectResponse
     {
         if ($this->organizations->find($id) === null) {
@@ -53,10 +85,17 @@ class AdminFeatureController extends Controller
             ))],
             'state' => ['required', 'string', Rule::in([self::DEFAULT, FeatureOverride::OFF, FeatureOverride::ON])],
             'reason' => ['required', 'string', 'max:500'],
+            // For one role or one person in it rather than the whole company.
+            'subject' => ['nullable', 'string', 'max:60'],
         ]);
 
         $feature = Feature::from((string) $validated['feature']);
         $state = (string) $validated['state'];
+        $subject = (string) ($validated['subject'] ?? '');
+
+        if ($subject !== '') {
+            return $this->forPeople($request, $id, $feature, $state, $subject, (string) $validated['reason']);
+        }
 
         if (($state === FeatureOverride::OFF && ! $feature->canSwitchOff())
             || ($state === FeatureOverride::ON && ! $feature->canGrantBeyondPlan())) {

@@ -31,7 +31,28 @@ class FeatureOverrides
      */
     public function for(string $organizationId): array
     {
-        return Cache::rememberForever(self::CACHE_KEY.$organizationId, fn (): array => $this->read($organizationId));
+        return $this->cached($organizationId)['organization'];
+    }
+
+    /**
+     * The organization's switches for its roles and people, by subject
+     * ('role:{role}' or 'user:{id}') and feature.
+     *
+     * @return array<string, array<string, array{state: string, reason: string, by: string|null, at: string|null}>>
+     */
+    public function forPeople(string $organizationId): array
+    {
+        return $this->cached($organizationId)['people'];
+    }
+
+    public static function role(string $role): string
+    {
+        return 'role:'.$role;
+    }
+
+    public static function person(string $userId): string
+    {
+        return 'user:'.$userId;
     }
 
     /** 'off', 'on', or null for the default. */
@@ -43,10 +64,10 @@ class FeatureOverrides
     /**
      * Set the switch, or clear it with null, recording the reason and who.
      */
-    public function set(string $organizationId, Feature $feature, ?string $state, string $reason, ?string $actor): void
+    public function set(string $organizationId, Feature $feature, ?string $state, string $reason, ?string $actor, string $subject = ''): void
     {
-        DB::transaction(function () use ($organizationId, $feature, $state, $reason, $actor): void {
-            $query = FeatureOverride::query()->where('org_id', $organizationId)->where('feature', $feature->value);
+        DB::transaction(function () use ($organizationId, $feature, $state, $reason, $actor, $subject): void {
+            $query = FeatureOverride::query()->where('org_id', $organizationId)->where('feature', $feature->value)->where('subject', $subject);
 
             if ($state === null) {
                 $query->delete();
@@ -55,7 +76,7 @@ class FeatureOverrides
             }
 
             FeatureOverride::query()->updateOrCreate(
-                ['org_id' => $organizationId, 'feature' => $feature->value],
+                ['org_id' => $organizationId, 'feature' => $feature->value, 'subject' => $subject],
                 ['state' => $state, 'reason' => $reason, 'set_by' => $actor],
             );
         });
@@ -85,19 +106,33 @@ class FeatureOverrides
     }
 
     /**
-     * @return array<string, array{state: string, reason: string, by: string|null, at: string|null}>
+     * @return array{organization: array<string, array{state: string, reason: string, by: string|null, at: string|null}>, people: array<string, array<string, array{state: string, reason: string, by: string|null, at: string|null}>>}
+     */
+    private function cached(string $organizationId): array
+    {
+        return Cache::rememberForever(self::CACHE_KEY.$organizationId, fn (): array => $this->read($organizationId));
+    }
+
+    /**
+     * @return array{organization: array<string, array{state: string, reason: string, by: string|null, at: string|null}>, people: array<string, array<string, array{state: string, reason: string, by: string|null, at: string|null}>>}
      */
     private function read(string $organizationId): array
     {
-        $switches = [];
+        $switches = ['organization' => [], 'people' => []];
 
         foreach (FeatureOverride::query()->where('org_id', $organizationId)->get() as $row) {
-            $switches[$row->feature] = [
+            $switch = [
                 'state' => $row->state,
                 'reason' => $row->reason,
                 'by' => $row->set_by,
                 'at' => $row->updated_at?->toIso8601String(),
             ];
+
+            if ((string) $row->subject === '') {
+                $switches['organization'][$row->feature] = $switch;
+            } else {
+                $switches['people'][$row->subject][$row->feature] = $switch;
+            }
         }
 
         return $switches;

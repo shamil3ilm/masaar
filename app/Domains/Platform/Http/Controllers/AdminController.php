@@ -82,8 +82,9 @@ class AdminController extends Controller
         $certificate = $this->organizations->certificate($id);
         $members = $this->organizations->members($id);
         $features = $this->features->rows($id);
+        $peopleSwitches = $this->features->people($id);
 
-        return view('admin.organization-detail', compact('organization', 'stats', 'recentSubmissions', 'certificate', 'members', 'features'));
+        return view('admin.organization-detail', compact('organization', 'stats', 'recentSubmissions', 'certificate', 'members', 'features', 'peopleSwitches'));
     }
 
     /**

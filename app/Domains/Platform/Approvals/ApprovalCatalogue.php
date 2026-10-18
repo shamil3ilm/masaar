@@ -6,6 +6,7 @@ namespace App\Domains\Platform\Approvals;
 
 use App\Domains\Platform\Approvals\Actions\AccountActions;
 use App\Domains\Platform\Approvals\Actions\AdminAccessActions;
+use App\Domains\Platform\Approvals\Actions\AdminRoleActions;
 use App\Domains\Platform\Approvals\Actions\BillingActions;
 use App\Domains\Platform\Approvals\Actions\CountryActions;
 use App\Domains\Platform\Approvals\Actions\FeatureActions;
@@ -41,6 +42,8 @@ final class ApprovalCatalogue
         'admins.grant' => AdminAccessActions::class,
         'admins.role' => AdminAccessActions::class,
         'admins.revoke' => AdminAccessActions::class,
+        'admin_roles.save' => AdminRoleActions::class,
+        'admin_roles.delete' => AdminRoleActions::class,
         'users.suspend' => AccountActions::class,
         'users.reactivate' => AccountActions::class,
         'licences.issue' => LicenceActions::class,

@@ -22,8 +22,11 @@ enum Level: string
     /** The organization: its review status, its own kill switch, an admin's override. */
     case Organization = 'organization';
 
-    /** The person's role in the organization. */
+    /** The person's role in the organization, and a platform admin's switch for that role. */
     case Role = 'role';
+
+    /** A platform admin's switch for this one person. */
+    case User = 'user';
 
     public function label(): string
     {
@@ -33,6 +36,7 @@ enum Level: string
             self::Plan => __('Plan'),
             self::Organization => __('Organization'),
             self::Role => __('Role'),
+            self::User => __('Person'),
         };
     }
 }

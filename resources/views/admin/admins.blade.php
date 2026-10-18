@@ -4,7 +4,10 @@
 
 @section('content')
 <div class="mb-6">
-    <h1 class="text-2xl font-semibold tracking-tight text-fg">Admins</h1>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <h1 class="text-2xl font-semibold tracking-tight text-fg">Admins</h1>
+        <x-ui.button variant="secondary" :href="route('admin.roles.index')">{{ __('Admin roles') }}</x-ui.button>
+    </div>
     <p class="mt-1 max-w-3xl text-sm text-muted">
         Who runs the platform, and what each may do. Owner: everything. Operations: companies, licences, accounts and the queue.
         Support: reads everything and resets a lost second factor. Auditor: reads everything, including the audit log.
@@ -37,7 +40,7 @@
         <x-ui.field label="Role">
             <x-ui.select name="role">
                 @foreach ($roles as $role)
-                    <option value="{{ $role->value }}" @selected(old('role', 'support') === $role->value)>{{ $role->label() }}</option>
+                    <option value="{{ $role['key'] }}" @selected(old('role', 'support') === $role['key'])>{{ $role['name'] }}</option>
                 @endforeach
             </x-ui.select>
         </x-ui.field>
@@ -65,13 +68,13 @@
                 <td class="px-6 py-4 text-sm text-muted">{{ $admin->hasTwoFactor() ? 'On' : 'Not set up' }}</td>
                 <td class="px-6 py-4">
                     @if ($admin->id === auth()->id())
-                        <span class="text-sm text-muted">{{ $admin->platformRole()?->label() }} (you)</span>
+                        <span class="text-sm text-muted">{{ $roles[$admin->adminRole()]['name'] ?? $admin->adminRole() }} (you)</span>
                     @else
                         <form method="POST" action="{{ route('admin.admins.role', $admin->id) }}" class="flex items-center gap-2">
                             @csrf
                             <x-ui.select name="role">
                                 @foreach ($roles as $role)
-                                    <option value="{{ $role->value }}" @selected($admin->platformRole() === $role)>{{ $role->label() }}</option>
+                                    <option value="{{ $role['key'] }}" @selected($admin->adminRole() === $role['key'])>{{ $role['name'] }}</option>
                                 @endforeach
                             </x-ui.select>
                             @include('admin.partials.approval-reason', ['action' => 'admins.role', 'compact' => true])

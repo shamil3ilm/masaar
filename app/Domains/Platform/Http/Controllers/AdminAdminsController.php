@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Http\Controllers;
 
-use App\Domains\Auth\Enums\PlatformRole;
+use App\Domains\Auth\Services\AdminRoles;
 use App\Domains\Auth\Services\PlatformAdmins;
 use App\Domains\Platform\Approvals\ActionResult;
 use App\Domains\Platform\Approvals\Approvals;
@@ -29,13 +29,14 @@ class AdminAdminsController extends Controller
     public function __construct(
         private readonly PlatformAdmins $admins,
         private readonly Approvals $approvals,
+        private readonly AdminRoles $roles,
     ) {}
 
     public function index(): View
     {
         return view('admin.admins', [
             'admins' => $this->admins->all(),
-            'roles' => PlatformRole::cases(),
+            'roles' => $this->roles->all(),
         ]);
     }
 
@@ -43,7 +44,7 @@ class AdminAdminsController extends Controller
     {
         $data = $request->validate([
             'email' => ['required', 'email'],
-            'role' => ['required', Rule::enum(PlatformRole::class)],
+            'role' => ['required', Rule::in($this->roles->keys())],
         ]);
 
         try {
@@ -58,7 +59,7 @@ class AdminAdminsController extends Controller
     {
         $request->attributes->set(AuditAdminAction::TARGET, ['User', $userId]);
 
-        $data = $request->validate(['role' => ['required', Rule::enum(PlatformRole::class)]]);
+        $data = $request->validate(['role' => ['required', Rule::in($this->roles->keys())]]);
 
         try {
             return $this->holdOrRun($this->approvals, $request, 'admins.role', ['user_id' => $userId, 'role' => $data['role']],

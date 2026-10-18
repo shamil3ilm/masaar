@@ -47,12 +47,17 @@ final class FeatureActions implements ApprovableActions
         $organization = $this->organizations->find((string) $payload['organization_id'])
             ?? throw new DomainException(__('There is no such organization.'));
         $feature = Feature::from((string) $payload['feature']);
+        $subject = (string) ($payload['subject'] ?? '');
+        $before = $subject === ''
+            ? $this->overrides->state((string) $payload['organization_id'], $feature)
+            : ($this->overrides->forPeople((string) $payload['organization_id'])[$subject][$feature->value]['state'] ?? null);
 
         return new Preview(
-            $feature->label().' → '.$payload['state'].' for '.$organization->name.': '.$payload['reason'],
+            $feature->label().' → '.$payload['state'].' for '.$organization->name.($subject === '' ? '' : ' ('.$subject.')').': '.$payload['reason'],
             'Organization', (string) $payload['organization_id'],
-            ['feature' => $feature->value, 'state' => $this->overrides->state((string) $payload['organization_id'], $feature) ?? self::DEFAULT],
-            ['feature' => $feature->value, 'state' => $payload['state'], 'reason' => $payload['reason']],
+            ['feature' => $feature->value, 'subject' => $subject, 'state' => $before ?? self::DEFAULT],
+            ['feature' => $feature->value, 'subject' => $subject, 'state' => $payload['state'], 'reason' => $payload['reason']],
+            str_starts_with($subject, 'user:') ? substr($subject, 5) : null,
         );
     }
 
@@ -63,7 +68,14 @@ final class FeatureActions implements ApprovableActions
 
         // The email, not the id: read by someone asking who switched it, as
         // the countries and kill switches record it.
-        $this->overrides->set((string) $payload['organization_id'], $feature, $state === self::DEFAULT ? null : $state, (string) $payload['reason'], $requester->email);
+        $subject = (string) ($payload['subject'] ?? '');
+        $this->overrides->set((string) $payload['organization_id'], $feature, $state === self::DEFAULT ? null : $state, (string) $payload['reason'], $requester->email, $subject);
+
+        if ($subject !== '') {
+            return new ActionResult($state === self::DEFAULT
+                ? $feature->label().' follows the defaults again for '.$subject.'.'
+                : $feature->label().' is switched off for '.$subject.' in this organization.');
+        }
 
         return new ActionResult(match ($state) {
             'off' => $feature->label().' is switched off for this organization.',

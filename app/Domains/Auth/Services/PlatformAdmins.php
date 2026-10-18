@@ -23,6 +23,7 @@ class PlatformAdmins
     public function __construct(
         private readonly AuditService $audit,
         private readonly EnrolmentLinks $links,
+        private readonly AdminRoles $roles,
     ) {}
 
     /**
@@ -42,8 +43,10 @@ class PlatformAdmins
      *
      * @throws DomainException
      */
-    public function grant(string $email, PlatformRole $role, User $actor): ?string
+    public function grant(string $email, string $role, User $actor): ?string
     {
+        $this->assertRole($role);
+
         $user = User::query()->where('email', $email)->first();
 
         if ($user === null || ! $user->isActive()) {
@@ -61,9 +64,9 @@ class PlatformAdmins
         }
 
         DB::transaction(function () use ($user, $role, $actor): void {
-            $user->forceFill(['is_platform_admin' => true, 'platform_role' => $role->value])->save();
+            $user->forceFill(['is_platform_admin' => true, 'platform_role' => $role])->save();
 
-            $this->audit->logSecurity('platform_admin.granted', 'User', (string) $user->id, ['role' => $role->value], userId: (string) $actor->id);
+            $this->audit->logSecurity('platform_admin.granted', 'User', (string) $user->id, ['role' => $role], userId: (string) $actor->id);
         });
 
         return $user->hasTwoFactor() ? null : $this->links->issue($user, (string) $actor->id);
@@ -72,18 +75,20 @@ class PlatformAdmins
     /**
      * @throws DomainException
      */
-    public function changeRole(string $userId, PlatformRole $role, User $actor): void
+    public function changeRole(string $userId, string $role, User $actor): void
     {
+        $this->assertRole($role);
+
         DB::transaction(function () use ($userId, $role, $actor): void {
             $user = $this->admin($userId, $actor);
 
-            if ($user->platformRole() === PlatformRole::Owner && $role !== PlatformRole::Owner) {
+            if ($user->platformRole() === PlatformRole::Owner && $role !== PlatformRole::Owner->value) {
                 $this->keepAnOwner($user);
             }
 
-            $user->forceFill(['platform_role' => $role->value])->save();
+            $user->forceFill(['platform_role' => $role])->save();
 
-            $this->audit->logSecurity('platform_admin.role_changed', 'User', (string) $user->id, ['role' => $role->value], userId: (string) $actor->id);
+            $this->audit->logSecurity('platform_admin.role_changed', 'User', (string) $user->id, ['role' => $role], userId: (string) $actor->id);
         });
     }
 
@@ -103,6 +108,16 @@ class PlatformAdmins
 
             $this->audit->logSecurity('platform_admin.revoked', 'User', (string) $user->id, userId: (string) $actor->id);
         });
+    }
+
+    /**
+     * @throws DomainException for a key that names no role
+     */
+    private function assertRole(string $role): void
+    {
+        if (! $this->roles->exists($role)) {
+            throw new DomainException('There is no such admin role.');
+        }
     }
 
     private function admin(string $userId, User $actor): User

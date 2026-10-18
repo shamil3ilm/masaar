@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Platform\Approvals;
 
 use App\Domains\Auth\Enums\PlatformRole;
+use App\Domains\Auth\Services\AdminRoles;
 use App\Domains\Platform\Models\ApprovalPolicy;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -26,7 +27,7 @@ class ApprovalPolicies
     public const POLICIES = 'approvals.policies';
 
     /** On as shipped. */
-    public const RISKY = ['admins.grant', 'admins.role', 'admins.revoke'];
+    public const RISKY = ['admins.grant', 'admins.role', 'admins.revoke', 'admin_roles.save', 'admin_roles.delete'];
 
     public const MAX_APPROVALS = 3;
 
@@ -38,6 +39,7 @@ class ApprovalPolicies
 
     public function __construct(
         private readonly ApprovalCatalogue $catalogue,
+        private readonly AdminRoles $roles,
     ) {}
 
     /**
@@ -156,6 +158,6 @@ class ApprovalPolicies
      */
     public function roleKeys(): array
     {
-        return array_map(fn (PlatformRole $role): string => $role->value, PlatformRole::cases());
+        return $this->roles->keys();
     }
 }

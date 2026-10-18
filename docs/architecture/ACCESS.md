@@ -7,7 +7,8 @@ right now, and if not, why?
 The answer comes from one place, `App\Domains\Platform\Access\Access`. It is
 not a new switch system. It reads the mechanisms that already decide, in a
 fixed order, and the first one that says no gives the answer. The only new
-switch is a platform admin's per-organization override.
+switches are a platform admin's overrides: for the organization, and below
+it for one role in it or one person.
 
 ## The decision
 
@@ -18,7 +19,7 @@ returns a `Decision`:
 |---|---|
 | `allowed` | Whether the feature can be used now |
 | `reason` | Why, in words a person can act on. Translated |
-| `source` | The level that decided (`Level`): `platform`, `country`, `plan`, `organization` or `role`. Null when nothing refused. `plan` on an allowed answer means a platform admin granted the feature beyond the plan |
+| `source` | The level that decided (`Level`): `platform`, `country`, `plan`, `organization`, `role` or `user`. Null when nothing refused. `plan` on an allowed answer means a platform admin granted the feature beyond the plan |
 | `code` | A stable name for the reason, for code that branches on it (see the table below) |
 | `detail` | The facts behind it: the kill switch and its reason, the country code, the licence feature and tiers, the status, the override, the role |
 
@@ -36,10 +37,18 @@ Each level is asked in this order. The first one that refuses decides.
 | Country | The organization's module (`JurisdictionRegistry`). No module for the country; the country switched off (`JurisdictionAvailability`), only for features that start new work with the authority; the feature not part of the country (`FeatureSupport::supportsFeature()`) | `no_module`, `country_off`, `not_in_country` |
 | Plan | The organization's active, unexpired licences (`LicenseValidationService`). Their features grant the feature; the ERP pipeline needs a licence with the `invoice.submit` scope | `plan_excludes`, `scope_missing`, `no_licence`, `no_plan` |
 | Organization | Its review status (`FilingClearance::assertMayFile()`), for features that start new work; a kill switch set for this organization only; a platform admin's override that switches the feature off | `status`, `org_kill_switch`, `override_off` |
-| Role | The person's role in the organization (`User::roleIn()`): viewer, member or admin. Skipped when there is no person, as on the partner API | `not_member`, `role` |
+| Role | The person's role in the organization (`User::roleIn()`): viewer, member or admin. Then a platform admin's switch for that role in the organization. Skipped when there is no person, as on the partner API | `not_member`, `role`, `role_override_off` |
+| User | A platform admin's switch for this one person in the organization | `user_override_off` |
 
 An allowed answer has the code `allowed`, or `override_on` when a platform
 admin granted the feature beyond the plan.
+
+A switch for a role or a person is off only: nothing below the organization
+grants what a broader level refused. It exists only for features every path a
+person takes asks Access about with the person (`Feature::canSwitchForPeople()`,
+issuing): the portal's issue action asks `decide()`, and the API's issuing
+routes ask the person's levels alone through `access.person`
+(`Access::personDecision()`), keeping their own error codes for the rest.
 
 Two rules keep the answer the same as before:
 

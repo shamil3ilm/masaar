@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Http\Controllers;
 
-use App\Domains\Auth\Enums\PlatformRole;
+use App\Domains\Auth\Services\AdminRoles;
 use App\Domains\Platform\Approvals\ActionResult;
 use App\Domains\Platform\Approvals\ApprovalCatalogue;
 use App\Domains\Platform\Approvals\ApprovalPolicies;
@@ -30,6 +30,7 @@ class AdminApprovalPolicyController extends Controller
         private readonly ApprovalPolicies $policies,
         private readonly ApprovalCatalogue $catalogue,
         private readonly Approvals $approvals,
+        private readonly AdminRoles $roles,
     ) {}
 
     public function index(): View
@@ -38,7 +39,7 @@ class AdminApprovalPolicyController extends Controller
             'policies' => $this->policies->all(),
             'catalogue' => $this->catalogue,
             'roles' => $this->policies->roleKeys(),
-            'roleNames' => collect(PlatformRole::cases())->mapWithKeys(fn (PlatformRole $role): array => [$role->value => $role->label()])->all(),
+            'roleNames' => array_map(fn (array $role): string => $role['name'], $this->roles->all()),
             'maxApprovals' => ApprovalPolicies::MAX_APPROVALS,
             'maxHours' => ApprovalPolicies::MAX_HOURS,
         ]);

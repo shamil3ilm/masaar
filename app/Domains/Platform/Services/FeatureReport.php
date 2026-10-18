@@ -23,6 +23,29 @@ class FeatureReport
     ) {}
 
     /**
+     * A platform admin's switches for the organization's roles and people:
+     * the subject ('role:member', 'user:{id}'), the feature and the switch.
+     *
+     * @return list<array{subject: string, feature: Feature, override: array{state: string, reason: string, by: string|null, at: string|null}}>
+     */
+    public function people(string $organizationId): array
+    {
+        $rows = [];
+
+        foreach ($this->overrides->forPeople($organizationId) as $subject => $switches) {
+            foreach ($switches as $value => $switch) {
+                $feature = Feature::tryFrom((string) $value);
+
+                if ($feature !== null) {
+                    $rows[] = ['subject' => (string) $subject, 'feature' => $feature, 'override' => $switch];
+                }
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
      * @return list<array{feature: Feature, decision: Decision, override: array{state: string, reason: string, by: string|null, at: string|null}|null, governed: list<string>}>
      */
     public function rows(string $organizationId): array

@@ -80,4 +80,53 @@
             </tr>
         @endforeach
     </x-ui.table>
+
+    {{-- Below the company: one role in it, or one person. Off only, and
+         only for what every person-path asks Access about (issuing). The
+         role level and then the person decide after everything above. --}}
+    <div class="border-t border-line p-6">
+        <h4 class="font-semibold text-fg">{{ __('For one role or one person') }}</h4>
+        <p class="mt-1 text-sm text-muted">{{ __('Switch issuing off for everyone in this company with one role, or for one person. Checked after the company: platform, country, plan, organization, role, person.') }}</p>
+
+        @if ($peopleSwitches !== [])
+            <ul class="mt-3 space-y-1 text-sm">
+                @foreach ($peopleSwitches as $switch)
+                    <li class="text-fg">
+                        <span class="font-medium">{{ $switch['feature']->label() }}</span>
+                        · <span dir="ltr">{{ $switch['subject'] }}</span>
+                        · {{ $switch['override']['reason'] }} <span class="text-subtle">({{ $switch['override']['by'] ?? '' }})</span>
+                    </li>
+                @endforeach
+            </ul>
+        @endif
+
+        @admincan('features.manage')
+            <form method="POST" action="{{ route('admin.organizations.features', $organization->id) }}" class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                @csrf
+                <input type="hidden" name="feature" value="{{ \App\Domains\Platform\Access\Feature::IssueInvoices->value }}">
+                <x-ui.field :label="__('Who')" error="subject">
+                    <x-ui.select name="subject" required>
+                        @foreach (\App\Domains\Organization\Enums\MemberRole::cases() as $role)
+                            <option value="role:{{ $role->value }}">{{ __('Everyone with the role: :role', ['role' => $role->label()]) }}</option>
+                        @endforeach
+                        @foreach ($members as $member)
+                            <option value="user:{{ $member->id }}">{{ $member->email }}</option>
+                        @endforeach
+                    </x-ui.select>
+                </x-ui.field>
+                <x-ui.field :label="__('Issuing')">
+                    <x-ui.select name="state" required>
+                        <option value="off">{{ __('Off') }}</option>
+                        <option value="default">{{ __('Default') }}</option>
+                    </x-ui.select>
+                </x-ui.field>
+                <x-ui.field :label="__('Reason')">
+                    <x-ui.input name="reason" maxlength="500" required />
+                </x-ui.field>
+                <div class="flex items-end">
+                    <x-ui.button variant="secondary">{{ __('Save') }}</x-ui.button>
+                </div>
+            </form>
+        @endadmincan
+    </div>
 </div>

@@ -406,7 +406,7 @@ class Approvals
 
     private function roleOf(User $admin): string
     {
-        return (string) ($admin->platform_role ?? 'owner');
+        return (string) $admin->adminRole();
     }
 
     /**

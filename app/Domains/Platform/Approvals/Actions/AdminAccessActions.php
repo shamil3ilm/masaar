@@ -79,7 +79,7 @@ final class AdminAccessActions implements ApprovableActions
      */
     private function grant(array $payload, User $requester): ActionResult
     {
-        $link = $this->admins->grant((string) $payload['email'], PlatformRole::from((string) $payload['role']), $requester);
+        $link = $this->admins->grant((string) $payload['email'], (string) $payload['role'], $requester);
 
         return new ActionResult(
             $payload['email'].' is now an admin.'.($link ? ' Send them the enrolment link below; they set up two-factor before they can sign in.' : ''),
@@ -92,7 +92,7 @@ final class AdminAccessActions implements ApprovableActions
      */
     private function changeRole(array $payload, User $requester): ActionResult
     {
-        $this->admins->changeRole((string) $payload['user_id'], PlatformRole::from((string) $payload['role']), $requester);
+        $this->admins->changeRole((string) $payload['user_id'], (string) $payload['role'], $requester);
 
         return new ActionResult('Role changed.');
     }

@@ -24,7 +24,8 @@ withdraws it, or when it lapses.
 Admin › Settings › Approval policies sets, per action: on or off, approvers
 needed (1 to 3), the roles that may approve and how long a request stays open.
 
-Everything ships off except granting, changing and revoking an admin role. The
+Everything ships off except admin access: granting, changing and revoking an
+admin's role, and making, changing or deleting a custom role. The
 policy over the policies (`approvals.policies`) is on whenever any other
 policy is on, and cannot be switched off. So once one policy is on, changing
 any policy, including turning one off, waits for approval too.
@@ -45,6 +46,7 @@ approver does not open that path.
 | `kill_switches.enable`, `.disable`, `.stop`, `.resume` | the kill switches |
 | `features.override` | a feature off or on for one organization |
 | `admins.grant`, `admins.role`, `admins.revoke` | admin access |
+| `admin_roles.save`, `admin_roles.delete` | custom admin roles |
 | `users.suspend`, `users.reactivate` | a person's account |
 | `licences.issue`, `licences.revoke`, `licences.allowances` | licences |
 | `accounts.freeze`, `accounts.unfreeze` | reserved for the payment freeze |

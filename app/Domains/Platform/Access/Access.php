@@ -31,7 +31,9 @@ use App\Support\Errors\ErrorCode;
  *   plan          the licence: its features, its scopes, or having none
  *   organization  in review, suspended or turned down; its own kill switch;
  *                 a platform admin's switch for it
- *   role          the person's role in the organization (none for the API)
+ *   role          the person's role in the organization (none for the API),
+ *                 and a platform admin's switch for that role in it
+ *   user          a platform admin's switch for the one person
  *
  * Nothing here is a new switch except FeatureOverrides. Each level reads the
  * mechanism that already decides - KillSwitch, the country's module,
@@ -42,6 +44,16 @@ class Access
 {
     /** Portal roles, least to most. */
     private const RANKS = ['viewer' => 1, 'member' => 2, 'admin' => 3];
+
+    /**
+     * The person's level alone, for a path that has already asked the rest
+     * its own way: the API's issuing routes (access.person). Null when the
+     * person's role and the person are not switched off.
+     */
+    public function personDecision(Organization $organization, User $user, Feature $feature): ?Decision
+    {
+        return $this->people($organization, $user, $feature);
+    }
 
     public function __construct(
         private readonly KillSwitch $killSwitch,
@@ -61,6 +73,7 @@ class Access
             ?? $this->plan($organization, $feature, $switches)
             ?? $this->organization($organization, $feature, $jurisdiction, $switches)
             ?? $this->role($organization, $user, $feature)
+            ?? $this->people($organization, $user, $feature)
             ?? $this->allowed($feature, $switches);
     }
 
@@ -266,6 +279,38 @@ class Access
         return Decision::refuse($feature, Level::Role, 'role',
             $needs === 'admin' ? __('Only an administrator of this organization can do this.') : __('Your role in this organization is read-only.'),
             ['role' => $role, 'needs' => $needs]);
+    }
+
+    /**
+     * A platform admin's switch for the person's role in the organization,
+     * then for the person: off only - nothing here grants what a broader
+     * level refused.
+     */
+    private function people(Organization $organization, ?User $user, Feature $feature): ?Decision
+    {
+        if ($user === null || ! $feature->canSwitchForPeople()) {
+            return null;
+        }
+
+        $people = $this->overrides->forPeople((string) $organization->id);
+        $role = (string) $user->roleIn((string) $organization->id);
+        $forRole = $people[FeatureOverrides::role($role)][$feature->value] ?? null;
+
+        if (($forRole['state'] ?? null) === FeatureOverride::OFF) {
+            return Decision::refuse($feature, Level::Role, 'role_override_off',
+                __('Switched off for this role in the company by a platform admin: :reason', ['reason' => $forRole['reason']]),
+                ['role' => $role, 'override' => $forRole]);
+        }
+
+        $forPerson = $people[FeatureOverrides::person((string) $user->id)][$feature->value] ?? null;
+
+        if (($forPerson['state'] ?? null) === FeatureOverride::OFF) {
+            return Decision::refuse($feature, Level::User, 'user_override_off',
+                __('Switched off for you in this company by a platform admin: :reason', ['reason' => $forPerson['reason']]),
+                ['override' => $forPerson]);
+        }
+
+        return null;
     }
 
     /**
