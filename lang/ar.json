@@ -1449,5 +1449,10 @@
     "The invoice must be in Arabic: the description of each line, any notes, and on a standard invoice the name of the buyer. English may go beside it. A saved customer or product fills in its Arabic name.": "يجب أن تكون الفاتورة باللغة العربية: وصف كل بند، وأي ملاحظات، واسم المشتري في الفاتورة الضريبية. ويجوز أن تُكتب الإنجليزية بجانبها. ويُملأ الاسم العربي من العميل أو المنتج المحفوظ.",
     "Required on a standard invoice.": "مطلوب في الفاتورة الضريبية.",
     "Name in Arabic, as printed on the invoice": "الاسم بالعربية كما يُطبع على الفاتورة",
-    "Printed on every invoice and in its QR code. Required: the invoice must be in Arabic.": "يُطبع على كل فاتورة وفي رمز الاستجابة السريعة الخاص بها. وهو مطلوب لأن الفاتورة يجب أن تكون باللغة العربية."
+    "Printed on every invoice and in its QR code. Required: the invoice must be in Arabic.": "يُطبع على كل فاتورة وفي رمز الاستجابة السريعة الخاص بها. وهو مطلوب لأن الفاتورة يجب أن تكون باللغة العربية.",
+    "Language printed first": "اللغة المطبوعة أولاً",
+    "Both languages are printed on every invoice, PDF and receipt.": "تُطبع اللغتان على كل فاتورة وملف PDF وإيصال.",
+    "Platform default (Arabic first)": "الإعداد الافتراضي للمنصة (العربية أولاً)",
+    "Arabic first, right to left": "العربية أولاً، من اليمين إلى اليسار",
+    "English first, left to right": "الإنجليزية أولاً، من اليسار إلى اليمين"
 }

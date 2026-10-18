@@ -18,12 +18,20 @@
     Masaar invoice are the words the authority prints on its examples.
 
     English above, Arabic below, which is how the annex lays out a column
-    heading. Each is tagged with its own language and direction so a screen
-    reader announces the Arabic as Arabic and the browser shapes it correctly.
+    heading - or, arabicFirst, the Arabic above and the English below it, as
+    a Saudi invoice prints unless its organization chose English first
+    (PrintPreferences::arabicFirst). Each is tagged with its own language and
+    direction so a screen reader announces the Arabic as Arabic and the
+    browser shapes it correctly.
 --}}
-@props(['en', 'ar'])
+@props(['en', 'ar', 'arabicFirst' => false])
 
 <span {{ $attributes->merge(['class' => 'block']) }}>
-    <span class="block">{{ $en }}</span>
-    <span class="block font-normal text-subtle normal-case" dir="rtl" lang="ar">{{ $ar }}</span>
+    @if ($arabicFirst)
+        <span class="block" dir="rtl" lang="ar">{{ $ar }}</span>
+        <span class="block font-normal text-subtle normal-case" dir="ltr" lang="en">{{ $en }}</span>
+    @else
+        <span class="block">{{ $en }}</span>
+        <span class="block font-normal text-subtle normal-case" dir="rtl" lang="ar">{{ $ar }}</span>
+    @endif
 </span>

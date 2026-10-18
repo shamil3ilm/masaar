@@ -43,6 +43,17 @@
                         @endforeach
                     </x-ui.select>
                 </x-ui.field>
+                {{-- Bilingual invoices only: which language leads. Both are
+                     printed either way. --}}
+                @if ($bilingual ?? false)
+                    <x-ui.field :label="__('Language printed first')" :hint="__('Both languages are printed on every invoice, PDF and receipt.')">
+                        <x-ui.select name="language_order">
+                            <option value="" @selected($languageOrder === null)>{{ __('Platform default (Arabic first)') }}</option>
+                            <option value="arabic_first" @selected($languageOrder === 'arabic_first')>{{ __('Arabic first, right to left') }}</option>
+                            <option value="english_first" @selected($languageOrder === 'english_first')>{{ __('English first, left to right') }}</option>
+                        </x-ui.select>
+                    </x-ui.field>
+                @endif
 
             </div>
 

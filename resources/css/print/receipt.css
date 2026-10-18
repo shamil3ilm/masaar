@@ -81,6 +81,13 @@
     text-align: left;
 }
 
+/* Arabic first: a value under its caption sits at the right, where the
+   Arabic caption above it starts. */
+.receipt .r-value-end {
+    padding-right: 2mm;
+    text-align: right;
+}
+
 .receipt .r-amount {
     white-space: nowrap;
 }

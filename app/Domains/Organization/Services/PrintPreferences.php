@@ -7,11 +7,14 @@ namespace App\Domains\Organization\Services;
 use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Platform\Services\Settings;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Which paper an invoice is printed on.
+ *
+ * And which language a bilingual invoice prints first (arabicFirst()).
  *
  * Four layers, the nearer winning: the paper chosen on the print screen
  * itself, the person's own (they print at a till with a roll on it), the
@@ -24,6 +27,50 @@ use Illuminate\Support\Facades\DB;
  */
 class PrintPreferences
 {
+    /** A bilingual invoice laid out right to left, its Arabic caption first. */
+    public const ARABIC_FIRST = 'arabic_first';
+
+    /** Left to right, its English caption first: never English alone. */
+    public const ENGLISH_FIRST = 'english_first';
+
+    /** The platform's default order, a setting of the admin console. */
+    public const DEFAULT_SETTING = 'invoices.arabic_first';
+
+    public function __construct(
+        private readonly Settings $settings,
+    ) {}
+
+    /**
+     * Whether a bilingual invoice prints Arabic first, right to left: the
+     * organization's choice, else the platform's default, which ships as
+     * Arabic first. Either way both languages are printed.
+     *
+     * Not a person's: the order is the organization's document, the same
+     * whoever prints it.
+     */
+    public function arabicFirst(Organization $organization): bool
+    {
+        return match ($organization->print_language_order) {
+            self::ARABIC_FIRST => true,
+            self::ENGLISH_FIRST => false,
+            default => (bool) $this->settings->get(self::DEFAULT_SETTING),
+        };
+    }
+
+    /** The organization's own order; null when it follows the platform's. */
+    public function languageOrder(Organization $organization): ?string
+    {
+        return in_array($organization->print_language_order, [self::ARABIC_FIRST, self::ENGLISH_FIRST], true)
+            ? $organization->print_language_order
+            : null;
+    }
+
+    /** Set the organization's order, or null to follow the platform's. */
+    public function setLanguageOrder(Organization $organization, ?string $order): void
+    {
+        $organization->forceFill(['print_language_order' => $order])->save();
+    }
+
     public function paper(Organization $organization, ?string $branchId, ?string $userId, ?string $requested = null): PaperSize
     {
         return PaperSize::tryFrom((string) $requested)

@@ -21,6 +21,8 @@ final readonly class Receipt
      * @param  list<ReceiptRow>  $totals  in order, the amount due among them
      * @param  string  $qrPayload  the country's QR code, as stored; empty for none
      * @param  list<string>  $footer  small print at the foot
+     * @param  bool  $arabicFirst  laid out right to left: each Arabic caption
+     *                             leads, amounts sit at the left
      */
     public function __construct(
         public PrintLabel $title,
@@ -34,5 +36,6 @@ final readonly class Receipt
         public ?ReceiptRow $notes,
         public string $qrPayload,
         public array $footer = [],
+        public bool $arabicFirst = false,
     ) {}
 }

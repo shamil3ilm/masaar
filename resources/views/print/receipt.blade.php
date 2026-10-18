@@ -15,18 +15,29 @@
     @param string $qr      the country's QR code as markup (an <svg> or an <img>), or ''
     @param string|null $logo  the seller's logo in black and white, as a data URI
     @param array|null $extraQr  the organization's own QR: label, and image markup
+
+    $receipt->arabicFirst lays it out right to left: the Arabic of every
+    caption leads - above the English, or at the right where the two share a
+    line - and amounts sit at the left. The table cells keep their order and
+    swap their contents, which both renderers draw alike.
 --}}
 @php
     // Right-aligned and right-to-left when it starts in Arabic: a name or a
     // description in either language reads from its own side.
     $dir = fn (?string $text): string => preg_match('/^[^\p{L}]*\p{Arabic}/u', (string) $text) === 1 ? 'rtl' : 'ltr';
 @endphp
-<div class="receipt">
+@php($rtl = $receipt->arabicFirst)
+<div class="receipt" lang="{{ $rtl ? 'ar' : 'en' }}" @if ($rtl) data-arabic-first @endif>
     @if ($logo)
         <div class="r-center"><img src="{{ $logo }}" alt="" class="r-logo"></div>
     @endif
-    <div class="r-title">{{ $receipt->title->en }}</div>
-    <div class="r-title" dir="rtl" lang="ar">{{ $receipt->title->ar }}</div>
+    @if ($rtl)
+        <div class="r-title" dir="rtl" lang="ar">{{ $receipt->title->ar }}</div>
+        <div class="r-title" lang="en">{{ $receipt->title->en }}</div>
+    @else
+        <div class="r-title">{{ $receipt->title->en }}</div>
+        <div class="r-title" dir="rtl" lang="ar">{{ $receipt->title->ar }}</div>
+    @endif
 
     @foreach ($receipt->sections as $section)
         <div class="r-rule"></div>
@@ -44,7 +55,7 @@
                 <td class="r-start r-label">{{ $row->label->en }}</td>
                 <td class="r-end r-label" dir="rtl" lang="ar">{{ $row->label->ar }}</td>
             </tr><tr>
-                <td colspan="2" class="r-value{{ $row->strong ? ' r-strong' : '' }}" dir="ltr">{{ $row->value }}</td>
+                <td colspan="2" class="{{ $rtl ? 'r-value-end' : 'r-value' }}{{ $row->strong ? ' r-strong' : '' }}" dir="ltr">{{ $row->value }}</td>
             </tr></table>
         @endforeach
         @foreach ($section->lines as $line)
@@ -54,16 +65,26 @@
 
     <div class="r-rule"></div>
     <table class="r-row r-head"><tr>
-        <td class="r-start r-label">{{ $receipt->quantityLabel->en }} &times; {{ $receipt->unitPriceLabel->en }}<br><span dir="rtl" lang="ar">{{ $receipt->quantityLabel->ar }} &times; {{ $receipt->unitPriceLabel->ar }}</span></td>
-        <td class="r-end r-label r-amount">{{ $receipt->totalLabel->en }}<br><span dir="rtl" lang="ar">{{ $receipt->totalLabel->ar }}</span></td>
+        @if ($rtl)
+            <td class="r-start r-label r-amount"><span dir="rtl" lang="ar">{{ $receipt->totalLabel->ar }}</span><br>{{ $receipt->totalLabel->en }}</td>
+            <td class="r-end r-label"><span dir="rtl" lang="ar">{{ $receipt->quantityLabel->ar }} &times; {{ $receipt->unitPriceLabel->ar }}</span><br>{{ $receipt->quantityLabel->en }} &times; {{ $receipt->unitPriceLabel->en }}</td>
+        @else
+            <td class="r-start r-label">{{ $receipt->quantityLabel->en }} &times; {{ $receipt->unitPriceLabel->en }}<br><span dir="rtl" lang="ar">{{ $receipt->quantityLabel->ar }} &times; {{ $receipt->unitPriceLabel->ar }}</span></td>
+            <td class="r-end r-label r-amount">{{ $receipt->totalLabel->en }}<br><span dir="rtl" lang="ar">{{ $receipt->totalLabel->ar }}</span></td>
+        @endif
     </tr></table>
 
     @foreach ($receipt->items as $item)
         <div class="r-item">
             <div class="r-description r-{{ $dir($item->description) }}" dir="{{ $dir($item->description) }}">{{ $item->description }}</div>
             <table class="r-row"><tr>
-                <td class="r-start" dir="ltr">{{ $item->quantity }} &times; {{ $item->unitPrice }}</td>
-                <td class="r-end r-amount" dir="ltr">= {{ $item->total }}</td>
+                @if ($rtl)
+                    <td class="r-start r-amount" dir="ltr">{{ $item->total }} =</td>
+                    <td class="r-end" dir="ltr">{{ $item->quantity }} &times; {{ $item->unitPrice }}</td>
+                @else
+                    <td class="r-start" dir="ltr">{{ $item->quantity }} &times; {{ $item->unitPrice }}</td>
+                    <td class="r-end r-amount" dir="ltr">= {{ $item->total }}</td>
+                @endif
             </tr></table>
             @if ($item->discount)
                 <table class="r-row r-small"><tr>
@@ -88,7 +109,10 @@
         </div>
     @endforeach
 
-    @if ($receipt->itemsNote)
+    @if ($receipt->itemsNote && $rtl)
+        <div class="r-small r-end" dir="rtl" lang="ar">{{ $receipt->itemsNote->ar }}</div>
+        <div class="r-small r-end">{{ $receipt->itemsNote->en }}</div>
+    @elseif ($receipt->itemsNote)
         <div class="r-small r-end">{{ $receipt->itemsNote->en }}</div>
         <div class="r-small r-end" dir="rtl" lang="ar">{{ $receipt->itemsNote->ar }}</div>
     @endif
@@ -96,8 +120,13 @@
     <div class="r-rule"></div>
     @foreach ($receipt->totals as $row)
         <table class="r-row{{ $row->strong ? ' r-grand' : '' }}"><tr>
-            <td class="r-start r-label">{{ $row->label->en }}<br><span dir="rtl" lang="ar">{{ $row->label->ar }}</span></td>
-            <td class="r-end r-amount" dir="ltr">{{ $row->value }}</td>
+            @if ($rtl)
+                <td class="r-start r-amount" dir="ltr">{{ $row->value }}</td>
+                <td class="r-end r-label"><span dir="rtl" lang="ar">{{ $row->label->ar }}</span><br>{{ $row->label->en }}</td>
+            @else
+                <td class="r-start r-label">{{ $row->label->en }}<br><span dir="rtl" lang="ar">{{ $row->label->ar }}</span></td>
+                <td class="r-end r-amount" dir="ltr">{{ $row->value }}</td>
+            @endif
         </tr></table>
     @endforeach
 

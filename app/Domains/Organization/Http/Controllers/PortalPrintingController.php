@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Http\Controllers;
 
+use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Services\PrintPreferences;
@@ -17,6 +18,10 @@ use Illuminate\View\View;
 /**
  * The paper invoices print on: each person's own, and - for the
  * organization's administrators - the organization's and each branch's.
+ *
+ * And, where the country's invoices are bilingual (LanguageRules), which
+ * language they print first: the platform's default, Arabic first, or the
+ * organization's choice. Never one language alone.
  */
 class PortalPrintingController extends Controller
 {
@@ -25,6 +30,7 @@ class PortalPrintingController extends Controller
     public function __construct(
         private readonly TenantResolver $tenant,
         private readonly PrintPreferences $preferences,
+        private readonly JurisdictionResolver $jurisdictions,
     ) {}
 
     public function edit(Request $request): View
@@ -38,6 +44,8 @@ class PortalPrintingController extends Controller
             'admin' => $request->user()?->roleIn($organizationId) === 'admin',
             'organizationPaper' => $this->preferences->organizationPaper($organization),
             'branches' => $this->preferences->branches($organizationId),
+            'bilingual' => $this->jurisdictions->forRules($organization)->languageRules()->requiresArabic(),
+            'languageOrder' => $this->preferences->languageOrder($organization),
         ]);
     }
 
@@ -64,9 +72,14 @@ class PortalPrintingController extends Controller
             'printers' => ['array'],
             'printers.*.dpi' => ['nullable', 'integer', 'between:100,600'],
             'printers.*.dots' => ['nullable', 'integer', 'between:64,1280', 'multiple_of:8'],
+            'language_order' => ['nullable', Rule::in([PrintPreferences::ARABIC_FIRST, PrintPreferences::ENGLISH_FIRST])],
         ]);
 
         $this->preferences->setOrganizationPaper($organization, PaperSize::from($validated['paper']));
+
+        if ($request->has('language_order') && $this->jurisdictions->forRules($organization)->languageRules()->requiresArabic()) {
+            $this->preferences->setLanguageOrder($organization, $validated['language_order'] ?? null);
+        }
 
         foreach ($this->preferences->branches($organizationId) as $branch) {
             $printer = $validated['printers'][$branch['id']] ?? [];
