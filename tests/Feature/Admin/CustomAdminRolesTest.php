@@ -6,6 +6,7 @@ namespace Tests\Feature\Admin;
 
 use App\Domains\Auth\Enums\AdminPermission;
 use App\Domains\Auth\Enums\PlatformRole;
+use App\Domains\Auth\Models\AdminRole;
 use App\Domains\Auth\Models\User;
 use App\Domains\Auth\Services\AdminRoles;
 use App\Domains\Organization\Models\Organization;
@@ -101,6 +102,14 @@ class CustomAdminRolesTest extends TestCase
         $this->actingAs($this->owner)->post(route('admin.roles.update', 'support'), ['name' => 'Support', 'rank' => '3', 'permissions' => ['admins.manage']])->assertSessionHas('error');
 
         $this->assertTrue(app(AdminRoles::class)->exists('desk'));
+
+        // Removed with who removed it, and a role of the same name can be made again.
+        app(AdminRoles::class)->save(['key' => 'spare', 'name' => 'Spare', 'description' => null, 'permissions' => ['console.view'], 'rank' => 1], null);
+        $this->actingAs($this->owner)->post(route('admin.roles.destroy', 'spare'))->assertSessionHas('success');
+        $this->assertFalse(app(AdminRoles::class)->exists('spare'));
+        $this->assertSame($this->owner->id, AdminRole::withTrashed()->where('key', 'spare')->value('deleted_by'));
+        app(AdminRoles::class)->save(['key' => 'spare', 'name' => 'Spare', 'description' => null, 'permissions' => ['console.view'], 'rank' => 1], null);
+        $this->assertTrue(app(AdminRoles::class)->exists('spare'));
         $this->assertFalse(User::factory()->create(['is_platform_admin' => true, 'platform_role' => 'support'])->canAdmin('admins.manage'));
     }
 

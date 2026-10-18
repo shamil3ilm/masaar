@@ -61,15 +61,15 @@ class AdminInvitations
         $token = Str::random(48);
 
         $invitation = DB::transaction(function () use ($email, $role, $inviter, $token): AdminInvitation {
-            AdminInvitation::query()->where('email', $email)->whereNull('accepted_at')->delete();
+            AdminInvitation::query()->where('email', $email)->whereNull('accepted_at')->get()->each->delete();
 
-            $invitation = AdminInvitation::create([
+            $invitation = new AdminInvitation([
                 'email' => $email,
                 'role' => $role,
                 'token_hash' => self::hash($token),
-                'invited_by' => $inviter->id,
                 'expires_at' => now()->addDays(AdminInvitation::VALID_DAYS),
             ]);
+            $invitation->forceFill(['invited_by' => $inviter->id, 'created_by' => $inviter->id, 'updated_by' => $inviter->id])->save();
 
             $this->audit->logSecurity('platform_admin.invited', 'User', null, ['email' => $email, 'role' => $role], userId: (string) $inviter->id);
 
@@ -88,7 +88,7 @@ class AdminInvitations
 
     public function withdraw(string $invitationId): void
     {
-        AdminInvitation::query()->whereKey($invitationId)->whereNull('accepted_at')->delete();
+        AdminInvitation::query()->whereKey($invitationId)->whereNull('accepted_at')->get()->each->delete();
     }
 
     /** The open invitation a link names, or null. */
@@ -123,7 +123,7 @@ class AdminInvitations
 
         DB::transaction(function () use ($invitation, $user): void {
             $spent = AdminInvitation::query()->whereKey($invitation->id)->whereNull('accepted_at')
-                ->update(['accepted_at' => now(), 'accepted_by' => $user->id]);
+                ->update(['accepted_at' => now(), 'accepted_by' => $user->id, 'updated_by' => $user->id, 'updated_at' => now()]);
 
             if ($spent !== 1) {
                 throw new DomainException(__('This invitation has already been used.'));

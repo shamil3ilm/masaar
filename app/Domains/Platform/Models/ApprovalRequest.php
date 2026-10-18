@@ -14,6 +14,10 @@ use Illuminate\Support\Carbon;
 /**
  * An admin action waiting for approval, and what became of it.
  *
+ * Evidence of who did what, so never deleted. Its actors - who asked
+ * (requested_by, created_by), who approved last, who rejected, who withdrew
+ * - are set by Approvals, never mass-assigned.
+ *
  * pending   waiting for approvers
  * executed  approved, and done exactly as requested
  * failed    approved, and refused when it ran - the state had moved on
@@ -58,13 +62,11 @@ class ApprovalRequest extends Model
         'target_id',
         'target_user_id',
         'reason',
-        'requested_by',
         'status',
         'approvals_required',
         'approver_roles',
         'expires_at',
         'decided_at',
-        'decided_by',
         'decision_note',
         'outcome',
     ];
@@ -86,9 +88,25 @@ class ApprovalRequest extends Model
         return $this->belongsTo(User::class, 'requested_by');
     }
 
-    public function decider(): BelongsTo
+    public function approver(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'decided_by');
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function rejecter(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'rejected_by');
+    }
+
+    public function withdrawer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'withdrawn_by');
+    }
+
+    /** Whoever ended it: the last approver, the one who rejected, or the requester withdrawing. */
+    public function decidedBy(): ?User
+    {
+        return $this->approver ?? $this->rejecter ?? $this->withdrawer;
     }
 
     public function decisions(): HasMany

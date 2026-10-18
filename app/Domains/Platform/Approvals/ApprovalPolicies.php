@@ -145,7 +145,16 @@ class ApprovalPolicies
      */
     public function save(string $action, array $values, ?string $actorId): void
     {
-        DB::transaction(fn () => ApprovalPolicy::query()->updateOrCreate(['action' => $action], [...$values, 'updated_by' => $actorId]));
+        DB::transaction(function () use ($action, $values, $actorId): void {
+            $policy = ApprovalPolicy::withTrashed()->firstOrNew(['action' => $action]);
+
+            if ($policy->trashed()) {
+                $policy->restore();
+            }
+
+            $policy->fill($values);
+            $policy->forceFill(['updated_by' => $actorId, 'created_by' => $policy->created_by ?? $actorId])->save();
+        });
 
         Cache::forget(self::CACHE_KEY);
         DB::afterCommit(fn () => Cache::forget(self::CACHE_KEY));

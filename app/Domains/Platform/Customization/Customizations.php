@@ -19,7 +19,9 @@ use InvalidArgumentException;
  *
  * The store is one table, a row per key per holder - 'platform',
  * 'organization:{id}', 'branch:{id}', 'member:{org}:{user}' or 'user:{id}' -
- * with no row meaning "as the level above", so resetting is deleting. A
+ * with no live row meaning "as the level above", so resetting soft-deletes
+ * it, with who did, and setting it again brings the row back. Each row
+ * records who made it and who last changed it. A
  * definition may keep one level in an existing column instead (Definition
  * $columns); null there means the same.
  *
@@ -254,7 +256,7 @@ class Customizations
         return Cache::rememberForever(self::CACHE_KEY.$holder, function () use ($holder): array {
             $rows = [];
 
-            foreach (DB::table('customizations')->where('holder', $holder)->get(['key', 'value', 'locked']) as $row) {
+            foreach (DB::table('customizations')->where('holder', $holder)->whereNull('deleted_at')->get(['key', 'value', 'locked']) as $row) {
                 $rows[$row->key] = ['value' => json_decode((string) $row->value, true), 'locked' => (bool) $row->locked];
             }
 
@@ -272,7 +274,10 @@ class Customizations
             if ($column !== null) {
                 DB::table($column[0])->where('id', $this->rowId($level, $scope))->update([$column[1] => $value, 'updated_at' => now()]);
             } elseif ($value === null) {
-                DB::table('customizations')->where('key', $definition->key)->where('holder', $holder)->delete();
+                // Reset is a removal, kept with who made it; setting the
+                // value again brings the same row back (store()).
+                DB::table('customizations')->where('key', $definition->key)->where('holder', $holder)->whereNull('deleted_at')
+                    ->update(['deleted_at' => now(), 'deleted_by' => $actorId]);
             } else {
                 $this->store($definition, $level, $scope, $holder, $value, $locked, $actorId);
             }
@@ -292,6 +297,8 @@ class Customizations
             'locked' => $locked,
             'updated_by' => $actorId,
             'updated_at' => now(),
+            'deleted_at' => null,
+            'deleted_by' => null,
         ];
 
         if ($existing !== null) {
@@ -309,6 +316,7 @@ class Customizations
             'org_id' => $level === Level::Platform || ($level === Level::User && $definition->acrossOrganizations) ? null : $scope->organizationId,
             'branch_id' => $level === Level::Branch ? $scope->branchId : null,
             'user_id' => $level === Level::User ? $scope->userId : null,
+            'created_by' => $actorId,
             'created_at' => now(),
         ]);
     }

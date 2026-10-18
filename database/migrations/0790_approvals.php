@@ -14,6 +14,11 @@ use Illuminate\Support\Facades\Schema;
  * action. A request keeps its own copy of the rules it was made under -
  * approvals needed, who may approve, when it lapses - so changing a policy
  * does not move a request already waiting.
+ *
+ * Policies are removable entities (soft-deleted, with who changed them).
+ * Requests are evidence: never deleted, with each lifecycle actor - who
+ * asked, who approved last, who rejected, who withdrew. Decisions are
+ * append-only: created_at, no updated_at.
  */
 return new class extends Migration
 {
@@ -26,8 +31,11 @@ return new class extends Migration
             $table->unsignedTinyInteger('approvals_required')->default(1);
             $table->text('approver_roles');
             $table->unsignedSmallInteger('expires_after_hours')->default(72);
+            $table->uuid('created_by')->nullable();
             $table->uuid('updated_by')->nullable();
+            $table->uuid('deleted_by')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
 
         Schema::create('approval_requests', function (Blueprint $table) {
@@ -46,7 +54,10 @@ return new class extends Migration
             $table->text('approver_roles');
             $table->timestamp('expires_at');
             $table->timestamp('decided_at')->nullable();
-            $table->uuid('decided_by')->nullable();
+            $table->uuid('created_by')->nullable();
+            $table->uuid('approved_by')->nullable();
+            $table->uuid('rejected_by')->nullable();
+            $table->uuid('withdrawn_by')->nullable();
             $table->text('decision_note')->nullable();
             $table->text('outcome')->nullable();
             $table->timestamps();
@@ -62,7 +73,7 @@ return new class extends Migration
             $table->uuid('user_id');
             $table->string('decision', 10);
             $table->text('note')->nullable();
-            $table->timestamps();
+            $table->timestamp('created_at')->nullable();
 
             $table->unique(['request_id', 'user_id']);
             $table->foreign('request_id')->references('id')->on('approval_requests')->cascadeOnDelete();

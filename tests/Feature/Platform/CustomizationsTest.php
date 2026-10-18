@@ -76,7 +76,12 @@ class CustomizationsTest extends TestCase
 
         $this->assertSame('a4', $this->customizations->get('printing.paper', $organization));
         $this->assertNull($this->customizations->own('printing.paper', Level::Organization, $organization));
-        $this->assertSame(0, DB::table('customizations')->count());
+        $this->assertSame(0, DB::table('customizations')->whereNull('deleted_at')->count());
+        $this->assertSame($this->admin->id, DB::table('customizations')->value('deleted_by'), 'who reset it is kept');
+
+        $this->customizations->set('printing.paper', Level::Organization, $organization, 'letter', $this->admin->id);
+        $this->assertSame('letter', $this->customizations->get('printing.paper', $organization), 'the reset row comes back');
+        $this->assertSame(1, DB::table('customizations')->count());
     }
 
     /**

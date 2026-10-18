@@ -59,7 +59,7 @@ class ApprovalsTest extends TestCase
         $this->actingAs($this->second)->post(route('admin.approvals.approve', $request->id))->assertSessionHas('success');
 
         $this->assertSame('auditor', $this->operations->fresh()->platform_role);
-        $this->assertSame([ApprovalRequest::EXECUTED, $this->second->id], [$request->fresh()->status, $request->fresh()->decided_by]);
+        $this->assertSame([ApprovalRequest::EXECUTED, $this->second->id], [$request->fresh()->status, $request->fresh()->approved_by]);
     }
 
     public function test_nobody_approves_their_own_request(): void
@@ -78,7 +78,8 @@ class ApprovalsTest extends TestCase
 
         $this->actingAs($this->second)->post(route('admin.approvals.reject', $request->id), ['reason' => 'Not agreed'])->assertSessionHas('success');
 
-        $this->assertSame([ApprovalRequest::REJECTED, 'Not agreed'], [$request->fresh()->status, $request->fresh()->decision_note]);
+        $this->assertSame([ApprovalRequest::REJECTED, 'Not agreed', $this->second->id], [$request->fresh()->status, $request->fresh()->decision_note, $request->fresh()->rejected_by]);
+        $this->assertSame($this->owner->id, $request->fresh()->created_by);
         $this->assertSame('operations', $this->operations->fresh()->platform_role);
         $this->assertTrue(DB::table('audit_logs')->where('action', 'security.approval.rejected')->where('user_id', $this->second->id)->exists());
     }

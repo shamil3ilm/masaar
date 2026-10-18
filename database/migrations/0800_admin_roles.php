@@ -18,6 +18,10 @@ use Illuminate\Support\Str;
  * permission added later reaches it without a migration; the column is kept
  * for the record. Rank orders who may act on whose access; only the owner is
  * at the top.
+ *
+ * Removable: a deleted custom role is soft-deleted with who deleted it, and
+ * making one of the same name again brings that row back, so the key stays
+ * unique.
  */
 return new class extends Migration
 {
@@ -38,8 +42,11 @@ return new class extends Migration
             $table->text('permissions');
             $table->unsignedTinyInteger('rank');
             $table->boolean('system')->default(false);
+            $table->uuid('created_by')->nullable();
             $table->uuid('updated_by')->nullable();
+            $table->uuid('deleted_by')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
 
         $now = now();

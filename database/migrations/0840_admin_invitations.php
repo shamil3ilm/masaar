@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\Schema;
  * accepting it makes the account if there is none, gives it the role, and
  * sends the person to enrol a second factor before the console opens.
  *
- * Only the token's hash is kept, as for organization invitations.
+ * Only the token's hash is kept, as for organization invitations. Removable:
+ * a withdrawn or replaced invitation is soft-deleted with who did it.
  */
 return new class extends Migration
 {
@@ -27,7 +28,11 @@ return new class extends Migration
             $table->timestamp('expires_at');
             $table->timestamp('accepted_at')->nullable();
             $table->uuid('accepted_by')->nullable();
+            $table->uuid('created_by')->nullable();
+            $table->uuid('updated_by')->nullable();
+            $table->uuid('deleted_by')->nullable();
             $table->timestamps();
+            $table->softDeletes();
 
             $table->index('email');
         });

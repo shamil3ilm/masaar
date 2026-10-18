@@ -406,18 +406,17 @@ class ScreenRenderTest extends TestCase
      */
     private function approvalRequest(): ApprovalRequest
     {
-        return ApprovalRequest::query()->first() ?? ApprovalRequest::create([
+        return ApprovalRequest::query()->first() ?? tap(new ApprovalRequest([
             'action' => 'admins.role',
             'payload' => ['user_id' => $this->member->id, 'role' => 'auditor'],
             'summary' => 'Change a role',
             'changes' => ['before' => ['role' => 'operations'], 'after' => ['role' => 'auditor']],
             'reason' => 'Rotation',
-            'requested_by' => $this->member->id,
             'status' => ApprovalRequest::PENDING,
             'approvals_required' => 1,
             'approver_roles' => ['owner'],
             'expires_at' => now()->addDay(),
-        ]);
+        ]), fn (ApprovalRequest $request) => $request->forceFill(['requested_by' => $this->member->id])->save());
     }
 
     /**

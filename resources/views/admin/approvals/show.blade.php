@@ -104,7 +104,7 @@
                 @else
                     <div>
                         <dt class="text-subtle">{{ __('Decided') }}</dt>
-                        <dd class="mt-0.5 text-fg">{{ $approval->decider?->email }} · {{ $approval->decided_at?->diffForHumans() }}</dd>
+                        <dd class="mt-0.5 text-fg">{{ $approval->decidedBy()?->email }} · {{ $approval->decided_at?->diffForHumans() }}</dd>
                     </div>
                 @endif
                 @if ($approval->decision_note)

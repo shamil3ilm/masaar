@@ -34,8 +34,10 @@ value its definition cannot hold or a level it does not allow.
 ## Storage
 
 One table, `customizations`: a row per key per holder (`platform`,
-`organization:{id}`, `branch:{id}`, `member:{org}:{user}`, `user:{id}`). No row
-means "as the level above", so resetting a value deletes its row. Values are
+`organization:{id}`, `branch:{id}`, `member:{org}:{user}`, `user:{id}`). No live
+row means "as the level above": resetting a value soft-deletes its row with
+who reset it, and setting it again brings the same row back. Each row records
+who made it and who last changed it. Values are
 JSON in a text column, because MySQL reorders the keys of a JSON column.
 
 A definition may keep one level in a column that issuing paths already read:

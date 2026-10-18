@@ -84,7 +84,7 @@ class Approvals
         }
 
         $request = DB::transaction(function () use ($action, $payload, $requester, $reason, $policy, $preview): ApprovalRequest {
-            $request = ApprovalRequest::create([
+            $request = new ApprovalRequest([
                 'action' => $action,
                 'payload' => $payload,
                 'summary' => mb_substr($preview->summary, 0, 500),
@@ -93,12 +93,12 @@ class Approvals
                 'target_id' => $preview->targetId,
                 'target_user_id' => $preview->targetUserId,
                 'reason' => mb_substr($reason, 0, 2000),
-                'requested_by' => $requester->id,
                 'status' => ApprovalRequest::PENDING,
                 'approvals_required' => $policy->approvalsRequired,
                 'approver_roles' => $policy->approverRoles,
                 'expires_at' => now()->addHours($policy->expiresAfterHours),
             ]);
+            $request->forceFill(['requested_by' => $requester->id, 'created_by' => $requester->id])->save();
 
             $this->record('approval.requested', $request, (string) $requester->id, ['reason' => $request->reason]);
 
@@ -171,7 +171,7 @@ class Approvals
             $request->forceFill([
                 'status' => ApprovalRequest::REJECTED,
                 'decided_at' => now(),
-                'decided_by' => $approver->id,
+                'rejected_by' => $approver->id,
                 'decision_note' => mb_substr($reason, 0, 2000),
             ])->save();
 
@@ -199,7 +199,7 @@ class Approvals
                 throw new DomainException(__('Only the admin who asked can withdraw a request.'));
             }
 
-            $request->forceFill(['status' => ApprovalRequest::WITHDRAWN, 'decided_at' => now(), 'decided_by' => $requester->id])->save();
+            $request->forceFill(['status' => ApprovalRequest::WITHDRAWN, 'decided_at' => now(), 'withdrawn_by' => $requester->id])->save();
             $this->record('approval.withdrawn', $request, (string) $requester->id);
 
             return $request;
@@ -262,7 +262,7 @@ class Approvals
     {
         $this->expireDue();
 
-        return ApprovalRequest::query()->with(['requester', 'decider', 'decisions.user'])->find($requestId);
+        return ApprovalRequest::query()->with(['requester', 'approver', 'rejecter', 'withdrawer', 'decisions.user'])->find($requestId);
     }
 
     /**
@@ -278,7 +278,7 @@ class Approvals
         return [
             'waiting' => $this->waitingFor($admin),
             'mine' => ApprovalRequest::query()->where('requested_by', $admin->id)->with('requester')->latest()->limit($limit)->get(),
-            'history' => ApprovalRequest::query()->where('status', '!=', ApprovalRequest::PENDING)->with(['requester', 'decider'])->latest('decided_at')->limit($limit)->get(),
+            'history' => ApprovalRequest::query()->where('status', '!=', ApprovalRequest::PENDING)->with(['requester', 'approver', 'rejecter', 'withdrawer'])->latest('decided_at')->limit($limit)->get(),
         ];
     }
 
@@ -316,7 +316,7 @@ class Approvals
 
     private function finish(ApprovalRequest $request, string $status, User $approver, string $outcome): void
     {
-        $request->forceFill(['status' => $status, 'decided_at' => now(), 'decided_by' => $approver->id, 'outcome' => mb_substr($outcome, 0, 2000)])->save();
+        $request->forceFill(['status' => $status, 'decided_at' => now(), 'approved_by' => $approver->id, 'outcome' => mb_substr($outcome, 0, 2000)])->save();
 
         $this->record($status === ApprovalRequest::EXECUTED ? 'approval.executed' : 'approval.failed', $request, (string) $approver->id, ['outcome' => $request->outcome]);
     }

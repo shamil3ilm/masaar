@@ -9,11 +9,15 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Every customization's value at every level that sets one (Customizations):
  * a row per key per holder - the platform, an organization, a branch, a
- * person in an organization or a person anywhere. No row is "as the level
- * above", so resetting a value deletes its row.
+ * person in an organization or a person anywhere. No live row is "as the
+ * level above".
  *
  * The value is text holding JSON rather than a JSON column, because MySQL
  * reorders the keys of a JSON object and a list of entries keeps its order.
+ *
+ * Removable (a value reset to inherited): reset soft-deletes the row, with
+ * who reset it, and setting the value again brings the same row back, so
+ * the key-and-holder unique index still allows it.
  */
 return new class extends Migration
 {
@@ -29,8 +33,11 @@ return new class extends Migration
             $table->uuid('user_id')->nullable();
             $table->longText('value');
             $table->boolean('locked')->default(false);
+            $table->uuid('created_by')->nullable();
             $table->uuid('updated_by')->nullable();
+            $table->uuid('deleted_by')->nullable();
             $table->timestamps();
+            $table->softDeletes();
 
             $table->unique(['key', 'holder']);
             $table->index('holder');

@@ -10,14 +10,17 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * One approver's approval of a request. A rejection is the request's own
- * decision (ApprovalRequest decided_by and decision_note), since one ends it.
+ * One approver's approval of a request: append-only, so created_at and no
+ * updated_at. A rejection is the request's own decision (rejected_by and
+ * decision_note), since one ends it.
  */
 class ApprovalDecision extends Model
 {
     use HasUuids;
 
     public const APPROVE = 'approve';
+
+    public const UPDATED_AT = null;
 
     protected $fillable = [
         'request_id',

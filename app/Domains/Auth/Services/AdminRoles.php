@@ -158,7 +158,18 @@ class AdminRoles
             throw new DomainException(__('A system role is defined by the platform and cannot be changed.'));
         }
 
-        DB::transaction(fn () => AdminRole::query()->updateOrCreate(['key' => $values['key']], [...$values, 'system' => false, 'updated_by' => $actorId]));
+        DB::transaction(function () use ($values, $actorId): void {
+            // A role of a name deleted before comes back as the same row: the
+            // key stays unique.
+            $role = AdminRole::withTrashed()->where('key', $values['key'])->first() ?? new AdminRole;
+
+            if ($role->trashed()) {
+                $role->restore();
+            }
+
+            $role->fill([...$values, 'system' => false]);
+            $role->forceFill(['updated_by' => $actorId, 'created_by' => $role->created_by ?? $actorId, 'deleted_by' => null])->save();
+        });
 
         $this->forget();
     }
@@ -178,7 +189,7 @@ class AdminRoles
             throw new DomainException(__('Admins hold this role. Give them another one first.'));
         }
 
-        DB::transaction(fn () => AdminRole::query()->where('key', $key)->delete());
+        DB::transaction(fn () => AdminRole::query()->where('key', $key)->get()->each->delete());
 
         $this->forget();
     }
