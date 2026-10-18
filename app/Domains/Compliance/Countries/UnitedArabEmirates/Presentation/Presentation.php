@@ -7,6 +7,7 @@ namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\UaeDocuments;
 use App\Domains\Compliance\Engine\Contracts\Presentation as PresentationPort;
 use App\Domains\Compliance\Engine\DTOs\InvoicePage;
+use App\Domains\Compliance\Engine\DTOs\Receipt;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use DomainException;
@@ -74,5 +75,28 @@ class Presentation implements PresentationPort
     public function sealPdf(string $pdf, Invoice $invoice, Organization $organization): string
     {
         return $pdf;
+    }
+
+    /**
+     * No printed copy to lay out: assertShareable refuses first.
+     *
+     * @throws DomainException as assertShareable does
+     */
+    public function pageView(bool $pdf): string
+    {
+        $this->refuse();
+    }
+
+    /**
+     * @throws DomainException as assertShareable does
+     */
+    public function receipt(Invoice $invoice, Organization $organization): Receipt
+    {
+        $this->refuse();
+    }
+
+    private function refuse(): never
+    {
+        throw new DomainException(__('Issue the invoice first. A draft has no QR code and is not a tax invoice.'));
     }
 }

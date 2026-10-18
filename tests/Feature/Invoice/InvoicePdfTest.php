@@ -247,7 +247,7 @@ class InvoicePdfTest extends TestCase
 
     private function page(Invoice $invoice): string
     {
-        return view('pdf.invoice', [
+        return view('countries.saudi-arabia.print.pdf', [
             'invoice' => $invoice,
             'organization' => $this->acme,
             'simplified' => $invoice->type === InvoiceType::Simplified,

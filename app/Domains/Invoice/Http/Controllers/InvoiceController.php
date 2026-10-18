@@ -2,12 +2,14 @@
 
 namespace App\Domains\Invoice\Http\Controllers;
 
+use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Invoice\Exceptions\InvoiceNotEditableException;
 use App\Domains\Invoice\Http\Requests\CreateInvoiceRequest;
 use App\Domains\Invoice\Services\IdempotentDraft;
 use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Invoice\Services\InvoicePdf;
+use App\Domains\Organization\Services\PrintPreferences;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Pagination\PageSize;
@@ -15,6 +17,7 @@ use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Validation\Rule;
 
 /**
  * Invoice API controller.
@@ -106,18 +109,22 @@ class InvoiceController extends Controller
     /**
      * The issued invoice as a PDF/A-3 with its XML inside.
      *
-     * GET /api/invoices/{id}/pdf
+     * GET /api/invoices/{id}/pdf?paper=a4|letter|a5|80mm|58mm
+     *
+     * On the paper asked for, else the caller's, the invoice's branch's or
+     * the organization's (PrintPreferences).
      *
      * 409 for a draft, or a standard invoice ZATCA has not cleared yet: it
      * may not be given to the buyer before then.
      */
-    public function pdf(string $id): Response|JsonResponse
+    public function pdf(Request $request, string $id, PrintPreferences $preferences): Response|JsonResponse
     {
+        $paper = $request->validate(['paper' => ['nullable', Rule::enum(PaperSize::class)]])['paper'] ?? null;
         $invoice = $this->invoices->findWithLines($this->tenant->getOrganizationId(), $id);
         $organization = $this->tenant->getOrganization() ?? abort(404);
 
         try {
-            $pdf = $this->pdf->render($invoice, $organization);
+            $pdf = $this->pdf->render($invoice, $organization, $preferences->paper($organization, $invoice->branch_id, $request->user()?->id, $paper));
         } catch (\DomainException $e) {
             return ApiResponse::error($e->getMessage(), 409);
         }

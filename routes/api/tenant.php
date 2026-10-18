@@ -10,6 +10,7 @@ use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\UaeDocu
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\UaeInvoiceController;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\UaeProfileController;
 use App\Domains\Invoice\Http\Controllers\InvoiceController;
+use App\Domains\Invoice\Http\Controllers\InvoiceReceiptController;
 use App\Domains\Invoice\Http\Controllers\NumberingController;
 use App\Domains\Organization\Http\Controllers\BranchController;
 use App\Domains\Organization\Http\Controllers\ComplianceProfileController;
@@ -49,6 +50,10 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
     Route::apiResource('invoices', InvoiceController::class)->only(['index', 'show']);
     // The issued invoice as a PDF/A-3 with its XML inside.
     Route::get('/invoices/{invoice}/pdf', [InvoiceController::class, 'pdf']);
+    // For a receipt printer driven directly: the receipt as an image at the
+    // printer's dots, or as ESC/POS commands.
+    Route::get('/invoices/{invoice}/receipt-image', [InvoiceReceiptController::class, 'image']);
+    Route::get('/invoices/{invoice}/escpos', [InvoiceReceiptController::class, 'escPos']);
     Route::apiResource('invoices', InvoiceController::class)->only(['store', 'update'])->middleware('org.writer');
     Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy'])
         ->middleware('org.admin');

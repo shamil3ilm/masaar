@@ -1,0 +1,141 @@
+/*
+ * A receipt on a till's roll (resources/views/print/receipt.blade.php).
+ *
+ * Read by two renderers: the browser, through Vite, and the PDF renderer,
+ * which is given this file as it is (InvoicePdf). So it keeps to the CSS that
+ * renderer understands - no flexbox, no custom properties, no selectors past
+ * a class - and sets every margin it relies on rather than trusting a reset.
+ *
+ * Pure black on white. A thermal head prints a dot or none: a grey is a
+ * pattern of dots, and text on a grey fill blurs into it.
+ *
+ * Sized for the 72 mm an 80 mm roll prints; receipt-58mm.css narrows it.
+ */
+.receipt {
+    width: 72mm;
+    color: #000;
+    background: #fff;
+    font-size: 8pt;
+    line-height: 1.25;
+}
+
+.receipt div,
+.receipt table,
+.receipt td {
+    margin: 0;
+    padding: 0;
+    color: #000;
+}
+
+.receipt table.r-row {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0.8mm;
+}
+
+.receipt td {
+    vertical-align: top;
+    font-size: 8pt;
+}
+
+.receipt .r-start {
+    text-align: left;
+}
+
+.receipt .r-end,
+.receipt .r-rtl {
+    text-align: right;
+}
+
+.receipt .r-ltr {
+    text-align: left;
+}
+
+.receipt .r-center,
+.receipt .r-title,
+.receipt .r-footer {
+    text-align: center;
+}
+
+.receipt .r-title {
+    font-size: 10.5pt;
+    font-weight: bold;
+}
+
+.receipt .r-name,
+.receipt .r-description {
+    font-weight: bold;
+    margin-top: 0.8mm;
+}
+
+.receipt .r-strong {
+    font-weight: bold;
+}
+
+.receipt .r-label {
+    font-size: 7pt;
+}
+
+.receipt .r-value {
+    padding-left: 2mm;
+    text-align: left;
+}
+
+.receipt .r-amount {
+    white-space: nowrap;
+}
+
+/* A gap before whatever sits at the end of a row, so an amount never runs
+   into the text before it. */
+.receipt td.r-end {
+    padding-left: 1.5mm;
+}
+
+.receipt .r-small,
+.receipt .r-small td {
+    font-size: 7pt;
+}
+
+.receipt .r-item {
+    margin-top: 1.6mm;
+}
+
+.receipt .r-grand td {
+    font-size: 10pt;
+    font-weight: bold;
+}
+
+.receipt .r-rule {
+    border-top: 0.3mm dashed #000;
+    margin-top: 2mm;
+    margin-bottom: 1mm;
+    height: 0;
+}
+
+.receipt .r-logo {
+    max-width: 48mm;
+    max-height: 16mm;
+}
+
+/* The QR at the size it is printed at on every paper. The PDF renderer
+   sizes it from the element, which it reads more surely than this. */
+.receipt [data-print-qr] img,
+.receipt [data-print-qr] svg {
+    width: 32mm;
+    height: 32mm;
+    margin: 1.5mm auto 0;
+}
+
+/* The organization's own QR: smaller, so the two are not mistaken. */
+.receipt [data-print-extra-qr] img,
+.receipt [data-print-extra-qr] svg {
+    width: 24mm;
+    height: 24mm;
+    margin: 1mm auto 0;
+}
+
+.receipt .r-footer {
+    font-size: 6pt;
+    margin-top: 1.5mm;
+    word-wrap: break-word;
+}

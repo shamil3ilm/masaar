@@ -1,0 +1,30 @@
+/*
+ * A receipt on a 58 mm roll, which prints 48 mm: receipt.css, narrower and a
+ * size smaller. Read by the browser and the PDF renderer alike.
+ */
+.receipt {
+    width: 48mm;
+    font-size: 7pt;
+}
+
+.receipt td {
+    font-size: 7pt;
+}
+
+.receipt .r-title {
+    font-size: 9pt;
+}
+
+.receipt .r-label,
+.receipt .r-small,
+.receipt .r-small td {
+    font-size: 6.5pt;
+}
+
+.receipt .r-grand td {
+    font-size: 8.5pt;
+}
+
+.receipt .r-logo {
+    max-width: 40mm;
+}

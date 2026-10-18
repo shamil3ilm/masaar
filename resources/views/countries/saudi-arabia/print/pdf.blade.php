@@ -5,8 +5,10 @@
     and none of the stylesheet the screens use. Every label carries its Arabic
     beside it, as ZATCA's own illustrative invoices do.
 
-    The fields follow resources/views/portal/invoices/print.blade.php, which
-    notes why each is there.
+    The fields follow countries/saudi-arabia/print/page.blade.php, which
+    notes why each is there. One template for A4, Letter and A5: the page
+    size is the renderer's (InvoicePdf), and only A5, a third narrower, sets
+    smaller type so the seven columns of a standard invoice still fit.
 --}}
 @php
     $documentType = $invoice->document_type instanceof \BackedEnum ? $invoice->document_type->value : (string) $invoice->document_type;
@@ -31,6 +33,12 @@
     // the price its customer saw.
     $inclusivePrice = $simplified && $invoice->prices_include_vat;
     $buyerAddress = (array) ($invoice->buyer_address ?? []);
+    // A discount column only when a line has a discount. Document charges
+    // print among the totals with their VAT rate, and the organization's
+    // own QR apart from ZATCA's and labelled: nothing is added to the QR
+    // the authority defines. Those blocks sit at the start of their lines
+    // so that, printing nothing, they leave the page's bytes as they were.
+    $lineDiscounts = \App\Domains\Invoice\Support\PrintedAmounts::anyLineDiscount($invoice->lines);
     $address = fn (array $parts): string => implode(', ', array_filter(array_map(fn ($part) => trim((string) $part), $parts)));
 @endphp
 <html>
@@ -48,6 +56,14 @@
     table.totals td { padding: 3pt 4pt; }
     .grand td { border-top: 1px solid #111827; font-weight: bold; }
 </style>
+@if (($paper ?? null) === \App\Domains\Invoice\Enums\PaperSize::A5)
+<style>
+    body { font-size: 7.5pt; }
+    .label { font-size: 6.5pt; }
+    table.items th { font-size: 6.5pt; padding: 4pt 2pt; }
+    table.items td { padding: 4pt 2pt; }
+</style>
+@endif
 </head>
 <body>
 
@@ -121,6 +137,9 @@
             @else
                 <th scope="col" class="num">Unit price<br><span class="ar">سعر الوحدة</span></th>
             @endif
+@if ($lineDiscounts)
+                <th scope="col" class="num">Discount<br><span class="ar">الخصم</span></th>
+@endif
             @if (! $simplified)
                 <th scope="col" class="num">Net<br><span class="ar">الإجمالي غير شامل</span></th>
                 <th scope="col" class="num">VAT %<br><span class="ar">نسبة الضريبة</span></th>
@@ -149,9 +168,12 @@
                 </td>
                 <td class="num">
                     {{ rtrim(rtrim((string) $line->quantity, '0'), '.') }}
-                    <span class="muted">{{ \App\Domains\Invoice\Support\UnitCode::label(\App\Domains\Invoice\Support\UnitCode::normalise($line->unit_code)) }}</span>
+                    <span class="muted">{{ \App\Domains\Invoice\Support\UnitCode::printed($line->unit_code) }}</span>
                 </td>
                 <td class="num">{{ $money($line->priceAsEntered($inclusivePrice)) }}</td>
+@if ($lineDiscounts)
+                    <td class="num">{{ ($discount = \App\Domains\Invoice\Support\PrintedAmounts::lineDiscount($line)) ? '-'.$money($discount) : '' }}</td>
+@endif
                 @if (! $simplified)
                     <td class="num">{{ $money((float) $line->line_total - (float) $line->tax_amount) }}</td>
                     <td class="num">{{ (string) (float) $line->tax_rate }}%</td>
@@ -173,6 +195,12 @@
             @if ($qr)
                 <img src="{{ $qr }}" style="width: 32mm; height: 32mm;">
             @endif
+@if (! empty($extraQr))
+                <table style="margin-top: 4pt;"><tr>
+                    <td style="vertical-align: middle;"><img src="{{ $extraQr['image'] }}" style="width: 24mm; height: 24mm;"></td>
+                    <td style="vertical-align: middle; padding-left: 4pt; font-size: 7.5pt;">{{ $extraQr['label'] }}</td>
+                </tr></table>
+@endif
         </td>
         <td width="60%" style="vertical-align: top;">
             <table class="totals" align="right" style="width: 100%;">
@@ -188,6 +216,12 @@
                         <td class="num">-{{ $money($invoice->discount_amount) }}</td>
                     </tr>
                 @endif
+@foreach (\App\Domains\Invoice\Support\PrintedAmounts::documentCharges($invoice) as $charge)
+                    <tr>
+                        <td>{{ $charge['reason'] }} ({{ $charge['rate'] }}%) <span class="ar">رسوم إضافية</span></td>
+                        <td class="num">{{ $money($charge['amount']) }}</td>
+                    </tr>
+@endforeach
                 <tr>
                     <td>Taxable amount <span class="ar">الإجمالي غير شامل الضريبة</span></td>
                     <td class="num">{{ $money((float) $invoice->subtotal - (float) $invoice->discount_amount) }}</td>

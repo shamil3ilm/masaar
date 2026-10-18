@@ -11,10 +11,14 @@ use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\PdfStamp;
 use App\Domains\Compliance\Engine\Contracts\Presentation as PresentationPort;
 use App\Domains\Compliance\Engine\DTOs\InvoicePage;
+use App\Domains\Compliance\Engine\DTOs\Receipt;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Services\InvoiceExtraQr;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\PrintPreferences;
+use App\Support\QrCodeRenderer;
 use BackedEnum;
 use DomainException;
 
@@ -24,7 +28,8 @@ use DomainException;
  *
  * A Saudi invoice goes to the buyer only once issued, and a standard one only
  * once ZATCA has cleared it. The PDF a buyer is given carries the device's
- * PAdES stamp, made with the credentials its XML was signed with.
+ * PAdES stamp, made with the credentials its XML was signed with, whatever
+ * paper it is laid out for.
  */
 class Presentation implements PresentationPort
 {
@@ -33,6 +38,10 @@ class Presentation implements PresentationPort
     public function __construct(
         private readonly CredentialStore $credentials,
         private readonly PdfStamp $stamp,
+        private readonly ReceiptContent $receipts,
+        private readonly QrCodeRenderer $qr,
+        private readonly InvoiceExtraQr $extraQr,
+        private readonly PrintPreferences $preferences,
     ) {}
 
     public function tagline(): string
@@ -67,8 +76,31 @@ class Presentation implements PresentationPort
                 ? __('VAT reported in SAR at :rate', ['rate' => $invoice->exchange_rate])
                 : null,
             shareable: $shareable,
-            data: ['simplified' => $simplified, 'shareable' => $shareable],
+            // The QR as a picture a phone can scan from the screen, not its
+            // base64 payload.
+            data: [
+                'simplified' => $simplified,
+                'shareable' => $shareable,
+                'qrSvg' => $this->qr->svg((string) $invoice->qr_code),
+                'businessQr' => $invoice->qr_code ? $this->businessQr($invoice) : null,
+            ],
         );
+    }
+
+    /**
+     * The organization's own QR its invoices carry on its usual paper,
+     * shown beside ZATCA's; an invoice link only when the invoice has one.
+     *
+     * @return array{label: string, svg: string}|null
+     */
+    private function businessQr(Invoice $invoice): ?array
+    {
+        $organization = Organization::query()->find($invoice->org_id);
+        $extra = $organization === null
+            ? null
+            : $this->extraQr->for($invoice, $organization, $this->preferences->organizationPaper($organization), create: false);
+
+        return $extra === null ? null : ['label' => $extra['label'], 'svg' => $this->qr->svg($extra['payload'], $extra['encoding'])];
     }
 
     /**
@@ -110,5 +142,16 @@ class Presentation implements PresentationPort
         }
 
         return $this->stamp->sign($pdf, (string) $privateKey, $certificate);
+    }
+
+    /** One template for every sheet; the renderer sets the page. */
+    public function pageView(bool $pdf): string
+    {
+        return self::VIEWS.($pdf ? 'print.pdf' : 'print.page');
+    }
+
+    public function receipt(Invoice $invoice, Organization $organization): Receipt
+    {
+        return $this->receipts->build($invoice, $organization);
     }
 }

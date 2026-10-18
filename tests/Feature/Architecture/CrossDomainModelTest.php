@@ -81,6 +81,7 @@ class CrossDomainModelTest extends TestCase
         // An invoice's page and the copies of it a buyer is given; whether a
         // first invoice was issued, for the setup steps.
         'Domains/Compliance/Countries/SaudiArabia/Presentation/Presentation.php' => 'Invoice',
+        'Domains/Compliance/Countries/SaudiArabia/Presentation/ReceiptContent.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Presentation/SetupSteps.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Reports/DailyClose.php' => 'Invoice, Organization',
         'Domains/Compliance/Countries/SaudiArabia/Reports/DeadlineReport.php' => 'Invoice',

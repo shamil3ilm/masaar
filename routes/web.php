@@ -17,18 +17,22 @@ use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalSubmissi
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalZatcaController;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalReceivedController;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalUaeInvoiceController;
+use App\Domains\Invoice\Http\Controllers\InvoiceLinkController;
 use App\Domains\Invoice\Http\Controllers\PortalCustomerController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceDocumentController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceDraftController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceFilingController;
+use App\Domains\Invoice\Http\Controllers\PortalInvoicePrintController;
 use App\Domains\Invoice\Http\Controllers\PortalNumberingController;
 use App\Domains\Invoice\Http\Controllers\PortalProductController;
+use App\Domains\Invoice\Http\Controllers\PortalQrCodeController;
 use App\Domains\Invoice\Http\Controllers\PortalReportController;
 use App\Domains\Licensing\Http\Controllers\AdminLicenceController;
 use App\Domains\Organization\Http\Controllers\CustomerPortalController;
 use App\Domains\Organization\Http\Controllers\InvitationController;
 use App\Domains\Organization\Http\Controllers\PortalCompanyController;
+use App\Domains\Organization\Http\Controllers\PortalPrintingController;
 use App\Domains\Organization\Http\Controllers\PortalTeamController;
 use App\Domains\Platform\Http\Controllers\AdminAdminsController;
 use App\Domains\Platform\Http\Controllers\AdminAuditController;
@@ -131,6 +135,17 @@ Route::post('/invitations/{token}/accept', [InvitationController::class, 'accept
     ->where('token', '[A-Za-z0-9]{48}')
     ->middleware(['auth', 'throttle:10,1'])
     ->name('invitations.accept');
+
+// An issued invoice opened from its link - the QR code on it - without
+// signing in. The token is the only key; the throttle limits guessing.
+Route::get('/i/{token}', [InvoiceLinkController::class, 'show'])
+    ->where('token', '[A-Za-z0-9_-]{43}')
+    ->middleware('throttle:30,1')
+    ->name('invoice-link.show');
+Route::get('/i/{token}/pdf', [InvoiceLinkController::class, 'pdf'])
+    ->where('token', '[A-Za-z0-9_-]{43}')
+    ->middleware('throttle:10,1')
+    ->name('invoice-link.pdf');
 
 Route::middleware('auth')->group(function () {
     Route::get('/email/verify', [EmailVerificationController::class, 'notice'])->name('verification.notice');
@@ -356,7 +371,13 @@ Route::prefix('portal')->name('portal.')
         Route::get('/invoices/{invoiceId}/{note}', [PortalInvoiceDraftController::class, 'adjust'])
             ->whereIn('note', ['credit_note', 'debit_note'])
             ->name('invoices.adjust');
-        Route::get('/invoices/{invoiceId}/print', [PortalInvoiceFilingController::class, 'print'])->name('invoices.print');
+        Route::get('/invoices/{invoiceId}/print', [PortalInvoicePrintController::class, 'print'])->name('invoices.print');
+        // The receipt as an image at a till printer's dots.
+        Route::get('/invoices/{invoiceId}/receipt.png', [PortalInvoicePrintController::class, 'receiptImage'])->name('invoices.receipt-image');
+        // The invoice's QR code as a picture to download.
+        Route::get('/invoices/{invoiceId}/qr.{format}', [PortalInvoicePrintController::class, 'qr'])
+            ->whereIn('format', ['png', 'svg'])
+            ->name('invoices.qr');
         // The PDF the buyer keeps, and sending it to them.
         Route::get('/invoices/{invoiceId}/pdf', [PortalInvoiceDocumentController::class, 'download'])->name('invoices.pdf');
         Route::post('/invoices/{invoiceId}/send', [PortalInvoiceDocumentController::class, 'send'])->middleware('throttle:20,1')->name('invoices.send');
@@ -436,6 +457,27 @@ Route::prefix('portal')->name('portal.')
         // only; the controller checks the role.
         Route::get('/numbering', [PortalNumberingController::class, 'edit'])->name('numbering.edit');
         Route::post('/numbering/{documentType}', [PortalNumberingController::class, 'update'])->name('numbering.update');
+
+        // The paper invoices print on: each person's own, and the
+        // organization's and its branches' for its administrators (the
+        // controller checks the role).
+        Route::get('/printing', [PortalPrintingController::class, 'edit'])->name('printing.edit');
+        Route::post('/printing/mine', [PortalPrintingController::class, 'updateMine'])->name('printing.mine');
+        Route::post('/printing', [PortalPrintingController::class, 'update'])->name('printing.update');
+
+        // QR codes: the organization's own, and links that open one invoice.
+        // Its own codes and what prints on invoices are its administrators'
+        // (the controller checks the role).
+        Route::get('/qr-codes', [PortalQrCodeController::class, 'index'])->name('qr-codes.index');
+        Route::post('/qr-codes', [PortalQrCodeController::class, 'store'])->name('qr-codes.store');
+        Route::post('/qr-codes/invoices', [PortalQrCodeController::class, 'updateInvoices'])->name('qr-codes.invoices');
+        Route::post('/qr-codes/links', [PortalQrCodeController::class, 'storeLink'])->middleware('throttle:30,1')->name('qr-codes.links.store');
+        Route::post('/qr-codes/links/{linkId}/revoke', [PortalQrCodeController::class, 'revokeLink'])->whereUuid('linkId')->name('qr-codes.links.revoke');
+        Route::get('/qr-codes/links/{linkId}.{format}', [PortalQrCodeController::class, 'downloadLink'])
+            ->whereUuid('linkId')->whereIn('format', ['png', 'svg'])->name('qr-codes.links.download');
+        Route::post('/qr-codes/{qrCodeId}/delete', [PortalQrCodeController::class, 'destroy'])->whereUuid('qrCodeId')->name('qr-codes.destroy');
+        Route::get('/qr-codes/{qrCodeId}.{format}', [PortalQrCodeController::class, 'download'])
+            ->whereUuid('qrCodeId')->whereIn('format', ['png', 'svg'])->name('qr-codes.download');
 
         // The organization's own look over the platform's. Administrators
         // of the organization only; the controller checks the role.

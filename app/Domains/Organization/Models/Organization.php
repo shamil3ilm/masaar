@@ -62,6 +62,8 @@ class Organization extends Model
     {
         return [
             'compliance_profile' => 'array',
+            // The extra QR printed on invoices, by paper (InvoiceExtraQr).
+            'invoice_qr' => 'array',
             'prices_include_vat' => 'boolean',
             'require_two_factor' => 'boolean',
             'reviewed_at' => 'datetime',

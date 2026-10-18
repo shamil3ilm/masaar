@@ -1,0 +1,30 @@
+/*
+ * The print view on A4 (portal/invoices/print.blade.php).
+ *
+ * Without a page size the browser prints on whatever its default is - Letter
+ * in a US locale - and scales the page to fit, which is how a column or the
+ * QR code gets clipped or shrunk. Each paper has its own file so a page asks
+ * for exactly one size.
+ */
+@page {
+    size: A4;
+    margin: 14mm;
+}
+
+@media print {
+    body {
+        padding: 0 !important;
+    }
+
+    /* The QR code at one physical size on every paper. */
+    [data-print-qr] svg {
+        width: 32mm;
+        height: 32mm;
+    }
+
+    /* The organization's own QR, smaller than the country's. */
+    [data-print-extra-qr] svg {
+        width: 24mm;
+        height: 24mm;
+    }
+}

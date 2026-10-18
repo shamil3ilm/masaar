@@ -1,0 +1,26 @@
+/*
+ * The print view on an 80 mm receipt roll: receipt.css, on a page as wide as
+ * the roll. A roll has no length of its own; this one is a fallback, and
+ * resources/js/receipt-page.js sets it to the receipt's own before printing.
+ */
+@import './receipt.css';
+
+@page {
+    size: 80mm 297mm;
+    margin: 3mm 4mm;
+}
+
+@media print {
+    html,
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+    }
+}
+
+@media screen {
+    .receipt {
+        margin: 0 auto;
+    }
+}

@@ -1,0 +1,23 @@
+/* The print view on a 58 mm receipt roll; see 80mm.css. */
+@import './receipt.css';
+@import './receipt-58mm.css';
+
+@page {
+    size: 58mm 297mm;
+    margin: 3mm 5mm;
+}
+
+@media print {
+    html,
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+    }
+}
+
+@media screen {
+    .receipt {
+        margin: 0 auto;
+    }
+}

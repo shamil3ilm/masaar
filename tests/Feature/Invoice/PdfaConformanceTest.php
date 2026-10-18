@@ -5,13 +5,17 @@ declare(strict_types=1);
 namespace Tests\Feature\Invoice;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
+use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Models\InvoiceLine;
+use App\Domains\Invoice\Services\InvoiceExtraQr;
 use App\Domains\Invoice\Services\InvoicePdf;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
+use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Fixtures\PrintSamples;
 use Tests\Fixtures\SigningCredentials;
 use Tests\TestCase;
 
@@ -26,6 +30,7 @@ use Tests\TestCase;
  */
 class PdfaConformanceTest extends TestCase
 {
+    use PrintSamples;
     use RefreshDatabase;
     use SigningCredentials;
 
@@ -79,6 +84,59 @@ class PdfaConformanceTest extends TestCase
 
         $this->assertStringContainsString('/ETSI.CAdES.detached', $pdf);
         $this->assertConforms($pdf);
+    }
+
+    /**
+     * @return array<string, array{PaperSize}>
+     */
+    public static function papers(): array
+    {
+        return array_combine(
+            array_map(fn (PaperSize $paper): string => $paper->value, PaperSize::cases()),
+            array_map(fn (PaperSize $paper): array => [$paper], PaperSize::cases()),
+        );
+    }
+
+    /**
+     * Every paper's PDF, a till's receipt as much as an A4 page, with a long
+     * bilingual invoice on it.
+     */
+    #[DataProvider('papers')]
+    public function test_every_paper_is_pdfa(PaperSize $paper): void
+    {
+        $this->assertConforms(app(InvoicePdf::class)->render($this->sampleInvoice($this->acme, 'standard', 12), $this->acme, $paper));
+    }
+
+    /**
+     * And stamped, on every paper.
+     */
+    #[DataProvider('papers')]
+    public function test_every_paper_stays_pdfa_stamped(PaperSize $paper): void
+    {
+        $credentials = $this->selfSignedCredentials(0x1234567890);
+        app(CredentialStore::class)->put($this->acme->id, null, CredentialStore::PCSID, [
+            'privateKey' => $credentials['privateKey'],
+            'pcsid' => $credentials['certificate'],
+            'secret' => 'secret',
+        ]);
+
+        $pdf = app(InvoicePdf::class)->render($this->sampleInvoice($this->acme, 'simplified', 12), $this->acme, $paper);
+
+        $this->assertStringContainsString('/ETSI.CAdES.detached', $pdf);
+        $this->assertConforms($pdf);
+    }
+
+    /**
+     * With the organization's own QR printed beside ZATCA's, on a sheet and
+     * on a roll.
+     */
+    public function test_an_extra_qr_stays_pdfa(): void
+    {
+        app(InvoiceExtraQr::class)->setChoices($this->acme, [PaperSize::A4->value => InvoiceExtraQr::INVOICE_LINK, PaperSize::Roll58->value => InvoiceExtraQr::INVOICE_LINK]);
+        $invoice = $this->sampleInvoice($this->acme, 'simplified', 3);
+
+        $this->assertConforms(app(InvoicePdf::class)->render($invoice, $this->acme->fresh(), PaperSize::A4));
+        $this->assertConforms(app(InvoicePdf::class)->render($invoice, $this->acme->fresh(), PaperSize::Roll58));
     }
 
     private function assertConforms(string $pdf): void
