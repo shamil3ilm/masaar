@@ -1458,5 +1458,6 @@
     "Arabic reason required (ZATCA: the invoice must be in Arabic)": "سبب الإصدار بالعربية مطلوب (هيئة الزكاة والضريبة والجمارك: يجب أن تكون الفاتورة باللغة العربية)",
     "Arabic payment terms required (ZATCA: the invoice must be in Arabic)": "شروط الدفع بالعربية مطلوبة (هيئة الزكاة والضريبة والجمارك: يجب أن تكون الفاتورة باللغة العربية)",
     "Arabic charge reason required (ZATCA: the invoice must be in Arabic)": "سبب الرسوم بالعربية مطلوب (هيئة الزكاة والضريبة والجمارك: يجب أن تكون الفاتورة باللغة العربية)",
-    "Arabic text required (ZATCA: the invoice must be in Arabic)": "النص بالعربية مطلوب (هيئة الزكاة والضريبة والجمارك: يجب أن تكون الفاتورة باللغة العربية)"
+    "Arabic text required (ZATCA: the invoice must be in Arabic)": "النص بالعربية مطلوب (هيئة الزكاة والضريبة والجمارك: يجب أن تكون الفاتورة باللغة العربية)",
+    "These routes file with ZATCA, for an organization registered in Saudi Arabia. This organization is registered in :country: issue and send its invoices with POST /api/v1/pipeline/submit (or /api/v1/pipeline/batch), and follow them with GET /api/v1/pipeline/status/{invoiceId}.": "هذه المسارات للإبلاغ لدى هيئة الزكاة والضريبة والجمارك، وهي للمنشآت المسجلة في المملكة العربية السعودية. هذه المنشأة مسجلة في :country: أصدر فواتيرها وأرسلها عبر POST /api/v1/pipeline/submit (أو /api/v1/pipeline/batch)، وتابعها عبر GET /api/v1/pipeline/status/{invoiceId}."
 }

@@ -691,7 +691,9 @@ first and files later. These file with ZATCA:
 
 Issuing an invoice that is already issued is refused rather than signed again,
 since re-signing would fork the hash chain. A UAE organization uses the
-pipeline.
+pipeline: the four `/api/v1/compliance/*` routes answer it 422 with the code
+`JURISDICTION_ENDPOINT_MISMATCH`, and `error.details.use` lists the pipeline
+routes its invoices take.
 
 ### 5.6 Dashboard
 
