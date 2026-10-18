@@ -35,8 +35,10 @@ return new class extends Migration
             $table->string('certificate_id', 64);
             $table->string('serial_number', 128)->nullable();
             $table->string('issuer', 512)->nullable();
-            $table->timestamp('valid_from')->nullable();
-            $table->timestamp('valid_to')->nullable();
+            // dateTime, not timestamp: a certificate may be valid past 2038,
+            // where a MySQL TIMESTAMP ends.
+            $table->dateTime('valid_from')->nullable();
+            $table->dateTime('valid_to')->nullable();
             // 'active', 'superseded' or 'revoked'.
             $table->string('status', 16);
             $table->timestamps();
