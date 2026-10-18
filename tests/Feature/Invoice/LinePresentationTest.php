@@ -9,6 +9,7 @@ use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Models\InvoiceCharge;
 use App\Domains\Invoice\Support\UnitCode;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -82,7 +83,7 @@ class LinePresentationTest extends TestCase
 
     /**
      * The discount column appears only when a line has a discount, and a
-     * document charge is a row of the totals with its VAT rate.
+     * document charge is a row of the totals with its VAT beneath it.
      */
     #[DataProvider('papers')]
     public function test_discounts_and_charges_show_when_present(PaperSize $paper): void
@@ -92,14 +93,15 @@ class LinePresentationTest extends TestCase
         $this->assertStringNotContainsString('الخصم', $this->html($invoice, $paper));
 
         $invoice->lines->first()->setAttribute('discount_amount', '5.00');
-        $invoice->setAttribute('charges', [['reason' => 'Delivery', 'amount' => '25.00', 'tax_rate' => '15.00']]);
+        $invoice->setRelation('charges', collect([new InvoiceCharge(['reason' => 'Delivery', 'reason_code' => 'DL', 'amount' => '25.00', 'net_amount' => '25.00', 'tax_category' => 'S', 'tax_rate' => '15.00'])]));
         $html = $this->html($invoice, $paper);
 
         $this->assertStringContainsString('الخصم', $html);
         $this->assertStringContainsString('-5.00 SAR', $html);
         $this->assertStringContainsString('Delivery', $html);
-        $this->assertStringContainsString('(15%)', $html);
+        $this->assertStringContainsString('VAT 15%', $html);
         $this->assertStringContainsString('25.00 SAR', $html);
+        $this->assertStringContainsString('3.75 SAR', $html);
     }
 
     /** The portal's invoice page shows the unit beside the quantity. */

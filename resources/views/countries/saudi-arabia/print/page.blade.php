@@ -48,6 +48,11 @@
 
     // A discount column only when a line has a discount.
     $lineDiscounts = \App\Domains\Invoice\Support\PrintedAmounts::anyLineDiscount($invoice->lines);
+    $prepayments = \App\Domains\Invoice\Support\PrintedAmounts::prepayments($invoice);
+
+    // What the buyer's paperwork calls the sale (BT-13, BT-12, BT-10) and
+    // when and how it is to be paid (BT-9, KSA-22), each when given.
+    $terms = \App\Domains\Compliance\Countries\SaudiArabia\Presentation\PrintedTerms::of($invoice);
 @endphp
 <div class="mx-auto max-w-2xl">
     <header class="mb-6 border-b border-gray-300 pb-4">
@@ -82,6 +87,13 @@
                     <dd class="text-gray-600">{{ $invoice->supply_date->toDateString() }}</dd>
                 </div>
             @endif
+
+            @foreach ($terms as $term)
+                <div>
+                    <dt class="font-medium"><x-caption :en="$term->label->en" :ar="$term->label->ar" /></dt>
+                    <dd class="text-gray-600">{{ $term->value }}</dd>
+                </div>
+            @endforeach
 
             {{-- BT-25 and KSA-10: which invoice this adjusts, and why. --}}
             @if ($adjusts && $invoice->billing_ref)
@@ -193,6 +205,10 @@
                                 <span class="block text-xs text-gray-500" dir="rtl" lang="ar">{{ $exemptAr }}</span>
                             @endif
                         @endif
+                        {{-- The line's own charges, in its total (BG-28). --}}
+                        @foreach (\App\Domains\Invoice\Support\PrintedAmounts::lineCharges($line) as $charge)
+                            <span class="block text-xs text-gray-500">{{ $charge['reason'] }}{{ $charge['percent'] !== null ? ' ('.$charge['percent'].'%)' : '' }} <span dir="rtl" lang="ar">رسوم</span> +@include('portal.partials.money', ['amount' => $charge['amount'], 'currency' => $invoice->currency])</span>
+                        @endforeach
                     </td>
                     <td class="py-2 text-right tabular-nums">
                         {{ rtrim(rtrim((string) $line->quantity, '0'), '.') }}
@@ -259,16 +275,21 @@
                 <dd class="shrink-0 pl-4 tabular-nums whitespace-nowrap">-@include('portal.partials.money', ['amount' => $invoice->discount_amount, 'currency' => $invoice->currency])</dd>
             </div>
         @endif
-        {{-- Charges on the whole document, each with its VAT rate. --}}
+        {{-- Charges on the whole document (BG-21), each its own rows: its
+             net, then the VAT on it at its rate. --}}
         @foreach (\App\Domains\Invoice\Support\PrintedAmounts::documentCharges($invoice) as $charge)
             <div class="flex justify-between">
-                <dt>{{ $charge['reason'] }} ({{ $charge['rate'] }}%) <span dir="rtl" lang="ar">رسوم إضافية</span></dt>
-                <dd class="shrink-0 pl-4 tabular-nums whitespace-nowrap">@include('portal.partials.money', ['amount' => $charge['amount'], 'currency' => $invoice->currency])</dd>
+                <dt>{{ $charge['reason'] }} <span dir="rtl" lang="ar">رسوم إضافية</span></dt>
+                <dd class="shrink-0 pl-4 tabular-nums whitespace-nowrap">@include('portal.partials.money', ['amount' => $charge['net'], 'currency' => $invoice->currency])</dd>
+            </div>
+            <div class="flex justify-between text-xs text-gray-500">
+                <dt>VAT {{ $charge['rate'] }}% <span dir="rtl" lang="ar">ضريبة القيمة المضافة</span></dt>
+                <dd class="shrink-0 pl-4 tabular-nums whitespace-nowrap">@include('portal.partials.money', ['amount' => $charge['vat'], 'currency' => $invoice->currency])</dd>
             </div>
         @endforeach
         <div class="flex justify-between">
             <dt><x-caption en="Taxable amount" ar="الإجمالي (باستثناء ضريبة القيمة المضافة)" /></dt>
-            <dd class="shrink-0 pl-4 tabular-nums whitespace-nowrap">@include('portal.partials.money', ['amount' => (float) $invoice->subtotal - (float) $invoice->discount_amount, 'currency' => $invoice->currency])</dd>
+            <dd class="shrink-0 pl-4 tabular-nums whitespace-nowrap">@include('portal.partials.money', ['amount' => \App\Domains\Invoice\Support\PrintedAmounts::taxableAmount($invoice), 'currency' => $invoice->currency])</dd>
         </div>
         <div class="flex justify-between">
             <dt><x-caption en="VAT" ar="مجموع ضريبة القيمة المضافة" /></dt>
@@ -283,10 +304,30 @@
                 <dd class="shrink-0 pl-4 tabular-nums whitespace-nowrap">@include('portal.partials.money', ['amount' => $vatSar, 'currency' => 'SAR'])</dd>
             </div>
         @endif
-        <div class="flex justify-between border-t border-gray-300 pt-1 font-semibold">
-            <dt><x-caption en="Total" ar="إجمالي المبلغ المستحق" /></dt>
-            <dd class="shrink-0 pl-4 tabular-nums whitespace-nowrap">@include('portal.partials.money', ['amount' => $invoice->total, 'currency' => $invoice->currency])</dd>
-        </div>
+        @if ($prepayments === [])
+            <div class="flex justify-between border-t border-gray-300 pt-1 font-semibold">
+                <dt><x-caption en="Total" ar="إجمالي المبلغ المستحق" /></dt>
+                <dd class="shrink-0 pl-4 tabular-nums whitespace-nowrap">@include('portal.partials.money', ['amount' => $invoice->total, 'currency' => $invoice->currency])</dd>
+            </div>
+        @else
+            {{-- A final invoice: the whole supply, what its prepayment
+                 invoices paid (BT-113) and what is left to pay (BT-115),
+                 which is the QR's total. --}}
+            <div class="flex justify-between border-t border-gray-300 pt-1">
+                <dt><x-caption en="Total" ar="الإجمالي شامل ضريبة القيمة المضافة" /></dt>
+                <dd class="shrink-0 pl-4 tabular-nums whitespace-nowrap">@include('portal.partials.money', ['amount' => $invoice->total, 'currency' => $invoice->currency])</dd>
+            </div>
+            @foreach ($prepayments as $prepayment)
+                <div class="flex justify-between">
+                    <dt>Prepayment {{ $prepayment['number'] }} <span dir="rtl" lang="ar">دفعة مقدمة</span></dt>
+                    <dd class="shrink-0 pl-4 tabular-nums whitespace-nowrap">-@include('portal.partials.money', ['amount' => $prepayment['amount'], 'currency' => $invoice->currency])</dd>
+                </div>
+            @endforeach
+            <div class="flex justify-between border-t border-gray-300 pt-1 font-semibold">
+                <dt><x-caption en="Amount due" ar="إجمالي المبلغ المستحق" /></dt>
+                <dd class="shrink-0 pl-4 tabular-nums whitespace-nowrap">@include('portal.partials.money', ['amount' => $invoice->payable(), 'currency' => $invoice->currency])</dd>
+            </div>
+        @endif
         @if ($inSar)
             <div class="flex justify-between text-xs text-gray-500">
                 <dt><x-caption en="Exchange rate" ar="سعر الصرف" /></dt>

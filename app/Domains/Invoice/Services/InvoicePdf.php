@@ -62,17 +62,7 @@ class InvoicePdf
         $country = $this->country($organization);
         $country->assertShareable($invoice);
 
-        $html = $paper->isRoll()
-            ? $this->receiptHtml($country, $invoice, $organization, $paper)
-            : view($country->pageView(true), [
-                'invoice' => $invoice,
-                'organization' => $organization,
-                'simplified' => $invoice->type === InvoiceType::Simplified,
-                'qr' => $this->assets->qrPng((string) $invoice->qr_code),
-                'logo' => $this->assets->logo((string) $organization->id),
-                'paper' => $paper,
-                'extraQr' => $this->assets->extraQr($invoice, $organization, $paper, 'png'),
-            ])->render();
+        $html = $this->html($invoice, $organization, $paper);
 
         $mpdf = $this->document($paper, $paper->isRoll() ? $this->rollLength($html, $paper) : null);
 
@@ -153,6 +143,27 @@ class InvoicePdf
             'autoLangToFont' => true,
             'tempDir' => $this->tempDir(),
         ]);
+    }
+
+    /**
+     * The markup the renderer draws on the paper: the country's page for a
+     * sheet, its receipt for a roll.
+     */
+    public function html(Invoice $invoice, Organization $organization, PaperSize $paper = PaperSize::A4): string
+    {
+        $country = $this->country($organization);
+
+        return $paper->isRoll()
+            ? $this->receiptHtml($country, $invoice, $organization, $paper)
+            : view($country->pageView(true), [
+                'invoice' => $invoice,
+                'organization' => $organization,
+                'simplified' => $invoice->type === InvoiceType::Simplified,
+                'qr' => $this->assets->qrPng((string) $invoice->qr_code),
+                'logo' => $this->assets->logo((string) $organization->id),
+                'paper' => $paper,
+                'extraQr' => $this->assets->extraQr($invoice, $organization, $paper, 'png'),
+            ])->render();
     }
 
     /**

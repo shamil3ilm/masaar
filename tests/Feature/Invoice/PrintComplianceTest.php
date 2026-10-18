@@ -160,6 +160,10 @@ class PrintComplianceTest extends TestCase
         $this->assertContains('VAT='.number_format((float) $invoice->tax_amount, 2).' SAR', $values);
         $this->assertContains('Total due='.number_format((float) $invoice->total, 2).' SAR', $values);
         $this->assertSame((string) $invoice->qr_code, $receipt->qrPayload);
+        // What the receipt says is due is the QR's total (tag 4); on a final
+        // invoice that is the amount left after its prepayments
+        // (PrintedChargesTest).
+        $this->assertContains('Total due='.number_format((float) (new TlvEncoder)->decode($receipt->qrPayload)[4], 2).' SAR', $values);
     }
 
     private function portal(): static

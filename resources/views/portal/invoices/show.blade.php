@@ -115,12 +115,10 @@
                             @if ($line->exempt_code)
                                 <span class="ms-1 text-xs text-subtle">({{ $line->exempt_code }})</span>
                             @endif
-                            {{-- The line's own discount and charges, in its total. --}}
-                            @if ($line->discount_amount !== null)
-                                <span class="block text-xs text-muted">{{ __('Discount') }}: @include('portal.partials.money', ['amount' => $line->discount_amount, 'currency' => $invoice->currency])</span>
-                            @endif
-                            @foreach ($line->charges as $charge)
-                                <span class="block text-xs text-muted">{{ $charge->reason }}{{ $charge->percent !== null ? ' ('.rtrim(rtrim((string) $charge->percent, '0'), '.').'%)' : '' }}: @include('portal.partials.money', ['amount' => $charge->amount, 'currency' => $invoice->currency])</span>
+                            {{-- The line's own charges, in its total; its discount
+                                 has a column of its own. --}}
+                            @foreach (\App\Domains\Invoice\Support\PrintedAmounts::lineCharges($line) as $charge)
+                                <span class="block text-xs text-muted">{{ $charge['reason'] }}{{ $charge['percent'] !== null ? ' ('.$charge['percent'].'%)' : '' }}: +@include('portal.partials.money', ['amount' => $charge['amount'], 'currency' => $invoice->currency])</span>
                             @endforeach
                         </td>
                         <td class="px-6 py-3 text-end text-sm tabular-nums text-fg">

@@ -39,6 +39,9 @@
     // the authority defines. Those blocks sit at the start of their lines
     // so that, printing nothing, they leave the page's bytes as they were.
     $lineDiscounts = \App\Domains\Invoice\Support\PrintedAmounts::anyLineDiscount($invoice->lines);
+    // The references and payment terms, and a final invoice's prepayments.
+    $terms = \App\Domains\Compliance\Countries\SaudiArabia\Presentation\PrintedTerms::of($invoice);
+    $prepayments = \App\Domains\Invoice\Support\PrintedAmounts::prepayments($invoice);
     $address = fn (array $parts): string => implode(', ', array_filter(array_map(fn ($part) => trim((string) $part), $parts)));
 @endphp
 <html>
@@ -85,6 +88,10 @@
                 <br><span class="label">Supply date / تاريخ التوريد</span><br>
                 <span dir="ltr">{{ $invoice->supply_date->toDateString() }}</span>
             @endif
+@foreach ($terms as $term)
+                <br><span class="label">{{ $term->label->en }} / {{ $term->label->ar }}</span><br>
+                <span>{{ $term->value }}</span>
+@endforeach
         </td>
     </tr>
 </table>
@@ -165,6 +172,9 @@
                             <br><span class="ar" style="font-size: 7.5pt;">{{ $exemptAr }}</span>
                         @endif
                     @endif
+@foreach (\App\Domains\Invoice\Support\PrintedAmounts::lineCharges($line) as $charge)
+                    <br><span class="muted" style="font-size: 7.5pt;">{{ $charge['reason'] }}{{ $charge['percent'] !== null ? ' ('.$charge['percent'].'%)' : '' }} <span class="ar">رسوم</span> +{{ $money($charge['amount']) }}</span>
+@endforeach
                 </td>
                 <td class="num">
                     {{ rtrim(rtrim((string) $line->quantity, '0'), '.') }}
@@ -218,13 +228,17 @@
                 @endif
 @foreach (\App\Domains\Invoice\Support\PrintedAmounts::documentCharges($invoice) as $charge)
                     <tr>
-                        <td>{{ $charge['reason'] }} ({{ $charge['rate'] }}%) <span class="ar">رسوم إضافية</span></td>
-                        <td class="num">{{ $money($charge['amount']) }}</td>
+                        <td>{{ $charge['reason'] }} <span class="ar">رسوم إضافية</span></td>
+                        <td class="num">{{ $money($charge['net']) }}</td>
+                    </tr>
+                    <tr>
+                        <td class="muted">VAT {{ $charge['rate'] }}% <span class="ar">ضريبة القيمة المضافة</span></td>
+                        <td class="num muted">{{ $money($charge['vat']) }}</td>
                     </tr>
 @endforeach
                 <tr>
                     <td>Taxable amount <span class="ar">الإجمالي غير شامل الضريبة</span></td>
-                    <td class="num">{{ $money((float) $invoice->subtotal - (float) $invoice->discount_amount) }}</td>
+                    <td class="num">{{ $money(\App\Domains\Invoice\Support\PrintedAmounts::taxableAmount($invoice)) }}</td>
                 </tr>
                 <tr>
                     <td>VAT <span class="ar">مجموع ضريبة القيمة المضافة</span></td>
@@ -236,10 +250,30 @@
                         <td class="num">{{ number_format((float) $vatSar, 2) }} SAR</td>
                     </tr>
                 @endif
+@if ($prepayments === [])
                 <tr class="grand">
                     <td>Total due <span class="ar">إجمالي المبلغ المستحق</span></td>
                     <td class="num">{{ $money($invoice->total) }}</td>
                 </tr>
+@else
+                {{-- A final invoice: the whole supply, what its prepayment
+                     invoices paid (BT-113) and what is left to pay (BT-115),
+                     which is the QR's total. --}}
+                <tr>
+                    <td>Total <span class="ar">الإجمالي شامل ضريبة القيمة المضافة</span></td>
+                    <td class="num">{{ $money($invoice->total) }}</td>
+                </tr>
+@foreach ($prepayments as $prepayment)
+                <tr>
+                    <td>Prepayment {{ $prepayment['number'] }} <span class="ar">دفعة مقدمة</span></td>
+                    <td class="num">-{{ $money($prepayment['amount']) }}</td>
+                </tr>
+@endforeach
+                <tr class="grand">
+                    <td>Amount due <span class="ar">إجمالي المبلغ المستحق</span></td>
+                    <td class="num">{{ $money($invoice->payable()) }}</td>
+                </tr>
+@endif
                 @if ($inSar)
                     <tr>
                         <td class="muted">Exchange rate <span class="ar">سعر الصرف</span></td>

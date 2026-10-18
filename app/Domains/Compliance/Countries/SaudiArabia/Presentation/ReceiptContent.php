@@ -100,6 +100,7 @@ class ReceiptContent
                 $invoice->supply_date ? new ReceiptRow(new PrintLabel('Supply date', 'تاريخ التوريد'), $invoice->supply_date->toDateString()) : null,
                 $adjusts ? new ReceiptRow(new PrintLabel('Adjusts', 'مرجع الفاتورة'), (string) $invoice->billing_ref) : null,
                 $adjusts && $invoice->adjustment_reason ? new ReceiptRow(new PrintLabel('Reason', 'سبب الإصدار'), (string) $invoice->adjustment_reason) : null,
+                ...PrintedTerms::of($invoice),
             ])),
         );
     }
@@ -154,6 +155,14 @@ class ReceiptContent
             }
         }
 
+        // The line's own charges (BG-28), already in its total.
+        foreach (PrintedAmounts::lineCharges($line) as $charge) {
+            $details[] = new ReceiptRow(
+                new PrintLabel($charge['reason'].($charge['percent'] !== null ? ' ('.$charge['percent'].'%)' : ''), 'رسوم'),
+                '+'.$this->money($invoice, $charge['amount']),
+            );
+        }
+
         return new ReceiptItem(
             // The Arabic description only: a receipt keeps each line short,
             // and the Arabic is the document's.
@@ -183,19 +192,36 @@ class ReceiptContent
             $rows[] = new ReceiptRow(new PrintLabel('Discount', 'الخصم'), '-'.$this->money($invoice, $invoice->discount_amount));
         }
 
-        // Charges on the whole document, each with its VAT rate.
+        // Charges on the whole document (BG-21), each its own rows: its net,
+        // then the VAT on it at its rate.
         foreach (PrintedAmounts::documentCharges($invoice) as $charge) {
-            $rows[] = new ReceiptRow(new PrintLabel(trim($charge['reason'].' ('.$charge['rate'].'%)'), 'رسوم إضافية'), $this->money($invoice, $charge['amount']));
+            $rows[] = new ReceiptRow(new PrintLabel($charge['reason'], 'رسوم إضافية'), $this->money($invoice, $charge['net']));
+            $rows[] = new ReceiptRow(new PrintLabel('VAT '.$charge['rate'].'%', 'ضريبة القيمة المضافة'), $this->money($invoice, $charge['vat']));
         }
 
-        $rows[] = new ReceiptRow(new PrintLabel('Taxable amount', 'الإجمالي غير شامل الضريبة'), $this->money($invoice, (float) $invoice->subtotal - (float) $invoice->discount_amount));
+        $rows[] = new ReceiptRow(new PrintLabel('Taxable amount', 'الإجمالي غير شامل الضريبة'), $this->money($invoice, PrintedAmounts::taxableAmount($invoice)));
         $rows[] = new ReceiptRow(new PrintLabel('VAT', 'مجموع ضريبة القيمة المضافة'), $this->money($invoice, $invoice->tax_amount));
 
         if ($inSar) {
             $rows[] = new ReceiptRow(new PrintLabel('VAT (SAR)', 'ضريبة القيمة المضافة بالريال'), number_format(round((float) $invoice->tax_amount * (float) $invoice->exchange_rate, 2), 2).' SAR');
         }
 
-        $rows[] = new ReceiptRow(new PrintLabel('Total due', 'إجمالي المبلغ المستحق'), $this->money($invoice, $invoice->total), true);
+        $prepayments = PrintedAmounts::prepayments($invoice);
+
+        if ($prepayments === []) {
+            $rows[] = new ReceiptRow(new PrintLabel('Total due', 'إجمالي المبلغ المستحق'), $this->money($invoice, $invoice->total), true);
+        } else {
+            // A final invoice: the whole supply, what its prepayment
+            // invoices paid (BT-113) and what is left to pay (BT-115), which
+            // is the QR's total.
+            $rows[] = new ReceiptRow(new PrintLabel('Total', 'الإجمالي شامل ضريبة القيمة المضافة'), $this->money($invoice, $invoice->total));
+
+            foreach ($prepayments as $prepayment) {
+                $rows[] = new ReceiptRow(new PrintLabel('Prepayment '.$prepayment['number'], 'دفعة مقدمة'), '-'.$this->money($invoice, $prepayment['amount']));
+            }
+
+            $rows[] = new ReceiptRow(new PrintLabel('Amount due', 'إجمالي المبلغ المستحق'), $this->money($invoice, $invoice->payable()), true);
+        }
 
         if ($inSar) {
             $rows[] = new ReceiptRow(new PrintLabel('Exchange rate', 'سعر الصرف'), '1 '.$invoice->currency.' = '.rtrim(rtrim((string) $invoice->exchange_rate, '0'), '.').' SAR');
