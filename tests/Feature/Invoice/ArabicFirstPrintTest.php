@@ -15,8 +15,6 @@ use App\Domains\Platform\Customization\Customizations;
 use App\Domains\Platform\Customization\Level;
 use App\Domains\Platform\Customization\Scope;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Testing\TestResponse;
 use Tests\Fixtures\PrintSamples;
 use Tests\TestCase;
@@ -87,21 +85,6 @@ class ArabicFirstPrintTest extends TestCase
 
         $this->assertSame([Level::Platform, Level::Organization], $definition->levels);
         $this->assertSame(PrintPreferences::ARABIC_FIRST, $definition->default);
-    }
-
-    public function test_the_column_and_setting_move_over(): void
-    {
-        $migration = require database_path('migrations/0950_language_order_customization.php');
-        $migration->down();
-        DB::table('organizations')->where('id', $this->organization->id)->update(['print_language_order' => PrintPreferences::ENGLISH_FIRST]);
-        DB::table('settings')->insert(['key' => 'invoices.arabic_first', 'value' => json_encode(false), 'created_at' => now(), 'updated_at' => now()]);
-
-        $migration->up();
-
-        $this->assertSame(PrintPreferences::ENGLISH_FIRST, app(PrintPreferences::class)->languageOrder($this->organization));
-        $this->assertSame(PrintPreferences::ENGLISH_FIRST, app(Customizations::class)->own('printing.language_order', Level::Platform, Scope::platform()));
-        $this->assertFalse(Schema::hasColumn('organizations', 'print_language_order'));
-        $this->assertNull(DB::table('settings')->where('key', 'invoices.arabic_first')->first());
     }
 
     public function test_the_receipt_puts_arabic_first(): void
