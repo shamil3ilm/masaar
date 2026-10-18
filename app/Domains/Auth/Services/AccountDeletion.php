@@ -49,9 +49,10 @@ class AccountDeletion
                 throw new DomainException(__('You are the only admin of :organization. Make someone else an admin there first.', ['organization' => $organization]));
             }
 
+            // Ended by the person themselves.
             DB::table('organization_user')
                 ->where('user_id', $user->id)
-                ->update(['status' => 'removed', 'updated_at' => now()]);
+                ->update(['status' => 'removed', 'updated_by' => (string) $user->id, 'updated_at' => now()]);
 
             $user->forceFill([
                 'name' => 'Deleted user',

@@ -84,7 +84,7 @@ class Team
             }
 
             DB::table('organization_user')->where('org_id', $organizationId)->where('user_id', $userId)
-                ->update(['role' => $role, 'updated_at' => now()]);
+                ->update(['role' => $role, 'updated_by' => (string) $actor->id, 'updated_at' => now()]);
 
             $this->audit->logSecurity('member.role_changed', 'Organization', $organizationId, [
                 'user_id' => $userId,
@@ -115,7 +115,7 @@ class Team
             }
 
             DB::table('organization_user')->where('org_id', $organizationId)->where('user_id', $userId)
-                ->update(['status' => 'active', 'updated_at' => now()]);
+                ->update(['status' => 'active', 'updated_by' => (string) $actor->id, 'updated_at' => now()]);
 
             $this->audit->logSecurity('member.restored', 'Organization', $organizationId, [
                 'user_id' => $userId,
@@ -157,11 +157,13 @@ class Team
         $token = Str::random(48);
 
         $invitation = DB::transaction(function () use ($organization, $email, $role, $inviter, $token): OrganizationInvitation {
+            // Each through the model, so who replaced it is kept (deleted_by).
             OrganizationInvitation::withoutTenantScope(fn () => OrganizationInvitation::query()
                 ->where('org_id', $organization->id)
                 ->where('email', $email)
                 ->whereNull('accepted_at')
-                ->delete());
+                ->get()
+                ->each->delete());
 
             $invitation = OrganizationInvitation::withoutTenantScope(fn () => OrganizationInvitation::create([
                 'org_id' => $organization->id,
@@ -191,13 +193,15 @@ class Team
         return $invitation;
     }
 
+    /** Through the model, so who revoked it is kept (deleted_by). */
     public function revoke(string $organizationId, string $invitationId): void
     {
         OrganizationInvitation::withoutTenantScope(fn () => OrganizationInvitation::query()
             ->where('org_id', $organizationId)
             ->whereKey($invitationId)
             ->whereNull('accepted_at')
-            ->delete());
+            ->first()
+            ?->delete());
     }
 
     /**
@@ -231,7 +235,7 @@ class Team
             DB::table('organization_user')
                 ->where('org_id', $organizationId)
                 ->where('user_id', $userId)
-                ->update(['status' => 'removed', 'updated_at' => now()]);
+                ->update(['status' => 'removed', 'updated_by' => (string) $actor->id, 'updated_at' => now()]);
 
             $this->audit->logSecurity('member.removed', 'Organization', $organizationId, [
                 'user_id' => $userId,
