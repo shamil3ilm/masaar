@@ -40,6 +40,29 @@ class AuditService
     }
 
     /**
+     * Record something done in a named organization, whoever is the tenant
+     * of the moment: an invoice issued from a queue or an integration is the
+     * organization's activity as much as one issued in the portal.
+     *
+     * @param  array<string, mixed>  $metadata
+     */
+    public function logFor(string $organizationId, string $action, Model $entity, array $metadata = []): AuditLog
+    {
+        $request = request();
+
+        return AuditLog::create([
+            'org_id' => $organizationId,
+            'user_id' => auth()->id(),
+            'action' => $action,
+            'entity_type' => class_basename($entity),
+            'entity_id' => $entity->getKey(),
+            'ip_address' => $request?->ip(),
+            'user_agent' => $request?->userAgent(),
+            'metadata' => $metadata,
+        ]);
+    }
+
+    /**
      * Log entity creation.
      */
     public function logCreated(Model $entity, ?array $metadata = null): AuditLog

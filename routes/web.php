@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\Audit\Http\Controllers\PortalActivityController;
 use App\Domains\Auth\Http\Controllers\AccountController;
 use App\Domains\Auth\Http\Controllers\EmailVerificationController;
 use App\Domains\Auth\Http\Controllers\PasswordResetController;
@@ -505,6 +506,12 @@ Route::prefix('portal')->name('portal.')
         Route::get('/branches/{branchId}', [PortalBranchController::class, 'edit'])->name('branches.edit');
         Route::post('/branches/{branchId}', [PortalBranchController::class, 'update'])->name('branches.update');
         Route::post('/branches/{branchId}/people', [PortalBranchController::class, 'people'])->name('branches.people');
+
+        // Who issued, corrected and changed what, and who invited whom: the
+        // organization's activity, from the audit log. Administrators only;
+        // the controller checks the role.
+        Route::get('/activity', [PortalActivityController::class, 'index'])->name('activity');
+        Route::get('/activity/export.csv', [PortalActivityController::class, 'export'])->middleware('throttle:20,1')->name('activity.export');
 
         // The organization's people, and inviting more. Administrators only;
         // the controller checks the role.

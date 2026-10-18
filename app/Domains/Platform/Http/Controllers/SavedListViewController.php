@@ -34,6 +34,7 @@ class SavedListViewController extends Controller
     /** The portal's lists that offer saved views, by route name. */
     public const PORTAL_LISTS = [
         'portal.invoices.index', 'portal.notes.index', 'portal.submissions', 'portal.customers.index', 'portal.billing',
+        'portal.activity',
     ];
 
     /** The console's lists that offer saved views, by route name. */

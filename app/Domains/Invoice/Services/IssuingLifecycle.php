@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Services;
 
+use App\Domains\Audit\Services\AuditService;
 use App\Domains\Invoice\Contracts\IssuingJurisdiction;
+use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
@@ -21,6 +23,7 @@ class IssuingLifecycle
 {
     public function __construct(
         private readonly InvoiceNumbering $numbering,
+        private readonly AuditService $audit,
     ) {}
 
     /**
@@ -140,6 +143,16 @@ class IssuingLifecycle
         });
 
         $jurisdiction->afterCommit($invoice, $result, $issuedNow);
+
+        // On the organization's activity record: who issued what. Once, for
+        // the issuance that made it; a reissue finishing one adds nothing.
+        if ($issuedNow) {
+            $this->audit->logFor((string) $invoice->org_id, 'invoice.issued', $invoice, [
+                'invoice_number' => $invoice->invoice_number,
+                'document_type' => $invoice->document_type instanceof DocumentType ? $invoice->document_type->value : $invoice->document_type,
+                'branch_id' => $invoice->branch_id,
+            ]);
+        }
 
         return $result;
     }
