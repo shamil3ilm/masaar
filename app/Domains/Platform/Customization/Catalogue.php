@@ -111,6 +111,16 @@ final class Catalogue
                 columns: [Level::User->value => 'users.locale'],
             ),
             new Definition(
+                key: 'notifications.support_replies',
+                group: __('Notifications'),
+                label: __('Email me support replies'),
+                help: __('An email when support answers a ticket you opened. The answer is on the ticket either way.'),
+                type: 'bool',
+                default: true,
+                levels: [Level::Platform, Level::Organization, Level::User],
+                audit: Definition::AUDIT_NONE,
+            ),
+            new Definition(
                 key: 'notifications.approval_requests',
                 group: __('Notifications'),
                 label: __('Email me approval requests'),

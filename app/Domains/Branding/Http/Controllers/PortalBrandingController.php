@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Branding\Http\Controllers;
 
+use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use Illuminate\Http\Request;
 
@@ -21,7 +22,7 @@ class PortalBrandingController extends BrandingController
         $organizationId = $request->attributes->get(PortalTenant::ORG_ID);
 
         abort_unless(is_string($organizationId), 404);
-        abort_unless($request->user()?->roleIn($organizationId) === 'admin', 403, __('Only an administrator of this organization can change its branding.'));
+        abort_unless(MemberRole::administers($request->user()?->roleIn($organizationId)), 403, __('Only an administrator of this organization can change its branding.'));
 
         return $organizationId;
     }

@@ -8,6 +8,7 @@ use App\Domains\Audit\Services\AuditService;
 use App\Domains\Auth\Models\User;
 use App\Domains\Organization\DTOs\OrganizationChangesData;
 use App\Domains\Organization\DTOs\OrganizationData;
+use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Platform\Customization\Customizations;
 use App\Domains\Platform\Customization\Level;
@@ -29,10 +30,10 @@ class Registrar
     ) {}
 
     /**
-     * Found an active organization with its founder as the first admin.
+     * Found an active organization with its founder as its owner.
      *
-     * An organization with no admin could never be managed, so it does not
-     * exist without that membership.
+     * An organization with no owner or admin could never be managed, so it
+     * does not exist without that membership.
      */
     public function register(User $founder, OrganizationData $data): Organization
     {
@@ -49,7 +50,7 @@ class Registrar
             ]);
 
             $founder->organizations()->attach($organization->id, [
-                'role' => 'admin',
+                'role' => MemberRole::Owner->value,
                 'status' => 'active',
             ]);
 

@@ -41,11 +41,12 @@ approver does not open that path.
 | Key | Action |
 |---|---|
 | `organizations.approve`, `organizations.reject` | deciding on a signed-up organization |
+| `organizations.suspend`, `organizations.reactivate` | an organization's suspension |
 | `billing.record` | a payment: plan, agreed amount and term |
 | `countries.switch` | a country on or off |
 | `kill_switches.enable`, `.disable`, `.stop`, `.resume` | the kill switches |
 | `features.override` | a feature off or on for one organization |
-| `admins.grant`, `admins.role`, `admins.revoke` | admin access |
+| `admins.grant`, `admins.invite`, `admins.role`, `admins.revoke` | admin access |
 | `admin_roles.save`, `admin_roles.delete` | custom admin roles |
 | `users.suspend`, `users.reactivate` | a person's account |
 | `licences.issue`, `licences.revoke`, `licences.allowances` | licences |

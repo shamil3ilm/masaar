@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Organization\Http\Controllers;
 
 use App\Domains\Invoice\Enums\PaperSize;
+use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Services\PrintPreferences;
 use App\Domains\Organization\Services\TenantResolver;
@@ -35,7 +36,7 @@ class PortalPrintingController extends Controller
         return view('portal.printing', [
             'papers' => PaperSize::cases(),
             'mine' => $this->preferences->userPaper($organizationId, (string) $request->user()?->id),
-            'admin' => $request->user()?->roleIn($organizationId) === 'admin',
+            'admin' => MemberRole::administers($request->user()?->roleIn($organizationId)),
             'organizationPaper' => $this->preferences->organizationPaper($organization),
             'branches' => $this->preferences->branches($organizationId),
         ]);

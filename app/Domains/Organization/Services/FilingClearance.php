@@ -34,8 +34,23 @@ class FilingClearance
      */
     public function assertCleared(Organization $organization): void
     {
+        $this->assertNotSuspended($organization);
         $this->assertMayFile($organization);
         $this->assertLicensed($organization);
+    }
+
+    /**
+     * For new work only. A suspended company issues nothing new and
+     * connects nothing new; what it already issued is still filed
+     * (assertMayFile does not ask this).
+     *
+     * @throws ComplianceException
+     */
+    public function assertNotSuspended(Organization $organization): void
+    {
+        if ($organization->isSuspended()) {
+            throw new ComplianceException('Organization is suspended', ErrorCode::AUTH_ORGANIZATION_SUSPENDED);
+        }
     }
 
     /**
@@ -57,19 +72,16 @@ class FilingClearance
     /**
      * For sending an invoice already issued.
      *
-     * Not the plan: an issued invoice is a tax invoice, and reporting or
-     * clearing it is the taxpayer's obligation whether or not its plan has
-     * since lapsed. Withholding it would make the lapse their compliance
+     * Not the plan, and not a suspension: an issued invoice is a tax
+     * invoice, and reporting or clearing it is the taxpayer's obligation
+     * whether or not its plan has since lapsed or a platform admin has since
+     * suspended it. Withholding it would make either their compliance
      * failure.
      *
      * @throws ComplianceException
      */
     public function assertMayFile(Organization $organization): void
     {
-        if ($organization->isSuspended()) {
-            throw new ComplianceException('Organization is suspended', ErrorCode::AUTH_ORGANIZATION_SUSPENDED);
-        }
-
         if ($organization->isPendingReview()) {
             throw new ComplianceException(
                 __('This company is being reviewed. Connecting to e-invoicing and issuing open once it is approved.'),

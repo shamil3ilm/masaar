@@ -79,7 +79,8 @@ class OrganizationApiTest extends TestCase
         $this->assertDatabaseHas('organization_user', [
             'user_id' => $this->user->id,
             'org_id' => $id,
-            'role' => 'admin',
+            // Its founder is its owner.
+            'role' => 'owner',
             'status' => 'active',
         ]);
         $this->assertDatabaseHas('audit_logs', ['action' => 'Organization.created', 'entity_id' => $id]);

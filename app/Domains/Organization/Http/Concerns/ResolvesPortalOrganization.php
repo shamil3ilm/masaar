@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Http\Concerns;
 
+use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\TenantResolver;
@@ -24,7 +25,7 @@ trait ResolvesPortalOrganization
         abort_unless(is_string($organizationId), 404);
 
         if ($adminOnly !== null) {
-            abort_unless($request->user()?->roleIn($organizationId) === 'admin', 403, $adminOnly);
+            abort_unless(MemberRole::administers($request->user()?->roleIn($organizationId)), 403, $adminOnly);
         }
 
         return $organizationId;

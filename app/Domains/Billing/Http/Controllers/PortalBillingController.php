@@ -7,6 +7,7 @@ namespace App\Domains\Billing\Http\Controllers;
 use App\Domains\Billing\Http\BillingInvoiceResponse;
 use App\Domains\Billing\Services\Billing;
 use App\Domains\Invoice\Services\InvoicePdf;
+use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
@@ -17,7 +18,8 @@ use Illuminate\View\View;
 /**
  * An organization's plan, its usage this month, and what it has paid.
  *
- * Its administrators only, as with the company's other settings.
+ * Its owners and administrators, as with the company's other settings, and
+ * its accountants, who read it and download the plan's invoices.
  */
 class PortalBillingController extends Controller
 {
@@ -50,6 +52,11 @@ class PortalBillingController extends Controller
 
     private function organizationId(Request $request): string
     {
-        return $this->portalOrganizationId($request, __('Only an administrator of this organization can see its billing.'));
+        $organizationId = $this->portalOrganizationId($request);
+        $role = $request->user()?->roleIn($organizationId);
+
+        abort_unless(MemberRole::administers($role) || $role === MemberRole::Accountant->value, 403, __('Only an administrator of this organization can see its billing.'));
+
+        return $organizationId;
     }
 }

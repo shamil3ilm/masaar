@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Http\Controllers;
 
+use App\Domains\Auth\Services\AdminInvitations;
 use App\Domains\Auth\Services\AdminRoles;
 use App\Domains\Auth\Services\PlatformAdmins;
 use App\Domains\Platform\Approvals\ActionResult;
@@ -30,14 +31,47 @@ class AdminAdminsController extends Controller
         private readonly PlatformAdmins $admins,
         private readonly Approvals $approvals,
         private readonly AdminRoles $roles,
+        private readonly AdminInvitations $invitations,
     ) {}
 
     public function index(): View
     {
+        $admins = $this->admins->all();
+
         return view('admin.admins', [
-            'admins' => $this->admins->all(),
+            'admins' => $admins,
             'roles' => $this->roles->all(),
+            'signIns' => $this->admins->lastSignIns($admins->pluck('id')->all()),
+            'invitations' => $this->invitations->open(),
         ]);
+    }
+
+    /**
+     * Invite an address to be an admin, account or not: they accept, make
+     * their account if they have none, and enrol a second factor.
+     */
+    public function invite(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email', 'max:255'],
+            'role' => ['required', Rule::in($this->roles->keys())],
+        ]);
+
+        try {
+            return $this->holdOrRun($this->approvals, $request, 'admins.invite', ['email' => $data['email'], 'role' => $data['role']],
+                fn (ActionResult $done): RedirectResponse => back()->with('success', $done->message));
+        } catch (DomainException $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        }
+    }
+
+    public function withdrawInvitation(Request $request, string $invitationId): RedirectResponse
+    {
+        $request->attributes->set(AuditAdminAction::TARGET, ['AdminInvitation', $invitationId]);
+
+        $this->invitations->withdraw($invitationId);
+
+        return back()->with('success', __('Invitation withdrawn.'));
     }
 
     public function grant(Request $request): RedirectResponse

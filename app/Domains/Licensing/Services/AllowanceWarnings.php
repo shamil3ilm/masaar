@@ -6,6 +6,7 @@ namespace App\Domains\Licensing\Services;
 
 use App\Domains\Licensing\Mail\AllowanceWarningMail;
 use App\Domains\Licensing\Models\License;
+use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -81,7 +82,7 @@ class AllowanceWarnings
         }
 
         $admins = $organization->users()
-            ->wherePivot('role', 'admin')
+            ->wherePivotIn('role', MemberRole::ADMINISTERING)
             ->wherePivot('status', 'active')
             ->where('users.status', 'active')
             ->get();

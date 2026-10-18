@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Http\Middleware;
 
+use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Responses\ApiResponse;
 use Closure;
@@ -40,7 +41,7 @@ class IsOrgAdmin
             return ApiResponse::unauthorized('Organization context is required.');
         }
 
-        if ($user->roleIn($organizationId) !== 'admin') {
+        if (! MemberRole::administers($user->roleIn($organizationId))) {
             return ApiResponse::forbidden(
                 'This action is restricted to organization administrators.'
             );

@@ -35,6 +35,24 @@ class PlatformAdmins
     }
 
     /**
+     * When each admin last signed in, by id: the latest successful sign-in
+     * on the security record.
+     *
+     * @param  list<string>  $userIds
+     * @return array<string, string>
+     */
+    public function lastSignIns(array $userIds): array
+    {
+        return DB::table('audit_logs')
+            ->where('action', 'security.login.succeeded')
+            ->whereIn('user_id', $userIds)
+            ->groupBy('user_id')
+            ->selectRaw('user_id, max(created_at) as signed_in_at')
+            ->pluck('signed_in_at', 'user_id')
+            ->all();
+    }
+
+    /**
      * Make an existing account an admin. It cannot sign in to the console
      * until it enrols a second factor, so the enrolment link comes back to
      * be sent to them.

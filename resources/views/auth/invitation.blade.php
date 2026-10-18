@@ -4,7 +4,7 @@
 
 @section('content')
 <p class="mb-6 text-sm text-muted">
-    {{ $invitation->role === 'admin' ? __('You are invited as an admin, at') : __('You are invited as a member, at') }} <strong>{{ $invitation->email }}</strong>.
+    {{ \App\Domains\Organization\Enums\MemberRole::administers($invitation->role) ? __('You are invited as an admin, at') : __('You are invited as a member, at') }} <strong>{{ $invitation->email }}</strong>.
 </p>
 
 @auth

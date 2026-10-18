@@ -6,6 +6,7 @@ namespace App\Domains\Auth\Services;
 
 use App\Domains\Audit\Services\AuditService;
 use App\Domains\Auth\Models\User;
+use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Models\Organization;
 use DomainException;
 use Illuminate\Support\Facades\DB;
@@ -78,7 +79,7 @@ class AccountDeletion
      */
     private function onlyAdminOf(User $user): ?string
     {
-        $organizations = $user->activeOrganizations()->wherePivot('role', 'admin')->pluck('organizations.id');
+        $organizations = $user->activeOrganizations()->wherePivotIn('role', MemberRole::ADMINISTERING)->pluck('organizations.id');
 
         foreach (Organization::query()->whereKey($organizations)->orderBy('id')->lockForUpdate()->get() as $organization) {
             $members = DB::table('organization_user')

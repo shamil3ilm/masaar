@@ -32,6 +32,8 @@ final class ApprovalCatalogue
     public const ACTIONS = [
         'organizations.approve' => OrganizationActions::class,
         'organizations.reject' => OrganizationActions::class,
+        'organizations.suspend' => OrganizationActions::class,
+        'organizations.reactivate' => OrganizationActions::class,
         'billing.record' => BillingActions::class,
         'countries.switch' => CountryActions::class,
         'kill_switches.enable' => KillSwitchActions::class,
@@ -40,6 +42,7 @@ final class ApprovalCatalogue
         'kill_switches.resume' => KillSwitchActions::class,
         'features.override' => FeatureActions::class,
         'admins.grant' => AdminAccessActions::class,
+        'admins.invite' => AdminAccessActions::class,
         'admins.role' => AdminAccessActions::class,
         'admins.revoke' => AdminAccessActions::class,
         'admin_roles.save' => AdminRoleActions::class,

@@ -9,7 +9,7 @@
         <p class="mt-1 max-w-3xl text-sm text-muted">{{ __('Everything issued under :organization', ['organization' => $organization->name]) }}</p>
     </div>
 
-    @if (auth()->user()?->roleIn((string) request()->attributes->get(\App\Domains\Organization\Http\Middleware\PortalTenant::ORG_ID)) !== 'viewer')
+    @if (! \App\Domains\Organization\Enums\MemberRole::readOnly(auth()->user()?->roleIn((string) request()->attributes->get(\App\Domains\Organization\Http\Middleware\PortalTenant::ORG_ID))))
     <x-ui.button :href="route('portal.invoices.create')">{{ __('New invoice') }}</x-ui.button>
     @endif
 </div>

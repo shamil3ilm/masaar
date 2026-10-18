@@ -11,6 +11,7 @@ use App\Domains\Compliance\Engine\Services\JurisdictionRegistry;
 use App\Domains\Licensing\Enums\ApiScope;
 use App\Domains\Licensing\Models\License;
 use App\Domains\Licensing\Services\LicenseValidationService;
+use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\FilingClearance;
 use App\Domains\Platform\Models\FeatureOverride;
@@ -42,9 +43,6 @@ use App\Support\Errors\ErrorCode;
  */
 class Access
 {
-    /** Portal roles, least to most. */
-    private const RANKS = ['viewer' => 1, 'member' => 2, 'admin' => 3];
-
     /**
      * The person's level alone, for a path that has already asked the rest
      * its own way: the API's issuing routes (access.person). Null when the
@@ -226,6 +224,12 @@ class Access
     {
         if ($feature->startsFiling()) {
             try {
+                // Suspended: nothing new is issued, and what was issued is
+                // still filed.
+                if ($feature->issues()) {
+                    $this->clearance->assertNotSuspended($organization);
+                }
+
                 $this->clearance->assertMayFile($organization);
             } catch (ComplianceException $e) {
                 return Decision::refuse($feature, Level::Organization, 'status',
@@ -272,7 +276,7 @@ class Access
                 __('You are not a member of this organization.'), ['needs' => $needs]);
         }
 
-        if ((self::RANKS[$role] ?? 0) >= self::RANKS[$needs]) {
+        if (MemberRole::rank($role) >= MemberRole::rank($needs)) {
             return null;
         }
 

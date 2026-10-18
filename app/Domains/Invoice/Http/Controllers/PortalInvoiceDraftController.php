@@ -12,6 +12,7 @@ use App\Domains\Invoice\Services\Catalogue;
 use App\Domains\Invoice\Services\ChargePresets;
 use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Invoice\Services\InvoiceFinder;
+use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Platform\Customization\Customizations;
@@ -66,7 +67,7 @@ class PortalInvoiceDraftController extends Controller
             return redirect()->route('portal.invoices.index');
         }
 
-        abort_if($request->user()?->roleIn($organizationId) === 'viewer', 403, __('Your role in this organization is read-only.'));
+        abort_if(MemberRole::readOnly($request->user()?->roleIn($organizationId)), 403, __('Your role in this organization is read-only.'));
 
         try {
             $fields = $this->adjustments->fields(
@@ -89,7 +90,7 @@ class PortalInvoiceDraftController extends Controller
         }
 
         // A viewer would only be refused on saving (org.writer).
-        abort_if($request->user()?->roleIn((string) $request->attributes->get(PortalTenant::ORG_ID)) === 'viewer', 403, __('Your role in this organization is read-only.'));
+        abort_if(MemberRole::readOnly($request->user()?->roleIn((string) $request->attributes->get(PortalTenant::ORG_ID))), 403, __('Your role in this organization is read-only.'));
 
         $organizationId = (string) $request->attributes->get(PortalTenant::ORG_ID);
         $organization = $this->tenant->getOrganization();

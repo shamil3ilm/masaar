@@ -7,6 +7,7 @@ namespace App\Domains\Billing\Services;
 use App\Domains\Billing\Mail\RenewalReminderMail;
 use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Models\License;
+use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
@@ -54,7 +55,7 @@ class RenewalReminders
         }
 
         $admins = $organization->users()
-            ->wherePivot('role', 'admin')
+            ->wherePivotIn('role', MemberRole::ADMINISTERING)
             ->wherePivot('status', 'active')
             ->where('users.status', 'active')
             ->get();

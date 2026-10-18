@@ -27,7 +27,7 @@ class ApprovalPolicies
     public const POLICIES = 'approvals.policies';
 
     /** On as shipped. */
-    public const RISKY = ['admins.grant', 'admins.role', 'admins.revoke', 'admin_roles.save', 'admin_roles.delete'];
+    public const RISKY = ['admins.grant', 'admins.invite', 'admins.role', 'admins.revoke', 'admin_roles.save', 'admin_roles.delete'];
 
     public const MAX_APPROVALS = 3;
 

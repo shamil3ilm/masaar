@@ -1,6 +1,7 @@
 <?php
 
 use App\Domains\Auth\Http\Controllers\AccountController;
+use App\Domains\Auth\Http\Controllers\AdminInvitationController;
 use App\Domains\Auth\Http\Controllers\EmailVerificationController;
 use App\Domains\Auth\Http\Controllers\PasswordResetController;
 use App\Domains\Auth\Http\Controllers\SessionAuthController;
@@ -142,6 +143,21 @@ Route::post('/invitations/{token}/accept', [InvitationController::class, 'accept
     ->middleware(['auth', 'throttle:10,1'])
     ->name('invitations.accept');
 
+// An invitation to be a platform admin, by email. As the organization's: it
+// works signed in or out, and makes the account it is for.
+Route::get('/invitations/console/{token}', [AdminInvitationController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]{48}')
+    ->middleware('throttle:20,1')
+    ->name('admin-invitations.show');
+Route::post('/invitations/console/{token}/join', [AdminInvitationController::class, 'join'])
+    ->where('token', '[A-Za-z0-9]{48}')
+    ->middleware(['guest', 'throttle:5,1'])
+    ->name('admin-invitations.join');
+Route::post('/invitations/console/{token}/accept', [AdminInvitationController::class, 'accept'])
+    ->where('token', '[A-Za-z0-9]{48}')
+    ->middleware(['auth', 'throttle:10,1'])
+    ->name('admin-invitations.accept');
+
 // An issued invoice opened from its link - the QR code on it - without
 // signing in. The token is the only key; the throttle limits guessing.
 Route::get('/i/{token}', [InvoiceLinkController::class, 'show'])
@@ -246,6 +262,10 @@ Route::prefix('admin')->name('admin.')
         // or turn it down with a reason. Either way its admins are emailed.
         Route::post('/organizations/{id}/approve', [AdminOrganizationReviewController::class, 'approve'])->middleware('admin.can:organizations.review')->name('organizations.approve');
         Route::post('/organizations/{id}/reject', [AdminOrganizationReviewController::class, 'reject'])->middleware('admin.can:organizations.review')->name('organizations.reject');
+        // Suspending stops new issuing with a reason; the organization keeps
+        // its data and exports, and what it issued keeps being filed.
+        Route::post('/organizations/{id}/suspend', [AdminOrganizationReviewController::class, 'suspend'])->middleware('admin.can:organizations.review')->name('organizations.suspend');
+        Route::post('/organizations/{id}/reactivate', [AdminOrganizationReviewController::class, 'reactivate'])->middleware('admin.can:organizations.review')->name('organizations.reactivate');
         // One feature off for one organization, or granted beyond its plan,
         // with a reason. Every role sees the Features section; changing it
         // takes features.manage.
@@ -271,6 +291,9 @@ Route::prefix('admin')->name('admin.')
         // Who runs the platform and in which role. Owners only.
         Route::get('/admins', [AdminAdminsController::class, 'index'])->middleware('admin.can:admins.manage')->name('admins.index');
         Route::post('/admins', [AdminAdminsController::class, 'grant'])->middleware('admin.can:admins.manage')->name('admins.grant');
+        // By email, whether or not the address has an account yet.
+        Route::post('/admins/invitations', [AdminAdminsController::class, 'invite'])->middleware(['admin.can:admins.manage', 'throttle:20,1'])->name('admins.invite');
+        Route::post('/admins/invitations/{invitationId}/withdraw', [AdminAdminsController::class, 'withdrawInvitation'])->middleware('admin.can:admins.manage')->whereUuid('invitationId')->name('admins.invitations.withdraw');
         Route::post('/admins/{userId}/role', [AdminAdminsController::class, 'role'])->middleware('admin.can:admins.manage')->name('admins.role');
         Route::post('/admins/{userId}/revoke', [AdminAdminsController::class, 'revoke'])->middleware('admin.can:admins.manage')->name('admins.revoke');
         // Admin roles: the four system roles and custom ones from the
@@ -488,6 +511,8 @@ Route::prefix('portal')->name('portal.')
         Route::post('/team/invitations', [PortalTeamController::class, 'invite'])->middleware('throttle:20,1')->name('team.invite');
         Route::post('/team/invitations/{invitationId}/revoke', [PortalTeamController::class, 'revoke'])->name('team.revoke');
         Route::post('/team/members/{userId}/remove', [PortalTeamController::class, 'remove'])->name('team.remove');
+        Route::post('/team/members/{userId}/role', [PortalTeamController::class, 'role'])->name('team.role');
+        Route::post('/team/members/{userId}/restore', [PortalTeamController::class, 'restore'])->name('team.restore');
 
         // How documents issued without a number are numbered. Administrators
         // only; the controller checks the role.

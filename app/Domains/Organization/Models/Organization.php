@@ -73,6 +73,7 @@ class Organization extends Model
             // One numbering series for every branch, instead of one per till.
             'shared_numbering' => 'boolean',
             'reviewed_at' => 'datetime',
+            'suspended_at' => 'datetime',
         ];
     }
 

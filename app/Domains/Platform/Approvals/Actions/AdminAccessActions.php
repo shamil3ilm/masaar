@@ -7,6 +7,7 @@ namespace App\Domains\Platform\Approvals\Actions;
 use App\Domains\Auth\Enums\AdminPermission;
 use App\Domains\Auth\Enums\PlatformRole;
 use App\Domains\Auth\Models\User;
+use App\Domains\Auth\Services\AdminInvitations;
 use App\Domains\Auth\Services\PlatformAdmins;
 use App\Domains\Platform\Approvals\ActionResult;
 use App\Domains\Platform\Approvals\ApprovableActions;
@@ -22,17 +23,19 @@ final class AdminAccessActions implements ApprovableActions
 {
     public function __construct(
         private readonly PlatformAdmins $admins,
+        private readonly AdminInvitations $invitations,
     ) {}
 
     public function keys(): array
     {
-        return ['admins.grant', 'admins.role', 'admins.revoke'];
+        return ['admins.grant', 'admins.invite', 'admins.role', 'admins.revoke'];
     }
 
     public function label(string $action): string
     {
         return match ($action) {
             'admins.grant' => __('Make someone a platform admin'),
+            'admins.invite' => __('Invite someone to be a platform admin'),
             'admins.role' => __('Change an admin\'s role'),
             default => __('Remove an admin\'s access'),
         };
@@ -45,7 +48,7 @@ final class AdminAccessActions implements ApprovableActions
 
     public function preview(string $action, array $payload, User $requester): Preview
     {
-        if ($action === 'admins.grant') {
+        if ($action === 'admins.grant' || $action === 'admins.invite') {
             $user = User::query()->where('email', (string) $payload['email'])->first();
 
             return new Preview('Make '.$payload['email'].' an admin as '.$payload['role'], 'User', $user?->id,
@@ -69,6 +72,7 @@ final class AdminAccessActions implements ApprovableActions
     {
         return match ($action) {
             'admins.grant' => $this->grant($payload, $requester),
+            'admins.invite' => $this->invite($payload, $requester),
             'admins.role' => $this->changeRole($payload, $requester),
             default => $this->revoke($payload, $requester),
         };
@@ -85,6 +89,16 @@ final class AdminAccessActions implements ApprovableActions
             $payload['email'].' is now an admin.'.($link ? ' Send them the enrolment link below; they set up two-factor before they can sign in.' : ''),
             ['enrolment_link' => $link],
         );
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function invite(array $payload, User $requester): ActionResult
+    {
+        $this->invitations->invite((string) $payload['email'], (string) $payload['role'], $requester);
+
+        return new ActionResult(__('Invitation sent to :email.', ['email' => $payload['email']]));
     }
 
     /**

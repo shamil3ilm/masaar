@@ -66,6 +66,35 @@
 </div>
 @endif
 
+{{-- Suspension: nothing new is issued; its people keep their data and
+     exports, and what it issued keeps being filed. --}}
+@if ($organization->status === 'suspended')
+    <x-ui.alert tone="warning" :title="__('Suspended')" class="mb-6">
+        <p>{{ __('Since :when. Reason: :reason', ['when' => \Illuminate\Support\Carbon::parse($organization->suspended_at)->diffForHumans(), 'reason' => $organization->suspension_reason]) }}</p>
+        @admincan('organizations.review')
+            <form method="POST" action="{{ route('admin.organizations.reactivate', $organization->id) }}" class="mt-3 max-w-xl space-y-3"
+                  data-confirm-action="{{ __('Reactivate') }}" data-confirm="{{ __('Reactivate this organization? It can issue again straight away.') }}">
+                @csrf
+                @include('admin.partials.approval-reason', ['action' => 'organizations.reactivate'])
+                <x-ui.button variant="primary">{{ __('Reactivate organization') }}</x-ui.button>
+            </form>
+        @endadmincan
+    </x-ui.alert>
+@elseif ($organization->status === 'active')
+    @admincan('organizations.review')
+        <x-ui.section :title="__('Suspend this organization')" :description="__('It issues nothing new. Its people still sign in, read and export everything, and invoices it already issued keep being filed.')" closed class="mb-6">
+            <form method="POST" action="{{ route('admin.organizations.suspend', $organization->id) }}" class="max-w-xl space-y-3"
+                  data-confirm-tone="danger" data-confirm-action="{{ __('Suspend') }}" data-confirm="{{ __('Suspend this organization? It stops issuing at once.') }}">
+                @csrf
+                <x-ui.field :label="__('Reason, shown to the organization')" error="reason">
+                    <x-ui.textarea name="reason" rows="3" maxlength="500" required></x-ui.textarea>
+                </x-ui.field>
+                <x-ui.button variant="danger">{{ __('Suspend organization') }}</x-ui.button>
+            </form>
+        </x-ui.section>
+    @endadmincan
+@endif
+
 <!-- Stats Cards -->
 <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
     <div class="bg-surface rounded-card border border-line shadow-card p-6">

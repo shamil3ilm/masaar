@@ -83,7 +83,7 @@
                 </x-ui.nav-link>
 
                 {{-- Its administrators only; the page itself refuses anyone else. --}}
-                @if (auth()->user()?->roleIn((string) request()->attributes->get(\App\Domains\Organization\Http\Middleware\PortalTenant::ORG_ID)) === 'admin')
+                @if (\App\Domains\Organization\Enums\MemberRole::administers(auth()->user()?->roleIn((string) request()->attributes->get(\App\Domains\Organization\Http\Middleware\PortalTenant::ORG_ID))))
                     <p class="px-3 pb-1 pt-5 text-xs font-semibold uppercase tracking-wider text-subtle">{{ __('Organization settings') }}</p>
                     <x-ui.nav-link :href="route('portal.company.edit')" :active="request()->routeIs('portal.company.*')">
                         <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg></x-slot:icon>
@@ -109,6 +109,9 @@
                         <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path></svg></x-slot:icon>
                         {{ __('Branding') }}
                     </x-ui.nav-link>
+                @endif
+                {{-- Its administrators', and an accountant's: they read the plan and download its invoices. --}}
+                @if (in_array(auth()->user()?->roleIn((string) request()->attributes->get(\App\Domains\Organization\Http\Middleware\PortalTenant::ORG_ID)), ['owner', 'admin', 'accountant'], true))
                     <x-ui.nav-link :href="route('portal.billing')" :active="request()->routeIs('portal.billing*')">
                         <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg></x-slot:icon>
                         {{ __('Plan and billing') }}
@@ -139,6 +142,17 @@
              child will not shrink below its content without it. --}}
         <main class="min-w-0 flex-1">
             <x-zatca-environment-banner />
+            @php($portalOrganization = app(\App\Domains\Organization\Services\TenantResolver::class)->getOrganization())
+            @if ($portalOrganization?->isSuspended())
+                <div class="px-4 pt-4 md:px-8">
+                    <x-ui.alert tone="warning" :title="__('This company is suspended')">
+                        {{ __('Nothing new can be issued until it is reactivated. You can still read and export everything, and invoices already issued keep being filed.') }}
+                        @if ($portalOrganization->suspension_reason)
+                            {{ __('Reason: :reason', ['reason' => $portalOrganization->suspension_reason]) }}
+                        @endif
+                    </x-ui.alert>
+                </div>
+            @endif
             {{-- The portal had no way to reach its navigation on a phone. This
                  bar carries the toggle, and disappears at md where the sidebar
                  is a column again. --}}

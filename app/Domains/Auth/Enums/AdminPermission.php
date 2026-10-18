@@ -17,7 +17,7 @@ enum AdminPermission: string
 
     case AuditView = 'audit.view';
 
-    /** Approve or turn down a company that signed itself up. */
+    /** Approve or turn down a company that signed itself up; suspend and reactivate one. */
     case OrganizationsReview = 'organizations.review';
 
     /** Switch a feature off for one company, or grant it beyond its plan. */

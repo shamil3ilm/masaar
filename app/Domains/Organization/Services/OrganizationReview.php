@@ -7,6 +7,7 @@ namespace App\Domains\Organization\Services;
 use App\Domains\Audit\Services\AuditService;
 use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Services\LicenseManagementService;
+use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Mail\OrganizationReviewedMail;
 use App\Domains\Organization\Models\Organization;
 use DomainException;
@@ -124,7 +125,7 @@ class OrganizationReview
     private function admins(Organization $organization): array
     {
         return $organization->users()
-            ->wherePivot('role', 'admin')
+            ->wherePivotIn('role', MemberRole::ADMINISTERING)
             ->wherePivot('status', 'active')
             ->pluck('email')
             ->all();
@@ -134,7 +135,7 @@ class OrganizationReview
     {
         // One each, so each is written in its reader's language.
         $recipients = $organization->users()
-            ->wherePivot('role', 'admin')
+            ->wherePivotIn('role', MemberRole::ADMINISTERING)
             ->wherePivot('status', 'active')
             ->get();
 

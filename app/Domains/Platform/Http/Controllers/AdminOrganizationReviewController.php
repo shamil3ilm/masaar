@@ -54,6 +54,40 @@ class AdminOrganizationReviewController extends Controller
         }
     }
 
+    /**
+     * Suspend an active organization, with a reason. It issues nothing new;
+     * its people keep reading and exporting, and what it issued keeps being
+     * filed (OrganizationStatus).
+     */
+    public function suspend(Request $request, string $id): RedirectResponse
+    {
+        $request->attributes->set(AuditAdminAction::TARGET, ['Organization', $id]);
+
+        $reason = (string) $request->validate(['reason' => ['required', 'string', 'max:500']])['reason'];
+
+        return $this->decided($request, $id, 'organizations.suspend', ['organization_id' => $id, 'reason' => $reason], $reason);
+    }
+
+    public function reactivate(Request $request, string $id): RedirectResponse
+    {
+        $request->attributes->set(AuditAdminAction::TARGET, ['Organization', $id]);
+
+        return $this->decided($request, $id, 'organizations.reactivate', ['organization_id' => $id]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function decided(Request $request, string $id, string $action, array $payload, ?string $reason = null): RedirectResponse
+    {
+        try {
+            return $this->holdOrRun($this->approvals, $request, $action, $payload,
+                fn (ActionResult $done): RedirectResponse => redirect()->route('admin.organization.detail', $id)->with('success', $done->message), $reason);
+        } catch (DomainException $e) {
+            return redirect()->route('admin.organization.detail', $id)->with('error', $e->getMessage());
+        }
+    }
+
     public function reject(Request $request, string $id): RedirectResponse
     {
         $request->attributes->set(AuditAdminAction::TARGET, ['Organization', $id]);
