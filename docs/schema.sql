@@ -913,7 +913,8 @@ CREATE TABLE `organization_feature_overrides` (
     PRIMARY KEY (`id`),
     UNIQUE INDEX `feature_overrides_subject_unique` (`org_id`, `feature`, `subject`),
     FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`set_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
 
 CREATE TABLE `organization_groups` (
@@ -1204,7 +1205,8 @@ CREATE TABLE `settings` (
     `updated_by` STRING NULL,
     `value` TEXT NOT NULL,
     PRIMARY KEY (`key`),
-    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
 
 CREATE TABLE `submission_idempotency` (

@@ -160,10 +160,13 @@ final class Settings
      * legitimate, and checking each against the stored value would refuse the
      * half of it that arrived first.
      *
+     * Who changed it is the person acting (Origin), unless the caller names
+     * the user who did - an approved request names who asked.
+     *
      * @param  array<string, mixed>  $input
      * @return list<string> the problems, empty when it saved
      */
-    public function put(array $input, ?string $actor = null): array
+    public function put(array $input, ?string $actorId = null): array
     {
         $values = $this->all();
         $clean = [];
@@ -199,6 +202,8 @@ final class Settings
         if ($problems !== []) {
             return $problems;
         }
+
+        $actor = $actorId ?? $this->origin->actorId();
 
         DB::transaction(function () use ($clean, $actor): void {
             foreach ($clean as $key => $value) {

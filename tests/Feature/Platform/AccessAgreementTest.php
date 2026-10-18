@@ -54,7 +54,7 @@ class AccessAgreementTest extends TestCase
         parent::setUp();
 
         foreach ($this->registry()->registered() as $code) {
-            app(JurisdictionAvailability::class)->set($code, true, 'ops@masaar.test');
+            app(JurisdictionAvailability::class)->set($code, true);
         }
     }
 
@@ -99,7 +99,7 @@ class AccessAgreementTest extends TestCase
             $organization = $this->organization($code);
 
             foreach ([true, false] as $on) {
-                app(JurisdictionAvailability::class)->set($code, $on, 'ops@masaar.test');
+                app(JurisdictionAvailability::class)->set($code, $on);
 
                 $decision = app(Access::class)->decide($organization, null, Feature::IssueInvoices);
 

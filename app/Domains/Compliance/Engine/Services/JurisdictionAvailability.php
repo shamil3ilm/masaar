@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\DB;
  *
  * The switches are rows in `settings`, beside the console's other stored
  * values and with the same meaning: a row overrides a default, and it records
- * who changed it and when. Settings ignores keys it does not define, so these
+ * who changed it (their user id, shown as their email) and when. Settings ignores keys it does not define, so these
  * rows never reach its screen.
  *
  * Asked on every issue and every portal page, so the switches are cached as
@@ -55,9 +55,11 @@ final class JurisdictionAvailability
     }
 
     /**
-     * Switch the country on or off, recording who did it.
+     * Switch the country on or off, recording who did it: the person acting
+     * (Origin), unless the caller names the user who did - an approved
+     * request names who asked.
      */
-    public function set(string $code, bool $enabled, ?string $actor): void
+    public function set(string $code, bool $enabled, ?string $actorId = null): void
     {
         // Who first threw the switch, and when, is kept; who last did moves.
         DB::table('settings')->upsert(
@@ -65,7 +67,7 @@ final class JurisdictionAvailability
                 'key' => self::PREFIX.$code.self::SUFFIX,
                 'value' => json_encode($enabled),
                 'created_by' => $this->origin->actorId(),
-                'updated_by' => $actor,
+                'updated_by' => $actorId ?? $this->origin->actorId(),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]],
@@ -91,8 +93,9 @@ final class JurisdictionAvailability
     {
         $switches = [];
         $rows = DB::table('settings')
-            ->where('key', 'like', self::PREFIX.'%'.self::SUFFIX)
-            ->get(['key', 'value', 'updated_by', 'updated_at']);
+            ->leftJoin('users', 'users.id', '=', 'settings.updated_by')
+            ->where('settings.key', 'like', self::PREFIX.'%'.self::SUFFIX)
+            ->get(['settings.key', 'settings.value', 'users.email as updated_by', 'settings.updated_at']);
 
         foreach ($rows as $row) {
             $code = substr((string) $row->key, strlen(self::PREFIX), -strlen(self::SUFFIX));

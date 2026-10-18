@@ -116,7 +116,7 @@ class SignupCountryTest extends TestCase
      */
     public function test_signup_follows_the_admin_switches(): void
     {
-        app(JurisdictionAvailability::class)->set('SA', false, 'ops@masaar.test');
+        app(JurisdictionAvailability::class)->set('SA', false);
 
         $this->get('/register')
             ->assertOk()

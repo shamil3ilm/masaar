@@ -39,7 +39,6 @@ class FeatureOverride extends Model
         'feature',
         'state',
         'reason',
-        'set_by',
     ];
 
     /**

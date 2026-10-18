@@ -151,7 +151,7 @@ class WebhookStatusTest extends TestCase
         $quiet = $this->document('sent', 'msg-old');
         $quiet->forceFill(['updated_at' => now()->subHour()])->saveQuietly();
         $this->asp->answer(new AspStatus('msg-old', 'delivered', 'AP'));
-        app(JurisdictionAvailability::class)->set('AE', false, 'ops@masaar.test');
+        app(JurisdictionAvailability::class)->set('AE', false);
 
         $this->artisan('peppol:poll-status')->assertSuccessful();
 

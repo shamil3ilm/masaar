@@ -41,7 +41,7 @@ class FeatureOverrideTest extends TestCase
         parent::setUp();
 
         foreach ($this->registry()->registered() as $code) {
-            app(JurisdictionAvailability::class)->set($code, true, 'ops@masaar.test');
+            app(JurisdictionAvailability::class)->set($code, true);
         }
 
         $this->acme = $this->organization($this->registry()->defaultCode());
@@ -53,9 +53,10 @@ class FeatureOverrideTest extends TestCase
      */
     public function test_section_lists_every_feature(): void
     {
-        app(FeatureOverrides::class)->set((string) $this->acme->id, Feature::IssueInvoices, 'off', 'Disputed invoices', 'ops@masaar.test');
+        $owner = $this->admin('owner');
+        app(FeatureOverrides::class)->set((string) $this->acme->id, Feature::IssueInvoices, 'off', 'Disputed invoices', $owner->id);
 
-        $page = $this->open($this->admin('owner'))->assertOk()->assertSee('Features');
+        $page = $this->open($owner)->assertOk()->assertSee('Features');
 
         foreach (Feature::cases() as $feature) {
             $page->assertSee($feature->label());

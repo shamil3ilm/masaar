@@ -12,7 +12,6 @@ use App\Domains\Platform\Services\Settings;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
 /**
@@ -47,11 +46,8 @@ class AdminSettingsController extends Controller
 
     public function update(Request $request): RedirectResponse
     {
-        // The email, not the id. This is read by someone asking who changed a
-        // threshold, and a UUID does not answer that - the same reason the
-        // kill switches record one.
         $before = $this->settings->all();
-        $problems = $this->settings->put($request->all(), Auth::user()?->email);
+        $problems = $this->settings->put($request->all());
 
         // Only what changed, so the record answers "what did they change"
         // rather than listing every threshold on every save.

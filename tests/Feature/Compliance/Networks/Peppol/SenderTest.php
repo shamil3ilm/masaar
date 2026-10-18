@@ -56,7 +56,7 @@ class SenderTest extends TestCase
     public function test_sending_continues_while_switched_off(): void
     {
         $document = $this->readyDocument();
-        app(JurisdictionAvailability::class)->set('AE', false, 'ops@masaar.test');
+        app(JurisdictionAvailability::class)->set('AE', false);
 
         SendPeppolDocument::dispatch($document->id);
 

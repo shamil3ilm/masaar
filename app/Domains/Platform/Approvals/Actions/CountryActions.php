@@ -55,9 +55,8 @@ final class CountryActions implements ApprovableActions
         $jurisdiction = $this->registry->get((string) $payload['country']);
         $enabled = (bool) $payload['enabled'];
 
-        // The email, not the id: read by someone asking who switched a
-        // country off, as the settings and kill switches record it.
-        $this->availability->set($jurisdiction->code(), $enabled, $requester->email);
+        // Who asked for it, whoever approved it.
+        $this->availability->set($jurisdiction->code(), $enabled, (string) $requester->id);
 
         return new ActionResult($enabled
             ? $jurisdiction->name().' is switched on. Its organizations can issue again.'

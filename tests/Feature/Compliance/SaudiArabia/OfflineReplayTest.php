@@ -213,7 +213,7 @@ class OfflineReplayTest extends TestCase
      */
     public function test_replay_continues_while_switched_off(): void
     {
-        app(JurisdictionAvailability::class)->set('SA', false, 'ops@masaar.test');
+        app(JurisdictionAvailability::class)->set('SA', false);
         $this->authorityAccepts();
 
         $this->replay();

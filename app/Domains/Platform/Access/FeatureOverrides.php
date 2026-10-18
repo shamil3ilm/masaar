@@ -62,11 +62,13 @@ class FeatureOverrides
     }
 
     /**
-     * Set the switch, or clear it with null, recording the reason and who.
+     * Set the switch, or clear it with null, recording the reason and who:
+     * the person acting (RecordsActors), unless the caller names the user
+     * who did - an approved request names who asked.
      */
-    public function set(string $organizationId, Feature $feature, ?string $state, string $reason, ?string $actor, string $subject = ''): void
+    public function set(string $organizationId, Feature $feature, ?string $state, string $reason, ?string $actorId = null, string $subject = ''): void
     {
-        DB::transaction(function () use ($organizationId, $feature, $state, $reason, $actor, $subject): void {
+        DB::transaction(function () use ($organizationId, $feature, $state, $reason, $actorId, $subject): void {
             $query = FeatureOverride::query()->where('org_id', $organizationId)->where('feature', $feature->value)->where('subject', $subject);
 
             if ($state === null) {
@@ -75,10 +77,14 @@ class FeatureOverrides
                 return;
             }
 
-            FeatureOverride::query()->updateOrCreate(
-                ['org_id' => $organizationId, 'feature' => $feature->value, 'subject' => $subject],
-                ['state' => $state, 'reason' => $reason, 'set_by' => $actor],
-            );
+            $switch = FeatureOverride::query()->firstOrNew(['org_id' => $organizationId, 'feature' => $feature->value, 'subject' => $subject]);
+            $switch->fill(['state' => $state, 'reason' => $reason]);
+
+            if ($actorId !== null) {
+                $switch->forceFill(['set_by' => $actorId]);
+            }
+
+            $switch->save();
         });
 
         Cache::forget(self::CACHE_KEY.$organizationId);
@@ -120,11 +126,14 @@ class FeatureOverrides
     {
         $switches = ['organization' => [], 'people' => []];
 
-        foreach (FeatureOverride::query()->where('org_id', $organizationId)->get() as $row) {
+        $rows = FeatureOverride::query()->where('org_id', $organizationId)->get();
+        $emails = DB::table('users')->whereIn('id', $rows->pluck('set_by')->filter()->unique()->all())->pluck('email', 'id');
+
+        foreach ($rows as $row) {
             $switch = [
                 'state' => $row->state,
                 'reason' => $row->reason,
-                'by' => $row->set_by,
+                'by' => $row->set_by === null ? null : ($emails[$row->set_by] ?? null),
                 'at' => $row->updated_at?->toIso8601String(),
             ];
 

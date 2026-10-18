@@ -12,6 +12,7 @@ use App\Domains\Licensing\Models\License;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Rules\CompanyProfileRules;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -57,14 +58,17 @@ class CountrySwitchTest extends TestCase
     {
         config(['fatoora.enabled' => true, 'peppol.countries.AE.enabled' => false]);
 
-        $this->switches->set('SA', false, 'ops@masaar.test');
-        $this->switches->set('AE', true, 'ops@masaar.test');
+        $admin = User::factory()->create(['email' => 'ops@masaar.test']);
+        $this->switches->set('SA', false, $admin->id);
+        $this->switches->set('AE', true);
 
         $this->assertSame(['AE'], $this->registry()->enabled());
+        // Kept as the admin's user id, shown as their email.
+        $this->assertSame($admin->id, DB::table('settings')->where('key', 'jurisdiction.SA.enabled')->value('updated_by'));
         $this->assertSame('ops@masaar.test', $this->switches->switched('SA')['by']);
         $this->assertFalse($this->switches->switched('SA')['enabled']);
 
-        $this->switches->set('SA', true, 'ops@masaar.test');
+        $this->switches->set('SA', true);
 
         $this->assertSame(['AE', 'SA'], $this->registry()->enabled());
     }
@@ -72,11 +76,11 @@ class CountrySwitchTest extends TestCase
     /** The company country list follows, so a switched-off country cannot be chosen. */
     public function test_company_countries_follow_the_switch(): void
     {
-        $this->switches->set('SA', false, 'ops@masaar.test');
+        $this->switches->set('SA', false);
 
         $this->assertSame(['AE'], CompanyProfileRules::countries());
 
-        $this->switches->set('AE', false, 'ops@masaar.test');
+        $this->switches->set('AE', false);
 
         $this->assertSame([], CompanyProfileRules::countries());
     }
@@ -89,7 +93,7 @@ class CountrySwitchTest extends TestCase
     public function test_switched_off_saudi_refuses_the_api(): void
     {
         $organization = Organization::create(['name' => 'Acme', 'country' => 'SA']);
-        $this->switches->set('SA', false, 'ops@masaar.test');
+        $this->switches->set('SA', false);
 
         $this->withLicence($organization)->postJson('/api/v1/pipeline/submit', [
             'org_id' => $organization->id,
@@ -115,7 +119,7 @@ class CountrySwitchTest extends TestCase
         $organization = Organization::create(['name' => 'Acme', 'country' => 'SA']);
         $user = User::factory()->create();
         $user->organizations()->attach($organization->id, ['role' => 'admin', 'status' => 'active']);
-        $this->switches->set('SA', false, 'ops@masaar.test');
+        $this->switches->set('SA', false);
 
         $this->withToken(JWTAuth::claims(['org_id' => $organization->id, 'role' => 'admin'])->fromUser($user))
             ->postJson('/api/compliance/sa/submit/'.Str::uuid())

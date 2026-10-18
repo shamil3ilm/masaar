@@ -158,7 +158,7 @@ class InvoiceIssueTest extends TestCase
     {
         $invoice = $this->draft('ACME-9');
         $switches = app(JurisdictionAvailability::class);
-        $switches->set('SA', false, 'ops@masaar.test');
+        $switches->set('SA', false);
 
         $this->issue($invoice)
             ->assertRedirect(route('portal.invoices.show', $invoice->id))
@@ -169,7 +169,7 @@ class InvoiceIssueTest extends TestCase
             ->assertOk()
             ->assertSee('E-invoicing in your country is switched off on this platform.');
 
-        $switches->set('SA', true, 'ops@masaar.test');
+        $switches->set('SA', true);
 
         $this->issue($invoice)->assertSessionMissing('error');
         $this->assertSame(InvoiceStatus::Issued, $invoice->fresh()->status);

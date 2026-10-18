@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Platform;
 
+use App\Domains\Auth\Models\User;
 use App\Domains\Platform\Services\Settings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -172,8 +173,12 @@ class SettingsTest extends TestCase
 
     public function test_who_changed_it_is_recorded(): void
     {
-        $this->settings->put(['alerts.backlog_warning' => '250'], 'admin@masaar.test');
+        $admin = User::factory()->create();
 
-        $this->assertSame('admin@masaar.test', DB::table('settings')->value('updated_by'));
+        $this->actingAs($admin);
+        $this->settings->put(['alerts.backlog_warning' => '250']);
+
+        // The user id, never a copy of the email.
+        $this->assertSame($admin->id, DB::table('settings')->value('updated_by'));
     }
 }

@@ -66,10 +66,9 @@ final class FeatureActions implements ApprovableActions
         $feature = Feature::from((string) $payload['feature']);
         $state = (string) $payload['state'];
 
-        // The email, not the id: read by someone asking who switched it, as
-        // the countries and kill switches record it.
+        // Who asked for it, whoever approved it.
         $subject = (string) ($payload['subject'] ?? '');
-        $this->overrides->set((string) $payload['organization_id'], $feature, $state === self::DEFAULT ? null : $state, (string) $payload['reason'], $requester->email, $subject);
+        $this->overrides->set((string) $payload['organization_id'], $feature, $state === self::DEFAULT ? null : $state, (string) $payload['reason'], (string) $requester->id, $subject);
 
         if ($subject !== '') {
             return new ActionResult($state === self::DEFAULT

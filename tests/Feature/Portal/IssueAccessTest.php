@@ -38,7 +38,7 @@ class IssueAccessTest extends TestCase
 
         // The default module, so no country is named.
         $code = app(JurisdictionRegistry::class)->defaultCode();
-        app(JurisdictionAvailability::class)->set($code, true, 'ops@masaar.test');
+        app(JurisdictionAvailability::class)->set($code, true);
 
         $this->acme = Organization::create(['name' => 'Acme', 'country' => $code, 'status' => Organization::STATUS_ACTIVE]);
         $this->draft = Invoice::withoutTenantScope(fn () => Invoice::create([
@@ -98,7 +98,7 @@ class IssueAccessTest extends TestCase
             ->assertSessionHas('error', fn (string $m): bool => str_contains($m, 'Paused on the whole platform') && str_contains($m, 'Signing defect'));
         app(KillSwitch::class)->resumeAll();
 
-        app(FeatureOverrides::class)->set((string) $this->acme->id, Feature::IssueInvoices, 'off', 'Disputed invoices', 'ops@masaar.test');
+        app(FeatureOverrides::class)->set((string) $this->acme->id, Feature::IssueInvoices, 'off', 'Disputed invoices', null);
         $this->issue($member)
             ->assertSessionHas('error', fn (string $m): bool => str_contains($m, 'Switched off for this company') && str_contains($m, 'Disputed invoices'));
 

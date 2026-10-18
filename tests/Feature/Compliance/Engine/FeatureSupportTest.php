@@ -27,7 +27,7 @@ class FeatureSupportTest extends TestCase
     public function test_access_follows_each_module(): void
     {
         foreach ($this->registry()->registered() as $code) {
-            app(JurisdictionAvailability::class)->set($code, true, 'ops@masaar.test');
+            app(JurisdictionAvailability::class)->set($code, true);
             $organization = Organization::create(['name' => 'Acme '.$code, 'country' => $code, 'status' => Organization::STATUS_ACTIVE]);
             $support = $this->registry()->get($code)->features();
 

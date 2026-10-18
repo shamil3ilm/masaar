@@ -43,14 +43,14 @@ class AccessDecisionTest extends TestCase
         $this->switches = app(KillSwitch::class);
 
         foreach ($this->registry()->registered() as $code) {
-            app(JurisdictionAvailability::class)->set($code, true, 'ops@masaar.test');
+            app(JurisdictionAvailability::class)->set($code, true);
         }
     }
 
     public function test_platform_wins_over_country(): void
     {
         $organization = $this->organization();
-        app(JurisdictionAvailability::class)->set($this->code($organization), false, 'ops@masaar.test');
+        app(JurisdictionAvailability::class)->set($this->code($organization), false);
         $this->switches->enable(KillSwitch::SWITCH_ISSUANCE, reason: 'Signing defect');
 
         $decision = $this->decide($organization, Feature::IssueInvoices);
@@ -64,7 +64,7 @@ class AccessDecisionTest extends TestCase
     {
         $organization = $this->organization($this->supporting(Feature::IssueStandard));
         $this->licence($organization, 'starter');
-        app(JurisdictionAvailability::class)->set($this->code($organization), false, 'ops@masaar.test');
+        app(JurisdictionAvailability::class)->set($this->code($organization), false);
 
         $this->assertRefused($this->decide($organization, Feature::IssueStandard), Level::Country, 'country_off');
     }
@@ -106,7 +106,7 @@ class AccessDecisionTest extends TestCase
         $this->assertRefused($this->decide($this->organization('ZZ'), Feature::IssueInvoices), Level::Country, 'no_module');
 
         $organization = $this->organization();
-        app(JurisdictionAvailability::class)->set($this->code($organization), false, 'ops@masaar.test');
+        app(JurisdictionAvailability::class)->set($this->code($organization), false);
         $this->assertRefused($this->decide($organization, Feature::IssueInvoices), Level::Country, 'country_off');
         $this->assertRefused($this->decide($organization, Feature::FileWithAuthority), Level::Country, 'country_off');
         $this->assertTrue($this->decide($organization, Feature::Webhooks)->allowed, 'what starts no new work is not stopped by the country switch');
@@ -154,7 +154,7 @@ class AccessDecisionTest extends TestCase
         $this->assertTrue($this->decide($this->organization(), Feature::IssueInvoices)->allowed, 'another company is not paused');
 
         $switched = $this->organization();
-        app(FeatureOverrides::class)->set((string) $switched->id, Feature::IssueInvoices, 'off', 'Disputed invoices', 'ops@masaar.test');
+        app(FeatureOverrides::class)->set((string) $switched->id, Feature::IssueInvoices, 'off', 'Disputed invoices', null);
         $decision = $this->decide($switched, Feature::IssueInvoices);
         $this->assertRefused($decision, Level::Organization, 'override_off');
         $this->assertStringContainsString('Disputed invoices', $decision->reason);
@@ -187,7 +187,7 @@ class AccessDecisionTest extends TestCase
     {
         $organization = $this->organization($this->supporting(Feature::IssueStandard));
         $this->licence($organization, 'starter');
-        app(FeatureOverrides::class)->set((string) $organization->id, Feature::IssueStandard, 'on', 'Trial of B2B', 'ops@masaar.test');
+        app(FeatureOverrides::class)->set((string) $organization->id, Feature::IssueStandard, 'on', 'Trial of B2B', null);
 
         $decision = $this->decide($organization, Feature::IssueStandard);
         $this->assertTrue($decision->allowed);
@@ -209,14 +209,14 @@ class AccessDecisionTest extends TestCase
         $other = $this->member($organization, 'member');
         $overrides = app(FeatureOverrides::class);
 
-        $overrides->set((string) $organization->id, Feature::IssueInvoices, 'off', 'Till staff only', 'ops@masaar.test', FeatureOverrides::person((string) $member->id));
+        $overrides->set((string) $organization->id, Feature::IssueInvoices, 'off', 'Till staff only', null, FeatureOverrides::person((string) $member->id));
         $person = $this->decide($organization, Feature::IssueInvoices, $member);
         $this->assertRefused($person, Level::User, 'user_override_off');
         $this->assertStringContainsString('Till staff only', $person->reason);
         $this->assertTrue($this->decide($organization, Feature::IssueInvoices, $other)->allowed);
         $this->assertTrue($this->decide($organization, Feature::IssueInvoices)->allowed, 'no person, no person level');
 
-        $overrides->set((string) $organization->id, Feature::IssueInvoices, 'off', 'Members paused', 'ops@masaar.test', FeatureOverrides::role('member'));
+        $overrides->set((string) $organization->id, Feature::IssueInvoices, 'off', 'Members paused', null, FeatureOverrides::role('member'));
         $this->assertRefused($this->decide($organization, Feature::IssueInvoices, $member), Level::Role, 'role_override_off');
         $this->assertRefused($this->decide($organization, Feature::IssueInvoices, $other), Level::Role, 'role_override_off');
         $this->assertTrue($this->decide($organization, Feature::IssueInvoices, $this->member($organization, 'admin'))->allowed);
@@ -226,7 +226,7 @@ class AccessDecisionTest extends TestCase
     {
         $organization = $this->organization(status: Organization::STATUS_SUSPENDED);
         $member = $this->member($organization, 'member');
-        app(FeatureOverrides::class)->set((string) $organization->id, Feature::IssueInvoices, 'off', 'Paused', 'ops@masaar.test', FeatureOverrides::person((string) $member->id));
+        app(FeatureOverrides::class)->set((string) $organization->id, Feature::IssueInvoices, 'off', 'Paused', null, FeatureOverrides::person((string) $member->id));
 
         $this->assertRefused($this->decide($organization, Feature::IssueInvoices, $member), Level::Organization, 'status');
     }
@@ -242,10 +242,10 @@ class AccessDecisionTest extends TestCase
         $overrides = app(FeatureOverrides::class);
         $this->assertTrue($this->decide($organization, Feature::IssueInvoices, $member)->allowed);
 
-        $overrides->set((string) $organization->id, Feature::IssueInvoices, 'off', 'Paused', 'ops@masaar.test', FeatureOverrides::person((string) $member->id));
+        $overrides->set((string) $organization->id, Feature::IssueInvoices, 'off', 'Paused', null, FeatureOverrides::person((string) $member->id));
         $this->assertFalse($this->decide($organization, Feature::IssueInvoices, $member)->allowed);
 
-        $overrides->set((string) $organization->id, Feature::IssueInvoices, null, 'Back', 'ops@masaar.test', FeatureOverrides::person((string) $member->id));
+        $overrides->set((string) $organization->id, Feature::IssueInvoices, null, 'Back', null, FeatureOverrides::person((string) $member->id));
         $this->assertTrue($this->decide($organization, Feature::IssueInvoices, $member)->allowed);
         $this->assertNull($overrides->state((string) $organization->id, Feature::IssueInvoices), 'the company switch is untouched');
     }
