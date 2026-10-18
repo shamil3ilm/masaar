@@ -6,9 +6,20 @@ namespace App\Domains\Platform\Services;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateService;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
+use App\Domains\Compliance\Engine\Services\JurisdictionRegistry;
+use App\Domains\Organization\Models\Organization;
+use App\Http\Listing\CsvExport;
+use App\Http\Listing\Filters\Choice;
+use App\Http\Listing\Filters\DateRange;
+use App\Http\Listing\Filters\Search;
+use App\Http\Listing\ListSpec;
+use App\Http\Listing\ListState;
+use App\Http\Listing\Sort;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Organizations as the platform console sees them: every tenant, with what
@@ -22,30 +33,54 @@ class OrganizationReport
     public function __construct(
         private readonly CredentialStore $credentials,
         private readonly CertificateService $certificates,
+        private readonly JurisdictionRegistry $jurisdictions,
     ) {}
 
     /**
-     * Newest organizations first, each with the expiry of the certificate it
-     * signs with.
+     * What the organizations list sorts and narrows by.
+     */
+    public function spec(string $key): ListSpec
+    {
+        $countries = [];
+
+        foreach ($this->jurisdictions->registered() as $code) {
+            $countries[$code] = $this->jurisdictions->get($code)->name();
+        }
+
+        return new ListSpec(
+            key: $key,
+            sorts: [
+                'newest' => new Sort('Newest', 'organizations.created_at'),
+                'name' => new Sort('Name', 'organizations.name', 'asc'),
+            ],
+            defaultSort: 'newest',
+            filters: [
+                new Search('q', 'Search', ['organizations.name', 'organizations.vat_number'], 'Name or VAT number'),
+                new Choice('status', 'Status', [
+                    Organization::STATUS_ACTIVE => 'Active',
+                    Organization::STATUS_PENDING_REVIEW => 'Awaiting review',
+                    Organization::STATUS_REJECTED => 'Rejected',
+                    Organization::STATUS_SUSPENDED => 'Suspended',
+                ], 'organizations.status'),
+                new Choice('country', 'Country', $countries, 'organizations.country'),
+                new DateRange('organizations.created_at', 'Registered', instant: true),
+            ],
+            defaultPerPage: 20,
+            tiebreaker: 'organizations.id',
+        );
+    }
+
+    /**
+     * Organizations as the list asks, each with the expiry of the
+     * certificate it signs with.
      *
      * Expiry is read from the certificate the platform holds, which costs one
      * decryption per row: acceptable on a paginated admin screen, not
      * somewhere it would run per invoice.
      */
-    public function page(int $perPage, ?string $status = null): LengthAwarePaginator
+    public function history(ListState $list): LengthAwarePaginator
     {
-        $organizations = DB::table('organizations')
-            ->when($status !== null, fn ($query) => $query->where('organizations.status', $status))
-            ->select([
-                'organizations.id',
-                'organizations.name',
-                'organizations.vat_number',
-                'organizations.status',
-                'organizations.created_at',
-            ])
-            ->orderByDesc('organizations.created_at')
-            ->orderByDesc('organizations.id')
-            ->paginate($perPage);
+        $organizations = $list->paginate($this->query());
 
         $organizations->setCollection(
             $organizations->getCollection()->map(fn (object $organization) => (object) [
@@ -55,6 +90,30 @@ class OrganizationReport
         );
 
         return $organizations;
+    }
+
+    /** Every organization the list's filters give, as a CSV. */
+    public function csv(ListState $list, string $fileName): StreamedResponse
+    {
+        return CsvExport::download($fileName, [
+            'Name' => fn (object $row): string => (string) $row->name,
+            'VAT number' => fn (object $row): string => (string) $row->vat_number,
+            'Country' => fn (object $row): string => (string) $row->country,
+            'Status' => fn (object $row): string => (string) $row->status,
+            'Registered' => fn (object $row): string => (string) $row->created_at,
+            'Id' => fn (object $row): string => (string) $row->id,
+        ], $list->apply($this->query()->addSelect('organizations.country'))->lazy(500));
+    }
+
+    private function query(): Builder
+    {
+        return DB::table('organizations')->select([
+            'organizations.id',
+            'organizations.name',
+            'organizations.vat_number',
+            'organizations.status',
+            'organizations.created_at',
+        ]);
     }
 
     /**

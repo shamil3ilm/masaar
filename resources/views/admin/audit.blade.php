@@ -18,38 +18,12 @@
     <p class="mt-1 max-w-3xl text-sm text-muted">Every recorded action, by admins and users alike. Read-only: nothing here can be changed from the console.</p>
 </div>
 
-<form method="GET" action="{{ route('admin.audit') }}" class="mb-6 bg-surface rounded-card border border-line shadow-card p-4 flex flex-wrap items-end gap-4">
-    <div>
-        <label for="category" class="block text-xs font-medium text-muted uppercase mb-1">Category</label>
-        <x-ui.select id="category" name="category">
-            <option value="">Everything</option>
-            @foreach($categories as $prefix => $label)
-                <option value="{{ $prefix }}" @selected(($filters['category'] ?? null) === $prefix)>{{ $label }}</option>
-            @endforeach
-        </x-ui.select>
-    </div>
-    <div class="flex-1 min-w-48">
-        <label for="actor" class="block text-xs font-medium text-muted uppercase mb-1">Who</label>
-        <x-ui.input id="actor" name="actor" type="text" value="{{ $filters['actor'] ?? '' }}" placeholder="Email of the person who acted" />
-    </div>
-    <div>
-        <label for="from" class="block text-xs font-medium text-muted uppercase mb-1">From</label>
-        <x-ui.input id="from" name="from" type="date" value="{{ $filters['from'] ?? '' }}" />
-    </div>
-    <div>
-        <label for="to" class="block text-xs font-medium text-muted uppercase mb-1">To</label>
-        <x-ui.input id="to" name="to" type="date" value="{{ $filters['to'] ?? '' }}" />
-    </div>
-    <div class="flex items-center gap-2">
-        <x-ui.button variant="secondary">Filter</x-ui.button>
-        <x-ui.button variant="ghost" :href="route('admin.audit')">Reset</x-ui.button>
-    </div>
-</form>
+<x-ui.list-filters :list="$list" />
 
 <div class="bg-surface rounded-card border border-line shadow-card overflow-hidden">
     <x-ui.table :primary="[2, 1, 0]">
         <x-slot:head>
-            <x-ui.th>When</x-ui.th>
+            <x-ui.th :list="$list" sort="newest">When</x-ui.th>
             <x-ui.th>Who</x-ui.th>
             <x-ui.th>Action</x-ui.th>
             <x-ui.th>Record</x-ui.th>
@@ -103,7 +77,5 @@
     </x-ui.table>
 </div>
 
-<div class="mt-4">
-    {{ $entries->links() }}
-</div>
+{{ $entries->links() }}
 @endsection

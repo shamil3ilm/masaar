@@ -3,12 +3,7 @@
 @section('title', __('Plan and billing'))
 
 @php
-    $plans = [
-        'starter' => __('Starter'),
-        'professional' => __('Professional'),
-        'enterprise' => __('Enterprise'),
-        'unlimited' => __('Unlimited'),
-    ];
+    $plans = \App\Domains\Billing\Services\PaymentHistory::plans();
 @endphp
 
 @section('content')
@@ -38,16 +33,17 @@
     </div>
 </div>
 
+<h2 class="mb-3 text-lg font-semibold text-fg">{{ __('Payments') }}</h2>
+
+<x-ui.list-filters :list="$list" />
+
 <div class="bg-surface rounded-card border border-line shadow-card overflow-hidden">
-    <div class="p-6 border-b">
-        <h3 class="text-lg font-semibold text-fg">{{ __('Payments') }}</h3>
-    </div>
     <x-ui.table :primary="[0, 3, 1]">
         <x-slot:head>
-            <x-ui.th>{{ __('Received') }}</x-ui.th>
+            <x-ui.th :list="$list" sort="date">{{ __('Received') }}</x-ui.th>
             <x-ui.th>{{ __('Plan') }}</x-ui.th>
             <x-ui.th>{{ __('Period') }}</x-ui.th>
-            <x-ui.th align="right">{{ __('Total') }}</x-ui.th>
+            <x-ui.th :list="$list" sort="amount" align="right">{{ __('Total') }}</x-ui.th>
             <x-ui.th>{{ __('Invoice') }}</x-ui.th>
         </x-slot:head>
         @forelse ($payments as $payment)
@@ -65,8 +61,10 @@
             </td>
         </tr>
         @empty
-        <x-ui.empty :columns="5">{{ __('No payments yet') }}</x-ui.empty>
+        <x-ui.empty :columns="5">{{ $list->filtered() ? __('No payment matches that filter.') : __('No payments yet') }}</x-ui.empty>
         @endforelse
     </x-ui.table>
 </div>
+
+{{ $payments->links() }}
 @endsection

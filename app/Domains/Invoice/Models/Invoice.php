@@ -49,6 +49,8 @@ class Invoice extends Model
         // subscription. Needs supply_date beside it (BR-KSA-35).
         'supply_end_date',
         'issued_at',
+        // Who issued it: the person signed in when it left draft.
+        'issued_by',
         // When a till made the sale, as it sent it: the actual supply.
         'sold_at',
         // When payment is due: PINT AE's IBT-009, and on a Saudi invoice

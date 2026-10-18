@@ -8,14 +8,18 @@ use App\Domains\Compliance\Engine\Contracts\Jurisdiction;
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Services\Catalogue;
+use App\Domains\Invoice\Services\CustomerHistory;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Rules\VatNumber;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
+use App\Http\Listing\Lists;
+use App\Http\Listing\ListState;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * The organization's customers, so an invoice starts with its buyer filled in.
@@ -31,24 +35,28 @@ class PortalCustomerController extends Controller
 {
     use ResolvesPortalOrganization;
 
-    private const PER_PAGE = 25;
-
     public function __construct(
         private readonly Catalogue $catalogue,
+        private readonly CustomerHistory $history,
+        private readonly Lists $lists,
         private readonly TenantResolver $tenant,
         private readonly JurisdictionResolver $jurisdictions,
     ) {}
 
     public function index(Request $request): View
     {
-        $search = trim((string) $request->query('q', ''));
-        $archived = $request->boolean('archived');
+        $list = $this->list($request, 'portal.customers.export');
 
         return view('portal.customers.index', [
-            'customers' => $this->catalogue->customers($this->portalOrganizationId($request), $search === '' ? null : $search, $archived, self::PER_PAGE)->withQueryString(),
-            'search' => $search,
-            'archived' => $archived,
+            'customers' => $this->history->page($this->portalOrganizationId($request), $list),
+            'list' => $list,
         ]);
+    }
+
+    /** Exactly the customers the list's filters give, as a CSV. */
+    public function export(Request $request): StreamedResponse
+    {
+        return $this->history->csv($this->portalOrganizationId($request), $this->list($request), 'customers-'.now()->format('Y-m-d').'.csv');
     }
 
     public function create(): View
@@ -138,5 +146,12 @@ class PortalCustomerController extends Controller
     private function customer(Request $request, string $customerId): Customer
     {
         return $this->catalogue->customer($this->portalOrganizationId($request), $customerId) ?? abort(404);
+    }
+
+    private function list(Request $request, ?string $export = null): ListState
+    {
+        $organization = $this->portalOrganization($this->tenant, $request);
+
+        return $this->lists->portal($this->history->spec($organization, 'portal.customers.index'), $request, (string) $organization->id, $export);
     }
 }

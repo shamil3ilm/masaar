@@ -78,6 +78,16 @@ class ScreenRenderTest extends TestCase
         'portal.reports.invoices',
         'portal.reports.vat',
         'portal.reports.close.csv',
+        // A history list's rows as a CSV. HistoryListTest covers them.
+        'portal.invoices.export',
+        'portal.notes.export',
+        'portal.customers.export',
+        'portal.billing.export',
+        'portal.submissions.export',
+        'admin.organizations.export',
+        'admin.audit.export',
+        'admin.licences.export',
+        'admin.queue.export',
         // Not a screen: it fills the new-invoice form and redirects there.
         'portal.invoices.adjust',
         // Prints only a shareable invoice, and the fixture here is a draft so

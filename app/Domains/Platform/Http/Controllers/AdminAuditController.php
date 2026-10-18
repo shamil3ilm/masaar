@@ -6,8 +6,10 @@ namespace App\Domains\Platform\Http\Controllers;
 
 use App\Domains\Platform\Services\AuditReport;
 use App\Http\Controllers\Controller;
+use App\Http\Listing\Lists;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * The audit trail, read-only.
@@ -17,41 +19,24 @@ use Illuminate\View\View;
  */
 class AdminAuditController extends Controller
 {
-    private const PER_PAGE = 50;
-
     public function __construct(
         private readonly AuditReport $audit,
+        private readonly Lists $lists,
     ) {}
 
     public function index(Request $request): View
     {
-        $filters = array_filter([
-            'category' => $this->given($request->query('category')),
-            'actor' => $this->given($request->query('actor')),
-            'from' => $this->date($request->query('from')),
-            'to' => $this->date($request->query('to')),
-        ], fn (?string $value): bool => $value !== null);
+        $list = $this->lists->admin($this->audit->spec('admin.audit'), $request, 'admin.audit.export');
 
         return view('admin.audit', [
-            'entries' => $this->audit->page($filters, self::PER_PAGE)->withQueryString(),
-            'filters' => $filters,
-            'categories' => AuditReport::CATEGORIES,
+            'entries' => $this->audit->page($list),
+            'list' => $list,
         ]);
     }
 
-    private function given(mixed $value): ?string
+    /** Every entry the list's filters give, as a CSV. */
+    public function export(Request $request): StreamedResponse
     {
-        return is_string($value) && trim($value) !== '' ? trim($value) : null;
-    }
-
-    /**
-     * A date the query can trust, or nothing. A malformed one is ignored
-     * rather than compared as a string against a timestamp.
-     */
-    private function date(mixed $value): ?string
-    {
-        $value = $this->given($value);
-
-        return $value !== null && preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) === 1 ? $value : null;
+        return $this->audit->csv($this->lists->admin($this->audit->spec('admin.audit'), $request), 'audit-log-'.now()->format('Y-m-d').'.csv');
     }
 }

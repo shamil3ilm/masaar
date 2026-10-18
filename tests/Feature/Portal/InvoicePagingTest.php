@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature\Portal;
 
 use App\Domains\Invoice\Services\InvoiceFinder;
+use App\Domains\Invoice\Services\InvoiceHistory;
 use App\Domains\Organization\Models\Organization;
+use App\Http\Listing\ListState;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Carbon;
@@ -82,33 +84,39 @@ class InvoicePagingTest extends TestCase
     }
 
     /**
-     * And the same for the portal's own query, which is a different method.
+     * And the same for the portal's own list, which is a different query:
+     * the history list orders by whatever it is asked and settles a tie on
+     * the id (ListSpec's tiebreaker).
      */
-    public function test_the_search_query_pages_cleanly(): void
+    public function test_the_portal_list_pages_cleanly(): void
     {
         $org = Organization::create(['name' => 'Acme', 'country' => 'SA']);
-        $finder = app(InvoiceFinder::class);
+        $history = app(InvoiceHistory::class);
+        $list = ListState::fromQuery($history->spec($org, 'portal.invoices.index'), ['per_page' => '10'], '/portal/invoices');
 
-        $moment = now()->subHour();
+        // The smallest page the list offers is ten, so twelve rows make two.
+        foreach (range(6, 12) as $n) {
+            $this->makeInvoice($org, 'INV-'.$n);
+        }
 
-        $this->tie($org, $moment);
+        $this->tie($org, now()->subHour());
 
         $seen = [];
 
-        foreach ([1, 2, 3] as $page) {
+        foreach ([1, 2] as $page) {
             Paginator::currentPageResolver(fn (): int => $page);
 
-            foreach ($finder->search($org->id, null, null, 2) as $invoice) {
+            foreach ($history->page($org->id, $list) as $invoice) {
                 $seen[] = $invoice->invoice_number;
             }
         }
 
-        sort($seen);
+        sort($seen, SORT_NATURAL);
 
-        $this->assertSame(['INV-1', 'INV-2', 'INV-3', 'INV-4', 'INV-5'], $seen);
+        $this->assertSame(array_map(fn (int $n): string => 'INV-'.$n, range(1, 12)), $seen);
 
         $this->assertTotalOrder($this->orderByOf(
-            fn () => $finder->search($org->id, null, null, 2)
+            fn () => $history->page($org->id, $list)
         ));
     }
 

@@ -11,30 +11,14 @@
     <x-ui.button :href="route('portal.customers.create')">{{ __('New customer') }}</x-ui.button>
 </div>
 
-<form method="GET" action="{{ route('portal.customers.index') }}" class="mb-6 bg-surface rounded-card border border-line shadow-card p-4 flex flex-wrap items-end gap-4">
-    <div class="flex-1 min-w-48">
-        <label for="q" class="block text-xs font-medium text-muted uppercase mb-1">{{ __('Search') }}</label>
-        <x-ui.input id="q" name="q" type="text" value="{{ $search }}" placeholder="{{ __('Name or VAT number') }}" />
-    </div>
-    <div>
-        <label for="archived" class="block text-xs font-medium text-muted uppercase mb-1">{{ __('Showing') }}</label>
-        <x-ui.select id="archived" name="archived">
-            <option value="0">{{ __('Active') }}</option>
-            <option value="1" @selected($archived)>{{ __('Archived') }}</option>
-        </x-ui.select>
-    </div>
-    <div class="flex items-center gap-2">
-        <x-ui.button variant="secondary">{{ __('Filter') }}</x-ui.button>
-        <x-ui.button variant="ghost" :href="route('portal.customers.index')">{{ __('Reset') }}</x-ui.button>
-    </div>
-</form>
+<x-ui.list-filters :list="$list" />
 
 <div class="bg-surface rounded-card border border-line shadow-card overflow-hidden">
     <x-ui.table :primary="[0, 1]">
         <x-slot:head>
-            <x-ui.th>{{ __('Name') }}</x-ui.th>
+            <x-ui.th :list="$list" sort="name">{{ __('Name') }}</x-ui.th>
             <x-ui.th>{{ __('VAT number') }}</x-ui.th>
-            <x-ui.th>{{ __('City') }}</x-ui.th>
+            <x-ui.th :list="$list" sort="city">{{ __('City') }}</x-ui.th>
             <x-ui.th>{{ __('Email') }}</x-ui.th>
             <x-ui.th align="right">{{ __('Actions') }}</x-ui.th>
         </x-slot:head>
@@ -54,12 +38,10 @@
             </td>
         </tr>
         @empty
-        <x-ui.empty :columns="5">{{ $archived ? __('No archived customers') : __('No customers yet. Add one here, or tick "Save this buyer" on an invoice.') }}</x-ui.empty>
+        <x-ui.empty :columns="5">{{ $list->filtered() ? __('No customer matches that filter.') : __('No customers yet. Add one here, or tick "Save this buyer" on an invoice.') }}</x-ui.empty>
         @endforelse
     </x-ui.table>
 </div>
 
-<div class="mt-4">
-    {{ $customers->links() }}
-</div>
+{{ $customers->links() }}
 @endsection

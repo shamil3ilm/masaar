@@ -7,15 +7,17 @@
     <h1 class="text-2xl font-semibold tracking-tight text-fg">Organizations</h1>
     <p class="mt-1 max-w-3xl text-sm text-muted">Manage all registered organizations</p>
     <div class="mt-3 flex gap-4 text-sm">
-        <a href="{{ route('admin.organizations') }}" class="{{ request('status') ? 'text-muted' : 'font-semibold text-accent' }} hover:underline">All</a>
-        <a href="{{ route('admin.organizations', ['status' => 'pending_review']) }}" class="{{ request('status') === 'pending_review' ? 'font-semibold text-accent' : 'text-muted' }} hover:underline">Awaiting review</a>
+        <a href="{{ route('admin.organizations') }}" class="{{ $list->value('status') ? 'text-muted' : 'font-semibold text-accent' }} hover:underline">All</a>
+        <a href="{{ route('admin.organizations', ['status' => 'pending_review']) }}" class="{{ $list->value('status') === 'pending_review' ? 'font-semibold text-accent' : 'text-muted' }} hover:underline">Awaiting review</a>
     </div>
 </div>
+
+<x-ui.list-filters :list="$list" />
 
 <div class="bg-surface rounded-card border border-line shadow-card overflow-hidden">
     <x-ui.table :primary="[0, 1, 2]">
         <x-slot:head>
-            <x-ui.th>Organization</x-ui.th>
+            <x-ui.th :list="$list" sort="name">Organization</x-ui.th>
             <x-ui.th>VAT Number</x-ui.th>
             <x-ui.th>Status</x-ui.th>
             <x-ui.th>Certificate</x-ui.th>
@@ -58,7 +60,5 @@
     </x-ui.table>
 </div>
 
-<div class="mt-4">
-    {{ $organizations->appends(request()->query())->links() }}
-</div>
+{{ $organizations->links() }}
 @endsection

@@ -7,14 +7,17 @@ namespace App\Domains\Invoice\Http\Controllers;
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Services\Catalogue;
 use App\Domains\Invoice\Services\InvoiceFinder;
+use App\Domains\Invoice\Services\InvoiceHistory;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Services\Membership;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
+use App\Http\Listing\Lists;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * The taxpayer's own invoices, in a browser.
@@ -39,38 +42,41 @@ use Illuminate\View\View;
  */
 class PortalInvoiceController extends Controller
 {
-    /**
-     * Enough to see a page of invoices without scrolling past the filters.
-     */
-    private const PER_PAGE = 25;
-
     public function __construct(
         private readonly TenantResolver $tenant,
         private readonly Membership $membership,
         private readonly InvoiceFinder $invoices,
+        private readonly InvoiceHistory $history,
+        private readonly Lists $lists,
         private readonly Catalogue $catalogue,
         private readonly JurisdictionResolver $jurisdictions,
     ) {}
 
+    /**
+     * Every document, sorted and narrowed as the query string asks
+     * (InvoiceHistory): the filters live in the link, so a filtered list
+     * can be bookmarked or sent to a colleague.
+     */
     public function index(Request $request): View
     {
-        $orgId = $request->attributes->get(PortalTenant::ORG_ID);
+        return $this->list($request, 'portal.invoices.index', 'portal.invoices.export', notes: false);
+    }
 
-        if (! $orgId) {
-            return $this->organizationPicker();
-        }
+    /** The credit and debit notes alone, with the same toolkit. */
+    public function notes(Request $request): View
+    {
+        return $this->list($request, 'portal.notes.index', 'portal.notes.export', notes: true);
+    }
 
-        $status = $this->given($request->query('status'));
-        $search = $this->given($request->query('q'));
+    /** Exactly the invoices the list's filters give, as a CSV. */
+    public function export(Request $request): StreamedResponse
+    {
+        return $this->csv($request, 'portal.invoices.index', 'invoices', notes: false);
+    }
 
-        return view('portal.invoices.index', [
-            'organization' => $this->tenant->getOrganization(),
-            'invoices' => $this->invoices
-                ->search($orgId, $status, $search, self::PER_PAGE)
-                ->withQueryString(),
-            'status' => $status,
-            'search' => $search,
-        ]);
+    public function exportNotes(Request $request): StreamedResponse
+    {
+        return $this->csv($request, 'portal.notes.index', 'notes', notes: true);
     }
 
     public function show(Request $request, string $invoiceId): View
@@ -100,16 +106,36 @@ class PortalInvoiceController extends Controller
         ]);
     }
 
-    /**
-     * A query value that was actually given.
-     *
-     * A malformed `?status[]=x` arrives as an array, and passing that to a
-     * where() is a type error rather than an empty result. Anything that is
-     * not a non-empty string narrows nothing.
-     */
-    private function given(mixed $value): ?string
+    private function list(Request $request, string $route, string $export, bool $notes): View
     {
-        return is_string($value) && trim($value) !== '' ? trim($value) : null;
+        $orgId = $request->attributes->get(PortalTenant::ORG_ID);
+
+        if (! $orgId) {
+            return $this->organizationPicker();
+        }
+
+        $organization = $this->tenant->getOrganization() ?? abort(404);
+        $list = $this->lists->portal($this->history->spec($organization, $route, $notes), $request, (string) $orgId, $export);
+
+        return view('portal.invoices.index', [
+            'organization' => $organization,
+            'invoices' => $this->history->page((string) $orgId, $list, $notes),
+            'list' => $list,
+            'notes' => $notes,
+            'documents' => InvoiceHistory::documentLabels(),
+        ]);
+    }
+
+    private function csv(Request $request, string $route, string $name, bool $notes): StreamedResponse
+    {
+        $orgId = $request->attributes->get(PortalTenant::ORG_ID);
+        $organization = is_string($orgId) ? $this->tenant->getOrganization() : null;
+
+        abort_if($organization === null, 404);
+
+        $list = $this->lists->portal($this->history->spec($organization, $route, $notes), $request, $orgId);
+
+        return $this->history->csv($organization, $list, $name.'-'.now()->format('Y-m-d').'.csv', $notes);
     }
 
     /**

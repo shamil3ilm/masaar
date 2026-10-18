@@ -119,11 +119,19 @@ class IssuingLifecycle
                 $invoice->issued_at = now();
             }
 
+            // And by whom: whoever is signed in, or nobody for an
+            // integration or a queue. Only while it is still a draft - an
+            // issued document's columns are frozen.
+            if ($invoice->status === InvoiceStatus::Draft && $invoice->issued_by === null) {
+                $invoice->issued_by = auth()->id();
+            }
+
             $seal = $jurisdiction->seal($invoice, $organization, $context);
 
             $invoice->update([
                 'invoice_number' => $invoice->invoice_number,
                 'issued_at' => $invoice->issued_at,
+                'issued_by' => $invoice->issued_by,
                 ...$seal->columns,
                 'status' => InvoiceStatus::Issued,
             ]);

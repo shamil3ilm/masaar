@@ -31,6 +31,8 @@ use App\Domains\Platform\Http\Middleware\AuditAdminAction;
 use App\Domains\Platform\Http\Middleware\MetricsAccess;
 use App\Domains\Platform\Http\Middleware\RateLimitApi;
 use App\Domains\Platform\Services\PublicSite;
+use App\Domains\Platform\Services\SavedListViews;
+use App\Http\Listing\SavedViewStore;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Routing\Router;
@@ -82,6 +84,10 @@ class AppServiceProvider extends ServiceProvider
 
         // Tenant: Singleton for request-scoped context
         $this->app->singleton(TenantResolver::class);
+
+        // Saved views on the history lists, in their own table until the
+        // layered settings store keeps per-person preferences.
+        $this->app->bind(SavedViewStore::class, SavedListViews::class);
 
         // ZATCA Compliance Services - Singletons for consistency
         $this->app->singleton(TimestampValidator::class);

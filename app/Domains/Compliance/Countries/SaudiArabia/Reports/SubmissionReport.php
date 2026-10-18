@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia\Reports;
 
-use App\Domains\Compliance\Countries\SaudiArabia\DTOs\SubmissionFilterData;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
 use App\Domains\Compliance\Countries\SaudiArabia\Support\FatooraTime;
 use DateTimeInterface;
@@ -164,32 +163,6 @@ class SubmissionReport
                 'status' => $submission->state ?? $submission->reporting_status ?? 'pending',
                 'timestamp' => $submission->updated_at ?? $submission->created_at,
             ]);
-    }
-
-    /**
-     * Submissions with their author and invoice, newest first.
-     *
-     * date_to includes the whole of that day.
-     */
-    public function search(SubmissionFilterData $filter, int $perPage): LengthAwarePaginator
-    {
-        return InvoiceSubmission::query()
-            ->leftJoin('users', 'invoice_submissions.created_by', '=', 'users.id')
-            ->leftJoin('invoices', 'invoice_submissions.invoice_id', '=', 'invoices.id')
-            ->select([
-                'invoice_submissions.*',
-                'users.name as user_name',
-                'users.email as user_email',
-                'invoices.invoice_number',
-                'invoices.total as invoice_total',
-            ])
-            ->when($filter->userId !== null, fn ($q) => $q->where('invoice_submissions.created_by', $filter->userId))
-            ->when($filter->state !== null, fn ($q) => $q->where('invoice_submissions.state', $filter->state))
-            ->when($filter->dateFrom !== null, fn ($q) => $q->where('invoice_submissions.created_at', '>=', $filter->dateFrom))
-            ->when($filter->dateTo !== null, fn ($q) => $q->where('invoice_submissions.created_at', '<=', $filter->dateTo.' 23:59:59'))
-            ->orderByDesc('invoice_submissions.created_at')
-            ->orderByDesc('invoice_submissions.id')
-            ->paginate($perPage);
     }
 
     /**
