@@ -26,7 +26,10 @@ final readonly class CsidResponse
     {
         return new self(
             success: isset($response['binarySecurityToken']) && isset($response['secret']),
-            requestId: $response['requestID'] ?? null,
+            // ZATCA sends requestID as a JSON number, and the property is a
+            // string under strict_types: the certificate was issued and then
+            // lost to a TypeError here.
+            requestId: isset($response['requestID']) ? (string) $response['requestID'] : null,
             binarySecurityToken: $response['binarySecurityToken'] ?? null,
             secret: $response['secret'] ?? null,
             disposition: $response['dispositionMessage'] ?? null,
