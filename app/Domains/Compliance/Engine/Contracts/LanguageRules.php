@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Engine\Contracts;
 
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Organization\Models\Organization;
 
 /**
  * The language a country's invoices have to be written in, beyond the
@@ -50,4 +51,15 @@ interface LanguageRules
      * @return array<string, string>
      */
     public function missingText(Invoice $invoice): array;
+
+    /**
+     * What a draft the platform builds itself, past the request rules - its
+     * own invoice to a customer for a plan - lacks of that text, the
+     * seller's own included. Empty when nothing is required or nothing is
+     * missing.
+     *
+     * @param  array<string, mixed>  $draft  as InvoiceDrafter takes it
+     * @return array<string, string>
+     */
+    public function missingInDraft(array $draft, Organization $seller): array;
 }

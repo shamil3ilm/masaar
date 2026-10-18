@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Rules;
 
 use App\Domains\Compliance\Engine\Contracts\LanguageRules as LanguageRulesPort;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Organization\Models\Organization;
 
 /**
  * A Saudi invoice is in Arabic: ZATCA's E-Invoicing Detailed Guidelines
@@ -31,6 +32,18 @@ class LanguageRules implements LanguageRulesPort
             'string',
             'max:255',
         ];
+    }
+
+    /** The draft's own text, and the seller's Arabic name, which the document carries as its seller. */
+    public function missingInDraft(array $draft, Organization $seller): array
+    {
+        $missing = ArabicText::missing($draft);
+
+        if (! ArabicText::isArabic($seller->name_ar)) {
+            $missing = ['seller.name_ar' => ArabicText::message(__('Arabic seller name required (ZATCA: the invoice must be in Arabic)', [], 'en')), ...$missing];
+        }
+
+        return $missing;
     }
 
     public function missingText(Invoice $invoice): array

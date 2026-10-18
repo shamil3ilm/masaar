@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Rules;
 
 use App\Domains\Compliance\Engine\Contracts\LanguageRules as LanguageRulesPort;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Organization\Models\Organization;
 
 /**
  * A UAE invoice may be in English alone. The Electronic Invoicing
@@ -27,6 +28,11 @@ class LanguageRules implements LanguageRulesPort
     }
 
     public function missingText(Invoice $invoice): array
+    {
+        return [];
+    }
+
+    public function missingInDraft(array $draft, Organization $seller): array
     {
         return [];
     }
