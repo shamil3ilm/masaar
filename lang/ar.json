@@ -1439,5 +1439,12 @@
     "Cheque": "شيك",
     "Online payment service": "خدمة دفع إلكتروني",
     "This device's ZATCA certificate has been revoked, so it cannot sign invoices. Onboard the device again to obtain a new certificate.": "أُلغيت شهادة هيئة الزكاة والضريبة والجمارك لهذا الجهاز، ولذلك لا يمكنه توقيع الفواتير. أعد تسجيل الجهاز للحصول على شهادة جديدة.",
-    "The ZATCA certificate revocation list could not be obtained, and the last one held is more than seven days old or missing. Invoices cannot be signed until it can be checked again.": "تعذّر الحصول على قائمة الشهادات الملغاة الصادرة عن هيئة الزكاة والضريبة والجمارك، وآخر قائمة محفوظة مضى عليها أكثر من سبعة أيام أو غير موجودة. لا يمكن توقيع الفواتير حتى يتسنى التحقق منها مجددًا."
+    "The ZATCA certificate revocation list could not be obtained, and the last one held is more than seven days old or missing. Invoices cannot be signed until it can be checked again.": "تعذّر الحصول على قائمة الشهادات الملغاة الصادرة عن هيئة الزكاة والضريبة والجمارك، وآخر قائمة محفوظة مضى عليها أكثر من سبعة أيام أو غير موجودة. لا يمكن توقيع الفواتير حتى يتسنى التحقق منها مجددًا.",
+    "Published as revoked in the CA's revocation list.": "منشورة بوصفها ملغاة في قائمة الشهادات الملغاة لدى جهة إصدار الشهادات.",
+    "This certificate is already recorded as revoked.": "هذه الشهادة مسجلة بالفعل على أنها ملغاة.",
+    "URGENT: ZATCA certificate revoked - :organization": "عاجل: أُلغيت شهادة هيئة الزكاة والضريبة والجمارك - :organization",
+    "Your ZATCA certificate has been revoked": "أُلغيت شهادتك لدى هيئة الزكاة والضريبة والجمارك",
+    ":organization: certificate version :version (serial :serial) has been revoked. Nothing will be filed with it again.": ":organization: أُلغي الإصدار :version من الشهادة (الرقم التسلسلي :serial)، ولن يُرسل بها أي مستند بعد الآن.",
+    "It was the certificate the device signs with, so the device cannot issue invoices until it is onboarded again.": "كانت هذه هي الشهادة التي يوقّع بها الجهاز، ولذلك لا يستطيع الجهاز إصدار الفواتير حتى يُعاد تسجيله.",
+    "Onboard the device again through ZATCA onboarding": "أعد تسجيل الجهاز عبر خطوات الربط مع هيئة الزكاة والضريبة والجمارك"
 }

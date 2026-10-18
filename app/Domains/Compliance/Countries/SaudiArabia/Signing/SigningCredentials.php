@@ -86,6 +86,10 @@ class SigningCredentials
                     ];
                 }
             }
+
+            // A branch whose own certificate was revoked must not fall back
+            // to head office's and sign as another device.
+            $this->credentials->assertNotRevoked($organizationId, (string) $branch->id);
         }
 
         // The organization's own certificate: used when the invoice names no
@@ -94,6 +98,9 @@ class SigningCredentials
         $organizationCredentials = $this->credentials->get($organizationId, null, CredentialStore::PCSID);
 
         if ($organizationCredentials === null) {
+            // Revoked is its own reason, and not one to sign unsigned past.
+            $this->credentials->assertNotRevoked($organizationId, null);
+
             if ($required) {
                 // Not the path. FatooraException context is returned to the
                 // API caller as well as written to the log, so this disclosed

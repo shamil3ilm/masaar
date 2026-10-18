@@ -257,9 +257,43 @@ class CredentialStore
             if (! empty($branch['pcsid'])) {
                 return $branch;
             }
+
+            $this->assertNotRevoked($organizationId, $branchId);
         }
 
-        return $this->get($organizationId, null, self::PCSID);
+        $organization = $this->get($organizationId, null, self::PCSID);
+
+        if (empty($organization['pcsid'])) {
+            $this->assertNotRevoked($organizationId, null);
+        }
+
+        return $organization;
+    }
+
+    /**
+     * Refuse to sign for a device whose certificate was revoked and that
+     * holds no other.
+     *
+     * Without this a branch whose certificate was revoked fell back to head
+     * office's and signed as another device, and an organization's signed
+     * nothing at all - an unsigned document, said nowhere.
+     *
+     * @throws FatooraException
+     */
+    public function assertNotRevoked(string $organizationId, ?string $branchId): void
+    {
+        $latest = CertificateVersion::withoutTenantScope(fn () => CertificateVersion::query()
+            ->where('device_id', $branchId ?? $organizationId)
+            ->orderByDesc('version')
+            ->first());
+
+        if ($latest?->status === CertificateVersion::REVOKED) {
+            throw new FatooraException(
+                __('This device\'s ZATCA certificate has been revoked, so it cannot sign invoices. Onboard the device again to obtain a new certificate.'),
+                ErrorCode::CERT_REVOKED,
+                ['org_id' => $organizationId, 'branch_id' => $branchId, 'version' => $latest->version],
+            );
+        }
     }
 
     /**

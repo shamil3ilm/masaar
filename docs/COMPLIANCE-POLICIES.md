@@ -363,6 +363,14 @@ Security Features Implementation Standard v1.2, section 2.2.1, requirement 14: "
 | No list named or configured | Stamping continues and the certificate is reported as unverified, in the readiness report and on the certificates page. |
 | Revoked | Stamping is refused with `CERT_REVOKED` before a counter is spent. |
 
+### Detecting Revocation
+
+The CA publishes a revocation in its CRL, and the EGS "reads periodically from CRL to verify which Identifiers are still active" (Security Features Implementation Standard v1.2, section 2.1.3). `fatoora:check-revocation` runs daily and checks every `active` and `superseded` version with the same check as above. A version found revoked is recorded as `revoked`: nothing more is filed with it, and if the device signs with it, the device stops signing. Its organization's administrators are mailed, each in their own language, and the platform's operators are alerted through the alerts channel.
+
+A device whose certificate was revoked refuses to sign with `CERT_REVOKED` and says why. A branch in that state does not fall back to head office's certificate, which would sign as a different device.
+
+A platform admin can mark a version revoked from the console's Certificates page, with a reason, before the CA's list says so. The action is audited and passes through the `RevocationApprovals` hook, which approves at once until an approval policy is bound to it.
+
 ### What ZATCA's Documents Say
 
 - The Security Features Implementation Standard (section 2.1.2) describes renewal through the taxpayer portal: the CA "validates that the existing certificate is not revoked or renewed before then revoke existing certificate", and issues a new one. Section 2.1.3 describes revocation and says the revocation status is published as CRLs and through OCSP. Section 2.2.1, requirement 14, requires the certificate's validity to be checked against those sources before it is used for stamping, and lets a CRL stand for seven days.

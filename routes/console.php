@@ -113,6 +113,16 @@ Schedule::command('fatoora:check-certificate --notify')
     ->withoutOverlapping(60)
     ->appendOutputTo(storage_path('logs/zatca-certificate.log'));
 
+// The CA's revocation lists, for every certificate a device signs or files
+// with: a revoked one is recorded, its organization and the platform told,
+// and its device stops signing (Security Features Implementation Standard
+// v1.2, section 2.1.3). The check before each stamp covers the hours between.
+Schedule::command('fatoora:check-revocation')
+    ->onOneServer()
+    ->dailyAt('07:30')
+    ->withoutOverlapping(60)
+    ->appendOutputTo(storage_path('logs/zatca-certificate.log'));
+
 // Verify hash chain integrity - runs weekly on Sunday at 2 AM
 // A deadline passes in silence. Every other alert here fires from the code
 // path that failed, which covers the failures that happen and not the ones
