@@ -24,9 +24,7 @@
         'debit_note' => ['Debit note', 'إشعار مدين'],
     ];
     [$titleEn, $titleAr] = $titles[$documentType] ?? $titles['invoice'];
-    // Held left to right between marks, so a right-to-left page keeps the
-    // figure before its currency.
-    $money = fn ($amount): string => "\u{200E}".number_format((float) ($amount ?? 0), 2).' '.$invoice->currency."\u{200E}";
+    $money = fn ($amount): string => number_format((float) ($amount ?? 0), 2).' '.$invoice->currency;
     // The time the XML's IssueTime and the QR carry, on the Kingdom's clock.
     $issueTime = $invoice->created_at
         ? \App\Domains\Compliance\Countries\SaudiArabia\Support\FatooraTime::toSaudiTime($invoice->issuedMoment())->format('H:i:s')
@@ -78,7 +76,9 @@
     table.items { width: 100%; border-collapse: collapse; margin-top: 12pt; }
     table.items th { background: #f3f4f6; border-bottom: 1px solid #9ca3af; padding: 5pt 4pt; font-size: 7.5pt; text-align: {{ $start }}; }
     table.items td { border-bottom: 1px solid #e5e7eb; padding: 5pt 4pt; vertical-align: top; }
-    .num { text-align: {{ $end }}; white-space: nowrap; }
+    /* Left to right whatever the page's direction, so a right-to-left
+       page keeps the figure before its currency. */
+    .num { direction: ltr; text-align: {{ $end }}; white-space: nowrap; }
     table.totals { width: 55%; border-collapse: collapse; margin-top: 10pt; }
     table.totals td { padding: 3pt 4pt; }
     .grand td { border-top: 1px solid #111827; font-weight: bold; }
