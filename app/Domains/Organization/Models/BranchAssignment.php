@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Domains\Organization\Models;
 
 use App\Domains\Organization\Concerns\BelongsToTenant;
+use App\Domains\Organization\Concerns\RecordsActors;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * One person at one branch, and what they may do there: issue (member) or
@@ -14,7 +16,8 @@ use Illuminate\Database\Eloquent\Model;
  *
  * Someone with no assignment works across the whole organization, as
  * everyone did before branches could be assigned; someone with one or more
- * works at those branches alone.
+ * works at those branches alone. Taking someone off soft-deletes the row,
+ * and putting them back restores it.
  *
  * @property string $id
  * @property string $org_id
@@ -26,6 +29,8 @@ class BranchAssignment extends Model
 {
     use BelongsToTenant;
     use HasUuids;
+    use RecordsActors;
+    use SoftDeletes;
 
     protected $table = 'branch_user';
 

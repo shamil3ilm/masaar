@@ -182,15 +182,23 @@ class BranchAccess
 
         BranchAssignment::withoutTenantScope(function () use ($organizationId, $branchId, $userId, $role): void {
             if ($role === null) {
-                BranchAssignment::query()->where('org_id', $organizationId)->where('branch_id', $branchId)->where('user_id', $userId)->delete();
+                // Through the model, so who took them off is kept.
+                BranchAssignment::query()->where('org_id', $organizationId)->where('branch_id', $branchId)->where('user_id', $userId)->first()?->delete();
 
                 return;
             }
 
-            BranchAssignment::query()->updateOrCreate(
-                ['org_id' => $organizationId, 'branch_id' => $branchId, 'user_id' => $userId],
-                ['role' => $role],
-            );
+            // Someone taken off and put back gets their row again.
+            $assignment = BranchAssignment::withTrashed()
+                ->where('org_id', $organizationId)
+                ->where('branch_id', $branchId)
+                ->where('user_id', $userId)
+                ->first()
+                ?? new BranchAssignment(['org_id' => $organizationId, 'branch_id' => $branchId, 'user_id' => $userId]);
+
+            $assignment->role = $role;
+            $assignment->deleted_at = null;
+            $assignment->save();
         });
 
         $this->audit->logSecurity('member.branch_assigned', 'Branch', $branchId, [

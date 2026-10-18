@@ -83,7 +83,21 @@ class SavedListViewTest extends TestCase
 
         $this->posting($this->member, fn () => $this->post('/portal/views/'.$view->id.'/delete'))->assertRedirect();
 
-        $this->assertDatabaseMissing('saved_list_views', ['id' => $view->id]);
+        $this->assertSoftDeleted('saved_list_views', ['id' => $view->id, 'created_by' => $this->member->id, 'deleted_by' => $this->member->id]);
+        $this->as($this->member, fn () => $this->get('/portal/invoices'))->assertDontSee('Old');
+    }
+
+    /** A deleted view's name can be saved again: the row comes back. */
+    public function test_a_deleted_name_is_saved_again(): void
+    {
+        $this->save($this->member, 'Old');
+        $view = SavedListView::query()->firstOrFail();
+        $this->posting($this->member, fn () => $this->post('/portal/views/'.$view->id.'/delete'));
+
+        $this->save($this->member, 'Old')->assertSessionHas('success');
+
+        $this->assertNotSoftDeleted('saved_list_views', ['id' => $view->id]);
+        $this->assertDatabaseCount('saved_list_views', 1);
     }
 
     public function test_a_viewer_keeps_views_too(): void

@@ -85,13 +85,18 @@ class BranchScreensTest extends TestCase
         $this->send($this->owner, '/portal/branches/'.$branch->id.'/people', ['people' => [$cashier->id => 'member', $auditor->id => 'viewer']])
             ->assertRedirect();
 
-        $this->assertDatabaseHas('branch_user', ['branch_id' => $branch->id, 'user_id' => $cashier->id, 'role' => 'member']);
+        $this->assertDatabaseHas('branch_user', ['branch_id' => $branch->id, 'user_id' => $cashier->id, 'role' => 'member', 'created_by' => $this->owner->id]);
         $this->assertDatabaseHas('branch_user', ['branch_id' => $branch->id, 'user_id' => $auditor->id, 'role' => 'viewer']);
         $this->assertDatabaseHas('audit_logs', ['action' => 'security.member.branch_assigned', 'entity_id' => $branch->id]);
 
         $this->send($this->owner, '/portal/branches/'.$branch->id.'/people', ['people' => [$cashier->id => '']]);
 
-        $this->assertDatabaseMissing('branch_user', ['branch_id' => $branch->id, 'user_id' => $cashier->id]);
+        $this->assertSoftDeleted('branch_user', ['branch_id' => $branch->id, 'user_id' => $cashier->id, 'deleted_by' => $this->owner->id]);
+
+        // Put back: the same row returns, and the unique pair holds.
+        $this->send($this->owner, '/portal/branches/'.$branch->id.'/people', ['people' => [$cashier->id => 'viewer']]);
+
+        $this->assertNotSoftDeleted('branch_user', ['branch_id' => $branch->id, 'user_id' => $cashier->id, 'role' => 'viewer', 'deleted_by' => null]);
     }
 
     public function test_another_organizations_branch_is_not_found(): void

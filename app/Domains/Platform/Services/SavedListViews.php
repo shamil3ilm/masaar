@@ -35,14 +35,16 @@ class SavedListViews implements SavedViewStore
 
     public function save(string $userId, string $scope, string $list, string $name, string $query): SavedView
     {
-        $existing = SavedListView::query()
+        // A deleted view of the same name comes back rather than colliding
+        // with the unique name.
+        $existing = SavedListView::withTrashed()
             ->where('user_id', $userId)
             ->where('scope', $scope)
             ->where('list', $list)
             ->where('name', $name)
             ->first();
 
-        if ($existing === null && SavedListView::query()->where('user_id', $userId)->where('scope', $scope)->where('list', $list)->count() >= self::LIMIT) {
+        if (($existing === null || $existing->trashed()) && SavedListView::query()->where('user_id', $userId)->where('scope', $scope)->where('list', $list)->count() >= self::LIMIT) {
             throw new DomainException(__('You already keep :count views on this list. Delete one to save another.', ['count' => self::LIMIT]));
         }
 
@@ -55,6 +57,7 @@ class SavedListViews implements SavedViewStore
         ]);
 
         $view->query = $query;
+        $view->deleted_at = null;
         $view->save();
 
         return new SavedView((string) $view->id, $name, $query);
@@ -62,10 +65,13 @@ class SavedListViews implements SavedViewStore
 
     public function delete(string $userId, string $scope, string $id): bool
     {
-        return SavedListView::query()
+        // Through the model, so who removed it is kept (RecordsActors).
+        $view = SavedListView::query()
             ->whereKey($id)
             ->where('user_id', $userId)
             ->where('scope', $scope)
-            ->delete() > 0;
+            ->first();
+
+        return $view !== null && $view->delete();
     }
 }
