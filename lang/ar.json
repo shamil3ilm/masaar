@@ -1275,7 +1275,6 @@
     "An export is invoiced on a standard tax invoice, not a simplified one (BR-KSA-31).": "يُفوتر التصدير بفاتورة ضريبية قياسية لا بفاتورة مبسطة (BR-KSA-31).",
     "A simplified summary invoice names its buyer (BR-KSA-71).": "يجب أن تتضمن الفاتورة المبسطة المجمّعة اسم المشتري (BR-KSA-71).",
     "A simplified summary invoice states the period it covers: a supply date and a supply end date (BR-KSA-72).": "يجب أن تحدد الفاتورة المبسطة المجمّعة الفترة التي تغطيها: تاريخ التوريد وتاريخ انتهاء التوريد (BR-KSA-72).",
-    "Line :line: an export invoice zero-rates its lines as an export of goods (VATEX-SA-32) or of services (VATEX-SA-33).": "السطر :line: تخضع بنود فاتورة التصدير لنسبة الصفر بوصفها تصديراً للسلع (VATEX-SA-32) أو للخدمات (VATEX-SA-33).",
     "Nominal supply": "توريد اعتباري",
     "Third party": "طرف ثالث",
     "Self-billed": "فوترة ذاتية",
@@ -1427,5 +1426,6 @@
     "I notified ZATCA of the delay (one invoice)|I notified ZATCA of the delay (:count invoices)": "أبلغت الهيئة بالتأخير (فاتورة واحدة)|أبلغت الهيئة بالتأخير (:count فواتير)",
     "I notified ZATCA again (one invoice)|I notified ZATCA again (:count invoices)": "أبلغت الهيئة مرة أخرى (فاتورة واحدة)|أبلغت الهيئة مرة أخرى (:count فواتير)",
     "Recorded that ZATCA was notified again, for one invoice.|Recorded that ZATCA was notified again, for :count invoices.": "سُجّل أن الهيئة أُبلغت مرة أخرى، لفاتورة واحدة.|سُجّل أن الهيئة أُبلغت مرة أخرى، لـ :count فواتير.",
-    "Recorded that ZATCA was notified of the delay, for one invoice.|Recorded that ZATCA was notified of the delay, for :count invoices.": "سُجّل أن الهيئة أُبلغت بالتأخير، لفاتورة واحدة.|سُجّل أن الهيئة أُبلغت بالتأخير، لـ :count فواتير."
+    "Recorded that ZATCA was notified of the delay, for one invoice.|Recorded that ZATCA was notified of the delay, for :count invoices.": "سُجّل أن الهيئة أُبلغت بالتأخير، لفاتورة واحدة.|سُجّل أن الهيئة أُبلغت بالتأخير، لـ :count فواتير.",
+    "An export invoice names no buyer VAT number (BR-KSA-46). Identify a buyer abroad by another identifier (buyer_id), such as OTH.": "لا تتضمن فاتورة التصدير الرقم الضريبي للمشتري (BR-KSA-46). عرّف المشتري في الخارج بمعرّف آخر (buyer_id)، مثل OTH."
 }

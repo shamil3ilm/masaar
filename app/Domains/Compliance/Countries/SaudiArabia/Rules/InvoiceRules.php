@@ -61,13 +61,6 @@ class InvoiceRules implements InvoiceRulesPort
      */
     public const TRANSACTION_FLAGS = ['is_third_party', 'is_nominal', 'is_export', 'is_summary', 'is_self_billed'];
 
-    /**
-     * BT-121 on an export: VAT Implementing Regulations Articles 32 and 33
-     * zero-rate the export of goods and of services, and ZATCA's own export
-     * sample carries VATEX-SA-32.
-     */
-    private const EXPORT_EXEMPTIONS = ['VATEX-SA-32', 'VATEX-SA-33'];
-
     public function __construct(
         private readonly TenantResolver $tenant,
         private readonly PrepaymentSettlement $settlement,
@@ -607,19 +600,32 @@ class InvoiceRules implements InvoiceRulesPort
     }
 
     /**
-     * The transaction types ZATCA refuses together, read from the Schematron
-     * in its SDK (20210819_ZATCA_E-invoice_Validation_Rules.xsl):
+     * The transaction types ZATCA refuses together, from the Schematron in
+     * its SDK (20210819_ZATCA_E-invoice_Validation_Rules.xsl) and its XML
+     * Implementation Standard (v1.2, May 2023):
      *
      *   BR-KSA-07  an export is not self-billed.
-     *   BR-KSA-31  a simplified invoice is neither self-billed nor, as the
-     *              rule's stated test has it, an export: an export goes to a
-     *              business abroad on a tax invoice, as ZATCA's sample does.
+     *   BR-KSA-31  a simplified invoice is not self-billed, and not an
+     *              export. The rule's compiled test checks only position 7,
+     *              so the SDK passes a simplified export; but its stated
+     *              test, the assertion the SDK reports, requires position 5
+     *              to be 0, and the Standard (p55) accepts only third party,
+     *              nominal and summary on a simplified invoice. The written
+     *              rule is the authority and the compiled one a defect, so a
+     *              simplified export stays refused: an export is invoiced on
+     *              a tax invoice, as ZATCA's export sample is.
+     *   BR-KSA-46  an export names no buyer VAT number (BT-48) - the
+     *              Standard's rule (p57), which the SDK does not yet compile.
      *   BR-KSA-71  a simplified summary invoice names its buyer, and
      *   BR-KSA-72  states the period it summarises.
      *
-     * And one from the VAT law the flag stands for: an export is zero-rated
-     * as one, so each line carries VATEX-SA-32 or VATEX-SA-33. A flag that
-     * says export over a line taxed at 15% declares two things at once.
+     * Nothing ties an export's lines to particular tax categories or
+     * exemption codes: the SDK accepts Z with any zero-rating code -
+     * VATEX-SA-32 and 33 for exports of goods and services, 34-1 to 34-5 for
+     * international transport, 35, 36 and the rest - and E, O and S lines
+     * too, each checked as on any invoice (BR-KSA-18, BR-KSA-CL-04,
+     * BR-KSA-23, BR-KSA-24, BR-KSA-69). So the line rules apply as they do
+     * everywhere, and an export is refused only for what ZATCA refuses.
      */
     private function transactionFlags(Validator $validator, Request $request): void
     {
@@ -648,12 +654,8 @@ class InvoiceRules implements InvoiceRulesPort
             }
         }
 
-        if ($request->boolean('is_export')) {
-            foreach ((array) $request->input('lines', []) as $index => $line) {
-                if (! in_array(is_array($line) ? ($line['exempt_code'] ?? null) : null, self::EXPORT_EXEMPTIONS, true)) {
-                    $errors->add("lines.{$index}.exempt_code", __('Line :line: an export invoice zero-rates its lines as an export of goods (VATEX-SA-32) or of services (VATEX-SA-33).', ['line' => $index + 1]));
-                }
-            }
+        if ($request->boolean('is_export') && $request->filled('buyer_vat_number')) {
+            $errors->add('buyer_vat_number', __('An export invoice names no buyer VAT number (BR-KSA-46). Identify a buyer abroad by another identifier (buyer_id), such as OTH.'));
         }
     }
 

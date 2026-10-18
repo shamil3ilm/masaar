@@ -113,18 +113,25 @@ class TransactionFlagTest extends TestCase
     }
 
     /**
-     * An export flag over a line taxed at 15% says two things at once.
+     * ZATCA ties no tax category or exemption code to an export: its SDK
+     * accepts international transport (VATEX-SA-34-1 to 34-5) and standard,
+     * exempt and out-of-scope lines beside the exported ones. Only what ZATCA
+     * refuses is refused.
      */
-    public function test_an_export_line_is_zero_rated(): void
+    public function test_an_export_takes_what_zatca_takes(): void
     {
-        $response = $this->api($this->export(['lines' => [
-            ['description' => 'Printing equipment', 'quantity' => 1, 'unit_price' => 15000],
-        ]]))->assertStatus(422);
+        $this->api($this->export(['invoice_number' => 'EXP-T', 'lines' => [
+            ['description' => 'Freight to Houston', 'quantity' => 1, 'unit_price' => 900, 'tax_category' => 'Z', 'tax_rate' => 0, 'exempt_code' => 'VATEX-SA-34-1', 'exempt_reason' => 'International transport of goods'],
+            ['description' => 'Handling in Dammam', 'quantity' => 1, 'unit_price' => 100],
+        ]]))->assertCreated();
+    }
 
-        $this->assertSame(
-            ['Line 1: an export invoice zero-rates its lines as an export of goods (VATEX-SA-32) or of services (VATEX-SA-33).'],
-            $response->json('error.details')['lines.0.exempt_code'] ?? null,
-        );
+    /** BR-KSA-46 (XML Implementation Standard, p57): no buyer VAT number on an export. */
+    public function test_an_export_names_no_buyer_vat(): void
+    {
+        $this->api($this->export(['buyer_vat_number' => '399999999800003']))
+            ->assertStatus(422)
+            ->assertJsonPath('error.details.buyer_vat_number.0', 'An export invoice names no buyer VAT number (BR-KSA-46). Identify a buyer abroad by another identifier (buyer_id), such as OTH.');
 
         $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
     }

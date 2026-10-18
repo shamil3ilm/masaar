@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Compliance\SaudiArabia;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Compliance\Countries\SaudiArabia\Document\DocumentBuilder;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\Submitter;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Invoice\Models\Invoice;
@@ -80,6 +81,15 @@ class ScenarioConformanceTest extends TestCase
     {
         yield 'export of goods' => [self::export('VATEX-SA-32'), '0100100'];
         yield 'export of services' => [self::export('VATEX-SA-33'), '0100100'];
+        // International transport, zero-rated by VAT Implementing Regulations
+        // Article 34 (VATEX-SA-34-1), and an export mixing an exported good,
+        // the freight and a standard-rated service in the Kingdom: ZATCA
+        // ties no category or code to an export.
+        yield 'export with international transport' => [self::export('VATEX-SA-34-1'), '0100100'];
+        yield 'mixed export' => [self::export('VATEX-SA-32', [
+            ['description' => 'Freight to Houston', 'quantity' => 1, 'unit_price' => '900.00', 'tax_category' => 'Z', 'tax_rate' => 0, 'exempt_code' => 'VATEX-SA-34-1', 'exempt_reason' => 'International transport of goods'],
+            ['description' => 'Handling in Dammam', 'quantity' => 1, 'unit_price' => '100.00'],
+        ]), '0100100'];
         yield 'third party' => [self::standard(['is_third_party' => true]), '0110000'];
         yield 'nominal' => [self::simplified(['is_nominal' => true]), '0201000'];
         yield 'summary' => [self::standard(['is_summary' => true]), '0100010'];
@@ -96,6 +106,33 @@ class ScenarioConformanceTest extends TestCase
 
         $this->assertStringContainsString('<cbc:InvoiceTypeCode name="'.$typeName.'">', $xml);
         $this->assertAccepted($xml);
+    }
+
+    /**
+     * What ZATCA refuses on an export, refused here with its rule, and the
+     * same document built anyway and put to ZATCA's validator: BR-KSA-07, an
+     * export cannot be self-billed.
+     */
+    public function test_a_self_billed_export_is_refused(): void
+    {
+        $this->requireSdk();
+        $token = $this->token();
+
+        $this->withToken($token)->postJson('/api/invoices', [
+            'invoice_number' => 'SCENARIO-REFUSED', 'issue_date' => now()->toDateString(), 'supply_date' => now()->toDateString(),
+            ...self::export('VATEX-SA-32'), 'is_self_billed' => true,
+        ])->assertStatus(422)->assertJsonPath('error.details.is_self_billed.0', 'An export invoice cannot be self-billed (BR-KSA-07).');
+
+        $id = $this->withToken($token)->postJson('/api/invoices', [
+            'invoice_number' => 'SCENARIO-FORCED', 'issue_date' => now()->toDateString(), 'supply_date' => now()->toDateString(),
+            ...self::export('VATEX-SA-32'),
+        ])->assertCreated()->json('data.invoice.id');
+        $invoice = Invoice::withoutTenantScope(fn () => Invoice::with('lines')->findOrFail($id));
+        $invoice->forceFill(['is_self_billed' => true])->saveQuietly();
+
+        $xml = app(DocumentBuilder::class)->generateComplianceData($invoice->fresh('lines'), $this->organization)['xml'];
+
+        $this->assertContains('BR-KSA-07', array_map(fn (string $error): string => explode(':', $error)[0], $this->validate($xml)['errors']));
     }
 
     /**
@@ -373,6 +410,14 @@ class ScenarioConformanceTest extends TestCase
         return $signed;
     }
 
+    private function token(): string
+    {
+        $user = User::factory()->create();
+        $user->organizations()->attach($this->organization->id, ['role' => 'admin', 'status' => 'active']);
+
+        return JWTAuth::claims(['org_id' => $this->organization->id, 'role' => 'admin'])->fromUser($user);
+    }
+
     /**
      * No business rule broken and no advisory, the four signature and chain
      * checks a self-signed key cannot pass aside (see ZatcaConformanceTest).
@@ -395,7 +440,7 @@ class ScenarioConformanceTest extends TestCase
      *
      * @return array<string, mixed>
      */
-    private static function export(string $exemption): array
+    private static function export(string $exemption, array $more = []): array
     {
         return self::standard([
             'is_export' => true,
@@ -414,8 +459,12 @@ class ScenarioConformanceTest extends TestCase
                 'quantity' => 1,
                 'unit_price' => '15000.00',
                 'exempt_code' => $exemption,
-                'exempt_reason' => $exemption === 'VATEX-SA-32' ? 'Export of goods' : 'Export of services',
-            ]],
+                'exempt_reason' => match ($exemption) {
+                    'VATEX-SA-32' => 'Export of goods',
+                    'VATEX-SA-33' => 'Export of services',
+                    default => 'International transport of goods',
+                },
+            ], ...$more],
         ]);
     }
 
