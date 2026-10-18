@@ -102,6 +102,19 @@ class PrintedChargesTest extends TestCase
     }
 
     /**
+     * The invoice page names the lines' total a subtotal when a charge is
+     * added to it, and gives the taxable amount (BT-109) after the charge -
+     * it labelled the subtotal taxable.
+     */
+    public function test_the_page_states_the_taxable_amount(): void
+    {
+        $this->actingAs($this->member)->withSession(['portal_org_id' => $this->organization->id])
+            ->get(route('portal.invoices.show', $this->invoice->id))
+            ->assertOk()
+            ->assertSeeInOrder(['Subtotal', '185.00', 'Delivery', '25.00', 'Taxable amount', '210.00', 'VAT', '31.50']);
+    }
+
+    /**
      * On a roll the receipt's amount due is the QR's total, in the Receipt
      * every roll draws and in the printer image made from it.
      */

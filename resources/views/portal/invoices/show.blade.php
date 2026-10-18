@@ -153,10 +153,19 @@
                 discount or mixed categories.
             --}}
             <div class="border-t border-line bg-sunken px-6 py-4">
+                {{-- The lines' total is the taxable amount (BT-109) only when
+                     nothing is taken off or added on; otherwise it is the
+                     subtotal, and the taxable amount follows the discount and
+                     the charges. It was labelled taxable either way. --}}
+                @php($adjusted = (float) $invoice->discount_amount > 0 || $invoice->charges->isNotEmpty())
                 <dl class="ms-auto max-w-xs space-y-1 text-sm">
                     <div class="flex justify-between">
                         <dt class="text-muted">
-                            <x-caption en="Taxable amount" ar="الإجمالي (باستثناء ضريبة القيمة المضافة)" />
+                            @if ($adjusted)
+                                <x-caption en="Subtotal" ar="المجموع" />
+                            @else
+                                <x-caption en="Taxable amount" ar="الإجمالي (باستثناء ضريبة القيمة المضافة)" />
+                            @endif
                         </dt>
                         <dd class="tabular-nums">@include('portal.partials.money', ['amount' => $invoice->subtotal, 'currency' => $invoice->currency])</dd>
                     </div>
@@ -173,6 +182,14 @@
                             <dd class="tabular-nums">@include('portal.partials.money', ['amount' => $charge->net_amount, 'currency' => $invoice->currency])</dd>
                         </div>
                     @endforeach
+                    @if ($adjusted)
+                        <div class="flex justify-between">
+                            <dt class="text-muted">
+                                <x-caption en="Taxable amount" ar="الإجمالي (باستثناء ضريبة القيمة المضافة)" />
+                            </dt>
+                            <dd class="tabular-nums">@include('portal.partials.money', ['amount' => \App\Domains\Invoice\Support\PrintedAmounts::taxableAmount($invoice), 'currency' => $invoice->currency])</dd>
+                        </div>
+                    @endif
                     <div class="flex justify-between">
                         <dt class="text-muted">
                             <x-caption en="VAT" ar="مجموع ضريبة القيمة المضافة" />
