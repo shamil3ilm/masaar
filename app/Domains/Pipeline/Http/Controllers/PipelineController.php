@@ -90,6 +90,8 @@ class PipelineController extends Controller
             return $refusal;
         }
 
+        $this->pipelineService->assertMayBatch($organizationId);
+
         $results = [];
 
         // The bodies as sent: validated() holds only the fields the envelope

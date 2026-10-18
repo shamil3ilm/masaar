@@ -599,7 +599,8 @@ class License extends Model
         // loaded before the transaction, so a concurrent change made the
         // old_values of this entry describe a transition that never happened.
         $this->changeWithAudit(
-            ['tier' => $newTier, ...$newTier->getDefaults()],
+            // A customer's own allowances are its own, whatever its tier.
+            ['tier' => $newTier, ...array_diff_key($newTier->getDefaults(), LicenseTier::allowances())],
             'tier_changed',
             $actorId,
             old: fn (self $locked): array => ['tier' => $locked->tier->value],

@@ -15,6 +15,17 @@ return [
     // when a platform admin approves it - to onboard with ZATCA and issue.
     'filing_requires_licence' => (bool) env('LICENSING_FILING_REQUIRES_LICENCE', true),
 
+    /*
+    | A customer's allowances unless a platform admin sets its own: invoices a
+    | month and API calls a day per licence. -1 is unlimited, the platform's
+    | default for now. The per-minute call cap and the per-device submission
+    | caps are technical safety limits and are not allowances.
+    */
+    'allowances' => [
+        'invoices_per_month' => (int) env('LICENSING_MONTHLY_INVOICES', -1),
+        'calls_per_day' => (int) env('LICENSING_DAILY_API_CALLS', -1),
+    ],
+
     'cache' => [
         'ttl_seconds' => env('LICENSE_CACHE_TTL', 300), // 5 minutes
         'prefix' => 'license:',
@@ -42,7 +53,9 @@ return [
     */
     'notifications' => [
         'expiry_warning_days' => [30, 14, 7, 3, 1],
-        'quota_warning_percent' => [75, 90, 100],
+        // An allowance that is set warns the customer's administrators as it
+        // is approached and reached (AllowanceWarnings), once each a period.
+        'quota_warning_percent' => [80, 100],
         'rate_limit_notify' => true,
     ],
 ];

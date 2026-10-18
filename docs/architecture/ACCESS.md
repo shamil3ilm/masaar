@@ -73,6 +73,7 @@ call (`license.quota`), not a switch.
 | PDF and email | `pdf_and_email` | | | member | |
 | API access | `api_access` | | licence key | | |
 | ERP pipeline | `erp_pipeline` | | licence key with `invoice.submit` | | off |
+| Batch submission | `batch_submission` | | licence key | | off |
 | Webhooks | `webhooks` | | `webhook_notifications` | admin | on |
 | Offline mode | `offline_mode` | | `offline_mode` | | |
 
@@ -108,6 +109,9 @@ or `on`), the reason and who set it. Having no row means the default.
     the API and billing are all covered.
   - The ERP pipeline: `PipelineService` calls the same method before
     anything is drafted.
+  - Batch submission: `PipelineService::assertMayBatch()`, before the
+    batch's first invoice. No plan restricts batching while allowances are
+    unlimited; it is each customer's unless switched off.
 
   On the API, the refusal is `403 AUTH_014` (`AUTH_FEATURE_SWITCHED_OFF`).
 - **On** lifts the plan's feature list, and nothing else. A kill switch, the

@@ -19,6 +19,10 @@ use Illuminate\Support\Str;
  */
 class UsageMeteringService
 {
+    public function __construct(
+        private readonly AllowanceWarnings $warnings,
+    ) {}
+
     /**
      * Record the outcome of a submission against the tenant's licence.
      *
@@ -169,6 +173,13 @@ class UsageMeteringService
             $limits['per_day'],
             86400
         );
+
+        // The day's calls against the customer's allowance, when it has one.
+        if (! $license->isUnlimited('calls_per_day')) {
+            $this->warnings->check($license, 'calls_per_day', (int) DB::table('license_rate_limits')
+                ->where(['license_id' => $license->id, 'window_type' => 'day', 'window_key' => now()->format('Y-m-d')])
+                ->value('request_count'));
+        }
     }
 
     /**
@@ -215,6 +226,10 @@ class UsageMeteringService
             }
 
             $this->dailyUsage($license, now()->startOfDay(), $month)->increment('invoices_submitted');
+
+            // Once the slot is the customer's for certain: warned of an
+            // allowance it is near or at, never refused for an unlimited one.
+            DB::afterCommit(fn () => $this->warnings->check($license, 'invoices_per_month', (int) $monthlyCount + 1));
         });
     }
 

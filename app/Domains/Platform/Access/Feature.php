@@ -30,6 +30,7 @@ enum Feature: string
     case PdfAndEmail = 'pdf_and_email';
     case ApiAccess = 'api_access';
     case ErpPipeline = 'erp_pipeline';
+    case BatchSubmission = 'batch_submission';
     case Webhooks = 'webhooks';
     case OfflineMode = 'offline_mode';
 
@@ -46,6 +47,7 @@ enum Feature: string
             self::PdfAndEmail => __('PDF and email'),
             self::ApiAccess => __('API access'),
             self::ErpPipeline => __('ERP pipeline'),
+            self::BatchSubmission => __('Batch submission'),
             self::Webhooks => __('Webhooks'),
             self::OfflineMode => __('Offline mode'),
         };
@@ -96,7 +98,7 @@ enum Feature: string
     /** Only reachable with a licence key: the partner API. */
     public function needsLicenceKey(): bool
     {
-        return $this === self::ApiAccess || $this === self::ErpPipeline;
+        return in_array($this, [self::ApiAccess, self::ErpPipeline, self::BatchSubmission], true);
     }
 
     /**
@@ -110,18 +112,22 @@ enum Feature: string
             self::CreditNotes, self::DebitNotes, self::FileWithAuthority, self::PdfAndEmail => 'member',
             self::Webhooks => 'admin',
             self::ReceiveInvoices => 'viewer',
-            self::ApiAccess, self::ErpPipeline, self::OfflineMode => null,
+            self::ApiAccess, self::ErpPipeline, self::BatchSubmission, self::OfflineMode => null,
         };
     }
 
     /**
      * A platform admin may switch it off for one organization. Only where
      * every path that uses it honours the switch: issuing (each country's
-     * issuing step) and the ERP pipeline (PipelineService).
+     * issuing step), the ERP pipeline (PipelineService) and batch submission
+     * (PipelineController::batch).
+     *
+     * Batch submission is the customer's unless switched off: no plan
+     * restricts it while allowances are unlimited.
      */
     public function canSwitchOff(): bool
     {
-        return $this->issues() || $this === self::ErpPipeline;
+        return $this->issues() || $this === self::ErpPipeline || $this === self::BatchSubmission;
     }
 
     /**

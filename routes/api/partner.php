@@ -77,9 +77,11 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
     // Many invoices, each its own submission. Each invoice's document is
     // licensed as it is processed, not on the route: the batch has no single
     // document to read, and one invoice the licence does not cover is that
-    // invoice's refusal, not the batch's.
+    // invoice's refusal, not the batch's. Batching itself is every
+    // customer's unless a platform admin switches it off for one
+    // (Feature::BatchSubmission); no plan restricts it.
     Route::post('/pipeline/batch', [PipelineController::class, 'batch'])
-        ->middleware(['scope:invoice.submit', 'license.feature:batch_processing', 'license.quota']);
+        ->middleware(['scope:invoice.submit', 'license.quota']);
 
     Route::get('/pipeline/status/{invoiceId}', [PipelineController::class, 'status'])
         ->middleware(['scope:compliance.status']);

@@ -7,6 +7,9 @@ namespace Tests\Feature\Pipeline;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Licensing\Models\License;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Platform\Access\Feature;
+use App\Domains\Platform\Access\FeatureOverrides;
+use App\Domains\Platform\Models\FeatureOverride;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
@@ -43,7 +46,7 @@ class PipelineBatchTest extends TestCase
             'postal_code' => '12345',
         ]);
 
-        $this->licence(['simplified_invoices', 'batch_processing']);
+        $this->licence(['simplified_invoices']);
     }
 
     public function test_each_item_stands_alone(): void
@@ -116,13 +119,21 @@ class PipelineBatchTest extends TestCase
             ->assertJsonValidationErrors(['invoices.1.idempotency_key'], 'error.details');
     }
 
-    public function test_batching_is_a_licence_feature(): void
+    /**
+     * No plan restricts batching while allowances are unlimited: a starter
+     * licence without the old tier-only feature batches. A platform admin
+     * can switch it off for one customer.
+     */
+    public function test_batching_is_each_customers_switch(): void
     {
         License::withoutGlobalScopes()->update(['features' => ['simplified_invoices']]);
 
-        $this->batch([$this->item('INV-1')])->assertStatus(403);
+        $this->batch([$this->item('INV-1')])->assertCreated();
 
-        $this->assertSame(0, $this->invoices());
+        app(FeatureOverrides::class)->set((string) $this->acme->id, Feature::BatchSubmission, FeatureOverride::OFF, 'Paused while the integration is fixed', null);
+
+        $this->batch([$this->item('INV-2')])->assertForbidden();
+        $this->assertSame(1, $this->invoices());
     }
 
     public function test_another_organization_is_refused(): void

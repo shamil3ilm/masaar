@@ -8,6 +8,7 @@ use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Licensing\Exceptions\LicenceStateException;
 use App\Domains\Licensing\Exceptions\LicenseException;
+use App\Domains\Licensing\Models\License;
 use App\Domains\Licensing\Services\LicenseManagementService;
 use App\Domains\Organization\Rules\VatNumber;
 use App\Http\Controllers\Controller;
@@ -162,6 +163,28 @@ class AdminLicenceController extends Controller
         return $this->attempt(
             fn () => $this->licences->suspendLicense($licenceId, $reason),
             'Licence suspended. The partner can no longer call the API.',
+            $licenceId,
+        );
+    }
+
+    /**
+     * The customer's own allowances: invoices a month and API calls a day.
+     * Empty is the platform's default, unlimited for now.
+     */
+    public function allowances(Request $request, string $licenceId): RedirectResponse
+    {
+        $validated = $request->validate([
+            'invoices_per_month' => ['nullable', 'integer', 'min:1', 'max:'.(License::UNLIMITED - 1)],
+            'calls_per_day' => ['nullable', 'integer', 'min:1', 'max:'.(License::UNLIMITED - 1)],
+        ]);
+        $defaults = LicenseTier::allowances();
+
+        return $this->attempt(
+            fn () => $this->licences->updateLimits($licenceId, [
+                'invoices_per_month' => $validated['invoices_per_month'] ?? $defaults['invoices_per_month'],
+                'calls_per_day' => $validated['calls_per_day'] ?? $defaults['calls_per_day'],
+            ]),
+            'Allowances saved.',
             $licenceId,
         );
     }

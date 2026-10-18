@@ -274,6 +274,7 @@ Route::prefix('admin')->name('admin.')
         Route::get('/licences/create', [AdminLicenceController::class, 'create'])->middleware('admin.can:licences.manage')->name('licences.create');
         Route::post('/licences', [AdminLicenceController::class, 'store'])->middleware('admin.can:licences.manage')->name('licences.store');
         Route::get('/licences/{licenceId}', [AdminLicenceController::class, 'show'])->name('licences.show');
+        Route::post('/licences/{licenceId}/allowances', [AdminLicenceController::class, 'allowances'])->middleware('admin.can:licences.manage')->name('licences.allowances');
         Route::post('/licences/{licenceId}/suspend', [AdminLicenceController::class, 'suspend'])->middleware('admin.can:licences.manage')->name('licences.suspend');
         Route::post('/licences/{licenceId}/reactivate', [AdminLicenceController::class, 'reactivate'])->middleware('admin.can:licences.manage')->name('licences.reactivate');
         Route::post('/licences/{licenceId}/revoke', [AdminLicenceController::class, 'revoke'])->middleware('admin.can:licences.manage')->name('licences.revoke');

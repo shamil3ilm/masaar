@@ -118,13 +118,17 @@
                     <dt class="text-xs uppercase text-muted">Invoices this month</dt>
                     <dd class="text-sm text-fg">
                         {{ number_format((int) $usage['totals']['invoices_submitted']) }}
-                        of {{ number_format((int) $usage['limits']['invoices_per_month']) }}
-                        <span class="text-xs text-muted">({{ $usage['utilization']['invoices_percent'] }}%)</span>
+                        @if ((int) $row['invoices_per_month'] >= \App\Domains\Licensing\Models\License::UNLIMITED)
+                            <span class="text-xs text-muted">(unlimited)</span>
+                        @else
+                            of {{ number_format((int) $usage['limits']['invoices_per_month']) }}
+                            <span class="text-xs text-muted">({{ $usage['utilization']['invoices_percent'] }}%)</span>
+                        @endif
                     </dd>
                 </div>
                 <div>
                     <dt class="text-xs uppercase text-muted">Calls per day</dt>
-                    <dd class="text-sm text-fg">{{ number_format((int) $row['calls_per_day']) }}</dd>
+                    <dd class="text-sm text-fg">{{ (int) $row['calls_per_day'] >= \App\Domains\Licensing\Models\License::UNLIMITED ? 'Unlimited' : number_format((int) $row['calls_per_day']) }}</dd>
                 </div>
                 <div>
                     <dt class="text-xs uppercase text-muted">Calls per minute</dt>
@@ -178,6 +182,27 @@
     </div>
 
     <div class="space-y-6">
+        {{-- The customer's own allowances. Empty is the platform's default,
+             unlimited for now; the per-minute cap is a safety limit and is
+             not set here. --}}
+        @admincan('licences.manage')
+        <form method="POST" action="{{ route('admin.licences.allowances', $row['id']) }}"
+              class="rounded-card bg-surface border border-line shadow-card">
+            @csrf
+            <h3 class="border-b border-line px-6 py-4 text-sm font-semibold uppercase text-muted">Allowances</h3>
+            <div class="space-y-4 px-6 py-4">
+                @foreach (['invoices_per_month' => 'Invoices a month', 'calls_per_day' => 'API calls a day'] as $allowance => $label)
+                    @php($unlimited = (int) $row[$allowance] >= \App\Domains\Licensing\Models\License::UNLIMITED)
+                    <x-ui.field :label="$label" :hint="'Empty for unlimited. Its administrators are warned at 80% and 100%.'" :error="$allowance">
+                        <x-ui.input type="number" name="{{ $allowance }}" min="1" max="4294967294"
+                                    value="{{ old($allowance, $unlimited ? '' : $row[$allowance]) }}" placeholder="Unlimited" />
+                    </x-ui.field>
+                @endforeach
+                <x-ui.button variant="secondary" class="w-full">Save allowances</x-ui.button>
+            </div>
+        </form>
+        @endadmincan
+
         <div class="rounded-card bg-surface border border-line shadow-card">
             <h3 class="border-b px-6 py-4 text-sm font-semibold uppercase text-muted">Lifecycle</h3>
             <div class="space-y-6 px-6 py-4">

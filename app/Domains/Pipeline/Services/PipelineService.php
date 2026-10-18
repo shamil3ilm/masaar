@@ -50,6 +50,18 @@ class PipelineService
     ) {}
 
     /**
+     * Batch submission is every customer's unless a platform admin switched
+     * it off for this one (Feature::BatchSubmission). No plan restricts it
+     * while allowances are unlimited.
+     *
+     * @throws ComplianceException AUTH_FEATURE_SWITCHED_OFF
+     */
+    public function assertMayBatch(string $organizationId): void
+    {
+        $this->overrides->assertNotSwitchedOff(Organization::findOrFail($organizationId), Feature::BatchSubmission);
+    }
+
+    /**
      * @param  array  $data  Validated request payload
      * @param  string|null  $idempotencyKey  Caller's Idempotency-Key, if sent
      *

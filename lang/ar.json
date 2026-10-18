@@ -1400,5 +1400,15 @@
     "Series of": "سلسلة",
     "The organization (head office)": "المنشأة (المركز الرئيسي)",
     "Till :number - :name": "نقطة البيع :number - :name",
-    "Numbering saved.": "حُفظ الترقيم."
+    "Numbering saved.": "حُفظ الترقيم.",
+    "Batch submission": "الإرسال المجمّع",
+    "You have used your allowance of :what": "استنفدت حصتك من :what",
+    "You have used :percent% of your allowance of :what": "استخدمت :percent% من حصتك من :what",
+    "API calls a day": "طلبات واجهة البرمجة اليومية",
+    "invoices a month": "الفواتير الشهرية",
+    "Your allowance": "حصتك",
+    ":organization has used :used of its :allowed :what": "استخدمت :organization :used من حصتها البالغة :allowed من :what",
+    "The allowance is used up. Further ones are refused until it renews or is raised.": "استُنفدت الحصة، وسيُرفض ما يزيد عليها حتى تتجدد أو تُرفع.",
+    "That is :percent% of the allowance. Once it is used up, further ones are refused until it renews or is raised.": "هذا يعادل :percent% من الحصة. وعند استنفادها يُرفض ما يزيد عليها حتى تتجدد أو تُرفع.",
+    "To raise it, reply to this email or open a ticket under Support.": "لرفعها، رُدّ على هذه الرسالة أو افتح تذكرة في قسم الدعم."
 }
