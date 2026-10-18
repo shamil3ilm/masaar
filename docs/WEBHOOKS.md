@@ -1,7 +1,7 @@
 # Receiving Webhooks
 
-Masaar tells your system when something happens to an invoice, to onboarding
-or to a certificate, by POSTing JSON to the URL you register. Every delivery is
+Masaar tells your system when something happens to an invoice or to a
+certificate, by POSTing JSON to the URL you register. Every delivery is
 signed with your webhook's secret; verify the signature before acting on it.
 
 ## What arrives
@@ -18,14 +18,60 @@ User-Agent: Masaar-Webhook/1.0
 {"id":"9b2f0c1e-...","event":"invoice.cleared","timestamp":"2026-01-01T09:30:00.000000Z","data":{...}}
 ```
 
-Events: `invoice.created`, `invoice.updated`, `invoice.issued`,
-`invoice.submitted`, `invoice.cleared`, `invoice.reported`, `invoice.rejected`,
-`onboarding.ccsid_obtained`, `onboarding.compliance_passed`,
-`onboarding.pcsid_obtained`, `certificate.expiring`, and `webhook.test` when you
-send a test from the API.
+## Subscribing
 
-The secret is returned once, when the webhook is created, and again when you
-rotate it (`POST /api/webhooks/{id}/rotate-secret`).
+A partner's server registers with its licence key: `POST /api/v1/webhooks`
+with `X-API-Key` and `X-API-Secret`, which needs the `webhook.manage` scope and
+the licence feature `webhook_notifications`. The body names an https URL that
+resolves to a public address, and the events:
+
+```json
+{"url": "https://erp.example.com/webhooks/masaar", "events": ["*"]}
+```
+
+`"*"` subscribes to everything, which is what to send unless you have a reason
+not to (see `invoice.warning` under [Events](#events)); a list of event names
+subscribes to those. The answer carries the webhook's `secret` in
+`data.webhook.secret`, once. `GET /api/v1/webhooks` lists the organization's
+webhooks; `GET`, `PUT` (`url`, `events`, `is_active`) and `DELETE` on
+`/api/v1/webhooks/{webhook}` read, change and remove one.
+
+The portal and app API, signed in as a person, has the same routes under
+`/api/webhooks`, and two more: `POST /api/webhooks/{id}/rotate-secret`, which
+returns a new secret once, and `POST /api/webhooks/{id}/test`, which sends
+`webhook.test`. With a licence key alone, a new secret is had by registering
+the URL again and deleting the old webhook.
+
+## Events
+
+| Event | Sent when | `data` carries |
+|---|---|---|
+| `invoice.issued` | The pipeline or the portal issues an invoice (issuing a Saudi invoice with `POST /api/v1/compliance/generate/{invoiceId}` sends none) | `invoice_id`, `invoice_number`, `status`, `type`, `total`, `currency` |
+| `invoice.submitted` | A Saudi invoice is sent to ZATCA from the queue | the submission fields below, and `submitted_at` |
+| `invoice.cleared` | ZATCA clears a standard invoice without warnings | the submission fields, `clearance_status`, `cleared_at`, `invoice_hash` |
+| `invoice.reported` | ZATCA accepts the report of a simplified invoice without warnings | the submission fields, `reporting_status` |
+| `invoice.rejected` | ZATCA rejects an invoice | the submission fields, `errors`, `error_count` |
+| `certificate.expiring` | The signing certificate nears its expiry | `org_id`, `days_remaining`, `expiry_date`, `severity`, `message` |
+| `webhook.test` | A test is sent | `message`, `webhook_id` |
+
+The submission fields are `submission_id`, `invoice_id`, `org_id`,
+`invoice_number`, `invoice_type`, `issue_date`, `total_amount`, `currency`,
+`icv`, `state`, `previous_state`, `submission_type`, `zatca_uuid` and
+`timestamp`.
+
+A subscription may also name `invoice.created`, `invoice.updated`,
+`onboarding.ccsid_obtained`, `onboarding.compliance_passed` and
+`onboarding.pcsid_obtained`; nothing sends them yet.
+
+Two more events reach only a `"*"` subscription, since a subscription cannot
+name them:
+
+- `invoice.warning`: ZATCA accepted the invoice **with warnings**. It is sent
+  instead of `invoice.cleared` or `invoice.reported`, so an integrator that
+  subscribes by name never hears of such an invoice: subscribe with `"*"`, or
+  read its status (`GET /api/v1/pipeline/status/{invoiceId}`).
+- `invoice.failed`: a filing attempt failed; `will_retry` or `permanent` in
+  `data` says whether it is tried again.
 
 ### UAE organizations
 
@@ -134,10 +180,15 @@ valid := hmac.Equal([]byte(expected), []byte(header))
 
 - Answer with any 2xx, quickly. Do the work afterwards, on a queue.
 - A redirect counts as a failure; register the final URL.
-- A delivery is tried up to five times: once, then again after about 30
-  seconds, 2 minutes, 10 minutes and 30 minutes.
+- A delivery that got no answer - unreachable, more than 30 seconds, `408`,
+  `429` or a `5xx` - is tried up to five times: once, then again after about
+  30 seconds, 2 minutes, 10 minutes and 30 minutes. Any other answer, a `4xx`
+  among them, is final and not retried.
 - Retries carry the same `X-Webhook-ID`. Record the IDs you have processed and
   skip a repeat, so a retry after a slow answer does not act twice.
+- After ten failed deliveries in a row, with nothing delivered for a day, the
+  webhook is switched off. Switch it back on with `PUT /api/v1/webhooks/{webhook}`
+  and `{"is_active": true}`, which also clears the failure count.
 
 ## Client libraries
 

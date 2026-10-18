@@ -220,7 +220,7 @@ client libraries.
 Webhooks are signed; [docs/WEBHOOKS.md](docs/WEBHOOKS.md) shows verification in
 PHP, Node.js, Python, Java, C# and Go. The
 [partner integration guide](docs/PARTNER-INTEGRATION-GUIDE.md) walks through an
-ERP integration end to end.
+ERP integration end to end, over the licence-key API under `/api/v1`.
 
 ## License
 
