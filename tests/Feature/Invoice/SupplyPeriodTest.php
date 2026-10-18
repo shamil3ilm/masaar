@@ -78,7 +78,7 @@ class SupplyPeriodTest extends TestCase
             'invoice_number' => 'INV-1',
             'type' => 'simplified',
             'issue_date' => '2026-10-01',
-            'lines' => [['description' => 'Subscription', 'quantity' => 1, 'unit_price' => 100]],
+            'lines' => [['description' => 'Subscription', 'description_ar' => 'اشتراك', 'quantity' => 1, 'unit_price' => 100]],
             ...$overrides,
         ]);
     }

@@ -93,10 +93,10 @@ class CreditNoteTest extends TestCase
      */
     public function test_it_carries_the_reason(): void
     {
-        $xpath = $this->creditNote(reason: 'Goods returned damaged');
+        $xpath = $this->creditNote(reason: 'إرجاع بضاعة تالفة / Goods returned damaged');
 
         $this->assertSame(
-            'Goods returned damaged',
+            'إرجاع بضاعة تالفة / Goods returned damaged',
             $this->one($xpath, '/*/cac:PaymentMeans/cbc:InstructionNote'),
             'The credit note gives no reason (BR-KSA-17).'
         );
@@ -114,6 +114,7 @@ class CreditNoteTest extends TestCase
             'type' => 'simplified',
             'issue_date' => now()->toDateString(),
             'buyer_name' => 'Buyer Co',
+            'buyer_name_ar' => 'شركة المشتري',
             'lines' => [$this->line()],
         ]);
 
@@ -134,6 +135,7 @@ class CreditNoteTest extends TestCase
             'document_type' => 'debit_note',
             'issue_date' => now()->toDateString(),
             'buyer_name' => 'Buyer Co',
+            'buyer_name_ar' => 'شركة المشتري',
             'billing_ref' => 'INV-ORIGINAL-1',
             'lines' => [$this->line()],
         ])
@@ -143,7 +145,7 @@ class CreditNoteTest extends TestCase
 
     private function creditNote(
         string $reference = 'INV-ORIGINAL-1',
-        string $reason = 'Partial return',
+        string $reason = 'إرجاع جزئي / Partial return',
     ): DOMXPath {
         return $this->document([
             'invoice_number' => 'CN-'.uniqid(),
@@ -151,6 +153,7 @@ class CreditNoteTest extends TestCase
             'document_type' => 'credit_note',
             'issue_date' => now()->toDateString(),
             'buyer_name' => 'Buyer Co',
+            'buyer_name_ar' => 'شركة المشتري',
             'billing_ref' => $reference,
             'adjustment_reason' => $reason,
             'lines' => [$this->line()],
@@ -164,6 +167,7 @@ class CreditNoteTest extends TestCase
     {
         return [
             'description' => 'Item',
+            'description_ar' => 'صنف',
             'quantity' => 1,
             'unit_price' => '100.00',
             'tax_rate' => '15',

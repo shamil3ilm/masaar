@@ -97,15 +97,15 @@ class BusinessQrCodesTest extends TestCase
         $this->portal($this->member)->post(route('portal.qr-codes.store'), ['kind' => 'link', 'url' => 'https://maps.example.test/x'])->assertForbidden();
         $this->portal($this->admin)->post(route('portal.qr-codes.store'), ['kind' => 'payment', 'bank' => 'Riyad Bank', 'iban' => 'SA0380000000608010167518'])
             ->assertSessionHasErrors('iban', null, 'payment');
-        $this->portal($this->admin)->post(route('portal.qr-codes.store'), ['kind' => 'link', 'label' => 'Find us', 'url' => 'https://maps.example.test/x'])
+        $this->portal($this->admin)->post(route('portal.qr-codes.store'), ['kind' => 'link', 'label' => 'اعثر علينا / Find us', 'url' => 'https://maps.example.test/x'])
             ->assertSessionHas('success');
 
         $code = app(BusinessQrCodes::class)->all((string) $this->organization->id)->sole();
         $png = $this->portal($this->member)->get(route('portal.qr-codes.download', [$code->id, 'png']))->assertOk();
-        $this->portal($this->member)->get(route('portal.qr-codes.index'))->assertOk()->assertSee('Find us')->assertSee('data-qr-code', false);
+        $this->portal($this->member)->get(route('portal.qr-codes.index'))->assertOk()->assertSee('اعثر علينا / Find us')->assertSee('data-qr-code', false);
 
         $this->assertStringStartsWith(chr(0x89).'PNG', (string) $png->getContent());
-        $this->assertSame('Find us', $code->label);
+        $this->assertSame('اعثر علينا / Find us', $code->label);
 
         $rival = Organization::create(['name' => 'Rival', 'country' => 'SA']);
         $outsider = User::factory()->create();
@@ -120,7 +120,7 @@ class BusinessQrCodesTest extends TestCase
      */
     public function test_the_chosen_code_prints_apart(): void
     {
-        $code = app(BusinessQrCodes::class)->create((string) $this->organization->id, BusinessQrCode::LINK, ['label' => 'Find us', 'url' => 'https://maps.example.test/x']);
+        $code = app(BusinessQrCodes::class)->create((string) $this->organization->id, BusinessQrCode::LINK, ['label' => 'اعثر علينا / Find us', 'url' => 'https://maps.example.test/x']);
         $this->portal($this->admin)->post(route('portal.qr-codes.invoices'), ['papers' => ['80mm' => $code->id, 'a4' => 'not-a-code']])->assertSessionHas('success');
         $invoice = $this->sampleInvoice($this->organization, 'simplified', 1);
         $zatca = app(QrCodeRenderer::class)->svg((string) $invoice->qr_code);
@@ -130,7 +130,7 @@ class BusinessQrCodesTest extends TestCase
         $this->portal($this->member)->get(route('portal.invoices.print', ['invoiceId' => $invoice->id, 'paper' => '80mm']))
             ->assertOk()
             ->assertSee('data-print-extra-qr', false)
-            ->assertSee('Find us')
+            ->assertSee('اعثر علينا / Find us')
             ->assertSee($zatca, false);
         $this->portal($this->member)->get(route('portal.invoices.print', ['invoiceId' => $invoice->id, 'paper' => 'a4']))
             ->assertOk()
@@ -143,7 +143,7 @@ class BusinessQrCodesTest extends TestCase
      */
     public function test_the_invoice_page_shows_it(): void
     {
-        $code = app(BusinessQrCodes::class)->create((string) $this->organization->id, BusinessQrCode::LINK, ['label' => 'Find us', 'url' => 'https://maps.example.test/x']);
+        $code = app(BusinessQrCodes::class)->create((string) $this->organization->id, BusinessQrCode::LINK, ['label' => 'اعثر علينا / Find us', 'url' => 'https://maps.example.test/x']);
         app(InvoiceExtraQr::class)->setChoices($this->organization, [PaperSize::A4->value => $code->id]);
         $invoice = $this->sampleInvoice($this->organization, 'simplified', 1);
 
@@ -151,7 +151,7 @@ class BusinessQrCodesTest extends TestCase
             ->assertOk()
             ->assertSee('data-invoice-qr', false)
             ->assertSee('data-business-qr', false)
-            ->assertSee('Find us');
+            ->assertSee('اعثر علينا / Find us');
     }
 
     /** Deleting a code stops it printing. */

@@ -159,10 +159,20 @@ class BusinessQrCodes
     private function defaultLabel(string $kind): string
     {
         return match ($kind) {
-            BusinessQrCode::CONTACT => __('Save our contact details'),
-            BusinessQrCode::PAYMENT => __('Pay by bank transfer'),
-            default => __('Visit us'),
+            BusinessQrCode::CONTACT => $this->both('Save our contact details'),
+            BusinessQrCode::PAYMENT => $this->both('Pay by bank transfer'),
+            default => $this->both('Visit us'),
         };
+    }
+
+    /**
+     * A caption printed on the invoice in both languages, whichever the
+     * person creating the code reads: an invoice that must be in Arabic
+     * prints it, and an English reader still finds it.
+     */
+    private function both(string $english): string
+    {
+        return __($english, [], 'en').' / '.__($english, [], 'ar');
     }
 
     /**

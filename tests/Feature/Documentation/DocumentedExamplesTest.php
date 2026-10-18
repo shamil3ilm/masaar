@@ -237,7 +237,7 @@ class DocumentedExamplesTest extends TestCase
     private function organizations(): void
     {
         $this->saudi = Organization::create([
-            'name' => 'Acme Trading', 'country' => 'SA', 'vat_number' => '399999999900003', 'cr_number' => '1010101010',
+            'name' => 'Acme Trading', 'name_ar' => 'شركة أكمي للتجارة', 'country' => 'SA', 'vat_number' => '399999999900003', 'cr_number' => '1010101010',
             'street' => 'King Fahd Road', 'building_number' => '1234', 'district' => 'Al Olaya', 'city' => 'Riyadh', 'postal_code' => '12345',
         ]);
         $this->uae = $this->uaeOrganization();
@@ -259,9 +259,9 @@ class DocumentedExamplesTest extends TestCase
         return $country === 'sa'
             ? [
                 'invoice_number' => 'DOC-1', 'type' => 'standard', 'issue_date' => now()->toDateString(), 'supply_date' => now()->toDateString(),
-                'buyer_name' => 'Beta Industries', 'buyer_vat_number' => '399999999800003',
+                'buyer_name' => 'Beta Industries', 'buyer_name_ar' => 'شركة بيتا للصناعات', 'buyer_vat_number' => '399999999800003',
                 'buyer_address' => ['street' => 'Olaya Street', 'building_number' => '4321', 'district' => 'Al Murooj', 'city' => 'Riyadh', 'postal_code' => '11564', 'country_code' => 'SA'],
-                'lines' => [['description' => 'Consulting', 'quantity' => 1, 'unit_price' => '1000.00']],
+                'lines' => [['description' => 'Consulting', 'description_ar' => 'خدمات استشارية', 'quantity' => 1, 'unit_price' => '1000.00']],
             ]
             : [
                 'document_type' => 'invoice', 'document_category' => 'tax', 'issue_date' => now()->toDateString(), 'due_date' => now()->addDays(30)->toDateString(),

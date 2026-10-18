@@ -6,6 +6,8 @@ namespace App\Domains\Pipeline\Services;
 
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Services\MissingText;
+use App\Domains\Organization\Models\Organization;
 
 /**
  * Shapes what the pipeline returns to the calling ERP.
@@ -16,6 +18,10 @@ use App\Domains\Invoice\Models\Invoice;
  */
 class PipelineResult
 {
+    public function __construct(
+        private readonly MissingText $missing,
+    ) {}
+
     /**
      * @param  list<string>  $errors
      * @param  list<string>  $warnings
@@ -45,7 +51,9 @@ class PipelineResult
                 'total' => $invoice->total,
             ],
             'errors' => $errors,
-            'warnings' => $warnings,
+            // Beside the authority's, the text the invoice lacks that a
+            // grace period let through (MissingText).
+            'warnings' => [...$warnings, ...$this->missing->warnings($invoice, Organization::query()->find($invoice->org_id))],
         ];
     }
 

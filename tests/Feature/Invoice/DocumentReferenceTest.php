@@ -64,7 +64,7 @@ class DocumentReferenceTest extends TestCase
      */
     public function test_the_document_states_them_in_order(): void
     {
-        $this->api([...self::REFERENCES, 'billing_ref' => 'INV-1', 'document_type' => 'credit_note', 'adjustment_reason' => 'Correction of quantity'])->assertCreated();
+        $this->api([...self::REFERENCES, 'billing_ref' => 'INV-1', 'document_type' => 'credit_note', 'adjustment_reason' => 'تصحيح الكمية / Correction of quantity'])->assertCreated();
 
         $xml = app(DocumentBuilder::class)->generateComplianceData($this->invoice(), $this->acme)['xml'];
         $order = array_map(fn (string $element): int|false => strpos($xml, $element), [
@@ -134,7 +134,7 @@ class DocumentReferenceTest extends TestCase
             'invoice_number' => 'INV-2',
             'type' => 'simplified',
             'issue_date' => now()->toDateString(),
-            'lines' => [['description' => 'Item', 'quantity' => 1, 'unit_price' => 100]],
+            'lines' => [['description' => 'Item', 'description_ar' => 'صنف', 'quantity' => 1, 'unit_price' => 100]],
             ...$overrides,
         ]);
     }

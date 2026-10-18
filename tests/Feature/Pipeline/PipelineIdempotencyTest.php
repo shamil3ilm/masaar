@@ -222,6 +222,7 @@ class PipelineIdempotencyTest extends TestCase
                 'auto_submit' => false,
                 'lines' => [[
                     'description' => 'Item',
+                    'description_ar' => 'صنف',
                     'quantity' => 1,
                     'unit_price' => 100,
                 ]],

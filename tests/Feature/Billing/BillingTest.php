@@ -17,6 +17,7 @@ use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Licensing\Models\License;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\LanguageGrace;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -43,6 +44,7 @@ class BillingTest extends TestCase
 
         $this->acme = Organization::create([
             'name' => 'Acme Trading',
+            'name_ar' => 'شركة أكمي للتجارة',
             'country' => 'SA',
             'vat_number' => '310122393500003',
             'street' => 'King Fahd Road',
@@ -206,6 +208,47 @@ class BillingTest extends TestCase
         $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
     }
 
+    /**
+     * The platform's own invoice is in Arabic too (ZATCA's E-Invoicing
+     * Detailed Guidelines p60, p63): the line, the notes, the buyer's and its
+     * own name, the Arabic first.
+     */
+    public function test_the_invoice_is_in_arabic(): void
+    {
+        $this->platform();
+
+        $this->record()->assertSessionHas('success');
+
+        $invoice = $this->invoiceFor(Payment::withoutTenantScope(fn () => Payment::query()->firstOrFail()));
+
+        $this->assertSame('شركة أكمي للتجارة', $invoice->buyer_name_ar);
+        $this->assertStringStartsWith('اشتراك باقة', (string) $invoice->lines[0]->description_ar);
+        $this->assertStringStartsWith('تم استلام الدفعة', (string) $invoice->notes);
+    }
+
+    /**
+     * A buyer without its Arabic name is not invoiced, and the reason says
+     * what to add - unless the billing organization has a grace period.
+     */
+    public function test_a_buyer_without_arabic_waits(): void
+    {
+        $this->acme->forceFill(['name_ar' => null])->save();
+        $platform = $this->platform(issues: false);
+
+        $this->record()->assertSessionHas('error');
+
+        $payment = Payment::withoutTenantScope(fn () => Payment::query()->firstOrFail());
+        $this->assertNull($payment->invoice_id);
+        $this->assertStringContainsString('lacks the Arabic its country requires (buyer_name_ar)', (string) $payment->invoice_error);
+
+        app(LanguageGrace::class)->set($platform, CarbonImmutable::now()->addMonth(), 'Customers are adding their Arabic names', 'ops@masaar.test');
+        $this->mock(InvoiceIssuer::class, fn ($mock) => $mock->shouldReceive('issue')->once()->andReturn(IssueOutcome::issuedOnly()));
+
+        app(Billing::class)->invoice($payment);
+
+        $this->assertNotNull($payment->fresh()->invoice_id);
+    }
+
     public function test_the_portal_shows_the_plan(): void
     {
         $this->record();
@@ -271,6 +314,7 @@ class BillingTest extends TestCase
     {
         $platform = Organization::create([
             'name' => 'Masaar Platform',
+            'name_ar' => 'منصة مسار',
             'country' => 'SA',
             'vat_number' => '300000000000003',
             'compliance_profile' => ['zatca_onboarded' => true],

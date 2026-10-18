@@ -294,6 +294,12 @@ class Organization extends Model
      * The Arabic name is offered because the authority's own illustrative
      * invoices print the seller bilingually, and a seller registered under an
      * Arabic name should be able to put it on the document and in the QR.
+     *
+     * Where a country requires Arabic on its invoices, the platform now asks
+     * for more than that floor: the Saudi module requires the Arabic name at
+     * sign-up and on the company page (SellerRules, ArabicText, after the
+     * E-Invoicing Detailed Guidelines p60 and p63). The fallback stays for an
+     * organization registered before, so its documents still build.
      */
     public function documentName(): string
     {

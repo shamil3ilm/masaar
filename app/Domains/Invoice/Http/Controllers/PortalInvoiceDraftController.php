@@ -12,6 +12,7 @@ use App\Domains\Invoice\Services\Catalogue;
 use App\Domains\Invoice\Services\ChargePresets;
 use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Invoice\Services\InvoiceFinder;
+use App\Domains\Invoice\Services\MissingText;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
@@ -49,6 +50,7 @@ class PortalInvoiceDraftController extends Controller
         private readonly InvoiceFinder $invoices,
         private readonly AdjustmentDraft $adjustments,
         private readonly ChargePresets $chargePresets,
+        private readonly MissingText $missing,
     ) {}
 
     /**
@@ -140,6 +142,14 @@ class PortalInvoiceDraftController extends Controller
             } catch (\Throwable $e) {
                 report($e);
             }
+        }
+
+        // Saved under a grace period without the Arabic its country requires:
+        // said at once, and the invoice's page keeps saying it.
+        if ($this->missing->of($invoice, $this->tenant->getOrganization()) !== []) {
+            return redirect()
+                ->route('portal.invoices.show', $invoice->id)
+                ->with('warning', __('Draft saved with Arabic text missing. It is accepted only while your grace period lasts: add the Arabic before then.'));
         }
 
         return redirect()

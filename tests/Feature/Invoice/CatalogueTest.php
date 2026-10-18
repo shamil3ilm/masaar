@@ -126,7 +126,7 @@ class CatalogueTest extends TestCase
     public function test_the_buyer_is_saved_once(): void
     {
         $this->portal()->post('/portal/invoices', $this->invoiceFields())->assertRedirect();
-        $this->portal()->post('/portal/invoices', $this->invoiceFields(['buyer_name' => 'Gulf Supplies Co']))->assertRedirect();
+        $this->portal()->post('/portal/invoices', $this->invoiceFields(['buyer_name' => 'Gulf Supplies Co', 'buyer_name_ar' => 'شركة الخليج للتوريدات']))->assertRedirect();
 
         $this->assertSame(1, $this->customers()->count());
         $customer = $this->customers()->firstOrFail();
@@ -142,6 +142,7 @@ class CatalogueTest extends TestCase
     {
         return array_merge([
             'name' => 'Gulf Supplies',
+            'name_ar' => 'الخليج للتوريدات',
             'vat_number' => self::VAT,
             'street' => 'King Fahd Road',
             'building_number' => '1234',
@@ -161,6 +162,7 @@ class CatalogueTest extends TestCase
     {
         return array_merge([
             'name' => 'Consulting hour',
+            'name_ar' => 'ساعة استشارية',
             'unit_code' => 'HUR',
             'unit_price' => '250',
             'tax_rate' => '15',
@@ -179,6 +181,7 @@ class CatalogueTest extends TestCase
             'issue_date' => now()->toDateString(),
             'currency' => 'SAR',
             'buyer_name' => 'Gulf Supplies',
+            'buyer_name_ar' => 'الخليج للتوريدات',
             'buyer_vat_number' => self::VAT,
             'buyer_address' => [
                 'street' => 'King Fahd Road',
@@ -188,7 +191,7 @@ class CatalogueTest extends TestCase
                 'postal_code' => '12345',
                 'country_code' => 'SA',
             ],
-            'lines' => [['description' => 'Consulting hour', 'quantity' => '2', 'unit_price' => '250', 'tax_rate' => '15', 'unit_code' => 'HUR']],
+            'lines' => [['description' => 'Consulting hour', 'description_ar' => 'ساعة استشارية', 'quantity' => '2', 'unit_price' => '250', 'tax_rate' => '15', 'unit_code' => 'HUR']],
             'save_customer' => '1',
         ], $overrides);
     }

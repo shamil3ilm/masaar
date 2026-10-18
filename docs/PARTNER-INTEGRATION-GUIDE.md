@@ -1,6 +1,12 @@
 # Partner Integration Guide
 
-Complete guide for integrating the Masaar ZATCA E-Invoicing API into a partner's existing invoicing system.
+How an ERP or invoicing system files its customers' e-invoices through Masaar:
+the licence-key API under `/api/v1`, called from the partner's server.
+
+> The `/api` endpoints that take a login token (`Authorization: Bearer <JWT>`
+> from `POST /api/auth/login`) are the portal and app API, for a person who has
+> signed in. They are not for partner servers, and nothing in this guide uses
+> them.
 
 ## Table of Contents
 
@@ -8,14 +14,15 @@ Complete guide for integrating the Masaar ZATCA E-Invoicing API into a partner's
 2. [Prerequisites](#2-prerequisites)
 3. [Installation & Setup](#3-installation--setup)
 4. [API Authentication](#4-api-authentication)
-5. [Service Integration](#5-service-integration)
-6. [Database Changes](#6-database-changes)
-7. [Invoice Submission Flow](#7-invoice-submission-flow)
-8. [Webhook Configuration](#8-webhook-configuration)
-9. [Testing & Validation](#9-testing--validation)
-10. [Migration Checklist](#10-migration-checklist)
-11. [Troubleshooting](#11-troubleshooting)
-12. [Changes for integrators](#changes-for-integrators)
+5. [Submitting Invoices](#5-submitting-invoices)
+6. [Service Integration](#6-service-integration)
+7. [Database Changes](#7-database-changes)
+8. [Invoice Submission Flow](#8-invoice-submission-flow)
+9. [Webhook Configuration](#9-webhook-configuration)
+10. [Testing & Validation](#10-testing--validation)
+11. [Migration Checklist](#11-migration-checklist)
+12. [Troubleshooting](#12-troubleshooting)
+13. [Changes for integrators](#changes-for-integrators)
 
 ---
 
@@ -33,9 +40,23 @@ A partner system often already issues invoices and may produce a Phase 1 QR code
 - Webhook notifications for status updates
 - **Multi-branch EGS support** (separate credentials per branch)
 - **Foreign currency invoices** (USD, EUR, etc. with SAR VAT reporting)
+- UAE organizations: the same endpoints issue Peppol PINT AE e-invoices
 
 ### Integration Strategy
 Replace the partner system's own ZATCA handling with Masaar API calls while keeping its existing invoice management UI and business logic.
+
+### Who does what
+
+| Step | Who | Where |
+|---|---|---|
+| Sign up; approval assigns a plan and issues the organization's licence | The customer, then a platform administrator | Portal sign-up, admin console |
+| Hand the licence key, secret and organization id to the partner | The platform team | Out of band, once |
+| Connect to ZATCA (OTP, compliance checks, production certificate), add branches | The customer's administrator | The portal's ZATCA page |
+| Draft, issue and file invoices; read their status | The partner's server | `/api/v1`, with the licence key |
+| Subscribe to webhooks | The partner's server | `/api/v1/webhooks`, with the licence key |
+
+One licence acts for one organization. A partner serving several customers
+holds one key and secret per customer.
 
 > **Advanced Scenarios**: For multi-business, multi-branch, and cross-border transactions, see [PARTNER-ADVANCED-SCENARIOS.md](./PARTNER-ADVANCED-SCENARIOS.md).
 
@@ -44,15 +65,22 @@ Replace the partner system's own ZATCA handling with Masaar API calls while keep
 ## 2. Prerequisites
 
 ### System Requirements
-- PHP 8.0+ with Laravel 8 or later (the examples use `match` and the nullsafe operator)
-- OpenSSL extension
-- cURL extension
-- JSON extension
+- PHP 8.0+ with Laravel 8 or later (the examples use Laravel's HTTP client, `match` and the nullsafe operator)
+- OpenSSL, cURL and JSON extensions
 
 ### Required Credentials
-1. **Masaar access token** - A JWT from `POST /api/auth/login` for a user of the organization (an administrator, for onboarding); renew it with `POST /api/auth/refresh`
-2. **ZATCA OTP** - From ZATCA Fatoora Portal for onboarding
-3. **Organization VAT Number** - Valid Saudi VAT registration
+
+1. **Licence key and secret** - issued by a platform administrator when the
+   customer's organization is approved, or from the console's Licences page.
+   The secret is shown once and stored only as a hash, so keep it in a secret
+   store. A sandbox key starts `cp_test_`, a production key `cp_live_`.
+2. **Organization id** - the UUID of the customer's organization, shown on the
+   licence's page in the console. Pipeline requests name it as `org_id`.
+3. **A connected organization** - the customer's administrator connects it to
+   ZATCA in the portal with an OTP from the Fatoora portal. Until then an
+   invoice can be drafted but not issued.
+4. **The seller's Arabic name** - a Saudi organization's Arabic name, given at
+   sign-up or on the portal's company page, is printed on every invoice.
 
 ### Masaar Endpoints
 
@@ -66,15 +94,7 @@ Replace the partner system's own ZATCA handling with Masaar API calls while keep
 
 ## 3. Installation & Setup
 
-### Step 1: Install HTTP Client
-
-If Guzzle is already installed, ensure it is up to date:
-
-```bash
-composer require guzzlehttp/guzzle:^7.0
-```
-
-### Step 2: Add Configuration
+### Step 1: Add Configuration
 
 Create `config/masaar.php`:
 
@@ -82,77 +102,195 @@ Create `config/masaar.php`:
 <?php
 
 return [
-    /*
-    |--------------------------------------------------------------------------
-    | Masaar API Configuration
-    |--------------------------------------------------------------------------
-    */
-
     'base_url' => env('MASAAR_BASE_URL', 'https://sandbox.example.com'),
 
-    'token' => env('MASAAR_API_TOKEN'),
+    // One customer's licence. With several customers, keep each one's key,
+    // secret and organization id with the customer instead (section 7).
+    'api_key' => env('MASAAR_API_KEY'),
+    'api_secret' => env('MASAAR_API_SECRET'),
+    'org_id' => env('MASAAR_ORG_ID'),
 
-    'timeout' => env('MASAAR_TIMEOUT', 30),
+    // A standard invoice is cleared within the call, so allow for ZATCA.
+    'timeout' => env('MASAAR_TIMEOUT', 60),
 
     'retry' => [
         'times' => 3,
-        'sleep' => 1000, // milliseconds
+        'max_wait' => 60, // seconds; a longer Retry-After is not waited for
     ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Webhook Configuration
-    |--------------------------------------------------------------------------
-    */
 
     'webhook' => [
         'secret' => env('MASAAR_WEBHOOK_SECRET'),
-        'events' => [
-            'invoice.cleared',
-            'invoice.reported',
-            'invoice.rejected',
-            'certificate.expiring',
-        ],
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Organization Mapping
-    |--------------------------------------------------------------------------
-    | Map partner company IDs to Masaar organization IDs
-    */
-
-    'organization_map' => [
-        // 'partner_company_id' => 'masaar_organization_id',
     ],
 ];
 ```
 
-### Step 3: Add Environment Variables
+### Step 2: Add Environment Variables
 
 Add to `.env`:
 
 ```env
-# Masaar Configuration
 MASAAR_BASE_URL=https://sandbox.example.com
-MASAAR_API_TOKEN=your_access_token_here
+MASAAR_API_KEY=cp_test_your_key_here
+MASAAR_API_SECRET=your_secret_here
+MASAAR_ORG_ID=your_organization_uuid_here
 MASAAR_WEBHOOK_SECRET=your_webhook_secret_here
-MASAAR_TIMEOUT=30
+MASAAR_TIMEOUT=60
 ```
 
 ---
 
 ## 4. API Authentication
 
-The endpoints under `/api` act for the organization of the JWT they are called
-with, sent as `Authorization: Bearer <token>`. A system holding a licence key
-and secret instead sends them as `X-API-Key` and `X-API-Secret` to the
-versioned endpoints under `/api/v1`: `/api/v1/invoices`,
-`/api/v1/compliance/generate/{invoiceId}`, `/api/v1/compliance/validate/{invoiceId}`,
-`/api/v1/compliance/submit/{invoiceId}`, `/api/v1/compliance/status/{invoiceId}`
-and `/api/v1/pipeline/submit`, which drafts, issues and submits in one call.
-The invoice body is the same on both. Onboarding and organization registration
-are under `/api` only.
+### Licence key and secret
+
+Every request carries the licence's key and secret in two headers:
+
+```http
+X-API-Key: cp_live_...
+X-API-Secret: ...
+```
+
+`Authorization: Bearer <base64 of key:secret>` is accepted instead. Neither is
+ever read from the query string: URLs are logged by proxies and servers.
+
+Each request is checked for the key, the secret, the licence's status and
+expiry, the scope the route needs, and the licence's call limits; it then acts
+for the licence's organization only. Answers carry `X-License-Tier`,
+`X-License-Environment`, `X-RateLimit-Limit-Minute` and
+`X-RateLimit-Limit-Day`, and `X-RateLimit-Limit` and `X-RateLimit-Remaining`
+for the organization's budget on that kind of endpoint.
+
+**Rotating the secret.** A platform administrator regenerates it from the
+licence's page. The key stays the same; the old secret stops working at once,
+so deploy the new one straight away. There is no rotation endpoint on
+`/api/v1`. To ask for a rotation, write to shamil3ilm@gmail.com.
+
+**Your licence.** These answer with the same two headers:
+
+| Endpoint | Answers |
+|---|---|
+| `GET /api/license` | Tier, status, expiry, features and limits |
+| `GET /api/license/quotas` | Invoices used and remaining this month, the call limits |
+| `GET /api/license/usage` | The month's counts by day (`?month=YYYY-MM`) |
+| `GET /api/license/health` | Expiry and allowance warnings |
+| `GET /api/license/features/{feature}` | Whether the licence has one feature |
+
+### Errors
+
+Every error has the same envelope:
+
+```json
+{"success": false, "error": {"code": "AUTH_SCOPE_DENIED", "message": "...", "category": "license", "retryable": false, "details": {"required_scope": "webhook.manage"}}}
+```
+
+| HTTP | `error.code` | Meaning |
+|---|---|---|
+| 401 | `LICENSE_INVALID_KEY` | No key, or a key that does not exist |
+| 401 | `LICENSE_INVALID_SECRET` | The secret does not match the key |
+| 403 | `LICENSE_EXPIRED`, `LICENSE_SUSPENDED`, `LICENSE_REVOKED`, `LICENSE_INACTIVE`, `LICENSE_PENDING_ACTIVATION` | The licence cannot be used; `details` says why |
+| 403 | `AUTH_SCOPE_DENIED` | The licence lacks the scope the route needs; `details.required_scope` names it |
+| 403 | `LICENSE_FEATURE_UNAVAILABLE` | The licence lacks the feature the document needs; `details.feature` names it |
+| 403 | `FORBIDDEN` | The `org_id` in the body is not the licence's organization |
+| 403 | `AUTH_014` | A platform administrator has switched the pipeline or batch submission off for this organization |
+| 429 | `LICENSE_RATE_LIMITED` | A call limit was reached; `Retry-After` says when to try again |
+| 429 | `LICENSE_QUOTA_EXCEEDED` | The month's invoice allowance is used up |
+| 429 | `RATE_LIMITED` | The organization's per-minute budget for this kind of endpoint is spent; `details.retry_after` in seconds |
+| 422 | `VALIDATION_ERROR` | The body is wrong; `details` lists each field's errors |
+| 422 | `JURISDICTION_UNAVAILABLE` | This deployment does not issue in the organization's country |
+
+`error.retryable` is true for 408, 429 and 5xx answers.
+
+### Scopes
+
+A licence holds a list of scopes, and each route needs one:
+
+| Scope | Routes |
+|---|---|
+| `invoice.read` | `GET /api/v1/invoices`, `GET /api/v1/invoices/{invoice}` |
+| `invoice.submit` | `POST /api/v1/invoices`, `PUT /api/v1/invoices/{invoice}`, `POST /api/v1/compliance/generate/{invoiceId}`, `POST /api/v1/compliance/validate/{invoiceId}`, `POST /api/v1/compliance/submit/{invoiceId}`, `POST /api/v1/pipeline/submit`, `POST /api/v1/pipeline/batch` |
+| `invoice.cancel` | `DELETE /api/v1/invoices/{invoice}` (a draft only) |
+| `compliance.status` | `GET /api/v1/compliance/status/{invoiceId}`, `GET /api/v1/pipeline/status/{invoiceId}` |
+| `webhook.manage` | `/api/v1/webhooks` |
+| none | `GET /api/v1/dashboard`, `GET /api/v1/dashboard/health`, `GET /api/v1/dashboard/usage`, `/api/license` |
+
+`invoice.cancel` includes `invoice.read`, and `invoice.batch` includes
+`invoice.submit`. A licence issued without a list gets its tier's: Starter
+`invoice.submit`, `invoice.read`, `compliance.status` and `organization.read`;
+Professional adds `invoice.cancel`, `webhook.manage` and others; Enterprise and
+Unlimited add `invoice.batch` and the rest.
+
+### Licence features
+
+Writing a document needs the feature for its kind, and webhooks need theirs:
+
+| Feature | Needed to |
+|---|---|
+| `simplified_invoices` | create, generate or submit a simplified (B2C) invoice |
+| `standard_invoices` | create, generate or submit a standard (B2B) invoice |
+| `credit_notes` | issue a credit note (as well as its invoice type) |
+| `debit_notes` | issue a debit note (as well as its invoice type) |
+| `webhook_notifications` | manage webhooks |
+
+By default a Starter licence includes simplified invoices only; Professional
+adds standard invoices, credit and debit notes and webhooks; Enterprise adds
+the rest. A platform administrator can grant one beyond the plan.
+
+### Limits and allowances
+
+- **Calls a minute.** A safety cap set by the tier: 30 for Starter, 60 for
+  Professional, 120 for Enterprise and 300 for Unlimited. Past it:
+  `429 LICENSE_RATE_LIMITED`, with `Retry-After`.
+- **Calls a day.** An allowance: every request made with the licence counts,
+  including the `/api/license` ones. Past it: `429 LICENSE_RATE_LIMITED` until
+  the day ends.
+- **Invoices a month.** An allowance: an invoice counts when it is filed with
+  ZATCA. A filing that got no answer from ZATCA gives its slot back; a
+  rejection keeps it, because ZATCA processed the document. Once it is used up,
+  `POST /api/v1/compliance/submit/{invoiceId}`, `POST /api/v1/pipeline/submit`
+  and `POST /api/v1/pipeline/batch` answer `429 LICENSE_QUOTA_EXCEEDED` with
+  `details` `{"limit_type": "invoices_per_month", "limit": ..., "current": ...}`
+  before doing anything. Waiting does not help within the month; ask the
+  platform team to raise the allowance.
+
+An allowance is the customer's own: unlimited unless the platform sets a
+default or a platform administrator sets one for this customer. The
+organization's administrators are emailed when one reaches 80% and again at
+100%, once each a day or a month. `GET /api/license/quotas` shows where it
+stands; `-1` means unlimited.
+
+Beside the licence's own limits, each organization has a per-minute budget per
+kind of endpoint, set by the operator: by default 300 for submissions
+(`/pipeline/submit`, `/pipeline/batch`), 600 for status reads, health and the
+dashboard, and 300 for everything else. Past it: `429 RATE_LIMITED`.
+
+### Idempotency
+
+Send an `Idempotency-Key` header with every `POST /api/v1/pipeline/submit` and
+`POST /api/v1/invoices`: a value you derive from your own record, such as
+`invoice-1001`, at most 255 characters (longer is refused with 422 on
+`idempotency_key`). A blank header counts as none.
+
+A key names one request, for good, within the organization. A retry with the
+same key never drafts a second invoice. It answers with the one the first
+request made, as it stands now, and carries on where the first stopped:
+
+- the first was drafted but not issued: it is issued now;
+- the first was issued but not filed (the filing failed or ran out of
+  allowance): it is filed now, if `auto_submit` asks for it;
+- otherwise: its current state, a ZATCA rejection included.
+
+On `POST /api/v1/invoices` a replay answers `200` with
+`Idempotent-Replayed: true` where the first answered `201`.
+
+The same key sent with a different invoice - another `invoice_number`, or,
+without one, another `erp_reference_id` - is refused with 422 on
+`invoice_number`: send a new key for a new invoice. A request refused by
+validation drafted nothing, so it can be corrected and sent again under the
+same key.
+
+Without a key, a pipeline request that sends no `invoice_number` but an
+`erp_reference_id` is matched to an earlier invoice with that reference
+instead.
 
 ### Masaar API Client
 
@@ -163,121 +301,109 @@ Create `app/Services/Masaar/MasaarClient.php`:
 
 namespace App\Services\Masaar;
 
-use GuzzleHttp\Client;
-use GuzzleHttp\Exception\GuzzleException;
-use GuzzleHttp\Exception\RequestException;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Http;
 
 class MasaarClient
 {
-    private Client $http;
-    private string $baseUrl;
-    private string $token;
-
     /**
-     * The token decides the organization every call acts for.
+     * One customer's licence: every call acts for its organization.
      */
-    public function __construct(?string $token = null)
-    {
-        $this->baseUrl = config('masaar.base_url');
-        $this->token = $token ?? config('masaar.token');
+    public function __construct(
+        private string $apiKey,
+        private string $apiSecret,
+        public readonly string $organizationId,
+    ) {}
 
-        $this->http = new Client([
-            'base_uri' => $this->baseUrl,
-            'timeout' => config('masaar.timeout', 30),
-            'headers' => [
-                'Authorization' => 'Bearer '.$this->token,
-                'Content-Type' => 'application/json',
-                'Accept' => 'application/json',
-            ],
-        ]);
+    public static function fromConfig(): self
+    {
+        return new self(config('masaar.api_key'), config('masaar.api_secret'), config('masaar.org_id'));
+    }
+
+    public function get(string $path, array $query = []): array
+    {
+        return $this->send('GET', $path, ['query' => $query]);
     }
 
     /**
-     * Make authenticated GET request
+     * A POST that drafts an invoice carries an Idempotency-Key, so a retry
+     * after a timeout cannot file the sale twice.
      */
-    public function get(string $endpoint, array $query = []): array
+    public function post(string $path, array $body = [], ?string $idempotencyKey = null): array
     {
-        return $this->request('GET', $endpoint, ['query' => $query]);
+        return $this->send('POST', $path, ['json' => $body], $idempotencyKey);
     }
 
-    /**
-     * Make authenticated POST request
-     */
-    public function post(string $endpoint, array $data = []): array
+    public function put(string $path, array $body = []): array
     {
-        return $this->request('POST', $endpoint, ['json' => $data]);
+        return $this->send('PUT', $path, ['json' => $body]);
     }
 
-    /**
-     * Make authenticated PUT request
-     */
-    public function put(string $endpoint, array $data = []): array
+    public function delete(string $path): array
     {
-        return $this->request('PUT', $endpoint, ['json' => $data]);
+        return $this->send('DELETE', $path);
     }
 
-    /**
-     * Make authenticated DELETE request
-     */
-    public function delete(string $endpoint): array
+    private function send(string $method, string $path, array $options = [], ?string $idempotencyKey = null): array
     {
-        return $this->request('DELETE', $endpoint);
-    }
+        $times = config('masaar.retry.times', 3);
 
-    /**
-     * Execute HTTP request with retry logic
-     */
-    private function request(string $method, string $endpoint, array $options = []): array
-    {
-        $retryTimes = config('masaar.retry.times', 3);
-        $retrySleep = config('masaar.retry.sleep', 1000);
-        $lastException = null;
-
-        for ($attempt = 1; $attempt <= $retryTimes; $attempt++) {
+        for ($attempt = 1; ; $attempt++) {
             try {
-                $response = $this->http->request($method, $endpoint, $options);
-
-                return json_decode($response->getBody()->getContents(), true) ?? [];
-
-            } catch (RequestException $e) {
-                $lastException = $e;
-
-                // Don't retry client errors (4xx)
-                if ($e->hasResponse() && $e->getResponse()->getStatusCode() < 500) {
-                    break;
+                $response = Http::baseUrl(config('masaar.base_url'))
+                    ->timeout(config('masaar.timeout', 60))
+                    ->acceptJson()
+                    ->withHeaders(array_filter([
+                        'X-API-Key' => $this->apiKey,
+                        'X-API-Secret' => $this->apiSecret,
+                        'Idempotency-Key' => $idempotencyKey,
+                    ]))
+                    ->send($method, $path, $options);
+            } catch (ConnectionException $e) {
+                // No answer: safe to repeat only when a key names the request.
+                if ($attempt >= $times || ($method === 'POST' && $idempotencyKey === null)) {
+                    throw new MasaarException($e->getMessage(), 0);
                 }
-
-                Log::warning("Masaar API request failed (attempt {$attempt}/{$retryTimes})", [
-                    'method' => $method,
-                    'endpoint' => $endpoint,
-                    'error' => $e->getMessage(),
-                ]);
-
-                if ($attempt < $retryTimes) {
-                    usleep($retrySleep * 1000);
-                }
+                sleep(2 ** $attempt);
+                continue;
             }
-        }
 
-        // Parse error response
-        if ($lastException instanceof RequestException && $lastException->hasResponse()) {
-            $errorBody = json_decode(
-                $lastException->getResponse()->getBody()->getContents(),
-                true
-            );
+            // 2xx, 207 included: the body says what happened to each step.
+            if ($response->successful()) {
+                return $response->json() ?? [];
+            }
+
+            $wait = $this->retryAfter($response, $attempt);
+
+            if ($wait !== null && $attempt < $times) {
+                sleep($wait);
+                continue;
+            }
+
+            $error = $response->json('error') ?? [];
 
             throw new MasaarException(
-                $errorBody['error']['message'] ?? $lastException->getMessage(),
-                $lastException->getResponse()->getStatusCode(),
-                $errorBody['error']['details'] ?? []
+                $error['message'] ?? $response->reason(),
+                $response->status(),
+                $error['code'] ?? null,
+                $error['details'] ?? [],
             );
         }
+    }
 
-        throw new MasaarException(
-            $lastException?->getMessage() ?? 'Unknown API error',
-            500
-        );
+    /**
+     * Seconds to wait before trying again, or null when trying again cannot help.
+     */
+    private function retryAfter(Response $response, int $attempt): ?int
+    {
+        if (! $response->json('error.retryable') || $response->json('error.code') === 'LICENSE_QUOTA_EXCEEDED') {
+            return null;
+        }
+
+        $wait = (int) ($response->header('Retry-After') ?: 2 ** $attempt);
+
+        return $wait <= config('masaar.retry.max_wait', 60) ? $wait : null;
     }
 }
 ```
@@ -295,14 +421,16 @@ use Exception;
 
 class MasaarException extends Exception
 {
-    private array $errors;
-
-    public function __construct(string $message, int $code = 0, array $errors = [])
-    {
-        parent::__construct($message, $code);
-        $this->errors = $errors;
+    public function __construct(
+        string $message,
+        int $status = 0,
+        public readonly ?string $errorCode = null,
+        private array $errors = [],
+    ) {
+        parent::__construct($message, $status);
     }
 
+    /** The field errors, or the context the error carried. */
     public function getErrors(): array
     {
         return $this->errors;
@@ -312,7 +440,271 @@ class MasaarException extends Exception
 
 ---
 
-## 5. Service Integration
+## 5. Submitting Invoices
+
+### 5.1 One call: `POST /api/v1/pipeline/submit`
+
+Drafts the invoice, issues it (number, hash, signature, QR) and files it with
+the authority, in one request. It needs the `invoice.submit` scope, the licence
+feature for the document's kind, and allowance left for the month.
+
+The body is the invoice as the organization's country takes it - the fields
+in [docs/sa/INTEGRATION-GUIDE.md](./sa/INTEGRATION-GUIDE.md) or
+[docs/ae/INTEGRATION-GUIDE.md](./ae/INTEGRATION-GUIDE.md) - with these beside
+it:
+
+| Field | |
+|---|---|
+| `org_id` | Required. The licence's organization id |
+| `auto_submit` | Whether to file it straight after issuing. `true` unless sent |
+| `branch_id` | The branch it comes from, which decides the device that signs it |
+| `erp_reference_id` | Your own reference, at most 255 characters, returned as sent |
+| `invoice_type` | Accepted for `type` |
+| `invoice_number` | Optional: without one the invoice is numbered at issue from the organization's sequence |
+
+**Arabic on Saudi invoices.** ZATCA's E-Invoicing Detailed Guidelines require
+the invoice data to be in Arabic (p60), notes included (p63); other languages
+may stand beside it. So a Saudi invoice carries:
+
+- `description_ar` on every line, in Arabic letters;
+- `buyer_name_ar` on a standard (B2B) invoice and on its credit and debit notes;
+- `notes`, when sent, containing Arabic, optionally followed by a translation.
+
+A line that names a saved product (`product_id` or `product_code`), or an
+invoice that names a saved customer (`customer_id`), takes the Arabic from it
+when none is sent. Without the Arabic the invoice is refused with 422, each
+missing field named in English and Arabic - unless a platform administrator has
+given the organization a grace period, when it is taken and what is missing is
+listed in `warnings`. A UAE invoice needs no Arabic.
+
+A standard invoice to a VAT-registered buyer, filed as soon as it is issued:
+
+<!-- example: POST /api/v1/pipeline/submit sa -->
+```json
+{
+  "org_id": "5f0c2a9e-3b7d-4e1a-9c8f-2d6b4a1e7c30",
+  "erp_reference_id": "SO-1001",
+  "auto_submit": true,
+  "invoice_number": "INV-1001",
+  "type": "standard",
+  "document_type": "invoice",
+  "issue_date": "2026-10-15",
+  "supply_date": "2026-10-15",
+  "currency": "SAR",
+  "buyer_name": "Beta Industries",
+  "buyer_name_ar": "شركة بيتا للصناعات",
+  "buyer_vat_number": "399999999800003",
+  "buyer_address": {
+    "street": "Olaya Street",
+    "building_number": "4321",
+    "district": "Al Murooj",
+    "city": "Riyadh",
+    "postal_code": "11564",
+    "country_code": "SA"
+  },
+  "lines": [
+    {
+      "description": "Office chair",
+      "description_ar": "كرسي مكتب",
+      "quantity": 2,
+      "unit_code": "H87",
+      "unit_price": 450.00,
+      "tax_rate": 15,
+      "tax_category": "S",
+      "discount_amount": 50.00
+    }
+  ],
+  "payment_means_code": "30",
+  "notes": "يُرجى السداد خلال ثلاثين يوماً - Payment within thirty days"
+}
+```
+
+The answer, `201` when every step went through:
+
+<!-- example: response -->
+```json
+{
+  "success": true,
+  "message": "Invoice submitted through the pipeline",
+  "data": {
+    "invoice_id": "9d41c6b2-7a3e-4f0d-8b25-6e1f0c9a3d47",
+    "uuid": "9d41c6b2-7a3e-4f0d-8b25-6e1f0c9a3d47",
+    "invoice_number": "INV-1001",
+    "erp_reference_id": "SO-1001",
+    "status": "accepted",
+    "compliance_status": "cleared",
+    "hash": "...",
+    "qr_code": "...",
+    "signed_xml": "...",
+    "cleared_xml": "...",
+    "zatca_response": {"submission_id": "...", "state": "cleared", "clearance_status": "CLEARED", "reporting_status": null},
+    "totals": {"subtotal": "850.00", "discount_amount": "0.00", "tax_amount": "127.50", "total": "977.50"},
+    "errors": [],
+    "warnings": []
+  }
+}
+```
+
+- `compliance_status` is `cleared`, `reported`, `rejected` or `pending`.
+- `signed_xml` is the document of record: ZATCA's stamped copy once a standard
+  invoice is cleared, otherwise the one Masaar signed. `cleared_xml` is set
+  only when ZATCA's copy arrived.
+- A standard invoice is cleared within the call, since it may not be given to
+  the buyer before. A simplified one is reported from a queue, as ZATCA allows
+  up to 24 hours: the answer says `pending`, and `invoice.reported` (or
+  `invoice.rejected`) follows by webhook.
+- `zatca_response` is null when nothing was filed.
+
+| HTTP | When |
+|---|---|
+| 201 | Drafted, issued and, if asked, filed |
+| 207 | Drafted but not issued, or issued but the filing failed or was rejected: `errors` says which. An issued invoice stays issued; send the same request with the same `Idempotency-Key` to carry on |
+| 422 | Refused before anything was drafted: `error.details` names each field |
+| 401, 403, 429 | See [Errors](#errors) |
+
+A UAE organization sends its own invoice body to the same endpoint, and gets
+the same answer; there is no Arabic to add. For example, with
+`erp_reference_id` and its lines beside the rest of the invoice:
+
+<!-- example: POST /api/v1/pipeline/submit ae fragment -->
+```json
+"erp_reference_id": "SO-7731",
+"lines": [
+  {"item_name": "Consulting", "quantity": 2, "unit_price": 500, "tax_category": "S", "tax_rate": 5}
+]
+```
+
+### 5.2 Credit and debit notes
+
+A note is a pipeline request with `document_type` `credit_note` or
+`debit_note`, the invoice it corrects in `billing_ref` and the reason in
+`adjustment_reason` (BR-KSA-17). A note against a standard invoice carries
+`buyer_name_ar` like the invoice:
+
+<!-- example: POST /api/v1/pipeline/submit sa -->
+```json
+{
+  "org_id": "5f0c2a9e-3b7d-4e1a-9c8f-2d6b4a1e7c30",
+  "erp_reference_id": "RET-1001",
+  "type": "standard",
+  "document_type": "credit_note",
+  "billing_ref": "INV-1001",
+  "adjustment_reason": "إرجاع بضاعة - Goods returned",
+  "issue_date": "2026-10-20",
+  "buyer_name": "Beta Industries",
+  "buyer_name_ar": "شركة بيتا للصناعات",
+  "buyer_vat_number": "399999999800003",
+  "buyer_address": {
+    "street": "Olaya Street",
+    "building_number": "4321",
+    "district": "Al Murooj",
+    "city": "Riyadh",
+    "postal_code": "11564",
+    "country_code": "SA"
+  },
+  "lines": [
+    {
+      "description": "Office chair, returned",
+      "description_ar": "كرسي مكتب مُرتجع",
+      "quantity": 1,
+      "unit_code": "H87",
+      "unit_price": 450.00,
+      "tax_rate": 15,
+      "tax_category": "S"
+    }
+  ]
+}
+```
+
+### 5.3 Many invoices: `POST /api/v1/pipeline/batch`
+
+Each invoice in `invoices` is taken exactly as `/pipeline/submit` would take
+it - licensed for its kind, validated, drafted, issued and filed on its own -
+and answered on its own line. One that fails does not stop the others.
+
+```json
+{
+  "org_id": "5f0c2a9e-3b7d-4e1a-9c8f-2d6b4a1e7c30",
+  "invoices": [
+    {"idempotency_key": "invoice-2041", "erp_reference_id": "SO-2041", "type": "simplified", "...": "the rest of the invoice"},
+    {"idempotency_key": "invoice-2042", "erp_reference_id": "SO-2042", "type": "simplified", "...": "the rest of the invoice"}
+  ]
+}
+```
+
+- At most 50 invoices a request (the operator can change it).
+- One `Idempotency-Key` header cannot name many requests, so each invoice
+  carries its own `idempotency_key` in its body, at most 255 characters and
+  distinct within the batch. The header is not read here.
+- `org_id` is the batch's; each invoice is the licence's organization's.
+- The allowance is checked once at the door; each filing then takes its own
+  slot. An invoice that finds it used up stays issued and answers 207; send it
+  again under the same key when there is allowance.
+- Batching is available to every customer, whatever the tier, unless a
+  platform administrator has switched it off for the organization (403
+  `AUTH_014`).
+
+The answer is `201` when every invoice went through cleanly, `207` when any
+did not:
+
+<!-- example: response -->
+```json
+{
+  "success": true,
+  "message": "Some invoices were not submitted cleanly. See each result.",
+  "data": {
+    "results": [
+      {"index": 0, "idempotency_key": "invoice-2041", "http_status": 201, "message": "Invoice submitted through the pipeline", "data": {"invoice_id": "...", "compliance_status": "pending", "errors": [], "warnings": []}, "error": null},
+      {"index": 1, "idempotency_key": "invoice-2042", "http_status": 422, "message": "Validation failed", "data": null, "error": {"code": "VALIDATION_ERROR", "details": {"lines.0.description_ar": ["Arabic description required (ZATCA: the invoice must be in Arabic) / ..."]}}}
+    ],
+    "summary": {"total": 2, "succeeded": 1, "failed": 1}
+  }
+}
+```
+
+Each result's `data` is what `/pipeline/submit` answers in its `data`, and
+`http_status` the status it would have answered with.
+
+### 5.4 Status: `GET /api/v1/pipeline/status/{invoiceId}`
+
+Needs `compliance.status`. Answers with `invoice_id`, `invoice_number`,
+`status`, `type`, `hash`, `qr_code`, `signed_xml`, `cleared_xml`,
+`zatca_response`, `totals`, `issue_date`, `created_at` and `updated_at`, for
+an invoice of the licence's organization; anyone else's is a 404.
+
+### 5.5 Step by step (Saudi Arabia)
+
+The pipeline's steps are also routes of their own, for a system that drafts
+first and files later. These file with ZATCA:
+
+| Endpoint | Does | Answers in `data` |
+|---|---|---|
+| `POST /api/v1/invoices` | Draft (takes `Idempotency-Key`) | `invoice` |
+| `PUT /api/v1/invoices/{invoice}` | Change a draft; an issued invoice is 422 | `invoice` |
+| `DELETE /api/v1/invoices/{invoice}` | Discard a draft; an issued invoice is 422 | - |
+| `POST /api/v1/compliance/generate/{invoiceId}` | Issue: number, hash, signature, QR | `hash`, `qr_code`, `signed_xml` |
+| `POST /api/v1/compliance/validate/{invoiceId}` | Check an issued invoice with ZATCA without filing it | `valid`, `status`, `warnings`, `errors` |
+| `POST /api/v1/compliance/submit/{invoiceId}` | File an issued invoice: clearance or reporting | `status`, `warnings` |
+| `GET /api/v1/compliance/status/{invoiceId}` | Its status | `invoice_id`, `status`, `hash`, `qr_code`, `zatca_response` |
+| `GET /api/v1/invoices` | List, newest first; `?status=` filters | a page, with `meta` |
+| `GET /api/v1/invoices/{invoice}` | One invoice with its lines | `invoice` |
+
+Issuing an invoice that is already issued is refused rather than signed again,
+since re-signing would fork the hash chain. A UAE organization uses the
+pipeline: the four `/api/v1/compliance/*` routes answer it 422 with the code
+`JURISDICTION_ENDPOINT_MISMATCH`, and `error.details.use` lists the pipeline
+routes its invoices take.
+
+### 5.6 Dashboard
+
+`GET /api/v1/dashboard` (an overview), `GET /api/v1/dashboard/health` (the
+checks, among them the certificate the organization signs with, under
+`data.checks.certificates`) and `GET /api/v1/dashboard/usage?period=7d|30d|90d`.
+Any valid licence may read them.
+
+---
+
+## 6. Service Integration
 
 ### Invoice Service
 
@@ -323,60 +715,55 @@ Create `app/Services/Masaar/InvoiceService.php`:
 
 namespace App\Services\Masaar;
 
-use App\Models\Invoice;
 use App\Models\Company;
+use App\Models\Invoice;
 use Illuminate\Support\Facades\Log;
 
 class InvoiceService
 {
-    private MasaarClient $client;
-
-    public function __construct(MasaarClient $client)
+    /**
+     * Draft, issue and file the invoice in one call.
+     *
+     * The Idempotency-Key is the partner invoice's own, so calling this again
+     * for the same invoice - a timeout, a queue retry - answers with the first
+     * call's invoice and carries on where it stopped.
+     */
+    public function submit(Invoice $invoice, Company $company): array
     {
-        $this->client = $client;
+        $client = $this->clientFor($company);
+
+        $result = $client->post('/api/v1/pipeline/submit', [
+            ...$this->mapInvoiceData($invoice),
+            'org_id' => $client->organizationId,
+            'erp_reference_id' => (string) $invoice->id,
+        ], idempotencyKey: 'invoice-'.$invoice->id)['data'];
+
+        Log::info('Invoice submitted through Masaar', [
+            'partner_invoice_id' => $invoice->id,
+            'masaar_invoice_id' => $result['invoice_id'],
+            'compliance_status' => $result['compliance_status'],
+        ]);
+
+        return $result;
+    }
+
+    public function status(Invoice $invoice, Company $company): array
+    {
+        return $this->clientFor($company)->get("/api/v1/pipeline/status/{$invoice->masaar_id}")['data'];
     }
 
     /**
-     * Create invoice in Masaar and get ZATCA compliance data
+     * The company's own licence (section 7).
      */
-    public function createAndSubmit(Invoice $invoice, Company $company): array
+    private function clientFor(Company $company): MasaarClient
     {
-        // Step 1: Map the partner invoice to Masaar format
-        $invoiceData = $this->mapInvoiceData($invoice, $company);
-
-        // Step 2: Create invoice in Masaar
-        $created = $this->client->post('/api/invoices', $invoiceData);
-        $masaarId = $created['data']['invoice']['id'];
-
-        Log::info('Invoice created in Masaar', [
-            'partner_invoice_id' => $invoice->id,
-            'masaar_invoice_id' => $masaarId,
-        ]);
-
-        // Step 3: Issue it: number, sign, hash and QR
-        $compliance = $this->client->post("/api/compliance/sa/generate/{$masaarId}")['data'];
-
-        // Step 4: Submit to ZATCA (clearance for standard, reporting for simplified)
-        $submission = $this->client->post("/api/compliance/sa/submit/{$masaarId}")['data'];
-        $standard = $invoiceData['type'] === 'standard';
-
-        return [
-            'masaar_id' => $masaarId,
-            'zatca_status' => $submission['status'],
-            'clearance_status' => $standard ? $submission['status'] : null,
-            'reporting_status' => $standard ? null : $submission['status'],
-            'xml' => $compliance['signed_xml'],
-            'hash' => $compliance['hash'],
-            'qr_code' => $compliance['qr_code'],
-            'warnings' => $submission['warnings'] ?? [],
-            'errors' => [], // a refusal is thrown as a MasaarException
-        ];
+        return new MasaarClient($company->masaar_api_key, $company->masaar_api_secret, $company->masaar_org_id);
     }
 
     /**
      * Map the partner invoice format to Masaar format
      */
-    private function mapInvoiceData(Invoice $invoice, Company $company): array
+    private function mapInvoiceData(Invoice $invoice): array
     {
         return [
             // Invoice identification
@@ -391,8 +778,10 @@ class InvoiceService
             // Currency
             'currency' => $invoice->currency ?? 'SAR',
 
-            // Buyer information
+            // Buyer information. The Arabic name is required on a standard
+            // invoice and its notes (ZATCA Detailed Guidelines p60).
             'buyer_name' => $invoice->customer_name,
+            'buyer_name_ar' => $invoice->customer_name_ar,
             'buyer_vat_number' => $invoice->customer_vat_number,
             'buyer_address' => $this->mapAddress($invoice),
 
@@ -410,6 +799,9 @@ class InvoiceService
             'billing_ref' => $invoice->original_invoice_number,
             'adjustment_reason' => $invoice->adjustment_reason,
 
+            // In Arabic, with any translation after it (p63)
+            'notes' => $invoice->notes,
+
             // Invoice sub-types
             'is_export' => (bool) ($invoice->is_export ?? false),
             'is_third_party' => (bool) ($invoice->is_third_party ?? false),
@@ -423,10 +815,8 @@ class InvoiceService
      */
     private function mapInvoiceType(Invoice $invoice): string
     {
-        // The partner model uses an invoice_type field
         // B2B = standard (requires clearance)
         // B2C = simplified (reporting only)
-
         if ($invoice->invoice_type === 'B2B' || !empty($invoice->customer_vat_number)) {
             return 'standard';
         }
@@ -439,7 +829,6 @@ class InvoiceService
      */
     private function mapDocumentType(Invoice $invoice): string
     {
-        // Check the partner model's document type field
         return match ($invoice->document_type ?? 'invoice') {
             'credit_note', 'CN' => 'credit_note',
             'debit_note', 'DN' => 'debit_note',
@@ -456,7 +845,6 @@ class InvoiceService
             return null;
         }
 
-        // The partner model may store the address as a string or structured.
         // Send what the buyer's address says and nothing invented: a Saudi
         // buyer's postal code is its real five digits (BR-KSA-67), and a
         // standard invoice needs the street, building number and city.
@@ -487,6 +875,8 @@ class InvoiceService
         return $invoice->items->map(function ($item) {
             return [
                 'description' => $item->description ?? $item->item_name,
+                // Required on a Saudi invoice, in Arabic letters
+                'description_ar' => $item->description_ar,
                 'quantity' => (float) $item->quantity,
                 'unit_code' => $item->unit ?? 'H87', // UN/ECE Rec 20: H87 is "piece"
                 'unit_price' => (float) $item->unit_price,
@@ -538,152 +928,6 @@ class InvoiceService
             default => '10',
         };
     }
-
-    /**
-     * Get invoice status from Masaar
-     */
-    public function getStatus(string $masaarId): array
-    {
-        return $this->client->get("/api/compliance/sa/status/{$masaarId}")['data'];
-    }
-
-    /**
-     * Validate an issued invoice with ZATCA without submitting it
-     */
-    public function validate(string $masaarId): array
-    {
-        return $this->client->post("/api/compliance/sa/validate/{$masaarId}")['data'];
-    }
-}
-```
-
-For a standard invoice to a VAT-registered buyer, `mapInvoiceData()` sends a
-request like this one to `POST /api/invoices`:
-
-<!-- example: POST /api/invoices sa -->
-```json
-{
-  "invoice_number": "INV-1001",
-  "type": "standard",
-  "document_type": "invoice",
-  "issue_date": "2026-10-15",
-  "supply_date": "2026-10-15",
-  "currency": "SAR",
-  "buyer_name": "Beta Industries",
-  "buyer_vat_number": "399999999800003",
-  "buyer_address": {
-    "street": "Olaya Street",
-    "building_number": "4321",
-    "district": "Al Murooj",
-    "city": "Riyadh",
-    "postal_code": "11564",
-    "country_code": "SA"
-  },
-  "lines": [
-    {
-      "description": "Office chair",
-      "quantity": 2,
-      "unit_code": "H87",
-      "unit_price": 450.00,
-      "tax_rate": 15,
-      "tax_category": "S",
-      "exempt_code": null,
-      "exempt_reason": null,
-      "discount_amount": 50.00
-    }
-  ],
-  "discount_amount": 0,
-  "payment_means_code": "30",
-  "billing_ref": null,
-  "adjustment_reason": null,
-  "is_export": false,
-  "is_third_party": false,
-  "is_summary": false,
-  "is_self_billed": false
-}
-```
-
-Masaar answers `201` with the draft in `data.invoice`, its subtotal, VAT and
-total computed from the lines.
-
-### Organization Service
-
-Create `app/Services/Masaar/OrganizationService.php`:
-
-```php
-<?php
-
-namespace App\Services\Masaar;
-
-use App\Models\Company;
-
-class OrganizationService
-{
-    private MasaarClient $client;
-
-    public function __construct(MasaarClient $client)
-    {
-        $this->client = $client;
-    }
-
-    /**
-     * Register company as organization in Masaar
-     */
-    public function register(Company $company): array
-    {
-        // The address fields sit beside the others, not under an "address" key.
-        return $this->client->post('/api/organizations', [
-            'country' => 'SA',
-            'name' => $company->name,
-            'name_ar' => $company->name_ar ?? $company->name,
-            'vat_number' => $company->vat_number,
-            'cr_number' => $company->cr_number,
-            'street' => $company->street,
-            'building_number' => $company->building_number,
-            'district' => $company->district,
-            'city' => $company->city,
-            'postal_code' => $company->postal_code,
-        ]);
-    }
-
-    /*
-     * Onboarding acts for the organization of the token it is called with,
-     * and needs an administrator's.
-     */
-
-    /**
-     * Step 1: request the compliance CSID with the OTP from the Fatoora portal
-     */
-    public function startOnboarding(string $otp, string $deviceName, string $serialNumber): array
-    {
-        return $this->client->post('/api/compliance/onboarding/ccsid', [
-            'otp' => $otp,
-            'common_name' => $deviceName,
-            'serial_number' => $serialNumber, // 1-<solution>|2-<model>|3-<serial>
-        ]);
-    }
-
-    /**
-     * Step 2: run the compliance checks; step 3: request the production CSID
-     */
-    public function completeCompliance(): array
-    {
-        $checks = $this->client->post('/api/compliance/onboarding/compliance-check');
-
-        if (! ($checks['data']['passed'] ?? false)) {
-            return $checks;
-        }
-
-        return $this->client->post('/api/compliance/onboarding/pcsid');
-    }
-
-    /**
-     * Get organization status
-     */
-    public function getStatus(string $organizationId): array
-    {
-        return $this->client->get("/api/organizations/{$organizationId}");
-    }
 }
 ```
 
@@ -697,32 +941,15 @@ Create `app/Providers/MasaarServiceProvider.php`:
 namespace App\Providers;
 
 use App\Services\Masaar\MasaarClient;
-use App\Services\Masaar\InvoiceService;
-use App\Services\Masaar\OrganizationService;
 use Illuminate\Support\ServiceProvider;
 
 class MasaarServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->singleton(MasaarClient::class, function ($app) {
-            return new MasaarClient();
-        });
-
-        $this->app->singleton(InvoiceService::class, function ($app) {
-            return new InvoiceService($app->make(MasaarClient::class));
-        });
-
-        $this->app->singleton(OrganizationService::class, function ($app) {
-            return new OrganizationService($app->make(MasaarClient::class));
-        });
-    }
-
-    public function boot(): void
-    {
-        $this->publishes([
-            __DIR__.'/../../config/masaar.php' => config_path('masaar.php'),
-        ], 'masaar-config');
+        // For a single customer configured in .env; with several, build a
+        // client per company as InvoiceService::clientFor() does.
+        $this->app->bind(MasaarClient::class, fn () => MasaarClient::fromConfig());
     }
 }
 ```
@@ -738,14 +965,12 @@ Register in `config/app.php`:
 
 ---
 
-## 6. Database Changes
+## 7. Database Changes
 
 ### Migration for Masaar Integration
 
-Create migration:
-
 ```bash
-php artisan make:migration add_masaar_fields_to_invoices_table
+php artisan make:migration add_masaar_fields
 ```
 
 ```php
@@ -764,25 +989,26 @@ return new class extends Migration
             $table->string('masaar_id')->nullable()->after('id');
             $table->index('masaar_id');
 
-            // ZATCA compliance data
+            // What the pipeline answered
             $table->string('zatca_status')->default('pending')->after('status');
-            $table->string('zatca_clearance_status')->nullable();
-            $table->string('zatca_reporting_status')->nullable();
             $table->string('zatca_invoice_hash')->nullable();
             $table->text('zatca_qr_code')->nullable();
             $table->longText('zatca_signed_xml')->nullable();
-
-            // ZATCA response tracking
             $table->json('zatca_warnings')->nullable();
             $table->json('zatca_errors')->nullable();
             $table->timestamp('zatca_submitted_at')->nullable();
             $table->timestamp('zatca_cleared_at')->nullable();
         });
 
-        // Add Masaar organization mapping to companies
+        Schema::table('invoice_items', function (Blueprint $table) {
+            $table->string('description_ar')->nullable();
+        });
+
+        // Each company's own licence
         Schema::table('companies', function (Blueprint $table) {
-            $table->string('masaar_org_id')->nullable()->after('id');
-            $table->string('masaar_onboarding_status')->default('pending');
+            $table->uuid('masaar_org_id')->nullable()->after('id');
+            $table->string('masaar_api_key')->nullable();
+            $table->text('masaar_api_secret')->nullable(); // encrypted cast on the model
             $table->index('masaar_org_id');
         });
     }
@@ -790,11 +1016,10 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('invoices', function (Blueprint $table) {
+            $table->dropIndex(['masaar_id']);
             $table->dropColumn([
                 'masaar_id',
                 'zatca_status',
-                'zatca_clearance_status',
-                'zatca_reporting_status',
                 'zatca_invoice_hash',
                 'zatca_qr_code',
                 'zatca_signed_xml',
@@ -805,203 +1030,36 @@ return new class extends Migration
             ]);
         });
 
+        Schema::table('invoice_items', function (Blueprint $table) {
+            $table->dropColumn('description_ar');
+        });
+
         Schema::table('companies', function (Blueprint $table) {
-            $table->dropColumn(['masaar_org_id', 'masaar_onboarding_status']);
+            $table->dropIndex(['masaar_org_id']);
+            $table->dropColumn(['masaar_org_id', 'masaar_api_key', 'masaar_api_secret']);
         });
     }
 };
 ```
 
-Run migration:
+On the `Company` model, keep the secret encrypted at rest:
 
-```bash
-php artisan migrate
+```php
+protected $casts = [
+    'masaar_api_secret' => 'encrypted',
+];
+
+protected $hidden = ['masaar_api_secret'];
 ```
 
 ---
 
-## 7. Invoice Submission Flow
+## 8. Invoice Submission Flow
 
-### Controller Integration
+### Queue Job
 
-Update `app/Http/Controllers/InvoiceController.php`:
-
-```php
-<?php
-
-namespace App\Http\Controllers;
-
-use App\Models\Invoice;
-use App\Services\Masaar\InvoiceService;
-use App\Services\Masaar\MasaarException;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
-
-class InvoiceController extends Controller
-{
-    private InvoiceService $masaarInvoice;
-
-    public function __construct(InvoiceService $masaarInvoice)
-    {
-        $this->masaarInvoice = $masaarInvoice;
-    }
-
-    /**
-     * Create invoice and submit to ZATCA
-     */
-    public function store(Request $request)
-    {
-        // Existing validation...
-        $validated = $request->validate([
-            'invoice_number' => 'required|string',
-            'customer_name' => 'required|string',
-            'items' => 'required|array|min:1',
-            // ... other validation rules
-        ]);
-
-        // Create invoice in the partner database
-        $invoice = Invoice::create($validated);
-        $invoice->load('items', 'company');
-
-        // Submit to Masaar for ZATCA compliance
-        try {
-            $result = $this->masaarInvoice->createAndSubmit(
-                $invoice,
-                $invoice->company
-            );
-
-            // Update invoice with Masaar data
-            $invoice->update([
-                'masaar_id' => $result['masaar_id'],
-                'zatca_status' => $result['zatca_status'],
-                'zatca_clearance_status' => $result['clearance_status'],
-                'zatca_reporting_status' => $result['reporting_status'],
-                'zatca_invoice_hash' => $result['hash'],
-                'zatca_qr_code' => $result['qr_code'],
-                'zatca_signed_xml' => $result['xml'],
-                'zatca_warnings' => $result['warnings'],
-                'zatca_submitted_at' => now(),
-            ]);
-
-            if ($result['zatca_status'] === 'cleared') {
-                $invoice->update(['zatca_cleared_at' => now()]);
-            }
-
-            return response()->json([
-                'success' => true,
-                'invoice' => $invoice,
-                'zatca' => [
-                    'status' => $result['zatca_status'],
-                    'qr_code' => $result['qr_code'],
-                    'warnings' => $result['warnings'],
-                ],
-            ], 201);
-
-        } catch (MasaarException $e) {
-            Log::error('ZATCA submission failed', [
-                'invoice_id' => $invoice->id,
-                'error' => $e->getMessage(),
-                'errors' => $e->getErrors(),
-            ]);
-
-            // Store error but keep invoice
-            $invoice->update([
-                'zatca_status' => 'failed',
-                'zatca_errors' => $e->getErrors(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'invoice' => $invoice,
-                'error' => $e->getMessage(),
-                'zatca_errors' => $e->getErrors(),
-            ], 422);
-        }
-    }
-
-    /**
-     * Retry failed ZATCA submission
-     */
-    public function retryZatca(Invoice $invoice)
-    {
-        if (!in_array($invoice->zatca_status, ['failed', 'pending'])) {
-            return response()->json([
-                'error' => 'Invoice already processed',
-            ], 400);
-        }
-
-        try {
-            $result = $this->masaarInvoice->createAndSubmit(
-                $invoice,
-                $invoice->company
-            );
-
-            $invoice->update([
-                'masaar_id' => $result['masaar_id'],
-                'zatca_status' => $result['zatca_status'],
-                'zatca_clearance_status' => $result['clearance_status'],
-                'zatca_invoice_hash' => $result['hash'],
-                'zatca_qr_code' => $result['qr_code'],
-                'zatca_signed_xml' => $result['xml'],
-                'zatca_warnings' => $result['warnings'],
-                'zatca_errors' => null,
-                'zatca_submitted_at' => now(),
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'invoice' => $invoice->fresh(),
-            ]);
-
-        } catch (MasaarException $e) {
-            $invoice->update([
-                'zatca_status' => 'failed',
-                'zatca_errors' => $e->getErrors(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'error' => $e->getMessage(),
-            ], 422);
-        }
-    }
-
-    /**
-     * Get ZATCA status
-     */
-    public function zatcaStatus(Invoice $invoice)
-    {
-        if (!$invoice->masaar_id) {
-            return response()->json([
-                'status' => 'not_submitted',
-            ]);
-        }
-
-        try {
-            $status = $this->masaarInvoice->getStatus($invoice->masaar_id);
-
-            // Update local status if changed
-            if ($status['status'] !== $invoice->zatca_status) {
-                $invoice->update([
-                    'zatca_status' => $status['status'],
-                    'zatca_clearance_status' => $status['clearance_status'] ?? null,
-                ]);
-            }
-
-            return response()->json($status);
-
-        } catch (MasaarException $e) {
-            return response()->json([
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
-}
-```
-
-### Queue Job for Async Submission
-
-Create `app/Jobs/SubmitInvoiceToZatca.php`:
+Submit from a queue, so the partner system's own request does not wait for
+ZATCA. Create `app/Jobs/SubmitInvoiceToMasaar.php`:
 
 ```php
 <?php
@@ -1018,76 +1076,111 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-class SubmitInvoiceToZatca implements ShouldQueue
+class SubmitInvoiceToMasaar implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 3;
-    public int $backoff = 60;
+    public int $tries = 5;
+    public array $backoff = [60, 300, 900, 3600];
 
     public function __construct(
         public Invoice $invoice
     ) {}
 
-    public function handle(InvoiceService $invoiceService): void
+    /**
+     * Safe to retry: InvoiceService sends the invoice's own Idempotency-Key,
+     * so a retry finishes the first attempt instead of filing a second one.
+     */
+    public function handle(InvoiceService $masaar): void
     {
         try {
-            $result = $invoiceService->createAndSubmit(
-                $this->invoice,
-                $this->invoice->company
-            );
-
-            $this->invoice->update([
-                'masaar_id' => $result['masaar_id'],
-                'zatca_status' => $result['zatca_status'],
-                'zatca_clearance_status' => $result['clearance_status'],
-                'zatca_reporting_status' => $result['reporting_status'],
-                'zatca_invoice_hash' => $result['hash'],
-                'zatca_qr_code' => $result['qr_code'],
-                'zatca_signed_xml' => $result['xml'],
-                'zatca_warnings' => $result['warnings'],
-                'zatca_submitted_at' => now(),
-            ]);
-
-            Log::info('Invoice submitted to ZATCA successfully', [
-                'invoice_id' => $this->invoice->id,
-                'zatca_status' => $result['zatca_status'],
-            ]);
-
+            $result = $masaar->submit($this->invoice, $this->invoice->company);
         } catch (MasaarException $e) {
-            Log::error('ZATCA submission failed', [
-                'invoice_id' => $this->invoice->id,
-                'error' => $e->getMessage(),
-                'attempt' => $this->attempts(),
-            ]);
-
             $this->invoice->update([
                 'zatca_status' => 'failed',
-                'zatca_errors' => $e->getErrors(),
+                'zatca_errors' => $e->getErrors() ?: [$e->getMessage()],
             ]);
 
-            // Re-throw to trigger retry
+            // 422 and 403 will not change by trying again; fix the data or the licence.
+            if (in_array($e->getCode(), [403, 422], true)) {
+                $this->fail($e);
+
+                return;
+            }
+
             throw $e;
+        }
+
+        $this->invoice->update([
+            'masaar_id' => $result['invoice_id'],
+            'zatca_status' => $result['compliance_status'], // cleared, reported, rejected, pending
+            'zatca_invoice_hash' => $result['hash'],
+            'zatca_qr_code' => $result['qr_code'],
+            'zatca_signed_xml' => $result['signed_xml'],
+            'zatca_warnings' => $result['warnings'],
+            'zatca_errors' => $result['errors'] ?: null,
+            'zatca_submitted_at' => now(),
+            'zatca_cleared_at' => $result['compliance_status'] === 'cleared' ? now() : null,
+        ]);
+
+        // 207: issued, but the filing failed. The same call resumes it.
+        if ($result['errors'] !== [] && $result['compliance_status'] === 'pending') {
+            Log::warning('Masaar: invoice issued but not filed; retrying', [
+                'invoice_id' => $this->invoice->id,
+                'errors' => $result['errors'],
+            ]);
+
+            $this->release($this->backoff[$this->attempts() - 1] ?? 3600);
         }
     }
 }
 ```
 
-Usage in controller:
+Usage in the partner's controller:
 
 ```php
-// Async submission
-SubmitInvoiceToZatca::dispatch($invoice);
+SubmitInvoiceToMasaar::dispatch($invoice);
 
 return response()->json([
     'invoice' => $invoice,
     'message' => 'Invoice created. ZATCA submission in progress.',
-]);
+], 202);
 ```
+
+A simplified invoice comes back `pending` and is reported from Masaar's queue;
+its final status arrives by webhook (section 9), or from
+`InvoiceService::status()`.
 
 ---
 
-## 8. Webhook Configuration
+## 9. Webhook Configuration
+
+Signatures, retries and verification in other languages are in
+[WEBHOOKS.md](./WEBHOOKS.md).
+
+### Register the Webhook
+
+With the licence key (scope `webhook.manage`, feature `webhook_notifications`):
+
+```bash
+curl -X POST https://api.example.com/api/v1/webhooks \
+  -H "X-API-Key: $MASAAR_API_KEY" \
+  -H "X-API-Secret: $MASAAR_API_SECRET" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{
+    "url": "https://partner.example.com/api/webhooks/masaar",
+    "events": ["*"]
+  }'
+```
+
+`"*"`, or a list that names `invoice.warning` beside `invoice.cleared` and
+`invoice.reported`: an invoice ZATCA accepts with warnings is announced as
+`invoice.warning` instead ([WEBHOOKS.md](./WEBHOOKS.md#events)).
+The URL is https and public. The answer carries the webhook's `secret` in
+`data.webhook.secret`, once; store it as `MASAAR_WEBHOOK_SECRET`.
+`GET`, `PUT` and `DELETE /api/v1/webhooks/{webhook}` read, change and remove
+it; `GET /api/v1/webhooks` lists them.
 
 ### Webhook Controller
 
@@ -1100,178 +1193,94 @@ namespace App\Http\Controllers;
 
 use App\Models\Invoice;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class MasaarWebhookController extends Controller
 {
-    /**
-     * Handle Masaar webhooks
-     */
     public function handle(Request $request)
     {
-        // Verify webhook signature
-        if (!$this->verifySignature($request)) {
+        if (! $this->verifySignature($request)) {
             Log::warning('Invalid Masaar webhook signature');
             return response()->json(['error' => 'Invalid signature'], 401);
         }
 
-        $payload = $request->all();
-        $event = $payload['event'] ?? null;
+        // A retry carries the same X-Webhook-ID: act on it once.
+        $seen = 'masaar-webhook:'.$request->header('X-Webhook-ID');
 
-        Log::info('Masaar webhook received', [
-            'event' => $event,
-            'invoice_id' => $payload['data']['invoice_id'] ?? null,
-        ]);
+        if (Cache::has($seen)) {
+            return response()->json(['message' => 'Already processed']);
+        }
 
-        return match ($event) {
-            'invoice.cleared' => $this->handleInvoiceCleared($payload),
-            'invoice.reported' => $this->handleInvoiceReported($payload),
-            'invoice.rejected' => $this->handleInvoiceRejected($payload),
-            'certificate.expiring' => $this->handleCertificateExpiring($payload),
-            default => response()->json(['message' => 'Event ignored']),
+        $event = $request->input('event');
+        $data = $request->input('data', []);
+
+        match ($event) {
+            'invoice.cleared' => $this->update($data, ['zatca_status' => 'cleared', 'zatca_cleared_at' => now()]),
+            'invoice.reported' => $this->update($data, ['zatca_status' => 'reported']),
+            // Accepted, with warnings: cleared if it carries a clearance status
+            'invoice.warning' => $this->update($data, [
+                'zatca_status' => ($data['clearance_status'] ?? null) ? 'cleared' : 'reported',
+                'zatca_warnings' => $data['warnings'] ?? [],
+            ]),
+            'invoice.rejected' => $this->update($data, ['zatca_status' => 'rejected', 'zatca_errors' => $data['errors'] ?? []]),
+            'certificate.expiring' => Log::warning('ZATCA certificate expiring', [
+                'org_id' => $data['org_id'],
+                'expiry_date' => $data['expiry_date'],
+                'days_remaining' => $data['days_remaining'],
+            ]),
+            default => null,
         };
+
+        Cache::put($seen, true, now()->addDays(2));
+
+        return response()->json(['success' => true]);
     }
 
     /**
-     * Verify HMAC signature
+     * sha256= and the hex HMAC-SHA256 of the raw body, keyed with the
+     * webhook's secret. The timestamp is inside the signed body.
      */
     private function verifySignature(Request $request): bool
     {
-        $signature = $request->header('X-Webhook-Signature');
-        $secret = config('masaar.webhook.secret');
+        $signature = (string) $request->header('X-Webhook-Signature');
+        $secret = (string) config('masaar.webhook.secret');
 
-        if (!$signature || !$secret) {
+        if ($signature === '' || $secret === '') {
             return false;
         }
 
-        // The header carries the algorithm as a prefix: sha256=<hex>.
-        $expectedSignature = 'sha256='.hash_hmac(
-            'sha256',
-            $request->getContent(),
-            $secret
-        );
+        $expected = 'sha256='.hash_hmac('sha256', $request->getContent(), $secret);
+        $fresh = abs(now()->diffInSeconds($request->input('timestamp'))) <= 300;
 
-        return hash_equals($expectedSignature, $signature);
+        return hash_equals($expected, $signature) && $fresh;
     }
 
-    /**
-     * Handle invoice cleared event
-     */
-    private function handleInvoiceCleared(array $payload)
+    private function update(array $data, array $changes): void
     {
-        $masaarId = $payload['data']['invoice_id'];
-
-        $invoice = Invoice::where('masaar_id', $masaarId)->first();
-
-        if ($invoice) {
-            $invoice->update([
-                'zatca_status' => 'cleared',
-                'zatca_clearance_status' => $payload['data']['clearance_status'] ?? 'CLEARED',
-                'zatca_cleared_at' => now(),
-            ]);
-
-            Log::info('Invoice cleared by ZATCA', [
-                'invoice_id' => $invoice->id,
-            ]);
-        }
-
-        return response()->json(['success' => true]);
-    }
-
-    /**
-     * Handle invoice reported event
-     */
-    private function handleInvoiceReported(array $payload)
-    {
-        $masaarId = $payload['data']['invoice_id'];
-
-        $invoice = Invoice::where('masaar_id', $masaarId)->first();
-
-        if ($invoice) {
-            $invoice->update([
-                'zatca_status' => 'reported',
-                'zatca_reporting_status' => $payload['data']['reporting_status'] ?? 'REPORTED',
-            ]);
-        }
-
-        return response()->json(['success' => true]);
-    }
-
-    /**
-     * Handle invoice rejected event
-     */
-    private function handleInvoiceRejected(array $payload)
-    {
-        $masaarId = $payload['data']['invoice_id'];
-
-        $invoice = Invoice::where('masaar_id', $masaarId)->first();
-
-        if ($invoice) {
-            $invoice->update([
-                'zatca_status' => 'rejected',
-                'zatca_errors' => $payload['data']['errors'] ?? [],
-            ]);
-
-            // TODO: Notify user about rejection
-        }
-
-        return response()->json(['success' => true]);
-    }
-
-    /**
-     * Handle certificate expiring event
-     */
-    private function handleCertificateExpiring(array $payload)
-    {
-        $organizationId = $payload['data']['organization_id'];
-        $expiryDate = $payload['data']['expiry_date'];
-        $daysRemaining = $payload['data']['days_remaining'];
-
-        Log::warning('ZATCA certificate expiring soon', [
-            'organization_id' => $organizationId,
-            'expiry_date' => $expiryDate,
-            'days_remaining' => $daysRemaining,
-        ]);
-
-        // TODO: Notify admin about expiring certificate
-
-        return response()->json(['success' => true]);
+        Invoice::where('masaar_id', $data['invoice_id'] ?? null)->update($changes);
     }
 }
 ```
 
 ### Routes
 
-Add to `routes/api.php`:
+Add to `routes/api.php`, which carries no session or CSRF check, outside any
+authentication group:
 
 ```php
 use App\Http\Controllers\MasaarWebhookController;
 
-// Masaar webhooks (no auth required, verified by signature)
-Route::post('/webhooks/masaar', [MasaarWebhookController::class, 'handle'])
-    ->withoutMiddleware(['auth', 'throttle']);
+// Verified by signature, not by session
+Route::post('/webhooks/masaar', [MasaarWebhookController::class, 'handle']);
 ```
 
-### Register Webhook with Masaar
-
-After deployment, register webhook URL:
-
-```bash
-curl -X POST https://api.example.com/api/webhooks \
-  -H "Authorization: Bearer your_access_token" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "url": "https://partner.example.com/api/webhooks/masaar",
-    "events": ["invoice.cleared", "invoice.reported", "invoice.rejected", "certificate.expiring"]
-  }'
-```
-
-The answer carries the webhook's `secret` in `data.webhook.secret`, once; store
-it as `MASAAR_WEBHOOK_SECRET`.
+Register the URL this route has in the partner's application (under `/api`
+by default) as the webhook's `url`.
 
 ---
 
-## 9. Testing & Validation
+## 10. Testing & Validation
 
 ### Test Configuration
 
@@ -1282,231 +1291,155 @@ Create `tests/Feature/MasaarIntegrationTest.php`:
 
 namespace Tests\Feature;
 
-use App\Models\Invoice;
 use App\Models\Company;
+use App\Models\Invoice;
 use App\Services\Masaar\InvoiceService;
-use App\Services\Masaar\MasaarClient;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class MasaarIntegrationTest extends TestCase
 {
-    /**
-     * Test invoice creation and submission
-     */
-    public function test_can_create_and_submit_invoice()
+    public function test_submits_with_licence_key_and_idempotency_key()
     {
+        Http::fake(['*/api/v1/pipeline/submit' => Http::response(['success' => true, 'data' => [
+            'invoice_id' => 'masaar-id', 'compliance_status' => 'cleared', 'errors' => [], 'warnings' => [],
+        ]], 201)]);
+
         $company = Company::factory()->create([
-            'vat_number' => '300000000000003',
+            'masaar_org_id' => '5f0c2a9e-3b7d-4e1a-9c8f-2d6b4a1e7c30',
+            'masaar_api_key' => 'cp_test_key',
+            'masaar_api_secret' => 'secret',
         ]);
+        $invoice = Invoice::factory()->for($company)->hasItems(1)->create();
 
-        $invoice = Invoice::factory()
-            ->for($company)
-            ->hasItems(2)
-            ->create();
+        app(InvoiceService::class)->submit($invoice, $company);
 
-        $service = app(InvoiceService::class);
-
-        $result = $service->createAndSubmit($invoice, $company);
-
-        $this->assertArrayHasKey('masaar_id', $result);
-        $this->assertArrayHasKey('zatca_status', $result);
-        $this->assertArrayHasKey('qr_code', $result);
-        $this->assertNotEmpty($result['qr_code']);
-    }
-
-    /**
-     * Test data mapping
-     */
-    public function test_invoice_data_mapping()
-    {
-        $company = Company::factory()->create();
-        $invoice = Invoice::factory()
-            ->for($company)
-            ->hasItems(1)
-            ->create([
-                'invoice_type' => 'B2B',
-                'document_type' => 'invoice',
-            ]);
-
-        $service = app(InvoiceService::class);
-
-        // Use reflection to test private method
-        $reflection = new \ReflectionClass($service);
-        $method = $reflection->getMethod('mapInvoiceData');
-        $method->setAccessible(true);
-
-        $mapped = $method->invoke($service, $invoice, $company);
-
-        $this->assertEquals('standard', $mapped['type']);
-        $this->assertEquals('invoice', $mapped['document_type']);
-        $this->assertArrayHasKey('lines', $mapped);
+        Http::assertSent(fn ($request) => $request->hasHeader('X-API-Key', 'cp_test_key')
+            && $request->hasHeader('Idempotency-Key', 'invoice-'.$invoice->id)
+            && $request['org_id'] === $company->masaar_org_id
+            && filled($request['lines'][0]['description_ar']));
     }
 }
 ```
 
 ### Sandbox Testing Checklist
 
-1. **Environment Setup**
-   ```bash
-   # Ensure sandbox configuration
-   MASAAR_BASE_URL=https://sandbox.example.com
-   ```
-
-2. **Test Standard Invoice (B2B)**
-   ```php
-   $invoice = Invoice::create([
-       'invoice_type' => 'B2B',
-       'customer_vat_number' => '300000000000003',
-       // ... other fields
-   ]);
-   ```
-
-3. **Test Simplified Invoice (B2C)**
-   ```php
-   $invoice = Invoice::create([
-       'invoice_type' => 'B2C',
-       'customer_vat_number' => null,
-       // ... other fields
-   ]);
-   ```
-
-4. **Test Credit Note**
-   ```php
-   $invoice = Invoice::create([
-       'document_type' => 'credit_note',
-       'original_invoice_number' => 'INV-001',
-       // ... other fields
-   ]);
-   ```
-
-5. **Test Zero-Rated Invoice**
-   ```php
-   $item = [
-       'vat_rate' => 0,
-       'exemption_code' => 'VATEX-SA-HEA',
-       'exemption_reason' => 'Healthcare services',
-   ];
-   ```
+1. **Environment Setup** - a sandbox licence (`cp_test_` key) against
+   `MASAAR_BASE_URL=https://sandbox.example.com`.
+2. **Standard invoice (B2B)** - with `buyer_name_ar` and `description_ar`;
+   expect `compliance_status` `cleared`.
+3. **Simplified invoice (B2C)** - with `description_ar`; expect `pending`, then
+   `invoice.reported` by webhook.
+4. **Credit note** - `document_type` `credit_note`, `billing_ref`,
+   `adjustment_reason`, `buyer_name_ar` for a standard one.
+5. **Zero-rated line** - `tax_rate` 0 with `exempt_code` `VATEX-SA-HEA` and its
+   `exempt_reason`, to a named buyer.
+6. **Retry** - send the same request twice with one `Idempotency-Key`; expect
+   one invoice.
+7. **Batch** - two invoices, one with a line missing `description_ar`; expect
+   207 with one 201 and one 422 line.
 
 ---
 
-## 10. Migration Checklist
+## 11. Migration Checklist
 
-### Phase 1: Setup (Day 1-2)
-- [ ] Install Masaar SDK/dependencies
-- [ ] Create configuration file
-- [ ] Set environment variables
-- [ ] Run database migrations
-- [ ] Register service provider
+### Phase 1: Setup
+- [ ] Receive a sandbox licence key, secret and organization id
+- [ ] Create configuration file and environment variables
+- [ ] Run database migrations, add Arabic fields to customers and items
+- [ ] Register the service provider
 
-### Phase 2: Development (Day 3-7)
-- [ ] Create MasaarClient
-- [ ] Create InvoiceService
-- [ ] Create OrganizationService
-- [ ] Update Invoice model
-- [ ] Update InvoiceController
+### Phase 2: Development
+- [ ] Create MasaarClient and InvoiceService
+- [ ] Send an Idempotency-Key with every submission
+- [ ] Queue submissions; handle 207, 422 and 429
+- [ ] Webhook handler with signature check and duplicate check
 
-### Phase 3: Onboarding (Day 8-10)
-- [ ] Register organization in Masaar
-- [ ] Obtain ZATCA OTP from Fatoora Portal
-- [ ] Complete CCSID request
-- [ ] Submit compliance test invoices
-- [ ] Obtain PCSID for production
+### Phase 3: Onboarding (the customer's administrator)
+- [ ] Complete the company page, Arabic name included
+- [ ] Obtain the OTP from the Fatoora portal
+- [ ] Connect to ZATCA on the portal's ZATCA page
 
-### Phase 4: Testing (Day 11-14)
-- [ ] Test sandbox invoice creation
-- [ ] Test B2B clearance flow
-- [ ] Test B2C reporting flow
-- [ ] Test credit/debit notes
-- [ ] Test webhook handling
-- [ ] Test retry mechanisms
+### Phase 4: Testing
+- [ ] B2B clearance, B2C reporting, credit and debit notes
+- [ ] Webhooks, retries, batch
 
-### Phase 5: Production (Day 15+)
-- [ ] Switch to production URL
-- [ ] Configure production webhook
-- [ ] Monitor first production invoices
-- [ ] Set up error alerts
+### Phase 5: Production
+- [ ] Receive the production licence (`cp_live_` key) and switch to the production URL
+- [ ] Register the production webhook
+- [ ] Monitor first production invoices and set up error alerts
 
 ---
 
-## 11. Troubleshooting
+## 12. Troubleshooting
 
 ### Common Issues
 
-#### 1. "Unauthorized" Error
+#### 1. "Invalid API key" or "Invalid API secret"
 ```
-HTTP 401  {"error": {"code": "UNAUTHORIZED"}}
+HTTP 401  {"error": {"code": "LICENSE_INVALID_KEY"}}
 ```
-**Solution**: Verify the token in `.env` and ensure no extra spaces. A token expires: renew it with `POST /api/auth/refresh`, or sign in again.
+**Solution**: send both `X-API-Key` and `X-API-Secret`, without extra spaces.
+Each environment issues its own licences, so a sandbox key is unknown to
+production and the other way round. After a rotation only the new secret works.
 
-#### 2. "Organization not found"
-```
-Error: Organization {id} not found
-```
-**Solution**: Register company with Masaar first using `OrganizationService::register()`.
+#### 2. "Organization context is required" or "org_id does not match"
+**Solution**: send the licence's organization id as `org_id`. A licence not yet
+linked to an organization cannot submit; ask the platform team to link it.
 
-#### 3. "Certificate not configured"
-```
-Error: No valid ZATCA certificate
-```
-**Solution**: Complete ZATCA onboarding process via Masaar.
+#### 3. 207 with `status` `draft`: drafted, not issued
+**Solution**: `errors` says why. Most often the organization is not connected
+to ZATCA yet: its administrator connects it in the portal. Then send the same
+request with the same `Idempotency-Key` to issue and file the draft.
 
 #### 4. "Invoice validation failed"
 ```
-Error: BR-KSA-* validation errors
+HTTP 422  {"error": {"code": "VALIDATION_ERROR", "details": {"lines.0.description_ar": ["Arabic description required (ZATCA: the invoice must be in Arabic) / ..."]}}}
 ```
-**Solution**: Check invoice data against ZATCA requirements:
-- VAT number format (15 digits starting with 3)
+**Solution**: `details` names each field. Check:
+- Arabic: `description_ar` on each line, `buyer_name_ar` on a standard invoice and its notes, Arabic in `notes`
+- VAT number format (15 digits starting and ending with 3)
 - Address completeness
-- Line item tax calculations
+- Line item tax categories and exemption codes
 
 #### 5. Webhook not receiving events
 **Solution**:
-1. Verify webhook URL is publicly accessible
-2. Check webhook secret matches
-3. Verify HTTPS certificate is valid
-4. Check firewall allows Masaar IPs
-5. Check the licence includes `webhook_notifications` (see 6)
+1. Verify the webhook URL is public and https
+2. Check the webhook secret matches
+3. Verify the HTTPS certificate is valid
+4. Check the licence includes `webhook_notifications` and the `webhook.manage` scope
+5. An endpoint is switched off after ten failed deliveries in a row with nothing delivered for a day: switch it back on with `PUT /api/v1/webhooks/{webhook}` and `"is_active": true`
 
 #### 6. "Feature not available in your license tier"
 ```
 HTTP 403  {"error": {"code": "LICENSE_FEATURE_UNAVAILABLE", "details": {"feature": "standard_invoices"}}}
 ```
-A licence grants the features it lists, and the API refuses anything else.
-`details.feature` names the one that is missing.
+**Solution**: `details.feature` names the missing one ([Licence features](#licence-features));
+`GET /api/license/features/{feature}` answers whether the licence has it. Ask
+the platform team to raise the tier or add the feature.
 
-| Feature | Needed to |
-|---|---|
-| `simplified_invoices` | create, generate or submit a simplified (B2C) invoice |
-| `standard_invoices` | create, generate or submit a standard (B2B) invoice |
-| `credit_notes` | issue a credit note (as well as its invoice type) |
-| `debit_notes` | issue a debit note (as well as its invoice type) |
-| `webhook_notifications` | manage webhooks |
+#### 7. "Access denied. Required scope ..."
+```
+HTTP 403  {"error": {"code": "AUTH_SCOPE_DENIED", "details": {"required_scope": "compliance.status"}}}
+```
+**Solution**: the licence lacks the scope ([Scopes](#scopes)); ask the platform team to add it.
 
-By default a Starter licence includes simplified invoices only; Professional
-adds standard invoices, credit and debit notes and webhooks; Enterprise adds
-the rest. `GET /api/license/features/{feature}` answers whether the current
-licence has one.
-
-**Solution**: ask the licence provider to raise the tier or add the feature.
+#### 8. "Quota exceeded for invoices_per_month"
+```
+HTTP 429  {"error": {"code": "LICENSE_QUOTA_EXCEEDED", "details": {"limit_type": "invoices_per_month", "limit": 1000, "current": 1000}}}
+```
+**Solution**: nothing was done. Ask the platform team to raise the allowance,
+or wait for the next month.
 
 ### Logging
 
-Enable detailed logging in `.env`:
-
-```env
-LOG_LEVEL=debug
-```
-
-Check logs:
-```bash
-tail -f storage/logs/laravel.log | grep -i masaar
-```
+Log Masaar's `error.code` and `error.details` with the partner invoice id; the
+`X-Request-ID` header, when you send one, is recorded against each call.
 
 ### Support Contacts
 
-- **Issues**: https://github.com/shamil3ilm/masaar/issues
-- **Security vulnerabilities**: see [SECURITY.md](../SECURITY.md); do not open a public issue
+- **Questions and licences**: shamil3ilm@gmail.com
+- **Security vulnerabilities**: see [SECURITY.md](../SECURITY.md); do not report them in public
 
 ---
 
@@ -1517,6 +1450,7 @@ what to send instead:
 
 | Refused | Rule | Send instead |
 |---|---|---|
+| A Saudi invoice without Arabic: a line without `description_ar`, a standard invoice or its note without `buyer_name_ar`; `notes`, `adjustment_reason`, `payment_terms` or a charge's `reason` without Arabic | ZATCA E-Invoicing Detailed Guidelines p60, p63 | The Arabic, in Arabic letters; a translation may follow it. Or name a saved product (`product_id`, `product_code`) or customer (`customer_id`) whose Arabic name is filled in |
 | A Saudi payment means outside ZATCA's list, such as `99` | BR-KSA-16 | A listed code; the error names them all |
 | A Saudi currency outside ZATCA's ISO 4217:2005 list, such as `VES` | BR-KSA-CL-01 | A listed code; the error names them all |
 | A buyer VAT number on a Saudi export | BR-KSA-46 | `buyer_id` with `buyer_id_scheme`, such as `OTH` |
@@ -1542,51 +1476,55 @@ Send `H87` for a piece. `PCE` is still accepted and sent as `H87`.
 
 ## Appendix A: API Reference
 
-### Invoices
+All under `/api/v1`, with `X-API-Key` and `X-API-Secret`.
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/invoices` | POST | Create invoice |
-| `/api/invoices/{id}` | GET | Get invoice |
-| `/api/invoices` | GET | List invoices |
-| `/api/compliance/sa/generate/{invoiceId}` | POST | Issue: number, sign, hash and QR |
-| `/api/compliance/sa/validate/{invoiceId}` | POST | Validate an issued invoice with ZATCA |
-| `/api/compliance/sa/submit/{invoiceId}` | POST | Submit to ZATCA |
-| `/api/compliance/sa/status/{invoiceId}` | GET | Check status |
+### Pipeline
 
-### Organizations
+| Endpoint | Method | Scope | Description |
+|----------|--------|-------|-------------|
+| `/api/v1/pipeline/submit` | POST | `invoice.submit` | Draft, issue and file one invoice |
+| `/api/v1/pipeline/batch` | POST | `invoice.submit` | The same for up to 50, each on its own |
+| `/api/v1/pipeline/status/{invoiceId}` | GET | `compliance.status` | An invoice's state and documents |
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/organizations` | POST | Register organization |
-| `/api/organizations/{id}` | GET | Get organization |
-| `/api/compliance/onboarding/ccsid` | POST | Request the compliance CSID (OTP) |
-| `/api/compliance/onboarding/compliance-check` | POST | Run the compliance checks |
-| `/api/compliance/onboarding/pcsid` | POST | Request the production CSID |
-| `/api/compliance/onboarding/status` | GET | Onboarding status |
+### Invoices and compliance
 
-### Branches (EGS Units)
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/organizations/branches` | GET | List branches |
-| `/api/organizations/branches` | POST | Create branch |
-| `/api/organizations/branches/{id}` | GET | Get branch |
-| `/api/organizations/branches/{id}` | PUT | Update branch |
-| `/api/organizations/branches/{id}` | DELETE | Delete branch |
-| `/api/organizations/branches/{id}/set-default` | POST | Set as default |
-| `/api/organizations/branches/{id}/onboarding/ccsid` | POST | Request CCSID |
-| `/api/organizations/branches/{id}/onboarding/compliance-check` | POST | Run compliance check |
-| `/api/organizations/branches/{id}/onboarding/pcsid` | POST | Request PCSID |
-| `/api/organizations/branches/{id}/onboarding/reset` | POST | Reset onboarding |
+| Endpoint | Method | Scope | Description |
+|----------|--------|-------|-------------|
+| `/api/v1/invoices` | POST | `invoice.submit` | Create a draft |
+| `/api/v1/invoices` | GET | `invoice.read` | List invoices |
+| `/api/v1/invoices/{invoice}` | GET | `invoice.read` | Get invoice |
+| `/api/v1/invoices/{invoice}` | PUT | `invoice.submit` | Change a draft |
+| `/api/v1/invoices/{invoice}` | DELETE | `invoice.cancel` | Discard a draft |
+| `/api/v1/compliance/generate/{invoiceId}` | POST | `invoice.submit` | Issue: number, sign, hash and QR |
+| `/api/v1/compliance/validate/{invoiceId}` | POST | `invoice.submit` | Validate an issued invoice with ZATCA |
+| `/api/v1/compliance/submit/{invoiceId}` | POST | `invoice.submit` | Submit to ZATCA |
+| `/api/v1/compliance/status/{invoiceId}` | GET | `compliance.status` | Check status |
 
 ### Webhooks
 
+| Endpoint | Method | Scope | Description |
+|----------|--------|-------|-------------|
+| `/api/v1/webhooks` | POST | `webhook.manage` | Register webhook; answers its secret once |
+| `/api/v1/webhooks` | GET | `webhook.manage` | List webhooks |
+| `/api/v1/webhooks/{webhook}` | GET | `webhook.manage` | Get webhook |
+| `/api/v1/webhooks/{webhook}` | PUT | `webhook.manage` | Change `url`, `events`, `is_active` |
+| `/api/v1/webhooks/{webhook}` | DELETE | `webhook.manage` | Delete webhook |
+
+### Dashboard and licence
+
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/webhooks` | POST | Register webhook |
-| `/api/webhooks` | GET | List webhooks |
-| `/api/webhooks/{id}` | DELETE | Delete webhook |
+| `/api/v1/dashboard` | GET | Overview |
+| `/api/v1/dashboard/health` | GET | Health checks, the signing certificate among them |
+| `/api/v1/dashboard/usage` | GET | Usage over `?period=7d`, `30d` or `90d` |
+| `/api/license` | GET | The licence: tier, status, features, limits |
+| `/api/license/quotas` | GET | Allowances used and remaining |
+| `/api/license/usage` | GET | The month's usage by day |
+| `/api/license/health` | GET | Expiry and allowance warnings |
+| `/api/license/features/{feature}` | GET | Whether the licence has a feature |
+
+Organization registration, ZATCA onboarding and branches are the customer
+administrator's, in the portal; they are not on the licence-key API.
 
 ---
 
@@ -1609,7 +1547,7 @@ Per ZATCA official guidelines, foreign currency invoices are supported:
 $invoiceData = [
     'currency' => 'USD',
     'exchange_rate' => 3.75,
-    'lines' => [['description' => 'Consulting', 'quantity' => 1, 'unit_price' => 1000.00, 'tax_rate' => 15]],
+    'lines' => [['description' => 'Consulting', 'description_ar' => 'خدمات استشارية', 'quantity' => 1, 'unit_price' => 1000.00, 'tax_rate' => 15]],
     // Computed by Masaar: subtotal 1000.00 USD, VAT 150.00 USD (562.50 SAR), total 1150.00 USD.
 ];
 ```
@@ -1642,7 +1580,7 @@ Unit prices can be sent with or without VAT in them.
 
 | Field | Where | Description |
 |-------|-------|-------------|
-| `prices_include_vat` | Organization (`PUT /api/organizations/{id}`) | The default for its invoices. `false` unless set. |
+| `prices_include_vat` | Organization (the portal's company page) | The default for its invoices. `false` unless set. |
 | `prices_include_vat` | Invoice | Overrides the organization's default for this invoice. Applies to `unit_price` and `discount_amount`. |
 
 With VAT included, the customer's figures are the ones kept exact: each line's total and the invoice total are what was sent. The net ZATCA requires is backed out of them, per tax category.
@@ -1650,7 +1588,7 @@ With VAT included, the customer's figures are the ones kept exact: each line's t
 ```php
 // Three at 10.00, VAT included: the customer pays 30.00.
 'prices_include_vat' => true,
-'lines' => [['description' => 'Widget', 'quantity' => 3, 'unit_price' => 10.00, 'tax_rate' => 15]],
+'lines' => [['description' => 'Notebook', 'description_ar' => 'دفتر ملاحظات', 'quantity' => 3, 'unit_price' => 10.00, 'tax_rate' => 15]],
 // Stored and returned: subtotal 26.09, tax_amount 3.91, total 30.00.
 // The line's unit_price is the net (8.70) and net_amount the exact net (26.09).
 ```
@@ -1663,8 +1601,9 @@ On a printed receipt, an invoice priced this way heads its price column "Unit pr
 
 ---
 
-*Document Version: 1.1*
+*Document Version: 2.0*
 *Masaar API Version: v1*
 
 **Changelog:**
+- v2.0: The partner API is the licence-key API under `/api/v1`: authentication, scopes, allowances, idempotency, the pipeline and batch, webhooks; Arabic on Saudi invoices
 - v1.1: Added multi-branch EGS support, foreign currency invoices, branch API endpoints

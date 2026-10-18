@@ -63,7 +63,24 @@ For a partner's user to become ZATCA-compliant, collect the following:
 | `device_serial` | EGS Device Serial | Auto-generated or provided |
 | `solution_name` | E-invoicing solution name | "Masaar" |
 
-### 1.3 Optional Enhancement Data
+The customer's administrator enters the OTP on the portal's ZATCA page, which
+connects the organization; the partner's server never handles it.
+
+### 1.3 Arabic on Saudi Invoices
+
+ZATCA's E-Invoicing Detailed Guidelines require the invoice data to be in
+Arabic (p60), notes included (p63); other languages may stand beside it. So
+the partner system keeps, beside the English:
+
+| Field | On the invoice request | Required |
+|-------|------------------------|----------|
+| Customer's Arabic name | `buyer_name_ar` | On a standard invoice and its credit and debit notes |
+| Item's Arabic description | `lines[].description_ar` | On every line |
+| Notes | `notes` | When sent: Arabic, optionally followed by a translation |
+
+The seller's own Arabic name is the organization's, set in the portal.
+
+### 1.4 Optional Enhancement Data
 
 | Field | Description | Use Case |
 |-------|-------------|----------|
@@ -93,7 +110,9 @@ Partner User (Account)
 
 ### 2.2 Masaar Multi-Organization Support
 
-Each business needs **separate ZATCA onboarding**:
+Each business is its own Masaar organization, with **separate ZATCA
+onboarding** and **its own licence**: a licence key acts for one organization,
+so the partner holds a key and secret per business.
 
 ```php
 // Partner system: user with multiple businesses
@@ -104,14 +123,20 @@ class User {
 }
 
 class Business {
-    // Each business has its own Masaar organization
+    // Each business has its own Masaar organization and licence
     protected $fillable = [
         'user_id',
         'name',
         'vat_number',
         'cr_number',
         'masaar_org_id',        // Unique per business
+        'masaar_api_key',
+        'masaar_api_secret',    // encrypted cast
         'zatca_onboarding_status', // Independent status
+    ];
+
+    protected $casts = [
+        'masaar_api_secret' => 'encrypted',
     ];
 
     public function branches() {
@@ -122,47 +147,32 @@ class Business {
 
 ### 2.3 Registration Flow for Multiple Businesses
 
+Each business signs up on the portal, and a platform administrator's approval
+assigns its plan and issues its licence. The platform team hands the partner
+that business's organization id, licence key and secret, which the partner
+stores with the business; the licence-key API has no registration endpoint.
+
 ```php
 namespace App\Services\Masaar;
 
 class MultiBusinessService
 {
-    private OrganizationService $orgService;
-
     /**
-     * Register multiple businesses for a partner user
+     * Store the licence issued for a business, after checking it answers
      */
-    public function registerUserBusinesses(User $user): array
+    public function connect(Business $business, string $orgId, string $apiKey, string $apiSecret): array
     {
-        $results = [];
+        // Any valid licence may read its own details (main guide, section 4)
+        $licence = (new MasaarClient($apiKey, $apiSecret, $orgId))->get('/api/license')['data'];
 
-        foreach ($user->businesses as $business) {
-            // Skip if already registered
-            if ($business->masaar_org_id) {
-                $results[$business->id] = [
-                    'status' => 'already_registered',
-                    'org_id' => $business->masaar_org_id,
-                ];
-                continue;
-            }
+        $business->update([
+            'masaar_org_id' => $orgId,
+            'masaar_api_key' => $apiKey,
+            'masaar_api_secret' => $apiSecret,
+            'zatca_onboarding_status' => 'pending', // until its administrator connects it to ZATCA
+        ]);
 
-            // Register each business as separate organization
-            // (OrganizationService::register() in the main guide)
-            $org = $this->orgService->register($business);
-            $orgId = $org['data']['organization']['id'];
-
-            $business->update([
-                'masaar_org_id' => $orgId,
-                'zatca_onboarding_status' => 'pending',
-            ]);
-
-            $results[$business->id] = [
-                'status' => 'registered',
-                'org_id' => $orgId,
-            ];
-        }
-
-        return $results;
+        return $licence; // tier, status, features, limits
     }
 
     /**
@@ -186,9 +196,9 @@ class MultiBusinessService
 
 ### 2.4 Invoice Routing by Business
 
-An invoice is created for the organization of the token it is sent with; the
-request names no organization. A user who belongs to several gets a token for
-each from `POST /api/organizations/{id}/switch` (`data.token`).
+An invoice is filed for the organization of the licence it is sent with, and
+the pipeline body names that organization as `org_id`; another organization's
+id is refused with 403. So each business's invoices go with its own key.
 
 ```php
 class InvoiceService
@@ -201,29 +211,33 @@ class InvoiceService
         // Get the business for this invoice
         $business = $invoice->business;
 
-        if (!$business->masaar_org_id) {
-            throw new Exception("Business {$business->name} not registered with Masaar");
+        if (!$business->masaar_api_key) {
+            throw new Exception("Business {$business->name} has no Masaar licence yet");
         }
 
-        if ($business->zatca_onboarding_status !== 'completed') {
-            throw new Exception("Business {$business->name} ZATCA onboarding incomplete");
-        }
+        $client = $this->clientFor($business);
 
-        // Submit to Masaar with a token for the business's organization
-        return $this->clientFor($business)->post('/api/invoices', $this->mapInvoiceData($invoice));
+        // The main guide's mapping, with the business's organization beside it
+        return $client->post('/api/v1/pipeline/submit', [
+            ...$this->mapInvoiceData($invoice),
+            'org_id' => $client->organizationId,
+            'erp_reference_id' => (string) $invoice->id,
+        ], idempotencyKey: 'invoice-'.$invoice->id)['data'];
     }
 
     /**
-     * A client whose token acts for the business's organization
+     * A client with the business's own licence
      */
     private function clientFor(Business $business): MasaarClient
     {
-        $switched = $this->client->post("/api/organizations/{$business->masaar_org_id}/switch");
-
-        return new MasaarClient($switched['data']['token']); // the main guide's client, given this token
+        return new MasaarClient($business->masaar_api_key, $business->masaar_api_secret, $business->masaar_org_id);
     }
 }
 ```
+
+An invoice sent before the business is connected to ZATCA is drafted and
+answered 207; the same request under the same `Idempotency-Key` issues it once
+the business is connected.
 
 ---
 
@@ -273,60 +287,23 @@ Schema::table('invoices', function (Blueprint $table) {
 
 ### 3.3 Branch Registration with Masaar
 
+A branch, and its own device's ZATCA onboarding with an OTP, is set up by the
+business's administrator, signed in: it is an administrator's action on the
+portal and app API (`/api/organizations/branches`, then
+`/api/organizations/branches/{id}/onboarding/ccsid`, `compliance-check` and
+`pcsid`), not on the licence-key API. Creating the branch answers with its id
+in `data.branch.id`; the partner records it against the location as
+`masaar_branch_id` and sends it with that location's invoices.
+
 ```php
 class BranchService
 {
-    private MasaarClient $client;
-
     /**
-     * Register branch as EGS device
-     *
-     * The branch is created in the organization of the client's token (an
-     * administrator's, to onboard it).
+     * Record the Masaar branch a location's invoices are signed under
      */
-    public function registerBranch(Branch $branch): array
+    public function link(Branch $branch, string $masaarBranchId): void
     {
-        $business = $branch->business;
-
-        if (!$business->masaar_org_id) {
-            throw new Exception("Business must be registered first");
-        }
-
-        $response = $this->client->post('/api/organizations/branches', [
-            'name' => $branch->name,
-            'name_ar' => $branch->name_ar,
-            'industry' => $business->business_category,
-            'device_serial' => $branch->device_serial,
-            'street' => $branch->street,
-            'building_number' => $branch->building_number,
-            'additional_number' => $branch->additional_number,
-            'district' => $branch->district,
-            'city' => $branch->city,
-            'postal_code' => $branch->postal_code,
-        ]);
-
-        $branch->update([
-            'masaar_branch_id' => $response['data']['branch']['id'],
-        ]);
-
-        return $response;
-    }
-
-    /**
-     * Onboard the branch's own device: the CSIDs it signs with
-     */
-    public function onboardBranch(Branch $branch, string $otp): array
-    {
-        $path = "/api/organizations/branches/{$branch->masaar_branch_id}/onboarding";
-
-        $this->client->post("{$path}/ccsid", ['otp' => $otp]);
-        $checks = $this->client->post("{$path}/compliance-check");
-
-        if (! ($checks['data']['passed'] ?? false)) {
-            return $checks;
-        }
-
-        return $this->client->post("{$path}/pcsid");
+        $branch->update(['masaar_branch_id' => $masaarBranchId]);
     }
 
     /**
@@ -369,38 +346,46 @@ class InvoiceService
      * Submit invoice with branch EGS unit
      *
      * The invoice's fields at the top level, and the branch beside them.
-     * The organization is the token's (section 2.4).
+     * The organization is the licence's (section 2.4).
      */
     private function submit(Invoice $invoice, Branch $branch): array
     {
-        return $this->client->post('/api/invoices', [
+        $client = $this->clientFor($branch->business);
+
+        return $client->post('/api/v1/pipeline/submit', [
             ...$this->mapInvoiceData($invoice),
+            'org_id' => $client->organizationId,
             'branch_id' => $branch->masaar_branch_id,
-        ]);
+            'erp_reference_id' => (string) $invoice->id,
+        ], idempotencyKey: 'invoice-'.$invoice->id)['data'];
     }
 }
 ```
 
-`branch_id` is the `data.branch.id` that `POST /api/organizations/branches`
-answered with, and must be a branch of the token's organization. The branch
-decides the device that signs the invoice, so its counter (ICV) and hash chain
-(PIH) are that branch's; a branch not yet onboarded has its invoices signed by
-the head office's device. A simplified invoice from a branch's till is this
-request with `"branch_id": "<the branch's id>"` added:
+`branch_id` must be a branch of the licence's organization; any other is
+refused. The branch decides the device that signs the invoice, so its counter
+(ICV) and hash chain (PIH) are that branch's; a branch not yet onboarded has
+its invoices signed by the head office's device. A simplified invoice from a
+branch's till is this request with `"branch_id": "<the branch's id>"` added:
 
-<!-- example: POST /api/invoices sa -->
+<!-- example: POST /api/v1/pipeline/submit sa -->
 ```json
 {
+  "org_id": "5f0c2a9e-3b7d-4e1a-9c8f-2d6b4a1e7c30",
+  "erp_reference_id": "BR2-SALE-451",
   "invoice_number": "BR2-000451",
   "type": "simplified",
   "issue_date": "2026-10-15",
   "payment_means_code": "10",
   "lines": [
-    { "description": "Coffee beans 1 kg", "quantity": 2, "unit_code": "H87", "unit_price": "60.00", "tax_rate": 15 },
-    { "description": "Paper filters", "quantity": 1, "unit_code": "H87", "unit_price": "12.50", "tax_rate": 15 }
+    { "description": "Coffee beans 1 kg", "description_ar": "حبوب قهوة 1 كجم", "quantity": 2, "unit_code": "H87", "unit_price": "60.00", "tax_rate": 15 },
+    { "description": "Paper filters", "description_ar": "فلاتر قهوة ورقية", "quantity": 1, "unit_code": "H87", "unit_price": "12.50", "tax_rate": 15 }
   ]
 }
 ```
+
+A simplified invoice names no buyer, so it needs no `buyer_name_ar`; each line
+still carries its Arabic description.
 
 ---
 
@@ -657,13 +642,15 @@ class CrossBorderInvoiceService
     }
 
     /**
-     * The request for an export invoice (POST /api/invoices)
+     * The request for an export invoice (POST /api/v1/pipeline/submit)
      */
     public function createExportInvoice(Invoice $invoice): array
     {
         $buyer = $invoice->customer;
 
         return [
+            'org_id' => $invoice->business->masaar_org_id,
+            'erp_reference_id' => (string) $invoice->id,
             'invoice_number' => $invoice->invoice_number,
             'type' => 'standard', // an export is a standard invoice (BR-KSA-31)
             'is_export' => true,
@@ -672,6 +659,7 @@ class CrossBorderInvoiceService
 
             // No buyer VAT number on an export (BR-KSA-46): another identifier
             'buyer_name' => $buyer->name,
+            'buyer_name_ar' => $buyer->name_ar, // a standard invoice names its buyer in Arabic
             'buyer_id' => preg_replace('/[^A-Za-z0-9]/', '', $buyer->tax_number),
             'buyer_id_scheme' => 'OTH',
             'buyer_address' => [
@@ -685,14 +673,16 @@ class CrossBorderInvoiceService
             // Each line zero-rated under its own code
             'lines' => $invoice->items->map(fn ($item) => [
                 'description' => $item->description,
+                'description_ar' => $item->description_ar,
                 'quantity' => (float) $item->quantity,
                 'unit_price' => (float) $item->unit_price,
                 ...$this->lineTreatment($item, $buyer->country_code),
             ])->all(),
 
-            // Masaar keeps no customs fields: the declaration number can go in the notes
+            // Masaar keeps no customs fields: the declaration number can go in
+            // the notes, which are in Arabic with any translation after it
             'notes' => $invoice->customs_declaration_number
-                ? 'Customs declaration '.$invoice->customs_declaration_number
+                ? 'بيان جمركي رقم '.$invoice->customs_declaration_number.' - Customs declaration '.$invoice->customs_declaration_number
                 : null,
         ];
     }
@@ -743,15 +733,18 @@ class CrossBorderInvoiceService
 
 An export of goods with its freight, as `createExportInvoice()` sends it:
 
-<!-- example: POST /api/invoices sa -->
+<!-- example: POST /api/v1/pipeline/submit sa -->
 ```json
 {
+  "org_id": "5f0c2a9e-3b7d-4e1a-9c8f-2d6b4a1e7c30",
+  "erp_reference_id": "SO-EXP-318",
   "invoice_number": "EXP-000318",
   "type": "standard",
   "is_export": true,
   "issue_date": "2026-10-15",
   "supply_date": "2026-10-14",
   "buyer_name": "Delta Imports Ltd",
+  "buyer_name_ar": "شركة دلتا للاستيراد المحدودة",
   "buyer_id": "EG482915736",
   "buyer_id_scheme": "OTH",
   "buyer_address": {
@@ -764,6 +757,7 @@ An export of goods with its freight, as `createExportInvoice()` sends it:
   "lines": [
     {
       "description": "Steel pipes, 6 m",
+      "description_ar": "أنابيب فولاذية بطول 6 أمتار",
       "quantity": 100,
       "unit_price": "45.00",
       "tax_category": "Z",
@@ -773,6 +767,7 @@ An export of goods with its freight, as `createExportInvoice()` sends it:
     },
     {
       "description": "Sea freight, Jeddah to Alexandria",
+      "description_ar": "شحن بحري من جدة إلى الإسكندرية",
       "quantity": 1,
       "unit_price": "1200.00",
       "tax_category": "Z",
@@ -781,7 +776,7 @@ An export of goods with its freight, as `createExportInvoice()` sends it:
       "exempt_reason": "International transport of goods"
     }
   ],
-  "notes": "Customs declaration 40017893"
+  "notes": "بيان جمركي رقم 40017893 - Customs declaration 40017893"
 }
 ```
 
@@ -806,7 +801,7 @@ When submitting a foreign currency invoice:
 $invoiceData = [
     'currency' => 'USD',
     'exchange_rate' => 3.75,        // USD to SAR rate
-    'lines' => [['description' => 'Consulting', 'quantity' => 1, 'unit_price' => 1000.00, 'tax_rate' => 15]],
+    'lines' => [['description' => 'Consulting', 'description_ar' => 'خدمات استشارية', 'quantity' => 1, 'unit_price' => 1000.00, 'tax_rate' => 15]],
     // ... other fields. The subtotal (1000.00), VAT (150.00) and total
     // (1150.00), in USD, are computed by Masaar, not sent.
 ];
@@ -883,8 +878,10 @@ class MultiCurrencyService
 
 // 2. Businesses table
 Schema::table('businesses', function (Blueprint $table) {
-    // Masaar organization mapping
+    // Masaar organization mapping, and the business's own licence
     $table->string('masaar_org_id')->nullable()->index();
+    $table->string('masaar_api_key')->nullable();
+    $table->text('masaar_api_secret')->nullable(); // encrypted cast on the model
     $table->enum('zatca_onboarding_status', [
         'pending', 'csr_generated', 'compliance_passed', 'completed', 'failed'
     ])->default('pending');
@@ -950,6 +947,9 @@ Schema::table('invoices', function (Blueprint $table) {
 
 // 5. Invoice Items table
 Schema::table('invoice_items', function (Blueprint $table) {
+    // The Arabic description every Saudi invoice line carries
+    $table->string('description_ar')->nullable();
+
     // Per-line tax exemption
     $table->string('tax_exemption_code')->nullable();
     $table->string('tax_exemption_reason')->nullable();
@@ -958,6 +958,9 @@ Schema::table('invoice_items', function (Blueprint $table) {
 
 // 6. Customers table
 Schema::table('customers', function (Blueprint $table) {
+    // The Arabic name a standard invoice gives its buyer
+    $table->string('name_ar')->nullable();
+
     // Cross-border support
     $table->string('country_code', 2)->default('SA');
     $table->string('building_number', 4)->nullable();
@@ -986,13 +989,18 @@ class Business extends Model
         'city',
         'postal_code',
         'masaar_org_id',
+        'masaar_api_key',
+        'masaar_api_secret',
         'zatca_onboarding_status',
         'exemption_codes',
     ];
 
     protected $casts = [
         'exemption_codes' => 'array',
+        'masaar_api_secret' => 'encrypted',
     ];
+
+    protected $hidden = ['masaar_api_secret'];
 
     public function branches()
     {
@@ -1087,16 +1095,14 @@ class Invoice extends Model
 // routes/api.php additions
 
 Route::prefix('zatca')->middleware('auth:api')->group(function () {
-    // Organization onboarding
-    Route::post('/organizations/{business}/register', [ZatcaController::class, 'registerOrganization']);
-    Route::post('/organizations/{business}/onboarding/start', [ZatcaController::class, 'startOnboarding']);
-    Route::post('/organizations/{business}/onboarding/compliance', [ZatcaController::class, 'completeCompliance']);
+    // The business's Masaar licence, as the platform team issued it
+    Route::post('/organizations/{business}/connect', [ZatcaController::class, 'connect']);
     Route::get('/organizations/{business}/status', [ZatcaController::class, 'getOrganizationStatus']);
 
-    // Branch management
+    // Branch management: link a location to its Masaar branch id
     Route::post('/businesses/{business}/branches', [BranchController::class, 'store']);
     Route::get('/businesses/{business}/branches', [BranchController::class, 'index']);
-    Route::post('/branches/{branch}/register-egs', [BranchController::class, 'registerEgs']);
+    Route::post('/branches/{branch}/link', [BranchController::class, 'link']);
 
     // Invoice submission
     Route::post('/invoices/{invoice}/submit', [ZatcaController::class, 'submitInvoice']);
@@ -1212,101 +1218,39 @@ Route::post('/webhooks/masaar', [MasaarWebhookController::class, 'handle'])
 </form>
 ```
 
-#### ZATCA Onboarding Wizard
+#### ZATCA Connection Status
+
+The OTP, the compliance checks and the production certificate are the
+business administrator's steps on the Masaar portal's ZATCA page; the partner
+system shows where the business stands and links there.
 
 ```blade
-{{-- resources/views/zatca/onboarding.blade.php --}}
+{{-- resources/views/zatca/status.blade.php --}}
 
-<div class="zatca-onboarding-wizard">
-    {{-- Step indicator --}}
+<div class="zatca-connection">
     <div class="steps">
-        <div class="step {{ $step >= 1 ? 'completed' : '' }}">
-            1. Register with Masaar
+        <div class="step {{ $business->masaar_api_key ? 'completed' : '' }}">
+            1. Masaar licence received
         </div>
-        <div class="step {{ $step >= 2 ? 'completed' : '' }}">
-            2. Get ZATCA OTP
-        </div>
-        <div class="step {{ $step >= 3 ? 'completed' : '' }}">
-            3. Generate CSR
-        </div>
-        <div class="step {{ $step >= 4 ? 'completed' : '' }}">
-            4. Compliance Check
-        </div>
-        <div class="step {{ $step >= 5 ? 'completed' : '' }}">
-            5. Production Ready
+        <div class="step {{ $business->zatca_onboarding_status === 'completed' ? 'completed' : '' }}">
+            2. Connected to ZATCA
         </div>
     </div>
 
-    {{-- Step content --}}
-    @if($step === 1)
-        <div class="step-content">
-            <h3>Step 1: Register with Masaar</h3>
-            <p>We'll register your business with our ZATCA compliance service.</p>
-
-            <button onclick="registerWithMasaar()" class="btn btn-primary">
-                Register Business
-            </button>
+    @if(! $business->masaar_api_key)
+        <p>Sign up on the Masaar portal. Once the business is approved, its licence is entered here.</p>
+    @elseif($business->zatca_onboarding_status !== 'completed')
+        <p>Log in to the <a href="https://fatoora.zatca.gov.sa" target="_blank">ZATCA Fatoora Portal</a>
+           and generate a One-Time Password (OTP), then enter it on the Masaar portal's ZATCA page.</p>
+    @else
+        <div class="alert alert-success">
+            <strong>Connected to ZATCA</strong><br>
+            Invoices are cleared and reported as they are issued.
         </div>
-    @elseif($step === 2)
-        <div class="step-content">
-            <h3>Step 2: Get ZATCA OTP</h3>
-            <p>Log in to <a href="https://fatoora.zatca.gov.sa" target="_blank">ZATCA Fatoora Portal</a>
-               and generate a One-Time Password (OTP) for this business.</p>
 
-            <form action="{{ route('zatca.start-onboarding', $business) }}" method="POST">
-                @csrf
-                <label>Enter OTP from Fatoora Portal</label>
-                <input type="text" name="otp" pattern="\d{6}" required>
-                <small>6-digit code from ZATCA portal</small>
-
-                <button type="submit" class="btn btn-primary">
-                    Continue with OTP
-                </button>
-            </form>
-        </div>
-    @elseif($step === 3)
-        <div class="step-content">
-            <h3>Step 3: CSR Generated</h3>
-            <p>Certificate Signing Request has been generated and submitted to ZATCA.</p>
-            <p>CCSID (Compliance CSID) received.</p>
-
-            <button onclick="runComplianceCheck()" class="btn btn-primary">
-                Run Compliance Check
-            </button>
-        </div>
-    @elseif($step === 4)
-        <div class="step-content">
-            <h3>Step 4: Compliance Check</h3>
-            <p>Submitting test invoices to verify ZATCA compliance...</p>
-
-            <div class="compliance-results">
-                @foreach($complianceResults as $test)
-                    <div class="test-result {{ $test['passed'] ? 'passed' : 'failed' }}">
-                        {{ $test['name'] }}: {{ $test['passed'] ? '✓' : '✗' }}
-                    </div>
-                @endforeach
-            </div>
-
-            @if($allPassed)
-                <button onclick="completeOnboarding()" class="btn btn-success">
-                    Complete Onboarding
-                </button>
-            @endif
-        </div>
-    @elseif($step === 5)
-        <div class="step-content">
-            <h3>✓ ZATCA Onboarding Complete!</h3>
-            <p>Your business is now ready to submit invoices to ZATCA.</p>
-
-            <div class="alert alert-success">
-                <strong>Production CSID (PCSID) Obtained</strong><br>
-                You can now submit real invoices for clearance and reporting.
-            </div>
-
-            <a href="{{ route('invoices.create') }}" class="btn btn-primary">
-                Create First Invoice
-            </a>
-        </div>
+        <a href="{{ route('invoices.create') }}" class="btn btn-primary">
+            Create First Invoice
+        </a>
     @endif
 </div>
 ```
@@ -1362,9 +1306,6 @@ class ZatcaOnboardingRequest extends FormRequest
             'email' => ['required', 'email', 'max:255'],
             'phone' => ['required', 'string', 'max:20'],
             'contact_person' => ['required', 'string', 'max:255'],
-
-            // ZATCA specific
-            'otp' => ['sometimes', 'required', 'string', 'size:6', 'regex:/^\d{6}$/'],
         ];
     }
 
@@ -1375,7 +1316,6 @@ class ZatcaOnboardingRequest extends FormRequest
             'cr_number.regex' => 'CR number must be exactly 10 digits',
             'building_number.regex' => 'Building number must be exactly 4 digits',
             'postal_code.regex' => 'Postal code must be exactly 5 digits',
-            'otp.regex' => 'OTP must be exactly 6 digits',
         ];
     }
 }
@@ -1423,10 +1363,10 @@ User creates account in the partner system
            ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │ STEP 1: Business Registration                                       │
-│ - User enters business details (name, VAT, CR, address)             │
-│ - Partner validates format locally                                  │
-│ - Partner calls Masaar API to register organization              │
-│ - Masaar validates VAT with ZATCA                                │
+│ - User signs the business up on the Masaar portal                   │
+│   (name and Arabic name, VAT, CR, address)                          │
+│ - A platform administrator approves it: plan and licence issued     │
+│ - Partner stores the organization id, licence key and secret        │
 └─────────────────────────────────────────────────────────────────────┘
            │
            ▼
@@ -1435,7 +1375,7 @@ User creates account in the partner system
 │ - User logs into https://fatoora.zatca.gov.sa                       │
 │ - User navigates to "Onboard Solution Unit"                         │
 │ - User generates OTP (valid for 1 hour)                             │
-│ - User enters OTP in the partner system                             │
+│ - User enters OTP on the Masaar portal's ZATCA page                 │
 └─────────────────────────────────────────────────────────────────────┘
            │
            ▼
@@ -1473,75 +1413,47 @@ User creates account in the partner system
 ┌─────────────────────────────────────────────────────────────────────┐
 │ READY: Invoice Submission                                           │
 │ - User creates invoices in the partner system                       │
-│ - Partner sends to Masaar                                        │
+│ - Partner sends them to /api/v1/pipeline/submit with the licence    │
 │ - Masaar generates XML, signs, submits to ZATCA                  │
 │ - ZATCA clears/reports invoice                                      │
 │ - Masaar returns QR code and status to the partner               │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-### 8.2 Onboarding Service Implementation
+### 8.2 Connection Status Implementation
+
+The partner's server does not onboard: it holds the licence and follows what
+the business's administrator has done. `GET /api/v1/dashboard/health` answers
+with `data.status` and `data.checks`, the certificate the organization signs
+with among them (`data.checks.certificates`); and an invoice the pipeline
+issued, rather than left a draft, shows the business is connected.
 
 ```php
-class ZatcaOnboardingService
+class ZatcaConnectionService
 {
-    public function __construct(
-        private OrganizationService $orgService,
-        private MasaarClient $client,
-    ) {}
-
     /**
-     * Complete onboarding workflow
+     * Masaar's health checks for the business, its certificate among them
      */
-    public function onboard(Business $business, string $otp, string $serialNumber): array
+    public function check(Business $business): array
     {
-        // Step 1: Register if not already
-        if (!$business->masaar_org_id) {
-            $org = $this->orgService->register($business);
-            $business->update([
-                'masaar_org_id' => $org['data']['organization']['id'],
-                'zatca_onboarding_status' => 'pending',
-            ]);
-        }
+        $client = new MasaarClient($business->masaar_api_key, $business->masaar_api_secret, $business->masaar_org_id);
 
-        // The onboarding endpoints act for the organization of the token,
-        // which must be an administrator's: clientFor() as in section 2.4
-        $client = $this->clientFor($business);
-
-        // Step 2: Request the compliance CSID with the OTP
-        $csr = $client->post('/api/compliance/onboarding/ccsid', [
-            'otp' => $otp,
-            'common_name' => $business->name,
-            'serial_number' => $serialNumber, // 1-<solution>|2-<model>|3-<serial>
-        ]);
-
-        $business->update(['zatca_onboarding_status' => 'csr_generated']);
-
-        // Step 3: Run compliance checks
-        $compliance = $client->post('/api/compliance/onboarding/compliance-check')['data'];
-
-        if (!$compliance['passed']) {
-            $business->update(['zatca_onboarding_status' => 'failed']);
-            return [
-                'success' => false,
-                'step' => 'compliance',
-                'errors' => $compliance['results'],
-            ];
-        }
-
-        $business->update(['zatca_onboarding_status' => 'compliance_passed']);
-
-        // Step 4: Get production CSID
-        $pcsid = $client->post('/api/compliance/onboarding/pcsid');
-
-        $business->update(['zatca_onboarding_status' => 'completed']);
+        $health = $client->get('/api/v1/dashboard/health')['data'];
 
         return [
-            'success' => true,
-            'organization_id' => $business->masaar_org_id,
-            'status' => 'completed',
-            'message' => 'Business is now ZATCA-compliant and ready for invoice submission',
+            'status' => $health['status'],
+            'certificate' => $health['checks']['certificates'],
         ];
+    }
+
+    /**
+     * After a pipeline answer: an issued invoice means the business is connected
+     */
+    public function recordOutcome(Business $business, array $result): void
+    {
+        if ($result['status'] !== 'draft' && $business->zatca_onboarding_status !== 'completed') {
+            $business->update(['zatca_onboarding_status' => 'completed']);
+        }
     }
 
     /**
@@ -1553,33 +1465,20 @@ class ZatcaOnboardingService
 
         return [
             'status' => $status,
-            'step' => $this->getStepNumber($status),
-            'next_action' => $this->getNextAction($status),
+            'next_action' => $this->getNextAction($business),
             'can_submit_invoices' => $status === 'completed',
         ];
     }
 
-    private function getStepNumber(string $status): int
+    private function getNextAction(Business $business): string
     {
-        return match ($status) {
-            'pending' => 1,
-            'csr_generated' => 3,
-            'compliance_passed' => 4,
-            'completed' => 5,
-            'failed' => 0,
-            default => 1,
-        };
-    }
+        if (! $business->masaar_api_key) {
+            return 'Sign up on the Masaar portal and wait for approval';
+        }
 
-    private function getNextAction(string $status): string
-    {
-        return match ($status) {
-            'pending' => 'Get OTP from ZATCA Fatoora Portal',
-            'csr_generated' => 'Running compliance checks...',
-            'compliance_passed' => 'Obtaining production certificate...',
+        return match ($business->zatca_onboarding_status) {
             'completed' => 'Ready! Start creating invoices',
-            'failed' => 'Contact support to resolve issues',
-            default => 'Complete business registration',
+            default => 'Enter the OTP from the ZATCA Fatoora Portal on the Masaar portal',
         };
     }
 }
@@ -1591,18 +1490,17 @@ class ZatcaOnboardingService
 
 ### For the Partner Development Team
 
-- [ ] Add `masaar_org_id` to businesses table
+- [ ] Add `masaar_org_id`, `masaar_api_key` and an encrypted `masaar_api_secret` to businesses table
 - [ ] Add `zatca_*` fields to invoices table
 - [ ] Create branches table with EGS device support
-- [ ] Add Arabic name fields where required
+- [ ] Add Arabic fields: customer `name_ar`, item `description_ar`, Arabic notes
 - [ ] Add complete address fields (building_number, additional_number, district)
 - [ ] Add `country_code` to customers for cross-border
 - [ ] Add per-line tax exemption fields
-- [ ] Create MasaarClient service
-- [ ] Create InvoiceService for mapping
-- [ ] Create OrganizationService for onboarding
+- [ ] Create MasaarClient service (licence key and secret, Idempotency-Key)
+- [ ] Create InvoiceService for mapping, sending to `/api/v1/pipeline/submit`
 - [ ] Create webhook handler
-- [ ] Create onboarding wizard UI
+- [ ] Create connection status UI
 - [ ] Add ZATCA status display on invoices
 - [ ] Add QR code display on invoice PDF
 
@@ -1614,7 +1512,8 @@ class ZatcaOnboardingService
 - [ ] Complete address (street, building, district, city, postal)
 - [ ] Business type selection
 - [ ] Contact information
-- [ ] OTP from ZATCA portal (during onboarding)
+- [ ] Customers' Arabic names and items' Arabic descriptions
+- [ ] The Masaar licence key, secret and organization id for each business
 
 ---
 

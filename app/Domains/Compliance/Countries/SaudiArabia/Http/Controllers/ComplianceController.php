@@ -4,6 +4,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\SubmissionTracker;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\Submitter;
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Middleware\ZatcaFiling;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Organization\Services\TenantResolver;
@@ -12,14 +13,25 @@ use App\Http\Responses\ApiResponse;
 use App\Support\Errors\ComplianceException;
 use App\Support\Errors\ErrorCode;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
 
 /**
  * Fatoora (KSA) Compliance API controller.
  *
  * Thin controller - delegates to Submitter.
+ *
+ * On the licence-key API (/api/v1/compliance/*) an organization registered
+ * in another country is refused and sent to the pipeline (ZatcaFiling).
  */
-class ComplianceController extends Controller
+class ComplianceController extends Controller implements HasMiddleware
 {
+    /** @return list<Middleware> */
+    public static function middleware(): array
+    {
+        return [new Middleware(ZatcaFiling::class)];
+    }
+
     public function __construct(
         private readonly TenantResolver $tenant,
         private readonly Submitter $submission,

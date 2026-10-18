@@ -8,6 +8,7 @@ use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Product;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Str;
 
 /**
  * An organization's customers and products.
@@ -100,6 +101,39 @@ class Catalogue
     public function product(string $organizationId, string $productId): ?Product
     {
         return Product::withoutTenantScope(fn () => Product::query()->where('org_id', $organizationId)->find($productId));
+    }
+
+    /**
+     * The Arabic name of the product an invoice line names, by its id or
+     * else its code; null when it names none, none is found, or the product
+     * has no Arabic name. Only what the organization wrote down: nothing is
+     * translated.
+     */
+    public function productArabicName(string $organizationId, ?string $productId, ?string $code): ?string
+    {
+        $product = match (true) {
+            $productId !== null && Str::isUuid($productId) => $this->product($organizationId, $productId),
+            filled($code) => Product::withoutTenantScope(fn () => Product::query()->where('org_id', $organizationId)->where('sku', $code)->first()),
+            default => null,
+        };
+
+        return filled($product?->name_ar) ? (string) $product->name_ar : null;
+    }
+
+    /** A saved customer's usual payment terms; null when it has none. */
+    public function customerPaymentTerms(string $organizationId, string $customerId): ?string
+    {
+        $customer = Str::isUuid($customerId) ? $this->customer($organizationId, $customerId) : null;
+
+        return filled($customer?->payment_terms) ? (string) $customer->payment_terms : null;
+    }
+
+    /** The Arabic name of a saved customer; null when there is none. */
+    public function customerArabicName(string $organizationId, string $customerId): ?string
+    {
+        $customer = Str::isUuid($customerId) ? $this->customer($organizationId, $customerId) : null;
+
+        return filled($customer?->name_ar) ? (string) $customer->name_ar : null;
     }
 
     /**

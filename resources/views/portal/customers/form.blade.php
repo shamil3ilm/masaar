@@ -17,8 +17,10 @@
             <x-ui.field :label="__('Name')">
                 <x-ui.input type="text" name="name" maxlength="255" required value="{{ old('name', $customer->name) }}" />
             </x-ui.field>
-            <x-ui.field :label="__('Name in Arabic (optional)')">
-                <x-ui.input type="text" name="name_ar" maxlength="255" dir="rtl" lang="ar" value="{{ old('name_ar', $customer->name_ar) }}" />
+            {{-- Required where the invoice must be in Arabic: an invoice naming
+                 this record takes it as its own (LanguageRules). --}}
+            <x-ui.field :label="($arabicRequired ?? false) ? __('Name in Arabic, as printed on the invoice') : __('Name in Arabic (optional)')">
+                <x-ui.input type="text" name="name_ar" maxlength="255" dir="rtl" lang="ar" :required="$arabicRequired ?? false" value="{{ old('name_ar', $customer->name_ar) }}" />
             </x-ui.field>
             <x-ui.field :label="__('VAT number')">
                 <x-ui.input type="text" name="vat_number" inputmode="numeric" maxlength="15" value="{{ old('vat_number', $customer->vat_number) }}" />

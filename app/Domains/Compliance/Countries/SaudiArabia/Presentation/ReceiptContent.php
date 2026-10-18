@@ -17,6 +17,7 @@ use App\Domains\Invoice\Models\InvoiceLine;
 use App\Domains\Invoice\Support\PrintedAmounts;
 use App\Domains\Invoice\Support\UnitCode;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\PrintPreferences;
 use BackedEnum;
 
 /**
@@ -33,6 +34,10 @@ class ReceiptContent
         'credit_note' => ['Credit note', 'إشعار دائن'],
         'debit_note' => ['Debit note', 'إشعار مدين'],
     ];
+
+    public function __construct(
+        private readonly PrintPreferences $preferences,
+    ) {}
 
     public function build(Invoice $invoice, Organization $organization): Receipt
     {
@@ -61,6 +66,8 @@ class ReceiptContent
             // include VAT.
             itemsNote: $simplified ? new PrintLabel('Line totals are inclusive of VAT', 'المبالغ شاملة ضريبة القيمة المضافة') : null,
             totals: $this->totals($invoice),
+            // Right to left unless the organization chose English first.
+            arabicFirst: $this->preferences->arabicFirst($organization),
             notes: $invoice->notes ? new ReceiptRow(new PrintLabel('Notes', 'ملاحظات'), (string) $invoice->notes) : null,
             qrPayload: (string) $invoice->qr_code,
             footer: $invoice->icv ? ['Counter '.$invoice->icv.' · '.$invoice->hash] : [],

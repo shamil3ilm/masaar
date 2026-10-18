@@ -47,7 +47,7 @@ class AdjustmentNoteTest extends TestCase
             ->assertSessionHasInput('buyer_name', 'Gulf Supplies')
             ->assertSessionHasInput('lines', [[
                 'description' => 'Consulting hour',
-                'description_ar' => '',
+                'description_ar' => 'ساعة استشارية',
                 'class_code' => '',
                 'quantity' => '2',
                 'unit_price' => '250.00',
@@ -199,6 +199,7 @@ class AdjustmentNoteTest extends TestCase
             'issue_date' => now()->toDateString(),
             'lines' => [[
                 'description' => 'Tea',
+                'description_ar' => 'شاي',
                 'quantity' => '1',
                 'unit_price' => '10',
                 'tax_rate' => '15',
@@ -279,6 +280,7 @@ class AdjustmentNoteTest extends TestCase
             'issue_date' => now()->toDateString(),
             'currency' => 'SAR',
             'buyer_name' => 'Gulf Supplies',
+            'buyer_name_ar' => 'الخليج للتوريدات',
             'subtotal' => '500.00',
             'tax_amount' => '75.00',
             'total' => '575.00',
@@ -287,6 +289,7 @@ class AdjustmentNoteTest extends TestCase
         InvoiceLine::query()->create([
             'invoice_id' => $invoice->id,
             'description' => 'Consulting hour',
+            'description_ar' => 'ساعة استشارية',
             'quantity' => '2',
             'unit_code' => 'HUR',
             'unit_price' => '250.00',

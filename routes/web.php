@@ -39,6 +39,7 @@ use App\Domains\Platform\Http\Controllers\AdminAuditController;
 use App\Domains\Platform\Http\Controllers\AdminController;
 use App\Domains\Platform\Http\Controllers\AdminCountryController;
 use App\Domains\Platform\Http\Controllers\AdminFeatureController;
+use App\Domains\Platform\Http\Controllers\AdminLanguageController;
 use App\Domains\Platform\Http\Controllers\AdminOrganizationReviewController;
 use App\Domains\Platform\Http\Controllers\AdminSettingsController;
 use App\Domains\Platform\Http\Controllers\AdminUserController;
@@ -244,6 +245,10 @@ Route::prefix('admin')->name('admin.')
         // with a reason. Every role sees the Features section; changing it
         // takes features.manage.
         Route::post('/organizations/{id}/features', [AdminFeatureController::class, 'update'])->middleware('admin.can:features.manage')->name('organizations.features');
+        // Where its country requires Arabic: the names it still lacks, and a
+        // grace period - warn instead of refuse until a date - with a reason.
+        Route::get('/organizations/{id}/missing-arabic', [AdminLanguageController::class, 'missing'])->name('organizations.missing-arabic');
+        Route::post('/organizations/{id}/language-grace', [AdminLanguageController::class, 'grace'])->middleware('admin.can:features.manage')->name('organizations.language-grace');
         // Support tickets. Everyone in the console reads them; answering
         // takes support.manage.
         Route::get('/support', [AdminSupportController::class, 'index'])->name('support.index');

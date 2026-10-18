@@ -354,6 +354,26 @@ final class FatooraConfig
      *
      * @var list<string>
      */
+    /**
+     * The Arabic a charge's reason takes beside it when it gives none, for
+     * the UNCL 7161 codes the platform's own common charges use. ZATCA
+     * publishes Arabic for exemption reasons and credit note reasons, not
+     * for these codes, so this is the platform's wording of each code's
+     * meaning, written by hand - never translated from what was typed.
+     *
+     * @var array<string, string>
+     */
+    public const CHARGE_REASONS_AR = [
+        'ABK' => 'رسوم متنوعة',        // Miscellaneous
+        'ADR' => 'رسوم الخدمات',       // Other services
+        'CG' => 'رسوم التنظيف',        // Cleaning
+        'DL' => 'رسوم التوصيل',        // Delivery
+        'FC' => 'رسوم الشحن',          // Freight service
+        'IAA' => 'رسوم التركيب',       // Installation
+        'PC' => 'رسوم التغليف',        // Packing
+        'SAA' => 'رسوم الشحن والمناولة', // Shipping and handling
+    ];
+
     public const CHARGE_REASON_CODES = [
         'AA', 'AAA', 'AAC', 'AAD', 'AAE', 'AAF', 'AAH', 'AAI', 'AAS', 'AAT', 'AAV', 'AAY',
         'AAZ', 'ABA', 'ABB', 'ABC', 'ABD', 'ABF', 'ABK', 'ABL', 'ABN', 'ABR', 'ABS', 'ABT',

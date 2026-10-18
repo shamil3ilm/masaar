@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Http\Controllers;
 
+use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Invoice\Models\BusinessQrCode;
 use App\Domains\Invoice\Services\BusinessQrCodes;
@@ -40,6 +41,7 @@ class PortalQrCodeController extends Controller
         private readonly InvoiceLinks $links,
         private readonly InvoiceExtraQr $extraQr,
         private readonly QrCodeRenderer $qr,
+        private readonly JurisdictionResolver $jurisdictions,
     ) {}
 
     public function index(Request $request): View
@@ -67,7 +69,14 @@ class PortalQrCodeController extends Controller
         $organizationId = $this->portalOrganizationId($request, __('Only an administrator of this organization can change its QR codes.'));
         $kind = (string) $request->validate(['kind' => ['required', Rule::in(BusinessQrCode::KINDS)]])['kind'];
 
-        $this->codes->create($organizationId, $kind, $request->validateWithBag($kind, $this->codes->rules($kind)));
+        // The caption is printed under the code on the invoice: in Arabic
+        // where the organization's country requires it.
+        $rules = [
+            ...$this->codes->rules($kind),
+            'label' => [...$this->jurisdictions->forRules($this->tenant->getOrganization())->languageRules()->arabicTextRules(), 'max:80'],
+        ];
+
+        $this->codes->create($organizationId, $kind, $request->validateWithBag($kind, $rules));
 
         return redirect()->route('portal.qr-codes.index')->with('success', __('QR code created.'));
     }

@@ -194,6 +194,7 @@ class OrgAdminTest extends TestCase
             'issue_date' => now()->toDateString(),
             'currency' => 'SAR',
             'buyer_name' => 'Buyer',
+            'buyer_name_ar' => 'المشتري',
         ]));
     }
 
@@ -218,8 +219,10 @@ class OrgAdminTest extends TestCase
             'type' => 'simplified',
             'issue_date' => now()->toDateString(),
             'buyer_name' => 'Buyer',
+            'buyer_name_ar' => 'المشتري',
             'lines' => [[
                 'description' => 'Item',
+                'description_ar' => 'صنف',
                 'quantity' => 1,
                 'unit_price' => 100,
             ]],

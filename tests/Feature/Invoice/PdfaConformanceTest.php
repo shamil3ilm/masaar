@@ -11,6 +11,7 @@ use App\Domains\Invoice\Models\InvoiceLine;
 use App\Domains\Invoice\Services\InvoiceExtraQr;
 use App\Domains\Invoice\Services\InvoicePdf;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\PrintPreferences;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
@@ -124,6 +125,18 @@ class PdfaConformanceTest extends TestCase
 
         $this->assertStringContainsString('/ETSI.CAdES.detached', $pdf);
         $this->assertConforms($pdf);
+    }
+
+    /**
+     * Arabic first, right to left, is the default every case above prints;
+     * an organization that chose English first stays PDF/A on every paper.
+     */
+    #[DataProvider('papers')]
+    public function test_english_first_stays_pdfa(PaperSize $paper): void
+    {
+        app(PrintPreferences::class)->setLanguageOrder($this->acme, PrintPreferences::ENGLISH_FIRST);
+
+        $this->assertConforms(app(InvoicePdf::class)->render($this->sampleInvoice($this->acme, 'standard', 12), $this->acme->fresh(), $paper));
     }
 
     /**

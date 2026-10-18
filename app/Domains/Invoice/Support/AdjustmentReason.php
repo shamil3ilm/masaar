@@ -33,6 +33,21 @@ final class AdjustmentReason
     ];
 
     /**
+     * A listed reason sent in English alone, with the Arabic the data
+     * dictionary gives it beside it; null for anything else.
+     */
+    public static function bilingual(mixed $reason): ?string
+    {
+        if (! is_string($reason)) {
+            return null;
+        }
+
+        $arabic = self::OFFICIAL[trim($reason)] ?? null;
+
+        return $arabic === null ? null : trim($reason).' / '.$arabic;
+    }
+
+    /**
      * What is stored and printed: both languages, so the note reads the same
      * to the buyer and to the authority whichever language the portal is in.
      *

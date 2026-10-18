@@ -24,16 +24,23 @@ use Illuminate\Support\Str;
 class WebhookService
 {
     /**
-     * Available webhook events.
+     * The events an endpoint may subscribe to: each one something the
+     * platform sends. invoice.warning (accepted by the authority with
+     * warnings) and invoice.failed (filing failed) were sent and could not
+     * be subscribed to, so only a "*" endpoint received them. invoice.created
+     * and invoice.updated could be subscribed to and were never sent; a
+     * draft is not a document anyone acts on, and the issued, filed and
+     * answered events cover every invoice that is, so they are no longer
+     * offered.
      */
     public const EVENTS = [
-        'invoice.created',
-        'invoice.updated',
         'invoice.issued',
         'invoice.submitted',
         'invoice.cleared',
         'invoice.reported',
+        'invoice.warning',
         'invoice.rejected',
+        'invoice.failed',
         'onboarding.ccsid_obtained',
         'onboarding.compliance_passed',
         'onboarding.pcsid_obtained',

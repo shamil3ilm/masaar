@@ -16,7 +16,7 @@
         {{ __('Saved as a draft. It has no counter, no hash and no QR until it is issued, and a draft can be changed.') }}
     </p>
     <p class="mt-2 text-sm text-muted">
-        {{ __('The Arabic fields are optional. ZATCA accepts Latin characters for names of people, places and products, so a buyer or a product named in English is already compliant — fill these in when the buyer or the product has an Arabic name of its own, and it will appear on the invoice and in the QR code.') }}
+        {{ __('The invoice must be in Arabic: the description of each line, any notes, payment terms and charge reasons, the reason for a credit or debit note, and on a standard invoice the name of the buyer. English may go beside it. A saved customer or product fills in its Arabic.') }}
     </p>
 </div>
 
@@ -194,7 +194,7 @@
                 </label>
                 <x-ui.input type="text" name="buyer_name_ar" id="buyer_name_ar" value="{{ old('buyer_name_ar') }}"
                        dir="rtl" lang="ar" />
-                <p class="mt-1 text-xs text-muted">{{ __('Optional — a Latin name is accepted for a proper name.') }}</p>
+                <p class="mt-1 text-xs text-muted">{{ __('Required on a standard invoice.') }}</p>
             </div>
 
             <div>

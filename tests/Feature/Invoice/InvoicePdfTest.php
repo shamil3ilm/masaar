@@ -240,7 +240,9 @@ class InvoicePdfTest extends TestCase
             ['exempt_code' => 'VATEX-SA-32', 'exempt_reason' => 'Export'],
         ));
 
-        $this->assertStringContainsString('Commercial registration / السجل التجاري', $html);
+        // Arabic first, as a Saudi invoice prints unless its organization
+        // chose English first (PrintPreferences::arabicFirst).
+        $this->assertStringContainsString('السجل التجاري / Commercial registration', $html);
         $this->assertStringContainsString('صادرات السلع من المملكة', $html);
         $this->assertStringNotContainsString('Unit price (incl. VAT)', $html);
     }

@@ -93,6 +93,22 @@ components:
               description: 'Field errors, where the failure has them'
             category:
               type: string
+    WebhookEvent:
+      type: string
+      description: 'An event a webhook subscribes to (WebhookService::EVENTS), or "*" for every one'
+      enum:
+        - invoice.issued
+        - invoice.submitted
+        - invoice.cleared
+        - invoice.reported
+        - invoice.warning
+        - invoice.rejected
+        - invoice.failed
+        - onboarding.ccsid_obtained
+        - onboarding.compliance_passed
+        - onboarding.pcsid_obtained
+        - certificate.expiring
+        - '*'
 paths:
   /api/admin/dashboard:
     get:
@@ -1704,6 +1720,8 @@ paths:
                   type: string
                 buyer_name_ar:
                   type: string
+                customer_id:
+                  type: string
                 buyer_vat_number:
                   type: string
                 buyer_id:
@@ -1742,7 +1760,7 @@ paths:
                   type: string
                 lines:
                   type: array
-                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array } } }
+                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, product_id: { type: string }, product_code: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array } } }
                 prepayments:
                   type: array
                   items: { type: object, properties: { invoice_number: { type: string } } }
@@ -1851,6 +1869,8 @@ paths:
                   type: string
                 buyer_name_ar:
                   type: string
+                customer_id:
+                  type: string
                 buyer_vat_number:
                   type: string
                 buyer_id:
@@ -1889,7 +1909,7 @@ paths:
                   type: string
                 lines:
                   type: array
-                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array } } }
+                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, product_id: { type: string }, product_code: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array } } }
                 prepayments:
                   type: array
                   items: { type: object, properties: { invoice_number: { type: string } } }
@@ -1971,6 +1991,8 @@ paths:
                   type: string
                 buyer_name_ar:
                   type: string
+                customer_id:
+                  type: string
                 buyer_vat_number:
                   type: string
                 buyer_id:
@@ -2009,7 +2031,7 @@ paths:
                   type: string
                 lines:
                   type: array
-                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array } } }
+                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, product_id: { type: string }, product_code: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array } } }
                 prepayments:
                   type: array
                   items: { type: object, properties: { invoice_number: { type: string } } }
@@ -3200,6 +3222,8 @@ paths:
                   type: string
                 buyer_name_ar:
                   type: string
+                customer_id:
+                  type: string
                 buyer_vat_number:
                   type: string
                 buyer_id:
@@ -3238,7 +3262,7 @@ paths:
                   type: string
                 lines:
                   type: array
-                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array } } }
+                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, product_id: { type: string }, product_code: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array } } }
                 prepayments:
                   type: array
                   items: { type: object, properties: { invoice_number: { type: string } } }
@@ -3351,6 +3375,8 @@ paths:
                   type: string
                 buyer_name_ar:
                   type: string
+                customer_id:
+                  type: string
                 buyer_vat_number:
                   type: string
                 buyer_id:
@@ -3389,7 +3415,7 @@ paths:
                   type: string
                 lines:
                   type: array
-                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array } } }
+                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, product_id: { type: string }, product_code: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array } } }
                 prepayments:
                   type: array
                   items: { type: object, properties: { invoice_number: { type: string } } }
@@ -3577,6 +3603,8 @@ paths:
                   type: string
                 buyer_name_ar:
                   type: string
+                customer_id:
+                  type: string
                 buyer_vat_number:
                   type: string
                 buyer_id:
@@ -3615,7 +3643,7 @@ paths:
                   type: string
                 lines:
                   type: array
-                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array } } }
+                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, product_id: { type: string }, product_code: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array } } }
                 prepayments:
                   type: array
                   items: { type: object, properties: { invoice_number: { type: string } } }

@@ -21,7 +21,9 @@ use GdImage;
  *
  * The same receipt, in the same order and the same type sizes, as the roll
  * layout the browser and the PDF use (print/receipt.blade.php), from the
- * same Receipt the country describes.
+ * same Receipt the country describes - right to left too, when the receipt
+ * puts Arabic first: the Arabic of each caption leads, at the right, and
+ * amounts sit at the left.
  */
 class ReceiptImage
 {
@@ -50,8 +52,12 @@ class ReceiptImage
             $canvas->space(1.5);
         }
 
-        $canvas->text($receipt->title->en, $small ? 9 : 10.5, true, ReceiptCanvas::CENTER);
-        $canvas->text($receipt->title->ar, $small ? 9 : 10.5, true, ReceiptCanvas::CENTER);
+        $rtl = $receipt->arabicFirst;
+        $valueSide = $rtl ? ReceiptCanvas::RIGHT : ReceiptCanvas::LEFT;
+
+        foreach ($rtl ? [$receipt->title->ar, $receipt->title->en] : [$receipt->title->en, $receipt->title->ar] as $title) {
+            $canvas->text($title, $small ? 9 : 10.5, true, ReceiptCanvas::CENTER);
+        }
 
         foreach ($receipt->sections as $section) {
             $canvas->rule();
@@ -66,7 +72,7 @@ class ReceiptImage
 
             foreach ($section->rows as $row) {
                 $canvas->pair($row->label->en, $row->label->ar, $label);
-                $canvas->text($row->value, $body, $row->strong, ReceiptCanvas::LEFT);
+                $canvas->text($row->value, $body, $row->strong, $valueSide);
             }
 
             foreach ($section->lines as $line) {
@@ -75,14 +81,21 @@ class ReceiptImage
         }
 
         $canvas->rule();
-        $canvas->pair($receipt->quantityLabel->en.' × '.$receipt->unitPriceLabel->en, $receipt->totalLabel->en, $label);
-        $canvas->pair($receipt->quantityLabel->ar.' × '.$receipt->unitPriceLabel->ar, $receipt->totalLabel->ar, $label);
+        if ($rtl) {
+            $canvas->pair($receipt->totalLabel->ar, $receipt->quantityLabel->ar.' × '.$receipt->unitPriceLabel->ar, $label);
+            $canvas->pair($receipt->totalLabel->en, $receipt->quantityLabel->en.' × '.$receipt->unitPriceLabel->en, $label, startRtl: false);
+        } else {
+            $canvas->pair($receipt->quantityLabel->en.' × '.$receipt->unitPriceLabel->en, $receipt->totalLabel->en, $label);
+            $canvas->pair($receipt->quantityLabel->ar.' × '.$receipt->unitPriceLabel->ar, $receipt->totalLabel->ar, $label);
+        }
 
         foreach ($receipt->items as $item) {
             $canvas->space(1.2);
             $canvas->text($item->description, $body, true);
 
-            $canvas->pair($item->quantity.' × '.$item->unitPrice, '= '.$item->total, $body, startRtl: false);
+            $rtl
+                ? $canvas->pair($item->total.' =', $item->quantity.' × '.$item->unitPrice, $body, startRtl: false)
+                : $canvas->pair($item->quantity.' × '.$item->unitPrice, '= '.$item->total, $body, startRtl: false);
 
             if ($item->discount) {
                 $canvas->pair('Discount  الخصم', $item->discount, $label);
@@ -98,16 +111,22 @@ class ReceiptImage
         }
 
         if ($receipt->itemsNote) {
-            $canvas->text($receipt->itemsNote->en, $label, false, ReceiptCanvas::RIGHT);
-            $canvas->text($receipt->itemsNote->ar, $label, false, ReceiptCanvas::RIGHT);
+            foreach ($rtl ? [$receipt->itemsNote->ar, $receipt->itemsNote->en] : [$receipt->itemsNote->en, $receipt->itemsNote->ar] as $note) {
+                $canvas->text($note, $label, false, ReceiptCanvas::RIGHT);
+            }
         }
 
         $canvas->rule();
 
         foreach ($receipt->totals as $row) {
             $points = $row->strong ? ($small ? 8.5 : 10.0) : $body;
-            $canvas->pair($row->label->en, $row->value, $points, $row->strong);
-            $canvas->text($row->label->ar, $label, $row->strong, ReceiptCanvas::LEFT);
+            if ($rtl) {
+                $canvas->pair($row->value, $row->label->ar, $points, $row->strong, startRtl: false);
+                $canvas->text($row->label->en, $label, $row->strong, ReceiptCanvas::RIGHT);
+            } else {
+                $canvas->pair($row->label->en, $row->value, $points, $row->strong);
+                $canvas->text($row->label->ar, $label, $row->strong, ReceiptCanvas::LEFT);
+            }
         }
 
         if ($receipt->notes) {

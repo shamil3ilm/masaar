@@ -97,6 +97,7 @@ class PipelineTenantGuardTest extends TestCase
             'document_type' => 'invoice',
             'issue_date' => now()->toDateString(),
             'buyer_name' => 'Buyer',
+            'buyer_name_ar' => 'المشتري',
             'buyer_vat_number' => '399999999900003',
             'buyer_address' => [
                 'street' => 'King Fahd Road',
@@ -107,6 +108,7 @@ class PipelineTenantGuardTest extends TestCase
             ],
             'lines' => [[
                 'description' => 'Item',
+                'description_ar' => 'صنف',
                 'quantity' => 1,
                 'unit_price' => 100,
             ]],

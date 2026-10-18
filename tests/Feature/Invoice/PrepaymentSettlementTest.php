@@ -120,7 +120,7 @@ class PrepaymentSettlementTest extends TestCase
 
     private function issuedPrepayment(string $number, string $amount, bool $issued = true): void
     {
-        $this->api(['invoice_number' => $number, 'document_type' => 'prepayment', 'lines' => [['description' => 'Advance', 'quantity' => 1, 'unit_price' => $amount]]])->assertCreated();
+        $this->api(['invoice_number' => $number, 'document_type' => 'prepayment', 'lines' => [['description' => 'Advance', 'description_ar' => 'دفعة مقدمة', 'quantity' => 1, 'unit_price' => $amount]]])->assertCreated();
 
         if ($issued) {
             Invoice::withoutTenantScope(fn () => Invoice::query()->where('invoice_number', $number)->sole())
@@ -146,9 +146,10 @@ class PrepaymentSettlementTest extends TestCase
             'issue_date' => now()->toDateString(),
             'supply_date' => now()->toDateString(),
             'buyer_name' => 'Beta Industries',
+            'buyer_name_ar' => 'شركة بيتا للصناعات',
             'buyer_vat_number' => '399999999800003',
             'buyer_address' => ['street' => 'Olaya Street', 'building_number' => '4321', 'district' => 'Al Murooj', 'city' => 'Riyadh', 'postal_code' => '11564', 'country_code' => 'SA'],
-            'lines' => [['description' => 'Laptop', 'quantity' => 1, 'unit_price' => '2000.00']],
+            'lines' => [['description' => 'Laptop', 'description_ar' => 'حاسوب محمول', 'quantity' => 1, 'unit_price' => '2000.00']],
             ...$overrides,
         ];
     }

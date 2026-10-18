@@ -89,6 +89,8 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Countries/SaudiArabia/Reports/DailyClose.php' => 'Invoice, Organization',
         'Domains/Compliance/Countries/SaudiArabia/Reports/DeadlineReport.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Rules/InvoiceValidator.php' => 'Invoice',
+        // What a saved invoice lacks of the Arabic it must carry.
+        'Domains/Compliance/Countries/SaudiArabia/Rules/LanguageRules.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Rules/VatPeriodTracker.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Signing/SigningCredentials.php' => 'Invoice, Organization',
         // A UAE document is built from an invoice and its organization's UAE
@@ -112,11 +114,14 @@ class CrossDomainModelTest extends TestCase
         // The 14 days are counted from an invoice's supply and issue dates,
         // and a late PeppolDocument says so.
         'Domains/Compliance/Countries/UnitedArabEmirates/Rules/IssueDeadline.php' => 'Compliance\Networks\Peppol, Invoice',
+        // Answers that a UAE invoice lacks no Arabic.
+        'Domains/Compliance/Countries/UnitedArabEmirates/Rules/LanguageRules.php' => 'Invoice',
         // Drafts a UAE invoice through the shared InvoiceDrafter, for the API and the portal.
         'Domains/Compliance/Countries/UnitedArabEmirates/Support/UaeDrafts.php' => 'Invoice',
         // Keeps a UAE seller's tax identity on its UAE ComplianceProfile.
         'Domains/Compliance/Countries/UnitedArabEmirates/Support/UaeSellerDetails.php' => 'Organization',
         // The compliance engine issues an invoice in its organization's jurisdiction.
+        'Domains/Compliance/Engine/Contracts/LanguageRules.php' => 'Invoice',
         'Domains/Compliance/Engine/Contracts/Presentation.php' => 'Invoice',
         'Domains/Compliance/Engine/Contracts/Transmission.php' => 'Invoice',
         'Domains/Compliance/Engine/Services/ComplianceEngine.php' => 'Invoice',
