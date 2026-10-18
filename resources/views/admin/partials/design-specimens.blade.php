@@ -272,6 +272,23 @@
 
         {{ $sample->links() }}
 
+        {{-- A history list's filters: two on, so the chips show, and the
+             CSV. The drawer folds away on a phone. --}}
+        @php
+            $specimenList = \App\Http\Listing\ListState::fromQuery(new \App\Http\Listing\ListSpec(
+                key: 'admin.design-system',
+                sorts: ['newest' => new \App\Http\Listing\Sort($t('Newest', 'الأحدث'), 'created_at'), 'amount' => new \App\Http\Listing\Sort($t('Amount', 'المبلغ'), 'total')],
+                defaultSort: 'newest',
+                filters: [
+                    new \App\Http\Listing\Filters\Search('q', $t('Search', 'بحث'), ['invoice_number']),
+                    new \App\Http\Listing\Filters\DateRange('issue_date', $t('Issue date', 'تاريخ الإصدار')),
+                    new \App\Http\Listing\Filters\NumberRange('total', $t('Total', 'الإجمالي')),
+                    new \App\Http\Listing\Filters\Choice('status', $t('Status', 'الحالة'), ['issued' => $t('Issued', 'صادرة'), 'draft' => $t('Draft', 'مسودة')], 'status'),
+                ],
+            ), ['status' => 'issued', 'amount_min' => '100'], url('/admin/design-system'))->with([], url('/admin/design-system'), null, fn (): string => '#');
+        @endphp
+        <x-ui.list-filters :list="$specimenList" />
+
         {{-- What a list and a long page do on a phone, drawn compact here
              at any width: the first row expanded, the second collapsed. --}}
         <h3 class="pt-4 text-sm font-semibold text-subtle">{{ $t('On a small screen: rows collapse to their key fields, and open in place', 'على الشاشات الصغيرة: تُطوى الصفوف إلى حقولها الأساسية وتُفتح في مكانها') }}</h3>

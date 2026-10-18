@@ -22,11 +22,15 @@ class UaeDrafts
         private readonly InvoiceDrafter $drafter,
     ) {}
 
-    public function draft(CreateUaeInvoiceRequest $request, string $organizationId): Invoice
+    /**
+     * @param  string|null  $branchId  the branch it is issued from (BranchAccess::draftBranch)
+     */
+    public function draft(CreateUaeInvoiceRequest $request, string $organizationId, ?string $branchId = null): Invoice
     {
         return $this->drafter->draft(
             $request->draft(),
             $organizationId,
+            $branchId,
             countryFields: $request->countryFields(),
         );
     }

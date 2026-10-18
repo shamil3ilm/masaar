@@ -5,22 +5,30 @@ declare(strict_types=1);
 namespace App\Domains\Invoice\Services;
 
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Organization\Services\BranchScope;
 use DateTimeInterface;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Counts of the current tenant's invoices.
  *
  * Invoice uses BelongsToTenant, so the global scope confines every query here
  * to the tenant the request resolved; none adds an org_id condition by hand.
+ * Each reads the branches the dashboard shows (BranchScope): the one chosen
+ * in the switcher, or all those the person may see.
  */
 class InvoiceReport
 {
+    public function __construct(
+        private readonly BranchScope $branches,
+    ) {}
+
     /**
      * Invoices created at or after a moment.
      */
     public function countSince(DateTimeInterface $since): int
     {
-        return Invoice::where('created_at', '>=', $since)->count();
+        return $this->invoices()->where('created_at', '>=', $since)->count();
     }
 
     /**
@@ -37,7 +45,7 @@ class InvoiceReport
         $thisMonth = now()->startOfMonth();
         $lastMonth = now()->subMonth()->startOfMonth();
 
-        $stats = Invoice::query()
+        $stats = $this->invoices()
             ->selectRaw('
                 COUNT(*) as total,
                 SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as today,
@@ -47,7 +55,7 @@ class InvoiceReport
             ', [$today, $thisMonth, $lastMonth, $thisMonth])
             ->first();
 
-        $byType = Invoice::query()
+        $byType = $this->invoices()
             ->selectRaw('type, COUNT(*) as count')
             ->groupBy('type')
             ->pluck('count', 'type')
@@ -72,12 +80,20 @@ class InvoiceReport
      */
     public function dailyCounts(DateTimeInterface $since): array
     {
-        return Invoice::query()
+        return $this->invoices()
             ->where('created_at', '>=', $since)
             ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
             ->groupBy('date')
             ->orderBy('date')
             ->pluck('count', 'date')
             ->toArray();
+    }
+
+    /**
+     * @return Builder<Invoice>
+     */
+    private function invoices(): Builder
+    {
+        return $this->branches->applyVisible(Invoice::query());
     }
 }

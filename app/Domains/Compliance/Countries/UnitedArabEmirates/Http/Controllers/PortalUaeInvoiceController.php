@@ -9,7 +9,10 @@ use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\UaeDocuments;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaeDrafts;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaePortal;
 use App\Domains\Invoice\Services\Catalogue;
+use App\Domains\Organization\Services\BranchAccess;
+use App\Domains\Organization\Services\BranchScope;
 use App\Http\Controllers\Controller;
+use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
@@ -30,14 +33,24 @@ class PortalUaeInvoiceController extends Controller
         private readonly UaeDrafts $drafts,
         private readonly UaeDocuments $documents,
         private readonly Catalogue $catalogue,
+        private readonly BranchAccess $branches,
+        private readonly BranchScope $scope,
     ) {}
 
     public function store(PortalUaeInvoiceRequest $request): RedirectResponse
     {
         $organization = $this->portal->organization();
 
+        // The branch it is issued from: the one chosen in the switcher, or a
+        // cashier's own - and never one they only read at.
         try {
-            $invoice = $this->drafts->draft($request, (string) $organization->id);
+            $branchId = $this->branches->draftBranch((string) $request->user()?->getAuthIdentifier(), (string) $organization->id, $this->scope->selected());
+        } catch (DomainException $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        }
+
+        try {
+            $invoice = $this->drafts->draft($request, (string) $organization->id, $branchId);
         } catch (\Throwable $e) {
             // As on the portal's other invoice form: what was typed goes back with the message,
             // rather than being lost to an error page.

@@ -29,6 +29,18 @@ class TaxReports implements TaxReportsPort
         ]);
     }
 
+    public function totals(string $organizationId, CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        $summary = $this->summary->for($organizationId, $from, $to);
+
+        return [
+            'documents' => $summary['documents'],
+            'base' => $summary['total_base'],
+            'vat' => $summary['total_vat'],
+            'currency' => $summary['currency'],
+        ];
+    }
+
     public function invoicesCsv(string $organizationId, CarbonImmutable $from, CarbonImmutable $to, string $fileName): StreamedResponse
     {
         return $this->csv->uaeInvoices($organizationId, $from, $to, $this->summary->currency(), $fileName);

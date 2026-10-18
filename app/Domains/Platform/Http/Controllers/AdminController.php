@@ -14,12 +14,14 @@ use App\Domains\Platform\Services\PlatformStatus;
 use App\Domains\Platform\Services\QueueReport;
 use App\Domains\Platform\Services\SubmissionLog;
 use App\Http\Controllers\Controller;
+use App\Http\Listing\Lists;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Web Admin Dashboard Controller.
@@ -37,6 +39,7 @@ class AdminController extends Controller
         private readonly PlatformStatus $status,
         private readonly FeatureReport $features,
         private readonly ArabicNameReport $arabicNames,
+        private readonly Lists $lists,
     ) {}
 
     /**
@@ -61,11 +64,19 @@ class AdminController extends Controller
     public function organizations(Request $request): View
     {
         // ?status=pending_review lists the sign-ups waiting for a decision.
-        $status = $request->query('status');
-        $organizations = $this->organizations->page(20, is_string($status) && $status !== '' ? $status : null)->withQueryString();
+        $list = $this->lists->admin($this->organizations->spec('admin.organizations'), $request, 'admin.organizations.export');
+        $organizations = $this->organizations->history($list);
         $submissionStats = $this->organizations->acceptedSubmissions($organizations->pluck('id'));
 
-        return view('admin.organizations', compact('organizations', 'submissionStats'));
+        return view('admin.organizations', compact('organizations', 'submissionStats', 'list'));
+    }
+
+    /** Every organization the list's filters give, as a CSV. */
+    public function exportOrganizations(Request $request): StreamedResponse
+    {
+        $list = $this->lists->admin($this->organizations->spec('admin.organizations'), $request);
+
+        return $this->organizations->csv($list, 'organizations-'.now()->format('Y-m-d').'.csv');
     }
 
     /**
@@ -95,13 +106,25 @@ class AdminController extends Controller
      */
     public function queue(Request $request): View
     {
-        $state = $request->query('state');
-        $orgId = $request->query('org_id');
-
-        $items = $this->queue->page(FilterData::fromQuery($state, $orgId), 50);
+        $list = $this->lists->admin($this->queue->spec('admin.queue'), $request, 'admin.queue.export');
+        $items = $this->queue->history($list);
         $stats = $this->queue->countByState();
 
-        return view('admin.queue', compact('items', 'stats', 'state', 'orgId'));
+        return view('admin.queue', [
+            'items' => $items,
+            'stats' => $stats,
+            'list' => $list,
+            'state' => $list->value('state'),
+            'orgId' => $list->value('org_id'),
+        ]);
+    }
+
+    /** Every queue item the list's filters give, as a CSV. */
+    public function exportQueue(Request $request): StreamedResponse
+    {
+        $list = $this->lists->admin($this->queue->spec('admin.queue'), $request);
+
+        return $this->queue->csv($list, 'offline-queue-'.now()->format('Y-m-d').'.csv');
     }
 
     /**

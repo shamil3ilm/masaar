@@ -6,11 +6,19 @@ namespace App\Domains\Platform\Services;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\OfflineQueue;
 use App\Domains\Organization\Services\TenantResolver;
-use App\Domains\Platform\DTOs\FilterData;
+use App\Http\Listing\CsvExport;
+use App\Http\Listing\Filters\Choice;
+use App\Http\Listing\Filters\DateRange;
+use App\Http\Listing\Filters\Equals;
+use App\Http\Listing\Filters\Search;
+use App\Http\Listing\ListSpec;
+use App\Http\Listing\ListState;
+use App\Http\Listing\Sort;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * The offline submission queue across every tenant.
@@ -93,21 +101,57 @@ class QueueReport
     }
 
     /**
-     * Items matching a filter, newest first, with their organization's name.
+     * What the queue list sorts and narrows by.
      */
-    public function page(FilterData $filter, int $perPage): LengthAwarePaginator
+    public function spec(string $key): ListSpec
+    {
+        return new ListSpec(
+            key: $key,
+            sorts: [
+                'newest' => new Sort('Queued', 'offline_queue.queued_at'),
+                'attempts' => new Sort('Attempts', 'offline_queue.attempts'),
+            ],
+            defaultSort: 'newest',
+            filters: [
+                new Choice('state', 'State', ['pending' => 'Pending', 'processing' => 'Processing', 'completed' => 'Completed', 'failed' => 'Failed'], 'offline_queue.state', 'All States'),
+                new Search('organization', 'Organization', ['organizations.name'], 'Organization name'),
+                new Equals('org_id', 'Organization ID', 'offline_queue.org_id'),
+                new DateRange('offline_queue.queued_at', 'Queued', instant: true),
+            ],
+            defaultPerPage: 50,
+            tiebreaker: 'offline_queue.id',
+        );
+    }
+
+    /**
+     * Queue items with their organization's name, as the list asks.
+     */
+    public function history(ListState $list): LengthAwarePaginator
+    {
+        return $list->paginate($this->query());
+    }
+
+    /** Every queue item the list's filters give, as a CSV. */
+    public function csv(ListState $list, string $fileName): StreamedResponse
+    {
+        return CsvExport::download($fileName, [
+            'Invoice' => fn (object $row): string => (string) $row->invoice_id,
+            'Organization' => fn (object $row): string => (string) $row->organization_name,
+            'State' => fn (object $row): string => (string) $row->state,
+            'Attempts' => fn (object $row): string => $row->attempts.'/'.$row->max_attempts,
+            'Queued' => fn (object $row): string => (string) $row->queued_at,
+            'Error' => fn (object $row): string => (string) $row->last_error,
+        ], $list->apply($this->query())->lazy(500));
+    }
+
+    private function query(): Builder
     {
         return DB::table('offline_queue')
             ->leftJoin('organizations', 'offline_queue.org_id', '=', 'organizations.id')
             ->select([
                 'offline_queue.*',
                 'organizations.name as organization_name',
-            ])
-            ->when($filter->state !== null, fn (Builder $q) => $q->where('offline_queue.state', $filter->state))
-            ->when($filter->organizationId !== null, fn (Builder $q) => $q->where('offline_queue.org_id', $filter->organizationId))
-            ->orderByDesc('offline_queue.queued_at')
-            ->orderByDesc('offline_queue.id')
-            ->paginate($perPage);
+            ]);
     }
 
     /**

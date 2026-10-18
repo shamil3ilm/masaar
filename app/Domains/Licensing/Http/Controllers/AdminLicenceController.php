@@ -9,15 +9,18 @@ use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Licensing\Exceptions\LicenceStateException;
 use App\Domains\Licensing\Exceptions\LicenseException;
 use App\Domains\Licensing\Models\License;
+use App\Domains\Licensing\Services\LicenceHistory;
 use App\Domains\Licensing\Services\LicenseManagementService;
 use App\Domains\Organization\Rules\VatNumber;
 use App\Http\Controllers\Controller;
+use App\Http\Listing\Lists;
 use App\Support\OperatorError;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Licences, for the platform team.
@@ -31,25 +34,26 @@ use Illuminate\View\View;
  */
 class AdminLicenceController extends Controller
 {
-    private const PER_PAGE = 25;
-
     public function __construct(
         private readonly LicenseManagementService $licences,
+        private readonly LicenceHistory $history,
+        private readonly Lists $lists,
     ) {}
 
     public function index(Request $request): View
     {
-        $filters = array_filter([
-            'status' => $this->given($request->query('status')),
-            'tier' => $this->given($request->query('tier')),
-            'search' => $this->given($request->query('q')),
-        ], fn (mixed $v): bool => $v !== null);
+        $list = $this->lists->admin($this->history->spec('admin.licences.index'), $request, 'admin.licences.export');
 
         return view('admin.licences.index', [
-            'licences' => $this->licences->listLicenses($filters, self::PER_PAGE)->withQueryString(),
-            'status' => $filters['status'] ?? null,
-            'search' => $filters['search'] ?? null,
+            'licences' => $this->history->page($list),
+            'list' => $list,
         ]);
+    }
+
+    /** Every licence the list's filters give, as a CSV. */
+    public function export(Request $request): StreamedResponse
+    {
+        return $this->history->csv($this->lists->admin($this->history->spec('admin.licences.index'), $request), 'licences-'.now()->format('Y-m-d').'.csv');
     }
 
     public function show(string $licenceId): View
@@ -245,14 +249,5 @@ class AdminLicenceController extends Controller
         return redirect()
             ->route('admin.licences.show', $licenceId)
             ->with('success', $success);
-    }
-
-    /**
-     * A query value that was actually given. A malformed `?status[]=x` is an
-     * array, and passing that to a where() is a type error, not an empty list.
-     */
-    private function given(mixed $value): ?string
-    {
-        return is_string($value) && trim($value) !== '' ? trim($value) : null;
     }
 }

@@ -8,6 +8,13 @@
     <p class="mt-1 max-w-3xl text-sm text-muted">{{ $heading }}</p>
 </div>
 
+@if ($group ?? null)
+    <x-ui.alert class="mb-8" :title="__(':organization is one of the companies of :group.', ['organization' => $organization->name, 'group' => $group->name])">
+        {{ __('See the group\'s companies side by side, each as its own taxpayer.') }}
+        <a href="{{ route('portal.reports.group') }}" class="font-medium underline underline-offset-4">{{ __('Open the group') }}</a>
+    </x-ui.alert>
+@endif
+
 @if ($settingUp)
     @php
         $isAdmin = auth()->user()?->roleIn((string) $organization->id) === 'admin';

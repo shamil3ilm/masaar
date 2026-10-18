@@ -4,16 +4,18 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers;
 
-use App\Domains\Compliance\Countries\SaudiArabia\DTOs\SubmissionFilterData;
 use App\Domains\Compliance\Countries\SaudiArabia\Reports\Dashboard;
+use App\Domains\Compliance\Countries\SaudiArabia\Reports\SubmissionHistory;
 use App\Domains\Compliance\Countries\SaudiArabia\Reports\SubmissionReport;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Services\Membership;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
+use App\Http\Listing\Lists;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * The portal's ZATCA screens: submissions, filterable by person, each
@@ -29,11 +31,14 @@ class PortalSubmissionController extends Controller
         private readonly TenantResolver $tenant,
         private readonly Membership $membership,
         private readonly SubmissionReport $submissionReport,
+        private readonly SubmissionHistory $history,
+        private readonly Lists $lists,
         private readonly Dashboard $dashboard,
     ) {}
 
     /**
-     * Submissions list - filterable by user.
+     * Submissions, sorted and narrowed as the query string asks
+     * (SubmissionHistory).
      */
     public function submissions(Request $request): View
     {
@@ -43,29 +48,30 @@ class PortalSubmissionController extends Controller
             return $this->organizationPicker();
         }
 
-        $organization = $this->tenant->getOrganization();
-        $userId = $request->query('user_id');
-        $state = $request->query('state');
-        $dateFrom = $request->query('date_from');
-        $dateTo = $request->query('date_to');
+        $list = $this->lists->portal($this->history->spec($orgId, 'portal.submissions'), $request, $orgId, 'portal.submissions.export');
 
-        $submissions = $this->submissionReport
-            ->search(SubmissionFilterData::fromQuery($userId, $state, $dateFrom, $dateTo), 25)
-            ->withQueryString();
+        return view('portal.submissions', [
+            'organization' => $this->tenant->getOrganization(),
+            'submissions' => $this->history->page($orgId, $list),
+            'stateCounts' => $this->submissionReport->countByState(),
+            'list' => $list,
+            // The people it can be narrowed to, and what it is narrowed by,
+            // under the names the page has always given them.
+            'users' => $this->membership->members($orgId),
+            'state' => $list->value('state'),
+            'userId' => $list->value('user_id'),
+            'dateFrom' => $list->input('date_from') ?: null,
+            'dateTo' => $list->input('date_to') ?: null,
+        ]);
+    }
 
-        $users = $this->membership->members($orgId);
-        $stateCounts = $this->submissionReport->countByState();
+    /** Exactly the submissions the list's filters give, as a CSV. */
+    public function export(Request $request): StreamedResponse
+    {
+        $orgId = $this->getOrganizationId($request) ?? abort(404);
+        $list = $this->lists->portal($this->history->spec($orgId, 'portal.submissions'), $request, $orgId);
 
-        return view('portal.submissions', compact(
-            'organization',
-            'submissions',
-            'users',
-            'stateCounts',
-            'userId',
-            'state',
-            'dateFrom',
-            'dateTo'
-        ));
+        return $this->history->csv($orgId, $list, 'submissions-'.now()->format('Y-m-d').'.csv');
     }
 
     /**

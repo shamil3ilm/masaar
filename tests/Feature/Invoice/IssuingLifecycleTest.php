@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Invoice;
 
+use App\Domains\Auth\Models\User;
 use App\Domains\Invoice\Contracts\IssuingJurisdiction;
 use App\Domains\Invoice\Contracts\Seal;
 use App\Domains\Invoice\Enums\InvoiceStatus;
@@ -86,6 +87,25 @@ class IssuingLifecycleTest extends TestCase
         $this->assertSame('sealed-hash', $issued->hash);
         $this->assertNotNull($issued->invoice_number);
         $this->assertNotNull($issued->issued_at);
+    }
+
+    /**
+     * Who issued it is kept with it, so a list can be narrowed to one
+     * person's invoices; nobody, when nobody was signed in.
+     */
+    public function test_the_issuer_is_recorded(): void
+    {
+        $cashier = User::factory()->create();
+        $mine = $this->draft();
+        $theirs = $this->draft();
+
+        $this->actingAs($cashier);
+        $this->lifecycle()->issue($mine, $this->acme, new RecordingJurisdiction);
+        auth()->logout();
+        $this->lifecycle()->issue($theirs, $this->acme, new RecordingJurisdiction);
+
+        $this->assertSame($cashier->id, $mine->fresh()->issued_by);
+        $this->assertNull($theirs->fresh()->issued_by);
     }
 
     /**

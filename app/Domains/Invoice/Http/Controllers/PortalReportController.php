@@ -6,7 +6,10 @@ namespace App\Domains\Invoice\Http\Controllers;
 
 use App\Domains\Compliance\Engine\Contracts\TaxReports;
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
+use App\Domains\Invoice\Services\BranchBreakdown;
+use App\Domains\Invoice\Services\GroupReport;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
+use App\Domains\Organization\Services\OrganizationGroups;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Support\CountryClock;
@@ -24,7 +27,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  *
  * The return, its currency and which documents count are the
  * organization's country's (TaxReports): the page, its summary and both
- * files come from there. The period is this page's.
+ * files come from there. The period is this page's, and the branches are
+ * the switcher's (BranchScope), which every figure and file reads.
  */
 class PortalReportController extends Controller
 {
@@ -36,17 +40,50 @@ class PortalReportController extends Controller
     public function __construct(
         private readonly TenantResolver $tenant,
         private readonly JurisdictionResolver $jurisdictions,
+        private readonly BranchBreakdown $breakdown,
+        private readonly OrganizationGroups $groups,
+        private readonly GroupReport $group,
     ) {}
 
+    /**
+     * The branches the switcher shows, combined, and - when that is more
+     * than one - the same period branch by branch beneath.
+     */
     public function index(Request $request): View
     {
         [$from, $to] = $this->period($request);
-        $page = $this->reports($request)->page($this->portalOrganizationId($request), $from, $to);
+        $organizationId = $this->portalOrganizationId($request);
+        $reports = $this->reports($request);
+        $page = $reports->page($organizationId, $from, $to);
 
         return view($page->view, [
             'from' => $from,
             'to' => $to,
             ...$page->data,
+            'presets' => $this->presets(),
+            'branchBreakdown' => $this->breakdown->rows($organizationId, $reports, $from, $to),
+        ]);
+    }
+
+    /**
+     * The period across the companies of the organization's group that the
+     * person belongs to: read-only, one line per company, each in its own
+     * currency and filed on its own. Not found outside a group.
+     */
+    public function group(Request $request): View
+    {
+        $user = $request->user() ?? abort(401);
+        $organizationId = $this->portalOrganizationId($request);
+        $group = $this->groups->groupFor($user, $organizationId) ?? abort(404);
+        [$from, $to] = $this->period($request);
+        $rows = $this->group->rows($user, $this->groups->companies($user, $organizationId), $from, $to);
+
+        return view('portal.group', [
+            'group' => $group,
+            'rows' => $rows,
+            'sums' => $this->group->sums($rows),
+            'from' => $from,
+            'to' => $to,
             'presets' => $this->presets(),
         ]);
     }

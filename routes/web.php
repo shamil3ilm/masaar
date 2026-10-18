@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\Audit\Http\Controllers\PortalActivityController;
 use App\Domains\Auth\Http\Controllers\AccountController;
 use App\Domains\Auth\Http\Controllers\EmailVerificationController;
 use App\Domains\Auth\Http\Controllers\PasswordResetController;
@@ -31,9 +32,11 @@ use App\Domains\Invoice\Http\Controllers\PortalReportController;
 use App\Domains\Licensing\Http\Controllers\AdminLicenceController;
 use App\Domains\Organization\Http\Controllers\CustomerPortalController;
 use App\Domains\Organization\Http\Controllers\InvitationController;
+use App\Domains\Organization\Http\Controllers\PortalBranchController;
 use App\Domains\Organization\Http\Controllers\PortalCompanyController;
 use App\Domains\Organization\Http\Controllers\PortalPrintingController;
 use App\Domains\Organization\Http\Controllers\PortalTeamController;
+use App\Domains\Organization\Http\Controllers\PortalWorkingBranchController;
 use App\Domains\Platform\Http\Controllers\AdminAdminsController;
 use App\Domains\Platform\Http\Controllers\AdminAuditController;
 use App\Domains\Platform\Http\Controllers\AdminController;
@@ -43,6 +46,7 @@ use App\Domains\Platform\Http\Controllers\AdminLanguageController;
 use App\Domains\Platform\Http\Controllers\AdminOrganizationReviewController;
 use App\Domains\Platform\Http\Controllers\AdminSettingsController;
 use App\Domains\Platform\Http\Controllers\AdminUserController;
+use App\Domains\Platform\Http\Controllers\SavedListViewController;
 use App\Domains\Support\Http\Controllers\AdminSupportController;
 use App\Domains\Support\Http\Controllers\PortalSupportController;
 use App\Domains\Webhook\Http\Controllers\AdminWebhookController;
@@ -172,6 +176,12 @@ Route::prefix('account')->name('account.')->middleware(['auth', 'auth.session'])
         Route::post('/two-factor/off', [AccountController::class, 'twoFactorOff'])->name('two-factor.off');
         Route::post('/delete', [AccountController::class, 'destroy'])->name('destroy');
     });
+    // An operator's saved views on the console's lists: their own
+    // preference, which changes nothing on the platform.
+    Route::middleware('throttle:30,1')->whereUuid(['viewId'])->group(function () {
+        Route::post('/views', [SavedListViewController::class, 'adminStore'])->name('views.store');
+        Route::post('/views/{viewId}/delete', [SavedListViewController::class, 'adminDestroy'])->name('views.destroy');
+    });
     Route::get('/email/{token}', [AccountController::class, 'confirmEmail'])
         ->where('token', '[A-Za-z0-9]{48}')
         ->name('email.confirm');
@@ -229,6 +239,7 @@ Route::prefix('admin')->name('admin.')
     ->group(function () {
         Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
         Route::get('/organizations', [AdminController::class, 'organizations'])->name('organizations');
+        Route::get('/organizations/export.csv', [AdminController::class, 'exportOrganizations'])->middleware('throttle:20,1')->name('organizations.export');
         Route::get('/organizations/{id}', [AdminController::class, 'organizationDetail'])->name('organization.detail');
         // A plan's payments. Recording one renews the plan and invoices it.
         // Plans to chase before invoicing stops: payment is recorded by hand.
@@ -273,7 +284,9 @@ Route::prefix('admin')->name('admin.')
         Route::post('/admins/{userId}/role', [AdminAdminsController::class, 'role'])->middleware('admin.can:admins.manage')->name('admins.role');
         Route::post('/admins/{userId}/revoke', [AdminAdminsController::class, 'revoke'])->middleware('admin.can:admins.manage')->name('admins.revoke');
         Route::get('/audit', [AdminAuditController::class, 'index'])->middleware('admin.can:audit.view')->name('audit');
+        Route::get('/audit/export.csv', [AdminAuditController::class, 'export'])->middleware(['admin.can:audit.view', 'throttle:20,1'])->name('audit.export');
         Route::get('/licences', [AdminLicenceController::class, 'index'])->name('licences.index');
+        Route::get('/licences/export.csv', [AdminLicenceController::class, 'export'])->middleware('throttle:20,1')->name('licences.export');
         // Before the {licenceId} route below, or "create" is taken for an id
         // and the form never renders.
         Route::get('/licences/create', [AdminLicenceController::class, 'create'])->middleware('admin.can:licences.manage')->name('licences.create');
@@ -330,6 +343,7 @@ Route::prefix('admin')->name('admin.')
         Route::post('/webhooks/{webhookId}/replay/{logId}', [AdminWebhookController::class, 'replay'])
             ->middleware('admin.can:operations.run')->name('webhooks.replay');
         Route::get('/queue', [AdminController::class, 'queue'])->name('queue');
+        Route::get('/queue/export.csv', [AdminController::class, 'exportQueue'])->middleware('throttle:20,1')->name('queue.export');
         Route::get('/logs', [AdminController::class, 'logs'])->name('logs');
 
         // Actions
@@ -353,6 +367,20 @@ Route::prefix('portal')->name('portal.')->middleware('auth')->group(function () 
     Route::get('/switch', [CustomerPortalController::class, 'switchOrganization'])->name('switch');
 });
 
+// A person's own preferences in the organization they work in: the views
+// they save on its lists. Outside org.writer, because a viewer keeps their
+// own as much as anyone, and keeping one changes nothing of the
+// organization's.
+Route::prefix('portal')->name('portal.')
+    ->middleware(['auth', 'auth.session', 'verified', 'portal.tenant', 'org.two_factor', 'throttle:30,1'])
+    ->whereUuid(['viewId'])
+    ->group(function () {
+        Route::post('/views', [SavedListViewController::class, 'portalStore'])->name('views.store');
+        Route::post('/views/{viewId}/delete', [SavedListViewController::class, 'portalDestroy'])->name('views.destroy');
+        // The branch switcher: one branch, or all of them.
+        Route::post('/branch', [PortalWorkingBranchController::class, 'choose'])->name('branch.choose');
+    });
+
 Route::prefix('portal')->name('portal.')
     // Verified: a signed-up account proves its email address before it sees
     // the portal. Everyone with an account before sign-up existed counts as
@@ -360,8 +388,10 @@ Route::prefix('portal')->name('portal.')
     // org.writer: a viewer reads the portal and submits nothing.
     // org.two_factor: an organization that requires a second factor sends
     // anyone without one to set it up first.
-    ->middleware(['auth', 'auth.session', 'verified', 'portal.tenant', 'org.two_factor', 'org.writer'])
-    ->whereUuid(['invoiceId', 'userId', 'invitationId', 'ticketId', 'attachmentId', 'customerId', 'productId', 'paymentId', 'documentId'])
+    // portal.branch: the branch chosen in the switcher, for the lists, the
+    // dashboard and the reports.
+    ->middleware(['auth', 'auth.session', 'verified', 'portal.tenant', 'portal.branch', 'org.two_factor', 'org.writer'])
+    ->whereUuid(['invoiceId', 'userId', 'invitationId', 'ticketId', 'attachmentId', 'customerId', 'productId', 'paymentId', 'documentId', 'branchId'])
     ->group(function () {
         Route::get('/', [CustomerPortalController::class, 'dashboard'])->name('dashboard');
         // Invoices. {invoiceId} rather than {invoice}: route model binding
@@ -370,6 +400,12 @@ Route::prefix('portal')->name('portal.')
         // the query instead, so a foreign id is unfindable rather than merely
         // unscoped.
         Route::get('/invoices', [PortalInvoiceController::class, 'index'])->name('invoices.index');
+        // Exactly what the list's filters give, as a CSV. Before {invoiceId},
+        // as create is.
+        Route::get('/invoices/export.csv', [PortalInvoiceController::class, 'export'])->middleware('throttle:20,1')->name('invoices.export');
+        // The credit and debit notes alone, with the same filters.
+        Route::get('/notes', [PortalInvoiceController::class, 'notes'])->name('notes.index');
+        Route::get('/notes/export.csv', [PortalInvoiceController::class, 'exportNotes'])->middleware('throttle:20,1')->name('notes.export');
         // Before the {invoiceId} route. The group constrains that parameter to
         // a UUID so "create" could not be swallowed as one, but the reading
         // order should not depend on knowing that.
@@ -402,6 +438,7 @@ Route::prefix('portal')->name('portal.')
         Route::get('/received/{documentId}/xml', [PortalReceivedController::class, 'xml'])->name('received.xml');
 
         Route::get('/submissions', [PortalSubmissionController::class, 'submissions'])->name('submissions');
+        Route::get('/submissions/export.csv', [PortalSubmissionController::class, 'export'])->middleware('throttle:20,1')->name('submissions.export');
         Route::get('/certificates', [PortalSubmissionController::class, 'certificates'])->name('certificates');
         Route::get('/users/{userId}/activity', [PortalSubmissionController::class, 'userActivity'])->name('user.activity');
 
@@ -414,6 +451,7 @@ Route::prefix('portal')->name('portal.')
 
         // Customers and products, which the invoice form fills itself from.
         Route::get('/customers', [PortalCustomerController::class, 'index'])->name('customers.index');
+        Route::get('/customers/export.csv', [PortalCustomerController::class, 'export'])->middleware('throttle:20,1')->name('customers.export');
         Route::get('/customers/new', [PortalCustomerController::class, 'create'])->name('customers.create');
         Route::post('/customers', [PortalCustomerController::class, 'store'])->name('customers.store');
         Route::get('/customers/{customerId}', [PortalCustomerController::class, 'edit'])->name('customers.edit');
@@ -428,6 +466,8 @@ Route::prefix('portal')->name('portal.')
 
         // The period's sales as the VAT return groups them, and CSV exports.
         Route::get('/reports', [PortalReportController::class, 'index'])->name('reports');
+        // The companies of a group side by side, read-only, each its own taxpayer.
+        Route::get('/reports/group', [PortalReportController::class, 'group'])->name('reports.group');
         Route::get('/reports/invoices.csv', [PortalReportController::class, 'invoices'])->middleware('throttle:20,1')->name('reports.invoices');
         Route::get('/reports/vat.csv', [PortalReportController::class, 'vat'])->middleware('throttle:20,1')->name('reports.vat');
         // A day's close by device and branch, where the country counts per device.
@@ -436,6 +476,7 @@ Route::prefix('portal')->name('portal.')
 
         // The plan, its usage and its payments. Administrators only.
         Route::get('/billing', [PortalBillingController::class, 'show'])->name('billing');
+        Route::get('/billing/payments.csv', [PortalBillingController::class, 'export'])->middleware('throttle:20,1')->name('billing.export');
         Route::get('/billing/{paymentId}/invoice', [PortalBillingController::class, 'download'])->name('billing.invoice');
 
         // Support tickets: everyone in the organization sees its tickets.
@@ -460,6 +501,22 @@ Route::prefix('portal')->name('portal.')
         Route::get('/zatca/late', [PortalZatcaController::class, 'late'])->name('zatca.late');
         Route::post('/zatca/late/notified', [PortalZatcaController::class, 'lateNotified'])->name('zatca.late.notified');
         Route::get('/zatca/late/evidence.csv', [PortalZatcaController::class, 'lateEvidence'])->middleware('throttle:20,1')->name('zatca.late.evidence');
+
+        // The organization's branches: address, till, numbering, printer,
+        // device and who works there. Administrators only; the controller
+        // checks the role.
+        Route::get('/branches', [PortalBranchController::class, 'index'])->name('branches.index');
+        Route::get('/branches/new', [PortalBranchController::class, 'create'])->name('branches.create');
+        Route::post('/branches', [PortalBranchController::class, 'store'])->name('branches.store');
+        Route::get('/branches/{branchId}', [PortalBranchController::class, 'edit'])->name('branches.edit');
+        Route::post('/branches/{branchId}', [PortalBranchController::class, 'update'])->name('branches.update');
+        Route::post('/branches/{branchId}/people', [PortalBranchController::class, 'people'])->name('branches.people');
+
+        // Who issued, corrected and changed what, and who invited whom: the
+        // organization's activity, from the audit log. Administrators only;
+        // the controller checks the role.
+        Route::get('/activity', [PortalActivityController::class, 'index'])->name('activity');
+        Route::get('/activity/export.csv', [PortalActivityController::class, 'export'])->middleware('throttle:20,1')->name('activity.export');
 
         // The organization's people, and inviting more. Administrators only;
         // the controller checks the role.

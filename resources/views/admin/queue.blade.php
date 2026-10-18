@@ -36,27 +36,7 @@
     </div>
 </div>
 
-<!-- Filters -->
-<div class="bg-surface rounded-card border border-line shadow-card p-4 mb-6">
-    <form method="GET" class="flex flex-wrap gap-4">
-        <x-ui.field label="State">
-        <x-ui.select name="state">
-            <option value="">All States</option>
-            <option value="pending" {{ $state === 'pending' ? 'selected' : '' }}>Pending</option>
-            <option value="processing" {{ $state === 'processing' ? 'selected' : '' }}>Processing</option>
-            <option value="completed" {{ $state === 'completed' ? 'selected' : '' }}>Completed</option>
-            <option value="failed" {{ $state === 'failed' ? 'selected' : '' }}>Failed</option>
-        </x-ui.select>
-        </x-ui.field>
-        <x-ui.field label="Organization ID">
-            <x-ui.input type="text" name="org_id" value="{{ $orgId }}" />
-        </x-ui.field>
-        <div class="flex items-end gap-2">
-            <x-ui.button variant="secondary">Filter</x-ui.button>
-            <x-ui.button variant="ghost" :href="route('admin.queue')">Clear</x-ui.button>
-        </div>
-    </form>
-</div>
+<x-ui.list-filters :list="$list" />
 
 <!-- Queue Items -->
 <div class="bg-surface rounded-card border border-line shadow-card overflow-hidden">
@@ -65,8 +45,8 @@
             <x-ui.th>Invoice</x-ui.th>
             <x-ui.th>Organization</x-ui.th>
             <x-ui.th>State</x-ui.th>
-            <x-ui.th>Attempts</x-ui.th>
-            <x-ui.th>Queued At</x-ui.th>
+            <x-ui.th :list="$list" sort="attempts">Attempts</x-ui.th>
+            <x-ui.th :list="$list" sort="newest">Queued At</x-ui.th>
             <x-ui.th>Error</x-ui.th>
             <x-ui.th>Actions</x-ui.th>
         </x-slot:head>
@@ -101,7 +81,5 @@
     </x-ui.table>
 </div>
 
-<div class="mt-4">
-    {{ $items->appends(request()->query())->links() }}
-</div>
+{{ $items->links() }}
 @endsection

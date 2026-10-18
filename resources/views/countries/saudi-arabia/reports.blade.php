@@ -92,6 +92,9 @@
     </x-ui.table>
 </div>
 
+{{-- The period branch by branch, beside the combined figures (BranchBreakdown). --}}
+@include('portal.partials.branch-breakdown', ['rows' => $branchBreakdown ?? []])
+
 <p class="text-sm text-muted">
     {{ __('Sales only: the return also asks for your purchases, which are not recorded here. Check the figures with your accountant before you file.') }}
 </p>

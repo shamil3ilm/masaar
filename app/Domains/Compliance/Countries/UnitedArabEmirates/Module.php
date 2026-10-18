@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Countries\UnitedArabEmirates;
 
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Issuing\InvoiceIssuer;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Issuing\IssuingStep;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation\DeviceStatus;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation\Presentation;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation\SetupSteps;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\Dashboard;
@@ -15,6 +16,7 @@ use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\IssueDeadline;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\LanguageRules;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\SellerRules;
 use App\Domains\Compliance\Engine\Contracts\Dashboard as DashboardPort;
+use App\Domains\Compliance\Engine\Contracts\Devices;
 use App\Domains\Compliance\Engine\Contracts\FeatureSupport;
 use App\Domains\Compliance\Engine\Contracts\InvoiceRules as InvoiceRulesPort;
 use App\Domains\Compliance\Engine\Contracts\IssueNotices;
@@ -57,6 +59,7 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
         private readonly TaxReports $reports,
         private readonly Dashboard $dashboard,
         private readonly SetupSteps $setup,
+        private readonly DeviceStatus $devices,
     ) {}
 
     public function code(): string
@@ -150,6 +153,11 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
     public function setup(): SetupStepsPort
     {
         return $this->setup;
+    }
+
+    public function devices(): Devices
+    {
+        return $this->devices;
     }
 
     /**

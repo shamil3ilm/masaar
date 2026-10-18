@@ -13,34 +13,16 @@
     @endadmincan
 </div>
 
-<form method="GET" action="{{ route('admin.licences.index') }}" class="mb-6 bg-surface rounded-card border border-line shadow-card p-4 flex flex-wrap items-end gap-4">
-    <div>
-        <label for="status" class="block text-xs font-medium text-muted uppercase mb-1">Status</label>
-        <x-ui.select id="status" name="status">
-            <option value="">Any status</option>
-            @foreach (\App\Domains\Licensing\Enums\LicenseStatus::cases() as $case)
-                <option value="{{ $case->value }}" @selected($status === $case->value)>{{ $case->getLabel() }}</option>
-            @endforeach
-        </x-ui.select>
-    </div>
-    <div class="flex-1 min-w-48">
-        <label for="q" class="block text-xs font-medium text-muted uppercase mb-1">Search</label>
-        <x-ui.input id="q" name="q" type="text" value="{{ $search }}" placeholder="Organization, contact email or API key" />
-    </div>
-    <div class="flex items-center gap-2">
-        <x-ui.button variant="secondary">Filter</x-ui.button>
-        <x-ui.button variant="ghost" :href="route('admin.licences.index')">Reset</x-ui.button>
-    </div>
-</form>
+<x-ui.list-filters :list="$list" />
 
 <div class="bg-surface rounded-card border border-line shadow-card overflow-hidden">
     <x-ui.table :primary="[0, 2, 1]">
         <x-slot:head>
-            <x-ui.th>Organization</x-ui.th>
+            <x-ui.th :list="$list" sort="organization">Organization</x-ui.th>
             <x-ui.th>Tier</x-ui.th>
             <x-ui.th>Status</x-ui.th>
-            <x-ui.th>Invoices / month</x-ui.th>
-            <x-ui.th>Expires</x-ui.th>
+            <x-ui.th :list="$list" sort="quota">Invoices / month</x-ui.th>
+            <x-ui.th :list="$list" sort="expires">Expires</x-ui.th>
             <x-ui.th align="right">Actions</x-ui.th>
         </x-slot:head>
 
@@ -70,9 +52,5 @@
     </x-ui.table>
 </div>
 
-@if($licences->hasPages())
-<div class="mt-4">
-    {{ $licences->appends(request()->query())->links() }}
-</div>
-@endif
+{{ $licences->links() }}
 @endsection
