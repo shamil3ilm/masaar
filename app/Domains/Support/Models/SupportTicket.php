@@ -6,6 +6,7 @@ namespace App\Domains\Support\Models;
 
 use App\Domains\Auth\Models\User;
 use App\Domains\Organization\Concerns\BelongsToTenant;
+use App\Domains\Organization\Concerns\RecordsActors;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Support\Enums\TicketCategory;
 use App\Domains\Support\Enums\TicketPriority;
@@ -22,6 +23,7 @@ class SupportTicket extends Model
 {
     use BelongsToTenant;
     use HasUuids;
+    use RecordsActors;
 
     protected $fillable = [
         'number',
@@ -35,6 +37,16 @@ class SupportTicket extends Model
         'last_activity_at',
         'resolved_at',
     ];
+
+    /**
+     * Who opened it is who created it.
+     *
+     * @return array<string, string>
+     */
+    public function attributionColumns(): array
+    {
+        return ['created_by' => 'opened_by', 'updated_by' => 'updated_by'];
+    }
 
     protected function casts(): array
     {
@@ -61,12 +73,12 @@ class SupportTicket extends Model
 
     public function opener(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'opened_by');
+        return $this->belongsTo(User::class, 'opened_by')->withTrashed();
     }
 
     public function assignee(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'assigned_to');
+        return $this->belongsTo(User::class, 'assigned_to')->withTrashed();
     }
 
     public function messages(): HasMany

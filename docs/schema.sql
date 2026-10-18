@@ -1,224 +1,1439 @@
--- ============================================================================
--- Masaar Database Schema Reference
--- MySQL/MariaDB SQL equivalent of Laravel migrations
--- ============================================================================
+-- Masaar database schema, generated from the migrations by `php artisan masaar:schema`.
+-- Edit the migrations, not this file. Column types are kinds, the same on MySQL and SQLite;
+-- tests/Feature/Architecture/TableTimestamps.php says what each table is for.
 
--- ----------------------------------------------------------------------------
--- Users Table
--- Stores user accounts for authentication
--- ----------------------------------------------------------------------------
-CREATE TABLE `users` (
-    `id` CHAR(36) NOT NULL PRIMARY KEY,
-    `name` VARCHAR(255) NOT NULL,
-    `email` VARCHAR(255) NOT NULL UNIQUE,
-    `email_verified_at` TIMESTAMP NULL,
-    `password` VARCHAR(255) NOT NULL,
-    `status` VARCHAR(255) NOT NULL DEFAULT 'active',  -- active, suspended, deleted
-    `remember_token` VARCHAR(100) NULL,
+CREATE TABLE `admin_invitations` (
+    `id` STRING NOT NULL,
+    `accepted_at` TIMESTAMP NULL,
+    `accepted_by` STRING NULL,
     `created_at` TIMESTAMP NULL,
-    `updated_at` TIMESTAMP NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ----------------------------------------------------------------------------
--- Password Reset Tokens
--- ----------------------------------------------------------------------------
-CREATE TABLE `password_reset_tokens` (
-    `email` VARCHAR(255) NOT NULL PRIMARY KEY,
-    `token` VARCHAR(255) NOT NULL,
-    `created_at` TIMESTAMP NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ----------------------------------------------------------------------------
--- Sessions Table
--- ----------------------------------------------------------------------------
-CREATE TABLE `sessions` (
-    `id` VARCHAR(255) NOT NULL PRIMARY KEY,
-    `user_id` CHAR(36) NULL,
-    `ip_address` VARCHAR(45) NULL,
-    `user_agent` TEXT NULL,
-    `payload` LONGTEXT NOT NULL,
-    `last_activity` INT NOT NULL,
-    INDEX `sessions_user_id_index` (`user_id`),
-    INDEX `sessions_last_activity_index` (`last_activity`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ----------------------------------------------------------------------------
--- Organizations Table
--- Multi-tenant organization entities
--- ----------------------------------------------------------------------------
-CREATE TABLE `organizations` (
-    `id` CHAR(36) NOT NULL PRIMARY KEY,
-    `name` VARCHAR(255) NOT NULL,
-    `country` CHAR(2) NOT NULL DEFAULT 'SA',          -- ISO country code
-    `status` VARCHAR(255) NOT NULL DEFAULT 'active',  -- active, suspended, deleted
-    `compliance_profile` JSON NULL,                    -- ZATCA settings (vat_number, etc.)
-    `created_at` TIMESTAMP NULL,
-    `updated_at` TIMESTAMP NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ----------------------------------------------------------------------------
--- Organization-User Pivot Table
--- Maps users to organizations with roles
--- ----------------------------------------------------------------------------
-CREATE TABLE `organization_user` (
-    `user_id` CHAR(36) NOT NULL,
-    `organization_id` CHAR(36) NOT NULL,
-    `role` VARCHAR(255) NOT NULL DEFAULT 'member',    -- admin, member
-    `status` VARCHAR(255) NOT NULL DEFAULT 'active',  -- active, invited, removed
-    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `deleted_at` TIMESTAMP NULL,
+    `deleted_by` STRING NULL,
+    `email` STRING NOT NULL,
+    `expires_at` TIMESTAMP NOT NULL,
+    `invited_by` STRING NULL,
+    `role` STRING NOT NULL,
+    `token_hash` STRING NOT NULL,
     `updated_at` TIMESTAMP NULL,
-    PRIMARY KEY (`user_id`, `organization_id`),
-    CONSTRAINT `organization_user_user_id_foreign`
-        FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-    CONSTRAINT `organization_user_organization_id_foreign`
-        FOREIGN KEY (`organization_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `admin_invitations_email_index` (`email`),
+    UNIQUE INDEX `admin_invitations_token_hash_unique` (`token_hash`)
+);
 
--- ----------------------------------------------------------------------------
--- Invoices Table
--- Core invoice data with ZATCA compliance fields
--- ----------------------------------------------------------------------------
-CREATE TABLE `invoices` (
-    `id` CHAR(36) NOT NULL PRIMARY KEY,
-    `organization_id` CHAR(36) NOT NULL,
-
-    -- Invoice identification
-    `invoice_number` VARCHAR(255) NOT NULL,
-    `type` VARCHAR(255) NOT NULL,                     -- standard (B2B), simplified (B2C)
-    `status` VARCHAR(255) NOT NULL,                   -- draft, issued, submitted, accepted, rejected
-
-    -- Dates
-    `issue_date` DATE NOT NULL,
-    `supply_date` DATE NULL,
-
-    -- Buyer info
-    `currency` CHAR(3) NOT NULL DEFAULT 'SAR',
-    `buyer_name` VARCHAR(255) NOT NULL,
-    `buyer_vat_number` VARCHAR(255) NULL,
-    `buyer_address` TEXT NULL,
-
-    -- Amounts
-    `subtotal` DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
-    `tax_amount` DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
-    `total` DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
-
-    -- ZATCA compliance fields
-    `hash` VARCHAR(255) NULL,                         -- Invoice hash for compliance
-    `qr_code` TEXT NULL,                              -- Base64 encoded QR code
-    `zatca_response` JSON NULL,                       -- ZATCA API response
-
-    `notes` TEXT NULL,
+CREATE TABLE `admin_roles` (
+    `id` STRING NOT NULL,
     `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `deleted_at` TIMESTAMP NULL,
+    `deleted_by` STRING NULL,
+    `description` STRING NULL,
+    `key` STRING NOT NULL,
+    `name` STRING NOT NULL,
+    `permissions` TEXT NOT NULL,
+    `rank` INTEGER NOT NULL,
+    `system` BOOLEAN NOT NULL DEFAULT 0,
     `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `admin_roles_key_unique` (`key`)
+);
 
-    INDEX `invoices_organization_id_status_index` (`organization_id`, `status`),
-    INDEX `invoices_invoice_number_index` (`invoice_number`),
-    CONSTRAINT `invoices_organization_id_foreign`
-        FOREIGN KEY (`organization_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `allowance_warnings` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `allowance` STRING NOT NULL,
+    `allowed` INTEGER NOT NULL,
+    `license_id` STRING NOT NULL,
+    `percent` INTEGER NOT NULL,
+    `period` STRING NOT NULL,
+    `used` INTEGER NOT NULL,
+    `warned_at` TIMESTAMP NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `allowance_warnings_once` (`license_id`, `allowance`, `period`, `percent`)
+);
 
--- ----------------------------------------------------------------------------
--- Invoice Lines Table
--- Line items for invoices
--- ----------------------------------------------------------------------------
-CREATE TABLE `invoice_lines` (
-    `id` CHAR(36) NOT NULL PRIMARY KEY,
-    `invoice_id` CHAR(36) NOT NULL,
-
-    `description` VARCHAR(255) NOT NULL,
-    `quantity` DECIMAL(12, 3) NOT NULL,
-    `unit_price` DECIMAL(12, 2) NOT NULL,
-    `tax_rate` DECIMAL(5, 2) NOT NULL DEFAULT 15.00,  -- Default VAT 15%
-    `tax_amount` DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
-    `line_total` DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
-
+CREATE TABLE `approval_decisions` (
+    `id` STRING NOT NULL,
     `created_at` TIMESTAMP NULL,
+    `decision` STRING NOT NULL,
+    `note` TEXT NULL,
+    `request_id` STRING NOT NULL,
+    `user_id` STRING NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `approval_decisions_request_id_user_id_unique` (`request_id`, `user_id`),
+    FOREIGN KEY (`request_id`) REFERENCES `approval_requests` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
+);
+
+CREATE TABLE `approval_policies` (
+    `id` STRING NOT NULL,
+    `action` STRING NOT NULL,
+    `approvals_required` INTEGER NOT NULL DEFAULT 1,
+    `approver_roles` TEXT NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `deleted_at` TIMESTAMP NULL,
+    `deleted_by` STRING NULL,
+    `enabled` BOOLEAN NOT NULL DEFAULT 0,
+    `expires_after_hours` INTEGER NOT NULL DEFAULT 72,
     `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `approval_policies_action_unique` (`action`)
+);
 
-    CONSTRAINT `invoice_lines_invoice_id_foreign`
-        FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `approval_requests` (
+    `id` STRING NOT NULL,
+    `action` STRING NOT NULL,
+    `approvals_required` INTEGER NOT NULL,
+    `approved_by` STRING NULL,
+    `approver_roles` TEXT NOT NULL,
+    `changes` TEXT NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `decided_at` TIMESTAMP NULL,
+    `decision_note` TEXT NULL,
+    `expires_at` TIMESTAMP NOT NULL,
+    `outcome` TEXT NULL,
+    `payload` TEXT NOT NULL,
+    `reason` TEXT NOT NULL,
+    `rejected_by` STRING NULL,
+    `requested_by` STRING NOT NULL,
+    `status` STRING NOT NULL DEFAULT 'pending',
+    `summary` STRING NOT NULL,
+    `target_id` STRING NULL,
+    `target_type` STRING NULL,
+    `target_user_id` STRING NULL,
+    `updated_at` TIMESTAMP NULL,
+    `withdrawn_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `approval_requests_requested_by_index` (`requested_by`),
+    INDEX `approval_requests_status_expires_at_index` (`status`, `expires_at`),
+    FOREIGN KEY (`requested_by`) REFERENCES `users` (`id`)
+);
 
--- ----------------------------------------------------------------------------
--- Audit Logs Table
--- Compliance audit trail for all critical operations
--- ----------------------------------------------------------------------------
 CREATE TABLE `audit_logs` (
-    `id` CHAR(36) NOT NULL PRIMARY KEY,
-    `organization_id` CHAR(36) NULL,
-    `user_id` CHAR(36) NULL,
-
-    `action` VARCHAR(255) NOT NULL,                   -- invoice.created, zatca.submission.success, etc.
-    `entity_type` VARCHAR(255) NOT NULL,              -- Invoice, Organization, User
-    `entity_id` CHAR(36) NULL,
-
-    `old_values` JSON NULL,                           -- Previous state for updates
-    `new_values` JSON NULL,                           -- New state for creates/updates
-
-    `ip_address` VARCHAR(45) NULL,
-    `user_agent` TEXT NULL,
-    `metadata` JSON NULL,                             -- Additional context (ZATCA responses, etc.)
-
+    `id` STRING NOT NULL,
+    `action` STRING NOT NULL,
     `created_at` TIMESTAMP NULL,
+    `entity_id` STRING NULL,
+    `entity_type` STRING NOT NULL,
+    `ip_address` STRING NULL,
+    `metadata` TEXT NULL,
+    `new_values` TEXT NULL,
+    `old_values` TEXT NULL,
+    `org_id` STRING NULL,
+    `request_id` STRING NULL,
     `updated_at` TIMESTAMP NULL,
-
-    INDEX `audit_logs_organization_id_created_at_index` (`organization_id`, `created_at`),
-    INDEX `audit_logs_entity_type_entity_id_index` (`entity_type`, `entity_id`),
+    `user_agent` TEXT NULL,
+    `user_id` STRING NULL,
+    PRIMARY KEY (`id`),
     INDEX `audit_logs_action_index` (`action`),
-    CONSTRAINT `audit_logs_organization_id_foreign`
-        FOREIGN KEY (`organization_id`) REFERENCES `organizations` (`id`) ON DELETE SET NULL,
-    CONSTRAINT `audit_logs_user_id_foreign`
-        FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    INDEX `audit_logs_entity_type_entity_id_index` (`entity_type`, `entity_id`),
+    INDEX `audit_logs_org_action_created_idx` (`org_id`, `action`, `created_at`),
+    INDEX `audit_logs_org_user_created_idx` (`org_id`, `user_id`, `created_at`),
+    INDEX `audit_logs_organization_id_created_at_index` (`org_id`, `created_at`),
+    INDEX `audit_logs_request_id_index` (`request_id`),
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
 
--- ----------------------------------------------------------------------------
--- Cache Table (Laravel)
--- ----------------------------------------------------------------------------
+CREATE TABLE `branch_user` (
+    `id` STRING NOT NULL,
+    `branch_id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `deleted_at` TIMESTAMP NULL,
+    `deleted_by` STRING NULL,
+    `org_id` STRING NOT NULL,
+    `role` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    `user_id` STRING NOT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `branch_user_org_user_idx` (`org_id`, `user_id`),
+    UNIQUE INDEX `branch_user_unique` (`branch_id`, `user_id`),
+    FOREIGN KEY (`branch_id`) REFERENCES `branches` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `branches` (
+    `id` STRING NOT NULL,
+    `additional_number` STRING NULL,
+    `building_number` STRING NOT NULL,
+    `cert_expires_at` TIMESTAMP NULL,
+    `city` STRING NOT NULL,
+    `country_code` STRING NOT NULL DEFAULT 'SA',
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `deleted_at` TIMESTAMP NULL,
+    `deleted_by` STRING NULL,
+    `device_serial` STRING NOT NULL,
+    `district` STRING NOT NULL,
+    `industry` STRING NOT NULL DEFAULT 'General',
+    `invoice_count` INTEGER NOT NULL DEFAULT 0,
+    `is_active` BOOLEAN NOT NULL DEFAULT 1,
+    `is_default` BOOLEAN NOT NULL DEFAULT 0,
+    `last_invoice_at` TIMESTAMP NULL,
+    `name` STRING NOT NULL,
+    `name_ar` STRING NULL,
+    `onboarded_at` TIMESTAMP NULL,
+    `onboarding_status` STRING NOT NULL DEFAULT 'pending',
+    `org_id` STRING NOT NULL,
+    `postal_code` STRING NOT NULL,
+    `street` STRING NOT NULL,
+    `till_number` INTEGER NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `branches_org_device_serial_unique` (`org_id`, `device_serial`),
+    INDEX `branches_organization_id_is_active_index` (`org_id`, `is_active`),
+    INDEX `branches_organization_id_is_default_index` (`org_id`, `is_default`),
+    INDEX `branches_organization_id_onboarding_status_index` (`org_id`, `onboarding_status`),
+    UNIQUE INDEX `branches_till_number_unique` (`org_id`, `till_number`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `business_qr_codes` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `data` TEXT NOT NULL,
+    `deleted_at` TIMESTAMP NULL,
+    `deleted_by` STRING NULL,
+    `kind` STRING NOT NULL,
+    `label` STRING NOT NULL,
+    `org_id` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `business_qr_codes_org_id_index` (`org_id`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
 CREATE TABLE `cache` (
-    `key` VARCHAR(255) NOT NULL PRIMARY KEY,
-    `value` MEDIUMTEXT NOT NULL,
-    `expiration` INT NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `key` STRING NOT NULL,
+    `expiration` INTEGER NOT NULL,
+    `value` TEXT NOT NULL,
+    PRIMARY KEY (`key`),
+    INDEX `cache_expiration_index` (`expiration`)
+);
 
 CREATE TABLE `cache_locks` (
-    `key` VARCHAR(255) NOT NULL PRIMARY KEY,
-    `owner` VARCHAR(255) NOT NULL,
-    `expiration` INT NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `key` STRING NOT NULL,
+    `expiration` INTEGER NOT NULL,
+    `owner` STRING NOT NULL,
+    PRIMARY KEY (`key`),
+    INDEX `cache_locks_expiration_index` (`expiration`)
+);
 
--- ----------------------------------------------------------------------------
--- Jobs Tables (Laravel Queue)
--- ----------------------------------------------------------------------------
-CREATE TABLE `jobs` (
-    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `queue` VARCHAR(255) NOT NULL,
-    `payload` LONGTEXT NOT NULL,
-    `attempts` TINYINT UNSIGNED NOT NULL,
-    `reserved_at` INT UNSIGNED NULL,
-    `available_at` INT UNSIGNED NOT NULL,
-    `created_at` INT UNSIGNED NOT NULL,
-    INDEX `jobs_queue_index` (`queue`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `compliance_profiles` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `deleted_at` TIMESTAMP NULL,
+    `deleted_by` STRING NULL,
+    `engine` STRING NOT NULL,
+    `jurisdiction` STRING NOT NULL,
+    `not_deleted` INTEGER GENERATED,
+    `org_id` STRING NOT NULL,
+    `settings` TEXT NULL,
+    `status` STRING NOT NULL DEFAULT 'pending_onboarding',
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `compliance_profiles_kept_jurisdiction_unique` (`org_id`, `jurisdiction`, `not_deleted`),
+    INDEX `compliance_profiles_organization_id_status_index` (`org_id`, `status`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
 
-CREATE TABLE `job_batches` (
-    `id` VARCHAR(255) NOT NULL PRIMARY KEY,
-    `name` VARCHAR(255) NOT NULL,
-    `total_jobs` INT NOT NULL,
-    `pending_jobs` INT NOT NULL,
-    `failed_jobs` INT NOT NULL,
-    `failed_job_ids` LONGTEXT NOT NULL,
-    `options` MEDIUMTEXT NULL,
-    `cancelled_at` INT NULL,
-    `created_at` INT NOT NULL,
-    `finished_at` INT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `customers` (
+    `id` STRING NOT NULL,
+    `archived_at` TIMESTAMP NULL,
+    `building_number` STRING NULL,
+    `buyer_id` STRING NULL,
+    `buyer_id_scheme` STRING NULL,
+    `city` STRING NULL,
+    `country_code` STRING NOT NULL DEFAULT 'SA',
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `created_via` STRING NULL,
+    `deleted_at` TIMESTAMP NULL,
+    `deleted_by` STRING NULL,
+    `district` STRING NULL,
+    `email` STRING NULL,
+    `external_id` STRING NULL,
+    `license_id` STRING NULL,
+    `name` STRING NOT NULL,
+    `name_ar` STRING NULL,
+    `not_deleted` INTEGER GENERATED,
+    `org_id` STRING NOT NULL,
+    `payment_terms` STRING NULL,
+    `peppol_endpoint` STRING NULL,
+    `phone` STRING NULL,
+    `postal_code` STRING NULL,
+    `street` STRING NULL,
+    `subdivision` STRING NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    `vat_number` STRING NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `customers_external_id_unique` (`org_id`, `license_id`, `external_id`, `not_deleted`),
+    UNIQUE INDEX `customers_kept_vat_number_unique` (`org_id`, `vat_number`, `not_deleted`),
+    INDEX `customers_org_id_name_index` (`org_id`, `name`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`license_id`) REFERENCES `licenses` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `customizations` (
+    `id` STRING NOT NULL,
+    `branch_id` STRING NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `deleted_at` TIMESTAMP NULL,
+    `deleted_by` STRING NULL,
+    `holder` STRING NOT NULL,
+    `key` STRING NOT NULL,
+    `level` STRING NOT NULL,
+    `locked` BOOLEAN NOT NULL DEFAULT 0,
+    `org_id` STRING NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    `user_id` STRING NULL,
+    `value` TEXT NOT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `customizations_holder_index` (`holder`),
+    UNIQUE INDEX `customizations_key_holder_unique` (`key`, `holder`),
+    FOREIGN KEY (`branch_id`) REFERENCES `branches` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+);
 
 CREATE TABLE `failed_jobs` (
-    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `uuid` VARCHAR(255) NOT NULL UNIQUE,
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
     `connection` TEXT NOT NULL,
+    `exception` TEXT NOT NULL,
+    `failed_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `payload` TEXT NOT NULL,
     `queue` TEXT NOT NULL,
-    `payload` LONGTEXT NOT NULL,
-    `exception` LONGTEXT NOT NULL,
-    `failed_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `uuid` STRING NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `failed_jobs_uuid_unique` (`uuid`)
+);
+
+CREATE TABLE `hash_chain_heads` (
+    `device_id` STRING NOT NULL,
+    `cert_transition` TEXT NULL,
+    `certificate_id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `last_hash` STRING NOT NULL,
+    `last_icv` INTEGER NOT NULL,
+    `last_invoice_id` STRING NOT NULL,
+    `org_id` STRING NOT NULL,
+    `updated_at` TIMESTAMP NOT NULL,
+    PRIMARY KEY (`device_id`),
+    INDEX `hash_chain_heads_org_index` (`org_id`),
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `hash_chain_history` (
+    `id` STRING NOT NULL,
+    `cert_transition` TEXT NULL,
+    `certificate_id` STRING NOT NULL,
+    `created_at` TIMESTAMP NOT NULL,
+    `device_id` STRING NULL,
+    `icv` INTEGER NOT NULL,
+    `invoice_hash` STRING NOT NULL,
+    `invoice_id` STRING NOT NULL,
+    `org_id` STRING NOT NULL,
+    `previous_hash` STRING NOT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `hash_chain_history_certificate_id_created_at_index` (`certificate_id`, `created_at`),
+    UNIQUE INDEX `hash_chain_history_device_icv_unique` (`device_id`, `icv`),
+    INDEX `hash_chain_history_invoice_id_index` (`invoice_id`),
+    UNIQUE INDEX `hash_chain_history_invoice_unique` (`invoice_id`),
+    INDEX `hash_chain_history_organization_id_certificate_id_index` (`org_id`, `certificate_id`),
+    FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `invoice_charges` (
+    `id` STRING NOT NULL,
+    `amount` DECIMAL NOT NULL,
+    `base_amount` DECIMAL NULL,
+    `created_at` TIMESTAMP NULL,
+    `exempt_code` STRING NULL,
+    `exempt_reason` STRING NULL,
+    `invoice_id` STRING NOT NULL,
+    `invoice_line_id` STRING NULL,
+    `net_amount` DECIMAL NOT NULL,
+    `percent` DECIMAL NULL,
+    `position` INTEGER NOT NULL,
+    `reason` STRING NOT NULL,
+    `reason_code` STRING NOT NULL,
+    `tax_category` STRING NULL,
+    `tax_rate` DECIMAL NULL,
+    `updated_at` TIMESTAMP NULL,
+    PRIMARY KEY (`id`),
+    INDEX `invoice_charges_invoice_id_invoice_line_id_index` (`invoice_id`, `invoice_line_id`),
+    FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`invoice_line_id`) REFERENCES `invoice_lines` (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `invoice_lines` (
+    `id` STRING NOT NULL,
+    `class_code` STRING NULL,
+    `created_at` TIMESTAMP NULL,
+    `description` STRING NOT NULL,
+    `description_ar` STRING NULL,
+    `discount_amount` DECIMAL NULL,
+    `exempt_code` STRING NULL,
+    `exempt_reason` STRING NULL,
+    `invoice_id` STRING NOT NULL,
+    `item_name` STRING NULL,
+    `line_total` DECIMAL NOT NULL DEFAULT 0,
+    `net_amount` DECIMAL NULL,
+    `quantity` DECIMAL NOT NULL,
+    `tax_amount` DECIMAL NOT NULL DEFAULT 0,
+    `tax_category` STRING NOT NULL DEFAULT 'S',
+    `tax_rate` DECIMAL NOT NULL DEFAULT 15,
+    `unit_code` STRING NOT NULL DEFAULT 'H87',
+    `unit_price` DECIMAL NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    PRIMARY KEY (`id`),
+    FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `invoice_links` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `invoice_id` STRING NOT NULL,
+    `last_opened_at` TIMESTAMP NULL,
+    `open_count` INTEGER NOT NULL DEFAULT 0,
+    `org_id` STRING NOT NULL,
+    `revoked_at` TIMESTAMP NULL,
+    `token` TEXT NOT NULL,
+    `token_hash` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `invoice_links_org_id_invoice_id_index` (`org_id`, `invoice_id`),
+    UNIQUE INDEX `invoice_links_token_hash_unique` (`token_hash`),
+    FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `invoice_prepayments` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `exempt_code` STRING NULL,
+    `exempt_reason` STRING NULL,
+    `invoice_id` STRING NOT NULL,
+    `invoice_number` STRING NOT NULL,
+    `issue_date` DATE NOT NULL,
+    `issued_at` TIMESTAMP NOT NULL,
+    `position` INTEGER NOT NULL,
+    `prepayment_invoice_id` STRING NOT NULL,
+    `tax_amount` DECIMAL NOT NULL,
+    `tax_category` STRING NOT NULL,
+    `tax_rate` DECIMAL NOT NULL,
+    `taxable_amount` DECIMAL NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    PRIMARY KEY (`id`),
+    INDEX `invoice_prepayments_prepayment_invoice_id_index` (`prepayment_invoice_id`),
+    FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`prepayment_invoice_id`) REFERENCES `invoices` (`id`)
+);
+
+CREATE TABLE `invoice_sequences` (
+    `id` STRING NOT NULL,
+    `branch_id` STRING NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `document_type` STRING NOT NULL,
+    `next_number` INTEGER NOT NULL DEFAULT 1,
+    `org_id` STRING NOT NULL,
+    `padding` INTEGER NOT NULL DEFAULT 5,
+    `pattern` STRING NOT NULL,
+    `period` STRING NULL,
+    `reset` STRING NOT NULL DEFAULT 'yearly',
+    `scope` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `invoice_sequences_scope_unique` (`org_id`, `scope`, `document_type`),
+    FOREIGN KEY (`branch_id`) REFERENCES `branches` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `invoice_submissions` (
+    `id` STRING NOT NULL,
+    `check_count` INTEGER NOT NULL DEFAULT 0,
+    `clearance_state` STRING NOT NULL DEFAULT 'unknown',
+    `clearance_status` STRING NULL,
+    `cleared_at` TIMESTAMP NULL,
+    `completed_at` TIMESTAMP NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `deleted_at` TIMESTAMP NULL,
+    `idempotency_id` STRING NULL,
+    `invoice_hash` STRING NULL,
+    `invoice_id` STRING NOT NULL,
+    `last_error` TEXT NULL,
+    `last_error_code` STRING NULL,
+    `max_retries` INTEGER NOT NULL DEFAULT 3,
+    `next_retry_at` TIMESTAMP NULL,
+    `org_id` STRING NOT NULL,
+    `previous_state` STRING NULL,
+    `queue_job_id` STRING NULL,
+    `queued_at` TIMESTAMP NULL,
+    `reporting_status` STRING NULL,
+    `request_id` STRING NULL,
+    `retry_count` INTEGER NOT NULL DEFAULT 0,
+    `signed_at` TIMESTAMP NULL,
+    `state` STRING NOT NULL DEFAULT 'draft',
+    `state_changed_at` TIMESTAMP NULL,
+    `submission_mode` STRING NOT NULL DEFAULT 'sync',
+    `submission_type` STRING NULL,
+    `submitted_at` TIMESTAMP NULL,
+    `updated_at` TIMESTAMP NULL,
+    `zatca_errors` TEXT NULL,
+    `zatca_uuid` STRING NULL,
+    `zatca_warnings` TEXT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `invoice_submissions_invoice_id_state_index` (`invoice_id`, `state`),
+    INDEX `invoice_submissions_organization_id_created_by_created_at_index` (`org_id`, `created_by`, `created_at`),
+    INDEX `invoice_submissions_organization_id_state_index` (`org_id`, `state`),
+    INDEX `invoice_submissions_request_id_index` (`request_id`),
+    INDEX `invoice_submissions_signed_at_index` (`signed_at`),
+    INDEX `invoice_submissions_state_next_retry_at_index` (`state`, `next_retry_at`),
+    INDEX `invoice_submissions_zatca_uuid_index` (`zatca_uuid`),
+    INDEX `submissions_org_created_idx` (`org_id`, `created_at`),
+    INDEX `submissions_state_created_idx` (`state`, `created_at`),
+    INDEX `submissions_state_idx` (`state`),
+    INDEX `submissions_type_idx` (`submission_type`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`idempotency_id`) REFERENCES `submission_idempotency` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `invoices` (
+    `id` STRING NOT NULL,
+    `adjustment_reason` STRING NULL,
+    `billing_ref` STRING NULL,
+    `branch_id` STRING NULL,
+    `buyer_address` TEXT NULL,
+    `buyer_id` STRING NULL,
+    `buyer_id_scheme` STRING NULL,
+    `buyer_name` STRING NULL,
+    `buyer_name_ar` STRING NULL,
+    `buyer_reference` STRING NULL,
+    `buyer_vat_number` STRING NULL,
+    `cert_id` STRING NULL,
+    `cleared_xml` TEXT NULL,
+    `contract_reference` STRING NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `created_via` STRING NULL,
+    `currency` STRING NOT NULL DEFAULT 'SAR',
+    `customer_id` STRING NULL,
+    `determined_at` TIMESTAMP NULL,
+    `device_id` STRING NULL,
+    `discount_amount` DECIMAL NOT NULL DEFAULT 0,
+    `document_type` STRING NULL,
+    `due_date` DATE NULL,
+    `erp_reference_id` STRING NULL,
+    `exchange_rate` DECIMAL NULL,
+    `hash` STRING NULL,
+    `hash_algorithm` STRING NULL,
+    `icv` INTEGER NULL,
+    `idempotency_key` STRING NULL,
+    `invoice_number` STRING NULL,
+    `is_export` BOOLEAN NOT NULL DEFAULT 0,
+    `is_government` BOOLEAN NOT NULL DEFAULT 0,
+    `is_nominal` BOOLEAN NOT NULL DEFAULT 0,
+    `is_self_billed` BOOLEAN NOT NULL DEFAULT 0,
+    `is_summary` BOOLEAN NOT NULL DEFAULT 0,
+    `is_third_party` BOOLEAN NOT NULL DEFAULT 0,
+    `issue_date` DATE NOT NULL,
+    `issued_at` TIMESTAMP NULL,
+    `issued_by` STRING NULL,
+    `jurisdiction_data` TEXT NULL,
+    `license_id` STRING NULL,
+    `notes` TEXT NULL,
+    `order_reference` STRING NULL,
+    `org_id` STRING NOT NULL,
+    `payment_means_code` STRING NULL,
+    `payment_terms` STRING NULL,
+    `prepaid_amount` DECIMAL NULL,
+    `prices_include_vat` BOOLEAN NOT NULL DEFAULT 0,
+    `profile_id` STRING NULL,
+    `qr_code` TEXT NULL,
+    `rule_version` STRING NULL,
+    `schema_version` STRING NULL,
+    `signature_algorithm` STRING NULL,
+    `signed_xml` TEXT NULL,
+    `sold_at` TIMESTAMP NULL,
+    `status` STRING NOT NULL,
+    `subtotal` DECIMAL NOT NULL DEFAULT 0,
+    `supply_date` DATE NULL,
+    `supply_end_date` DATE NULL,
+    `tax_amount` DECIMAL NOT NULL DEFAULT 0,
+    `total` DECIMAL NOT NULL DEFAULT 0,
+    `type` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `zatca_response` TEXT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `invoices_branch_id_index` (`branch_id`),
+    INDEX `invoices_compliance_profile_id_index` (`profile_id`),
+    UNIQUE INDEX `invoices_device_icv_unique` (`device_id`, `icv`),
+    INDEX `invoices_erp_reference_id_index` (`erp_reference_id`),
+    INDEX `invoices_invoice_number_index` (`invoice_number`),
+    INDEX `invoices_issue_date_idx` (`issue_date`),
+    INDEX `invoices_org_branch_date_idx` (`org_id`, `branch_id`, `issue_date`),
+    INDEX `invoices_org_buyer_idx` (`org_id`, `buyer_name`),
+    INDEX `invoices_org_created_idx` (`org_id`, `created_at`),
+    INDEX `invoices_org_document_date_idx` (`org_id`, `document_type`, `issue_date`),
+    UNIQUE INDEX `invoices_org_idempotency_unique` (`org_id`, `idempotency_key`),
+    UNIQUE INDEX `invoices_org_invoice_number_unique` (`org_id`, `invoice_number`),
+    INDEX `invoices_org_issue_date_idx` (`org_id`, `issue_date`),
+    INDEX `invoices_org_total_idx` (`org_id`, `total`),
+    INDEX `invoices_organization_id_status_index` (`org_id`, `status`),
+    INDEX `invoices_signing_certificate_id_index` (`cert_id`),
+    INDEX `invoices_type_idx` (`type`),
+    FOREIGN KEY (`branch_id`) REFERENCES `branches` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`issued_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`license_id`) REFERENCES `licenses` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`),
+    FOREIGN KEY (`profile_id`) REFERENCES `compliance_profiles` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `issuing_locks` (
+    `org_id` STRING NOT NULL,
+    `scope` STRING NOT NULL,
+    `held_at` TIMESTAMP NULL,
+    PRIMARY KEY (`org_id`, `scope`)
+);
+
+CREATE TABLE `job_batches` (
+    `id` STRING NOT NULL,
+    `cancelled_at` INTEGER NULL,
+    `created_at` INTEGER NOT NULL,
+    `failed_job_ids` TEXT NOT NULL,
+    `failed_jobs` INTEGER NOT NULL,
+    `finished_at` INTEGER NULL,
+    `name` STRING NOT NULL,
+    `options` TEXT NULL,
+    `pending_jobs` INTEGER NOT NULL,
+    `total_jobs` INTEGER NOT NULL,
+    PRIMARY KEY (`id`)
+);
+
+CREATE TABLE `jobs` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `attempts` INTEGER NOT NULL,
+    `available_at` INTEGER NOT NULL,
+    `created_at` INTEGER NOT NULL,
+    `payload` TEXT NOT NULL,
+    `queue` STRING NOT NULL,
+    `reserved_at` INTEGER NULL,
+    PRIMARY KEY (`id`),
+    INDEX `jobs_queue_index` (`queue`)
+);
+
+CREATE TABLE `language_graces` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `org_id` STRING NOT NULL,
+    `reason` STRING NULL,
+    `until` DATE NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `language_graces_org_id_unique` (`org_id`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `late_reports` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `alerted_at` TIMESTAMP NULL,
+    `created_at` TIMESTAMP NULL,
+    `invoice_id` STRING NOT NULL,
+    `issued_at` TIMESTAMP NOT NULL,
+    `org_id` STRING NOT NULL,
+    `reported_at` TIMESTAMP NULL,
+    `resolved_alerted_at` TIMESTAMP NULL,
+    `updated_at` TIMESTAMP NULL,
+    `zatca_notified_at` TIMESTAMP NULL,
+    `zatca_notified_by` STRING NULL,
+    `zatca_renotified_at` TIMESTAMP NULL,
+    `zatca_renotified_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `late_reports_invoice_id_unique` (`invoice_id`),
+    INDEX `late_reports_org_id_reported_at_index` (`org_id`, `reported_at`)
+);
+
+CREATE TABLE `license_audit_logs` (
+    `id` STRING NOT NULL,
+    `actor_id` STRING NULL,
+    `actor_type` STRING NULL,
+    `created_at` TIMESTAMP NOT NULL,
+    `event` STRING NOT NULL,
+    `ip_address` STRING NULL,
+    `license_id` STRING NOT NULL,
+    `new_values` TEXT NULL,
+    `old_values` TEXT NULL,
+    `reason` TEXT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `license_audit_logs_event_index` (`event`),
+    INDEX `license_audit_logs_license_id_created_at_index` (`license_id`, `created_at`),
+    FOREIGN KEY (`license_id`) REFERENCES `licenses` (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `license_rate_limits` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `license_id` STRING NOT NULL,
+    `request_count` INTEGER NOT NULL DEFAULT 0,
+    `updated_at` TIMESTAMP NULL,
+    `window_expires` TIMESTAMP NOT NULL,
+    `window_key` STRING NOT NULL,
+    `window_start` TIMESTAMP NOT NULL,
+    `window_type` STRING NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `license_rate_limits_license_id_window_type_window_key_unique` (`license_id`, `window_type`, `window_key`),
+    INDEX `license_rate_limits_window_expires_index` (`window_expires`),
+    FOREIGN KEY (`license_id`) REFERENCES `licenses` (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `license_registration_audits` (
+    `id` STRING NOT NULL,
+    `action` STRING NOT NULL,
+    `changes` TEXT NULL,
+    `created_at` TIMESTAMP NULL,
+    `ip_address` STRING NULL,
+    `new_status` STRING NULL,
+    `old_status` STRING NULL,
+    `reason` TEXT NULL,
+    `registration_id` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `user_agent` STRING NULL,
+    `user_id` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `license_registration_audits_registration_id_created_at_index` (`registration_id`, `created_at`),
+    FOREIGN KEY (`registration_id`) REFERENCES `license_registrations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `license_registrations` (
+    `id` STRING NOT NULL,
+    `accepted_from_ip` STRING NULL,
+    `admin_notes` TEXT NULL,
+    `approved_at` TIMESTAMP NULL,
+    `approved_by` STRING NULL,
+    `company_size` STRING NULL,
+    `contact_email` STRING NOT NULL,
+    `contact_name` STRING NOT NULL,
+    `country_code` STRING NOT NULL DEFAULT 'SA',
+    `created_at` TIMESTAMP NULL,
+    `deleted_at` TIMESTAMP NULL,
+    `deleted_by` STRING NULL,
+    `industry` STRING NULL,
+    `license_type` STRING NOT NULL DEFAULT 'commercial',
+    `org_id` STRING NULL,
+    `organization_name` STRING NOT NULL,
+    `rejection_reason` TEXT NULL,
+    `status` STRING NOT NULL DEFAULT 'pending',
+    `terms_accepted` BOOLEAN NOT NULL DEFAULT 0,
+    `terms_accepted_at` TIMESTAMP NULL,
+    `terms_version` STRING NOT NULL DEFAULT '1.0',
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    `use_case` TEXT NOT NULL,
+    `vat_number` STRING NULL,
+    `verified_at` TIMESTAMP NULL,
+    `verify_token` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `license_registrations_contact_email_index` (`contact_email`),
+    INDEX `license_registrations_created_at_index` (`created_at`),
+    INDEX `license_registrations_status_index` (`status`),
+    INDEX `license_registrations_vat_number_index` (`vat_number`),
+    UNIQUE INDEX `license_registrations_verification_token_unique` (`verify_token`),
+    FOREIGN KEY (`approved_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `license_usage` (
+    `id` STRING NOT NULL,
+    `api_calls` INTEGER NOT NULL DEFAULT 0,
+    `api_errors` INTEGER NOT NULL DEFAULT 0,
+    `created_at` TIMESTAMP NULL,
+    `invoices_cleared` INTEGER NOT NULL DEFAULT 0,
+    `invoices_failed` INTEGER NOT NULL DEFAULT 0,
+    `invoices_reported` INTEGER NOT NULL DEFAULT 0,
+    `invoices_submitted` INTEGER NOT NULL DEFAULT 0,
+    `license_id` STRING NOT NULL,
+    `orgs_active` INTEGER NOT NULL DEFAULT 0,
+    `total_value` DECIMAL NOT NULL DEFAULT 0,
+    `updated_at` TIMESTAMP NULL,
+    `usage_date` DATE NOT NULL,
+    `usage_month` STRING NOT NULL,
+    `users_active` INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `license_usage_license_id_usage_date_unique` (`license_id`, `usage_date`),
+    INDEX `license_usage_license_id_usage_month_index` (`license_id`, `usage_month`),
+    INDEX `license_usage_month_idx` (`usage_month`),
+    FOREIGN KEY (`license_id`) REFERENCES `licenses` (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `licenses` (
+    `id` STRING NOT NULL,
+    `activated_at` TIMESTAMP NULL,
+    `api_key` STRING NOT NULL,
+    `api_secret_hash` STRING NOT NULL,
+    `calls_per_day` INTEGER NOT NULL DEFAULT 10000,
+    `calls_per_min` INTEGER NOT NULL DEFAULT 60,
+    `contact_email` STRING NOT NULL,
+    `contact_phone` STRING NULL,
+    `created_at` TIMESTAMP NULL,
+    `deleted_at` TIMESTAMP NULL,
+    `deleted_by` STRING NULL,
+    `environment` STRING NOT NULL DEFAULT 'sandbox',
+    `expires_at` TIMESTAMP NULL,
+    `features` TEXT NULL,
+    `invoices_per_month` INTEGER NOT NULL DEFAULT 100,
+    `issued_by` STRING NULL,
+    `max_organizations` INTEGER NOT NULL DEFAULT 1,
+    `multi_tenant` BOOLEAN NOT NULL DEFAULT 0,
+    `notes` TEXT NULL,
+    `offline_mode` BOOLEAN NOT NULL DEFAULT 0,
+    `org_id` STRING NULL,
+    `organization_name` STRING NOT NULL,
+    `organization_vat` STRING NULL,
+    `scopes` TEXT NULL,
+    `status` STRING NOT NULL DEFAULT 'active',
+    `suspended_at` TIMESTAMP NULL,
+    `suspension_reason` STRING NULL,
+    `tier` STRING NOT NULL DEFAULT 'starter',
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    `webhook_enabled` BOOLEAN NOT NULL DEFAULT 1,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `licenses_api_key_unique` (`api_key`),
+    INDEX `licenses_environment_index` (`environment`),
+    INDEX `licenses_expires_at_index` (`expires_at`),
+    INDEX `licenses_organization_vat_index` (`organization_vat`),
+    INDEX `licenses_status_index` (`status`),
+    INDEX `licenses_tier_index` (`tier`),
+    FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`issued_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `migrations` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `batch` INTEGER NOT NULL,
+    `migration` STRING NOT NULL,
+    PRIMARY KEY (`id`)
+);
+
+CREATE TABLE `offline_queue` (
+    `id` STRING NOT NULL,
+    `attempts` INTEGER NOT NULL DEFAULT 0,
+    `cancel_reason` STRING NULL,
+    `cancelled_at` TIMESTAMP NULL,
+    `completed_at` TIMESTAMP NULL,
+    `created_at` TIMESTAMP NULL,
+    `failed_at` TIMESTAMP NULL,
+    `invoice_hash` STRING NOT NULL,
+    `invoice_id` STRING NOT NULL,
+    `last_error` TEXT NULL,
+    `max_attempts` INTEGER NOT NULL DEFAULT 3,
+    `next_attempt_at` TIMESTAMP NULL,
+    `org_id` STRING NOT NULL,
+    `priority` STRING NOT NULL DEFAULT 'normal',
+    `qr_code` TEXT NOT NULL,
+    `queued_at` TIMESTAMP NOT NULL,
+    `signed_xml` TEXT NOT NULL,
+    `started_at` TIMESTAMP NULL,
+    `state` STRING NOT NULL DEFAULT 'pending',
+    `updated_at` TIMESTAMP NULL,
+    `zatca_response` TEXT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `offline_queue_invoice_id_index` (`invoice_id`),
+    INDEX `offline_queue_organization_id_state_index` (`org_id`, `state`),
+    INDEX `offline_queue_state_next_attempt_at_index` (`state`, `next_attempt_at`),
+    INDEX `offline_queue_state_priority_queued_at_index` (`state`, `priority`, `queued_at`),
+    INDEX `offline_queue_state_updated_idx` (`state`, `updated_at`),
+    FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `organization_feature_overrides` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `feature` STRING NOT NULL,
+    `org_id` STRING NOT NULL,
+    `reason` STRING NOT NULL,
+    `set_by` STRING NULL,
+    `state` STRING NOT NULL,
+    `subject` STRING NOT NULL DEFAULT '',
+    `updated_at` TIMESTAMP NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `feature_overrides_subject_unique` (`org_id`, `feature`, `subject`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `organization_groups` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `deleted_at` TIMESTAMP NULL,
+    `deleted_by` STRING NULL,
+    `name` STRING NOT NULL,
+    `notes` TEXT NULL,
+    `status` STRING NOT NULL DEFAULT 'active',
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `organization_invitations` (
+    `id` STRING NOT NULL,
+    `accepted_at` TIMESTAMP NULL,
+    `created_at` TIMESTAMP NULL,
+    `deleted_at` TIMESTAMP NULL,
+    `deleted_by` STRING NULL,
+    `email` STRING NOT NULL,
+    `expires_at` TIMESTAMP NOT NULL,
+    `invited_by` STRING NULL,
+    `org_id` STRING NOT NULL,
+    `role` STRING NOT NULL,
+    `token_hash` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `organization_invitations_org_id_email_index` (`org_id`, `email`),
+    UNIQUE INDEX `organization_invitations_token_hash_unique` (`token_hash`),
+    FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `organization_licenses` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `license_id` STRING NOT NULL,
+    `linked_at` TIMESTAMP NOT NULL,
+    `linked_by` STRING NULL,
+    `org_id` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `org_licenses_org_idx` (`org_id`),
+    UNIQUE INDEX `organization_licenses_organization_id_license_id_unique` (`org_id`, `license_id`),
+    FOREIGN KEY (`license_id`) REFERENCES `licenses` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `organization_user` (
+    `org_id` STRING NOT NULL,
+    `user_id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `role` STRING NOT NULL DEFAULT 'member',
+    `status` STRING NOT NULL DEFAULT 'active',
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    `working_branch_id` STRING NULL,
+    PRIMARY KEY (`user_id`, `org_id`),
+    INDEX `org_user_org_status_idx` (`org_id`, `status`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`working_branch_id`) REFERENCES `branches` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `organizations` (
+    `id` STRING NOT NULL,
+    `additional_street` STRING NULL,
+    `building_number` STRING NULL,
+    `city` STRING NULL,
+    `compliance_profile` TEXT NULL,
+    `country` STRING NOT NULL DEFAULT 'SA',
+    `cr_number` STRING NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `district` STRING NULL,
+    `group_id` STRING NULL,
+    `hold_expires_at` TIMESTAMP NULL,
+    `hold_ref` STRING NULL,
+    `invoice_qr` TEXT NULL,
+    `legal_hold_at` TIMESTAMP NULL,
+    `name` STRING NOT NULL,
+    `name_ar` STRING NULL,
+    `postal_code` STRING NULL,
+    `prices_include_vat` BOOLEAN NULL,
+    `require_two_factor` BOOLEAN NULL,
+    `review_note` TEXT NULL,
+    `reviewed_at` TIMESTAMP NULL,
+    `reviewed_by` STRING NULL,
+    `shared_numbering` BOOLEAN NOT NULL DEFAULT 0,
+    `status` STRING NOT NULL DEFAULT 'active',
+    `street` STRING NULL,
+    `suspended_at` TIMESTAMP NULL,
+    `suspended_by` STRING NULL,
+    `suspension_reason` STRING NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    `vat_number` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `organizations_legal_hold_idx` (`hold_ref`),
+    INDEX `organizations_status_index` (`status`),
+    INDEX `organizations_vat_number_index` (`vat_number`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`group_id`) REFERENCES `organization_groups` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `owner_transfers` (
+    `id` STRING NOT NULL,
+    `accepted_at` TIMESTAMP NULL,
+    `accepted_by` STRING NULL,
+    `cancelled_at` TIMESTAMP NULL,
+    `cancelled_by` STRING NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `demote_to` STRING NOT NULL,
+    `expires_at` TIMESTAMP NOT NULL,
+    `from_user_id` STRING NOT NULL,
+    `status` STRING NOT NULL DEFAULT 'pending',
+    `to_user_id` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    PRIMARY KEY (`id`),
+    INDEX `owner_transfers_status_index` (`status`),
+    FOREIGN KEY (`from_user_id`) REFERENCES `users` (`id`),
+    FOREIGN KEY (`to_user_id`) REFERENCES `users` (`id`)
+);
+
+CREATE TABLE `password_reset_tokens` (
+    `email` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `token` STRING NOT NULL,
+    PRIMARY KEY (`email`)
+);
+
+CREATE TABLE `payments` (
+    `id` STRING NOT NULL,
+    `amount` DECIMAL NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_via` STRING NULL,
+    `currency` STRING NOT NULL,
+    `invoice_error` STRING NULL,
+    `invoice_id` STRING NULL,
+    `license_id` STRING NULL,
+    `method` STRING NOT NULL,
+    `months` INTEGER NOT NULL,
+    `notes` TEXT NULL,
+    `org_id` STRING NOT NULL,
+    `paid_at` DATE NOT NULL,
+    `period_end` DATE NOT NULL,
+    `period_start` DATE NOT NULL,
+    `recorded_by` STRING NULL,
+    `reference` STRING NULL,
+    `tier` STRING NOT NULL,
+    `total` DECIMAL NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `vat_amount` DECIMAL NOT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `payments_org_id_paid_at_index` (`org_id`, `paid_at`),
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `peppol_documents` (
+    `id` STRING NOT NULL,
+    `asp_message_id` STRING NULL,
+    `attempts` INTEGER NOT NULL DEFAULT 0,
+    `country` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `customization_id` STRING NOT NULL,
+    `direction` STRING NOT NULL,
+    `document_type` STRING NOT NULL,
+    `errors` TEXT NULL,
+    `invoice_id` STRING NULL,
+    `issued_late` BOOLEAN NOT NULL DEFAULT 0,
+    `last_error` TEXT NULL,
+    `mls_code` STRING NULL,
+    `org_id` STRING NOT NULL,
+    `profile_id` STRING NOT NULL,
+    `queued_at` TIMESTAMP NULL,
+    `receiver_endpoint` STRING NULL,
+    `sender_endpoint` STRING NULL,
+    `status` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `xml` TEXT NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `peppol_documents_direction_asp_message_id_unique` (`direction`, `asp_message_id`),
+    INDEX `peppol_documents_invoice_id_index` (`invoice_id`),
+    INDEX `peppol_documents_org_id_direction_created_at_index` (`org_id`, `direction`, `created_at`),
+    INDEX `peppol_documents_status_index` (`status`),
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`)
+);
+
+CREATE TABLE `products` (
+    `id` STRING NOT NULL,
+    `archived_at` TIMESTAMP NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `created_via` STRING NULL,
+    `deleted_at` TIMESTAMP NULL,
+    `deleted_by` STRING NULL,
+    `external_id` STRING NULL,
+    `license_id` STRING NULL,
+    `name` STRING NOT NULL,
+    `name_ar` STRING NULL,
+    `not_deleted` INTEGER GENERATED,
+    `org_id` STRING NOT NULL,
+    `sku` STRING NULL,
+    `tax_rate` DECIMAL NOT NULL,
+    `unit_code` STRING NOT NULL,
+    `unit_price` DECIMAL NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `products_external_id_unique` (`org_id`, `license_id`, `external_id`, `not_deleted`),
+    UNIQUE INDEX `products_kept_sku_unique` (`org_id`, `sku`, `not_deleted`),
+    INDEX `products_org_id_name_index` (`org_id`, `name`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`license_id`) REFERENCES `licenses` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `reporting_attempts` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `attempted_at` TIMESTAMP NOT NULL,
+    `detail` STRING NULL,
+    `invoice_id` STRING NOT NULL,
+    `org_id` STRING NOT NULL,
+    `outcome` STRING NOT NULL,
+    `request_id` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `reporting_attempts_org_id_invoice_id_index` (`org_id`, `invoice_id`),
+    INDEX `reporting_attempts_request_id_index` (`request_id`)
+);
+
+CREATE TABLE `saved_list_views` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `deleted_at` TIMESTAMP NULL,
+    `deleted_by` STRING NULL,
+    `list` STRING NOT NULL,
+    `name` STRING NOT NULL,
+    `org_id` STRING NULL,
+    `query` TEXT NOT NULL,
+    `scope` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    `user_id` STRING NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `saved_list_views_name_unique` (`user_id`, `scope`, `list`, `name`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `sessions` (
+    `id` STRING NOT NULL,
+    `ip_address` STRING NULL,
+    `last_activity` INTEGER NOT NULL,
+    `payload` TEXT NOT NULL,
+    `user_agent` TEXT NULL,
+    `user_id` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `sessions_last_activity_index` (`last_activity`),
+    INDEX `sessions_user_id_index` (`user_id`)
+);
+
+CREATE TABLE `settings` (
+    `key` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    `value` TEXT NOT NULL,
+    PRIMARY KEY (`key`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `submission_idempotency` (
+    `id` STRING NOT NULL,
+    `attempt_count` INTEGER NOT NULL DEFAULT 1,
+    `clearance_status` STRING NULL,
+    `completed_at` TIMESTAMP NULL,
+    `created_at` TIMESTAMP NULL,
+    `endpoint` STRING NOT NULL,
+    `expires_at` TIMESTAMP NOT NULL,
+    `first_attempt_at` TIMESTAMP NOT NULL,
+    `http_status_code` INTEGER NULL,
+    `idempotency_key` STRING NOT NULL,
+    `invoice_id` STRING NOT NULL,
+    `last_attempt_at` TIMESTAMP NOT NULL,
+    `method` STRING NOT NULL,
+    `org_id` STRING NOT NULL,
+    `request_hash` STRING NOT NULL,
+    `response_body` TEXT NULL,
+    `response_headers` TEXT NULL,
+    `status` STRING NOT NULL DEFAULT 'processing',
+    `updated_at` TIMESTAMP NULL,
+    `zatca_errors` TEXT NULL,
+    `zatca_request_id` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `submission_idempotency_expires_at_index` (`expires_at`),
+    UNIQUE INDEX `submission_idempotency_idempotency_key_unique` (`idempotency_key`),
+    INDEX `submission_idempotency_invoice_id_status_index` (`invoice_id`, `status`),
+    INDEX `submission_idempotency_organization_id_created_at_index` (`org_id`, `created_at`),
+    FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `submission_state_logs` (
+    `id` STRING NOT NULL,
+    `actor_id` STRING NULL,
+    `actor_type` STRING NULL,
+    `context` TEXT NULL,
+    `created_at` TIMESTAMP NULL,
+    `from_state` STRING NULL,
+    `ip_address` STRING NULL,
+    `notes` TEXT NULL,
+    `request_id` STRING NULL,
+    `submission_id` STRING NOT NULL,
+    `to_state` STRING NOT NULL,
+    `trigger` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    PRIMARY KEY (`id`),
+    INDEX `submission_state_logs_request_id_index` (`request_id`),
+    INDEX `submission_state_logs_submission_id_created_at_index` (`submission_id`, `created_at`),
+    FOREIGN KEY (`submission_id`) REFERENCES `invoice_submissions` (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `support_attachments` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `message_id` STRING NOT NULL,
+    `mime` STRING NOT NULL,
+    `name` STRING NOT NULL,
+    `path` STRING NOT NULL,
+    `size` INTEGER NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    PRIMARY KEY (`id`),
+    FOREIGN KEY (`message_id`) REFERENCES `support_messages` (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `support_messages` (
+    `id` STRING NOT NULL,
+    `body` TEXT NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `from_staff` BOOLEAN NOT NULL DEFAULT 0,
+    `internal` BOOLEAN NOT NULL DEFAULT 0,
+    `ticket_id` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `user_id` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `support_messages_ticket_id_created_at_index` (`ticket_id`, `created_at`),
+    FOREIGN KEY (`ticket_id`) REFERENCES `support_tickets` (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `support_tickets` (
+    `id` STRING NOT NULL,
+    `assigned_to` STRING NULL,
+    `category` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `last_activity_at` TIMESTAMP NOT NULL,
+    `number` INTEGER NOT NULL,
+    `opened_by` STRING NULL,
+    `org_id` STRING NOT NULL,
+    `priority` STRING NOT NULL,
+    `resolved_at` TIMESTAMP NULL,
+    `status` STRING NOT NULL,
+    `subject` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `support_tickets_number_unique` (`number`),
+    INDEX `support_tickets_org_id_last_activity_at_index` (`org_id`, `last_activity_at`),
+    INDEX `support_tickets_status_last_activity_at_index` (`status`, `last_activity_at`),
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `themes` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `definition` TEXT NOT NULL,
+    `favicon_path` STRING NULL,
+    `favicon_type` STRING NULL,
+    `logo_path` STRING NULL,
+    `logo_type` STRING NULL,
+    `org_id` STRING NULL,
+    `scope` STRING NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    `version` INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `themes_org_id_unique` (`org_id`),
+    UNIQUE INDEX `themes_scope_unique` (`scope`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `usage_events` (
+    `id` STRING NOT NULL,
+    `api_key_id` STRING NULL,
+    `billable` BOOLEAN NOT NULL DEFAULT 1,
+    `duration_ms` INTEGER NULL,
+    `error_code` STRING NULL,
+    `event` STRING NOT NULL,
+    `event_category` STRING NOT NULL DEFAULT 'api',
+    `ip_address` STRING NULL,
+    `license_id` STRING NOT NULL,
+    `metadata` TEXT NULL,
+    `occurred_at` TIMESTAMP NOT NULL,
+    `org_id` STRING NULL,
+    `quantity` INTEGER NOT NULL DEFAULT 1,
+    `request_id` STRING NULL,
+    `resource_id` STRING NULL,
+    `resource_type` STRING NULL,
+    `status` STRING NOT NULL DEFAULT 'success',
+    `user_agent` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `usage_events_billable_index` (`billable`),
+    INDEX `usage_events_event_occurred_at_index` (`event`, `occurred_at`),
+    INDEX `usage_events_license_id_event_occurred_at_index` (`license_id`, `event`, `occurred_at`),
+    INDEX `usage_events_license_id_occurred_at_index` (`license_id`, `occurred_at`),
+    INDEX `usage_events_organization_id_occurred_at_index` (`org_id`, `occurred_at`),
+    INDEX `usage_events_request_id_index` (`request_id`),
+    FOREIGN KEY (`license_id`) REFERENCES `licenses` (`id`)
+);
+
+CREATE TABLE `users` (
+    `id` STRING NOT NULL,
+    `anonymized_at` TIMESTAMP NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `default_org_id` STRING NULL,
+    `deleted_at` TIMESTAMP NULL,
+    `deleted_by` STRING NULL,
+    `email` STRING NOT NULL,
+    `email_verified_at` TIMESTAMP NULL,
+    `is_platform_admin` BOOLEAN NOT NULL DEFAULT 0,
+    `locale` STRING NULL,
+    `name` STRING NOT NULL,
+    `password` STRING NOT NULL,
+    `password_changed_at` TIMESTAMP NULL,
+    `pending_email` STRING NULL,
+    `pending_email_expires_at` TIMESTAMP NULL,
+    `pending_email_hash` STRING NULL,
+    `platform_role` STRING NULL,
+    `remember_token` STRING NULL,
+    `status` STRING NOT NULL DEFAULT 'active',
+    `terms_accepted_at` TIMESTAMP NULL,
+    `terms_version` STRING NULL,
+    `two_factor_confirmed_at` TIMESTAMP NULL,
+    `two_factor_enrolment_expires_at` TIMESTAMP NULL,
+    `two_factor_enrolment_hash` STRING NULL,
+    `two_factor_recovery_codes` TEXT NULL,
+    `two_factor_secret` TEXT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `users_default_org_idx` (`default_org_id`),
+    UNIQUE INDEX `users_email_unique` (`email`),
+    UNIQUE INDEX `users_pending_email_hash_unique` (`pending_email_hash`),
+    UNIQUE INDEX `users_two_factor_enrolment_hash_unique` (`two_factor_enrolment_hash`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `webhook_logs` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `duration_ms` INTEGER NOT NULL DEFAULT 0,
+    `event` STRING NOT NULL,
+    `payload` TEXT NOT NULL,
+    `response_body` TEXT NULL,
+    `response_status` INTEGER NOT NULL DEFAULT 0,
+    `success` BOOLEAN NOT NULL DEFAULT 0,
+    `updated_at` TIMESTAMP NULL,
+    `webhook_id` STRING NOT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `webhook_logs_webhook_id_created_at_index` (`webhook_id`, `created_at`),
+    INDEX `webhook_logs_webhook_id_success_index` (`webhook_id`, `success`),
+    FOREIGN KEY (`webhook_id`) REFERENCES `webhooks` (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `webhooks` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `deleted_at` TIMESTAMP NULL,
+    `deleted_by` STRING NULL,
+    `events` TEXT NOT NULL,
+    `failure_count` INTEGER NOT NULL DEFAULT 0,
+    `is_active` BOOLEAN NOT NULL DEFAULT 1,
+    `last_triggered_at` TIMESTAMP NULL,
+    `org_id` STRING NOT NULL,
+    `secret` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    `url` STRING NOT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `webhooks_organization_id_is_active_index` (`org_id`, `is_active`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);

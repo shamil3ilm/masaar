@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Branding\Models;
 
+use App\Domains\Organization\Concerns\RecordsActors;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
@@ -25,6 +26,7 @@ use Illuminate\Database\Eloquent\Model;
 class Theme extends Model
 {
     use HasUuids;
+    use RecordsActors;
 
     protected $fillable = [
         'scope',

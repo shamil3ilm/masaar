@@ -6,15 +6,19 @@ namespace App\Domains\Organization\Models;
 
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Concerns\BelongsToTenant;
+use App\Domains\Organization\Concerns\RecordsActors;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ComplianceProfile extends Model
 {
     use BelongsToTenant;
     use HasUuids;
+    use RecordsActors;
+    use SoftDeletes;
 
     public const STATUS_PENDING = 'pending_onboarding';
 

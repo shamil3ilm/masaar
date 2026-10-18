@@ -105,7 +105,7 @@ class PortalProductController extends Controller
             'name_ar' => $this->language()->arabicNameRules(LanguageRules::PRODUCT),
             'sku' => [
                 'nullable', 'string', 'max:64',
-                Rule::unique('products', 'sku')->where('org_id', $organizationId)->ignore($product?->id),
+                Rule::unique('products', 'sku')->where('org_id', $organizationId)->withoutTrashed()->ignore($product?->id),
             ],
             'unit_code' => ['required', 'string', Rule::in(UnitCode::accepted())],
             'unit_price' => ['required', 'numeric', 'min:0', 'max:9999999999'],

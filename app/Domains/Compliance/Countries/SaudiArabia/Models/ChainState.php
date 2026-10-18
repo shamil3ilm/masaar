@@ -31,8 +31,6 @@ class ChainState extends Model
 
     protected $keyType = 'string';
 
-    public const CREATED_AT = null;
-
     protected $fillable = [
         'device_id',
         'org_id',

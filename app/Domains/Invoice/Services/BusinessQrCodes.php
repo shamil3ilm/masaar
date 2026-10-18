@@ -85,9 +85,31 @@ class BusinessQrCodes
         return BusinessQrCode::withoutTenantScope(fn () => BusinessQrCode::query()->where('org_id', $organizationId)->whereKey($id)->first());
     }
 
+    /**
+     * Removed, not erased: it can be brought back (restore), and who removed
+     * it is kept.
+     */
     public function delete(string $organizationId, string $id): void
     {
         $this->find($organizationId, $id)?->delete();
+    }
+
+    /**
+     * The codes removed, the latest first.
+     *
+     * @return Collection<int, BusinessQrCode>
+     */
+    public function removed(string $organizationId): Collection
+    {
+        return BusinessQrCode::withoutTenantScope(fn () => BusinessQrCode::onlyTrashed()->where('org_id', $organizationId)->latest('deleted_at')->get());
+    }
+
+    public function restore(string $organizationId, string $id): ?BusinessQrCode
+    {
+        $code = BusinessQrCode::withoutTenantScope(fn () => BusinessQrCode::onlyTrashed()->where('org_id', $organizationId)->whereKey($id)->first());
+        $code?->restore();
+
+        return $code;
     }
 
     /**

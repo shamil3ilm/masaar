@@ -6,8 +6,10 @@ namespace App\Domains\Invoice\Models;
 
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe;
 use App\Domains\Organization\Concerns\BelongsToTenant;
+use App\Domains\Organization\Concerns\RecordsActors;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Someone an organization invoices, kept so the next invoice starts filled in.
@@ -19,6 +21,8 @@ class Customer extends Model
 {
     use BelongsToTenant;
     use HasUuids;
+    use RecordsActors;
+    use SoftDeletes;
 
     /** The invoice form's buyer address keys, in the order it shows them. */
     public const ADDRESS = ['street', 'building_number', 'district', 'city', 'postal_code', 'country_code'];
@@ -62,9 +66,31 @@ class Customer extends Model
         'archived_at',
     ];
 
+    /** Computed from deleted_at for the unique indexes (0960); never written. */
+    protected $hidden = ['not_deleted'];
+
     protected function casts(): array
     {
         return ['archived_at' => 'datetime'];
+    }
+
+    /**
+     * Who made, changed and removed it, how it arrived and through which
+     * licence. Archiving is not removal: an archived customer is kept in the
+     * list and left out of the invoice form; a removed one is gone from both
+     * until it is brought back.
+     *
+     * @return array<string, string>
+     */
+    public function attributionColumns(): array
+    {
+        return [
+            'created_by' => 'created_by',
+            'updated_by' => 'updated_by',
+            'deleted_by' => 'deleted_by',
+            'created_via' => 'created_via',
+            'license_id' => 'license_id',
+        ];
     }
 
     /**

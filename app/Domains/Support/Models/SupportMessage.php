@@ -18,6 +18,9 @@ class SupportMessage extends Model
 {
     use HasUuids;
 
+    /** Written once and never changed. */
+    public const UPDATED_AT = null;
+
     protected $fillable = [
         'ticket_id',
         'user_id',
@@ -41,7 +44,7 @@ class SupportMessage extends Model
 
     public function author(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class, 'user_id')->withTrashed();
     }
 
     public function attachments(): HasMany

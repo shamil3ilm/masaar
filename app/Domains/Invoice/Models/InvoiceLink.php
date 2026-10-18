@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Invoice\Models;
 
 use App\Domains\Organization\Concerns\BelongsToTenant;
+use App\Domains\Organization\Concerns\RecordsActors;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -30,6 +31,7 @@ class InvoiceLink extends Model
 {
     use BelongsToTenant;
     use HasUuids;
+    use RecordsActors;
 
     protected $fillable = ['org_id', 'invoice_id', 'token_hash', 'token', 'created_by'];
 

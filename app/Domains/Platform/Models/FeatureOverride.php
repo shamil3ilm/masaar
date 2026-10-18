@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Models;
 
+use App\Domains\Organization\Concerns\RecordsActors;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
@@ -24,6 +25,7 @@ use Illuminate\Database\Eloquent\Model;
 class FeatureOverride extends Model
 {
     use HasUuids;
+    use RecordsActors;
 
     public const OFF = 'off';
 
@@ -39,4 +41,14 @@ class FeatureOverride extends Model
         'reason',
         'set_by',
     ];
+
+    /**
+     * Who set the switch as it stands is who last changed it.
+     *
+     * @return array<string, string>
+     */
+    public function attributionColumns(): array
+    {
+        return ['created_by' => 'created_by', 'updated_by' => 'set_by'];
+    }
 }

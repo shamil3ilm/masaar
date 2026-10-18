@@ -11,7 +11,6 @@ use App\Http\Controllers\Controller;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
 /**
@@ -51,9 +50,7 @@ class AdminLanguageController extends Controller
         $until = filled($validated['until'] ?? null) ? CarbonImmutable::parse((string) $validated['until'])->startOfDay() : null;
         $before = $this->grace->describe($organization);
 
-        // The email, not the id: read by someone asking who granted it, as
-        // the feature switches record it.
-        $applied = $this->grace->set($organization, $until, (string) $validated['reason'], Auth::user()?->email);
+        $applied = $this->grace->set($organization, $until, (string) $validated['reason']);
 
         $request->attributes->set(AuditAdminAction::TARGET, ['Organization', $id]);
         $request->attributes->set(AuditAdminAction::CHANGES, [

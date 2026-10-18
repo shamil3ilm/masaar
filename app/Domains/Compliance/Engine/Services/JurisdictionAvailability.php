@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Engine\Services;
 
+use App\Domains\Audit\Attribution\Origin;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -28,6 +29,8 @@ use Illuminate\Support\Facades\DB;
 final class JurisdictionAvailability
 {
     private const CACHE_KEY = 'compliance.jurisdiction_switches';
+
+    public function __construct(private readonly Origin $origin) {}
 
     private const PREFIX = 'jurisdiction.';
 
@@ -56,14 +59,18 @@ final class JurisdictionAvailability
      */
     public function set(string $code, bool $enabled, ?string $actor): void
     {
-        DB::table('settings')->updateOrInsert(
-            ['key' => self::PREFIX.$code.self::SUFFIX],
-            [
+        // Who first threw the switch, and when, is kept; who last did moves.
+        DB::table('settings')->upsert(
+            [[
+                'key' => self::PREFIX.$code.self::SUFFIX,
                 'value' => json_encode($enabled),
+                'created_by' => $this->origin->actorId(),
                 'updated_by' => $actor,
-                'updated_at' => now(),
                 'created_at' => now(),
-            ],
+                'updated_at' => now(),
+            ]],
+            ['key'],
+            ['value', 'updated_by', 'updated_at'],
         );
 
         Cache::forget(self::CACHE_KEY);

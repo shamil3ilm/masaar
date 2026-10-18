@@ -93,6 +93,6 @@ any more (UAE profiles use `peppol`).
 |-------|---------|
 | `organization_groups` | Optional parent groups |
 | `organizations` | Legal entities / tenants — has nullable `group_id` FK |
-| `compliance_profiles` | Per-jurisdiction settings — unique on `(org_id, jurisdiction)` |
+| `compliance_profiles` | Per-jurisdiction settings — one per `(org_id, jurisdiction)` among those not removed (a removed profile is soft-deleted) |
 | `invoices` | Has a nullable `profile_id` FK to `compliance_profiles` |
 | `peppol_documents` | UAE documents sent and received, with their XML as it travelled; `org_id` FK restricts deletion |

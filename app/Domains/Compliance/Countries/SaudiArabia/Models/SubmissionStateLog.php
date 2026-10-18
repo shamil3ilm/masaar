@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia\Models;
 
+use App\Domains\Organization\Concerns\RecordsActors;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,8 +18,23 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class SubmissionStateLog extends Model
 {
     use HasUuids;
+    use RecordsActors;
+
+    /** Written once and never changed. */
+    public const UPDATED_AT = null;
 
     protected $table = 'submission_state_logs';
+
+    /**
+     * Its actor is actor_type and actor_id, set by whoever logs the change;
+     * this keeps the request it happened in.
+     *
+     * @return array<string, string>
+     */
+    public function attributionColumns(): array
+    {
+        return ['request_id' => 'request_id'];
+    }
 
     protected $fillable = [
         'submission_id',

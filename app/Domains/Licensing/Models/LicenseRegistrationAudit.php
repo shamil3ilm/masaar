@@ -29,6 +29,9 @@ class LicenseRegistrationAudit extends Model
 {
     use HasUuids;
 
+    /** Written once and never changed. */
+    public const UPDATED_AT = null;
+
     protected $fillable = [
         'registration_id',
         'user_id',
@@ -58,6 +61,6 @@ class LicenseRegistrationAudit extends Model
      */
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class)->withTrashed();
     }
 }

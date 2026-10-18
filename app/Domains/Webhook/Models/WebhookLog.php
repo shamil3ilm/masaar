@@ -20,6 +20,9 @@ class WebhookLog extends Model
     use HasUuids;
     use MassPrunable;
 
+    /** Written once and never changed. */
+    public const UPDATED_AT = null;
+
     /**
      * Every attempt writes a row with its whole payload, and nothing removed
      * them, so the table grew with every invoice for good. Ninety days covers

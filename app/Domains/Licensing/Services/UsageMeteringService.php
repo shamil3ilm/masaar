@@ -335,12 +335,14 @@ class UsageMeteringService
             'request_count' => 0,
             'window_start' => now(),
             'window_expires' => now()->addSeconds($windowSeconds),
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         $admitted = DB::table('license_rate_limits')
             ->where($window)
             ->where('request_count', '<', $limit)
-            ->increment('request_count');
+            ->increment('request_count', 1, ['updated_at' => now()]);
 
         if ($admitted === 0) {
             throw LicenseException::rateLimited($windowType, $limit, $this->getRetryAfter($windowType));

@@ -241,7 +241,7 @@ class BillingTest extends TestCase
         $this->assertNull($payment->invoice_id);
         $this->assertStringContainsString('lacks the Arabic its country requires (buyer_name_ar)', (string) $payment->invoice_error);
 
-        app(LanguageGrace::class)->set($platform, CarbonImmutable::now()->addMonth(), 'Customers are adding their Arabic names', 'ops@masaar.test');
+        app(LanguageGrace::class)->set($platform, CarbonImmutable::now()->addMonth(), 'Customers are adding their Arabic names');
         $this->mock(InvoiceIssuer::class, fn ($mock) => $mock->shouldReceive('issue')->once()->andReturn(IssueOutcome::issuedOnly()));
 
         app(Billing::class)->invoice($payment);

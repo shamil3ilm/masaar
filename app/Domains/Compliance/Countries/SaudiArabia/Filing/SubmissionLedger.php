@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia\Filing;
 
+use App\Domains\Audit\Attribution\Origin;
 use App\Domains\Compliance\Countries\SaudiArabia\DTOs\FatooraResponse;
 use App\Domains\Compliance\Countries\SaudiArabia\Events\BaseInvoiceEvent;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
@@ -34,6 +35,7 @@ class SubmissionLedger
         private readonly ClearanceState $clearanceState,
         private readonly UsageMeteringService $usage,
         private readonly InvoiceVerdict $verdict,
+        private readonly Origin $origin,
     ) {}
 
     /**
@@ -139,6 +141,7 @@ class SubmissionLedger
             'actor_type' => auth()->check() ? 'user' : 'system',
             'actor_id' => auth()->id(),
             'ip_address' => request()->ip(),
+            ...$this->origin->columns(['request_id']),
             'created_at' => now(),
             'updated_at' => now(),
         ]);

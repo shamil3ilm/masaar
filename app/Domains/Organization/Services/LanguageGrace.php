@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Services;
 
+use App\Domains\Audit\Attribution\Origin;
 use App\Domains\Organization\Models\Organization;
 use App\Support\CountryClock;
 use Carbon\CarbonImmutable;
@@ -28,6 +29,10 @@ use Illuminate\Support\Str;
 class LanguageGrace
 {
     private const TABLE = 'language_graces';
+
+    public function __construct(
+        private readonly Origin $origin,
+    ) {}
 
     /** Whether missing text only warns for this organization today. */
     public function active(?Organization $organization): bool
@@ -59,7 +64,7 @@ class LanguageGrace
         return $until === null ? null : [
             'until' => $until->toDateString(),
             'reason' => (string) $row?->reason,
-            'by' => $row?->granted_by,
+            'by' => $row?->updated_by === null ? null : DB::table('users')->where('id', $row->updated_by)->value('email'),
             'active' => $this->active($organization),
         ];
     }
@@ -73,7 +78,7 @@ class LanguageGrace
      *
      * @return bool whether it applies now, rather than waiting for approval
      */
-    public function set(Organization $organization, ?CarbonImmutable $until, string $reason, ?string $by): bool
+    public function set(Organization $organization, ?CarbonImmutable $until, string $reason): bool
     {
         if ($this->requiresApproval($organization, $until)) {
             return false;
@@ -82,14 +87,14 @@ class LanguageGrace
         $values = [
             'until' => $until?->toDateString(),
             'reason' => $until === null ? null : $reason,
-            'granted_by' => $until === null ? null : $by,
+            ...$this->origin->columns(['updated_by']),
             'updated_at' => now(),
         ];
 
         $updated = DB::table(self::TABLE)->where('org_id', $organization->id)->update($values);
 
         if ($updated === 0 && $until !== null) {
-            DB::table(self::TABLE)->insert([...$values, 'id' => (string) Str::uuid7(), 'org_id' => $organization->id, 'created_at' => now()]);
+            DB::table(self::TABLE)->insert([...$values, ...$this->origin->columns(['created_by']), 'id' => (string) Str::uuid7(), 'org_id' => $organization->id, 'created_at' => now()]);
         }
 
         return true;

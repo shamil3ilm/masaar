@@ -71,7 +71,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // A session outlives the decision to suspend its account - for a
         // remembered one, by years. Every web request asks.
-        $middleware->web(append: [ActiveAccount::class, SetLocale::class]);
+        //
+        // LogContext too: a portal or console request gets its X-Request-Id
+        // as an API call does, and every record it writes keeps it (Origin).
+        $middleware->web(append: [ActiveAccount::class, SetLocale::class, LogContext::class]);
 
         $middleware->api(prepend: [
             HandleCors::class,

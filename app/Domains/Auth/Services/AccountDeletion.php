@@ -69,6 +69,10 @@ class AccountDeletion
                 'anonymized_at' => now(),
             ])->save();
 
+            // Kept, anonymised, so what it did still points somewhere; and
+            // removed (deleted_at, deleted_by), so it is found by no sign-in.
+            $user->delete();
+
             $this->audit->logSecurity('account.deleted', 'User', (string) $user->id, userId: (string) $user->id);
         });
     }

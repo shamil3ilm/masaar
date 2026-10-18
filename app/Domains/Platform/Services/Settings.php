@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Services;
 
+use App\Domains\Audit\Attribution\Origin;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -27,6 +28,8 @@ use Illuminate\Support\Facades\DB;
 final class Settings
 {
     private const CACHE_KEY = 'platform.settings';
+
+    public function __construct(private readonly Origin $origin) {}
 
     /** Channels a notification may be sent on. */
     public const CHANNELS = ['mail', 'slack', 'webhook'];
@@ -199,14 +202,19 @@ final class Settings
 
         DB::transaction(function () use ($clean, $actor): void {
             foreach ($clean as $key => $value) {
-                DB::table('settings')->updateOrInsert(
-                    ['key' => $key],
-                    [
+                // Who set it first, and when, is kept: only the value and
+                // who last changed it move.
+                DB::table('settings')->upsert(
+                    [[
+                        'key' => $key,
                         'value' => json_encode($value),
+                        'created_by' => $this->origin->actorId(),
                         'updated_by' => $actor,
-                        'updated_at' => now(),
                         'created_at' => now(),
-                    ],
+                        'updated_at' => now(),
+                    ]],
+                    ['key'],
+                    ['value', 'updated_by', 'updated_at'],
                 );
             }
         });

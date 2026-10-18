@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Invoice\Models;
 
 use App\Domains\Organization\Concerns\BelongsToTenant;
+use App\Domains\Organization\Concerns\RecordsActors;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -20,6 +21,7 @@ class InvoiceSequence extends Model
 {
     use BelongsToTenant;
     use HasUuids;
+    use RecordsActors;
 
     public const ORGANIZATION = 'organization';
 

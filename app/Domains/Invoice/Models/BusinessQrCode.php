@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Domains\Invoice\Models;
 
 use App\Domains\Organization\Concerns\BelongsToTenant;
+use App\Domains\Organization\Concerns\RecordsActors;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * One of an organization's own QR codes: a contact card, payment details or
@@ -22,6 +24,8 @@ class BusinessQrCode extends Model
 {
     use BelongsToTenant;
     use HasUuids;
+    use RecordsActors;
+    use SoftDeletes;
 
     public const CONTACT = 'contact';
 

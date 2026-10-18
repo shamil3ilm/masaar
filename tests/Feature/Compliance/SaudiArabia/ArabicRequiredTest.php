@@ -273,6 +273,8 @@ class ArabicRequiredTest extends TestCase
         $grace = app(LanguageGrace::class)->describe($this->acme);
         $this->assertSame([$until, 'Migrating its catalogue', 'ops@masaar.test', true], [$grace['until'], $grace['reason'], $grace['by'], $grace['active']]);
         $this->assertNotNull(DB::table('language_graces')->where('org_id', $this->acme->id)->value('created_at'));
+        // The admin's user id, never a copy of their email.
+        $this->assertSame($owner->id, DB::table('language_graces')->where('org_id', $this->acme->id)->value('updated_by'));
 
         $entry = AuditLog::where('action', 'admin.organizations.language-grace')->sole();
         $this->assertSame('Organization', $entry->entity_type);
@@ -373,7 +375,7 @@ class ArabicRequiredTest extends TestCase
 
     private function grace(\DateTimeInterface $until, string $reason): void
     {
-        app(LanguageGrace::class)->set($this->acme, CarbonImmutable::parse($until)->startOfDay(), $reason, 'ops@masaar.test');
+        app(LanguageGrace::class)->set($this->acme, CarbonImmutable::parse($until)->startOfDay(), $reason);
     }
 
     private function product(string $sku): Product

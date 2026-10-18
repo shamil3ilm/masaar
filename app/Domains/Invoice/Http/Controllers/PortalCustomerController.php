@@ -125,7 +125,7 @@ class PortalCustomerController extends Controller
             'name_ar' => $this->jurisdiction()->languageRules()->arabicNameRules(LanguageRules::CUSTOMER),
             'vat_number' => [
                 'nullable', 'string', new VatNumber,
-                Rule::unique('customers', 'vat_number')->where('org_id', $organizationId)->ignore($customer?->id),
+                Rule::unique('customers', 'vat_number')->where('org_id', $organizationId)->withoutTrashed()->ignore($customer?->id),
             ],
             'street' => ['nullable', 'string', 'max:255'],
             'building_number' => ['nullable', 'string', 'max:20'],

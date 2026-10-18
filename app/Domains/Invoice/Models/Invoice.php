@@ -9,6 +9,7 @@ use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Organization\Concerns\BelongsToTenant;
+use App\Domains\Organization\Concerns\RecordsActors;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\ComplianceProfile;
 use App\Domains\Organization\Models\Organization;
@@ -28,6 +29,7 @@ class Invoice extends Model
 {
     use BelongsToTenant;
     use HasUuids;
+    use RecordsActors;
 
     protected $fillable = [
         'org_id',
@@ -207,6 +209,18 @@ class Invoice extends Model
             }
         });
 
+        // The saved customer it is for, decided while it is a draft and then
+        // frozen with the rest of the document. The buyer fields stay what
+        // the invoice says; this only says whose they are.
+        static::saving(function (Invoice $invoice) {
+            $status = $invoice->getOriginal('status');
+
+            if (($status === null || $status === InvoiceStatus::Draft)
+                && ($invoice->customer_id === null || $invoice->isDirty(['buyer_vat_number', 'buyer_id', 'buyer_id_scheme']))) {
+                $invoice->customer_id = $invoice->savedCustomerId();
+            }
+        });
+
         // Prevent deletion of finalized invoices
         static::deleting(function (Invoice $invoice) {
             if ($invoice->status !== InvoiceStatus::Draft) {
@@ -240,6 +254,50 @@ class Invoice extends Model
                 );
             }
         });
+    }
+
+    /**
+     * A compliance record: who drafted it, how it arrived and through which
+     * licence. Who issued it is issued_by, set at issuance.
+     *
+     * @return array<string, string>
+     */
+    public function attributionColumns(): array
+    {
+        return ['created_by' => 'created_by', 'created_via' => 'created_via', 'license_id' => 'license_id'];
+    }
+
+    /**
+     * The organization's customer this invoice's buyer is: the one with its
+     * VAT number, or for a buyer with none, the one with its identifier and
+     * register - the match Catalogue::sameBuyer makes when it saves a buyer.
+     * A removed customer is no one's; an archived one still is.
+     */
+    private function savedCustomerId(): ?string
+    {
+        $vat = $this->buyer_vat_number ?: null;
+
+        if ($vat === null && (blank($this->buyer_id) || blank($this->buyer_id_scheme))) {
+            return null;
+        }
+
+        $id = Customer::withoutTenantScope(fn () => Customer::query()
+            ->where('org_id', $this->org_id)
+            ->when($vat !== null,
+                fn ($query) => $query->where('vat_number', $vat),
+                fn ($query) => $query->whereNull('vat_number')->where('buyer_id', $this->buyer_id)->where('buyer_id_scheme', $this->buyer_id_scheme))
+            ->orderBy('created_at')
+            ->value('id'));
+
+        return $id === null ? null : (string) $id;
+    }
+
+    /**
+     * @return BelongsTo<Customer, $this>
+     */
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class)->withTrashed();
     }
 
     /**
