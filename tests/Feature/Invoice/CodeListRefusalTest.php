@@ -66,7 +66,7 @@ class CodeListRefusalTest extends TestCase
             'invoice_number' => 'CL-1',
             'type' => 'simplified',
             'issue_date' => now()->toDateString(),
-            'lines' => [['description' => 'Item', 'quantity' => 1, 'unit_price' => 100]],
+            'lines' => [['description' => 'Item', 'description_ar' => 'صنف', 'quantity' => 1, 'unit_price' => 100]],
             ...$overrides,
         ]);
     }

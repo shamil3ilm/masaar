@@ -93,7 +93,7 @@ class InvoiceCreateTest extends TestCase
     {
         $this->submit($this->simplified([
             'lines' => [
-                ['description' => 'Widget', 'quantity' => '2', 'unit_price' => '100', 'tax_rate' => '15', 'unit_code' => 'PCE'],
+                ['description' => 'Widget', 'description_ar' => 'أداة', 'quantity' => '2', 'unit_price' => '100', 'tax_rate' => '15', 'unit_code' => 'PCE'],
             ],
         ]));
 
@@ -115,7 +115,7 @@ class InvoiceCreateTest extends TestCase
         $this->submit($this->simplified([
             'prices_include_vat' => '1',
             'lines' => [
-                ['description' => 'Widget', 'quantity' => '3', 'unit_price' => '10.00', 'tax_rate' => '15', 'unit_code' => 'PCE'],
+                ['description' => 'Widget', 'description_ar' => 'أداة', 'quantity' => '3', 'unit_price' => '10.00', 'tax_rate' => '15', 'unit_code' => 'PCE'],
             ],
         ]));
 
@@ -140,7 +140,7 @@ class InvoiceCreateTest extends TestCase
     {
         $response = $this->submit($this->simplified([
             'lines' => [
-                ['description' => 'Widget', 'quantity' => '1', 'unit_price' => '50', 'tax_rate' => '15', 'unit_code' => 'PCE'],
+                ['description' => 'Widget', 'description_ar' => 'أداة', 'quantity' => '1', 'unit_price' => '50', 'tax_rate' => '15', 'unit_code' => 'PCE'],
                 ['description' => '', 'quantity' => '', 'unit_price' => '', 'tax_rate' => '15', 'unit_code' => 'PCE'],
             ],
         ]));
@@ -277,11 +277,12 @@ class InvoiceCreateTest extends TestCase
             'billing_ref' => '',
             'adjustment_reason' => '',
             'buyer_name' => 'Walk-in customer',
+            'buyer_name_ar' => 'عميل نقدي',
             'buyer_vat_number' => '',
             'discount_amount' => '',
             'notes' => '',
             'lines' => [
-                ['description' => 'Widget', 'quantity' => '1', 'unit_price' => '100', 'tax_rate' => '15', 'unit_code' => 'PCE'],
+                ['description' => 'Widget', 'description_ar' => 'أداة', 'quantity' => '1', 'unit_price' => '100', 'tax_rate' => '15', 'unit_code' => 'PCE'],
             ],
         ], $overrides);
     }

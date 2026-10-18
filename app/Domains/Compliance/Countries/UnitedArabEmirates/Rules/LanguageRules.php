@@ -1,0 +1,33 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Rules;
+
+use App\Domains\Compliance\Engine\Contracts\LanguageRules as LanguageRulesPort;
+use App\Domains\Invoice\Models\Invoice;
+
+/**
+ * A UAE invoice may be in English alone. The Electronic Invoicing
+ * Guidelines (v1.1) §5.1, p11: the framework "is designed to support both
+ * the Arabic and English languages", and the sample invoice on p34 is in
+ * English only. The Arabic names an organization keeps are printed when
+ * given, and never required.
+ */
+class LanguageRules implements LanguageRulesPort
+{
+    public function requiresArabic(): bool
+    {
+        return false;
+    }
+
+    public function arabicNameRules(string $of): array
+    {
+        return ['nullable', 'string', 'max:255'];
+    }
+
+    public function missingText(Invoice $invoice): array
+    {
+        return [];
+    }
+}

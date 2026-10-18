@@ -173,7 +173,7 @@ class SaleTimeTest extends TestCase
 
         return $this->withToken($token)->postJson('/api/invoices', [
             'type' => 'simplified',
-            'lines' => [['description' => 'Item', 'quantity' => 1, 'unit_price' => 100]],
+            'lines' => [['description' => 'Item', 'description_ar' => 'صنف', 'quantity' => 1, 'unit_price' => 100]],
             ...$fields,
         ]);
     }
@@ -196,6 +196,7 @@ class SaleTimeTest extends TestCase
 
         $invoice->lines()->create([
             'description' => 'Widget',
+            'description_ar' => 'أداة',
             'quantity' => '1.000',
             'unit_price' => '100.00',
             'tax_rate' => '15.00',

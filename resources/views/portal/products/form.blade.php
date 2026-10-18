@@ -16,8 +16,10 @@
             <x-ui.field :label="__('Name, as printed on the invoice')">
                 <x-ui.input type="text" name="name" maxlength="255" required value="{{ old('name', $product->name) }}" />
             </x-ui.field>
-            <x-ui.field :label="__('Name in Arabic (optional)')">
-                <x-ui.input type="text" name="name_ar" maxlength="255" dir="rtl" lang="ar" value="{{ old('name_ar', $product->name_ar) }}" />
+            {{-- Required where the invoice must be in Arabic: an invoice naming
+                 this record takes it as its own (LanguageRules). --}}
+            <x-ui.field :label="($arabicRequired ?? false) ? __('Name in Arabic, as printed on the invoice') : __('Name in Arabic (optional)')">
+                <x-ui.input type="text" name="name_ar" maxlength="255" dir="rtl" lang="ar" :required="$arabicRequired ?? false" value="{{ old('name_ar', $product->name_ar) }}" />
             </x-ui.field>
             <x-ui.field :label="__('Code or SKU (optional)')">
                 <x-ui.input type="text" name="sku" maxlength="64" value="{{ old('sku', $product->sku) }}" />

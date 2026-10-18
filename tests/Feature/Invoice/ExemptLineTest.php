@@ -133,6 +133,7 @@ class ExemptLineTest extends TestCase
     {
         $line = [
             'description' => 'Item',
+            'description_ar' => 'صنف',
             'quantity' => 1,
             'unit_price' => 100,
         ];
@@ -152,6 +153,7 @@ class ExemptLineTest extends TestCase
                 'type' => 'simplified',
                 'issue_date' => now()->toDateString(),
                 'buyer_name' => 'Buyer',
+                'buyer_name_ar' => 'المشتري',
                 'lines' => [$line],
             ])
             ->assertSuccessful()

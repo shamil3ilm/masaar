@@ -70,6 +70,9 @@ interface Jurisdiction
     /** What an invoice draft has to be, and the columns only this country's invoices carry. */
     public function invoiceRules(): InvoiceRules;
 
+    /** Which language its invoices have to carry, and what a saved one lacks of it. */
+    public function languageRules(): LanguageRules;
+
     /** How the portal shows the country, and when and how an invoice is handed to the buyer. */
     public function presentation(): Presentation;
 

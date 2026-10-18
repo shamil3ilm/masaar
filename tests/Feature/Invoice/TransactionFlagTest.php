@@ -122,8 +122,8 @@ class TransactionFlagTest extends TestCase
     public function test_an_export_takes_what_zatca_takes(): void
     {
         $this->api($this->export(['invoice_number' => 'EXP-T', 'lines' => [
-            ['description' => 'Freight to Houston', 'quantity' => 1, 'unit_price' => 900, 'tax_category' => 'Z', 'tax_rate' => 0, 'exempt_code' => 'VATEX-SA-34-1', 'exempt_reason' => 'International transport of goods'],
-            ['description' => 'Handling in Dammam', 'quantity' => 1, 'unit_price' => 100],
+            ['description' => 'Freight to Houston', 'description_ar' => 'شحن إلى هيوستن', 'quantity' => 1, 'unit_price' => 900, 'tax_category' => 'Z', 'tax_rate' => 0, 'exempt_code' => 'VATEX-SA-34-1', 'exempt_reason' => 'International transport of goods'],
+            ['description' => 'Handling in Dammam', 'description_ar' => 'مناولة في الدمام', 'quantity' => 1, 'unit_price' => 100],
         ]]))->assertCreated();
     }
 
@@ -209,6 +209,7 @@ class TransactionFlagTest extends TestCase
             ],
             'lines' => [[
                 'description' => 'Printing equipment',
+                'description_ar' => 'معدات طباعة',
                 'quantity' => 1,
                 'unit_price' => 15000,
                 'exempt_code' => 'VATEX-SA-32',
@@ -227,6 +228,7 @@ class TransactionFlagTest extends TestCase
         return [
             'type' => 'standard',
             'buyer_name' => 'Beta Industries',
+            'buyer_name_ar' => 'شركة بيتا للصناعات',
             'buyer_vat_number' => '399999999800003',
             'buyer_address' => [
                 'street' => 'Olaya Street',
@@ -289,7 +291,8 @@ class TransactionFlagTest extends TestCase
             'type' => 'simplified',
             'issue_date' => now()->toDateString(),
             'buyer_name' => 'Buyer',
-            'lines' => [['description' => 'Item', 'quantity' => 1, 'unit_price' => 100]],
+            'buyer_name_ar' => 'المشتري',
+            'lines' => [['description' => 'Item', 'description_ar' => 'صنف', 'quantity' => 1, 'unit_price' => 100]],
         ];
     }
 }

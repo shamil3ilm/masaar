@@ -78,8 +78,8 @@
             <x-ui.field :label="__('Legal name')" error="company_name" :hint="__('Printed on every invoice you issue, exactly as on your commercial registration.')">
                 <x-ui.input type="text" name="company_name" maxlength="255" required value="{{ old('company_name') }}" />
             </x-ui.field>
-            <x-ui.field :label="__('Legal name in Arabic')" error="company_name_ar" optional :hint="__('Printed beside the English name. Arabic is the authoritative text on an invoice.')">
-                <x-ui.input type="text" name="company_name_ar" maxlength="255" dir="rtl" lang="ar" value="{{ old('company_name_ar') }}" />
+            <x-ui.field :label="__('Legal name in Arabic')" error="company_name_ar" :optional="! ($arabicName ?? false)" :hint="($arabicName ?? false) ? __('Printed on every invoice and in its QR code. Required: the invoice must be in Arabic.') : __('Printed beside the English name. Arabic is the authoritative text on an invoice.')">
+                <x-ui.input type="text" name="company_name_ar" maxlength="255" dir="rtl" lang="ar" :required="$arabicName ?? false" value="{{ old('company_name_ar') }}" />
             </x-ui.field>
         </div>
 

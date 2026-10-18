@@ -69,7 +69,7 @@ class BuyerRuleTest extends TestCase
             'invoice_number' => 'INV-'.uniqid(),
             'type' => 'simplified',
             'issue_date' => now()->toDateString(),
-            'lines' => [['description' => 'Item', 'quantity' => 1, 'unit_price' => 100]],
+            'lines' => [['description' => 'Item', 'description_ar' => 'صنف', 'quantity' => 1, 'unit_price' => 100]],
         ])->assertCreated();
     }
 
@@ -82,6 +82,7 @@ class BuyerRuleTest extends TestCase
             'buyer_name' => null,
             'lines' => [[
                 'description' => 'Consultation',
+                'description_ar' => 'استشارة',
                 'quantity' => 1,
                 'unit_price' => 100,
                 'tax_rate' => 0,
@@ -141,6 +142,7 @@ class BuyerRuleTest extends TestCase
         return [
             'type' => 'standard',
             'buyer_name' => 'Beta Industries',
+            'buyer_name_ar' => 'شركة بيتا للصناعات',
             'buyer_vat_number' => '399999999800003',
             'buyer_address' => [
                 'street' => 'Olaya Street',
@@ -164,8 +166,10 @@ class BuyerRuleTest extends TestCase
             'type' => 'simplified',
             'issue_date' => now()->toDateString(),
             'buyer_name' => 'Buyer',
+            'buyer_name_ar' => 'المشتري',
             'lines' => [[
                 'description' => 'Item',
+                'description_ar' => 'صنف',
                 'quantity' => 1,
                 'unit_price' => 100,
             ]],

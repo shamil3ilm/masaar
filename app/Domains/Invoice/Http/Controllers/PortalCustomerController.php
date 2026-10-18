@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Invoice\Http\Controllers;
 
 use App\Domains\Compliance\Engine\Contracts\Jurisdiction;
+use App\Domains\Compliance\Engine\Contracts\LanguageRules;
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Services\Catalogue;
@@ -57,6 +58,7 @@ class PortalCustomerController extends Controller
         return view('portal.customers.form', [
             'customer' => new Customer(['country_code' => $this->jurisdiction()->code()]),
             'buyerFields' => $this->jurisdiction()->invoiceRules()->buyerView(),
+            'arabicRequired' => $this->jurisdiction()->languageRules()->requiresArabic(),
         ]);
     }
 
@@ -74,6 +76,7 @@ class PortalCustomerController extends Controller
         return view('portal.customers.form', [
             'customer' => $this->customer($request, $customerId),
             'buyerFields' => $this->jurisdiction()->invoiceRules()->buyerView(),
+            'arabicRequired' => $this->jurisdiction()->languageRules()->requiresArabic(),
         ]);
     }
 
@@ -109,7 +112,9 @@ class PortalCustomerController extends Controller
         // add their own after.
         return $request->validate([...[
             'name' => ['required', 'string', 'max:255'],
-            'name_ar' => ['nullable', 'string', 'max:255'],
+            // What an invoice naming the customer takes as the buyer's
+            // Arabic name, required where the country requires Arabic.
+            'name_ar' => $this->jurisdiction()->languageRules()->arabicNameRules(LanguageRules::CUSTOMER),
             'vat_number' => [
                 'nullable', 'string', new VatNumber,
                 Rule::unique('customers', 'vat_number')->where('org_id', $organizationId)->ignore($customer?->id),

@@ -94,7 +94,7 @@ class PipelineBatchTest extends TestCase
     {
         $response = $this->batch([
             $this->item('INV-1', 'sale-1'),
-            [...$this->item('INV-2', 'sale-2'), 'type' => 'standard', 'buyer_name' => 'Buyer Co', 'buyer_vat_number' => '300000000000003'],
+            [...$this->item('INV-2', 'sale-2'), 'type' => 'standard', 'buyer_name' => 'Buyer Co', 'buyer_name_ar' => 'شركة المشتري', 'buyer_vat_number' => '300000000000003'],
         ])->assertStatus(207);
 
         $this->assertSame([201, 403], array_column($response->json('data.results'), 'http_status'));
@@ -179,7 +179,7 @@ class PipelineBatchTest extends TestCase
             'document_type' => 'invoice',
             'issue_date' => now()->toDateString(),
             'auto_submit' => false,
-            'lines' => [['description' => 'Item', 'quantity' => 1, 'unit_price' => 100]],
+            'lines' => [['description' => 'Item', 'description_ar' => 'صنف', 'quantity' => 1, 'unit_price' => 100]],
         ];
     }
 

@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Http\Controllers;
 
+use App\Domains\Compliance\Engine\Contracts\LanguageRules;
+use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Models\Product;
 use App\Domains\Invoice\Services\Catalogue;
 use App\Domains\Invoice\Support\UnitCode;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
+use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,6 +20,10 @@ use Illuminate\View\View;
 /**
  * The organization's products and services, so an invoice line starts filled
  * in.
+ *
+ * Its Arabic name is what a line naming the product takes where the
+ * organization's country requires Arabic (LanguageRules), so there it is
+ * required.
  */
 class PortalProductController extends Controller
 {
@@ -26,6 +33,8 @@ class PortalProductController extends Controller
 
     public function __construct(
         private readonly Catalogue $catalogue,
+        private readonly TenantResolver $tenant,
+        private readonly JurisdictionResolver $jurisdictions,
     ) {}
 
     public function index(Request $request): View
@@ -42,7 +51,10 @@ class PortalProductController extends Controller
 
     public function create(): View
     {
-        return view('portal.products.form', ['product' => new Product(['unit_code' => UnitCode::DEFAULT, 'tax_rate' => 15])]);
+        return view('portal.products.form', [
+            'product' => new Product(['unit_code' => UnitCode::DEFAULT, 'tax_rate' => 15]),
+            'arabicRequired' => $this->language()->requiresArabic(),
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -56,7 +68,10 @@ class PortalProductController extends Controller
 
     public function edit(Request $request, string $productId): View
     {
-        return view('portal.products.form', ['product' => $this->product($request, $productId)]);
+        return view('portal.products.form', [
+            'product' => $this->product($request, $productId),
+            'arabicRequired' => $this->language()->requiresArabic(),
+        ]);
     }
 
     public function update(Request $request, string $productId): RedirectResponse
@@ -87,7 +102,7 @@ class PortalProductController extends Controller
     {
         return $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'name_ar' => ['nullable', 'string', 'max:255'],
+            'name_ar' => $this->language()->arabicNameRules(LanguageRules::PRODUCT),
             'sku' => [
                 'nullable', 'string', 'max:64',
                 Rule::unique('products', 'sku')->where('org_id', $organizationId)->ignore($product?->id),
@@ -98,6 +113,12 @@ class PortalProductController extends Controller
         ], [
             'sku.unique' => __('Another product already has this code.'),
         ]);
+    }
+
+    /** The organization's country's language rules, switched on or not. */
+    private function language(): LanguageRules
+    {
+        return $this->jurisdictions->forRules($this->tenant->getOrganization())->languageRules();
     }
 
     private function product(Request $request, string $productId): Product

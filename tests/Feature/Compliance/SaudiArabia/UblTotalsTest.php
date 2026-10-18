@@ -216,9 +216,11 @@ class UblTotalsTest extends TestCase
             'type' => 'simplified',
             'issue_date' => now()->toDateString(),
             'buyer_name' => 'Buyer Co',
+            'buyer_name_ar' => 'شركة المشتري',
             'discount_amount' => $discount,
             'lines' => array_map(static fn (array $line): array => array_filter([
                 'description' => 'Item',
+                'description_ar' => 'صنف',
                 'quantity' => $line['qty'],
                 'unit_price' => $line['price'],
                 'tax_rate' => $line['rate'],

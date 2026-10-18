@@ -140,8 +140,10 @@ class EmittedDigestsTest extends TestCase
             'type' => $type,
             'issue_date' => now()->toDateString(),
             'buyer_name' => 'Buyer Co',
+            'buyer_name_ar' => 'شركة المشتري',
             'lines' => [[
                 'description' => 'Item',
+                'description_ar' => 'صنف',
                 'quantity' => 1,
                 'unit_price' => '1000.00',
                 'tax_rate' => '15',

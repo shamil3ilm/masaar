@@ -87,8 +87,8 @@ class ScenarioConformanceTest extends TestCase
         // ties no category or code to an export.
         yield 'export with international transport' => [self::export('VATEX-SA-34-1'), '0100100'];
         yield 'mixed export' => [self::export('VATEX-SA-32', [
-            ['description' => 'Freight to Houston', 'quantity' => 1, 'unit_price' => '900.00', 'tax_category' => 'Z', 'tax_rate' => 0, 'exempt_code' => 'VATEX-SA-34-1', 'exempt_reason' => 'International transport of goods'],
-            ['description' => 'Handling in Dammam', 'quantity' => 1, 'unit_price' => '100.00'],
+            ['description' => 'Freight to Houston', 'description_ar' => 'شحن إلى هيوستن', 'quantity' => 1, 'unit_price' => '900.00', 'tax_category' => 'Z', 'tax_rate' => 0, 'exempt_code' => 'VATEX-SA-34-1', 'exempt_reason' => 'International transport of goods'],
+            ['description' => 'Handling in Dammam', 'description_ar' => 'مناولة في الدمام', 'quantity' => 1, 'unit_price' => '100.00'],
         ]), '0100100'];
         yield 'third party' => [self::standard(['is_third_party' => true]), '0110000'];
         yield 'nominal' => [self::simplified(['is_nominal' => true]), '0201000'];
@@ -200,6 +200,7 @@ class ScenarioConformanceTest extends TestCase
         $xml = $this->signedFrom(self::simplified([
             'is_summary' => true,
             'buyer_name' => 'Beta Industries',
+            'buyer_name_ar' => 'شركة بيتا للصناعات',
             'supply_date' => $start,
             'supply_end_date' => $end,
         ]));
@@ -313,30 +314,30 @@ class ScenarioConformanceTest extends TestCase
         $zero = ['tax_category' => 'Z', 'tax_rate' => 0, 'exempt_code' => 'VATEX-SA-32', 'exempt_reason' => 'Export of goods'];
 
         yield 'delivery on a simplified invoice' => [self::simplified([
-            'lines' => [['description' => 'Groceries', 'quantity' => 3, 'unit_price' => '12.49']],
+            'lines' => [['description' => 'Groceries', 'description_ar' => 'مواد غذائية', 'quantity' => 3, 'unit_price' => '12.49']],
             'charges' => [$delivery],
         ]), 1];
         yield 'service charge percentage on a standard invoice' => [self::standard([
             'lines' => [
-                ['description' => 'Dinner', 'quantity' => 4, 'unit_price' => '87.35'],
-                ['description' => 'Drinks', 'quantity' => 7, 'unit_price' => '13.99'],
+                ['description' => 'Dinner', 'description_ar' => 'عشاء', 'quantity' => 4, 'unit_price' => '87.35'],
+                ['description' => 'Drinks', 'description_ar' => 'مشروبات', 'quantity' => 7, 'unit_price' => '13.99'],
             ],
             'charges' => [['reason' => 'Service charge', 'reason_code' => 'ADR', 'percent' => '12.5']],
         ]), 1];
         yield 'line discount and line charges' => [self::standard([
             'lines' => [
-                ['description' => 'Sofa', 'quantity' => 1, 'unit_price' => '2499.99', 'discount_amount' => '250.00', 'charges' => [
+                ['description' => 'Sofa', 'description_ar' => 'أريكة', 'quantity' => 1, 'unit_price' => '2499.99', 'discount_amount' => '250.00', 'charges' => [
                     ['reason' => 'Installation', 'reason_code' => 'IAA', 'amount' => '150.00'],
                     ['reason' => 'Packing', 'reason_code' => 'PC', 'percent' => '2.5'],
                 ]],
-                ['description' => 'Cushion', 'quantity' => 3, 'unit_price' => '45.50', 'discount_amount' => '13.65'],
+                ['description' => 'Cushion', 'description_ar' => 'وسادة', 'quantity' => 3, 'unit_price' => '45.50', 'discount_amount' => '13.65'],
             ],
         ]), 2];
         yield 'mixed categories, a discount and two charges' => [self::standard([
             'discount_amount' => '33.33',
             'lines' => [
-                ['description' => 'Consulting', 'quantity' => 2, 'unit_price' => '499.95'],
-                ['description' => 'Exported parts', 'quantity' => 5, 'unit_price' => '81.17', 'tax_rate' => 0, 'tax_category' => 'Z', 'exempt_code' => 'VATEX-SA-32', 'exempt_reason' => 'Export of goods'],
+                ['description' => 'Consulting', 'description_ar' => 'خدمات استشارية', 'quantity' => 2, 'unit_price' => '499.95'],
+                ['description' => 'Exported parts', 'description_ar' => 'قطع مصدّرة', 'quantity' => 5, 'unit_price' => '81.17', 'tax_rate' => 0, 'tax_category' => 'Z', 'exempt_code' => 'VATEX-SA-32', 'exempt_reason' => 'Export of goods'],
             ],
             'charges' => [$delivery, ['reason' => 'Freight abroad', 'reason_code' => 'FC', 'amount' => '60.00', ...$zero]],
         ]), 2];
@@ -347,8 +348,8 @@ class ScenarioConformanceTest extends TestCase
             'prices_include_vat' => true,
             'discount_amount' => '10.00',
             'lines' => [
-                ['description' => 'Shirt', 'quantity' => 3, 'unit_price' => '79.99', 'discount_amount' => '20.00', 'charges' => [['reason' => 'Gift wrap', 'reason_code' => 'PC', 'amount' => '5.75']]],
-                ['description' => 'Belt', 'quantity' => 1, 'unit_price' => '49.90'],
+                ['description' => 'Shirt', 'description_ar' => 'قميص', 'quantity' => 3, 'unit_price' => '79.99', 'discount_amount' => '20.00', 'charges' => [['reason' => 'Gift wrap', 'reason_code' => 'PC', 'amount' => '5.75']]],
+                ['description' => 'Belt', 'description_ar' => 'حزام', 'quantity' => 1, 'unit_price' => '49.90'],
             ],
             'charges' => [$delivery, ['reason' => 'Service charge', 'reason_code' => 'ADR', 'percent' => '5']],
         ]), 2];
@@ -372,7 +373,7 @@ class ScenarioConformanceTest extends TestCase
     {
         $xml = $this->signedFrom(self::standard([
             'document_type' => 'prepayment',
-            'lines' => [['description' => 'Advance for a laptop', 'quantity' => 1, 'unit_price' => '1000.00']],
+            'lines' => [['description' => 'Advance for a laptop', 'description_ar' => 'دفعة مقدمة لحاسوب محمول', 'quantity' => 1, 'unit_price' => '1000.00']],
         ]));
 
         $this->assertMatchesRegularExpression('#<cbc:InvoiceTypeCode[^>]*>386</cbc:InvoiceTypeCode>#', $xml);
@@ -389,17 +390,17 @@ class ScenarioConformanceTest extends TestCase
     public function test_a_final_invoice_settles_prepayments(): void
     {
         $this->requireSdk();
-        $this->prepaid('ADV-1', [['description' => 'Advance', 'quantity' => 1, 'unit_price' => '1000.00']]);
+        $this->prepaid('ADV-1', [['description' => 'Advance', 'description_ar' => 'دفعة مقدمة', 'quantity' => 1, 'unit_price' => '1000.00']]);
         $this->prepaid('ADV-2', [
-            ['description' => 'Advance', 'quantity' => 1, 'unit_price' => '200.00'],
-            ['description' => 'Advance, export', 'quantity' => 1, 'unit_price' => '100.00', 'tax_rate' => 0, 'tax_category' => 'Z', 'exempt_code' => 'VATEX-SA-32', 'exempt_reason' => 'Export of goods'],
+            ['description' => 'Advance', 'description_ar' => 'دفعة مقدمة', 'quantity' => 1, 'unit_price' => '200.00'],
+            ['description' => 'Advance, export', 'description_ar' => 'دفعة مقدمة، تصدير', 'quantity' => 1, 'unit_price' => '100.00', 'tax_rate' => 0, 'tax_category' => 'Z', 'exempt_code' => 'VATEX-SA-32', 'exempt_reason' => 'Export of goods'],
         ]);
 
         $xml = $this->signedFrom(self::standard([
             'discount_amount' => '100.00',
             'lines' => [
-                ['description' => 'Laptop', 'quantity' => 1, 'unit_price' => '2000.00'],
-                ['description' => 'Exported parts', 'quantity' => 1, 'unit_price' => '300.00', 'tax_rate' => 0, 'tax_category' => 'Z', 'exempt_code' => 'VATEX-SA-32', 'exempt_reason' => 'Export of goods'],
+                ['description' => 'Laptop', 'description_ar' => 'حاسوب محمول', 'quantity' => 1, 'unit_price' => '2000.00'],
+                ['description' => 'Exported parts', 'description_ar' => 'قطع مصدّرة', 'quantity' => 1, 'unit_price' => '300.00', 'tax_rate' => 0, 'tax_category' => 'Z', 'exempt_code' => 'VATEX-SA-32', 'exempt_reason' => 'Export of goods'],
             ],
             'prepayments' => [['invoice_number' => 'ADV-1'], ['invoice_number' => 'ADV-2']],
         ]));
@@ -508,6 +509,7 @@ class ScenarioConformanceTest extends TestCase
             ],
             'lines' => [[
                 'description' => 'Printing equipment',
+                'description_ar' => 'معدات طباعة',
                 'quantity' => 1,
                 'unit_price' => '15000.00',
                 'exempt_code' => $exemption,
@@ -529,6 +531,7 @@ class ScenarioConformanceTest extends TestCase
         return [
             'type' => 'standard',
             'buyer_name' => 'Beta Industries',
+            'buyer_name_ar' => 'شركة بيتا للصناعات',
             'buyer_vat_number' => '399999999800003',
             'buyer_address' => [
                 'street' => 'Olaya Street',
@@ -538,7 +541,7 @@ class ScenarioConformanceTest extends TestCase
                 'postal_code' => '11564',
                 'country_code' => 'SA',
             ],
-            'lines' => [['description' => 'Consulting', 'quantity' => 1, 'unit_price' => '1000.00']],
+            'lines' => [['description' => 'Consulting', 'description_ar' => 'خدمات استشارية', 'quantity' => 1, 'unit_price' => '1000.00']],
             ...$overrides,
         ];
     }
@@ -551,7 +554,7 @@ class ScenarioConformanceTest extends TestCase
     {
         return [
             'type' => 'simplified',
-            'lines' => [['description' => 'Gift', 'quantity' => 1, 'unit_price' => '300.00']],
+            'lines' => [['description' => 'Gift', 'description_ar' => 'هدية', 'quantity' => 1, 'unit_price' => '300.00']],
             ...$overrides,
         ];
     }

@@ -7,6 +7,7 @@ namespace App\Domains\Platform\Http\Controllers;
 use App\Domains\Compliance\Countries\SaudiArabia\Enums\RequeueOutcome;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\Requeuer;
 use App\Domains\Platform\DTOs\FilterData;
+use App\Domains\Platform\Services\ArabicNameReport;
 use App\Domains\Platform\Services\FeatureReport;
 use App\Domains\Platform\Services\OrganizationReport;
 use App\Domains\Platform\Services\PlatformStatus;
@@ -35,6 +36,7 @@ class AdminController extends Controller
         private readonly Requeuer $requeuer,
         private readonly PlatformStatus $status,
         private readonly FeatureReport $features,
+        private readonly ArabicNameReport $arabicNames,
     ) {}
 
     /**
@@ -82,8 +84,10 @@ class AdminController extends Controller
         $certificate = $this->organizations->certificate($id);
         $members = $this->organizations->members($id);
         $features = $this->features->rows($id);
+        // Where its country requires Arabic: the grace and what is missing.
+        $arabic = $this->arabicNames->summary($id);
 
-        return view('admin.organization-detail', compact('organization', 'stats', 'recentSubmissions', 'certificate', 'members', 'features'));
+        return view('admin.organization-detail', compact('organization', 'stats', 'recentSubmissions', 'certificate', 'members', 'features', 'arabic'));
     }
 
     /**

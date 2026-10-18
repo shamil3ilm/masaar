@@ -39,9 +39,9 @@
             </x-ui.field>
 
             <x-ui.field :label="__('Legal name in Arabic')">
-                <x-ui.input type="text" name="name_ar" maxlength="255" dir="rtl"
+                <x-ui.input type="text" name="name_ar" maxlength="255" dir="rtl" lang="ar" required
                             value="{{ old('name_ar', $organization->name_ar) }}" />
-                <span class="mt-1 block text-xs font-normal text-muted">{{ __('Printed on invoices and in the QR when given.') }}</span>
+                <span class="mt-1 block text-xs font-normal text-muted">{{ __('Printed on every invoice and in its QR code. Required: the invoice must be in Arabic.') }}</span>
             </x-ui.field>
 
             <x-ui.field :label="__('VAT number')">

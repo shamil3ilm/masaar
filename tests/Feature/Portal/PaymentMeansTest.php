@@ -60,7 +60,7 @@ class PaymentMeansTest extends TestCase
                 'document_type' => 'invoice',
                 'issue_date' => now()->toDateString(),
                 'payment_means_code' => '48',
-                'lines' => [['description' => 'Tea', 'quantity' => '1', 'unit_price' => '10']],
+                'lines' => [['description' => 'Tea', 'description_ar' => 'شاي', 'quantity' => '1', 'unit_price' => '10']],
             ])->assertSessionHasNoErrors());
 
         $this->assertSame('48', Invoice::withoutTenantScope(fn () => Invoice::query()->sole())->payment_means_code);
@@ -87,7 +87,7 @@ class PaymentMeansTest extends TestCase
             'type' => 'simplified',
             'issue_date' => now()->toDateString(),
             'payment_means_code' => $code,
-            'lines' => [['description' => 'Tea', 'quantity' => 1, 'unit_price' => 10]],
+            'lines' => [['description' => 'Tea', 'description_ar' => 'شاي', 'quantity' => 1, 'unit_price' => 10]],
         ]);
     }
 }

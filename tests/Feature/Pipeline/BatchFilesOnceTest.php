@@ -112,7 +112,7 @@ class BatchFilesOnceTest extends TestCase
             'document_type' => 'invoice',
             'issue_date' => now()->toDateString(),
             'auto_submit' => true,
-            'lines' => [['description' => 'Item', 'quantity' => 1, 'unit_price' => 100]],
+            'lines' => [['description' => 'Item', 'description_ar' => 'صنف', 'quantity' => 1, 'unit_price' => 100]],
             ...$fields,
         ];
     }

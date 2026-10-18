@@ -7,6 +7,7 @@ namespace App\Domains\Invoice\Http\Controllers;
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Services\Catalogue;
 use App\Domains\Invoice\Services\InvoiceFinder;
+use App\Domains\Invoice\Services\MissingText;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Services\Membership;
 use App\Domains\Organization\Services\TenantResolver;
@@ -50,6 +51,7 @@ class PortalInvoiceController extends Controller
         private readonly InvoiceFinder $invoices,
         private readonly Catalogue $catalogue,
         private readonly JurisdictionResolver $jurisdictions,
+        private readonly MissingText $missing,
     ) {}
 
     public function index(Request $request): View
@@ -97,6 +99,9 @@ class PortalInvoiceController extends Controller
             'invoice' => $invoice,
             'sendTo' => $this->catalogue->emailFor((string) $orgId, $invoice->buyer_vat_number),
             'page' => $this->jurisdictions->forRules($organization)->presentation()->invoicePage($invoice),
+            // What a grace period let through without its Arabic: noted on
+            // this page, never on the copy the buyer is given.
+            'missingText' => $this->missing->of($invoice, $organization),
         ]);
     }
 

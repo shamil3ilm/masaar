@@ -188,7 +188,7 @@ class JurisdictionIsolationTest extends TestCase
     public function test_saudi_seller_rules_are_unchanged(): void
     {
         $saudi = [
-            'name' => 'Acme', 'vat_number' => '300000000000003', 'street' => 'King Fahd Road', 'building_number' => '1234',
+            'name' => 'Acme', 'name_ar' => 'شركة أكمي', 'vat_number' => '300000000000003', 'street' => 'King Fahd Road', 'building_number' => '1234',
             'district' => 'Al Olaya', 'city' => 'Riyadh', 'postal_code' => '12345',
         ];
         $errors = fn (array $data): array => Validator::make($data, CompanyProfileRules::rules('SA', complete: true), CompanyProfileRules::messages('SA'))->errors()->toArray();
@@ -249,7 +249,7 @@ class JurisdictionIsolationTest extends TestCase
 
         $this->actingAs($saudi)->withSession(['portal_org_id' => $acme->id])
             ->post('/portal/customers', [
-                'name' => 'Gulf Supplies', 'vat_number' => '310122393500003', 'city' => 'Riyadh', 'postal_code' => '12345',
+                'name' => 'Gulf Supplies', 'name_ar' => 'الخليج للتوريدات', 'vat_number' => '310122393500003', 'city' => 'Riyadh', 'postal_code' => '12345',
                 'country_code' => 'SA', 'peppol_endpoint' => 'anything', 'subdivision' => 'anything',
             ])
             ->assertSessionHasNoErrors();

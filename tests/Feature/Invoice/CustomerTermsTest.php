@@ -92,12 +92,13 @@ class CustomerTermsTest extends TestCase
                 'document_type' => 'invoice',
                 'issue_date' => now()->toDateString(),
                 'buyer_name' => 'Small Supplies',
+                'buyer_name_ar' => 'التوريدات الصغيرة',
                 'buyer_id' => '1010202020',
                 'buyer_id_scheme' => 'CRN',
                 'payment_terms' => $terms,
                 'buyer_address' => ['street' => 'Olaya Street', 'building_number' => '4321', 'district' => 'Al Murooj', 'city' => 'Riyadh', 'postal_code' => '11564', 'country_code' => 'SA'],
                 'save_customer' => '1',
-                'lines' => [['description' => 'Tea', 'quantity' => '1', 'unit_price' => '10']],
+                'lines' => [['description' => 'Tea', 'description_ar' => 'شاي', 'quantity' => '1', 'unit_price' => '10']],
             ])->assertSessionHasNoErrors();
         }
 
@@ -113,6 +114,7 @@ class CustomerTermsTest extends TestCase
     {
         return array_filter([
             'name' => 'Small Supplies',
+            'name_ar' => 'التوريدات الصغيرة',
             'buyer_id' => '1010202020',
             'buyer_id_scheme' => 'CRN',
             'payment_terms' => '30 days net',

@@ -115,7 +115,7 @@ class DueDateTest extends TestCase
                 'document_type' => 'invoice',
                 'issue_date' => '2026-10-01',
                 'auto_submit' => false,
-                'lines' => [['description' => 'Item', 'quantity' => 1, 'unit_price' => 100]],
+                'lines' => [['description' => 'Item', 'description_ar' => 'صنف', 'quantity' => 1, 'unit_price' => 100]],
                 ...$overrides,
             ]);
     }

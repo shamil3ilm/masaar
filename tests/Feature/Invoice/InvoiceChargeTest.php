@@ -50,7 +50,7 @@ class InvoiceChargeTest extends TestCase
     public function test_charges_are_kept_and_priced(): void
     {
         $this->api([
-            'lines' => [['description' => 'Chair', 'quantity' => 3, 'unit_price' => 100, 'discount_amount' => '20.00', 'charges' => [
+            'lines' => [['description' => 'Chair', 'description_ar' => 'كرسي', 'quantity' => 3, 'unit_price' => 100, 'discount_amount' => '20.00', 'charges' => [
                 ['reason' => 'Packing', 'reason_code' => 'PC', 'percent' => '2'],
             ]]],
             'charges' => [
@@ -112,7 +112,7 @@ class InvoiceChargeTest extends TestCase
     /** BR-KSA-F-04: a line's net is never below nothing. */
     public function test_line_discount_stays_within_line(): void
     {
-        $this->api(['lines' => [['description' => 'Tea', 'quantity' => 1, 'unit_price' => 10, 'discount_amount' => '10.01']]])->assertStatus(422)
+        $this->api(['lines' => [['description' => 'Tea', 'description_ar' => 'شاي', 'quantity' => 1, 'unit_price' => 10, 'discount_amount' => '10.01']]])->assertStatus(422)
             ->assertJsonValidationErrorFor('lines.0.discount_amount', 'error.details');
     }
 
@@ -161,7 +161,7 @@ class InvoiceChargeTest extends TestCase
     public function test_a_credit_note_carries_them(): void
     {
         $this->api([
-            'lines' => [['description' => 'Chair', 'quantity' => 1, 'unit_price' => 100, 'discount_amount' => '5.00', 'charges' => [['reason' => 'Packing', 'reason_code' => 'PC', 'amount' => '3.00']]]],
+            'lines' => [['description' => 'Chair', 'description_ar' => 'كرسي', 'quantity' => 1, 'unit_price' => 100, 'discount_amount' => '5.00', 'charges' => [['reason' => 'Packing', 'reason_code' => 'PC', 'amount' => '3.00']]]],
             'charges' => [['reason' => 'Service charge', 'reason_code' => 'ADR', 'percent' => '10']],
         ])->assertCreated();
         $invoice = $this->invoice();
@@ -207,7 +207,7 @@ class InvoiceChargeTest extends TestCase
             'invoice_number' => 'INV-1',
             'type' => 'simplified',
             'issue_date' => now()->toDateString(),
-            'lines' => [['description' => 'Item', 'quantity' => 1, 'unit_price' => 100]],
+            'lines' => [['description' => 'Item', 'description_ar' => 'صنف', 'quantity' => 1, 'unit_price' => 100]],
             ...$overrides,
         ];
     }

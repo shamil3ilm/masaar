@@ -114,7 +114,7 @@ class InclusivePricingTest extends TestCase
     {
         $id = $this->create([
             'prices_include_vat' => true,
-            'lines' => [['description' => 'Item', 'quantity' => 1, 'unit_price' => '10.00', 'tax_rate' => 15]],
+            'lines' => [['description' => 'Item', 'description_ar' => 'صنف', 'quantity' => 1, 'unit_price' => '10.00', 'tax_rate' => 15]],
         ])->json('data.invoice.id');
 
         $xpath = $this->document($id);
@@ -135,7 +135,7 @@ class InclusivePricingTest extends TestCase
         foreach (['10.00', '30.00', '0.07', '19.99', '1234.56'] as $price) {
             $id = $this->create([
                 'prices_include_vat' => true,
-                'lines' => [['description' => 'Item', 'quantity' => 1, 'unit_price' => $price, 'tax_rate' => 15]],
+                'lines' => [['description' => 'Item', 'description_ar' => 'صنف', 'quantity' => 1, 'unit_price' => $price, 'tax_rate' => 15]],
             ])->assertCreated()->json('data.invoice.id');
 
             $invoice = Invoice::withoutTenantScope(fn () => Invoice::with('lines')->find($id));
@@ -156,7 +156,8 @@ class InclusivePricingTest extends TestCase
             'type' => 'simplified',
             'issue_date' => now()->toDateString(),
             'buyer_name' => 'Walk-in customer',
-            'lines' => [['description' => 'Widget', 'quantity' => 3, 'unit_price' => '10.00', 'tax_rate' => 15]],
+            'buyer_name_ar' => 'عميل نقدي',
+            'lines' => [['description' => 'Widget', 'description_ar' => 'أداة', 'quantity' => 3, 'unit_price' => '10.00', 'tax_rate' => 15]],
             ...$overrides,
         ]);
     }

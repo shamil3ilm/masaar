@@ -203,6 +203,7 @@ class SignupCountryTest extends TestCase
         return $this->form(array_merge([
             'email' => 'owner@acme.sa',
             'company_name' => 'Acme Trading',
+            'company_name_ar' => 'شركة أكمي للتجارة',
             'vat_number' => '300000000000003',
             'street' => 'King Fahd Road',
             'building_number' => '1234',

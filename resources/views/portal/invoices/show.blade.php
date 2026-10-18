@@ -13,6 +13,12 @@
         @include($page->heading, $page->data)
 
         <h2 class="mt-1 text-2xl font-semibold text-fg">{{ $invoice->invoice_number ?? __('Draft (numbered when issued)') }}</h2>
+        {{-- Text a grace period let through without its Arabic (MissingText).
+             On this page only: the print view, the PDF and the receipt the
+             buyer is given never carry it. --}}
+        @if (! empty($missingText))
+            <p class="mt-1 text-xs text-warning print:hidden" data-missing-text title="{{ implode(' · ', $missingText) }}">{{ __('Arabic text missing') }}</p>
+        @endif
         <p class="text-muted">
             <span lang="ar" dir="rtl">تاريخ الفاتورة</span> &middot; {{ __('issued :date', ['date' => $invoice->issue_date]) }}
         </p>

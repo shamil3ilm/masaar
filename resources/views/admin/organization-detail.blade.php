@@ -187,6 +187,10 @@
 
 @include('admin.partials.features')
 
+@if ($arabic)
+    @include('admin.partials.arabic-text')
+@endif
+
 <!-- Members -->
 <x-ui.section title="Members" collapse flush class="mb-6">
     <x-ui.table :primary="[0, 1, 2]">

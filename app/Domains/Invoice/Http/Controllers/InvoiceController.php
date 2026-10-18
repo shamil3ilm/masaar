@@ -5,10 +5,12 @@ namespace App\Domains\Invoice\Http\Controllers;
 use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Invoice\Exceptions\InvoiceNotEditableException;
 use App\Domains\Invoice\Http\Requests\CreateInvoiceRequest;
+use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\IdempotentDraft;
 use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Invoice\Services\InvoicePdf;
+use App\Domains\Invoice\Services\MissingText;
 use App\Domains\Organization\Services\PrintPreferences;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
@@ -43,6 +45,7 @@ class InvoiceController extends Controller
         private readonly InvoiceFinder $invoices,
         private readonly InvoicePdf $pdf,
         private readonly IdempotentDraft $once,
+        private readonly MissingText $missing,
     ) {}
 
     /**
@@ -91,6 +94,7 @@ class InvoiceController extends Controller
 
         return ApiResponse::created([
             'invoice' => $invoice->load('lines'),
+            ...$this->warnings($invoice),
         ], 'Invoice created');
     }
 
@@ -151,9 +155,26 @@ class InvoiceController extends Controller
             return ApiResponse::error('Invoice cannot be edited after issuance', 422);
         }
 
+        $invoice = $invoice->fresh('lines');
+
         return ApiResponse::success([
-            'invoice' => $invoice->fresh('lines'),
+            'invoice' => $invoice,
+            ...$this->warnings($invoice),
         ], 'Invoice updated');
+    }
+
+    /**
+     * The text the invoice still lacks, which only a grace period lets
+     * through (MissingText): `warnings` beside the invoice, and nothing
+     * when there is none.
+     *
+     * @return array{warnings?: list<string>}
+     */
+    private function warnings(Invoice $invoice): array
+    {
+        $warnings = $this->missing->warnings($invoice, $this->tenant->getOrganization());
+
+        return $warnings === [] ? [] : ['warnings' => $warnings];
     }
 
     /**

@@ -107,6 +107,39 @@ POST /api/compliance/sa/submit/{invoice_id}
 → returns { "data": { "clearance_status": "CLEARED", ... } }
 ```
 
+### Arabic text
+
+A Saudi invoice is in Arabic: its data "must be in Arabic" and "any
+information contained in the human readable form of the Tax Invoice must be
+in Arabic including notes. Any additional translation is also allowed"
+(ZATCA E-Invoicing Detailed Guidelines, p60 and p63). So a draft is refused,
+on `POST /api/invoices`, the pipeline, each item of a batch and the portal,
+when it lacks:
+
+| Field | When |
+|---|---|
+| `lines.*.description_ar` | always, in Arabic letters |
+| `notes` | when given: Arabic text, with any translation after it |
+| `buyer_name_ar` | on a standard invoice and the credit and debit notes against one |
+
+The organization's own Arabic name is asked for at sign-up and on the company
+page. Each refusal names the field and the rule in English and Arabic:
+`Arabic description required (ZATCA: the invoice must be in Arabic) / الوصف بالعربية مطلوب ...`.
+
+The Arabic is filled in from what the organization has saved, never
+translated: a line naming a saved product by `product_id` or by its code
+(`product_code`, the product's SKU) takes the product's Arabic name, and an
+invoice naming a saved customer by `customer_id` takes the customer's.
+
+A platform administrator can give an organization a grace period while it
+fills in its Arabic names. Until the date it names, a draft without the
+Arabic is taken, and the reply lists what is missing in `warnings`
+(`data.warnings` on `/api/invoices`, `warnings` on a pipeline result).
+
+Nothing new is added to the signed XML: where the Arabic is given, it is
+what the document already carries as the seller name, the buyer name and
+each item name.
+
 ### Discounts and charges
 
 `POST /api/invoices` and the ERP pipeline take a line's own `discount_amount`
@@ -126,7 +159,7 @@ amount is given with VAT in it too.
 <!-- example: POST /api/invoices sa fragment -->
 ```json
 "lines": [
-  { "description": "Sofa", "quantity": 1, "unit_price": "2499.99", "discount_amount": "250.00",
+  { "description": "Sofa", "description_ar": "أريكة", "quantity": 1, "unit_price": "2499.99", "discount_amount": "250.00",
     "charges": [{ "reason": "Installation", "reason_code": "IAA", "amount": "150.00" }] }
 ],
 "charges": [

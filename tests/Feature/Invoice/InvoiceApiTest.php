@@ -70,6 +70,7 @@ class InvoiceApiTest extends TestCase
         $invoice = $this->invoice($this->acme);
         $invoice->lines()->create([
             'description' => 'Item',
+            'description_ar' => 'صنف',
             'quantity' => '1',
             'unit_code' => 'PCE',
             'unit_price' => '100.00',
@@ -89,11 +90,11 @@ class InvoiceApiTest extends TestCase
     {
         $invoice = $this->invoice($this->acme);
 
-        $this->api()->putJson("/api/invoices/{$invoice->id}", $this->payload(['buyer_name' => 'Renamed Buyer', 'notes' => 'Revised']))
+        $this->api()->putJson("/api/invoices/{$invoice->id}", $this->payload(['buyer_name' => 'Renamed Buyer', 'buyer_name_ar' => 'المشتري الجديد', 'notes' => 'معدلة / Revised']))
             ->assertOk()
             ->assertJsonPath('message', 'Invoice updated')
             ->assertJsonPath('data.invoice.buyer_name', 'Renamed Buyer')
-            ->assertJsonPath('data.invoice.notes', 'Revised')
+            ->assertJsonPath('data.invoice.notes', 'معدلة / Revised')
             ->assertJsonStructure(['data' => ['invoice' => ['lines']]]);
 
         $this->assertDatabaseHas('audit_logs', ['action' => 'Invoice.updated', 'entity_id' => $invoice->id]);
@@ -103,7 +104,7 @@ class InvoiceApiTest extends TestCase
     {
         $invoice = $this->invoice($this->acme, ['status' => 'issued']);
 
-        $this->api()->putJson("/api/invoices/{$invoice->id}", $this->payload(['buyer_name' => 'Renamed Buyer']))
+        $this->api()->putJson("/api/invoices/{$invoice->id}", $this->payload(['buyer_name' => 'Renamed Buyer', 'buyer_name_ar' => 'المشتري الجديد']))
             ->assertStatus(422)
             ->assertJsonPath('error.message', 'Invoice cannot be edited after issuance');
 
@@ -141,7 +142,7 @@ class InvoiceApiTest extends TestCase
             ->shouldReceive('logUpdated')
             ->andThrow(new RuntimeException('audit unavailable')));
 
-        $this->api()->putJson("/api/invoices/{$invoice->id}", $this->payload(['buyer_name' => 'Renamed Buyer']))
+        $this->api()->putJson("/api/invoices/{$invoice->id}", $this->payload(['buyer_name' => 'Renamed Buyer', 'buyer_name_ar' => 'المشتري الجديد']))
             ->assertServerError();
 
         $this->assertSame('Buyer', $this->reload($invoice)->buyer_name);
@@ -151,7 +152,7 @@ class InvoiceApiTest extends TestCase
     {
         $theirs = $this->invoice($this->rival);
 
-        $this->api()->putJson("/api/invoices/{$theirs->id}", $this->payload(['buyer_name' => 'Renamed Buyer']))
+        $this->api()->putJson("/api/invoices/{$theirs->id}", $this->payload(['buyer_name' => 'Renamed Buyer', 'buyer_name_ar' => 'المشتري الجديد']))
             ->assertNotFound();
 
         $this->assertSame('Buyer', $this->reload($theirs)->buyer_name);
@@ -169,8 +170,10 @@ class InvoiceApiTest extends TestCase
             'type' => 'simplified',
             'issue_date' => now()->toDateString(),
             'buyer_name' => 'Buyer',
+            'buyer_name_ar' => 'المشتري',
             'lines' => [[
                 'description' => 'Item',
+                'description_ar' => 'صنف',
                 'quantity' => 1,
                 'unit_price' => 100,
             ]],
@@ -190,6 +193,7 @@ class InvoiceApiTest extends TestCase
             'issue_date' => now()->toDateString(),
             'currency' => 'SAR',
             'buyer_name' => 'Buyer',
+            'buyer_name_ar' => 'المشتري',
             ...$attributes,
         ]);
 

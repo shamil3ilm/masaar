@@ -8,11 +8,13 @@ use App\Domains\Compliance\Engine\Contracts\InvoiceRules as InvoiceRulesPort;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Invoice\Enums\TaxCategory;
+use App\Domains\Invoice\Services\Catalogue;
 use App\Domains\Invoice\Services\PrepaymentSettlement;
 use App\Domains\Invoice\Support\ChargeRules;
 use App\Domains\Invoice\Support\UnitCode;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Rules\VatNumber;
+use App\Domains\Organization\Services\LanguageGrace;
 use App\Domains\Organization\Services\TenantResolver;
 use DomainException;
 use Illuminate\Http\Request;
@@ -67,6 +69,8 @@ class InvoiceRules implements InvoiceRulesPort
     public function __construct(
         private readonly TenantResolver $tenant,
         private readonly PrepaymentSettlement $settlement,
+        private readonly Catalogue $catalogue,
+        private readonly LanguageGrace $grace,
     ) {}
 
     /**
@@ -94,12 +98,23 @@ class InvoiceRules implements InvoiceRulesPort
                 $category = $line['tax_category']
                     ?? FatooraConfig::taxCategoryFor($exemptionCode, (float) ($line['tax_rate'] ?? self::STANDARD_RATE));
 
-                return array_merge([
+                return $this->productArabic(array_merge([
                     'unit_code' => UnitCode::DEFAULT,
                     'tax_category' => $category,
                     'tax_rate' => $category === FatooraConfig::TAX_CATEGORY_STANDARD ? (int) self::STANDARD_RATE : 0,
-                ], $line);
+                ], $line));
             })->toArray();
+        }
+
+        // A saved customer's Arabic name, when the invoice names the
+        // customer and not the Arabic (ArabicText).
+        if (blank($request->input('buyer_name_ar')) && is_string($request->input('customer_id'))) {
+            $arabic = $this->organizationId() === null ? null
+                : $this->catalogue->customerArabicName($this->organizationId(), $request->input('customer_id'));
+
+            if ($arabic !== null) {
+                $defaults['buyer_name_ar'] = $arabic;
+            }
         }
 
         // A document charge is made at the standard rate unless it says
@@ -121,6 +136,34 @@ class InvoiceRules implements InvoiceRulesPort
         }
 
         return $defaults;
+    }
+
+    /**
+     * A line naming a saved product, by its id or its code, takes the
+     * product's Arabic name when it gives none of its own. Never a machine
+     * translation: only what the organization wrote down for the product.
+     *
+     * @param  array<string, mixed>  $line
+     * @return array<string, mixed>
+     */
+    private function productArabic(array $line): array
+    {
+        if (filled($line['description_ar'] ?? null) || $this->organizationId() === null) {
+            return $line;
+        }
+
+        $arabic = $this->catalogue->productArabicName(
+            $this->organizationId(),
+            is_string($line['product_id'] ?? null) ? $line['product_id'] : null,
+            is_string($line['product_code'] ?? null) ? $line['product_code'] : null,
+        );
+
+        return $arabic === null ? $line : [...$line, 'description_ar' => $arabic];
+    }
+
+    private function organizationId(): ?string
+    {
+        return $this->tenant->getOrganizationId();
     }
 
     public function rules(Request $request): array
@@ -188,14 +231,15 @@ class InvoiceRules implements InvoiceRulesPort
 
             // Buyer information
             'buyer_name' => ['nullable', 'string', 'max:255', Rule::requiredIf($mustNameBuyer)],
-            // The buyer's name in Arabic, where they have one. Optional,
-            // and not a compliance gap when absent: ZATCA's Guideline for Tax
-            // Invoicing and Records (v3, May 2026) 4.2.1 approves Latin
-            // characters for proper names, which is what a buyer name is. It
-            // is offered because ZATCA's own illustrative invoices print
-            // names bilingually, and a buyer with an Arabic registered name
-            // should be able to show it.
+            // The buyer's name in Arabic. Required on a standard invoice and
+            // the notes against one (ArabicText, checked after): ZATCA's
+            // E-Invoicing Detailed Guidelines (v2, May 2023) p60, the
+            // invoice data "must be in Arabic". Taken from the saved
+            // customer the invoice names when it gives none.
             'buyer_name_ar' => ['nullable', 'string', 'max:255'],
+            // A saved customer of the organization's, whose Arabic name the
+            // invoice takes when it gives none.
+            'customer_id' => ['nullable', 'string', 'uuid', Rule::exists('customers', 'id')->where('org_id', $this->organizationId())],
             'buyer_vat_number' => [
                 'nullable',
                 'string',
@@ -280,7 +324,8 @@ class InvoiceRules implements InvoiceRulesPort
 
             // Notes
             // Bounded: a TEXT column holds 64KB, and Arabic is several bytes a
-            // character - longer failed at the insert as a 500.
+            // character - longer failed at the insert as a 500. In Arabic,
+            // with any translation beside it (ArabicText, checked after).
             'notes' => ['nullable', 'string', 'max:5000'],
 
             // Invoice lines
@@ -289,7 +334,11 @@ class InvoiceRules implements InvoiceRulesPort
             // every other document of that device waits on.
             'lines' => ['required', 'array', 'min:1', 'max:1000'],
             'lines.*.description' => ['required', 'string', 'max:255'],
+            // Required, in Arabic letters (ArabicText, checked after); taken
+            // from the saved product the line names when it gives none.
             'lines.*.description_ar' => ['nullable', 'string', 'max:255'],
+            'lines.*.product_id' => ['nullable', 'string', 'uuid', Rule::exists('products', 'id')->where('org_id', $this->organizationId())],
+            'lines.*.product_code' => ['nullable', 'string', 'max:64', Rule::exists('products', 'sku')->where('org_id', $this->organizationId())],
             'lines.*.class_code' => ['nullable', 'string', 'max:50'],
             // No finer than the columns hold - quantity to three places, price
             // to two. Totals were computed from what was sent and the document
@@ -357,6 +406,10 @@ class InvoiceRules implements InvoiceRulesPort
             'lines.*.exempt_reason.required_with' => __('Exemption reason is required when exemption code is provided.'),
             // Units
             'lines.*.unit_code.in' => __('Invalid unit code. Must be a UN/ECE Recommendation 20 code, or a Recommendation 21 packaging code written with an X prefix.'),
+            // Saved customers and products
+            'customer_id.exists' => __('There is no saved customer with this id.'),
+            'lines.*.product_id.exists' => __('There is no saved product with this id.'),
+            'lines.*.product_code.exists' => __('There is no saved product with this code.'),
             // Charges
             ...ChargeRules::messages(),
             'charges.*.reason_code.in' => __('The charge reason code is a UNCL 7161 code ZATCA accepts (BR-KSA-CL-06).'),
@@ -387,6 +440,24 @@ class InvoiceRules implements InvoiceRulesPort
         ChargeRules::after($validator, $request);
         $this->chargeCategories($validator, $request);
         $this->prepayments($validator, $request);
+        $this->arabicText($validator, $request);
+    }
+
+    /**
+     * The Arabic the invoice must carry (ArabicText), refused in both
+     * languages - unless a platform admin has given the organization a
+     * grace period, when the draft is taken and the missing text is
+     * flagged wherever it is shown (LanguageRules::missingText()).
+     */
+    private function arabicText(Validator $validator, Request $request): void
+    {
+        if ($this->grace->active($this->tenant->getOrganization())) {
+            return;
+        }
+
+        foreach (ArabicText::missing($request->all()) as $field => $message) {
+            $validator->errors()->add($field, $message);
+        }
     }
 
     /**

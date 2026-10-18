@@ -47,6 +47,9 @@ class SignupController extends Controller
             'countries' => $countries,
             'sections' => $this->sections($countries, $default),
             'country' => in_array($chosen, $countries, true) ? $chosen : $preferred,
+            // Whether the company's Arabic name is asked for as required:
+            // where the preferred country's invoices must be in Arabic.
+            'arabicName' => CompanyProfileRules::jurisdiction($preferred)->languageRules()->requiresArabic(),
         ]);
     }
 

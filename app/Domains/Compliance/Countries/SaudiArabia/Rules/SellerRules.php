@@ -17,7 +17,8 @@ use Closure;
  * What a seller's details have to be before ZATCA accepts an invoice from it.
  *
  * Each shape is the authority's: BR-KSA-40 for the VAT number, BR-KSA-37 for
- * the building number, BR-KSA-66 for the postal code. The address had no way
+ * the building number, BR-KSA-66 for the postal code, and the Arabic name
+ * from the Detailed Guidelines' language requirement (ArabicText). The address had no way
  * in at all except a sandbox command, so no organization could pass
  * Organization::hasCompleteZatcaProfile() and onboard.
  *
@@ -39,6 +40,18 @@ class SellerRules implements SellerRulesPort
         $need = $complete ? 'required' : 'sometimes';
 
         return [
+            // The seller's name as the invoice and the QR's tag 1 carry it
+            // (Organization::documentName()), in Arabic letters: ZATCA's
+            // E-Invoicing Detailed Guidelines (v2, May 2023) p60, invoice
+            // data "must be in Arabic" (ArabicText). Required wherever the
+            // whole profile is - sign-up and the company page - and, sent
+            // through the API, never emptied.
+            'name_ar' => [
+                ...($complete ? [] : ['sometimes']),
+                new ArabicName(__('Arabic seller name required (ZATCA: the invoice must be in Arabic)', [], 'en')),
+                'string',
+                'max:255',
+            ],
             'vat_number' => [
                 $complete ? 'required' : 'nullable',
                 'string',

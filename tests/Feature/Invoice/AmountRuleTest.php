@@ -45,18 +45,18 @@ class AmountRuleTest extends TestCase
      */
     public function test_finer_than_stored_is_refused(): void
     {
-        $this->create(['lines' => [['description' => 'Fuel', 'quantity' => 1000, 'unit_price' => 1.005]]])
+        $this->create(['lines' => [['description' => 'Fuel', 'description_ar' => 'وقود', 'quantity' => 1000, 'unit_price' => 1.005]]])
             ->assertStatus(422)
             ->assertJsonStructure(['error' => ['details' => ['lines.0.unit_price']]]);
 
-        $this->create(['lines' => [['description' => 'Gold', 'quantity' => 1.0005, 'unit_price' => 10]]])
+        $this->create(['lines' => [['description' => 'Gold', 'description_ar' => 'ذهب', 'quantity' => 1.0005, 'unit_price' => 10]]])
             ->assertStatus(422)
             ->assertJsonStructure(['error' => ['details' => ['lines.0.quantity']]]);
     }
 
     public function test_stored_precision_is_accepted(): void
     {
-        $this->create(['lines' => [['description' => 'Gold', 'quantity' => 1.125, 'unit_price' => 245.75]]])
+        $this->create(['lines' => [['description' => 'Gold', 'description_ar' => 'ذهب', 'quantity' => 1.125, 'unit_price' => 245.75]]])
             ->assertCreated();
     }
 
@@ -112,7 +112,8 @@ class AmountRuleTest extends TestCase
             'type' => 'simplified',
             'issue_date' => now()->toDateString(),
             'buyer_name' => 'Buyer',
-            'lines' => [['description' => 'Item', 'quantity' => 1, 'unit_price' => 100]],
+            'buyer_name_ar' => 'المشتري',
+            'lines' => [['description' => 'Item', 'description_ar' => 'صنف', 'quantity' => 1, 'unit_price' => 100]],
             ...$overrides,
         ]);
     }
