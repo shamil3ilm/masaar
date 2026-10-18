@@ -7,6 +7,7 @@ namespace App\Domains\Invoice\Services;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Organization\Services\BranchScope;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\LazyCollection;
@@ -27,6 +28,9 @@ use Illuminate\Support\LazyCollection;
  *
  * Sales only. The return also asks for purchases, which the platform does
  * not see.
+ *
+ * Of the branches the report shows (BranchScope): every one the person may
+ * see, the one chosen in the switcher, or one at a time for a breakdown.
  */
 class VatSummary
 {
@@ -54,6 +58,10 @@ class VatSummary
     private const CITIZENS = ['VATEX-SA-EDU', 'VATEX-SA-HEA'];
 
     private const NOTES = [DocumentType::CreditNote, DocumentType::DebitNote];
+
+    public function __construct(
+        private readonly BranchScope $branches,
+    ) {}
 
     /**
      * @return array{
@@ -218,7 +226,7 @@ class VatSummary
         $start = $from->toDateString();
         $until = $to->addDay()->toDateString();
 
-        return Invoice::query()
+        return $this->branches->applyVisible(Invoice::query())
             ->where('org_id', $organizationId)
             ->when($sealed,
                 fn (Builder $query) => $query->whereNotNull('hash'),

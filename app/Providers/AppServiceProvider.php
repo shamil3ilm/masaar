@@ -15,16 +15,21 @@ use App\Domains\Compliance\Countries\SaudiArabia\Http\Middleware\FilingCleared;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Middleware\UaeInvoicing;
 use App\Domains\Compliance\Engine\Http\Middleware\JurisdictionAvailable;
+use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Policies\InvoicePolicy;
 use App\Domains\Licensing\Http\Middleware\CheckInvoiceQuota;
 use App\Domains\Licensing\Http\Middleware\PlatformLicense;
 use App\Domains\Licensing\Http\Middleware\RequireLicenseFeature;
 use App\Domains\Licensing\Http\Middleware\RequireScope;
 use App\Domains\Licensing\Http\Middleware\ValidateLicense;
+use App\Domains\Organization\Contracts\WorkingBranchStore;
 use App\Domains\Organization\Http\Middleware\IsOrgAdmin;
 use App\Domains\Organization\Http\Middleware\OrgWriter;
+use App\Domains\Organization\Http\Middleware\PortalBranch;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Http\Middleware\TwoFactorRequired;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\MembershipWorkingBranch;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Platform\Access\PortalAccess;
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
@@ -37,6 +42,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
@@ -56,6 +62,7 @@ class AppServiceProvider extends ServiceProvider
         'admin.can' => AdminCan::class,
         'admin.audit' => AuditAdminAction::class,
         'portal.tenant' => PortalTenant::class,
+        'portal.branch' => PortalBranch::class,
         'org.admin' => IsOrgAdmin::class,
         'org.writer' => OrgWriter::class,
         'org.two_factor' => TwoFactorRequired::class,
@@ -88,6 +95,10 @@ class AppServiceProvider extends ServiceProvider
         // Saved views on the history lists, in their own table until the
         // layered settings store keeps per-person preferences.
         $this->app->bind(SavedViewStore::class, SavedListViews::class);
+
+        // The branch switcher's choice, on the membership until the layered
+        // settings store keeps per-person preferences.
+        $this->app->bind(WorkingBranchStore::class, MembershipWorkingBranch::class);
 
         // ZATCA Compliance Services - Singletons for consistency
         $this->app->singleton(TimestampValidator::class);
@@ -146,6 +157,9 @@ class AppServiceProvider extends ServiceProvider
         }
 
         $this->reclaimMiddlewareAliases();
+
+        // Who may read and issue an invoice, by the branch it belongs to.
+        Gate::policy(Invoice::class, InvoicePolicy::class);
 
         // @admincan('licences.manage') ... @endadmincan: an action shown only
         // to an admin whose role allows it. The route refuses the rest

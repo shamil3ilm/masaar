@@ -13,12 +13,15 @@ use App\Domains\Invoice\Services\ChargePresets;
 use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
+use App\Domains\Organization\Services\BranchAccess;
+use App\Domains\Organization\Services\BranchScope;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use DomainException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
@@ -49,6 +52,8 @@ class PortalInvoiceDraftController extends Controller
         private readonly InvoiceFinder $invoices,
         private readonly AdjustmentDraft $adjustments,
         private readonly ChargePresets $chargePresets,
+        private readonly BranchAccess $branchAccess,
+        private readonly BranchScope $branchScope,
     ) {}
 
     /**
@@ -66,10 +71,9 @@ class PortalInvoiceDraftController extends Controller
         abort_if($request->user()?->roleIn($organizationId) === 'viewer', 403, __('Your role in this organization is read-only.'));
 
         try {
-            $fields = $this->adjustments->fields(
-                $this->invoices->findWithLines($organizationId, $invoiceId),
-                DocumentType::from($note),
-            );
+            $original = $this->invoices->findWithLines($organizationId, $invoiceId);
+            abort_if(Gate::denies('issue', $original), 403, __('You cannot issue invoices at this branch.'));
+            $fields = $this->adjustments->fields($original, DocumentType::from($note));
         } catch (ModelNotFoundException) {
             abort(404);
         } catch (DomainException $e) {
@@ -111,11 +115,27 @@ class PortalInvoiceDraftController extends Controller
             return redirect()->route('portal.invoices.index');
         }
 
+        // The branch it is issued from: the one chosen in the switcher, or a
+        // cashier's own. One they only read at, or one the country would
+        // refuse an invoice from, is refused here with the reason, before
+        // anything is written.
+        try {
+            $branchId = $this->branchAccess->draftBranch((string) $request->user()?->getAuthIdentifier(), (string) $orgId, $this->branchScope->selected());
+        } catch (DomainException $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        }
+
+        $refusal = $branchId === null ? null : $this->jurisdictions->forRules($this->tenant->getOrganization())->devices()->refusal((string) $orgId, $branchId);
+
+        if ($refusal !== null) {
+            return back()->withInput()->with('error', $refusal);
+        }
+
         // An organization whose country's form posts elsewhere was sent back
         // to it by CreatePortalInvoiceRequest, before anything was checked.
         // As the country's rules map the request, as the API drafts it.
         try {
-            $invoice = $this->drafter->draft($request->draft(), (string) $orgId, countryFields: $request->countryFields());
+            $invoice = $this->drafter->draft($request->draft(), (string) $orgId, $branchId, countryFields: $request->countryFields());
         } catch (\Throwable $e) {
             // bootstrap/app.php registers the exception renderer only for
             // api/* and v1/*, so anything raised here is an error page rather

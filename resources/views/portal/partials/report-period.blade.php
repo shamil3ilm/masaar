@@ -4,8 +4,10 @@
     @param \Carbon\CarbonImmutable $from
     @param \Carbon\CarbonImmutable $to
     @param array<string, array{from: string, to: string}> $presets
+    @param string $periodRoute  the page the period is for; the reports page when not given
 --}}
-<form method="GET" action="{{ route('portal.reports') }}" class="mb-4 bg-surface rounded-card border border-line shadow-card p-4 flex flex-wrap items-end gap-4">
+@php($periodRoute ??= 'portal.reports')
+<form method="GET" action="{{ route($periodRoute) }}" class="mb-4 bg-surface rounded-card border border-line shadow-card p-4 flex flex-wrap items-end gap-4">
     <div>
         <label for="from" class="block text-xs font-medium text-muted uppercase mb-1">{{ __('From') }}</label>
         <x-ui.input id="from" name="from" type="date" value="{{ $from->toDateString() }}" />
@@ -19,6 +21,6 @@
 
 <p class="mb-6 flex flex-wrap gap-3 text-sm">
     @foreach ($presets as $label => $range)
-        <a href="{{ route('portal.reports', $range) }}" class="text-accent hover:underline">{{ $label }}</a>
+        <a href="{{ route($periodRoute, $range) }}" class="text-accent hover:underline">{{ $label }}</a>
     @endforeach
 </p>

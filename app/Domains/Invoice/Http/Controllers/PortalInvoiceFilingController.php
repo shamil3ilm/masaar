@@ -14,6 +14,7 @@ use App\Domains\Platform\Access\Feature;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Issuing, from the browser. Printing is PortalInvoicePrintController's.
@@ -47,6 +48,9 @@ class PortalInvoiceFilingController extends Controller
 
         $invoice = $this->invoices->findWithLines($orgId, $invoiceId);
         $organization = $this->tenant->getOrganization();
+
+        // Someone who only reads at this invoice's branch does not issue there.
+        abort_if(Gate::denies('issue', $invoice), 403, __('You cannot issue invoices at this branch.'));
 
         // Access answers first: a kill switch, the country, the plan, the
         // company's review or a platform admin's switch for it. A refusal is

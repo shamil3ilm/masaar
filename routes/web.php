@@ -31,9 +31,11 @@ use App\Domains\Invoice\Http\Controllers\PortalReportController;
 use App\Domains\Licensing\Http\Controllers\AdminLicenceController;
 use App\Domains\Organization\Http\Controllers\CustomerPortalController;
 use App\Domains\Organization\Http\Controllers\InvitationController;
+use App\Domains\Organization\Http\Controllers\PortalBranchController;
 use App\Domains\Organization\Http\Controllers\PortalCompanyController;
 use App\Domains\Organization\Http\Controllers\PortalPrintingController;
 use App\Domains\Organization\Http\Controllers\PortalTeamController;
+use App\Domains\Organization\Http\Controllers\PortalWorkingBranchController;
 use App\Domains\Platform\Http\Controllers\AdminAdminsController;
 use App\Domains\Platform\Http\Controllers\AdminAuditController;
 use App\Domains\Platform\Http\Controllers\AdminController;
@@ -369,6 +371,8 @@ Route::prefix('portal')->name('portal.')
     ->group(function () {
         Route::post('/views', [SavedListViewController::class, 'portalStore'])->name('views.store');
         Route::post('/views/{viewId}/delete', [SavedListViewController::class, 'portalDestroy'])->name('views.destroy');
+        // The branch switcher: one branch, or all of them.
+        Route::post('/branch', [PortalWorkingBranchController::class, 'choose'])->name('branch.choose');
     });
 
 Route::prefix('portal')->name('portal.')
@@ -378,8 +382,10 @@ Route::prefix('portal')->name('portal.')
     // org.writer: a viewer reads the portal and submits nothing.
     // org.two_factor: an organization that requires a second factor sends
     // anyone without one to set it up first.
-    ->middleware(['auth', 'auth.session', 'verified', 'portal.tenant', 'org.two_factor', 'org.writer'])
-    ->whereUuid(['invoiceId', 'userId', 'invitationId', 'ticketId', 'attachmentId', 'customerId', 'productId', 'paymentId', 'documentId'])
+    // portal.branch: the branch chosen in the switcher, for the lists, the
+    // dashboard and the reports.
+    ->middleware(['auth', 'auth.session', 'verified', 'portal.tenant', 'portal.branch', 'org.two_factor', 'org.writer'])
+    ->whereUuid(['invoiceId', 'userId', 'invitationId', 'ticketId', 'attachmentId', 'customerId', 'productId', 'paymentId', 'documentId', 'branchId'])
     ->group(function () {
         Route::get('/', [CustomerPortalController::class, 'dashboard'])->name('dashboard');
         // Invoices. {invoiceId} rather than {invoice}: route model binding
@@ -454,6 +460,8 @@ Route::prefix('portal')->name('portal.')
 
         // The period's sales as the VAT return groups them, and CSV exports.
         Route::get('/reports', [PortalReportController::class, 'index'])->name('reports');
+        // The companies of a group side by side, read-only, each its own taxpayer.
+        Route::get('/reports/group', [PortalReportController::class, 'group'])->name('reports.group');
         Route::get('/reports/invoices.csv', [PortalReportController::class, 'invoices'])->middleware('throttle:20,1')->name('reports.invoices');
         Route::get('/reports/vat.csv', [PortalReportController::class, 'vat'])->middleware('throttle:20,1')->name('reports.vat');
         // A day's close by device and branch, where the country counts per device.
@@ -487,6 +495,16 @@ Route::prefix('portal')->name('portal.')
         Route::get('/zatca/late', [PortalZatcaController::class, 'late'])->name('zatca.late');
         Route::post('/zatca/late/notified', [PortalZatcaController::class, 'lateNotified'])->name('zatca.late.notified');
         Route::get('/zatca/late/evidence.csv', [PortalZatcaController::class, 'lateEvidence'])->middleware('throttle:20,1')->name('zatca.late.evidence');
+
+        // The organization's branches: address, till, numbering, printer,
+        // device and who works there. Administrators only; the controller
+        // checks the role.
+        Route::get('/branches', [PortalBranchController::class, 'index'])->name('branches.index');
+        Route::get('/branches/new', [PortalBranchController::class, 'create'])->name('branches.create');
+        Route::post('/branches', [PortalBranchController::class, 'store'])->name('branches.store');
+        Route::get('/branches/{branchId}', [PortalBranchController::class, 'edit'])->name('branches.edit');
+        Route::post('/branches/{branchId}', [PortalBranchController::class, 'update'])->name('branches.update');
+        Route::post('/branches/{branchId}/people', [PortalBranchController::class, 'people'])->name('branches.people');
 
         // The organization's people, and inviting more. Administrators only;
         // the controller checks the role.

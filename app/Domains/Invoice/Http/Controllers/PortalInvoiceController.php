@@ -16,6 +16,7 @@ use App\Http\Listing\Lists;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -95,6 +96,10 @@ class PortalInvoiceController extends Controller
             // the id belongs to someone.
             abort(404);
         }
+
+        // InvoiceFinder has already left out another branch's invoice; the
+        // policy says the same rule where it is asked (InvoicePolicy).
+        abort_if(Gate::denies('view', $invoice), 404);
 
         $organization = $this->tenant->getOrganization();
 

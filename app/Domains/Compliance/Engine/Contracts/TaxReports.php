@@ -28,6 +28,15 @@ interface TaxReports
     /** The period's invoices, one row each. */
     public function invoicesCsv(string $organizationId, CarbonImmutable $from, CarbonImmutable $to, string $fileName): StreamedResponse;
 
+    /**
+     * The period's documents and their net amount and tax, in the country's
+     * tax currency: a line of a breakdown by branch, or by company in a
+     * group. Read with the same documents and signs as page().
+     *
+     * @return array{documents: int, base: float, vat: float, currency: string}
+     */
+    public function totals(string $organizationId, CarbonImmutable $from, CarbonImmutable $to): array;
+
     /** The period's summary, as the page shows it. */
     public function summaryCsv(string $organizationId, CarbonImmutable $from, CarbonImmutable $to, string $fileName): StreamedResponse;
 

@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
@@ -69,6 +70,7 @@ class PortalInvoiceDocumentController extends Controller
     public function send(Request $request, string $invoiceId): RedirectResponse
     {
         $invoice = $this->invoice($request, $invoiceId);
+        abort_if(Gate::denies('issue', $invoice), 403, __('You cannot send invoices from this branch.'));
         $email = (string) $request->validate(['email' => ['required', 'email', 'max:255']])['email'];
         $organization = $this->organization();
 

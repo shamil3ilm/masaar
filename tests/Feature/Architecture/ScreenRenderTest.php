@@ -14,7 +14,9 @@ use App\Domains\Invoice\Models\Product;
 use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Licensing\Models\License;
+use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Models\OrganizationGroup;
 use App\Domains\Support\Models\SupportMessage;
 use App\Domains\Support\Models\SupportTicket;
 use App\Domains\Webhook\Models\Webhook;
@@ -60,7 +62,13 @@ class ScreenRenderTest extends TestCase
      * as one. Every other portal screen is rendered as a plain member, so a
      * screen that needs more than that still fails here.
      */
-    private const ORG_ADMIN_ONLY = ['portal.branding.edit', 'portal.company.edit', 'portal.numbering.edit', 'portal.zatca.show', 'portal.zatca.late', 'portal.team.index', 'portal.billing'];
+    private const ORG_ADMIN_ONLY = ['portal.branding.edit', 'portal.company.edit', 'portal.numbering.edit', 'portal.zatca.show', 'portal.zatca.late', 'portal.team.index', 'portal.billing', 'portal.branches.index', 'portal.branches.create', 'portal.branches.edit'];
+
+    /**
+     * Portal screens only someone in two companies of one group has: a 404
+     * for everyone else. test_every_group_screen_renders opens them as one.
+     */
+    private const GROUP_ONLY = ['portal.reports.group'];
 
     /**
      * GET routes that answer with a file rather than a page. ThemeTest covers
@@ -133,6 +141,8 @@ class ScreenRenderTest extends TestCase
 
     private Product $product;
 
+    private Branch $branch;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -195,6 +205,12 @@ class ScreenRenderTest extends TestCase
 
         $this->customer = Customer::create(['org_id' => $this->org->id, 'name' => 'Gulf Supplies', 'vat_number' => '310122393500003', 'city' => 'Riyadh']);
         $this->product = Product::create(['org_id' => $this->org->id, 'name' => 'Consulting hour', 'unit_code' => 'HUR', 'unit_price' => '250', 'tax_rate' => '15']);
+
+        // A branch, so the branch screens and the switcher render with one.
+        $this->branch = Branch::withoutTenantScope(fn () => Branch::create([
+            'org_id' => $this->org->id, 'name' => 'Olaya', 'device_serial' => '1-300000000000003|2-001|3-MASAAR',
+            'street' => 'Olaya Street', 'building_number' => '1234', 'district' => 'Al Olaya', 'city' => 'Riyadh', 'postal_code' => '12345',
+        ]));
 
         // Draft, not issued: the Issue button is the only confirmation on any
         // portal screen and it renders only for a draft, so an issued fixture
@@ -316,6 +332,26 @@ class ScreenRenderTest extends TestCase
     }
 
     /**
+     * The group's page, as someone in two companies of one group.
+     */
+    public function test_every_group_screen_renders(): void
+    {
+        $group = OrganizationGroup::query()->create(['name' => 'Acme Group']);
+        $this->org->forceFill(['group_id' => $group->id])->save();
+        $sister = Organization::create(['name' => 'Acme Logistics', 'country' => 'SA', 'group_id' => $group->id, 'status' => 'active']);
+        $this->member->organizations()->attach($sister->id, ['role' => 'member', 'status' => 'active']);
+
+        foreach (self::GROUP_ONLY as $name) {
+            $status = $this->asRequest(fn (): int => $this->actingAs($this->member)
+                ->withSession(['portal_org_id' => $this->org->id])
+                ->get(route($name, absolute: false))
+                ->status());
+
+            $this->assertSame(200, $status, $name.' answered '.$status);
+        }
+    }
+
+    /**
      * A view that throws arrives here as the exception, with the Blade file
      * named in its trace. A redirect arrives as a status, which needs saying -
      * otherwise a screen quietly bouncing to the organization picker would
@@ -426,6 +462,7 @@ class ScreenRenderTest extends TestCase
             'ticketId' => $this->ticket->id,
             'customerId' => $this->customer->id,
             'productId' => $this->product->id,
+            'branchId' => $this->branch->id,
         ];
 
         $screens = [];
@@ -434,7 +471,7 @@ class ScreenRenderTest extends TestCase
             $name = (string) $route->getName();
 
             if (! str_starts_with($name, $prefix) || ! in_array('GET', $route->methods(), true)
-                || in_array($name, self::DOWNLOADS, true) || in_array($name, self::UAE_ONLY, true)) {
+                || in_array($name, self::DOWNLOADS, true) || in_array($name, self::UAE_ONLY, true) || in_array($name, self::GROUP_ONLY, true)) {
                 continue;
             }
 

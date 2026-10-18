@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Reports;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
 use App\Domains\Compliance\Countries\SaudiArabia\Support\FatooraTime;
+use App\Domains\Organization\Services\BranchScope;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -19,6 +20,9 @@ use Illuminate\Support\Collection;
  * request resolved. Filtering by hand as well would work today and hide the
  * omission on the day someone forgets. A request with no tenant context gets
  * nothing back.
+ *
+ * Every count and list is of the branches the screen shows (BranchScope),
+ * through each submission's invoice.
  */
 class SubmissionReport
 {
@@ -30,6 +34,10 @@ class SubmissionReport
      */
     private const IN_FLIGHT = ['pending_submission', 'queued', 'submitted'];
 
+    public function __construct(
+        private readonly BranchScope $branches,
+    ) {}
+
     /**
      * Number of submissions in each state, keyed by state.
      *
@@ -37,7 +45,7 @@ class SubmissionReport
      */
     public function countByState(): Collection
     {
-        return $this->groupByState(InvoiceSubmission::query());
+        return $this->groupByState($this->submissions());
     }
 
     /**
@@ -47,7 +55,7 @@ class SubmissionReport
      */
     public function countByStateFor(string $userId): Collection
     {
-        return $this->groupByState(InvoiceSubmission::where('created_by', $userId));
+        return $this->groupByState($this->submissions()->where('created_by', $userId));
     }
 
     /**
@@ -92,7 +100,7 @@ class SubmissionReport
             // Today on the Kingdom's clock, handed to the query as the UTC
             // instant that midnight is - created_at is stored in UTC, and a
             // Riyadh-zoned Carbon would be formatted in its own timezone.
-            'today' => InvoiceSubmission::where('created_by', $userId)
+            'today' => $this->submissions()->where('created_by', $userId)
                 ->where('created_at', '>=', FatooraTime::saudiNow()->startOfDay()->utc())
                 ->count(),
         ];
@@ -107,7 +115,7 @@ class SubmissionReport
      */
     public function dailyCounts(DateTimeInterface $since): array
     {
-        return InvoiceSubmission::query()
+        return $this->submissions()
             ->where('created_at', '>=', $since)
             ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
             ->groupBy('date')
@@ -123,7 +131,7 @@ class SubmissionReport
      */
     public function activityByUser(DateTimeInterface $since, int $limit): Collection
     {
-        return InvoiceSubmission::query()
+        return $this->submissions()
             ->leftJoin('users', 'invoice_submissions.created_by', '=', 'users.id')
             ->where('invoice_submissions.created_at', '>=', $since)
             ->selectRaw('COALESCE(users.name, users.email, ?) as user_name, users.id as user_id, COUNT(*) as submission_count', ['System'])
@@ -138,7 +146,7 @@ class SubmissionReport
      */
     public function recent(int $limit): Collection
     {
-        return InvoiceSubmission::query()
+        return $this->submissions()
             ->latest()
             ->limit($limit)
             ->get();
@@ -152,7 +160,7 @@ class SubmissionReport
      */
     public function activity(int $limit): Collection
     {
-        return InvoiceSubmission::query()
+        return $this->submissions()
             ->orderByDesc('created_at')
             ->limit($limit)
             ->select(['id', 'invoice_id', 'state', 'reporting_status', 'created_at', 'updated_at'])
@@ -170,7 +178,7 @@ class SubmissionReport
      */
     public function byUser(string $userId, int $perPage): LengthAwarePaginator
     {
-        return InvoiceSubmission::query()
+        return $this->submissions()
             ->leftJoin('invoices', 'invoice_submissions.invoice_id', '=', 'invoices.id')
             ->where('invoice_submissions.created_by', $userId)
             ->select([
@@ -196,5 +204,13 @@ class SubmissionReport
             ->groupBy('state')
             ->orderBy('state')
             ->pluck('total', 'state');
+    }
+
+    /**
+     * @return Builder<InvoiceSubmission>
+     */
+    private function submissions(): Builder
+    {
+        return $this->branches->applyVisibleByInvoice(InvoiceSubmission::query(), 'invoice_submissions.invoice_id');
     }
 }

@@ -77,6 +77,9 @@
     </x-ui.table>
 </div>
 
+{{-- The period branch by branch, beside the combined figures (BranchBreakdown). --}}
+@include('portal.partials.branch-breakdown', ['rows' => $branchBreakdown ?? []])
+
 <p class="text-sm text-muted">
     {{ __('A working summary of your sales, not the FTA VAT return form: the return also splits standard-rated sales by emirate and asks for your purchases, which are not recorded here. Check the figures with your accountant before you file.') }}
 </p>

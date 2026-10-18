@@ -40,6 +40,7 @@ class RawTenantQueryTest extends TestCase
         'webhooks',
         'branches',
         'compliance_profiles',
+        'branch_user',
     ];
 
     /**

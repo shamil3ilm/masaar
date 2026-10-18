@@ -9,6 +9,7 @@ use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\BranchScope;
 use App\Domains\Organization\Services\BranchService;
 use App\Domains\Organization\Services\Membership;
 use App\Http\Listing\CsvExport;
@@ -46,6 +47,7 @@ class InvoiceHistory
     public function __construct(
         private readonly JurisdictionResolver $jurisdictions,
         private readonly BranchService $branches,
+        private readonly BranchScope $scope,
         private readonly Membership $membership,
     ) {}
 
@@ -57,7 +59,13 @@ class InvoiceHistory
     {
         $organizationId = (string) $organization->id;
         $rules = $this->jurisdictions->forRules($organization)->invoiceRules();
-        $tills = $this->branches->tills($organizationId);
+        // Only the branches the person may see are offered: a cashier's list
+        // narrows within their own.
+        $allowed = $this->scope->allowed();
+        $tills = array_values(array_filter(
+            $this->branches->tills($organizationId),
+            fn (array $till): bool => $allowed === null || in_array($till['id'], $allowed, true),
+        ));
         $branches = array_column($tills, 'name', 'id');
 
         $documents = array_intersect_key(self::documentLabels(), array_flip($rules->documentTypes()));
@@ -86,7 +94,7 @@ class InvoiceHistory
 
         if ($branches !== []) {
             $filters[] = new Choice('branch', __('Branch'), $branches, 'branch_id');
-            $filters[] = new Choice('till', __('Till or device'), $this->devices($organizationId, $tills), 'device_id');
+            $filters[] = new Choice('till', __('Till or device'), $this->devices($organizationId, $tills, $allowed === null), 'device_id');
         }
 
         $currencies = $this->currencies($organizationId);
@@ -185,13 +193,17 @@ class InvoiceHistory
     }
 
     /**
+     * The organization's documents on the branches the list shows
+     * (BranchScope): the one chosen in the switcher, or everything the
+     * person may see.
+     *
      * @return Builder<Invoice>
      */
     private function query(string $organizationId, bool $notes): Builder
     {
-        return Invoice::query()
+        return $this->scope->applyVisible(Invoice::query()
             ->where('org_id', $organizationId)
-            ->when($notes, fn (QueryBuilder $query) => $query->whereIn('document_type', self::NOTES));
+            ->when($notes, fn (QueryBuilder $query) => $query->whereIn('document_type', self::NOTES)));
     }
 
     /**
@@ -199,11 +211,12 @@ class InvoiceHistory
      * is the organization's own id, and each branch's.
      *
      * @param  list<array{id: string, name: string, till_number: int|null}>  $tills
+     * @param  bool  $headOffice  whether the person sees head office's own
      * @return array<string, string>
      */
-    private function devices(string $organizationId, array $tills): array
+    private function devices(string $organizationId, array $tills, bool $headOffice): array
     {
-        $devices = [$organizationId => __('Head office')];
+        $devices = $headOffice ? [$organizationId => __('Head office')] : [];
 
         foreach ($tills as $till) {
             $devices[$till['id']] = $till['till_number'] === null

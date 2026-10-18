@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia\Reports;
 
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
 use App\Domains\Compliance\Engine\Contracts\TaxReports as TaxReportsPort;
 use App\Domains\Compliance\Engine\DTOs\Panel;
 use App\Domains\Invoice\Services\InvoiceCsv;
@@ -39,6 +40,19 @@ class TaxReports implements TaxReportsPort
         return new Panel('countries.saudi-arabia.reports', [
             'summary' => $this->summary->for($organizationId, $from, $to),
         ]);
+    }
+
+    /** The return's net amounts: the boxes with their adjustments. */
+    public function totals(string $organizationId, CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        $summary = $this->summary->for($organizationId, $from, $to);
+
+        return [
+            'documents' => $summary['documents'],
+            'base' => $summary['net_base'],
+            'vat' => $summary['net_vat'],
+            'currency' => FatooraConfig::CURRENCY_SAR,
+        ];
     }
 
     public function invoicesCsv(string $organizationId, CarbonImmutable $from, CarbonImmutable $to, string $fileName): StreamedResponse

@@ -10,6 +10,7 @@ use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\VatSummary;
 use App\Domains\Organization\Models\Branch;
+use App\Domains\Organization\Services\BranchScope;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -32,6 +33,7 @@ class DailyClose
 {
     public function __construct(
         private readonly VatSummary $vat,
+        private readonly BranchScope $branches,
     ) {}
 
     /**
@@ -73,7 +75,9 @@ class DailyClose
         $start = CarbonImmutable::instance(FatooraTime::saudiNow()->setDateFrom($day)->startOfDay())->utc();
         $end = $start->addDay();
 
-        return Invoice::withoutTenantScope(fn () => Invoice::query()
+        // Of the branches the close shows: the one chosen in the switcher,
+        // or all those the person may see.
+        return Invoice::withoutTenantScope(fn () => $this->branches->applyVisible(Invoice::query())
             ->where('org_id', $organizationId)
             ->whereNotNull('hash')
             ->where('status', '!=', InvoiceStatus::Draft)

@@ -9,11 +9,13 @@ use App\Domains\Invoice\Services\IdempotentDraft;
 use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Invoice\Services\InvoicePdf;
+use App\Domains\Organization\Services\BranchAccess;
 use App\Domains\Organization\Services\PrintPreferences;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Pagination\PageSize;
 use App\Http\Responses\ApiResponse;
+use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -43,6 +45,7 @@ class InvoiceController extends Controller
         private readonly InvoiceFinder $invoices,
         private readonly InvoicePdf $pdf,
         private readonly IdempotentDraft $once,
+        private readonly BranchAccess $branches,
     ) {}
 
     /**
@@ -80,8 +83,22 @@ class InvoiceController extends Controller
         // As the organization's country's rules map the request.
         $draft = $request->draft();
 
+        // A person signed in through a token issues only at a branch they
+        // work at, and a cashier's invoice names their branch when it names
+        // none; an integration's key is not a person, and names what it likes.
+        $branchId = $request->validated('branch_id');
+        $userId = $request->user()?->getAuthIdentifier();
+
+        if ($userId !== null && $this->tenant->getRole() !== 'service') {
+            try {
+                $branchId = $this->branches->draftBranch((string) $userId, (string) $organizationId, $branchId);
+            } catch (DomainException $e) {
+                return ApiResponse::forbidden($e->getMessage());
+            }
+        }
+
         $invoice = $this->once->earlier($organizationId, $key, $draft)
-            ?? $this->once->draft($draft, $organizationId, $request->validated('branch_id'), $request->countryFields(), $key);
+            ?? $this->once->draft($draft, $organizationId, $branchId, $request->countryFields(), $key);
 
         if (! $invoice->wasRecentlyCreated) {
             return ApiResponse::success([
@@ -125,7 +142,7 @@ class InvoiceController extends Controller
 
         try {
             $pdf = $this->pdf->render($invoice, $organization, $preferences->paper($organization, $invoice->branch_id, $request->user()?->id, $paper));
-        } catch (\DomainException $e) {
+        } catch (DomainException $e) {
             return ApiResponse::error($e->getMessage(), 409);
         }
 

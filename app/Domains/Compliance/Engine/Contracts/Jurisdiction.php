@@ -81,4 +81,7 @@ interface Jurisdiction
 
     /** The country's steps in the setup checklist. */
     public function setup(): SetupSteps;
+
+    /** A branch as a device the authority knows, for the branch screens. */
+    public function devices(): Devices;
 }

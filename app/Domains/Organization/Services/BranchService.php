@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Services;
 
+use App\Domains\Audit\Services\AuditService;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Organization\Exceptions\BranchInUseException;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use DomainException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -20,6 +22,7 @@ class BranchService
 {
     public function __construct(
         private readonly CredentialStore $credentials,
+        private readonly AuditService $audit,
     ) {}
 
     /**
@@ -56,6 +59,9 @@ class BranchService
                 $branch->setAsDefault();
             }
 
+            // On the organization's activity record, as each branch change is.
+            $this->audit->logCreated($branch);
+
             return $branch;
         });
     }
@@ -84,7 +90,12 @@ class BranchService
             unset($data['device_serial']);
         }
 
+        $before = $branch->only(array_keys($updateData));
         $branch->update($updateData);
+
+        if ($branch->wasChanged()) {
+            $this->audit->logUpdated($branch, $before);
+        }
 
         return $branch->fresh();
     }
@@ -214,6 +225,29 @@ class BranchService
             ->whereKey($branchId)
             ->where('org_id', $organizationId)
             ->exists());
+    }
+
+    /** One of the organization's branches, or null when it is not one of them. */
+    public function find(string $organizationId, string $branchId): ?Branch
+    {
+        return Branch::withoutTenantScope(fn (): ?Branch => Branch::query()
+            ->whereKey($branchId)
+            ->where('org_id', $organizationId)
+            ->first());
+    }
+
+    /**
+     * The organization's branches in till order, for its branch screens.
+     *
+     * @return Collection<int, Branch>
+     */
+    public function list(string $organizationId): Collection
+    {
+        return Branch::withoutTenantScope(fn () => Branch::query()
+            ->where('org_id', $organizationId)
+            ->orderBy('till_number')
+            ->orderBy('created_at')
+            ->get());
     }
 
     /**

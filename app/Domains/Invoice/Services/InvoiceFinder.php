@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Invoice\Services;
 
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Organization\Services\BranchScope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -15,9 +16,17 @@ use Illuminate\Pagination\LengthAwarePaginator;
  * Every lookup names the organization explicitly as well as passing through
  * BelongsToTenant's scope, so another tenant's id is not found even where the
  * scope stands down. A null organization matches no invoice.
+ *
+ * And the branches the signed-in person may see (BranchScope): a cashier
+ * assigned to one branch finds another branch's invoice no more than another
+ * tenant's, whether by URL or through the API.
  */
 class InvoiceFinder
 {
+    public function __construct(
+        private readonly BranchScope $branches,
+    ) {}
+
     /**
      * @throws ModelNotFoundException
      */
@@ -53,6 +62,6 @@ class InvoiceFinder
 
     private function ofOrganization(?string $organizationId): Builder
     {
-        return Invoice::where('org_id', $organizationId);
+        return $this->branches->applyAllowed(Invoice::where('org_id', $organizationId));
     }
 }

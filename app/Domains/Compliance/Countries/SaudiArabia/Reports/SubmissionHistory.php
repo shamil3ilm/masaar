@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\SaudiArabia\Reports;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
+use App\Domains\Organization\Services\BranchScope;
 use App\Domains\Organization\Services\Membership;
 use App\Http\Listing\CsvExport;
 use App\Http\Listing\Filters\Choice;
@@ -24,13 +25,15 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  *
  * Confined to the tenant by InvoiceSubmission's global scope, as
  * SubmissionReport is, and by the organization named in the query besides;
- * the invoice joined in is the submission's own. The old links still work:
+ * the invoice joined in is the submission's own. Of the branches the list
+ * shows (BranchScope), through that invoice. The old links still work:
  * state, user_id, date_from and date_to mean what they did.
  */
 class SubmissionHistory
 {
     public function __construct(
         private readonly Membership $membership,
+        private readonly BranchScope $branches,
     ) {}
 
     public function spec(string $organizationId, string $key): ListSpec
@@ -92,7 +95,7 @@ class SubmissionHistory
      */
     private function query(string $organizationId): Builder
     {
-        return InvoiceSubmission::query()
+        return $this->branches->applyVisibleByInvoice(InvoiceSubmission::query(), 'invoice_submissions.invoice_id')
             ->where('invoice_submissions.org_id', $organizationId)
             ->leftJoin('users', 'invoice_submissions.created_by', '=', 'users.id')
             ->leftJoin('invoices', 'invoice_submissions.invoice_id', '=', 'invoices.id')
