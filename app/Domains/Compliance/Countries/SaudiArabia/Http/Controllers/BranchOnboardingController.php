@@ -7,6 +7,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\ComplianceSampleSet;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\CsidOnboarding;
+use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\OnboardingEvents;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificatePem;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Services\BranchService;
@@ -29,6 +30,7 @@ class BranchOnboardingController extends Controller
         private readonly BranchService $branchService,
         private readonly CsidOnboarding $onboarding,
         private readonly ComplianceSampleSet $samples,
+        private readonly OnboardingEvents $events,
     ) {}
 
     /**
@@ -78,6 +80,7 @@ class BranchOnboardingController extends Controller
 
             // Update branch status
             $branch->update(['onboarding_status' => Branch::STATUS_CSR_GENERATED]);
+            $this->events->announce((string) $organization->id, OnboardingEvents::CCSID_OBTAINED, (string) $branch->id);
 
             return ApiResponse::success([
                 'ccsid' => substr($result['ccsid'], 0, 50).'...',
@@ -131,6 +134,7 @@ class BranchOnboardingController extends Controller
 
             if ($result['passed']) {
                 $branch->update(['onboarding_status' => Branch::STATUS_COMPLIANCE_PASSED]);
+                $this->events->announce((string) $organization->id, OnboardingEvents::COMPLIANCE_PASSED, (string) $branch->id);
             }
 
             return ApiResponse::success([
@@ -223,6 +227,7 @@ class BranchOnboardingController extends Controller
 
             // Mark branch as active
             $branch->markAsActive($certificateExpiry);
+            $this->events->announce((string) $organization->id, OnboardingEvents::PCSID_OBTAINED, (string) $branch->id);
 
             return ApiResponse::success([
                 'branch_id' => $branch->id,

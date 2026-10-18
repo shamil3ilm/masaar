@@ -26,6 +26,7 @@ class OrganizationOnboarding
         private readonly CredentialStore $credentials,
         private readonly Registrar $registrar,
         private readonly ComplianceSampleSet $samples,
+        private readonly OnboardingEvents $events,
     ) {}
 
     /**
@@ -79,6 +80,7 @@ class OrganizationOnboarding
         ), $otp);
 
         $this->credentials->put((string) $organization->id, null, CredentialStore::CCSID, $result);
+        $this->events->announce((string) $organization->id, OnboardingEvents::CCSID_OBTAINED);
 
         return ['ccsid' => (string) $result['ccsid'], 'request_id' => (string) $result['requestId']];
     }
@@ -109,6 +111,10 @@ class OrganizationOnboarding
             $ccsid['secret'],
             array_map(fn (array $document): string => $document['xml'], $documents),
         );
+
+        if ($result['passed']) {
+            $this->events->announce((string) $organization->id, OnboardingEvents::COMPLIANCE_PASSED);
+        }
 
         return ['passed' => (bool) $result['passed'], 'results' => $result['results']];
     }
@@ -145,6 +151,7 @@ class OrganizationOnboarding
         // keys, and a merge built from a copy loaded earlier discards
         // anything written in between.
         $this->registrar->markOnboarded($organization);
+        $this->events->announce((string) $organization->id, OnboardingEvents::PCSID_OBTAINED);
     }
 
     /**

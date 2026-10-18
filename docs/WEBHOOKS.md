@@ -29,9 +29,9 @@ resolves to a public address, and the events:
 {"url": "https://erp.example.com/webhooks/masaar", "events": ["*"]}
 ```
 
-`"*"` subscribes to everything, which is what to send unless you have a reason
-not to (see `invoice.warning` under [Events](#events)); a list of event names
-subscribes to those. The answer carries the webhook's `secret` in
+`"*"` subscribes to everything; a list of event names from the table under
+[Events](#events) subscribes to those, and a name the table does not have is
+refused. The answer carries the webhook's `secret` in
 `data.webhook.secret`, once. `GET /api/v1/webhooks` lists the organization's
 webhooks; `GET`, `PUT` (`url`, `events`, `is_active`) and `DELETE` on
 `/api/v1/webhooks/{webhook}` read, change and remove one.
@@ -50,7 +50,12 @@ the URL again and deleting the old webhook.
 | `invoice.submitted` | A Saudi invoice is sent to ZATCA from the queue | the submission fields below, and `submitted_at` |
 | `invoice.cleared` | ZATCA clears a standard invoice without warnings | the submission fields, `clearance_status`, `cleared_at`, `invoice_hash` |
 | `invoice.reported` | ZATCA accepts the report of a simplified invoice without warnings | the submission fields, `reporting_status` |
+| `invoice.warning` | ZATCA accepts an invoice **with warnings**, in place of `invoice.cleared` or `invoice.reported` | the submission fields, `warnings` |
 | `invoice.rejected` | ZATCA rejects an invoice | the submission fields, `errors`, `error_count` |
+| `invoice.failed` | A filing attempt fails | the submission fields; `will_retry` or `permanent` says whether it is tried again |
+| `onboarding.ccsid_obtained` | A ZATCA compliance certificate is obtained, for the organization or one of its branches | `org_id`, `branch_id` (null for the organization's own device), `occurred_at` |
+| `onboarding.compliance_passed` | The compliance documents pass | `org_id`, `branch_id`, `occurred_at` |
+| `onboarding.pcsid_obtained` | The production certificate is obtained: the organization or branch can issue | `org_id`, `branch_id`, `occurred_at` |
 | `certificate.expiring` | The signing certificate nears its expiry | `org_id`, `days_remaining`, `expiry_date`, `severity`, `message` |
 | `webhook.test` | A test is sent | `message`, `webhook_id` |
 
@@ -59,19 +64,14 @@ The submission fields are `submission_id`, `invoice_id`, `org_id`,
 `icv`, `state`, `previous_state`, `submission_type`, `zatca_uuid` and
 `timestamp`.
 
-A subscription may also name `invoice.created`, `invoice.updated`,
-`onboarding.ccsid_obtained`, `onboarding.compliance_passed` and
-`onboarding.pcsid_obtained`; nothing sends them yet.
+An integrator that subscribes by name and wants every filed invoice names
+`invoice.cleared`, `invoice.reported` and `invoice.warning` together: an
+invoice accepted with warnings is announced only as `invoice.warning`.
 
-Two more events reach only a `"*"` subscription, since a subscription cannot
-name them:
-
-- `invoice.warning`: ZATCA accepted the invoice **with warnings**. It is sent
-  instead of `invoice.cleared` or `invoice.reported`, so an integrator that
-  subscribes by name never hears of such an invoice: subscribe with `"*"`, or
-  read its status (`GET /api/v1/pipeline/status/{invoiceId}`).
-- `invoice.failed`: a filing attempt failed; `will_retry` or `permanent` in
-  `data` says whether it is tried again.
+Drafts are not announced: `invoice.created` and `invoice.updated` are no
+longer offered. A draft is not a document anyone acts on, and every invoice
+that is - issued, filed, answered - has its event above. A webhook that
+already names one of them keeps working and simply receives nothing for it.
 
 ### UAE organizations
 

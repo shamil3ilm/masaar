@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Domains\Webhook\Services\WebhookService;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Console\Command;
 use Illuminate\Foundation\Http\FormRequest;
@@ -88,7 +89,7 @@ class GenerateOpenapi extends Command
                     // and is closed when neither is configured.
                     'metricsToken' => ['type' => 'http', 'scheme' => 'bearer'],
                 ],
-                'schemas' => $this->envelopes(),
+                'schemas' => [...$this->envelopes(), 'WebhookEvent' => $this->webhookEvent()],
             ],
             'paths' => $this->paths(),
         ];
@@ -110,6 +111,22 @@ class GenerateOpenapi extends Command
         $this->info(sprintf('Wrote %d paths to %s', count($spec['paths']), $path));
 
         return self::SUCCESS;
+    }
+
+    /**
+     * The events a webhook may subscribe to, as WebhookService::EVENTS
+     * lists them, and "*" for all of them: the `events` the webhook routes
+     * take.
+     *
+     * @return array<string, mixed>
+     */
+    private function webhookEvent(): array
+    {
+        return [
+            'type' => 'string',
+            'description' => 'An event a webhook subscribes to (WebhookService::EVENTS), or "*" for every one',
+            'enum' => [...WebhookService::EVENTS, '*'],
+        ];
     }
 
     /**

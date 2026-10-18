@@ -93,6 +93,22 @@ components:
               description: 'Field errors, where the failure has them'
             category:
               type: string
+    WebhookEvent:
+      type: string
+      description: 'An event a webhook subscribes to (WebhookService::EVENTS), or "*" for every one'
+      enum:
+        - invoice.issued
+        - invoice.submitted
+        - invoice.cleared
+        - invoice.reported
+        - invoice.warning
+        - invoice.rejected
+        - invoice.failed
+        - onboarding.ccsid_obtained
+        - onboarding.compliance_passed
+        - onboarding.pcsid_obtained
+        - certificate.expiring
+        - '*'
 paths:
   /api/admin/dashboard:
     get:

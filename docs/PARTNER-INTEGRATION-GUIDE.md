@@ -1172,9 +1172,9 @@ curl -X POST https://api.example.com/api/v1/webhooks \
   }'
 ```
 
-`"*"` rather than a list: an invoice ZATCA accepts with warnings is announced
-as `invoice.warning`, instead of `invoice.cleared` or `invoice.reported`, and
-only a `"*"` subscription receives it ([WEBHOOKS.md](./WEBHOOKS.md#events)).
+`"*"`, or a list that names `invoice.warning` beside `invoice.cleared` and
+`invoice.reported`: an invoice ZATCA accepts with warnings is announced as
+`invoice.warning` instead ([WEBHOOKS.md](./WEBHOOKS.md#events)).
 The URL is https and public. The answer carries the webhook's `secret` in
 `data.webhook.secret`, once; store it as `MASAAR_WEBHOOK_SECRET`.
 `GET`, `PUT` and `DELETE /api/v1/webhooks/{webhook}` read, change and remove
