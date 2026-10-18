@@ -33,6 +33,7 @@ class FeatureOverride extends Model
 
     protected $fillable = [
         'org_id',
+        'subject',
         'feature',
         'state',
         'reason',

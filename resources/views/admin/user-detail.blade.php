@@ -127,6 +127,7 @@
                       data-confirm-action="Reactivate"
                       data-confirm="Reactivate {{ $user->email }}? They can sign in again straight away.">
                     @csrf
+                    @include('admin.partials.approval-reason', ['action' => 'users.reactivate'])
                     <x-ui.button variant="primary" class="w-full">Reactivate account</x-ui.button>
                 </form>
                 @endadmincan

@@ -13,7 +13,7 @@
                  reissued rather than adjusted. --}}
             @if (! in_array($invoice->document_type, [\App\Domains\Invoice\Enums\DocumentType::CreditNote, \App\Domains\Invoice\Enums\DocumentType::DebitNote], true)
                 && $invoice->status !== \App\Domains\Invoice\Enums\InvoiceStatus::Rejected
-                && auth()->user()?->roleIn((string) request()->attributes->get(\App\Domains\Organization\Http\Middleware\PortalTenant::ORG_ID)) !== 'viewer')
+                && ! \App\Domains\Organization\Enums\MemberRole::readOnly(auth()->user()?->roleIn((string) request()->attributes->get(\App\Domains\Organization\Http\Middleware\PortalTenant::ORG_ID))))
                 <x-ui.button variant="secondary" :href="route('portal.invoices.adjust', [$invoice->id, 'credit_note'])">{{ __('Credit note') }}</x-ui.button>
                 <x-ui.button variant="secondary" :href="route('portal.invoices.adjust', [$invoice->id, 'debit_note'])">{{ __('Debit note') }}</x-ui.button>
             @endif

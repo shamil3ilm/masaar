@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Licensing\Http\Controllers;
 
-use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Licensing\Exceptions\LicenceStateException;
 use App\Domains\Licensing\Exceptions\LicenseException;
@@ -12,6 +11,9 @@ use App\Domains\Licensing\Models\License;
 use App\Domains\Licensing\Services\LicenceHistory;
 use App\Domains\Licensing\Services\LicenseManagementService;
 use App\Domains\Organization\Rules\VatNumber;
+use App\Domains\Platform\Approvals\ActionResult;
+use App\Domains\Platform\Approvals\Approvals;
+use App\Domains\Platform\Http\Concerns\HoldsForApproval;
 use App\Http\Controllers\Controller;
 use App\Http\Listing\Lists;
 use App\Support\OperatorError;
@@ -19,6 +21,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -34,10 +37,13 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class AdminLicenceController extends Controller
 {
+    use HoldsForApproval;
+
     public function __construct(
         private readonly LicenseManagementService $licences,
         private readonly LicenceHistory $history,
         private readonly Lists $lists,
+        private readonly Approvals $approvals,
     ) {}
 
     public function index(Request $request): View
@@ -98,32 +104,24 @@ class AdminLicenceController extends Controller
         ]);
 
         try {
-            // createLicense() reads $data['org_id'] directly rather than
-            // through ??, so the key has to be present even when there is no
-            // organization - the missing key is a warning PHPUnit fails on.
-            $issued = $this->licences->createLicense([
+            return $this->holdOrRun($this->approvals, $request, 'licences.issue', [
                 'org_id' => $data['org_id'] ?? null,
                 'organization_name' => $data['organization_name'],
                 'contact_email' => $data['contact_email'],
                 'organization_vat' => $data['organization_vat'] ?? null,
                 'contact_phone' => $data['contact_phone'] ?? null,
                 'tier' => $data['tier'],
-                // Issued from here means usable. The service defaults to
-                // pending_activation, and activateLicense() has no screen, so
-                // that default would hand the admin a licence they cannot
-                // turn on.
-                'status' => LicenseStatus::Active->value,
                 'expires_at' => $data['expires_at'] ?? null,
                 'notes' => $data['notes'] ?? null,
-            ]);
+            ], fn (ActionResult $issued): RedirectResponse => redirect()
+                ->route('admin.licences.show', $issued->data['licence_id'])
+                ->with('success', $issued->message)
+                ->with('api_secret', $issued->data['api_secret']));
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Throwable $e) {
             return back()->withInput()->with('error', OperatorError::message($e, 'Issuing the licence', [LicenseException::class]));
         }
-
-        return redirect()
-            ->route('admin.licences.show', $issued['license']->id)
-            ->with('success', 'Licence issued.')
-            ->with('api_secret', $issued['api_secret']);
     }
 
     /**
@@ -184,10 +182,11 @@ class AdminLicenceController extends Controller
         $defaults = LicenseTier::allowances();
 
         return $this->attempt(
-            fn () => $this->licences->updateLimits($licenceId, [
-                'invoices_per_month' => $validated['invoices_per_month'] ?? $defaults['invoices_per_month'],
-                'calls_per_day' => $validated['calls_per_day'] ?? $defaults['calls_per_day'],
-            ]),
+            fn () => $this->holdOrRun($this->approvals, $request, 'licences.allowances', [
+                'licence_id' => $licenceId,
+                'invoices_per_month' => (int) ($validated['invoices_per_month'] ?? $defaults['invoices_per_month']),
+                'calls_per_day' => (int) ($validated['calls_per_day'] ?? $defaults['calls_per_day']),
+            ], fn (ActionResult $done): RedirectResponse => redirect()->route('admin.licences.show', $licenceId)->with('success', $done->message)),
             'Allowances saved.',
             $licenceId,
         );
@@ -209,7 +208,8 @@ class AdminLicenceController extends Controller
         ])['reason'];
 
         return $this->attempt(
-            fn () => $this->licences->revokeLicense($licenceId, $reason),
+            fn () => $this->holdOrRun($this->approvals, $request, 'licences.revoke', ['licence_id' => $licenceId, 'reason' => $reason],
+                fn (ActionResult $done): RedirectResponse => redirect()->route('admin.licences.show', $licenceId)->with('success', $done->message), $reason),
             'Licence revoked.',
             $licenceId,
         );
@@ -229,7 +229,14 @@ class AdminLicenceController extends Controller
     private function attempt(callable $action, string $success, string $licenceId): RedirectResponse
     {
         try {
-            $action();
+            // An action held for approval answers with its request instead.
+            $held = $action();
+
+            if ($held instanceof RedirectResponse) {
+                return $held;
+            }
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Throwable $e) {
             // When the failure *is* "no such licence", the detail page for that
             // id is a 404: the redirect would consume the flash on a page that

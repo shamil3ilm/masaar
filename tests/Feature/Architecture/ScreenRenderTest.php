@@ -17,6 +17,7 @@ use App\Domains\Licensing\Models\License;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Models\OrganizationGroup;
+use App\Domains\Platform\Models\ApprovalRequest;
 use App\Domains\Support\Models\SupportMessage;
 use App\Domains\Support\Models\SupportTicket;
 use App\Domains\Webhook\Models\Webhook;
@@ -62,7 +63,7 @@ class ScreenRenderTest extends TestCase
      * as one. Every other portal screen is rendered as a plain member, so a
      * screen that needs more than that still fails here.
      */
-    private const ORG_ADMIN_ONLY = ['portal.branding.edit', 'portal.company.edit', 'portal.numbering.edit', 'portal.zatca.show', 'portal.zatca.late', 'portal.team.index', 'portal.billing', 'portal.branches.index', 'portal.branches.create', 'portal.branches.edit', 'portal.activity'];
+    private const ORG_ADMIN_ONLY = ['portal.branding.edit', 'portal.company.edit', 'portal.numbering.edit', 'portal.zatca.show', 'portal.zatca.late', 'portal.team.index', 'portal.billing', 'portal.branches.index', 'portal.branches.create', 'portal.branches.edit', 'portal.activity', 'portal.settings.edit'];
 
     /**
      * Portal screens only someone in two companies of one group has: a 404
@@ -448,6 +449,24 @@ class ScreenRenderTest extends TestCase
     }
 
     /**
+     * A change waiting for approval, for Admin › Approvals to open.
+     */
+    private function approvalRequest(): ApprovalRequest
+    {
+        return ApprovalRequest::query()->first() ?? tap(new ApprovalRequest([
+            'action' => 'admins.role',
+            'payload' => ['user_id' => $this->member->id, 'role' => 'auditor'],
+            'summary' => 'Change a role',
+            'changes' => ['before' => ['role' => 'operations'], 'after' => ['role' => 'auditor']],
+            'reason' => 'Rotation',
+            'status' => ApprovalRequest::PENDING,
+            'approvals_required' => 1,
+            'approver_roles' => ['owner'],
+            'expires_at' => now()->addDay(),
+        ]), fn (ApprovalRequest $request) => $request->forceFill(['requested_by' => $this->member->id])->save());
+    }
+
+    /**
      * The screens the router knows about, with their parameters filled in.
      *
      * @return array<string, string> route name => URI to open
@@ -464,6 +483,7 @@ class ScreenRenderTest extends TestCase
             'customerId' => $this->customer->id,
             'productId' => $this->product->id,
             'branchId' => $this->branch->id,
+            'requestId' => $this->approvalRequest()->id,
         ];
 
         $screens = [];

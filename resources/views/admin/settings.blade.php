@@ -68,4 +68,25 @@
     </div>
 </form>
 @endadmincan
+
+{{-- The defaults every organization and person inherits until they set
+     their own (Customizations). Read by everyone in the console; set with
+     platform.configure. --}}
+<div class="mt-10 max-w-3xl">
+    <h2 class="text-lg font-semibold text-fg">{{ __('Defaults for everyone') }}</h2>
+    <p class="mt-1 text-sm text-muted">{{ __('What every organization and person starts with. An organization can set its own, and a person their own, unless the platform locks it.') }}</p>
+
+    <x-ui.card class="mt-4" flush>
+        @foreach ($customizations as $resolved)
+            @admincan('platform.configure')
+                <x-customization :resolved="$resolved" :action="route('admin.customizations.update', $resolved->definition->key)" />
+            @else
+                <div class="border-t border-line p-5 first:border-t-0">
+                    <p class="font-medium text-fg">{{ $resolved->definition->label }}</p>
+                    <p class="mt-1 text-sm text-muted">{{ $resolved->definition->display($resolved->value) ?: __('Default') }} · {{ $resolved->sourceLabel() }}</p>
+                </div>
+            @endadmincan
+        @endforeach
+    </x-ui.card>
+</div>
 @endsection

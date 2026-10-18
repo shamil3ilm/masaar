@@ -198,6 +198,58 @@ class AccessDecisionTest extends TestCase
         $this->assertRefused($this->decide($organization, Feature::IssueStandard), Level::Platform, 'kill_switch');
     }
 
+    /**
+     * Below the company: a platform admin's switch for a role, then for one
+     * person - each after the organization and the role, each off only.
+     */
+    public function test_role_switch_comes_before_person(): void
+    {
+        $organization = $this->organization();
+        $member = $this->member($organization, 'member');
+        $other = $this->member($organization, 'member');
+        $overrides = app(FeatureOverrides::class);
+
+        $overrides->set((string) $organization->id, Feature::IssueInvoices, 'off', 'Till staff only', 'ops@masaar.test', FeatureOverrides::person((string) $member->id));
+        $person = $this->decide($organization, Feature::IssueInvoices, $member);
+        $this->assertRefused($person, Level::User, 'user_override_off');
+        $this->assertStringContainsString('Till staff only', $person->reason);
+        $this->assertTrue($this->decide($organization, Feature::IssueInvoices, $other)->allowed);
+        $this->assertTrue($this->decide($organization, Feature::IssueInvoices)->allowed, 'no person, no person level');
+
+        $overrides->set((string) $organization->id, Feature::IssueInvoices, 'off', 'Members paused', 'ops@masaar.test', FeatureOverrides::role('member'));
+        $this->assertRefused($this->decide($organization, Feature::IssueInvoices, $member), Level::Role, 'role_override_off');
+        $this->assertRefused($this->decide($organization, Feature::IssueInvoices, $other), Level::Role, 'role_override_off');
+        $this->assertTrue($this->decide($organization, Feature::IssueInvoices, $this->member($organization, 'admin'))->allowed);
+    }
+
+    public function test_organization_wins_over_person_switch(): void
+    {
+        $organization = $this->organization(status: Organization::STATUS_SUSPENDED);
+        $member = $this->member($organization, 'member');
+        app(FeatureOverrides::class)->set((string) $organization->id, Feature::IssueInvoices, 'off', 'Paused', 'ops@masaar.test', FeatureOverrides::person((string) $member->id));
+
+        $this->assertRefused($this->decide($organization, Feature::IssueInvoices, $member), Level::Organization, 'status');
+    }
+
+    /**
+     * The person's switch is cached with the organization's, and a change
+     * to it is read at once.
+     */
+    public function test_person_switch_is_read_back(): void
+    {
+        $organization = $this->organization();
+        $member = $this->member($organization, 'member');
+        $overrides = app(FeatureOverrides::class);
+        $this->assertTrue($this->decide($organization, Feature::IssueInvoices, $member)->allowed);
+
+        $overrides->set((string) $organization->id, Feature::IssueInvoices, 'off', 'Paused', 'ops@masaar.test', FeatureOverrides::person((string) $member->id));
+        $this->assertFalse($this->decide($organization, Feature::IssueInvoices, $member)->allowed);
+
+        $overrides->set((string) $organization->id, Feature::IssueInvoices, null, 'Back', 'ops@masaar.test', FeatureOverrides::person((string) $member->id));
+        $this->assertTrue($this->decide($organization, Feature::IssueInvoices, $member)->allowed);
+        $this->assertNull($overrides->state((string) $organization->id, Feature::IssueInvoices), 'the company switch is untouched');
+    }
+
     public function test_untouched_feature_is_simply_allowed(): void
     {
         $decision = $this->decide($this->organization(), Feature::Webhooks);

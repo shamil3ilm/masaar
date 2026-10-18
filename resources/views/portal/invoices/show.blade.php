@@ -50,7 +50,7 @@
 </div>
 
 @if ($invoice->status !== \App\Domains\Invoice\Enums\InvoiceStatus::Draft && $page->shareable
-    && auth()->user()?->roleIn((string) request()->attributes->get(\App\Domains\Organization\Http\Middleware\PortalTenant::ORG_ID)) !== 'viewer')
+    && ! \App\Domains\Organization\Enums\MemberRole::readOnly(auth()->user()?->roleIn((string) request()->attributes->get(\App\Domains\Organization\Http\Middleware\PortalTenant::ORG_ID))))
     <form method="POST" action="{{ route('portal.invoices.send', $invoice->id) }}"
           class="mb-6 flex flex-wrap items-end gap-3 rounded-card bg-surface p-4 border border-line shadow-card">
         @csrf

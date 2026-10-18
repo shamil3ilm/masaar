@@ -70,14 +70,16 @@ class AuditAdminAction
 
     private function record(Request $request, Response $response): void
     {
-        $action = (string) ($request->route()?->getName() ?? 'admin.'.$request->path());
+        $name = $request->route()?->getName();
+        $action = (string) ($name ?? 'admin.'.$request->path());
         $parameters = $request->route()?->parameters() ?? [];
 
         // A controller that knows the record names it. Otherwise the route
         // does: admin.kill-switches.enable acted on a KillSwitch, and
-        // admin.licences.suspend on the licence in its first parameter.
+        // admin.licences.suspend on the licence in its first parameter. The
+        // admin API's routes have no names; their path is the action.
         [$entityType, $entityId] = $request->attributes->get(self::TARGET, [
-            Str::studly(Str::singular(explode('.', $action)[1] ?? 'admin')),
+            $name === null ? 'AdminApi' : Str::studly(Str::singular(explode('.', $action)[1] ?? 'admin')),
             reset($parameters) ?: null,
         ]);
         [$old, $new] = $request->attributes->get(self::CHANGES, [null, null]);

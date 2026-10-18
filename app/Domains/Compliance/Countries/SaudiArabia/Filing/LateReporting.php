@@ -7,6 +7,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Filing;
 use App\Domains\Audit\Services\AuditService;
 use App\Domains\Compliance\Countries\SaudiArabia\Mail\LateReportingMail;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -195,7 +196,7 @@ class LateReporting
         }
 
         $admins = $organization->users()
-            ->wherePivot('role', 'admin')
+            ->wherePivotIn('role', MemberRole::ADMINISTERING)
             ->wherePivot('status', 'active')
             ->where('users.status', 'active')
             ->get();

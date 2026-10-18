@@ -13,10 +13,13 @@ use App\Domains\Invoice\Services\ChargePresets;
 use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Invoice\Services\MissingText;
+use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Services\BranchAccess;
 use App\Domains\Organization\Services\BranchScope;
 use App\Domains\Organization\Services\TenantResolver;
+use App\Domains\Platform\Customization\Customizations;
+use App\Domains\Platform\Customization\Scope;
 use App\Http\Controllers\Controller;
 use DomainException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -56,6 +59,7 @@ class PortalInvoiceDraftController extends Controller
         private readonly MissingText $missing,
         private readonly BranchAccess $branchAccess,
         private readonly BranchScope $branchScope,
+        private readonly Customizations $customizations,
     ) {}
 
     /**
@@ -70,7 +74,7 @@ class PortalInvoiceDraftController extends Controller
             return redirect()->route('portal.invoices.index');
         }
 
-        abort_if($request->user()?->roleIn($organizationId) === 'viewer', 403, __('Your role in this organization is read-only.'));
+        abort_if(MemberRole::readOnly($request->user()?->roleIn($organizationId)), 403, __('Your role in this organization is read-only.'));
 
         try {
             $original = $this->invoices->findWithLines($organizationId, $invoiceId);
@@ -92,7 +96,7 @@ class PortalInvoiceDraftController extends Controller
         }
 
         // A viewer would only be refused on saving (org.writer).
-        abort_if($request->user()?->roleIn((string) $request->attributes->get(PortalTenant::ORG_ID)) === 'viewer', 403, __('Your role in this organization is read-only.'));
+        abort_if(MemberRole::readOnly($request->user()?->roleIn((string) $request->attributes->get(PortalTenant::ORG_ID))), 403, __('Your role in this organization is read-only.'));
 
         $organizationId = (string) $request->attributes->get(PortalTenant::ORG_ID);
         $organization = $this->tenant->getOrganization();
@@ -106,6 +110,9 @@ class PortalInvoiceDraftController extends Controller
             // The common charges: the platform's, the organization's and
             // this person's own.
             'chargePresets' => $this->chargePresets->for($organizationId, $request->user()?->getAuthIdentifier()),
+            // What the form starts on: this person's own choice, else the
+            // organization's or the platform's.
+            'pricesIncludeVat' => (bool) $this->customizations->get('invoices.prices_include_vat', Scope::member($organizationId, (string) $request->user()?->getAuthIdentifier())),
         ]);
     }
 

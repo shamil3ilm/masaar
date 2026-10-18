@@ -34,6 +34,7 @@ use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Platform\Access\PortalAccess;
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
 use App\Domains\Platform\Http\Middleware\MetricsAccess;
+use App\Domains\Platform\Http\Middleware\PersonAccess;
 use App\Domains\Platform\Http\Middleware\RateLimitApi;
 use App\Domains\Platform\Services\PublicSite;
 use App\Domains\Platform\Services\SavedListViews;
@@ -61,6 +62,7 @@ class AppServiceProvider extends ServiceProvider
         'platform.admin' => IsPlatformAdmin::class,
         'admin.can' => AdminCan::class,
         'admin.audit' => AuditAdminAction::class,
+        'access.person' => PersonAccess::class,
         'portal.tenant' => PortalTenant::class,
         'portal.branch' => PortalBranch::class,
         'org.admin' => IsOrgAdmin::class,

@@ -11,6 +11,7 @@ use App\Domains\Invoice\Services\BusinessQrCodes;
 use App\Domains\Invoice\Services\InvoiceExtraQr;
 use App\Domains\Invoice\Services\InvoiceLinks;
 use App\Domains\Invoice\Services\InvoicePdf;
+use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
@@ -50,7 +51,7 @@ class PortalQrCodeController extends Controller
         $organizationId = (string) $organization->id;
 
         return view('portal.qr-codes', [
-            'admin' => $request->user()?->roleIn($organizationId) === 'admin',
+            'admin' => MemberRole::administers($request->user()?->roleIn($organizationId)),
             'codes' => $this->codes->all($organizationId)->map(fn (BusinessQrCode $code): array => [
                 'code' => $code,
                 'svg' => $this->qr->svg($this->codes->payload($code), BusinessQrCodes::ENCODING),

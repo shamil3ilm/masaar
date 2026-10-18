@@ -42,6 +42,25 @@ class ChargePresetsTest extends TestCase
         );
     }
 
+    /**
+     * Each reason in both languages, so a charge picked from the platform's
+     * list is accepted on an invoice that must be in Arabic (ZATCA E-Invoicing
+     * Detailed Guidelines p63).
+     */
+    public function test_the_platform_list_is_bilingual(): void
+    {
+        $this->assertSame(
+            [
+                'delivery' => 'Delivery / رسوم التوصيل',
+                'service' => 'Service charge / رسوم الخدمة',
+                'packaging' => 'Packaging / رسوم التغليف',
+                'installation' => 'Installation / رسوم التركيب',
+                'other' => 'Other charge / رسوم أخرى',
+            ],
+            array_column($this->presets->for($this->acme->id), 'reason', 'key'),
+        );
+    }
+
     public function test_an_organization_overrides_and_adds(): void
     {
         $this->presets->save($this->acme->id, null, ['key' => 'service', 'reason' => 'Service charge', 'reason_code' => 'ADR', 'percent' => '12.5']);

@@ -17,7 +17,7 @@ enum AdminPermission: string
 
     case AuditView = 'audit.view';
 
-    /** Approve or turn down a company that signed itself up. */
+    /** Approve or turn down a company that signed itself up; suspend and reactivate one. */
     case OrganizationsReview = 'organizations.review';
 
     /** Switch a feature off for one company, or grant it beyond its plan. */
@@ -46,4 +46,10 @@ enum AdminPermission: string
 
     /** Grant, change and revoke platform admins. */
     case AdminsManage = 'admins.manage';
+
+    /**
+     * Approve or reject another admin's request where its policy names one's
+     * role, and withdraw one's own (Approvals).
+     */
+    case ApprovalsDecide = 'approvals.decide';
 }

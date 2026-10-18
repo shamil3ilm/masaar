@@ -2,6 +2,7 @@
 
 use App\Domains\Audit\Http\Controllers\PortalActivityController;
 use App\Domains\Auth\Http\Controllers\AccountController;
+use App\Domains\Auth\Http\Controllers\AdminInvitationController;
 use App\Domains\Auth\Http\Controllers\EmailVerificationController;
 use App\Domains\Auth\Http\Controllers\PasswordResetController;
 use App\Domains\Auth\Http\Controllers\SessionAuthController;
@@ -34,16 +35,23 @@ use App\Domains\Organization\Http\Controllers\CustomerPortalController;
 use App\Domains\Organization\Http\Controllers\InvitationController;
 use App\Domains\Organization\Http\Controllers\PortalBranchController;
 use App\Domains\Organization\Http\Controllers\PortalCompanyController;
+use App\Domains\Organization\Http\Controllers\PortalPreferencesController;
 use App\Domains\Organization\Http\Controllers\PortalPrintingController;
+use App\Domains\Organization\Http\Controllers\PortalSettingsController;
 use App\Domains\Organization\Http\Controllers\PortalTeamController;
 use App\Domains\Organization\Http\Controllers\PortalWorkingBranchController;
 use App\Domains\Platform\Http\Controllers\AdminAdminsController;
+use App\Domains\Platform\Http\Controllers\AdminApprovalPolicyController;
+use App\Domains\Platform\Http\Controllers\AdminApprovalsController;
 use App\Domains\Platform\Http\Controllers\AdminAuditController;
 use App\Domains\Platform\Http\Controllers\AdminController;
 use App\Domains\Platform\Http\Controllers\AdminCountryController;
+use App\Domains\Platform\Http\Controllers\AdminCustomizationController;
 use App\Domains\Platform\Http\Controllers\AdminFeatureController;
 use App\Domains\Platform\Http\Controllers\AdminLanguageController;
 use App\Domains\Platform\Http\Controllers\AdminOrganizationReviewController;
+use App\Domains\Platform\Http\Controllers\AdminOwnershipController;
+use App\Domains\Platform\Http\Controllers\AdminRolesController;
 use App\Domains\Platform\Http\Controllers\AdminSettingsController;
 use App\Domains\Platform\Http\Controllers\AdminUserController;
 use App\Domains\Platform\Http\Controllers\SavedListViewController;
@@ -141,6 +149,21 @@ Route::post('/invitations/{token}/accept', [InvitationController::class, 'accept
     ->middleware(['auth', 'throttle:10,1'])
     ->name('invitations.accept');
 
+// An invitation to be a platform admin, by email. As the organization's: it
+// works signed in or out, and makes the account it is for.
+Route::get('/invitations/console/{token}', [AdminInvitationController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]{48}')
+    ->middleware('throttle:20,1')
+    ->name('admin-invitations.show');
+Route::post('/invitations/console/{token}/join', [AdminInvitationController::class, 'join'])
+    ->where('token', '[A-Za-z0-9]{48}')
+    ->middleware(['guest', 'throttle:5,1'])
+    ->name('admin-invitations.join');
+Route::post('/invitations/console/{token}/accept', [AdminInvitationController::class, 'accept'])
+    ->where('token', '[A-Za-z0-9]{48}')
+    ->middleware(['auth', 'throttle:10,1'])
+    ->name('admin-invitations.accept');
+
 // An issued invoice opened from its link - the QR code on it - without
 // signing in. The token is the only key; the throttle limits guessing.
 Route::get('/i/{token}', [InvoiceLinkController::class, 'show'])
@@ -235,7 +258,7 @@ Route::prefix('admin')->name('admin.')
     // It also makes the ordering of /licences/create above /licences/{id}
     // a convenience rather than a requirement: "create" is not a UUID, so it
     // can no longer be swallowed as one if the lines are ever reordered.
-    ->whereUuid(['id', 'licenceId', 'webhookId', 'logId', 'userId', 'ticketId', 'attachmentId', 'paymentId'])
+    ->whereUuid(['id', 'licenceId', 'webhookId', 'logId', 'userId', 'ticketId', 'attachmentId', 'paymentId', 'requestId'])
     ->group(function () {
         Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
         Route::get('/organizations', [AdminController::class, 'organizations'])->name('organizations');
@@ -252,6 +275,10 @@ Route::prefix('admin')->name('admin.')
         // or turn it down with a reason. Either way its admins are emailed.
         Route::post('/organizations/{id}/approve', [AdminOrganizationReviewController::class, 'approve'])->middleware('admin.can:organizations.review')->name('organizations.approve');
         Route::post('/organizations/{id}/reject', [AdminOrganizationReviewController::class, 'reject'])->middleware('admin.can:organizations.review')->name('organizations.reject');
+        // Suspending stops new issuing with a reason; the organization keeps
+        // its data and exports, and what it issued keeps being filed.
+        Route::post('/organizations/{id}/suspend', [AdminOrganizationReviewController::class, 'suspend'])->middleware('admin.can:organizations.review')->name('organizations.suspend');
+        Route::post('/organizations/{id}/reactivate', [AdminOrganizationReviewController::class, 'reactivate'])->middleware('admin.can:organizations.review')->name('organizations.reactivate');
         // One feature off for one organization, or granted beyond its plan,
         // with a reason. Every role sees the Features section; changing it
         // takes features.manage.
@@ -281,10 +308,33 @@ Route::prefix('admin')->name('admin.')
         // Who runs the platform and in which role. Owners only.
         Route::get('/admins', [AdminAdminsController::class, 'index'])->middleware('admin.can:admins.manage')->name('admins.index');
         Route::post('/admins', [AdminAdminsController::class, 'grant'])->middleware('admin.can:admins.manage')->name('admins.grant');
+        // By email, whether or not the address has an account yet.
+        Route::post('/admins/invitations', [AdminAdminsController::class, 'invite'])->middleware(['admin.can:admins.manage', 'throttle:20,1'])->name('admins.invite');
+        Route::post('/admins/invitations/{invitationId}/withdraw', [AdminAdminsController::class, 'withdrawInvitation'])->middleware('admin.can:admins.manage')->whereUuid('invitationId')->name('admins.invitations.withdraw');
         Route::post('/admins/{userId}/role', [AdminAdminsController::class, 'role'])->middleware('admin.can:admins.manage')->name('admins.role');
         Route::post('/admins/{userId}/revoke', [AdminAdminsController::class, 'revoke'])->middleware('admin.can:admins.manage')->name('admins.revoke');
+        // The platform's one owner hands ownership on: offered by the owner,
+        // accepted by the admin it is offered to, and only then does the old
+        // owner step down, to the role they chose.
+        Route::post('/ownership', [AdminOwnershipController::class, 'offer'])->middleware('admin.can:admins.manage')->name('ownership.offer');
+        Route::post('/ownership/{transferId}/withdraw', [AdminOwnershipController::class, 'withdraw'])->middleware('admin.can:admins.manage')->whereUuid('transferId')->name('ownership.withdraw');
+        Route::post('/ownership/{transferId}/accept', [AdminOwnershipController::class, 'accept'])->middleware('admin.can:approvals.decide')->whereUuid('transferId')->name('ownership.accept');
+        // Admin roles: the four system roles and custom ones from the
+        // permission set. Owners only; held for approval like access is.
+        Route::get('/roles', [AdminRolesController::class, 'index'])->middleware('admin.can:admins.manage')->name('roles.index');
+        Route::post('/roles', [AdminRolesController::class, 'store'])->middleware('admin.can:admins.manage')->name('roles.store');
+        Route::post('/roles/{key}', [AdminRolesController::class, 'update'])->middleware('admin.can:admins.manage')->name('roles.update');
+        Route::post('/roles/{key}/delete', [AdminRolesController::class, 'destroy'])->middleware('admin.can:admins.manage')->name('roles.destroy');
         Route::get('/audit', [AdminAuditController::class, 'index'])->middleware('admin.can:audit.view')->name('audit');
         Route::get('/audit/export.csv', [AdminAuditController::class, 'export'])->middleware(['admin.can:audit.view', 'throttle:20,1'])->name('audit.export');
+        // Maker-checker: what waits for a second admin, and deciding it.
+        // Who may decide one is its policy's; approvals.decide is the least.
+        Route::get('/approvals', [AdminApprovalsController::class, 'index'])->name('approvals.index');
+        Route::post('/approvals/notifications', [AdminApprovalsController::class, 'notifications'])->middleware('admin.can:approvals.decide')->name('approvals.notifications');
+        Route::get('/approvals/{requestId}', [AdminApprovalsController::class, 'show'])->name('approvals.show');
+        Route::post('/approvals/{requestId}/approve', [AdminApprovalsController::class, 'approve'])->middleware('admin.can:approvals.decide')->name('approvals.approve');
+        Route::post('/approvals/{requestId}/reject', [AdminApprovalsController::class, 'reject'])->middleware('admin.can:approvals.decide')->name('approvals.reject');
+        Route::post('/approvals/{requestId}/withdraw', [AdminApprovalsController::class, 'withdraw'])->middleware('admin.can:approvals.decide')->name('approvals.withdraw');
         Route::get('/licences', [AdminLicenceController::class, 'index'])->name('licences.index');
         Route::get('/licences/export.csv', [AdminLicenceController::class, 'export'])->middleware('throttle:20,1')->name('licences.export');
         // Before the {licenceId} route below, or "create" is taken for an id
@@ -302,6 +352,11 @@ Route::prefix('admin')->name('admin.')
         // The thresholds the dashboard judges by, and the certificate
         // warning schedule. Both were only changeable by shipping.
         Route::get('/settings', [AdminSettingsController::class, 'index'])->name('settings');
+        // Which actions wait for approval. Changing a policy is itself held
+        // for approval once any policy is on.
+        Route::get('/settings/approvals', [AdminApprovalPolicyController::class, 'index'])->name('approval-policies.index');
+        Route::post('/settings/approvals-bypass', [AdminApprovalPolicyController::class, 'bypass'])->middleware('admin.can:admins.manage')->name('approval-policies.bypass');
+        Route::post('/settings/approvals/{action}', [AdminApprovalPolicyController::class, 'update'])->middleware('admin.can:platform.configure')->name('approval-policies.update');
 
         // The platform's look: colours, name, logo and favicon.
         Route::get('/branding', [AdminBrandingController::class, 'edit'])->name('branding.edit');
@@ -314,6 +369,8 @@ Route::prefix('admin')->name('admin.')
         // components themselves, in light and dark and in both directions.
         Route::view('/design-system', 'admin.design-system')->name('design-system');
         Route::post('/settings', [AdminSettingsController::class, 'update'])->middleware('admin.can:platform.configure')->name('settings.update');
+        // The platform's default for one customization, or its reset.
+        Route::post('/customizations/{key}', [AdminCustomizationController::class, 'update'])->middleware('admin.can:platform.configure')->name('customizations.update');
 
         // Which countries the platform issues in. One switch per country,
         // the same for every one; switching off stops new issuing there and
@@ -524,12 +581,19 @@ Route::prefix('portal')->name('portal.')
         Route::post('/team/invitations', [PortalTeamController::class, 'invite'])->middleware('throttle:20,1')->name('team.invite');
         Route::post('/team/invitations/{invitationId}/revoke', [PortalTeamController::class, 'revoke'])->name('team.revoke');
         Route::post('/team/members/{userId}/remove', [PortalTeamController::class, 'remove'])->name('team.remove');
+        Route::post('/team/members/{userId}/role', [PortalTeamController::class, 'role'])->name('team.role');
+        Route::post('/team/members/{userId}/restore', [PortalTeamController::class, 'restore'])->name('team.restore');
 
         // How documents issued without a number are numbered. Administrators
         // only; the controller checks the role.
         Route::get('/numbering', [PortalNumberingController::class, 'edit'])->name('numbering.edit');
         Route::post('/numbering-mode', [PortalNumberingController::class, 'mode'])->name('numbering.mode');
         Route::post('/numbering/{documentType}', [PortalNumberingController::class, 'update'])->name('numbering.update');
+
+        // The organization's own value for each customization, against the
+        // platform's. Administrators only; the controller checks the role.
+        Route::get('/settings', [PortalSettingsController::class, 'edit'])->name('settings.edit');
+        Route::post('/settings/{key}', [PortalSettingsController::class, 'update'])->name('settings.update');
 
         // The paper invoices print on: each person's own, and the
         // organization's and its branches' for its administrators (the
@@ -559,4 +623,13 @@ Route::prefix('portal')->name('portal.')
         Route::post('/branding/import', [PortalBrandingController::class, 'import'])->name('branding.import');
         Route::get('/branding/export', [PortalBrandingController::class, 'export'])->name('branding.export');
         Route::post('/branding/reset', [PortalBrandingController::class, 'reset'])->name('branding.reset');
+    });
+
+// A person's own preferences. Outside org.writer: a viewer chooses their own
+// paper and language too, and nothing here changes the organization's.
+Route::prefix('portal')->name('portal.')
+    ->middleware(['auth', 'auth.session', 'verified', 'portal.tenant', 'org.two_factor'])
+    ->group(function () {
+        Route::get('/preferences', [PortalPreferencesController::class, 'edit'])->name('preferences.edit');
+        Route::post('/preferences/{key}', [PortalPreferencesController::class, 'update'])->name('preferences.update');
     });

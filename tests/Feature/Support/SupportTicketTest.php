@@ -7,6 +7,9 @@ namespace Tests\Feature\Support;
 use App\Domains\Audit\Models\AuditLog;
 use App\Domains\Auth\Models\User;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Platform\Customization\Customizations;
+use App\Domains\Platform\Customization\Level;
+use App\Domains\Platform\Customization\Scope;
 use App\Domains\Support\Enums\TicketStatus;
 use App\Domains\Support\Mail\TicketMail;
 use App\Domains\Support\Models\SupportMessage;
@@ -121,6 +124,22 @@ class SupportTicketTest extends TestCase
 
         $this->assertSame(TicketStatus::Waiting, $ticket->fresh()->status);
         Mail::assertSent(TicketMail::class, fn (TicketMail $mail): bool => $mail->hasTo('sara@acme.test'));
+    }
+
+    /**
+     * A customer who chose not to be emailed support's replies is not; the
+     * reply is on the ticket all the same.
+     */
+    public function test_reply_emails_follow_the_preference(): void
+    {
+        app(Customizations::class)->set('notifications.support_replies', Level::User, Scope::member($this->acme->id, $this->member->id), false, $this->member->id);
+        $this->open();
+        $ticket = $this->ticket();
+
+        $this->actingAs($this->support)->post(route('admin.support.reply', $ticket->id), ['body' => 'Try again now.'])->assertSessionHas('success');
+
+        Mail::assertNotSent(TicketMail::class, fn (TicketMail $mail): bool => $mail->hasTo('sara@acme.test'));
+        $this->assertSame(TicketStatus::Waiting, $ticket->fresh()->status);
     }
 
     public function test_the_customer_reply_reopens_it(): void

@@ -8,6 +8,7 @@ use App\Domains\Audit\Services\AuditService;
 use App\Domains\Auth\DTOs\RegistrationData;
 use App\Domains\Auth\Models\User;
 use App\Domains\Auth\Services\AccountRegistrar;
+use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Mail\InvitationMail;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Models\OrganizationInvitation;
@@ -32,16 +33,95 @@ class Team
     ) {}
 
     /**
-     * @return Collection<int, object{id: string, name: string, email: string, role: string}>
+     * The organization's people, with when each last did something in it -
+     * the latest entry they made in its audit record.
+     *
+     * @return Collection<int, object{id: string, name: string, email: string, role: string, last_active_at: string|null}>
      */
     public function members(string $organizationId): Collection
     {
-        return DB::table('organization_user')
-            ->join('users', 'users.id', '=', 'organization_user.user_id')
-            ->where('organization_user.org_id', $organizationId)
-            ->where('organization_user.status', 'active')
-            ->orderBy('users.name')
-            ->get(['users.id', 'users.name', 'users.email', 'organization_user.role']);
+        return $this->withActivity($organizationId, 'active');
+    }
+
+    /**
+     * Those whose membership was ended, who can be brought back.
+     *
+     * @return Collection<int, object{id: string, name: string, email: string, role: string, last_active_at: string|null}>
+     */
+    public function removed(string $organizationId): Collection
+    {
+        return $this->withActivity($organizationId, 'removed');
+    }
+
+    /**
+     * Change someone's role.
+     *
+     * Nobody changes their own; only an owner gives or takes the owner role;
+     * and the organization keeps an owner or an admin.
+     *
+     * @throws DomainException
+     */
+    public function changeRole(string $organizationId, string $userId, string $role, User $actor): void
+    {
+        if ($userId === (string) $actor->id) {
+            throw new DomainException(__('You cannot change your own role. Another admin can.'));
+        }
+
+        if (MemberRole::tryFrom($role) === null) {
+            throw new DomainException(__('There is no such role.'));
+        }
+
+        DB::transaction(function () use ($organizationId, $userId, $role, $actor): void {
+            $members = $this->lockedMembers($organizationId);
+            $target = $members->firstWhere('user_id', $userId) ?? throw new DomainException(__('That person is not a member.'));
+
+            if (($target->role === MemberRole::Owner->value || $role === MemberRole::Owner->value) && ! $this->isOwner($members, $actor)) {
+                throw new DomainException(__('Only an owner can give or take the owner role.'));
+            }
+
+            if (MemberRole::administers($target->role) && ! MemberRole::administers($role)) {
+                $this->keepAnAdministrator($members, $userId);
+            }
+
+            DB::table('organization_user')->where('org_id', $organizationId)->where('user_id', $userId)
+                ->update(['role' => $role, 'updated_at' => now()]);
+
+            $this->audit->logSecurity('member.role_changed', 'Organization', $organizationId, [
+                'user_id' => $userId,
+                'from' => $target->role,
+                'to' => $role,
+            ], userId: (string) $actor->id);
+        });
+    }
+
+    /**
+     * Bring back someone whose membership was ended, in the role they had.
+     * An owner comes back only on an owner's say.
+     *
+     * @throws DomainException
+     */
+    public function restore(string $organizationId, string $userId, User $actor): void
+    {
+        DB::transaction(function () use ($organizationId, $userId, $actor): void {
+            $row = DB::table('organization_user')->where('org_id', $organizationId)->where('user_id', $userId)
+                ->where('status', 'removed')->lockForUpdate()->first();
+
+            if ($row === null) {
+                throw new DomainException(__('That person was not removed from this organization.'));
+            }
+
+            if ($row->role === MemberRole::Owner->value && ! $this->isOwner($this->lockedMembers($organizationId), $actor)) {
+                throw new DomainException(__('Only an owner can give or take the owner role.'));
+            }
+
+            DB::table('organization_user')->where('org_id', $organizationId)->where('user_id', $userId)
+                ->update(['status' => 'active', 'updated_at' => now()]);
+
+            $this->audit->logSecurity('member.restored', 'Organization', $organizationId, [
+                'user_id' => $userId,
+                'role' => $row->role,
+            ], userId: (string) $actor->id);
+        });
     }
 
     /**
@@ -65,6 +145,10 @@ class Team
     public function invite(Organization $organization, string $email, string $role, User $inviter): OrganizationInvitation
     {
         $email = Str::lower(trim($email));
+
+        if ($role === MemberRole::Owner->value && ! $this->isOwner($this->lockedMembers((string) $organization->id), $inviter)) {
+            throw new DomainException(__('Only an owner can give or take the owner role.'));
+        }
 
         if ($this->members((string) $organization->id)->contains(fn (object $member): bool => Str::lower($member->email) === $email)) {
             throw new DomainException(__(':email is already a member.', ['email' => $email]));
@@ -119,7 +203,7 @@ class Team
     /**
      * End someone's membership.
      *
-     * @throws DomainException for oneself, or the last admin
+     * @throws DomainException for oneself, an owner by anyone but an owner, or the last owner or admin
      */
     public function remove(string $organizationId, string $userId, User $actor): void
     {
@@ -128,11 +212,7 @@ class Team
         }
 
         DB::transaction(function () use ($organizationId, $userId, $actor): void {
-            $members = DB::table('organization_user')
-                ->where('org_id', $organizationId)
-                ->where('status', 'active')
-                ->lockForUpdate()
-                ->get(['user_id', 'role']);
+            $members = $this->lockedMembers($organizationId);
 
             $target = $members->firstWhere('user_id', $userId);
 
@@ -140,8 +220,12 @@ class Team
                 throw new DomainException(__('That person is not a member.'));
             }
 
-            if ($target->role === 'admin' && $members->where('role', 'admin')->count() <= 1) {
-                throw new DomainException(__('An organization keeps at least one admin.'));
+            if ($target->role === MemberRole::Owner->value && ! $this->isOwner($members, $actor)) {
+                throw new DomainException(__('Only an owner can give or take the owner role.'));
+            }
+
+            if (MemberRole::administers($target->role)) {
+                $this->keepAnAdministrator($members, $userId);
             }
 
             DB::table('organization_user')
@@ -231,5 +315,65 @@ class Team
     public static function hash(string $token): string
     {
         return hash('sha256', $token);
+    }
+
+    /**
+     * @return Collection<int, object{user_id: string, role: string}>
+     */
+    private function lockedMembers(string $organizationId): Collection
+    {
+        return DB::table('organization_user')
+            ->where('org_id', $organizationId)
+            ->where('status', 'active')
+            ->lockForUpdate()
+            ->get(['user_id', 'role']);
+    }
+
+    /**
+     * @param  Collection<int, object{user_id: string, role: string}>  $members
+     */
+    private function isOwner(Collection $members, User $actor): bool
+    {
+        return $members->contains(fn (object $member): bool => $member->user_id === (string) $actor->id && $member->role === MemberRole::Owner->value);
+    }
+
+    /**
+     * @param  Collection<int, object{user_id: string, role: string}>  $members
+     *
+     * @throws DomainException when the leaving person is the last owner or admin
+     */
+    private function keepAnAdministrator(Collection $members, string $leavingId): void
+    {
+        $others = $members->filter(fn (object $member): bool => $member->user_id !== $leavingId && MemberRole::administers($member->role));
+
+        if ($others->isEmpty()) {
+            throw new DomainException(__('An organization keeps at least one admin.'));
+        }
+    }
+
+    /**
+     * @return Collection<int, object{id: string, name: string, email: string, role: string, last_active_at: string|null}>
+     */
+    private function withActivity(string $organizationId, string $status): Collection
+    {
+        $people = DB::table('organization_user')
+            ->join('users', 'users.id', '=', 'organization_user.user_id')
+            ->where('organization_user.org_id', $organizationId)
+            ->where('organization_user.status', $status)
+            ->orderBy('users.name')
+            ->get(['users.id', 'users.name', 'users.email', 'organization_user.role']);
+
+        $activity = DB::table('audit_logs')
+            ->where('org_id', $organizationId)
+            ->whereIn('user_id', $people->pluck('id')->all())
+            ->groupBy('user_id')
+            ->selectRaw('user_id, max(created_at) as last_active_at')
+            ->pluck('last_active_at', 'user_id');
+
+        return $people->map(function (object $person) use ($activity): object {
+            $person->last_active_at = $activity[$person->id] ?? null;
+
+            return $person;
+        });
     }
 }

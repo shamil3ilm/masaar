@@ -141,6 +141,17 @@ enum Feature: string
         return $this->licenceFeature() !== null && $this !== self::OfflineMode;
     }
 
+    /**
+     * A platform admin may switch it off for one role or one person in an
+     * organization. Only issuing: every path a person issues on asks Access
+     * with the person (the portal's issue action, and access.person on the
+     * API's issuing routes).
+     */
+    public function canSwitchForPeople(): bool
+    {
+        return $this === self::IssueInvoices;
+    }
+
     public function overridable(): bool
     {
         return $this->canSwitchOff() || $this->canGrantBeyondPlan();

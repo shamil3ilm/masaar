@@ -127,12 +127,14 @@ class PortalBranchController extends Controller
         ]);
 
         $this->branches->update($branch, $this->validated($request, $organization));
-        $this->printing->setBranchPaper($organizationId, $branchId, PaperSize::tryFrom((string) ($printing['paper'] ?? '')));
+        $actorId = (string) $request->user()?->id;
+        $this->printing->setBranchPaper($organizationId, $branchId, PaperSize::tryFrom((string) ($printing['paper'] ?? '')), $actorId);
         $this->printing->setReceiptPrinter(
             $organizationId,
             $branchId,
             isset($printing['dpi']) ? (int) $printing['dpi'] : null,
             isset($printing['dots']) ? (int) $printing['dots'] : null,
+            $actorId,
         );
 
         return redirect()->route('portal.branches.edit', $branchId)->with('success', __('Branch saved.'));

@@ -10,7 +10,7 @@
             <x-ui.button size="sm" :variant="$notes ? 'ghost' : 'secondary'" :href="route('portal.invoices.index')" :aria-current="$notes ? null : 'page'">{{ __('All documents') }}</x-ui.button>
             <x-ui.button size="sm" :variant="$notes ? 'secondary' : 'ghost'" :href="route('portal.notes.index')" :aria-current="$notes ? 'page' : null">{{ __('Credit and debit notes') }}</x-ui.button>
         </nav>
-        @if (auth()->user()?->roleIn((string) $organization->id) !== 'viewer')
+        @if (! \App\Domains\Organization\Enums\MemberRole::readOnly(auth()->user()?->roleIn((string) $organization->id)))
             <x-ui.button :href="route('portal.invoices.create')">{{ __('New invoice') }}</x-ui.button>
         @endif
     </x-slot:actions>

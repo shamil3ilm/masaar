@@ -55,6 +55,7 @@
               data-confirm-action="Resume everything"
               data-confirm="Resume everything? Every switch currently on will be turned off.">
             @csrf
+            @include('admin.partials.approval-reason', ['action' => 'kill_switches.resume'])
             <x-ui.button>Resume everything</x-ui.button>
         </form>
         @endadmincan
@@ -135,6 +136,7 @@
                               data-confirm="Resume {{ strtolower($name) }}? Taxpayers will be able to do this again immediately.">
                             @csrf
                             <input type="hidden" name="switch" value="{{ $switch }}">
+                            @include('admin.partials.approval-reason', ['action' => 'kill_switches.disable', 'compact' => true])
                             <x-ui.button variant="secondary">Resume</x-ui.button>
                         </form>
                         @endadmincan

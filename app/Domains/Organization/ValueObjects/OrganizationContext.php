@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\ValueObjects;
 
+use App\Domains\Organization\Enums\MemberRole;
+
 /**
  * Immutable value object representing the current organization context.
  *
@@ -56,7 +58,7 @@ final readonly class OrganizationContext
      */
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return MemberRole::administers($this->role);
     }
 
     /**

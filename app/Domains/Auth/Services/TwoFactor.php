@@ -156,7 +156,9 @@ class TwoFactor
             return __('Platform admins keep two-factor on.');
         }
 
-        $requiring = $user->activeOrganizations()->where('require_two_factor', true)->value('name');
+        // Each organization's own choice or the platform's, so read through
+        // the attribute rather than the column.
+        $requiring = $user->activeOrganizations()->get()->first(fn ($organization): bool => $organization->require_two_factor)?->name;
 
         return $requiring === null ? null : __(':organization requires two-factor for everyone in it.', ['organization' => $requiring]);
     }

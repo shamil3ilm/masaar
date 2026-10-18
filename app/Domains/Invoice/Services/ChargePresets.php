@@ -4,23 +4,32 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Services;
 
-use App\Domains\Invoice\Models\ChargePreset;
-use Illuminate\Support\Facades\DB;
+use App\Domains\Platform\Customization\Customizations;
+use App\Domains\Platform\Customization\Level;
+use App\Domains\Platform\Customization\Scope;
 
 /**
  * The common charges an invoice form offers - delivery, a service charge,
  * packaging - as three lists, each overriding the one above it by key: the
  * platform's, the organization's, and the person's own. A level can change
- * an entry above it, add its own, or hide one (disabled).
+ * an entry above it, add its own, or hide one.
  *
- * The rule every customization follows: platform default, organization
- * override, user override. Kept to this one list behind this one class, so
- * moving it into a general settings layer later changes only this.
+ * One customization (invoices.charge_presets), a list of entries; the
+ * customizations store keeps each level's list and merges them.
  */
 class ChargePresets
 {
-    /** What an entry carries, apart from its key and level. */
+    private const KEY = 'invoices.charge_presets';
+
+    /** What an entry carries, apart from its key. */
     private const FIELDS = ['reason', 'reason_code', 'percent', 'amount', 'tax_category', 'tax_rate'];
+
+    /** Amounts and rates, written with two decimals as the invoice form expects. */
+    private const DECIMALS = ['percent', 'amount', 'tax_rate'];
+
+    public function __construct(
+        private readonly Customizations $customizations,
+    ) {}
 
     /**
      * The list a person in an organization sees, in the platform's order
@@ -30,21 +39,9 @@ class ChargePresets
      */
     public function for(string $organizationId, ?string $userId = null): array
     {
-        $levels = [
-            $this->level(null, null),
-            $this->level($organizationId, null),
-            $userId === null ? [] : $this->level($organizationId, $userId),
-        ];
+        $scope = $userId === null ? Scope::organization($organizationId) : Scope::member($organizationId, $userId);
 
-        $merged = [];
-
-        foreach ($levels as $level) {
-            foreach ($level as $key => $preset) {
-                $merged[$key] = $preset->disabled ? null : ['key' => $key, ...$preset->only(self::FIELDS)];
-            }
-        }
-
-        return array_values(array_filter($merged));
+        return array_map(fn (array $entry): array => $this->shaped($entry), $this->customizations->get(self::KEY, $scope));
     }
 
     /**
@@ -52,53 +49,113 @@ class ChargePresets
      * organization, an organization's, or a person's with both.
      *
      * @param  array<string, mixed>  $preset  {key, reason, reason_code, percent?, amount?, tax_category?, tax_rate?}
+     * @return array<string, mixed> the entry as saved
      */
-    public function save(?string $organizationId, ?string $userId, array $preset): ChargePreset
+    public function save(?string $organizationId, ?string $userId, array $preset): array
     {
-        return DB::transaction(fn (): ChargePreset => ChargePreset::query()->updateOrCreate(
-            ['org_id' => $organizationId, 'user_id' => $userId, 'key' => (string) $preset['key']],
-            [...array_intersect_key($preset, array_flip(self::FIELDS)), 'disabled' => false],
-        ));
+        [$level, $scope] = $this->level($organizationId, $userId);
+        $entry = ['key' => (string) $preset['key'], ...array_intersect_key($preset, array_flip(self::FIELDS))];
+        $own = $this->own($level, $scope);
+        $index = $this->index($own, $entry['key']);
+
+        if ($index === null) {
+            $own[] = $entry;
+        } else {
+            $own[$index] = $entry;
+        }
+
+        $this->customizations->set(self::KEY, $level, $scope, $own, $userId);
+
+        return $entry;
     }
 
     /**
      * Hide an entry at a level, whichever level it came from: the level's
-     * own row is removed, and one from above is covered by a disabled row.
+     * own entry is removed, and one from above is covered by a hidden one.
      */
     public function hide(?string $organizationId, ?string $userId, string $key): void
     {
-        DB::transaction(function () use ($organizationId, $userId, $key): void {
-            $own = ChargePreset::query()->where(['org_id' => $organizationId, 'user_id' => $userId, 'key' => $key])->first();
-            $above = collect($organizationId === null ? [] : [$this->level(null, null), $userId === null ? [] : $this->level($organizationId, null)])
-                ->contains(fn (array $level): bool => isset($level[$key]));
+        [$level, $scope] = $this->level($organizationId, $userId);
+        $own = $this->own($level, $scope);
+        $index = $this->index($own, $key);
+        $above = $this->above($organizationId, $userId);
 
-            if ($above) {
-                ChargePreset::query()->updateOrCreate(
-                    ['org_id' => $organizationId, 'user_id' => $userId, 'key' => $key],
-                    ['reason' => $own->reason ?? $key, 'reason_code' => $own->reason_code ?? 'ABK', 'disabled' => true],
-                );
+        if ($index !== null) {
+            unset($own[$index]);
+            $own = array_values($own);
+        }
 
-                return;
-            }
+        if (in_array($key, array_column($above, 'key'), true)) {
+            $own[] = ['key' => $key, 'hidden' => true];
+        }
 
-            $own?->delete();
-        });
+        $own === []
+            ? $this->customizations->reset(self::KEY, $level, $scope, $userId)
+            : $this->customizations->set(self::KEY, $level, $scope, $own, $userId);
     }
 
     /**
-     * One level's entries, by key.
+     * What the levels above this one offer, merged.
      *
-     * @return array<string, ChargePreset>
+     * @return list<array<string, mixed>>
+     */
+    private function above(?string $organizationId, ?string $userId): array
+    {
+        return match (true) {
+            $organizationId === null => [],
+            $userId === null => $this->customizations->get(self::KEY, Scope::platform()),
+            default => $this->customizations->get(self::KEY, Scope::organization($organizationId)),
+        };
+    }
+
+    /**
+     * @return array{0: Level, 1: Scope}
      */
     private function level(?string $organizationId, ?string $userId): array
     {
-        return ChargePreset::query()
-            ->when($organizationId === null, fn ($q) => $q->whereNull('org_id'), fn ($q) => $q->where('org_id', $organizationId))
-            ->when($userId === null, fn ($q) => $q->whereNull('user_id'), fn ($q) => $q->where('user_id', $userId))
-            ->orderBy('position')
-            ->orderBy('key')
-            ->get()
-            ->keyBy('key')
-            ->all();
+        return match (true) {
+            $organizationId === null => [Level::Platform, Scope::platform()],
+            $userId === null => [Level::Organization, Scope::organization($organizationId)],
+            default => [Level::User, Scope::member($organizationId, $userId)],
+        };
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function own(Level $level, Scope $scope): array
+    {
+        return array_values((array) ($this->customizations->own(self::KEY, $level, $scope) ?? []));
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $entries
+     */
+    private function index(array $entries, string $key): ?int
+    {
+        foreach ($entries as $index => $entry) {
+            if ($entry['key'] === $key) {
+                return $index;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $entry
+     * @return array<string, mixed>
+     */
+    private function shaped(array $entry): array
+    {
+        $shaped = ['key' => (string) $entry['key']];
+
+        foreach (self::FIELDS as $field) {
+            $value = $entry[$field] ?? null;
+            $shaped[$field] = $value === null || $value === '' ? null
+                : (in_array($field, self::DECIMALS, true) ? number_format((float) $value, 2, '.', '') : (string) $value);
+        }
+
+        return $shaped;
     }
 }

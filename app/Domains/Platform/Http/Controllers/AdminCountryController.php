@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Http\Controllers;
 
-use App\Domains\Compliance\Engine\Services\JurisdictionAvailability;
 use App\Domains\Compliance\Engine\Services\JurisdictionRegistry;
+use App\Domains\Platform\Approvals\ActionResult;
+use App\Domains\Platform\Approvals\Approvals;
+use App\Domains\Platform\Http\Concerns\HoldsForApproval;
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
 use App\Domains\Platform\Services\CountryReport;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -30,10 +31,12 @@ use Illuminate\View\View;
  */
 class AdminCountryController extends Controller
 {
+    use HoldsForApproval;
+
     public function __construct(
         private readonly CountryReport $report,
         private readonly JurisdictionRegistry $registry,
-        private readonly JurisdictionAvailability $availability,
+        private readonly Approvals $approvals,
     ) {}
 
     public function index(): View
@@ -52,18 +55,11 @@ class AdminCountryController extends Controller
 
         $code = (string) $validated['country'];
         $enabled = (bool) $validated['enabled'];
-        $jurisdiction = $this->registry->get($code);
-        $before = $jurisdiction->enabled();
-
-        // The email, not the id: read by someone asking who switched a
-        // country off, as the settings and kill switches record it.
-        $this->availability->set($code, $enabled, Auth::user()?->email);
 
         $request->attributes->set(AuditAdminAction::TARGET, ['Jurisdiction', $code]);
-        $request->attributes->set(AuditAdminAction::CHANGES, [['enabled' => $before], ['enabled' => $enabled]]);
+        $request->attributes->set(AuditAdminAction::CHANGES, [['enabled' => $this->registry->get($code)->enabled()], ['enabled' => $enabled]]);
 
-        return redirect()->route('admin.countries')->with('success', $enabled
-            ? $jurisdiction->name().' is switched on. Its organizations can issue again.'
-            : $jurisdiction->name().' is switched off. Nothing new is issued there; what was already issued keeps being filed.');
+        return $this->holdOrRun($this->approvals, $request, 'countries.switch', ['country' => $code, 'enabled' => $enabled],
+            fn (ActionResult $done): RedirectResponse => redirect()->route('admin.countries')->with('success', $done->message));
     }
 }

@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature\Organization;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\PrintPreferences;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
@@ -71,8 +73,9 @@ class BranchScreensTest extends TestCase
 
         $branch->refresh();
         $this->assertSame('Olaya Mall', $branch->name);
-        $this->assertSame('80mm', $branch->paper_size);
-        $this->assertSame(576, (int) $branch->receipt_dots);
+        $printing = app(PrintPreferences::class);
+        $this->assertSame(PaperSize::Roll80, $printing->branchPaper($this->acme->id, $branch->id));
+        $this->assertSame(['dpi' => 203, 'dots' => 576], $printing->receiptPrinter($this->acme->id, $branch->id));
     }
 
     public function test_people_are_assigned_with_roles(): void

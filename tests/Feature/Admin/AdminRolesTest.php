@@ -8,6 +8,7 @@ use App\Domains\Auth\Enums\PlatformRole;
 use App\Domains\Auth\Models\User;
 use App\Domains\Auth\Services\AccountStatus;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Platform\Approvals\ApprovalPolicies;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -93,6 +94,10 @@ class AdminRolesTest extends TestCase
     {
         $owner = $this->admin(PlatformRole::Owner);
         $newcomer = User::factory()->create(['email' => 'ops@masaar.test']);
+        // Who may do what, not maker-checker (ApprovalsTest): once the
+        // newcomer is an operations admin, the next change would wait for
+        // their approval.
+        $this->withoutAdminApprovals();
 
         $this->actingAs($owner)->post('/admin/admins', ['email' => 'ops@masaar.test', 'role' => 'operations'])
             ->assertSessionHas('success')
@@ -116,18 +121,18 @@ class AdminRolesTest extends TestCase
     }
 
     /**
-     * Nobody changes their own access, and an owner always remains.
+     * Nobody changes their own access, and the one owner always remains:
+     * ownership moves only by transfer (PlatformOwnershipTest).
      */
     public function test_an_owner_always_remains(): void
     {
         $owner = $this->admin(PlatformRole::Owner);
-        $second = $this->admin(PlatformRole::Owner);
+        $this->withoutAdminApprovals();
 
         $this->actingAs($owner)->post("/admin/admins/{$owner->id}/role", ['role' => 'support'])->assertSessionHas('error');
+        $this->actingAs($owner)->post("/admin/admins/{$owner->id}/revoke")->assertSessionHas('error');
+        $this->actingAs($this->admin(PlatformRole::Operations))->post("/admin/admins/{$owner->id}/revoke")->assertForbidden();
 
-        $this->actingAs($owner)->post("/admin/admins/{$second->id}/role", ['role' => 'support'])->assertSessionHas('success');
-
-        $this->actingAs($second->fresh())->post("/admin/admins/{$owner->id}/revoke")->assertForbidden();
         $this->assertSame(PlatformRole::Owner, $owner->fresh()->platformRole());
     }
 
@@ -151,17 +156,15 @@ class AdminRolesTest extends TestCase
         $this->assertTrue($owner->fresh()->isActive());
     }
 
-    public function test_the_last_owner_cannot_be_suspended(): void
+    public function test_the_owner_cannot_be_suspended(): void
     {
         $owner = $this->admin(PlatformRole::Owner);
-        $other = $this->admin(PlatformRole::Owner);
+        $operations = $this->admin(PlatformRole::Operations);
 
-        $this->actingAs($other)->post("/admin/users/{$owner->id}/suspend", ['reason' => 'test'])->assertSessionHas('success');
-        $this->assertFalse($owner->fresh()->isActive());
-
-        // $other is now the only active owner; nobody above can suspend them,
-        // and an owner cannot suspend themselves.
-        $this->assertSame('You cannot suspend your own account.', app(AccountStatus::class)->suspend($other->id, $other->id));
+        // Nobody outranks the owner, and the owner cannot suspend themselves.
+        $this->assertSame('You cannot suspend your own account.', app(AccountStatus::class)->suspend($owner->id, $owner->id));
+        $this->assertNotNull(app(AccountStatus::class)->suspend($owner->id, $operations->id));
+        $this->assertTrue($owner->fresh()->isActive());
     }
 
     /**
@@ -179,6 +182,13 @@ class AdminRolesTest extends TestCase
         $this->withToken(JWTAuth::fromUser($this->admin(PlatformRole::Support)))
             ->getJson('/api/admin/licenses/'.Str::uuid().'/audit')
             ->assertForbidden();
+    }
+
+    private function withoutAdminApprovals(): void
+    {
+        foreach (['admins.grant', 'admins.role', 'admins.revoke'] as $action) {
+            app(ApprovalPolicies::class)->save($action, ['enabled' => false, 'approvals_required' => 1, 'approver_roles' => ['owner'], 'expires_after_hours' => 72], null);
+        }
     }
 
     private function admin(PlatformRole $role): User

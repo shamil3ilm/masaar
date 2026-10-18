@@ -68,8 +68,10 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
     // jurisdiction.available, on each country's routes that start new work:
     // 422 JURISDICTION_UNAVAILABLE while the country is switched off (the
     // admin console's Countries page, or its default). Reads stay open.
+    // access.person: a platform admin's switch for the person's role, or for
+    // the person, holds here as in the portal.
     Route::prefix('compliance/sa')->middleware('org.writer')->group(function () {
-        Route::middleware('jurisdiction.available')->group(function () {
+        Route::middleware(['jurisdiction.available', 'access.person:issue_invoices'])->group(function () {
             Route::post('/generate/{invoiceId}', [ComplianceController::class, 'generate']);
             Route::post('/validate/{invoiceId}', [ComplianceController::class, 'validate']);
             Route::post('/submit/{invoiceId}', [ComplianceController::class, 'submit']);
@@ -86,7 +88,7 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
         Route::get('/documents/{document}/xml', [UaeDocumentController::class, 'xml']);
         Route::get('/invoices/{invoice}/status', [UaeInvoiceController::class, 'status']);
 
-        Route::middleware(['org.writer', 'jurisdiction.available'])->group(function () {
+        Route::middleware(['org.writer', 'jurisdiction.available', 'access.person:issue_invoices'])->group(function () {
             Route::post('/invoices', [UaeInvoiceController::class, 'store']);
             Route::post('/invoices/{invoice}/send', [UaeInvoiceController::class, 'send']);
         });

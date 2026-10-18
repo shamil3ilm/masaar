@@ -99,13 +99,6 @@ final class Settings
             'type' => 'channels',
             'default' => ['mail', 'webhook'],
         ],
-        'invoices.arabic_first' => [
-            'group' => 'Invoices',
-            'label' => 'Bilingual invoices print Arabic first',
-            'help' => 'Right to left, each Arabic caption first and the English beside it, on the PDF, the print view and receipts. An organization can choose English first on its printing page; the other language is printed beside it either way.',
-            'type' => 'bool',
-            'default' => true,
-        ],
         'site.easter_eggs' => [
             'group' => 'Public site',
             'label' => 'Small signs of the parent brand',

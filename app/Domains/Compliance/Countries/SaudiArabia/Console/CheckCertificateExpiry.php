@@ -9,6 +9,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Mail\CertificateExpiringMail;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificatePem;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateService;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
+use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Platform\Services\Settings;
 use App\Domains\Webhook\Events\CertificateExpiring;
@@ -240,7 +241,7 @@ class CheckCertificateExpiry extends Command
         // status are both the pivot's. Filtering on role alone mailed members
         // who had been removed.
         $admins = $organization->users()
-            ->wherePivot('role', 'admin')
+            ->wherePivotIn('role', MemberRole::ADMINISTERING)
             ->wherePivot('status', 'active')
             ->get();
 

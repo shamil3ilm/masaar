@@ -34,7 +34,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 Route::prefix('api/admin/licenses')
-    ->middleware(['jwt.auth', 'platform.admin', 'admin.can:console.view'])
+    ->middleware(['jwt.auth', 'platform.admin', 'admin.can:console.view', 'admin.audit'])
     ->group(function () {
         // Statistics endpoint (before {id} routes)
         Route::get('statistics', [LicenseController::class, 'statistics']);

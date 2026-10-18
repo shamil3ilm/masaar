@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Http\Middleware;
 
+use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Responses\ApiResponse;
 use Closure;
@@ -39,7 +40,7 @@ class OrgWriter
             return $this->refuse($request, __('Choose an organization first.'));
         }
 
-        if ($request->user()?->roleIn($organizationId) === 'viewer') {
+        if (MemberRole::readOnly($request->user()?->roleIn($organizationId))) {
             return $this->refuse($request, __('Your role in this organization is read-only.'));
         }
 

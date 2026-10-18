@@ -86,10 +86,10 @@ class InvoiceDrafter
         $this->assertSupplyPeriod($data['supply_date'] ?? null, $data['supply_end_date'] ?? null);
 
         // The invoice says whether its prices include VAT; if it does not,
-        // the organization's setting decides.
+        // the organization's setting decides - its own, or the platform's.
         $inclusive = array_key_exists('prices_include_vat', $data) && $data['prices_include_vat'] !== null
             ? (bool) $data['prices_include_vat']
-            : (bool) Organization::query()->whereKey($organizationId)->value('prices_include_vat');
+            : (bool) Organization::query()->whereKey($organizationId)->first()?->prices_include_vat;
 
         $totals = InvoiceTotals::of($data['lines'], (string) ($data['discount_amount'] ?? '0'), $inclusive, array_values((array) ($data['charges'] ?? [])));
 

@@ -47,7 +47,7 @@ class SignupTest extends TestCase
 
         $this->assertAuthenticatedAs($user);
         $this->assertSame(Organization::STATUS_PENDING_REVIEW, $organization->status);
-        $this->assertSame('admin', $organization->pivot->role);
+        $this->assertSame('owner', $organization->pivot->role, 'its founder is its owner');
         $this->assertTrue($organization->hasCompleteZatcaProfile());
         $this->assertNotNull($user->terms_accepted_at);
         $this->assertFalse($user->hasVerifiedEmail());

@@ -17,7 +17,7 @@
 
 @if ($settingUp)
     @php
-        $isAdmin = auth()->user()?->roleIn((string) $organization->id) === 'admin';
+        $isAdmin = \App\Domains\Organization\Enums\MemberRole::administers(auth()->user()?->roleIn((string) $organization->id));
     @endphp
     <div class="mb-8 rounded-card bg-surface border border-line shadow-card">
         <div class="border-b p-6">

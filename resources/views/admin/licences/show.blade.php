@@ -198,6 +198,7 @@
                                     value="{{ old($allowance, $unlimited ? '' : $row[$allowance]) }}" placeholder="Unlimited" />
                     </x-ui.field>
                 @endforeach
+                @include('admin.partials.approval-reason', ['action' => 'licences.allowances'])
                 <x-ui.button variant="secondary" class="w-full">Save allowances</x-ui.button>
             </div>
         </form>

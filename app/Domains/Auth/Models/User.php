@@ -4,6 +4,7 @@ namespace App\Domains\Auth\Models;
 
 use App\Domains\Auth\Enums\AdminPermission;
 use App\Domains\Auth\Enums\PlatformRole;
+use App\Domains\Auth\Services\AdminRoles;
 use App\Domains\Organization\Models\Organization;
 use Database\Factories\UserFactory;
 use Illuminate\Auth\MustVerifyEmail;
@@ -111,15 +112,30 @@ class User extends Authenticatable implements HasLocalePreference, JWTSubject, M
      */
     public function mayActOnAccessOf(User $target): bool
     {
-        $mine = $this->platformRole();
+        $mine = $this->adminRole();
 
         if ($mine === null) {
             return false;
         }
 
-        $theirs = $target->platformRole();
+        $theirs = $target->adminRole();
+        $roles = app(AdminRoles::class);
 
-        return $theirs === null || $mine === PlatformRole::Owner || $mine->rank() > $theirs->rank();
+        return $theirs === null || $mine === PlatformRole::Owner->value || $roles->rank($mine) > $roles->rank($theirs);
+    }
+
+    /**
+     * The key of this admin's role - a system role or a custom one - or null
+     * for anyone who is not an admin. No role recorded is the owner, as in
+     * platformRole(); a key that names no role is kept, and grants nothing.
+     */
+    public function adminRole(): ?string
+    {
+        if (! $this->isPlatformAdmin()) {
+            return null;
+        }
+
+        return $this->platform_role === null ? PlatformRole::Owner->value : (string) $this->platform_role;
     }
 
     /**
@@ -129,7 +145,7 @@ class User extends Authenticatable implements HasLocalePreference, JWTSubject, M
     {
         $permission = $permission instanceof AdminPermission ? $permission : AdminPermission::tryFrom($permission);
 
-        return $permission !== null && ($this->platformRole()?->allows($permission) ?? false);
+        return $permission !== null && app(AdminRoles::class)->allows($this->adminRole(), $permission);
     }
 
     /**
@@ -228,10 +244,11 @@ class User extends Authenticatable implements HasLocalePreference, JWTSubject, M
      */
     public function lacksRequiredTwoFactor(string $organizationId): bool
     {
-        return ! $this->hasTwoFactor() && $this->activeOrganizations()
+        // Its own choice or the platform's: the attribute, not the column.
+        return ! $this->hasTwoFactor() && (bool) $this->activeOrganizations()
             ->whereKey($organizationId)
-            ->where('require_two_factor', true)
-            ->exists();
+            ->first()
+            ?->require_two_factor;
     }
 
     public function belongsToOrganization(string $organizationId): bool

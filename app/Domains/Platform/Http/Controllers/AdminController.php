@@ -97,8 +97,9 @@ class AdminController extends Controller
         $features = $this->features->rows($id);
         // Where its country requires Arabic: the grace and what is missing.
         $arabic = $this->arabicNames->summary($id);
+        $peopleSwitches = $this->features->people($id);
 
-        return view('admin.organization-detail', compact('organization', 'stats', 'recentSubmissions', 'certificate', 'members', 'features', 'arabic'));
+        return view('admin.organization-detail', compact('organization', 'stats', 'recentSubmissions', 'certificate', 'members', 'features', 'arabic', 'peopleSwitches'));
     }
 
     /**

@@ -6,6 +6,7 @@ namespace App\Domains\Organization\Http\Controllers;
 
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Enums\PaperSize;
+use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Services\PrintPreferences;
 use App\Domains\Organization\Services\TenantResolver;
@@ -41,7 +42,7 @@ class PortalPrintingController extends Controller
         return view('portal.printing', [
             'papers' => PaperSize::cases(),
             'mine' => $this->preferences->userPaper($organizationId, (string) $request->user()?->id),
-            'admin' => $request->user()?->roleIn($organizationId) === 'admin',
+            'admin' => MemberRole::administers($request->user()?->roleIn($organizationId)),
             'organizationPaper' => $this->preferences->organizationPaper($organization),
             'branches' => $this->preferences->branches($organizationId),
             'bilingual' => $this->jurisdictions->forRules($organization)->languageRules()->requiresArabic(),
@@ -75,20 +76,22 @@ class PortalPrintingController extends Controller
             'language_order' => ['nullable', Rule::in([PrintPreferences::ARABIC_FIRST, PrintPreferences::ENGLISH_FIRST])],
         ]);
 
-        $this->preferences->setOrganizationPaper($organization, PaperSize::from($validated['paper']));
+        $actorId = (string) $request->user()?->id;
+        $this->preferences->setOrganizationPaper($organization, PaperSize::from($validated['paper']), $actorId);
 
         if ($request->has('language_order') && $this->jurisdictions->forRules($organization)->languageRules()->requiresArabic()) {
-            $this->preferences->setLanguageOrder($organization, $validated['language_order'] ?? null);
+            $this->preferences->setLanguageOrder($organization, $validated['language_order'] ?? null, $actorId);
         }
 
         foreach ($this->preferences->branches($organizationId) as $branch) {
             $printer = $validated['printers'][$branch['id']] ?? [];
-            $this->preferences->setBranchPaper($organizationId, $branch['id'], PaperSize::tryFrom((string) ($validated['branches'][$branch['id']] ?? '')));
+            $this->preferences->setBranchPaper($organizationId, $branch['id'], PaperSize::tryFrom((string) ($validated['branches'][$branch['id']] ?? '')), $actorId);
             $this->preferences->setReceiptPrinter(
                 $organizationId,
                 $branch['id'],
                 isset($printer['dpi']) ? (int) $printer['dpi'] : null,
                 isset($printer['dots']) ? (int) $printer['dots'] : null,
+                $actorId,
             );
         }
 

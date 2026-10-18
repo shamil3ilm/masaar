@@ -7,23 +7,24 @@ namespace App\Domains\Organization\Services;
 use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
-use App\Domains\Platform\Services\Settings;
-use Illuminate\Database\Query\Builder;
-use Illuminate\Support\Facades\DB;
+use App\Domains\Platform\Customization\Customizations;
+use App\Domains\Platform\Customization\Level;
+use App\Domains\Platform\Customization\Scope;
 
 /**
  * Which paper an invoice is printed on.
  *
- * And which language a bilingual invoice prints first (arabicFirst()).
+ * The paper chosen on the print screen itself wins; after it the
+ * printing.paper customization decides, the nearer level winning: the
+ * person's own (they print at a till with a roll on it), the branch's (the
+ * till's printer), the organization's, then the platform's. With none, A4.
  *
- * Four layers, the nearer winning: the paper chosen on the print screen
- * itself, the person's own (they print at a till with a roll on it), the
- * branch's (the till's printer), and the organization's. With none, A4.
+ * And which language a bilingual invoice prints first (arabicFirst()): the
+ * printing.language_order customization, the organization's or the
+ * platform's.
  *
- * A column per layer - organizations, branches, the organization_user
- * membership - rather than a settings store, which the platform does not
- * have yet. Each layer is read and written here and nowhere else, so a
- * settings store can take them over by changing this class alone.
+ * A branch's receipt printer is two more customizations, printing.receipt_dpi
+ * and printing.receipt_dots, null for the common printer.
  */
 class PrintPreferences
 {
@@ -33,71 +34,83 @@ class PrintPreferences
     /** Left to right, its English caption first: never English alone. */
     public const ENGLISH_FIRST = 'english_first';
 
-    /** The platform's default order, a setting of the admin console. */
-    public const DEFAULT_SETTING = 'invoices.arabic_first';
+    private const PAPER = 'printing.paper';
+
+    private const DPI = 'printing.receipt_dpi';
+
+    private const DOTS = 'printing.receipt_dots';
+
+    private const LANGUAGE_ORDER = 'printing.language_order';
 
     public function __construct(
-        private readonly Settings $settings,
+        private readonly Customizations $customizations,
     ) {}
 
     /**
      * Whether a bilingual invoice prints Arabic first, right to left: the
-     * organization's choice, else the platform's default, which ships as
-     * Arabic first. Either way both languages are printed.
+     * organization's choice, else the platform's, which ships as Arabic
+     * first. Either way both languages are printed.
      *
      * Not a person's: the order is the organization's document, the same
      * whoever prints it.
      */
     public function arabicFirst(Organization $organization): bool
     {
-        return match ($organization->print_language_order) {
-            self::ARABIC_FIRST => true,
-            self::ENGLISH_FIRST => false,
-            default => (bool) $this->settings->get(self::DEFAULT_SETTING),
-        };
+        return $this->customizations->get(self::LANGUAGE_ORDER, Scope::organization((string) $organization->id)) !== self::ENGLISH_FIRST;
     }
 
     /** The organization's own order; null when it follows the platform's. */
     public function languageOrder(Organization $organization): ?string
     {
-        return in_array($organization->print_language_order, [self::ARABIC_FIRST, self::ENGLISH_FIRST], true)
-            ? $organization->print_language_order
-            : null;
+        $order = $this->customizations->own(self::LANGUAGE_ORDER, Level::Organization, Scope::organization((string) $organization->id));
+
+        return in_array($order, [self::ARABIC_FIRST, self::ENGLISH_FIRST], true) ? $order : null;
     }
 
     /** Set the organization's order, or null to follow the platform's. */
-    public function setLanguageOrder(Organization $organization, ?string $order): void
+    public function setLanguageOrder(Organization $organization, ?string $order, ?string $actorId = null): void
     {
-        $organization->forceFill(['print_language_order' => $order])->save();
+        $this->put(self::LANGUAGE_ORDER, Level::Organization, Scope::organization((string) $organization->id), $order, $actorId);
     }
 
     public function paper(Organization $organization, ?string $branchId, ?string $userId, ?string $requested = null): PaperSize
     {
+        $organizationId = (string) $organization->id;
+        $branchId = $branchId === null || $this->branch($organizationId, $branchId) === null ? null : $branchId;
+        $scope = match (true) {
+            $userId !== null => Scope::member($organizationId, $userId, $branchId),
+            $branchId !== null => Scope::branch($organizationId, $branchId),
+            default => Scope::organization($organizationId),
+        };
+
         return PaperSize::tryFrom((string) $requested)
-            ?? ($userId === null ? null : $this->userPaper((string) $organization->id, $userId))
-            ?? ($branchId === null ? null : $this->branchPaper((string) $organization->id, $branchId))
-            ?? $this->organizationPaper($organization);
+            ?? PaperSize::tryFrom((string) $this->customizations->get(self::PAPER, $scope))
+            ?? PaperSize::A4;
     }
 
     public function organizationPaper(Organization $organization): PaperSize
     {
-        return PaperSize::tryFrom((string) $organization->paper_size) ?? PaperSize::A4;
+        return PaperSize::tryFrom((string) $this->customizations->get(self::PAPER, Scope::organization((string) $organization->id))) ?? PaperSize::A4;
     }
 
-    public function setOrganizationPaper(Organization $organization, PaperSize $paper): void
+    public function setOrganizationPaper(Organization $organization, PaperSize $paper, ?string $actorId = null): void
     {
-        $organization->forceFill(['paper_size' => $paper->value])->save();
+        $this->customizations->set(self::PAPER, Level::Organization, Scope::organization((string) $organization->id), $paper->value, $actorId);
     }
 
     /** The branch's own paper; null when it prints on the organization's. */
     public function branchPaper(string $organizationId, string $branchId): ?PaperSize
     {
-        return PaperSize::tryFrom((string) $this->branch($organizationId, $branchId)?->paper_size);
+        return $this->branch($organizationId, $branchId) === null
+            ? null
+            : PaperSize::tryFrom((string) $this->customizations->own(self::PAPER, Level::Branch, Scope::branch($organizationId, $branchId)));
     }
 
-    public function setBranchPaper(string $organizationId, string $branchId, ?PaperSize $paper): void
+    public function setBranchPaper(string $organizationId, string $branchId, ?PaperSize $paper, ?string $actorId = null): void
     {
-        $this->branch($organizationId, $branchId)?->forceFill(['paper_size' => $paper?->value])->save();
+        if ($this->branch($organizationId, $branchId) !== null) {
+            $this->put(self::PAPER, Level::Branch, Scope::branch($organizationId, $branchId), $paper?->value, $actorId);
+        }
     }
 
     /**
@@ -109,28 +122,36 @@ class PrintPreferences
      */
     public function receiptPrinter(string $organizationId, ?string $branchId): array
     {
-        $branch = $branchId === null ? null : $this->branch($organizationId, $branchId);
+        $scope = $branchId === null || $this->branch($organizationId, $branchId) === null
+            ? Scope::organization($organizationId)
+            : Scope::branch($organizationId, $branchId);
 
         return [
-            'dpi' => $branch?->receipt_dpi === null ? null : (int) $branch->receipt_dpi,
-            'dots' => $branch?->receipt_dots === null ? null : (int) $branch->receipt_dots,
+            'dpi' => $this->customizations->get(self::DPI, $scope),
+            'dots' => $this->customizations->get(self::DOTS, $scope),
         ];
     }
 
-    public function setReceiptPrinter(string $organizationId, string $branchId, ?int $dpi, ?int $dots): void
+    public function setReceiptPrinter(string $organizationId, string $branchId, ?int $dpi, ?int $dots, ?string $actorId = null): void
     {
-        $this->branch($organizationId, $branchId)?->forceFill(['receipt_dpi' => $dpi, 'receipt_dots' => $dots])->save();
+        if ($this->branch($organizationId, $branchId) === null) {
+            return;
+        }
+
+        $scope = Scope::branch($organizationId, $branchId);
+        $this->put(self::DPI, Level::Branch, $scope, $dpi, $actorId);
+        $this->put(self::DOTS, Level::Branch, $scope, $dots, $actorId);
     }
 
     /** The person's own paper in this organization; null when they have none. */
     public function userPaper(string $organizationId, string $userId): ?PaperSize
     {
-        return PaperSize::tryFrom((string) $this->membership($organizationId, $userId)->value('paper_size'));
+        return PaperSize::tryFrom((string) $this->customizations->own(self::PAPER, Level::User, Scope::member($organizationId, $userId)));
     }
 
     public function setUserPaper(string $organizationId, string $userId, ?PaperSize $paper): void
     {
-        $this->membership($organizationId, $userId)->update(['paper_size' => $paper?->value, 'updated_at' => now()]);
+        $this->put(self::PAPER, Level::User, Scope::member($organizationId, $userId), $paper?->value, $userId);
     }
 
     /**
@@ -141,13 +162,17 @@ class PrintPreferences
     public function branches(string $organizationId): array
     {
         return Branch::withoutTenantScope(fn () => Branch::query()->where('org_id', $organizationId)->orderBy('name')->get())
-            ->map(fn (Branch $branch): array => [
-                'id' => (string) $branch->id,
-                'name' => (string) $branch->name,
-                'paper' => PaperSize::tryFrom((string) $branch->paper_size),
-                'dpi' => $branch->receipt_dpi === null ? null : (int) $branch->receipt_dpi,
-                'dots' => $branch->receipt_dots === null ? null : (int) $branch->receipt_dots,
-            ])
+            ->map(function (Branch $branch) use ($organizationId): array {
+                $scope = Scope::branch($organizationId, (string) $branch->id);
+
+                return [
+                    'id' => (string) $branch->id,
+                    'name' => (string) $branch->name,
+                    'paper' => PaperSize::tryFrom((string) $this->customizations->own(self::PAPER, Level::Branch, $scope)),
+                    'dpi' => $this->customizations->own(self::DPI, Level::Branch, $scope),
+                    'dots' => $this->customizations->own(self::DOTS, Level::Branch, $scope),
+                ];
+            })
             ->values()
             ->all();
     }
@@ -159,12 +184,11 @@ class PrintPreferences
         return Branch::withoutTenantScope(fn () => Branch::query()->where('org_id', $organizationId)->whereKey($branchId)->first());
     }
 
-    /**
-     * The person's membership: the organization_user row, which is where a
-     * person's standing in one organization is kept.
-     */
-    private function membership(string $organizationId, string $userId): Builder
+    /** Set a level's value, or with null leave it to the level above. */
+    private function put(string $key, Level $level, Scope $scope, mixed $value, ?string $actorId): void
     {
-        return DB::table('organization_user')->where('org_id', $organizationId)->where('user_id', $userId);
+        $value === null
+            ? $this->customizations->reset($key, $level, $scope, $actorId)
+            : $this->customizations->set($key, $level, $scope, $value, $actorId);
     }
 }

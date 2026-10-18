@@ -11,8 +11,12 @@ use App\Domains\Invoice\Services\InvoicePdf;
 use App\Domains\Invoice\Services\ReceiptImage;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\PrintPreferences;
-use App\Domains\Platform\Services\Settings;
+use App\Domains\Platform\Customization\Customizations;
+use App\Domains\Platform\Customization\Level;
+use App\Domains\Platform\Customization\Scope;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Testing\TestResponse;
 use Tests\Fixtures\PrintSamples;
 use Tests\TestCase;
@@ -21,7 +25,8 @@ use Tests\TestCase;
  * A Saudi invoice prints Arabic first, right to left, with the English
  * beside it: the PDF, the browser's print view and the till's receipt.
  * An organization may choose English first, never English alone, and the
- * platform's default is a console setting that ships as Arabic first.
+ * platform's default is a customization that ships as Arabic first, and
+ * there is no person's own: the order belongs to the organization's document.
  *
  * ZATCA's E-Invoicing Detailed Guidelines (v2, May 2023) p63: "Any
  * information contained in the human readable form of the Tax Invoice must
@@ -63,16 +68,40 @@ class ArabicFirstPrintTest extends TestCase
         $this->assertStringContainsString('Description<br><span class="ar">تفاصيل السلع أو الخدمات</span>', $html);
     }
 
-    public function test_the_platform_default_is_a_setting(): void
+    public function test_the_platform_default_is_a_customization(): void
     {
         $preferences = app(PrintPreferences::class);
         $this->assertTrue($preferences->arabicFirst($this->organization));
 
-        app(Settings::class)->put([PrintPreferences::DEFAULT_SETTING => '0']);
+        app(Customizations::class)->set('printing.language_order', Level::Platform, Scope::platform(), PrintPreferences::ENGLISH_FIRST, null);
         $this->assertFalse($preferences->arabicFirst($this->organization));
+        $this->assertNull($preferences->languageOrder($this->organization));
 
         $preferences->setLanguageOrder($this->organization, PrintPreferences::ARABIC_FIRST);
         $this->assertTrue($preferences->arabicFirst($this->organization->fresh()));
+    }
+
+    public function test_no_person_has_their_own_order(): void
+    {
+        $definition = app(Customizations::class)->definition('printing.language_order');
+
+        $this->assertSame([Level::Platform, Level::Organization], $definition->levels);
+        $this->assertSame(PrintPreferences::ARABIC_FIRST, $definition->default);
+    }
+
+    public function test_the_column_and_setting_move_over(): void
+    {
+        $migration = require database_path('migrations/0950_language_order_customization.php');
+        $migration->down();
+        DB::table('organizations')->where('id', $this->organization->id)->update(['print_language_order' => PrintPreferences::ENGLISH_FIRST]);
+        DB::table('settings')->insert(['key' => 'invoices.arabic_first', 'value' => json_encode(false), 'created_at' => now(), 'updated_at' => now()]);
+
+        $migration->up();
+
+        $this->assertSame(PrintPreferences::ENGLISH_FIRST, app(PrintPreferences::class)->languageOrder($this->organization));
+        $this->assertSame(PrintPreferences::ENGLISH_FIRST, app(Customizations::class)->own('printing.language_order', Level::Platform, Scope::platform()));
+        $this->assertFalse(Schema::hasColumn('organizations', 'print_language_order'));
+        $this->assertNull(DB::table('settings')->where('key', 'invoices.arabic_first')->first());
     }
 
     public function test_the_receipt_puts_arabic_first(): void
@@ -110,7 +139,7 @@ class ArabicFirstPrintTest extends TestCase
             ->post('/portal/printing', ['_token' => self::TOKEN, 'paper' => 'a4', 'language_order' => PrintPreferences::ENGLISH_FIRST]))
             ->assertSessionHasNoErrors();
 
-        $this->assertSame(PrintPreferences::ENGLISH_FIRST, $this->organization->fresh()->print_language_order);
+        $this->assertSame(PrintPreferences::ENGLISH_FIRST, app(PrintPreferences::class)->languageOrder($this->organization));
 
         $this->asRequest(fn (): TestResponse => $this->actingAs($admin)
             ->withSession(['_token' => self::TOKEN])

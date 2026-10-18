@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Http\Controllers;
 
+use App\Domains\Platform\Customization\Customizations;
+use App\Domains\Platform\Customization\Level;
+use App\Domains\Platform\Customization\Scope;
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
 use App\Domains\Platform\Services\Settings;
 use App\Http\Controllers\Controller;
@@ -28,13 +31,17 @@ use Illuminate\View\View;
  */
 class AdminSettingsController extends Controller
 {
-    public function __construct(private readonly Settings $settings) {}
+    public function __construct(
+        private readonly Settings $settings,
+        private readonly Customizations $customizations,
+    ) {}
 
     public function index(): View
     {
         return view('admin.settings', [
             'definitions' => Settings::DEFINITIONS,
             'settings' => $this->settings,
+            'customizations' => $this->customizations->describe(Level::Platform, Scope::platform()),
         ]);
     }
 

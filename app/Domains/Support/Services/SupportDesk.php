@@ -7,6 +7,8 @@ namespace App\Domains\Support\Services;
 use App\Domains\Auth\Enums\AdminPermission;
 use App\Domains\Auth\Models\User;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Platform\Customization\Customizations;
+use App\Domains\Platform\Customization\Scope;
 use App\Domains\Support\Enums\TicketCategory;
 use App\Domains\Support\Enums\TicketPriority;
 use App\Domains\Support\Enums\TicketStatus;
@@ -34,6 +36,7 @@ class SupportDesk
 {
     public function __construct(
         private readonly TicketFiles $files,
+        private readonly Customizations $customizations,
     ) {}
 
     /**
@@ -115,7 +118,10 @@ class SupportDesk
         if ($staff) {
             $opener = $ticket->opener;
 
-            if ($opener !== null && $opener->isActive()) {
+            // Unless they chose not to be emailed (notifications.support_replies):
+            // the reply is on the ticket either way.
+            if ($opener !== null && $opener->isActive()
+                && $this->customizations->get('notifications.support_replies', Scope::member((string) $ticket->org_id, (string) $opener->id))) {
                 // The account, not its address: the mail is then written in
                 // the language the customer reads the portal in.
                 $this->notify($opener, 'Support replied to your ticket', $ticket, route('portal.support.show', $ticket->id));

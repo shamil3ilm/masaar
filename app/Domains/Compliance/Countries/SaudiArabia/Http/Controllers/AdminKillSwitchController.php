@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers;
 
+use App\Domains\Platform\Approvals\ActionResult;
+use App\Domains\Platform\Approvals\Approvals;
+use App\Domains\Platform\Http\Concerns\HoldsForApproval;
 use App\Domains\Platform\Services\KillSwitch;
 use App\Http\Controllers\Controller;
 use App\Support\OperatorError;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Throwable;
 
@@ -48,7 +51,12 @@ class AdminKillSwitchController extends Controller
      */
     private const MAX_MINUTES = 1440;
 
-    public function __construct(private readonly KillSwitch $switches) {}
+    use HoldsForApproval;
+
+    public function __construct(
+        private readonly KillSwitch $switches,
+        private readonly Approvals $approvals,
+    ) {}
 
     public function index(): View
     {
@@ -69,15 +77,11 @@ class AdminKillSwitchController extends Controller
             'minutes' => ['nullable', 'integer', 'min:1', 'max:'.self::MAX_MINUTES],
         ]);
 
-        return $this->attempt(
-            fn () => $this->switches->enable(
-                $validated['switch'],
-                reason: $validated['reason'],
-                enabledBy: $this->actor(),
-                durationSeconds: isset($validated['minutes']) ? $validated['minutes'] * 60 : null,
-            ),
-            $this->label($validated['switch']).' stopped.'
-        );
+        return $this->attempt($request, 'kill_switches.enable', [
+            'switch' => $validated['switch'],
+            'reason' => $validated['reason'],
+            'minutes' => isset($validated['minutes']) ? (int) $validated['minutes'] : null,
+        ], $validated['reason']);
     }
 
     public function disable(Request $request): RedirectResponse
@@ -86,10 +90,7 @@ class AdminKillSwitchController extends Controller
             'switch' => ['required', 'string', Rule::in(KillSwitch::SWITCHES)],
         ]);
 
-        return $this->attempt(
-            fn () => $this->switches->disable($validated['switch'], disabledBy: $this->actor()),
-            $this->label($validated['switch']).' resumed.'
-        );
+        return $this->attempt($request, 'kill_switches.disable', ['switch' => $validated['switch']]);
     }
 
     /**
@@ -104,18 +105,12 @@ class AdminKillSwitchController extends Controller
             'reason' => ['required', 'string', 'min:5', 'max:500'],
         ]);
 
-        return $this->attempt(
-            fn () => $this->switches->emergencyStop($validated['reason'], $this->actor()),
-            'Every switch is on. Nothing is being issued, signed or filed.'
-        );
+        return $this->attempt($request, 'kill_switches.stop', ['reason' => $validated['reason']], $validated['reason']);
     }
 
-    public function resume(): RedirectResponse
+    public function resume(Request $request): RedirectResponse
     {
-        return $this->attempt(
-            fn () => $this->switches->resumeAll($this->actor()),
-            'Every switch is off. Normal operation has resumed.'
-        );
+        return $this->attempt($request, 'kill_switches.resume', []);
     }
 
     /**
@@ -127,12 +122,14 @@ class AdminKillSwitchController extends Controller
      * v1/* only, so without this an operator mid-incident would get an error
      * page instead of a sentence.
      */
-    private function attempt(callable $action, string $success): RedirectResponse
+    private function attempt(Request $request, string $action, array $payload, ?string $reason = null): RedirectResponse
     {
         try {
-            $action();
-
-            return redirect()->route('admin.kill-switches')->with('success', $success);
+            return $this->holdOrRun($this->approvals, $request, $action, $payload,
+                fn (ActionResult $done): RedirectResponse => redirect()->route('admin.kill-switches')->with('success', $done->message),
+                $reason);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (Throwable $e) {
             // KillSwitch's own refusals are sentences; anything else - the
             // registry lock timing out, the store failing - is logged under
@@ -144,32 +141,5 @@ class AdminKillSwitchController extends Controller
                     [\InvalidArgumentException::class],
                 ));
         }
-    }
-
-    /**
-     * Who to record. The service falls back to 'system' for null, which is
-     * not what anyone wants to read in an audit trail.
-     */
-    /**
-     * Who to record, in a form the next person can read.
-     *
-     * This recorded Auth::id(), so the screen that answers "who stopped
-     * issuance, and why" said 01a071e9-a21e-7158-ac0e-704f4e606031. The same
-     * value goes into the Slack alert for a long-running switch, where a UUID
-     * is worse still: nobody is going to look it up at two in the morning.
-     *
-     * The field is only ever displayed or logged - nothing keys off it - so
-     * it can hold the email the admin bar already shows.
-     */
-    private function actor(): string
-    {
-        $user = Auth::user();
-
-        return $user?->email ?? (string) (Auth::id() ?? 'system');
-    }
-
-    private function label(string $switch): string
-    {
-        return ucfirst(str_replace('_', ' ', $switch));
     }
 }

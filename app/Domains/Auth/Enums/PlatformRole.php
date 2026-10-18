@@ -39,6 +39,7 @@ enum PlatformRole: string
                 AdminPermission::UsersTwoFactor,
                 AdminPermission::SupportManage,
                 AdminPermission::OperationsRun,
+                AdminPermission::ApprovalsDecide,
             ],
             self::Support => [
                 AdminPermission::View,
