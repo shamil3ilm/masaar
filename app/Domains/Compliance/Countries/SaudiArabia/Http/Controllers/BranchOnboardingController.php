@@ -7,12 +7,14 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\ComplianceSampleSet;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\CsidOnboarding;
+use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\RenewalGuard;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificatePem;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Services\BranchService;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
+use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -29,6 +31,7 @@ class BranchOnboardingController extends Controller
         private readonly BranchService $branchService,
         private readonly CsidOnboarding $onboarding,
         private readonly ComplianceSampleSet $samples,
+        private readonly RenewalGuard $renewal,
     ) {}
 
     /**
@@ -255,6 +258,17 @@ class BranchOnboardingController extends Controller
 
         if (! $branch) {
             return ApiResponse::error('Branch not found', 404);
+        }
+
+        // A reset is how a branch renews, and a renewal waits while documents
+        // the current certificate signed are unfiled (RenewalGuard) - unless
+        // a reason is given, which is audited.
+        $override = $request->validate(['renewal_override_reason' => ['nullable', 'string', 'max:500']]);
+
+        try {
+            $this->renewal->assertMayRenew((string) $organization->id, (string) $branch->id, $override['renewal_override_reason'] ?? null);
+        } catch (DomainException $e) {
+            return ApiResponse::error($e->getMessage(), 409);
         }
 
         // The row first, the files second.

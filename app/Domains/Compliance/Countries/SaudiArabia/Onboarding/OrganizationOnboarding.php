@@ -26,6 +26,7 @@ class OrganizationOnboarding
         private readonly CredentialStore $credentials,
         private readonly Registrar $registrar,
         private readonly ComplianceSampleSet $samples,
+        private readonly RenewalGuard $renewal,
     ) {}
 
     /**
@@ -59,14 +60,20 @@ class OrganizationOnboarding
      * @param  array{common_name: string, serial_number: string, organization_unit?: string|null, location?: string|null, industry?: string|null}  $device
      * @return array{ccsid: string, request_id: string}
      *
-     * @throws DomainException when the organization's details are incomplete
+     * Onboarding an organization that holds a production certificate is a
+     * renewal, refused while documents it signed are unfiled (RenewalGuard)
+     * unless $renewalOverride gives a reason - before the OTP is spent.
+     *
+     * @throws DomainException when the organization's details are incomplete, or renewal must wait
      * @throws CertificateException when ZATCA refuses
      */
-    public function requestCcsid(Organization $organization, string $otp, array $device): array
+    public function requestCcsid(Organization $organization, string $otp, array $device, ?string $renewalOverride = null): array
     {
         if (! $organization->hasCompleteZatcaProfile()) {
             throw new DomainException(__('Organization profile incomplete. Ensure VAT number and address are set.'));
         }
+
+        $this->renewal->assertMayRenew((string) $organization->id, null, $renewalOverride);
 
         $result = $this->onboarding->requestComplianceCsid(new CsrData(
             organizationName: $organization->name,
@@ -131,7 +138,7 @@ class OrganizationOnboarding
      * @throws DomainException when steps 1 and 2 have not been done
      * @throws CertificateException when ZATCA refuses
      */
-    public function requestPcsid(Organization $organization): void
+    public function requestPcsid(Organization $organization, ?string $renewalOverride = null): void
     {
         $ccsid = $this->stored($organization, CredentialStore::CCSID)
             ?? throw new DomainException(__('No CCSID found. Complete steps 1-2 first.'));
@@ -139,6 +146,10 @@ class OrganizationOnboarding
         $existing = $this->stored($organization, CredentialStore::PCSID);
 
         if (empty($existing['pcsid']) || ($existing['privateKey'] ?? null) !== $ccsid['privateKey']) {
+            // A renewal: asked again here, since documents may have been
+            // signed with the current certificate since step 1.
+            $this->renewal->assertMayRenew((string) $organization->id, null, $renewalOverride);
+
             $result = $this->onboarding->requestProductionCsid($ccsid['ccsid'], $ccsid['secret'], $ccsid['requestId']);
 
             $this->credentials->put((string) $organization->id, null, CredentialStore::PCSID, array_merge($result, [

@@ -65,6 +65,7 @@ class PortalZatcaController extends Controller
             'common_name' => ['required', 'string', 'max:64'],
             'organization_unit' => ['nullable', 'string', 'max:64'],
             'industry' => ['nullable', 'string', 'max:64'],
+            'renewal_override_reason' => ['nullable', 'string', 'max:500'],
         ], ['otp.regex' => __('The OTP is the 6 digits the Fatoora portal showed you.')]);
 
         return $this->step(function () use ($organization, $data): string {
@@ -73,7 +74,7 @@ class PortalZatcaController extends Controller
                 'serial_number' => '1-'.Str::slug((string) config('app.name', 'Masaar')).'|2-1.0|3-'.Str::uuid(),
                 'organization_unit' => $data['organization_unit'] ?: null,
                 'industry' => $data['industry'] ?: null,
-            ]);
+            ], $data['renewal_override_reason'] ?? null);
 
             return __('ZATCA issued a compliance certificate. Next, run the compliance checks.');
         });
@@ -105,9 +106,10 @@ class PortalZatcaController extends Controller
     public function production(Request $request): RedirectResponse
     {
         $organization = $this->cleared($request);
+        $override = $request->validate(['renewal_override_reason' => ['nullable', 'string', 'max:500']])['renewal_override_reason'] ?? null;
 
-        return $this->step(function () use ($organization): string {
-            $this->onboarding->requestPcsid($organization);
+        return $this->step(function () use ($organization, $override): string {
+            $this->onboarding->requestPcsid($organization, $override);
 
             return __('Connected. Invoices you issue are now signed and filed with ZATCA.');
         });

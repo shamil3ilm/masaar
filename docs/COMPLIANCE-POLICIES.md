@@ -363,6 +363,10 @@ Security Features Implementation Standard v1.2, section 2.2.1, requirement 14: "
 | No list named or configured | Stamping continues and the certificate is reported as unverified, in the readiness report and on the certificates page. |
 | Revoked | Stamping is refused with `CERT_REVOKED` before a counter is spent. |
 
+### Renewing With Documents Unfiled
+
+A renewal revokes the existing certificate (Security Features Implementation Standard v1.2, section 2.1.2, step 4), and a document it stamped that ZATCA does not hold yet may then be refused. So a renewal is refused while any document the current certificate signed is issued or submitted without an answer - queued offline, pending or being retried, or past the 24 hours a simplified invoice has to be reported in (E-Invoicing Detailed Guidelines, section 4.2.2(c)). The refusal lists them, in the reader's language. It is asked when an organization requests a new compliance CSID while holding a production one, again at the production step of a renewal, and when a branch is reset. An administrator can renew anyway by giving a reason of at least ten characters, which is audited with the documents left unfiled.
+
 ### Detecting Revocation
 
 The CA publishes a revocation in its CRL, and the EGS "reads periodically from CRL to verify which Identifiers are still active" (Security Features Implementation Standard v1.2, section 2.1.3). `fatoora:check-revocation` runs daily and checks every `active` and `superseded` version with the same check as above. A version found revoked is recorded as `revoked`: nothing more is filed with it, and if the device signs with it, the device stops signing. Its organization's administrators are mailed, each in their own language, and the platform's operators are alerted through the alerts channel.
