@@ -35,6 +35,8 @@
                 </x-ui.select>
             </label>
         @endif
+        {{-- The saved product the picker filled it from, if any: so that product is known to be used. --}}
+        <input type="hidden" name="lines[{{ $index }}][product_id]" value="{{ $row['product_id'] ?? '' }}">
 
         <label class="block text-xs font-medium text-muted lg:col-span-2">
             {{ __('Item name') }}

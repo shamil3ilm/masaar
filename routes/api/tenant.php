@@ -9,6 +9,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\OnboardingCont
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\UaeDocumentController;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\UaeInvoiceController;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\UaeProfileController;
+use App\Domains\Invoice\Http\Controllers\CatalogueController;
 use App\Domains\Invoice\Http\Controllers\InvoiceController;
 use App\Domains\Invoice\Http\Controllers\InvoiceReceiptController;
 use App\Domains\Invoice\Http\Controllers\NumberingController;
@@ -57,6 +58,16 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
     Route::apiResource('invoices', InvoiceController::class)->only(['store', 'update'])->middleware('org.writer');
     Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy'])
         ->middleware('org.admin');
+
+    /* Customers and products ------------------------------------------- */
+    // One an invoice used can only be archived: removing it answers 409
+    // RECORD_IN_USE with the archive route (CatalogueRemoval).
+    Route::middleware('org.writer')->group(function () {
+        Route::post('/customers/{customer}/archive', [CatalogueController::class, 'archiveCustomer']);
+        Route::delete('/customers/{customer}', [CatalogueController::class, 'destroyCustomer']);
+        Route::post('/products/{product}/archive', [CatalogueController::class, 'archiveProduct']);
+        Route::delete('/products/{product}', [CatalogueController::class, 'destroyProduct']);
+    });
 
     // How invoices sent without a number are numbered when issued.
     Route::get('/settings/numbering', [NumberingController::class, 'index']);

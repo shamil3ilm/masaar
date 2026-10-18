@@ -23,11 +23,45 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * An organization's customers as a history list.
  *
  * Active customers unless the list asks for the archived ones, as the page
- * always showed - `archived=1` still means what it did. Every query names
- * the organization, as Catalogue's do.
+ * always showed - `archived=1` still means what it did - or the removed
+ * ones, to bring back (CatalogueRemoval). Every query names the
+ * organization, as Catalogue's do.
  */
 class CustomerHistory
 {
+    /** The value of the Showing filter that lists removed records. */
+    public const REMOVED = 'removed';
+
+    /**
+     * What the Showing filter offers besides the active ones, here and for
+     * products.
+     *
+     * @return array<string, string>
+     */
+    public static function showingOptions(): array
+    {
+        return ['1' => __('Archived'), 'all' => __('Active and archived'), self::REMOVED => __('Removed, to restore')];
+    }
+
+    /**
+     * A customer or product query narrowed to what the Showing filter asks
+     * for: active (null), archived ('1'), both ('all') or removed.
+     *
+     * @template TModel of \Illuminate\Database\Eloquent\Model
+     *
+     * @param  Builder<TModel>  $query
+     * @return Builder<TModel>
+     */
+    public static function showing(Builder $query, mixed $showing): Builder
+    {
+        return match ($showing) {
+            self::REMOVED => $query->onlyTrashed(),
+            '1' => $query->whereNotNull('archived_at'),
+            'all' => $query,
+            default => $query->whereNull('archived_at'),
+        };
+    }
+
     public function spec(Organization $organization, string $key): ListSpec
     {
         return new ListSpec(
@@ -41,7 +75,7 @@ class CustomerHistory
             filters: [
                 new Search('q', __('Search'), ['name', 'name_ar', 'vat_number', 'email'], __('Name, VAT number or email')),
                 new Search('city', __('City'), ['city']),
-                new Choice('archived', __('Showing'), ['1' => __('Archived'), 'all' => __('Active and archived')], fn (QueryBuilder $query, string $value) => null, __('Active')),
+                new Choice('archived', __('Showing'), self::showingOptions(), fn (QueryBuilder $query, string $value) => null, __('Active')),
                 new DateRange('created_at', __('Added'), CountryClock::timeZone($organization->country), instant: true),
             ],
         );
@@ -71,11 +105,6 @@ class CustomerHistory
      */
     private function query(string $organizationId, ListState $list): Builder
     {
-        $showing = $list->value('archived');
-
-        return Customer::query()
-            ->where('org_id', $organizationId)
-            ->when($showing === null, fn (QueryBuilder $query) => $query->whereNull('archived_at'))
-            ->when($showing === '1', fn (QueryBuilder $query) => $query->whereNotNull('archived_at'));
+        return self::showing(Customer::query(), $list->value('archived'))->where('org_id', $organizationId);
     }
 }

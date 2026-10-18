@@ -1917,5 +1917,12 @@
     "Ownership is offered. It moves when they accept; until then you are the owner.": "عُرضت الملكية. تنتقل عند القبول، وتبقى أنت المالك حتى ذلك الحين.",
     "The offer of ownership is withdrawn.": "سُحب عرض الملكية.",
     "You are the platform owner now.": "أصبحت الآن مالك المنصة.",
-    "Done without approval: :action": "نُفّذ دون موافقة: :action"
+    "Done without approval: :action": "نُفّذ دون موافقة: :action",
+    ":name is on an invoice, so it stays for the record: archive it instead.": "ورد :name في فاتورة، لذا يبقى محفوظاً في السجل: أرشفه بدلاً من ذلك.",
+    ":name removed. Show the removed ones in the list to bring it back.": "أُزيل :name. اعرض العناصر المُزالة في القائمة لاستعادته.",
+    "No invoice has used it, so it can be removed. Show the removed ones in the list to bring it back.": "لم يُستخدم في أي فاتورة، لذا يمكن إزالته. اعرض العناصر المُزالة في القائمة لاستعادته.",
+    "No product matches that filter.": "لا يوجد منتج يطابق هذه التصفية.",
+    "Remove customer": "إزالة العميل",
+    "Remove product": "إزالة المنتج",
+    "Removed, to restore": "المُزالة، للاستعادة"
 }

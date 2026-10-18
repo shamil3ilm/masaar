@@ -36,22 +36,6 @@ class Catalogue
     }
 
     /**
-     * @return LengthAwarePaginator<int, Product>
-     */
-    public function products(string $organizationId, ?string $search, bool $archived, int $perPage): LengthAwarePaginator
-    {
-        return Product::withoutTenantScope(fn () => Product::query()
-            ->where('org_id', $organizationId)
-            ->when($archived, fn ($query) => $query->whereNotNull('archived_at'), fn ($query) => $query->whereNull('archived_at'))
-            ->when($search !== null, fn ($query) => $query->where(fn ($query) => $query
-                ->whereRaw("name LIKE ? ESCAPE '!'", ['%'.$this->escapeLike((string) $search).'%'])
-                ->orWhereRaw("name_ar LIKE ? ESCAPE '!'", ['%'.$this->escapeLike((string) $search).'%'])
-                ->orWhere('sku', $search)))
-            ->orderBy('name')
-            ->paginate($perPage));
-    }
-
-    /**
      * The active customers, for the invoice form's picker.
      *
      * @return Collection<int, Customer>
@@ -111,13 +95,22 @@ class Catalogue
      */
     public function productArabicName(string $organizationId, ?string $productId, ?string $code): ?string
     {
-        $product = match (true) {
+        $product = $this->productNamed($organizationId, $productId, $code);
+
+        return filled($product?->name_ar) ? (string) $product->name_ar : null;
+    }
+
+    /**
+     * The product an invoice line names, by its id or else its code; null
+     * when it names none or none of the organization's is found.
+     */
+    public function productNamed(string $organizationId, ?string $productId, ?string $code): ?Product
+    {
+        return match (true) {
             $productId !== null && Str::isUuid($productId) => $this->product($organizationId, $productId),
             filled($code) => Product::withoutTenantScope(fn () => Product::query()->where('org_id', $organizationId)->where('sku', $code)->first()),
             default => null,
         };
-
-        return filled($product?->name_ar) ? (string) $product->name_ar : null;
     }
 
     /** A saved customer's usual payment terms; null when it has none. */

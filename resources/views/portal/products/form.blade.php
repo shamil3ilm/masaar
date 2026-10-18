@@ -59,5 +59,14 @@
             <p class="mt-1 text-xs text-muted">{{ __('Hidden from the invoice form. Invoices already written are not affected.') }}</p>
         @endif
     </form>
+
+    {{-- Only while no invoice has used it; one that was used is archived (CatalogueRemoval). --}}
+    @if ($removable)
+        <form method="POST" action="{{ route('portal.products.remove', $product->id) }}" class="mt-4 max-w-3xl">
+            @csrf
+            <x-ui.button variant="danger">{{ __('Remove product') }}</x-ui.button>
+            <p class="mt-1 text-xs text-muted">{{ __('No invoice has used it, so it can be removed. Show the removed ones in the list to bring it back.') }}</p>
+        </form>
+    @endif
 @endif
 @endsection

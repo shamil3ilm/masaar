@@ -34,6 +34,7 @@ class InvoiceDrafter
     public function __construct(
         private readonly AuditService $audit,
         private readonly PrepaymentSettlement $settlement,
+        private readonly Catalogue $catalogue,
     ) {}
 
     /**
@@ -156,6 +157,13 @@ class InvoiceDrafter
                     'exempt_code' => $line['exempt_code'] ?? null,
                     'exempt_reason' => $line['exempt_reason'] ?? null,
                     'line_total' => $priced['total'],
+                    // The saved product it was made from, so that product is
+                    // known to be used (CatalogueRemoval).
+                    'product_id' => $this->catalogue->productNamed(
+                        $organizationId,
+                        is_string($line['product_id'] ?? null) ? $line['product_id'] : null,
+                        is_string($line['product_code'] ?? null) ? $line['product_code'] : null,
+                    )?->id,
                 ]);
 
                 // Taxed as the line is; on an invoice priced with VAT in it

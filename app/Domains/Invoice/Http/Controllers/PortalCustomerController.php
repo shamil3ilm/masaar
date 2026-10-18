@@ -7,8 +7,10 @@ namespace App\Domains\Invoice\Http\Controllers;
 use App\Domains\Compliance\Engine\Contracts\Jurisdiction;
 use App\Domains\Compliance\Engine\Contracts\LanguageRules;
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
+use App\Domains\Invoice\Exceptions\RecordInUseException;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Services\Catalogue;
+use App\Domains\Invoice\Services\CatalogueRemoval;
 use App\Domains\Invoice\Services\CustomerHistory;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Rules\VatNumber;
@@ -16,6 +18,7 @@ use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Listing\Lists;
 use App\Http\Listing\ListState;
+use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -25,7 +28,9 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 /**
  * The organization's customers, so an invoice starts with its buyer filled in.
  *
- * Anyone who writes invoices keeps them; a viewer reads (org.writer).
+ * Anyone who writes invoices keeps them; a viewer reads (org.writer). One an
+ * invoice used is only archived; one never used can be removed, and brought
+ * back from the list's Removed view (CatalogueRemoval).
  *
  * The buyer details every country keeps are checked here; what else a
  * customer keeps, and how its postal code is checked, are the
@@ -42,6 +47,7 @@ class PortalCustomerController extends Controller
         private readonly Lists $lists,
         private readonly TenantResolver $tenant,
         private readonly JurisdictionResolver $jurisdictions,
+        private readonly CatalogueRemoval $removal,
     ) {}
 
     public function index(Request $request): View
@@ -51,6 +57,7 @@ class PortalCustomerController extends Controller
         return view('portal.customers.index', [
             'customers' => $this->history->page($this->portalOrganizationId($request), $list),
             'list' => $list,
+            'removed' => $list->value('archived') === CustomerHistory::REMOVED,
         ]);
     }
 
@@ -81,8 +88,11 @@ class PortalCustomerController extends Controller
 
     public function edit(Request $request, string $customerId): View
     {
+        $customer = $this->customer($request, $customerId);
+
         return view('portal.customers.form', [
-            'customer' => $this->customer($request, $customerId),
+            'customer' => $customer,
+            'removable' => ! $this->removal->inUse($customer),
             'buyerFields' => $this->jurisdiction()->invoiceRules()->buyerView(),
             'arabicRequired' => $this->jurisdiction()->languageRules()->requiresArabic(),
         ]);
@@ -107,6 +117,35 @@ class PortalCustomerController extends Controller
 
         return redirect()->route('portal.customers.index')
             ->with('success', $archived ? __(':name archived. Invoices already written keep their details.', ['name' => $customer->name]) : __(':name restored.', ['name' => $customer->name]));
+    }
+
+    /** Remove a customer no invoice has used; one that was used is archived instead. */
+    public function remove(Request $request, string $customerId): RedirectResponse
+    {
+        $customer = $this->customer($request, $customerId);
+
+        try {
+            $this->removal->remove($customer);
+        } catch (RecordInUseException $e) {
+            return redirect()->route('portal.customers.edit', $customerId)->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('portal.customers.index')
+            ->with('success', __(':name removed. Show the removed ones in the list to bring it back.', ['name' => $customer->name]));
+    }
+
+    /** Bring back a removed customer, from the list's Removed view. */
+    public function restoreRemoved(Request $request, string $customerId): RedirectResponse
+    {
+        $customer = $this->removal->removedCustomer($this->portalOrganizationId($request), $customerId) ?? abort(404);
+
+        try {
+            $this->removal->restore($customer);
+        } catch (DomainException $e) {
+            return redirect()->route('portal.customers.index', ['archived' => CustomerHistory::REMOVED])->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('portal.customers.index')->with('success', __(':name restored.', ['name' => $customer->name]));
     }
 
     /**

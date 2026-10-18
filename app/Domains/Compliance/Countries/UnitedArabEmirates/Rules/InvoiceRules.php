@@ -127,6 +127,9 @@ class InvoiceRules implements InvoiceRulesPort
 
             'lines' => ['required', 'array', 'min:1', 'max:1000'],
             'lines.*.item_name' => ['required', 'string', 'max:255'],
+            // The saved product the line was made from, if any: one of
+            // another organization's is not found (InvoiceDrafter).
+            'lines.*.product_id' => ['nullable', 'string', 'uuid'],
             'lines.*.description' => ['nullable', 'string', 'max:255'],
             'lines.*.class_code' => ['nullable', 'string', 'max:50'],
             'lines.*.quantity' => ['required', 'numeric', 'min:0.001', 'max:999999999.999', 'decimal:0,3'],

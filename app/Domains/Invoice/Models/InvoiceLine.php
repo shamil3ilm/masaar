@@ -42,6 +42,9 @@ class InvoiceLine extends Model
         'exempt_code',
         'exempt_reason',
         'line_total',
+        // The saved product the line was made from, when it was
+        // (CatalogueRemoval): the line's own fields stay what it says.
+        'product_id',
     ];
 
     protected function casts(): array

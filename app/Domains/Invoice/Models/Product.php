@@ -71,6 +71,8 @@ class Product extends Model
     public function lineFields(): array
     {
         return [
+            // Which product the line was made from (CatalogueRemoval).
+            'product_id' => (string) $this->id,
             'description' => (string) $this->name,
             'description_ar' => (string) $this->name_ar,
             'unit_price' => (string) $this->unit_price,
@@ -98,6 +100,7 @@ class Product extends Model
         $rated = (float) $this->tax_rate > 0;
 
         return [
+            'product_id' => (string) $this->id,
             'item_name' => (string) $this->name,
             'unit_price' => (string) $this->unit_price,
             'unit_code' => (string) $this->unit_code,

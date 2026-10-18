@@ -409,6 +409,7 @@ CREATE TABLE `invoice_lines` (
     `item_name` STRING NULL,
     `line_total` DECIMAL NOT NULL DEFAULT 0,
     `net_amount` DECIMAL NULL,
+    `product_id` STRING NULL,
     `quantity` DECIMAL NOT NULL,
     `tax_amount` DECIMAL NOT NULL DEFAULT 0,
     `tax_category` STRING NOT NULL DEFAULT 'S',
@@ -417,7 +418,8 @@ CREATE TABLE `invoice_lines` (
     `unit_price` DECIMAL NOT NULL,
     `updated_at` TIMESTAMP NULL,
     PRIMARY KEY (`id`),
-    FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`) ON DELETE CASCADE
+    FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE SET NULL
 );
 
 CREATE TABLE `invoice_links` (

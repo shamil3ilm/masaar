@@ -514,12 +514,17 @@ Route::prefix('portal')->name('portal.')
         Route::get('/customers/{customerId}', [PortalCustomerController::class, 'edit'])->name('customers.edit');
         Route::post('/customers/{customerId}', [PortalCustomerController::class, 'update'])->name('customers.update');
         Route::post('/customers/{customerId}/archive', [PortalCustomerController::class, 'archive'])->name('customers.archive');
+        // Removed only while no invoice has used it; brought back from the list.
+        Route::post('/customers/{customerId}/remove', [PortalCustomerController::class, 'remove'])->name('customers.remove');
+        Route::post('/customers/{customerId}/restore-removed', [PortalCustomerController::class, 'restoreRemoved'])->name('customers.restore-removed');
         Route::get('/products', [PortalProductController::class, 'index'])->name('products.index');
         Route::get('/products/new', [PortalProductController::class, 'create'])->name('products.create');
         Route::post('/products', [PortalProductController::class, 'store'])->name('products.store');
         Route::get('/products/{productId}', [PortalProductController::class, 'edit'])->name('products.edit');
         Route::post('/products/{productId}', [PortalProductController::class, 'update'])->name('products.update');
         Route::post('/products/{productId}/archive', [PortalProductController::class, 'archive'])->name('products.archive');
+        Route::post('/products/{productId}/remove', [PortalProductController::class, 'remove'])->name('products.remove');
+        Route::post('/products/{productId}/restore-removed', [PortalProductController::class, 'restoreRemoved'])->name('products.restore-removed');
 
         // The period's sales as the VAT return groups them, and CSV exports.
         Route::get('/reports', [PortalReportController::class, 'index'])->name('reports');

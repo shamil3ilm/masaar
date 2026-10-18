@@ -34,7 +34,14 @@
             <td class="px-6 py-4 text-sm text-muted">{{ $customer->city ?? '-' }}</td>
             <td class="px-6 py-4 text-sm text-muted break-all">{{ $customer->email ?? '-' }}</td>
             <td class="px-6 py-4 text-end text-sm">
-                <a href="{{ route('portal.customers.edit', $customer->id) }}" class="text-accent hover:underline">{{ __('Edit') }}</a>
+                @if ($removed)
+                    <form method="POST" action="{{ route('portal.customers.restore-removed', $customer->id) }}">
+                        @csrf
+                        <x-ui.button size="sm" variant="secondary">{{ __('Restore') }}</x-ui.button>
+                    </form>
+                @else
+                    <a href="{{ route('portal.customers.edit', $customer->id) }}" class="text-accent hover:underline">{{ __('Edit') }}</a>
+                @endif
             </td>
         </tr>
         @empty

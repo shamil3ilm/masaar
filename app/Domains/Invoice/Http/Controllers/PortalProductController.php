@@ -6,12 +6,18 @@ namespace App\Domains\Invoice\Http\Controllers;
 
 use App\Domains\Compliance\Engine\Contracts\LanguageRules;
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
+use App\Domains\Invoice\Exceptions\RecordInUseException;
 use App\Domains\Invoice\Models\Product;
 use App\Domains\Invoice\Services\Catalogue;
+use App\Domains\Invoice\Services\CatalogueRemoval;
+use App\Domains\Invoice\Services\CustomerHistory;
+use App\Domains\Invoice\Services\ProductHistory;
 use App\Domains\Invoice\Support\UnitCode;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
+use App\Http\Listing\Lists;
+use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -24,28 +30,32 @@ use Illuminate\View\View;
  * Its Arabic name is what a line naming the product takes where the
  * organization's country requires Arabic (LanguageRules), so there it is
  * required.
+ *
+ * One an invoice used is only archived; one never used can be removed, and
+ * brought back from the list's Removed view (CatalogueRemoval).
  */
 class PortalProductController extends Controller
 {
     use ResolvesPortalOrganization;
 
-    private const PER_PAGE = 25;
-
     public function __construct(
         private readonly Catalogue $catalogue,
         private readonly TenantResolver $tenant,
         private readonly JurisdictionResolver $jurisdictions,
+        private readonly CatalogueRemoval $removal,
+        private readonly ProductHistory $history,
+        private readonly Lists $lists,
     ) {}
 
     public function index(Request $request): View
     {
-        $search = trim((string) $request->query('q', ''));
-        $archived = $request->boolean('archived');
+        $organizationId = $this->portalOrganizationId($request);
+        $list = $this->lists->portal($this->history->spec('portal.products.index'), $request, $organizationId);
 
         return view('portal.products.index', [
-            'products' => $this->catalogue->products($this->portalOrganizationId($request), $search === '' ? null : $search, $archived, self::PER_PAGE)->withQueryString(),
-            'search' => $search,
-            'archived' => $archived,
+            'products' => $this->history->page($organizationId, $list),
+            'list' => $list,
+            'removed' => $list->value('archived') === CustomerHistory::REMOVED,
         ]);
     }
 
@@ -68,8 +78,11 @@ class PortalProductController extends Controller
 
     public function edit(Request $request, string $productId): View
     {
+        $product = $this->product($request, $productId);
+
         return view('portal.products.form', [
-            'product' => $this->product($request, $productId),
+            'product' => $product,
+            'removable' => ! $this->removal->inUse($product),
             'arabicRequired' => $this->language()->requiresArabic(),
         ]);
     }
@@ -93,6 +106,35 @@ class PortalProductController extends Controller
 
         return redirect()->route('portal.products.index')
             ->with('success', $archived ? __(':name archived. Invoices already written keep their lines.', ['name' => $product->name]) : __(':name restored.', ['name' => $product->name]));
+    }
+
+    /** Remove a product no invoice has used; one that was used is archived instead. */
+    public function remove(Request $request, string $productId): RedirectResponse
+    {
+        $product = $this->product($request, $productId);
+
+        try {
+            $this->removal->remove($product);
+        } catch (RecordInUseException $e) {
+            return redirect()->route('portal.products.edit', $productId)->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('portal.products.index')
+            ->with('success', __(':name removed. Show the removed ones in the list to bring it back.', ['name' => $product->name]));
+    }
+
+    /** Bring back a removed product, from the list's Removed view. */
+    public function restoreRemoved(Request $request, string $productId): RedirectResponse
+    {
+        $product = $this->removal->removedProduct($this->portalOrganizationId($request), $productId) ?? abort(404);
+
+        try {
+            $this->removal->restore($product);
+        } catch (DomainException $e) {
+            return redirect()->route('portal.products.index', ['archived' => CustomerHistory::REMOVED])->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('portal.products.index')->with('success', __(':name restored.', ['name' => $product->name]));
     }
 
     /**
