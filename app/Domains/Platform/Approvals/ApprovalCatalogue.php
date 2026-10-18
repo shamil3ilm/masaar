@@ -93,6 +93,7 @@ final class ApprovalCatalogue
         return match ($action) {
             'accounts.freeze' => __('Freeze an account'),
             'accounts.unfreeze' => __('Unfreeze an account'),
+            ApprovalPolicies::BYPASS => __('Allow bypass when no other approver exists'),
             default => $this->family($action)->label($action),
         };
     }

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Approvals;
 
-use App\Domains\Auth\Enums\PlatformRole;
 use App\Domains\Auth\Services\AdminRoles;
 use App\Domains\Platform\Models\ApprovalPolicy;
 use Illuminate\Support\Facades\Cache;
@@ -25,6 +24,20 @@ use Illuminate\Validation\ValidationException;
 class ApprovalPolicies
 {
     public const POLICIES = 'approvals.policies';
+
+    /**
+     * Whether an action whose policy no other admin could ever satisfy goes
+     * through (logged, and the owner emailed) or waits. On as shipped; the
+     * owner's alone to change, and itself under approval once someone else
+     * can approve.
+     */
+    public const BYPASS = 'approvals.bypass';
+
+    /**
+     * Who approves as shipped. With one owner, an owner-only policy could
+     * never be met when the owner asks; operations can approve too.
+     */
+    public const DEFAULT_APPROVERS = ['owner', 'operations'];
 
     /** On as shipped. */
     public const RISKY = ['admins.grant', 'admins.invite', 'admins.role', 'admins.revoke', 'admin_roles.save', 'admin_roles.delete'];
@@ -49,13 +62,7 @@ class ApprovalPolicies
      */
     public function all(): array
     {
-        $rows = Cache::rememberForever(self::CACHE_KEY, fn (): array => ApprovalPolicy::query()->get()
-            ->mapWithKeys(fn (ApprovalPolicy $row): array => [$row->action => [
-                'enabled' => $row->enabled,
-                'approvals_required' => $row->approvals_required,
-                'approver_roles' => array_values((array) $row->approver_roles),
-                'expires_after_hours' => $row->expires_after_hours,
-            ]])->all());
+        $rows = $this->rows();
 
         $policies = [];
 
@@ -70,7 +77,7 @@ class ApprovalPolicies
                 action: $action,
                 enabled: $row['enabled'] ?? in_array($action, self::RISKY, true),
                 approvalsRequired: $row['approvals_required'] ?? 1,
-                approverRoles: $row['approver_roles'] ?? [PlatformRole::Owner->value],
+                approverRoles: $row['approver_roles'] ?? self::DEFAULT_APPROVERS,
                 expiresAfterHours: $row['expires_after_hours'] ?? self::DEFAULT_HOURS,
             );
         }
@@ -82,10 +89,31 @@ class ApprovalPolicies
             action: self::POLICIES,
             enabled: $any,
             approvalsRequired: $own['approvals_required'] ?? 1,
-            approverRoles: $own['approver_roles'] ?? [PlatformRole::Owner->value],
+            approverRoles: $own['approver_roles'] ?? self::DEFAULT_APPROVERS,
             expiresAfterHours: $own['expires_after_hours'] ?? self::DEFAULT_HOURS,
             implicit: true,
         )];
+    }
+
+    public function allowsBypass(): bool
+    {
+        return (bool) ($this->rows()[self::BYPASS]['enabled'] ?? true);
+    }
+
+    /**
+     * The policies admins changed, by action, cached as one entry.
+     *
+     * @return array<string, array{enabled: bool, approvals_required: int, approver_roles: list<string>, expires_after_hours: int}>
+     */
+    private function rows(): array
+    {
+        return Cache::rememberForever(self::CACHE_KEY, fn (): array => ApprovalPolicy::query()->get()
+            ->mapWithKeys(fn (ApprovalPolicy $row): array => [$row->action => [
+                'enabled' => $row->enabled,
+                'approvals_required' => $row->approvals_required,
+                'approver_roles' => array_values((array) $row->approver_roles),
+                'expires_after_hours' => $row->expires_after_hours,
+            ]])->all());
     }
 
     public function get(string $action): Policy
@@ -104,6 +132,15 @@ class ApprovalPolicies
      */
     public function clean(string $action, array $input): array
     {
+        if ($action === self::BYPASS) {
+            return [
+                'enabled' => filter_var($input['enabled'] ?? false, FILTER_VALIDATE_BOOL),
+                'approvals_required' => 1,
+                'approver_roles' => [],
+                'expires_after_hours' => self::DEFAULT_HOURS,
+            ];
+        }
+
         $roles = array_values(array_unique(array_map('strval', (array) ($input['approver_roles'] ?? []))));
         $known = $this->roleKeys();
         $approvals = filter_var($input['approvals_required'] ?? null, FILTER_VALIDATE_INT);

@@ -7,6 +7,7 @@ namespace App\Domains\Auth\Console;
 use App\Domains\Audit\Services\AuditService;
 use App\Domains\Auth\Models\User;
 use App\Domains\Auth\Services\EnrolmentLinks;
+use App\Domains\Auth\Services\PlatformOwnership;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -25,6 +26,8 @@ use Illuminate\Validation\Rules\Password;
  * password, and a password committed to a repository is the same password on
  * every deployment that ever runs it.
  *
+ * It makes the platform's one owner, so it refuses once there is one.
+ *
  * Deliberately refuses to be the second admin by accident, too: granting
  * platform-admin is granting a view of every taxpayer on the platform, so the
  * existing-user path has to be asked for.
@@ -40,7 +43,7 @@ class CreatePlatformAdmin extends Command
 
     private EnrolmentLinks $links;
 
-    public function handle(EnrolmentLinks $links): int
+    public function handle(EnrolmentLinks $links, PlatformOwnership $ownership): int
     {
         $this->links = $links;
 
@@ -52,6 +55,15 @@ class CreatePlatformAdmin extends Command
 
         if ($invalid !== '') {
             $this->error($invalid);
+
+            return self::FAILURE;
+        }
+
+        // The first admin is the owner, and the platform has one: once it has
+        // one, admins are invited from the console and ownership moves only
+        // by transfer there (PlatformOwnership).
+        if ($ownership->exists()) {
+            $this->error('The platform already has its owner. Invite admins from the console; ownership moves only by transfer there.');
 
             return self::FAILURE;
         }
@@ -105,7 +117,7 @@ class CreatePlatformAdmin extends Command
             return self::FAILURE;
         }
 
-        $user->forceFill(['is_platform_admin' => true])->save();
+        $user->forceFill(['is_platform_admin' => true, 'platform_role' => PlatformOwnership::OWNER])->save();
 
         $this->record('platform_admin.granted', $user);
 
@@ -193,7 +205,7 @@ class CreatePlatformAdmin extends Command
 
         // Verified: whoever runs this on the server vouches for the address,
         // and an unverified account cannot sign in to the API.
-        $user->forceFill(['is_platform_admin' => true, 'email_verified_at' => now()])->save();
+        $user->forceFill(['is_platform_admin' => true, 'platform_role' => PlatformOwnership::OWNER, 'email_verified_at' => now()])->save();
 
         $this->record('platform_admin.created', $user);
 

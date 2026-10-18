@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Http\Controllers;
 
+use App\Domains\Auth\Enums\AdminPermission;
 use App\Domains\Auth\Services\AdminInvitations;
 use App\Domains\Auth\Services\AdminRoles;
 use App\Domains\Auth\Services\PlatformAdmins;
+use App\Domains\Auth\Services\PlatformOwnership;
 use App\Domains\Platform\Approvals\ActionResult;
 use App\Domains\Platform\Approvals\Approvals;
 use App\Domains\Platform\Http\Concerns\HoldsForApproval;
@@ -32,6 +34,7 @@ class AdminAdminsController extends Controller
         private readonly Approvals $approvals,
         private readonly AdminRoles $roles,
         private readonly AdminInvitations $invitations,
+        private readonly PlatformOwnership $ownership,
     ) {}
 
     public function index(): View
@@ -43,6 +46,11 @@ class AdminAdminsController extends Controller
             'roles' => $this->roles->all(),
             'signIns' => $this->admins->lastSignIns($admins->pluck('id')->all()),
             'invitations' => $this->invitations->open(),
+            // Nobody is given the owner role: it moves only by transfer.
+            'grantable' => array_filter($this->roles->all(), fn (array $role): bool => $role['key'] !== PlatformOwnership::OWNER),
+            'transfer' => $this->ownership->pending(),
+            'candidates' => $admins->filter(fn ($admin): bool => $admin->adminRole() !== PlatformOwnership::OWNER && $admin->isActive()
+                && $admin->hasTwoFactor() && $admin->canAdmin(AdminPermission::ApprovalsDecide))->values(),
         ]);
     }
 

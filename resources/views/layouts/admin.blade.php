@@ -154,6 +154,17 @@
 
             <div id="content" class="space-y-6 p-4 md:p-8">
                 <x-ui.flash />
+                @php($ownershipOffer = auth()->user() ? app(\App\Domains\Auth\Services\PlatformOwnership::class)->pending() : null)
+                @if ($ownershipOffer && $ownershipOffer->to_user_id === auth()->id())
+                    <x-ui.alert tone="warning" :title="__('You are offered the platform\'s ownership')" class="mb-6">
+                        <p>{{ __(':email offers you ownership of the platform. Accept, and you become its one owner; they step down.', ['email' => $ownershipOffer->from?->email]) }}</p>
+                        <form method="POST" action="{{ route('admin.ownership.accept', $ownershipOffer->id) }}" class="mt-3"
+                              data-confirm-action="{{ __('Accept ownership') }}" data-confirm="{{ __('Become the platform\'s owner?') }}">
+                            @csrf
+                            <x-ui.button variant="primary" size="sm">{{ __('Accept ownership') }}</x-ui.button>
+                        </form>
+                    </x-ui.alert>
+                @endif
                 <div>
                     @yield('content')
                 </div>

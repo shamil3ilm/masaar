@@ -141,6 +141,27 @@ class CreateAdminCommandTest extends TestCase
         ]);
     }
 
+    /**
+     * The command makes the platform's one owner. Once there is one, it
+     * makes nobody - not a new account, not an existing one with --promote.
+     */
+    public function test_an_owner_ends_the_command(): void
+    {
+        $this->artisan('masaar:create-admin', ['email' => 'first@masaar.test'])
+            ->expectsQuestion('Password', self::GOOD)
+            ->expectsQuestion('Confirm password', self::GOOD)
+            ->assertSuccessful();
+        $this->assertSame('owner', User::where('email', 'first@masaar.test')->value('platform_role'));
+
+        $member = User::factory()->create(['email' => 'member@masaar.test', 'is_platform_admin' => false]);
+
+        $this->artisan('masaar:create-admin', ['email' => 'member@masaar.test', '--promote' => true])->assertFailed();
+        $this->artisan('masaar:create-admin', ['email' => 'second@masaar.test'])->assertFailed();
+
+        $this->assertFalse($member->fresh()->is_platform_admin);
+        $this->assertDatabaseMissing('users', ['email' => 'second@masaar.test']);
+    }
+
     public function test_a_bad_address_is_refused(): void
     {
         $this->artisan('masaar:create-admin', ['email' => 'not-an-address'])

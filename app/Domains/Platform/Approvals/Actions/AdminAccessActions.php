@@ -9,6 +9,7 @@ use App\Domains\Auth\Enums\PlatformRole;
 use App\Domains\Auth\Models\User;
 use App\Domains\Auth\Services\AdminInvitations;
 use App\Domains\Auth\Services\PlatformAdmins;
+use App\Domains\Auth\Services\PlatformOwnership;
 use App\Domains\Platform\Approvals\ActionResult;
 use App\Domains\Platform\Approvals\ApprovableActions;
 use App\Domains\Platform\Approvals\Preview;
@@ -24,6 +25,7 @@ final class AdminAccessActions implements ApprovableActions
     public function __construct(
         private readonly PlatformAdmins $admins,
         private readonly AdminInvitations $invitations,
+        private readonly PlatformOwnership $ownership,
     ) {}
 
     public function keys(): array
@@ -48,6 +50,12 @@ final class AdminAccessActions implements ApprovableActions
 
     public function preview(string $action, array $payload, User $requester): Preview
     {
+        // Refused before anyone is asked to approve it: nobody is given the
+        // owner role, which moves only by transfer.
+        if (isset($payload['role'])) {
+            $this->ownership->refuseOwnerRole((string) $payload['role']);
+        }
+
         if ($action === 'admins.grant' || $action === 'admins.invite') {
             $user = User::query()->where('email', (string) $payload['email'])->first();
 

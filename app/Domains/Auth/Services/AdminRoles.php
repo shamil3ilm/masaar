@@ -130,6 +130,10 @@ class AdminRoles
 
         if ($permissions === [] || array_diff($permissions, array_map(fn (AdminPermission $p): string => $p->value, AdminPermission::cases())) !== []) {
             $problems['permissions'] = __('Choose at least one permission.');
+        } elseif (in_array(AdminPermission::AdminsManage->value, $permissions, true)) {
+            // Managing admins is the owner's, and the platform has one owner:
+            // no custom role is a second.
+            $problems['permissions'] = __('Managing admins is the owner\'s alone. A custom role cannot hold it.');
         }
 
         if ($rank === false || $rank < 1 || $rank > self::MAX_CUSTOM_RANK) {

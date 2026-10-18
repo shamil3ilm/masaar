@@ -14,9 +14,10 @@ use Illuminate\Support\Facades\DB;
 /**
  * Who is a platform admin, in which role - managed by owners.
  *
- * Nobody changes their own role or revokes themselves, and the platform keeps
- * at least one owner: without one, nobody could manage admins again short of
- * the server's command line.
+ * Nobody changes their own role or revokes themselves. The platform has
+ * exactly one owner: nobody is made owner here, and the owner is neither
+ * demoted nor revoked here - ownership moves only by transfer
+ * (PlatformOwnership).
  */
 class PlatformAdmins
 {
@@ -24,6 +25,7 @@ class PlatformAdmins
         private readonly AuditService $audit,
         private readonly EnrolmentLinks $links,
         private readonly AdminRoles $roles,
+        private readonly PlatformOwnership $ownership,
     ) {}
 
     /**
@@ -64,6 +66,7 @@ class PlatformAdmins
     public function grant(string $email, string $role, User $actor): ?string
     {
         $this->assertRole($role);
+        $this->ownership->refuseOwnerRole($role);
 
         $user = User::query()->where('email', $email)->first();
 
@@ -96,12 +99,13 @@ class PlatformAdmins
     public function changeRole(string $userId, string $role, User $actor): void
     {
         $this->assertRole($role);
+        $this->ownership->refuseOwnerRole($role);
 
         DB::transaction(function () use ($userId, $role, $actor): void {
             $user = $this->admin($userId, $actor);
 
-            if ($user->platformRole() === PlatformRole::Owner && $role !== PlatformRole::Owner->value) {
-                $this->keepAnOwner($user);
+            if ($user->platformRole() === PlatformRole::Owner) {
+                throw new DomainException('The owner steps down only by handing ownership to another admin.');
             }
 
             $user->forceFill(['platform_role' => $role])->save();
@@ -119,7 +123,7 @@ class PlatformAdmins
             $user = $this->admin($userId, $actor);
 
             if ($user->platformRole() === PlatformRole::Owner) {
-                $this->keepAnOwner($user);
+                throw new DomainException('The owner steps down only by handing ownership to another admin.');
             }
 
             $user->forceFill(['is_platform_admin' => false, 'platform_role' => null])->save();
@@ -151,24 +155,5 @@ class PlatformAdmins
         }
 
         return $user;
-    }
-
-    /**
-     * Owners are those with the owner role, or no role recorded (counted as
-     * owners, see User::platformRole()).
-     */
-    private function keepAnOwner(User $leaving): void
-    {
-        $others = User::query()
-            ->where('is_platform_admin', true)
-            ->where('status', 'active')
-            ->whereKeyNot($leaving->getKey())
-            ->where(fn ($query) => $query->where('platform_role', PlatformRole::Owner->value)->orWhereNull('platform_role'))
-            ->lockForUpdate()
-            ->count();
-
-        if ($others === 0) {
-            throw new DomainException('The platform keeps at least one owner. Make someone else an owner first.');
-        }
     }
 }

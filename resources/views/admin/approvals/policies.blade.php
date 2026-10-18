@@ -21,6 +21,25 @@
     <x-ui.alert tone="warning">{{ __('Where fewer admins could ever approve than a policy needs, as on a new platform with one owner, the action goes through and the record says so. Add a second admin in an approving role to make a policy bite.') }}</x-ui.alert>
 </div>
 
+<x-ui.card class="mb-6 max-w-4xl" :title="__('Allow bypass when no other approver exists')"
+           :description="__('On: an action held by its policy that no other admin could ever approve goes through, is logged as bypassed and the owner is emailed. Off: it waits like any other request. The owner\'s alone to change, and under approval once someone else can approve.')">
+    <div class="flex flex-wrap items-center gap-3">
+        <x-ui.badge :tone="$allowsBypass ? 'warning' : 'success'" :label="$allowsBypass ? __('Bypass allowed') : __('Bypass off: such requests wait')" />
+    </div>
+    @if (auth()->user()->adminRole() === 'owner')
+        <form method="POST" action="{{ route('admin.approval-policies.bypass') }}" class="mt-4 space-y-3">
+            @csrf
+            <x-ui.switch name="enabled" value="1" off="0" :checked="$allowsBypass">{{ __('Allow bypass when no other approver exists') }}</x-ui.switch>
+            @if ($policyChanges->enabled)
+                <x-ui.field :label="__('Why this change')" error="approval_reason">
+                    <x-ui.textarea name="approval_reason" rows="2" maxlength="2000">{{ old('approval_reason') }}</x-ui.textarea>
+                </x-ui.field>
+            @endif
+            <x-ui.button variant="secondary" size="sm">{{ __('Save') }}</x-ui.button>
+        </form>
+    @endif
+</x-ui.card>
+
 <x-ui.card class="max-w-4xl" flush>
     @foreach ($policies as $action => $policy)
         @php($reserved = in_array($action, \App\Domains\Platform\Approvals\ApprovalCatalogue::RESERVED, true))

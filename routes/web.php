@@ -46,6 +46,7 @@ use App\Domains\Platform\Http\Controllers\AdminCountryController;
 use App\Domains\Platform\Http\Controllers\AdminCustomizationController;
 use App\Domains\Platform\Http\Controllers\AdminFeatureController;
 use App\Domains\Platform\Http\Controllers\AdminOrganizationReviewController;
+use App\Domains\Platform\Http\Controllers\AdminOwnershipController;
 use App\Domains\Platform\Http\Controllers\AdminRolesController;
 use App\Domains\Platform\Http\Controllers\AdminSettingsController;
 use App\Domains\Platform\Http\Controllers\AdminUserController;
@@ -296,6 +297,12 @@ Route::prefix('admin')->name('admin.')
         Route::post('/admins/invitations/{invitationId}/withdraw', [AdminAdminsController::class, 'withdrawInvitation'])->middleware('admin.can:admins.manage')->whereUuid('invitationId')->name('admins.invitations.withdraw');
         Route::post('/admins/{userId}/role', [AdminAdminsController::class, 'role'])->middleware('admin.can:admins.manage')->name('admins.role');
         Route::post('/admins/{userId}/revoke', [AdminAdminsController::class, 'revoke'])->middleware('admin.can:admins.manage')->name('admins.revoke');
+        // The platform's one owner hands ownership on: offered by the owner,
+        // accepted by the admin it is offered to, and only then does the old
+        // owner step down, to the role they chose.
+        Route::post('/ownership', [AdminOwnershipController::class, 'offer'])->middleware('admin.can:admins.manage')->name('ownership.offer');
+        Route::post('/ownership/{transferId}/withdraw', [AdminOwnershipController::class, 'withdraw'])->middleware('admin.can:admins.manage')->whereUuid('transferId')->name('ownership.withdraw');
+        Route::post('/ownership/{transferId}/accept', [AdminOwnershipController::class, 'accept'])->middleware('admin.can:approvals.decide')->whereUuid('transferId')->name('ownership.accept');
         // Admin roles: the four system roles and custom ones from the
         // permission set. Owners only; held for approval like access is.
         Route::get('/roles', [AdminRolesController::class, 'index'])->middleware('admin.can:admins.manage')->name('roles.index');
@@ -330,6 +337,7 @@ Route::prefix('admin')->name('admin.')
         // Which actions wait for approval. Changing a policy is itself held
         // for approval once any policy is on.
         Route::get('/settings/approvals', [AdminApprovalPolicyController::class, 'index'])->name('approval-policies.index');
+        Route::post('/settings/approvals-bypass', [AdminApprovalPolicyController::class, 'bypass'])->middleware('admin.can:admins.manage')->name('approval-policies.bypass');
         Route::post('/settings/approvals/{action}', [AdminApprovalPolicyController::class, 'update'])->middleware('admin.can:platform.configure')->name('approval-policies.update');
 
         // The platform's look: colours, name, logo and favicon.

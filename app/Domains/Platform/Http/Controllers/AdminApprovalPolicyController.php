@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Platform\Http\Controllers;
 
 use App\Domains\Auth\Services\AdminRoles;
+use App\Domains\Auth\Services\PlatformOwnership;
 use App\Domains\Platform\Approvals\ActionResult;
 use App\Domains\Platform\Approvals\ApprovalCatalogue;
 use App\Domains\Platform\Approvals\ApprovalPolicies;
@@ -42,7 +43,25 @@ class AdminApprovalPolicyController extends Controller
             'roleNames' => array_map(fn (array $role): string => $role['name'], $this->roles->all()),
             'maxApprovals' => ApprovalPolicies::MAX_APPROVALS,
             'maxHours' => ApprovalPolicies::MAX_HOURS,
+            'allowsBypass' => $this->policies->allowsBypass(),
         ]);
+    }
+
+    /**
+     * Whether a held action may go through when no other admin could ever
+     * approve it. The owner's alone; under approval once someone can.
+     */
+    public function bypass(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->adminRole() === PlatformOwnership::OWNER, 403, __('Only the platform owner can change whether approvals may be bypassed.'));
+
+        $values = $this->policies->clean(ApprovalPolicies::BYPASS, $request->only(['enabled']));
+
+        $request->attributes->set(AuditAdminAction::TARGET, ['ApprovalPolicy', null]);
+        $request->attributes->set(AuditAdminAction::CHANGES, [['enabled' => $this->policies->allowsBypass()], ['enabled' => $values['enabled']]]);
+
+        return $this->holdOrRun($this->approvals, $request, ApprovalPolicies::POLICIES, ['action' => ApprovalPolicies::BYPASS, 'values' => $values],
+            fn (ActionResult $done): RedirectResponse => redirect()->route('admin.approval-policies.index')->with('success', $done->message));
     }
 
     public function update(Request $request, string $action): RedirectResponse

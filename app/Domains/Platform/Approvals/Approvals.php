@@ -7,8 +7,10 @@ namespace App\Domains\Platform\Approvals;
 use App\Domains\Audit\Services\AuditService;
 use App\Domains\Auth\Enums\AdminPermission;
 use App\Domains\Auth\Models\User;
+use App\Domains\Auth\Services\PlatformOwnership;
 use App\Domains\Platform\Customization\Customizations;
 use App\Domains\Platform\Customization\Scope;
+use App\Domains\Platform\Mail\ApprovalBypassedMail;
 use App\Domains\Platform\Mail\ApprovalMail;
 use App\Domains\Platform\Models\ApprovalDecision;
 use App\Domains\Platform\Models\ApprovalRequest;
@@ -32,10 +34,13 @@ use Throwable;
  * access. Every step is on the security record.
  *
  * A platform with fewer possible approvers than a policy needs - a new
- * deployment with one owner - could otherwise do nothing the policy covers,
- * including adding the approver it lacks. There the action goes through and
- * the record says so. Possible approvers are counted whatever their status,
- * so suspending the only other approver does not open that door.
+ * deployment with only its owner - could otherwise do nothing the policy
+ * covers, including adding the approver it lacks. There, while the owner
+ * allows it (ApprovalPolicies::BYPASS), the action goes through, the record
+ * says "bypassed: no other approver exists" and the owner is emailed what
+ * changed, by whom and why; with bypass off, the request waits like any
+ * other. Possible approvers are counted whatever their status, so
+ * suspending the only other approver does not open that door.
  */
 class Approvals
 {
@@ -44,6 +49,7 @@ class Approvals
         private readonly ApprovalPolicies $policies,
         private readonly AuditService $audit,
         private readonly Customizations $customizations,
+        private readonly PlatformOwnership $ownership,
     ) {}
 
     /**
@@ -65,19 +71,25 @@ class Approvals
 
         $preview = $family->preview($action, $payload, $requester);
 
-        if ($this->possibleApprovers($policy->approverRoles, $requester)->count() < $policy->approvalsRequired) {
+        $reason = trim((string) $reason);
+
+        if ($this->possibleApprovers($policy->approverRoles, $requester)->count() < $policy->approvalsRequired && $this->policies->allowsBypass()) {
             $result = $family->execute($action, $payload, $requester);
 
             $this->audit->logSecurity('approval.bypassed', $preview->targetType, $preview->targetId, [
                 'action' => $action,
-                'why' => 'fewer possible approvers than the policy needs',
+                'why' => 'bypassed: no other approver exists',
                 'approvals_required' => $policy->approvalsRequired,
+                'summary' => $preview->summary,
+                'before' => $preview->before,
+                'after' => $preview->after,
+                'reason' => $reason === '' ? null : $reason,
             ], userId: (string) $requester->id);
+
+            $this->tellOwner($action, $preview, $requester, $reason === '' ? null : $reason);
 
             return Outcome::done($result);
         }
-
-        $reason = trim((string) $reason);
 
         if ($reason === '') {
             throw ValidationException::withMessages(['approval_reason' => __('This change waits for approval. Say why it is needed.')]);
@@ -401,6 +413,33 @@ class Approvals
             } catch (Throwable $e) {
                 Log::error('Approvals: the email could not be sent', ['request_id' => $request->id, 'user_id' => $person->id, 'error' => $e->getMessage()]);
             }
+        }
+    }
+
+    /**
+     * The owner hears of every bypass, in their own language: what changed,
+     * by whom and why.
+     */
+    private function tellOwner(string $action, Preview $preview, User $requester, ?string $reason): void
+    {
+        $owner = $this->ownership->owner();
+
+        if ($owner === null) {
+            return;
+        }
+
+        try {
+            Mail::to($owner)->send(new ApprovalBypassedMail(
+                $this->catalogue->label($action),
+                $preview->summary,
+                $preview->before,
+                $preview->after,
+                $requester->name.' <'.$requester->email.'>',
+                $reason,
+                route('admin.approval-policies.index'),
+            ));
+        } catch (Throwable $e) {
+            Log::error('Approvals: the owner could not be told of a bypass', ['action' => $action, 'error' => $e->getMessage()]);
         }
     }
 

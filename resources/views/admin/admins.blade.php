@@ -35,7 +35,7 @@
             </div>
             <x-ui.field :label="__('Role')" error="role">
                 <x-ui.select name="role">
-                    @foreach ($roles as $role)
+                    @foreach ($grantable as $role)
                         <option value="{{ $role['key'] }}" @selected(old('role', 'support') === $role['key'])>{{ $role['name'] }}</option>
                     @endforeach
                 </x-ui.select>
@@ -59,7 +59,7 @@
             </div>
             <x-ui.field :label="__('Role')">
                 <x-ui.select name="role">
-                    @foreach ($roles as $role)
+                    @foreach ($grantable as $role)
                         <option value="{{ $role['key'] }}" @selected($role['key'] === 'support')>{{ $role['name'] }}</option>
                     @endforeach
                 </x-ui.select>
@@ -88,14 +88,14 @@
                         <div class="text-sm text-muted" dir="ltr">{{ $admin->email }}</div>
                     </td>
                     <td class="px-4 py-3">
-                        @if ($admin->id === auth()->id())
-                            <span class="text-sm text-muted">{{ $roles[$admin->adminRole()]['name'] ?? $admin->adminRole() }} ({{ __('you') }})</span>
+                        @if ($admin->id === auth()->id() || $admin->adminRole() === 'owner')
+                            <span class="text-sm text-muted">{{ $roles[$admin->adminRole()]['name'] ?? $admin->adminRole() }}@if ($admin->id === auth()->id()) ({{ __('you') }})@endif</span>
                         @else
                             <form method="POST" action="{{ route('admin.admins.role', $admin->id) }}" class="flex flex-wrap items-end gap-2">
                                 @csrf
                                 <x-ui.field :label="__('Role')">
                                     <x-ui.select name="role">
-                                        @foreach ($roles as $role)
+                                        @foreach ($grantable as $role)
                                             <option value="{{ $role['key'] }}" @selected($admin->adminRole() === $role['key'])>{{ $role['name'] }}</option>
                                         @endforeach
                                     </x-ui.select>
@@ -109,7 +109,7 @@
                     <td class="px-4 py-3 text-sm text-muted">{{ isset($signIns[$admin->id]) ? \Illuminate\Support\Carbon::parse($signIns[$admin->id])->diffForHumans() : __('Never') }}</td>
                     <td class="px-4 py-3"><x-ui.badge :state="$admin->status" /></td>
                     <td class="px-4 py-3 text-end">
-                        @if ($admin->id !== auth()->id())
+                        @if ($admin->id !== auth()->id() && $admin->adminRole() !== 'owner')
                             <form method="POST" action="{{ route('admin.admins.revoke', $admin->id) }}" class="space-y-2"
                                   data-confirm-tone="danger" data-confirm-action="{{ __('Remove access') }}"
                                   data-confirm="{{ __('Remove :email\'s admin access? Their account stays; the console closes to them.', ['email' => $admin->email]) }}">
@@ -122,6 +122,47 @@
                 </tr>
             @endforeach
         </x-ui.table>
+    </x-ui.card>
+
+    {{-- The platform's one owner. Ownership is offered, accepted, and only
+         then does the old owner step down, to the role they chose. --}}
+    <x-ui.card :title="__('Ownership')" :description="__('The platform has one owner. The owner offers ownership to another admin; it moves when they accept, and the owner steps down to the role they choose.')">
+        @if ($transfer)
+            <p class="text-sm text-fg">{{ __('Offered to :email; they have until :when to accept. You step down to: :role.', ['email' => $transfer->to?->email, 'when' => $transfer->expires_at->diffForHumans(), 'role' => $roles[$transfer->demote_to]['name'] ?? $transfer->demote_to]) }}</p>
+            @if (auth()->id() === $transfer->from_user_id)
+                <form method="POST" action="{{ route('admin.ownership.withdraw', $transfer->id) }}" class="mt-3">
+                    @csrf
+                    <x-ui.button variant="secondary" size="sm">{{ __('Withdraw the offer') }}</x-ui.button>
+                </form>
+            @endif
+        @elseif (auth()->user()->adminRole() === 'owner')
+            @if ($candidates->isEmpty())
+                <p class="text-sm text-muted">{{ __('No admin can take it yet: ownership goes to an active admin with two-factor sign-in who already decides approvals.') }}</p>
+            @else
+                <form method="POST" action="{{ route('admin.ownership.offer') }}" class="grid grid-cols-1 gap-4 sm:grid-cols-3"
+                      data-confirm-tone="danger" data-confirm-action="{{ __('Offer ownership') }}"
+                      data-confirm="{{ __('Offer the platform\'s ownership? Once they accept you are no longer the owner.') }}">
+                    @csrf
+                    <x-ui.field :label="__('To')">
+                        <x-ui.select name="user_id" required>
+                            @foreach ($candidates as $candidate)
+                                <option value="{{ $candidate->id }}">{{ $candidate->email }}</option>
+                            @endforeach
+                        </x-ui.select>
+                    </x-ui.field>
+                    <x-ui.field :label="__('You step down to')">
+                        <x-ui.select name="demote_to">
+                            @foreach ($grantable as $role)
+                                <option value="{{ $role['key'] }}" @selected($role['key'] === 'operations')>{{ $role['name'] }}</option>
+                            @endforeach
+                        </x-ui.select>
+                    </x-ui.field>
+                    <div class="flex items-end">
+                        <x-ui.button variant="danger">{{ __('Offer ownership') }}</x-ui.button>
+                    </div>
+                </form>
+            @endif
+        @endif
     </x-ui.card>
 
     @if ($invitations->isNotEmpty())

@@ -31,6 +31,7 @@ class AdminInvitations
         private readonly AdminRoles $roles,
         private readonly AccountRegistrar $accounts,
         private readonly EnrolmentLinks $links,
+        private readonly PlatformOwnership $ownership,
     ) {}
 
     /**
@@ -53,6 +54,8 @@ class AdminInvitations
         if (! $this->roles->exists($role)) {
             throw new DomainException('There is no such admin role.');
         }
+
+        $this->ownership->refuseOwnerRole($role);
 
         if (User::query()->where('email', $email)->where('is_platform_admin', true)->exists()) {
             throw new DomainException($email.' is already an admin. Change their role instead.');
@@ -120,6 +123,8 @@ class AdminInvitations
         if (! $user->isActive()) {
             throw new DomainException(__('This account is suspended.'));
         }
+
+        $this->ownership->refuseOwnerRole($invitation->role);
 
         DB::transaction(function () use ($invitation, $user): void {
             $spent = AdminInvitation::query()->whereKey($invitation->id)->whereNull('accepted_at')
