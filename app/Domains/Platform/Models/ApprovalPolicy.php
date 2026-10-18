@@ -4,17 +4,17 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Models;
 
+use App\Domains\Organization\Concerns\RecordsActors;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\Auth;
 
 /**
  * An admin's change to the shipped approval policy for one action. Read
  * through Approvals, which falls back to the shipped default without one.
  *
- * Who made and last changed it is filled from the signed-in admin and is
- * not mass-assignable.
+ * Who made and last changed it is filled from the signed-in admin
+ * (RecordsActors) and is not mass-assignable.
  *
  * @property string $action
  * @property bool $enabled
@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\Auth;
 class ApprovalPolicy extends Model
 {
     use HasUuids;
+    use RecordsActors;
     use SoftDeletes;
 
     protected $fillable = [
@@ -43,16 +44,5 @@ class ApprovalPolicy extends Model
             'approver_roles' => 'array',
             'expires_after_hours' => 'integer',
         ];
-    }
-
-    protected static function booted(): void
-    {
-        static::creating(fn (self $policy) => $policy->created_by ??= Auth::id());
-        // A service that knows who asked says so; otherwise the signed-in admin.
-        static::saving(function (self $policy): void {
-            if (! $policy->isDirty('updated_by')) {
-                $policy->updated_by = Auth::id() ?? $policy->updated_by;
-            }
-        });
     }
 }

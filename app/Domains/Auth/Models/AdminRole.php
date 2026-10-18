@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Auth\Models;
 
+use App\Domains\Organization\Concerns\RecordsActors;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\Auth;
 
 /**
  * A platform admin role: one of the four system roles, or a custom one made
@@ -27,6 +27,7 @@ use Illuminate\Support\Facades\Auth;
 class AdminRole extends Model
 {
     use HasUuids;
+    use RecordsActors;
     use SoftDeletes;
 
     protected $fillable = [
@@ -45,17 +46,5 @@ class AdminRole extends Model
             'rank' => 'integer',
             'system' => 'boolean',
         ];
-    }
-
-    protected static function booted(): void
-    {
-        static::creating(fn (self $role) => $role->created_by ??= Auth::id());
-        // A service that knows who asked says so; otherwise the signed-in admin.
-        static::saving(function (self $role): void {
-            if (! $role->isDirty('updated_by')) {
-                $role->updated_by = Auth::id() ?? $role->updated_by;
-            }
-        });
-        static::deleting(fn (self $role) => $role->forceFill(['deleted_by' => Auth::id()])->saveQuietly());
     }
 }
