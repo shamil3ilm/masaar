@@ -155,13 +155,12 @@ class ReceiptContent
             }
         }
 
-        // The line's own charges (BG-28), already in its total.
-        foreach (PrintedAmounts::lineCharges($line) as $charge) {
-            $details[] = new ReceiptRow(
-                new PrintLabel($charge['reason'].($charge['percent'] !== null ? ' ('.$charge['percent'].'%)' : ''), 'رسوم'),
-                '+'.$this->money($invoice, $charge['amount']),
-            );
-        }
+        // The line's own charges (BG-28), already in its net: listed before it.
+        $charges = array_map(fn (array $charge): ReceiptRow => new ReceiptRow(
+            new PrintLabel($charge['reason'].($charge['percent'] !== null ? ' ('.$charge['percent'].'%)' : ''), 'رسوم'),
+            '+'.$this->money($invoice, $charge['amount']),
+        ), PrintedAmounts::lineCharges($line));
+        $details = [...$charges, ...$details];
 
         return new ReceiptItem(
             // The Arabic description only: a receipt keeps each line short,

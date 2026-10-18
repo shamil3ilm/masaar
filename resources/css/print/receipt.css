@@ -117,12 +117,13 @@
     max-height: 16mm;
 }
 
-/* The QR at the size it is printed at on every paper. The PDF renderer
-   sizes it from the element, which it reads more surely than this. */
+/* The QR at the size it is printed at (PaperSize::qrMm): 40 mm with its
+   quiet zone, wider on 58 mm (receipt-58mm.css). The PDF renderer sizes it
+   from the element, which it reads more surely than this. */
 .receipt [data-print-qr] img,
 .receipt [data-print-qr] svg {
-    width: 32mm;
-    height: 32mm;
+    width: 40mm;
+    height: 40mm;
     margin: 1.5mm auto 0;
 }
 

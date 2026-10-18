@@ -130,15 +130,24 @@ class ReceiptCanvas
      * A QR code, centred, as near $mm wide as whole dots per module allow:
      * a module of uneven dots is what makes a printed QR unreadable. Encoded
      * as QrCodeRenderer encodes it, so it holds the same data.
+     *
+     * $mm and $atLeastMm include the quiet zone. Of the two whole module
+     * sizes either side of $mm, the nearer is drawn, unless it would be under
+     * $atLeastMm; and never wider than the paper.
      */
-    public function qr(string $payload, float $mm, string $encoding = Encoder::DEFAULT_BYTE_MODE_ENCODING): void
+    public function qr(string $payload, float $mm, string $encoding = Encoder::DEFAULT_BYTE_MODE_ENCODING, float $atLeastMm = 0.0): void
     {
         $matrix = Encoder::encode($payload, ErrorCorrectionLevel::L(), $encoding)->getMatrix();
         $modules = $matrix->getWidth();
         // Four modules of white around it, the quiet zone a reader needs.
-        $module = max(2, (int) round($this->dots($mm) / ($modules + 8)));
+        $across = $modules + 8;
+        $module = max(2, (int) round($this->dots($mm) / $across));
 
-        while ($module > 1 && ($modules + 8) * $module > $this->width) {
+        if ($module * $across < $this->dots($atLeastMm)) {
+            $module = (int) ceil($this->dots($atLeastMm) / $across);
+        }
+
+        while ($module > 1 && $across * $module > $this->width) {
             $module--;
         }
 

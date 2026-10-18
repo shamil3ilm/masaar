@@ -28,3 +28,11 @@
 .receipt .r-logo {
     max-width: 40mm;
 }
+
+/* As wide as 48 mm of print allows with a millimetre each side: a Phase 2
+   code at 40 mm would be the smallest thing on the roll to scan. */
+.receipt [data-print-qr] img,
+.receipt [data-print-qr] svg {
+    width: 46mm;
+    height: 46mm;
+}

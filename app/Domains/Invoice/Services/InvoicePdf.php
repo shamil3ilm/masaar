@@ -184,7 +184,7 @@ class InvoicePdf
             'paper' => $paper,
             // Sized here too: the renderer reads an image's size more surely
             // from the element than from a stylesheet.
-            'qr' => $qr === null ? '' : '<img src="'.$qr.'" alt="" style="width: 32mm; height: 32mm;">',
+            'qr' => $qr === null ? '' : '<img src="'.$qr.'" alt="" style="width: '.$paper->qrMm().'mm; height: '.$paper->qrMm().'mm;">',
             'logo' => $this->assets->logo((string) $organization->id, monochrome: true),
         ])->render();
     }

@@ -42,6 +42,8 @@
     // The references and payment terms, and a final invoice's prepayments.
     $terms = \App\Domains\Compliance\Countries\SaudiArabia\Presentation\PrintedTerms::of($invoice);
     $prepayments = \App\Domains\Invoice\Support\PrintedAmounts::prepayments($invoice);
+    // The QR's printed size, its quiet zone included.
+    $qrMm = ($paper ?? \App\Domains\Invoice\Enums\PaperSize::A4)->qrMm();
     $address = fn (array $parts): string => implode(', ', array_filter(array_map(fn ($part) => trim((string) $part), $parts)));
 @endphp
 <html>
@@ -90,7 +92,7 @@
             @endif
 @foreach ($terms as $term)
                 <br><span class="label">{{ $term->label->en }} / {{ $term->label->ar }}</span><br>
-                <span>{{ $term->value }}</span>
+                <span dir="ltr">{{ $term->value }}</span>
 @endforeach
         </td>
     </tr>
@@ -173,7 +175,7 @@
                         @endif
                     @endif
 @foreach (\App\Domains\Invoice\Support\PrintedAmounts::lineCharges($line) as $charge)
-                    <br><span class="muted" style="font-size: 7.5pt;">{{ $charge['reason'] }}{{ $charge['percent'] !== null ? ' ('.$charge['percent'].'%)' : '' }} <span class="ar">رسوم</span> +{{ $money($charge['amount']) }}</span>
+                    <br><span class="muted" style="font-size: 7.5pt;">{{ $charge['reason'] }}{{ $charge['percent'] !== null ? ' ('.$charge['percent'].'%)' : '' }} / رسوم <span dir="ltr">+{{ $money($charge['amount']) }}</span></span>
 @endforeach
                 </td>
                 <td class="num">
@@ -203,7 +205,7 @@
     <tr>
         <td width="40%" style="vertical-align: bottom;">
             @if ($qr)
-                <img src="{{ $qr }}" style="width: 32mm; height: 32mm;">
+                <img src="{{ $qr }}" style="width: {{ $qrMm }}mm; height: {{ $qrMm }}mm;">
             @endif
 @if (! empty($extraQr))
                 <table style="margin-top: 4pt;"><tr>

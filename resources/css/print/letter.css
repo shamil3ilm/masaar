@@ -10,8 +10,8 @@
     }
 
     [data-print-qr] svg {
-        width: 32mm;
-        height: 32mm;
+        width: 40mm;
+        height: 40mm;
     }
 
     /* The organization's own QR, smaller than the country's. */

@@ -25,8 +25,12 @@ use GdImage;
  */
 class ReceiptImage
 {
-    /** The country's QR code on every paper, in millimetres. */
-    private const QR_MM = 32.0;
+    /**
+     * The country's QR is never drawn under this, quiet zone included, on a
+     * roll wide enough for it: rounded to whole dots per module, the 40 mm
+     * it is asked for can come out a few millimetres either side.
+     */
+    private const QR_AT_LEAST_MM = 36.0;
 
     /**
      * @param  int  $dots  the printer's dots across: 576 for an 80 mm roll at 203 dpi, 384 for 58 mm
@@ -114,7 +118,7 @@ class ReceiptImage
 
         if ($receipt->qrPayload !== '') {
             $canvas->rule();
-            $canvas->qr($receipt->qrPayload, self::QR_MM);
+            $canvas->qr($receipt->qrPayload, $paper->qrMm(), atLeastMm: self::QR_AT_LEAST_MM);
         }
 
         // The organization's own QR, apart and labelled: never in the

@@ -77,6 +77,23 @@ enum PaperSize: string
     }
 
     /**
+     * The country's QR code on this paper, in millimetres, its quiet zone of
+     * four modules included: 40 on a sheet and on an 80 mm roll; on a 58 mm
+     * roll, whose 48 mm of print a Phase 2 code would crowd at 40, as wide
+     * as fits with a millimetre to each side.
+     *
+     * A Phase 2 code - signature, key and certificate signature in it - has
+     * about a hundred modules, so 40 mm gives each module 0.4 mm: three dots
+     * on a 203 dpi head, and more than two pixels when the page is scanned
+     * at 150 dpi. A thermal image rounds this to whole dots per module
+     * (ReceiptCanvas::qr), which on 58 mm comes to about 38 mm.
+     */
+    public function qrMm(): float
+    {
+        return $this === self::Roll58 ? 46.0 : 40.0;
+    }
+
+    /**
      * The dots across a roll printer's head: the printable width at the
      * printer's resolution, in whole bytes of eight dots as the printer is
      * sent them - 576 and 384 at the usual 203 dpi. Null for a sheet.

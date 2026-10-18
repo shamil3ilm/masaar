@@ -91,7 +91,7 @@
             @foreach ($terms as $term)
                 <div>
                     <dt class="font-medium"><x-caption :en="$term->label->en" :ar="$term->label->ar" /></dt>
-                    <dd class="text-gray-600">{{ $term->value }}</dd>
+                    <dd class="text-gray-600" dir="ltr">{{ $term->value }}</dd>
                 </div>
             @endforeach
 
@@ -207,7 +207,7 @@
                         @endif
                         {{-- The line's own charges, in its total (BG-28). --}}
                         @foreach (\App\Domains\Invoice\Support\PrintedAmounts::lineCharges($line) as $charge)
-                            <span class="block text-xs text-gray-500">{{ $charge['reason'] }}{{ $charge['percent'] !== null ? ' ('.$charge['percent'].'%)' : '' }} <span dir="rtl" lang="ar">رسوم</span> +@include('portal.partials.money', ['amount' => $charge['amount'], 'currency' => $invoice->currency])</span>
+                            <span class="block text-xs text-gray-500">{{ $charge['reason'] }}{{ $charge['percent'] !== null ? ' ('.$charge['percent'].'%)' : '' }} <span dir="rtl" lang="ar">رسوم</span> <span dir="ltr">+@include('portal.partials.money', ['amount' => $charge['amount'], 'currency' => $invoice->currency])</span></span>
                         @endforeach
                     </td>
                     <td class="py-2 text-right tabular-nums">
