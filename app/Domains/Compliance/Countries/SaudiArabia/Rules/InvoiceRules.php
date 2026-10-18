@@ -288,7 +288,8 @@ class InvoiceRules implements InvoiceRulesPort
 
             // Invoice lines
             // Bounded: every line is an insert inside one transaction, and issuing
-            // signs the document while holding the organization's lock.
+            // signs the document while holding its device's issuing lock, which
+            // every other document of that device waits on.
             'lines' => ['required', 'array', 'min:1', 'max:1000'],
             'lines.*.description' => ['required', 'string', 'max:255'],
             'lines.*.description_ar' => ['nullable', 'string', 'max:255'],
