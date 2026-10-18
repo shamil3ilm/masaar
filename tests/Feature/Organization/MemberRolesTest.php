@@ -114,7 +114,6 @@ class MemberRolesTest extends TestCase
             'action' => 'Invoice.created',
             'entity_type' => 'Invoice',
             'created_at' => now()->subDays(2),
-            'updated_at' => now()->subDays(2),
         ]);
 
         $this->portal($this->owner)->get(route('portal.team.index'))

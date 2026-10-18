@@ -131,14 +131,9 @@ final class TableTimestamps
 
         // Filing.
         'invoice_submissions' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',
-            'actors' => ['created_by' => 'created_by'], 'correlation' => 'request_id',
-            // Created with the table (0140) and never written: no code
-            // deletes a submission or reads a deleted one. The model no
-            // longer soft-deletes, so nothing can reach it.
-            'legacy' => ['deleted_at' => 'unused since 0140; dropping it is the owner\'s decision']],
+            'actors' => ['created_by' => 'created_by'], 'correlation' => 'request_id'],
         'submission_state_logs' => ['class' => 'd', 'tenant' => 'parent:submission_id', 'parent' => true,
-            'actors' => ['actor' => 'actor_id'], 'correlation' => 'request_id',
-            'legacy' => ['updated_at' => 'written equal to created_at by SubmissionLedger and the filing job, never changed; dropping it is the owner\'s decision']],
+            'actors' => ['actor' => 'actor_id'], 'correlation' => 'request_id'],
         'submission_idempotency' => ['class' => 'a', 'tenant' => 'organization',
             'system' => 'the platform\'s record of a filing request it made, expired by expires_at'],
         'offline_queue' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization', 'parent' => true,
@@ -161,8 +156,7 @@ final class TableTimestamps
             'channel' => ['created_via']],
 
         // Audit and evidence.
-        'audit_logs' => ['class' => 'd', 'tenant' => 'either', 'actors' => ['actor' => 'user_id'], 'correlation' => 'request_id',
-            'legacy' => ['updated_at' => 'never written by the model; dropping it is the owner\'s decision']],
+        'audit_logs' => ['class' => 'd', 'tenant' => 'either', 'actors' => ['actor' => 'user_id'], 'correlation' => 'request_id'],
 
         // Licensing.
         'licenses' => ['class' => 'b', 'tenant' => 'global',
@@ -174,8 +168,7 @@ final class TableTimestamps
             // approved_by, and every step is in license_registration_audits.
             'system' => 'made by an applicant with no account',
             'unique_across_removed' => ['license_registrations_verification_token_unique' => 'a random token']],
-        'license_registration_audits' => ['class' => 'd', 'tenant' => 'parent:registration_id', 'actors' => ['actor' => 'user_id'],
-            'legacy' => ['updated_at' => 'never written by the model; dropping it is the owner\'s decision']],
+        'license_registration_audits' => ['class' => 'd', 'tenant' => 'parent:registration_id', 'actors' => ['actor' => 'user_id']],
         'license_audit_logs' => ['class' => 'd', 'tenant' => 'parent:license_id', 'actors' => ['actor' => 'actor_id']],
         'organization_licenses' => ['class' => 'a', 'tenant' => 'organization',
             'actors' => ['created_by' => 'linked_by', 'updated_by' => 'updated_by']],
@@ -186,16 +179,13 @@ final class TableTimestamps
 
         // Webhooks.
         'webhooks' => ['class' => 'b', 'tenant' => 'organization', 'actors' => self::REMOVABLE],
-        'webhook_logs' => ['class' => 'd', 'tenant' => 'parent:webhook_id',
-            'legacy' => ['updated_at' => 'never written by the model; dropping it is the owner\'s decision']],
+        'webhook_logs' => ['class' => 'd', 'tenant' => 'parent:webhook_id'],
 
         // Support.
         'support_tickets' => ['class' => 'a', 'tenant' => 'organization',
             'actors' => ['created_by' => 'opened_by', 'updated_by' => 'updated_by', 'assigned_to' => 'assigned_to']],
-        'support_messages' => ['class' => 'd', 'tenant' => 'parent:ticket_id', 'actors' => ['author' => 'user_id'],
-            'legacy' => ['updated_at' => 'never written by the model; dropping it is the owner\'s decision']],
-        'support_attachments' => ['class' => 'd', 'tenant' => 'parent:message_id', 'parent' => true,
-            'legacy' => ['updated_at' => 'never written by the model; dropping it is the owner\'s decision']],
+        'support_messages' => ['class' => 'd', 'tenant' => 'parent:ticket_id', 'actors' => ['author' => 'user_id']],
+        'support_attachments' => ['class' => 'd', 'tenant' => 'parent:message_id', 'parent' => true],
 
         // Lists and branches.
         'saved_list_views' => ['class' => 'b', 'tenant' => 'either', 'actors' => self::REMOVABLE,

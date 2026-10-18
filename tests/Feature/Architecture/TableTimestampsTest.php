@@ -103,6 +103,17 @@ class TableTimestampsTest extends TestCase
         });
     }
 
+    /**
+     * The owner dropped every column a class does not allow (1070); a new
+     * exception needs the owner's decision again.
+     */
+    public function test_no_legacy_columns_remain(): void
+    {
+        $legacy = array_keys(array_filter(TableTimestamps::TABLES, fn (array $spec): bool => isset($spec['legacy'])));
+
+        $this->assertSame([], $legacy, 'Legacy columns are back on: '.implode(', ', $legacy));
+    }
+
     public function test_tables_name_their_tenant(): void
     {
         $this->assertNoProblems(function (string $table, array $spec, array $columns): array {

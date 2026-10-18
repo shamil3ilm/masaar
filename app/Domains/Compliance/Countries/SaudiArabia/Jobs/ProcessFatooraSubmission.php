@@ -370,7 +370,6 @@ class ProcessFatooraSubmission implements ShouldQueue
             // The request that queued this job, carried into it.
             ...app(Origin::class)->columns(['request_id']),
             'created_at' => now(),
-            'updated_at' => now(),
         ]);
     }
 

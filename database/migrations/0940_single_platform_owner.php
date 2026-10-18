@@ -48,7 +48,6 @@ return new class extends Migration
                 'entity_id' => $owner->id,
                 'metadata' => json_encode(['email' => $owner->email, 'from' => $owner->platform_role ?? 'owner', 'to' => 'operations', 'owner' => $kept->id]),
                 'created_at' => now(),
-                'updated_at' => now(),
             ]);
         }
     }

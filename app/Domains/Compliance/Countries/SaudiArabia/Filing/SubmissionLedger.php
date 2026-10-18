@@ -143,7 +143,6 @@ class SubmissionLedger
             'ip_address' => request()->ip(),
             ...$this->origin->columns(['request_id']),
             'created_at' => now(),
-            'updated_at' => now(),
         ]);
     }
 
