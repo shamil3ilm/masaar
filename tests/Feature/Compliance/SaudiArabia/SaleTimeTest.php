@@ -10,6 +10,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Filing\Submitter;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
 use App\Domains\Compliance\Countries\SaudiArabia\Reports\DeadlineReport;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
+use App\Domains\Compliance\Countries\SaudiArabia\Support\FatooraTime;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
@@ -24,14 +25,20 @@ use Tests\TestCase;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 /**
- * A till that was offline issues its sales at the time they were made.
+ * A till that was offline sends its sales when it reconnects, and they are
+ * issued then, as ZATCA's Detailed Guidelines for E-Invoicing require:
  *
- * The moment of issue was always the server's, so a till catching up after
- * an outage issued yesterday's sales as today's: the wrong IssueTime and QR
- * timestamp, and a reporting clock that started a day late, so the deadline
- * screen said there was time left on an invoice already overdue. The till's
- * own sale time is taken now, within a bound: no further back than the
- * reporting deadline, and no further ahead than the clock tolerance.
+ * - "Invoice Issue Date must be the date on which final Tax Invoice is
+ *   generated" (p60), so IssueDate, IssueTime and the QR's timestamp are the
+ *   moment the platform generates the invoice, not the sale's;
+ * - a simplified invoice is reported within twenty-four hours of issuance
+ *   (p12, p18, p32), so the reporting clock starts at issue;
+ * - the issue date may not be in the future (p55, BR-KSA-04).
+ *
+ * The sale time is the supply: its date is the supply date (KSA-5, the
+ * actual delivery date) and the daily close counts the sale on it. A late
+ * sale is never refused; only one the platform's clock says has not happened
+ * yet is.
  */
 class SaleTimeTest extends TestCase
 {
@@ -67,25 +74,27 @@ class SaleTimeTest extends TestCase
         ]);
     }
 
-    public function test_sale_time_is_the_issue_time(): void
+    public function test_issue_time_is_generation_time(): void
     {
-        $sold = now()->subHours(3)->startOfSecond();
+        $this->travelTo(Carbon::parse('2026-10-17T10:00:00+03:00'));
+        $sold = now()->subHours(13)->startOfSecond();
 
         $invoice = $this->issue($this->draft($sold));
 
-        $this->assertTrue($sold->equalTo($invoice->issued_at));
-        $this->assertSame(
-            $sold->copy()->setTimezone('Asia/Riyadh')->format('H:i:s'),
-            $this->issueTime($invoice),
-            'the document carries the server\'s time, not the sale\'s',
-        );
+        $this->assertTrue(now()->equalTo($invoice->issued_at));
+        $this->assertTrue($sold->equalTo($invoice->sold_at));
+        $this->assertSame('2026-10-17', $invoice->issue_date->toDateString(), 'the issue date is the sale\'s, not the day it was generated');
+        $this->assertSame('2026-10-16', $invoice->supply_date->toDateString());
+        $this->assertSame(['2026-10-17', '10:00:00', '2026-10-16'], [$this->xml($invoice, 'IssueDate'), $this->xml($invoice, 'IssueTime'), $this->xml($invoice, 'ActualDeliveryDate')]);
     }
 
-    public function test_an_old_sale_is_refused(): void
+    /** Days late is still issued, and dated today. */
+    public function test_a_late_sale_is_issued(): void
     {
-        $draft = $this->draft(now()->subHours(25));
+        $invoice = $this->issue($this->draft(now()->subDays(3)));
 
-        $this->assertRefused($draft, 'at most 1440 minutes');
+        $this->assertSame(InvoiceStatus::Issued, $invoice->status);
+        $this->assertSame(FatooraTime::saudiNow()->toDateString(), $invoice->issue_date->toDateString());
     }
 
     public function test_a_future_sale_is_refused(): void
@@ -95,19 +104,11 @@ class SaleTimeTest extends TestCase
         $this->assertRefused($draft, 'ahead of the platform');
     }
 
-    public function test_the_bound_is_configurable(): void
-    {
-        config(['fatoora.sale_time.max_age_minutes' => 60]);
-
-        $this->assertRefused($this->draft(now()->subHours(2)), 'at most 60 minutes');
-    }
-
     /**
-     * The deadline runs from the sale. Issued and submitted just now, it was
-     * sold twenty hours ago, so it is at risk - and its age says twenty
-     * hours, not none.
+     * The deadline runs from issuance. Sold twenty hours ago and issued just
+     * now, its twenty-four hours have just begun.
      */
-    public function test_the_deadline_counts_from_sale(): void
+    public function test_the_deadline_counts_from_issuance(): void
     {
         $invoice = $this->issue($this->draft(now()->subHours(20)));
 
@@ -118,33 +119,32 @@ class SaleTimeTest extends TestCase
             'submission_type' => 'reporting',
         ]));
 
-        $atRisk = app(DeadlineReport::class)->breakdown()['at_risk'];
-
-        $this->assertCount(1, $atRisk);
-        $this->assertEqualsWithDelta(20.0, $atRisk->first()['age_hours'], 0.1);
+        $this->assertSame(0.0, round(app(DeadlineReport::class)->ageInHours(InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()->firstOrFail())), 1));
+        $this->assertCount(0, app(DeadlineReport::class)->breakdown()['at_risk']);
     }
 
     /**
-     * Sent through the API, a sale time names its own date when none is
-     * given, and must agree with one that is.
+     * Through the API, the sale time names the supply date when none is
+     * given; the invoice is dated today. issued_at, the name it was first
+     * sent under, still works.
      */
     public function test_the_api_takes_a_sale_time(): void
     {
         $sold = Carbon::parse('2026-10-16T23:30:00+03:00');
         Carbon::setTestNow($sold->copy()->addHours(2));
 
-        $response = $this->api(['issued_at' => $sold->toIso8601String()])->assertCreated();
+        foreach (['sold_at', 'issued_at'] as $index => $field) {
+            $response = $this->api([$field => $sold->toIso8601String(), 'invoice_number' => 'TILL-'.$index])->assertCreated();
 
-        $this->assertSame('2026-10-16', substr((string) $response->json('data.invoice.issue_date'), 0, 10));
-        $this->assertTrue($sold->equalTo(Invoice::withoutTenantScope(fn () => Invoice::query()->firstOrFail())->issued_at));
-
-        $this->api(['issued_at' => $sold->toIso8601String(), 'issue_date' => '2026-10-17'])
-            ->assertStatus(422)
-            ->assertJsonPath('error.details.issue_date.0', __('The issue date must be the date of the sale time (issued_at), on the organization\'s clock.'));
+            $this->assertSame('2026-10-17', substr((string) $response->json('data.invoice.issue_date'), 0, 10));
+            $this->assertSame('2026-10-16', substr((string) $response->json('data.invoice.supply_date'), 0, 10));
+            $this->assertTrue($sold->equalTo(Invoice::withoutTenantScope(fn () => Invoice::query()->where('invoice_number', 'TILL-'.$index)->firstOrFail())->sold_at));
+        }
     }
 
     public function test_the_api_wants_a_time_zone(): void
     {
+        $this->api(['sold_at' => '2026-10-16 23:30:00'])->assertStatus(422);
         $this->api(['issued_at' => '2026-10-16 23:30:00'])->assertStatus(422);
     }
 
@@ -152,7 +152,7 @@ class SaleTimeTest extends TestCase
     {
         try {
             $this->issue($draft);
-            $this->fail('A sale time outside the bound was issued.');
+            $this->fail('A sale in the future was issued.');
         } catch (FatooraException $e) {
             $this->assertStringContainsString($why, $e->getMessage());
         }
@@ -186,7 +186,8 @@ class SaleTimeTest extends TestCase
             'document_type' => 'invoice',
             'status' => 'draft',
             'issue_date' => $sold->copy()->setTimezone('Asia/Riyadh')->toDateString(),
-            'issued_at' => $sold,
+            'supply_date' => $sold->copy()->setTimezone('Asia/Riyadh')->toDateString(),
+            'sold_at' => $sold,
             'currency' => 'SAR',
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
@@ -212,13 +213,13 @@ class SaleTimeTest extends TestCase
         return Invoice::withoutTenantScope(fn () => $invoice->fresh());
     }
 
-    private function issueTime(Invoice $invoice): string
+    private function xml(Invoice $invoice, string $element): string
     {
         $xml = new DOMDocument;
         $xml->loadXML((string) $invoice->signed_xml);
         $xpath = new DOMXPath($xml);
         $xpath->registerNamespace('cbc', 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2');
 
-        return (string) $xpath->evaluate('string(/*/cbc:IssueTime)');
+        return (string) $xpath->evaluate('string(//cbc:'.$element.')');
     }
 }

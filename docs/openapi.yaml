@@ -1749,6 +1749,8 @@ paths:
                   items: { type: object, properties: { reason: { type: string }, reason_code: { type: string }, amount: { type: number }, percent: { type: number }, base_amount: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string } } }
                 branch_id:
                   type: string
+                sold_at:
+                  type: string
                 issued_at:
                   type: string
               required:
@@ -1892,6 +1894,8 @@ paths:
                   items: { type: object, properties: { reason: { type: string }, reason_code: { type: string }, amount: { type: number }, percent: { type: number }, base_amount: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string } } }
                 branch_id:
                   type: string
+                sold_at:
+                  type: string
                 issued_at:
                   type: string
               required:
@@ -2007,6 +2011,8 @@ paths:
                   type: array
                   items: { type: object, properties: { reason: { type: string }, reason_code: { type: string }, amount: { type: number }, percent: { type: number }, base_amount: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string } } }
                 branch_id:
+                  type: string
+                sold_at:
                   type: string
                 issued_at:
                   type: string
@@ -3233,6 +3239,8 @@ paths:
                   items: { type: object, properties: { reason: { type: string }, reason_code: { type: string }, amount: { type: number }, percent: { type: number }, base_amount: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string } } }
                 branch_id:
                   type: string
+                sold_at:
+                  type: string
                 issued_at:
                   type: string
               required:
@@ -3379,6 +3387,8 @@ paths:
                   type: array
                   items: { type: object, properties: { reason: { type: string }, reason_code: { type: string }, amount: { type: number }, percent: { type: number }, base_amount: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string } } }
                 branch_id:
+                  type: string
+                sold_at:
                   type: string
                 issued_at:
                   type: string
@@ -3601,6 +3611,8 @@ paths:
                   type: array
                   items: { type: object, properties: { reason: { type: string }, reason_code: { type: string }, amount: { type: number }, percent: { type: number }, base_amount: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string } } }
                 branch_id:
+                  type: string
+                sold_at:
                   type: string
                 issued_at:
                   type: string

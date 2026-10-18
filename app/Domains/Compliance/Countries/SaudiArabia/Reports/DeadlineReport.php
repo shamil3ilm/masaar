@@ -260,9 +260,9 @@ class DeadlineReport
 
     /**
      * From the invoice's issue or the submission's creation, whichever came
-     * first - the moment late() measures from. A till catching up issues and
-     * submits a sale hours after it was made, and counted from the
-     * submission that sale looked as if its clock had only just started.
+     * first - the moment late() measures from. Twenty-four hours from
+     * issuance (ZATCA Detailed Guidelines for E-Invoicing, p12, p18, p32); a
+     * till's late sale is issued when it is sent, so its clock starts then.
      *
      * Public so fatoora:overdue-submissions prints the same age.
      *

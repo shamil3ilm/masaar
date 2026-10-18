@@ -231,28 +231,59 @@ legal_hold_metadata:
 
 ### Policy Statement
 
-**Invoice issuance time is determined by the system clock at signing, unless a till sends the time it made the sale (`issued_at`) and that time falls within the configured bound. No timestamp authority is used: ZATCA's security features standard requires XAdES baseline level B-B, which carries no signature timestamp, so signatures are never upgraded to XAdES-T.**
+**An invoice is dated when the platform generates the final invoice: its issue date, issue time and QR timestamp are the system clock at issuance, on the Kingdom's clock. A till's own sale time (`sold_at`) is the supply, never the issue time, and a sale is never refused for being late. No timestamp authority is used: ZATCA's security features standard requires XAdES baseline level B-B, which carries no signature timestamp, so signatures are never upgraded to XAdES-T.**
 
-### Rationale
+### Sources
 
-ZATCA may later dispute invoice timestamp correctness. System clocks can drift. Having a clear policy on timestamp authority prevents legal ambiguity during audits.
+ZATCA's *Detailed Guidelines for E-Invoicing* (version 2, May 2023). Page
+numbers are the printed ones.
+
+| Rule | Where | What it says |
+|---|---|---|
+| Issue date | p60 | "Invoice Issue Date must be the date on which final Tax Invoice is generated." |
+| Reporting deadline | p12, p18, p32 | Simplified invoices are reported "within (24) hours from its issuance". |
+| Issue date not in the future | p55 | "The document issue date (BT-2) must be less or equal to the current date." The SDK checks it as BR-KSA-04. |
+| Keep trying, keep evidence | p46, p47, p49 | Continue attempting "in regular intervals until successful" (~every 15 minutes, p47); "TP should keep evidence of trying to clear the invoice to ZATCA (e.g. API log)". |
+| Past 24 hours | p48 | "In case the seller does not manage to share the invoice within 24 hours, he should notify ZATCA via a dedicated form on ZATCA's website"; "Once the connection is restored, merchant should notify ZATCA again" and "Seller should immediately report the transaction to ZATCA". |
+| No cancellation | p63 | "Invoices cannot be cancelled." A late invoice is reported, never withdrawn. |
+
+The supply date is KSA-5, `cac:Delivery/cbc:ActualDeliveryDate`. ZATCA's data
+dictionary marks it conditional for every document type, simplified invoices
+included, and no BR-KSA rule compares it with the issue date. BR-KSA-15 makes
+it required on a standard tax invoice; BR-KSA-35 and BR-KSA-36 tie a supply
+end date to it.
 
 ### Timestamp Hierarchy
 
-| Source | Priority | Use Case |
-|--------|----------|----------|
-| Till sale time (`issued_at`), within the bound | 1 (highest) | Issuance time of a sale made while the till was offline |
-| System clock | 2 | Issuance time otherwise; the XAdES signing time always |
+| Source | Priority | Use |
+|--------|----------|-----|
+| System clock at issuance | 1 (highest) | IssueDate, IssueTime, the QR's timestamp (tag 3), the start of the 24-hour reporting clock, and the XAdES signing time |
+| Till sale time (`sold_at`; `issued_at` is still accepted as its old name) | 2 | The supply date (KSA-5) when the invoice gives none; the daily close (Z-report) and the VAT summary count the sale on it |
 | ERP timestamp | 3 (lowest) | Informational only |
 
-A sale time is accepted when it is no older than
-`ZATCA_SALE_TIME_MAX_AGE_MINUTES` (default 1440, the reporting deadline) and
-no further ahead of the system clock than `ZATCA_SALE_TIME_MAX_AHEAD_SECONDS`
-(default 30). Outside that bound the invoice is refused before it takes a
-counter, with the reason. Accepted, it is the invoice's IssueTime, its QR
-timestamp and the start of its reporting deadline, so the deadline screen
-and the overdue alert count from the sale, not from when the till caught up.
-Its date, on the organization's clock, is the issue date.
+A sale time further ahead of the system clock than
+`ZATCA_SALE_TIME_MAX_AHEAD_SECONDS` (default 30) is refused before the invoice
+takes a counter, with the reason: a supply cannot be in the future, and
+neither can an issue date (p55). Any sale in the past is issued, however late.
+
+### When a simplified invoice cannot be reported in time
+
+1. The platform keeps trying: the offline queue retries a document ZATCA
+   could not be reached for with a growing interval that stops at
+   `ZATCA_OFFLINE_RETRY_INTERVAL` (default 900 seconds, ZATCA's "~every 15
+   minutes"), and never gives up on a retryable failure. Only an answer that
+   retrying cannot change ends it.
+2. Each attempt that got no answer, and the one that filed it, is a row of
+   `reporting_attempts`: the evidence p46 and p49 ask for. The portal's Late
+   reporting page downloads it as CSV.
+3. Past 24 hours from issuance, the hourly `fatoora:overdue-submissions --alert`
+   emails the organization's administrators, in Arabic and English, which
+   invoices are late and that they must notify ZATCA through the form on its
+   website (p48). Once those invoices are reported, it emails them again to
+   notify ZATCA again.
+4. On the Late reporting page an administrator records that ZATCA was
+   notified, of the delay and again once reported. Each record is in the audit
+   log with who did it.
 
 ### Dispute Resolution
 
@@ -260,16 +291,17 @@ Its date, on the organization's clock, is the issue date.
 Scenario: ZATCA questions invoice timestamp
 
 Resolution Path:
-1. The system clock at signing is authoritative
+1. The system clock at issuance is authoritative
 2. Compare against ZATCA's received timestamp (clearance response)
 3. Clock drift tolerance: ±30 seconds
 ```
 
 ### Configuration
 
-`ZATCA_SALE_TIME_MAX_AGE_MINUTES` and `ZATCA_SALE_TIME_MAX_AHEAD_SECONDS`, for
-the till's sale time. Keep the host clock synchronised (see the deployment
-guide's time synchronisation section).
+`ZATCA_SALE_TIME_MAX_AHEAD_SECONDS` for the till's sale time,
+`ZATCA_REPORTING_DEADLINE_HOURS` (24) and `ZATCA_OFFLINE_RETRY_INTERVAL`
+(900). Keep the host clock synchronised (see the deployment guide's time
+synchronisation section).
 
 ---
 

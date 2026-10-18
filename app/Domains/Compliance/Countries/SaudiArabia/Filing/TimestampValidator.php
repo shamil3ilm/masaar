@@ -11,8 +11,10 @@ use Illuminate\Support\Facades\Log;
  *
  * Enforces the timestamp policy:
  * 1. System UTC is the issuance time; no timestamp authority is used
- * 2. A till's own sale time is the issuance time instead, when it falls
- *    within the bound saleTimeProblem() checks
+ * 2. A till's own sale time is the supply, never the issuance time: the
+ *    issue date and time are when the final invoice is generated (ZATCA
+ *    Detailed Guidelines for E-Invoicing, p60); saleTimeProblem() refuses
+ *    only a sale the clock says has not happened yet
  * 3. ERP timestamp is informational only
  *
  * Clock drift tolerance: ±30 seconds between sources.
@@ -176,33 +178,21 @@ class TimestampValidator
     }
 
     /**
-     * Why a till's sale time cannot be the moment of issue, or null when it
-     * can.
+     * Why a till's sale time cannot be taken, or null when it can.
      *
-     * A till that was offline issues its sales when it reconnects, and the
-     * document has to say when the sale was made: IssueTime, the QR's
-     * timestamp and the start of the reporting clock. Taken back no further
-     * than the reporting deadline by default - a sale older than that is
-     * already late, and a document claiming it is a document nobody can file
-     * in time - and ahead no further than the clock tolerance, since a sale
-     * cannot have been made after the platform issues it.
+     * A till that was offline sends its sales when it reconnects. A sale is
+     * never refused for being late: the invoice is issued now, dated now,
+     * and reported within twenty-four hours of now (ZATCA Detailed
+     * Guidelines for E-Invoicing, p12 and p60); the sale time is its supply.
+     * Only a sale the platform's clock says has not happened yet is refused -
+     * further ahead than the clock tolerance - since an issue date may not be
+     * in the future (p55, BR-KSA-04) and neither may the supply it records.
      */
     public function saleTimeProblem(\DateTimeInterface $saleTime, ?\DateTimeInterface $now = null): ?string
     {
         $now ??= new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
         $behind = $now->getTimestamp() - $saleTime->getTimestamp();
-        $maxAge = (int) config('fatoora.sale_time.max_age_minutes', 1440);
         $maxAhead = (int) config('fatoora.sale_time.max_ahead_seconds', self::MAX_DRIFT_SECONDS);
-
-        if ($behind > $maxAge * 60) {
-            return sprintf(
-                'The sale time %s is %d minutes before the moment of issue; a sale time may be at most %d minutes old. '
-                .'Send the invoice without issued_at to issue it at the current time.',
-                $saleTime->format(DATE_ATOM),
-                intdiv($behind, 60),
-                $maxAge,
-            );
-        }
 
         if (-$behind > $maxAhead) {
             return sprintf(

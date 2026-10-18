@@ -35,6 +35,7 @@ class OfflineFallback
         private readonly Connectivity $connectivityChecker,
         private readonly DocumentBuilder $complianceService,
         private readonly CredentialStore $credentials,
+        private readonly ReportingAttempts $attempts,
     ) {}
 
     /**
@@ -72,6 +73,7 @@ class OfflineFallback
                     'error_code' => $e->getErrorCode()->value,
                     'error' => $e->getMessage(),
                 ]);
+                $this->attempts->record((string) $invoice->org_id, (string) $invoice->id, ReportingAttempts::UNREACHABLE, $e->getMessage());
 
                 return $this->queueForOffline($invoice, $options);
             }
@@ -85,6 +87,7 @@ class OfflineFallback
                     'invoice_id' => $invoice->id,
                     'error' => $e->getMessage(),
                 ]);
+                $this->attempts->record((string) $invoice->org_id, (string) $invoice->id, ReportingAttempts::UNREACHABLE, $e->getMessage());
 
                 return $this->queueForOffline($invoice, $options);
             }

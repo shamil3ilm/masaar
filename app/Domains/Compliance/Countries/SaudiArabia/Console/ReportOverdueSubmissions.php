@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia\Console;
 
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\LateReporting;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
 use App\Domains\Compliance\Countries\SaudiArabia\Reports\DeadlineReport;
 use Illuminate\Console\Command;
@@ -45,8 +46,20 @@ class ReportOverdueSubmissions extends Command
 
     protected $description = 'Find simplified submissions that have missed, or are about to miss, the reporting deadline';
 
-    public function handle(DeadlineReport $deadlines): int
+    public function handle(DeadlineReport $deadlines, LateReporting $late): int
     {
+        // With --alert, the scheduled run: each organization is also told,
+        // in Arabic and English, of its invoices newly past the deadline and
+        // of late ones since reported, so it can notify ZATCA as the
+        // Detailed Guidelines for E-Invoicing ask (p48).
+        if ($this->option('alert')) {
+            $told = $late->sweep();
+
+            if ($told['late'] > 0 || $told['resolved'] > 0) {
+                $this->line("Organizations told: {$told['late']} newly late, {$told['resolved']} since reported.");
+            }
+        }
+
         $deadlineHours = (float) config('fatoora.reporting.deadline_hours', 24);
         $warnAfter = $this->option('warn-after') !== null
             ? (float) $this->option('warn-after')

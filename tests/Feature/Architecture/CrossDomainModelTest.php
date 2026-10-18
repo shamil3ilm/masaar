@@ -62,6 +62,8 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Countries/SaudiArabia/Document/DocumentBuilder.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Filing/DuplicateDetector.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Filing/InvoiceVerdict.php' => 'Invoice',
+        // Which simplified invoices are past ZATCA's 24 hours unreported.
+        'Domains/Compliance/Countries/SaudiArabia/Filing/LateReporting.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Filing/OfflineFallback.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Filing/OfflineQueue.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Filing/SubmissionGuard.php' => 'Invoice',

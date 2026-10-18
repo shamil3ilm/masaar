@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\LateReporting;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\ReportingAttempts;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\OrganizationOnboarding;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Models\Organization;
@@ -16,7 +18,9 @@ use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Connecting the organization to ZATCA, from the portal.
@@ -119,6 +123,65 @@ class PortalZatcaController extends Controller
         } catch (DomainException|CertificateException $e) {
             return back()->withInput()->with('error', $e->getMessage());
         }
+    }
+
+    /**
+     * Simplified invoices not reported within twenty-four hours, and what
+     * the organization has done about them (ZATCA Detailed Guidelines for
+     * E-Invoicing, p48). Its administrators only.
+     */
+    public function late(Request $request, LateReporting $late): View
+    {
+        return view('countries.saudi-arabia.late-reporting', [
+            'documents' => $late->for($this->lateOrganization($request)),
+        ]);
+    }
+
+    /**
+     * Record that ZATCA was notified through its website form: of the
+     * delay, or again once the invoices are reported. Audited.
+     */
+    public function lateNotified(Request $request, LateReporting $late): RedirectResponse
+    {
+        $organizationId = $this->lateOrganization($request);
+        $notice = (string) $request->validate(['notice' => ['required', Rule::in(['delay', 'resumed'])]])['notice'];
+
+        $count = $late->recordNotified($organizationId, $notice, (string) $request->user()->id);
+
+        return redirect()->route('portal.zatca.late')->with('success', trans_choice(
+            $notice === 'resumed'
+                ? 'Recorded that ZATCA was notified again, for one invoice.|Recorded that ZATCA was notified again, for :count invoices.'
+                : 'Recorded that ZATCA was notified of the delay, for one invoice.|Recorded that ZATCA was notified of the delay, for :count invoices.',
+            $count,
+            ['count' => $count],
+        ));
+    }
+
+    /**
+     * Every attempt to reach ZATCA for the late invoices, as CSV: the
+     * evidence the Detailed Guidelines ask a taxpayer to keep (p46, p49).
+     */
+    public function lateEvidence(Request $request, LateReporting $late, ReportingAttempts $attempts): StreamedResponse
+    {
+        $documents = $late->for($this->lateOrganization($request));
+
+        return response()->streamDownload(function () use ($documents, $attempts): void {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, ['invoice_number', 'issued_at_utc', 'attempted_at_utc', 'outcome', 'detail']);
+
+            foreach ($documents as $document) {
+                foreach ($attempts->forInvoice((string) $document->org_id, (string) $document->invoice_id) as $attempt) {
+                    fputcsv($out, [$document->invoice_number, $document->issued_at, $attempt->attempted_at, $attempt->outcome, $attempt->detail]);
+                }
+            }
+
+            fclose($out);
+        }, 'late-reporting-evidence.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    private function lateOrganization(Request $request): string
+    {
+        return $this->portalOrganizationId($request, __('Only an administrator of this organization can see and record late reporting.'));
     }
 
     private function cleared(Request $request): Organization

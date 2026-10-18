@@ -60,9 +60,11 @@ class DailyClose
     }
 
     /**
-     * Documents issued on the day, on the Kingdom's clock: from its midnight
-     * to the next, as instants. issued_at, or created_at for a document
-     * issued before issued_at was recorded.
+     * Documents of the day's sales, on the Kingdom's clock: from its midnight
+     * to the next, as instants. A till's sale counts on the day it was made
+     * (sold_at), however late it was issued; anything else on the day it was
+     * issued - issued_at, or created_at for a document issued before
+     * issued_at was recorded.
      *
      * @return iterable<Invoice>
      */
@@ -77,8 +79,9 @@ class DailyClose
             ->where('status', '!=', InvoiceStatus::Draft)
             ->where('document_type', '!=', DocumentType::Proforma)
             ->where(fn (Builder $query) => $query
-                ->where(fn (Builder $issued) => $issued->where('issued_at', '>=', $start)->where('issued_at', '<', $end))
-                ->orWhere(fn (Builder $older) => $older->whereNull('issued_at')->where('created_at', '>=', $start)->where('created_at', '<', $end)))
+                ->where(fn (Builder $sold) => $sold->where('sold_at', '>=', $start)->where('sold_at', '<', $end))
+                ->orWhere(fn (Builder $issued) => $issued->whereNull('sold_at')->where('issued_at', '>=', $start)->where('issued_at', '<', $end))
+                ->orWhere(fn (Builder $older) => $older->whereNull('sold_at')->whereNull('issued_at')->where('created_at', '>=', $start)->where('created_at', '<', $end)))
             ->with('lines')
             ->orderBy('icv')
             ->lazy(200));

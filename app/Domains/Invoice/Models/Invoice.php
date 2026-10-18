@@ -49,6 +49,8 @@ class Invoice extends Model
         // subscription. Needs supply_date beside it (BR-KSA-35).
         'supply_end_date',
         'issued_at',
+        // When a till made the sale, as it sent it: the actual supply.
+        'sold_at',
         // When payment is due: PINT AE's IBT-009, and on a Saudi invoice
         // kept and shown, since ZATCA's document has no due date.
         'due_date',
@@ -105,6 +107,7 @@ class Invoice extends Model
     {
         return [
             'issued_at' => 'datetime',
+            'sold_at' => 'datetime',
             'type' => InvoiceType::class,
             'document_type' => DocumentType::class,
             'status' => InvoiceStatus::class,

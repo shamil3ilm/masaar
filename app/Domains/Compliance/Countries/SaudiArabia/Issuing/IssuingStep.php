@@ -8,6 +8,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Document\DocumentBuilder;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\TimestampValidator;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\SigningCredentials;
+use App\Domains\Compliance\Countries\SaudiArabia\Support\FatooraTime;
 use App\Domains\Invoice\Contracts\IssuingJurisdiction;
 use App\Domains\Invoice\Contracts\Seal;
 use App\Domains\Invoice\Models\Invoice;
@@ -168,6 +169,14 @@ class IssuingStep implements IssuingJurisdiction
         if ($invoice->icv === null) {
             $invoice->device_id = $context['device'];
             $invoice->icv = Invoice::generateNextIcv((string) $invoice->org_id, $invoice->device_id);
+
+            // "Invoice Issue Date must be the date on which final Tax Invoice
+            // is generated" (ZATCA Detailed Guidelines for E-Invoicing, p60):
+            // the date and time of issue - IssueDate, IssueTime and the QR's
+            // timestamp - are now, on the Kingdom's clock, whatever date the
+            // draft or the till's sale carried. The sale is the supply date.
+            $invoice->issued_at = now();
+            $invoice->issue_date = FatooraTime::toSaudiTime($invoice->issued_at)->format('Y-m-d');
         }
     }
 
@@ -220,25 +229,25 @@ class IssuingStep implements IssuingJurisdiction
     public function afterCommit(Invoice $invoice, mixed $result, bool $issuedNow): void {}
 
     /**
-     * A draft that carries the till's sale time is issued at that time, and
-     * only within TimestampValidator's bound: checked here, before a counter
-     * is spent, so a refused sale stays a draft with nothing taken.
+     * A sale the till says it made in the future is refused, before a
+     * counter is spent, so it stays a draft with nothing taken. A late one
+     * never is (TimestampValidator::saleTimeProblem).
      *
      * @throws FatooraException
      */
     private function assertSaleTime(Invoice $invoice): void
     {
-        if ($invoice->issued_at === null) {
+        if ($invoice->sold_at === null) {
             return;
         }
 
-        $problem = $this->timestamps->saleTimeProblem($invoice->issued_at);
+        $problem = $this->timestamps->saleTimeProblem($invoice->sold_at);
 
         if ($problem !== null) {
             throw new FatooraException(
                 "Invoice {$this->label($invoice)}: {$problem}",
                 ErrorCode::VALIDATION_FAILED,
-                ['issued_at' => $invoice->issued_at->toIso8601String()],
+                ['sold_at' => $invoice->sold_at->toIso8601String()],
             );
         }
     }

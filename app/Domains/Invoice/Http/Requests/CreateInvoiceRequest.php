@@ -11,7 +11,6 @@ use App\Domains\Organization\Services\TenantResolver;
 use App\Support\CountryClock;
 use Carbon\CarbonImmutable;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Validator;
 
 /**
  * An invoice draft from the API, checked by the rules of the organization's
@@ -26,10 +25,14 @@ use Illuminate\Validation\Validator;
  *
  *   branch_id  the branch it comes from, one of the organization's own: the
  *              branch decides which certificate signs it
- *   issued_at  the moment a till made the sale, for a till issuing what it
- *              sold while it was offline. Whether a country takes it, and
- *              within what bound, is its issuing step's to say; the date it
- *              falls on is the invoice's issue date.
+ *   sold_at    the moment a till made the sale, for a till issuing what it
+ *              sold while it was offline. It is the actual supply: its date
+ *              is the supply date when none is given, and the daily close
+ *              and the sales reports count the sale on it. It is not the
+ *              moment of issue - that is when the platform generates the
+ *              final invoice (ZATCA Detailed Guidelines for E-Invoicing,
+ *              p60). issued_at, the name it was first sent under, is still
+ *              taken and means the same.
  */
 class CreateInvoiceRequest extends CountryInvoiceRequest
 {
@@ -55,6 +58,7 @@ class CreateInvoiceRequest extends CountryInvoiceRequest
                 ->where('org_id', app(TenantResolver::class)->getOrganizationId())],
             // An instant, so it names its offset: a bare local time would be
             // read on the server's clock, which is not the till's.
+            'sold_at' => ['nullable', 'date', 'regex:/(Z|[+-]\d{2}:?\d{2})$/'],
             'issued_at' => ['nullable', 'date', 'regex:/(Z|[+-]\d{2}:?\d{2})$/'],
         ];
     }
@@ -63,35 +67,31 @@ class CreateInvoiceRequest extends CountryInvoiceRequest
     {
         return [
             ...parent::messages(),
+            'sold_at.regex' => __('The sale time (sold_at) must include its UTC offset, as in 2026-10-16T23:30:00+03:00.'),
             'issued_at.regex' => __('The sale time (issued_at) must include its UTC offset, as in 2026-10-16T23:30:00+03:00.'),
         ];
     }
 
-    public function withValidator(Validator $validator): void
-    {
-        parent::withValidator($validator);
-
-        $validator->after(function (Validator $validator): void {
-            $saleDate = $this->saleDate();
-
-            if ($saleDate !== null && filled($this->input('issue_date'))
-                && substr((string) $this->input('issue_date'), 0, 10) !== $saleDate) {
-                $validator->errors()->add('issue_date', __('The issue date must be the date of the sale time (issued_at), on the organization\'s clock.'));
-            }
-        });
-    }
-
     /**
-     * A sale time with no issue date beside it names the date: the day it
-     * fell on where the organization trades, which is the date its document
-     * says it was issued.
+     * A sale time names the supply date when the invoice gives none: the day
+     * the sale fell on where the organization trades. With no issue date the
+     * invoice is dated today; issuing dates it again, to the day it is
+     * generated.
      */
     protected function prepareForValidation(): void
     {
+        if (blank($this->input('sold_at')) && filled($this->input('issued_at'))) {
+            $this->merge(['sold_at' => $this->input('issued_at')]);
+        }
+
         $saleDate = $this->saleDate();
 
+        if ($saleDate !== null && blank($this->input('supply_date'))) {
+            $this->merge(['supply_date' => $saleDate]);
+        }
+
         if ($saleDate !== null && blank($this->input('issue_date'))) {
-            $this->merge(['issue_date' => $saleDate]);
+            $this->merge(['issue_date' => CountryClock::now(app(TenantResolver::class)->getOrganization()?->country)->toDateString()]);
         }
 
         parent::prepareForValidation();
@@ -103,7 +103,7 @@ class CreateInvoiceRequest extends CountryInvoiceRequest
      */
     private function saleDate(): ?string
     {
-        $saleTime = $this->input('issued_at');
+        $saleTime = $this->input('sold_at');
 
         if (! is_string($saleTime) || $saleTime === '') {
             return null;

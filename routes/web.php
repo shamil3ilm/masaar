@@ -450,6 +450,11 @@ Route::prefix('portal')->name('portal.')
         Route::post('/zatca/ccsid', [PortalZatcaController::class, 'ccsid'])->middleware('throttle:6,1')->name('zatca.ccsid');
         Route::post('/zatca/check', [PortalZatcaController::class, 'check'])->middleware('throttle:6,1')->name('zatca.check');
         Route::post('/zatca/production', [PortalZatcaController::class, 'production'])->middleware('throttle:6,1')->name('zatca.production');
+        // Invoices not reported within 24 hours, and the notices ZATCA's
+        // guidelines ask for. Administrators only; the controller checks.
+        Route::get('/zatca/late', [PortalZatcaController::class, 'late'])->name('zatca.late');
+        Route::post('/zatca/late/notified', [PortalZatcaController::class, 'lateNotified'])->name('zatca.late.notified');
+        Route::get('/zatca/late/evidence.csv', [PortalZatcaController::class, 'lateEvidence'])->middleware('throttle:20,1')->name('zatca.late.evidence');
 
         // The organization's people, and inviting more. Administrators only;
         // the controller checks the role.

@@ -22,11 +22,16 @@ use Tests\TestCase;
  * A sale made while the till was offline, issued when it reconnects, judged
  * by ZATCA's validator.
  *
- * The document says it was issued when the sale was made - IssueDate and
- * IssueTime in the header and the QR's timestamp, all on the Kingdom's clock
- * - and is signed now, so its XAdES SigningTime is later than its issue time.
- * The sale here was made the previous afternoon in Riyadh, inside the
- * twenty-four hours a simplified invoice has to be reported in.
+ * As ZATCA's Detailed Guidelines for E-Invoicing require, the document is
+ * dated when the platform generates it - "Invoice Issue Date must be the date
+ * on which final Tax Invoice is generated" (p60) - so IssueDate, IssueTime
+ * and the QR's timestamp are now, on the Kingdom's clock, and the
+ * twenty-four hours to report it run from now (p12, p18, p32). The sale is
+ * the supply: its date is the supply date (KSA-5, cac:Delivery/
+ * cbc:ActualDeliveryDate), which the data dictionary allows on every
+ * document type and no rule ties to the issue date. The sale here was made
+ * the previous afternoon in Riyadh - and three days before, which is late
+ * and is still issued.
  *
  * Set ZATCA_SDK_PATH to run these; they skip without it, as
  * ZatcaConformanceTest does.
@@ -75,24 +80,22 @@ class SaleTimeConformanceTest extends TestCase
     }
 
     /**
-     * @return iterable<string, array{string, string}>
+     * @return iterable<string, array{string, string, int}>
      */
     public static function documents(): iterable
     {
-        yield 'simplified invoice' => ['simplified', 'invoice'];
-        yield 'simplified credit note' => ['simplified', 'credit_note'];
-        yield 'standard invoice' => ['standard', 'invoice'];
+        yield 'simplified invoice' => ['simplified', 'invoice', 1];
+        yield 'simplified credit note' => ['simplified', 'credit_note', 1];
+        yield 'standard invoice' => ['standard', 'invoice', 1];
+        yield 'simplified invoice, three days late' => ['simplified', 'invoice', 3];
     }
 
     #[DataProvider('documents')]
-    public function test_a_late_issue_validates(string $type, string $document): void
+    public function test_a_late_issue_validates(string $type, string $document, int $daysLate): void
     {
-        // Yesterday afternoon in Riyadh, twenty hours or so before now.
-        $sold = Carbon::now('Asia/Riyadh')->subDay()->setTime(15, 4, 5)->utc();
-
-        if ($sold->diffInHours(now(), true) >= 24) {
-            $sold = now()->subHours(20)->startOfSecond();
-        }
+        // An afternoon in Riyadh, a day or more before now.
+        $sold = Carbon::now('Asia/Riyadh')->subDays($daysLate)->setTime(15, 4, 5)->utc();
+        $generated = Carbon::now('Asia/Riyadh')->startOfSecond();
 
         [$xml, $qr] = $this->issued($type, $document, $sold);
         $result = $this->validate($xml);
@@ -100,15 +103,18 @@ class SaleTimeConformanceTest extends TestCase
         $this->assertSame([], $this->businessRules($result['errors']), "ZATCA rejected the late {$type} {$document}.");
         $this->assertSame([], $result['warnings'], "an advisory fired on the late {$type} {$document}.");
 
-        $riyadh = $sold->copy()->setTimezone('Asia/Riyadh');
         $xpath = $this->xpath($xml);
+        $issueDate = $xpath->evaluate('string(/*/cbc:IssueDate)');
+        $issueTime = $xpath->evaluate('string(/*/cbc:IssueTime)');
+        $issued = Carbon::parse($issueDate.' '.$issueTime, 'Asia/Riyadh');
 
-        $this->assertSame($riyadh->toDateString(), $xpath->evaluate('string(/*/cbc:IssueDate)'), 'IssueDate is not the sale\'s date');
-        $this->assertSame($riyadh->format('H:i:s'), $xpath->evaluate('string(/*/cbc:IssueTime)'), 'IssueTime is not the sale\'s time');
-        $this->assertSame($riyadh->format('Y-m-d\TH:i:s'), $this->qrTag($qr, 3), 'the QR states another moment than the sale');
+        $this->assertSame($generated->toDateString(), $issueDate, 'IssueDate is not the day the invoice was generated');
+        $this->assertLessThan(60, abs($issued->diffInSeconds($generated)), 'IssueTime is not when the invoice was generated');
+        $this->assertSame($issueDate.'T'.$issueTime, $this->qrTag($qr, 3), 'the QR states another moment than the issue');
+        $this->assertSame($sold->copy()->setTimezone('Asia/Riyadh')->toDateString(), $xpath->evaluate('string(//cac:Delivery/cbc:ActualDeliveryDate)'), 'the supply date is not the sale\'s');
 
-        $signed = Carbon::parse($xpath->evaluate('string(//*[local-name()="SigningTime"])'));
-        $this->assertTrue($signed->greaterThan($sold), 'the document was signed before the sale it records');
+        $signed = Carbon::parse($xpath->evaluate('string(//*[local-name()="SigningTime"])'), 'Asia/Riyadh');
+        $this->assertTrue($signed->greaterThanOrEqualTo($issued), 'the document was signed before it was issued');
     }
 
     /**
@@ -128,7 +134,7 @@ class SaleTimeConformanceTest extends TestCase
             'adjustment_reason' => $isNote ? 'Correction of quantity' : null,
             'status' => 'draft',
             'issue_date' => $day,
-            'issued_at' => $sold,
+            'sold_at' => $sold,
             'supply_date' => $day,
             'currency' => 'SAR',
             'buyer_name' => 'Beta Industries',
@@ -198,6 +204,7 @@ class SaleTimeConformanceTest extends TestCase
 
         $xpath = new DOMXPath($dom);
         $xpath->registerNamespace('cbc', self::CBC);
+        $xpath->registerNamespace('cac', 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2');
 
         return $xpath;
     }

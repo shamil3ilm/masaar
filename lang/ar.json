@@ -1410,5 +1410,22 @@
     ":organization has used :used of its :allowed :what": "استخدمت :organization :used من حصتها البالغة :allowed من :what",
     "The allowance is used up. Further ones are refused until it renews or is raised.": "استُنفدت الحصة، وسيُرفض ما يزيد عليها حتى تتجدد أو تُرفع.",
     "That is :percent% of the allowance. Once it is used up, further ones are refused until it renews or is raised.": "هذا يعادل :percent% من الحصة. وعند استنفادها يُرفض ما يزيد عليها حتى تتجدد أو تُرفع.",
-    "To raise it, reply to this email or open a ticket under Support.": "لرفعها، رُدّ على هذه الرسالة أو افتح تذكرة في قسم الدعم."
+    "To raise it, reply to this email or open a ticket under Support.": "لرفعها، رُدّ على هذه الرسالة أو افتح تذكرة في قسم الدعم.",
+    "Late reporting": "الإبلاغ المتأخر",
+    "Simplified invoices that could not be reported to ZATCA within 24 hours of being issued. The platform keeps trying at regular intervals and keeps a record of every attempt.": "الفواتير المبسطة التي تعذّر الإبلاغ عنها لدى هيئة الزكاة والضريبة والجمارك خلال 24 ساعة من إصدارها. يواصل النظام المحاولة على فترات منتظمة ويحتفظ بسجل لكل محاولة.",
+    "Evidence of attempts (CSV)": "سجل المحاولات (CSV)",
+    "ZATCA asks a seller who cannot report an invoice within 24 hours to notify it through a dedicated form on its website, and to notify it again once the invoice is reported. Notify ZATCA on zatca.gov.sa, then record it here.": "تطلب الهيئة من البائع الذي يتعذّر عليه الإبلاغ عن فاتورة خلال 24 ساعة أن يُبلغها عبر نموذج مخصص في موقعها الإلكتروني، وأن يُبلغها مرة أخرى بعد الإبلاغ عن الفاتورة. أبلغ الهيئة عبر zatca.gov.sa، ثم سجّل ذلك هنا.",
+    "Record": "تسجيل",
+    "Record that you notified ZATCA of the delay through its website form?": "هل تريد تسجيل أنك أبلغت الهيئة بالتأخير عبر النموذج في موقعها الإلكتروني؟",
+    "Record that you notified ZATCA again, now that the invoices are reported?": "هل تريد تسجيل أنك أبلغت الهيئة مرة أخرى بعد الإبلاغ عن الفواتير؟",
+    "ZATCA notified": "إبلاغ الهيئة",
+    "Notified again": "الإبلاغ مرة أخرى",
+    "Still trying": "ما زالت المحاولة جارية",
+    "Every simplified invoice has been reported within 24 hours.": "تم الإبلاغ عن جميع الفواتير المبسطة خلال 24 ساعة.",
+    "Only an administrator of this organization can see and record late reporting.": "لا يطّلع على الإبلاغ المتأخر ويسجّله إلا مسؤول في هذه المنشأة.",
+    "The sale time (sold_at) must include its UTC offset, as in 2026-10-16T23:30:00+03:00.": "يجب أن يتضمن وقت البيع (sold_at) فرقه عن التوقيت العالمي المنسق، مثل 2026-10-16T23:30:00+03:00.",
+    "I notified ZATCA of the delay (one invoice)|I notified ZATCA of the delay (:count invoices)": "أبلغت الهيئة بالتأخير (فاتورة واحدة)|أبلغت الهيئة بالتأخير (:count فواتير)",
+    "I notified ZATCA again (one invoice)|I notified ZATCA again (:count invoices)": "أبلغت الهيئة مرة أخرى (فاتورة واحدة)|أبلغت الهيئة مرة أخرى (:count فواتير)",
+    "Recorded that ZATCA was notified again, for one invoice.|Recorded that ZATCA was notified again, for :count invoices.": "سُجّل أن الهيئة أُبلغت مرة أخرى، لفاتورة واحدة.|سُجّل أن الهيئة أُبلغت مرة أخرى، لـ :count فواتير.",
+    "Recorded that ZATCA was notified of the delay, for one invoice.|Recorded that ZATCA was notified of the delay, for :count invoices.": "سُجّل أن الهيئة أُبلغت بالتأخير، لفاتورة واحدة.|سُجّل أن الهيئة أُبلغت بالتأخير، لـ :count فواتير."
 }

@@ -110,13 +110,13 @@ return [
     ],
 
     /*
-    | A till's own sale time, sent as issued_at, is the moment of issue when
-    | it is no older than this - the reporting deadline by default - and no
-    | further ahead than the clock tolerance (TimestampValidator). Outside the
-    | bound the invoice is refused, with the reason, before a counter is spent.
+    | A till's own sale time, sent as sold_at, is the supply: never the
+    | moment of issue, which is when the final invoice is generated (ZATCA
+    | Detailed Guidelines for E-Invoicing, p60), and never refused for being
+    | late. Only a sale further ahead of the platform's clock than this is
+    | refused, before a counter is spent (TimestampValidator).
     */
     'sale_time' => [
-        'max_age_minutes' => (int) env('ZATCA_SALE_TIME_MAX_AGE_MINUTES', 1440),
         'max_ahead_seconds' => (int) env('ZATCA_SALE_TIME_MAX_AHEAD_SECONDS', 30),
     ],
 
@@ -221,10 +221,13 @@ return [
         // Maximum invoices that can be queued per organization
         'queue_max_size' => env('ZATCA_OFFLINE_QUEUE_MAX', 10000),
 
-        // Retry interval for processing offline queue (seconds)
-        'retry_interval' => env('ZATCA_OFFLINE_RETRY_INTERVAL', 300),
+        // The longest wait between two attempts at a document ZATCA could not
+        // be reached for, in seconds. A document is tried until it is filed
+        // (Detailed Guidelines for E-Invoicing, p46-47: "~every 15 minutes").
+        'retry_interval' => env('ZATCA_OFFLINE_RETRY_INTERVAL', 900),
 
-        // Maximum retry attempts before permanent failure
+        // Recorded on each queued item for reference. Retrying never stops
+        // while ZATCA cannot be reached; only a refusal ends it.
         'max_attempts' => env('ZATCA_OFFLINE_MAX_ATTEMPTS', 3),
 
         /*

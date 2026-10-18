@@ -56,6 +56,7 @@ class OfflineQueue
         private readonly CredentialStore $credentials,
         private readonly InvoiceVerdict $verdict,
         private readonly SubmissionLedger $ledger,
+        private readonly ReportingAttempts $attempts,
     ) {
         $this->maxQueueSize = FatooraConfig::getOfflineQueueMaxSize();
     }
@@ -309,6 +310,13 @@ class OfflineQueue
      */
     public function markCompleted(string $queueId, array $zatcaResponse): void
     {
+        $item = OfflineItem::query()->find($queueId);
+
+        if ($item !== null && empty($zatcaResponse['skipped'])) {
+            $this->attempts->record((string) $item->org_id, (string) $item->invoice_id, ReportingAttempts::FILED,
+                trim(($zatcaResponse['reportingStatus'] ?? '').' '.($zatcaResponse['clearanceStatus'] ?? '')) ?: null);
+        }
+
         OfflineItem::query()->whereKey($queueId)->update([
             'state' => self::STATE_COMPLETED,
             // The model casts this column to array, so it encodes itself.
@@ -334,11 +342,19 @@ class OfflineQueue
         }
 
         $attempts = $item->attempts + 1;
-        $maxAttempts = $item->max_attempts;
 
-        if ($canRetry && $attempts < $maxAttempts) {
-            // Schedule retry with exponential backoff
-            $retryDelay = pow(2, $attempts) * 60; // 2, 4, 8 minutes...
+        $this->attempts->record((string) $item->org_id, (string) $item->invoice_id, $canRetry ? ReportingAttempts::FAILED : ReportingAttempts::GAVE_UP, $error);
+
+        // While ZATCA cannot be reached the document is tried again until it
+        // is filed: "the supermarket's server should continue attempting to
+        // report the simplified tax invoice in regular intervals until
+        // successful", and a cleared one likewise, "in regular intervals
+        // (~every 15 minutes)" (ZATCA Detailed Guidelines for E-Invoicing,
+        // p46, p47). So a retryable failure is never final: the wait doubles
+        // from two minutes to the interval and stays there. Only an answer
+        // retrying cannot change - a refusal, a document to re-sign - ends it.
+        if ($canRetry) {
+            $retryDelay = min(pow(2, min($attempts, 10)) * 60, $this->retryInterval());
 
             $item->update([
                 'state' => self::STATE_PENDING,
@@ -370,6 +386,15 @@ class OfflineQueue
                 'error' => $error,
             ]);
         }
+    }
+
+    /**
+     * The longest wait between two attempts, in seconds: ZATCA's "~every 15
+     * minutes" (Detailed Guidelines for E-Invoicing, p47) by default.
+     */
+    private function retryInterval(): int
+    {
+        return max(60, (int) config('fatoora.offline.retry_interval', 900));
     }
 
     /**
