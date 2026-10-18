@@ -305,57 +305,55 @@ synchronisation section).
 
 ---
 
-## 8. Certificate Overlap Resolution
+## 8. Certificate Versions and Renewal
 
 ### Policy Statement
 
-**When multiple certificates are valid simultaneously (overlap period), always prefer the newest active certificate once issued, unless explicitly overridden for reconciliation.**
+**A device signs new documents with its active production certificate only, and files every document with the certificate that signed it.**
 
 ### Rationale
 
-Certificate rotation creates overlap windows where both old and new certificates are valid. Without clear policy, different invoices might be signed with different certificates, causing confusion.
+ZATCA authenticates every clearance and reporting call with the device's CSID and its secret, and each document carries the certificate it was stamped with. A renewal gives the device a new certificate while documents signed with the old one may still be queued, retried, or reported late. Filing those with the new CSID pairs a document with a certificate that did not sign it, and replacing the stored certificate on renewal lost the old secret entirely.
 
-### Overlap Scenarios
+### How It Works
 
-| Scenario | Resolution |
-|----------|------------|
-| New cert issued, old still valid | Use new cert immediately |
-| Old cert compromised | Halt all signing, emergency rotation |
-| Reconciliation needed with old cert | Explicit override with audit log |
-| Both certs valid, unclear which to use | Newest cert wins |
+Every production certificate a device has held is a version, kept per device (head office, or a branch with its own certificate) in `device_certificates`:
 
-### Implementation
-
-```php
-// Certificate selection logic
-public function getActiveCertificate(string $organizationId): Certificate
-{
-    return CertificateLineage::where('organization_id', $organizationId)
-        ->whereNull('revoked_at')
-        ->where('valid_from', '<=', now())
-        ->where('valid_until', '>=', now())
-        ->orderByDesc('activated_at')  // Newest first
-        ->firstOrFail();
-}
-```
-
-### Override Process
-
-For reconciliation scenarios requiring old certificate:
-
-1. Document reason for override
-2. Log override in audit trail
-3. Set explicit `certificate_override_id`
-4. Review and approve by compliance officer
-5. Automatic revert after reconciliation period
-
-### Stored Metadata
-
-| Field | Purpose |
+| Field | Meaning |
 |-------|---------|
-| `signing_certificate_hash` | Which cert signed the invoice |
-| `certificate_override_reason` | Why override was used (if any) |
-| `certificate_overlap_window` | Boolean: was signed during overlap? |
+| `version` | 1 for the first certificate, incremented by each renewal |
+| `certificate_id` | SHA-256 of the certificate - the same digest every chain entry records |
+| `serial_number`, `issuer` | read from the certificate |
+| `valid_from`, `valid_to` | the certificate's validity window |
+| `status` | `active`, `superseded` or `revoked` |
+
+The certificate, its secret and its private key stay in the encrypted credential store, under the same key as before; the table holds nothing secret. Versions are never deleted.
+
+| Event | Effect |
+|-------|--------|
+| Renewal (a new production certificate stored) | The new one becomes `active`; the old one becomes `superseded` and is kept, with its secret |
+| Branch reset for re-onboarding | The held certificate becomes `superseded` and is kept |
+| Revocation recorded | `revoked`; if it was the active one, the device stops signing until it is onboarded again |
+| Credential stored before versions were kept | Becomes version 1, unchanged, the first time it is read |
+
+An organization renews by onboarding again: a new OTP and compliance CSID on a new key, then the production step, which requests a new certificate because the held one was issued on another key.
+
+### Filing
+
+Every filing path - the submission tracker, the queued job and its recovery, the offline queue, and a direct submit, for clearance and for reporting - files with `CredentialStore::forInvoice()`, which returns the version named by the document's chain entry. A document with no chain entry is matched on the certificate it carries.
+
+| Signing version | Filed? |
+|-----------------|--------|
+| `active` | Yes |
+| `superseded` | Yes, with its own CSID and secret |
+| expired | Yes - the platform does not block it; ZATCA's response decides |
+| `revoked` | No - refused with `CERT_REVOKED` before anything is sent |
+
+### What ZATCA's Documents Say
+
+- The Security Features Implementation Standard (section 2.1.2) describes renewal through the taxpayer portal: the CA "validates that the existing certificate is not revoked or renewed before then revoke existing certificate", and issues a new one. Section 2.1.3 describes revocation, and its requirements table (item 14) requires the certificate's validity to be checked against the CA's CRL or OCSP before it is used for stamping.
+- The E-Invoicing Detailed Guidelines answer HTTP 401 with "Check authentication certificate and secret and resubmit".
+- Neither the Detailed Guidelines nor the SDK documentation says how a document stamped with a since-renewed, revoked or expired certificate is to be reported late. The platform therefore files it with the certificate that signed it and records ZATCA's answer, rather than re-signing it (which would change its hash and break the chain) or filing it under a certificate that did not sign it.
 
 ---
 

@@ -265,7 +265,7 @@ class ProcessFatooraSubmission implements ShouldQueue
 
         // The device that signed it files it. Resolved before the transition,
         // so a device with no credentials is not left in 'submitted'.
-        $device = $credentials->forInvoice((string) $invoice->org_id, $invoice->device_id, $invoice->branch_id);
+        $device = $credentials->forInvoice((string) $invoice->org_id, $invoice->device_id, $invoice->branch_id, (string) $invoice->id, $invoice->signed_xml);
 
         $ledger->transition($submission, 'submitted', 'queue_job');
 

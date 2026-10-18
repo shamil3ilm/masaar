@@ -38,7 +38,7 @@ final class ChainRecorder
      * The column is NOT NULL and holds a SHA-256 digest, so it needs a value
      * of that shape that no certificate can produce.
      */
-    private const NO_CERTIFICATE = '0000000000000000000000000000000000000000000000000000000000000000';
+    public const NO_CERTIFICATE = '0000000000000000000000000000000000000000000000000000000000000000';
 
     /**
      * Record one issued document and advance the tenant's chain head.
@@ -103,11 +103,11 @@ final class ChainRecorder
     /**
      * Which certificate signed this document.
      *
-     * A digest of the certificate rather than a reference to a row, because
-     * the platform stores the certificate an organization signs with and no
-     * table of them. Two documents signed by the same certificate carry the
-     * same value, which is what makes a certificate change visible in the
-     * chain.
+     * A digest of the certificate rather than a reference to a row. Two
+     * documents signed by the same certificate carry the same value, which is
+     * what makes a certificate change visible in the chain - and the device's
+     * certificate versions are keyed by this same digest, which is how a
+     * document is filed with the certificate that signed it.
      */
     private function certificateId(?string $certificate): string
     {

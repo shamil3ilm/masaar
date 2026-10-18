@@ -98,6 +98,11 @@ for the whole issue. Inside that lock, in this order:
    with the status in one update.
 4. **Chain entry:** `Countries/SaudiArabia/Issuing/ChainRecorder` records the
    invoice's hash and its predecessor, with the certificate that signed it.
+   That certificate is what files the document: a device keeps every
+   production certificate it has held as a version, keyed by the same digest,
+   and a document still queued or reported late after a renewal is filed with
+   the version that signed it, not the device's new one (see
+   COMPLIANCE-POLICIES.md, section 8).
 
 Because the counter, the number and the chain entry are decided under the same
 lock, two issuances for one device cannot claim the same predecessor. Devices
