@@ -82,6 +82,17 @@ final class Catalogue
                 options: ['arabic_first' => __('Arabic first, right to left'), 'english_first' => __('English first, left to right')],
             ),
             new Definition(
+                key: 'branches.working',
+                group: __('Branches'),
+                label: __('Working branch'),
+                help: __('The branch the portal shows and issues from, chosen in its branch switcher. None for every branch you work at.'),
+                type: 'id',
+                default: null,
+                levels: [Level::User],
+                audit: Definition::AUDIT_NONE,
+                ownScreen: true,
+            ),
+            new Definition(
                 key: 'invoices.charge_presets',
                 group: __('Invoices'),
                 label: __('Common charges'),

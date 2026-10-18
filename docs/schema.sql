@@ -981,14 +981,12 @@ CREATE TABLE `organization_user` (
     `status` STRING NOT NULL DEFAULT 'active',
     `updated_at` TIMESTAMP NULL,
     `updated_by` STRING NULL,
-    `working_branch_id` STRING NULL,
     PRIMARY KEY (`user_id`, `org_id`),
     INDEX `org_user_org_status_idx` (`org_id`, `status`),
     FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
     FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-    FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`working_branch_id`) REFERENCES `branches` (`id`) ON DELETE SET NULL
+    FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 );
 
 CREATE TABLE `organizations` (

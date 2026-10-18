@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Customization;
 
+use Illuminate\Support\Str;
+
 /**
  * One customization: what it holds, its shipped default, which levels may
  * set it, whether a level may lock it against the levels below, and how a
@@ -15,6 +17,11 @@ namespace App\Domains\Platform\Customization;
  *   int      a whole number between $min and $max, a multiple of $step
  *   entries  a list of keyed entries, merged by key down the levels: a level
  *            changes an entry above it, adds its own, or hides one
+ *   id       one record's id (a UUID), which the screen that sets it checks
+ *            is one the holder may choose
+ *
+ * $ownScreen marks one set on a screen of its own (the branch switcher),
+ * left off the settings and preferences pages.
  *
  * $console marks a person's preference that belongs to the admin console,
  * left off the portal's preferences.
@@ -56,6 +63,7 @@ final readonly class Definition
         public int $step = 1,
         public array $fields = [],
         public bool $console = false,
+        public bool $ownScreen = false,
     ) {}
 
     public function allows(Level $level): bool
@@ -92,6 +100,7 @@ final readonly class Definition
             'choice' => is_scalar($raw) && array_key_exists((string) $raw, $this->options) ? (string) $raw : null,
             'int' => $this->parseInt($raw),
             'entries' => is_array($raw) ? array_values($raw) : null,
+            'id' => is_string($raw) && Str::isUuid($raw) ? $raw : null,
             default => null,
         };
     }

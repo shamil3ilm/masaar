@@ -1931,5 +1931,7 @@
     "Bypass stays on: no other admin can approve a request yet, so with it off every action an approval policy holds would wait for good, yours included. Add an admin whose role decides approvals first.": "يبقى التجاوز مفعّلاً: لا يوجد بعدُ مشرف آخر يمكنه الموافقة على الطلبات، فلو أُوقف لبقي كل إجراء تُعلّقه سياسة موافقة في الانتظار إلى أن تنتهي صلاحيته، بما في ذلك إجراءاتك. أضف أولاً مشرفاً يملك دوره صلاحية البت في الموافقات.",
     "If you did not ask for this, treat the server as compromised and review its access now.": "إن لم تطلب ذلك، فاعتبر الخادم مخترقاً وراجع صلاحيات الوصول إليه فوراً.",
     "Someone with access to the server ran the recovery command for a locked-out owner. It is on the security record.": "شغّل شخص لديه صلاحية الوصول إلى الخادم أمر الاستعادة لمالك مُنع من الوصول. وقد سُجّل ذلك في السجل الأمني.",
-    "When: :time": "الوقت: :time"
+    "When: :time": "الوقت: :time",
+    "The branch the portal shows and issues from, chosen in its branch switcher. None for every branch you work at.": "الفرع الذي تعرضه البوابة وتُصدر منه، ويُختار من مُبدِّل الفروع فيها. اتركه فارغاً لكل الفروع التي تعمل فيها.",
+    "Working branch": "فرع العمل"
 }

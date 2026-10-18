@@ -9,6 +9,9 @@ use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\BranchAccess;
+use App\Domains\Platform\Customization\Customizations;
+use App\Domains\Platform\Customization\Level;
+use App\Domains\Platform\Customization\Scope;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Tests\Fixtures\MakesInvoices;
@@ -105,6 +108,42 @@ class BranchAccessTest extends TestCase
             ->assertOk()
             ->assertSee('JED-1')
             ->assertSee('HQ-1');
+    }
+
+    /**
+     * By organization role: an owner and an admin see every branch, an
+     * accountant every branch read only; a member or viewer assigned to a
+     * branch sees it alone.
+     */
+    public function test_roles_decide_every_branch(): void
+    {
+        $access = app(BranchAccess::class);
+        $owner = $this->memberOf('owner');
+        $accountant = $this->memberOf('accountant');
+        // Assigned or not, an accountant sees every branch.
+        $access->assign($this->acme->id, $this->riyadh->id, $accountant->id, 'member');
+        $viewer = $this->memberOf('viewer');
+        $access->assign($this->acme->id, $this->riyadh->id, $viewer->id, 'viewer');
+
+        $this->assertNull($access->allowed($owner->id, $this->acme->id));
+        $this->assertNull($access->allowed($this->owner->id, $this->acme->id));
+        $this->assertNull($access->allowed($accountant->id, $this->acme->id));
+        $this->assertSame([$this->riyadh->id], $access->allowed($viewer->id, $this->acme->id));
+
+        $this->assertTrue($access->mayWriteAt($owner->id, $this->acme->id, $this->jeddah->id));
+        $this->assertFalse($access->mayWriteAt($accountant->id, $this->acme->id, $this->riyadh->id));
+        $this->assertFalse($access->mayWriteAt($accountant->id, $this->acme->id, null));
+
+        $this->page($accountant, '/portal/invoices')->assertOk()->assertSee('JED-1')->assertSee('HQ-1');
+    }
+
+    /** The switcher's choice is the person's own customization, with no level above it. */
+    public function test_the_choice_is_a_customization(): void
+    {
+        $this->postAs($this->owner, '/portal/branch', ['branch' => $this->jeddah->id])->assertRedirect();
+
+        $this->assertSame($this->jeddah->id, app(Customizations::class)->own('branches.working', Level::User, Scope::member($this->acme->id, $this->owner->id)));
+        $this->assertSame([Level::User], app(Customizations::class)->definition('branches.working')->levels);
     }
 
     public function test_the_switcher_narrows_and_is_kept(): void

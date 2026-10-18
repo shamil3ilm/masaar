@@ -162,7 +162,7 @@ class Customizations
         $rows = [];
 
         foreach ($this->catalogue->all() as $definition) {
-            if (! $definition->allows($level) || $definition->type === 'entries' || ! $scope->has($level)) {
+            if (! $definition->allows($level) || $definition->type === 'entries' || $definition->ownScreen || ! $scope->has($level)) {
                 continue;
             }
 

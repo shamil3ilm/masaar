@@ -6,31 +6,32 @@ namespace App\Domains\Organization\Services;
 
 use App\Domains\Audit\Services\AuditService;
 use App\Domains\Auth\Models\User;
+use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Models\BranchAssignment;
 use DomainException;
 
 /**
  * Which branches a person works at, and what they may do at each.
  *
- * An administrator of the organization works at every branch. Anyone else
- * works at every branch until they are assigned to one or more; from then on
- * they see and issue at those alone - a cashier at their till, an auditor
- * shown one shop's books. The assignment carries what they may do there:
- * issue and correct (member), or read (viewer), and it never lifts what
- * their role in the organization allows: a viewer of the organization is a
- * viewer at every branch.
+ * By their role in the organization (MemberRole): an owner or admin works
+ * at every branch; an accountant sees every branch, read only. A member or
+ * viewer works at every branch until they are assigned to one or more; from
+ * then on they see and issue at those alone - a cashier at their till, an
+ * auditor shown one shop's books. The assignment carries what they may do
+ * there: issue and correct (member), or read (viewer), and it never lifts
+ * what their role in the organization allows: a read-only role reads at
+ * every branch it sees.
  *
  * Who counts as seeing every branch is decided in one place,
- * seesEveryBranch(), so the roles the organization's settings come to define
- * change only that.
+ * seesEveryBranch().
  */
 class BranchAccess
 {
     /** What a person may do at a branch they are assigned to. */
     public const ROLES = ['member', 'viewer'];
 
-    /** Organization roles that work at every branch, assigned or not. */
-    private const EVERY_BRANCH = ['admin'];
+    /** Organization roles that see every branch, assigned or not: the accountant's read only. */
+    private const EVERY_BRANCH = [MemberRole::Owner->value, MemberRole::Admin->value, MemberRole::Accountant->value];
 
     public function __construct(
         private readonly BranchService $branches,
@@ -86,17 +87,17 @@ class BranchAccess
 
         $atBranch = $this->assignmentsOf($userId, $organizationId)[$branchId];
 
-        // The narrower of the two: a viewer of the organization reads
-        // wherever they are assigned, whatever the assignment says.
-        return $role === 'viewer' ? 'viewer' : $atBranch;
+        // The narrower of the two: a read-only role in the organization
+        // reads wherever they are assigned, whatever the assignment says.
+        return MemberRole::readOnly($role) ? MemberRole::Viewer->value : $atBranch;
     }
 
-    /** Whether a person may issue, correct and send at a branch. */
+    /** Whether a person may issue, correct and send at a branch: never a read-only role. */
     public function mayWriteAt(string $userId, string $organizationId, ?string $branchId): bool
     {
         $role = $this->roleAt($userId, $organizationId, $branchId);
 
-        return $role !== null && $role !== 'viewer';
+        return $role !== null && ! MemberRole::readOnly($role);
     }
 
     /**
@@ -116,7 +117,8 @@ class BranchAccess
             throw new DomainException(__('That branch is not one of this organization\'s.'));
         }
 
-        if ($allowed !== null && ! $this->mayWriteAt($userId, $organizationId, $branch)) {
+        // A read-only role issues nowhere, though it sees every branch.
+        if (($allowed !== null || MemberRole::readOnly($this->organizationRole($userId, $organizationId))) && ! $this->mayWriteAt($userId, $organizationId, $branch)) {
             throw new DomainException(__('You cannot issue invoices at that branch.'));
         }
 
@@ -209,7 +211,9 @@ class BranchAccess
     }
 
     /**
-     * The one place that decides who works at every branch.
+     * The one place that decides who sees every branch: an owner, an admin
+     * and an accountant (read only, mayWriteAt()); a member or viewer only
+     * where assigned, or everywhere while assigned nowhere (allowed()).
      */
     private function seesEveryBranch(string $role): bool
     {

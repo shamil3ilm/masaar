@@ -12,9 +12,9 @@ use DomainException;
 use Illuminate\Support\Str;
 
 /**
- * Saved views, in a table of their own until the layered settings store
- * keeps per-person preferences: binding another SavedViewStore is all that
- * moving them takes.
+ * Saved views, in a table of their own: records a person makes, names and
+ * removes (with who removed them), not settings with a default above them,
+ * so the customization store does not keep them.
  *
  * Every query names the person and the scope, so one person's views are
  * never another's, and an organization's are not read from another.

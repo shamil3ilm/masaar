@@ -29,7 +29,7 @@ use App\Domains\Organization\Http\Middleware\PortalBranch;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Http\Middleware\TwoFactorRequired;
 use App\Domains\Organization\Models\Organization;
-use App\Domains\Organization\Services\MembershipWorkingBranch;
+use App\Domains\Organization\Services\CustomizedWorkingBranch;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Platform\Access\PortalAccess;
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
@@ -94,13 +94,12 @@ class AppServiceProvider extends ServiceProvider
         // Tenant: Singleton for request-scoped context
         $this->app->singleton(TenantResolver::class);
 
-        // Saved views on the history lists, in their own table until the
-        // layered settings store keeps per-person preferences.
+        // Saved views on the history lists: records a person makes, names and
+        // removes, so a table of their own rather than settings.
         $this->app->bind(SavedViewStore::class, SavedListViews::class);
 
-        // The branch switcher's choice, on the membership until the layered
-        // settings store keeps per-person preferences.
-        $this->app->bind(WorkingBranchStore::class, MembershipWorkingBranch::class);
+        // The branch switcher's choice: a person's own customization.
+        $this->app->bind(WorkingBranchStore::class, CustomizedWorkingBranch::class);
 
         // ZATCA Compliance Services - Singletons for consistency
         $this->app->singleton(TimestampValidator::class);
