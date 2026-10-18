@@ -4,14 +4,14 @@
 
 @section('content')
 <div class="mb-6">
-    <p class="text-sm"><a href="{{ route('portal.products.index') }}" class="text-teal-700 dark:text-teal-300 hover:underline"><span class="inline-block rtl:rotate-180">&larr;</span> {{ __('Products') }}</a></p>
-    <h2 class="mt-2 text-2xl font-bold text-gray-800 dark:text-gray-100">{{ $product->exists ? $product->name : __('New product') }}</h2>
+    <p class="text-sm"><a href="{{ route('portal.products.index') }}" class="text-accent hover:underline"><span class="inline-block rtl:rotate-180">&larr;</span> {{ __('Products') }}</a></p>
+    <h2 class="mt-2 text-2xl font-semibold text-fg">{{ $product->exists ? $product->name : __('New product') }}</h2>
 </div>
 
 <form method="POST" action="{{ $product->exists ? route('portal.products.update', $product->id) : route('portal.products.store') }}"
       class="max-w-3xl space-y-6">
     @csrf
-    <div class="rounded-lg bg-white dark:bg-gray-900 shadow">
+    <div class="rounded-card bg-surface border border-line shadow-card">
         <div class="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2">
             <x-ui.field :label="__('Name, as printed on the invoice')">
                 <x-ui.input type="text" name="name" maxlength="255" required value="{{ old('name', $product->name) }}" />
@@ -51,10 +51,10 @@
         @csrf
         @if ($product->archived_at)
             <input type="hidden" name="restore" value="1">
-            <x-ui.button variant="outline">{{ __('Restore product') }}</x-ui.button>
+            <x-ui.button variant="secondary">{{ __('Restore product') }}</x-ui.button>
         @else
-            <x-ui.button variant="outline">{{ __('Archive product') }}</x-ui.button>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Hidden from the invoice form. Invoices already written are not affected.') }}</p>
+            <x-ui.button variant="secondary">{{ __('Archive product') }}</x-ui.button>
+            <p class="mt-1 text-xs text-muted">{{ __('Hidden from the invoice form. Invoices already written are not affected.') }}</p>
         @endif
     </form>
 @endif

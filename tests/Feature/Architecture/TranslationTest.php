@@ -33,6 +33,8 @@ class TranslationTest extends TestCase
         'resources/views/layouts/guest.blade.php',
         'resources/views/layouts/public.blade.php',
         'resources/views/welcome.blade.php',
+        'resources/views/home',
+        'resources/views/errors',
         'resources/views/legal',
         'resources/views/emails',
         'app/Domains',

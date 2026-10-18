@@ -40,13 +40,15 @@ class DarkModeTest extends TestCase
 
     public function test_the_mode_marks_the_page(): void
     {
-        $this->get('/login')->assertSee('<html lang="en" class="">', false);
+        // The sign-in page carries its direction on <html> too now, so the
+        // class is matched within the tag rather than as the whole tag.
+        $this->assertMatchesRegularExpression('/<html lang="en"[^>]* class="">/', $this->get('/login')->getContent());
 
         $this->mode('dark');
-        $this->get('/login')->assertSee('<html lang="en" class="dark">', false);
+        $this->assertMatchesRegularExpression('/<html lang="en"[^>]* class="dark">/', $this->get('/login')->getContent());
 
         $this->mode('system');
-        $this->get('/login')->assertSee('<html lang="en" class="theme-system">', false);
+        $this->assertMatchesRegularExpression('/<html lang="en"[^>]* class="theme-system">/', $this->get('/login')->getContent());
     }
 
     public function test_dark_colours_apply_when_dark(): void

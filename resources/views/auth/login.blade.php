@@ -1,66 +1,32 @@
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="{{ $theme->htmlClass() }}">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ __('Sign in') }} - {{ $theme->name() }}</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <x-theme-head />
-</head>
-<body dir="{{ \App\Http\Middleware\SetLocale::rtl() ? 'rtl' : 'ltr' }}" class="bg-gray-100 dark:bg-gray-800 min-h-screen flex items-center justify-center">
-    <div class="max-w-md w-full mx-4">
-        <div class="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-8">
-            <div class="mb-8 flex flex-col items-center text-center">
-                <x-logo :size="44" />
-                <h1 class="mt-4 text-2xl font-semibold tracking-tight text-ink-900 dark:text-gray-100">{{ $theme->name() }}</h1>
-                <p class="mt-1 text-gray-500 dark:text-gray-400">{{ __('Sign in to continue') }}</p>
-            </div>
+@extends('layouts.guest')
 
-            @if ($errors->any())
-            <div class="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded mb-6 text-sm">
-                {{ $errors->first() }}
-            </div>
-            @endif
+@section('title', __('Sign in'))
+@section('subtitle', __('Sign in to continue'))
 
-            @if (session('status'))
-            <div class="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 px-4 py-3 rounded mb-6 text-sm">
-                {{ session('status') }}
-            </div>
-            @endif
+@section('content')
+<form method="POST" action="{{ route('login.attempt') }}" class="space-y-5">
+    @csrf
 
-            <form method="POST" action="{{ route('login.attempt') }}" class="space-y-5">
-                @csrf
+    <x-ui.field :label="__('Email')">
+        <x-ui.input name="email" type="email" required autofocus value="{{ old('email') }}" autocomplete="username" />
+    </x-ui.field>
 
-                <div>
-                    <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">{{ __('Email') }}</label>
-                    <x-ui.input id="email" name="email" type="email" required autofocus
-                           value="{{ old('email') }}" autocomplete="username" />
-                </div>
+    <x-ui.field :label="__('Password')">
+        <x-ui.input name="password" type="password" required autocomplete="current-password" />
+    </x-ui.field>
 
-                <div>
-                    <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">{{ __('Password') }}</label>
-                    <x-ui.input id="password" name="password" type="password" required
-                           autocomplete="current-password" />
-                </div>
-
-                <label class="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                    <input type="checkbox" name="remember" value="1" class="me-2 text-teal-600 dark:text-teal-400">
-                    {{ __('Remember me') }}
-                </label>
-
-                <x-ui.button class="w-full">{{ __('Sign in') }}</x-ui.button>
-            </form>
-
-            <div class="mt-6 flex justify-between text-sm">
-                <a href="{{ route('password.request') }}" class="text-teal-700 dark:text-teal-300 hover:underline">{{ __('Forgot your password?') }}</a>
-                @if (config('signup.enabled'))
-                    <a href="{{ route('register') }}" class="text-teal-700 dark:text-teal-300 hover:underline">{{ __('Create an account') }}</a>
-                @endif
-            </div>
-        </div>
-
-        <p class="text-center text-xs text-gray-400 dark:text-gray-500 mt-6">{{ __('Powered by Masaar') }}</p>
+    <div class="flex flex-wrap items-center justify-between gap-x-4">
+        <x-ui.checkbox name="remember" value="1">{{ __('Remember me') }}</x-ui.checkbox>
+        <a href="{{ route('password.request') }}" class="inline-flex min-h-11 items-center text-sm font-medium text-accent hover:underline underline-offset-4">{{ __('Forgot your password?') }}</a>
     </div>
-    <p class="pb-6 text-center"><x-locale-switch /></p>
-</body>
-</html>
+
+    <x-ui.button size="lg" class="w-full">{{ __('Sign in') }}</x-ui.button>
+</form>
+
+@if (config('signup.enabled'))
+    <p class="mt-6 border-t border-line pt-6 text-center text-sm text-muted">
+        {{ __('New to e-invoicing here?') }}
+        <a href="{{ route('register') }}" class="font-medium text-accent hover:underline underline-offset-4">{{ __('Create an account') }}</a>
+    </p>
+@endif
+@endsection

@@ -1,7 +1,7 @@
 @extends('layouts.guest')
 
 @section('title', __('Choose a new password'))
-@section('subtitle', __('Choose a new password'))
+@section('subtitle', __('At least 8 characters, with upper and lower case letters, a number and a symbol.'))
 
 @section('content')
 <form method="POST" action="{{ route('password.update') }}" class="space-y-5">
@@ -20,6 +20,6 @@
         <x-ui.input type="password" name="password_confirmation" required autocomplete="new-password" />
     </x-ui.field>
 
-    <x-ui.button class="w-full">{{ __('Change password') }}</x-ui.button>
+    <x-ui.button size="lg" class="w-full">{{ __('Change password') }}</x-ui.button>
 </form>
 @endsection

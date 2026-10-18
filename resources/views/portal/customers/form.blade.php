@@ -4,15 +4,15 @@
 
 @section('content')
 <div class="mb-6">
-    <p class="text-sm"><a href="{{ route('portal.customers.index') }}" class="text-teal-700 dark:text-teal-300 hover:underline"><span class="inline-block rtl:rotate-180">&larr;</span> {{ __('Customers') }}</a></p>
-    <h2 class="mt-2 text-2xl font-bold text-gray-800 dark:text-gray-100">{{ $customer->exists ? $customer->name : __('New customer') }}</h2>
-    <p class="text-gray-500 dark:text-gray-400">{{ __('A standard (B2B) invoice needs the VAT number and the national address.') }}</p>
+    <p class="text-sm"><a href="{{ route('portal.customers.index') }}" class="text-accent hover:underline"><span class="inline-block rtl:rotate-180">&larr;</span> {{ __('Customers') }}</a></p>
+    <h2 class="mt-2 text-2xl font-semibold text-fg">{{ $customer->exists ? $customer->name : __('New customer') }}</h2>
+    <p class="text-muted">{{ __('A standard (B2B) invoice needs the VAT number and the national address.') }}</p>
 </div>
 
 <form method="POST" action="{{ $customer->exists ? route('portal.customers.update', $customer->id) : route('portal.customers.store') }}"
       class="max-w-3xl space-y-6">
     @csrf
-    <div class="rounded-lg bg-white dark:bg-gray-900 shadow">
+    <div class="rounded-card bg-surface border border-line shadow-card">
         <div class="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2">
             <x-ui.field :label="__('Name')">
                 <x-ui.input type="text" name="name" maxlength="255" required value="{{ old('name', $customer->name) }}" />
@@ -35,9 +35,9 @@
         </div>
     </div>
 
-    <div class="rounded-lg bg-white dark:bg-gray-900 shadow">
+    <div class="rounded-card bg-surface border border-line shadow-card">
         <div class="border-b p-4">
-            <h3 class="font-semibold text-gray-800 dark:text-gray-100">{{ __('National address') }}</h3>
+            <h3 class="font-semibold text-fg">{{ __('National address') }}</h3>
         </div>
         <div class="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2">
             <x-ui.field :label="__('Street')">
@@ -73,10 +73,10 @@
         @csrf
         @if ($customer->archived_at)
             <input type="hidden" name="restore" value="1">
-            <x-ui.button variant="outline">{{ __('Restore customer') }}</x-ui.button>
+            <x-ui.button variant="secondary">{{ __('Restore customer') }}</x-ui.button>
         @else
-            <x-ui.button variant="outline">{{ __('Archive customer') }}</x-ui.button>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Hidden from the invoice form. Invoices already written are not affected.') }}</p>
+            <x-ui.button variant="secondary">{{ __('Archive customer') }}</x-ui.button>
+            <p class="mt-1 text-xs text-muted">{{ __('Hidden from the invoice form. Invoices already written are not affected.') }}</p>
         @endif
     </form>
 @endif

@@ -7,8 +7,8 @@
     Expects: $rows (collection of rows from DeadlineReport), $empty (what to
     say when there are none).
 --}}
-<div class="bg-white dark:bg-gray-900 rounded-lg shadow overflow-hidden">
-    <x-ui.table>
+<div class="bg-surface rounded-card border border-line shadow-card overflow-hidden">
+    <x-ui.table :primary="[0, 1, 3, 2]">
         <x-slot:head>
             <x-ui.th>Invoice</x-ui.th>
             <x-ui.th>Organization</x-ui.th>
@@ -19,18 +19,18 @@
         </x-slot:head>
 
         @forelse($rows as $row)
-        <tr class="hover:bg-gray-50 dark:hover:bg-gray-950">
+        <tr class="hover:bg-sunken">
             <td class="px-6 py-4">
-                <div class="font-medium text-gray-900 dark:text-gray-100">{{ $row['invoice_number'] }}</div>
-                <div class="text-xs text-gray-500 dark:text-gray-400">{{ Str::limit($row['id'], 8, '') }}</div>
+                <div class="font-medium text-fg">{{ $row['invoice_number'] }}</div>
+                <div class="text-xs text-muted">{{ Str::limit($row['id'], 8, '') }}</div>
             </td>
-            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{{ $row['organization'] ?? '-' }}</td>
-            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{{ number_format($row['age_hours'], 1) }}h</td>
+            <td class="px-6 py-4 text-sm text-muted">{{ $row['organization'] ?? '-' }}</td>
+            <td class="px-6 py-4 text-sm text-muted">{{ number_format($row['age_hours'], 1) }}h</td>
             <td class="px-6 py-4">
                 <x-ui.badge :state="$row['state']" />
             </td>
-            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{{ $row['retry_count'] }}</td>
-            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+            <td class="px-6 py-4 text-sm text-muted">{{ $row['retry_count'] }}</td>
+            <td class="px-6 py-4 text-sm text-muted">
                 {{ $row['last_error'] === null ? '-' : Str::limit($row['last_error'], 80) }}
             </td>
         </tr>

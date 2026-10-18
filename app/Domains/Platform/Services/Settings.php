@@ -99,6 +99,20 @@ final class Settings
             'type' => 'channels',
             'default' => ['mail', 'webhook'],
         ],
+        'site.easter_eggs' => [
+            'group' => 'Public site',
+            'label' => 'Small signs of the parent brand',
+            'help' => 'On the public pages only: the coral period at the end of the footer, the note shown when someone types jlmk, the line on the not-found page and one line in the browser console. Never on invoices, documents, emails or the portal and console.',
+            'type' => 'bool',
+            'default' => true,
+        ],
+        'site.contact_url' => [
+            'group' => 'Public site',
+            'label' => 'Contact goes to',
+            'help' => 'Empty: the home page\'s own contact section. A full https address sends its contact action there instead.',
+            'type' => 'url',
+            'default' => '',
+        ],
     ];
 
     /**
@@ -227,6 +241,7 @@ final class Settings
             'int' => $this->parseInt($definition, $raw),
             'days' => $this->parseDays($raw),
             'channels' => $this->parseChannels($raw),
+            'url' => $this->parseUrl($raw),
             default => null,
         };
     }
@@ -261,6 +276,26 @@ final class Settings
         }
 
         return $value;
+    }
+
+    /**
+     * An https address, or empty for none. Anything else - another scheme, a
+     * relative path, a javascript: link - is refused rather than stored and
+     * rendered into a public page.
+     */
+    private function parseUrl(mixed $raw): ?string
+    {
+        $url = trim((string) $raw);
+
+        if ($url === '') {
+            return '';
+        }
+
+        if (mb_strlen($url) > 255 || filter_var($url, FILTER_VALIDATE_URL) === false || parse_url($url, PHP_URL_SCHEME) !== 'https') {
+            return null;
+        }
+
+        return $url;
     }
 
     /**

@@ -10,11 +10,11 @@
 <x-ui.field :label="__('TRN')">
     <x-ui.input type="text" name="trn" inputmode="numeric" maxlength="15" dir="ltr"
                 value="{{ old('trn', $values['trn'] ?? null) }}" />
-    <span class="mt-1 block text-xs font-normal text-gray-500 dark:text-gray-400">{{ __('15 digits, starting with 1 and ending with 03. Leave empty if you are not registered for VAT.') }}</span>
+    <span class="mt-1 block text-xs font-normal text-muted">{{ __('15 digits, starting with 1 and ending with 03. Leave empty if you are not registered for VAT.') }}</span>
 </x-ui.field>
 
 <x-ui.field :label="__('TIN')">
     <x-ui.input type="text" name="tin" inputmode="numeric" maxlength="10" dir="ltr"
                 value="{{ old('tin', $values['tin'] ?? null) }}" />
-    <span class="mt-1 block text-xs font-normal text-gray-500 dark:text-gray-400">{{ __('10 digits, starting with 1. With a TRN it is the TRN\'s first 10 digits and is filled in for you.') }}</span>
+    <span class="mt-1 block text-xs font-normal text-muted">{{ __('10 digits, starting with 1. With a TRN it is the TRN\'s first 10 digits and is filled in for you.') }}</span>
 </x-ui.field>

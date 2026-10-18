@@ -4,11 +4,11 @@
 
 @section('content')
 <div class="mb-6">
-    <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">{{ __('Numbering') }}</h2>
-    <p class="text-gray-500 dark:text-gray-400">
+    <h1 class="text-2xl font-semibold tracking-tight text-fg">{{ __('Numbering') }}</h1>
+    <p class="mt-1 max-w-3xl text-sm text-muted">
         {{ __('How documents are numbered when they are issued without a number of their own. Numbers are given at issue, so issued documents run without gaps.') }}
     </p>
-    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+    <p class="mt-2 text-sm text-muted">
         {{ __('Tokens:') }} <code>{YYYY}</code> {{ __('year,') }} <code>{YY}</code> {{ __('two-digit year,') }} <code>{MM}</code> {{ __('month,') }}
         <code>{SEQ}</code> {{ __('the counter, padded with zeros to the width you choose.') }}
     </p>
@@ -27,15 +27,15 @@
     @foreach ($sequences as $sequence)
         @php($type = $sequence['document_type'])
         @php($bag = $errors->getBag($type))
-        <form method="POST" action="{{ route('portal.numbering.update', $type) }}" class="rounded-lg bg-white dark:bg-gray-900 shadow">
+        <form method="POST" action="{{ route('portal.numbering.update', $type) }}" class="rounded-card bg-surface border border-line shadow-card">
             @csrf
             <div class="flex items-center justify-between border-b p-4">
-                <h3 class="font-semibold text-gray-800 dark:text-gray-100">{{ $labels[$type] ?? $type }}</h3>
-                <span class="text-sm text-gray-500 dark:text-gray-400">{{ __('Next:') }} <span class="font-mono text-gray-800 dark:text-gray-100" dir="ltr">{{ $sequence['next'] }}</span></span>
+                <h3 class="font-semibold text-fg">{{ $labels[$type] ?? $type }}</h3>
+                <span class="text-sm text-muted">{{ __('Next:') }} <span class="font-mono text-fg" dir="ltr">{{ $sequence['next'] }}</span></span>
             </div>
 
             @if ($bag->any())
-                <div class="mx-4 mt-4 rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+                <div class="mx-4 mt-4 rounded border border-danger-line bg-danger-soft px-4 py-3 text-sm text-danger">
                     <ul class="list-disc ps-5">
                         @foreach ($bag->all() as $error)
                             <li>{{ $error }}</li>
@@ -65,7 +65,7 @@
 
                 <x-ui.field :label="__('Start the counter at')">
                     <x-ui.input type="number" name="next_number" min="1" placeholder="{{ __('Unchanged') }}" />
-                    <span class="mt-1 block text-xs font-normal text-gray-500 dark:text-gray-400">{{ __('To continue from a previous system\'s numbers.') }}</span>
+                    <span class="mt-1 block text-xs font-normal text-muted">{{ __('To continue from a previous system\'s numbers.') }}</span>
                 </x-ui.field>
             </div>
 

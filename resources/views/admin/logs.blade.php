@@ -4,36 +4,36 @@
 
 @section('content')
 <div class="mb-6">
-    <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Submission Logs</h2>
-    <p class="text-gray-500 dark:text-gray-400">ZATCA submission history and status</p>
+    <h1 class="text-2xl font-semibold tracking-tight text-fg">Submission Logs</h1>
+    <p class="mt-1 max-w-3xl text-sm text-muted">ZATCA submission history and status</p>
 </div>
 
 <!-- State Summary -->
 <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-    <a href="{{ route('admin.logs') }}" class="bg-white dark:bg-gray-900 rounded-lg shadow p-4 text-center hover:bg-gray-50 dark:hover:bg-gray-950 {{ !$state ? 'ring-2 ring-teal-500' : '' }}">
-        <p class="text-2xl font-bold">{{ array_sum($stateCounts->toArray()) }}</p>
-        <p class="text-sm text-gray-500 dark:text-gray-400">All</p>
+    <a href="{{ route('admin.logs') }}" class="bg-surface rounded-card border border-line shadow-card p-4 text-center hover:bg-sunken {{ !$state ? 'ring-2 ring-accent' : '' }}">
+        <p class="text-2xl font-semibold">{{ array_sum($stateCounts->toArray()) }}</p>
+        <p class="text-sm text-muted">All</p>
     </a>
-    <a href="{{ route('admin.logs', ['state' => 'cleared']) }}" class="bg-white dark:bg-gray-900 rounded-lg shadow p-4 text-center hover:bg-gray-50 dark:hover:bg-gray-950 {{ $state === 'cleared' ? 'ring-2 ring-green-500' : '' }}">
-        <p class="text-2xl font-bold text-green-600 dark:text-green-400">{{ $stateCounts['cleared'] ?? 0 }}</p>
-        <p class="text-sm text-gray-500 dark:text-gray-400">Cleared</p>
+    <a href="{{ route('admin.logs', ['state' => 'cleared']) }}" class="bg-surface rounded-card border border-line shadow-card p-4 text-center hover:bg-sunken {{ $state === 'cleared' ? 'ring-2 ring-success' : '' }}">
+        <p class="text-2xl font-semibold text-success">{{ $stateCounts['cleared'] ?? 0 }}</p>
+        <p class="text-sm text-muted">Cleared</p>
     </a>
-    <a href="{{ route('admin.logs', ['state' => 'reported']) }}" class="bg-white dark:bg-gray-900 rounded-lg shadow p-4 text-center hover:bg-gray-50 dark:hover:bg-gray-950 {{ $state === 'reported' ? 'ring-2 ring-teal-500' : '' }}">
-        <p class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ $stateCounts['reported'] ?? 0 }}</p>
-        <p class="text-sm text-gray-500 dark:text-gray-400">Reported</p>
+    <a href="{{ route('admin.logs', ['state' => 'reported']) }}" class="bg-surface rounded-card border border-line shadow-card p-4 text-center hover:bg-sunken {{ $state === 'reported' ? 'ring-2 ring-accent' : '' }}">
+        <p class="text-2xl font-semibold text-info">{{ $stateCounts['reported'] ?? 0 }}</p>
+        <p class="text-sm text-muted">Reported</p>
     </a>
-    <a href="{{ route('admin.logs', ['state' => 'rejected']) }}" class="bg-white dark:bg-gray-900 rounded-lg shadow p-4 text-center hover:bg-gray-50 dark:hover:bg-gray-950 {{ $state === 'rejected' ? 'ring-2 ring-red-500' : '' }}">
-        <p class="text-2xl font-bold text-red-600 dark:text-red-400">{{ $stateCounts['rejected'] ?? 0 }}</p>
-        <p class="text-sm text-gray-500 dark:text-gray-400">Rejected</p>
+    <a href="{{ route('admin.logs', ['state' => 'rejected']) }}" class="bg-surface rounded-card border border-line shadow-card p-4 text-center hover:bg-sunken {{ $state === 'rejected' ? 'ring-2 ring-danger' : '' }}">
+        <p class="text-2xl font-semibold text-danger">{{ $stateCounts['rejected'] ?? 0 }}</p>
+        <p class="text-sm text-muted">Rejected</p>
     </a>
-    <a href="{{ route('admin.logs', ['state' => 'failed']) }}" class="bg-white dark:bg-gray-900 rounded-lg shadow p-4 text-center hover:bg-gray-50 dark:hover:bg-gray-950 {{ $state === 'failed' ? 'ring-2 ring-orange-500' : '' }}">
-        <p class="text-2xl font-bold text-orange-600 dark:text-orange-400">{{ $stateCounts['failed'] ?? 0 }}</p>
-        <p class="text-sm text-gray-500 dark:text-gray-400">Failed</p>
+    <a href="{{ route('admin.logs', ['state' => 'failed']) }}" class="bg-surface rounded-card border border-line shadow-card p-4 text-center hover:bg-sunken {{ $state === 'failed' ? 'ring-2 ring-warning' : '' }}">
+        <p class="text-2xl font-semibold text-warning">{{ $stateCounts['failed'] ?? 0 }}</p>
+        <p class="text-sm text-muted">Failed</p>
     </a>
 </div>
 
 <!-- Filters -->
-<div class="bg-white dark:bg-gray-900 rounded-lg shadow p-4 mb-6">
+<div class="bg-surface rounded-card border border-line shadow-card p-4 mb-6">
     <form method="GET" class="flex flex-wrap gap-4">
         <input type="hidden" name="state" value="{{ $state }}">
         <x-ui.field label="Organization ID">
@@ -41,7 +41,7 @@
         </x-ui.field>
         <div class="flex items-end gap-2">
             <x-ui.button variant="secondary">Filter</x-ui.button>
-            <x-ui.button variant="quiet" :href="route('admin.logs', $state ? ['state' => $state] : [])">
+            <x-ui.button variant="ghost" :href="route('admin.logs', $state ? ['state' => $state] : [])">
                 Clear
             </x-ui.button>
         </div>
@@ -49,8 +49,8 @@
 </div>
 
 <!-- Logs Table -->
-<div class="bg-white dark:bg-gray-900 rounded-lg shadow overflow-hidden">
-    <x-ui.table>
+<div class="bg-surface rounded-card border border-line shadow-card overflow-hidden">
+    <x-ui.table :primary="[0, 1, 3]">
         <x-slot:head>
             <x-ui.th>Submission</x-ui.th>
             <x-ui.th>Organization</x-ui.th>
@@ -62,10 +62,10 @@
         </x-slot:head>
 
         @forelse($logs as $log)
-        <tr class="hover:bg-gray-50 dark:hover:bg-gray-950">
+        <tr class="hover:bg-sunken">
             <td class="px-6 py-4 text-sm">
                 <div class="font-medium">{{ Str::limit($log->id, 8) }}</div>
-                <div class="text-xs text-gray-500 dark:text-gray-400">Inv: {{ Str::limit($log->invoice_id, 8) }}</div>
+                <div class="text-xs text-muted">Inv: {{ Str::limit($log->invoice_id, 8) }}</div>
             </td>
             <td class="px-6 py-4 text-sm">{{ $log->organization_name ?? Str::limit($log->org_id, 8) }}</td>
             <td class="px-6 py-4">
@@ -76,23 +76,23 @@
             </td>
             <td class="px-6 py-4 text-sm">
                 @if($log->clearance_status)
-                    <span class="text-green-600 dark:text-green-400">{{ $log->clearance_status }}</span>
+                    <span class="text-success">{{ $log->clearance_status }}</span>
                 @elseif($log->reporting_status)
-                    <span class="text-blue-600 dark:text-blue-400">{{ $log->reporting_status }}</span>
+                    <span class="text-info">{{ $log->reporting_status }}</span>
                 @else
-                    <span class="text-gray-400 dark:text-gray-500">-</span>
+                    <span class="text-subtle">-</span>
                 @endif
             </td>
             <td class="px-6 py-4 text-sm">
                 @if($log->last_error)
-                    <span class="text-red-600 dark:text-red-400" title="{{ $log->last_error }}">
+                    <span class="text-danger" title="{{ $log->last_error }}">
                         {{ $log->last_error_code }}: {{ Str::limit($log->last_error, 30) }}
                     </span>
                 @else
-                    <span class="text-gray-400 dark:text-gray-500">-</span>
+                    <span class="text-subtle">-</span>
                 @endif
             </td>
-            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+            <td class="px-6 py-4 text-sm text-muted">
                 {{ \Carbon\Carbon::parse($log->created_at)->diffForHumans() }}
             </td>
         </tr>

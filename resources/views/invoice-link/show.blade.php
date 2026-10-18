@@ -15,22 +15,22 @@
     <title>{{ $invoice->invoice_number }} - {{ $organization->documentName() }}</title>
     @vite(['resources/css/app.css'])
 </head>
-<body class="flex min-h-full items-center justify-center bg-gray-50 dark:bg-gray-950 p-4 text-gray-900 dark:text-gray-100">
-    <main class="w-full max-w-md rounded-lg bg-white dark:bg-gray-900 p-6 shadow">
-        <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Invoice from') }}</p>
+<body class="flex min-h-full items-center justify-center bg-sunken p-4 text-fg">
+    <main class="w-full max-w-md rounded-card bg-surface p-6 border border-line shadow-card">
+        <p class="text-sm text-muted">{{ __('Invoice from') }}</p>
         <h1 class="text-xl font-bold">{{ $organization->documentName() }}</h1>
 
         <dl class="mt-4 space-y-2 text-sm">
             <div class="flex justify-between gap-4">
-                <dt class="text-gray-500 dark:text-gray-400">{{ __('Invoice number') }}</dt>
+                <dt class="text-muted">{{ __('Invoice number') }}</dt>
                 <dd class="font-medium" dir="ltr">{{ $invoice->invoice_number }}</dd>
             </div>
             <div class="flex justify-between gap-4">
-                <dt class="text-gray-500 dark:text-gray-400">{{ __('Issue date') }}</dt>
+                <dt class="text-muted">{{ __('Issue date') }}</dt>
                 <dd dir="ltr">{{ $invoice->issue_date?->toDateString() }}</dd>
             </div>
             <div class="flex justify-between gap-4">
-                <dt class="text-gray-500 dark:text-gray-400">{{ __('Total') }}</dt>
+                <dt class="text-muted">{{ __('Total') }}</dt>
                 <dd class="font-semibold tabular-nums" dir="ltr">@include('portal.partials.money', ['amount' => $invoice->total, 'currency' => $invoice->currency])</dd>
             </div>
         </dl>

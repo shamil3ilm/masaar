@@ -4,51 +4,51 @@
 
 @section('content')
 <div class="mb-8">
-    <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">{{ __('Certificate Status') }}</h2>
-    <p class="text-gray-500 dark:text-gray-400">{{ __('ZATCA compliance certificate management') }}</p>
+    <h1 class="text-2xl font-semibold tracking-tight text-fg">{{ __('Certificate Status') }}</h1>
+    <p class="mt-1 max-w-3xl text-sm text-muted">{{ __('ZATCA compliance certificate management') }}</p>
 </div>
 
 <!-- Active Certificate -->
-<div class="bg-white dark:bg-gray-900 rounded-lg shadow mb-8">
+<div class="bg-surface rounded-card border border-line shadow-card mb-8">
     <div class="p-6 border-b">
-        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">{{ __('Active Certificate') }}</h3>
+        <h3 class="text-lg font-semibold text-fg">{{ __('Active Certificate') }}</h3>
     </div>
     <div class="p-6">
         @if($activeCert)
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">{{ __('Serial Number') }}</p>
-                <p class="font-medium text-gray-800 dark:text-gray-100">{{ Str::limit($activeCert->serial_number ?? '-', 16) }}</p>
+                <p class="text-sm text-muted mb-1">{{ __('Serial Number') }}</p>
+                <p class="font-medium text-fg">{{ Str::limit($activeCert->serial_number ?? '-', 16) }}</p>
             </div>
             <div>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">{{ __('Environment') }}</p>
-                <p class="font-medium text-gray-800 dark:text-gray-100">
+                <p class="text-sm text-muted mb-1">{{ __('Environment') }}</p>
+                <p class="font-medium text-fg">
                     @php($environment = config('fatoora.environment', 'sandbox'))
                     <x-ui.badge :tone="$environment === 'production' ? 'success' : 'warning'"
                         :label="ucfirst($environment)" />
                 </p>
             </div>
             <div>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">{{ __('Valid From') }}</p>
-                <p class="font-medium text-gray-800 dark:text-gray-100">{{ \Carbon\Carbon::parse($activeCert->valid_from)->translatedFormat('M d, Y H:i') }}</p>
+                <p class="text-sm text-muted mb-1">{{ __('Valid From') }}</p>
+                <p class="font-medium text-fg">{{ \Carbon\Carbon::parse($activeCert->valid_from)->translatedFormat('M d, Y H:i') }}</p>
             </div>
             <div>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">{{ __('Expires At') }}</p>
+                <p class="text-sm text-muted mb-1">{{ __('Expires At') }}</p>
                 @php
                     $expiresAt = $activeCert->valid_to ?? null;
                     $daysLeft = $expiresAt ? now()->diffInDays($expiresAt, false) : null;
                 @endphp
                 @if($expiresAt)
-                <p class="font-medium {{ $daysLeft <= 7 ? 'text-red-600 dark:text-red-400' : ($daysLeft <= 30 ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-800 dark:text-gray-100') }}">
+                <p class="font-medium {{ $daysLeft <= 7 ? 'text-danger' : ($daysLeft <= 30 ? 'text-warning' : 'text-fg') }}">
                     {{ \Carbon\Carbon::parse($expiresAt)->translatedFormat('M d, Y H:i') }}
                     @if($daysLeft !== null)
-                    <span class="text-sm {{ $daysLeft <= 7 ? 'text-red-500' : ($daysLeft <= 30 ? 'text-yellow-500' : 'text-gray-500 dark:text-gray-400') }}">
+                    <span class="text-sm {{ $daysLeft <= 7 ? 'text-danger' : ($daysLeft <= 30 ? 'text-warning' : 'text-muted') }}">
                         ({{ $daysLeft > 0 ? __(':days days left', ['days' => $daysLeft]) : __('Expired') }})
                     </span>
                     @endif
                 </p>
                 @else
-                <p class="font-medium text-gray-400 dark:text-gray-500">{{ __('Not specified') }}</p>
+                <p class="font-medium text-subtle">{{ __('Not specified') }}</p>
                 @endif
             </div>
         </div>
@@ -57,21 +57,21 @@
         <div class="mt-6 pt-6 border-t">
             <div class="flex items-center gap-4">
                 @if($daysLeft === null || $daysLeft > 30)
-                <div class="flex items-center text-green-600 dark:text-green-400">
+                <div class="flex items-center text-success">
                     <svg class="w-6 h-6 me-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                     <span class="font-medium">{{ __('Certificate is healthy') }}</span>
                 </div>
                 @elseif($daysLeft > 7)
-                <div class="flex items-center text-yellow-600 dark:text-yellow-400">
+                <div class="flex items-center text-warning">
                     <svg class="w-6 h-6 me-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
                     </svg>
                     <span class="font-medium">{{ __('Certificate expiring soon - renewal recommended') }}</span>
                 </div>
                 @else
-                <div class="flex items-center text-red-600 dark:text-red-400">
+                <div class="flex items-center text-danger">
                     <svg class="w-6 h-6 me-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
@@ -82,20 +82,20 @@
         </div>
         @else
         <div class="text-center py-8">
-            <svg class="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-16 h-16 mx-auto text-subtle mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
             </svg>
-            <p class="text-gray-500 dark:text-gray-400">{{ __('No active certificate found') }}</p>
-            <p class="text-sm text-gray-400 dark:text-gray-500 mt-2">{{ __('Contact support to set up ZATCA compliance certificate') }}</p>
+            <p class="text-muted">{{ __('No active certificate found') }}</p>
+            <p class="text-sm text-subtle mt-2">{{ __('Contact support to set up ZATCA compliance certificate') }}</p>
         </div>
         @endif
     </div>
 </div>
 
 <!-- Help Section -->
-<div class="mt-8 bg-blue-50 dark:bg-blue-950/40 rounded-lg p-6">
-    <h4 class="font-semibold text-blue-800 dark:text-blue-200 mb-2">{{ __('About ZATCA Certificates') }}</h4>
-    <ul class="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+<div class="mt-8 bg-info-soft rounded-lg p-6">
+    <h4 class="font-semibold text-info mb-2">{{ __('About ZATCA Certificates') }}</h4>
+    <ul class="text-sm text-info space-y-1">
         <li>{{ __('Certificates are used to digitally sign invoices for ZATCA compliance') }}</li>
         <li>{{ __('Production certificates are required for live invoicing') }}</li>
         <li>{{ __('Certificates typically expire after 1 year and must be renewed') }}</li>

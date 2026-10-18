@@ -86,10 +86,11 @@ class ExternalScriptTest extends TestCase
      * @var list<string>
      */
     private const BUNDLED = [
-        'auth/login.blade.php',
+        // Sign-in and the organization chooser, through the guest layout
+        // they now share.
+        'layouts/guest.blade.php',
         'layouts/admin.blade.php',
         'layouts/portal.blade.php',
-        'portal/select-org.blade.php',
         // The landing page and the legal pages, through the layout they share.
         'layouts/public.blade.php',
     ];

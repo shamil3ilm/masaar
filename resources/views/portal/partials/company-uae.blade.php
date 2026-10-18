@@ -13,14 +13,14 @@
     @param array<string, string|null>                    $uae  the stored UAE settings
 --}}
 <div class="mb-6">
-    <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">{{ __('Company') }}</h2>
-    <p class="text-gray-500 dark:text-gray-400">
+    <h1 class="text-2xl font-semibold tracking-tight text-fg">{{ __('Company') }}</h1>
+    <p class="mt-1 max-w-3xl text-sm text-muted">
         {{ __('The seller details on every UAE e-invoice you issue, in the shapes the UAE e-invoicing rules check.') }}
     </p>
 </div>
 
 @if ($errors->any())
-    <div class="mb-6 rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+    <div class="mb-6 rounded border border-danger-line bg-danger-soft px-4 py-3 text-sm text-danger">
         <ul class="list-disc ps-5">
             @foreach ($errors->all() as $error)
                 <li>{{ $error }}</li>
@@ -32,9 +32,9 @@
 <form method="POST" action="{{ route('portal.company.update') }}" class="mb-6 max-w-2xl">
     @csrf
 
-    <div class="mb-6 rounded-lg bg-white dark:bg-gray-900 shadow">
+    <div class="mb-6 rounded-card bg-surface border border-line shadow-card">
         <div class="border-b p-4">
-            <h3 class="font-semibold text-gray-800 dark:text-gray-100">{{ __('Registration') }}</h3>
+            <h3 class="font-semibold text-fg">{{ __('Registration') }}</h3>
         </div>
         <div class="space-y-4 p-4">
             <x-ui.field :label="__('Legal name')">
@@ -52,7 +52,7 @@
             <x-ui.field :label="__('Peppol endpoint')">
                 <x-ui.input type="text" name="endpoint_id" maxlength="15" required dir="ltr" placeholder="0235:1234567890"
                             value="{{ old('endpoint_id', $uae['endpoint_id']) }}" />
-                <span class="mt-1 block text-xs font-normal text-gray-500 dark:text-gray-400">{{ __('As your e-invoicing service provider issued it: 0235: followed by 10 digits. Invoices sent to you arrive here.') }}</span>
+                <span class="mt-1 block text-xs font-normal text-muted">{{ __('As your e-invoicing service provider issued it: 0235: followed by 10 digits. Invoices sent to you arrive here.') }}</span>
             </x-ui.field>
 
             @include('portal.partials.uae-legal-registration', ['values' => $uae])
@@ -60,14 +60,14 @@
             <x-ui.field :label="__('Payment account (IBAN)')">
                 <x-ui.input type="text" name="payment_account" maxlength="34" dir="ltr"
                             value="{{ old('payment_account', $uae['payment_account']) }}" />
-                <span class="mt-1 block text-xs font-normal text-gray-500 dark:text-gray-400">{{ __('Optional. Printed on invoices paid by bank transfer.') }}</span>
+                <span class="mt-1 block text-xs font-normal text-muted">{{ __('Optional. Printed on invoices paid by bank transfer.') }}</span>
             </x-ui.field>
         </div>
     </div>
 
-    <div class="mb-6 rounded-lg bg-white dark:bg-gray-900 shadow">
+    <div class="mb-6 rounded-card bg-surface border border-line shadow-card">
         <div class="border-b p-4">
-            <h3 class="font-semibold text-gray-800 dark:text-gray-100">{{ __('Address') }}</h3>
+            <h3 class="font-semibold text-fg">{{ __('Address') }}</h3>
         </div>
         <div class="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2">
             @include('portal.partials.uae-address', ['values' => [

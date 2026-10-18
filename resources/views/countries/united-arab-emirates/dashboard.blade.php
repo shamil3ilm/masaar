@@ -10,59 +10,59 @@
     @param \Illuminate\Support\Collection $recentDocuments  latest sent PeppolDocuments
 --}}
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-    <div class="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
-        <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Today\'s Invoices') }}</p>
-        <p class="text-3xl font-bold text-gray-800 dark:text-gray-100">{{ $stats['invoices_today'] }}</p>
+    <div class="bg-surface rounded-card border border-line shadow-card p-6">
+        <p class="text-sm text-muted">{{ __('Today\'s Invoices') }}</p>
+        <p class="text-3xl font-semibold text-fg">{{ $stats['invoices_today'] }}</p>
     </div>
-    <div class="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
-        <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('This Month') }}</p>
-        <p class="text-3xl font-bold text-gray-800 dark:text-gray-100">{{ $stats['invoices_month'] }}</p>
+    <div class="bg-surface rounded-card border border-line shadow-card p-6">
+        <p class="text-sm text-muted">{{ __('This Month') }}</p>
+        <p class="text-3xl font-semibold text-fg">{{ $stats['invoices_month'] }}</p>
     </div>
-    <div class="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
-        <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Delivered') }}</p>
-        <p class="text-3xl font-bold text-green-600 dark:text-green-400">{{ $einvoices['delivered'] }}</p>
+    <div class="bg-surface rounded-card border border-line shadow-card p-6">
+        <p class="text-sm text-muted">{{ __('Delivered') }}</p>
+        <p class="text-3xl font-semibold text-success">{{ $einvoices['delivered'] }}</p>
     </div>
-    <div class="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
-        <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Awaiting delivery') }}</p>
-        <p class="text-3xl font-bold text-gray-800 dark:text-gray-100">{{ $einvoices['awaiting'] }}</p>
+    <div class="bg-surface rounded-card border border-line shadow-card p-6">
+        <p class="text-sm text-muted">{{ __('Awaiting delivery') }}</p>
+        <p class="text-3xl font-semibold text-fg">{{ $einvoices['awaiting'] }}</p>
     </div>
-    <div class="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
-        <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Rejected') }}</p>
-        <p class="text-3xl font-bold {{ $einvoices['rejected'] > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-400 dark:text-gray-500' }}">{{ $einvoices['rejected'] }}</p>
+    <div class="bg-surface rounded-card border border-line shadow-card p-6">
+        <p class="text-sm text-muted">{{ __('Rejected') }}</p>
+        <p class="text-3xl font-semibold {{ $einvoices['rejected'] > 0 ? 'text-danger' : 'text-subtle' }}">{{ $einvoices['rejected'] }}</p>
     </div>
-    <div class="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
-        <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Not sent') }}</p>
-        <p class="text-3xl font-bold {{ $einvoices['failed'] > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-400 dark:text-gray-500' }}">{{ $einvoices['failed'] }}</p>
+    <div class="bg-surface rounded-card border border-line shadow-card p-6">
+        <p class="text-sm text-muted">{{ __('Not sent') }}</p>
+        <p class="text-3xl font-semibold {{ $einvoices['failed'] > 0 ? 'text-warning' : 'text-subtle' }}">{{ $einvoices['failed'] }}</p>
     </div>
-    <div class="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
-        <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Received invoices') }}</p>
-        <p class="text-3xl font-bold text-gray-800 dark:text-gray-100">{{ $einvoices['received'] }}</p>
+    <div class="bg-surface rounded-card border border-line shadow-card p-6">
+        <p class="text-sm text-muted">{{ __('Received invoices') }}</p>
+        <p class="text-3xl font-semibold text-fg">{{ $einvoices['received'] }}</p>
         {{-- The received screens are a UAE organization's. --}}
         @if (\App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaePortal::offers($organization))
-            <a href="{{ route('portal.received.index') }}" class="text-teal-700 dark:text-teal-300 hover:text-teal-900 dark:hover:text-teal-200 text-sm">{{ __('View') }}</a>
+            <a href="{{ route('portal.received.index') }}" class="text-accent hover:text-accent-strong text-sm">{{ __('View') }}</a>
         @endif
     </div>
 </div>
 
-<div class="bg-white dark:bg-gray-900 rounded-lg shadow">
+<div class="bg-surface rounded-card border border-line shadow-card">
     <div class="p-6 border-b flex justify-between items-center">
-        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">{{ __('Recent e-invoices') }}</h3>
+        <h3 class="text-lg font-semibold text-fg">{{ __('Recent e-invoices') }}</h3>
         <a href="{{ route('portal.invoices.index') }}"
-           class="text-teal-700 dark:text-teal-300 hover:text-teal-900 dark:hover:text-teal-200 text-sm">{{ __('View All') }}</a>
+           class="text-accent hover:text-accent-strong text-sm">{{ __('View All') }}</a>
     </div>
     <div class="divide-y">
         @forelse ($recentDocuments as $document)
         <div class="p-4 flex items-center justify-between">
             <div>
                 @if ($document->invoice_id)
-                    <a href="{{ route('portal.invoices.show', $document->invoice_id) }}" class="text-sm font-medium text-teal-700 dark:text-teal-300 hover:underline">{{ Str::limit($document->invoice_id, 8) }}</a>
+                    <a href="{{ route('portal.invoices.show', $document->invoice_id) }}" class="text-sm font-medium text-accent hover:underline">{{ Str::limit($document->invoice_id, 8) }}</a>
                 @endif
-                <p class="text-xs text-gray-500 dark:text-gray-400">{{ \Carbon\Carbon::parse($document->created_at)->diffForHumans() }}</p>
+                <p class="text-xs text-muted">{{ \Carbon\Carbon::parse($document->created_at)->diffForHumans() }}</p>
             </div>
             @include('portal.partials.peppol-status', ['status' => $document->status])
         </div>
         @empty
-        <div class="p-6 text-center text-gray-500 dark:text-gray-400">{{ __('No e-invoices yet') }}</div>
+        <div class="p-6 text-center text-muted">{{ __('No e-invoices yet') }}</div>
         @endforelse
     </div>
 </div>

@@ -59,11 +59,11 @@
     };
 
     $classes = match ($meaning) {
-        'success' => 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200',
-        'danger' => 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200',
-        'warning' => 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200',
-        'info' => 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200',
-        default => 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200',
+        'success' => 'border-success-line bg-success-soft text-success',
+        'danger' => 'border-danger-line bg-danger-soft text-danger',
+        'warning' => 'border-warning-line bg-warning-soft text-warning',
+        'info' => 'border-info-line bg-info-soft text-info',
+        default => 'border-line-strong bg-sunken text-muted',
     };
 
     // Each known state's name, written out so it can be translated.
@@ -100,7 +100,7 @@
     };
 @endphp
 
-<span {{ $attributes->merge(['class' => 'inline-flex rounded-full px-2 py-0.5 text-xs font-semibold '.$classes]) }}>
+<span {{ $attributes->merge(['class' => 'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-semibold before:size-1.5 before:rounded-full before:bg-current '.$classes]) }}>
     {{-- Underscores are a database detail. 'pending_submission' is not a word. --}}
     {{ $label ?? $name ?? ucfirst(str_replace('_', ' ', $value)) }}
 </span>

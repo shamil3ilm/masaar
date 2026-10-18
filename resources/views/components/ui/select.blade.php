@@ -1,13 +1,8 @@
 {{--
     A dropdown.
 
-    Five different class strings for what is one control: rounded against
-    rounded-md, with and without shadow-sm, and with and without the
-    font-normal that stops it inheriting its label's weight when it is nested
-    inside one.
-
-    Same height and same focus ring as x-ui.input and x-ui.button, so a row of
-    a filter bar lines up and focus looks like one thing moving through the
+    Same height, border and focus ring as x-ui.input and x-ui.button, so a row
+    of a filter bar lines up and focus looks like one thing moving through the
     page rather than three ideas.
 
     Options go in the slot, so an optgroup works as it would in plain markup -
@@ -15,8 +10,9 @@
     unreadable flat list.
 --}}
 <select {{ $attributes->merge([
-    'class' => 'mt-1 block min-h-11 w-full rounded border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-sm font-normal text-gray-900 dark:text-gray-100 shadow-sm'
-        .' focus:border-teal-600 focus:ring-1 focus:ring-teal-600',
+    'class' => 'mt-1 block min-h-11 w-full rounded-control border border-line-strong bg-surface px-3 py-2 text-sm font-normal text-fg shadow-card'
+        .' transition-colors focus:border-focus focus:outline-none focus:ring-3 focus:ring-focus/25'
+        .' disabled:cursor-not-allowed disabled:bg-sunken disabled:text-subtle aria-invalid:border-danger',
 ]) }}>
     {{ $slot }}
 </select>

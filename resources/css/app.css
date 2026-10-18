@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import './fonts.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
@@ -53,16 +54,28 @@
  * built-in equivalent, so they are declared with the few steps the interface
  * actually uses - not a full ramp nobody would reference.
  *
- * The type stack is deliberately the system one. 'Instrument Sans' came from
- * the Laravel starter kit, not from Masaar, and the only thing that ever
- * requested it was the stock welcome page - from fonts.bunny.net, which put
- * every visitor's address in front of a third party, made the first paint
- * wait on someone else's uptime and was the one external resource standing
- * between this application and a Content-Security-Policy worth setting.
+ * The typefaces are Inter, which the wordmark and the ERP are set in, and
+ * IBM Plex Sans Arabic for Arabic - both bundled (fonts.css), never fetched
+ * from a third party. 'Instrument Sans', from the Laravel starter kit, was
+ * fetched from fonts.bunny.net by the stock welcome page, which put every
+ * visitor's address in front of a third party and stood between this
+ * application and a Content-Security-Policy worth setting.
  */
 @theme {
-    --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-        sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+    /*
+     * One family per script, and the page's language decides which leads.
+     *
+     * Inter has no Arabic glyphs, so Arabic in an English page falls through
+     * to Plex by itself; on an Arabic page Plex leads, so the Latin in it -
+     * a VAT number, an invoice number - is set in the same face as the words
+     * around it. A theme can swap either for the system stack
+     * (ThemeService writes --font-latin and --font-arabic).
+     */
+    --font-latin: 'Inter';
+    --font-arabic: 'IBM Plex Sans Arabic';
+    --font-sans: var(--font-latin), var(--font-arabic), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+        'Helvetica Neue', Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+    --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
 
     /* The logo tile. Navigation, headings, dark surfaces. */
     --color-ink-950: #10131f;
@@ -73,6 +86,244 @@
     /* The node. A highlight, used sparingly - it is one dot in the mark. */
     --color-sand-200: #eadbc8;
     --color-sand-100: #f5ece1;
+
+    /*
+     * Roles, which is what a screen asks for: the page's ground, a card on
+     * it, a line between things, text at three strengths, the accent, the
+     * main action, and four states. Each is redefined for dark mode below,
+     * so a view writes bg-surface once instead of bg-white dark:bg-gray-900
+     * - the pair two hundred class strings had to remember to write.
+     *
+     * The brand-coloured roles read the ramps above through var(), and the
+     * ramps are what a theme overrides (ThemeService), so an organization's
+     * own colours reach every button and link without a rebuild.
+     */
+    --color-ground: #fbfaf7;
+    --color-surface: #ffffff;
+    --color-sunken: #f5f3ee;
+    --color-line: #ece7df;
+    --color-line-strong: #d9d3c8;
+
+    --color-fg: #1a1f36;
+    --color-muted: #4a5170;
+    --color-subtle: #6b7190;
+
+    --color-accent: var(--color-teal-700);
+    --color-accent-strong: var(--color-teal-800);
+    --color-accent-soft: var(--color-teal-50);
+    --color-accent-line: var(--color-teal-200);
+
+    --color-action: var(--color-ink-900);
+    --color-action-hover: var(--color-ink-800);
+    --color-on-action: #ffffff;
+
+    --color-highlight: var(--color-sand-200);
+    --color-highlight-soft: var(--color-sand-100);
+
+    /* Paper: what a printed invoice is drawn on, in either mode. */
+    --color-paper: #faf8f4;
+
+    /*
+     * just let me know., the business behind Masaar: its ink, its coral
+     * period and its paper, for x-parent-brand and nothing else. Never
+     * recoloured, so not redefined for dark mode.
+     */
+    --color-jlmk-ink: #1e1b3a;
+    --color-jlmk-coral: #f97362;
+    --color-jlmk-paper: #fafaf7;
+
+    --color-focus: var(--color-teal-600);
+
+    --color-success: #166534;
+    --color-success-soft: #ecfdf3;
+    --color-success-line: #abefc6;
+    --color-warning: #8a4b0f;
+    --color-warning-soft: #fff6e5;
+    --color-warning-line: #f7d9a4;
+    --color-danger: #b42318;
+    --color-danger-soft: #fef3f2;
+    --color-danger-line: #fecdca;
+    --color-on-danger: #ffffff;
+    --color-info: #1849a9;
+    --color-info-soft: #eff6ff;
+    --color-info-line: #bfdbfe;
+
+    /*
+     * Type. Tailwind's steps for running text; these for what is larger
+     * than running text. They scale with the screen between a phone and a
+     * desktop rather than jumping at a breakpoint.
+     */
+    --text-display: clamp(2.5rem, 1.5rem + 4vw, 3.75rem);
+    --text-display--line-height: 1.04;
+    --text-display--letter-spacing: -0.035em;
+    --text-title: clamp(1.75rem, 1.35rem + 1.6vw, 2.25rem);
+    --text-title--line-height: 1.15;
+    --text-title--letter-spacing: -0.025em;
+    --text-heading: 1.375rem;
+    --text-heading--line-height: 1.3;
+    --text-heading--letter-spacing: -0.01em;
+    --text-lead: 1.125rem;
+    --text-lead--line-height: 1.6;
+    --text-eyebrow: 0.8125rem;
+    --text-eyebrow--line-height: 1.2;
+    --text-eyebrow--letter-spacing: 0.08em;
+
+    /* Spacing: Tailwind's 4px steps, plus the two a layout keeps reusing. */
+    --spacing-gutter: 1rem;
+    --spacing-section: 4rem;
+
+    /* The widest a page's content runs. */
+    --container-page: 70rem;
+
+    /*
+     * Controls. Forty-four pixels is the usual minimum for a touch target,
+     * and every control is at least that; the larger size is for the one
+     * action a page is for.
+     */
+    --spacing-control: 2.75rem;
+    --spacing-control-lg: 3rem;
+
+    /* Corners: a control, a button, a tile, a card, a feature panel. */
+    --radius-control: 0.625rem;
+    --radius-button: 0.75rem;
+    --radius-tile: 1rem;
+    --radius-card: 1.25rem;
+    --radius-panel: 1.75rem;
+
+    /* Elevation. Most surfaces are flat with a line; these are the exceptions. */
+    --shadow-card: 0 1px 2px 0 rgb(16 19 31 / 0.04);
+    --shadow-raised: 0 12px 32px -12px rgb(16 19 31 / 0.22);
+    --shadow-invoice: 0 30px 80px -24px rgb(16 19 31 / 0.4);
+}
+
+/*
+ * The same roles after dark. The ground is the logo's navy, nearly black;
+ * the main action turns teal, because navy on navy is no action at all.
+ *
+ * On the root, and on any element marked data-theme-scope: the admin
+ * console's style guide draws a dark specimen beside a light one, and the
+ * roles have to be redefined where that specimen starts for it to be dark.
+ */
+:root,
+[data-theme-scope] {
+    @variant dark {
+        --color-ground: #0e111b;
+        --color-surface: #161a2b;
+        --color-sunken: #1c2134;
+        --color-line: #2a3150;
+        --color-line-strong: #3a4262;
+
+        --color-fg: #f4f2ee;
+        --color-muted: #b4b8cc;
+        --color-subtle: #8e93ae;
+
+        --color-accent: var(--color-teal-300);
+        --color-accent-strong: var(--color-teal-200);
+        --color-accent-soft: color-mix(in oklab, var(--color-teal-500) 14%, transparent);
+        --color-accent-line: color-mix(in oklab, var(--color-teal-400) 40%, transparent);
+
+        --color-action: var(--color-teal-400);
+        --color-action-hover: var(--color-teal-300);
+        --color-on-action: var(--color-ink-950);
+
+        --color-highlight-soft: color-mix(in oklab, var(--color-sand-200) 12%, transparent);
+
+        --color-focus: var(--color-teal-400);
+
+        --color-success: #86efac;
+        --color-success-soft: color-mix(in oklab, #22c55e 14%, transparent);
+        --color-success-line: color-mix(in oklab, #22c55e 40%, transparent);
+        --color-warning: #fcd34d;
+        --color-warning-soft: color-mix(in oklab, #f59e0b 14%, transparent);
+        --color-warning-line: color-mix(in oklab, #f59e0b 40%, transparent);
+        --color-danger: #fca5a5;
+        --color-danger-soft: color-mix(in oklab, #ef4444 14%, transparent);
+        --color-danger-line: color-mix(in oklab, #ef4444 40%, transparent);
+        --color-on-danger: var(--color-ink-950);
+        --color-info: #93c5fd;
+        --color-info-soft: color-mix(in oklab, #3b82f6 14%, transparent);
+        --color-info-line: color-mix(in oklab, #3b82f6 40%, transparent);
+
+        --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+        --shadow-raised: 0 16px 40px -12px rgb(0 0 0 / 0.6);
+    }
+}
+
+/*
+ * An Arabic page leads with the Arabic face, and is not letter-spaced:
+ * tracking pulls apart letters that are meant to join, so the tight
+ * headings of the Latin design would break every Arabic word in them.
+ */
+:root:lang(ar) {
+    --font-sans: var(--font-arabic), var(--font-latin), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+        'Helvetica Neue', Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+}
+
+@layer base {
+    /* And an Arabic span inside an English page - a bilingual heading, a
+       country's name - leads with it too. In base, so font-mono still wins. */
+    :lang(ar) {
+        font-family: var(--font-arabic), var(--font-latin), ui-sans-serif, system-ui, sans-serif;
+    }
+}
+
+:lang(ar) {
+    --tracking-tighter: 0em;
+    --tracking-tight: 0em;
+    --tracking-wide: 0em;
+    --tracking-wider: 0em;
+    --tracking-widest: 0em;
+    --text-display--letter-spacing: 0em;
+    --text-title--letter-spacing: 0em;
+    --text-heading--letter-spacing: 0em;
+    --text-eyebrow--letter-spacing: 0em;
+}
+
+@layer base {
+    /*
+     * Tailwind 4 draws a bare `border` in currentColor, which put a dark
+     * rule under every card header written as `border-b`. A line is the
+     * line colour unless something says otherwise.
+     */
+    *,
+    ::after,
+    ::before,
+    ::backdrop,
+    ::file-selector-button {
+        border-color: var(--color-line);
+    }
+
+    body {
+        background-color: var(--color-ground);
+        color: var(--color-fg);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Three weights are bundled; bold would be synthesised from 600. */
+    b,
+    strong {
+        font-weight: 600;
+    }
+
+    /*
+     * One focus treatment for everything a keyboard can reach - links and
+     * summaries included, which no component wraps. focus-visible, so a
+     * pointer click leaves no ring behind.
+     */
+    :focus-visible {
+        outline: 2px solid var(--color-focus);
+        outline-offset: 2px;
+    }
+
+    ::selection {
+        background-color: color-mix(in oklab, var(--color-teal-400) 35%, transparent);
+    }
+
+    /* A disclosure's marker is drawn by x-ui.faq where it is wanted. */
+    summary {
+        cursor: pointer;
+    }
 }
 
 /*
@@ -94,4 +345,128 @@
 [dir='rtl'] input[type='email'] {
     direction: ltr;
     text-align: right;
+}
+
+/*
+ * The route that runs down the home page: a dashed line on the start edge
+ * with a stop at each section. Drawn here rather than per section so the
+ * line is continuous, and with logical properties so it moves to the right
+ * edge in Arabic.
+ */
+@utility route-line {
+    border-inline-start: 2px dashed var(--color-accent-line);
+    margin-inline-start: 0.6875rem;
+    padding-inline-start: 1.5rem;
+
+    @variant sm {
+        padding-inline-start: 2.5rem;
+    }
+}
+
+@utility route-stop {
+    position: absolute;
+    inset-inline-start: calc(-1.5rem - 0.6875rem - 1px);
+    /* Level with the eyebrow, under the section's top padding. */
+    top: 3.25rem;
+    width: 1.375rem;
+    height: 1.375rem;
+    border-radius: 9999px;
+    background-color: var(--color-ground);
+    border: 2px solid var(--color-teal-500);
+
+    @variant sm {
+        inset-inline-start: calc(-2.5rem - 0.6875rem - 1px);
+        top: 3.75rem;
+    }
+}
+
+/*
+ * A table on a small screen: each row a compact line of its key fields,
+ * opened in place to show the rest.
+ *
+ * x-ui.table declares which columns are key (data-primary); resources/js/ui.js
+ * labels every cell with its column's heading, adds a disclosure button to
+ * each row and sets data-compact on the box below 640px (or always, for a
+ * table that asks). Without script none of this applies and the table keeps
+ * its scroll box, which still works.
+ *
+ * Unlayered, so these win over the cells' own padding and nowrap utilities.
+ */
+[data-row-toggle] {
+    display: none;
+}
+
+[data-compact] thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+[data-compact] table,
+[data-compact] tbody {
+    display: block;
+    width: 100%;
+}
+
+[data-compact] tr[data-row] {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.75rem;
+    padding-block: 0.875rem;
+    padding-inline: 1rem 3.5rem;
+    cursor: pointer;
+}
+
+[data-compact] tr[data-row] > td {
+    display: block;
+    padding: 0;
+    border: 0;
+    white-space: normal;
+    text-align: start;
+}
+
+[data-compact] tr[data-row] > td[data-primary='lead'] {
+    flex-basis: 100%;
+    font-weight: 600;
+    color: var(--color-fg);
+}
+
+[data-compact] tr[data-row]:not([data-expanded]) > td:not([data-primary]):not([data-row-toggle]) {
+    display: none;
+}
+
+[data-compact] tr[data-row][data-expanded] > td:not([data-primary]):not([data-row-toggle]) {
+    flex-basis: 100%;
+}
+
+[data-compact] tr[data-row][data-expanded] > td:not([data-primary]):not([data-row-toggle])[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-top: 0.375rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-subtle);
+}
+
+[data-compact] tr[data-row][data-expanded] {
+    background-color: var(--color-sunken);
+}
+
+[data-compact] [data-row-toggle] {
+    position: absolute;
+    top: 0.25rem;
+    inset-inline-end: 0.25rem;
+    display: block;
+    padding: 0;
+}
+
+:lang(ar) [data-compact] tr[data-row][data-expanded] > td[data-label]::before {
+    letter-spacing: 0;
 }

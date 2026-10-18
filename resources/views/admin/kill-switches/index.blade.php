@@ -28,8 +28,8 @@
 
 <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
     <div>
-        <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Kill switches</h2>
-        <p class="text-gray-500 dark:text-gray-400">
+        <h1 class="text-2xl font-semibold tracking-tight text-fg">Kill switches</h1>
+        <p class="mt-1 max-w-3xl text-sm text-muted">
             Platform-wide. Each one stops that step for every taxpayer, takes effect on the next
             request, and is recorded with the reason given for it.
         </p>
@@ -42,7 +42,7 @@
               data-confirm="Stop everything? No invoice will be issued, signed or filed for any taxpayer until you resume.">
             @csrf
             <div>
-                <label for="stop-reason" class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Reason</label>
+                <label for="stop-reason" class="mb-1 block text-xs font-medium text-muted">Reason</label>
                 <x-ui.input id="stop-reason" name="reason" type="text" required minlength="5" maxlength="500"
                        value="{{ old('reason') }}" placeholder="Why everything is stopping" class="sm:w-72" />
             </div>
@@ -62,11 +62,11 @@
 </div>
 
 @if ($status['is_fully_operational'])
-    <div class="mb-6 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/40 px-4 py-3 text-sm text-green-800 dark:text-green-200">
+    <div class="mb-6 rounded-lg border border-success-line bg-success-soft px-4 py-3 text-sm text-success">
         Nothing is stopped. Every step is running for every taxpayer.
     </div>
 @else
-    <div class="mb-6 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-800 dark:text-red-200">
+    <div class="mb-6 rounded-lg border border-danger-line bg-danger-soft px-4 py-3 text-sm text-danger">
         <strong>{{ count($status['long_running_switches']) > 0 ? 'Stopped, and for a while.' : 'Something is stopped.' }}</strong>
         Taxpayers are being refused the steps listed below.
         @if (count($status['long_running_switches']) > 0)
@@ -85,35 +85,35 @@
             $info = $state['info'];
         @endphp
 
-        <div class="rounded-lg bg-white dark:bg-gray-900 px-6 py-5 shadow">
+        <div class="rounded-card bg-surface px-6 py-5 border border-line shadow-card">
             <div class="flex flex-wrap items-start justify-between gap-4">
                 <div class="min-w-0">
                     <div class="flex items-center gap-3">
-                        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">{{ $name }}</h3>
+                        <h3 class="text-lg font-semibold text-fg">{{ $name }}</h3>
 
                         <x-ui.badge :tone="$state['enabled'] ? 'danger' : 'success'"
                             :label="$state['enabled'] ? 'Stopped' : 'Running'" />
                     </div>
 
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ $description }}</p>
+                    <p class="mt-1 text-sm text-muted">{{ $description }}</p>
 
                     @if ($state['enabled'] && $info)
                         <dl class="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
                             <div class="flex gap-2">
-                                <dt class="text-gray-500 dark:text-gray-400">Reason</dt>
-                                <dd class="text-gray-800 dark:text-gray-100">{{ $info['reason'] ?? 'none given' }}</dd>
+                                <dt class="text-muted">Reason</dt>
+                                <dd class="text-fg">{{ $info['reason'] ?? 'none given' }}</dd>
                             </div>
                             <div class="flex gap-2">
-                                <dt class="text-gray-500 dark:text-gray-400">Stopped by</dt>
-                                <dd class="text-gray-800 dark:text-gray-100">{{ $info['enabled_by'] ?? 'unknown' }}</dd>
+                                <dt class="text-muted">Stopped by</dt>
+                                <dd class="text-fg">{{ $info['enabled_by'] ?? 'unknown' }}</dd>
                             </div>
                             <div class="flex gap-2">
-                                <dt class="text-gray-500 dark:text-gray-400">Since</dt>
-                                <dd class="text-gray-800 dark:text-gray-100">{{ $info['enabled_at'] ?? 'unknown' }}</dd>
+                                <dt class="text-muted">Since</dt>
+                                <dd class="text-fg">{{ $info['enabled_at'] ?? 'unknown' }}</dd>
                             </div>
                             <div class="flex gap-2">
-                                <dt class="text-gray-500 dark:text-gray-400">Until</dt>
-                                <dd class="text-gray-800 dark:text-gray-100">
+                                <dt class="text-muted">Until</dt>
+                                <dd class="text-fg">
                                     {{-- No expiry is the dangerous case, so it says so rather than
                                          showing an empty cell. --}}
                                     {{ $state['is_time_boxed'] ? $state['expires_at'] : 'turned off by hand' }}
@@ -135,7 +135,7 @@
                               data-confirm="Resume {{ strtolower($name) }}? Taxpayers will be able to do this again immediately.">
                             @csrf
                             <input type="hidden" name="switch" value="{{ $switch }}">
-                            <x-ui.button variant="outline">Resume</x-ui.button>
+                            <x-ui.button variant="secondary">Resume</x-ui.button>
                         </form>
                         @endadmincan
                     @else
@@ -148,7 +148,7 @@
                             <input type="hidden" name="switch" value="{{ $switch }}">
 
                             <div>
-                                <label for="reason-{{ $switch }}" class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">
+                                <label for="reason-{{ $switch }}" class="mb-1 block text-xs font-medium text-muted">
                                     Reason
                                 </label>
                                 <x-ui.input id="reason-{{ $switch }}" name="reason" type="text" required
@@ -156,7 +156,7 @@
                             </div>
 
                             <div>
-                                <label for="minutes-{{ $switch }}" class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">
+                                <label for="minutes-{{ $switch }}" class="mb-1 block text-xs font-medium text-muted">
                                     Minutes
                                 </label>
                                 <x-ui.input id="minutes-{{ $switch }}" name="minutes" type="number" min="1"
@@ -167,7 +167,7 @@
                         </form>
                         @endadmincan
 
-                        <p class="mt-1 text-right text-xs text-gray-400 dark:text-gray-500">
+                        <p class="mt-1 text-right text-xs text-subtle">
                             Leave minutes empty and it stays on until someone turns it off.
                         </p>
                     @endif

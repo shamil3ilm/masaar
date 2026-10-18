@@ -24,7 +24,7 @@
 @endphp
 
 @if ($errors->any())
-    <div class="mb-6 rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+    <div class="mb-6 rounded border border-danger-line bg-danger-soft px-4 py-3 text-sm text-danger">
         <ul class="list-disc ps-5">
             @foreach ($errors->all() as $error)
                 <li>{{ $error }}</li>
@@ -36,16 +36,16 @@
 <form method="POST" action="{{ route($route.'.update') }}" enctype="multipart/form-data" class="mb-6 max-w-2xl">
     @csrf
 
-    <div class="mb-6 rounded-lg bg-white dark:bg-gray-900 shadow">
+    <div class="mb-6 rounded-card bg-surface border border-line shadow-card">
         <div class="border-b p-4">
-            <h3 class="font-semibold text-gray-800 dark:text-gray-100">{{ __('Name and mode') }}</h3>
+            <h3 class="font-semibold text-fg">{{ __('Name and mode') }}</h3>
         </div>
         <div class="space-y-4 p-4">
             <x-ui.field :label="__('Name shown beside the logo')">
                 <x-ui.input type="text" name="name" maxlength="40"
                             placeholder="{{ $effective->name() }}"
                             value="{{ old('name', $stored->name) }}" />
-                <span class="mt-1 block text-xs font-normal text-gray-500 dark:text-gray-400">{{ $inherits ? __('Left empty, the platform\'s name is used.') : __('Left empty, the shipped name is used.') }}</span>
+                <span class="mt-1 block text-xs font-normal text-muted">{{ $inherits ? __('Left empty, the platform\'s name is used.') : __('Left empty, the shipped name is used.') }}</span>
             </x-ui.field>
 
             <x-ui.field :label="__('Mode')">
@@ -56,13 +56,24 @@
                     <option value="system" @selected(old('mode', $stored->mode) === 'system')>{{ __('Follow the device') }}</option>
                 </x-ui.select>
             </x-ui.field>
+
+            {{-- The bundled typefaces, or the device's own. Arabic text is
+                 always set in an Arabic face; this picks which. --}}
+            <x-ui.field :label="__('Typeface')">
+                <x-ui.select name="font">
+                    <option value="" @selected(old('font', $stored->font) === null)>{{ $inherits ? __('Inherit (the platform\'s)') : __('Inherit (the shipped)') }}</option>
+                    <option value="inter" @selected(old('font', $stored->font) === 'inter')>{{ __('Inter, with IBM Plex Sans Arabic for Arabic') }}</option>
+                    <option value="plex" @selected(old('font', $stored->font) === 'plex')>{{ __('IBM Plex Sans Arabic for both languages') }}</option>
+                    <option value="system" @selected(old('font', $stored->font) === 'system')>{{ __('The device\'s own typeface') }}</option>
+                </x-ui.select>
+            </x-ui.field>
         </div>
     </div>
 
-    <div class="mb-6 rounded-lg bg-white dark:bg-gray-900 shadow">
+    <div class="mb-6 rounded-card bg-surface border border-line shadow-card">
         <div class="border-b p-4">
-            <h3 class="font-semibold text-gray-800 dark:text-gray-100">{{ __('Colours') }}</h3>
-            <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Each colour sets a full range of shades for hover and tinted states.') }}</p>
+            <h3 class="font-semibold text-fg">{{ __('Colours') }}</h3>
+            <p class="text-xs text-muted">{{ __('Each colour sets a full range of shades for hover and tinted states.') }}</p>
         </div>
         <div class="space-y-4 p-4">
             @foreach ($labels as $key => [$label, $help])
@@ -71,25 +82,20 @@
                     $shown = old("colors.$key", $own ?? $effective->definition->colors[$key]);
                 @endphp
                 <div class="flex flex-wrap items-center gap-4">
-                    <label class="flex items-center gap-2 text-sm">
-                        <input type="hidden" name="custom[{{ $key }}]" value="0">
-                        <input type="checkbox" name="custom[{{ $key }}]" value="1"
-                               class="rounded border-gray-300 dark:border-gray-700 text-teal-600 dark:text-teal-400 focus:ring-teal-600"
-                               @checked(old("custom.$key", $own !== null ? '1' : '0') === '1')>
-                        <span class="font-medium text-gray-700 dark:text-gray-200">{{ $label }}</span>
-                    </label>
+                    <input type="hidden" name="custom[{{ $key }}]" value="0">
+                    <x-ui.checkbox name="custom[{{ $key }}]" value="1" :checked="old('custom.'.$key, $own !== null ? '1' : '0') === '1'">{{ $label }}</x-ui.checkbox>
                     <x-ui.input type="color" name="colors[{{ $key }}]" value="{{ $shown }}"
                                 aria-label="{{ __(':label colour', ['label' => $label]) }}" class="!mt-0 !w-20 cursor-pointer" />
-                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ $help }} {{ $inherits ? __('Unticked, the platform\'s colour applies.') : __('Unticked, the shipped colour applies.') }}</span>
+                    <span class="text-xs text-muted">{{ $help }} {{ $inherits ? __('Unticked, the platform\'s colour applies.') : __('Unticked, the shipped colour applies.') }}</span>
                 </div>
             @endforeach
         </div>
     </div>
 
-    <div class="mb-6 rounded-lg bg-white dark:bg-gray-900 shadow">
+    <div class="mb-6 rounded-card bg-surface border border-line shadow-card">
         <div class="border-b p-4">
-            <h3 class="font-semibold text-gray-800 dark:text-gray-100">{{ __('Logo and favicon') }}</h3>
-            <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('PNG, JPEG, WebP or SVG, up to :size KB.', ['size' => \App\Domains\Branding\Services\BrandAssets::MAX_KILOBYTES]) }}
+            <h3 class="font-semibold text-fg">{{ __('Logo and favicon') }}</h3>
+            <p class="text-xs text-muted">{{ __('PNG, JPEG, WebP or SVG, up to :size KB.', ['size' => \App\Domains\Branding\Services\BrandAssets::MAX_KILOBYTES]) }}
                 @if ($inherits) {{ __('Your logo also appears at the top of the invoices you print.') }} @endif</p>
         </div>
         <div class="space-y-4 p-4">
@@ -99,19 +105,15 @@
                         <x-ui.input type="file" name="{{ $kind }}" accept="image/png,image/jpeg,image/webp,image/svg+xml" />
                     </x-ui.field>
                     @if ($assets[$kind])
-                        <label class="mt-2 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                            <input type="hidden" name="remove_{{ $kind }}" value="0">
-                            <input type="checkbox" name="remove_{{ $kind }}" value="1"
-                                   class="rounded border-gray-300 dark:border-gray-700 text-teal-600 dark:text-teal-400 focus:ring-teal-600">
-                            {{ $removeLabel }}
-                        </label>
+                        <input type="hidden" name="remove_{{ $kind }}" value="0">
+                        <x-ui.checkbox name="remove_{{ $kind }}" value="1">{{ $removeLabel }}</x-ui.checkbox>
                     @endif
                 </div>
             @endforeach
 
             @if ($effective->logoUrl)
-                <div class="rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 p-4">
-                    <p class="mb-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Shown now') }}</p>
+                <div class="rounded border border-line bg-sunken p-4">
+                    <p class="mb-2 text-xs text-muted">{{ __('Shown now') }}</p>
                     <img src="{{ $effective->logoUrl }}" alt="{{ __('Current logo') }}" height="48" class="h-12 w-auto">
                 </div>
             @endif
@@ -121,12 +123,14 @@
     <x-ui.button>{{ __('Save branding') }}</x-ui.button>
 </form>
 
-<div class="mb-6 max-w-2xl rounded-lg bg-white dark:bg-gray-900 shadow">
+<div class="mb-6 max-w-2xl rounded-card bg-surface border border-line shadow-card">
     <div class="border-b p-4">
-        <h3 class="font-semibold text-gray-800 dark:text-gray-100">{{ __('Theme as JSON') }}</h3>
-        <p class="text-xs text-gray-500 dark:text-gray-400">
+        <h3 class="font-semibold text-fg">{{ __('Theme as JSON') }}</h3>
+        <p class="text-xs text-muted">
             {{ __('The whole theme in one file: name, mode, colours, and "shades" to pin any single step, such as') }}
-            <code dir="ltr">"primary-600": "#0D9488"</code>. {{ __('Importing replaces the colours, name and mode; the logo and favicon stay.') }}
+            {{-- The example is the primary colour in effect, rather than a
+                 colour written into the view. --}}
+            <code dir="ltr">"primary-600": "{{ $effective->definition->colors['primary'] }}"</code>. {{ __('Importing replaces the colours, name and mode; the logo and favicon stay.') }}
         </p>
     </div>
     <form method="POST" action="{{ route($route.'.import') }}" class="space-y-4 p-4">
@@ -136,7 +140,7 @@
         </x-ui.field>
         <div class="flex flex-wrap items-center gap-4">
             <x-ui.button>{{ __('Import') }}</x-ui.button>
-            <x-ui.button variant="quiet" :href="route($route.'.export')">{{ __('Download theme.json') }}</x-ui.button>
+            <x-ui.button variant="ghost" :href="route($route.'.export')">{{ __('Download theme.json') }}</x-ui.button>
         </div>
     </form>
 </div>
@@ -144,5 +148,5 @@
 <form method="POST" action="{{ route($route.'.reset') }}" class="max-w-2xl"
       data-confirm="{{ $inherits ? __('Reset the branding? Colours, name, logo and favicon go back to the platform\'s.') : __('Reset the branding? Colours, name, logo and favicon go back to the shipped.') }}">
     @csrf
-    <x-ui.button variant="quiet">{{ $inherits ? __('Reset to the platform\'s branding') : __('Reset to the shipped branding') }}</x-ui.button>
+    <x-ui.button variant="ghost">{{ $inherits ? __('Reset to the platform\'s branding') : __('Reset to the shipped branding') }}</x-ui.button>
 </form>

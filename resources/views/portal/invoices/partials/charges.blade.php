@@ -8,11 +8,8 @@
     @param array<string, string>      $chargeCategories  code => label
     @param string                     $standardRate
 --}}
-<div class="mb-6 rounded-lg bg-white dark:bg-gray-900 p-6 shadow" data-charges>
-    <div class="mb-4 flex items-baseline justify-between">
-        <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ __('Charges') }}</h3>
-        <x-ui.button type="button" variant="outline" data-add-charge>{{ __('Add charge') }}</x-ui.button>
-    </div>
+{{-- Optional: folded away on a phone until wanted, opened by an error inside. --}}
+<x-ui.section :title="__('Charges')" collapse class="mb-6" data-charges>
 
     <div data-charge-rows class="space-y-4">
         @foreach ((array) old('charges', []) as $index => $row)
@@ -23,4 +20,6 @@
     <template data-charge-template>
         @include('portal.invoices.partials.charge-row', ['index' => 0, 'row' => []])
     </template>
-</div>
+
+    <x-ui.button type="button" variant="secondary" data-add-charge class="mt-4">{{ __('Add charge') }}</x-ui.button>
+</x-ui.section>

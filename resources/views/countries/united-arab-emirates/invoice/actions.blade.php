@@ -10,5 +10,5 @@
     @param $document  \App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument|null
 --}}
             @if ($document)
-                <x-ui.button variant="outline" :href="route('portal.invoices.xml', $invoice->id)">{{ __('Download e-invoice (XML)') }}</x-ui.button>
+                <x-ui.button variant="secondary" :href="route('portal.invoices.xml', $invoice->id)">{{ __('Download e-invoice (XML)') }}</x-ui.button>
             @endif

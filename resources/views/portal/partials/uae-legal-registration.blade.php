@@ -21,5 +21,5 @@
 <x-ui.field :label="__('Issuing authority')">
     <x-ui.input type="text" name="legal_registration_authority" maxlength="255"
                 value="{{ old('legal_registration_authority', $values['legal_registration_authority'] ?? null) }}" />
-    <span class="mt-1 block text-xs font-normal text-gray-500 dark:text-gray-400">{{ __('Required for a trade licence. For a passport, the two-letter code of the issuing country.') }}</span>
+    <span class="mt-1 block text-xs font-normal text-muted">{{ __('Required for a trade licence. For a passport, the two-letter code of the issuing country.') }}</span>
 </x-ui.field>

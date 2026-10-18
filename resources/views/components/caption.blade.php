@@ -25,5 +25,5 @@
 
 <span {{ $attributes->merge(['class' => 'block']) }}>
     <span class="block">{{ $en }}</span>
-    <span class="block font-normal text-gray-400 dark:text-gray-500 normal-case" dir="rtl" lang="ar">{{ $ar }}</span>
+    <span class="block font-normal text-subtle normal-case" dir="rtl" lang="ar">{{ $ar }}</span>
 </span>

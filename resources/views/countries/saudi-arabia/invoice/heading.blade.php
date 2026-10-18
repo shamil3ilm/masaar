@@ -6,7 +6,7 @@
     @param $invoice     \App\Domains\Invoice\Models\Invoice
     @param $simplified  bool
 --}}
-        <p class="text-sm font-semibold tracking-wide text-gray-500 dark:text-gray-400 uppercase">
+        <p class="text-sm font-semibold tracking-wide text-muted uppercase">
             {{ $simplified ? 'Simplified tax invoice' : 'Tax invoice' }}
-            <span class="text-gray-400 dark:text-gray-500" dir="rtl" lang="ar">{{ $simplified ? 'فاتورة ضريبية مبسطة' : 'فاتورة ضريبية' }}</span>
+            <span class="text-subtle" dir="rtl" lang="ar">{{ $simplified ? 'فاتورة ضريبية مبسطة' : 'فاتورة ضريبية' }}</span>
         </p>

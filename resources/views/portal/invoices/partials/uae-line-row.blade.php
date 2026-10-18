@@ -12,21 +12,18 @@
     @param array $row    Previously submitted values, or empty.
 --}}
 @php($category = (string) ($row['tax_category'] ?? 'S'))
-<div data-line-row class="rounded border border-gray-200 dark:border-gray-700 p-4">
+<div data-line-row class="rounded border border-line p-4">
     <div class="mb-3 flex items-center justify-between">
-        <span class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+        <span class="text-xs font-semibold uppercase tracking-wider text-subtle">
             {{ __('Line') }} <span data-line-number>{{ $index + 1 }}</span>
         </span>
-        <button type="button" data-remove-line
-                class="text-xs text-gray-500 dark:text-gray-400 transition-colors hover:text-red-700 dark:hover:text-red-300 disabled:cursor-not-allowed disabled:text-gray-300 dark:disabled:text-gray-600 disabled:hover:text-gray-300 dark:disabled:hover:text-gray-600">
-            {{ __('Remove') }}
-        </button>
+        <x-ui.button type="button" size="sm" variant="ghost" data-remove-line class="-me-2 text-danger">{{ __('Remove') }}</x-ui.button>
     </div>
 
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         @if (($products ?? collect())->isNotEmpty())
             {{-- Fills this row's fields and submits nothing itself. --}}
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 sm:col-span-2 lg:col-span-6">
+            <label class="block text-xs font-medium text-muted sm:col-span-2 lg:col-span-6">
                 {{ __('Product') }}
                 <x-ui.select data-product-picker>
                     <option value="">{{ __('Choose to fill in this line...') }}</option>
@@ -39,25 +36,25 @@
             </label>
         @endif
 
-        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 lg:col-span-2">
+        <label class="block text-xs font-medium text-muted lg:col-span-2">
             {{ __('Item name') }}
             <x-ui.input type="text" name="lines[{{ $index }}][item_name]" maxlength="255"
                    value="{{ $row['item_name'] ?? $row['description'] ?? '' }}" />
         </label>
 
-        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 lg:col-span-4">
+        <label class="block text-xs font-medium text-muted lg:col-span-4">
             {{ __('Description') }}
             <x-ui.input type="text" name="lines[{{ $index }}][description]" maxlength="255"
                    value="{{ $row['description'] ?? '' }}" />
         </label>
 
-        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300">
+        <label class="block text-xs font-medium text-muted">
             {{ __('Quantity') }}
             <x-ui.input type="number" step="0.001" min="0" name="lines[{{ $index }}][quantity]"
                    value="{{ $row['quantity'] ?? '' }}" />
         </label>
 
-        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300">
+        <label class="block text-xs font-medium text-muted">
             {{ __('Unit') }}
             <x-ui.select name="lines[{{ $index }}][unit_code]">
                 @php($selected = \App\Domains\Invoice\Support\UnitCode::normalise($row['unit_code'] ?? null))
@@ -71,19 +68,19 @@
             </x-ui.select>
         </label>
 
-        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300">
+        <label class="block text-xs font-medium text-muted">
             {{ __('Unit price (excl. VAT)') }}
             <x-ui.input type="number" step="0.01" min="0" name="lines[{{ $index }}][unit_price]"
                    value="{{ $row['unit_price'] ?? '' }}" />
         </label>
 
-        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300">
+        <label class="block text-xs font-medium text-muted">
             {{ __('Line discount') }}
             <x-ui.input type="number" step="0.01" min="0" name="lines[{{ $index }}][discount_amount]"
                    value="{{ $row['discount_amount'] ?? '' }}" />
         </label>
 
-        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 lg:col-span-2">
+        <label class="block text-xs font-medium text-muted lg:col-span-2">
             {{ __('Tax category') }}
             <x-ui.select name="lines[{{ $index }}][tax_category]" data-tax-category>
                 <option value="S" @selected($category === 'S')>{{ __('Standard rate') }}</option>
@@ -95,7 +92,7 @@
             </x-ui.select>
         </label>
 
-        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300">
+        <label class="block text-xs font-medium text-muted">
             {{ __('VAT %') }}
             <x-ui.input type="number" step="0.01" min="0" max="100" name="lines[{{ $index }}][tax_rate]"
                    value="{{ $row['tax_rate'] ?? \App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe::STANDARD_RATE }}" />
@@ -104,7 +101,7 @@
 
     {{-- Asked only of an exempt or a reverse-charge line; blank otherwise. --}}
     <div class="mt-3 grid gap-3 sm:grid-cols-3">
-        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300">
+        <label class="block text-xs font-medium text-muted">
             {{ __('Exemption reason (exempt lines)') }}
             <x-ui.select name="lines[{{ $index }}][exempt_code]">
                 <option value="">{{ __('None') }}</option>
@@ -115,7 +112,7 @@
             </x-ui.select>
         </label>
 
-        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300">
+        <label class="block text-xs font-medium text-muted">
             {{ __('Goods type (reverse charge)') }}
             <x-ui.select name="lines[{{ $index }}][goods_type]">
                 <option value="">{{ __('None') }}</option>
@@ -125,7 +122,7 @@
             </x-ui.select>
         </label>
 
-        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300">
+        <label class="block text-xs font-medium text-muted">
             {{ __('Item GTIN (reverse charge)') }}
             <x-ui.input type="text" inputmode="numeric" maxlength="14" name="lines[{{ $index }}][item_id]" dir="ltr"
                    value="{{ $row['item_id'] ?? '' }}" />

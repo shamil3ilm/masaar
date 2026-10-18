@@ -3,21 +3,17 @@
 @section('title', __('Printing'))
 
 @section('content')
-<div class="mb-6">
-    <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">{{ __('Printing') }}</h2>
-    <p class="text-gray-500 dark:text-gray-400">
-        {{ __('The paper an invoice prints on. Your own choice comes first, then the branch that issued the invoice, then the organization. The print screen can switch paper for one invoice.') }}
-    </p>
-</div>
+<x-ui.page-header :title="__('Printing')"
+                  :description="__('The paper an invoice prints on. Your own choice comes first, then the branch that issued the invoice, then the organization. The print screen can switch paper for one invoice.')" />
 
 <div class="max-w-2xl space-y-6">
-    <form method="POST" action="{{ route('portal.printing.mine') }}" class="rounded-lg bg-white dark:bg-gray-900 shadow">
+    <form method="POST" action="{{ route('portal.printing.mine') }}" class="rounded-card border border-line bg-surface shadow-card">
         @csrf
-        <div class="border-b p-4">
-            <h3 class="font-semibold text-gray-800 dark:text-gray-100">{{ __('Your paper') }}</h3>
-            <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('For the printer where you work, such as a till with a receipt roll.') }}</p>
+        <div class="border-b border-line px-5 py-4">
+            <h2 class="text-base font-semibold text-fg">{{ __('Your paper') }}</h2>
+            <p class="mt-0.5 text-sm text-subtle">{{ __('For the printer where you work, such as a till with a receipt roll.') }}</p>
         </div>
-        <div class="p-4">
+        <div class="p-5">
             <x-ui.field :label="__('Paper')">
                 <x-ui.select name="paper">
                     <option value="" @selected($mine === null)>{{ __('As the branch or organization') }}</option>
@@ -27,19 +23,19 @@
                 </x-ui.select>
             </x-ui.field>
         </div>
-        <div class="border-t p-4">
+        <div class="border-t border-line px-5 py-4">
             <x-ui.button variant="primary">{{ __('Save') }}</x-ui.button>
         </div>
     </form>
 
     @if ($admin)
-        <form method="POST" action="{{ route('portal.printing.update') }}" class="rounded-lg bg-white dark:bg-gray-900 shadow">
+        <form method="POST" action="{{ route('portal.printing.update') }}" class="rounded-card border border-line bg-surface shadow-card">
             @csrf
-            <div class="border-b p-4">
-                <h3 class="font-semibold text-gray-800 dark:text-gray-100">{{ __('Organization and branches') }}</h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('A branch with a receipt printer at its till can print on its roll while the office prints on A4.') }}</p>
+            <div class="border-b border-line px-5 py-4">
+                <h2 class="text-base font-semibold text-fg">{{ __('Organization and branches') }}</h2>
+                <p class="mt-0.5 text-sm text-subtle">{{ __('A branch with a receipt printer at its till can print on its roll while the office prints on A4.') }}</p>
             </div>
-            <div class="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2">
+            <div class="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
                 <x-ui.field :label="__('Organization')">
                     <x-ui.select name="paper">
                         @foreach ($papers as $paper)
@@ -51,7 +47,7 @@
             </div>
 
             @foreach ($branches as $branch)
-                <fieldset class="grid grid-cols-1 gap-4 border-t p-4 sm:grid-cols-3">
+                <fieldset class="grid grid-cols-1 gap-4 border-t border-line p-5 sm:grid-cols-3">
                     <legend class="sr-only">{{ $branch['name'] }}</legend>
                     <x-ui.field :label="$branch['name']">
                         <x-ui.select name="branches[{{ $branch['id'] }}]">
@@ -72,7 +68,7 @@
                     </x-ui.field>
                 </fieldset>
             @endforeach
-            <div class="border-t p-4">
+            <div class="border-t border-line px-5 py-4">
                 <x-ui.button variant="primary">{{ __('Save') }}</x-ui.button>
             </div>
         </form>

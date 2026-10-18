@@ -25,8 +25,8 @@ use PHPUnit\Framework\TestCase;
  *
  * None of this is catchable by a feature test on one page, because the defect
  * is the gap between where messages are written and where they are read. So
- * it is asserted structurally: the layouts include the partial, and the
- * partials agree on the keys.
+ * it is asserted structurally: the layouts show the one flash component, and
+ * it renders every key.
  */
 class FlashKeyTest extends TestCase
 {
@@ -45,61 +45,64 @@ class FlashKeyTest extends TestCase
      */
     private const KEYS = ['success', 'error', 'warning'];
 
-    /**
-     * Both surfaces render the same keys, so neither drops one silently.
-     */
-    public function test_both_partials_render_the_same_keys(): void
-    {
-        foreach (['portal/partials/flash.blade.php', 'admin/partials/flash.blade.php'] as $partial) {
-            $source = $this->read(self::VIEWS.'/'.$partial);
-
-            foreach (self::KEYS as $key) {
-                $this->assertStringContainsString(
-                    "session('".$key."')",
-                    $source,
-                    $partial.' does not render '.$key.', so a controller flashing it shows nothing'
-                );
-            }
-        }
-    }
+    /** The one place they are rendered. */
+    private const FLASH = 'components/ui/flash.blade.php';
 
     /**
-     * And every layout includes one, so no page has to remember.
+     * One component renders the messages for both surfaces, so neither can
+     * drop a key the other shows - which is how the console once lost
+     * 'warning', when each surface had a partial of its own.
      */
-    public function test_every_layout_includes_the_partial(): void
+    public function test_the_flash_renders_every_key(): void
     {
-        foreach (['portal' => 'portal.partials.flash', 'admin' => 'admin.partials.flash'] as $layout => $partial) {
+        $source = $this->read(self::VIEWS.'/'.self::FLASH);
+
+        foreach (self::KEYS as $key) {
             $this->assertStringContainsString(
-                "@include('".$partial."')",
-                $this->read(self::VIEWS.'/layouts/'.$layout.'.blade.php'),
-                'layouts/'.$layout.'.blade.php does not include its flash partial, so only the pages that'
-                .' remember to include it themselves can show a message'
+                "session('".$key."')",
+                $source,
+                self::FLASH.' does not render '.$key.', so a controller flashing it shows nothing'
             );
         }
     }
 
     /**
-     * Included once, so a message is not shown twice.
+     * And every layout shows it, so no page has to remember.
      */
-    public function test_the_partial_is_included_once(): void
+    public function test_every_layout_shows_the_flash(): void
     {
-        foreach (['portal', 'admin'] as $surface) {
-            $includes = [];
-
-            foreach ($this->bladeFiles(self::VIEWS) as $file) {
-                $count = substr_count($this->read($file), "@include('".$surface.".partials.flash')");
-
-                if ($count > 0) {
-                    $includes[] = str_replace('\\', '/', substr($file, strlen(self::VIEWS) + 1));
-                }
-            }
-
-            $this->assertSame(
-                ['layouts/'.$surface.'.blade.php'],
-                $includes,
-                'the '.$surface.' flash partial should be included by its layout and nowhere else'
+        foreach (['portal', 'admin'] as $layout) {
+            $this->assertStringContainsString(
+                '<x-ui.flash',
+                $this->read(self::VIEWS.'/layouts/'.$layout.'.blade.php'),
+                'layouts/'.$layout.'.blade.php does not show the flash, so only the pages that'
+                .' remember to show it themselves can show a message'
             );
         }
+    }
+
+    /**
+     * Shown by the layouts and nowhere else, so a message is not shown twice.
+     */
+    public function test_the_flash_is_shown_once(): void
+    {
+        $shown = [];
+
+        foreach ($this->bladeFiles(self::VIEWS) as $file) {
+            $count = substr_count($this->read($file), '<x-ui.flash');
+
+            if ($count > 0) {
+                $shown[str_replace('\\', '/', substr($file, strlen(self::VIEWS) + 1))] = $count;
+            }
+        }
+
+        ksort($shown);
+
+        $this->assertSame(
+            ['layouts/admin.blade.php' => 1, 'layouts/portal.blade.php' => 1],
+            $shown,
+            'the flash should be shown once, by the admin and portal layouts and nowhere else'
+        );
     }
 
     /**

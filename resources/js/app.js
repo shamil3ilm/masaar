@@ -2,10 +2,12 @@ import Alpine from '@alpinejs/csp';
 
 import { registerCataloguePickers } from './catalogue-pickers.js';
 import { registerConfirmations } from './confirm.js';
+import { registerEasterEggs } from './easter-eggs.js';
 import { registerInvoiceCharges } from './invoice-charges.js';
 import { registerInvoiceLines } from './invoice-lines.js';
 import { signupCountry } from './signup-country.js';
 import { registerUaeInvoice } from './uae-invoice.js';
+import { registerInterface } from './ui.js';
 import { registerValidation } from './validate.js';
 import { drawer, sidebar } from './sidebar.js';
 
@@ -33,5 +35,7 @@ registerInvoiceCharges();
 registerCataloguePickers();
 registerUaeInvoice();
 registerValidation();
+registerInterface();
+registerEasterEggs();
 
 Alpine.start();

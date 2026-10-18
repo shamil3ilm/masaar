@@ -392,7 +392,7 @@ class ScreenRenderTest extends TestCase
             }
 
             $this->assertMatchesRegularExpression(
-                '/bg-[a-z]+-[0-9]+/',
+                '/\bbg-[a-z][a-z0-9-]*/',
                 $match[0],
                 $name.' renders a pill with no background: '.trim(strip_tags($match[1]))
             );

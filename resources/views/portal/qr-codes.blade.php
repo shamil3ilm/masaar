@@ -10,53 +10,49 @@
         \App\Domains\Invoice\Models\BusinessQrCode::LINK => __('Location or website'),
     ];
 @endphp
-<div class="mb-6">
-    <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">{{ __('QR codes') }}</h2>
-    <p class="text-gray-500 dark:text-gray-400">
-        {{ __('Codes a customer scans: your contact card, your payment details, your location or website, or a link that opens one invoice. Download them for a sign or a card, or print one on your invoices beside the ZATCA QR code, which never changes.') }}
-    </p>
-</div>
+<x-ui.page-header :title="__('QR codes')"
+                  :description="__('Codes a customer scans: your contact card, your payment details, your location or website, or a link that opens one invoice. Download them for a sign or a card, or print one on your invoices beside the ZATCA QR code, which never changes.')" />
 
 <div class="max-w-3xl space-y-6">
-    <section class="rounded-lg bg-white dark:bg-gray-900 shadow">
-        <h3 class="border-b p-4 font-semibold text-gray-800 dark:text-gray-100">{{ __('Your QR codes') }}</h3>
+    <section class="rounded-card border border-line bg-surface shadow-card">
+        <h2 class="border-b border-line px-5 py-4 text-base font-semibold text-fg">{{ __('Your QR codes') }}</h2>
         @forelse ($codes as $item)
-            <div class="flex flex-wrap items-center gap-4 border-b p-4" data-qr-code>
+            <div class="flex flex-wrap items-center gap-4 border-b border-line p-5" data-qr-code>
                 {{-- Unescaped: markup QrCodeRenderer drew. --}}
-                <div class="w-28 bg-white dark:bg-white p-1 [&_svg]:h-auto [&_svg]:w-full">{!! $item['svg'] !!}</div>
+                <div class="w-28 rounded-tile bg-paper p-1 [&_svg]:h-auto [&_svg]:w-full">{!! $item['svg'] !!}</div>
                 <div class="min-w-0 flex-1">
-                    <p class="font-medium text-gray-800 dark:text-gray-100">{{ $item['code']->label }}</p>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">{{ $kinds[$item['code']->kind] ?? $item['code']->kind }}</p>
+                    <p class="font-medium text-fg">{{ $item['code']->label }}</p>
+                    <p class="text-sm text-muted">{{ $kinds[$item['code']->kind] ?? $item['code']->kind }}</p>
                 </div>
                 <div class="flex flex-wrap gap-2">
-                    <x-ui.button variant="outline" :href="route('portal.qr-codes.download', [$item['code']->id, 'png'])">PNG</x-ui.button>
-                    <x-ui.button variant="outline" :href="route('portal.qr-codes.download', [$item['code']->id, 'svg'])">SVG</x-ui.button>
+                    <x-ui.button variant="secondary" size="sm" :href="route('portal.qr-codes.download', [$item['code']->id, 'png'])">PNG</x-ui.button>
+                    <x-ui.button variant="secondary" size="sm" :href="route('portal.qr-codes.download', [$item['code']->id, 'svg'])">SVG</x-ui.button>
                     @if ($admin)
                         <form method="POST" action="{{ route('portal.qr-codes.destroy', $item['code']->id) }}">
                             @csrf
-                            <x-ui.button variant="danger">{{ __('Delete') }}</x-ui.button>
+                            <x-ui.button variant="danger" size="sm">{{ __('Delete') }}</x-ui.button>
                         </form>
                     @endif
                 </div>
             </div>
         @empty
-            <p class="p-4 text-sm text-gray-500 dark:text-gray-400">{{ __('No QR codes yet.') }}</p>
+            <p class="p-5 text-sm text-muted">{{ __('No QR codes yet.') }}</p>
         @endforelse
     </section>
 
     @if ($admin)
-        <section class="rounded-lg bg-white dark:bg-gray-900 shadow">
-            <h3 class="border-b p-4 font-semibold text-gray-800 dark:text-gray-100">{{ __('Create a QR code') }}</h3>
+        <section class="rounded-card border border-line bg-surface shadow-card">
+            <h2 class="border-b border-line px-5 py-4 text-base font-semibold text-fg">{{ __('Create a QR code') }}</h2>
             @foreach (['contact' => ['name' => __('Business name'), 'phone' => __('Phone'), 'email' => __('Email'), 'website' => __('Website'), 'address' => __('Address')],
                        'payment' => ['bank' => __('Bank'), 'iban' => __('IBAN'), 'amount' => __('Amount (empty: the invoice total)'), 'currency' => __('Currency'), 'reference' => __('Reference (empty: the invoice number)')],
                        'link' => ['url' => __('Link to your location or website')]] as $kind => $fields)
                 @php($bag = $errors->getBag($kind))
-                <form method="POST" action="{{ route('portal.qr-codes.store') }}" class="border-b p-4">
+                <form method="POST" action="{{ route('portal.qr-codes.store') }}" class="border-b border-line p-5">
                     @csrf
                     <input type="hidden" name="kind" value="{{ $kind }}">
-                    <h4 class="mb-2 font-medium text-gray-800 dark:text-gray-100">{{ $kinds[$kind] }}</h4>
+                    <h4 class="mb-2 font-medium text-fg">{{ $kinds[$kind] }}</h4>
                     @if ($bag->any())
-                        <ul class="mb-2 list-disc ps-5 text-sm text-red-700 dark:text-red-300">
+                        <ul class="mb-2 list-disc ps-5 text-sm text-danger">
                             @foreach ($bag->all() as $error)
                                 <li>{{ $error }}</li>
                             @endforeach
@@ -80,10 +76,10 @@
         </section>
     @endif
 
-    <section class="rounded-lg bg-white dark:bg-gray-900 shadow">
-        <h3 class="border-b p-4 font-semibold text-gray-800 dark:text-gray-100">{{ __('Invoice links') }}</h3>
-        <p class="px-4 pt-4 text-sm text-gray-500 dark:text-gray-400">{{ __('A link opens one issued invoice and its PDF for anyone who has it, without signing in. Revoke it and it opens nothing.') }}</p>
-        <form method="POST" action="{{ route('portal.qr-codes.links.store') }}" class="flex flex-wrap items-end gap-3 p-4">
+    <section class="rounded-card border border-line bg-surface shadow-card">
+        <h2 class="border-b border-line px-5 py-4 text-base font-semibold text-fg">{{ __('Invoice links') }}</h2>
+        <p class="px-5 pt-4 text-sm text-muted">{{ __('A link opens one issued invoice and its PDF for anyone who has it, without signing in. Revoke it and it opens nothing.') }}</p>
+        <form method="POST" action="{{ route('portal.qr-codes.links.store') }}" class="flex flex-wrap items-end gap-3 px-5 py-4">
             @csrf
             <x-ui.field :label="__('Invoice number')">
                 <x-ui.input type="text" name="invoice_number" maxlength="100" required value="{{ old('invoice_number') }}" />
@@ -91,33 +87,33 @@
             <x-ui.button variant="primary">{{ __('Create link') }}</x-ui.button>
         </form>
         @if ($errors->getBag('link')->any())
-            <p class="px-4 pb-4 text-sm text-red-700 dark:text-red-300">{{ $errors->getBag('link')->first() }}</p>
+            <p class="px-5 pb-4 text-sm text-danger">{{ $errors->getBag('link')->first() }}</p>
         @endif
         @foreach ($links as $item)
-            <div class="flex flex-wrap items-center gap-3 border-t p-4" data-invoice-link>
+            <div class="flex flex-wrap items-center gap-3 border-t border-line p-5" data-invoice-link>
                 <div class="min-w-0 flex-1">
-                    <p class="font-medium text-gray-800 dark:text-gray-100" dir="ltr">{{ $item['link']->invoice?->invoice_number }}</p>
-                    <p class="break-all font-mono text-xs text-gray-500 dark:text-gray-400" dir="ltr">{{ $item['url'] }}</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Opened :count times', ['count' => $item['link']->open_count]) }}</p>
+                    <p class="font-medium text-fg" dir="ltr">{{ $item['link']->invoice?->invoice_number }}</p>
+                    <p class="break-all font-mono text-xs text-muted" dir="ltr">{{ $item['url'] }}</p>
+                    <p class="text-xs text-muted">{{ __('Opened :count times', ['count' => $item['link']->open_count]) }}</p>
                 </div>
-                <x-ui.button variant="outline" :href="route('portal.qr-codes.links.download', [$item['link']->id, 'png'])">PNG</x-ui.button>
-                <x-ui.button variant="outline" :href="route('portal.qr-codes.links.download', [$item['link']->id, 'svg'])">SVG</x-ui.button>
+                <x-ui.button variant="secondary" size="sm" :href="route('portal.qr-codes.links.download', [$item['link']->id, 'png'])">PNG</x-ui.button>
+                <x-ui.button variant="secondary" size="sm" :href="route('portal.qr-codes.links.download', [$item['link']->id, 'svg'])">SVG</x-ui.button>
                 <form method="POST" action="{{ route('portal.qr-codes.links.revoke', $item['link']->id) }}">
                     @csrf
-                    <x-ui.button variant="danger">{{ __('Revoke') }}</x-ui.button>
+                    <x-ui.button variant="danger" size="sm">{{ __('Revoke') }}</x-ui.button>
                 </form>
             </div>
         @endforeach
     </section>
 
     @if ($admin)
-        <form method="POST" action="{{ route('portal.qr-codes.invoices') }}" class="rounded-lg bg-white dark:bg-gray-900 shadow">
+        <form method="POST" action="{{ route('portal.qr-codes.invoices') }}" class="rounded-card border border-line bg-surface shadow-card">
             @csrf
-            <div class="border-b p-4">
-                <h3 class="font-semibold text-gray-800 dark:text-gray-100">{{ __('On invoices') }}</h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('One extra QR code per paper, printed apart from the ZATCA QR code and labelled.') }}</p>
+            <div class="border-b border-line p-5">
+                <h2 class="text-base font-semibold text-fg">{{ __('On invoices') }}</h2>
+                <p class="mt-0.5 text-sm text-subtle">{{ __('One extra QR code per paper, printed apart from the ZATCA QR code and labelled.') }}</p>
             </div>
-            <div class="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2">
+            <div class="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
                 @foreach ($papers as $paper)
                     <x-ui.field :label="$paper->label()">
                         <x-ui.select name="papers[{{ $paper->value }}]">
@@ -130,7 +126,7 @@
                     </x-ui.field>
                 @endforeach
             </div>
-            <div class="border-t p-4">
+            <div class="border-t border-line px-5 py-4">
                 <x-ui.button variant="primary">{{ __('Save') }}</x-ui.button>
             </div>
         </form>
