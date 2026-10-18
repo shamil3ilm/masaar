@@ -11,25 +11,31 @@ use Illuminate\Support\Facades\Schema;
  * missing the Arabic text its country requires is drafted with a warning
  * instead of refused (LanguageGrace). With the reason and who granted it.
  *
- * Three columns rather than a settings store, which the platform does not
- * have yet; LanguageGrace alone reads and writes them, so a store can take
- * them over by changing that class.
+ * An entity, one per organization: created when first granted, updated when
+ * changed or withdrawn (no date), never removed - its history of changes is
+ * the admin audit log, which records each one before and after. A small
+ * record of its own rather than a settings store, which the platform does
+ * not have yet; LanguageGrace alone reads and writes it, so a store can take
+ * it over by changing that class.
  */
 return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('organizations', function (Blueprint $table) {
-            $table->date('language_grace_until')->nullable();
-            $table->string('language_grace_reason', 500)->nullable();
-            $table->string('language_grace_by')->nullable();
+        Schema::create('language_graces', function (Blueprint $table) {
+            $table->uuid('id')->primary();
+            $table->uuid('org_id')->unique();
+            $table->date('until')->nullable();
+            $table->string('reason', 500)->nullable();
+            $table->string('granted_by')->nullable();
+            $table->timestamps();
+
+            $table->foreign('org_id')->references('id')->on('organizations')->cascadeOnDelete();
         });
     }
 
     public function down(): void
     {
-        Schema::table('organizations', function (Blueprint $table) {
-            $table->dropColumn(['language_grace_until', 'language_grace_reason', 'language_grace_by']);
-        });
+        Schema::dropIfExists('language_graces');
     }
 };

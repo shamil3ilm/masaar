@@ -11,7 +11,10 @@ use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Models\Product;
 use App\Domains\Licensing\Models\License;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\LanguageGrace;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -168,7 +171,7 @@ class ArabicRequiredTest extends TestCase
 
     public function test_grace_warns_instead_of_refusing(): void
     {
-        $this->acme->forceFill(['language_grace_until' => now()->addMonth()->toDateString(), 'language_grace_reason' => 'Migrating its catalogue'])->save();
+        $this->grace(now()->addMonth(), 'Migrating its catalogue');
 
         $this->api($this->standard(['buyer_name_ar' => null, 'lines' => [['description' => 'Consulting', 'quantity' => 1, 'unit_price' => 100]]]))
             ->assertCreated()
@@ -183,14 +186,14 @@ class ArabicRequiredTest extends TestCase
 
     public function test_grace_ends_on_its_own(): void
     {
-        $this->acme->forceFill(['language_grace_until' => now()->subDay()->toDateString(), 'language_grace_reason' => 'Over'])->save();
+        $this->grace(now()->subDay(), 'Over');
 
         $this->api($this->simplified(['lines' => [['description' => 'Item', 'quantity' => 1, 'unit_price' => 100]]]))->assertStatus(422);
     }
 
     public function test_portal_flags_it_during_grace(): void
     {
-        $this->acme->forceFill(['language_grace_until' => now()->addWeek()->toDateString(), 'language_grace_reason' => 'Migrating'])->save();
+        $this->grace(now()->addWeek(), 'Migrating');
         $member = $this->member();
 
         $saved = $this->asRequest(fn (): TestResponse => $this->actingAs($member)
@@ -221,8 +224,9 @@ class ArabicRequiredTest extends TestCase
             ->assertRedirect(route('admin.organization.detail', $this->acme->id))
             ->assertSessionHas('success');
 
-        $this->assertSame($until, $this->acme->fresh()->language_grace_until);
-        $this->assertSame('ops@masaar.test', $this->acme->fresh()->language_grace_by);
+        $grace = app(LanguageGrace::class)->describe($this->acme);
+        $this->assertSame([$until, 'Migrating its catalogue', 'ops@masaar.test', true], [$grace['until'], $grace['reason'], $grace['by'], $grace['active']]);
+        $this->assertNotNull(DB::table('language_graces')->where('org_id', $this->acme->id)->value('created_at'));
 
         $entry = AuditLog::where('action', 'admin.organizations.language-grace')->sole();
         $this->assertSame('Organization', $entry->entity_type);
@@ -319,6 +323,11 @@ class ArabicRequiredTest extends TestCase
             'type' => 'simplified', 'issue_date' => now()->toDateString(),
             'lines' => [['description' => 'Item', 'description_ar' => 'صنف', 'quantity' => 1, 'unit_price' => 100]],
         ], $overrides);
+    }
+
+    private function grace(\DateTimeInterface $until, string $reason): void
+    {
+        app(LanguageGrace::class)->set($this->acme, CarbonImmutable::parse($until)->startOfDay(), $reason, 'ops@masaar.test');
     }
 
     private function product(string $sku): Product

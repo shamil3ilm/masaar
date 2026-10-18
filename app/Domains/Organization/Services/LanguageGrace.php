@@ -7,6 +7,8 @@ namespace App\Domains\Organization\Services;
 use App\Domains\Organization\Models\Organization;
 use App\Support\CountryClock;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * A platform admin's grace for one organization: until a date, an invoice
@@ -19,12 +21,14 @@ use Carbon\CarbonImmutable;
  * Granting it takes a reason, and the console records who changed it with
  * the state before and after (AuditAdminAction).
  *
- * Kept on three columns of the organization, read and written here and
- * nowhere else, so a settings store can take them over by changing this
+ * Kept in language_graces, one row per organization, read and written here
+ * and nowhere else, so a settings store can take it over by changing this
  * class alone.
  */
 class LanguageGrace
 {
+    private const TABLE = 'language_graces';
+
     /** Whether missing text only warns for this organization today. */
     public function active(?Organization $organization): bool
     {
@@ -36,7 +40,7 @@ class LanguageGrace
     /** The last day the grace covers; null when there is none. */
     public function until(?Organization $organization): ?CarbonImmutable
     {
-        $until = $organization?->language_grace_until;
+        $until = $this->row($organization)?->until;
 
         return blank($until) ? null : CarbonImmutable::parse((string) $until)->startOfDay();
     }
@@ -49,12 +53,13 @@ class LanguageGrace
      */
     public function describe(Organization $organization): ?array
     {
+        $row = $this->row($organization);
         $until = $this->until($organization);
 
         return $until === null ? null : [
             'until' => $until->toDateString(),
-            'reason' => (string) $organization->language_grace_reason,
-            'by' => $organization->language_grace_by,
+            'reason' => (string) $row?->reason,
+            'by' => $row?->granted_by,
             'active' => $this->active($organization),
         ];
     }
@@ -74,11 +79,18 @@ class LanguageGrace
             return false;
         }
 
-        $organization->forceFill([
-            'language_grace_until' => $until?->toDateString(),
-            'language_grace_reason' => $until === null ? null : $reason,
-            'language_grace_by' => $until === null ? null : $by,
-        ])->save();
+        $values = [
+            'until' => $until?->toDateString(),
+            'reason' => $until === null ? null : $reason,
+            'granted_by' => $until === null ? null : $by,
+            'updated_at' => now(),
+        ];
+
+        $updated = DB::table(self::TABLE)->where('org_id', $organization->id)->update($values);
+
+        if ($updated === 0 && $until !== null) {
+            DB::table(self::TABLE)->insert([...$values, 'id' => (string) Str::uuid7(), 'org_id' => $organization->id, 'created_at' => now()]);
+        }
 
         return true;
     }
@@ -90,6 +102,11 @@ class LanguageGrace
     protected function requiresApproval(Organization $organization, ?CarbonImmutable $until): bool
     {
         return false;
+    }
+
+    private function row(?Organization $organization): ?object
+    {
+        return $organization === null ? null : DB::table(self::TABLE)->where('org_id', $organization->id)->first();
     }
 
     private function today(?Organization $organization): CarbonImmutable
