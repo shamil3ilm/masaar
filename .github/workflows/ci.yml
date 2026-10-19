@@ -648,13 +648,21 @@ jobs:
           echo "PEPPOL_ARTEFACTS_PATH=$work" >> "$GITHUB_ENV"
           echo "PEPPOL_XSLT_JAR=$work/saxon.jar" >> "$GITHUB_ENV"
 
+      # The conformance run, and the same rules inside the service-provider
+      # simulator: every document sent end to end must pass them there too.
       - name: Run the PINT AE suite
         run: |
-          php artisan test --do-not-cache-result --filter PintConformance | tee pint.log
+          php artisan test --do-not-cache-result --filter 'PintConformance|SimulatorConformance' | tee pint.log
           if grep -qE '^[[:space:]]*Tests:.*skipped' pint.log; then
             echo "::error title=PINT AE skipped::The rules were fetched but the suite still skipped."
             exit 1
           fi
+          for suite in PintConformanceTest SimulatorConformanceTest; do
+            if ! grep -q "$suite" pint.log; then
+              echo "::error title=PINT AE suite missing::$suite did not run; the filter no longer matches it."
+              exit 1
+            fi
+          done
 
   # Onboarding, end to end, against ZATCA's developer sandbox.
   #
