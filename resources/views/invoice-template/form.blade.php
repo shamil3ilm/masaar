@@ -89,7 +89,7 @@
                 <div class="flex flex-wrap items-center gap-4">
                     <input type="hidden" name="accent_custom" value="0">
                     <x-ui.checkbox name="accent_custom" value="1" :checked="$old('accent') !== null">{{ __('Use a colour of its own') }}</x-ui.checkbox>
-                    <x-ui.input type="color" name="accent_color" value="{{ $old('accent') ?? $template->accent }}" :aria-label="__('Invoice colour')" class="!mt-0 !w-20 cursor-pointer" />
+                    <x-ui.color-input name="accent_color" value="{{ $old('accent') ?? $template->accent }}" :aria-label="__('Invoice colour')" />
                 </div>
                 <p class="mt-1 text-xs text-muted">{{ __('Unticked, your theme\'s colour is used, darkened where needed. Any colour must read on white and print as a dark grey in black and white: its contrast with white is at least 4.5 to 1. A receipt is always black and white.') }}</p>
                 @error('accent')<p class="mt-1 text-xs font-medium text-danger">{{ $message }}</p>@enderror
@@ -157,7 +157,7 @@
                     <ul class="divide-y divide-line text-sm">
                         @foreach ($fields as $field)
                             <li class="flex items-start gap-3 py-2" data-locked-field="{{ $field->key }}">
-                                <svg class="mt-0.5 size-4 shrink-0 text-subtle" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path stroke-linecap="round" d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
+                                <x-ui.icon name="shield" class="mt-0.5 size-4 text-subtle" />
                                 <span class="min-w-0">
                                     <span class="block font-medium text-fg">{{ app()->getLocale() === 'ar' ? $field->label->ar : $field->label->en }}</span>
                                     <span class="block text-xs text-muted">
