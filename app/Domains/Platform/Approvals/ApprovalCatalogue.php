@@ -26,6 +26,10 @@ use InvalidArgumentException;
  * set for them before they exist: freezing an account for non-payment comes
  * with payments. Asking for one is a programming error until a family takes
  * it.
+ *
+ * A country module adds its own actions with extend(), from its service
+ * provider, so this list never names a country. One that ships held - on
+ * until an admin turns it off - says so there.
  */
 final class ApprovalCatalogue
 {
@@ -60,9 +64,35 @@ final class ApprovalCatalogue
     /** Actions to come, which a policy can already be set for. */
     public const RESERVED = ['accounts.freeze', 'accounts.unfreeze'];
 
+    /** @var array<string, class-string<ApprovableActions>> */
+    private array $extended = [];
+
+    /** @var list<string> */
+    private array $held = [];
+
     public function __construct(
         private readonly Container $container,
     ) {}
+
+    /**
+     * A module's own action and the family that does it.
+     *
+     * @param  class-string<ApprovableActions>  $family
+     */
+    public function extend(string $action, string $family, bool $heldByDefault = false): void
+    {
+        $this->extended[$action] = $family;
+
+        if ($heldByDefault && ! in_array($action, $this->held, true)) {
+            $this->held[] = $action;
+        }
+    }
+
+    /** Whether a module's action ships held for approval. */
+    public function heldByDefault(string $action): bool
+    {
+        return in_array($action, $this->held, true);
+    }
 
     /**
      * Every action a policy can be set for, in the order the policies page
@@ -72,7 +102,7 @@ final class ApprovalCatalogue
      */
     public function keys(): array
     {
-        return [...array_keys(self::ACTIONS), ...self::RESERVED];
+        return [...array_keys(self::ACTIONS), ...array_keys($this->extended), ...self::RESERVED];
     }
 
     public function has(string $action): bool
@@ -85,7 +115,7 @@ final class ApprovalCatalogue
      */
     public function family(string $action): ApprovableActions
     {
-        $class = self::ACTIONS[$action] ?? throw new InvalidArgumentException("No admin action can be run as {$action}.");
+        $class = self::ACTIONS[$action] ?? $this->extended[$action] ?? throw new InvalidArgumentException("No admin action can be run as {$action}.");
 
         return $this->container->make($class);
     }

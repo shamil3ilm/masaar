@@ -15,9 +15,10 @@ use Illuminate\Validation\ValidationException;
 /**
  * Which admin actions wait for approval, and on whose say.
  *
- * Everything ships off except changing who is an admin and in which role:
- * that is how one stolen owner account would make itself more. A policy row
- * exists only where an admin changed the shipped default.
+ * Everything ships off except changing who is an admin and in which role -
+ * that is how one stolen owner account would make itself more - and what a
+ * module ships held (ApprovalCatalogue::extend()). A policy row exists only
+ * where an admin changed the shipped default.
  *
  * approvals.policies is the policy over the policies. It is on whenever any
  * other policy is, and cannot be switched off: otherwise the first thing to
@@ -77,7 +78,7 @@ class ApprovalPolicies
 
             $policies[$action] = new Policy(
                 action: $action,
-                enabled: $row['enabled'] ?? in_array($action, self::RISKY, true),
+                enabled: $row['enabled'] ?? (in_array($action, self::RISKY, true) || $this->catalogue->heldByDefault($action)),
                 approvalsRequired: $row['approvals_required'] ?? 1,
                 approverRoles: $row['approver_roles'] ?? self::DEFAULT_APPROVERS,
                 expiresAfterHours: $row['expires_after_hours'] ?? self::DEFAULT_HOURS,

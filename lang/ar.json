@@ -1953,5 +1953,6 @@
     "Issuer and serial": "جهة الإصدار والرقم التسلسلي",
     "Waiting to file": "بانتظار الإرسال",
     "Each device signs with its active certificate. A renewal supersedes the old one, which still files what it signed; a revoked one files nothing.": "يوقّع كل جهاز بشهادته السارية. التجديد يستبدل الشهادة القديمة، وتظل تُرسل بها المستندات التي وقّعتها، أما الشهادة الملغاة فلا يُرسل بها شيء.",
-    "No device holds a ZATCA production certificate yet. Connect to ZATCA to obtain one.": "لا يملك أي جهاز بعدُ شهادة إنتاج من هيئة الزكاة والضريبة والجمارك. اربط المنشأة بالهيئة للحصول على شهادة."
+    "No device holds a ZATCA production certificate yet. Connect to ZATCA to obtain one.": "لا يملك أي جهاز بعدُ شهادة إنتاج من هيئة الزكاة والضريبة والجمارك. اربط المنشأة بالهيئة للحصول على شهادة.",
+    "Mark a device certificate revoked": "تسجيل شهادة جهاز على أنها ملغاة"
 }

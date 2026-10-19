@@ -377,7 +377,7 @@ The CA publishes a revocation in its CRL, and the EGS "reads periodically from C
 
 A device whose certificate was revoked refuses to sign with `CERT_REVOKED` and says why. A branch in that state does not fall back to head office's certificate, which would sign as a different device.
 
-A platform admin can mark a version revoked from the console's Certificates page, with a reason, before the CA's list says so. The action is audited and passes through the `RevocationApprovals` hook, which approves at once until an approval policy is bound to it.
+A platform admin can mark a version revoked from the console's Certificates page, with a reason, before the CA's list says so. The action is audited and passes through the `RevocationApprovals` hook, bound to the platform's approvals (`certificates.revoke`): it waits for a second admin as shipped, because it stops the device signing, and runs as the admin who asked once approved. The version keeps who revoked it and why (`revoked_by`, `revoked_reason`); a revocation read from the CA's list has no person.
 
 ### What ZATCA's Documents Say
 

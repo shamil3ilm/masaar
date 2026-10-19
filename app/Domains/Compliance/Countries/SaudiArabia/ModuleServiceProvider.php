@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\SaudiArabia;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\AdminCertificateController;
-use App\Domains\Compliance\Countries\SaudiArabia\Signing\ImmediateRevocationApprovals;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateRevocationActions;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\GovernedRevocationApprovals;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\RevocationApprovals;
 use App\Domains\Compliance\Engine\Services\JurisdictionRegistry;
+use App\Domains\Platform\Approvals\ApprovalCatalogue;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
@@ -29,10 +31,12 @@ class ModuleServiceProvider extends ServiceProvider
             $registry->register('SA', fn (): Module => $this->app->make(Module::class), default: true);
         });
 
-        // The approval-policy hook for a manual revocation. No approval
-        // policies exist yet, so every request takes effect at once; a
-        // policy binds its own RevocationApprovals here.
-        $this->app->bindIf(RevocationApprovals::class, ImmediateRevocationApprovals::class);
+        // A manual revocation is an admin action the platform's approvals
+        // hold, on as shipped: it stops a till signing.
+        $this->app->afterResolving(ApprovalCatalogue::class, function (ApprovalCatalogue $catalogue): void {
+            $catalogue->extend(CertificateRevocationActions::REVOKE, CertificateRevocationActions::class, heldByDefault: true);
+        });
+        $this->app->bindIf(RevocationApprovals::class, GovernedRevocationApprovals::class);
     }
 
     /**

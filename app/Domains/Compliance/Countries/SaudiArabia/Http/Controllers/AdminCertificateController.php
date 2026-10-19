@@ -5,12 +5,11 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Reports\CertificateVersions;
-use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateRevocations;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\RevocationApprovals;
 use App\Http\Controllers\Controller;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
 /**
@@ -20,15 +19,15 @@ use Illuminate\View\View;
  * the platform before the list does - ZATCA confirming a revocation, a key
  * known to be compromised. Marking a certificate revoked stops its device
  * signing and files nothing more with it, so it is a POST behind a
- * confirmation and a reason, audited, and put to RevocationApprovals - the
- * hook an approval policy binds to.
+ * confirmation and a reason, audited, and put to RevocationApprovals: the
+ * platform's approvals, which hold it for a second admin as shipped.
  *
  * Reachable only behind platform.admin.
  */
 class AdminCertificateController extends Controller
 {
     public function __construct(
-        private readonly CertificateRevocations $revocations,
+        private readonly RevocationApprovals $approvals,
         private readonly CertificateVersions $versions,
     ) {}
 
@@ -44,13 +43,16 @@ class AdminCertificateController extends Controller
         $record = $this->versions->find($version);
 
         try {
-            $done = $this->revocations->markRevoked($record, $validated['reason'], (string) Auth::id());
+            $outcome = $this->approvals->submit($record, $validated['reason'], $request->user());
         } catch (DomainException $e) {
             return redirect()->route('admin.certificates')->with('error', $e->getMessage());
         }
 
-        return redirect()->route('admin.certificates')->with('success', $done
-            ? "Version {$record->version} is recorded as revoked. Nothing more is filed with it."
-            : "The revocation of version {$record->version} is waiting for approval.");
+        if ($outcome->waits()) {
+            return redirect()->route('admin.approvals.show', $outcome->request->id)
+                ->with('success', __('Sent for approval. Nothing changes until it is approved.'));
+        }
+
+        return redirect()->route('admin.certificates')->with('success', $outcome->result->message);
     }
 }

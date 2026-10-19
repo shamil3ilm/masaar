@@ -10,11 +10,13 @@ use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\Submitter;
 use App\Domains\Compliance\Countries\SaudiArabia\Mail\CertificateRevokedMail;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\CertificateVersion;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateRevocationActions;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
-use App\Domains\Compliance\Countries\SaudiArabia\Signing\RevocationApprovals;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Platform\Approvals\ApprovalPolicies;
+use App\Domains\Platform\Models\ApprovalRequest;
 use App\Support\Errors\ErrorCode;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
@@ -175,26 +177,69 @@ class RevocationSweepTest extends TestCase
     }
 
     /**
-     * An approval policy bound to the hook holds the revocation.
+     * Marking a certificate revoked stops a till signing, so it ships held
+     * for a second admin, like the changes to admin access. Approved, it
+     * runs as the admin who asked.
      */
-    public function test_approval_hook_can_hold_revocation(): void
+    public function test_revocation_ships_held_for_approval(): void
     {
-        $this->app->instance(RevocationApprovals::class, new class implements RevocationApprovals
-        {
-            public function approve(CertificateVersion $version, string $reason, ?string $requestedBy): bool
-            {
-                return false;
-            }
-        });
+        $this->assertTrue(app(ApprovalPolicies::class)->get(CertificateRevocationActions::REVOKE)->enabled);
+
+        $this->store($this->issuedDevice(4097));
+        $version = $this->versions()[0];
+        $owner = $this->operator('owner', 'owner@masaar.test');
+        $operations = $this->operator('operations', 'operations@masaar.test');
+
+        $this->actingAs($owner)
+            ->withSession(['_token' => 'token'])
+            ->post("/admin/certificates/{$version->id}/revoke", ['reason' => 'ZATCA confirmed the key was exposed', '_token' => 'token'])
+            ->assertSessionHas('success', 'Sent for approval. Nothing changes until it is approved.');
+
+        $request = ApprovalRequest::query()->where('action', CertificateRevocationActions::REVOKE)->sole();
+        $this->assertSame(ApprovalRequest::PENDING, $request->status);
+        $this->assertSame(CertificateVersion::ACTIVE, $version->fresh()->status);
+        $this->assertTrue(app(CredentialStore::class)->has($this->acme->id, null, CredentialStore::PCSID));
+
+        $this->actingAs($operations)->post(route('admin.approvals.approve', $request->id))->assertSessionHas('success');
+
+        $this->assertSame(CertificateVersion::REVOKED, $version->fresh()->status);
+        $this->assertSame($owner->id, $version->fresh()->revoked_by);
+        $this->assertSame(ApprovalRequest::EXECUTED, $request->fresh()->status);
+        $this->assertFalse(app(CredentialStore::class)->has($this->acme->id, null, CredentialStore::PCSID));
+    }
+
+    public function test_revocation_policy_off_runs_at_once(): void
+    {
+        $policies = app(ApprovalPolicies::class);
+        $owner = $this->operator('owner', 'owner@masaar.test');
+        $this->operator('operations', 'operations@masaar.test');
+        $policies->save(CertificateRevocationActions::REVOKE, $policies->clean(CertificateRevocationActions::REVOKE, [
+            'approvals_required' => 1, 'approver_roles' => ['owner', 'operations'], 'expires_after_hours' => 24,
+        ]), (string) $owner->id);
         $this->store($this->issuedDevice(4097));
         $version = $this->versions()[0];
 
-        $this->actingAs(User::factory()->platformAdmin()->create())
+        $this->actingAs($owner)
             ->withSession(['_token' => 'token'])
-            ->post("/admin/certificates/{$version->id}/revoke", ['reason' => 'awaiting a second admin', '_token' => 'token'])
-            ->assertSessionHas('success', 'The revocation of version 1 is waiting for approval.');
+            ->post("/admin/certificates/{$version->id}/revoke", ['reason' => 'ZATCA confirmed the key was exposed', '_token' => 'token'])
+            ->assertRedirect(route('admin.certificates'));
 
-        $this->assertSame(CertificateVersion::ACTIVE, $version->fresh()->status);
+        $this->assertSame(CertificateVersion::REVOKED, $version->fresh()->status);
+        $this->assertSame(0, ApprovalRequest::query()->count());
+    }
+
+    public function test_revoked_version_cannot_be_asked_again(): void
+    {
+        $this->store($this->issuedDevice(4097));
+        $version = $this->versions()[0];
+        app(CredentialStore::class)->revoke($this->acme->id, null, $version->certificate_id);
+
+        $this->actingAs($this->operator('owner', 'owner@masaar.test'))
+            ->withSession(['_token' => 'token'])
+            ->post("/admin/certificates/{$version->id}/revoke", ['reason' => 'ZATCA confirmed the key was exposed', '_token' => 'token'])
+            ->assertSessionHas('error', 'This certificate is already recorded as revoked.');
+
+        $this->assertSame(0, ApprovalRequest::query()->count());
     }
 
     public function test_admin_page_lists_certificates(): void
@@ -205,6 +250,14 @@ class RevocationSweepTest extends TestCase
             ->assertOk()
             ->assertSee('Acme Trading')
             ->assertSee('Mark revoked');
+    }
+
+    private function operator(string $role, string $email): User
+    {
+        return User::factory()->create([
+            'is_platform_admin' => true, 'platform_role' => $role, 'email' => $email,
+            'two_factor_secret' => 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ', 'two_factor_recovery_codes' => [], 'two_factor_confirmed_at' => now(),
+        ]);
     }
 
     /**

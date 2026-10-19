@@ -24,8 +24,9 @@ withdraws it, or when it lapses.
 Admin › Settings › Approval policies sets, per action: on or off, approvers
 needed (1 to 3), the roles that may approve and how long a request stays open.
 
-Everything ships off except admin access: granting, inviting, changing and
-revoking an admin, and making, changing or deleting a custom role. The
+Everything ships off except admin access - granting, inviting, changing and
+revoking an admin, and making, changing or deleting a custom role - and
+marking a device certificate revoked, which stops a till signing. The
 policy over the policies (`approvals.policies`) is on whenever any other
 policy is on, and cannot be switched off. So once one policy is on, changing
 any policy, including turning one off, waits for approval too.
@@ -117,11 +118,14 @@ several.
 | `admin_roles.save`, `admin_roles.delete` | custom admin roles |
 | `users.suspend`, `users.reactivate` | a person's account |
 | `licences.issue`, `licences.revoke`, `licences.allowances` | licences |
+| `certificates.revoke` | marking a device certificate revoked (Saudi module; the CA's own revocation list is never held) |
 | `accounts.freeze`, `accounts.unfreeze` | reserved for the payment freeze |
 | `approvals.policies` | the policies themselves |
 
 Each family implements `ApprovableActions`: `preview()` says what would change
 and refuses what could never run, `execute()` does it as the requester. A new
-action is a key in `ApprovalCatalogue::ACTIONS` and a family method. The admin
+action is a key in `ApprovalCatalogue::ACTIONS` and a family method; a
+country module adds its own with `ApprovalCatalogue::extend()` from its
+service provider, saying whether it ships held. The admin
 API refuses an action its policy holds (409): it is asked for in the console,
 where it carries a reason and the approvers see it.

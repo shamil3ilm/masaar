@@ -4,16 +4,18 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia\Signing;
 
+use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\CertificateVersion;
+use App\Domains\Platform\Approvals\Outcome;
+use DomainException;
 
 /**
  * The approval-policy hook for marking a certificate revoked by hand.
  *
  * Marking a certificate revoked stops the device signing at once, so it is
- * the kind of action an approval policy would hold for a second person. The
- * platform has no approval policies yet; ImmediateRevocationApprovals is
- * bound until it does, and approves every request. An approval policy binds
- * its own implementation in the module's service provider.
+ * the kind of action an approval policy holds for a second person.
+ * GovernedRevocationApprovals is bound: the platform's approvals decide,
+ * held as shipped (CertificateRevocationActions).
  *
  * The revocation list itself is never held for approval: a certificate the
  * CA has published as revoked is revoked whatever anyone here decides.
@@ -21,8 +23,10 @@ use App\Domains\Compliance\Countries\SaudiArabia\Models\CertificateVersion;
 interface RevocationApprovals
 {
     /**
-     * Whether the revocation may take effect now. False means it was put to
-     * the policy and waits there.
+     * Ask for the revocation: done now, or a request waiting for approval
+     * that runs it once approved.
+     *
+     * @throws DomainException when the version is already revoked
      */
-    public function approve(CertificateVersion $version, string $reason, ?string $requestedBy): bool;
+    public function submit(CertificateVersion $version, string $reason, User $requester): Outcome;
 }

@@ -36,7 +36,6 @@ class CertificateRevocations
     public function __construct(
         private readonly CredentialStore $credentials,
         private readonly RevocationCheck $revocation,
-        private readonly RevocationApprovals $approvals,
         private readonly ThemeService $themes,
         private readonly AuditService $audit,
     ) {}
@@ -74,23 +73,18 @@ class CertificateRevocations
 
     /**
      * A platform admin marking a version revoked - ZATCA confirmed it, or the
-     * key is known to be compromised - before the CA's list says so.
+     * key is known to be compromised - before the CA's list says so. Asked
+     * for through RevocationApprovals, which runs this now or once approved.
      *
      * @throws DomainException when the version is already revoked
      */
-    public function markRevoked(CertificateVersion $version, string $reason, ?string $adminId): bool
+    public function markRevoked(CertificateVersion $version, string $reason, ?string $adminId): void
     {
         if ($version->status === CertificateVersion::REVOKED) {
             throw new DomainException(__('This certificate is already recorded as revoked.'));
         }
 
-        if (! $this->approvals->approve($version, $reason, $adminId)) {
-            return false;
-        }
-
         $this->record($version, $reason, $adminId, 'admin');
-
-        return true;
     }
 
     private function record(CertificateVersion $version, string $reason, ?string $adminId, string $source): void
