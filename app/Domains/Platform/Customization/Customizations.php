@@ -107,6 +107,11 @@ class Customizations
             $value = $this->merge([(array) $definition->default, ...array_map(fn (mixed $list): array => (array) $list, array_values($levels))]);
         }
 
+        // A record field by field: each level's fields over those above.
+        if ($definition->type === 'record') {
+            $value = array_replace((array) $definition->default, ...array_map(fn (mixed $record): array => (array) $record, array_values($levels)));
+        }
+
         return new Resolved($definition, $value, $source, $at, $levels[$at->value] ?? null, $lockedBy, $levels);
     }
 
@@ -185,8 +190,8 @@ class Customizations
     /**
      * Every customization a level can set, as it stands for the scope: what
      * a settings page shows - the value, where it comes from, and whether
-     * the level has its own to reset. Lists of entries have screens of their
-     * own and are left out.
+     * the level has its own to reset. Lists of entries and records have
+     * screens of their own and are left out.
      *
      * @return list<Resolved>
      */
@@ -195,7 +200,7 @@ class Customizations
         $rows = [];
 
         foreach ($this->catalogue->all() as $definition) {
-            if (! $definition->allows($level) || $definition->type === 'entries' || $definition->ownScreen || ! $scope->has($level)) {
+            if (! $definition->allows($level) || in_array($definition->type, ['entries', 'record'], true) || $definition->ownScreen || ! $scope->has($level)) {
                 continue;
             }
 
