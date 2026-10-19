@@ -172,7 +172,7 @@ function face(native, icon, buttonLabel) {
         input.disabled = true;
     }
 
-    for (const name of ['aria-label', 'aria-describedby', 'placeholder']) {
+    for (const name of ['aria-label', 'aria-describedby', 'aria-invalid', 'placeholder']) {
         if (native.hasAttribute(name)) {
             input.setAttribute(name, native.getAttribute(name));
         }

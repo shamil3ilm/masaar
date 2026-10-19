@@ -119,8 +119,11 @@ function setUp(host) {
     input.dataset.face = '';
     input.placeholder = placeholderOption?.textContent.trim() || t('Type to search');
 
-    if (select.getAttribute('aria-label')) {
-        input.setAttribute('aria-label', select.getAttribute('aria-label'));
+    // Its name where it has no label, and a server's error on it.
+    for (const name of ['aria-label', 'aria-invalid', 'aria-describedby']) {
+        if (select.hasAttribute(name)) {
+            input.setAttribute(name, select.getAttribute(name));
+        }
     }
 
     const toggle = document.createElement('span');

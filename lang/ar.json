@@ -2358,5 +2358,16 @@
     "text": "نص",
     "up to :size each": "حتى :size لكل ملف",
     "up to :size": "حتى :size",
-    "at most :count files": ":count ملفات على الأكثر"
+    "at most :count files": ":count ملفات على الأكثر",
+    ":field is required.": "حقل :field مطلوب.",
+    "Enter a number.": "أدخل رقماً.",
+    "Enter a valid :field.": "أدخل قيمة صحيحة في حقل :field.",
+    "Enter an email address, like name@example.com.": "أدخل عنوان بريد إلكتروني مثل name@example.com.",
+    ":field must be at least :count characters.": "يجب ألا يقل :field عن :count أحرف.",
+    ":field must be :count characters or fewer.": "يجب ألا يزيد :field على :count حرفاً.",
+    ":field must be :min or more.": "يجب أن يكون :field :min أو أكثر.",
+    ":field must be :max or less.": "يجب أن يكون :field :max أو أقل.",
+    ":field is not in steps of :step.": "يجب أن يكون :field من مضاعفات :step.",
+    ":field is not in the expected format.": "صيغة :field غير صحيحة.",
+    "This field": "هذا الحقل"
 }

@@ -40,6 +40,19 @@
         'Remove :name' => __('Remove :name'),
         'Uploading... :percent%' => __('Uploading... :percent%'),
         'The upload did not finish. Sending it again the usual way.' => __('The upload did not finish. Sending it again the usual way.'),
+        // Form errors (validate.js)
+        ':field is required.' => __(':field is required.'),
+        'Enter a number.' => __('Enter a number.'),
+        'Enter a valid :field.' => __('Enter a valid :field.'),
+        'Enter an email address, like name@example.com.' => __('Enter an email address, like name@example.com.'),
+        ':field must be at least :count characters.' => __(':field must be at least :count characters.'),
+        ':field must be :count characters or fewer.' => __(':field must be :count characters or fewer.'),
+        ':field must be :min or more.' => __(':field must be :min or more.'),
+        ':field must be :max or less.' => __(':field must be :max or less.'),
+        ':field is not in steps of :step.' => __(':field is not in steps of :step.'),
+        ':field is not in the expected format.' => __(':field is not in the expected format.'),
+        'This field' => __('This field'),
+        'Please correct the following:' => __('Please correct the following:'),
     ];
 @endphp
 <div hidden data-ui-strings="{{ json_encode($strings, JSON_UNESCAPED_UNICODE) }}"></div>
