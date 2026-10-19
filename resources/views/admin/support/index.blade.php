@@ -3,32 +3,32 @@
 @section('title', 'Support')
 
 @section('content')
-<div class="mb-6">
-    <h1 class="text-2xl font-semibold tracking-tight text-fg">Support</h1>
-    <p class="mt-1 max-w-3xl text-sm text-muted">Customers' tickets: urgent first, then whoever has waited longest</p>
-</div>
+<x-ui.page-header title="Support" description="Customers' tickets: urgent first, then whoever has waited longest" />
 
 <form method="GET" action="{{ route('admin.support.index') }}" class="mb-6 bg-surface rounded-card border border-line shadow-card p-4 flex flex-wrap items-end gap-4">
     <div>
-        <label for="status" class="block text-xs font-medium text-muted uppercase mb-1">Status</label>
-        <x-ui.select id="status" name="status">
-            @foreach ($statuses as $option)
-                <option value="{{ $option->value }}" @selected($status === $option)>{{ $option->label() }}</option>
-            @endforeach
-            <option value="all" @selected($status === null)>Any status</option>
-        </x-ui.select>
+        <x-ui.field label="Status">
+            <x-ui.select id="status" name="status">
+                @foreach ($statuses as $option)
+                    <option value="{{ $option->value }}" @selected($status === $option)>{{ $option->label() }}</option>
+                @endforeach
+                <option value="all" @selected($status === null)>Any status</option>
+            </x-ui.select>
+        </x-ui.field>
     </div>
     <div>
-        <label for="assigned" class="block text-xs font-medium text-muted uppercase mb-1">Assigned</label>
-        <x-ui.select id="assigned" name="assigned">
-            <option value="">Anyone</option>
-            <option value="mine" @selected($assigned === 'mine')>Me</option>
-            <option value="unassigned" @selected($assigned === 'unassigned')>Nobody</option>
-        </x-ui.select>
+        <x-ui.field label="Assigned">
+            <x-ui.select id="assigned" name="assigned">
+                <option value="">Anyone</option>
+                <option value="mine" @selected($assigned === 'mine')>Me</option>
+                <option value="unassigned" @selected($assigned === 'unassigned')>Nobody</option>
+            </x-ui.select>
+        </x-ui.field>
     </div>
     <div class="flex-1 min-w-48">
-        <label for="q" class="block text-xs font-medium text-muted uppercase mb-1">Search</label>
-        <x-ui.input id="q" name="q" type="text" value="{{ $search }}" placeholder="Ticket number, subject or company" />
+        <x-ui.field label="Search">
+            <x-ui.input id="q" name="q" type="text" value="{{ $search }}" placeholder="Ticket number, subject or company" />
+        </x-ui.field>
     </div>
     <div class="flex items-center gap-2">
         <x-ui.button variant="secondary">Filter</x-ui.button>

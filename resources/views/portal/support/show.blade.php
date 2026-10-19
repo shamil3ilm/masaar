@@ -3,14 +3,15 @@
 @section('title', $ticket->reference())
 
 @section('content')
-<div class="mb-6">
-    <p class="text-sm"><a href="{{ route('portal.support.index') }}" class="text-accent hover:underline"><span class="inline-block rtl:rotate-180">&larr;</span> {{ __('Support') }}</a></p>
-    <div class="mt-2 flex flex-wrap items-center gap-3">
-        <h1 class="text-2xl font-semibold tracking-tight text-fg">{{ $ticket->subject }}</h1>
+<x-ui.page-header :title="$ticket->subject">
+    <x-slot:breadcrumb>
+        <x-ui.breadcrumb :items="[['label' => __('Support'), 'href' => route('portal.support.index')], ['label' => $ticket->reference()]]" />
+    </x-slot:breadcrumb>
+    <x-slot:meta>
         <x-ui.badge :tone="$ticket->status->tone()" :label="$ticket->status->label()" />
-    </div>
-    <p class="text-sm text-muted"><span dir="ltr">{{ $ticket->reference() }}</span> &middot; {{ $ticket->category->label() }} &middot; {{ __('opened :date', ['date' => $ticket->created_at->translatedFormat('M d, Y')]) }}</p>
-</div>
+    </x-slot:meta>
+    <x-slot:description><span dir="ltr">{{ $ticket->reference() }}</span> &middot; {{ $ticket->category->label() }} &middot; {{ __('opened :date', ['date' => "\u{2066}".$ticket->created_at->toDateString()."\u{2069}"]) }}</x-slot:description>
+</x-ui.page-header>
 
 <div class="max-w-3xl space-y-6">
     <x-support-thread :ticket="$ticket" attachment-route="portal.support.attachment" />

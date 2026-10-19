@@ -7,10 +7,7 @@
 @endphp
 
 @section('content')
-<div class="mb-6">
-    <h1 class="text-2xl font-semibold tracking-tight text-fg">{{ __('Plan and billing') }}</h1>
-    <p class="mt-1 max-w-3xl text-sm text-muted">{{ __('Your plan, how much of it this month has used, and what you have paid. To renew or change plan, open a ticket under Support.') }}</p>
-</div>
+<x-ui.page-header :title="__('Plan and billing')" :description="__('Your plan, how much of it this month has used, and what you have paid. To renew or change plan, open a ticket under Support.')" />
 
 <div class="mb-6 grid grid-cols-1 gap-6 md:grid-cols-3">
     <div class="rounded-card bg-surface p-6 border border-line shadow-card">
@@ -50,8 +47,8 @@
         <tr class="hover:bg-sunken">
             <td class="px-6 py-4 text-sm text-fg"><span dir="ltr">{{ $payment->paid_at->toDateString() }}</span></td>
             <td class="px-6 py-4 text-sm text-muted">{{ $plans[$payment->tier] ?? ucfirst($payment->tier) }}</td>
-            <td class="px-6 py-4 text-sm text-muted">{{ __(':from to :to', ['from' => $payment->period_start->toDateString(), 'to' => $payment->period_end->toDateString()]) }}</td>
-            <td class="px-6 py-4 text-end text-sm tabular-nums text-fg"><span dir="ltr">{{ number_format((float) $payment->total, 2) }} {{ $payment->currency }}</span></td>
+            <td class="px-6 py-4 text-sm text-muted">{{ __(':from to :to', ['from' => "\u{2066}".$payment->period_start->toDateString()."\u{2069}", 'to' => "\u{2066}".$payment->period_end->toDateString()."\u{2069}"]) }}</td>
+            <td class="px-6 py-4 text-end text-sm tabular-nums text-fg"><x-ui.amount :value="$payment->total" :currency="$payment->currency" /></td>
             <td class="px-6 py-4 text-sm">
                 @if ($payment->invoice_id)
                     <a href="{{ route('portal.billing.invoice', $payment->id) }}" class="text-accent hover:underline">{{ __('Download PDF') }}</a>

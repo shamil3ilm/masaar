@@ -23,7 +23,7 @@
     @else
         {{-- Issued past the UAE's 14 days (IssueDeadline): sent all the same. --}}
         @foreach (\App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\IssueDeadline::warnings($document) as $warning)
-            <p class="mb-4 rounded-lg border border-warning-line bg-warning-soft p-3 text-sm text-warning" data-issued-late>{{ $warning }}</p>
+            <x-ui.alert tone="warning" class="mb-4" data-issued-late>{{ $warning }}</x-ui.alert>
         @endforeach
 
         <dl class="space-y-3 text-sm">

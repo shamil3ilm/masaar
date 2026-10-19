@@ -3,10 +3,11 @@
 @section('title', $product->exists ? $product->name : __('New product'))
 
 @section('content')
-<div class="mb-6">
-    <p class="text-sm"><a href="{{ route('portal.products.index') }}" class="text-accent hover:underline"><span class="inline-block rtl:rotate-180">&larr;</span> {{ __('Products') }}</a></p>
-    <h2 class="mt-2 text-2xl font-semibold text-fg">{{ $product->exists ? $product->name : __('New product') }}</h2>
-</div>
+<x-ui.page-header :title="$product->exists ? $product->name : __('New product')">
+    <x-slot:breadcrumb>
+        <x-ui.breadcrumb :items="[['label' => __('Products'), 'href' => route('portal.products.index')], ['label' => $product->exists ? $product->name : __('New product')]]" />
+    </x-slot:breadcrumb>
+</x-ui.page-header>
 
 <form method="POST" action="{{ $product->exists ? route('portal.products.update', $product->id) : route('portal.products.store') }}"
       class="max-w-3xl space-y-6">
@@ -62,7 +63,10 @@
 
     {{-- Only while no invoice has used it; one that was used is archived (CatalogueRemoval). --}}
     @if ($removable)
-        <form method="POST" action="{{ route('portal.products.remove', $product->id) }}" class="mt-4 max-w-3xl">
+        <form method="POST" action="{{ route('portal.products.remove', $product->id) }}" class="mt-4 max-w-3xl"
+              data-confirm-tone="danger" data-confirm-action="{{ __('Remove product') }}"
+              data-confirm="{{ __('Remove product :name?', ['name' => $product->name]) }}"
+              data-confirm-detail="{{ __('It leaves your lists and the invoice form. You can bring it back from the removed ones.') }}">
             @csrf
             <x-ui.button variant="danger">{{ __('Remove product') }}</x-ui.button>
             <p class="mt-1 text-xs text-muted">{{ __('No invoice has used it, so it can be removed. Show the removed ones in the list to bring it back.') }}</p>

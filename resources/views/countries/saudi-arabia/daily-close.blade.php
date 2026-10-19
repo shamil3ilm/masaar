@@ -63,15 +63,15 @@
                 <span class="block text-xs text-muted">{{ __('Counter :counter', ['counter' => $group[$end]['counter'] ?? '']) }}</span>
             </td>
             @endforeach
-            <td class="px-6 py-4 text-end text-sm tabular-nums text-fg"><span dir="ltr">{{ number_format($group['sales']['total'], 2) }}</span></td>
-            <td class="px-6 py-4 text-end text-sm tabular-nums text-fg"><span dir="ltr">{{ number_format(-$group['returns']['total'], 2) }}</span></td>
-            <td class="px-6 py-4 text-end text-sm tabular-nums font-semibold text-fg"><span dir="ltr">{{ number_format($group['net'], 2) }}</span></td>
+            <td class="px-6 py-4 text-end text-sm tabular-nums text-fg"><x-ui.amount :value="$group['sales']['total']" /></td>
+            <td class="px-6 py-4 text-end text-sm tabular-nums text-fg"><x-ui.amount :value="-$group['returns']['total']" /></td>
+            <td class="px-6 py-4 text-end text-sm tabular-nums font-semibold text-fg"><x-ui.amount :value="$group['net']" /></td>
         </tr>
         @foreach ($group['rates'] as $rate)
         <tr>
             <td class="px-6 py-2 ps-10 text-xs text-muted" colspan="4">{{ __('VAT :rate%', ['rate' => $rate['rate']]) }}</td>
-            <td class="px-6 py-2 text-end text-xs tabular-nums text-muted" colspan="2">{{ __('Net') }} <span dir="ltr">{{ number_format($rate['net'], 2) }}</span></td>
-            <td class="px-6 py-2 text-end text-xs tabular-nums text-muted">{{ __('VAT') }} <span dir="ltr">{{ number_format($rate['vat'], 2) }}</span></td>
+            <td class="px-6 py-2 text-end text-xs tabular-nums text-muted" colspan="2">{{ __('Net') }} <x-ui.amount :value="$rate['net']" /></td>
+            <td class="px-6 py-2 text-end text-xs tabular-nums text-muted">{{ __('VAT') }} <x-ui.amount :value="$rate['vat']" /></td>
         </tr>
         @endforeach
         @if ($group['missing_rate'] !== [])

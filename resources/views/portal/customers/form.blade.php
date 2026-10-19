@@ -3,11 +3,11 @@
 @section('title', $customer->exists ? $customer->name : __('New customer'))
 
 @section('content')
-<div class="mb-6">
-    <p class="text-sm"><a href="{{ route('portal.customers.index') }}" class="text-accent hover:underline"><span class="inline-block rtl:rotate-180">&larr;</span> {{ __('Customers') }}</a></p>
-    <h2 class="mt-2 text-2xl font-semibold text-fg">{{ $customer->exists ? $customer->name : __('New customer') }}</h2>
-    <p class="text-muted">{{ __('A standard (B2B) invoice needs the VAT number and the national address.') }}</p>
-</div>
+<x-ui.page-header :title="$customer->exists ? $customer->name : __('New customer')" :description="__('A standard (B2B) invoice needs the VAT number and the national address.')">
+    <x-slot:breadcrumb>
+        <x-ui.breadcrumb :items="[['label' => __('Customers'), 'href' => route('portal.customers.index')], ['label' => $customer->exists ? $customer->name : __('New customer')]]" />
+    </x-slot:breadcrumb>
+</x-ui.page-header>
 
 <form method="POST" action="{{ $customer->exists ? route('portal.customers.update', $customer->id) : route('portal.customers.store') }}"
       class="max-w-3xl space-y-6">
@@ -84,7 +84,10 @@
 
     {{-- Only while no invoice has used it; one that was used is archived (CatalogueRemoval). --}}
     @if ($removable)
-        <form method="POST" action="{{ route('portal.customers.remove', $customer->id) }}" class="mt-4 max-w-3xl">
+        <form method="POST" action="{{ route('portal.customers.remove', $customer->id) }}" class="mt-4 max-w-3xl"
+              data-confirm-tone="danger" data-confirm-action="{{ __('Remove customer') }}"
+              data-confirm="{{ __('Remove customer :name?', ['name' => $customer->name]) }}"
+              data-confirm-detail="{{ __('It leaves your lists and the invoice form. You can bring it back from the removed ones.') }}">
             @csrf
             <x-ui.button variant="danger">{{ __('Remove customer') }}</x-ui.button>
             <p class="mt-1 text-xs text-muted">{{ __('No invoice has used it, so it can be removed. Show the removed ones in the list to bring it back.') }}</p>

@@ -14,13 +14,7 @@
     Every control is a POST behind data-confirm, read by the bundled listener
     (resources/js/confirm.js) - the content policy allows no inline handler.
 --}}
-<div class="mb-6">
-    <h1 class="text-2xl font-semibold tracking-tight text-fg">Countries</h1>
-    <p class="mt-1 max-w-3xl text-sm text-muted">
-        Where the platform issues e-invoices. Switching a country off stops new issuing there on the next
-        request and is recorded with who did it; invoices already issued keep being filed or sent.
-    </p>
-</div>
+<x-ui.page-header title="Countries" description="Where the platform issues e-invoices. Switching a country off stops new issuing there on the next request and is recorded with who did it; invoices already issued keep being filed or sent." />
 
 <div class="space-y-4">
     @foreach ($countries as $country)
@@ -28,8 +22,7 @@
             $switch = $country['switch'];
             $count = $country['organizations'];
             $organizations = $count.' '.\Illuminate\Support\Str::plural('organization', $count);
-            $offWarning = 'Switch off '.$country['name'].'? '
-                .($count > 0 ? $organizations.' registered there will stop issuing invoices. ' : 'No organization is registered there yet. ')
+            $offWarning = ($count > 0 ? $organizations.' registered there will stop issuing invoices. ' : 'No organization is registered there yet. ')
                 .($country['billing'] ? 'The platform\'s billing organization is in '.$country['name'].', so platform billing invoices stop too. ' : '')
                 .'Invoices already issued keep being filed or sent.';
         @endphp
@@ -88,7 +81,8 @@
                     @if ($country['enabled'])
                         <form method="POST" action="{{ route('admin.countries.update') }}"
                               data-confirm-tone="danger" data-confirm-action="Switch off"
-                              data-confirm="{{ $offWarning }}">
+                              data-confirm="Switch off {{ $country['name'] }}?"
+                              data-confirm-detail="{{ $offWarning }}">
                             @csrf
                             <input type="hidden" name="country" value="{{ $country['code'] }}">
                             <input type="hidden" name="enabled" value="0">
@@ -98,7 +92,8 @@
                     @else
                         <form method="POST" action="{{ route('admin.countries.update') }}"
                               data-confirm-action="Switch on"
-                              data-confirm="Switch on {{ $country['name'] }}? Its organizations can issue again, and sign-up offers it.">
+                              data-confirm="Switch on {{ $country['name'] }}?"
+                              data-confirm-detail="Its organizations can issue again at once, and sign-up offers it. You can switch it off again.">
                             @csrf
                             <input type="hidden" name="country" value="{{ $country['code'] }}">
                             <input type="hidden" name="enabled" value="1">

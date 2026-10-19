@@ -22,8 +22,8 @@
                 <tr>
                     <td class="px-6 py-4 text-sm font-medium text-fg">{{ $row['name'] }}</td>
                     <td class="px-6 py-4 text-end text-sm tabular-nums text-muted">{{ $row['documents'] }}</td>
-                    <td class="px-6 py-4 text-end text-sm tabular-nums text-fg"><span dir="ltr">{{ number_format($row['base'], 2) }} {{ $row['currency'] }}</span></td>
-                    <td class="px-6 py-4 text-end text-sm tabular-nums text-fg"><span dir="ltr">{{ number_format($row['vat'], 2) }} {{ $row['currency'] }}</span></td>
+                    <td class="px-6 py-4 text-end text-sm tabular-nums text-fg"><x-ui.amount :value="$row['base']" :currency="$row['currency']" /></td>
+                    <td class="px-6 py-4 text-end text-sm tabular-nums text-fg"><x-ui.amount :value="$row['vat']" :currency="$row['currency']" /></td>
                 </tr>
             @endforeach
         </x-ui.table>

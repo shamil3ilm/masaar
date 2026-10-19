@@ -115,7 +115,9 @@
                     @foreach ($list->views as $view)
                         <li class="inline-flex items-center rounded-full border border-line bg-surface">
                             <a href="{{ $view['url'] }}" class="inline-flex min-h-11 items-center ps-3 pe-1 text-sm font-medium text-accent hover:text-accent-strong">{{ $view['name'] }}</a>
-                            <form method="POST" action="{{ $view['delete'] }}" data-confirm="{{ __('Delete the saved view :name?', ['name' => $view['name']]) }}">
+                            <form method="POST" action="{{ $view['delete'] }}" data-confirm="{{ __('Delete the saved view :name?', ['name' => $view['name']]) }}"
+                                  data-confirm-tone="danger" data-confirm-action="{{ __('Delete') }}"
+                                  data-confirm-detail="{{ __('Only the shortcut goes; the records it shows stay. Save the view again to bring it back.') }}">
                                 @csrf
                                 <button type="submit" aria-label="{{ __('Delete the saved view :name', ['name' => $view['name']]) }}"
                                         class="inline-flex size-11 items-center justify-center rounded-full text-subtle hover:bg-sunken hover:text-danger focus-visible:outline-2 focus-visible:outline-focus">

@@ -21,7 +21,8 @@
 <div class="max-w-5xl space-y-6">
     <form method="POST" action="{{ route('admin.admins.invite') }}" class="rounded-card bg-surface border border-line shadow-card"
           data-confirm-action="{{ __('Send invitation') }}"
-          data-confirm="{{ __('Invite this address to the console, across every company?') }}">
+          data-confirm="{{ __('Invite this address to the console, across every company?') }}"
+          data-confirm-detail="{{ __('They get the role chosen once they accept. You can withdraw the invitation until then.') }}">
         @csrf
         <div class="border-b border-line p-4">
             <h3 class="font-semibold text-fg">{{ __('Invite an admin') }}</h3>
@@ -49,8 +50,9 @@
 
     <x-ui.section :title="__('Add an existing account now')" :description="__('A verified account that is not an admin yet. It sets up two-factor through the link shown here.')" closed>
         <form method="POST" action="{{ route('admin.admins.grant') }}" class="grid grid-cols-1 gap-4 sm:grid-cols-3"
-              data-confirm-action="{{ __('Make admin') }}"
-              data-confirm="{{ __('Give this account admin access to the console, across every company?') }}">
+              data-confirm-action="{{ __('Add admin') }}"
+              data-confirm="{{ __('Give this account admin access to the console, across every company?') }}"
+              data-confirm-detail="{{ __('They can use the console at once, in the role chosen. You can remove the access later.') }}">
             @csrf
             <div class="sm:col-span-2">
                 <x-ui.field :label="__('Email')">
@@ -91,7 +93,10 @@
                         @if ($admin->id === auth()->id() || $admin->adminRole() === 'owner')
                             <span class="text-sm text-muted">{{ $roles[$admin->adminRole()]['name'] ?? $admin->adminRole() }}@if ($admin->id === auth()->id()) ({{ __('you') }})@endif</span>
                         @else
-                            <form method="POST" action="{{ route('admin.admins.role', $admin->id) }}" class="flex flex-wrap items-end gap-2">
+                            <form method="POST" action="{{ route('admin.admins.role', $admin->id) }}" class="flex flex-wrap items-end gap-2"
+                                  data-confirm-action="{{ __('Change role') }}"
+                                  data-confirm="{{ __('Change the console role of :email?', ['email' => $admin->email]) }}"
+                                  data-confirm-detail="{{ __('What they can see and do changes at once. You can change it back.') }}">
                                 @csrf
                                 <x-ui.field :label="__('Role')">
                                     <x-ui.select name="role">
@@ -112,7 +117,8 @@
                         @if ($admin->id !== auth()->id() && $admin->adminRole() !== 'owner')
                             <form method="POST" action="{{ route('admin.admins.revoke', $admin->id) }}" class="space-y-2"
                                   data-confirm-tone="danger" data-confirm-action="{{ __('Remove access') }}"
-                                  data-confirm="{{ __('Remove :email\'s admin access? Their account stays; the console closes to them.', ['email' => $admin->email]) }}">
+                                  data-confirm="{{ __('Remove :email\'s admin access?', ['email' => $admin->email]) }}"
+                                  data-confirm-detail="{{ __('Their account stays, but the console closes to them at once. You can make them an admin again.') }}">
                                 @csrf
                                 @include('admin.partials.approval-reason', ['action' => 'admins.revoke', 'compact' => true])
                                 <x-ui.button variant="secondary" size="sm">{{ __('Remove access') }}</x-ui.button>
@@ -130,7 +136,10 @@
         @if ($transfer)
             <p class="text-sm text-fg">{{ __('Offered to :email; they have until :when to accept. You step down to: :role.', ['email' => $transfer->to?->email, 'when' => $transfer->expires_at->diffForHumans(), 'role' => $roles[$transfer->demote_to]['name'] ?? $transfer->demote_to]) }}</p>
             @if (auth()->id() === $transfer->from_user_id)
-                <form method="POST" action="{{ route('admin.ownership.withdraw', $transfer->id) }}" class="mt-3">
+                <form method="POST" action="{{ route('admin.ownership.withdraw', $transfer->id) }}" class="mt-3"
+                      data-confirm-action="{{ __('Withdraw the offer') }}"
+                      data-confirm="{{ __('Withdraw the ownership offer to :email?', ['email' => $transfer->to?->email]) }}"
+                      data-confirm-detail="{{ __('You stay the owner, and the offer can no longer be accepted. You can offer it again.') }}">
                     @csrf
                     <x-ui.button variant="secondary" size="sm">{{ __('Withdraw the offer') }}</x-ui.button>
                 </form>
@@ -141,7 +150,9 @@
             @else
                 <form method="POST" action="{{ route('admin.ownership.offer') }}" class="grid grid-cols-1 gap-4 sm:grid-cols-3"
                       data-confirm-tone="danger" data-confirm-action="{{ __('Offer ownership') }}"
-                      data-confirm="{{ __('Offer the platform\'s ownership? Once they accept you are no longer the owner.') }}">
+                      data-confirm="{{ __('Offer the platform\'s ownership?') }}"
+                      data-confirm-detail="{{ __('Once they accept you are no longer the owner, and only the new owner can give it back.') }}"
+                      data-confirm-type="{{ __('transfer') }}">
                     @csrf
                     <x-ui.field :label="__('To')">
                         <x-ui.select name="user_id" required>
@@ -180,7 +191,10 @@
                         <td class="px-4 py-3 text-sm text-muted">{{ $roles[$invitation->role]['name'] ?? $invitation->role }}</td>
                         <td class="px-4 py-3 text-sm text-muted">{{ $invitation->expires_at->diffForHumans() }}</td>
                         <td class="px-4 py-3 text-end">
-                            <form method="POST" action="{{ route('admin.admins.invitations.withdraw', $invitation->id) }}">
+                            <form method="POST" action="{{ route('admin.admins.invitations.withdraw', $invitation->id) }}"
+                                  data-confirm-tone="danger" data-confirm-action="{{ __('Withdraw') }}"
+                                  data-confirm="{{ __('Withdraw the invitation to :email?', ['email' => $invitation->email]) }}"
+                                  data-confirm-detail="{{ __('The link they were sent stops working. You can invite them again.') }}">
                                 @csrf
                                 <x-ui.button variant="secondary" size="sm">{{ __('Withdraw') }}</x-ui.button>
                             </form>

@@ -46,7 +46,7 @@ class Presentation implements PresentationPort
 
         return new InvoicePage(
             heading: self::VIEWS.'invoice.heading',
-            issueConfirm: __('Issue this invoice? It takes its number, is sent to the buyer as a UAE e-invoice, and cannot be issued again.'),
+            issueConfirm: __('It takes its number and goes to the buyer as a UAE e-invoice. This cannot be undone.'),
             actions: self::VIEWS.'invoice.actions',
             panel: self::VIEWS.'invoice.panel',
             buyerDetails: array_values(array_filter([

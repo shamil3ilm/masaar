@@ -1,20 +1,18 @@
 @extends('layouts.admin')
 
-@section('title', 'Offline Queue')
+@section('title', 'Offline queue')
 
 @section('content')
-<div class="mb-6 flex justify-between items-center">
-    <div>
-        <h1 class="text-2xl font-semibold tracking-tight text-fg">Offline Queue</h1>
-        <p class="mt-1 max-w-3xl text-sm text-muted">Queued invoices pending ZATCA submission</p>
-    </div>
+<x-ui.page-header title="Offline queue" description="Invoices issued while the authority could not be reached, waiting to be sent.">
     @admincan('operations.run')
-    <form action="{{ route('admin.queue.process') }}" method="POST" class="inline">
-        @csrf
-        <x-ui.button>Process Queue</x-ui.button>
-    </form>
+    <x-slot:actions>
+        <form action="{{ route('admin.queue.process') }}" method="POST" class="inline">
+            @csrf
+            <x-ui.button>Process queue</x-ui.button>
+        </form>
+    </x-slot:actions>
     @endadmincan
-</div>
+</x-ui.page-header>
 
 <!-- Stats -->
 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -46,7 +44,7 @@
             <x-ui.th>Organization</x-ui.th>
             <x-ui.th>State</x-ui.th>
             <x-ui.th :list="$list" sort="attempts">Attempts</x-ui.th>
-            <x-ui.th :list="$list" sort="newest">Queued At</x-ui.th>
+            <x-ui.th :list="$list" sort="newest">Queued</x-ui.th>
             <x-ui.th>Error</x-ui.th>
             <x-ui.th>Actions</x-ui.th>
         </x-slot:head>

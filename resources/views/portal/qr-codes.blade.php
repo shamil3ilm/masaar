@@ -28,7 +28,10 @@
                     <x-ui.button variant="secondary" size="sm" :href="route('portal.qr-codes.download', [$item['code']->id, 'png'])">PNG</x-ui.button>
                     <x-ui.button variant="secondary" size="sm" :href="route('portal.qr-codes.download', [$item['code']->id, 'svg'])">SVG</x-ui.button>
                     @if ($admin)
-                        <form method="POST" action="{{ route('portal.qr-codes.destroy', $item['code']->id) }}">
+                        <form method="POST" action="{{ route('portal.qr-codes.destroy', $item['code']->id) }}"
+                              data-confirm-tone="danger" data-confirm-action="{{ __('Delete') }}"
+                              data-confirm="{{ __('Delete the QR code :label?', ['label' => $item['code']->label]) }}"
+                              data-confirm-detail="{{ __('It is no longer printed or offered. You can restore it from the removed ones.') }}">
                             @csrf
                             <x-ui.button variant="danger" size="sm">{{ __('Delete') }}</x-ui.button>
                         </form>
@@ -44,7 +47,7 @@
                     <div class="flex flex-wrap items-center gap-3 border-t border-line py-3">
                         <div class="min-w-0 flex-1">
                             <p class="font-medium text-fg">{{ $code->label }}</p>
-                            <p class="text-xs text-muted">{{ $kinds[$code->kind] ?? $code->kind }} &middot; {{ __('Removed :date', ['date' => $code->deleted_at?->toDateString()]) }}</p>
+                            <p class="text-xs text-muted">{{ $kinds[$code->kind] ?? $code->kind }} &middot; {{ __('Removed :date', ['date' => "\u{2066}".$code->deleted_at?->toDateString()."\u{2069}"]) }}</p>
                         </div>
                         <form method="POST" action="{{ route('portal.qr-codes.restore', $code->id) }}">
                             @csrf
@@ -114,7 +117,10 @@
                 </div>
                 <x-ui.button variant="secondary" size="sm" :href="route('portal.qr-codes.links.download', [$item['link']->id, 'png'])">PNG</x-ui.button>
                 <x-ui.button variant="secondary" size="sm" :href="route('portal.qr-codes.links.download', [$item['link']->id, 'svg'])">SVG</x-ui.button>
-                <form method="POST" action="{{ route('portal.qr-codes.links.revoke', $item['link']->id) }}">
+                <form method="POST" action="{{ route('portal.qr-codes.links.revoke', $item['link']->id) }}"
+                      data-confirm-tone="danger" data-confirm-action="{{ __('Revoke') }}"
+                      data-confirm="{{ __('Revoke the link to invoice :number?', ['number' => $item['link']->invoice?->invoice_number]) }}"
+                      data-confirm-detail="{{ __('The link and any QR code printed from it stop working, and cannot be turned back on.') }}">
                     @csrf
                     <x-ui.button variant="danger" size="sm">{{ __('Revoke') }}</x-ui.button>
                 </form>

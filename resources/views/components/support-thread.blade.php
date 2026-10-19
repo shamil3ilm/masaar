@@ -24,7 +24,7 @@
                 @if ($message->internal)
                     <x-ui.badge tone="warning" label="Internal note" />
                 @endif
-                <span>{{ $message->created_at->translatedFormat('M d, Y H:i') }}</span>
+                <x-ui.date :value="$message->created_at" time />
             </div>
             <div class="whitespace-pre-line break-words text-sm text-fg">{{ $message->body }}</div>
             @if ($message->attachments->isNotEmpty())

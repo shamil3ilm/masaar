@@ -63,7 +63,10 @@
                     <td class="px-4 py-3 text-sm text-muted" dir="ltr">{{ $member->email }}</td>
                     <td class="px-4 py-3 text-sm text-muted">
                         @if ($member->id !== auth()->id() && ($isOwner || $member->role !== 'owner'))
-                            <form method="POST" action="{{ route('portal.team.role', $member->id) }}" class="flex flex-wrap items-center gap-2">
+                            <form method="POST" action="{{ route('portal.team.role', $member->id) }}" class="flex flex-wrap items-center gap-2"
+                                  data-confirm-action="{{ __('Change role') }}"
+                                  data-confirm="{{ __('Change the role of :email?', ['email' => $member->email]) }}"
+                                  data-confirm-detail="{{ __('What they can see and do changes at once. You can change it back.') }}">
                                 @csrf
                                 <x-ui.field :label="__('Role')">
                                     <x-ui.select name="role">
@@ -83,7 +86,8 @@
                         @if ($member->id !== auth()->id() && ($isOwner || $member->role !== 'owner'))
                             <form method="POST" action="{{ route('portal.team.remove', $member->id) }}"
                                   data-confirm-tone="danger" data-confirm-action="{{ __('Remove') }}"
-                                  data-confirm="{{ __('Remove :email from :organization? They lose access at once.', ['email' => $member->email, 'organization' => $organization->name]) }}">
+                                  data-confirm="{{ __('Remove :email from :organization?', ['email' => $member->email, 'organization' => $organization->name]) }}"
+                                  data-confirm-detail="{{ __('They lose access at once. You can bring them back from Removed.') }}">
                                 @csrf
                                 <x-ui.button variant="secondary" size="sm">{{ __('Remove') }}</x-ui.button>
                             </form>
@@ -109,7 +113,10 @@
                         <td class="px-4 py-3 text-sm text-muted">{{ $labels[$invitation->role] ?? ucfirst($invitation->role) }}</td>
                         <td class="px-4 py-3 text-sm text-muted">{{ $invitation->expires_at->diffForHumans() }}</td>
                         <td class="px-4 py-3 text-end">
-                            <form method="POST" action="{{ route('portal.team.revoke', $invitation->id) }}">
+                            <form method="POST" action="{{ route('portal.team.revoke', $invitation->id) }}"
+                                  data-confirm-tone="danger" data-confirm-action="{{ __('Withdraw') }}"
+                                  data-confirm="{{ __('Withdraw the invitation to :email?', ['email' => $invitation->email]) }}"
+                                  data-confirm-detail="{{ __('The link they were sent stops working. You can invite them again.') }}">
                                 @csrf
                                 <x-ui.button variant="secondary" size="sm">{{ __('Withdraw') }}</x-ui.button>
                             </form>
@@ -136,7 +143,10 @@
                         <td class="px-4 py-3 text-sm text-muted">{{ $labels[$member->role] ?? ucfirst($member->role) }}</td>
                         <td class="px-4 py-3 text-end">
                             @if ($isOwner || $member->role !== 'owner')
-                                <form method="POST" action="{{ route('portal.team.restore', $member->id) }}">
+                                <form method="POST" action="{{ route('portal.team.restore', $member->id) }}"
+                                      data-confirm-action="{{ __('Bring back') }}"
+                                      data-confirm="{{ __('Bring back :email?', ['email' => $member->email]) }}"
+                                      data-confirm-detail="{{ __('They can open :organization again at once, in the role they had.', ['organization' => $organization->name]) }}">
                                     @csrf
                                     <x-ui.button variant="secondary" size="sm">{{ __('Bring back') }}</x-ui.button>
                                 </form>

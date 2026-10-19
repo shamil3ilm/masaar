@@ -65,7 +65,10 @@
             <div class="flex flex-wrap gap-2">
                 <x-ui.button variant="secondary" size="sm">{{ __('Save') }}</x-ui.button>
                 @if ($resolved->own !== null)
-                    <x-ui.button variant="ghost" size="sm" name="reset" value="1" formnovalidate>{{ __('Reset to inherited') }}</x-ui.button>
+                    <x-ui.button variant="ghost" size="sm" name="reset" value="1" formnovalidate
+                                 data-confirm-action="{{ __('Reset') }}"
+                                 data-confirm="{{ __('Reset :setting to the inherited value?', ['setting' => $definition->label]) }}"
+                                 data-confirm-detail="{{ __('The value set here is dropped and the one above applies again. You can set it again at any time.') }}">{{ __('Reset to inherited') }}</x-ui.button>
                 @endif
             </div>
         </div>

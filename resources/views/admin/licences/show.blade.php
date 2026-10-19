@@ -29,19 +29,15 @@
 {{-- Only ever populated by store(), and only for the one request after it. --}}
 @include('admin.licences.partials.secret-once')
 
-<div class="mb-6 flex flex-wrap items-start justify-between gap-4">
-    <div>
-        <a href="{{ route('admin.licences.index') }}" class="text-sm text-accent hover:text-accent-strong">&larr; All licences</a>
-        <h2 class="mt-1 text-2xl font-semibold text-fg">{{ $row['organization_name'] }}</h2>
-        <p class="text-muted">{{ $row['contact_email'] }}</p>
-    </div>
-    <div class="flex items-center gap-3">
+<x-ui.page-header :title="$row['organization_name']" :description="$row['contact_email']">
+    <x-slot:breadcrumb>
+        <x-ui.breadcrumb :items="[['label' => 'Licences', 'href' => route('admin.licences.index')], ['label' => $row['organization_name']]]" />
+    </x-slot:breadcrumb>
+    <x-slot:meta>
         <x-ui.badge :state="$status ?? $row['status']" :label="$status?->getLabel()" />
-        <span class="text-xs text-muted">
-            {{ $licence['is_valid'] ? 'Serving API traffic' : 'Not serving API traffic' }}
-        </span>
-    </div>
-</div>
+        <span class="text-xs text-muted">{{ $licence['is_valid'] ? 'Serving API traffic' : 'Not serving API traffic' }}</span>
+    </x-slot:meta>
+</x-ui.page-header>
 
 <div class="grid gap-6 lg:grid-cols-3">
     <div class="space-y-6 lg:col-span-2">
@@ -211,11 +207,13 @@
                     @admincan('licences.manage')
                     <form method="POST" action="{{ route('admin.licences.suspend', $row['id']) }}"
                           data-confirm-tone="danger" data-confirm-action="Suspend"
-                          data-confirm="Suspend this licence? The partner stops being able to call the API the moment you confirm.">
+                          data-confirm="Suspend this licence?"
+                          data-confirm-detail="The partner cannot call the API from the moment you confirm. You can reactivate it later.">
                         @csrf
-                        <label for="suspend-reason" class="block text-xs font-medium uppercase text-muted">Reason</label>
-                        <x-ui.input id="suspend-reason" name="reason" type="text" maxlength="255" required
-                               placeholder="Why the partner is being cut off" />
+                        <x-ui.field label="Reason">
+                            <x-ui.input id="suspend-reason" name="reason" type="text" maxlength="255" required
+                                   placeholder="Why the partner is being cut off" />
+                        </x-ui.field>
                         <x-ui.button variant="secondary" class="mt-2 w-full">Suspend licence</x-ui.button>
                         <p class="mt-1 text-xs text-muted">Reversible. Invoices already submitted are untouched.</p>
                     </form>
@@ -224,7 +222,10 @@
 
                 @if($canReactivate)
                     @admincan('licences.manage')
-                    <form method="POST" action="{{ route('admin.licences.reactivate', $row['id']) }}">
+                    <form method="POST" action="{{ route('admin.licences.reactivate', $row['id']) }}"
+                          data-confirm-action="Reactivate"
+                          data-confirm="Reactivate this licence?"
+                          data-confirm-detail="The partner can call the API again at once. You can suspend it again.">
                         @csrf
                         <x-ui.button class="w-full">Reactivate licence</x-ui.button>
                         <p class="mt-1 text-xs text-muted">Clears the suspension and lets the partner call again.</p>
@@ -236,11 +237,14 @@
                     @admincan('licences.manage')
                     <form method="POST" action="{{ route('admin.licences.revoke', $row['id']) }}"
                           data-confirm-tone="danger" data-confirm-action="Revoke"
-                          data-confirm="Revoke this licence? This is permanent and the partner integration stops working now.">
+                          data-confirm="Revoke this licence?"
+                          data-confirm-detail="The partner integration stops working now, and this key can never be used again."
+                          data-confirm-type="{{ $row['organization_name'] }}">
                         @csrf
-                        <label for="revoke-reason" class="block text-xs font-medium uppercase text-muted">Reason</label>
-                        <x-ui.input id="revoke-reason" name="reason" type="text" maxlength="255" required
-                               placeholder="Why the licence is being withdrawn" />
+                        <x-ui.field label="Reason">
+                            <x-ui.input id="revoke-reason" name="reason" type="text" maxlength="255" required
+                                   placeholder="Why the licence is being withdrawn" />
+                        </x-ui.field>
                         <x-ui.button variant="danger" class="mt-2 w-full">Revoke licence</x-ui.button>
                         <p class="mt-1 text-xs text-muted">Permanent. This key can never be used again.</p>
                     </form>
@@ -252,7 +256,8 @@
                 @admincan('licences.manage')
                 <form method="POST" action="{{ route('admin.licences.rotate', $row['id']) }}"
                       data-confirm-tone="danger" data-confirm-action="Regenerate"
-                      data-confirm="Regenerate this secret? The current secret stops working immediately, with no grace period for the partner to update it.">
+                      data-confirm="Regenerate this secret?"
+                      data-confirm-detail="The current secret stops working immediately, with no grace period for the partner to update it.">
                     @csrf
                     <x-ui.button variant="secondary" class="mt-2 w-full">Regenerate secret</x-ui.button>
                     <p class="mt-1 text-xs text-muted">

@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Kill Switches')
+@section('title', 'Kill switches')
 
 @section('content')
 {{--
@@ -26,25 +26,20 @@
     ];
 @endphp
 
-<div class="mb-6 flex flex-wrap items-start justify-between gap-4">
-    <div>
-        <h1 class="text-2xl font-semibold tracking-tight text-fg">Kill switches</h1>
-        <p class="mt-1 max-w-3xl text-sm text-muted">
-            Platform-wide. Each one stops that step for every taxpayer, takes effect on the next
-            request, and is recorded with the reason given for it.
-        </p>
-    </div>
-
+<x-ui.page-header title="Kill switches" description="Platform-wide. Each one stops that step for every taxpayer, takes effect on the next request, and is recorded with the reason given for it.">
+    <x-slot:actions>
     @if ($status['is_fully_operational'])
         @admincan('platform.configure')
         <form method="POST" action="{{ route('admin.kill-switches.stop') }}" class="flex flex-wrap items-end gap-2"
               data-confirm-tone="danger" data-confirm-action="Stop everything"
-              data-confirm="Stop everything? No invoice will be issued, signed or filed for any taxpayer until you resume.">
+              data-confirm="Stop everything?"
+              data-confirm-detail="No invoice will be issued, signed or filed for any taxpayer until you resume.">
             @csrf
             <div>
-                <label for="stop-reason" class="mb-1 block text-xs font-medium text-muted">Reason</label>
-                <x-ui.input id="stop-reason" name="reason" type="text" required minlength="5" maxlength="500"
-                       value="{{ old('reason') }}" placeholder="Why everything is stopping" class="sm:w-72" />
+                <x-ui.field label="Reason">
+                    <x-ui.input id="stop-reason" name="reason" type="text" required minlength="5" maxlength="500"
+                           value="{{ old('reason') }}" placeholder="Why everything is stopping" class="sm:w-72" />
+                </x-ui.field>
             </div>
             <x-ui.button variant="danger">Stop everything</x-ui.button>
         </form>
@@ -53,22 +48,21 @@
         @admincan('platform.configure')
         <form method="POST" action="{{ route('admin.kill-switches.resume') }}"
               data-confirm-action="Resume everything"
-              data-confirm="Resume everything? Every switch currently on will be turned off.">
+              data-confirm="Resume everything?"
+              data-confirm-detail="Every switch currently on is turned off, and taxpayers can issue again at once.">
             @csrf
             @include('admin.partials.approval-reason', ['action' => 'kill_switches.resume'])
             <x-ui.button>Resume everything</x-ui.button>
         </form>
         @endadmincan
     @endif
-</div>
+    </x-slot:actions>
+</x-ui.page-header>
 
 @if ($status['is_fully_operational'])
-    <div class="mb-6 rounded-lg border border-success-line bg-success-soft px-4 py-3 text-sm text-success">
-        Nothing is stopped. Every step is running for every taxpayer.
-    </div>
+    <x-ui.alert tone="success" class="mb-6">Nothing is stopped. Every step is running for every taxpayer.</x-ui.alert>
 @else
-    <div class="mb-6 rounded-lg border border-danger-line bg-danger-soft px-4 py-3 text-sm text-danger">
-        <strong>{{ count($status['long_running_switches']) > 0 ? 'Stopped, and for a while.' : 'Something is stopped.' }}</strong>
+    <x-ui.alert tone="danger" class="mb-6" :title="count($status['long_running_switches']) > 0 ? 'Stopped, and for a while.' : 'Something is stopped.'">
         Taxpayers are being refused the steps listed below.
         @if (count($status['long_running_switches']) > 0)
             {{ count($status['long_running_switches']) }}
@@ -76,7 +70,7 @@
             {{ count($status['long_running_switches']) === 1 ? 'has' : 'have' }}
             been on long enough to have raised an alert.
         @endif
-    </div>
+    </x-ui.alert>
 @endif
 
 <div class="space-y-4">
@@ -133,7 +127,8 @@
                         @admincan('platform.configure')
                         <form method="POST" action="{{ route('admin.kill-switches.disable') }}"
                               data-confirm-action="Resume"
-                              data-confirm="Resume {{ strtolower($name) }}? Taxpayers will be able to do this again immediately.">
+                              data-confirm="Resume {{ strtolower($name) }}?"
+                              data-confirm-detail="Taxpayers can do this again immediately. You can stop it again.">
                             @csrf
                             <input type="hidden" name="switch" value="{{ $switch }}">
                             @include('admin.partials.approval-reason', ['action' => 'kill_switches.disable', 'compact' => true])
@@ -145,24 +140,23 @@
                         <form method="POST" action="{{ route('admin.kill-switches.enable') }}"
                               class="flex flex-wrap items-end justify-end gap-2"
                               data-confirm-tone="danger" data-confirm-action="Stop"
-                              data-confirm="Stop {{ strtolower($name) }} for every taxpayer?">
+                              data-confirm="Stop {{ strtolower($name) }} for every taxpayer?"
+                              data-confirm-detail="It stops on the next request, until you resume it.">
                             @csrf
                             <input type="hidden" name="switch" value="{{ $switch }}">
 
                             <div>
-                                <label for="reason-{{ $switch }}" class="mb-1 block text-xs font-medium text-muted">
-                                    Reason
-                                </label>
-                                <x-ui.input id="reason-{{ $switch }}" name="reason" type="text" required
-                                       minlength="5" maxlength="500" placeholder="Why this is stopping" class="sm:w-56" />
+                                <x-ui.field label="Reason">
+                                    <x-ui.input id="reason-{{ $switch }}" name="reason" type="text" required
+                                           minlength="5" maxlength="500" placeholder="Why this is stopping" class="sm:w-56" />
+                                </x-ui.field>
                             </div>
 
                             <div>
-                                <label for="minutes-{{ $switch }}" class="mb-1 block text-xs font-medium text-muted">
-                                    Minutes
-                                </label>
-                                <x-ui.input id="minutes-{{ $switch }}" name="minutes" type="number" min="1"
-                                       max="{{ $maxMinutes }}" placeholder="optional" class="sm:w-28" />
+                                <x-ui.field label="Minutes">
+                                    <x-ui.input id="minutes-{{ $switch }}" name="minutes" type="number" min="1"
+                                           max="{{ $maxMinutes }}" placeholder="optional" class="sm:w-28" />
+                                </x-ui.field>
                             </div>
 
                             <x-ui.button variant="danger">Stop</x-ui.button>

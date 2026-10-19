@@ -3,13 +3,11 @@
 @section('title', __('Products'))
 
 @section('content')
-<div class="mb-6 flex flex-wrap items-start justify-between gap-4">
-    <div>
-        <h1 class="text-2xl font-semibold tracking-tight text-fg">{{ __('Products') }}</h1>
-        <p class="mt-1 max-w-3xl text-sm text-muted">{{ __('What you sell, goods or services. Pick one on an invoice line and its description, price and VAT are filled in.') }}</p>
-    </div>
-    <x-ui.button :href="route('portal.products.create')">{{ __('New product') }}</x-ui.button>
-</div>
+<x-ui.page-header :title="__('Products')" :description="__('What you sell, goods or services. Pick one on an invoice line and its description, price and VAT are filled in.')">
+    <x-slot:actions>
+        <x-ui.button :href="route('portal.products.create')">{{ __('New product') }}</x-ui.button>
+    </x-slot:actions>
+</x-ui.page-header>
 
 <x-ui.list-filters :list="$list" />
 
@@ -33,7 +31,7 @@
             </td>
             <td class="px-6 py-4 text-sm font-mono text-muted">{{ $product->sku ?? '-' }}</td>
             <td class="px-6 py-4 text-sm text-muted">{{ __(\App\Domains\Invoice\Support\UnitCode::label($product->unit_code)) }}</td>
-            <td class="px-6 py-4 text-end text-sm tabular-nums text-fg">{{ number_format((float) $product->unit_price, 2) }}</td>
+            <td class="px-6 py-4 text-end text-sm tabular-nums text-fg"><x-ui.amount :value="$product->unit_price" /></td>
             <td class="px-6 py-4 text-end text-sm tabular-nums text-muted">{{ (float) $product->tax_rate }}%</td>
             <td class="px-6 py-4 text-end text-sm">
                 @if ($removed)

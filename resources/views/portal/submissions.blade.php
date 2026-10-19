@@ -3,10 +3,7 @@
 @section('title', __('Submissions - :organization', ['organization' => $organization->name]))
 
 @section('content')
-<div class="mb-8">
-    <h1 class="text-2xl font-semibold tracking-tight text-fg">{{ __('Submissions') }}</h1>
-    <p class="mt-1 max-w-3xl text-sm text-muted">{{ __('ZATCA invoice submission history') }}</p>
-</div>
+<x-ui.page-header :title="__('Submissions')" :description="__('ZATCA invoice submission history')" />
 
 <!-- Stats -->
 <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
@@ -76,13 +73,13 @@
             </td>
             <td class="px-6 py-4 text-sm text-muted">
                 @if($sub->invoice_total)
-                <span dir="ltr">{{ number_format($sub->invoice_total, 2) }} SAR</span>
+                <x-ui.amount :value="$sub->invoice_total" :currency="$sub->invoice_currency" />
                 @else
                 -
                 @endif
             </td>
             <td class="px-6 py-4 text-sm text-muted">
-                {{ \Carbon\Carbon::parse($sub->created_at)->translatedFormat('M d, H:i') }}
+                <x-ui.date :value="$sub->created_at" time />
             </td>
             <td class="px-6 py-4">
                 @if($sub->last_error)

@@ -3,7 +3,6 @@
 @section('title', $user->name)
 
 @php
-    $when = fn ($value) => $value ? \Carbon\Carbon::parse($value)->format('M d, Y H:i') : '-';
     $outcomeTone = fn (?string $outcome) => match ($outcome) {
         'succeeded' => 'success',
         'refused' => 'warning',
@@ -23,31 +22,27 @@
 @endphp
 
 @section('content')
-<div class="mb-6">
-    <div class="flex items-center space-x-2 text-sm text-muted mb-2">
-        <a href="{{ route('admin.users.index') }}" class="hover:text-accent-strong">Users</a>
-        <span>/</span>
-        <span class="break-all">{{ $user->email }}</span>
-    </div>
-    <div class="flex flex-wrap items-center gap-3">
-        <h1 class="text-2xl font-semibold tracking-tight text-fg">{{ $user->name }}</h1>
+<x-ui.page-header :title="$user->name">
+    <x-slot:breadcrumb>
+        <x-ui.breadcrumb :items="[['label' => 'Users', 'href' => route('admin.users.index')], ['label' => $user->email]]" />
+    </x-slot:breadcrumb>
+    <x-slot:meta>
         <x-ui.badge :state="$user->status" />
         @if($user->is_platform_admin)
             <x-ui.badge tone="info" label="Platform admin" />
         @endif
-    </div>
-</div>
+    </x-slot:meta>
+</x-ui.page-header>
 
 @if($user->status === 'suspended')
-    <div class="mb-6 rounded-lg border border-warning-line bg-warning-soft p-4 text-sm text-warning">
-        <p class="font-semibold">This account is suspended. It cannot sign in, and its sessions and API tokens are refused.</p>
+    <x-ui.alert tone="warning" class="mb-6" title="This account is suspended. It cannot sign in, and its sessions and API tokens are refused.">
         @if($suspension)
             <p class="mt-1">
-                Suspended {{ $when($suspension->created_at) }} by {{ $suspension->actor_email ?? 'an admin no longer on record' }}:
+                Suspended <x-ui.date :value="$suspension->created_at" time /> by {{ $suspension->actor_email ?? 'an admin no longer on record' }}:
                 &ldquo;{{ $suspension->metadata['input']['reason'] ?? 'no reason recorded' }}&rdquo;
             </p>
         @endif
-    </div>
+    </x-ui.alert>
 @endif
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
@@ -66,19 +61,23 @@
             </div>
             <div>
                 <dt class="text-sm font-medium text-muted">Email verified</dt>
-                <dd class="text-sm text-fg mt-1">{{ $user->email_verified_at ? $when($user->email_verified_at) : 'Not verified' }}</dd>
+                <dd class="text-sm text-fg mt-1"><x-ui.date :value="$user->email_verified_at" time empty="Not verified" /></dd>
             </div>
             @if($user->is_platform_admin)
                 <div>
                     <dt class="text-sm font-medium text-muted">Two-factor</dt>
                     <dd class="text-sm text-fg mt-1">
-                        {{ $user->two_factor_confirmed_at ? 'On since '.$when($user->two_factor_confirmed_at) : 'Not set up - they need an enrolment link from another admin' }}
+                        @if ($user->two_factor_confirmed_at)
+                            On since <x-ui.date :value="$user->two_factor_confirmed_at" time />
+                        @else
+                            Not set up - they need an enrolment link from another admin
+                        @endif
                     </dd>
                 </div>
             @endif
             <div>
                 <dt class="text-sm font-medium text-muted">Last sign-in</dt>
-                <dd class="text-sm text-fg mt-1">{{ $user->last_sign_in_at ? $when($user->last_sign_in_at) : 'Never' }}</dd>
+                <dd class="text-sm text-fg mt-1"><x-ui.date :value="$user->last_sign_in_at" time empty="Never" /></dd>
             </div>
             <div>
                 <dt class="text-sm font-medium text-muted">Default organization</dt>
@@ -92,11 +91,11 @@
             </div>
             <div>
                 <dt class="text-sm font-medium text-muted">Created</dt>
-                <dd class="text-sm text-fg mt-1">{{ $when($user->created_at) }}</dd>
+                <dd class="text-sm text-fg mt-1"><x-ui.date :value="$user->created_at" time /></dd>
             </div>
             <div>
                 <dt class="text-sm font-medium text-muted">Updated</dt>
-                <dd class="text-sm text-fg mt-1">{{ $when($user->updated_at) }}</dd>
+                <dd class="text-sm text-fg mt-1"><x-ui.date :value="$user->updated_at" time /></dd>
             </div>
         </dl>
     </div>
@@ -112,11 +111,13 @@
                 @admincan('users.manage')
                 <form method="POST" action="{{ route('admin.users.suspend', $user->id) }}"
                       data-confirm-tone="danger" data-confirm-action="Suspend"
-                      data-confirm="Suspend {{ $user->email }}? They are signed out everywhere and cannot sign in until reactivated.">
+                      data-confirm="Suspend {{ $user->email }}?"
+                      data-confirm-detail="They are signed out everywhere and cannot sign in until you reactivate them.">
                     @csrf
-                    <label for="suspend-reason" class="block text-xs font-medium uppercase text-muted">Reason</label>
-                    <x-ui.input id="suspend-reason" name="reason" type="text" maxlength="255" required
-                                placeholder="Kept in the audit log" />
+                    <x-ui.field label="Reason">
+                        <x-ui.input id="suspend-reason" name="reason" type="text" maxlength="255" required
+                                    placeholder="Kept in the audit log" />
+                    </x-ui.field>
                     <x-ui.button variant="danger" class="mt-2 w-full">Suspend account</x-ui.button>
                     <p class="mt-1 text-xs text-muted">Reversible. Their invoices and submissions are untouched.</p>
                 </form>
@@ -125,7 +126,8 @@
                 @admincan('users.manage')
                 <form method="POST" action="{{ route('admin.users.reactivate', $user->id) }}"
                       data-confirm-action="Reactivate"
-                      data-confirm="Reactivate {{ $user->email }}? They can sign in again straight away.">
+                      data-confirm="Reactivate {{ $user->email }}?"
+                      data-confirm-detail="They can sign in again straight away. You can suspend them again.">
                     @csrf
                     @include('admin.partials.approval-reason', ['action' => 'users.reactivate'])
                     <x-ui.button variant="primary" class="w-full">Reactivate account</x-ui.button>
@@ -137,7 +139,8 @@
                 @admincan('users.two_factor')
                 <form method="POST" action="{{ route('admin.users.password-reset', $user->id) }}" class="mt-6 border-t pt-6"
                       data-confirm-action="Send link"
-                      data-confirm="Email {{ $user->email }} a link to choose a new password?">
+                      data-confirm="Email {{ $user->email }} a link to choose a new password?"
+                      data-confirm-detail="Their current password keeps working until they use the link. An email cannot be called back.">
                     @csrf
                     <x-ui.button variant="secondary" class="w-full">Send password reset link</x-ui.button>
                     <p class="mt-1 text-xs text-muted">To their own address. You never see the password.</p>
@@ -149,7 +152,8 @@
                 @admincan('users.two_factor')
                 <form method="POST" action="{{ route('admin.users.reset-two-factor', $user->id) }}" class="mt-6 border-t pt-6"
                       data-confirm-tone="danger" data-confirm-action="Reset"
-                      data-confirm="Reset two-factor for {{ $user->email }}? Their app and recovery codes stop working, and they set it up again at their next sign-in. Do this only once you know it is really them.">
+                      data-confirm="Reset two-factor for {{ $user->email }}?"
+                      data-confirm-detail="Their app and recovery codes stop for good, and they set it up again at their next sign-in - do this only once you know it is really them.">
                     @csrf
                     <x-ui.button variant="secondary" class="w-full">Reset two-factor</x-ui.button>
                     <p class="mt-1 text-xs text-muted">For someone who has lost their phone and their recovery codes.</p>
@@ -161,7 +165,8 @@
                 @admincan('users.two_factor')
                 <form method="POST" action="{{ route('admin.users.enrolment-link', $user->id) }}" class="mt-6 border-t pt-6"
                       data-confirm-action="Issue link"
-                      data-confirm="Issue a two-factor enrolment link for {{ $user->email }}? Anyone holding it and their password can enrol, so send it only to them. Any earlier link stops working.">
+                      data-confirm="Issue a two-factor enrolment link for {{ $user->email }}?"
+                      data-confirm-detail="Anyone holding it and their password can enrol, so send it only to them; any earlier link stops working.">
                     @csrf
                     <x-ui.button variant="secondary" class="w-full">Issue enrolment link</x-ui.button>
                     <p class="mt-1 text-xs text-muted">They cannot set up two-factor, or sign in, without one.</p>
@@ -171,9 +176,10 @@
 
             @if(session(\App\Domains\Platform\Http\Controllers\AdminUserController::LINK))
                 <div class="mt-6 border-t pt-6">
-                    <label for="enrolment-link" class="block text-xs font-medium uppercase text-muted">One-time enrolment link</label>
-                    <x-ui.input id="enrolment-link" type="text" readonly
-                                value="{{ session(\App\Domains\Platform\Http\Controllers\AdminUserController::LINK) }}" />
+                    <x-ui.field label="One-time enrolment link">
+                        <x-ui.input id="enrolment-link" type="text" readonly
+                                    value="{{ session(\App\Domains\Platform\Http\Controllers\AdminUserController::LINK) }}" />
+                    </x-ui.field>
                     <p class="mt-1 text-xs text-muted">Shown only now, and valid for 24 hours. Send it by a channel you trust; it works once.</p>
                 </div>
             @endif
@@ -200,7 +206,7 @@
             </td>
             <td class="px-6 py-4 text-sm text-muted">{{ $membership->role }}</td>
             <td class="px-6 py-4"><x-ui.badge :state="$membership->status" /></td>
-            <td class="px-6 py-4 text-sm text-muted">{{ $when($membership->joined_at) }}</td>
+            <td class="px-6 py-4 text-sm text-muted"><x-ui.date :value="$membership->joined_at" time /></td>
         </tr>
         @empty
         <x-ui.empty :columns="4">Not a member of any organization</x-ui.empty>
@@ -229,7 +235,7 @@
             <td class="px-6 py-4 text-sm text-muted">{{ $entry->metadata['surface'] ?? '-' }}</td>
             <td class="px-6 py-4 text-sm font-mono text-fg">{{ $entry->ip_address ?? '-' }}</td>
             <td class="px-6 py-4 text-sm text-muted">{{ Str::limit($entry->user_agent ?? '-', 60) }}</td>
-            <td class="px-6 py-4 text-sm text-muted">{{ $when($entry->created_at) }}</td>
+            <td class="px-6 py-4 text-sm text-muted"><x-ui.date :value="$entry->created_at" time /></td>
         </tr>
         @empty
         <x-ui.empty :columns="5">No sign-ins recorded</x-ui.empty>
@@ -257,7 +263,7 @@
             <td class="px-6 py-4"><x-ui.badge :tone="$outcomeTone($entry->metadata['outcome'] ?? null)" :label="$entry->metadata['outcome'] ?? 'unknown'" /></td>
             <td class="px-6 py-4 text-sm text-muted break-all">{{ $entry->actor_email ?? '-' }}</td>
             <td class="px-6 py-4 text-sm text-fg">{{ $entry->metadata['input']['reason'] ?? '-' }}</td>
-            <td class="px-6 py-4 text-sm text-muted">{{ $when($entry->created_at) }}</td>
+            <td class="px-6 py-4 text-sm text-muted"><x-ui.date :value="$entry->created_at" time /></td>
         </tr>
         @empty
         <x-ui.empty :columns="5">No admin has changed this account</x-ui.empty>
@@ -290,7 +296,7 @@
                 @endif
             </td>
             <td class="px-6 py-4 text-sm font-mono text-fg">{{ $entry->ip_address ?? '-' }}</td>
-            <td class="px-6 py-4 text-sm text-muted">{{ $when($entry->created_at) }}</td>
+            <td class="px-6 py-4 text-sm text-muted"><x-ui.date :value="$entry->created_at" time /></td>
         </tr>
         @empty
         <x-ui.empty :columns="5">No activity recorded</x-ui.empty>
@@ -323,7 +329,7 @@
             </td>
             <td class="px-6 py-4 text-sm text-muted">{{ $submission->submission_type ?? '-' }}</td>
             <td class="px-6 py-4"><x-ui.badge :state="$submission->state" /></td>
-            <td class="px-6 py-4 text-sm text-muted">{{ $when($submission->created_at) }}</td>
+            <td class="px-6 py-4 text-sm text-muted"><x-ui.date :value="$submission->created_at" time /></td>
         </tr>
         @empty
         <x-ui.empty :columns="5">No submissions started by this user</x-ui.empty>

@@ -3,13 +3,11 @@
 @section('title', __('Customers'))
 
 @section('content')
-<div class="mb-6 flex flex-wrap items-start justify-between gap-4">
-    <div>
-        <h1 class="text-2xl font-semibold tracking-tight text-fg">{{ __('Customers') }}</h1>
-        <p class="mt-1 max-w-3xl text-sm text-muted">{{ __('The people and companies you invoice. Pick one on a new invoice and its details are filled in.') }}</p>
-    </div>
-    <x-ui.button :href="route('portal.customers.create')">{{ __('New customer') }}</x-ui.button>
-</div>
+<x-ui.page-header :title="__('Customers')" :description="__('The people and companies you invoice. Pick one on a new invoice and its details are filled in.')">
+    <x-slot:actions>
+        <x-ui.button :href="route('portal.customers.create')">{{ __('New customer') }}</x-ui.button>
+    </x-slot:actions>
+</x-ui.page-header>
 
 <x-ui.list-filters :list="$list" />
 

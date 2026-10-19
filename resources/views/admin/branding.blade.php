@@ -3,13 +3,7 @@
 @section('title', 'Branding')
 
 @section('content')
-<div class="mb-6">
-    <h1 class="text-2xl font-semibold tracking-tight text-fg">Branding</h1>
-    <p class="mt-1 max-w-3xl text-sm text-muted">
-        The platform's colours, name, logo and favicon: every page starts from these, and each
-        organization can set its own over them.
-    </p>
-</div>
+<x-ui.page-header title="Branding" description="The platform's colours, name, logo and favicon: every page starts from these, and each organization can set its own over them." />
 
 @admincan('platform.configure')
 @include('branding.form')

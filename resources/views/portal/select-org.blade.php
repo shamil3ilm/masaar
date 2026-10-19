@@ -1,6 +1,6 @@
 @extends('layouts.guest')
 
-@section('title', __('Select Organization'))
+@section('title', __('Select an organization'))
 @section('heading', __('ZATCA Compliance Portal'))
 @section('subtitle', __('Select an organization to continue'))
 @section('width', 'max-w-lg')
@@ -24,7 +24,7 @@
                 </x-ui.radio>
             @endforeach
         </fieldset>
-        <x-ui.button size="lg" class="w-full">{{ __('View Portal') }}</x-ui.button>
+        <x-ui.button size="lg" class="w-full">{{ __('Open the portal') }}</x-ui.button>
     </form>
 @else
     <div class="py-8 text-center">

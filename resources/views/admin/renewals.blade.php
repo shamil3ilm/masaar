@@ -3,10 +3,11 @@
 @section('title', 'Renewals')
 
 @section('content')
-<div class="mb-6">
-    <h1 class="text-2xl font-semibold tracking-tight text-fg">Renewals</h1>
-    <p class="mt-1 max-w-3xl text-sm text-muted">Plans ending in the next {{ $days }} days, and those that ended in the last {{ $days }}. Payment is recorded by hand, so these are the companies to ask before their invoicing stops.</p>
-</div>
+<x-ui.page-header title="Renewals">
+    <x-slot:description>
+        Plans ending in the next {{ $days }} days, and those that ended in the last {{ $days }}. Payment is recorded by hand, so these are the companies to ask before their invoicing stops.
+    </x-slot:description>
+</x-ui.page-header>
 
 <div class="bg-surface rounded-card border border-line shadow-card overflow-hidden">
     <x-ui.table :primary="[0, 2, 3]">

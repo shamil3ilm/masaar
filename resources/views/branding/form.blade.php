@@ -23,15 +23,7 @@
     ];
 @endphp
 
-@if ($errors->any())
-    <div class="mb-6 rounded border border-danger-line bg-danger-soft px-4 py-3 text-sm text-danger">
-        <ul class="list-disc ps-5">
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    </div>
-@endif
+{{-- The form's errors are listed by the layout's x-ui.flash. --}}
 
 <form method="POST" action="{{ route($route.'.update') }}" enctype="multipart/form-data" class="mb-6 max-w-2xl">
     @csrf
@@ -133,7 +125,10 @@
             <code dir="ltr">"primary-600": "{{ $effective->definition->colors['primary'] }}"</code>. {{ __('Importing replaces the colours, name and mode; the logo and favicon stay.') }}
         </p>
     </div>
-    <form method="POST" action="{{ route($route.'.import') }}" class="space-y-4 p-4">
+    <form method="POST" action="{{ route($route.'.import') }}" class="space-y-4 p-4"
+          data-confirm-action="{{ __('Import') }}"
+          data-confirm="{{ __('Import this theme?') }}"
+          data-confirm-detail="{{ __('It replaces the colours, name and mode in effect now; the logo and favicon stay. Download theme.json first to keep a copy.') }}">
         @csrf
         <x-ui.field :label="__('Theme JSON')">
             <x-ui.textarea name="theme_json" rows="12" class="font-mono text-xs" dir="ltr">{{ old('theme_json', $json) }}</x-ui.textarea>
@@ -146,7 +141,9 @@
 </div>
 
 <form method="POST" action="{{ route($route.'.reset') }}" class="max-w-2xl"
-      data-confirm="{{ $inherits ? __('Reset the branding? Colours, name, logo and favicon go back to the platform\'s.') : __('Reset the branding? Colours, name, logo and favicon go back to the shipped.') }}">
+      data-confirm-tone="danger" data-confirm-action="{{ __('Reset branding') }}"
+      data-confirm="{{ __('Reset the branding?') }}"
+      data-confirm-detail="{{ $inherits ? __('Colours, name, logo and favicon go back to the platform\'s, and yours cannot be recovered.') : __('Colours, name, logo and favicon go back to the shipped ones, and these cannot be recovered.') }}">
     @csrf
     <x-ui.button variant="ghost">{{ $inherits ? __('Reset to the platform\'s branding') : __('Reset to the shipped branding') }}</x-ui.button>
 </form>

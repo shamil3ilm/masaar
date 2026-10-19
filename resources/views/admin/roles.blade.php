@@ -26,7 +26,10 @@
                     @endforeach
                 </ul>
             @else
-                <form method="POST" action="{{ route('admin.roles.update', $role['key']) }}" class="space-y-4">
+                <form method="POST" action="{{ route('admin.roles.update', $role['key']) }}" class="space-y-4"
+                      data-confirm-action="{{ __('Save role') }}"
+                      data-confirm="{{ __('Save the :name role?', ['name' => $role['name']]) }}"
+                      data-confirm-detail="{{ trans_choice('The one admin who holds it gets these permissions at once.|The :count admins who hold it get these permissions at once.', $holders[$role['key']] ?? 0, ['count' => $holders[$role['key']] ?? 0]) }}">
                     @csrf
                     @include('admin.partials.role-fields', ['role' => $role])
                     @include('admin.partials.approval-reason', ['action' => 'admin_roles.save'])
@@ -34,7 +37,8 @@
                 </form>
                 @if (($holders[$role['key']] ?? 0) === 0)
                     <form method="POST" action="{{ route('admin.roles.destroy', $role['key']) }}" class="mt-4 space-y-3 border-t border-line pt-4"
-                          data-confirm-tone="danger" data-confirm-action="{{ __('Delete role') }}" data-confirm="{{ __('Delete this role? Nobody holds it.') }}">
+                          data-confirm-tone="danger" data-confirm-action="{{ __('Delete role') }}" data-confirm="{{ __('Delete the :name role?', ['name' => $role['name']]) }}"
+                          data-confirm-detail="{{ __('Nobody holds it. It cannot be brought back, but you can make a role like it again.') }}">
                         @csrf
                         @include('admin.partials.approval-reason', ['action' => 'admin_roles.delete'])
                         <x-ui.button variant="danger" size="sm">{{ __('Delete role') }}</x-ui.button>

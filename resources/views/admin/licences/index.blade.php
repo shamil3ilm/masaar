@@ -3,15 +3,13 @@
 @section('title', 'Licences')
 
 @section('content')
-<div class="mb-6 flex flex-wrap items-start justify-between gap-4">
-    <div>
-        <h1 class="text-2xl font-semibold tracking-tight text-fg">Licences</h1>
-        <p class="mt-1 max-w-3xl text-sm text-muted">Partner API keys, their tier and their quota</p>
-    </div>
+<x-ui.page-header title="Licences" description="Partner API keys, their tier and their quota.">
     @admincan('licences.manage')
-    <x-ui.button :href="route('admin.licences.create')">Issue licence</x-ui.button>
+    <x-slot:actions>
+        <x-ui.button :href="route('admin.licences.create')">Issue licence</x-ui.button>
+    </x-slot:actions>
     @endadmincan
-</div>
+</x-ui.page-header>
 
 <x-ui.list-filters :list="$list" />
 

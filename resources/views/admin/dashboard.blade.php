@@ -29,20 +29,14 @@
     $queuePending = $overview['system']['queue_size'] ?? 0;
 @endphp
 
+<x-ui.page-header title="Dashboard" description="How the platform is doing now: its health, its queue and what needs an admin." />
+
 <div>
     <!-- Issues Alert -->
     @if ($overallStatus !== 'healthy')
         @php $critical = $overallStatus === 'critical'; @endphp
-        <div class="mb-6 p-4 rounded-lg {{ $critical ? 'bg-danger-soft border border-danger-line text-danger' : 'bg-warning-soft border border-warning-line text-warning' }}">
-            <div class="flex items-center">
-                <svg class="w-5 h-5 mr-2 {{ $critical ? 'text-danger' : 'text-warning' }}" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                </svg>
-                <span class="font-medium {{ $critical ? 'text-danger' : 'text-warning' }}">
-                    Platform status: {{ $overallStatus }}
-                </span>
-            </div>
-            <ul class="mt-2 ml-7 text-sm {{ $critical ? 'text-danger' : 'text-warning' }}">
+        <x-ui.alert :tone="$critical ? 'danger' : 'warning'" class="mb-6" :title="'Platform status: '.$overallStatus">
+            <ul class="list-disc ps-5">
                 @foreach ($degraded as $dependency => $status)
                     <li>{{ $dependency }} is {{ $status }}</li>
                 @endforeach
@@ -53,7 +47,7 @@
                     <li>{{ $health['queue']['stuck'] }} queue item(s) stuck for over 30 minutes</li>
                 @endif
             </ul>
-        </div>
+        </x-ui.alert>
     @endif
 
     <!-- Stats Cards -->
@@ -79,7 +73,7 @@
         <div class="bg-surface rounded-card border border-line shadow-card p-6">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm text-muted">Invoices Today</p>
+                    <p class="text-sm text-muted">Invoices today</p>
                     <p class="text-2xl font-semibold">{{ $overview['invoices']['today'] }}</p>
                 </div>
                 <div class="p-3 bg-success-soft rounded-full">
@@ -114,7 +108,7 @@
         <div class="bg-surface rounded-card border border-line shadow-card p-6">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm text-muted">Offline Queue</p>
+                    <p class="text-sm text-muted">Offline queue</p>
                     <p class="text-2xl font-semibold {{ $queuePending > 0 ? 'text-warning' : '' }}">{{ $queuePending }}</p>
                 </div>
                 <div class="p-3 rounded-full {{ $queuePending > 0 ? 'bg-warning-soft' : 'bg-sunken' }}">
@@ -137,13 +131,13 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <!-- System Health -->
         <div class="bg-surface rounded-card border border-line shadow-card p-6">
-            <h3 class="text-lg font-semibold mb-4">System Health</h3>
+            <h3 class="text-lg font-semibold mb-4">System health</h3>
             <div class="space-y-3">
                 @php
                     $dependencies = [
                         'Database' => $health['database']['status'] ?? 'unknown',
                         'Cache' => $health['cache']['status'] ?? 'unknown',
-                        'Circuit Breaker' => $breakerState,
+                        'Circuit breaker' => $breakerState,
                         'Queue' => $health['queue']['status'] ?? 'unknown',
                     ];
                     $good = ['healthy', 'closed'];
@@ -176,7 +170,7 @@
             fetch calls; the breaker closes on its own after its timeout.
         --}}
         <div class="bg-surface rounded-card border border-line shadow-card p-6">
-            <h3 class="text-lg font-semibold mb-4">ZATCA Circuit Breaker</h3>
+            <h3 class="text-lg font-semibold mb-4">ZATCA circuit breaker</h3>
             <div class="text-center py-4">
                 <div class="inline-flex items-center justify-center w-16 h-16 rounded-full mb-3 {{ $breakerClosed ? 'bg-success-soft' : 'bg-danger-soft' }}">
                     <svg class="w-8 h-8 {{ $breakerClosed ? 'text-success' : 'text-danger' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -205,7 +199,7 @@
 
     <!-- Quick Actions -->
     <div class="bg-surface rounded-card border border-line shadow-card p-6 mb-6">
-        <h3 class="text-lg font-semibold mb-4">Quick Actions</h3>
+        <h3 class="text-lg font-semibold mb-4">Quick actions</h3>
         {{--
             Process Offline Queue now posts to the console's own route, which
             runs the same Artisan command and flashes the outcome. Run Health
@@ -217,18 +211,18 @@
             @admincan('operations.run')
             <form method="POST" action="{{ route('admin.queue.process') }}">
                 @csrf
-                <x-ui.button>Process Offline Queue</x-ui.button>
+                <x-ui.button>Process the offline queue</x-ui.button>
             </form>
             @endadmincan
             <x-ui.button variant="secondary" :href="route('admin.dashboard')">Refresh</x-ui.button>
             <x-ui.button variant="secondary" :href="route('admin.logs', ['state' => 'failed'])">
-                View Failed Submissions
+                View failed submissions
             </x-ui.button>
         </div>
     </div>
 
     <p class="text-xs text-subtle">
-        Counted {{ $overview['generated_at'] }}, dependencies checked {{ $health['checked_at'] }}.
+        Counted <x-ui.date :value="$overview['generated_at']" time />, dependencies checked <x-ui.date :value="$health['checked_at']" time />.
     </p>
 </div>
 @endsection

@@ -42,8 +42,8 @@ class UaeDashboardTest extends TestCase
             ->assertSee('Recent e-invoices')
             ->assertSee('Awaiting delivery')
             ->assertDontSee('Your ZATCA compliance overview')
-            ->assertDontSee('Recent Submissions')
-            ->assertDontSee('Activity by User (7 days)'));
+            ->assertDontSee('Recent submissions')
+            ->assertDontSee('Activity by user (7 days)'));
     }
 
     private function member(Organization $organization): User

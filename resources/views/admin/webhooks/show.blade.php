@@ -3,11 +3,11 @@
 @section('title', 'Webhook')
 
 @section('content')
-<div class="mb-6">
-    <a href="{{ route('admin.webhooks.index') }}" class="text-sm text-accent hover:text-accent-strong">&larr; All endpoints</a>
-    <h2 class="mt-1 text-2xl font-semibold break-all text-fg">{{ $endpoint->url }}</h2>
-    <p class="text-muted">{{ $endpoint->org?->name ?? 'Organization no longer exists' }}</p>
-</div>
+<x-ui.page-header :title="$endpoint->url" :description="$endpoint->org?->name ?? 'Organization no longer exists'">
+    <x-slot:breadcrumb>
+        <x-ui.breadcrumb :items="[['label' => 'Webhook endpoints', 'href' => route('admin.webhooks.index')], ['label' => $endpoint->org?->name ?? 'Endpoint']]" />
+    </x-slot:breadcrumb>
+</x-ui.page-header>
 
 <div class="mb-6 grid gap-6 lg:grid-cols-3">
     <div class="rounded-card bg-surface p-6 border border-line shadow-card">
@@ -93,7 +93,8 @@
                 @admincan('operations.run')
                 <form method="POST" action="{{ route('admin.webhooks.replay', [$endpoint->id, $delivery['id']]) }}"
                       data-confirm-action="Replay"
-                      data-confirm="Replay this delivery? It posts the stored event to the live endpoint now, and the receiver may process it a second time.">
+                      data-confirm="Replay this delivery?"
+                      data-confirm-detail="It posts the stored event to the live endpoint now, and the receiver may process it a second time.">
                     @csrf
                     <x-ui.button size="sm" variant="secondary">Replay</x-ui.button>
                 </form>

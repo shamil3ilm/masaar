@@ -3,21 +3,18 @@
 @section('title', __('Certificates - :organization', ['organization' => $organization->name ?? __('Portal')]))
 
 @section('content')
-<div class="mb-8">
-    <h1 class="text-2xl font-semibold tracking-tight text-fg">{{ __('Certificate Status') }}</h1>
-    <p class="mt-1 max-w-3xl text-sm text-muted">{{ __('ZATCA compliance certificate management') }}</p>
-</div>
+<x-ui.page-header :title="__('Certificate status')" :description="__('ZATCA compliance certificate management')" />
 
 <!-- Active Certificate -->
 <div class="bg-surface rounded-card border border-line shadow-card mb-8">
     <div class="p-6 border-b">
-        <h3 class="text-lg font-semibold text-fg">{{ __('Active Certificate') }}</h3>
+        <h3 class="text-lg font-semibold text-fg">{{ __('Active certificate') }}</h3>
     </div>
     <div class="p-6">
         @if($activeCert)
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div>
-                <p class="text-sm text-muted mb-1">{{ __('Serial Number') }}</p>
+                <p class="text-sm text-muted mb-1">{{ __('Serial number') }}</p>
                 <p class="font-medium text-fg">{{ Str::limit($activeCert->serial_number ?? '-', 16) }}</p>
             </div>
             <div>
@@ -29,18 +26,18 @@
                 </p>
             </div>
             <div>
-                <p class="text-sm text-muted mb-1">{{ __('Valid From') }}</p>
-                <p class="font-medium text-fg">{{ \Carbon\Carbon::parse($activeCert->valid_from)->translatedFormat('M d, Y H:i') }}</p>
+                <p class="text-sm text-muted mb-1">{{ __('Valid from') }}</p>
+                <p class="font-medium text-fg"><x-ui.date :value="$activeCert->valid_from" time /></p>
             </div>
             <div>
-                <p class="text-sm text-muted mb-1">{{ __('Expires At') }}</p>
+                <p class="text-sm text-muted mb-1">{{ __('Expires') }}</p>
                 @php
                     $expiresAt = $activeCert->valid_to ?? null;
-                    $daysLeft = $expiresAt ? now()->diffInDays($expiresAt, false) : null;
+                    $daysLeft = $expiresAt ? (int) now()->diffInDays($expiresAt, false) : null;
                 @endphp
                 @if($expiresAt)
                 <p class="font-medium {{ $daysLeft <= 7 ? 'text-danger' : ($daysLeft <= 30 ? 'text-warning' : 'text-fg') }}">
-                    {{ \Carbon\Carbon::parse($expiresAt)->translatedFormat('M d, Y H:i') }}
+                    <x-ui.date :value="$expiresAt" time />
                     @if($daysLeft !== null)
                     <span class="text-sm {{ $daysLeft <= 7 ? 'text-danger' : ($daysLeft <= 30 ? 'text-warning' : 'text-muted') }}">
                         ({{ $daysLeft > 0 ? __(':days days left', ['days' => $daysLeft]) : __('Expired') }})

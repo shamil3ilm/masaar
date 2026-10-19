@@ -130,6 +130,17 @@ class ScreenRenderTest extends TestCase
      */
     private const UAE_VARIANTS = ['portal.dashboard', 'portal.company.edit', 'portal.invoices.create', 'portal.invoices.show', 'portal.reports'];
 
+    /**
+     * Screens whose page-header count is not one, and why.
+     */
+    private const HEADERS = [
+        // Its own, and the header specimen in each of its four previews.
+        'admin.design-system' => 5,
+        // The organization picker, on the guest layout: the layout's card
+        // carries its heading, as on sign-in.
+        'portal.switch' => 0,
+    ];
+
     private User $orgAdmin;
 
     private License $licence;
@@ -331,6 +342,7 @@ class ScreenRenderTest extends TestCase
 
             $this->assertColouredPills($html, $name);
             $this->assertCanConfirm($html, $name);
+            $this->assertSame(1, substr_count($html, 'data-page-header'), $name.' does not open with exactly one <x-ui.page-header>.');
         }
     }
 
@@ -406,6 +418,33 @@ class ScreenRenderTest extends TestCase
         foreach ($this->screens('portal.') as $name => $uri) {
             $this->assertCanConfirm($this->html($this->portalUser($name), $uri), $name);
         }
+    }
+
+    /**
+     * Every screen opens with one x-ui.page-header: its one h1, its
+     * description and its actions in one place.
+     *
+     * Forty-five screens wrote their own - an h1 on some and an h2 on others,
+     * mb-6 against mb-8, a back link as an arrow on some and a slash-separated
+     * trail on others - so the top of a screen looked different depending on
+     * who wrote it, and on the h2 screens a screen reader's outline started
+     * with no heading at all.
+     */
+    public function test_every_screen_has_one_header(): void
+    {
+        $wrong = [];
+
+        foreach ($this->screens('admin.') as $name => $uri) {
+            $count = substr_count($this->html($this->admin, $uri), 'data-page-header');
+            $count === (self::HEADERS[$name] ?? 1) || $wrong[] = $name.' ('.$count.')';
+        }
+
+        foreach ($this->screens('portal.') as $name => $uri) {
+            $count = substr_count($this->html($this->portalUser($name), $uri), 'data-page-header');
+            $count === (self::HEADERS[$name] ?? 1) || $wrong[] = $name.' ('.$count.')';
+        }
+
+        $this->assertSame([], $wrong, 'These screens do not open with exactly one <x-ui.page-header>.');
     }
 
     private function assertCanConfirm(string $html, string $name): void

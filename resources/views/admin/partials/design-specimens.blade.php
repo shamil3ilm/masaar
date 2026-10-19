@@ -263,7 +263,7 @@
                 <tr>
                     <td class="px-6 py-4 font-mono tabular-nums" dir="ltr">INV-2026-00418</td>
                     <td class="px-6 py-4 text-muted">{{ $t('Northwind Trading', 'نورثويند للتجارة') }}</td>
-                    <td class="px-6 py-4 text-end font-mono tabular-nums" dir="ltr">1,150.00</td>
+                    <td class="px-6 py-4 text-end"><x-ui.amount value="1150" currency="SAR" /></td>
                     <td class="px-6 py-4"><x-ui.badge state="cleared" /></td>
                 </tr>
                 <x-ui.empty columns="4">{{ $t('An empty table says so, centred under its columns.', 'يقول الجدول الفارغ ذلك، في المنتصف تحت أعمدته.') }}</x-ui.empty>
@@ -305,17 +305,17 @@
                 <tr data-expanded>
                     <td class="px-6 py-4 font-mono tabular-nums" dir="ltr">INV-2026-00418</td>
                     <td class="px-6 py-4 text-muted">{{ $t('Northwind Trading', 'نورثويند للتجارة') }}</td>
-                    <td class="px-6 py-4 text-muted">2026-10-14</td>
+                    <td class="px-6 py-4 text-muted"><x-ui.date value="2026-10-14" /></td>
                     <td class="px-6 py-4"><x-ui.badge state="cleared" /></td>
-                    <td class="px-6 py-4 font-mono tabular-nums" dir="ltr">1,150.00</td>
+                    <td class="px-6 py-4"><x-ui.amount value="1150" /></td>
                     <td class="px-6 py-4"><x-ui.button size="sm" variant="secondary" href="#">{{ $t('Download PDF', 'تنزيل PDF') }}</x-ui.button></td>
                 </tr>
                 <tr>
                     <td class="px-6 py-4 font-mono tabular-nums" dir="ltr">INV-2026-00419</td>
                     <td class="px-6 py-4 text-muted">{{ $t('Gulf Supplies', 'إمدادات الخليج') }}</td>
-                    <td class="px-6 py-4 text-muted">2026-10-15</td>
+                    <td class="px-6 py-4 text-muted"><x-ui.date value="2026-10-15" /></td>
                     <td class="px-6 py-4"><x-ui.badge state="pending" /></td>
-                    <td class="px-6 py-4 font-mono tabular-nums" dir="ltr">420.00</td>
+                    <td class="px-6 py-4"><x-ui.amount value="420" /></td>
                     <td class="px-6 py-4"><x-ui.button size="sm" variant="secondary" href="#">{{ $t('Download PDF', 'تنزيل PDF') }}</x-ui.button></td>
                 </tr>
             </x-ui.table>
@@ -358,4 +358,131 @@
             </x-slot:footer>
         </x-ui.modal>
     </section>
+    {{-- Confirmations: the four kinds, drawn in place so each preview shows
+         them in its own theme and direction, and each with a button that
+         asks for real through the page's one dialog. --}}
+    @php
+        $confirmations = [
+            [
+                'kind' => $t('Standard', 'عادي'),
+                'when' => $t('A change that is not destructive: it sends, grants or records. The action takes focus.', 'تغيير غير هدّام: يرسل أو يمنح أو يسجّل. ويأخذ زر الإجراء التركيز.'),
+                'title' => $t('Email invoice INV-2026-00418 to the buyer?', 'هل تريد إرسال الفاتورة INV-2026-00418 إلى المشتري؟'),
+                'detail' => $t('The PDF goes to the address entered. An email cannot be called back once sent.', 'يُرسل ملف PDF إلى العنوان المُدخل، ولا يمكن استرجاع البريد الإلكتروني بعد إرساله.'),
+                'action' => $t('Send invoice', 'إرسال الفاتورة'),
+                'tone' => 'primary',
+            ],
+            [
+                'kind' => $t('Danger', 'خطر'),
+                'when' => $t('It destroys, stops or takes something away. A red action, and Cancel takes focus.', 'يحذف أو يوقف أو يسحب شيئاً. زر الإجراء أحمر، ويأخذ زر الإلغاء التركيز.'),
+                'title' => $t('Remove customer Northwind Trading?', 'هل تريد إزالة العميل نورثويند للتجارة؟'),
+                'detail' => $t('It leaves your lists and the invoice form. You can bring it back from the removed ones.', 'سيختفي من قوائمك ومن نموذج الفاتورة، ويمكنك إعادته من العناصر المُزالة.'),
+                'action' => $t('Remove customer', 'إزالة العميل'),
+                'tone' => 'danger',
+            ],
+            [
+                'kind' => $t('Typed', 'بالكتابة'),
+                'when' => $t('Irreversible and high-impact. The action stays disabled until the word or the name is typed; the field takes focus.', 'لا رجعة فيه وعالي الأثر. يبقى زر الإجراء معطلاً حتى تُكتب الكلمة أو الاسم، ويأخذ الحقل التركيز.'),
+                'title' => $t('Issue this invoice to Northwind Trading?', 'هل تريد إصدار هذه الفاتورة إلى نورثويند للتجارة؟'),
+                'detail' => $t('It gets a counter and a hash and joins the chain. This cannot be undone.', 'ستحصل على عداد وقيمة تجزئة وتنضم إلى السلسلة. ولا يمكن التراجع عن ذلك.'),
+                'action' => $t('Issue invoice', 'إصدار الفاتورة'),
+                'tone' => 'primary',
+                'type' => $t('Issue', 'إصدار'),
+            ],
+            [
+                'kind' => $t('Approval', 'موافقة'),
+                'when' => $t('The action waits for a second admin. Said by itself whenever the form carries the approval reason.', 'ينتظر الإجراء مشرفاً ثانياً. ويُذكر ذلك تلقائياً متى حمل النموذج سبب الموافقة.'),
+                'title' => $t('Change the console role of sara@example.com?', 'هل تريد تغيير دور sara@example.com في لوحة التحكم؟'),
+                'detail' => $t('What they can see and do changes at once. You can change it back.', 'يتغير فوراً ما يمكنه الاطلاع عليه والقيام به، ويمكنك إعادته كما كان.'),
+                'action' => $t('Change role', 'تغيير الدور'),
+                'tone' => 'primary',
+                'approval' => true,
+            ],
+        ];
+    @endphp
+    <section aria-labelledby="{{ $scope }}-confirmations" class="space-y-4">
+        <h2 id="{{ $scope }}-confirmations" class="text-heading font-semibold">{{ $t('Confirmations', 'التأكيدات') }}</h2>
+        <p class="max-w-3xl text-sm text-muted">{{ $t('Asked before anything that changes or destroys something, in one dialog for every screen. The form carries the words as data attributes and resources/js/confirm.js asks them; with no dialog on the page, the browser\'s own asks the same words.', 'يُطرح قبل أي إجراء يغيّر شيئاً أو يحذفه، في نافذة واحدة لكل الشاشات. يحمل النموذج النصوص في سمات البيانات ويطرحها resources/js/confirm.js، وإذا لم تكن النافذة في الصفحة طرحت نافذة المتصفح النصوص نفسها.') }}</p>
+
+        <div class="grid gap-4 lg:grid-cols-2">
+            @foreach ($confirmations as $index => $confirmation)
+                <div class="space-y-3">
+                    <p class="text-sm"><span class="font-semibold text-fg">{{ $confirmation['kind'] }}.</span> <span class="text-muted">{{ $confirmation['when'] }}</span></p>
+
+                    {{-- The dialog's anatomy, drawn in place. --}}
+                    <div class="rounded-card border border-line bg-surface p-6 shadow-raised" aria-hidden="true">
+                        <p class="text-lg font-semibold text-fg">{{ $confirmation['title'] }}</p>
+                        <p class="mt-2 text-sm text-muted">{{ $confirmation['detail'] }}</p>
+                        @if ($confirmation['approval'] ?? false)
+                            <x-ui.alert tone="info" class="mt-4">{{ $t('This will be sent for approval. Nothing changes until it is approved.', 'سيُرسل هذا للموافقة عليه، ولن يتغير شيء حتى تتم الموافقة.') }}</x-ui.alert>
+                        @endif
+                        @isset($confirmation['type'])
+                            <p class="mt-4 text-sm font-medium text-fg">{{ $t('Type', 'اكتب') }} <strong>{{ $confirmation['type'] }}</strong> {{ $t('to confirm.', 'للتأكيد.') }}</p>
+                            <div class="mt-1 min-h-11 rounded-control border border-line-strong bg-surface"></div>
+                        @endisset
+                        <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                            <x-ui.button type="button" variant="ghost" tabindex="-1">{{ $t('Cancel', 'إلغاء') }}</x-ui.button>
+                            <x-ui.button type="button" :variant="$confirmation['tone'] === 'danger' ? 'danger' : 'primary'" tabindex="-1" :disabled="isset($confirmation['type'])">{{ $confirmation['action'] }}</x-ui.button>
+                        </div>
+                    </div>
+
+                    {{-- And asked for real, by the page's one dialog. --}}
+                    <form method="GET" action="#{{ $scope }}-confirmations"
+                          data-confirm="{{ $confirmation['title'] }}"
+                          data-confirm-detail="{{ $confirmation['detail'] }}"
+                          data-confirm-action="{{ $confirmation['action'] }}"
+                          @if ($confirmation['tone'] === 'danger') data-confirm-tone="danger" @endif
+                          @isset($confirmation['type']) data-confirm-type="{{ $confirmation['type'] }}" @endisset>
+                        @if ($confirmation['approval'] ?? false)
+                            <input type="hidden" name="approval_reason" value="">
+                        @endif
+                        <x-ui.button size="sm" variant="secondary">{{ $t('Ask it', 'اطرح السؤال') }}</x-ui.button>
+                    </form>
+                </div>
+            @endforeach
+        </div>
+
+        <div class="grid gap-4 lg:grid-cols-2">
+            <x-ui.card :title="$t('Do', 'افعل')">
+                <ul class="list-disc space-y-2 ps-5 text-sm text-fg">
+                    <li>{{ $t('Ask a question that names the thing: "Remove customer Acme?"', 'اطرح سؤالاً يسمّي الشيء: "هل تريد إزالة العميل أكمي؟"') }}</li>
+                    <li>{{ $t('Say in one sentence what happens, and whether it can be undone.', 'قل في جملة واحدة ما سيحدث، وهل يمكن التراجع عنه.') }}</li>
+                    <li>{{ $t('Label the action with its verb, as on the button that opened it: Remove, Revoke, Issue invoice.', 'سمِّ زر الإجراء بفعله كما في الزر الذي فتح النافذة: إزالة، إلغاء، إصدار الفاتورة.') }}</li>
+                    <li>{{ $t('Use red only when something is destroyed, stopped or taken away.', 'استخدم الأحمر فقط عندما يُحذف شيء أو يُوقف أو يُسحب.') }}</li>
+                    <li>{{ $t('Ask for typing only where nothing can undo it: issuing, revoking, transferring, suspending.', 'اطلب الكتابة فقط حيث لا رجعة: الإصدار والإلغاء والنقل والإيقاف.') }}</li>
+                    <li>{{ $t('Write it in sentence case, in both languages.', 'اكتبه بأسلوب الجملة العادية، باللغتين.') }}</li>
+                </ul>
+            </x-ui.card>
+            <x-ui.card :title="$t('Don\'t', 'لا تفعل')">
+                <ul class="list-disc space-y-2 ps-5 text-sm text-fg">
+                    <li>{{ $t('"Are you sure?" as the question: it names nothing.', '"هل أنت متأكد؟" سؤالاً: إنه لا يسمّي شيئاً.') }}</li>
+                    <li>{{ $t('OK, Yes or Confirm on the button.', 'موافق أو نعم أو تأكيد على الزر.') }}</li>
+                    <li>{{ $t('A paragraph of warning where one sentence will do.', 'فقرة تحذير حيث تكفي جملة واحدة.') }}</li>
+                    <li>{{ $t('A confirmation on something safe and undoable: saving, filtering, archiving, restoring.', 'تأكيداً على إجراء آمن يمكن التراجع عنه: الحفظ والتصفية والأرشفة والاستعادة.') }}</li>
+                    <li>{{ $t('A submit handler written in the markup, or the browser\'s own dialog called from a script: the content policy refuses the first and the second skips ours.', 'معالج إرسال مكتوباً في الترميز، أو نافذة المتصفح تُستدعى من نص برمجي: سياسة المحتوى ترفض الأول، والثاني يتخطى نافذتنا.') }}</li>
+                </ul>
+            </x-ui.card>
+        </div>
+
+        <x-ui.card :title="$t('Markup', 'الترميز')" flush>
+            <x-ui.table :primary="[0, 1]">
+                <x-slot:head>
+                    <x-ui.th>{{ $t('Attribute', 'السمة') }}</x-ui.th>
+                    <x-ui.th>{{ $t('What it carries', 'ما تحمله') }}</x-ui.th>
+                </x-slot:head>
+                @foreach ([
+                    'data-confirm' => $t('The question. Required; without it nothing is asked.', 'السؤال. مطلوب، ومن دونه لا يُطرح شيء.'),
+                    'data-confirm-detail' => $t('The one sentence of consequence.', 'جملة العاقبة الواحدة.'),
+                    'data-confirm-action' => $t('The action\'s verb.', 'فعل الإجراء.'),
+                    'data-confirm-tone="danger"' => $t('A destructive action.', 'إجراء هدّام.'),
+                    'data-confirm-type' => $t('The word or name to type first.', 'الكلمة أو الاسم المطلوب كتابته أولاً.'),
+                ] as $attribute => $carries)
+                    <tr>
+                        <td class="px-6 py-3 font-mono text-xs" dir="ltr">{{ $attribute }}</td>
+                        <td class="px-6 py-3 text-muted">{{ $carries }}</td>
+                    </tr>
+                @endforeach
+            </x-ui.table>
+        </x-ui.card>
+    </section>
+
 </div>

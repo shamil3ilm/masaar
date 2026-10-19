@@ -3,7 +3,6 @@
 @section('title', 'Audit log')
 
 @php
-    $when = fn ($value) => $value ? \Carbon\Carbon::parse($value)->format('M d, Y H:i:s') : '-';
     $outcomeTone = fn (?string $outcome) => match ($outcome) {
         'succeeded' => 'success',
         'refused' => 'warning',
@@ -13,10 +12,7 @@
 @endphp
 
 @section('content')
-<div class="mb-6">
-    <h1 class="text-2xl font-semibold tracking-tight text-fg">Audit log</h1>
-    <p class="mt-1 max-w-3xl text-sm text-muted">Every recorded action, by admins and users alike. Read-only: nothing here can be changed from the console.</p>
-</div>
+<x-ui.page-header title="Audit log" description="Every recorded action, by admins and users alike. Read-only: nothing here can be changed from the console." />
 
 <x-ui.list-filters :list="$list" />
 
@@ -33,7 +29,7 @@
 
         @forelse($entries as $entry)
         <tr class="hover:bg-sunken align-top">
-            <td class="px-6 py-4 text-sm text-muted whitespace-nowrap">{{ $when($entry->created_at) }}</td>
+            <td class="px-6 py-4 text-sm text-muted whitespace-nowrap"><x-ui.date :value="$entry->created_at" time /></td>
             <td class="px-6 py-4 text-sm break-all">
                 @if($entry->actor_id)
                     <a href="{{ route('admin.users.show', $entry->actor_id) }}" class="text-accent hover:text-accent-strong">{{ $entry->actor_email }}</a>
