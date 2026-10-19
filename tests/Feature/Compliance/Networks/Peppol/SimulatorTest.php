@@ -78,7 +78,7 @@ class SimulatorTest extends TestCase
 
         $this->assertSame('rejected', $document->status);
         $this->assertNull($document->asp_message_id);
-        $this->assertSame([['code' => 'ibr-003', 'severity' => 'fatal', 'field' => '/*:Invoice[1]', 'message' => 'An Invoice MUST have an Invoice issue date (ibt-002).']], $document->errors);
+        $this->assertSame([['code' => 'ibr-003', 'severity' => 'fatal', 'field' => '/*:Invoice[1]', 'message' => 'An Invoice MUST have an Invoice issue date (ibt-002).']], $document->errorList('errors'));
         Queue::assertNotPushed(PlaySimulatedMessage::class);
     }
 

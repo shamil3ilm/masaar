@@ -167,7 +167,7 @@ class SimulatorConformanceTest extends TestCase
         // Each error with its rule ID, severity and where in the document.
         $this->assertContains(
             ['code' => 'ibr-003', 'severity' => 'fatal', 'field' => "/*:Invoice[namespace-uri()='urn:oasis:names:specification:ubl:schema:xsd:Invoice-2'][1]", 'message' => 'An Invoice MUST have an Invoice issue date (ibt-002).'],
-            (array) $document->errors,
+            $document->errorList('errors'),
         );
     }
 
@@ -438,7 +438,7 @@ class SimulatorConformanceTest extends TestCase
 
     private function explain(PeppolDocument $document): string
     {
-        return "The simulator answered:\n".implode("\n", (array) $document->errors)."\n".$document->last_error."\n\n".$document->xml;
+        return "The simulator answered:\n".json_encode($document->errorList('errors'), JSON_PRETTY_PRINT)."\n".$document->last_error."\n\n".$document->xml;
     }
 
     /**

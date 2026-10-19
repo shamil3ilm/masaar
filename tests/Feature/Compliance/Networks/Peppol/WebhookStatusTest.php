@@ -61,7 +61,7 @@ class WebhookStatusTest extends TestCase
         $this->assertSame([
             ['code' => 'BR-AE-10', 'severity' => 'fatal', 'field' => 'cbc:CompanyID', 'message' => 'invalid TRN'],
             ['code' => 'BV', 'severity' => 'error', 'field' => null, 'message' => 'Business rule violation'],
-        ], $document->errors);
+        ], $document->errorList('errors'));
     }
 
     /**
@@ -91,7 +91,7 @@ class WebhookStatusTest extends TestCase
 
         $document->refresh();
         $this->assertSame(['delivered', 'report_failed'], [$document->status, $document->reporting_status]);
-        $this->assertSame([['code' => null, 'severity' => 'error', 'field' => null, 'message' => 'The authority did not acknowledge it']], $document->reporting_errors);
+        $this->assertSame([['code' => null, 'severity' => 'error', 'field' => null, 'message' => 'The authority did not acknowledge it']], $document->errorList('reporting_errors'));
         $this->assertNull($document->errors);
     }
 
