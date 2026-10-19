@@ -33,7 +33,7 @@ class AdminCertificateController extends Controller
 
     public function index(): View
     {
-        return view('admin.certificates.index', ['versions' => $this->versions->all()]);
+        return view('countries.saudi-arabia.admin.certificates', ['versions' => $this->versions->all()]);
     }
 
     public function revoke(Request $request, int $version): RedirectResponse

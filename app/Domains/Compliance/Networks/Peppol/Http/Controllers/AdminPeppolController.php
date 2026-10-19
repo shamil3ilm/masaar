@@ -31,7 +31,7 @@ class AdminPeppolController extends Controller
      */
     public function index(): View
     {
-        return view('admin.peppol', [
+        return view('networks.peppol.admin', [
             'gateway' => $this->overview->gateway(),
             'outage' => $this->outage->current(),
             'counts' => $this->overview->counts(),

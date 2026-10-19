@@ -39,6 +39,6 @@ final class LateReportingMail extends Mailable
 
     public function content(): Content
     {
-        return new Content(view: 'emails.late-reporting', text: 'emails.late-reporting-text');
+        return new Content(view: 'countries.saudi-arabia.emails.late-reporting', text: 'countries.saudi-arabia.emails.late-reporting-text');
     }
 }

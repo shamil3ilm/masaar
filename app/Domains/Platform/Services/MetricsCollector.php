@@ -127,7 +127,7 @@ class MetricsCollector
             foreach ($byState as $row) {
                 $metrics["zatca_submissions_{$row->state}"] = [
                     'type' => 'gauge',
-                    'help' => "ZATCA submissions with status {$row->state} (24h)",
+                    'help' => "Tax authority submissions with status {$row->state} (24h)",
                     'value' => $row->count,
                     'labels' => ['status' => $row->state],
                 ];
@@ -135,13 +135,13 @@ class MetricsCollector
 
             $metrics['zatca_submission_duration_avg_ms'] = [
                 'type' => 'gauge',
-                'help' => 'Average ZATCA submission duration in milliseconds',
+                'help' => 'Average tax authority submission duration in milliseconds',
                 'value' => Cache::get('metrics:zatca_submission_avg_ms', 0),
             ];
 
             $metrics['zatca_circuit_breaker_open'] = [
                 'type' => 'gauge',
-                'help' => 'ZATCA circuit breaker state (1=open, 0=closed)',
+                'help' => 'Tax authority circuit breaker state (1=open, 0=closed)',
                 'value' => $this->circuitBreaker->getState('zatca_api') === CircuitBreaker::STATE_OPEN ? 1 : 0,
             ];
 

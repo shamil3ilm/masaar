@@ -38,7 +38,7 @@ class PortalReceivedController extends Controller
         $organization = $this->portal->organization();
         $documents = $this->documents->received((string) $organization->id, self::PER_PAGE);
 
-        return view('portal.received.index', [
+        return view('countries.united-arab-emirates.received.index', [
             'organization' => $organization,
             'documents' => $documents,
             'summaries' => $documents->getCollection()
@@ -51,7 +51,7 @@ class PortalReceivedController extends Controller
         $organization = $this->portal->organization();
         $document = $this->documents->findReceived((string) $organization->id, $documentId);
 
-        return view('portal.received.show', [
+        return view('countries.united-arab-emirates.received.show', [
             'organization' => $organization,
             'document' => $document,
             'summary' => $this->reader->summarise($document->xml),

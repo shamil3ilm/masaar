@@ -227,7 +227,7 @@ class Invoice extends Model
             if ($invoice->status !== InvoiceStatus::Draft) {
                 throw new \RuntimeException(
                     'Finalized invoices cannot be deleted. '.
-                    'This is a ZATCA compliance requirement. '.
+                    'This is a tax authority requirement. '.
                     'Use credit/debit notes for corrections.'
                 );
             }
@@ -249,7 +249,7 @@ class Invoice extends Model
             if (! empty($immutableChanges)) {
                 throw new \RuntimeException(
                     'Finalized invoice fields cannot be modified. '.
-                    'This is a ZATCA compliance requirement. '.
+                    'This is a tax authority requirement. '.
                     'Attempted to change: '.implode(', ', $immutableChanges).'. '.
                     'Use credit/debit notes for corrections.'
                 );

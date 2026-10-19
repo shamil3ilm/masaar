@@ -76,7 +76,7 @@ final class BillingActions implements ApprovableActions
         $message = 'Payment recorded. The plan now runs to '.$payment->period_end->toDateString().'.';
 
         if ($this->billing->invoicedLate(CarbonImmutable::parse((string) $payload['paid_at']))) {
-            $message .= ' This payment is past the fifteen days after its month in which ZATCA expects it invoiced.';
+            $message .= ' This payment is past the fifteen days after its month in which the tax authority expects it invoiced.';
         }
 
         return $payment->invoice_id === null

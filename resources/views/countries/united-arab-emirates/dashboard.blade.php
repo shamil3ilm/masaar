@@ -73,9 +73,9 @@
                 <p class="text-xs text-muted">{{ \Carbon\Carbon::parse($document->created_at)->diffForHumans() }}</p>
             </div>
             <div class="flex flex-wrap justify-end gap-2">
-                @include('portal.partials.peppol-status', ['status' => $document->status])
+                @include('networks.peppol.status', ['status' => $document->status])
                 @if ($document->reporting_status)
-                    @include('portal.partials.peppol-status', ['status' => $document->reporting_status])
+                    @include('networks.peppol.status', ['status' => $document->reporting_status])
                 @endif
             </div>
         </div>

@@ -18,7 +18,7 @@
 @php
     $labels = [
         'issuance' => ['Issuance', 'Signing a new invoice, allocating its counter and writing its chain entry.'],
-        'submission' => ['Submission', 'Sending anything to ZATCA at all.'],
+        'submission' => ['Submission', 'Sending anything to the tax authority at all.'],
         'clearance' => ['Clearance', 'Standard B2B invoices, which must be cleared before the buyer may have them.'],
         'reporting' => ['Reporting', 'Simplified B2C invoices, due within twenty-four hours of issuance.'],
         'signing' => ['Signing', 'The cryptographic stamp itself.'],

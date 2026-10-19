@@ -38,10 +38,23 @@ class Presentation implements PresentationPort
         return __('UAE E-invoicing Portal');
     }
 
-    /** The received e-invoices, after Invoices: nobody else has any. */
+    /**
+     * The received e-invoices, after Invoices: nobody else has any; and the
+     * Peppol network's panel in the console, which the UAE sends through.
+     */
     public function navigation(string $section): ?string
     {
-        return $section === self::NAV_MAIN ? self::VIEWS.'navigation' : null;
+        return match ($section) {
+            self::NAV_MAIN => self::VIEWS.'navigation',
+            self::NAV_CONSOLE => self::VIEWS.'console-navigation',
+            default => null,
+        };
+    }
+
+    /** Nothing to say on every page: the provider's outages show where they matter. */
+    public function notice(): ?string
+    {
+        return null;
     }
 
     public function invoicePage(Invoice $invoice): InvoicePage

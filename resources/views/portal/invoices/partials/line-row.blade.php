@@ -82,7 +82,7 @@
                  the eighteen the API accepted, so a seller pricing by the
                  gram could file through the API and not from the portal. Four
                  of the eleven - PCE, BX, PK, CT - are in neither UN/ECE
-                 Recommendation 20 nor Peppol's Recommendation 21 extension.
+                 Recommendation 20 nor its Recommendation 21 extension.
 
                  normalise() maps a stored legacy code onto its replacement,
                  so an older draft still opens with the right option on. --}}

@@ -1,7 +1,7 @@
 @extends('layouts.guest')
 
 @section('title', __('Create an account'))
-@section('subtitle', $choice ? __('Register your business for e-invoicing. It takes four short steps, and your first month is free.') : __('Register your business for ZATCA e-invoicing. It takes four short steps, and your first month is free.'))
+@section('subtitle', __('Register your business for e-invoicing. It takes four short steps, and your first month is free.'))
 @section('width', 'max-w-3xl')
 
 @section('content')
@@ -70,7 +70,7 @@
     <section data-step="1" class="space-y-5 border-t border-line pt-8 mt-8" aria-labelledby="step-company">
         <header>
             <p class="text-eyebrow font-semibold uppercase text-accent">{{ __('Step :number of :total', ['number' => 2, 'total' => 4]) }}</p>
-            <h2 id="step-company" data-step-heading tabindex="-1" class="mt-1 text-xl font-semibold focus:outline-none">{{ $choice ? __('Your company') : __('Your company, as registered with ZATCA') }}</h2>
+            <h2 id="step-company" data-step-heading tabindex="-1" class="mt-1 text-xl font-semibold focus:outline-none">{{ __('Your company') }}</h2>
             <p class="mt-1 text-sm text-muted">{{ __('The company whose invoices you will issue.') }}</p>
         </header>
 
@@ -103,13 +103,8 @@
         @if ($choice)
             @include('auth.partials.country-sections')
         @else
-            <fieldset class="space-y-4">
-                <legend class="text-base font-semibold text-fg">{{ __('Your company, as registered with ZATCA') }}</legend>
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    @include('auth.partials.saudi-registration')
-                </div>
-            </fieldset>
-            @include('auth.partials.saudi-address')
+            {{-- The one country's own section (SellerRules::signupView()). --}}
+            @include($sections[0]['view'])
         @endif
 
         @include('auth.partials.register-nav')
@@ -129,14 +124,12 @@
         </div>
 
         <x-ui.alert tone="info" :title="__('What happens next')">
-            <span @if ($choice) :hidden="notSaudi" @if ($country !== 'SA') hidden @endif @endif>
-                {{ __('We review every company before it connects to ZATCA. You can sign in and prepare invoices straight away; connecting to ZATCA and issuing open once your company is approved.') }}
-            </span>
-            @if ($choice)
-                <span :hidden="notUae" @if ($country !== 'AE') hidden @endif>
-                    {{ __('We review every company before it can issue. You can sign in and prepare invoices straight away; issuing opens once your company is approved and you have added the Peppol endpoint your service provider issues you on your company page.') }}
+            {{-- Each country's own words (SellerRules::signupNext()), the chosen one shown. --}}
+            @foreach ($sections as $section)
+                <span @if ($choice) :hidden="country !== '{{ $section['code'] }}'" @endif @if ($country !== $section['code']) hidden @endif>
+                    {{ $section['next'] }}
                 </span>
-            @endif
+            @endforeach
         </x-ui.alert>
 
         <x-ui.checkbox name="terms" value="1" :checked="(bool) old('terms')" required>

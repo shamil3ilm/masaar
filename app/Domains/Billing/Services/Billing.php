@@ -272,7 +272,7 @@ class Billing
             ?? throw new DomainException('No billing organization is set (BILLING_ORGANIZATION_ID), so no invoice was issued.');
 
         if (! $seller->zatca_onboarded) {
-            throw new DomainException('The billing organization is not connected to ZATCA yet, so no invoice was issued.');
+            throw new DomainException('The billing organization is not connected to its tax authority yet, so no invoice was issued.');
         }
 
         $buyer = $payment->organization ?? throw new DomainException('The organization that paid no longer exists.');

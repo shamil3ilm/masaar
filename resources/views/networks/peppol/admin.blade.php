@@ -35,7 +35,7 @@
     @foreach ($counts as $state => $count)
         <div class="rounded-card border border-line bg-surface p-4 text-center shadow-card">
             <p class="text-2xl font-semibold text-fg">{{ $count }}</p>
-            <div class="mt-1">@include('portal.partials.peppol-status', ['status' => $state])</div>
+            <div class="mt-1">@include('networks.peppol.status', ['status' => $state])</div>
         </div>
     @endforeach
 </div>
@@ -57,10 +57,10 @@
         @forelse ($waiting as $document)
             <tr class="hover:bg-sunken">
                 <td class="px-6 py-4 text-sm">{{ $document->org?->name ?? Str::limit($document->org_id, 8) }}</td>
-                <td class="px-6 py-4">@include('portal.partials.peppol-status', ['status' => $document->status])</td>
+                <td class="px-6 py-4">@include('networks.peppol.status', ['status' => $document->status])</td>
                 <td class="px-6 py-4">
                     @if ($document->reporting_status)
-                        @include('portal.partials.peppol-status', ['status' => $document->reporting_status])
+                        @include('networks.peppol.status', ['status' => $document->reporting_status])
                     @endif
                 </td>
                 <td class="px-6 py-4 font-mono text-xs">{{ $document->receiver_endpoint }}</td>
@@ -116,10 +116,10 @@
             <tr class="hover:bg-sunken">
                 <td class="px-6 py-4 text-sm">{{ $document->org?->name ?? Str::limit($document->org_id, 8) }}</td>
                 <td class="px-6 py-4 text-sm">{{ $document->direction === 'in' ? 'Received' : 'Sent' }}</td>
-                <td class="px-6 py-4">@include('portal.partials.peppol-status', ['status' => $document->status])</td>
+                <td class="px-6 py-4">@include('networks.peppol.status', ['status' => $document->status])</td>
                 <td class="px-6 py-4">
                     @if ($document->reporting_status)
-                        @include('portal.partials.peppol-status', ['status' => $document->reporting_status])
+                        @include('networks.peppol.status', ['status' => $document->reporting_status])
                     @endif
                 </td>
                 <td class="px-6 py-4 text-sm">{{ $document->document_type }}</td>

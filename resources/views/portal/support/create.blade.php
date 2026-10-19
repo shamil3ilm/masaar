@@ -3,7 +3,7 @@
 @section('title', __('New ticket'))
 
 @section('content')
-<x-ui.page-header :title="__('New ticket')" :description="__('Tell us what happened. An invoice number and the message ZATCA gave help us answer faster.')">
+<x-ui.page-header :title="__('New ticket')" :description="__('Tell us what happened. An invoice number and the message the tax authority gave help us answer faster.')">
     <x-slot:breadcrumb>
         <x-ui.breadcrumb :items="[['label' => __('Support'), 'href' => route('portal.support.index')], ['label' => __('New ticket')]]" />
     </x-slot:breadcrumb>

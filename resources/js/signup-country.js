@@ -13,7 +13,7 @@
  *   x-data="signupCountry" data-country="SA"   on the form
  *   @change="choose"                           on the radio group
  *   :hidden / :disabled="country !== 'XX'"     on each country's section
- *   :hidden="notSaudi" / "notUae"              on each country's review notice
+ *   :hidden="country !== 'XX'"                 on each country's review notice
  */
 export function signupCountry() {
     return {
@@ -30,14 +30,6 @@ export function signupCountry() {
             if (radio instanceof HTMLInputElement && radio.name === 'country' && radio.checked) {
                 this.country = radio.value;
             }
-        },
-
-        get notSaudi() {
-            return this.country !== 'SA';
-        },
-
-        get notUae() {
-            return this.country !== 'AE';
         },
     };
 }

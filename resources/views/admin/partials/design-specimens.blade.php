@@ -367,12 +367,12 @@
 
         <x-ui.tabs id="{{ $scope }}-tabs" :label="$t('Country', 'الدولة')" :tabs="['one' => $t('Saudi Arabia', 'المملكة العربية السعودية'), 'two' => $t('United Arab Emirates', 'الإمارات العربية المتحدة')]">
             <x-ui.tab-panel id="{{ $scope }}-tabs" name="one" selected>
-                <x-ui.card :title="$t('ZATCA Fatoora', 'فاتورة - هيئة الزكاة')" :description="$t('Clearance and reporting', 'الاعتماد والإبلاغ')">
+                <x-ui.card :title="$t('Tax authority', 'الجهة الضريبية')" :description="$t('Clearance and reporting', 'الاعتماد والإبلاغ')">
                     <p class="text-sm text-muted">{{ $t('A card: a line and a surface. Tables run to its edges with flush.', 'بطاقة: حد وسطح. تمتد الجداول إلى حوافها مع flush.') }}</p>
                 </x-ui.card>
             </x-ui.tab-panel>
             <x-ui.tab-panel id="{{ $scope }}-tabs" name="two">
-                <x-ui.card :title="$t('Peppol PINT AE', 'Peppol PINT AE')">
+                <x-ui.card :title="$t('Exchange network', 'شبكة التبادل')">
                     <p class="text-sm text-muted">{{ $t('The second panel of the tabs.', 'اللوحة الثانية من علامات التبويب.') }}</p>
                 </x-ui.card>
             </x-ui.tab-panel>

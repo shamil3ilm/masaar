@@ -1,7 +1,7 @@
 {{--
     A postal address on a printed invoice.
 
-    ZATCA's data dictionary marks each part of the seller's address "Required"
+    The authority's data dictionary marks each part of the seller's address "Required"
     under "Visibility on human readable formats", for both standard and
     simplified invoices: street (BT-35), additional street (BT-36), building
     number (KSA-17), district (KSA-3), city (BT-37), postal code (BT-38) and

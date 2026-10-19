@@ -30,7 +30,7 @@
         </div>
         <p class="mb-3 text-sm text-muted">The deadline has passed. What is left is to report late and to know which invoices were affected.</p>
 
-        @include('admin.alerts.table', ['rows' => $overdue, 'empty' => 'Nothing is past the deadline.'])
+        @include('countries.saudi-arabia.admin.alerts-table', ['rows' => $overdue, 'empty' => 'Nothing is past the deadline.'])
     </div>
 
     <div>
@@ -44,7 +44,7 @@
         </div>
         <p class="mb-3 text-sm text-muted">Still recoverable &mdash; the only case where seeing it early changes the outcome.</p>
 
-        @include('admin.alerts.table', ['rows' => $atRisk, 'empty' => 'Nothing is approaching its deadline.'])
+        @include('countries.saudi-arabia.admin.alerts-table', ['rows' => $atRisk, 'empty' => 'Nothing is approaching its deadline.'])
     </div>
 @endif
 @endsection

@@ -292,10 +292,10 @@ enum ErrorCode: string
             self::VAL_INVOICE_ALREADY_ISSUED => 'Invoice has already been issued and cannot be issued again',
 
             // ZATCA
-            self::ZATCA_SERVICE_UNAVAILABLE => 'ZATCA service is temporarily unavailable',
-            self::ZATCA_TIMEOUT => 'ZATCA service request timed out',
-            self::ZATCA_RATE_LIMITED => 'ZATCA rate limit exceeded',
-            self::ZATCA_MAINTENANCE => 'ZATCA service is under maintenance',
+            self::ZATCA_SERVICE_UNAVAILABLE => 'The tax authority service is temporarily unavailable',
+            self::ZATCA_TIMEOUT => 'The tax authority service request timed out',
+            self::ZATCA_RATE_LIMITED => 'The tax authority rate limit was exceeded',
+            self::ZATCA_MAINTENANCE => 'The tax authority service is under maintenance',
 
             // Certificate
             self::CERT_REVOKED => 'Certificate has been revoked',
@@ -322,19 +322,19 @@ enum ErrorCode: string
             // and a code alone sends them to the documentation.
             self::VALIDATION_FAILED => 'The invoice did not pass validation',
 
-            self::ZATCA_INVALID_HASH => 'ZATCA rejected the document hash',
-            self::ZATCA_INVALID_QR_CODE => 'ZATCA rejected the QR code payload',
+            self::ZATCA_INVALID_HASH => 'The tax authority rejected the document hash',
+            self::ZATCA_INVALID_QR_CODE => 'The tax authority rejected the QR code payload',
 
             self::CERT_INVALID_FORMAT => 'Certificate could not be read; expected PEM or base64 DER',
             self::CERT_EXPIRED => 'Certificate has expired and must be renewed',
             self::CERT_REVOCATION_UNVERIFIED => 'The certificate revocation status could not be checked against a current revocation list',
 
-            self::NET_CONNECTION_FAILED => 'The connection to ZATCA could not be established',
-            self::NET_DNS_RESOLUTION_FAILED => 'The ZATCA hostname could not be resolved',
-            self::NET_HOST_UNREACHABLE => 'The ZATCA host is unreachable',
+            self::NET_CONNECTION_FAILED => 'The connection to the tax authority could not be established',
+            self::NET_DNS_RESOLUTION_FAILED => 'The tax authority hostname could not be resolved',
+            self::NET_HOST_UNREACHABLE => 'The tax authority host is unreachable',
 
-            self::ZATCA_INVOICE_ALREADY_CLEARED => 'This invoice has already been cleared by ZATCA',
-            self::ZATCA_INVOICE_ALREADY_REPORTED => 'This invoice has already been reported to ZATCA',
+            self::ZATCA_INVOICE_ALREADY_CLEARED => 'This invoice has already been cleared by the tax authority',
+            self::ZATCA_INVOICE_ALREADY_REPORTED => 'This invoice has already been reported to the tax authority',
 
             self::RATE_QUOTA_EXCEEDED => 'The request quota for this plan has been exhausted',
             self::RATE_CONCURRENT_LIMIT => 'Too many requests are in flight for this organization at once',

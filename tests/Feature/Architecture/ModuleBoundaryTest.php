@@ -38,7 +38,8 @@ use RecursiveIteratorIterator;
  * A country's Blade views are part of its module: they live in
  * resources/views/countries/<country>/, the module's folder name in kebab
  * case (SaudiArabia's in saudi-arabia/), and are held to the same lines as
- * its classes.
+ * its classes. A network's live in resources/views/networks/<network>/,
+ * held to the network's.
  */
 class ModuleBoundaryTest extends TestCase
 {
@@ -55,6 +56,9 @@ class ModuleBoundaryTest extends TestCase
 
     /** Each country module's views, in a folder of its own. */
     private const COUNTRY_VIEWS = 'resources/views/countries/';
+
+    /** Each network's views, in a folder of its own. */
+    private const NETWORK_VIEWS = 'resources/views/networks/';
 
     /**
      * Shared files referencing a country or network module, and what they reference.
@@ -80,13 +84,10 @@ class ModuleBoundaryTest extends TestCase
         'bootstrap/app.php' => 'Countries\SaudiArabia\Exceptions\CertificateException, Countries\SaudiArabia\Exceptions\SigningException',
         // Each module's provider, registering it, and the network's.
         'bootstrap/providers.php' => 'Countries\SaudiArabia\ModuleServiceProvider, Countries\UnitedArabEmirates\ModuleServiceProvider, Networks\Peppol\NetworkServiceProvider',
-        'resources/views/portal/invoices/create-uae.blade.php' => 'Countries\UnitedArabEmirates\Rules\PintAe',
-        'resources/views/portal/invoices/create.blade.php' => 'Countries\SaudiArabia\Rules\FatooraConfig',
-        'resources/views/portal/invoices/partials/uae-line-row.blade.php' => 'Countries\UnitedArabEmirates\Rules\PintAe',
         'routes/api/partner.php' => 'Countries\SaudiArabia\Http\Controllers\ComplianceController',
         'routes/api/public.php' => 'Networks\Peppol\Http\Controllers\InboundWebhookController, Networks\Peppol\Http\Controllers\StatusWebhookController',
         'routes/api/tenant.php' => 'Countries\SaudiArabia\Http\Controllers\BranchOnboardingController, Countries\SaudiArabia\Http\Controllers\ComplianceController, Countries\SaudiArabia\Http\Controllers\OnboardingController, Countries\UnitedArabEmirates\Http\Controllers\UaeDocumentController, Countries\UnitedArabEmirates\Http\Controllers\UaeInvoiceController, Countries\UnitedArabEmirates\Http\Controllers\UaeProfileController',
-        'routes/web.php' => 'Countries\SaudiArabia\Http\Controllers\AdminAlertController, Countries\SaudiArabia\Http\Controllers\AdminKillSwitchController, Countries\SaudiArabia\Http\Controllers\PortalSubmissionController, Countries\SaudiArabia\Http\Controllers\PortalZatcaController, Countries\UnitedArabEmirates\Http\Controllers\PortalProviderAppointmentController, Countries\UnitedArabEmirates\Http\Controllers\PortalReceivedController, Countries\UnitedArabEmirates\Http\Controllers\PortalUaeInvoiceController, Networks\Peppol\Http\Controllers\AdminPeppolController',
+        'routes/web.php' => 'Countries\SaudiArabia\Http\Controllers\AdminKillSwitchController',
     ];
 
     /**
@@ -109,6 +110,7 @@ class ModuleBoundaryTest extends TestCase
         self::COUNTRIES.'UnitedArabEmirates/' => '/zatca|fatoora|saudi|VATEX-SA/i',
         self::COUNTRY_VIEWS.'united-arab-emirates/' => '/zatca|fatoora|saudi|VATEX-SA/i',
         self::NETWORKS.'Peppol/' => '/zatca|fatoora|saudi|\buae\b|emirat|dubai|dirham|\bAED\b|[\'"]AE[\'"]|0235/i',
+        self::NETWORK_VIEWS.'peppol/' => '/zatca|fatoora|saudi|\buae\b|emirat|dubai|dirham|\bAED\b|[\'"]AE[\'"]|0235/i',
     ];
 
     /**
@@ -184,7 +186,7 @@ class ModuleBoundaryTest extends TestCase
 
     public function test_networks_name_no_country(): void
     {
-        $found = $this->references(fn (string $file): bool => str_starts_with($file, self::NETWORKS), 'Countries');
+        $found = $this->references(fn (string $file): bool => str_starts_with($file, self::NETWORKS) || str_starts_with($file, self::NETWORK_VIEWS), 'Countries');
 
         $this->assertSame([], $found, "A network references a country module:\n".var_export($found, true));
     }
@@ -198,7 +200,7 @@ class ModuleBoundaryTest extends TestCase
 
     private function inModule(string $file): bool
     {
-        foreach ([self::COUNTRIES, self::NETWORKS, self::ENGINE, self::COUNTRY_VIEWS] as $prefix) {
+        foreach ([self::COUNTRIES, self::NETWORKS, self::ENGINE, self::COUNTRY_VIEWS, self::NETWORK_VIEWS] as $prefix) {
             if (str_starts_with($file, $prefix)) {
                 return true;
             }

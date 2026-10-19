@@ -40,6 +40,12 @@ class PresentationPortsTest extends TestCase
             $views = array_filter([
                 $presentation->navigation(Presentation::NAV_MAIN),
                 $presentation->navigation(Presentation::NAV_ADMIN),
+                $presentation->navigation(Presentation::NAV_CONSOLE),
+                $presentation->notice(),
+                $module->sellerRules()->signupView(),
+                $module->sellerRules()->companyView(),
+                $module->invoiceRules()->portalView(),
+                $module->invoiceRules()->buyerView(),
                 $page->heading,
                 $page->actions,
                 $page->panel,
@@ -96,6 +102,7 @@ class PresentationPortsTest extends TestCase
             $this->assertContains($health['status'], ['healthy', 'warning', 'critical'], $code);
             $this->assertNotSame('', $module->dashboard()->heading(), $code);
             $this->assertNotSame('', $module->presentation()->tagline(), $code);
+            $this->assertNotSame('', $module->sellerRules()->signupNext(), $code);
         }
     }
 

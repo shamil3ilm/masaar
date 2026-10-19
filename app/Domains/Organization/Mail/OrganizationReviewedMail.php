@@ -23,7 +23,7 @@ final class OrganizationReviewedMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(subject: $this->approved
-            ? __(':organization is approved - connect to ZATCA', ['organization' => $this->organizationName])
+            ? __(':organization is approved - connect to your tax authority', ['organization' => $this->organizationName])
             : __(':organization was not approved', ['organization' => $this->organizationName]));
     }
 

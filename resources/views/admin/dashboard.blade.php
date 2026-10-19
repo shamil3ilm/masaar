@@ -41,7 +41,7 @@
                     <li>{{ $dependency }} is {{ $status }}</li>
                 @endforeach
                 @unless ($breakerClosed)
-                    <li>ZATCA circuit breaker is {{ $breakerState }}</li>
+                    <li>Tax authority circuit breaker is {{ $breakerState }}</li>
                 @endunless
                 @if (($health['queue']['stuck'] ?? 0) > 0)
                     <li>{{ $health['queue']['stuck'] }} queue item(s) stuck for over 30 minutes</li>
@@ -127,7 +127,7 @@
         </div>
     </div>
 
-    <!-- System Health & ZATCA Circuit Breaker -->
+    <!-- System health and the tax authority circuit breaker -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <!-- System Health -->
         <div class="bg-surface rounded-card border border-line shadow-card p-6">
@@ -160,17 +160,17 @@
         </div>
 
         {{--
-            This card showed live ZATCA reachability — available, latency_ms,
+            This card showed live tax authority reachability — available, latency_ms,
             reason — from the ConnectivityChecker behind
             GET /api/admin/dashboard/connectivity. That check is an outbound HTTP
             call, it is not part of PlatformStatus, and nothing on a rendered page
-            can make it. What health() does carry about ZATCA is the circuit
+            can make it. What health() does carry about the authority is the circuit
             breaker, which is the signal that actually gates submissions, so that
             is what the card shows now. The Refresh / Reset buttons went with the
             fetch calls; the breaker closes on its own after its timeout.
         --}}
         <div class="bg-surface rounded-card border border-line shadow-card p-6">
-            <h3 class="text-lg font-semibold mb-4">ZATCA circuit breaker</h3>
+            <h3 class="text-lg font-semibold mb-4">Tax authority circuit breaker</h3>
             <div class="text-center py-4">
                 <div class="inline-flex items-center justify-center w-16 h-16 rounded-full mb-3 {{ $breakerClosed ? 'bg-success-soft' : 'bg-danger-soft' }}">
                     <svg class="w-8 h-8 {{ $breakerClosed ? 'text-success' : 'text-danger' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">

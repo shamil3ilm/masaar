@@ -87,12 +87,17 @@ class SellerRules implements SellerRulesPort
 
     public function signupView(): string
     {
-        return 'auth.partials.saudi-signup';
+        return 'countries.saudi-arabia.signup.company';
+    }
+
+    public function signupNext(): string
+    {
+        return __('We review every company before it connects to ZATCA. You can sign in and prepare invoices straight away; connecting to ZATCA and issuing open once your company is approved.');
     }
 
     public function companyView(): string
     {
-        return 'portal.partials.company-saudi';
+        return 'countries.saudi-arabia.company';
     }
 
     public function companyData(Organization $organization): array

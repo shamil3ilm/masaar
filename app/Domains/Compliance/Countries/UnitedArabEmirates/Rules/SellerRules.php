@@ -93,12 +93,17 @@ class SellerRules implements SellerRulesPort
 
     public function signupView(): string
     {
-        return 'auth.partials.uae-signup';
+        return 'countries.united-arab-emirates.signup';
+    }
+
+    public function signupNext(): string
+    {
+        return __('We review every company before it can issue. You can sign in and prepare invoices straight away; issuing opens once your company is approved and you have added the Peppol endpoint your service provider issues you on your company page.');
     }
 
     public function companyView(): string
     {
-        return 'portal.partials.company-uae';
+        return 'countries.united-arab-emirates.company';
     }
 
     public function companyData(Organization $organization): array

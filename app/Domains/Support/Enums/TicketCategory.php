@@ -15,7 +15,7 @@ enum TicketCategory: string
     public function label(): string
     {
         return match ($this) {
-            self::Zatca => __('ZATCA connection or filing'),
+            self::Zatca => __('Tax authority connection or filing'),
             self::Invoices => __('Invoices'),
             self::Account => __('Sign-in and account'),
             self::Billing => __('Plan and billing'),

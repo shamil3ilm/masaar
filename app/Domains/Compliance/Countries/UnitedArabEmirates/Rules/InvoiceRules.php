@@ -316,7 +316,7 @@ class InvoiceRules implements InvoiceRulesPort
 
     public function portalView(): string
     {
-        return 'portal.invoices.create-uae';
+        return 'countries.united-arab-emirates.invoice.create';
     }
 
     public function portalRoute(): string
@@ -350,7 +350,7 @@ class InvoiceRules implements InvoiceRulesPort
 
     public function buyerView(): ?string
     {
-        return 'portal.customers.partials.uae-buyer';
+        return 'countries.united-arab-emirates.customer-buyer';
     }
 
     /**

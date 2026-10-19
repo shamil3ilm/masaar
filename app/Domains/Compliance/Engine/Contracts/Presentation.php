@@ -29,14 +29,29 @@ interface Presentation
     /** The sidebar's links for the organization's administrators. */
     public const NAV_ADMIN = 'admin';
 
+    /**
+     * The admin console's links to the country's own panels, which the
+     * console groups under the country's name.
+     */
+    public const NAV_CONSOLE = 'console';
+
     /** What the portal calls itself, under the logo. */
     public function tagline(): string;
 
     /**
      * The Blade view of the links the country adds to a section of the
-     * sidebar (NAV_MAIN or NAV_ADMIN); null when it adds none there.
+     * sidebar (NAV_MAIN, NAV_ADMIN or the console's NAV_CONSOLE); null when
+     * it adds none there.
      */
     public function navigation(string $section): ?string;
+
+    /**
+     * The Blade view of a notice every page of the portal and the console
+     * shows about how this deployment files in the country - that it files
+     * with a test environment, say - or null when there is none to show.
+     * Given no variables; it decides for itself whether to say anything.
+     */
+    public function notice(): ?string;
 
     /** What an invoice's page shows for the country. */
     public function invoicePage(Invoice $invoice): InvoicePage;

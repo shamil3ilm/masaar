@@ -16,7 +16,7 @@
 <x-ui.alert tone="warning" class="mb-6" :title="$organization->status === 'rejected' ? 'Not approved' : 'Awaiting review'">
     <p>
         Signed up {{ \Illuminate\Support\Carbon::parse($organization->created_at)->diffForHumans() }}.
-        Check the company details below against its VAT and CR registration before approving: approval lets it obtain a ZATCA certificate and issue.
+        Check the company details below against its VAT and CR registration before approving: approval lets it obtain a certificate from its tax authority and issue.
     </p>
     @if ($organization->review_note)
         <p class="mt-2"><strong>Reason given:</strong> {{ $organization->review_note }}</p>

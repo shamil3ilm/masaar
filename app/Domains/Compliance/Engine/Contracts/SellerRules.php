@@ -46,6 +46,9 @@ interface SellerRules
     /** The Blade view of sign-up's section for the country, given no variables. */
     public function signupView(): string;
 
+    /** What a new company is told happens after it signs up, in the reader's language. */
+    public function signupNext(): string;
+
     /** The Blade view of the company page's form, given $organization and companyData(). */
     public function companyView(): string;
 

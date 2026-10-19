@@ -84,7 +84,7 @@ class InvoicePdf
             $mpdf->SetAssociatedFiles([[
                 'name' => $this->fileName($invoice, 'xml'),
                 'mime' => 'text/xml',
-                'description' => 'The e-invoice as filed with ZATCA',
+                'description' => 'The e-invoice as filed with the tax authority',
                 'AFRelationship' => 'Alternative',
                 'content' => $xml,
             ]]);

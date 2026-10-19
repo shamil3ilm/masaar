@@ -12,11 +12,11 @@
     the UAE module's InvoiceRules (PortalUaeInvoiceRequest) and drafted by
     UaeDrafts, as the API's and the pipeline's invoices are.
 
-    The line rows, the pickers and the add-a-line script are the Saudi form's.
+    The line rows, the pickers and the add-a-line script are the default form's.
 --}}
 @section('content')
 @php
-    // One empty row to start, as on the Saudi form.
+    // One empty row to start, as on the default form.
     $rows = old('lines', [[]]);
     $flags = array_map('strval', (array) old('flags', []));
     $choice = old('buyer_endpoint_choice', 'own');
@@ -333,13 +333,13 @@
 
         <div data-line-rows class="space-y-4">
             @foreach ($rows as $index => $row)
-                @include('portal.invoices.partials.uae-line-row', ['index' => $index, 'row' => $row])
+                @include('countries.united-arab-emirates.invoice.line-row', ['index' => $index, 'row' => $row])
             @endforeach
         </div>
 
         {{-- Cloned by resources/js/invoice-lines.js. --}}
         <template data-line-template>
-            @include('portal.invoices.partials.uae-line-row', ['index' => 0, 'row' => []])
+            @include('countries.united-arab-emirates.invoice.line-row', ['index' => 0, 'row' => []])
         </template>
     </div>
 

@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia;
 
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\AdminAlertController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\AdminCertificateController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalCertificateRenewalController;
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalSubmissionController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalTillController;
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalZatcaController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\UnitController;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateRevocationActions;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\GovernedRevocationApprovals;
@@ -43,12 +46,14 @@ class ModuleServiceProvider extends ServiceProvider
     }
 
     /**
-     * The module's own console page - every device certificate, and marking
-     * one revoked - and the portal's certificate renewal. Registered here
-     * rather than in routes/web.php, which only loses country knowledge
-     * (ModuleBoundaryTest). The console page sits behind the console's own
-     * middleware - platform.admin, the console permission, the audit of every
-     * change - with configuring the platform required to revoke.
+     * The module's own console pages - every device certificate, marking one
+     * revoked, and the submissions past their deadline - and its portal
+     * screens: connecting to ZATCA, the certificates, late reporting, the
+     * submissions and the certificate renewal. Registered here rather than in
+     * routes/web.php, which only loses country knowledge (ModuleBoundaryTest).
+     * The console pages sit behind the console's own middleware -
+     * platform.admin, the console permission, the audit of every change -
+     * with configuring the platform required to revoke.
      */
     public function boot(): void
     {
@@ -61,10 +66,42 @@ class ModuleServiceProvider extends ServiceProvider
             ->name('admin.')
             ->group(function (): void {
                 Route::get('/certificates', [AdminCertificateController::class, 'index'])->name('certificates');
+                // Submissions past an age without having reached ZATCA.
+                Route::get('/alerts', [AdminAlertController::class, 'index'])->name('alerts');
                 Route::post('/certificates/{version}/revoke', [AdminCertificateController::class, 'revoke'])
                     ->whereNumber('version')
                     ->middleware('admin.can:platform.configure')
                     ->name('certificates.revoke');
+            });
+
+        // The portal's ZATCA screens, behind the portal's own middleware.
+        Route::middleware(['web', 'auth', 'auth.session', 'verified', 'portal.tenant', 'portal.branch', 'org.two_factor', 'org.writer'])
+            ->prefix('portal')
+            ->name('portal.')
+            ->whereUuid(['userId'])
+            ->group(function (): void {
+                // The submissions, filterable by person, and each person's.
+                Route::get('/submissions', [PortalSubmissionController::class, 'submissions'])->name('submissions');
+                Route::get('/submissions/export.csv', [PortalSubmissionController::class, 'export'])->middleware('throttle:20,1')->name('submissions.export');
+                Route::get('/certificates', [PortalSubmissionController::class, 'certificates'])->name('certificates');
+                Route::get('/users/{userId}/activity', [PortalSubmissionController::class, 'userActivity'])->name('user.activity');
+
+                // Connecting to ZATCA: OTP, compliance checks, production
+                // certificate. Administrators only, and only once the company is
+                // approved; the controller checks both. Each step reaches ZATCA, so
+                // they are throttled.
+                Route::get('/zatca', [PortalZatcaController::class, 'show'])->name('zatca.show');
+                Route::post('/zatca/ccsid', [PortalZatcaController::class, 'ccsid'])->middleware('throttle:6,1')->name('zatca.ccsid');
+                Route::post('/zatca/check', [PortalZatcaController::class, 'check'])->middleware('throttle:6,1')->name('zatca.check');
+                Route::post('/zatca/production', [PortalZatcaController::class, 'production'])->middleware('throttle:6,1')->name('zatca.production');
+                // Each device's certificates, and what still waits to be filed under
+                // each. Administrators only; the controller checks.
+                Route::get('/zatca/certificates', [PortalZatcaController::class, 'certificates'])->name('zatca.certificates');
+                // Invoices not reported within 24 hours, and the notices ZATCA's
+                // guidelines ask for. Administrators only; the controller checks.
+                Route::get('/zatca/late', [PortalZatcaController::class, 'late'])->name('zatca.late');
+                Route::post('/zatca/late/notified', [PortalZatcaController::class, 'lateNotified'])->name('zatca.late.notified');
+                Route::get('/zatca/late/evidence.csv', [PortalZatcaController::class, 'lateEvidence'])->middleware('throttle:20,1')->name('zatca.late.evidence');
             });
 
         // Renewing the organization's certificate, or a till's, from the

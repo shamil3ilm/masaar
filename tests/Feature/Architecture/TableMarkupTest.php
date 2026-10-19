@@ -49,7 +49,7 @@ class TableMarkupTest extends TestCase
      * else; those tables are layout, not data, and there is no scroll area to
      * give them.
      */
-    private const EMAILS = 'emails/';
+    private const EMAILS = '#(^|/)emails/#';
 
     /**
      * PDF templates are drawn by the PDF renderer, which reads plain tables
@@ -70,7 +70,7 @@ class TableMarkupTest extends TestCase
 
         foreach ($this->views() as $relative => $contents) {
             if (str_starts_with($relative, 'components/ui/') || preg_match(self::PRINTED, $relative) === 1
-                || str_starts_with($relative, self::EMAILS) || str_starts_with($relative, self::PDFS)) {
+                || preg_match(self::EMAILS, $relative) === 1 || str_starts_with($relative, self::PDFS)) {
                 continue;
             }
 

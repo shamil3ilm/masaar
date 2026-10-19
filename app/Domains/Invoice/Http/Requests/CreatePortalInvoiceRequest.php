@@ -72,7 +72,7 @@ class CreatePortalInvoiceRequest extends CreateInvoiceRequest
     {
         return [
             ...parent::messages(),
-            'adjustment_reason.in' => __('Choose one of the reasons ZATCA lists for a credit or debit note.'),
+            'adjustment_reason.in' => __('Choose one of the reasons the tax authority lists for a credit or debit note.'),
         ];
     }
 

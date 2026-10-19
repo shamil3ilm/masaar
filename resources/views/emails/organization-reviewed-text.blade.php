@@ -2,7 +2,7 @@
 @if ($approved)
 {!! __(':organization is approved', ['organization' => $organizationName]) !!}.
 
-{!! __('You can now connect it to ZATCA and issue invoices. Sign in, open Company to check its details, then follow the ZATCA onboarding steps with a one-time password from the Fatoora portal.') !!}
+{!! __('You can now connect it to your tax authority and issue invoices. Sign in, open Company to check its details, then follow the connection steps the portal shows.') !!}
 
 {!! $portalUrl !!}
 @else

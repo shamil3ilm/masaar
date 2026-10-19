@@ -10,6 +10,9 @@
     <x-theme-head />
 </head>
 <body class="min-h-screen bg-ground text-fg">
+    {{-- Every country the engine has, for its console panels and notices. --}}
+    @php($consoleRegistry = app(\App\Domains\Compliance\Engine\Services\JurisdictionRegistry::class))
+    @php($consoleCountries = array_map(fn (string $code) => $consoleRegistry->get($code), $consoleRegistry->registered()))
     <a href="#content" class="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-50 focus:rounded-button focus:bg-surface focus:px-4 focus:py-3 focus:shadow-raised">Skip to content</a>
 
     <div x-data="sidebar" class="flex">
@@ -58,10 +61,6 @@
                     <x-slot:icon><x-ui.icon name="queue" /></x-slot:icon>
                     Offline queue
                 </x-ui.nav-link>
-                <x-ui.nav-link :href="route('admin.peppol')" :active="request()->routeIs('admin.peppol*')" collapsible>
-                    <x-slot:icon><x-ui.icon name="exchange" /></x-slot:icon>
-                    Peppol
-                </x-ui.nav-link>
                 <x-ui.nav-link :href="route('admin.logs')" :active="request()->routeIs('admin.logs')" collapsible>
                     <x-slot:icon><x-ui.icon name="document" /></x-slot:icon>
                     Logs
@@ -85,10 +84,6 @@
                 <x-ui.nav-link :href="route('admin.licences.index')" :active="request()->routeIs('admin.licences.*')" collapsible>
                     <x-slot:icon><x-ui.icon name="key" /></x-slot:icon>
                     Licences
-                </x-ui.nav-link>
-                <x-ui.nav-link :href="route('admin.alerts')" :active="request()->routeIs('admin.alerts')" collapsible>
-                    <x-slot:icon><x-ui.icon name="alert" /></x-slot:icon>
-                    Alerts
                 </x-ui.nav-link>
                 <x-ui.nav-link :href="route('admin.webhooks.index')" :active="request()->routeIs('admin.webhooks.*')" collapsible>
                     <x-slot:icon><x-ui.icon name="bolt" /></x-slot:icon>
@@ -129,10 +124,6 @@
                     <x-slot:icon><x-ui.icon name="power" /></x-slot:icon>
                     Kill switches
                 </x-ui.nav-link>
-                <x-ui.nav-link :href="route('admin.certificates')" :active="request()->routeIs('admin.certificates*')" collapsible>
-                    <x-slot:icon><x-ui.icon name="shield" /></x-slot:icon>
-                    Certificates
-                </x-ui.nav-link>
                 <x-ui.nav-link :href="route('admin.settings')" :active="request()->routeIs('admin.settings*')" collapsible>
                     <x-slot:icon><x-ui.icon name="settings" /></x-slot:icon>
                     Settings
@@ -157,6 +148,15 @@
                     <x-slot:icon><x-ui.icon name="grid" /></x-slot:icon>
                     Design system
                 </x-ui.nav-link>
+                {{-- Each country's own panels, under its name, from its module
+                     (Presentation::NAV_CONSOLE): every registered country, on
+                     or off, since an operator works on one before switching it on. --}}
+                @foreach ($consoleCountries as $consoleCountry)
+                    @if ($consoleLinks = $consoleCountry->presentation()->navigation(\App\Domains\Compliance\Engine\Contracts\Presentation::NAV_CONSOLE))
+                        <p class="px-3 pb-1 pt-5 text-xs font-semibold uppercase tracking-wider text-subtle" x-show="labelled">{{ $consoleCountry->name() }}</p>
+                        @include($consoleLinks)
+                    @endif
+                @endforeach
             </nav>
         </aside>
 
@@ -166,7 +166,12 @@
              the page itself scrolled sideways, and overflow-x-auto never had
              anything to do. --}}
         <main class="min-w-0 flex-1">
-            <x-zatca-environment-banner />
+            {{-- Each country's notice, if it has one (Presentation::notice()). --}}
+            @foreach ($consoleCountries as $consoleCountry)
+                @if ($consoleNotice = $consoleCountry->presentation()->notice())
+                    @include($consoleNotice)
+                @endif
+            @endforeach
             <header data-sticky-bar class="glass-bar sticky top-0 z-20 border-b border-line">
                 <div class="flex items-center justify-between gap-3 px-4 py-2 md:px-6">
                     <button type="button" @click="toggle" :aria-expanded="expanded"

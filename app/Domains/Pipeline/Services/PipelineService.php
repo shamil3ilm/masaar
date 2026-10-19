@@ -238,7 +238,7 @@ class PipelineService
 
         // A rejection is the answer, and it is not a success.
         $errors = $invoice->status === InvoiceStatus::Rejected
-            ? ['ZATCA rejected this invoice: '.($submission?->last_error ?? 'see zatca_response').' Issue a credit note to correct it.']
+            ? ['The tax authority rejected this invoice: '.($submission?->last_error ?? 'see zatca_response').' Issue a credit note to correct it.']
             : [];
 
         return $this->result->build($invoice, $errors, [], $submission === null ? null : [

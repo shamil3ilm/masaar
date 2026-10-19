@@ -3,7 +3,7 @@
 @section('title', __('Support'))
 
 @section('content')
-<x-ui.page-header :title="__('Support')" :description="__('Ask us anything about ZATCA, your invoices or your account. Everyone in your company sees these tickets.')">
+<x-ui.page-header :title="__('Support')" :description="__('Ask us anything about e-invoicing, your invoices or your account. Everyone in your company sees these tickets.')">
     <x-slot:actions>
         <x-ui.button :href="route('portal.support.create')">{{ __('New ticket') }}</x-ui.button>
     </x-slot:actions>

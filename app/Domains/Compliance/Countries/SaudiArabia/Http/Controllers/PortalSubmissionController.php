@@ -50,7 +50,7 @@ class PortalSubmissionController extends Controller
 
         $list = $this->lists->portal($this->history->spec($orgId, 'portal.submissions'), $request, $orgId, 'portal.submissions.export');
 
-        return view('portal.submissions', [
+        return view('countries.saudi-arabia.submissions', [
             'organization' => $this->tenant->getOrganization(),
             'submissions' => $this->history->page($orgId, $list),
             'stateCounts' => $this->submissionReport->countByState(),
@@ -88,7 +88,7 @@ class PortalSubmissionController extends Controller
         $organization = $this->tenant->getOrganization();
         $activeCert = $this->dashboard->activeCertificate($orgId);
 
-        return view('portal.certificates', compact('organization', 'activeCert'));
+        return view('countries.saudi-arabia.certificate-status', compact('organization', 'activeCert'));
     }
 
     /**

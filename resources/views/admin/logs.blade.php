@@ -3,7 +3,7 @@
 @section('title', 'Submission logs')
 
 @section('content')
-<x-ui.page-header title="Submission logs" description="ZATCA submission history and status" />
+<x-ui.page-header title="Submission logs" description="Tax authority submission history and status" />
 
 <!-- State Summary -->
 <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
@@ -53,7 +53,7 @@
             <x-ui.th>Organization</x-ui.th>
             <x-ui.th>Type</x-ui.th>
             <x-ui.th>State</x-ui.th>
-            <x-ui.th>ZATCA Status</x-ui.th>
+            <x-ui.th>Authority status</x-ui.th>
             <x-ui.th>Error</x-ui.th>
             <x-ui.th>Created</x-ui.th>
         </x-slot:head>

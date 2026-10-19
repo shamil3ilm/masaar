@@ -25,6 +25,7 @@ class TranslationTest extends TestCase
     private const SCOPE = [
         'resources/views/portal',
         'resources/views/countries',
+        'resources/views/networks',
         'resources/views/auth',
         'resources/views/account',
         'resources/views/components',

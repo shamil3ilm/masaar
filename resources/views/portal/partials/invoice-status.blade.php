@@ -17,7 +17,7 @@
     that never occurs is a promise the UI cannot keep.
 
     Rejected is not "invalid" - the invoice is still issued, signed, numbered
-    and in the hash chain. ZATCA's remedy is a credit note, so it is coloured
+    and in the hash chain. The authority's remedy is a credit note, so it is coloured
     as a problem to act on rather than something that never happened.
 
     @param $status  \App\Domains\Invoice\Enums\InvoiceStatus|string|null

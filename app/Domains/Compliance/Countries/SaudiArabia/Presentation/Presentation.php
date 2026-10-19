@@ -71,10 +71,25 @@ class Presentation implements PresentationPort
         return 'islamic-umalqura';
     }
 
-    /** ZATCA onboarding, among the administrator's links. */
+    /**
+     * Submissions and the certificate for everyone; ZATCA onboarding, late
+     * reporting and the devices' certificates among the administrator's
+     * links; the console's certificates and overdue-submission alerts.
+     */
     public function navigation(string $section): ?string
     {
-        return $section === self::NAV_ADMIN ? self::VIEWS.'navigation' : null;
+        return match ($section) {
+            self::NAV_MAIN => self::VIEWS.'navigation-main',
+            self::NAV_ADMIN => self::VIEWS.'navigation',
+            self::NAV_CONSOLE => self::VIEWS.'console-navigation',
+            default => null,
+        };
+    }
+
+    /** The ZATCA environment, whenever it is not production. */
+    public function notice(): ?string
+    {
+        return self::VIEWS.'notice';
     }
 
     /**

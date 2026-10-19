@@ -822,7 +822,7 @@ class InvoiceRules implements InvoiceRulesPort
 
     public function portalView(): string
     {
-        return 'portal.invoices.create';
+        return 'countries.saudi-arabia.invoice.create';
     }
 
     public function portalRoute(): string

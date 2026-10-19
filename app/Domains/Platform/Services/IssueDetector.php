@@ -60,7 +60,7 @@ class IssueDetector
         return [
             'type' => 'connectivity',
             'severity' => 'critical',
-            'message' => 'ZATCA API is unavailable',
+            'message' => 'The tax authority API is unavailable',
             'details' => $connectivity['reason'],
         ];
     }

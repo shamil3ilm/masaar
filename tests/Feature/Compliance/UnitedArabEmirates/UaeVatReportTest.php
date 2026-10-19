@@ -91,7 +91,7 @@ class UaeVatReportTest extends TestCase
 
         $this->assertStringContainsString('S,"Standard rate",1167.25,58.36', $vat);
         $this->assertStringContainsString('AE,"Reverse charge",300.00,0.00', $vat);
-        $this->assertStringContainsString('not the FTA VAT return form', $vat);
+        $this->assertStringContainsString('not the VAT return form', $vat);
         $this->assertStringNotContainsString('SAR', $vat);
 
         $invoices = $this->asRequest(fn () => $this->portal()->get(route('portal.reports.invoices'))->assertOk()->streamedContent());

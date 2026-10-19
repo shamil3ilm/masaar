@@ -63,7 +63,7 @@ class PortalBillingController extends Controller
         $payment = $this->billing->payment($this->organizationId($request), $paymentId) ?? abort(404);
 
         return BillingInvoiceResponse::for($payment, $this->billing, $this->pdf)
-            ?? redirect()->route('portal.billing')->with('error', __('That invoice is not ready yet. It is available once ZATCA has cleared it.'));
+            ?? redirect()->route('portal.billing')->with('error', __('That invoice is not ready yet. It is available once the tax authority has cleared it.'));
     }
 
     private function list(Request $request, ?string $export = null): ListState

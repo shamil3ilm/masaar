@@ -45,7 +45,7 @@ class PortalZatcaController extends Controller
     {
         $organization = $this->organization($request);
 
-        return view('portal.zatca', [
+        return view('countries.saudi-arabia.connection', [
             'organization' => $organization,
             'status' => $this->onboarding->status($organization),
             'blocked' => $this->refusal($organization),

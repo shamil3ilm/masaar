@@ -1,5 +1,5 @@
 {{--
-    Where a UAE e-invoice is on its way to the buyer, or with its report to
+    Where an e-invoice sent over the network is on its way to the buyer, or with its report to
     the authority, as a pill.
 
     The states are DocumentStatus's, on either track: delivery (ready ...

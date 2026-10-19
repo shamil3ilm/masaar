@@ -8,10 +8,12 @@ use App\Domains\Compliance\Networks\Peppol\Contracts\AspGateway;
 use App\Domains\Compliance\Networks\Peppol\Gateways\HttpAspGateway;
 use App\Domains\Compliance\Networks\Peppol\Gateways\NullAspGateway;
 use App\Domains\Compliance\Networks\Peppol\Gateways\WebhookSignature;
+use App\Domains\Compliance\Networks\Peppol\Http\Controllers\AdminPeppolController;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use App\Domains\Compliance\Networks\Peppol\Sending\DocumentHistory;
 use App\Domains\Compliance\Networks\Peppol\Simulator\SimulatedAspGateway;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use RuntimeException;
 
@@ -82,6 +84,25 @@ class NetworkServiceProvider extends ServiceProvider
                 $document->direction === PeppolDocument::DIRECTION_IN ? DocumentHistory::SOURCE_CALLBACK : DocumentHistory::SOURCE_SYSTEM,
             );
         });
+
+        if ($this->app->routesAreCached()) {
+            return;
+        }
+
+        // The network's console page: the gateway, documents per state,
+        // Resend for a failed one, and Retry report for one whose report to
+        // the authority failed. Behind the console's own middleware, as
+        // routes/web.php's admin group is; a country that sends through the
+        // network links it from the console (Presentation::NAV_CONSOLE).
+        Route::middleware(['web', 'auth', 'auth.session', 'platform.admin', 'admin.can:console.view', 'admin.audit'])
+            ->prefix('admin')
+            ->name('admin.')
+            ->whereUuid(['id'])
+            ->group(function (): void {
+                Route::get('/peppol', [AdminPeppolController::class, 'index'])->name('peppol');
+                Route::post('/peppol/{id}/resend', [AdminPeppolController::class, 'resend'])->middleware('admin.can:operations.run')->name('peppol.resend');
+                Route::post('/peppol/{id}/retry-report', [AdminPeppolController::class, 'retryReport'])->middleware('admin.can:operations.run')->name('peppol.retry-report');
+            });
     }
 
     /**

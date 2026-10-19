@@ -121,7 +121,7 @@ class AdminBillingController extends Controller
         $payment = $this->billing->payment($id, $paymentId) ?? abort(404);
 
         return BillingInvoiceResponse::for($payment, $this->billing, $this->pdf)
-            ?? redirect()->route('admin.billing.show', $id)->with('error', 'That invoice cannot be downloaded yet: ZATCA has not cleared it.');
+            ?? redirect()->route('admin.billing.show', $id)->with('error', 'That invoice cannot be downloaded yet: the tax authority has not cleared it.');
     }
 
     private function organization(string $id): Organization

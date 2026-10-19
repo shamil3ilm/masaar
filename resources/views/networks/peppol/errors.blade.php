@@ -1,6 +1,6 @@
 {{--
     What a provider, the buyer's provider or the authority found wrong with
-    a UAE e-invoice, one line each: the rule, how badly, where, and in words
+    an e-invoice sent over the network, one line each: the rule, how badly, where, and in words
     (PeppolDocument::errorList).
 
     @param array $errors  list of {code, severity, field, message}

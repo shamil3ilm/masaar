@@ -6,8 +6,8 @@
 {{--
     One card per country the platform knows, all with the same switch.
 
-    A country's switch wins over its default (ZATCA_ENABLED for Saudi Arabia,
-    PEPPOL_AE_ENABLED for the UAE). Off, nothing new is issued there: the
+    A country's switch wins over its default (the module's own enabling
+    setting in the environment). Off, nothing new is issued there: the
     portal says so, the API answers 422 JURISDICTION_UNAVAILABLE and sign-up
     stops offering it. What was already issued keeps being filed or sent.
 

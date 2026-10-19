@@ -13,14 +13,7 @@ use App\Domains\Billing\Http\Controllers\PortalBillingController;
 use App\Domains\Branding\Http\Controllers\AdminBrandingController;
 use App\Domains\Branding\Http\Controllers\PortalBrandingController;
 use App\Domains\Branding\Http\Controllers\ThemeAssetController;
-use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\AdminAlertController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\AdminKillSwitchController;
-use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalSubmissionController;
-use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalZatcaController;
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalProviderAppointmentController;
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalReceivedController;
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalUaeInvoiceController;
-use App\Domains\Compliance\Networks\Peppol\Http\Controllers\AdminPeppolController;
 use App\Domains\Invoice\Http\Controllers\InvoiceLinkController;
 use App\Domains\Invoice\Http\Controllers\PortalCatalogueLookupController;
 use App\Domains\Invoice\Http\Controllers\PortalCustomerController;
@@ -417,7 +410,6 @@ Route::prefix('admin')->name('admin.')
         Route::post('/licences/{licenceId}/reactivate', [AdminLicenceController::class, 'reactivate'])->middleware('admin.can:licences.manage')->name('licences.reactivate');
         Route::post('/licences/{licenceId}/revoke', [AdminLicenceController::class, 'revoke'])->middleware('admin.can:licences.manage')->name('licences.revoke');
         Route::post('/licences/{licenceId}/rotate', [AdminLicenceController::class, 'rotate'])->middleware('admin.can:licences.manage')->name('licences.rotate');
-        Route::get('/alerts', [AdminAlertController::class, 'index'])->name('alerts');
 
         // The thresholds the dashboard judges by, and the certificate
         // warning schedule. Both were only changeable by shipping.
@@ -482,12 +474,6 @@ Route::prefix('admin')->name('admin.')
         // Actions
         Route::post('/queue/process', [AdminController::class, 'processQueue'])->middleware('admin.can:operations.run')->name('queue.process');
         Route::post('/queue/{id}/retry', [AdminController::class, 'retryQueueItem'])->middleware('admin.can:operations.run')->name('queue.retry');
-
-        // Peppol: the gateway, documents per state, Resend for a failed one,
-        // and Retry report for one whose report to the authority failed.
-        Route::get('/peppol', [AdminPeppolController::class, 'index'])->name('peppol');
-        Route::post('/peppol/{id}/resend', [AdminPeppolController::class, 'resend'])->middleware('admin.can:operations.run')->name('peppol.resend');
-        Route::post('/peppol/{id}/retry-report', [AdminPeppolController::class, 'retryReport'])->middleware('admin.can:operations.run')->name('peppol.retry-report');
     });
 
 /*
@@ -495,7 +481,7 @@ Route::prefix('admin')->name('admin.')
 | Customer Portal Routes
 |--------------------------------------------------------------------------
 |
-| Tenant-scoped dashboard for customers to monitor their ZATCA compliance.
+| Tenant-scoped dashboard for customers to monitor their e-invoicing compliance.
 | `portal.tenant` derives the organization from the authenticated session's
 | memberships; the controllers never read a tenant identifier from input.
 |
@@ -569,28 +555,12 @@ Route::prefix('portal')->name('portal.')
         Route::get('/invoices/{invoiceId}/pdf', [PortalInvoiceDocumentController::class, 'download'])->name('invoices.pdf');
         Route::post('/invoices/{invoiceId}/send', [PortalInvoiceDocumentController::class, 'send'])->middleware('throttle:20,1')->name('invoices.send');
 
-        // UAE e-invoicing: the UAE invoice form's draft, the e-invoice an
-        // issued invoice was sent as, and invoices other suppliers sent. A
-        // UAE organization's only; anyone else gets a 404 (UaePortal).
-        Route::post('/invoices/uae', [PortalUaeInvoiceController::class, 'store'])->name('invoices.uae.store');
-        Route::get('/invoices/{invoiceId}/e-invoice', [PortalUaeInvoiceController::class, 'xml'])->name('invoices.xml');
-        Route::get('/received', [PortalReceivedController::class, 'index'])->name('received.index');
-        Route::get('/received/{documentId}', [PortalReceivedController::class, 'show'])->name('received.show');
-        Route::get('/received/{documentId}/xml', [PortalReceivedController::class, 'xml'])->name('received.xml');
-
-        Route::get('/submissions', [PortalSubmissionController::class, 'submissions'])->name('submissions');
-        Route::get('/submissions/export.csv', [PortalSubmissionController::class, 'export'])->middleware('throttle:20,1')->name('submissions.export');
-        Route::get('/certificates', [PortalSubmissionController::class, 'certificates'])->name('certificates');
-        Route::get('/users/{userId}/activity', [PortalSubmissionController::class, 'userActivity'])->name('user.activity');
-
-        // The seller details on every invoice, which ZATCA onboarding needs
-        // complete. Administrators only; the controller checks the role.
+        // The seller details on every invoice, which the country's filing
+        // needs complete. Administrators only; the controller checks the role.
         Route::get('/company', [PortalCompanyController::class, 'edit'])->name('company.edit');
         Route::post('/company', [PortalCompanyController::class, 'update'])->name('company.update');
         Route::post('/company/security', [PortalCompanyController::class, 'security'])->name('company.security');
         Route::post('/company/pricing', [PortalCompanyController::class, 'pricing'])->name('company.pricing');
-        // A UAE organization's appointed e-invoicing service provider; anyone else gets a 404.
-        Route::post('/company/service-provider', [PortalProviderAppointmentController::class, 'update'])->name('company.service-provider');
         Route::post('/company/business-type', [PortalCompanyController::class, 'businessType'])->name('company.business-type');
 
         // Customers and products, which the invoice form fills itself from.
@@ -639,23 +609,6 @@ Route::prefix('portal')->name('portal.')
         Route::post('/support/{ticketId}/reply', [PortalSupportController::class, 'reply'])->middleware('throttle:20,1')->name('support.reply');
         Route::post('/support/{ticketId}/resolve', [PortalSupportController::class, 'markResolved'])->name('support.resolve');
         Route::get('/support/{ticketId}/attachments/{attachmentId}', [PortalSupportController::class, 'attachment'])->name('support.attachment');
-
-        // Connecting to ZATCA: OTP, compliance checks, production
-        // certificate. Administrators only, and only once the company is
-        // approved; the controller checks both. Each step reaches ZATCA, so
-        // they are throttled.
-        Route::get('/zatca', [PortalZatcaController::class, 'show'])->name('zatca.show');
-        Route::post('/zatca/ccsid', [PortalZatcaController::class, 'ccsid'])->middleware('throttle:6,1')->name('zatca.ccsid');
-        Route::post('/zatca/check', [PortalZatcaController::class, 'check'])->middleware('throttle:6,1')->name('zatca.check');
-        Route::post('/zatca/production', [PortalZatcaController::class, 'production'])->middleware('throttle:6,1')->name('zatca.production');
-        // Each device's certificates, and what still waits to be filed under
-        // each. Administrators only; the controller checks.
-        Route::get('/zatca/certificates', [PortalZatcaController::class, 'certificates'])->name('zatca.certificates');
-        // Invoices not reported within 24 hours, and the notices ZATCA's
-        // guidelines ask for. Administrators only; the controller checks.
-        Route::get('/zatca/late', [PortalZatcaController::class, 'late'])->name('zatca.late');
-        Route::post('/zatca/late/notified', [PortalZatcaController::class, 'lateNotified'])->name('zatca.late.notified');
-        Route::get('/zatca/late/evidence.csv', [PortalZatcaController::class, 'lateEvidence'])->middleware('throttle:20,1')->name('zatca.late.evidence');
 
         // The organization's branches: address, till, numbering, printer,
         // device and who works there. Administrators only; the controller

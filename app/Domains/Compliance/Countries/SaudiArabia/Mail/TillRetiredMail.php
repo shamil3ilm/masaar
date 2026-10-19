@@ -31,8 +31,8 @@ final class TillRetiredMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'emails.till-retired',
-            text: 'emails.till-retired-text',
+            view: 'countries.saudi-arabia.emails.till-retired',
+            text: 'countries.saudi-arabia.emails.till-retired-text',
         );
     }
 }

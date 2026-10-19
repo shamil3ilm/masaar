@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', __('ZATCA Compliance Portal'))</title>
+    <title>@yield('title', __('E-invoicing portal'))</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <x-theme-head />
 </head>
@@ -54,14 +54,6 @@
                 <x-ui.nav-link :href="route('portal.products.index')" :active="request()->routeIs('portal.products.*')">
                     <x-slot:icon><x-ui.icon name="box" /></x-slot:icon>
                     {{ __('Products') }}
-                </x-ui.nav-link>
-                <x-ui.nav-link :href="route('portal.submissions')" :active="request()->routeIs('portal.submissions')">
-                    <x-slot:icon><x-ui.icon name="document" /></x-slot:icon>
-                    {{ __('Submissions') }}
-                </x-ui.nav-link>
-                <x-ui.nav-link :href="route('portal.certificates')" :active="request()->routeIs('portal.certificates')">
-                    <x-slot:icon><x-ui.icon name="shield" /></x-slot:icon>
-                    {{ __('Certificates') }}
                 </x-ui.nav-link>
                 <x-ui.nav-link :href="route('portal.reports')" :active="request()->routeIs('portal.reports*')">
                     <x-slot:icon><x-ui.icon name="chart" /></x-slot:icon>
@@ -154,7 +146,10 @@
         {{-- The country's second calendar, if it keeps one: the date picker
              shows each day in it (resources/js/date-field.js). --}}
         <main class="min-w-0 flex-1" @if ($navCountry->alternateCalendar()) data-alt-calendar="{{ $navCountry->alternateCalendar() }}" @endif>
-            <x-zatca-environment-banner />
+            {{-- The country's notice on every page, if it has one (Presentation::notice()). --}}
+            @if ($navNotice = $navCountry->notice())
+                @include($navNotice)
+            @endif
             @php($portalOrganization = app(\App\Domains\Organization\Services\TenantResolver::class)->getOrganization())
             @if ($portalOrganization?->isSuspended())
                 <div class="px-4 pt-4 md:px-8">

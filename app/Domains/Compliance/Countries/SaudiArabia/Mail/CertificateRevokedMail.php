@@ -33,8 +33,8 @@ final class CertificateRevokedMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'emails.certificate-revoked',
-            text: 'emails.certificate-revoked-text',
+            view: 'countries.saudi-arabia.emails.certificate-revoked',
+            text: 'countries.saudi-arabia.emails.certificate-revoked-text',
         );
     }
 }

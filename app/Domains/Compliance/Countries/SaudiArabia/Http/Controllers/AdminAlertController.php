@@ -35,7 +35,7 @@ class AdminAlertController extends Controller
     {
         $breakdown = $this->deadlines->breakdown();
 
-        return view('admin.alerts.index', [
+        return view('countries.saudi-arabia.admin.alerts', [
             'overdue' => $breakdown['overdue'],
             'atRisk' => $breakdown['at_risk'],
             // The totals, not the size of the list. The listing is capped so

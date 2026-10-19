@@ -46,8 +46,8 @@ final class CertificateExpiringMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'emails.certificate-expiring',
-            text: 'emails.certificate-expiring-text',
+            view: 'countries.saudi-arabia.emails.certificate-expiring',
+            text: 'countries.saudi-arabia.emails.certificate-expiring-text',
         );
     }
 }

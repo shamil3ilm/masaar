@@ -79,13 +79,13 @@ class CertificateExpiring
     private function getMessage(): string
     {
         if ($this->daysRemaining <= 0) {
-            return 'ZATCA certificate has EXPIRED. Invoice submissions will fail.';
+            return 'The e-invoicing certificate has EXPIRED. Invoice submissions will fail.';
         }
 
         if ($this->daysRemaining === 1) {
-            return 'ZATCA certificate expires TOMORROW. Renew immediately.';
+            return 'The e-invoicing certificate expires TOMORROW. Renew immediately.';
         }
 
-        return "ZATCA certificate expires in {$this->daysRemaining} days.";
+        return "The e-invoicing certificate expires in {$this->daysRemaining} days.";
     }
 }

@@ -16,7 +16,7 @@
     </x-slot:breadcrumb>
     <x-slot:description>{{ __('Received') }} <x-ui.date :value="$document->created_at" seconds /></x-slot:description>
     <x-slot:actions>
-        @include('portal.partials.peppol-status', ['status' => $document->status])
+        @include('networks.peppol.status', ['status' => $document->status])
         <x-ui.button variant="secondary" :href="route('portal.received.xml', $document->id)">{{ __('Download e-invoice (XML)') }}</x-ui.button>
     </x-slot:actions>
 </x-ui.page-header>
@@ -78,7 +78,7 @@
                 <dt class="text-muted">{{ __('Report to the authority') }}</dt>
                 <dd class="mt-1">
                     @if ($document->reporting_status)
-                        @include('portal.partials.peppol-status', ['status' => $document->reporting_status])
+                        @include('networks.peppol.status', ['status' => $document->reporting_status])
                     @else
                         <span class="text-xs text-muted">{{ __('No confirmation forwarded yet') }}</span>
                     @endif

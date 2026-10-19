@@ -283,7 +283,7 @@ class AdminDashboardTest extends TestCase
             ->assertJsonPath('data.count', 5)
             ->assertJsonPath('data.has_critical', true)
             ->assertJsonPath('data.issues', [
-                ['type' => 'connectivity', 'severity' => 'critical', 'message' => 'ZATCA API is unavailable', 'details' => 'ZATCA down'],
+                ['type' => 'connectivity', 'severity' => 'critical', 'message' => 'The tax authority API is unavailable', 'details' => 'ZATCA down'],
                 ['type' => 'circuit_breaker', 'severity' => 'critical', 'message' => 'Circuit breaker is open due to repeated failures'],
                 ['type' => 'offline_queue', 'severity' => 'warning', 'message' => 'Offline queue has 101 pending items'],
                 ['type' => 'failed_submissions', 'severity' => 'warning', 'message' => '1 failed items in offline queue'],

@@ -87,7 +87,7 @@ class BrandedEmailTest extends TestCase
         $mail = new CertificateExpiringMail('A & B Trading', 7, '2026-10-22', $theme);
 
         $this->assertStringNotContainsString('/theme/platform/logo', $mail->render());
-        $this->assertStringContainsString('A & B Trading', view('emails.certificate-expiring-text', [
+        $this->assertStringContainsString('A & B Trading', view('countries.saudi-arabia.emails.certificate-expiring-text', [
             'brand' => $theme, 'organizationName' => 'A & B Trading', 'daysRemaining' => 7, 'expiryDate' => '2026-10-22',
         ])->render());
     }

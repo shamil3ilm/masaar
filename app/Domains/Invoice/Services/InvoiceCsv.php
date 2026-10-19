@@ -61,7 +61,7 @@ class InvoiceCsv
 
         return $this->stream($fileName, function ($out) use ($summary, $from, $to, $currency): void {
             $this->row($out, ['Period', $from->toDateString().' to '.$to->toDateString()]);
-            $this->row($out, ['Note', 'Working summary of sales by tax category, not the FTA VAT return form']);
+            $this->row($out, ['Note', 'Working summary of sales by tax category, not the VAT return form']);
             $this->row($out, ['Code', 'Tax category', "Amount ($currency)", "VAT ($currency)"]);
 
             foreach ($summary['categories'] as $code => $values) {

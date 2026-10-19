@@ -1,7 +1,7 @@
 @extends('layouts.guest')
 
 @section('title', __('Select an organization'))
-@section('heading', __('ZATCA Compliance Portal'))
+@section('heading', __('E-invoicing portal'))
 @section('subtitle', __('Select an organization to continue'))
 @section('width', 'max-w-lg')
 

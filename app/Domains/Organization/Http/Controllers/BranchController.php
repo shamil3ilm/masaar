@@ -106,7 +106,7 @@ class BranchController extends Controller
         // message alongside the envelope's own.
         return ApiResponse::created(
             ['branch' => $this->formatBranch($branch)],
-            'Branch created. Complete ZATCA onboarding to start issuing invoices.',
+            'Branch created. Complete the tax authority onboarding to start issuing invoices.',
         );
     }
 
@@ -364,7 +364,7 @@ class BranchController extends Controller
         }
 
         if (! $hasCcsid) {
-            return 'Obtain OTP from ZATCA Fatoora Portal and call POST /onboarding/ccsid';
+            return 'Obtain a one-time password from the tax authority portal and call POST /onboarding/ccsid';
         }
 
         if (! $hasPcsid) {

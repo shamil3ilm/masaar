@@ -43,13 +43,13 @@
                  (UAE Electronic Invoicing Guidelines v1.1, p10-11), so each has its own line. --}}
             <div>
                 <dt class="text-muted">{{ __('Delivery to the buyer') }}</dt>
-                <dd class="mt-1">@include('portal.partials.peppol-status', ['status' => $document->status])</dd>
+                <dd class="mt-1">@include('networks.peppol.status', ['status' => $document->status])</dd>
             </div>
             <div>
                 <dt class="text-muted">{{ __('Report to the authority') }}</dt>
                 <dd class="mt-1">
                     @if ($document->reporting_status)
-                        @include('portal.partials.peppol-status', ['status' => $document->reporting_status])
+                        @include('networks.peppol.status', ['status' => $document->reporting_status])
                     @else
                         <span class="text-xs text-muted">{{ __('Starts when the service provider takes the e-invoice') }}</span>
                     @endif
@@ -70,7 +70,7 @@
             @if (! empty($document->reporting_errors))
                 <div>
                     <dt class="text-muted">{{ __('Why the report failed') }}</dt>
-                    <dd>@include('portal.partials.peppol-errors', ['errors' => $document->errorList('reporting_errors')])</dd>
+                    <dd>@include('networks.peppol.errors', ['errors' => $document->errorList('reporting_errors')])</dd>
                 </div>
             @endif
             @if ($document->document_uuid)
@@ -92,7 +92,7 @@
             @if (! empty($document->errors))
                 <div>
                     <dt class="text-muted">{{ __('Errors') }}</dt>
-                    <dd>@include('portal.partials.peppol-errors', ['errors' => $document->errorList('errors')])</dd>
+                    <dd>@include('networks.peppol.errors', ['errors' => $document->errorList('errors')])</dd>
                 </div>
             @endif
             @if ($document->last_error)
@@ -122,10 +122,10 @@
                                 default => __('Platform'),
                             } }}</span>
                             @if ($event->status && $event->track !== 'reporting')
-                                @include('portal.partials.peppol-status', ['status' => $event->status])
+                                @include('networks.peppol.status', ['status' => $event->status])
                             @endif
                             @if ($event->reporting_status)
-                                @include('portal.partials.peppol-status', ['status' => $event->reporting_status])
+                                @include('networks.peppol.status', ['status' => $event->reporting_status])
                             @endif
                             @unless ($event->applied)
                                 <span class="text-muted">{{ __('(no change)') }}</span>

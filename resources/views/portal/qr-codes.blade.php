@@ -11,7 +11,7 @@
     ];
 @endphp
 <x-ui.page-header :title="__('QR codes')"
-                  :description="__('Codes a customer scans: your contact card, your payment details, your location or website, or a link that opens one invoice. Download them for a sign or a card, or print one on your invoices beside the ZATCA QR code, which never changes.')" />
+                  :description="__('Codes a customer scans: your contact card, your payment details, your location or website, or a link that opens one invoice. Download them for a sign or a card, or print one on your invoices beside the tax authority\'s QR code, which never changes.')" />
 
 <div class="max-w-3xl space-y-6">
     <section class="rounded-card border border-line bg-surface shadow-card">
@@ -133,7 +133,7 @@
             @csrf
             <div class="border-b border-line p-5">
                 <h2 class="text-base font-semibold text-fg">{{ __('On invoices') }}</h2>
-                <p class="mt-0.5 text-sm text-subtle">{{ __('One extra QR code per paper, printed apart from the ZATCA QR code and labelled.') }}</p>
+                <p class="mt-0.5 text-sm text-subtle">{{ __('One extra QR code per paper, printed apart from the tax authority\'s QR code and labelled.') }}</p>
             </div>
             <div class="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
                 @foreach ($papers as $paper)
