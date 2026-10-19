@@ -94,7 +94,7 @@
             @foreach ($files as $kind => [$label, $removeLabel])
                 <div>
                     <x-ui.field :label="$label">
-                        <x-ui.input type="file" name="{{ $kind }}" accept="image/png,image/jpeg,image/webp,image/svg+xml" />
+                        <x-ui.file name="{{ $kind }}" accept="image/png,image/jpeg,image/webp,image/svg+xml" :max-kb="\App\Domains\Branding\Services\BrandAssets::MAX_KILOBYTES" />
                     </x-ui.field>
                     @if ($assets[$kind])
                         <input type="hidden" name="remove_{{ $kind }}" value="0">

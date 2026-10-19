@@ -193,6 +193,12 @@
             <x-ui.field :label="$t('Delivery time', 'وقت التسليم')" optional>
                 <x-ui.time-input name="specimen_time" value="13:30" />
             </x-ui.field>
+            <x-ui.field :label="$t('Logo', 'الشعار')" :hint="$t('Drop it, click, or press Enter or Space. A wrong type or size is refused before it is sent.', 'أفلته أو انقر أو اضغط Enter أو المسافة. يُرفض النوع أو الحجم غير المقبول قبل الإرسال.')" class="sm:col-span-2">
+                <x-ui.file name="specimen_logo" accept="image/png,image/jpeg,image/webp" :max-kb="512" />
+            </x-ui.field>
+            <x-ui.field :label="$t('Attachments', 'المرفقات')" optional class="sm:col-span-2">
+                <x-ui.file name="specimen_files[]" multiple accept=".pdf,.png,.jpg,.csv" :max-kb="5120" :max-files="3" />
+            </x-ui.field>
             <x-ui.field :label="$t('Note', 'ملاحظة')" class="sm:col-span-2">
                 <x-ui.textarea name="specimen_note" rows="2" />
             </x-ui.field>

@@ -29,6 +29,17 @@
         'Choose a time' => __('Choose a time'),
         'HH:MM' => __('HH:MM'),
         'Enter a time like 13:30.' => __('Enter a time like 13:30.'),
+        // File drop zones (file-field.js)
+        'Drop files here, or choose them' => __('Drop files here, or choose them'),
+        'Drop a file here, or choose one' => __('Drop a file here, or choose one'),
+        ':count MB' => __(':count MB'),
+        ':count KB' => __(':count KB'),
+        'Choose at most :count files.' => __('Choose at most :count files.'),
+        ':name is not a type this takes.' => __(':name is not a type this takes.'),
+        ':name is larger than :size.' => __(':name is larger than :size.'),
+        'Remove :name' => __('Remove :name'),
+        'Uploading... :percent%' => __('Uploading... :percent%'),
+        'The upload did not finish. Sending it again the usual way.' => __('The upload did not finish. Sending it again the usual way.'),
     ];
 @endphp
 <div hidden data-ui-strings="{{ json_encode($strings, JSON_UNESCAPED_UNICODE) }}"></div>

@@ -5,6 +5,7 @@ import { registerComboboxes } from './combobox.js';
 import { registerConfirmations } from './confirm.js';
 import { registerDateFields } from './date-field.js';
 import { registerEasterEggs } from './easter-eggs.js';
+import { registerFileFields } from './file-field.js';
 import { registerInvoiceCharges } from './invoice-charges.js';
 import { registerInvoiceLines } from './invoice-lines.js';
 import { registerInvoicePreview } from './invoice-preview.js';
@@ -42,6 +43,7 @@ registerValidation();
 registerInterface();
 registerComboboxes();
 registerDateFields();
+registerFileFields();
 registerEasterEggs();
 
 Alpine.start();

@@ -55,7 +55,7 @@
                 <x-ui.checkbox name="remove_logo" value="1">{{ __('Remove the current logo') }}</x-ui.checkbox>
             @endif
             <x-ui.field :label="$testimonial->logo_path ? __('Replace the logo') : __('Logo')" error="logo" optional>
-                <x-ui.input type="file" name="logo" accept="image/png,image/jpeg,image/webp" />
+                <x-ui.file name="logo" accept="image/png,image/jpeg,image/webp" :max-kb="\App\Domains\Platform\Website\Testimonials::LOGO_MAX_KILOBYTES" />
             </x-ui.field>
         </div>
     </x-ui.section>

@@ -19,7 +19,7 @@ class DesignSystemTest extends TestCase
 
     private const COMPONENTS = [
         'alert', 'badge', 'breadcrumb', 'button', 'card', 'checkbox', 'disclosure', 'empty', 'field', 'input',
-        'link-button', 'menu', 'menu-item', 'modal', 'nav-link', 'page-header', 'radio', 'section-heading', 'select', 'country-select', 'date-input', 'time-input',
+        'link-button', 'menu', 'menu-item', 'modal', 'nav-link', 'page-header', 'radio', 'section-heading', 'select', 'country-select', 'date-input', 'time-input', 'file',
         'stat', 'stepper', 'switch', 'tab-panel', 'table', 'tabs', 'textarea', 'th',
     ];
 

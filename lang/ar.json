@@ -2344,5 +2344,19 @@
     "Next month": "الشهر التالي",
     "Choose a time": "اختر وقتاً",
     "HH:MM": "مثال: ⁦13:30⁩",
-    "Enter a time like 13:30.": "أدخل وقتاً مثل 13:30."
+    "Enter a time like 13:30.": "أدخل وقتاً مثل 13:30.",
+    "Drop files here, or choose them": "أفلت الملفات هنا أو اخترها",
+    "Drop a file here, or choose one": "أفلت ملفاً هنا أو اختر واحداً",
+    ":count MB": ":count ميغابايت",
+    ":count KB": ":count كيلوبايت",
+    "Choose at most :count files.": "اختر :count ملفات على الأكثر.",
+    ":name is not a type this takes.": "نوع الملف :name غير مقبول هنا.",
+    ":name is larger than :size.": "حجم :name أكبر من :size.",
+    "Remove :name": "إزالة :name",
+    "Uploading... :percent%": "جارٍ الرفع... :percent%",
+    "The upload did not finish. Sending it again the usual way.": "لم يكتمل الرفع. نُرسله مرة أخرى بالطريقة المعتادة.",
+    "text": "نص",
+    "up to :size each": "حتى :size لكل ملف",
+    "up to :size": "حتى :size",
+    "at most :count files": ":count ملفات على الأكثر"
 }

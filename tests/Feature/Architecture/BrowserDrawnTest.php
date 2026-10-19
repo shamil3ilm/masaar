@@ -68,6 +68,15 @@ class BrowserDrawnTest extends TestCase
     }
 
     /**
+     * A file is chosen through the drop zone, which names what it takes and
+     * refuses the wrong one before it is sent.
+     */
+    public function test_no_bare_file_inputs(): void
+    {
+        $this->assertSame([], $this->using('/type="file"/', ['components/ui/file.blade.php']), 'Use <x-ui.file>.');
+    }
+
+    /**
      * The views, outside those allowed, whose code matches.
      *
      * @param  list<string>  $allowed

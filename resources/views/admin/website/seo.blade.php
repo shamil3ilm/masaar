@@ -42,7 +42,7 @@
                 </div>
             @endif
             <x-ui.field :label="$image ? __('Replace the picture') : __('Picture')" :hint="__('Optional. A PNG, JPEG or WebP of at most 1 MB; 1200 by 630 pixels suits most sites.')" error="image" optional>
-                <x-ui.input type="file" name="image" accept="image/png,image/jpeg,image/webp" />
+                <x-ui.file name="image" accept="image/png,image/jpeg,image/webp" :max-kb="\App\Domains\Platform\Website\WebsiteSeo::IMAGE_MAX_KILOBYTES" />
             </x-ui.field>
         </div>
     </x-ui.card>
