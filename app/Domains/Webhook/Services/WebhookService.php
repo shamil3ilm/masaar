@@ -8,6 +8,7 @@ use App\Domains\Webhook\DTOs\DeliveryOutcome;
 use App\Domains\Webhook\Jobs\DeliverWebhook;
 use App\Domains\Webhook\Models\Webhook;
 use App\Domains\Webhook\Models\WebhookLog;
+use App\Support\Brand;
 use App\Support\SafeUrl;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -190,7 +191,7 @@ class WebhookService
                     'X-Webhook-Event' => $event,
                     'X-Webhook-Signature' => $signature,
                     'X-Webhook-Timestamp' => $timestamp,
-                    'User-Agent' => 'Masaar-Webhook/1.0',
+                    'User-Agent' => Brand::userAgent('Webhook'),
                 ])
                 ->post($webhook->url, $body);
         } catch (\Exception $e) {

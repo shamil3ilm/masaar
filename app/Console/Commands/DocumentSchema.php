@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Support\Brand;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Schema;
 
@@ -50,7 +51,7 @@ class DocumentSchema extends Command
         ));
         sort($tables);
 
-        $sql = "-- Masaar database schema, generated from the migrations by `php artisan platform:schema`.\n"
+        $sql = '-- '.Brand::name('en')." database schema, generated from the migrations by `php artisan platform:schema`.\n"
             ."-- Edit the migrations, not this file. Column types are kinds, the same on MySQL and SQLite;\n"
             ."-- tests/Feature/Architecture/TableTimestamps.php says what each table is for.\n";
 

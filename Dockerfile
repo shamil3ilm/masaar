@@ -1,4 +1,4 @@
-# Masaar Production Dockerfile
+# Production Dockerfile
 # ZATCA E-Invoicing Compliance Platform
 # Laravel 12 / PHP 8.2+
 
@@ -64,8 +64,8 @@ RUN if [ -f vite.config.js ]; then npm run build; else mkdir -p public/build; fi
 FROM php:8.4-fpm-alpine AS production
 
 # Labels
-LABEL maintainer="Masaar Team"
-LABEL description="Masaar ZATCA E-Invoicing Compliance Platform"
+LABEL maintainer="Platform team"
+LABEL description="E-invoicing compliance platform"
 LABEL version="1.0.0"
 
 # Environment variables
@@ -152,18 +152,18 @@ RUN echo "memory_limit=512M" >> /usr/local/etc/php/conf.d/custom.ini \
     && echo "log_errors=On" >> /usr/local/etc/php/conf.d/custom.ini
 
 # Create application user
-RUN addgroup -g 1000 -S masaar \
-    && adduser -u 1000 -S masaar -G masaar
+RUN addgroup -g 1000 -S app \
+    && adduser -u 1000 -S app -G app
 
-# php-fpm serves requests as masaar: the user that owns storage and runs the
+# php-fpm serves requests as app: the user that owns storage and runs the
 # queue workers. Its pool defaulted to the base image's www-data, which owns
 # nothing here, so a request could not write a log line, a compiled view or
 # a session - and the first request to log an error threw while logging it.
 # The grep fails the build if the stock pool file ever stops matching.
-RUN sed -i -e 's/^user = www-data$/user = masaar/' -e 's/^group = www-data$/group = masaar/' \
+RUN sed -i -e 's/^user = www-data$/user = app/' -e 's/^group = www-data$/group = app/' \
         /usr/local/etc/php-fpm.d/www.conf \
-    && grep -q '^user = masaar$' /usr/local/etc/php-fpm.d/www.conf \
-    && grep -q '^group = masaar$' /usr/local/etc/php-fpm.d/www.conf
+    && grep -q '^user = app$' /usr/local/etc/php-fpm.d/www.conf \
+    && grep -q '^group = app$' /usr/local/etc/php-fpm.d/www.conf
 
 # Set working directory
 WORKDIR /var/www/html
@@ -220,7 +220,7 @@ RUN mkdir -p storage/framework/cache/data \
     bootstrap/cache
 
 # Set ownership to application user
-RUN chown -R masaar:masaar /var/www/html
+RUN chown -R app:app /var/www/html
 
 # Set proper permissions
 RUN chmod -R 775 storage bootstrap/cache
@@ -258,7 +258,7 @@ RUN chmod +x /entrypoint.sh
 
 # No USER directive, deliberately.
 #
-# `USER masaar` stood here with a comment saying nginx would run as root and
+# `USER app` stood here with a comment saying nginx would run as root and
 # drop privileges - which that line made impossible. A process cannot acquire
 # a privilege it was not started with, and everything in this image is built
 # on supervisord having it:
@@ -268,7 +268,7 @@ RUN chmod +x /entrypoint.sh
 #   nginx and php-fpm are declared with no user= because their masters are
 #   meant to be root - nginx to bind :80 and open /var/log/nginx, php-fpm to
 #   hand its pool to www-data;
-#   the four queue workers carry user=masaar, which is the per-program drop
+#   the four queue workers carry user=app, which is the per-program drop
 #   that only works when supervisord is root;
 #   entrypoint.sh guards its chown with `if [ "$(id -u)" = "0" ]`, written for
 #   a root start.
@@ -281,7 +281,7 @@ RUN chmod +x /entrypoint.sh
 # image end to end, and found four more faults the first time it did.
 #
 # Privileges are still dropped, by the thing designed to drop them: nginx
-# workers run as `user nginx` from nginx.conf, php-fpm's pool runs as masaar,
+# workers run as `user nginx` from nginx.conf, php-fpm's pool runs as app,
 # and so do the queue workers. Only the supervisord and master processes are
 # root.
 #

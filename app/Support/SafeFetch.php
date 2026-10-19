@@ -101,7 +101,7 @@ final class SafeFetch
             'http' => [
                 'method' => 'GET',
                 'timeout' => (int) config('security.fetch.timeout_seconds', 10),
-                'user_agent' => 'Masaar-ZATCA-Client/1.0',
+                'user_agent' => Brand::userAgent('Client'),
                 // A redirect would leave SafeUrl's decision behind.
                 'follow_location' => 0,
                 'max_redirects' => 0,

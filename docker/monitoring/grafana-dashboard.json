@@ -13,7 +13,7 @@
       "gridPos": { "h": 3, "w": 24, "x": 0, "y": 0 },
       "id": 1,
       "options": {
-        "content": "# Masaar ZATCA E-Invoicing Dashboard\nReal-time monitoring of invoice processing and ZATCA submissions.",
+        "content": "# E-Invoicing Dashboard\nReal-time monitoring of invoice processing and tax authority submissions.",
         "mode": "markdown"
       },
       "title": "",
@@ -36,7 +36,7 @@
       },
       "targets": [
         {
-          "expr": "masaar_invoices_created_today",
+          "expr": "{__name__=~\".+_invoices_created_today\", job=\"platform\"}",
           "refId": "A"
         }
       ],
@@ -60,7 +60,7 @@
       },
       "targets": [
         {
-          "expr": "masaar_zatca_submissions_cleared",
+          "expr": "{__name__=~\".+_zatca_submissions_cleared\", job=\"platform\"}",
           "refId": "A"
         }
       ],
@@ -84,7 +84,7 @@
       },
       "targets": [
         {
-          "expr": "masaar_zatca_offline_queue_size",
+          "expr": "{__name__=~\".+_zatca_offline_queue_size\", job=\"platform\"}",
           "refId": "A"
         }
       ],
@@ -123,7 +123,7 @@
       },
       "targets": [
         {
-          "expr": "masaar_zatca_circuit_breaker_open",
+          "expr": "{__name__=~\".+_zatca_circuit_breaker_open\", job=\"platform\"}",
           "refId": "A"
         }
       ],
@@ -139,12 +139,12 @@
       },
       "targets": [
         {
-          "expr": "rate(masaar_http_requests_total[5m])",
+          "expr": "rate({__name__=~\".+_http_requests_total\", job=\"platform\"}[5m])",
           "legendFormat": "Requests/s",
           "refId": "A"
         },
         {
-          "expr": "rate(masaar_http_errors_total[5m])",
+          "expr": "rate({__name__=~\".+_http_errors_total\", job=\"platform\"}[5m])",
           "legendFormat": "Errors/s",
           "refId": "B"
         }
@@ -161,12 +161,12 @@
       },
       "targets": [
         {
-          "expr": "masaar_zatca_submission_duration_avg_ms",
+          "expr": "{__name__=~\".+_zatca_submission_duration_avg_ms\", job=\"platform\"}",
           "legendFormat": "Avg Submission Time (ms)",
           "refId": "A"
         },
         {
-          "expr": "masaar_database_latency_ms",
+          "expr": "{__name__=~\".+_database_latency_ms\", job=\"platform\"}",
           "legendFormat": "DB Latency (ms)",
           "refId": "B"
         }
@@ -189,22 +189,22 @@
       },
       "targets": [
         {
-          "expr": "masaar_invoices_total_draft",
+          "expr": "{__name__=~\".+_invoices_total_draft\", job=\"platform\"}",
           "legendFormat": "Draft",
           "refId": "A"
         },
         {
-          "expr": "masaar_invoices_total_submitted",
+          "expr": "{__name__=~\".+_invoices_total_submitted\", job=\"platform\"}",
           "legendFormat": "Submitted",
           "refId": "B"
         },
         {
-          "expr": "masaar_invoices_total_cleared",
+          "expr": "{__name__=~\".+_invoices_total_cleared\", job=\"platform\"}",
           "legendFormat": "Cleared",
           "refId": "C"
         },
         {
-          "expr": "masaar_invoices_total_rejected",
+          "expr": "{__name__=~\".+_invoices_total_rejected\", job=\"platform\"}",
           "legendFormat": "Rejected",
           "refId": "D"
         }
@@ -221,17 +221,17 @@
       },
       "targets": [
         {
-          "expr": "masaar_queue_size_default",
+          "expr": "{__name__=~\".+_queue_size_default\", job=\"platform\"}",
           "legendFormat": "Default Queue",
           "refId": "A"
         },
         {
-          "expr": "masaar_queue_size_zatca_submissions",
+          "expr": "{__name__=~\".+_queue_size_zatca_submissions\", job=\"platform\"}",
           "legendFormat": "ZATCA Queue",
           "refId": "B"
         },
         {
-          "expr": "masaar_queue_size_webhooks",
+          "expr": "{__name__=~\".+_queue_size_webhooks\", job=\"platform\"}",
           "legendFormat": "Webhooks Queue",
           "refId": "C"
         }
@@ -266,12 +266,12 @@
       },
       "targets": [
         {
-          "expr": "masaar_database_up",
+          "expr": "{__name__=~\".+_database_up\", job=\"platform\"}",
           "legendFormat": "Database",
           "refId": "A"
         },
         {
-          "expr": "masaar_cache_up",
+          "expr": "{__name__=~\".+_cache_up\", job=\"platform\"}",
           "legendFormat": "Cache",
           "refId": "B"
         }
@@ -283,12 +283,12 @@
   "refresh": "30s",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["masaar", "zatca", "invoicing"],
+  "tags": ["platform", "invoicing"],
   "templating": { "list": [] },
   "time": { "from": "now-6h", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Masaar ZATCA Dashboard",
-  "uid": "masaar-zatca",
+  "title": "E-Invoicing Dashboard",
+  "uid": "platform-einvoicing",
   "version": 1
 }

@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use App\Domains\Webhook\Services\WebhookService;
 use App\Http\Responses\ApiResponse;
+use App\Support\Brand;
 use Illuminate\Console\Command;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Routing\Route;
@@ -70,7 +71,7 @@ class GenerateOpenapi extends Command
         $spec = [
             'openapi' => '3.1.0',
             'info' => [
-                'title' => 'Masaar Compliance API',
+                'title' => Brand::name('en').' Compliance API',
                 'version' => (string) config('app.version', '1.0.0'),
                 'description' => 'GCC e-invoicing compliance. Generated from the route table by '
                     .'`php artisan platform:openapi` — edit the routes, not this file.',

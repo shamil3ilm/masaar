@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Hash;
 /**
  * Two accounts to sign in with while working on this locally.
  *
- * The database held one user, admin@masaar.test, whose password nobody knew -
+ * The database held one user, admin@example.test, whose password nobody knew -
  * so the only way to look at the application was to go and write a row. This
  * makes that a command.
  *
@@ -29,11 +29,11 @@ use Illuminate\Support\Facades\Hash;
  */
 class DevUsersSeeder extends Seeder
 {
-    public const PASSWORD = 'Masaar!2026';
+    public const PASSWORD = 'Local!2026dev';
 
-    private const ADMIN = 'admin@masaar.test';
+    private const ADMIN = 'admin@example.test';
 
-    private const MEMBER = 'member@masaar.test';
+    private const MEMBER = 'member@example.test';
 
     public function run(): void
     {
@@ -45,7 +45,7 @@ class DevUsersSeeder extends Seeder
         }
 
         DB::transaction(function (): void {
-            $admin = $this->account(self::ADMIN, 'Masaar Admin', true);
+            $admin = $this->account(self::ADMIN, 'Platform Admin', true);
             $member = $this->account(self::MEMBER, 'Portal Member', false);
 
             $organization = Organization::query()->orderBy('created_at')->first();

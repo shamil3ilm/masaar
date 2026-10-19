@@ -6,6 +6,7 @@ namespace App\Domains\Platform\Http\Controllers;
 
 use App\Domains\Platform\Services\MetricsCollector;
 use App\Http\Controllers\Controller;
+use App\Support\Brand;
 use Illuminate\Http\Response;
 
 /**
@@ -42,7 +43,7 @@ class MetricsController extends Controller
 
         foreach ($metrics as $name => $metric) {
             // Sanitize metric name
-            $name = 'masaar_'.preg_replace('/[^a-zA-Z0-9_]/', '_', $name);
+            $name = Brand::metricsPrefix().'_'.preg_replace('/[^a-zA-Z0-9_]/', '_', $name);
 
             // Add HELP line
             $output[] = "# HELP {$name} {$metric['help']}";

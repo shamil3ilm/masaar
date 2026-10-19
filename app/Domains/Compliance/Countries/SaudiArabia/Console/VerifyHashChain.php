@@ -50,7 +50,7 @@ class VerifyHashChain extends Command
         // reporting the name it had been given.
         //
         // That is the disaster-recovery path in docs/DEPLOYMENT-GUIDE.md: the
-        // monthly test restores a backup into masaar_dr_test and runs this to
+        // monthly test restores a backup into a scratch database and runs this to
         // prove the chain survived. It was reading production, so the test
         // passed without the restored copy being looked at once - and passing
         // was the outcome that stopped anybody asking.

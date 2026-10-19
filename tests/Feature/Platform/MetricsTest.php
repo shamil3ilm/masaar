@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Platform;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\CircuitBreaker;
+use App\Support\Brand;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -33,13 +34,13 @@ class MetricsTest extends TestCase
     {
         $body = $this->scrape();
 
-        $this->assertStringContainsString('# TYPE masaar_app_info gauge', $body);
-        $this->assertMatchesRegularExpression('/^masaar_app_info\{version="[^"]*",environment="testing",php_version="'.preg_quote(PHP_VERSION, '/').'"\} 1$/m', $body);
-        $this->assertStringContainsString("masaar_http_requests_total 0\n", $body);
-        $this->assertStringContainsString("masaar_http_errors_total 0\n", $body);
-        $this->assertStringContainsString("masaar_database_up 1\n", $body);
-        $this->assertStringContainsString("masaar_cache_up 1\n", $body);
-        $this->assertMatchesRegularExpression('/^masaar_database_latency_ms [0-9.]+$/m', $body);
+        $this->assertStringContainsString('# TYPE '.Brand::metricsPrefix().'_app_info gauge', $body);
+        $this->assertMatchesRegularExpression('/^'.Brand::metricsPrefix().'_app_info\{version="[^"]*",environment="testing",php_version="'.preg_quote(PHP_VERSION, '/').'"\} 1$/m', $body);
+        $this->assertStringContainsString(Brand::metricsPrefix()."_http_requests_total 0\n", $body);
+        $this->assertStringContainsString(Brand::metricsPrefix()."_http_errors_total 0\n", $body);
+        $this->assertStringContainsString(Brand::metricsPrefix()."_database_up 1\n", $body);
+        $this->assertStringContainsString(Brand::metricsPrefix()."_cache_up 1\n", $body);
+        $this->assertMatchesRegularExpression('/^'.Brand::metricsPrefix().'_database_latency_ms [0-9.]+$/m', $body);
     }
 
     public function test_invoice_metrics_span_every_tenant(): void
@@ -50,9 +51,9 @@ class MetricsTest extends TestCase
 
         $body = $this->scrape();
 
-        $this->assertStringContainsString("# HELP masaar_invoices_total_draft Total invoices with status draft\n", $body);
-        $this->assertStringContainsString("masaar_invoices_total_draft{status=\"draft\"} 3\n", $body);
-        $this->assertStringContainsString("masaar_invoices_created_today 2\n", $body);
+        $this->assertStringContainsString('# HELP '.Brand::metricsPrefix()."_invoices_total_draft Total invoices with status draft\n", $body);
+        $this->assertStringContainsString(Brand::metricsPrefix()."_invoices_total_draft{status=\"draft\"} 3\n", $body);
+        $this->assertStringContainsString(Brand::metricsPrefix()."_invoices_created_today 2\n", $body);
     }
 
     public function test_zatca_metrics_read_submission_state(): void
@@ -70,11 +71,11 @@ class MetricsTest extends TestCase
 
         $body = $this->scrape();
 
-        $this->assertStringContainsString("masaar_zatca_submissions_cleared{status=\"cleared\"} 2\n", $body);
-        $this->assertStringContainsString("masaar_zatca_submissions_rejected{status=\"rejected\"} 1\n", $body);
-        $this->assertStringContainsString("masaar_zatca_offline_queue_size 1\n", $body);
-        $this->assertStringContainsString("masaar_zatca_circuit_breaker_open 1\n", $body);
-        $this->assertStringContainsString("masaar_zatca_submission_duration_avg_ms 0\n", $body);
+        $this->assertStringContainsString(Brand::metricsPrefix()."_zatca_submissions_cleared{status=\"cleared\"} 2\n", $body);
+        $this->assertStringContainsString(Brand::metricsPrefix()."_zatca_submissions_rejected{status=\"rejected\"} 1\n", $body);
+        $this->assertStringContainsString(Brand::metricsPrefix()."_zatca_offline_queue_size 1\n", $body);
+        $this->assertStringContainsString(Brand::metricsPrefix()."_zatca_circuit_breaker_open 1\n", $body);
+        $this->assertStringContainsString(Brand::metricsPrefix()."_zatca_submission_duration_avg_ms 0\n", $body);
     }
 
     /**
@@ -107,9 +108,9 @@ class MetricsTest extends TestCase
 
         $body = $this->scrape();
 
-        $this->assertStringContainsString("masaar_queue_size_webhooks{queue=\"webhooks\"} 2\n", $body);
-        $this->assertStringContainsString("masaar_queue_size_default{queue=\"default\"} 1\n", $body);
-        $this->assertStringContainsString("masaar_queue_failed_jobs_total 1\n", $body);
+        $this->assertStringContainsString(Brand::metricsPrefix()."_queue_size_webhooks{queue=\"webhooks\"} 2\n", $body);
+        $this->assertStringContainsString(Brand::metricsPrefix()."_queue_size_default{queue=\"default\"} 1\n", $body);
+        $this->assertStringContainsString(Brand::metricsPrefix()."_queue_failed_jobs_total 1\n", $body);
     }
 
     private function scrape(): string

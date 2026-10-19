@@ -1,4 +1,4 @@
-# Continuous integration for the Masaar compliance platform.
+# Continuous integration for the e-invoicing compliance platform.
 #
 # tests/Feature/Security carries the load here: it sweeps the router for
 # unguarded routes and proves tenant scoping holds, so a refactor that opens a
@@ -165,7 +165,7 @@ jobs:
         image: mysql:8.4
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
-          MYSQL_DATABASE: masaar
+          MYSQL_DATABASE: platform
         ports:
           - 3306:3306
         options: >-
@@ -245,12 +245,12 @@ jobs:
           dump=$(find "$RUNNER_TEMP/restore" -name '*.sql.gz' | head -n 1)
           test -n "$dump"
 
-          mysql -h 127.0.0.1 -u root -e 'CREATE DATABASE masaar_restore'
-          gunzip -c "$dump" | mysql -h 127.0.0.1 -u root masaar_restore
+          mysql -h 127.0.0.1 -u root -e 'CREATE DATABASE platform_restore'
+          gunzip -c "$dump" | mysql -h 127.0.0.1 -u root platform_restore
 
           for table in organizations users invoices hash_chain_history hash_chain_heads audit_logs; do
-            live=$(mysql -h 127.0.0.1 -u root -N -e "SELECT COUNT(*) FROM masaar.$table")
-            restored=$(mysql -h 127.0.0.1 -u root -N -e "SELECT COUNT(*) FROM masaar_restore.$table")
+            live=$(mysql -h 127.0.0.1 -u root -N -e "SELECT COUNT(*) FROM platform.$table")
+            restored=$(mysql -h 127.0.0.1 -u root -N -e "SELECT COUNT(*) FROM platform_restore.$table")
             echo "$table: $live live, $restored restored"
             if [ "$live" != "$restored" ]; then
               echo "::error::$table restored $restored rows of $live"
@@ -258,7 +258,7 @@ jobs:
             fi
           done
 
-          invoices=$(mysql -h 127.0.0.1 -u root -N -e 'SELECT COUNT(*) FROM masaar_restore.invoices')
+          invoices=$(mysql -h 127.0.0.1 -u root -N -e 'SELECT COUNT(*) FROM platform_restore.invoices')
           if [ "$invoices" -eq 0 ]; then
             echo "::error::The drill restored no invoices, so it proved nothing"
             exit 1
@@ -281,7 +281,7 @@ jobs:
           DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1
           DB_PORT: '3306'
-          DB_DATABASE: masaar
+          DB_DATABASE: platform
           DB_USERNAME: root
           DB_PASSWORD: ''
         run: php artisan test
@@ -831,7 +831,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Build the image
-        run: docker build -t masaar:ci .
+        run: docker build -t platform:ci .
 
       # The virtual host had never been parsed by nginx anywhere - not in CI,
       # not locally, since nothing in the development environment runs it.
@@ -842,7 +842,7 @@ jobs:
       # reading the file; this one is the part only nginx can answer, which is
       # whether it parses at all.
       - name: Check the nginx configuration
-        run: docker run --rm --entrypoint nginx masaar:ci -t
+        run: docker run --rm --entrypoint nginx platform:ci -t
 
       # What the running container needs and nothing else proves is there:
       # the PHP extensions the code calls, a vendor tree whose platform check
@@ -850,7 +850,7 @@ jobs:
       # to - added to the image without anything having run it.
       - name: Check the image's runtime
         run: |
-          docker run --rm --entrypoint sh masaar:ci -c '
+          docker run --rm --entrypoint sh platform:ci -c '
             set -e
             php -v | head -n 1
             for ext in pdo_mysql redis gmp bcmath intl zip sockets pcntl openssl mbstring; do
@@ -873,7 +873,7 @@ jobs:
       # needs no access to the Docker socket.
       - name: Scan the image
         run: |
-          docker save masaar:ci -o image.tar
+          docker save platform:ci -o image.tar
           # Pulled explicitly, from either official path.
           #
           # The scanner is published to GitHub Container Registry under the
@@ -948,14 +948,14 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Build the image
-        run: docker build -t masaar:arm .
+        run: docker build -t platform:arm .
 
       - name: Check the nginx configuration
-        run: docker run --rm --entrypoint nginx masaar:arm -t
+        run: docker run --rm --entrypoint nginx platform:arm -t
 
       - name: Check the image's runtime
         run: |
-          docker run --rm --entrypoint sh masaar:arm -c '
+          docker run --rm --entrypoint sh platform:arm -c '
             set -e
             uname -m
             php -v | head -n 1
@@ -998,11 +998,11 @@ jobs:
             # Not a loopback address: production refuses to serve on one, as
             # links in mail would point at the server itself. The probes
             # below reach 127.0.0.1 directly.
-            echo "APP_URL=https://masaar-ci.invalid"
+            echo "APP_URL=https://platform-ci.invalid"
             echo "JWT_SECRET=$(openssl rand -hex 32)"
             echo "API_KEY_PEPPER=$(openssl rand -base64 32)"
             echo "MAIL_MAILER=smtp"
-            echo "MAIL_FROM_ADDRESS=noreply@masaar-ci.invalid"
+            echo "MAIL_FROM_ADDRESS=noreply@platform-ci.invalid"
             echo "DB_PASSWORD=$(openssl rand -hex 16)"
             echo "DB_ROOT_PASSWORD=$(openssl rand -hex 16)"
             echo "ZATCA_ENVIRONMENT=simulation"
@@ -1093,7 +1093,7 @@ jobs:
         image: mysql:8.4
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
-          MYSQL_DATABASE: masaar_test
+          MYSQL_DATABASE: platform_test
         ports:
           - 3306:3306
         options: >-
@@ -1106,7 +1106,7 @@ jobs:
       DB_CONNECTION: mysql
       DB_HOST: 127.0.0.1
       DB_PORT: 3306
-      DB_DATABASE: masaar_test
+      DB_DATABASE: platform_test
       DB_USERNAME: root
       DB_PASSWORD: ''
       CACHE_STORE: array
@@ -1138,10 +1138,10 @@ jobs:
           # first value for a key is the one that counts. The scan reaches
           # 127.0.0.1 directly; APP_URL only shapes links in mail.
           sed -i \
-            -e 's|^APP_URL=.*|APP_URL=https://masaar-scan.invalid|' \
+            -e 's|^APP_URL=.*|APP_URL=https://platform-scan.invalid|' \
             -e "s|^API_KEY_PEPPER=.*|API_KEY_PEPPER=$(openssl rand -hex 32)|" \
             -e 's|^MAIL_MAILER=.*|MAIL_MAILER=smtp|' \
-            -e 's|^MAIL_FROM_ADDRESS=.*|MAIL_FROM_ADDRESS=noreply@masaar-scan.invalid|' \
+            -e 's|^MAIL_FROM_ADDRESS=.*|MAIL_FROM_ADDRESS=noreply@platform-scan.invalid|' \
             .env
 
       # public/build is gitignored, and the consoles render @vite - which throws

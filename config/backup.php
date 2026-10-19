@@ -30,12 +30,16 @@ use Spatie\DbDumper\Compressors\GzipCompressor;
 |
 */
 
+// The product's name, read from config/brand.php directly: config() is not
+// ready while the configuration loads.
+$brand = require __DIR__.'/brand.php';
+
 $disks = array_values(array_filter(array_map('trim', explode(',', (string) env('BACKUP_DISKS', 'backups')))));
 
 return [
 
     'backup' => [
-        'name' => env('APP_NAME', 'Masaar'),
+        'name' => $brand['name'],
 
         'source' => [
             'files' => [
@@ -137,7 +141,7 @@ return [
 
             'from' => [
                 'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
-                'name' => env('MAIL_FROM_NAME', 'Masaar'),
+                'name' => env('MAIL_FROM_NAME', $brand['name']),
             ],
         ],
 
@@ -174,7 +178,7 @@ return [
      */
     'monitor_backups' => [
         [
-            'name' => env('APP_NAME', 'Masaar'),
+            'name' => $brand['name'],
             'disks' => $disks,
             'health_checks' => [
                 MaximumAgeInDays::class => 1,

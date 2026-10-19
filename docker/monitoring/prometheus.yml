@@ -1,4 +1,4 @@
-# Masaar Prometheus Configuration
+# Prometheus configuration
 # Use with: docker run -v ./prometheus.yml:/etc/prometheus/prometheus.yml prom/prometheus
 
 global:
@@ -13,13 +13,13 @@ alerting:
 rule_files: []
 
 scrape_configs:
-  # Masaar Application Metrics
-  - job_name: 'masaar'
+  # Application metrics
+  - job_name: 'platform'
     metrics_path: '/api/metrics'
     static_configs:
       - targets: ['app:80']
         labels:
-          app: 'masaar'
+          app: 'platform'
           env: 'production'
 
   # Prometheus self-monitoring

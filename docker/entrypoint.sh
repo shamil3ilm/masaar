@@ -1,11 +1,11 @@
 #!/bin/sh
-# Masaar Docker Entrypoint Script
+# Docker entrypoint script
 # Initializes the application for production deployment
 
 set -e
 
 echo "=============================================="
-echo "Masaar - ZATCA E-Invoicing Platform"
+echo "E-invoicing platform"
 echo "=============================================="
 echo "Starting container initialization..."
 
@@ -112,7 +112,7 @@ setup_storage() {
 
     # Set permissions (if running as root during setup)
     if [ "$(id -u)" = "0" ]; then
-        chown -R masaar:masaar storage bootstrap/cache
+        chown -R app:app storage bootstrap/cache
         chmod -R 775 storage bootstrap/cache
     fi
 
@@ -143,10 +143,10 @@ main() {
     create_storage_link
 
     # Everything above ran as root, after setup_storage set ownership, so a
-    # log file or cache entry it created belongs to root and the masaar
+    # log file or cache entry it created belongs to root and the app
     # processes - php-fpm and the workers - cannot write it. Hand it back.
     if [ "$(id -u)" = "0" ]; then
-        chown -R masaar:masaar storage bootstrap/cache
+        chown -R app:app storage bootstrap/cache
     fi
 
     echo "=============================================="

@@ -1,6 +1,6 @@
 {
     "$schema": "https://www.schemastore.org/package.json",
-    "name": "masaar",
+    "name": "platform",
     "private": true,
     "type": "module",
     "engines": {
