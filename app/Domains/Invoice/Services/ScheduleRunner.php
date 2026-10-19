@@ -258,7 +258,9 @@ class ScheduleRunner
     private function draft(InvoiceSchedule $schedule, InvoiceScheduleRun $run, Organization $organization, string $today): Invoice
     {
         $payload = $this->templates->dated(
+            $organization,
             (array) $schedule->template,
+            $schedule->frequency,
             $today,
             SchedulePeriods::date($run->period_start->toDateString()),
             SchedulePeriods::date($run->period_end->toDateString()),

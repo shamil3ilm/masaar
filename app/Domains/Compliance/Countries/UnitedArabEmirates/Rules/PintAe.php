@@ -64,6 +64,16 @@ final class PintAe implements JurisdictionProfile
     /** No scenario applies. */
     public const NO_FLAGS = '00000000';
 
+    /**
+     * How often a periodic supply is billed (BTAE-06), from the frequency of
+     * billing code list (FreqBilling, IBR-005-AE): daily, weekly, every 15
+     * days, monthly, every 45 and 60 days, quarterly, yearly, half-yearly,
+     * and others - which the invoice note then says (IBR-160-AE).
+     */
+    public const BILLING_FREQUENCIES = ['DLY', 'WKY', 'Q15', 'MTH', 'Q45', 'Q60', 'QTR', 'YRL', 'HYR', 'OTH'];
+
+    public const BILLING_OTHERS = 'OTH';
+
     /** IBR-190-AE: a standard-rated line is at 5.00, and nothing else. */
     public const STANDARD_RATE = '5';
 

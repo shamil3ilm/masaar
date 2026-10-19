@@ -1105,6 +1105,10 @@ paths:
                   type: string
                 supply_end_date:
                   type: string
+                billing_frequency:
+                  type: string
+                billing_note:
+                  type: string
                 due_date:
                   type: string
                 currency:

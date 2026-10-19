@@ -80,6 +80,9 @@ interface Jurisdiction
     /** What an invoice draft has to be, and the columns only this country's invoices carry. */
     public function invoiceRules(): InvoiceRules;
 
+    /** What its invoice adds for one period of a supply that recurs. */
+    public function recurringSupply(): RecurringSupply;
+
     /** The tax categories and exemption reasons a line can be given, from the country's code lists. */
     public function vatTreatments(): VatTreatments;
 

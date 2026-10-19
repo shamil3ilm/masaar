@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Invoice\Services;
 
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
+use App\Domains\Invoice\Enums\ScheduleFrequency;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\TenantResolver;
 use Carbon\CarbonImmutable;
@@ -48,21 +49,24 @@ class ScheduleTemplates
     }
 
     /**
-     * The invoice for one period: the template, dated.
+     * The invoice for one period: the template, dated, with what the
+     * organization's country adds for a supply that recurs
+     * (RecurringSupply).
      *
      * @param  array<string, mixed>  $template
      * @return array<string, mixed>
      */
-    public function dated(array $template, string $issueDate, CarbonImmutable $start, CarbonImmutable $end, ?int $dueDays): array
+    public function dated(Organization $organization, array $template, ScheduleFrequency $frequency, string $issueDate, CarbonImmutable $start, CarbonImmutable $end, ?int $dueDays): array
     {
-        return [
+        return $this->jurisdictions->forRules($organization)->recurringSupply()->periodic([
             ...$template,
             'issue_date' => $issueDate,
-            // KSA-5 and KSA-24, BG-14 in PINT: the period the invoice bills.
+            // The period the invoice bills: KSA-5 and KSA-24 on a Saudi
+            // invoice, the invoicing period (IBG-14) on a PINT one.
             'supply_date' => $start->toDateString(),
             'supply_end_date' => $end->toDateString(),
             ...($dueDays === null ? [] : ['due_date' => CarbonImmutable::parse($issueDate, 'UTC')->addDays($dueDays)->toDateString()]),
-        ];
+        ], $frequency);
     }
 
     /**

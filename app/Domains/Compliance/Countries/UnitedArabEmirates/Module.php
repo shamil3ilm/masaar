@@ -16,6 +16,7 @@ use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\TaxReports;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\InvoiceRules;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\IssueDeadline;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\LanguageRules;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\RecurringSupply;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\SellerRules;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\VatTreatments;
 use App\Domains\Compliance\Engine\Contracts\Dashboard as DashboardPort;
@@ -26,6 +27,7 @@ use App\Domains\Compliance\Engine\Contracts\IssueNotices;
 use App\Domains\Compliance\Engine\Contracts\Jurisdiction;
 use App\Domains\Compliance\Engine\Contracts\LanguageRules as LanguageRulesPort;
 use App\Domains\Compliance\Engine\Contracts\Presentation as PresentationPort;
+use App\Domains\Compliance\Engine\Contracts\RecurringSupply as RecurringSupplyPort;
 use App\Domains\Compliance\Engine\Contracts\Sectors as SectorsPort;
 use App\Domains\Compliance\Engine\Contracts\SellerRules as SellerRulesPort;
 use App\Domains\Compliance\Engine\Contracts\SetupSteps as SetupStepsPort;
@@ -70,6 +72,7 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
         private readonly Sectors $sectors,
         private readonly DeviceStatus $devices,
         private readonly Website $website,
+        private readonly RecurringSupply $recurring,
     ) {}
 
     public function code(): string
@@ -191,6 +194,11 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
     public function devices(): Devices
     {
         return $this->devices;
+    }
+
+    public function recurringSupply(): RecurringSupplyPort
+    {
+        return $this->recurring;
     }
 
     public function website(): WebsitePort

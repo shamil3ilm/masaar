@@ -41,6 +41,7 @@ class CodeListConformanceTest extends TestCase
         $this->assertSame($this->sorted($this->codes($lists.'/UNCL4461.gc')), $this->sorted(PintAe::PAYMENT_MEANS), 'UNCL4461.gc');
         $this->assertSame($this->sorted($this->codes($lists.'/ISO4217.gc')), $this->sorted(PintAe::CURRENCIES), 'ISO4217.gc');
         $this->assertSame($this->sorted($this->codes($lists.'/UNCL7161.gc')), $this->sorted(PintAe::CHARGE_REASON_CODES), 'UNCL7161.gc');
+        $this->assertSame($this->sorted($this->codes($lists.'/FreqBilling.gc')), $this->sorted(PintAe::BILLING_FREQUENCIES), 'FreqBilling.gc');
         // The list writes N as a Greek capital Nu; the Schematron, and so
         // every document, a Latin one.
         $this->assertSame(

@@ -107,6 +107,8 @@ class PintMapper
                 ? $invoice->supply_date->format('Y-m-d') : null,
             periodStart: $invoice->supply_end_date !== null ? $invoice->supply_date?->format('Y-m-d') : null,
             periodEnd: $invoice->supply_end_date?->format('Y-m-d'),
+            billingFrequency: $invoice->supply_end_date !== null ? self::text($data['billing_frequency'] ?? null) : null,
+            note: ($data['billing_frequency'] ?? null) === PintAe::BILLING_OTHERS ? self::text($data['billing_note'] ?? null) : null,
             currency: $currency,
             taxCurrency: $foreign ? $profile->taxCurrency() : null,
             exchangeRate: $rate,

@@ -9,6 +9,9 @@ use App\Domains\Compliance\Countries\UnitedArabEmirates\Document\PeppolPreparer;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Services\ScheduleRunner;
+use App\Domains\Invoice\Services\Schedules;
+use Carbon\CarbonImmutable;
 use DOMDocument;
 use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -285,6 +288,49 @@ class PintConformanceTest extends TestCase
         $failures = $this->validate($xml, $artefacts, $jar);
 
         $this->assertSame([], $failures, "PINT AE refused the charges:\n".implode("\n", $failures)."\n\n".$xml);
+    }
+
+    /** @return iterable<string, array{string, string, list<array{start_date: string, end_date: string}>|null}> */
+    public static function recurring(): iterable
+    {
+        yield 'monthly service' => ['monthly', 'MTH', null];
+        yield 'school term' => ['termly', 'OTH', [['start_date' => '2026-11-01', 'end_date' => '2027-01-31']]];
+    }
+
+    /**
+     * A schedule's invoice for one period: a continuous supply (BTAE-02
+     * position 5), its invoicing period (IBG-14) the period it bills and
+     * how often it is billed (BTAE-06); a term, which has no code, as
+     * Others with the invoice note saying so (IBR-160-AE).
+     *
+     * @param  list<array{start_date: string, end_date: string}>|null  $terms
+     */
+    #[DataProvider('recurring')]
+    public function test_scheduled_invoice_passes_official_rules(string $frequency, string $code, ?array $terms): void
+    {
+        [$artefacts, $jar] = $this->requireArtefacts();
+        Queue::fake();
+        $this->travelTo(CarbonImmutable::parse('2026-11-01 08:00:00', 'UTC'));
+        $organization = $this->uaeOrganization();
+
+        app(Schedules::class)->create($organization, [
+            'name' => 'Noor maintenance', 'frequency' => $frequency, 'start_date' => '2026-11-01', 'terms' => $terms, 'due_days' => 30,
+        ], [
+            'document_type' => 'invoice', 'document_category' => 'tax', 'currency' => 'AED', 'payment_means_code' => '30',
+            'buyer_name' => 'Noor Electronics LLC', 'buyer_vat_number' => '100765432100003',
+            'buyer_address' => ['street' => 'Khalifa Street', 'city' => 'Abu Dhabi', 'country_code' => 'AE'],
+            'buyer_endpoint' => '0235:1007654321', 'buyer_subdivision' => 'AUH', 'transaction_flags' => '00000000',
+            'lines' => [['item_name' => 'Maintenance', 'quantity' => 1, 'unit_code' => 'MON', 'unit_price' => '1200.00', 'tax_category' => 'S', 'tax_rate' => 5]],
+        ]);
+        app(ScheduleRunner::class)->runDue();
+
+        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->sole());
+        $invoice->forceFill(['invoice_number' => 'AE-SCHEDULED-1', 'status' => 'issued'])->save();
+        $xml = app(PeppolPreparer::class)->prepare(Invoice::withoutTenantScope(fn () => $invoice->fresh(['lines', 'org'])))->xml;
+
+        $this->assertStringContainsString('<cbc:ProfileExecutionID>00001000</cbc:ProfileExecutionID>', $xml);
+        $this->assertStringContainsString("<cbc:DescriptionCode>{$code}</cbc:DescriptionCode>", $xml);
+        $this->assertSame([], $failures = $this->validate($xml, $artefacts, $jar), "PINT AE refused the {$frequency} invoice:\n".implode("\n", $failures)."\n\n".$xml);
     }
 
     /**

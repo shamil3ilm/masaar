@@ -121,7 +121,7 @@ class Schedules
         );
         $first = $periods->at(0) ?? throw ValidationException::withMessages(['end_date' => __('The schedule ends before its first period starts.')]);
 
-        $this->checked($organization, $template, $first['start'], $first['end'], $attributes['due_days'] ?? null);
+        $this->checked($organization, $template, $frequency, $first['start'], $first['end'], $attributes['due_days'] ?? null);
 
         return DB::transaction(function () use ($organization, $attributes, $frequency, $terms, $start, $template, $first): InvoiceSchedule {
             $schedule = InvoiceSchedule::withoutTenantScope(fn () => InvoiceSchedule::query()->create([
@@ -162,12 +162,12 @@ class Schedules
      *
      * @throws ValidationException
      */
-    private function checked(Organization $organization, array $template, CarbonImmutable $start, CarbonImmutable $end, mixed $dueDays): void
+    private function checked(Organization $organization, array $template, ScheduleFrequency $frequency, CarbonImmutable $start, CarbonImmutable $end, mixed $dueDays): void
     {
         $today = CountryClock::now($organization->country)->toDateString();
 
         try {
-            $this->templates->check($organization, $this->templates->dated($template, $today, $start, $end, $dueDays === null ? null : (int) $dueDays));
+            $this->templates->check($organization, $this->templates->dated($organization, $template, $frequency, $today, $start, $end, $dueDays === null ? null : (int) $dueDays));
         } catch (ValidationException $e) {
             $errors = [];
 
