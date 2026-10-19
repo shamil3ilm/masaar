@@ -66,7 +66,7 @@ class CredentialStore
      *
      * With no key configured this is Crypt, so nothing breaks by default.
      * Previous keys are accepted for decryption only, which is what lets
-     * masaar:rotate-credential-key read old files and write new ones.
+     * platform:rotate-credential-key read old files and write new ones.
      */
     private function cipher(): Encrypter
     {

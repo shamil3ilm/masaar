@@ -30,7 +30,7 @@ class CreateAdminCommandTest extends TestCase
 
     public function test_it_creates_an_administrator(): void
     {
-        $this->artisan('masaar:create-admin', ['email' => 'ops@masaar.test'])
+        $this->artisan('platform:create-admin', ['email' => 'ops@masaar.test'])
             ->expectsQuestion('Password', self::GOOD)
             ->expectsQuestion('Confirm password', self::GOOD)
             ->assertSuccessful();
@@ -47,7 +47,7 @@ class CreateAdminCommandTest extends TestCase
      */
     public function test_a_mismatch_creates_nothing(): void
     {
-        $this->artisan('masaar:create-admin', ['email' => 'ops@masaar.test'])
+        $this->artisan('platform:create-admin', ['email' => 'ops@masaar.test'])
             ->expectsQuestion('Password', self::GOOD)
             ->expectsQuestion('Confirm password', 'something else entirely')
             ->assertFailed();
@@ -60,7 +60,7 @@ class CreateAdminCommandTest extends TestCase
         // Refused on the first answer, so the confirmation is never asked -
         // expecting it here would fail on the unasked question rather than
         // on the behaviour.
-        $this->artisan('masaar:create-admin', ['email' => 'ops@masaar.test'])
+        $this->artisan('platform:create-admin', ['email' => 'ops@masaar.test'])
             ->expectsQuestion('Password', 'password')
             ->assertFailed();
 
@@ -79,7 +79,7 @@ class CreateAdminCommandTest extends TestCase
             'is_platform_admin' => false,
         ]);
 
-        $this->artisan('masaar:create-admin', ['email' => 'member@masaar.test'])
+        $this->artisan('platform:create-admin', ['email' => 'member@masaar.test'])
             ->assertFailed();
 
         $this->assertFalse($user->fresh()->is_platform_admin);
@@ -92,7 +92,7 @@ class CreateAdminCommandTest extends TestCase
             'is_platform_admin' => false,
         ]);
 
-        $this->artisan('masaar:create-admin', ['email' => 'member@masaar.test', '--promote' => true])
+        $this->artisan('platform:create-admin', ['email' => 'member@masaar.test', '--promote' => true])
             ->assertSuccessful();
 
         $this->assertTrue($user->fresh()->is_platform_admin);
@@ -114,7 +114,7 @@ class CreateAdminCommandTest extends TestCase
             'is_platform_admin' => false,
         ]);
 
-        $this->artisan('masaar:create-admin', ['email' => 'ex@masaar.test', '--promote' => true])
+        $this->artisan('platform:create-admin', ['email' => 'ex@masaar.test', '--promote' => true])
             ->assertFailed();
 
         $this->assertFalse($user->fresh()->is_platform_admin);
@@ -133,7 +133,7 @@ class CreateAdminCommandTest extends TestCase
             'is_platform_admin' => false,
         ]);
 
-        $this->artisan('masaar:create-admin', ['email' => 'member@masaar.test', '--promote' => true])
+        $this->artisan('platform:create-admin', ['email' => 'member@masaar.test', '--promote' => true])
             ->assertSuccessful();
 
         $this->assertDatabaseHas('audit_logs', [
@@ -147,7 +147,7 @@ class CreateAdminCommandTest extends TestCase
      */
     public function test_an_owner_ends_the_command(): void
     {
-        $this->artisan('masaar:create-admin', ['email' => 'first@masaar.test'])
+        $this->artisan('platform:create-admin', ['email' => 'first@masaar.test'])
             ->expectsQuestion('Password', self::GOOD)
             ->expectsQuestion('Confirm password', self::GOOD)
             ->assertSuccessful();
@@ -155,8 +155,8 @@ class CreateAdminCommandTest extends TestCase
 
         $member = User::factory()->create(['email' => 'member@masaar.test', 'is_platform_admin' => false]);
 
-        $this->artisan('masaar:create-admin', ['email' => 'member@masaar.test', '--promote' => true])->assertFailed();
-        $this->artisan('masaar:create-admin', ['email' => 'second@masaar.test'])->assertFailed();
+        $this->artisan('platform:create-admin', ['email' => 'member@masaar.test', '--promote' => true])->assertFailed();
+        $this->artisan('platform:create-admin', ['email' => 'second@masaar.test'])->assertFailed();
 
         $this->assertFalse($member->fresh()->is_platform_admin);
         $this->assertDatabaseMissing('users', ['email' => 'second@masaar.test']);
@@ -164,7 +164,7 @@ class CreateAdminCommandTest extends TestCase
 
     public function test_a_bad_address_is_refused(): void
     {
-        $this->artisan('masaar:create-admin', ['email' => 'not-an-address'])
+        $this->artisan('platform:create-admin', ['email' => 'not-an-address'])
             ->assertFailed();
 
         $this->assertDatabaseMissing('users', ['email' => 'not-an-address']);

@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: 'Masaar Compliance API'
   version: 1.0.0
-  description: 'GCC e-invoicing compliance. Generated from the route table by `php artisan masaar:openapi` — edit the routes, not this file.'
+  description: 'GCC e-invoicing compliance. Generated from the route table by `php artisan platform:openapi` — edit the routes, not this file.'
 servers:
   - url: 'https://api.example.com'
     description: Production

@@ -21,7 +21,7 @@ use Tests\TestCase;
  * fails the build the moment a route is added, renamed or re-secured without
  * regenerating, so the file cannot quietly become fiction again.
  *
- *     php artisan masaar:openapi
+ *     php artisan platform:openapi
  */
 class OpenapiDriftTest extends TestCase
 {
@@ -31,13 +31,13 @@ class OpenapiDriftTest extends TestCase
     {
         $committed = (string) file_get_contents(base_path(self::SPEC));
 
-        Artisan::call('masaar:openapi', ['--print' => true]);
+        Artisan::call('platform:openapi', ['--print' => true]);
         $generated = Artisan::output();
 
         $this->assertSame(
             $this->normalise($committed),
             $this->normalise($generated),
-            self::SPEC.' is out of date with the route table. Run: php artisan masaar:openapi'
+            self::SPEC.' is out of date with the route table. Run: php artisan platform:openapi'
         );
     }
 
@@ -64,7 +64,7 @@ class OpenapiDriftTest extends TestCase
         }
 
         $this->assertSame(array_values(array_unique($missing)), [],
-            'Undescribed routes. Run: php artisan masaar:openapi');
+            'Undescribed routes. Run: php artisan platform:openapi');
     }
 
     /**
@@ -85,7 +85,7 @@ class OpenapiDriftTest extends TestCase
         $stale = array_values(array_diff(array_keys($spec['paths'] ?? []), $live));
 
         $this->assertSame([], $stale,
-            'Described paths that no longer route anywhere. Run: php artisan masaar:openapi');
+            'Described paths that no longer route anywhere. Run: php artisan platform:openapi');
     }
 
     /**

@@ -32,7 +32,7 @@ use Illuminate\Support\Facades\Log;
  */
 class RotateCredentialKey extends Command
 {
-    protected $signature = 'masaar:rotate-credential-key
+    protected $signature = 'platform:rotate-credential-key
                             {--dry-run : Report what would be re-encrypted without writing}';
 
     protected $description = 'Re-encrypt stored CSID credentials under the current signing key';

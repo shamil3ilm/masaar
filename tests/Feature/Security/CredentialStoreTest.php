@@ -183,7 +183,7 @@ class CredentialStoreTest extends TestCase
         $this->store->put(self::ORG, self::BRANCH, CredentialStore::PCSID, $this->pcsid());
         $this->store->put('org-2', null, CredentialStore::CCSID, ['x' => 1]);
 
-        $this->artisan('masaar:rotate-credential-key')
+        $this->artisan('platform:rotate-credential-key')
             ->assertSuccessful();
 
         // Still readable afterwards, which is the point of the exercise.
@@ -197,7 +197,7 @@ class CredentialStoreTest extends TestCase
     {
         Storage::disk('credentials')->put('zatca/org-4/pcsid.json', 'garbage');
 
-        $this->artisan('masaar:rotate-credential-key')->assertFailed();
+        $this->artisan('platform:rotate-credential-key')->assertFailed();
     }
 
     public function test_dry_run_leaves_files_untouched(): void
@@ -206,7 +206,7 @@ class CredentialStoreTest extends TestCase
         $path = 'zatca/'.self::ORG.'/branches/'.self::BRANCH.'/pcsid.json';
         $before = Storage::disk('credentials')->get($path);
 
-        $this->artisan('masaar:rotate-credential-key', ['--dry-run' => true])
+        $this->artisan('platform:rotate-credential-key', ['--dry-run' => true])
             ->assertSuccessful();
 
         $this->assertSame($before, Storage::disk('credentials')->get($path));
@@ -229,7 +229,7 @@ class CredentialStoreTest extends TestCase
         // New key active, old one still accepted for reads.
         $this->swapKey($newKey, [$oldKey]);
 
-        $this->artisan('masaar:rotate-credential-key')->assertSuccessful();
+        $this->artisan('platform:rotate-credential-key')->assertSuccessful();
 
         // Old key withdrawn. Only the re-encrypted copy can be read now.
         $this->swapKey($newKey, []);
@@ -287,7 +287,7 @@ class CredentialStoreTest extends TestCase
         $this->store->put(self::ORG, self::BRANCH, CredentialStore::PCSID, $this->pcsid());
 
         config(['fatoora.signing.key' => $new, 'fatoora.signing.previous_keys' => [$old]]);
-        $this->artisan('masaar:rotate-credential-key')->assertSuccessful();
+        $this->artisan('platform:rotate-credential-key')->assertSuccessful();
 
         config(['fatoora.signing.previous_keys' => []]);
 

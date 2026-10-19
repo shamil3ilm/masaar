@@ -56,7 +56,7 @@ php artisan migrate --env=staging --force
 #    and DatabaseSeeder would not help - it creates a user with no
 #    platform-admin flag. Prints a one-time two-factor enrolment link: open
 #    it before signing in.
-php artisan masaar:create-admin ops@masaar.test --env=staging
+php artisan platform:create-admin ops@masaar.test --env=staging
 
 # 5. Assets, because the console renders @vite and public/build is gitignored
 npm run build

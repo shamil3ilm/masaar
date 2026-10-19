@@ -67,7 +67,7 @@ npm install && npm run build   # the portal's stylesheet and scripts
 php artisan serve
 ```
 
-`php artisan masaar:create-admin` creates the first operator for the console.
+`php artisan platform:create-admin` creates the first operator for the console.
 
 Run the test suite:
 
@@ -196,8 +196,8 @@ php artisan fatoora:onboard --step=full --otp=<otp> --target=sandbox
 
 The remaining commands are operator tools rather than scheduled work:
 `fatoora:generate-csr`, `fatoora:validate`, `fatoora:sandbox-test`,
-`license:generate`, `license:status`, `masaar:openapi` and
-`masaar:rotate-credential-key`.
+`license:generate`, `license:status`, `platform:openapi` and
+`platform:rotate-credential-key`.
 
 ## Documentation
 

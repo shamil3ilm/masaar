@@ -978,7 +978,7 @@ docker compose -f docker-compose.prod.yml up -d --build
 #    two-factor enrolment link: open it, then sign in and enrol. Platform
 #    admins cannot enrol, or sign in, without one.
 docker compose -f docker-compose.prod.yml exec app php artisan migrate --force
-docker compose -f docker-compose.prod.yml exec app php artisan masaar:create-admin ops@your-domain
+docker compose -f docker-compose.prod.yml exec app php artisan platform:create-admin ops@your-domain
 ```
 
 Later admins get their link from another admin, on their page in the console.
@@ -986,7 +986,7 @@ An admin who has not enrolled, or a sole admin who has lost their phone and
 recovery codes, can be given one from the server:
 
 ```bash
-docker compose -f docker-compose.prod.yml exec app php artisan masaar:enrolment-link ops@your-domain [--reset]
+docker compose -f docker-compose.prod.yml exec app php artisan platform:enrolment-link ops@your-domain [--reset]
 ```
 
 ### Ports

@@ -171,7 +171,7 @@ class Approvals
 
     /**
      * Break-glass for a sole owner nobody else can approve for
-     * (masaar:owner-recover): one pending request approved from the server.
+     * (platform:owner-recover): one pending request approved from the server.
      * On the security record as such, with the reason; no admin approved it,
      * so approved_by stays empty.
      *

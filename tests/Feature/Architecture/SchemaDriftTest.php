@@ -16,7 +16,7 @@ use Tests\TestCase;
  * either the moment a migration adds, drops or changes a column, an index
  * or a key without the file being regenerated:
  *
- *     php artisan masaar:schema
+ *     php artisan platform:schema
  */
 class SchemaDriftTest extends TestCase
 {
@@ -26,12 +26,12 @@ class SchemaDriftTest extends TestCase
 
     public function test_committed_schema_matches_the_migrations(): void
     {
-        Artisan::call('masaar:schema', ['--print' => true]);
+        Artisan::call('platform:schema', ['--print' => true]);
 
         $this->assertSame(
             $this->normalise((string) file_get_contents(base_path(self::SCHEMA))),
             $this->normalise(Artisan::output()),
-            self::SCHEMA.' is out of date with the migrations. Run: php artisan masaar:schema',
+            self::SCHEMA.' is out of date with the migrations. Run: php artisan platform:schema',
         );
     }
 

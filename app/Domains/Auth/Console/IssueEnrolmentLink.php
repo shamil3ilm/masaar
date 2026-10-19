@@ -20,7 +20,7 @@ use Illuminate\Console\Command;
  */
 class IssueEnrolmentLink extends Command
 {
-    protected $signature = 'masaar:enrolment-link
+    protected $signature = 'platform:enrolment-link
                             {email : The platform admin to issue it for}
                             {--reset : Clear their two-factor first, for one who has lost it}';
 

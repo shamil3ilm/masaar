@@ -21,7 +21,7 @@ use DomainException;
  * Bypass is turned off only while another admin could approve: with nobody
  * else, every held action would wait for good and lock the owner out. A
  * sole owner locked out all the same recovers from the server
- * (masaar:owner-recover, docs/architecture/APPROVALS.md).
+ * (platform:owner-recover, docs/architecture/APPROVALS.md).
  */
 final class PolicyActions implements ApprovableActions
 {

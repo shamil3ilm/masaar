@@ -34,7 +34,7 @@ use Illuminate\Validation\Rules\Password;
  */
 class CreatePlatformAdmin extends Command
 {
-    protected $signature = 'masaar:create-admin
+    protected $signature = 'platform:create-admin
                             {email : The address they will sign in with}
                             {--name= : Their name; defaults to the part before the @}
                             {--promote : Grant platform admin to this address if it already exists}';
@@ -81,7 +81,7 @@ class CreatePlatformAdmin extends Command
      * Grant the flag to someone who already has an account.
      *
      * Behind --promote because this is the step that hands a person every
-     * taxpayer's data, and `masaar:create-admin someone@example.com` typed
+     * taxpayer's data, and `platform:create-admin someone@example.com` typed
      * against an existing address should not silently do it.
      */
     private function promote(User $user): int
@@ -142,7 +142,7 @@ class CreatePlatformAdmin extends Command
             app(AuditService::class)->logSecurity($action, 'User', (string) $user->id, [
                 'email' => $user->email,
                 'granted_by_os_user' => get_current_user(),
-                'command' => $this->signature !== '' ? 'masaar:create-admin' : null,
+                'command' => $this->signature !== '' ? 'platform:create-admin' : null,
             ]);
         } catch (\Throwable $e) {
             // The grant has already happened. Failing the command now would

@@ -253,7 +253,7 @@ Route::get('/login/two-factor', [TwoFactorController::class, 'showChallenge'])->
 Route::post('/login/two-factor', [TwoFactorController::class, 'challenge'])
     ->middleware('throttle:10,1')
     ->name('login.two-factor.attempt');
-// A one-time enrolment link, issued by another admin or by masaar:enrolment-link.
+// A one-time enrolment link, issued by another admin or by platform:enrolment-link.
 Route::get('/login/two-factor/enrol/{token}', [TwoFactorController::class, 'enrol'])
     ->where('token', '[A-Za-z0-9]{48}')
     ->middleware('throttle:10,1')

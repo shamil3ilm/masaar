@@ -26,7 +26,7 @@ use Illuminate\Support\Facades\Schema;
  */
 class DocumentSchema extends Command
 {
-    protected $signature = 'masaar:schema
+    protected $signature = 'platform:schema
                             {--path=docs/schema.sql : Where to write}
                             {--print : Write to stdout instead of the file}';
 
@@ -50,7 +50,7 @@ class DocumentSchema extends Command
         ));
         sort($tables);
 
-        $sql = "-- Masaar database schema, generated from the migrations by `php artisan masaar:schema`.\n"
+        $sql = "-- Masaar database schema, generated from the migrations by `php artisan platform:schema`.\n"
             ."-- Edit the migrations, not this file. Column types are kinds, the same on MySQL and SQLite;\n"
             ."-- tests/Feature/Architecture/TableTimestamps.php says what each table is for.\n";
 

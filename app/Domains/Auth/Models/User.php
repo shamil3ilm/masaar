@@ -100,7 +100,7 @@ class User extends Authenticatable implements HasLocalePreference, JWTSubject, M
      * What this platform admin is for, or null for anyone who is not one.
      *
      * An admin with no role recorded - made before roles existed, or by the
-     * server's masaar:create-admin - is an owner, which is what every admin
+     * server's platform:create-admin - is an owner, which is what every admin
      * was until roles existed. The console's Admins page always sets one.
      */
     public function platformRole(): ?PlatformRole

@@ -1,4 +1,4 @@
--- Masaar database schema, generated from the migrations by `php artisan masaar:schema`.
+-- Masaar database schema, generated from the migrations by `php artisan platform:schema`.
 -- Edit the migrations, not this file. Column types are kinds, the same on MySQL and SQLite;
 -- tests/Feature/Architecture/TableTimestamps.php says what each table is for.
 

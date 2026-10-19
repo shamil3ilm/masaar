@@ -137,7 +137,7 @@ return [
         | half of a taxpayer's non-repudiation, so it is worth a secret that
         | fewer things hold and that routine APP_KEY rotation does not touch.
         |
-        | Set it and run masaar:rotate-credential-key, keeping the previous
+        | Set it and run platform:rotate-credential-key, keeping the previous
         | value in previous_keys until that reports no failures.
         */
         'key' => env('ZATCA_CREDENTIAL_KEY', ''),

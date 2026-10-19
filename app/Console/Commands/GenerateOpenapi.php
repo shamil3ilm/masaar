@@ -40,7 +40,7 @@ use Symfony\Component\Yaml\Yaml;
  */
 class GenerateOpenapi extends Command
 {
-    protected $signature = 'masaar:openapi
+    protected $signature = 'platform:openapi
                             {--path=docs/openapi.yaml : Where to write}
                             {--print : Write to stdout instead of the file}';
 
@@ -73,7 +73,7 @@ class GenerateOpenapi extends Command
                 'title' => 'Masaar Compliance API',
                 'version' => (string) config('app.version', '1.0.0'),
                 'description' => 'GCC e-invoicing compliance. Generated from the route table by '
-                    .'`php artisan masaar:openapi` — edit the routes, not this file.',
+                    .'`php artisan platform:openapi` — edit the routes, not this file.',
             ],
             'servers' => [
                 ['url' => 'https://api.example.com', 'description' => 'Production'],

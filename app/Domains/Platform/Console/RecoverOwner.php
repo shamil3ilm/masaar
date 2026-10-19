@@ -31,7 +31,7 @@ use Throwable;
  */
 class RecoverOwner extends Command
 {
-    protected $signature = 'masaar:owner-recover
+    protected $signature = 'platform:owner-recover
                             {--enable-bypass : Turn "Allow bypass when no other approver exists" back on}
                             {--approve= : The id of one pending approval request to approve}
                             {--reason= : Why it is needed; required with --force}
@@ -53,7 +53,7 @@ class RecoverOwner extends Command
         $owner = $ownership->owner();
 
         if ($owner === null) {
-            $this->error('The platform has no owner yet. Create one with masaar:create-admin.');
+            $this->error('The platform has no owner yet. Create one with platform:create-admin.');
 
             return self::FAILURE;
         }

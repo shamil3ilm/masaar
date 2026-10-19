@@ -10,7 +10,7 @@ use Illuminate\Mail\Mailables\Envelope;
 
 /**
  * To the platform's owner, every time the break-glass command ran on the
- * server (masaar:owner-recover): what it did and why, so a run the owner did
+ * server (platform:owner-recover): what it did and why, so a run the owner did
  * not make is noticed at once.
  */
 final class OwnerRecoveredMail extends Mailable

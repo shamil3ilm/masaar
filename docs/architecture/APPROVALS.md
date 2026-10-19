@@ -66,8 +66,8 @@ If a sole owner is locked out all the same (bypass off and no other admin
 left who could approve), someone with access to the server runs:
 
 ```
-php artisan masaar:owner-recover --enable-bypass
-php artisan masaar:owner-recover --approve=<request id>
+php artisan platform:owner-recover --enable-bypass
+php artisan platform:owner-recover --approve=<request id>
 ```
 
 It does one thing per run: turns **Allow bypass when no other approver
@@ -91,7 +91,7 @@ role. Offer, withdrawal and transfer are on the security record.
 
 Nothing else makes an owner. A role change, a grant, an invitation and the
 admin API refuse the owner role; a custom role cannot hold `admins.manage`,
-the owner's own permission; `masaar:create-admin` makes the first owner and
+the owner's own permission; `platform:create-admin` makes the first owner and
 refuses, with or without `--promote`, once there is one. The owner is never
 demoted, revoked or suspended directly.
 

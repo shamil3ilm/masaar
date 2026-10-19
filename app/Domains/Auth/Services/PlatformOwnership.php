@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\DB;
  * old owner takes the role they named. Nothing else makes an owner: not a
  * role change, a custom role, an invitation, or the server's command once
  * an owner exists (PlatformAdmins, AdminRoles, AdminInvitations,
- * masaar:create-admin all refuse it).
+ * platform:create-admin all refuse it).
  *
  * Customer organizations are not this: their own owners and admins are
  * MemberRole's, as many as they like.

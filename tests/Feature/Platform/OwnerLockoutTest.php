@@ -16,7 +16,7 @@ use Tests\TestCase;
 /**
  * A sole owner is not locked out by approvals: bypass is turned off only
  * while another admin could approve, and a server-side break-glass command
- * (masaar:owner-recover) recovers one who is locked out all the same - on
+ * (platform:owner-recover) recovers one who is locked out all the same - on
  * the security record, with the owner emailed.
  */
 class OwnerLockoutTest extends TestCase
@@ -57,7 +57,7 @@ class OwnerLockoutTest extends TestCase
     {
         $this->policies()->save(ApprovalPolicies::BYPASS, app(ApprovalPolicies::class)->clean(ApprovalPolicies::BYPASS, ['enabled' => false]), (string) $this->owner->id);
 
-        $this->artisan('masaar:owner-recover', ['--enable-bypass' => true, '--force' => true, '--reason' => 'Sole owner locked out'])->assertSuccessful();
+        $this->artisan('platform:owner-recover', ['--enable-bypass' => true, '--force' => true, '--reason' => 'Sole owner locked out'])->assertSuccessful();
 
         $this->assertTrue($this->policies()->allowsBypass());
         $entry = DB::table('audit_logs')->where('action', 'security.platform_owner.recovered')->sole();
@@ -72,7 +72,7 @@ class OwnerLockoutTest extends TestCase
         $this->actingAs($this->owner)->post('/admin/admins', ['email' => 'new@masaar.test', 'role' => 'support', 'approval_reason' => 'First hire']);
         $request = ApprovalRequest::query()->where('action', 'admins.grant')->sole();
 
-        $this->artisan('masaar:owner-recover', ['--approve' => $request->id])
+        $this->artisan('platform:owner-recover', ['--approve' => $request->id])
             ->expectsQuestion('Why is it needed? This goes on the security record and to the owner', 'Hiring the second admin')
             ->expectsConfirmation('Approved from the server: '.$request->summary.' Go ahead?', 'yes')
             ->assertSuccessful();
@@ -86,7 +86,7 @@ class OwnerLockoutTest extends TestCase
     {
         $this->policies()->save(ApprovalPolicies::BYPASS, app(ApprovalPolicies::class)->clean(ApprovalPolicies::BYPASS, ['enabled' => false]), (string) $this->owner->id);
 
-        $this->artisan('masaar:owner-recover', ['--enable-bypass' => true, '--reason' => 'Testing'])
+        $this->artisan('platform:owner-recover', ['--enable-bypass' => true, '--reason' => 'Testing'])
             ->expectsConfirmation('Allow bypass when no other approver exists: turned back on. Go ahead?', 'no')
             ->assertFailed();
 
@@ -98,7 +98,7 @@ class OwnerLockoutTest extends TestCase
     {
         $this->policies()->save(ApprovalPolicies::BYPASS, app(ApprovalPolicies::class)->clean(ApprovalPolicies::BYPASS, ['enabled' => false]), (string) $this->owner->id);
 
-        $this->artisan('masaar:owner-recover', ['--enable-bypass' => true, '--force' => true])->assertFailed();
+        $this->artisan('platform:owner-recover', ['--enable-bypass' => true, '--force' => true])->assertFailed();
 
         $this->assertFalse($this->policies()->allowsBypass());
     }
@@ -108,7 +108,7 @@ class OwnerLockoutTest extends TestCase
         $this->policies()->save(ApprovalPolicies::BYPASS, app(ApprovalPolicies::class)->clean(ApprovalPolicies::BYPASS, ['enabled' => false]), (string) $this->owner->id);
         $this->admin('operations');
 
-        $this->artisan('masaar:owner-recover', ['--enable-bypass' => true, '--force' => true, '--reason' => 'Testing'])->assertFailed();
+        $this->artisan('platform:owner-recover', ['--enable-bypass' => true, '--force' => true, '--reason' => 'Testing'])->assertFailed();
 
         $this->assertFalse($this->policies()->allowsBypass());
         $this->assertFalse(DB::table('audit_logs')->where('action', 'security.platform_owner.recovered')->exists());

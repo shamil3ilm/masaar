@@ -153,9 +153,9 @@ class EnrolmentLinkTest extends TestCase
         $admin = $this->admin('ops@masaar.test');
         $admin->forceFill(['two_factor_secret' => self::SECRET, 'two_factor_confirmed_at' => now()])->save();
 
-        $this->artisan('masaar:enrolment-link', ['email' => 'ops@masaar.test'])->assertFailed();
+        $this->artisan('platform:enrolment-link', ['email' => 'ops@masaar.test'])->assertFailed();
 
-        $this->artisan('masaar:enrolment-link', ['email' => 'ops@masaar.test', '--reset' => true])
+        $this->artisan('platform:enrolment-link', ['email' => 'ops@masaar.test', '--reset' => true])
             ->expectsOutputToContain('/login/two-factor/enrol/')
             ->assertSuccessful();
 
@@ -167,7 +167,7 @@ class EnrolmentLinkTest extends TestCase
         $this->admin('ops@masaar.test');
         config(['app.url' => 'http://localhost']);
 
-        $this->artisan('masaar:enrolment-link', ['email' => 'ops@masaar.test'])
+        $this->artisan('platform:enrolment-link', ['email' => 'ops@masaar.test'])
             ->expectsOutputToContain('Set APP_URL')
             ->assertSuccessful();
     }

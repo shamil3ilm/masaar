@@ -209,7 +209,7 @@ class ApprovalPolicies
      * Whether anyone besides this admin could decide a held action: an
      * active platform admin whose role decides approvals. With nobody, bypass
      * off would leave every held action waiting for good (PolicyActions,
-     * masaar:owner-recover).
+     * platform:owner-recover).
      */
     public function anotherApproverExists(User $admin): bool
     {
