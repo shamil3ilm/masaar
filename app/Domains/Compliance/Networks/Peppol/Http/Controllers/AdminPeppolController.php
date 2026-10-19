@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Networks\Peppol\Http\Controllers;
 
 use App\Domains\Compliance\Networks\Peppol\Reports\NetworkOverview;
+use App\Domains\Compliance\Networks\Peppol\Sending\DocumentHistory;
 use App\Domains\Compliance\Networks\Peppol\Sending\PeppolSender;
 use App\Domains\Compliance\Networks\Peppol\Sending\ReportRetrier;
 use App\Http\Controllers\Controller;
@@ -53,7 +54,7 @@ class AdminPeppolController extends Controller
      */
     public function retryReport(string $id, ReportRetrier $retrier): RedirectResponse
     {
-        $refusal = $retrier->retry($id);
+        $refusal = $retrier->retry($id, DocumentHistory::SOURCE_OPERATOR);
 
         if ($refusal !== null) {
             return back()->with('error', $refusal);

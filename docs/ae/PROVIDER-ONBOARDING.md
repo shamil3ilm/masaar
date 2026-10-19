@@ -270,11 +270,16 @@ The order is by how much each matters at go-live.
    **Change if not:** a gateway per organization, and callback routes that
    identify the connection, so the right secret verifies each callback.
    This is a product decision.
-4. **The record of transmission is overwritten.** Data on the issuance,
+4. **The record of transmission is kept.** *Closed.* Data on the issuance,
    transmission and receipt of each invoice must be kept for five years or
-   more (Guidelines p12). The XML is kept, but each callback overwrites the
-   status, the response code and the errors. **Change:** an append-only log
-   of every verified callback and status lookup.
+   more (Guidelines p12), and the taxpayer stays responsible for it while
+   the provider keeps only its own logs (Guidelines p47). Every move,
+   callback and status lookup now goes on an append-only record
+   (`peppol_document_events`). Each entry has its source, its status on
+   either track, the response code, the provider's message id, the errors,
+   the SHA-256 of the body as it arrived, and the time. Entries are never
+   changed or deleted. The document's status is derived from them, and
+   documents from before the record have their state as one entry.
 
 **Important.**
 

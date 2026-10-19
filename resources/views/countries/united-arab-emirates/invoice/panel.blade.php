@@ -10,6 +10,7 @@
 
     @param $invoice   \App\Domains\Invoice\Models\Invoice
     @param $document  \App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument|null
+    @param $history   \Illuminate\Support\Collection of PeppolDocumentEvent, oldest first
 --}}
 <div class="rounded-card bg-surface p-6 border border-line shadow-card">
     <h3 class="mb-4 text-xs font-semibold uppercase tracking-wider text-muted">{{ __('UAE e-invoice') }}</h3>
@@ -97,6 +98,39 @@
                 </div>
             @endif
         </dl>
+
+        {{-- The transmission record (DocumentHistory): every move, callback
+             and lookup, oldest first, kept whether it moved the e-invoice or not. --}}
+        @if (isset($history) && $history->isNotEmpty())
+            <div class="mt-4" data-transmission-record>
+                <h4 class="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">{{ __('Transmission record') }}</h4>
+                <ol class="space-y-2 text-xs">
+                    @foreach ($history as $event)
+                        <li class="flex flex-wrap items-center gap-2">
+                            <span class="text-muted">{{ $event->occurred_at?->format('Y-m-d H:i:s') }}</span>
+                            <span class="text-fg">{{ match ($event->source) {
+                                'submission' => __('Handed to the provider'),
+                                'callback' => __('Provider callback'),
+                                'poll', 'lookup' => __('Status lookup'),
+                                'retry' => __('Report asked again'),
+                                'operator' => __('Operator'),
+                                'backfill' => __('Earlier record'),
+                                default => __('Platform'),
+                            } }}</span>
+                            @if ($event->status && $event->track !== 'reporting')
+                                @include('portal.partials.peppol-status', ['status' => $event->status])
+                            @endif
+                            @if ($event->reporting_status)
+                                @include('portal.partials.peppol-status', ['status' => $event->reporting_status])
+                            @endif
+                            @unless ($event->applied)
+                                <span class="text-muted">{{ __('(no change)') }}</span>
+                            @endunless
+                        </li>
+                    @endforeach
+                </ol>
+            </div>
+        @endif
 
         <div class="mt-4">
             <x-ui.button variant="secondary" :href="route('portal.invoices.xml', $invoice->id)">{{ __('Download e-invoice (XML)') }}</x-ui.button>

@@ -1943,5 +1943,13 @@
     "Starts when the service provider takes the e-invoice": "يبدأ عند تسلّم مزوّد الخدمة الفاتورة الإلكترونية",
     "Authority reference": "مرجع الجهة المختصة",
     "Why the report failed": "سبب تعذّر الإبلاغ",
-    "Reported only, not exchanged": "مُبلَّغ عنها فقط دون تبادل"
+    "Reported only, not exchanged": "مُبلَّغ عنها فقط دون تبادل",
+    "Transmission record": "سجل الإرسال",
+    "Handed to the provider": "سُلِّمت إلى مزوّد الخدمة",
+    "Provider callback": "إشعار من مزوّد الخدمة",
+    "Status lookup": "استعلام عن الحالة",
+    "Report asked again": "طُلب الإبلاغ مجدداً",
+    "Operator": "المشغّل",
+    "Earlier record": "سجل سابق",
+    "(no change)": "(دون تغيير)"
 }

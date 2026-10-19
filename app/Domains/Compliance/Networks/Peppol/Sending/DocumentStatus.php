@@ -47,7 +47,9 @@ use Illuminate\Support\Facades\Log;
  * recorded, and a delivery notice says nothing about the report.
  *
  * Every transition re-reads the row under a lock and checks the move there,
- * so two workers or a worker and a callback cannot both make one.
+ * so two workers or a worker and a callback cannot both make one. Each move,
+ * and each word from the provider that moves nothing, goes on the
+ * document's append-only record (DocumentHistory) in the same transaction.
  *
  * Inbound documents are 'received' and never move.
  */
@@ -107,6 +109,7 @@ final class DocumentStatus
 
     public function __construct(
         private readonly StatusAnnouncer $announcer,
+        private readonly DocumentHistory $history,
     ) {}
 
     /**
@@ -153,11 +156,12 @@ final class DocumentStatus
      *
      * @param  array<string, mixed>|Closure(PeppolDocument): array<string, mixed>  $attributes
      * @param  string|null  $from  move only from this status, when an allowed move is still the wrong one
+     * @param  string  $source  what made the move, for the record (DocumentHistory::SOURCE_*)
      * @return PeppolDocument|null the moved document, or null when it did not move
      */
-    public function transition(string $documentId, string $to, array|Closure $attributes = [], ?string $from = null): ?PeppolDocument
+    public function transition(string $documentId, string $to, array|Closure $attributes = [], ?string $from = null, string $source = DocumentHistory::SOURCE_SYSTEM): ?PeppolDocument
     {
-        return $this->move($documentId, self::TRACK_DELIVERY, $to, $attributes, $from);
+        return $this->move($documentId, self::TRACK_DELIVERY, $to, $attributes, $from, $source);
     }
 
     /**
@@ -165,19 +169,21 @@ final class DocumentStatus
      *
      * @param  array<string, mixed>|Closure(PeppolDocument): array<string, mixed>  $attributes
      */
-    public function transitionReporting(string $documentId, string $to, array|Closure $attributes = [], ?string $from = null): ?PeppolDocument
+    public function transitionReporting(string $documentId, string $to, array|Closure $attributes = [], ?string $from = null, string $source = DocumentHistory::SOURCE_SYSTEM): ?PeppolDocument
     {
-        return $this->move($documentId, self::TRACK_REPORTING, $to, $attributes, $from);
+        return $this->move($documentId, self::TRACK_REPORTING, $to, $attributes, $from, $source);
     }
 
     /**
      * Apply what the provider said about a sent document, on the track it
-     * is about.
+     * is about, and keep it on the record whether it moved the document or not.
      *
+     * @param  string  $source  a callback, or a status lookup's answer
+     * @param  string|null  $digest  SHA-256 of the body as it arrived
      * @return bool whether the message is one of ours; a status that changes
      *              nothing still is
      */
-    public function apply(AspStatus $update): bool
+    public function apply(AspStatus $update, string $source = DocumentHistory::SOURCE_CALLBACK, ?string $digest = null): bool
     {
         $document = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()
             ->where('asp_message_id', $update->messageId)
@@ -188,28 +194,28 @@ final class DocumentStatus
             return false;
         }
 
-        if ($update->status === null) {
-            return true;
-        }
-
         $reporting = $update->aboutReporting();
         $current = $reporting ? $document->reporting_status : $document->status;
 
-        if ($update->status === $current) {
+        if ($update->status === null || $update->status === $current) {
+            $this->history->heard($document, $update, $source, $digest);
+
             return true;
         }
 
         $moved = $reporting
-            ? $this->transitionReporting((string) $document->id, $update->status, array_filter([
+            ? $this->move((string) $document->id, self::TRACK_REPORTING, $update->status, array_filter([
                 'reporting_errors' => $update->errors === [] ? null : $update->errors,
                 'authority_reference' => $update->authorityReference,
-            ], fn ($value) => $value !== null))
-            : $this->transition((string) $document->id, $update->status, array_filter([
+            ], fn ($value) => $value !== null), null, $source, $digest)
+            : $this->move((string) $document->id, self::TRACK_DELIVERY, $update->status, array_filter([
                 'mls_code' => $update->mlsCode,
                 'errors' => $update->errors === [] ? null : $update->errors,
-            ], fn ($value) => $value !== null));
+            ], fn ($value) => $value !== null), null, $source, $digest);
 
         if ($moved === null) {
+            $this->history->heard($document, $update, $source, $digest);
+
             Log::info('Peppol status not applied: the document has moved past it', [
                 'document_id' => $document->id,
                 'track' => $reporting ? self::TRACK_REPORTING : self::TRACK_DELIVERY,
@@ -224,11 +230,11 @@ final class DocumentStatus
     /**
      * @param  array<string, mixed>|Closure(PeppolDocument): array<string, mixed>  $attributes
      */
-    private function move(string $documentId, string $track, string $to, array|Closure $attributes, ?string $from): ?PeppolDocument
+    private function move(string $documentId, string $track, string $to, array|Closure $attributes, ?string $from, string $source, ?string $digest = null): ?PeppolDocument
     {
         $column = $track === self::TRACK_REPORTING ? 'reporting_status' : 'status';
 
-        $moved = DB::transaction(function () use ($documentId, $track, $column, $to, $attributes, $from): ?PeppolDocument {
+        $moved = DB::transaction(function () use ($documentId, $track, $column, $to, $attributes, $from, $source, $digest): ?PeppolDocument {
             $document = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()
                 ->whereKey($documentId)
                 ->lockForUpdate()
@@ -255,6 +261,7 @@ final class DocumentStatus
             }
 
             $document->forceFill($changes)->save();
+            $this->history->moved($document, $track, $to, $source, $changes, $digest);
 
             return $document;
         });

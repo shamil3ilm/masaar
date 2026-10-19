@@ -1085,6 +1085,27 @@ CREATE TABLE `payments` (
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
 );
 
+CREATE TABLE `peppol_document_events` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `applied` BOOLEAN NOT NULL DEFAULT 0,
+    `asp_message_id` STRING NULL,
+    `authority_reference` STRING NULL,
+    `created_at` TIMESTAMP NULL,
+    `document_id` STRING NOT NULL,
+    `errors` TEXT NULL,
+    `mls_code` STRING NULL,
+    `occurred_at` TIMESTAMP NOT NULL,
+    `payload_digest` STRING NULL,
+    `reporting_status` STRING NULL,
+    `request_id` STRING NULL,
+    `source` STRING NOT NULL,
+    `status` STRING NULL,
+    `track` STRING NOT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `peppol_document_events_document_id_occurred_at_index` (`document_id`, `occurred_at`),
+    FOREIGN KEY (`document_id`) REFERENCES `peppol_documents` (`id`)
+);
+
 CREATE TABLE `peppol_documents` (
     `id` STRING NOT NULL,
     `asp_message_id` STRING NULL,

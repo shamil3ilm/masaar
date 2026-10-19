@@ -8,6 +8,8 @@ use App\Domains\Compliance\Networks\Peppol\Contracts\AspGateway;
 use App\Domains\Compliance\Networks\Peppol\Gateways\HttpAspGateway;
 use App\Domains\Compliance\Networks\Peppol\Gateways\NullAspGateway;
 use App\Domains\Compliance\Networks\Peppol\Gateways\WebhookSignature;
+use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
+use App\Domains\Compliance\Networks\Peppol\Sending\DocumentHistory;
 use App\Domains\Compliance\Networks\Peppol\Simulator\SimulatedAspGateway;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
@@ -71,6 +73,15 @@ class NetworkServiceProvider extends ServiceProvider
         if (config('peppol.gateway') === self::SIMULATOR) {
             self::refuseSimulatorIn($this->app);
         }
+
+        // A document's record starts with the document: its first state is
+        // its first event, so the record alone adds up to where it stands.
+        PeppolDocument::created(function (PeppolDocument $document): void {
+            $this->app->make(DocumentHistory::class)->created(
+                $document,
+                $document->direction === PeppolDocument::DIRECTION_IN ? DocumentHistory::SOURCE_CALLBACK : DocumentHistory::SOURCE_SYSTEM,
+            );
+        });
     }
 
     /**

@@ -83,6 +83,7 @@ final class PeppolSender
             $documentId,
             DocumentStatus::SENDING,
             fn (PeppolDocument $locked) => ['attempts' => $locked->attempts + 1],
+            source: DocumentHistory::SOURCE_SUBMISSION,
         );
 
         // Not ready: sent already, being sent, or settled.
@@ -96,14 +97,14 @@ final class PeppolSender
             // Not an attempt: the document waits, uncounted, for a manual upload.
             $this->status->transition($documentId, DocumentStatus::READY, fn (PeppolDocument $locked) => [
                 'attempts' => max(0, $locked->attempts - 1),
-            ]);
+            ], source: DocumentHistory::SOURCE_SUBMISSION);
 
             return false;
         } catch (AspRefusedException $e) {
             $this->status->transition($documentId, DocumentStatus::REJECTED, [
                 'errors' => $e->errors,
                 'last_error' => $e->getMessage(),
-            ]);
+            ], source: DocumentHistory::SOURCE_SUBMISSION);
 
             Log::warning('Peppol document refused by the service provider', [
                 'document_id' => $documentId,
@@ -116,7 +117,7 @@ final class PeppolSender
 
             $this->status->transition($documentId, $exhausted ? DocumentStatus::FAILED : DocumentStatus::READY, [
                 'last_error' => $e->getMessage(),
-            ]);
+            ], source: DocumentHistory::SOURCE_SUBMISSION);
 
             Log::warning('Peppol document not sent: no verdict from the service provider', [
                 'document_id' => $documentId,
@@ -138,7 +139,7 @@ final class PeppolSender
             'last_error' => null,
             'reporting_status' => DocumentStatus::PENDING,
             'reporting_changed_at' => now(),
-        ]);
+        ], source: DocumentHistory::SOURCE_SUBMISSION);
 
         return false;
     }
@@ -157,7 +158,7 @@ final class PeppolSender
         $document = $this->status->transition($documentId, DocumentStatus::READY, [
             'attempts' => 0,
             'last_error' => null,
-        ], from: DocumentStatus::FAILED);
+        ], from: DocumentStatus::FAILED, source: DocumentHistory::SOURCE_OPERATOR);
 
         if ($document === null) {
             return false;

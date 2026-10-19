@@ -57,9 +57,10 @@ final class ReportRetrier
     /**
      * Ask once.
      *
+     * @param  string  $source  the schedule, or an operator (DocumentHistory::SOURCE_*)
      * @return string|null why it was not asked, or null when it was
      */
-    public function retry(string $documentId): ?string
+    public function retry(string $documentId, string $source = DocumentHistory::SOURCE_RETRY): ?string
     {
         $document = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->find($documentId));
 
@@ -84,7 +85,7 @@ final class ReportRetrier
             return $e->getMessage();
         }
 
-        $this->status->transitionReporting($documentId, DocumentStatus::PENDING, ['reporting_errors' => null], DocumentStatus::REPORT_FAILED);
+        $this->status->transitionReporting($documentId, DocumentStatus::PENDING, ['reporting_errors' => null], DocumentStatus::REPORT_FAILED, $source);
 
         return null;
     }

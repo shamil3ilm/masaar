@@ -148,6 +148,11 @@ final class TableTimestamps
             'actors' => ['zatca_notified_by' => 'zatca_notified_by', 'zatca_renotified_by' => 'zatca_renotified_by']],
         'peppol_documents' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',
             'system' => 'sent or received by the platform; the person is on the invoice'],
+        // Every move, callback and lookup of a Peppol document, kept as it
+        // came (UAE Electronic Invoicing Guidelines v1.1, p12).
+        'peppol_document_events' => ['class' => 'd', 'event' => 'occurred_at', 'tenant' => 'parent:document_id',
+            'system' => 'recorded by the platform from its own moves and the provider\'s word; the person is on the invoice',
+            'correlation' => 'request_id'],
 
         // Money.
         'payments' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',

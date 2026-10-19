@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Networks\Peppol\Http\Controllers;
 
 use App\Domains\Compliance\Networks\Peppol\Contracts\AspGateway;
+use App\Domains\Compliance\Networks\Peppol\Sending\DocumentHistory;
 use App\Domains\Compliance\Networks\Peppol\Sending\DocumentStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
@@ -39,7 +40,14 @@ class StatusWebhookController extends Controller
         // Unknown: not ours, or the provider called back before its own
         // answer to the submission reached us. Either way nothing is written,
         // and the provider's retry finds the message id in place.
-        if (! $this->status->apply($this->gateway->parseStatusWebhook($request))) {
+        // On the document's record as it came: the digest of the raw body.
+        $applied = $this->status->apply(
+            $this->gateway->parseStatusWebhook($request),
+            DocumentHistory::SOURCE_CALLBACK,
+            hash('sha256', $request->getContent()),
+        );
+
+        if (! $applied) {
             return ApiResponse::notFound('Message not found');
         }
 

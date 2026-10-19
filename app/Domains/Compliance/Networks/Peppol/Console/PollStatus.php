@@ -7,6 +7,7 @@ namespace App\Domains\Compliance\Networks\Peppol\Console;
 use App\Domains\Compliance\Networks\Peppol\Contracts\AspGateway;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\AspUnavailableException;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\NoAspConfiguredException;
+use App\Domains\Compliance\Networks\Peppol\Sending\DocumentHistory;
 use App\Domains\Compliance\Networks\Peppol\Sending\DocumentStatus;
 use Illuminate\Console\Command;
 
@@ -32,7 +33,7 @@ class PollStatus extends Command
         foreach ($documents as $document) {
             try {
                 foreach ($gateway->status((string) $document->asp_message_id) as $update) {
-                    $status->apply($update);
+                    $status->apply($update, DocumentHistory::SOURCE_POLL, hash('sha256', (string) json_encode($update)));
                 }
 
                 $asked++;

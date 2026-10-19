@@ -8,6 +8,7 @@ use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Issuing\InvoiceIssuer;
 use App\Domains\Compliance\Networks\Peppol\Console\PintValidator;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
+use App\Domains\Compliance\Networks\Peppol\Sending\DocumentHistory;
 use App\Domains\Compliance\Networks\Peppol\Sending\PeppolSender;
 use App\Domains\Compliance\Networks\Peppol\Simulator\SimulatorCallbacks;
 use App\Domains\Invoice\Models\Invoice;
@@ -301,9 +302,28 @@ class SimulatorConformanceTest extends TestCase
     private function assertDelivered(PeppolDocument $document): void
     {
         $document = PeppolDocument::withoutTenantScope(fn () => $document->fresh());
+        $this->assertRecordAddsUp($document);
 
         $this->assertSame(['delivered', 'AP', null, 'reported'], [$document->status, $document->mls_code, $document->errors, $document->reporting_status], $this->explain($document));
         $this->assertNotNull($document->authority_reference);
+    }
+
+    /**
+     * The transmission record derives the document's state (UAE Electronic
+     * Invoicing Guidelines v1.1, p12), and keeps every callback as it came.
+     */
+    private function assertRecordAddsUp(PeppolDocument $document): void
+    {
+        $history = app(DocumentHistory::class);
+
+        $this->assertSame(
+            $history->replay((string) $document->id),
+            $document->only(['status', 'reporting_status', 'mls_code', 'asp_message_id', 'authority_reference']),
+        );
+
+        $callbacks = $history->of((string) $document->id)->where('source', 'callback');
+        $this->assertNotEmpty($callbacks);
+        $this->assertTrue($callbacks->every(fn ($event): bool => strlen((string) $event->payload_digest) === 64));
     }
 
     private function explain(PeppolDocument $document): string

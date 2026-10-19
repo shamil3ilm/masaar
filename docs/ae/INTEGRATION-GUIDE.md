@@ -432,6 +432,12 @@ reporting:  pending -> reported
             pending -> report_failed -> pending (asked again) -> reported
 ```
 
+Every move, provider callback and status lookup is also kept on the
+document's transmission record, append-only, with the SHA-256 of the body as
+it arrived. This includes the ones that changed nothing (UAE Electronic
+Invoicing Guidelines v1.1, p12). The portal shows the record on the
+invoice's page.
+
 A `reported` that arrives before `delivered` leaves the delivery to be
 recorded when it comes. A late `sent` moves nothing back. Each outcome is
 also a webhook event: `e_invoice.sent`, `e_invoice.delivered`,
