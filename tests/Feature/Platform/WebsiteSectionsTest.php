@@ -9,6 +9,7 @@ use App\Domains\Platform\Models\WebsiteSection;
 use App\Domains\Platform\Website\PriceCheck;
 use App\Domains\Platform\Website\SectionCatalogue;
 use App\Domains\Platform\Website\WebsiteSections;
+use App\Support\Brand;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
@@ -47,12 +48,12 @@ class WebsiteSectionsTest extends TestCase
             $this->assertDoesNotMatchRegularExpression('/(?<!\p{L})مسار(?!\p{L})/u', $defaults, $key);
         }
 
-        config(['app.name' => 'Nibras']);
+        config(['brand.name' => 'Nibras', 'brand.name_ar' => 'نبراس']);
 
         $this->withSession(['locale' => 'en'])->get('/')
             ->assertSee('Nibras checks, sends and keeps each one')
             ->assertSee('Nibras is open to any country');
-        $this->withSession(['locale' => 'ar'])->get('/')->assertSee('يتولى Nibras تدقيق كل فاتورة');
+        $this->withSession(['locale' => 'ar'])->get('/')->assertSee('يتولى نبراس تدقيق كل فاتورة');
     }
 
     public function test_edited_text_shows_in_both_languages(): void
@@ -223,10 +224,10 @@ class WebsiteSectionsTest extends TestCase
         return $change($this->sections()->texts($key));
     }
 
-    /** The fixture, with the product's configured name where it says :app. */
+    /** The fixture, with the product's configured name in its language where it says :app. */
     private function fixture(string $locale): string
     {
-        return str_replace(["\r\n", ':app'], ["\n", (string) config('app.name')], (string) file_get_contents(base_path(sprintf(self::FIXTURE, $locale))));
+        return str_replace(["\r\n", ':app'], ["\n", Brand::name($locale)], (string) file_get_contents(base_path(sprintf(self::FIXTURE, $locale))));
     }
 
     /**

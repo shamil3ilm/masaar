@@ -11,7 +11,7 @@
     period (PruneContactDetails).
 --}}
 @php
-    $subject = __('Re: your message to :name', ['name' => config('app.name')], $message->locale);
+    $subject = __('Re: your message to :name', ['name' => \App\Support\Brand::name($message->locale)], $message->locale);
     $mailto = 'mailto:'.$message->email.'?subject='.rawurlencode($subject);
 @endphp
 

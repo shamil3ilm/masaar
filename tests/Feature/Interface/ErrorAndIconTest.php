@@ -7,6 +7,7 @@ namespace Tests\Feature\Interface;
 use App\Domains\Auth\Models\User;
 use App\Domains\Branding\Services\ThemeService;
 use App\Http\Middleware\SetLocale;
+use App\Support\Brand;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use RuntimeException;
@@ -63,7 +64,7 @@ class ErrorAndIconTest extends TestCase
         $this->get(route('app.manifest'))
             ->assertOk()
             ->assertHeader('Content-Type', 'application/manifest+json')
-            ->assertJsonPath('name', config('app.name'))
+            ->assertJsonPath('name', Brand::name('en'))
             ->assertJsonPath('icons.0.src', asset('icons/icon-192.png'));
     }
 

@@ -13,8 +13,9 @@ use InvalidArgumentException;
  * The defaults are the words the page was written with, in both languages
  * (lang/ar.json), so a deployment nobody has edited shows exactly that page
  * and "Reset to default" returns to it. The product's name is never written
- * into them: :app stands for it, and SectionContent puts in the configured
- * name (config('app.name')) as the page is drawn, so a rename needs no
+ * into them: :app stands for it (kept as written, not translated away), and
+ * SectionContent puts in the configured name in the page's language
+ * (Brand::name()) as the page is drawn, so a rename needs no
  * edit here or in the database. They are kept here rather than
  * copied into the database, so a better default reaches every section an
  * admin has not rewritten.
@@ -162,7 +163,7 @@ final class SectionCatalogue
                 'badge' => __('E-invoicing for', [], $l),
                 'title_1' => __('Every invoice,', [], $l),
                 'title_2' => __('on the right path.', [], $l),
-                'lead' => __('Issue invoices in the portal or send them from your ERP. :app checks, sends and keeps each one the way your tax authority expects - in Arabic and English.', [], $l),
+                'lead' => __('Issue invoices in the portal or send them from your ERP. :app checks, sends and keeps each one the way your tax authority expects - in Arabic and English.', ['app' => SectionContent::NAME], $l),
                 'note' => __('No card needed to sign up, and your first month is free.', [], $l),
             ],
             'countries' => [
@@ -186,10 +187,10 @@ final class SectionCatalogue
             'custom' => [
                 'eyebrow' => __('Open to what you need', [], $l),
                 'title' => __('Need something else?', [], $l),
-                'intro' => __(':app is open to any country, any feature and any customization. Ask, and we will tell you what we can do.', [], $l),
+                'intro' => __(':app is open to any country, any feature and any customization. Ask, and we will tell you what we can do.', ['app' => SectionContent::NAME], $l),
                 'ask_action' => __('Ask us', [], $l),
                 'setup_title' => __('We set it up with you', [], $l),
-                'setup_intro' => __('On request, we work with your team, on site or remotely, to set :app up end to end:', [], $l),
+                'setup_intro' => __('On request, we work with your team, on site or remotely, to set :app up end to end:', ['app' => SectionContent::NAME], $l),
                 'setup_action' => __('Talk to us', [], $l),
                 'action' => __('Tell us what you need', [], $l),
                 'asks' => [

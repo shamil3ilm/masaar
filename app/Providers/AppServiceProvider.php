@@ -42,6 +42,7 @@ use App\Domains\Platform\Website\Testimonials;
 use App\Domains\Platform\Website\WebsiteSections;
 use App\Domains\Platform\Website\WebsiteSeo;
 use App\Http\Listing\SavedViewStore;
+use App\Support\BrandTranslator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Routing\Router;
@@ -51,6 +52,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Translation\Translator;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -107,6 +109,9 @@ class AppServiceProvider extends ServiceProvider
         // ZATCA Compliance Services - Singletons for consistency
         $this->app->singleton(TimestampValidator::class);
         $this->app->singleton(CircuitBreaker::class);
+
+        // :app in any translated line is the product's name, in its language.
+        $this->app->extend('translator', fn (Translator $translator): BrandTranslator => BrandTranslator::from($translator));
     }
 
     /**

@@ -11,7 +11,7 @@ use App\Domains\Branding\Services\Palette;
  * A theme as JSON describes it.
  *
  *     {
- *       "name": "Masaar",
+ *       "name": "Acme",
  *       "mode": "light",
  *       "font": "inter",
  *       "colors": { "primary": "#14B8A6", "navigation": "#1A1F36", "highlight": "#EADBC8" },
@@ -67,11 +67,12 @@ final readonly class ThemeDefinition
     ) {}
 
     /**
-     * The look the application ships with.
+     * The look the application ships with. Unnamed: a theme nobody named
+     * shows the product's configured name (ActiveTheme::name()).
      */
     public static function shipped(): self
     {
-        return new self('Masaar', 'light', [
+        return new self(null, 'light', [
             'primary' => '#14B8A6',
             'navigation' => '#1A1F36',
             'highlight' => '#EADBC8',

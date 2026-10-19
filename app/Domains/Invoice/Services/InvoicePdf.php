@@ -10,6 +10,7 @@ use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
+use App\Support\Brand;
 use DomainException;
 use Exception;
 use Mpdf\Mpdf;
@@ -73,7 +74,7 @@ class InvoicePdf
         $mpdf->PDFAauto = true;
         $mpdf->SetTitle((string) $invoice->invoice_number);
         $mpdf->SetAuthor($organization->documentName());
-        $mpdf->SetCreator((string) config('app.name', 'Masaar'));
+        $mpdf->SetCreator(Brand::name('en'));
 
         $mpdf->WriteHTML($html);
 

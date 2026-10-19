@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Branding\DTOs;
 
+use App\Support\Brand;
+
 /**
  * The theme a page is drawn in: the platform's, with an organization's laid
  * over it where the page belongs to one.
@@ -23,9 +25,10 @@ final readonly class ActiveTheme
         public ?string $logoType = null,
     ) {}
 
+    /** The name a theme was given, else the product's, in the page's language. */
     public function name(): string
     {
-        return $this->definition->name ?? 'Masaar';
+        return $this->definition->name ?? Brand::name();
     }
 
     /**

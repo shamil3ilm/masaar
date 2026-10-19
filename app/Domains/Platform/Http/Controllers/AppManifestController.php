@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace App\Domains\Platform\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Support\Brand;
 use Illuminate\Http\JsonResponse;
 
 /**
  * The web app manifest: what a phone calls the product when it is added to
  * the home screen, and the icons and colours it uses there.
  *
- * The name is config('app.name') - the product's name may change, and a
+ * The name is Brand::name() - the product's name may change, and a
  * hard-coded one in a static file would outlive it. The icons are the
  * logo's mark (public/icons), with no words on them.
  */
@@ -20,8 +21,8 @@ class AppManifestController extends Controller
     public function __invoke(): JsonResponse
     {
         return response()->json([
-            'name' => config('app.name'),
-            'short_name' => config('app.name'),
+            'name' => Brand::name(),
+            'short_name' => Brand::name(),
             'start_url' => '/',
             'scope' => '/',
             'display' => 'standalone',

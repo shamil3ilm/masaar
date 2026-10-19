@@ -10,6 +10,7 @@ use App\Domains\Auth\Services\SignInThrottle;
 use App\Domains\Auth\Services\TwoFactor;
 use App\Domains\Auth\Support\Totp;
 use App\Http\Controllers\Controller;
+use App\Support\Brand;
 use App\Support\QrCodeRenderer;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
@@ -43,7 +44,7 @@ class AccountController extends Controller
         return view('account.show', [
             'user' => $user,
             'setupSecret' => is_string($secret) ? $secret : null,
-            'setupQr' => is_string($secret) ? $this->qr->svg(Totp::uri($secret, (string) $user->email, (string) config('app.name', 'Masaar'))) : null,
+            'setupQr' => is_string($secret) ? $this->qr->svg(Totp::uri($secret, (string) $user->email, Brand::name('en'))) : null,
             'cannotTurnOff' => $user->hasTwoFactor() ? $this->twoFactor->mayTurnOff($user) : null,
         ]);
     }

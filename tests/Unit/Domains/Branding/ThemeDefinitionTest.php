@@ -56,7 +56,7 @@ class ThemeDefinitionTest extends TestCase
 
         $this->assertSame('#7C3AED', $merged->colors['primary']);
         $this->assertSame('#1A1F36', $merged->colors['navigation']);
-        $this->assertSame('Masaar', $merged->name);
+        $this->assertNull($merged->name, 'Unnamed, a theme shows the product\'s configured name.');
     }
 
     /**

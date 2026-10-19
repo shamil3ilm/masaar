@@ -12,6 +12,7 @@ use App\Domains\Auth\Services\SignInThrottle;
 use App\Domains\Auth\Services\TwoFactor;
 use App\Domains\Auth\Support\Totp;
 use App\Http\Controllers\Controller;
+use App\Support\Brand;
 use App\Support\QrCodeRenderer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -119,7 +120,7 @@ class TwoFactorController extends Controller
 
         return view('auth.two-factor-setup', [
             'secret' => $secret,
-            'qr' => app(QrCodeRenderer::class)->svg(Totp::uri($secret, (string) $user->email, (string) config('app.name', 'Masaar'))),
+            'qr' => app(QrCodeRenderer::class)->svg(Totp::uri($secret, (string) $user->email, Brand::name('en'))),
         ]);
     }
 
@@ -145,7 +146,7 @@ class TwoFactorController extends Controller
         if ($recoveryCodes === EnrolmentLinks::WRONG_CODE) {
             $this->throttle->codeFailed($user);
 
-            throw ValidationException::withMessages(['code' => __('That code is not right. Check the app is showing the Masaar entry you just added.')]);
+            throw ValidationException::withMessages(['code' => __('That code is not right. Check the app is showing the :app entry you just added.', ['app' => Brand::name('en')])]);
         }
 
         $this->throttle->codeSucceeded($user);

@@ -970,7 +970,7 @@
     "That address already has an account. Sign in to accept.": "لهذا العنوان حساب بالفعل. سجّل الدخول لقبول الدعوة.",
     "That address already has an account. Sign in, then open the link again to accept.": "لهذا العنوان حساب مسبقًا. سجّل الدخول، ثم افتح الرابط مجددًا لقبول الدعوة.",
     "That code is not right.": "الرمز غير صحيح.",
-    "That code is not right. Check the app is showing the Masaar entry you just added.": "الرمز غير صحيح. تأكد من أن التطبيق يعرض حساب Masaar الذي أضفته للتو.",
+    "That code is not right. Check the app is showing the :app entry you just added.": "الرمز غير صحيح. تأكد من أن التطبيق يعرض حساب :app الذي أضفته للتو.",
     "That code is not right. Check the app shows the entry you just added.": "الرمز غير صحيح. تأكد من أن التطبيق يعرض الحساب الذي أضفته للتو.",
     "That code is not right. Try the current one from your app, or a recovery code.": "الرمز غير صحيح. جرّب الرمز الحالي من تطبيقك، أو رمز استرداد.",
     "That invoice is not ready yet. It is available once ZATCA has cleared it.": "هذه الفاتورة غير جاهزة بعد. ستتوفر بعد اعتمادها من الهيئة.",

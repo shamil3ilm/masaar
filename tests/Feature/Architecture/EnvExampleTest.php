@@ -40,6 +40,7 @@ class EnvExampleTest extends TestCase
         'metrics',
         'platform-license',
         'security',
+        'brand',
     ];
 
     public function test_every_setting_is_documented(): void

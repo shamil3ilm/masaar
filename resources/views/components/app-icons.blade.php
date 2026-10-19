@@ -8,7 +8,7 @@
     the PNG sizes and the home-screen icon are the platform's mark
     (public/icons), drawn from the logo's geometry with no words on them, so
     nothing here names the product - the manifest takes its name from
-    config('app.name').
+    \App\Support\Brand::name().
 --}}
 <link rel="icon" href="{{ $theme->faviconUrl }}" type="{{ $theme->faviconType }}">
 <link rel="icon" href="{{ asset('icons/favicon-32.png') }}" type="image/png" sizes="32x32">
@@ -16,5 +16,5 @@
 <link rel="manifest" href="{{ route('app.manifest') }}">
 <meta name="theme-color" content="rgb(251 250 247)" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="rgb(14 17 27)" media="(prefers-color-scheme: dark)">
-<meta name="application-name" content="{{ config('app.name') }}">
-<meta name="apple-mobile-web-app-title" content="{{ config('app.name') }}">
+<meta name="application-name" content="{{ \App\Support\Brand::name() }}">
+<meta name="apple-mobile-web-app-title" content="{{ \App\Support\Brand::name() }}">

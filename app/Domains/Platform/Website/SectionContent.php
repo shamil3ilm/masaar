@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Website;
 
+use App\Support\Brand;
 use Illuminate\Support\HtmlString;
 
 /**
@@ -58,23 +59,24 @@ final readonly class SectionContent
     public function items(string $list): array
     {
         return array_map(
-            fn (array $item): array => array_map(fn (array $both): string => self::named((string) ($both[$this->locale] ?? '')), $item),
+            fn (array $item): array => array_map(fn (array $both): string => self::named((string) ($both[$this->locale] ?? ''), $this->locale), $item),
             array_values((array) ($this->content[$list] ?? [])),
         );
     }
 
     /**
-     * A text with the product's name put in where it says :app. The name
-     * is the configured one, read as the page is drawn, never stored: the
-     * product may be renamed, and its words should not need editing then.
+     * A text with the product's name put in where it says :app, in the
+     * text's language. The name is the configured one (Brand), read as the
+     * page is drawn, never stored: the product may be renamed, and its words
+     * should not need editing then.
      */
-    public static function named(string $text): string
+    public static function named(string $text, ?string $locale = null): string
     {
-        return str_replace(self::NAME, (string) config('app.name'), $text);
+        return str_replace(self::NAME, Brand::name($locale), $text);
     }
 
     private function in(string $field, string $locale): string
     {
-        return self::named((string) ($this->content[$field][$locale] ?? ''));
+        return self::named((string) ($this->content[$field][$locale] ?? ''), $locale);
     }
 }

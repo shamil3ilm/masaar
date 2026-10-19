@@ -8,6 +8,7 @@ use App\Domains\Audit\Models\AuditLog;
 use App\Domains\Auth\Models\User;
 use App\Domains\Branding\Services\ThemeService;
 use App\Domains\Platform\Website\WebsiteImages;
+use App\Support\Brand;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -125,7 +126,7 @@ class WebsiteSeoTest extends TestCase
         $this->assertMatchesRegularExpression('#<meta property="og:image" content="'.preg_quote(route('website.share-image'), '#').'\?v=\d+">#', $en);
 
         $this->get('/?lang=ar')->assertSee('<title>الفوترة الإلكترونية في الخليج - '.$this->site().'</title>', false)
-            ->assertSee('<meta property="og:title" content="'.config('app.name').' للفوترة الإلكترونية - '.$this->site().'">', false);
+            ->assertSee('<meta property="og:title" content="'.Brand::name('ar').' للفوترة الإلكترونية - '.$this->site().'">', false);
 
         $this->get(route('website.share-image'))->assertOk()->assertHeader('Content-Type', 'image/png')->assertHeader('X-Content-Type-Options', 'nosniff');
 
