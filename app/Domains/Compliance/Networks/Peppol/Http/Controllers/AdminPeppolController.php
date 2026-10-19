@@ -7,6 +7,7 @@ namespace App\Domains\Compliance\Networks\Peppol\Http\Controllers;
 use App\Domains\Compliance\Networks\Peppol\Reports\NetworkOverview;
 use App\Domains\Compliance\Networks\Peppol\Sending\DocumentHistory;
 use App\Domains\Compliance\Networks\Peppol\Sending\PeppolSender;
+use App\Domains\Compliance\Networks\Peppol\Sending\ProviderOutage;
 use App\Domains\Compliance\Networks\Peppol\Sending\ReportRetrier;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
@@ -22,6 +23,7 @@ class AdminPeppolController extends Controller
 {
     public function __construct(
         private readonly NetworkOverview $overview,
+        private readonly ProviderOutage $outage,
     ) {}
 
     /**
@@ -31,6 +33,7 @@ class AdminPeppolController extends Controller
     {
         return view('admin.peppol', [
             'gateway' => $this->overview->gateway(),
+            'outage' => $this->outage->current(),
             'counts' => $this->overview->counts(),
             'waiting' => $this->overview->waiting(),
             'latest' => $this->overview->latest(),

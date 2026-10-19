@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Networks\Peppol\Simulator;
 
-use App\Domains\Compliance\Networks\Peppol\Gateways\AspError;
+use App\Domains\Compliance\Networks\Peppol\DTOs\AspError;
 use App\Domains\Compliance\Networks\Peppol\Gateways\AspStatus;
 use App\Domains\Compliance\Networks\Peppol\Sending\ReportOnlyEndpoints;
 use Illuminate\Support\Str;
@@ -30,6 +30,9 @@ enum Outcome: string
 
     /** No answer to the first attempt; the retry is taken and delivered. */
     case Unavailable = 'unavailable';
+
+    /** The provider is down for four attempts in a row - an outage - then taken and delivered. */
+    case Outage = 'outage';
 
     /** The first attempt is taken but its answer lost; the retry gets the same message. */
     case AnswerLost = 'answer_lost';
@@ -63,6 +66,16 @@ enum Outcome: string
         return ! in_array($this, [self::Unavailable, self::AnswerLost], true);
     }
 
+    /** Attempts that get no verdict at all before one is taken. */
+    public function unansweredAttempts(): int
+    {
+        return match ($this) {
+            self::Unavailable => 1,
+            self::Outage => 4,
+            default => 0,
+        };
+    }
+
     /**
      * The callbacks, in order.
      *
@@ -78,7 +91,7 @@ enum Outcome: string
         $inbound = $receiverIsHere ? [['type' => 'inbound']] : [];
 
         return match ($this) {
-            self::Delivered, self::Unavailable, self::AnswerLost => [$sent, $delivered, self::reported(), ...$inbound],
+            self::Delivered, self::Unavailable, self::Outage, self::AnswerLost => [$sent, $delivered, self::reported(), ...$inbound],
             self::ReportedFirst => [$sent, self::reported(), $delivered, ...$inbound],
             self::ReportFailed => [
                 $sent,

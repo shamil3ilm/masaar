@@ -12,6 +12,7 @@ use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use App\Domains\Compliance\Networks\Peppol\Sending\DocumentHistory;
 use App\Domains\Compliance\Networks\Peppol\Sending\DocumentStatus;
 use App\Domains\Compliance\Networks\Peppol\Sending\PeppolSender;
+use App\Domains\Compliance\Networks\Peppol\Sending\ProviderOutage;
 use App\Domains\Compliance\Networks\Peppol\Simulator\SimulatorCallbacks;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
@@ -250,6 +251,30 @@ class SimulatorConformanceTest extends TestCase
         $this->playNetwork();
 
         $this->assertDelivered($document->fresh());
+    }
+
+    /**
+     * The provider down for several attempts in a row: an outage, during
+     * which no document is given up on even past its window; when the
+     * provider answers again, what waits is sent at once (UAE Electronic
+     * Invoicing Guidelines v1.1, p45-46).
+     */
+    public function test_outage_is_ridden_out(): void
+    {
+        $document = app(InvoiceIssuer::class)->issue($this->draftFor('standard', ['buyer_endpoint' => '0235:1999999907']));
+        $outage = app(ProviderOutage::class);
+
+        $this->sendNow($document);
+        $this->sendNow($document);
+        $this->assertTrue($outage->active());
+
+        // Long past the retry window, still unanswered: still waiting, not failed.
+        $this->travel(80)->hours();
+        $this->sendNow($document);
+        $this->assertSame(['ready', 4], [$document->fresh()->status, $document->fresh()->attempts]);
+
+        $this->assertDelivered($this->sendNow($document));
+        $this->assertFalse($outage->active());
     }
 
     /** No answer to the first attempt: the document waits, and the retry is delivered. */

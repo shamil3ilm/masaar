@@ -122,6 +122,7 @@ authority are confirmed separately: delivery (`status`), then the report
 | `0235:1999999902` | No answer to the first attempt (a simulated `503`) | none for the first attempt; after the retry, as delivered | `delivered`, `reported` |
 | `0235:1999999903` | The first attempt is accepted but its answer is lost | the retry gets the same message id; one set of callbacks, as delivered | `delivered`, `reported` |
 | `0235:1999999904` | The buyer's access point refuses it. The supplier's provider still reports it (Guidelines p10, steps 4 and 7) | sent, rejected (`RE`, reason `BV`), reported | `rejected`, `reported` |
+| `0235:1999999907` | An outage: four attempts get no answer. The platform declares an outage at the third and stops the retry window, then the provider answers | none for four attempts; then as delivered, and every waiting document is sent at once | `delivered`, `reported` |
 | `0235:1999999905` | The report to the authority fails until it is asked again | sent, delivered, report_failed; after `peppol:retry-reports`, reported | `delivered`, `reported` |
 | `0235:1999999906` | The authority's confirmation arrives before the delivery | sent, reported, delivered | `delivered`, `reported` |
 | `0235:9900000097`, `0235:9900000098`, `0235:9900000099` | Reported to the authority, never exchanged: a deemed supply, a buyer not yet on e-invoicing, an export (UAE Electronic Invoicing Guidelines v1.1, p26, p23, p28) | sent, reported | `not_exchanged`, `reported` |

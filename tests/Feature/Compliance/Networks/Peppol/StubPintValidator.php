@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Compliance\Networks\Peppol;
 
 use App\Domains\Compliance\Networks\Peppol\Console\PintValidator;
-use App\Domains\Compliance\Networks\Peppol\Gateways\AspError;
+use App\Domains\Compliance\Networks\Peppol\DTOs\AspError;
 
 /**
  * The published rules' verdict, scripted, where Java and the artefacts are

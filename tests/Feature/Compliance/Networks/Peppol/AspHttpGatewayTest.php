@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature\Compliance\Networks\Peppol;
 
 use App\Domains\Compliance\Networks\Peppol\Contracts\AspGateway;
+use App\Domains\Compliance\Networks\Peppol\DTOs\AspError;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\AspRefusedException;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\AspUnavailableException;
-use App\Domains\Compliance\Networks\Peppol\Gateways\AspError;
 use App\Domains\Compliance\Networks\Peppol\Gateways\HttpAspGateway;
 use App\Domains\Compliance\Networks\Peppol\Gateways\NullAspGateway;
 use App\Domains\Compliance\Networks\Peppol\Gateways\WebhookSignature;

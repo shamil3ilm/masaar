@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Networks\Peppol\Sending;
 
 use App\Domains\Compliance\Networks\Peppol\Contracts\AspGateway;
+use App\Domains\Compliance\Networks\Peppol\DTOs\AspError;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\AspRefusedException;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\AspUnavailableException;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\NoAspConfiguredException;
-use App\Domains\Compliance\Networks\Peppol\Gateways\AspError;
 use App\Domains\Compliance\Networks\Peppol\Gateways\AspStatus;
 use App\Domains\Compliance\Networks\Peppol\Jobs\SendPeppolDocument;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
@@ -34,14 +34,25 @@ use Illuminate\Support\Facades\Log;
  */
 final class PeppolSender
 {
-    /** Attempts without a verdict before a document is given up on. */
-    public const MAX_ATTEMPTS = 5;
-
     public function __construct(
         private readonly AspGateway $gateway,
         private readonly DocumentStatus $status,
         private readonly ReportOnlyEndpoints $reportOnly,
+        private readonly ProviderOutage $outage,
     ) {}
+
+    /**
+     * How long a document is tried without a verdict before it is given up
+     * on, counted from when it was first queued: a span of time, not a
+     * number of attempts, so a long outage is ridden out rather than five
+     * quick refusals failing it. The clock stops while an outage is declared
+     * (ProviderOutage); pending invoices go out when service resumes
+     * (Electronic Invoicing Guidelines v1.1, p45-46).
+     */
+    public function retryWindowHours(): int
+    {
+        return max(1, (int) config('peppol.asp.retry_window_hours', 72));
+    }
 
     /**
      * Send a ready outbound document in the background, once its row is
@@ -106,6 +117,9 @@ final class PeppolSender
 
             return false;
         } catch (AspRefusedException $e) {
+            // A verdict: the provider is answering.
+            $this->outage->answered();
+
             $this->status->transition($documentId, DocumentStatus::REJECTED, [
                 'errors' => AspError::toArrays($e->errors),
                 'last_error' => $e->getMessage(),
@@ -118,7 +132,11 @@ final class PeppolSender
 
             return false;
         } catch (AspUnavailableException $e) {
-            $exhausted = $document->attempts >= self::MAX_ATTEMPTS;
+            $this->outage->noAnswer($e->getMessage());
+            $since = $document->queued_at ?? $document->created_at;
+            $exhausted = ! $this->outage->active()
+                && $since !== null
+                && $since->lte(now()->subHours($this->retryWindowHours()));
 
             $this->status->transition($documentId, $exhausted ? DocumentStatus::FAILED : DocumentStatus::READY, [
                 'last_error' => $e->getMessage(),
@@ -127,12 +145,15 @@ final class PeppolSender
             Log::warning('Peppol document not sent: no verdict from the service provider', [
                 'document_id' => $documentId,
                 'attempt' => $document->attempts,
+                'outage' => $this->outage->active(),
                 'will_retry' => ! $exhausted,
                 'error' => $e->getMessage(),
             ]);
 
             return ! $exhausted;
         }
+
+        $this->outage->answered();
 
         // Taken: delivery and the report to the authority both start now,
         // in parallel (Electronic Invoicing Guidelines v1.1, p10 steps 3-4) -
@@ -224,9 +245,11 @@ final class PeppolSender
      */
     public function resend(string $documentId): bool
     {
+        // From its first attempt, with a fresh retry window.
         $document = $this->status->transition($documentId, DocumentStatus::READY, [
             'attempts' => 0,
             'last_error' => null,
+            'queued_at' => now(),
         ], from: DocumentStatus::FAILED, source: DocumentHistory::SOURCE_OPERATOR);
 
         if ($document === null) {
@@ -239,7 +262,7 @@ final class PeppolSender
     }
 
     /**
-     * The queue stopped trying before the document's own attempts ran out.
+     * The queue stopped trying before the document's retry window ran out.
      *
      * Only a document still waiting is marked failed. One in 'sending' may be
      * with the provider, so it is left alone, loudly.

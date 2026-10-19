@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Networks\Peppol\Gateways;
 
+use App\Domains\Compliance\Networks\Peppol\DTOs\AspError;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;

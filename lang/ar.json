@@ -1952,5 +1952,6 @@
     "Operator": "المشغّل",
     "Earlier record": "سجل سابق",
     "(no change)": "(دون تغيير)",
-    "At :field": "في :field"
+    "At :field": "في :field",
+    "The service provider is not answering at the moment. This e-invoice waits and is sent as soon as it answers again.": "مزوّد الخدمة لا يستجيب حالياً. تنتظر هذه الفاتورة الإلكترونية وتُرسَل فور استجابته."
 }

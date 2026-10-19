@@ -7,7 +7,7 @@ namespace Tests\Feature\Compliance\Networks\Peppol;
 use App\Domains\Compliance\Engine\Services\JurisdictionRegistry;
 use App\Domains\Compliance\Networks\Peppol\Console\PintValidator;
 use App\Domains\Compliance\Networks\Peppol\Contracts\AspGateway;
-use App\Domains\Compliance\Networks\Peppol\Gateways\AspError;
+use App\Domains\Compliance\Networks\Peppol\DTOs\AspError;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use App\Domains\Compliance\Networks\Peppol\NetworkServiceProvider;
 use App\Domains\Compliance\Networks\Peppol\Sending\PeppolSender;

@@ -304,11 +304,20 @@ The order is by how much each matters at go-live.
    their code (`[ibr-003]-...`, `BV: ...`). This supports the governance
    model for resolving errors that the Guidelines ask for (p41). **Ask the
    provider** (question 3) which names it uses.
-8. **Outages.** The provider must notify the taxpayer and the authority, and
-   exchange pending invoices once service resumes (Guidelines p46). The
-   platform gives up after five unanswered attempts, and an operator has to
-   resend. **Change:** a service notice callback if the provider has one,
-   and a retry policy measured in time rather than attempts.
+8. **Outages.** *Closed for what the platform can see.* The provider must
+   notify the taxpayer and the authority of a disruption, and exchange and
+   report pending invoices once service resumes (Guidelines p45-46).
+   - Retries are now measured in time: `PEPPOL_RETRY_WINDOW_HOURS`, 72 by
+     default, from when a document was first queued. Before, five quick
+     refusals failed a document.
+   - Three documents in a row with no verdict are an outage. No document is
+     failed while it lasts. It is shown on the admin console and on the
+     invoice page, and logged as critical.
+   - When the provider answers again, every waiting document is sent at
+     once.
+
+   **Ask the provider** (question 7) whether it also sends a service
+   notice. If it does, it can declare and end an outage directly.
 9. **Participant lookup** before issuing (Guidelines p11, row 6). An unknown
    buyer is found only after the invoice is issued.
 10. **The UUID.** The Guidelines make the UUID the provider's job

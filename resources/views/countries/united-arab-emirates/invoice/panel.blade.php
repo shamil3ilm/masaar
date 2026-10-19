@@ -34,6 +34,10 @@
             <p class="mb-4 rounded-lg border border-warning-line bg-warning-soft p-3 text-sm text-warning" data-issued-late>{{ $warning }}</p>
         @endforeach
 
+        @if (! empty($outage) && in_array($document->status, ['ready', 'sending'], true))
+            <p class="mb-4 rounded-lg border border-warning-line bg-warning-soft p-3 text-sm text-warning" data-provider-outage>{{ __('The service provider is not answering at the moment. This e-invoice waits and is sent as soon as it answers again.') }}</p>
+        @endif
+
         <dl class="space-y-3 text-sm">
             {{-- Delivery and the report to the authority are confirmed apart
                  (UAE Electronic Invoicing Guidelines v1.1, p10-11), so each has its own line. --}}

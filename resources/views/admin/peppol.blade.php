@@ -16,6 +16,16 @@
     <p class="mt-1 max-w-3xl text-sm text-muted">Documents sent and received over the Peppol network, for every organization.</p>
 </div>
 
+{{-- ProviderOutage: several documents in a row with no answer. Nothing is
+     given up on while it lasts, and what waits is sent when it answers. --}}
+@if ($outage)
+    <div class="mb-6 rounded-card border border-warning-line bg-warning-soft p-4 text-sm text-warning" data-peppol-outage>
+        The service provider has not answered since {{ \Carbon\Carbon::parse($outage['since'])->diffForHumans() }}
+        ({{ $outage['last_error'] }}). Documents wait and are sent as soon as it answers again; the provider
+        must notify the authority of the disruption.
+    </div>
+@endif
+
 <div class="mb-6 rounded-card border border-line bg-surface p-4 shadow-card" data-peppol-gateway>
     <div class="flex flex-wrap items-center gap-3">
         <span class="text-sm text-muted">Gateway</span>

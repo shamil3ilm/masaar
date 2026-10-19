@@ -57,6 +57,11 @@ return [
         // Sending runs on its own queue and worker (laravel-worker-peppol),
         // apart from ZATCA's, so neither country's provider delays the other.
         'queue' => env('PEPPOL_QUEUE') ?: 'peppol',
+        // Hours a document is tried without a verdict before it is failed,
+        // from when it was first queued. The clock stops while the provider
+        // is in an outage, and waiting documents go out when it answers
+        // again (UAE Electronic Invoicing Guidelines v1.1, p45-46).
+        'retry_window_hours' => (int) env('PEPPOL_RETRY_WINDOW_HOURS', 72),
     ],
 
     /*
@@ -88,7 +93,8 @@ return [
     | outcomes: buyer endpoints that play something other than a delivery,
     | for demos and tests. unknown_receiver: no such participant on the
     | network. unavailable: the first attempt gets no answer, the retry is
-    | taken. answer_lost: the first attempt is taken but its answer lost, so
+    | taken. outage: four attempts get no answer, which the platform reads
+    | as an outage from the third, then the next is taken. answer_lost: the first attempt is taken but its answer lost, so
     | the retry must not file it twice. rejected: the buyer's provider
     | refuses it. report_failed: delivered, but the report to the authority
     | fails until it is asked again. reported_first: the authority's
@@ -107,6 +113,7 @@ return [
             '0235:1999999904' => 'rejected',
             '0235:1999999905' => 'report_failed',
             '0235:1999999906' => 'reported_first',
+            '0235:1999999907' => 'outage',
         ],
     ],
 

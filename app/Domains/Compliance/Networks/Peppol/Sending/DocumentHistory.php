@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Networks\Peppol\Sending;
 
-use App\Domains\Compliance\Networks\Peppol\Gateways\AspError;
+use App\Domains\Compliance\Networks\Peppol\DTOs\AspError;
 use App\Domains\Compliance\Networks\Peppol\Gateways\AspStatus;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocumentEvent;

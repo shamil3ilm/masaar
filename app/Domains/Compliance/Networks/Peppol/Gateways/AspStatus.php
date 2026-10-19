@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Networks\Peppol\Gateways;
 
+use App\Domains\Compliance\Networks\Peppol\DTOs\AspError;
+
 /**
  * What the provider says became of one sent document.
  *

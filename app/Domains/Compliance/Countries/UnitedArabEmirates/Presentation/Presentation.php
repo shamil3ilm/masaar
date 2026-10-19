@@ -9,6 +9,7 @@ use App\Domains\Compliance\Engine\Contracts\Presentation as PresentationPort;
 use App\Domains\Compliance\Engine\DTOs\InvoicePage;
 use App\Domains\Compliance\Engine\DTOs\Receipt;
 use App\Domains\Compliance\Networks\Peppol\Sending\DocumentHistory;
+use App\Domains\Compliance\Networks\Peppol\Sending\ProviderOutage;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use DomainException;
@@ -29,6 +30,7 @@ class Presentation implements PresentationPort
     public function __construct(
         private readonly UaeDocuments $documents,
         private readonly DocumentHistory $history,
+        private readonly ProviderOutage $outage,
     ) {}
 
     public function tagline(): string
@@ -64,6 +66,8 @@ class Presentation implements PresentationPort
                 // Its transmission record, kept as it came (UAE Electronic
                 // Invoicing Guidelines v1.1, p12).
                 'history' => $document === null ? collect() : $this->history->of((string) $document->id),
+                // The provider not answering: a document waiting says why (p45-46).
+                'outage' => $this->outage->current(),
             ],
         );
     }

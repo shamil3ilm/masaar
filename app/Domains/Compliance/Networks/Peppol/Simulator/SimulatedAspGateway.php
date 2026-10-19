@@ -70,9 +70,10 @@ final class SimulatedAspGateway implements AspGateway
             }
 
             $outcome = Outcome::forReceiver($document->receiver_endpoint);
-            $firstAttempt = $this->ledger->attempt($key) === 1;
+            $attempt = $this->ledger->attempt($key);
+            $firstAttempt = $attempt === 1;
 
-            if ($outcome === Outcome::Unavailable && $firstAttempt) {
+            if ($attempt <= $outcome->unansweredAttempts()) {
                 throw new AspUnavailableException('The service provider gave no verdict (simulated HTTP 503).');
             }
 

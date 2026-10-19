@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Networks\Peppol\Gateways;
 
 use App\Domains\Compliance\Networks\Peppol\Contracts\AspGateway;
+use App\Domains\Compliance\Networks\Peppol\DTOs\AspError;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\AspRefusedException;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\AspUnavailableException;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;

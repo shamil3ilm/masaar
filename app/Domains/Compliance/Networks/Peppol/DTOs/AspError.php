@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Domains\Compliance\Networks\Peppol\Gateways;
+namespace App\Domains\Compliance\Networks\Peppol\DTOs;
 
 use Illuminate\Support\Str;
 

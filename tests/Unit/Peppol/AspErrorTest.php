@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Peppol;
 
-use App\Domains\Compliance\Networks\Peppol\Gateways\AspError;
+use App\Domains\Compliance\Networks\Peppol\DTOs\AspError;
 use PHPUnit\Framework\TestCase;
 
 /**

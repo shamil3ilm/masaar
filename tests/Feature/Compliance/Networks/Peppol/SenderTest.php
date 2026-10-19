@@ -13,6 +13,7 @@ use App\Domains\Compliance\Networks\Peppol\Gateways\NullAspGateway;
 use App\Domains\Compliance\Networks\Peppol\Jobs\SendPeppolDocument;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use App\Domains\Compliance\Networks\Peppol\Sending\PeppolSender;
+use App\Domains\Compliance\Networks\Peppol\Sending\ProviderOutage;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -95,30 +96,68 @@ class SenderTest extends TestCase
     }
 
     /**
-     * No verdict goes back to ready and is tried again, until the attempts
-     * run out and the document is failed with the reason.
+     * No verdict goes back to ready and is tried again for as long as the
+     * retry window runs - a span of time, not a count of attempts (UAE
+     * Electronic Invoicing Guidelines v1.1, p45-46) - and is failed with
+     * the reason once it has run out.
      */
-    public function test_no_verdict_retries_then_fails(): void
+    public function test_no_verdict_retries_within_window(): void
     {
-        $document = $this->readyDocument();
+        $document = $this->readyDocument(['queued_at' => now()]);
         $sender = app(PeppolSender::class);
 
-        for ($attempt = 1; $attempt < PeppolSender::MAX_ATTEMPTS; $attempt++) {
+        foreach ([1, 2] as $attempt) {
             $this->asp->failNextWith(new AspUnavailableException('HTTP 503'));
-
             $this->assertTrue($sender->send($document->id));
-            $this->assertSame('ready', $document->fresh()->status);
+            $this->assertSame(['ready', $attempt], [$document->fresh()->status, $document->fresh()->attempts]);
         }
+    }
 
+    public function test_window_run_out_fails_it(): void
+    {
+        $document = $this->readyDocument(['queued_at' => now()->subHours(73)]);
         $this->asp->failNextWith(new AspUnavailableException('HTTP 503'));
 
-        $this->assertFalse($sender->send($document->id));
+        $this->assertFalse(app(PeppolSender::class)->send($document->id));
 
         $document->refresh();
-        $this->assertSame('failed', $document->status);
-        $this->assertSame(PeppolSender::MAX_ATTEMPTS, $document->attempts);
-        $this->assertSame('HTTP 503', $document->last_error);
-        $this->assertNull($document->asp_message_id);
+        $this->assertSame(['failed', 'HTTP 503', null], [$document->status, $document->last_error, $document->asp_message_id]);
+    }
+
+    /**
+     * Several documents in a row with no verdict is an outage: no document
+     * is given up on while it lasts.
+     */
+    public function test_outage_stops_the_window(): void
+    {
+        $outage = app(ProviderOutage::class);
+        foreach (range(1, ProviderOutage::THRESHOLD) as $failure) {
+            $outage->noAnswer('HTTP 503');
+        }
+        $document = $this->readyDocument(['queued_at' => now()->subDays(10)]);
+        $this->asp->failNextWith(new AspUnavailableException('HTTP 503'));
+
+        $this->assertTrue(app(PeppolSender::class)->send($document->id));
+
+        $this->assertTrue($outage->active());
+        $this->assertSame('ready', $document->fresh()->status);
+    }
+
+    /** The provider answering again ends the outage and sends what waits at once. */
+    public function test_answer_ends_outage_and_resumes(): void
+    {
+        $outage = app(ProviderOutage::class);
+        foreach (range(1, ProviderOutage::THRESHOLD) as $failure) {
+            $outage->noAnswer('HTTP 503');
+        }
+        $waiting = $this->readyDocument(['queued_at' => now()->subHour(), 'attempts' => 2]);
+        $next = $this->readyDocument();
+        Queue::fake();
+
+        app(PeppolSender::class)->send($next->id);
+
+        $this->assertFalse($outage->active());
+        Queue::assertPushed(SendPeppolDocument::class, fn (SendPeppolDocument $job): bool => $job->documentId === $waiting->id);
     }
 
     /**
@@ -206,7 +245,7 @@ class SenderTest extends TestCase
     public function test_failed_document_can_be_resent(): void
     {
         Queue::fake();
-        $document = $this->readyDocument(['status' => 'failed', 'attempts' => PeppolSender::MAX_ATTEMPTS, 'last_error' => 'HTTP 401']);
+        $document = $this->readyDocument(['status' => 'failed', 'attempts' => 9, 'last_error' => 'HTTP 401']);
 
         $this->artisan('peppol:resend', ['document' => $document->id])->assertSuccessful();
 
@@ -232,7 +271,8 @@ class SenderTest extends TestCase
     {
         $organization = Organization::create(['name' => 'Gulf Trading', 'country' => 'AE']);
 
-        return PeppolDocument::withoutTenantScope(fn () => PeppolDocument::create([
+        // forceCreate: queued_at is the sender's to set, not fillable.
+        return PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->forceCreate([
             'org_id' => $organization->id,
             'direction' => PeppolDocument::DIRECTION_OUT,
             'country' => 'AE',

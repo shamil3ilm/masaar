@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Networks\Peppol\Models;
 
+use App\Domains\Compliance\Networks\Peppol\DTOs\AspError;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\DocumentRetainedException;
-use App\Domains\Compliance\Networks\Peppol\Gateways\AspError;
 use App\Domains\Organization\Concerns\BelongsToTenant;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;

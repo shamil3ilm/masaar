@@ -434,7 +434,7 @@ delivery:   ready -> sending -> sent -> delivered
             sending -> ready     (no verdict yet: retried with back-off)
             sending -> rejected  (refused by the provider)
             sent -> rejected     (refused by the buyer's provider)
-            sending, ready -> failed     (out of attempts)
+            sending, ready -> failed     (retry window passed, no outage)
             failed -> ready      (operator: peppol:resend)
 
 reporting:  pending -> reported
@@ -568,8 +568,18 @@ Outgoing documents are sent by the `SendPeppolDocument` job, on the
 
 - **No verdict** (the provider is unreachable, answers `401`, `403`, `408`,
   `409`, `425`, `429`, a redirect or a `5xx`): the document returns to
-  `ready`. It is retried after 1, 5, 15 and 60 minutes, then marked `failed`
-  after five attempts.
+  `ready`. It is retried after 1, 5, 15 and 60 minutes, then hourly. It is
+  marked `failed` only once its retry window has passed:
+  `PEPPOL_RETRY_WINDOW_HOURS` (72 by default), counted from when it was first
+  queued.
+- **An outage**: three documents in a row with no verdict. While the outage
+  lasts, the retry window stops, so no document is failed. A critical log
+  entry and the admin console's **Peppol** page say since when, and the
+  invoice page tells the seller its e-invoice is waiting. When the provider
+  answers again, every waiting document is sent at once. The provider must
+  notify the authority of the disruption, and exchange and report pending
+  invoices once service resumes (UAE Electronic Invoicing Guidelines v1.1,
+  p45-46).
 - **Any other `4xx`**: this is a refusal, and the document becomes
   `rejected`.
 
