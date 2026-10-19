@@ -31,6 +31,19 @@ class SetupChecklist
     ) {}
 
     /**
+     * The steps of an organization by its id, for the admin console; none
+     * for one that does not exist.
+     *
+     * @return list<array{key: string, done: bool, required: bool, route: string|null, title: string, detail: string, member: bool}>
+     */
+    public function stepsFor(string $organizationId): array
+    {
+        $organization = Organization::query()->find($organizationId);
+
+        return $organization === null ? [] : $this->steps($organization);
+    }
+
+    /**
      * @return list<array{key: string, done: bool, required: bool, route: string|null, title: string, detail: string, member: bool}>
      */
     public function steps(Organization $organization): array

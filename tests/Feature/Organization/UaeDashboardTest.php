@@ -35,7 +35,7 @@ class UaeDashboardTest extends TestCase
         $this->asRequest(fn () => $this->actingAs($this->member($gulf))
             ->get('/portal')
             ->assertOk()
-            ->assertViewHas('einvoices', ['awaiting' => 3, 'delivered' => 2, 'rejected' => 1, 'failed' => 2, 'received' => 1])
+            ->assertViewHas('einvoices', ['awaiting' => 3, 'delivered' => 2, 'rejected' => 1, 'failed' => 2, 'received' => 1, 'reported' => 1, 'report_failed' => 0, 'not_exchanged' => 0])
             ->assertViewHas('recentDocuments', fn ($documents) => $documents->count() === 8)
             ->assertViewMissing('certificate')
             ->assertSee('Your UAE e-invoicing overview')
@@ -65,7 +65,9 @@ class UaeDashboardTest extends TestCase
             'customization_id' => 'urn:peppol:pint:billing-1@ae-1',
             'profile_id' => 'urn:peppol:bis:billing',
             'document_type' => 'Invoice',
-            'status' => $status,
+            // 'reported' is a report to the authority, on a delivered document.
+            'status' => $status === 'reported' ? 'delivered' : $status,
+            'reporting_status' => $status === 'reported' ? 'reported' : null,
             'asp_message_id' => 'msg-'.$this->sequence,
             'xml' => '<Invoice/>',
         ]));

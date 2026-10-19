@@ -50,28 +50,49 @@ class WebhookStatusTest extends TestCase
     {
         $document = $this->document('sent', 'msg-1');
 
-        $this->report(['message_id' => 'msg-1', 'mls_code' => 'RE', 'errors' => ['BR-AE-10 invalid TRN']])
-            ->assertOk();
+        $this->report(['message_id' => 'msg-1', 'mls_code' => 'RE', 'errors' => [
+            ['rule_id' => 'BR-AE-10', 'severity' => 'fatal', 'field' => 'cbc:CompanyID', 'message' => 'invalid TRN'],
+            'BV: Business rule violation',
+        ]])->assertOk();
 
         $document->refresh();
         $this->assertSame('rejected', $document->status);
         $this->assertSame('RE', $document->mls_code);
-        $this->assertSame(['BR-AE-10 invalid TRN'], $document->errors);
+        $this->assertSame([
+            ['code' => 'BR-AE-10', 'severity' => 'fatal', 'field' => 'cbc:CompanyID', 'message' => 'invalid TRN'],
+            ['code' => 'BV', 'severity' => 'error', 'field' => null, 'message' => 'Business rule violation'],
+        ], $document->errorList('errors'));
     }
 
     /**
-     * The authority's confirmation can overtake the buyer's acceptance; the
-     * late acceptance then changes nothing, and is still acknowledged.
+     * The authority's confirmation can overtake the buyer's acceptance. The
+     * two are separate tracks (UAE Electronic Invoicing Guidelines v1.1,
+     * p10-11), so the late acceptance is still recorded, and a late 'sent'
+     * moves nothing back.
      */
-    public function test_late_status_never_moves_backwards(): void
+    public function test_early_report_does_not_hide_delivery(): void
     {
         $document = $this->document('sent', 'msg-1');
 
-        $this->report(['message_id' => 'msg-1', 'status' => 'reported'])->assertOk();
+        $this->report(['message_id' => 'msg-1', 'status' => 'reported', 'authority_reference' => 'TDD-1'])->assertOk();
         $this->report(['message_id' => 'msg-1', 'status' => 'delivered'])->assertOk();
         $this->report(['message_id' => 'msg-1', 'status' => 'sent'])->assertOk();
 
-        $this->assertSame('reported', $document->fresh()->status);
+        $document->refresh();
+        $this->assertSame(['delivered', 'reported', 'TDD-1'], [$document->status, $document->reporting_status, $document->authority_reference]);
+    }
+
+    /** A failed report has its own status, and leaves delivery as it was. */
+    public function test_failed_report_has_its_own_status(): void
+    {
+        $document = $this->document('delivered', 'msg-1');
+
+        $this->report(['message_id' => 'msg-1', 'status' => 'report_failed', 'errors' => ['The authority did not acknowledge it']])->assertOk();
+
+        $document->refresh();
+        $this->assertSame(['delivered', 'report_failed'], [$document->status, $document->reporting_status]);
+        $this->assertSame([['code' => null, 'severity' => 'error', 'field' => null, 'message' => 'The authority did not acknowledge it']], $document->errorList('reporting_errors'));
+        $this->assertNull($document->errors);
     }
 
     public function test_settled_document_stays_settled(): void
@@ -91,10 +112,8 @@ class WebhookStatusTest extends TestCase
         $status = app(DocumentStatus::class);
 
         $this->assertTrue($status->allows('sent', 'delivered'));
-        $this->assertTrue($status->allows('delivered', 'reported'));
-        $this->assertTrue($status->allows('reported', 'rejected'));
+        $this->assertTrue($status->allows('sent', 'rejected'));
         $this->assertFalse($status->allows('delivered', 'sent'));
-        $this->assertFalse($status->allows('reported', 'delivered'));
         $this->assertFalse($status->allows('delivered', 'rejected'));
         // Only back to ready, which no provider status maps to: the one way
         // out of failed is an operator's peppol:resend.
@@ -102,6 +121,14 @@ class WebhookStatusTest extends TestCase
         $this->assertFalse($status->allows('failed', 'sent'));
         $this->assertFalse($status->allows('ready', 'sent'));
         $this->assertFalse($status->allows('received', 'sent'));
+
+        // The report: pending until the authority answers, a failure asked again.
+        $this->assertTrue($status->allowsReporting('pending', 'reported'));
+        $this->assertTrue($status->allowsReporting('pending', 'report_failed'));
+        $this->assertTrue($status->allowsReporting('report_failed', 'pending'));
+        $this->assertTrue($status->allowsReporting('report_failed', 'reported'));
+        $this->assertFalse($status->allowsReporting('reported', 'report_failed'));
+        $this->assertFalse($status->allowsReporting('reported', 'pending'));
     }
 
     /**
@@ -188,6 +215,7 @@ class WebhookStatusTest extends TestCase
             'xml' => '<Invoice/>',
             'status' => $status,
             'asp_message_id' => $messageId,
+            'reporting_status' => in_array($status, ['sent', 'delivered', 'rejected'], true) ? 'pending' : null,
         ]));
     }
 }

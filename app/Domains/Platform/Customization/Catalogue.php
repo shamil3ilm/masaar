@@ -161,6 +161,24 @@ final class Catalogue
                 audit: Definition::AUDIT_NONE,
                 console: true,
             ),
+            // Which configured service provider an organization's e-invoices
+            // go through, by purpose key (peppol.providers). The platform's
+            // partner unless an organization appoints another; set where the
+            // appointment is recorded, not on the generic settings pages.
+            new Definition(
+                key: 'einvoicing.service_provider',
+                group: __('E-invoicing'),
+                label: __('E-invoicing service provider'),
+                help: __('The accredited service provider that carries your e-invoices. A taxpayer appoints one for sending and receiving.'),
+                type: 'choice',
+                default: 'platform',
+                levels: [Level::Platform, Level::Organization],
+                options: array_map(
+                    fn (array $provider): string => __((string) ($provider['label'] ?? '')),
+                    (array) config('peppol.providers', ['platform' => ['label' => 'Platform partner provider']]),
+                ),
+                ownScreen: true,
+            ),
         ];
 
         $byKey = [];

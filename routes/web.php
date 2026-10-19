@@ -17,8 +17,10 @@ use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\AdminAlertCont
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\AdminKillSwitchController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalSubmissionController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalZatcaController;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalProviderAppointmentController;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalReceivedController;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalUaeInvoiceController;
+use App\Domains\Compliance\Networks\Peppol\Http\Controllers\AdminPeppolController;
 use App\Domains\Invoice\Http\Controllers\InvoiceLinkController;
 use App\Domains\Invoice\Http\Controllers\PortalCustomerController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceController;
@@ -425,6 +427,12 @@ Route::prefix('admin')->name('admin.')
         // Actions
         Route::post('/queue/process', [AdminController::class, 'processQueue'])->middleware('admin.can:operations.run')->name('queue.process');
         Route::post('/queue/{id}/retry', [AdminController::class, 'retryQueueItem'])->middleware('admin.can:operations.run')->name('queue.retry');
+
+        // Peppol: the gateway, documents per state, Resend for a failed one,
+        // and Retry report for one whose report to the authority failed.
+        Route::get('/peppol', [AdminPeppolController::class, 'index'])->name('peppol');
+        Route::post('/peppol/{id}/resend', [AdminPeppolController::class, 'resend'])->middleware('admin.can:operations.run')->name('peppol.resend');
+        Route::post('/peppol/{id}/retry-report', [AdminPeppolController::class, 'retryReport'])->middleware('admin.can:operations.run')->name('peppol.retry-report');
     });
 
 /*
@@ -524,6 +532,8 @@ Route::prefix('portal')->name('portal.')
         Route::post('/company', [PortalCompanyController::class, 'update'])->name('company.update');
         Route::post('/company/security', [PortalCompanyController::class, 'security'])->name('company.security');
         Route::post('/company/pricing', [PortalCompanyController::class, 'pricing'])->name('company.pricing');
+        // A UAE organization's appointed e-invoicing service provider; anyone else gets a 404.
+        Route::post('/company/service-provider', [PortalProviderAppointmentController::class, 'update'])->name('company.service-provider');
 
         // Customers and products, which the invoice form fills itself from.
         Route::get('/customers', [PortalCustomerController::class, 'index'])->name('customers.index');

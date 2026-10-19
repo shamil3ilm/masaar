@@ -84,6 +84,11 @@ Three buyer endpoints are reserved:
 - `0235:9900000097`: any deemed supply.
 - `0235:9900000099`: an export buyer that has no Peppol identifier.
 
+A document sent to one of these is reported to the authority and never
+exchanged. Once the provider takes it, its status is `not_exchanged`, and it
+is done once its report is confirmed (UAE Electronic Invoicing Guidelines
+v1.1, p23, p26, p28).
+
 ## Enabling it
 
 UAE e-invoicing is off unless a deployment switches it on. It has the same
@@ -125,6 +130,14 @@ To set up an organization:
    registration. This creates the organization's active UAE compliance
    profile.
 
+3. An administrator records the service provider the organization appointed
+   through EmaraTax, on the portal's **Company** page. A business appoints
+   one provider for sending and receiving (UAE Electronic Invoicing
+   Guidelines v1.1, p14), by the last date its revenue band sets (p19). The
+   platform works with one partner provider. Until the appointment is
+   recorded, it is an open step on the organization's setup checklist, and
+   reminders go out before `PEPPOL_AE_APPOINTMENT_DEADLINE`.
+
 After that, the organization can draft and send invoices.
 
 The provider integration (`HttpAspGateway`) is a generic REST shape: an OAuth2
@@ -142,6 +155,12 @@ provider has been chosen yet. Once one is chosen, check its API against
   through a provider's portal by hand. The platform cannot learn about a manual
   upload, so the document's status stays `ready`. Callbacks are refused, and
   `peppol:poll-status` does not run.
+- **The service-provider simulator** (`PEPPOL_GATEWAY=simulator`, local and
+  staging only). It plays a provider inside the application. It checks every
+  document against the official rules, then calls back through the signed
+  webhooks: accepted, delivered, reported, or a configured failure. It also
+  delivers inbound documents. Production refuses to boot with it. How to
+  switch it on and what to show are in [SIMULATOR.md](SIMULATOR.md).
 - **Automated tests** replace the provider with `FakeAspGateway`. It returns
   scripted answers, records every call, and checks callbacks with the real
   signature code. The UAE's tests are in
@@ -179,6 +198,8 @@ The following is built and tested:
   status and XML on the invoice page, a received-invoices page, and UAE
   self sign-up
 - The official-rules conformance run in CI
+- A service-provider simulator for demos and end-to-end tests, judged by the
+  official rules, and the admin console's Peppol page
 
 The following is not done:
 
@@ -194,6 +215,8 @@ The following is not done:
 
 - [COMPLIANCE-RULES.md](COMPLIANCE-RULES.md): the rules and the official sources behind them
 - [INTEGRATION-GUIDE.md](INTEGRATION-GUIDE.md): the API, callbacks and operator commands
+- [SIMULATOR.md](SIMULATOR.md): the service-provider simulator and demo mode
+- [PROVIDER-ONBOARDING.md](PROVIDER-ONBOARDING.md): connecting a real service provider, what to ask, and the gaps
 - [Jurisdiction routing](../architecture/JURISDICTION-ROUTING.md): how the UAE and Saudi flows sit in the code
 - Peppol PINT AE specification: https://docs.peppol.eu/poac/ae/pint-ae/ (self-billing: https://docs.peppol.eu/poac/ae/pint-ae-sb/)
 - Ministry of Finance e-invoicing pages: https://mof.gov.ae/einvoicing/

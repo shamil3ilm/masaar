@@ -22,11 +22,47 @@ return [
     | organization cannot be registered there and nothing new is issued; what
     | is already issued keeps being sent.
     |
+    | report_only_endpoints: buyer endpoints a country reserves for documents
+    | that are reported to the authority and never exchanged. A document to
+    | one is done once reported, rather than waiting for a delivery that never
+    | comes. The UAE's: a deemed supply, a buyer not yet on e-invoicing, and
+    | an export buyer with no identifier (UAE Electronic Invoicing Guidelines
+    | v1.1, p26, p23, p28) - PintAe's reserved endpoints, which a test keeps
+    | equal to these.
+    |
     */
     'countries' => [
         'AE' => [
             'enabled' => (bool) env('PEPPOL_AE_ENABLED', false),
+            'report_only_endpoints' => ['0235:9900000097', '0235:9900000098', '0235:9900000099'],
+            // Each UAE organization appoints one service provider (UAE
+            // Electronic Invoicing Guidelines v1.1, p14) by a last date its
+            // revenue band sets (p19). The date is the operator's to set, not
+            // the code's: empty, no reminders. Reminders go this many days
+            // before it, to an organization with no provider appointed.
+            'appointment' => [
+                'deadline' => env('PEPPOL_AE_APPOINTMENT_DEADLINE') ?: null,
+                'reminder_days' => [60, 30, 14, 7, 1],
+            ],
         ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Service providers, by purpose
+    |--------------------------------------------------------------------------
+    |
+    | The providers an organization can be resolved to (AspGatewayResolver),
+    | named by purpose, never by vendor. 'platform' is the platform's partner
+    | provider: the one at asp.* below, or the simulator. An organization
+    | names another through its customization 'einvoicing.service_provider';
+    | such an entry carries its own base_url, client_id, client_secret and
+    | webhook_secret, and is driven by the same HTTP gateway. Only the
+    | platform's is configured now.
+    |
+    */
+    'providers' => [
+        'platform' => ['label' => 'Platform partner provider'],
     ],
 
     /*
@@ -48,15 +84,74 @@ return [
         // Sending runs on its own queue and worker (laravel-worker-peppol),
         // apart from ZATCA's, so neither country's provider delays the other.
         'queue' => env('PEPPOL_QUEUE') ?: 'peppol',
+        // Hours a document is tried without a verdict before it is failed,
+        // from when it was first queued. The clock stops while the provider
+        // is in an outage, and waiting documents go out when it answers
+        // again (UAE Electronic Invoicing Guidelines v1.1, p45-46).
+        'retry_window_hours' => (int) env('PEPPOL_RETRY_WINDOW_HOURS', 72),
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | Conformance artefacts (tests only)
+    | Gateway
+    |--------------------------------------------------------------------------
+    |
+    | Empty: the provider at asp.base_url, or none while that is empty.
+    | "simulator": the service-provider simulator below, which plays a
+    | provider inside this application so the whole flow can be exercised
+    | with no provider contracted. Production refuses to boot with it.
+    |
+    */
+    'gateway' => env('PEPPOL_GATEWAY') ?: null,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Service-provider simulator (local and staging only)
+    |--------------------------------------------------------------------------
+    |
+    | Validates every document with the official rules (artefacts_path and
+    | xslt_jar below), then calls back through the same signed webhooks a
+    | provider would, at callback_url (APP_URL when empty). Callbacks run on
+    | the Peppol queue, so a worker must be running.
+    |
+    | step_seconds is the pause between one callback and the next: 0 plays
+    | the lifecycle at once, 10 or so lets a person watch it in the portal.
+    |
+    | outcomes: buyer endpoints that play something other than a delivery,
+    | for demos and tests. unknown_receiver: no such participant on the
+    | network. unavailable: the first attempt gets no answer, the retry is
+    | taken. outage: four attempts get no answer, which the platform reads
+    | as an outage from the third, then the next is taken. answer_lost: the first attempt is taken but its answer lost, so
+    | the retry must not file it twice. rejected: the buyer's provider
+    | refuses it. report_failed: delivered, but the report to the authority
+    | fails until it is asked again. reported_first: the authority's
+    | confirmation arrives before the delivery. Every report-only endpoint
+    | above (countries.*.report_only_endpoints) is reported and never
+    | exchanged.
+    |
+    */
+    'simulator' => [
+        'step_seconds' => max(0, (int) env('PEPPOL_SIMULATOR_STEP_SECONDS', 0)),
+        'callback_url' => env('PEPPOL_SIMULATOR_CALLBACK_URL') ?: null,
+        'outcomes' => [
+            '0235:1999999901' => 'unknown_receiver',
+            '0235:1999999902' => 'unavailable',
+            '0235:1999999903' => 'answer_lost',
+            '0235:1999999904' => 'rejected',
+            '0235:1999999905' => 'report_failed',
+            '0235:1999999906' => 'reported_first',
+            '0235:1999999907' => 'outage',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Conformance artefacts (tests and the simulator)
     |--------------------------------------------------------------------------
     |
     | The official PINT schematrons and an XSLT 2 processor jar. The
-    | conformance test is skipped while either is unset.
+    | conformance tests are skipped while either is unset, and the simulator
+    | sends nothing: it will not take a document it cannot judge.
     |
     */
     'artefacts_path' => env('PEPPOL_ARTEFACTS_PATH') ?: null,

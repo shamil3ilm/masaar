@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Compliance\Networks\Peppol;
 
 use App\Domains\Compliance\Networks\Peppol\Contracts\AspGateway;
+use App\Domains\Compliance\Networks\Peppol\DTOs\AspError;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\AspRefusedException;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\AspUnavailableException;
 use App\Domains\Compliance\Networks\Peppol\Gateways\HttpAspGateway;
@@ -37,17 +38,19 @@ class AspHttpGatewayTest extends TestCase
     {
         Http::fake([
             self::BASE.'/oauth/token' => Http::response(['access_token' => 'token-1', 'expires_in' => 3600]),
-            self::BASE.'/documents' => Http::response(['id' => 'msg-42'], 201),
+            self::BASE.'/documents' => Http::response(['id' => 'msg-42', 'reference' => 'ASP-DOC-7'], 201),
         ]);
 
         $document = $this->document();
+        $receipt = $this->gateway()->submit($document);
 
-        $this->assertSame('msg-42', $this->gateway()->submit($document));
+        $this->assertSame(['msg-42', 'ASP-DOC-7'], [$receipt->messageId, $receipt->providerReference]);
 
         Http::assertSent(fn (Request $request) => $request->url() === self::BASE.'/documents'
             && $request->hasHeader('Authorization', 'Bearer token-1')
             && $request->hasHeader('Idempotency-Key', 'doc-1')
             && base64_decode($request['document']) === '<Invoice/>'
+            && $request['uuid'] === '5f0c7b0e-8f6a-4c1e-9a2b-3d4e5f6a7b8c'
             && $request['receiver'] === '0235:1000000002');
     }
 
@@ -69,7 +72,8 @@ class AspHttpGatewayTest extends TestCase
         Http::fake([
             self::BASE.'/oauth/token' => Http::response(['access_token' => 'token-1']),
             self::BASE.'/documents' => Http::response(['errors' => [
-                ['code' => 'BR-AE-01', 'message' => 'Buyer endpoint missing'],
+                ['code' => 'BR-AE-01', 'severity' => 'fatal', 'location' => '/Invoice/cac:AccountingCustomerParty', 'message' => 'Buyer endpoint missing'],
+                'BR-AE-02: Buyer name missing',
             ]], 422),
         ]);
 
@@ -77,7 +81,10 @@ class AspHttpGatewayTest extends TestCase
             $this->gateway()->submit($this->document());
             $this->fail('A 422 is a refusal.');
         } catch (AspRefusedException $e) {
-            $this->assertSame(['BR-AE-01 Buyer endpoint missing'], $e->errors);
+            $this->assertSame([
+                ['code' => 'BR-AE-01', 'severity' => 'fatal', 'field' => '/Invoice/cac:AccountingCustomerParty', 'message' => 'Buyer endpoint missing'],
+                ['code' => 'BR-AE-02', 'severity' => 'error', 'field' => null, 'message' => 'Buyer name missing'],
+            ], AspError::toArrays($e->errors));
         }
     }
 
@@ -144,6 +151,7 @@ class AspHttpGatewayTest extends TestCase
     {
         return (new PeppolDocument)->forceFill([
             'id' => 'doc-1',
+            'document_uuid' => '5f0c7b0e-8f6a-4c1e-9a2b-3d4e5f6a7b8c',
             'xml' => '<Invoice/>',
             'sender_endpoint' => '0235:1000000001',
             'receiver_endpoint' => '0235:1000000002',

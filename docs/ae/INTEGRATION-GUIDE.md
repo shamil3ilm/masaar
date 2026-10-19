@@ -251,7 +251,18 @@ Sending does the following:
 1. Issues the draft. It takes the next number in the organization's sequence
    and records its moment of issue.
 2. Builds the PINT AE document and checks it.
-3. Stores the document in status `ready` and queues it for the service
+   The document gets a UUID of its own (`document_uuid`, written as
+   `cbc:UUID`). This is not the invoice's id: the UUID is what makes each
+   e-invoice unique (UAE Electronic Invoicing Guidelines v1.1, p11 row 7).
+   The documents API returns it, with `provider_reference`, the service
+   provider's own id for the document where it keeps one.
+3. Looks the recipient's Peppol identifier up on the network, through the
+   service provider, as the provider does before transmitting (UAE
+   Electronic Invoicing Guidelines v1.1, p11 rows 5-6). An identifier that
+   is not registered stops the issue, with the reason. A reserved endpoint
+   is not looked up. When no provider is connected, or none answers,
+   nothing is stopped.
+4. Stores the document in status `ready` and queues it for the service
    provider.
 
 ```json
@@ -272,7 +283,9 @@ Sending does the following:
 If any check fails, the answer is `422` with every problem in
 `error.details.problems`. The invoice stays a draft and keeps no number, so
 you can correct it and send it again. A problem can be a missing mandatory
-field, a scenario rule, or stored totals that differ from the document's.
+field, a scenario rule, stored totals that differ from the document's, or a
+recipient that is not on the Peppol network. A buyer that is not on
+e-invoicing yet uses `0235:9900000098` (Guidelines p23).
 
 Sending is idempotent. A second call on an issued invoice issues nothing and
 answers with the document the first call stored. A document is queued once:
@@ -378,42 +391,80 @@ Authorization: Bearer <token>
     "mls_code": "AP",
     "errors": [],
     "last_error": null,
+    "reporting_status": "reported",
+    "authority_reference": "authority-reference",
+    "reporting_errors": [],
     "warnings": []
   }
 }
 ```
 
 The document fields are `null` until the invoice has been sent. `warnings`
-holds the late-issue warning when it applies. The statuses
-mean the following:
+holds the late-issue warning when it applies. Each entry in `errors` and
+`reporting_errors` is an object:
+
+```json
+{ "code": "ibr-003", "severity": "fatal", "field": "/Invoice[1]", "message": "An Invoice MUST have an Invoice issue date (ibt-002)." }
+```
+
+`code` is the rule or error code, and `severity` is `fatal`, `error` or
+`warning`. `field` says where in the document, when the provider says.
+`code` and `field` may be null.
+
+The service provider delivers the document to the buyer's provider and, in
+parallel, reports its tax data to the authority. It confirms each one
+separately (UAE Electronic Invoicing Guidelines v1.1, p10 steps 4, 5 and 8;
+p11 step 10). The status therefore has two tracks, and neither hides the
+other.
+
+**Delivery** (`status`):
 
 | `status` | Meaning | What to do |
 |---|---|---|
 | `ready` | Built, checked and stored, and waiting for the provider. With no provider configured, it stays here | Nothing. Without a provider, download the XML and upload it by hand |
 | `sending` | One attempt is with the provider now | Nothing |
-| `sent` | The provider accepted it for transport and gave it `message_id` | Nothing. Delivery confirmation follows |
+| `sent` | The provider accepted it for transport and gave it `message_id` | Nothing. The delivery confirmation follows |
 | `delivered` | The buyer's provider validated it (Peppol message level response `AB` or `AP`) | Nothing |
-| `reported` | The authority confirmed the tax data, relayed by the provider | Final, unless the buyer's provider later refuses it |
+| `not_exchanged` | The provider took it for a reserved endpoint: a deemed supply (`0235:9900000097`), a buyer not yet on e-invoicing (`0235:9900000098`), or an export buyer with no identifier (`0235:9900000099`). These are reported to the authority and never exchanged (UAE Electronic Invoicing Guidelines v1.1, p23, p26, p28) | Nothing. The document is done once `reporting_status` is `reported` |
 | `rejected` | The provider or the buyer's provider refused the document. The reasons are in `errors` | The platform never sends a rejected document again. Correct the cause and issue a new invoice. Agree with your provider and tax adviser how to record the rejected one |
 | `failed` | Every attempt had no verdict: the provider was unreachable, throttled, or refused the credentials. `last_error` says why | An operator fixes the cause and runs `peppol:resend` |
 
-Statuses only move forward:
+**Report to the authority** (`reporting_status`), from the moment the
+provider takes the document:
+
+| `reporting_status` | Meaning | What to do |
+|---|---|---|
+| `null` | Not handed to the provider yet | Nothing |
+| `pending` | With the provider, and the authority has not answered yet | Nothing |
+| `reported` | The authority confirmed the tax data. `authority_reference` is its reference, where the provider relays one | Nothing |
+| `report_failed` | The tax data did not reach the authority. The reasons are in `reporting_errors` | Nothing at first. The platform asks the provider to report it again every hour (`peppol:retry-reports`), and an operator can ask from the admin console's Peppol page. Watch for `e_invoice.reported` |
+
+Each track only moves forward:
 
 ```
-ready -> sending -> sent -> delivered -> reported
-                      \________________/
-sending -> ready     (no verdict yet: retried with back-off)
-sending -> rejected  (refused by the provider)
-sent, reported -> rejected   (refused by the buyer's provider)
-sending, ready -> failed     (out of attempts)
-failed -> ready      (operator: peppol:resend)
+delivery:   ready -> sending -> sent -> delivered
+            sending -> not_exchanged     (a reserved, report-only endpoint)
+            sending -> ready     (no verdict yet: retried with back-off)
+            sending -> rejected  (refused by the provider)
+            sent -> rejected     (refused by the buyer's provider)
+            sending, ready -> failed     (retry window passed, no outage)
+            failed -> ready      (operator: peppol:resend)
+
+reporting:  pending -> reported
+            pending -> report_failed -> pending (asked again) -> reported
 ```
 
-A `sent` document can go straight to `reported`, because the provider reports
-to the authority at the same time as the buyer's provider validates. A late
-delivery notice never moves a document back. The one move after `reported` is
-to `rejected`, because a refusal by the buyer's provider is what the seller
-must act on.
+Every move, provider callback and status lookup is also kept on the
+document's transmission record, append-only, with the SHA-256 of the body as
+it arrived. This includes the ones that changed nothing (UAE Electronic
+Invoicing Guidelines v1.1, p12). The portal shows the record on the
+invoice's page.
+
+A `reported` that arrives before `delivered` leaves the delivery to be
+recorded when it comes. A late `sent` moves nothing back. Each outcome is
+also a webhook event: `e_invoice.sent`, `e_invoice.delivered`,
+`e_invoice.rejected`, `e_invoice.failed`, `e_invoice.reported` and
+`e_invoice.report_failed` (see [WEBHOOKS.md](../WEBHOOKS.md)).
 
 ## 5. Documents and their XML
 
@@ -487,9 +538,20 @@ Until a provider is chosen, these are the generic bodies
 { "message_id": "provider-message-id", "status": "delivered", "mls_code": "AP", "errors": [] }
 ```
 
-`status` is one of `sent`, `delivered`, `rejected` or `reported`. It may be
-left out if `mls_code` is given: `AB` and `AP` mean delivered, and `RE` means
-rejected. A status the platform does not recognise changes nothing.
+Each entry in `errors` may be a string or an object with `code` (or
+`rule_id`), `severity`, `field` (or `location`) and `message`. A string that
+starts with its code (`[ibr-003]-...` or `BV: ...`) is split into code and
+message.
+
+`status` is one of `sent`, `delivered` or `rejected` (delivery), or
+`reported` or `report_failed` (the report to the authority, which may carry
+`authority_reference`). It may be left out if `mls_code` is given: `AB` and
+`AP` mean delivered, and `RE` means rejected. A status the platform does not
+recognise changes nothing.
+
+```json
+{ "message_id": "provider-message-id", "status": "reported", "authority_reference": "authority-reference" }
+```
 
 ```json
 { "message_id": "provider-message-id", "document": "<base64 XML>", "sender": "0235:1007654321", "receiver": "0235:1001234567" }
@@ -508,20 +570,36 @@ rejected. A status the platform does not recognise changes nothing.
 
 | Command | What it does |
 |---|---|
-| `php artisan peppol:poll-status [--minutes=30] [--limit=200]` | Asks the provider about `sent` documents that have had no callback for at least `--minutes` minutes, up to 14 days old. It is scheduled every ten minutes on one server, only when `PEPPOL_ASP_BASE_URL` is set, and logs to `storage/logs/peppol-status.log` |
-| `php artisan peppol:resend {document}` | Queues a `failed` document again, from its first attempt. It refuses any other status. The document keeps its id, which is the idempotency key sent to the provider, so a resend cannot file it twice |
+| `php artisan peppol:poll-status [--minutes=30] [--limit=200]` | Asks the provider about `sent` documents that have had no callback for at least `--minutes` minutes, up to 14 days old. It is scheduled every ten minutes on one server, only when `PEPPOL_ASP_BASE_URL` is set or the simulator is the gateway, and logs to `storage/logs/peppol-status.log` |
+| `php artisan peppol:retry-reports [--limit=200]` | Asks the provider to report again every document whose report to the authority failed, at most once an hour each, for up to 30 days. It is scheduled hourly on one server when a provider or the simulator is connected. The admin console's **Peppol** page has the same action as **Retry report** |
+| `php artisan peppol:recover-sending [--minutes=15] [--limit=200]` | Settles documents that have been in `sending` for at least `--minutes` minutes. It asks the provider what it holds under each document's own reference: a document the provider took is recorded as sent, and one it never received is sent again. It is scheduled every ten minutes on one server |
+| `php artisan peppol:resend {document}` | Queues a `failed` document again, from its first attempt. It refuses any other status. The document keeps its id, which is the idempotency key sent to the provider, so a resend cannot file it twice. The admin console's **Peppol** page (`/admin/peppol`) has the same action as **Resend** |
+| `php artisan peppol:simulate-inbound {endpoint} [--file=]` | Simulator only ([SIMULATOR.md](SIMULATOR.md)). Delivers another supplier's document to the organization that holds `endpoint`, through the signed inbound callback |
 
 Outgoing documents are sent by the `SendPeppolDocument` job, on the
 `PEPPOL_QUEUE` queue (worker `laravel-worker-peppol`):
 
 - **No verdict** (the provider is unreachable, answers `401`, `403`, `408`,
   `409`, `425`, `429`, a redirect or a `5xx`): the document returns to
-  `ready`. It is retried after 1, 5, 15 and 60 minutes, then marked `failed`
-  after five attempts.
+  `ready`. It is retried after 1, 5, 15 and 60 minutes, then hourly. It is
+  marked `failed` only once its retry window has passed:
+  `PEPPOL_RETRY_WINDOW_HOURS` (72 by default), counted from when it was first
+  queued.
+- **An outage**: three documents in a row with no verdict. While the outage
+  lasts, the retry window stops, so no document is failed. A critical log
+  entry and the admin console's **Peppol** page say since when, and the
+  invoice page tells the seller its e-invoice is waiting. When the provider
+  answers again, every waiting document is sent at once. The provider must
+  notify the authority of the disruption, and exchange and report pending
+  invoices once service resumes (UAE Electronic Invoicing Guidelines v1.1,
+  p45-46).
 - **Any other `4xx`**: this is a refusal, and the document becomes
   `rejected`.
 
 **A document left in `sending`** by a worker that died during the call may
-already be with the provider. It is never sent again automatically. A
-critical log entry names it. Check with the provider before taking any
-action.
+already be with the provider, so it is never sent again blindly. A critical
+log entry names it. Every ten minutes, `peppol:recover-sending` asks the
+provider what it holds under the document's own id, which is the
+idempotency key. A document the provider took is recorded as sent, with its
+message id. A document the provider never received is sent again (UAE
+Electronic Invoicing Guidelines v1.1, p46).

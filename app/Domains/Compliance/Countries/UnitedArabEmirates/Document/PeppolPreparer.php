@@ -15,6 +15,7 @@ use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\ComplianceProfile;
 use DomainException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Turns an issued UAE invoice into the document the transport sends.
@@ -57,7 +58,12 @@ class PeppolPreparer
             throw new DomainException(__('A draft is not sent. Issue the invoice first.'));
         }
 
-        $document = $this->document($invoice);
+        // The document's own UUID, generated here, not taken from the invoice:
+        // what makes each e-invoice unique and prevents its duplication (UAE
+        // Electronic Invoicing Guidelines v1.1, p11 row 7), and no internal id
+        // leaves the platform in it.
+        $uuid = (string) Str::uuid();
+        $document = $this->mapper->map($invoice, $this->settings($invoice), $this->profile, $uuid);
         $problems = $this->mandatoryFields->problems($document, $this->profile);
 
         if ($problems !== []) {
@@ -66,7 +72,7 @@ class PeppolPreparer
 
         $xml = $this->builder->build($document);
 
-        return DB::transaction(function () use ($invoice, $document, $xml): PeppolDocument {
+        return DB::transaction(function () use ($invoice, $document, $xml, $uuid): PeppolDocument {
             Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoice->id)->lockForUpdate()->first());
 
             return $this->existing($invoice) ?? PeppolDocument::create([
@@ -78,6 +84,7 @@ class PeppolPreparer
                 'profile_id' => $document->profileId,
                 'document_type' => $document->category->documentType(),
                 'xml' => $xml,
+                'document_uuid' => $uuid,
                 'status' => self::STATUS_READY,
                 'sender_endpoint' => $this->sender($document)->endpoint(),
                 'receiver_endpoint' => $this->receiver($document)->endpoint(),
@@ -134,6 +141,15 @@ class PeppolPreparer
     }
 
     /** On a self-billed document the buyer sends, and the seller receives. */
+    /**
+     * Where the invoice's e-invoice would be delivered: the buyer, or for a
+     * self-billed one the supplier.
+     */
+    public function receiverEndpoint(Invoice $invoice): string
+    {
+        return $this->receiver($this->document($invoice))->endpoint();
+    }
+
     private function sender(PintDocument $document): PintParty
     {
         return $document->category->isSelfBilled() ? $document->buyer : $document->seller;

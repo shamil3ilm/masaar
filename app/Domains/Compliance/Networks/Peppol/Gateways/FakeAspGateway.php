@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Networks\Peppol\Gateways;
 
 use App\Domains\Compliance\Networks\Peppol\Contracts\AspGateway;
+use App\Domains\Compliance\Networks\Peppol\DTOs\SubmitReceipt;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use Illuminate\Http\Request;
 use Throwable;
@@ -25,10 +26,27 @@ final class FakeAspGateway implements AspGateway
     /** @var list<string> message ids asked about, in order */
     public array $queried = [];
 
+    /** @var list<string> message ids whose report was asked for again, in order */
+    public array $reportRetried = [];
+
     /** @var list<Throwable> thrown by the next submits, one each, before any succeeds */
     private array $failures = [];
 
+    private ?Throwable $reportRetryFailure = null;
+
+    /** @var list<string> references looked up, in order */
+    public array $lookedUp = [];
+
+    /** @var list<string> participant endpoints looked up, in order */
+    public array $participantsLookedUp = [];
+
+    /** @var list<string> */
+    private array $unregistered = [];
+
     /** @var array<string, AspStatus> */
+    private array $held = [];
+
+    /** @var array<string, list<AspStatus>> */
     private array $statuses = [];
 
     private readonly WebhookSignature $signature;
@@ -49,16 +67,18 @@ final class FakeAspGateway implements AspGateway
     }
 
     /**
-     * What status() answers for a message.
+     * What status() answers for a message: one status per track.
      */
-    public function answer(AspStatus $status): self
+    public function answer(AspStatus ...$statuses): self
     {
-        $this->statuses[$status->messageId] = $status;
+        foreach ($statuses as $status) {
+            $this->statuses[$status->messageId][] = $status;
+        }
 
         return $this;
     }
 
-    public function submit(PeppolDocument $document): string
+    public function submit(PeppolDocument $document): SubmitReceipt
     {
         $this->submitted[] = (string) $document->id;
 
@@ -66,14 +86,68 @@ final class FakeAspGateway implements AspGateway
             throw array_shift($this->failures);
         }
 
-        return 'fake-'.$document->id;
+        return new SubmitReceipt('fake-'.$document->id);
     }
 
-    public function status(string $messageId): AspStatus
+    public function status(string $messageId): array
     {
         $this->queried[] = $messageId;
 
-        return $this->statuses[$messageId] ?? new AspStatus($messageId, null);
+        return $this->statuses[$messageId] ?? [];
+    }
+
+    /**
+     * What findByReference() answers: the provider holds this message under
+     * the reference.
+     */
+    public function holds(string $reference, string $messageId, ?string $status = AspStatus::SENT): self
+    {
+        $this->held[$reference] = new AspStatus($messageId, $status);
+
+        return $this;
+    }
+
+    /**
+     * participantExists() answers false for this endpoint; every other is registered.
+     */
+    public function unregistered(string $endpoint): self
+    {
+        $this->unregistered[] = $endpoint;
+
+        return $this;
+    }
+
+    public function participantExists(string $endpoint): bool
+    {
+        $this->participantsLookedUp[] = $endpoint;
+
+        return ! in_array($endpoint, $this->unregistered, true);
+    }
+
+    public function findByReference(string $reference): ?AspStatus
+    {
+        $this->lookedUp[] = $reference;
+
+        return $this->held[$reference] ?? null;
+    }
+
+    public function retryReport(string $messageId): void
+    {
+        $this->reportRetried[] = $messageId;
+
+        if ($this->reportRetryFailure !== null) {
+            throw $this->reportRetryFailure;
+        }
+    }
+
+    /**
+     * Every retryReport() throws this.
+     */
+    public function failReportRetriesWith(Throwable $failure): self
+    {
+        $this->reportRetryFailure = $failure;
+
+        return $this;
     }
 
     public function verifyWebhook(Request $request): bool

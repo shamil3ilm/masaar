@@ -61,7 +61,10 @@ class PintMapper
      * @throws DomainException for a document the UAE has no kind of, or a
      *                         line in a category it does not use
      */
-    public function map(Invoice $invoice, ComplianceProfile $settings, JurisdictionProfile $profile): PintDocument
+    /**
+     * @param  string|null  $uuid  the document's own UUID (cbc:UUID), generated when it is prepared; checks that build no document leave it out
+     */
+    public function map(Invoice $invoice, ComplianceProfile $settings, JurisdictionProfile $profile, ?string $uuid = null): PintDocument
     {
         $data = (array) ($invoice->jurisdiction_data ?? []);
         $category = $this->category($invoice, $data);
@@ -95,7 +98,7 @@ class PintMapper
             typeCode: $profile->typeCode($category),
             transactionFlags: $flags,
             number: (string) $invoice->invoice_number,
-            uuid: (string) $invoice->id,
+            uuid: $uuid ?? (string) $invoice->id,
             issueDate: $invoice->issue_date->format('Y-m-d'),
             dueDate: $credit ? null : $invoice->due_date?->format('Y-m-d'),
             // IBR-141-AE: a VAT point date is before the issue date, and a

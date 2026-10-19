@@ -1,12 +1,13 @@
 {{--
     A UAE organization's dashboard figures (Reports\Dashboard::portal): its
-    invoices, and where their e-invoices are (UaeDocuments::counts). Delivered
-    includes those the authority has confirmed; Not sent is a document the
-    queue gave up on.
+    invoices, and where their e-invoices are (UaeDocuments::counts): delivery
+    to the buyer and the report to the authority are counted apart, since
+    the provider confirms each on its own. Not sent is a document the queue
+    gave up on.
 
     @param \App\Domains\Organization\Models\Organization $organization
     @param array $stats             invoices_today, invoices_month
-    @param array $einvoices         awaiting, delivered, rejected, failed, received
+    @param array $einvoices         awaiting, delivered, rejected, failed, received, reported, report_failed, not_exchanged
     @param \Illuminate\Support\Collection $recentDocuments  latest sent PeppolDocuments
 --}}
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -35,6 +36,18 @@
         <p class="text-3xl font-semibold {{ $einvoices['failed'] > 0 ? 'text-warning' : 'text-subtle' }}">{{ $einvoices['failed'] }}</p>
     </div>
     <div class="bg-surface rounded-card border border-line shadow-card p-6">
+        <p class="text-sm text-muted">{{ __('Reported to the authority') }}</p>
+        <p class="text-3xl font-semibold text-success">{{ $einvoices['reported'] }}</p>
+    </div>
+    <div class="bg-surface rounded-card border border-line shadow-card p-6">
+        <p class="text-sm text-muted">{{ __('Report to the authority failed') }}</p>
+        <p class="text-3xl font-semibold {{ $einvoices['report_failed'] > 0 ? 'text-danger' : 'text-subtle' }}">{{ $einvoices['report_failed'] }}</p>
+    </div>
+    <div class="bg-surface rounded-card border border-line shadow-card p-6">
+        <p class="text-sm text-muted">{{ __('Reported only, not exchanged') }}</p>
+        <p class="text-3xl font-semibold text-fg">{{ $einvoices['not_exchanged'] }}</p>
+    </div>
+    <div class="bg-surface rounded-card border border-line shadow-card p-6">
         <p class="text-sm text-muted">{{ __('Received invoices') }}</p>
         <p class="text-3xl font-semibold text-fg">{{ $einvoices['received'] }}</p>
         {{-- The received screens are a UAE organization's. --}}
@@ -59,7 +72,12 @@
                 @endif
                 <p class="text-xs text-muted">{{ \Carbon\Carbon::parse($document->created_at)->diffForHumans() }}</p>
             </div>
-            @include('portal.partials.peppol-status', ['status' => $document->status])
+            <div class="flex flex-wrap justify-end gap-2">
+                @include('portal.partials.peppol-status', ['status' => $document->status])
+                @if ($document->reporting_status)
+                    @include('portal.partials.peppol-status', ['status' => $document->reporting_status])
+                @endif
+            </div>
         </div>
         @empty
         <div class="p-6 text-center text-muted">{{ __('No e-invoices yet') }}</div>

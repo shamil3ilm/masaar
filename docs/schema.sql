@@ -1142,15 +1142,38 @@ CREATE TABLE `payments` (
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
 );
 
+CREATE TABLE `peppol_document_events` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `applied` BOOLEAN NOT NULL DEFAULT 0,
+    `asp_message_id` STRING NULL,
+    `authority_reference` STRING NULL,
+    `created_at` TIMESTAMP NULL,
+    `document_id` STRING NOT NULL,
+    `errors` TEXT NULL,
+    `mls_code` STRING NULL,
+    `occurred_at` TIMESTAMP NOT NULL,
+    `payload_digest` STRING NULL,
+    `reporting_status` STRING NULL,
+    `request_id` STRING NULL,
+    `source` STRING NOT NULL,
+    `status` STRING NULL,
+    `track` STRING NOT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `peppol_document_events_document_id_occurred_at_index` (`document_id`, `occurred_at`),
+    FOREIGN KEY (`document_id`) REFERENCES `peppol_documents` (`id`)
+);
+
 CREATE TABLE `peppol_documents` (
     `id` STRING NOT NULL,
     `asp_message_id` STRING NULL,
     `attempts` INTEGER NOT NULL DEFAULT 0,
+    `authority_reference` STRING NULL,
     `country` STRING NOT NULL,
     `created_at` TIMESTAMP NULL,
     `customization_id` STRING NOT NULL,
     `direction` STRING NOT NULL,
     `document_type` STRING NOT NULL,
+    `document_uuid` STRING NULL,
     `errors` TEXT NULL,
     `invoice_id` STRING NULL,
     `issued_late` BOOLEAN NOT NULL DEFAULT 0,
@@ -1158,16 +1181,22 @@ CREATE TABLE `peppol_documents` (
     `mls_code` STRING NULL,
     `org_id` STRING NOT NULL,
     `profile_id` STRING NOT NULL,
+    `provider_reference` STRING NULL,
     `queued_at` TIMESTAMP NULL,
     `receiver_endpoint` STRING NULL,
+    `reporting_changed_at` TIMESTAMP NULL,
+    `reporting_errors` TEXT NULL,
+    `reporting_status` STRING NULL,
     `sender_endpoint` STRING NULL,
     `status` STRING NOT NULL,
     `updated_at` TIMESTAMP NULL,
     `xml` TEXT NOT NULL,
     PRIMARY KEY (`id`),
     UNIQUE INDEX `peppol_documents_direction_asp_message_id_unique` (`direction`, `asp_message_id`),
+    INDEX `peppol_documents_direction_document_uuid_index` (`direction`, `document_uuid`),
     INDEX `peppol_documents_invoice_id_index` (`invoice_id`),
     INDEX `peppol_documents_org_id_direction_created_at_index` (`org_id`, `direction`, `created_at`),
+    INDEX `peppol_documents_reporting_status_index` (`reporting_status`),
     INDEX `peppol_documents_status_index` (`status`),
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`)
 );
@@ -1200,6 +1229,26 @@ CREATE TABLE `products` (
     FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`license_id`) REFERENCES `licenses` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `provider_appointments` (
+    `id` STRING NOT NULL,
+    `appointed_at` TIMESTAMP NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `deadline_on` DATE NULL,
+    `ended_at` TIMESTAMP NULL,
+    `org_id` STRING NOT NULL,
+    `provider` STRING NOT NULL,
+    `reference` STRING NULL,
+    `status` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `provider_appointments_org_id_status_index` (`org_id`, `status`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`),
     FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
 

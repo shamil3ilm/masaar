@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Networks\Peppol\Models;
 
+use App\Domains\Compliance\Networks\Peppol\DTOs\AspError;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\DocumentRetainedException;
 use App\Domains\Organization\Concerns\BelongsToTenant;
 use App\Domains\Organization\Models\Organization;
@@ -46,12 +47,24 @@ class PeppolDocument extends Model
         'last_error',
         // Issued past its country's deadline, as the country's module decides.
         'issued_late',
+        // The report to the authority, a track of its own beside status
+        // (DocumentStatus).
+        'reporting_status',
+        'authority_reference',
+        'reporting_errors',
+        'reporting_changed_at',
+        // The platform's UUID for the document (cbc:UUID), and the
+        // provider's own id for it, kept as a reference.
+        'document_uuid',
+        'provider_reference',
     ];
 
     protected function casts(): array
     {
         return [
             'errors' => 'array',
+            'reporting_errors' => 'array',
+            'reporting_changed_at' => 'datetime',
             'attempts' => 'integer',
             'queued_at' => 'datetime',
             'issued_late' => 'boolean',
@@ -70,6 +83,19 @@ class PeppolDocument extends Model
         static::deleting(function (PeppolDocument $document): void {
             throw DocumentRetainedException::for((string) $document->id);
         });
+    }
+
+    /**
+     * The document's errors on one track, each as {code, severity, field,
+     * message}. Rows from before errors were structured hold strings; they
+     * are read the same way a provider's string is (AspError::from).
+     *
+     * @param  'errors'|'reporting_errors'  $column
+     * @return list<array{code: string|null, severity: string, field: string|null, message: string}>
+     */
+    public function errorList(string $column = 'errors'): array
+    {
+        return AspError::toArrays(AspError::listFrom((array) ($this->getAttribute($column) ?? [])));
     }
 
     public function org(): BelongsTo

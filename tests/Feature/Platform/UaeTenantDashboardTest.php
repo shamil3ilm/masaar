@@ -20,7 +20,8 @@ class UaeTenantDashboardTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const COUNTS = ['awaiting' => 2, 'delivered' => 2, 'rejected' => 1, 'failed' => 1, 'received' => 1];
+    /** Delivery and the report to the authority counted apart: the reported one is delivered too. */
+    private const COUNTS = ['awaiting' => 2, 'delivered' => 2, 'rejected' => 1, 'failed' => 1, 'received' => 1, 'reported' => 1, 'report_failed' => 0, 'not_exchanged' => 0];
 
     private Organization $gulf;
 
@@ -100,7 +101,9 @@ class UaeTenantDashboardTest extends TestCase
             'profile_id' => 'urn:peppol:bis:billing',
             'document_type' => 'Invoice',
             'xml' => '<Invoice/>',
-            'status' => $status,
+            // 'reported' is a report to the authority, on a delivered document.
+            'status' => $status === 'reported' ? 'delivered' : $status,
+            'reporting_status' => $status === 'reported' ? 'reported' : null,
         ]));
     }
 }

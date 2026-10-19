@@ -280,6 +280,16 @@ class ScreenRenderTest extends TestCase
                 'queued_at' => now(),
             ]);
         }
+
+        // admin/peppol lists documents waiting or stopped: a failed one
+        // renders its Resend, and every list a row.
+        PeppolDocument::withoutTenantScope(fn () => PeppolDocument::create([
+            'org_id' => $this->org->id, 'direction' => PeppolDocument::DIRECTION_OUT, 'country' => 'AE',
+            'customization_id' => 'urn:peppol:pint:billing-1@ae-1', 'profile_id' => 'urn:peppol:bis:billing',
+            'document_type' => 'Invoice', 'xml' => '<Invoice/>', 'status' => 'failed', 'attempts' => 5,
+            'last_error' => 'The service provider gave no verdict (HTTP 503).',
+            'sender_endpoint' => '0235:1001234567', 'receiver_endpoint' => '0235:1007654321',
+        ]));
     }
 
     public function test_every_admin_screen_renders(): void

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Networks\Peppol\Gateways;
 
 use App\Domains\Compliance\Networks\Peppol\Contracts\AspGateway;
+use App\Domains\Compliance\Networks\Peppol\DTOs\AspError;
+use App\Domains\Compliance\Networks\Peppol\DTOs\SubmitReceipt;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\AspRefusedException;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\AspUnavailableException;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
@@ -27,9 +29,13 @@ use RuntimeException;
  *
  *   token   POST {base}/oauth/token, OAuth2 client credentials
  *           (PEPPOL_ASP_CLIENT_ID / _SECRET), cached until it expires
- *   submit  POST {base}/documents {document: base64 XML, sender, receiver}
- *           with Idempotency-Key: the document id -> {id}
- *   status  GET {base}/documents/{id} -> {status, mls_code, errors}
+ *   submit  POST {base}/documents {document: base64 XML, uuid, sender, receiver}
+ *           with Idempotency-Key: the document id -> {id, reference?}
+ *   status  GET {base}/documents/{id} -> {status, mls_code, errors,
+ *           reporting_status, authority_reference, reporting_errors}
+ *   report  POST {base}/documents/{id}/report -> 2xx: reported again
+ *   find    GET {base}/documents?reference={our document id} -> {id, status} or 404
+ *   lookup  GET {base}/participants/{scheme:identifier} -> 2xx registered, 404 not
  *   hooks   WebhookSignature and WebhookPayload
  *
  * The idempotency key is what makes a retry after a lost answer safe; a
@@ -75,12 +81,13 @@ final class HttpAspGateway implements AspGateway
         private readonly WebhookSignature $signature,
     ) {}
 
-    public function submit(PeppolDocument $document): string
+    public function submit(PeppolDocument $document): SubmitReceipt
     {
         $response = $this->call(fn (PendingRequest $http) => $http
             ->withHeaders(['Idempotency-Key' => (string) $document->id])
             ->post($this->url(self::DOCUMENTS_PATH), [
                 'document' => base64_encode((string) $document->xml),
+                'uuid' => $document->document_uuid,
                 'sender' => $document->sender_endpoint,
                 'receiver' => $document->receiver_endpoint,
             ]));
@@ -97,10 +104,13 @@ final class HttpAspGateway implements AspGateway
             throw new RuntimeException('The service provider accepted the document without a message id.');
         }
 
-        return (string) $id;
+        // The provider's own id for the document, where it keeps one apart.
+        $reference = $response->json('reference') ?? $response->json('document_id');
+
+        return new SubmitReceipt((string) $id, is_string($reference) && $reference !== '' ? mb_substr($reference, 0, 255) : null);
     }
 
-    public function status(string $messageId): AspStatus
+    public function status(string $messageId): array
     {
         $response = $this->call(fn (PendingRequest $http) => $http
             ->get($this->url(self::DOCUMENTS_PATH.'/'.rawurlencode($messageId))));
@@ -110,7 +120,56 @@ final class HttpAspGateway implements AspGateway
             throw new AspUnavailableException("The service provider did not answer the status lookup (HTTP {$response->status()}).");
         }
 
-        return WebhookPayload::statusFrom($messageId, (array) $response->json());
+        return WebhookPayload::lookupFrom($messageId, (array) $response->json());
+    }
+
+    public function participantExists(string $endpoint): bool
+    {
+        $response = $this->call(fn (PendingRequest $http) => $http
+            ->get($this->url('/participants/'.rawurlencode($endpoint))));
+
+        if ($response->status() === 404) {
+            return false;
+        }
+
+        if (! $response->successful()) {
+            throw new AspUnavailableException("The service provider did not answer the participant lookup (HTTP {$response->status()}).");
+        }
+
+        // A provider that answers with a body may say so in it.
+        return $response->json('registered', true) !== false;
+    }
+
+    public function findByReference(string $reference): ?AspStatus
+    {
+        $response = $this->call(fn (PendingRequest $http) => $http
+            ->get($this->url(self::DOCUMENTS_PATH), ['reference' => $reference]));
+
+        if ($response->status() === 404) {
+            return null;
+        }
+
+        if (! $response->successful()) {
+            throw new AspUnavailableException("The service provider did not answer the lookup by reference (HTTP {$response->status()}).");
+        }
+
+        $id = $response->json('id');
+
+        if (! is_string($id) && ! is_int($id)) {
+            return null;
+        }
+
+        return WebhookPayload::statusFrom((string) $id, (array) $response->json());
+    }
+
+    public function retryReport(string $messageId): void
+    {
+        $response = $this->call(fn (PendingRequest $http) => $http
+            ->post($this->url(self::DOCUMENTS_PATH.'/'.rawurlencode($messageId).'/report')));
+
+        if (! $response->successful()) {
+            $this->refuse($response);
+        }
     }
 
     public function verifyWebhook(Request $request): bool
@@ -163,29 +222,22 @@ final class HttpAspGateway implements AspGateway
 
         throw new AspRefusedException(
             "The service provider refused the document (HTTP {$status}).",
-            $this->errorsIn($response) ?: ["HTTP {$status}"],
+            $this->errorsIn($response) ?: [new AspError("HTTP {$status}", (string) $status)],
         );
     }
 
     /**
-     * @return list<string>
+     * The provider's errors, each with its rule, severity and field where it
+     * gives them, else its message.
+     *
+     * @return list<AspError>
      */
     private function errorsIn(Response $response): array
     {
-        $errors = [];
-
-        foreach (array_slice((array) $response->json('errors', []), 0, 50) as $error) {
-            $text = is_array($error)
-                ? trim(($error['code'] ?? '').' '.($error['message'] ?? ''))
-                : (is_string($error) ? $error : '');
-
-            if ($text !== '') {
-                $errors[] = Str::limit($text, 1000);
-            }
-        }
+        $errors = AspError::listFrom((array) $response->json('errors', []), 50);
 
         if ($errors === [] && is_string($response->json('message'))) {
-            $errors[] = Str::limit($response->json('message'), 1000);
+            $errors[] = new AspError(Str::limit($response->json('message'), 1000));
         }
 
         return $errors;

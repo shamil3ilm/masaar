@@ -8,7 +8,12 @@ use App\Domains\Compliance\Networks\Peppol\Contracts\AspGateway;
 use App\Domains\Compliance\Networks\Peppol\Gateways\HttpAspGateway;
 use App\Domains\Compliance\Networks\Peppol\Gateways\NullAspGateway;
 use App\Domains\Compliance\Networks\Peppol\Gateways\WebhookSignature;
+use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
+use App\Domains\Compliance\Networks\Peppol\Sending\DocumentHistory;
+use App\Domains\Compliance\Networks\Peppol\Simulator\SimulatedAspGateway;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
+use RuntimeException;
 
 /**
  * Peppol: which service provider the platform talks to, for every country
@@ -20,14 +25,34 @@ use Illuminate\Support\ServiceProvider;
  * production refuses a base URL without its credentials (AppServiceProvider),
  * so the HTTP gateway is never built half-configured there.
  *
+ * PEPPOL_GATEWAY=simulator replaces the provider with SimulatedAspGateway,
+ * for local and staging. Production refuses it twice: at boot, so a
+ * deployment configured that way never serves, and here when it is built,
+ * so changing the configuration later cannot slip it in either.
+ *
  * Bound per resolution rather than once, so the answer follows the
  * configuration a worker or test is running with.
  */
 class NetworkServiceProvider extends ServiceProvider
 {
+    public const SIMULATOR = 'simulator';
+
     public function register(): void
     {
-        $this->app->bind(AspGateway::class, function (): AspGateway {
+        $this->app->bind(AspGateway::class, function (Application $app): AspGateway {
+            $gateway = config('peppol.gateway');
+
+            if ($gateway === self::SIMULATOR) {
+                self::refuseSimulatorIn($app);
+
+                return $app->make(SimulatedAspGateway::class);
+            }
+
+            // A misspelt choice must not quietly become another gateway.
+            if ($gateway !== null && $gateway !== '') {
+                throw new RuntimeException('PEPPOL_GATEWAY is '.var_export($gateway, true).', which is not a gateway: leave it empty for the provider at PEPPOL_ASP_BASE_URL, or set it to simulator.');
+            }
+
             $baseUrl = config('peppol.asp.base_url');
 
             if (! is_string($baseUrl) || $baseUrl === '') {
@@ -41,5 +66,36 @@ class NetworkServiceProvider extends ServiceProvider
                 signature: new WebhookSignature(config('peppol.asp.webhook_secret')),
             );
         });
+    }
+
+    public function boot(): void
+    {
+        if (config('peppol.gateway') === self::SIMULATOR) {
+            self::refuseSimulatorIn($this->app);
+        }
+
+        // A document's record starts with the document: its first state is
+        // its first event, so the record alone adds up to where it stands.
+        PeppolDocument::created(function (PeppolDocument $document): void {
+            $this->app->make(DocumentHistory::class)->created(
+                $document,
+                $document->direction === PeppolDocument::DIRECTION_IN ? DocumentHistory::SOURCE_CALLBACK : DocumentHistory::SOURCE_SYSTEM,
+            );
+        });
+    }
+
+    /**
+     * The simulator files nothing with anybody while answering as if it had,
+     * which no later check could tell from the real thing.
+     */
+    public static function refuseSimulatorIn(Application $app): void
+    {
+        if ($app->environment('production')) {
+            throw new RuntimeException(
+                'PEPPOL_GATEWAY=simulator must not be used when APP_ENV=production. '
+                .'The simulator answers for a service provider and sends nothing to the network: '
+                .'every invoice would look delivered and none would be.'
+            );
+        }
     }
 }

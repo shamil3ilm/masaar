@@ -108,6 +108,13 @@ components:
         - onboarding.compliance_passed
         - onboarding.pcsid_obtained
         - certificate.expiring
+        - e_invoice.sent
+        - e_invoice.delivered
+        - e_invoice.rejected
+        - e_invoice.failed
+        - e_invoice.reported
+        - e_invoice.report_failed
+        - e_invoice.received
         - '*'
 paths:
   /api/admin/dashboard:

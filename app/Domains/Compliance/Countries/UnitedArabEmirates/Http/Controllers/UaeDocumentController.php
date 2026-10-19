@@ -43,7 +43,7 @@ class UaeDocumentController extends Controller
             $filters['direction'] ?? null,
             $filters['status'] ?? null,
             PageSize::fromRequest($request, 15),
-        ));
+        )->through(fn (PeppolDocument $document): array => UaeDocuments::metadata($document)));
     }
 
     /**

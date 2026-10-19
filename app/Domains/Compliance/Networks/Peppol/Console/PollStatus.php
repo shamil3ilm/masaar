@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Networks\Peppol\Console;
 
-use App\Domains\Compliance\Networks\Peppol\Contracts\AspGateway;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\AspUnavailableException;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\NoAspConfiguredException;
+use App\Domains\Compliance\Networks\Peppol\Gateways\AspGatewayResolver;
+use App\Domains\Compliance\Networks\Peppol\Sending\DocumentHistory;
 use App\Domains\Compliance\Networks\Peppol\Sending\DocumentStatus;
 use Illuminate\Console\Command;
 
@@ -24,14 +25,17 @@ class PollStatus extends Command
 
     protected $description = 'Ask the Peppol service provider what became of sent documents';
 
-    public function handle(AspGateway $gateway, DocumentStatus $status): int
+    public function handle(AspGatewayResolver $gateways, DocumentStatus $status): int
     {
         $documents = $status->awaitingAnswer((int) $this->option('minutes'), (int) $this->option('limit'));
         $asked = 0;
 
         foreach ($documents as $document) {
             try {
-                $status->apply($gateway->status((string) $document->asp_message_id));
+                foreach ($gateways->forDocument($document)->status((string) $document->asp_message_id) as $update) {
+                    $status->apply($update, DocumentHistory::SOURCE_POLL, hash('sha256', (string) json_encode($update)));
+                }
+
                 $asked++;
             } catch (NoAspConfiguredException) {
                 $this->warn('No service provider is configured; nothing to ask.');

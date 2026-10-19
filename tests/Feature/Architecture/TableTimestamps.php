@@ -154,6 +154,15 @@ final class TableTimestamps
         // own id for head office.
         'device_certificates' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',
             'actors' => ['created_by' => 'created_by', 'revoked_by' => 'revoked_by']],
+        // Which service provider a UAE organization appointed (UAE Electronic
+        // Invoicing Guidelines v1.1, p14): its status moves, it is never deleted.
+        'provider_appointments' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',
+            'actors' => ['created_by' => 'created_by', 'updated_by' => 'updated_by']],
+        // Every move, callback and lookup of a Peppol document, kept as it
+        // came (UAE Electronic Invoicing Guidelines v1.1, p12).
+        'peppol_document_events' => ['class' => 'd', 'event' => 'occurred_at', 'tenant' => 'parent:document_id',
+            'system' => 'recorded by the platform from its own moves and the provider\'s word; the person is on the invoice',
+            'correlation' => 'request_id'],
 
         // Money.
         'payments' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',

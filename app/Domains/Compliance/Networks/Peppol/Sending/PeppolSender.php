@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Networks\Peppol\Sending;
 
-use App\Domains\Compliance\Networks\Peppol\Contracts\AspGateway;
+use App\Domains\Compliance\Networks\Peppol\DTOs\AspError;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\AspRefusedException;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\AspUnavailableException;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\NoAspConfiguredException;
+use App\Domains\Compliance\Networks\Peppol\Gateways\AspGatewayResolver;
+use App\Domains\Compliance\Networks\Peppol\Gateways\AspStatus;
 use App\Domains\Compliance\Networks\Peppol\Jobs\SendPeppolDocument;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -25,17 +28,31 @@ use Illuminate\Support\Facades\Log;
  * index on direction and asp_message_id backs that up.
  *
  * A document left in 'sending' by a worker that died mid-call may already be
- * with the provider. It is not sent again: the provider would file it twice.
+ * with the provider. It is not sent again blindly - the provider would file
+ * it twice - but looked up by its own reference (recover()): taken, it is
+ * sent; never received, it is sent again.
  */
 final class PeppolSender
 {
-    /** Attempts without a verdict before a document is given up on. */
-    public const MAX_ATTEMPTS = 5;
-
     public function __construct(
-        private readonly AspGateway $gateway,
+        private readonly AspGatewayResolver $gateways,
         private readonly DocumentStatus $status,
+        private readonly ReportOnlyEndpoints $reportOnly,
+        private readonly ProviderOutage $outage,
     ) {}
+
+    /**
+     * How long a document is tried without a verdict before it is given up
+     * on, counted from when it was first queued: a span of time, not a
+     * number of attempts, so a long outage is ridden out rather than five
+     * quick refusals failing it. The clock stops while an outage is declared
+     * (ProviderOutage); pending invoices go out when service resumes
+     * (Electronic Invoicing Guidelines v1.1, p45-46).
+     */
+    public function retryWindowHours(): int
+    {
+        return max(1, (int) config('peppol.asp.retry_window_hours', 72));
+    }
 
     /**
      * Send a ready outbound document in the background, once its row is
@@ -82,6 +99,7 @@ final class PeppolSender
             $documentId,
             DocumentStatus::SENDING,
             fn (PeppolDocument $locked) => ['attempts' => $locked->attempts + 1],
+            source: DocumentHistory::SOURCE_SUBMISSION,
         );
 
         // Not ready: sent already, being sent, or settled.
@@ -90,19 +108,22 @@ final class PeppolSender
         }
 
         try {
-            $messageId = $this->gateway->submit($document);
+            $receipt = $this->gateways->forDocument($document)->submit($document);
         } catch (NoAspConfiguredException) {
             // Not an attempt: the document waits, uncounted, for a manual upload.
             $this->status->transition($documentId, DocumentStatus::READY, fn (PeppolDocument $locked) => [
                 'attempts' => max(0, $locked->attempts - 1),
-            ]);
+            ], source: DocumentHistory::SOURCE_SUBMISSION);
 
             return false;
         } catch (AspRefusedException $e) {
+            // A verdict: the provider is answering.
+            $this->outage->answered();
+
             $this->status->transition($documentId, DocumentStatus::REJECTED, [
-                'errors' => $e->errors,
+                'errors' => AspError::toArrays($e->errors),
                 'last_error' => $e->getMessage(),
-            ]);
+            ], source: DocumentHistory::SOURCE_SUBMISSION);
 
             Log::warning('Peppol document refused by the service provider', [
                 'document_id' => $documentId,
@@ -111,15 +132,20 @@ final class PeppolSender
 
             return false;
         } catch (AspUnavailableException $e) {
-            $exhausted = $document->attempts >= self::MAX_ATTEMPTS;
+            $this->outage->noAnswer($e->getMessage());
+            $since = $document->queued_at ?? $document->created_at;
+            $exhausted = ! $this->outage->active()
+                && $since !== null
+                && $since->lte(now()->subHours($this->retryWindowHours()));
 
             $this->status->transition($documentId, $exhausted ? DocumentStatus::FAILED : DocumentStatus::READY, [
                 'last_error' => $e->getMessage(),
-            ]);
+            ], source: DocumentHistory::SOURCE_SUBMISSION);
 
             Log::warning('Peppol document not sent: no verdict from the service provider', [
                 'document_id' => $documentId,
                 'attempt' => $document->attempts,
+                'outage' => $this->outage->active(),
                 'will_retry' => ! $exhausted,
                 'error' => $e->getMessage(),
             ]);
@@ -127,12 +153,92 @@ final class PeppolSender
             return ! $exhausted;
         }
 
-        $this->status->transition($documentId, DocumentStatus::SENT, [
-            'asp_message_id' => $messageId,
+        $this->outage->answered();
+
+        // Taken: delivery and the report to the authority both start now,
+        // in parallel (Electronic Invoicing Guidelines v1.1, p10 steps 3-4) -
+        // or the report alone, for a report-only endpoint.
+        $taken = $this->reportOnly->contains($document->receiver_endpoint) ? DocumentStatus::NOT_EXCHANGED : DocumentStatus::SENT;
+
+        $this->status->transition($documentId, $taken, [
+            'asp_message_id' => $receipt->messageId,
+            'provider_reference' => $receipt->providerReference,
             'last_error' => null,
-        ]);
+            'reporting_status' => DocumentStatus::PENDING,
+            'reporting_changed_at' => now(),
+        ], source: DocumentHistory::SOURCE_SUBMISSION);
 
         return false;
+    }
+
+    /**
+     * Documents left in 'sending' longer than any attempt takes: their
+     * worker died before the provider's answer was recorded.
+     *
+     * @return Collection<int, PeppolDocument>
+     */
+    public function stuck(int $olderThanMinutes, int $limit): Collection
+    {
+        return PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()
+            ->where('direction', PeppolDocument::DIRECTION_OUT)
+            ->where('status', DocumentStatus::SENDING)
+            ->where('updated_at', '<=', now()->subMinutes($olderThanMinutes))
+            ->orderBy('updated_at')
+            ->limit($limit)
+            ->get());
+    }
+
+    /**
+     * Settle a stuck document by asking the provider what it holds under the
+     * document's own reference: what it took is recorded as sent, and what it
+     * never received is sent again. Pending documents must go out once
+     * service resumes (Electronic Invoicing Guidelines v1.1, p46).
+     *
+     * @return string what was done: 'sent', 'requeued', or 'unknown' when the provider could not say
+     */
+    public function recover(string $documentId): string
+    {
+        $stuck = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->find($documentId));
+
+        if ($stuck === null) {
+            return 'unknown';
+        }
+
+        try {
+            $held = $this->gateways->forDocument($stuck)->findByReference($documentId);
+        } catch (AspUnavailableException|NoAspConfiguredException) {
+            return 'unknown';
+        }
+
+        if ($held === null) {
+            $document = $this->status->transition($documentId, DocumentStatus::READY, [
+                'last_error' => 'The service provider never received it; it is sent again.',
+            ], from: DocumentStatus::SENDING, source: DocumentHistory::SOURCE_LOOKUP);
+
+            if ($document === null) {
+                return 'unknown';
+            }
+
+            $this->queue($document);
+
+            return 'requeued';
+        }
+
+        $document = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->find($documentId));
+        $taken = $this->reportOnly->contains($document?->receiver_endpoint) ? DocumentStatus::NOT_EXCHANGED : DocumentStatus::SENT;
+
+        $moved = $this->status->transition($documentId, $taken, [
+            'asp_message_id' => $held->messageId,
+            'last_error' => null,
+            'reporting_status' => DocumentStatus::PENDING,
+            'reporting_changed_at' => now(),
+        ], from: DocumentStatus::SENDING, source: DocumentHistory::SOURCE_LOOKUP);
+
+        if ($moved !== null && $held->status !== null && $held->status !== AspStatus::SENT) {
+            $this->status->apply($held, DocumentHistory::SOURCE_LOOKUP);
+        }
+
+        return $moved === null ? 'unknown' : 'sent';
     }
 
     /**
@@ -146,10 +252,12 @@ final class PeppolSender
      */
     public function resend(string $documentId): bool
     {
+        // From its first attempt, with a fresh retry window.
         $document = $this->status->transition($documentId, DocumentStatus::READY, [
             'attempts' => 0,
             'last_error' => null,
-        ], from: DocumentStatus::FAILED);
+            'queued_at' => now(),
+        ], from: DocumentStatus::FAILED, source: DocumentHistory::SOURCE_OPERATOR);
 
         if ($document === null) {
             return false;
@@ -161,7 +269,7 @@ final class PeppolSender
     }
 
     /**
-     * The queue stopped trying before the document's own attempts ran out.
+     * The queue stopped trying before the document's retry window ran out.
      *
      * Only a document still waiting is marked failed. One in 'sending' may be
      * with the provider, so it is left alone, loudly.
@@ -179,7 +287,7 @@ final class PeppolSender
         $document = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->find($documentId));
 
         if ($document?->status === DocumentStatus::SENDING) {
-            Log::critical('A Peppol document was being sent when its job gave up; check with the service provider before it is sent again', [
+            Log::critical('A Peppol document was being sent when its job gave up; peppol:recover-sending will look it up with the service provider', [
                 'document_id' => $documentId,
                 'org_id' => $document->org_id,
                 'error' => $reason,

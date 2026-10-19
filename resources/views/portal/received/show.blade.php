@@ -73,6 +73,23 @@
                 <dt class="text-muted">{{ __('Message ID') }}</dt>
                 <dd class="break-all font-mono text-xs text-fg" dir="ltr">{{ $document->asp_message_id }}</dd>
             </div>
+            {{-- Reported to the authority by your service provider, which forwards the confirmation. --}}
+            <div>
+                <dt class="text-muted">{{ __('Report to the authority') }}</dt>
+                <dd class="mt-1">
+                    @if ($document->reporting_status)
+                        @include('portal.partials.peppol-status', ['status' => $document->reporting_status])
+                    @else
+                        <span class="text-xs text-muted">{{ __('No confirmation forwarded yet') }}</span>
+                    @endif
+                </dd>
+            </div>
+            @if ($document->authority_reference)
+                <div>
+                    <dt class="text-muted">{{ __('Authority reference') }}</dt>
+                    <dd class="break-all font-mono text-xs text-fg" dir="ltr">{{ $document->authority_reference }}</dd>
+                </div>
+            @endif
         </dl>
     </div>
 </div>

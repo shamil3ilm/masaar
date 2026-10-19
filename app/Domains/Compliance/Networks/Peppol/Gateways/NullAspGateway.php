@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Networks\Peppol\Gateways;
 
 use App\Domains\Compliance\Networks\Peppol\Contracts\AspGateway;
+use App\Domains\Compliance\Networks\Peppol\DTOs\SubmitReceipt;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\NoAspConfiguredException;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use Illuminate\Http\Request;
@@ -18,12 +19,27 @@ use Illuminate\Http\Request;
  */
 final class NullAspGateway implements AspGateway
 {
-    public function submit(PeppolDocument $document): string
+    public function submit(PeppolDocument $document): SubmitReceipt
     {
         throw NoAspConfiguredException::make();
     }
 
-    public function status(string $messageId): AspStatus
+    public function status(string $messageId): array
+    {
+        throw NoAspConfiguredException::make();
+    }
+
+    public function participantExists(string $endpoint): bool
+    {
+        throw NoAspConfiguredException::make();
+    }
+
+    public function findByReference(string $reference): ?AspStatus
+    {
+        throw NoAspConfiguredException::make();
+    }
+
+    public function retryReport(string $messageId): void
     {
         throw NoAspConfiguredException::make();
     }

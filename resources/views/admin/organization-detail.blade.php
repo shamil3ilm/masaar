@@ -220,6 +220,21 @@
     @include('admin.partials.arabic-text')
 @endif
 
+{{-- Its setup checklist (SetupChecklist), the country's steps among the
+     shared ones: for a UAE organization, whether it appointed its service provider. --}}
+@if (! empty($setup))
+<x-ui.section title="Setup" collapse class="mb-6">
+    <ul class="space-y-2 text-sm" data-setup-steps>
+        @foreach ($setup as $step)
+            <li class="flex flex-wrap items-center gap-2" data-setup-step="{{ $step['key'] }}">
+                <x-ui.badge :tone="$step['done'] ? 'success' : ($step['required'] ? 'warning' : 'neutral')" :label="$step['done'] ? 'Done' : ($step['required'] ? 'To do' : 'Optional')" />
+                <span class="text-fg">{{ $step['title'] }}</span>
+            </li>
+        @endforeach
+    </ul>
+</x-ui.section>
+@endif
+
 <!-- Members -->
 <x-ui.section title="Members" collapse flush class="mb-6">
     <x-ui.table :primary="[0, 1, 2]">

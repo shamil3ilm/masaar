@@ -86,7 +86,7 @@ class ModuleBoundaryTest extends TestCase
         'routes/api/partner.php' => 'Countries\SaudiArabia\Http\Controllers\ComplianceController',
         'routes/api/public.php' => 'Networks\Peppol\Http\Controllers\InboundWebhookController, Networks\Peppol\Http\Controllers\StatusWebhookController',
         'routes/api/tenant.php' => 'Countries\SaudiArabia\Http\Controllers\BranchOnboardingController, Countries\SaudiArabia\Http\Controllers\ComplianceController, Countries\SaudiArabia\Http\Controllers\OnboardingController, Countries\UnitedArabEmirates\Http\Controllers\UaeDocumentController, Countries\UnitedArabEmirates\Http\Controllers\UaeInvoiceController, Countries\UnitedArabEmirates\Http\Controllers\UaeProfileController',
-        'routes/web.php' => 'Countries\SaudiArabia\Http\Controllers\AdminAlertController, Countries\SaudiArabia\Http\Controllers\AdminKillSwitchController, Countries\SaudiArabia\Http\Controllers\PortalSubmissionController, Countries\SaudiArabia\Http\Controllers\PortalZatcaController, Countries\UnitedArabEmirates\Http\Controllers\PortalReceivedController, Countries\UnitedArabEmirates\Http\Controllers\PortalUaeInvoiceController',
+        'routes/web.php' => 'Countries\SaudiArabia\Http\Controllers\AdminAlertController, Countries\SaudiArabia\Http\Controllers\AdminKillSwitchController, Countries\SaudiArabia\Http\Controllers\PortalSubmissionController, Countries\SaudiArabia\Http\Controllers\PortalZatcaController, Countries\UnitedArabEmirates\Http\Controllers\PortalProviderAppointmentController, Countries\UnitedArabEmirates\Http\Controllers\PortalReceivedController, Countries\UnitedArabEmirates\Http\Controllers\PortalUaeInvoiceController, Networks\Peppol\Http\Controllers\AdminPeppolController',
     ];
 
     /**

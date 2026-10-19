@@ -20,7 +20,7 @@ use Throwable;
  * Carries the document id rather than the model: the row is re-read under
  * its lock by PeppolSender, which decides whether there is anything to send.
  * A provider with no verdict is asked again after the backoff, by releasing
- * the job rather than failing it, so the document's own attempt count decides
+ * the job rather than failing it, so the document's own retry window decides
  * when to stop and the worker's --tries does not.
  */
 class SendPeppolDocument implements ShouldQueue
@@ -29,10 +29,14 @@ class SendPeppolDocument implements ShouldQueue
     use InteractsWithQueue;
     use Queueable;
 
-    /** Seconds before each next attempt. */
+    /** Seconds before each next attempt; hourly after the last. */
     public const BACKOFF = [60, 300, 900, 3600];
 
-    public int $tries = PeppolSender::MAX_ATTEMPTS;
+    /**
+     * Unlimited: the document's retry window, which an outage stops, decides
+     * when to give up (PeppolSender::retryWindowHours), not a count.
+     */
+    public int $tries = 0;
 
     /** Above the gateway's connect and request timeouts together. */
     public int $timeout = 90;
