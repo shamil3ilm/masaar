@@ -122,6 +122,7 @@
             </nav>
         </div>
     </footer>
+    <x-ui.strings />
     <x-ui.confirm-dialog />
 </body>
 </html>

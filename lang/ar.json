@@ -2330,5 +2330,10 @@
     ":organization: :till has filed everything it signed with ZATCA and is now retired. It will not issue invoices again; what it signed is kept.": ":organization: أرسلت :till إلى هيئة الزكاة والضريبة والجمارك كل ما وقّعته، وأُوقفت الآن نهائياً. لن تُصدر فواتير بعد ذلك، ويُحتفظ بكل ما وقّعته.",
     ":code is stated with one wording per invoice, but this invoice words it twice: put them on separate invoices or word them the same (ZATCA XML Implementation Standard §8.4).": "يُذكر :code بصياغة واحدة في الفاتورة، لكن هذه الفاتورة تصوغه مرتين: أصدِرها في فواتير منفصلة أو وحِّد صياغتها (المعيار التنفيذي لصيغة XML لدى هيئة الزكاة والضريبة والجمارك، البند 8.4).",
     "Rejected by the authority": "رفضتها الجهة المختصة",
-    "Warnings from the authority": "تحذيرات من الجهة المختصة"
+    "Warnings from the authority": "تحذيرات من الجهة المختصة",
+    "Type to search": "اكتب للبحث",
+    "Searching...": "جارٍ البحث...",
+    "No matches": "لا توجد نتائج مطابقة",
+    ":count results": "عدد النتائج: :count",
+    "Could not search just now. The list shows what is already here.": "تعذّر البحث الآن. تعرض القائمة ما هو متاح هنا بالفعل."
 }

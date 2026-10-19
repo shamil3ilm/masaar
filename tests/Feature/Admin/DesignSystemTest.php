@@ -19,7 +19,7 @@ class DesignSystemTest extends TestCase
 
     private const COMPONENTS = [
         'alert', 'badge', 'breadcrumb', 'button', 'card', 'checkbox', 'disclosure', 'empty', 'field', 'input',
-        'link-button', 'menu', 'menu-item', 'modal', 'nav-link', 'page-header', 'radio', 'section-heading', 'select',
+        'link-button', 'menu', 'menu-item', 'modal', 'nav-link', 'page-header', 'radio', 'section-heading', 'select', 'country-select',
         'stat', 'stepper', 'switch', 'tab-panel', 'table', 'tabs', 'textarea', 'th',
     ];
 
@@ -68,9 +68,10 @@ class DesignSystemTest extends TestCase
         foreach (glob(resource_path('views/components/ui/*.blade.php')) ?: [] as $file) {
             $name = basename($file, '.blade.php');
 
-            // The confirmation dialog is on every page already, and the
-            // pagination and flash are drawn through ->links() and the layout.
-            if (in_array($name, ['confirm-dialog', 'pagination', 'flash'], true)) {
+            // The confirmation dialog and the scripts' words are on every
+            // page already, and the pagination and flash are drawn through
+            // ->links() and the layout.
+            if (in_array($name, ['confirm-dialog', 'strings', 'pagination', 'flash'], true)) {
                 continue;
             }
 

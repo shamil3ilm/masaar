@@ -167,6 +167,22 @@
                     <option>{{ $t('United Arab Emirates', 'الإمارات العربية المتحدة') }}</option>
                 </x-ui.select>
             </x-ui.field>
+            <x-ui.field :label="$t('Buyer country', 'دولة المشتري')" :hint="$t('More than ten options: type to filter, in Arabic or English. The select underneath sends the code.', 'أكثر من عشرة خيارات: اكتب للتصفية بالعربية أو الإنجليزية، وترسل القائمة الأصلية الرمز.')">
+                <x-ui.country-select name="specimen_buyer_country" value="AE" :locale="$rtl ? 'ar' : 'en'" />
+            </x-ui.field>
+            <x-ui.field :label="$t('Unit of measure', 'وحدة القياس')" :hint="$t('Grouped options keep their groups in the list.', 'تحتفظ الخيارات المجمّعة بمجموعاتها في القائمة.')">
+                <x-ui.select searchable name="specimen_unit">
+                    <optgroup label="{{ $t('Count', 'العدد') }}">
+                        <option value="C62">{{ $t('Piece', 'قطعة') }}</option>
+                        <option value="BX">{{ $t('Box', 'صندوق') }}</option>
+                        <option value="PK" selected>{{ $t('Pack', 'عبوة') }}</option>
+                    </optgroup>
+                    <optgroup label="{{ $t('Weight', 'الوزن') }}">
+                        <option value="KGM">{{ $t('Kilogram', 'كيلوغرام') }}</option>
+                        <option value="GRM">{{ $t('Gram', 'غرام') }}</option>
+                    </optgroup>
+                </x-ui.select>
+            </x-ui.field>
             <x-ui.field :label="$t('Note', 'ملاحظة')" class="sm:col-span-2">
                 <x-ui.textarea name="specimen_note" rows="2" />
             </x-ui.field>

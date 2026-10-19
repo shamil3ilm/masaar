@@ -1,6 +1,7 @@
 import Alpine from '@alpinejs/csp';
 
 import { registerCataloguePickers } from './catalogue-pickers.js';
+import { registerComboboxes } from './combobox.js';
 import { registerConfirmations } from './confirm.js';
 import { registerEasterEggs } from './easter-eggs.js';
 import { registerInvoiceCharges } from './invoice-charges.js';
@@ -38,6 +39,7 @@ registerInvoiceVat();
 registerInvoicePreview();
 registerValidation();
 registerInterface();
+registerComboboxes();
 registerEasterEggs();
 
 Alpine.start();

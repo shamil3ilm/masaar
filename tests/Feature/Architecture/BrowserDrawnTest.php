@@ -28,4 +28,52 @@ class BrowserDrawnTest extends TestCase
             $this->assertStringContainsString($rule, $css, "resources/css/app.css no longer styles {$rule}.");
         }
     }
+
+    /**
+     * A long list is one you can type into: units of measure, exemption
+     * reasons and business types are each dozens long, and a country is one
+     * of two hundred and fifty - chosen from a list, never typed as a code.
+     */
+    public function test_long_lists_are_searchable(): void
+    {
+        $plain = [];
+
+        foreach ($this->views() as $relative => $source) {
+            preg_match_all('/<x-ui\.select[^>]*name="[^"]*(?:unit_code|exempt_code|business_type)[^"]*"[^>]*>/', $source, $selects);
+
+            foreach ($selects[0] as $select) {
+                if (! str_contains($select, 'searchable')) {
+                    $plain[] = $relative.': '.$select;
+                }
+            }
+
+            if (preg_match('/<x-ui\.input[^>]*name="[^"]*country_code/', $source) === 1) {
+                $plain[] = $relative.': a country typed as a code';
+            }
+        }
+
+        $this->assertSame([], $plain, 'Use <x-ui.select searchable> for a long list and <x-ui.country-select> for a country.');
+    }
+
+    /**
+     * Every view, without its Blade comments.
+     *
+     * @return array<string, string>
+     */
+    private function views(): array
+    {
+        $root = self::ROOT.'/resources/views';
+        $found = [];
+
+        foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS)) as $file) {
+            if (str_ends_with($file->getFilename(), '.blade.php')) {
+                $relative = str_replace(DIRECTORY_SEPARATOR, '/', substr($file->getPathname(), strlen($root) + 1));
+                $found[$relative] = (string) preg_replace('/\{\{--.*?--\}\}/s', '', (string) file_get_contents($file->getPathname()));
+            }
+        }
+
+        ksort($found);
+
+        return $found;
+    }
 }

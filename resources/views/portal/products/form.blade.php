@@ -27,7 +27,7 @@
             </x-ui.field>
             <x-ui.field :label="__('Unit')">
                 @php($selected = \App\Domains\Invoice\Support\UnitCode::normalise(old('unit_code', $product->unit_code)))
-                <x-ui.select name="unit_code">
+                <x-ui.select searchable name="unit_code">
                     @foreach (\App\Domains\Invoice\Support\UnitCode::GROUPS as $group => $codes)
                         <optgroup label="{{ __($group) }}">
                             @foreach ($codes as $code => $label)
@@ -60,7 +60,7 @@
                 </x-ui.select>
             </x-ui.field>
             <x-ui.field :label="__('Reason for zero rating or exemption')" error="exempt_code">
-                <x-ui.select name="exempt_code">
+                <x-ui.select searchable name="exempt_code">
                     <option value="">{{ __('None') }}</option>
                     @foreach (collect($treatments->exemptions())->groupBy('category') as $category => $reasons)
                         <optgroup label="{{ collect($treatments->categories())->firstWhere('code', $category)?->label ?? $category }}">

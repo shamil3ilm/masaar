@@ -395,6 +395,54 @@
 }
 
 /*
+ * x-ui.select's arrow: one chevron, in the subtle text colour, at the end
+ * of the box in either direction - the platform's own differs per browser
+ * and stays on the right in Arabic in some. A background image because a
+ * <select> cannot hold an element or a pseudo-element; data: is an image
+ * the content policy allows. A list box (multiple, size) has no arrow.
+ */
+:root {
+    --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7190' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+
+:root,
+[data-theme-scope] {
+    @variant dark {
+        --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238e93ae' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    }
+}
+
+.ui-select {
+    background-image: var(--select-chevron);
+    background-repeat: no-repeat;
+    background-size: 1rem;
+    background-position: right 0.75rem center;
+}
+
+.ui-select:dir(rtl) {
+    background-position: left 0.75rem center;
+}
+
+.ui-select:where([multiple], [size]:not([size='1'])) {
+    background-image: none;
+    padding-inline-end: 0.75rem;
+}
+
+/* A floating list or calendar a script places itself (resources/js/enhance.js):
+   none of the popover's centring, and above the sticky bars. */
+[data-floating] {
+    inset: auto;
+    margin: 0;
+    z-index: 60;
+    color: var(--color-fg);
+}
+
+[role='option'][data-active] {
+    outline: 2px solid var(--color-focus);
+    outline-offset: -2px;
+}
+
+/*
  * Dates, amounts and addresses read left to right in Arabic too. A date
  * field in a right-to-left page otherwise shows its day and year swapped.
  */

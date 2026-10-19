@@ -22,6 +22,7 @@ use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalR
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalUaeInvoiceController;
 use App\Domains\Compliance\Networks\Peppol\Http\Controllers\AdminPeppolController;
 use App\Domains\Invoice\Http\Controllers\InvoiceLinkController;
+use App\Domains\Invoice\Http\Controllers\PortalCatalogueLookupController;
 use App\Domains\Invoice\Http\Controllers\PortalCustomerController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceDocumentController;
@@ -592,6 +593,9 @@ Route::prefix('portal')->name('portal.')
         Route::get('/customers', [PortalCustomerController::class, 'index'])->name('customers.index');
         Route::get('/customers/export.csv', [PortalCustomerController::class, 'export'])->middleware('throttle:20,1')->name('customers.export');
         Route::get('/customers/new', [PortalCustomerController::class, 'create'])->name('customers.create');
+        // The invoice form's pickers, searching as someone types.
+        Route::get('/customers/lookup', [PortalCatalogueLookupController::class, 'customers'])->middleware('throttle:120,1')->name('customers.lookup');
+        Route::get('/products/lookup', [PortalCatalogueLookupController::class, 'products'])->middleware('throttle:120,1')->name('products.lookup');
         Route::post('/customers', [PortalCustomerController::class, 'store'])->name('customers.store');
         Route::get('/customers/{customerId}', [PortalCustomerController::class, 'edit'])->name('customers.edit');
         Route::post('/customers/{customerId}', [PortalCustomerController::class, 'update'])->name('customers.update');

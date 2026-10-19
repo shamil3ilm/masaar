@@ -116,6 +116,10 @@ class ScreenRenderTest extends TestCase
         // A UAE e-invoice's XML. UaePortalTest and ReceivedInvoicesTest cover them.
         'portal.invoices.xml',
         'portal.received.xml',
+        // The invoice form's pickers searching as someone types: JSON.
+        // CatalogueLookupTest covers them.
+        'portal.customers.lookup',
+        'portal.products.lookup',
     ];
 
     /**

@@ -34,7 +34,7 @@
     <div class="space-y-3">
         @php($chosenType = (string) old('business_type', $organization->business_type))
         <x-ui.field :label="__('What your business mostly is')" :hint="__('Sets the defaults new invoices, receipts and the dashboard start with. Every feature stays open to you whatever you choose.')" error="business_type">
-            <x-ui.select name="business_type" id="business_type">
+            <x-ui.select searchable name="business_type" id="business_type">
                 <option value="">{{ __('Not set') }}</option>
                 @foreach ($businessTypes as $type)
                     <option value="{{ $type->key }}" @selected($chosenType === $type->key)>{{ $type->name() }}</option>

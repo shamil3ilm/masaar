@@ -62,6 +62,49 @@ class Catalogue
     }
 
     /**
+     * The active customers a picker's search finds: by either name, or the
+     * start of a VAT number. At most $limit, by name.
+     *
+     * @return Collection<int, Customer>
+     */
+    public function findCustomers(string $organizationId, string $search, int $limit): Collection
+    {
+        $like = '%'.$this->escapeLike($search).'%';
+
+        return Customer::withoutTenantScope(fn () => Customer::query()
+            ->where('org_id', $organizationId)
+            ->whereNull('archived_at')
+            ->where(fn ($query) => $query
+                ->whereRaw("name LIKE ? ESCAPE '!'", [$like])
+                ->orWhereRaw("name_ar LIKE ? ESCAPE '!'", [$like])
+                ->orWhereRaw("vat_number LIKE ? ESCAPE '!'", [$this->escapeLike($search).'%']))
+            ->orderBy('name')
+            ->limit($limit)
+            ->get());
+    }
+
+    /**
+     * The active products a picker's search finds: by either name or code.
+     *
+     * @return Collection<int, Product>
+     */
+    public function findProducts(string $organizationId, string $search, int $limit): Collection
+    {
+        $like = '%'.$this->escapeLike($search).'%';
+
+        return Product::withoutTenantScope(fn () => Product::query()
+            ->where('org_id', $organizationId)
+            ->whereNull('archived_at')
+            ->where(fn ($query) => $query
+                ->whereRaw("name LIKE ? ESCAPE '!'", [$like])
+                ->orWhereRaw("name_ar LIKE ? ESCAPE '!'", [$like])
+                ->orWhereRaw("sku LIKE ? ESCAPE '!'", [$like]))
+            ->orderBy('name')
+            ->limit($limit)
+            ->get());
+    }
+
+    /**
      * Where to send a buyer's invoice: the email of the customer with their
      * VAT number, when there is one.
      */

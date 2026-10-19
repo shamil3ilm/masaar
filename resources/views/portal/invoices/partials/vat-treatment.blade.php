@@ -36,7 +36,7 @@
 </x-ui.field>
 
 <x-ui.field :label="__('Reason for zero rating or exemption')" class="sm:col-span-2 lg:col-span-4">
-    <x-ui.select name="lines[{{ $index }}][exempt_code]" data-exempt-code>
+    <x-ui.select searchable name="lines[{{ $index }}][exempt_code]" data-exempt-code>
         <option value="">{{ __('None') }}</option>
         @if ($suggested->isNotEmpty())
             <optgroup label="{{ __('Common for your business') }}">

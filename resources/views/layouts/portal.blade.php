@@ -201,6 +201,7 @@
         </main>
     </div>
 
+    <x-ui.strings />
     <x-ui.confirm-dialog />
 </body>
 </html>

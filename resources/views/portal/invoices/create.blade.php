@@ -168,10 +168,10 @@
                  sent is what the fields say after any edit. --}}
             <div class="mb-4 max-w-md">
                 <x-ui.field :label="__('Saved customer')">
-                    <x-ui.select id="customer_picker" data-customer-picker>
+                    <x-ui.select id="customer_picker" data-customer-picker :source="route('portal.customers.lookup')">
                         <option value="">{{ __('Choose to fill in the buyer...') }}</option>
                         @foreach ($customers as $customer)
-                            <option value="{{ $customer->id }}" data-fields="{{ json_encode($customer->buyerFields()) }}">
+                            <option value="{{ $customer->id }}" data-search="{{ $customer->name_ar }}" data-fields="{{ json_encode($customer->buyerFields()) }}">
                                 {{ $customer->name }}{{ $customer->vat_number ? ' - '.$customer->vat_number : '' }}
                             </option>
                         @endforeach
@@ -274,8 +274,8 @@
 
             <div>
                 <x-ui.field :label="__('Country')">
-                    <x-ui.input type="text" name="buyer_address[country_code]" id="buyer_address_country_code" maxlength="2"
-                           value="{{ old('buyer_address.country_code', 'SA') }}" class="uppercase" />
+                    <x-ui.country-select name="buyer_address[country_code]" id="buyer_address_country_code"
+                           :value="old('buyer_address.country_code', 'SA')" />
                 </x-ui.field>
             </div>
         </div>
