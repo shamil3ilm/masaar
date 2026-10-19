@@ -12,6 +12,7 @@ use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\Registrar;
 use App\Domains\Organization\Services\Tills;
+use App\Support\Brand;
 use DomainException;
 use Illuminate\Support\Str;
 
@@ -201,7 +202,7 @@ class OrganizationOnboarding
     public function deviceSerial(?Organization $organization = null): string
     {
         if ($organization === null) {
-            return '1-'.Str::slug((string) config('app.name')).'|2-1.0|3-'.Str::uuid();
+            return '1-'.Str::slug(Brand::csrSolution()).'|2-1.0|3-'.Str::uuid();
         }
 
         $unit = $this->tills->headOffice((string) $organization->id);

@@ -9,6 +9,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\DTOs\CsrData;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Concerns\BelongsToTenant;
 use App\Domains\Organization\Concerns\RecordsActors;
+use App\Support\Brand;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -289,12 +290,12 @@ class Branch extends Model
     {
         $branchCount = $organization->branches()->withTrashed()->count() + 1;
 
-        // The solution is the product's configured name, never written in.
+        // The solution is the configured one (config/brand.php), never written in.
         return sprintf(
             '1-%s|2-%03d|3-%s',
             $organization->vat_number,
             $branchCount,
-            Str::upper(Str::slug((string) config('app.name'), '')),
+            Str::upper(Str::slug(Brand::csrSolution(), '')),
         );
     }
 

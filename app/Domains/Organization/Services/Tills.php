@@ -6,6 +6,7 @@ namespace App\Domains\Organization\Services;
 
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\EgsUnit;
+use App\Support\Brand;
 use DomainException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -262,6 +263,6 @@ class Tills
      */
     public static function serialFor(string $unitId): string
     {
-        return '1-'.str((string) config('app.name'))->slug().'|2-1.0|3-'.$unitId;
+        return '1-'.str(Brand::csrSolution())->slug().'|2-1.0|3-'.$unitId;
     }
 }

@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature\Organization;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\OrganizationOnboarding;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\Tills;
+use App\Support\Brand;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
@@ -32,7 +35,7 @@ class DeviceSerialTest extends TestCase
         $acme = $this->organization('Acme', '300000000000003');
         $rival = $this->organization('Rival', '311111111111113');
 
-        $ours = '1-300000000000003|2-001|3-'.Str::upper(Str::slug((string) config('app.name'), ''));
+        $ours = '1-300000000000003|2-001|3-'.Str::upper(Str::slug(Brand::csrSolution(), ''));
         $this->createBranch($rival, ['device_serial' => $ours])->assertCreated();
 
         $this->createBranch($acme)->assertCreated();
@@ -57,6 +60,20 @@ class DeviceSerialTest extends TestCase
         $this->createBranch($acme, ['device_serial' => 'EGS-1'])
             ->assertUnprocessable()
             ->assertJsonStructure(['error' => ['details' => ['device_serial']]]);
+    }
+
+    /**
+     * A new certificate request names the solution config/brand.php names,
+     * so a rename reaches the next serial; a serial already stored stays.
+     */
+    public function test_the_solution_is_the_brands(): void
+    {
+        config(['brand.csr_solution' => 'Nibras Cloud']);
+        $acme = $this->organization('Acme', '300000000000003');
+
+        $this->assertSame('1-300000000000003|2-001|3-NIBRASCLOUD', Branch::generateDeviceSerial($acme));
+        $this->assertSame('1-nibras-cloud|2-1.0|3-unit-1', Tills::serialFor('unit-1'));
+        $this->assertStringStartsWith('1-nibras-cloud|2-1.0|3-', app(OrganizationOnboarding::class)->deviceSerial());
     }
 
     private function organization(string $name, ?string $vatNumber): Organization
