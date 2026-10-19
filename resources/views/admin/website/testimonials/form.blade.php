@@ -30,19 +30,19 @@
     <x-ui.card :title="__('What they said')">
         <div class="grid gap-4 md:grid-cols-2">
             @foreach (['en' => __('English'), 'ar' => __('Arabic')] as $locale => $language)
-                <div class="space-y-4" lang="{{ $locale }}" dir="{{ $locale === 'ar' ? 'rtl' : 'ltr' }}">
+                <div class="space-y-4">
                     <p class="text-sm font-semibold text-fg">{{ $language }}</p>
                     <x-ui.field :label="__('Quote')" error="quote_{{ $locale }}">
-                        <x-ui.textarea name="quote_{{ $locale }}" rows="4" maxlength="600" required>{{ old('quote_'.$locale, $testimonial->{'quote_'.$locale}) }}</x-ui.textarea>
+                        <x-ui.textarea name="quote_{{ $locale }}" lang="{{ $locale }}" dir="{{ $locale === 'ar' ? 'rtl' : 'ltr' }}" rows="4" maxlength="600" required>{{ old('quote_'.$locale, $testimonial->{'quote_'.$locale}) }}</x-ui.textarea>
                     </x-ui.field>
                     <x-ui.field :label="__('Name')" error="name_{{ $locale }}">
-                        <x-ui.input name="name_{{ $locale }}" maxlength="120" required value="{{ old('name_'.$locale, $testimonial->{'name_'.$locale}) }}" />
+                        <x-ui.input name="name_{{ $locale }}" lang="{{ $locale }}" dir="{{ $locale === 'ar' ? 'rtl' : 'ltr' }}" maxlength="120" required value="{{ old('name_'.$locale, $testimonial->{'name_'.$locale}) }}" />
                     </x-ui.field>
                     <x-ui.field :label="__('Role')" error="role_{{ $locale }}" optional>
-                        <x-ui.input name="role_{{ $locale }}" maxlength="120" value="{{ old('role_'.$locale, $testimonial->{'role_'.$locale}) }}" />
+                        <x-ui.input name="role_{{ $locale }}" lang="{{ $locale }}" dir="{{ $locale === 'ar' ? 'rtl' : 'ltr' }}" maxlength="120" value="{{ old('role_'.$locale, $testimonial->{'role_'.$locale}) }}" />
                     </x-ui.field>
                     <x-ui.field :label="__('Company')" error="company_{{ $locale }}" optional>
-                        <x-ui.input name="company_{{ $locale }}" maxlength="160" value="{{ old('company_'.$locale, $testimonial->{'company_'.$locale}) }}" />
+                        <x-ui.input name="company_{{ $locale }}" lang="{{ $locale }}" dir="{{ $locale === 'ar' ? 'rtl' : 'ltr' }}" maxlength="160" value="{{ old('company_'.$locale, $testimonial->{'company_'.$locale}) }}" />
                     </x-ui.field>
                 </div>
             @endforeach

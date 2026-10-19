@@ -37,7 +37,7 @@
                 <td class="px-6 py-4 text-sm">
                     <a href="{{ route('admin.website.testimonials.edit', $testimonial->id) }}" class="font-semibold text-accent hover:underline">{{ $testimonial->name_en }}</a>
                     <span class="text-muted" lang="ar" dir="rtl">&middot; {{ $testimonial->name_ar }}</span>
-                    <p class="mt-1 max-w-xl text-muted">{{ \Illuminate\Support\Str::limit($testimonial->quote_en, 120) }}</p>
+                    <p class="mt-1 max-w-xl text-muted">{{ \Illuminate\Support\Str::limit(\App\Domains\Platform\Website\PlainText::flat($testimonial->quote_en), 120) }}</p>
                 </td>
                 <td class="px-6 py-4">
                     <x-ui.badge :tone="$testimonial->published ? 'success' : 'neutral'" :label="$testimonial->published ? __('Published') : __('Hidden')" />
