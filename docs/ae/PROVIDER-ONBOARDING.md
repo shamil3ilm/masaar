@@ -318,8 +318,15 @@ The order is by how much each matters at go-live.
 
    **Ask the provider** (question 7) whether it also sends a service
    notice. If it does, it can declare and end an outage directly.
-9. **Participant lookup** before issuing (Guidelines p11, row 6). An unknown
-   buyer is found only after the invoice is issued.
+9. **Participant lookup before issuing.** *Closed.* The supplier gathers
+   the buyer's identifier, and the provider looks it up before
+   transmitting (Guidelines p11 rows 5-6; programme presentation p7).
+   `AspGateway::participantExists` now asks the provider, and the UAE
+   issuing step refuses an invoice whose recipient is not registered, with
+   the reason and the reserved endpoint for a buyer not yet on e-invoicing
+   (p23). The answer is cached for a day when registered and ten minutes
+   when not. An unknown answer (no provider, or no reply) stops nothing.
+   **Ask the provider** (question 4) for its lookup call.
 10. **The UUID.** The Guidelines make the UUID the provider's job
     (Guidelines p11, row 7). The platform sets `cbc:UUID` itself, and keeps
     the XML as it built it. `submit` should return any UUID, or final

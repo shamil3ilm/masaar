@@ -251,7 +251,13 @@ Sending does the following:
 1. Issues the draft. It takes the next number in the organization's sequence
    and records its moment of issue.
 2. Builds the PINT AE document and checks it.
-3. Stores the document in status `ready` and queues it for the service
+3. Looks the recipient's Peppol identifier up on the network, through the
+   service provider, as the provider does before transmitting (UAE
+   Electronic Invoicing Guidelines v1.1, p11 rows 5-6). An identifier that
+   is not registered stops the issue, with the reason. A reserved endpoint
+   is not looked up. When no provider is connected, or none answers,
+   nothing is stopped.
+4. Stores the document in status `ready` and queues it for the service
    provider.
 
 ```json
@@ -272,7 +278,9 @@ Sending does the following:
 If any check fails, the answer is `422` with every problem in
 `error.details.problems`. The invoice stays a draft and keeps no number, so
 you can correct it and send it again. A problem can be a missing mandatory
-field, a scenario rule, or stored totals that differ from the document's.
+field, a scenario rule, stored totals that differ from the document's, or a
+recipient that is not on the Peppol network. A buyer that is not on
+e-invoicing yet uses `0235:9900000098` (Guidelines p23).
 
 Sending is idempotent. A second call on an issued invoice issues nothing and
 answers with the document the first call stored. A document is queued once:

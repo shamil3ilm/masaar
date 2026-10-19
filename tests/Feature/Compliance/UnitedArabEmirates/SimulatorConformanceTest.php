@@ -6,6 +6,7 @@ namespace Tests\Feature\Compliance\UnitedArabEmirates;
 
 use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Issuing\InvoiceIssuer;
+use App\Domains\Compliance\Exceptions\IssuanceRefusedException;
 use App\Domains\Compliance\Networks\Peppol\Console\PintValidator;
 use App\Domains\Compliance\Networks\Peppol\Contracts\AspGateway;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
@@ -159,12 +160,27 @@ class SimulatorConformanceTest extends TestCase
         );
     }
 
-    public function test_unknown_buyer_endpoint_is_rejected(): void
+    /**
+     * A buyer not on the network is looked up before the invoice is issued
+     * (UAE Electronic Invoicing Guidelines v1.1, p11 rows 5-6; programme
+     * presentation p7): refused with what to do, the invoice still a draft,
+     * nothing sent.
+     */
+    public function test_unknown_buyer_is_refused_before_issue(): void
     {
-        $document = $this->sendIssued($this->draftFor('standard', ['buyer_endpoint' => '0235:1999999901']));
+        $draft = $this->draftFor('standard', ['buyer_endpoint' => '0235:1999999901']);
 
-        $this->assertSame('rejected', $document->status);
-        $this->assertSame('PARTICIPANT-NOT-FOUND', $document->errors[0]['code'] ?? null);
+        try {
+            app(InvoiceIssuer::class)->issue($draft);
+            $this->fail('An invoice to a buyer not on the network was issued.');
+        } catch (IssuanceRefusedException $e) {
+            $this->assertStringContainsString('0235:1999999901 is not registered on the Peppol network', implode(' ', $e->problems));
+            $this->assertStringContainsString('0235:9900000098', implode(' ', $e->problems));
+        }
+
+        $this->assertSame('draft', $draft->fresh()->status->value);
+        $this->assertSame(0, PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->count()));
+        $this->assertSame([], $this->callbacksTo(SimulatorCallbacks::STATUS_PATH));
     }
 
     public function test_buyer_access_point_rejection(): void

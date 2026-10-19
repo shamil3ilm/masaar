@@ -50,6 +50,19 @@ interface AspGateway
     public function status(string $messageId): array;
 
     /**
+     * Whether a participant identifier ("scheme:identifier") is registered
+     * on the network to receive documents. The sending provider looks the
+     * buyer up before transmitting (Electronic Invoicing Guidelines v1.1,
+     * p11 rows 5-6; programme presentation p7: through the directory), so a
+     * document to a buyer that is not there can be stopped before it is
+     * issued rather than rejected after.
+     *
+     * @throws NoAspConfiguredException
+     * @throws AspUnavailableException no answer: whether it is registered is unknown
+     */
+    public function participantExists(string $endpoint): bool;
+
+    /**
      * Find what the provider holds under our own reference - the document
      * id, sent as the idempotency key - for a document whose submission got
      * no answer back: a worker died mid-call, so there is no message id to

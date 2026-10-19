@@ -134,6 +134,15 @@ class PeppolPreparer
     }
 
     /** On a self-billed document the buyer sends, and the seller receives. */
+    /**
+     * Where the invoice's e-invoice would be delivered: the buyer, or for a
+     * self-billed one the supplier.
+     */
+    public function receiverEndpoint(Invoice $invoice): string
+    {
+        return $this->receiver($this->document($invoice))->endpoint();
+    }
+
     private function sender(PintDocument $document): PintParty
     {
         return $document->category->isSelfBilled() ? $document->buyer : $document->seller;

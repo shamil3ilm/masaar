@@ -110,6 +110,15 @@ final class SimulatedAspGateway implements AspGateway
     }
 
     /**
+     * Every endpoint is registered but the one the unknown_receiver outcome
+     * plays, as a directory lookup would answer.
+     */
+    public function participantExists(string $endpoint): bool
+    {
+        return Outcome::forReceiver($endpoint) !== Outcome::UnknownReceiver;
+    }
+
+    /**
      * The message taken under the idempotency key, if any - as the provider
      * keeps it whatever became of the answer to the submission.
      */

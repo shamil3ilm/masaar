@@ -36,6 +36,12 @@ final class FakeAspGateway implements AspGateway
     /** @var list<string> references looked up, in order */
     public array $lookedUp = [];
 
+    /** @var list<string> participant endpoints looked up, in order */
+    public array $participantsLookedUp = [];
+
+    /** @var list<string> */
+    private array $unregistered = [];
+
     /** @var array<string, AspStatus> */
     private array $held = [];
 
@@ -98,6 +104,23 @@ final class FakeAspGateway implements AspGateway
         $this->held[$reference] = new AspStatus($messageId, $status);
 
         return $this;
+    }
+
+    /**
+     * participantExists() answers false for this endpoint; every other is registered.
+     */
+    public function unregistered(string $endpoint): self
+    {
+        $this->unregistered[] = $endpoint;
+
+        return $this;
+    }
+
+    public function participantExists(string $endpoint): bool
+    {
+        $this->participantsLookedUp[] = $endpoint;
+
+        return ! in_array($endpoint, $this->unregistered, true);
     }
 
     public function findByReference(string $reference): ?AspStatus

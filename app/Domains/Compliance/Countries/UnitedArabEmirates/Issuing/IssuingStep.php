@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Issuing;
 
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Document\PeppolPreparer;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe;
 use App\Domains\Compliance\Exceptions\IssuanceRefusedException;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
+use App\Domains\Compliance\Networks\Peppol\Sending\ParticipantDirectory;
 use App\Domains\Invoice\Contracts\IssuingJurisdiction;
 use App\Domains\Invoice\Contracts\Seal;
 use App\Domains\Invoice\Enums\InvoiceStatus;
@@ -43,6 +45,7 @@ class IssuingStep implements IssuingJurisdiction
         private readonly FilingClearance $clearance,
         private readonly KillSwitch $killSwitch,
         private readonly FeatureOverrides $overrides,
+        private readonly ParticipantDirectory $participants,
     ) {}
 
     /** Not reached: a UAE issue is always asked as a reissue, so a repeat answers with its document. */
@@ -144,16 +147,42 @@ class IssuingStep implements IssuingJurisdiction
     }
 
     /**
-     * What would stop the invoice being sent: the mandatory fields, then
-     * whether the document would say what the invoice says.
+     * What would stop the invoice being sent: the mandatory fields, whether
+     * the document would say what the invoice says, then whether its
+     * recipient can be reached on the network at all.
      *
      * @return list<string>
      */
     private function problems(Invoice $invoice): array
     {
         $problems = $this->preparer->problems($invoice);
+        $problems = $problems !== [] ? $problems : $this->totalsDisagree($invoice);
 
-        return $problems !== [] ? $problems : $this->totalsDisagree($invoice);
+        return $problems !== [] ? $problems : $this->unreachable($invoice);
+    }
+
+    /**
+     * The recipient's participant identifier, looked up before the invoice
+     * is issued, as the sending provider looks it up before transmitting
+     * (UAE Electronic Invoicing Guidelines v1.1, p11 rows 5-6; programme
+     * presentation p7). Not registered: refused, with what to do instead -
+     * a buyer not yet on e-invoicing has a reserved endpoint (p23). Not
+     * known - no provider, or none answering - stops nothing.
+     *
+     * @return list<string>
+     */
+    private function unreachable(Invoice $invoice): array
+    {
+        $endpoint = $this->preparer->receiverEndpoint($invoice);
+
+        if ($this->participants->reachable($endpoint) !== false) {
+            return [];
+        }
+
+        return [__('The recipient\'s Peppol identifier :endpoint is not registered on the Peppol network, so the e-invoice cannot be delivered. Check the identifier with them. A buyer that is not on e-invoicing yet uses :reserved (UAE Electronic Invoicing Guidelines, p23).', [
+            'endpoint' => $endpoint,
+            'reserved' => PintAe::SCHEME.':'.PintAe::BUYER_NOT_YET_ON_EINVOICING,
+        ])];
     }
 
     /**

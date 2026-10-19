@@ -78,7 +78,9 @@ class UaeInvoicePageTest extends TestCase
             ->assertSee('Rejected')
             ->assertSee('msg-out-42')
             ->assertSee('RE')
-            ->assertSee('IBR-128-AE: &lt;b&gt;emirate&lt;/b&gt; missing', false)
+            // A stored string error is read as its code and message, escaped.
+            ->assertSee('IBR-128-AE')
+            ->assertSee('&lt;b&gt;emirate&lt;/b&gt; missing', false)
             ->assertSee('Refused by the receiving provider');
     }
 

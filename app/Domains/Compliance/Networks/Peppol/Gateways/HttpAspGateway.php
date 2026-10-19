@@ -34,6 +34,7 @@ use RuntimeException;
  *           reporting_status, authority_reference, reporting_errors}
  *   report  POST {base}/documents/{id}/report -> 2xx: reported again
  *   find    GET {base}/documents?reference={our document id} -> {id, status} or 404
+ *   lookup  GET {base}/participants/{scheme:identifier} -> 2xx registered, 404 not
  *   hooks   WebhookSignature and WebhookPayload
  *
  * The idempotency key is what makes a retry after a lost answer safe; a
@@ -115,6 +116,23 @@ final class HttpAspGateway implements AspGateway
         }
 
         return WebhookPayload::lookupFrom($messageId, (array) $response->json());
+    }
+
+    public function participantExists(string $endpoint): bool
+    {
+        $response = $this->call(fn (PendingRequest $http) => $http
+            ->get($this->url('/participants/'.rawurlencode($endpoint))));
+
+        if ($response->status() === 404) {
+            return false;
+        }
+
+        if (! $response->successful()) {
+            throw new AspUnavailableException("The service provider did not answer the participant lookup (HTTP {$response->status()}).");
+        }
+
+        // A provider that answers with a body may say so in it.
+        return $response->json('registered', true) !== false;
     }
 
     public function findByReference(string $reference): ?AspStatus
