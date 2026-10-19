@@ -654,7 +654,19 @@ jobs:
         run: |
           # Judged from the JUnit report, not the console: the printer's
           # layout depends on the terminal and is not a contract.
-          php artisan test --do-not-cache-result --log-junit pint.xml --filter 'PintConformance|SimulatorConformance'
+          status=0
+          php artisan test --do-not-cache-result --log-junit pint.xml --filter 'PintConformance|SimulatorConformance' || status=$?
+          # Each failure as an annotation, readable without the job log.
+          php -r '
+            $xml = @simplexml_load_file("pint.xml");
+            if ($xml === false) { exit(0); }
+            foreach ($xml->xpath("//testcase[failure or error]") as $case) {
+                $node = $case->failure ?: $case->error;
+                $first = strtok(trim((string) $node), "\n");
+                echo "::error title=".$case["class"]."::".$case["name"].": ".substr((string) $first, 0, 400)."\n";
+            }
+          '
+          if [ "$status" -ne 0 ]; then exit "$status"; fi
           if grep -q '<skipped' pint.xml; then
             echo "::error title=PINT AE skipped::The rules were fetched but the suite still skipped."
             exit 1
