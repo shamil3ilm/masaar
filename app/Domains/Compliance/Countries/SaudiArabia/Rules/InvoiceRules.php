@@ -19,6 +19,7 @@ use App\Domains\Organization\Services\LanguageGrace;
 use App\Domains\Organization\Services\TenantResolver;
 use DomainException;
 use Illuminate\Http\Request;
+use Illuminate\Support\MessageBag;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
@@ -716,6 +717,12 @@ class InvoiceRules implements InvoiceRulesPort
      * (ScenarioConformanceTest). The lines and document charges are read
      * together, as the breakdown reads them; refused in both languages, as
      * ArabicText refuses.
+     *
+     * A reason the Standard gives no text for (VATEX-SA-OOS, DIPLOMAT,
+     * DUTYFREE) is worded by the seller, and its words are stated once in the
+     * breakdown too (BT-120; BR-KSA-24, BR-KSA-83 for out of scope): two
+     * wordings of it would lose one the same way. The same wording on
+     * several lines is one reason.
      */
     private function oneReasonPerCategory(Validator $validator, Request $request): void
     {
@@ -734,14 +741,36 @@ class InvoiceRules implements InvoiceRulesPort
             }
 
             $category = filled($entry['tax_category'] ?? null) ? (string) $entry['tax_category'] : FatooraConfig::taxCategoryFor($code, 0);
-            $first = $reasons[$category] ??= $code;
+            // A reason the seller words (no official text: OOS, DIPLOMAT,
+            // DUTYFREE) is its code and its words; an official one, its code.
+            $words = isset(FatooraConfig::EXEMPTION_REASONS_EN[$code]) ? null : self::words($entry['exempt_reason'] ?? null);
+            $first = $reasons[$category] ??= ['code' => $code, 'words' => $words];
 
-            if ($first !== $code) {
-                $replace = ['category' => $category, 'codes' => $first.', '.$code];
-                $message = 'Tax category :category takes one exemption reason per invoice, but this invoice gives :codes: put them on separate invoices (ZATCA XML Implementation Standard §8.4).';
-                $errors->add($field, __($message, $replace, 'en').' / '.__($message, $replace, 'ar'));
+            if ($first['code'] !== $code) {
+                $this->refuse($errors, $field, 'Tax category :category takes one exemption reason per invoice, but this invoice gives :codes: put them on separate invoices (ZATCA XML Implementation Standard §8.4).', ['category' => $category, 'codes' => $first['code'].', '.$code]);
+            } elseif ($first['words'] !== $words) {
+                $this->refuse($errors, $field, ':code is stated with one wording per invoice, but this invoice words it twice: put them on separate invoices or word them the same (ZATCA XML Implementation Standard §8.4).', ['code' => $code]);
             }
         }
+    }
+
+    /** A seller's wording as the breakdown would state it: trimmed, its spaces single. */
+    private static function words(mixed $text): ?string
+    {
+        $words = trim((string) preg_replace('/\s+/u', ' ', (string) $text));
+
+        return $words === '' ? null : $words;
+    }
+
+    /**
+     * A refusal in English and Arabic whatever the caller's language, as
+     * ArabicText refuses.
+     *
+     * @param  array<string, string>  $replace
+     */
+    private function refuse(MessageBag $errors, string $field, string $message, array $replace): void
+    {
+        $errors->add($field, __($message, $replace, 'en').' / '.__($message, $replace, 'ar'));
     }
 
     /** The validated request, as it is. */

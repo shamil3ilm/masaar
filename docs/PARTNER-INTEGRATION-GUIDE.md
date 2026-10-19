@@ -1460,7 +1460,7 @@ what to send instead:
 | A UAE payment means outside PINT AE's list, such as `42` or `48` | IBR-CL-16 | One of `1`, `10`, `20`, `21`, `30`, `49`, `54`, `55`, `68`: `30` for a transfer to a bank account, `54` or `55` for a card |
 | A UAE currency outside PINT AE's ISO 4217 list | IBR-CL-04 | A listed code; the error names them all |
 | A till sale time more than 30 seconds in the future | BR-KSA-04 | The till's time with its UTC offset |
-| Two exemption codes in one tax category on one Saudi invoice, such as an export (`VATEX-SA-32`) and its freight (`VATEX-SA-34-1`), both `Z` | ZATCA XML Implementation Standard v1.2 §8.4: one VAT breakdown per category, and the reason is stated only there | One invoice per exemption code in that category. A UAE invoice may mix them: each line states its own (IBR-167-AE) |
+| Two exemption codes in one tax category on one Saudi invoice, such as an export (`VATEX-SA-32`) and its freight (`VATEX-SA-34-1`), both `Z`; or a seller-worded code (`VATEX-SA-OOS`, `DIPLOMAT`, `DUTYFREE`) worded two ways | ZATCA XML Implementation Standard v1.2 §8.4: one VAT breakdown per category, and the reason and its words (BT-120, BT-121) are stated only there | One invoice per exemption code, or per wording, in that category; the same wording on several lines is fine. A UAE invoice may mix them: each line states its own (IBR-167-AE) |
 
 What is no longer refused:
 

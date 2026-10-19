@@ -487,6 +487,33 @@ class ScenarioConformanceTest extends TestCase
         $this->assertContains('BR-Z-08', array_map(fn (string $warning): string => explode(':', $warning)[0], $this->validate((string) $document->saveXML())['warnings']));
     }
 
+    /**
+     * Out of scope (VATEX-SA-OOS) has no text in §11.2.4 of the XML
+     * Implementation Standard: the seller words it, and the breakdown states
+     * one wording (BT-120). Two wordings would lose one and are refused; the
+     * same wording on two lines is one breakdown, which ZATCA's validator
+     * takes (BR-KSA-24, BR-KSA-83).
+     */
+    public function test_one_wording_per_seller_reason(): void
+    {
+        $this->requireSdk();
+        $consulting = ['description' => 'Consulting', 'description_ar' => 'خدمات استشارية', 'quantity' => 1, 'unit_price' => '1000.00'];
+        $fees = fn (string $words, string $price): array => [
+            'description' => 'Government fees', 'description_ar' => 'رسوم حكومية', 'quantity' => 1, 'unit_price' => $price,
+            'tax_category' => 'O', 'tax_rate' => 0, 'exempt_code' => 'VATEX-SA-OOS', 'exempt_reason' => $words,
+        ];
+
+        $this->withToken($this->token())->postJson('/api/invoices', [
+            'invoice_number' => 'OOS-REFUSED', 'issue_date' => now()->toDateString(), 'supply_date' => now()->toDateString(),
+            ...self::standard(['lines' => [$consulting, $fees('Visa fees paid for the buyer', '250.00'), $fees('Court fees paid for the buyer', '120.00')]]),
+        ])->assertStatus(422)->assertJsonPath('error.details', fn (array $details): bool => str_starts_with((string) ($details['lines.2.exempt_code'][0] ?? ''), 'VATEX-SA-OOS is stated with one wording per invoice'));
+
+        $xml = $this->signedFrom(self::standard(['lines' => [$consulting, $fees('Government fees paid for the buyer', '250.00'), $fees('Government fees paid for the buyer', '120.00')]]));
+
+        $this->assertSame(1, preg_match_all('#<cbc:TaxExemptionReasonCode[^>]*>VATEX-SA-OOS</cbc:TaxExemptionReasonCode>#', $xml));
+        $this->assertAccepted($xml);
+    }
+
     /** A prepayment invoice (386) for an advance, as the buyer is billed for it. */
     public function test_a_prepayment_invoice_validates(): void
     {

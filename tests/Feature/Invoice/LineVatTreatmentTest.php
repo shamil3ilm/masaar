@@ -123,6 +123,23 @@ class LineVatTreatmentTest extends TestCase
             .'تأخذ فئة الضريبة Z سبب إعفاء واحداً في الفاتورة، لكن هذه الفاتورة تذكر VATEX-SA-32, VATEX-SA-34-1: أصدِرها في فواتير منفصلة (المعيار التنفيذي لصيغة XML لدى هيئة الزكاة والضريبة والجمارك، البند 8.4).']);
     }
 
+    /**
+     * A reason the seller words (VATEX-SA-OOS) is stated once in the
+     * breakdown too (BT-120): two different wordings would lose one, so they
+     * are refused; the same wording on several lines is taken.
+     */
+    public function test_two_wordings_of_one_reason_refused(): void
+    {
+        $disbursement = fn (string $words): array => [...$this->line('Disbursement', 'O', 'VATEX-SA-OOS'), 'exempt_reason' => $words];
+
+        $this->submit($this->basket(['lines' => [$disbursement('Visa fees paid for the buyer'), $disbursement('Court fees paid for the buyer')]]))
+            ->assertSessionHasErrors(['lines.1.exempt_code' => 'VATEX-SA-OOS is stated with one wording per invoice, but this invoice words it twice: put them on separate invoices or word them the same (ZATCA XML Implementation Standard §8.4). / '
+                .'يُذكر VATEX-SA-OOS بصياغة واحدة في الفاتورة، لكن هذه الفاتورة تصوغه مرتين: أصدِرها في فواتير منفصلة أو وحِّد صياغتها (المعيار التنفيذي لصيغة XML لدى هيئة الزكاة والضريبة والجمارك، البند 8.4).']);
+
+        $this->submit($this->basket(['invoice_number' => 'PHARMA-2', 'lines' => [$disbursement('Fees paid for the buyer'), $disbursement(' Fees paid  for the buyer')]]))
+            ->assertSessionHasNoErrors();
+    }
+
     /** The same reason on several lines is one breakdown, and taken. */
     public function test_one_reason_on_several_lines(): void
     {
