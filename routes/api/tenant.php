@@ -65,7 +65,14 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
     // subscription, a monthly service, an instalment plan.
     Route::get('/schedules', [ScheduleController::class, 'index']);
     Route::get('/schedules/{schedule}', [ScheduleController::class, 'show'])->whereUuid('schedule');
-    Route::post('/schedules', [ScheduleController::class, 'store'])->middleware('org.writer');
+    Route::middleware('org.writer')->whereUuid('schedule')->group(function () {
+        Route::post('/schedules', [ScheduleController::class, 'store']);
+        Route::post('/schedules/{schedule}/pause', [ScheduleController::class, 'pause']);
+        Route::post('/schedules/{schedule}/resume', [ScheduleController::class, 'resume']);
+        Route::post('/schedules/{schedule}/cancel', [ScheduleController::class, 'cancel']);
+        Route::post('/schedules/{schedule}/skip', [ScheduleController::class, 'skip']);
+        Route::put('/schedules/{schedule}/prices', [ScheduleController::class, 'prices']);
+    });
 
     /* Customers and products ------------------------------------------- */
     // One an invoice used can only be archived: removing it answers 409

@@ -3322,6 +3322,158 @@ paths:
                 $ref: '#/components/schemas/Error'
       security:
         - bearerAuth: []
+  '/api/schedules/{schedule}/cancel':
+    post:
+      tags:
+        - Invoice
+      operationId: scheduleController.cancel
+      summary: 'Cancel — Schedule Controller'
+      parameters:
+        - name: schedule
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - bearerAuth: []
+  '/api/schedules/{schedule}/pause':
+    post:
+      tags:
+        - Invoice
+      operationId: scheduleController.pause
+      summary: 'Pause — Schedule Controller'
+      parameters:
+        - name: schedule
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - bearerAuth: []
+  '/api/schedules/{schedule}/prices':
+    put:
+      tags:
+        - Invoice
+      operationId: scheduleController.prices
+      summary: 'Prices — Schedule Controller'
+      parameters:
+        - name: schedule
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                prices:
+                  type: array
+              required:
+                - prices
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - bearerAuth: []
+  '/api/schedules/{schedule}/resume':
+    post:
+      tags:
+        - Invoice
+      operationId: scheduleController.resume
+      summary: 'Resume — Schedule Controller'
+      parameters:
+        - name: schedule
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - bearerAuth: []
+  '/api/schedules/{schedule}/skip':
+    post:
+      tags:
+        - Invoice
+      operationId: scheduleController.skip
+      summary: 'Skip — Schedule Controller'
+      parameters:
+        - name: schedule
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - bearerAuth: []
   /api/settings/numbering:
     get:
       tags:

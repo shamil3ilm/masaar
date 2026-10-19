@@ -2517,5 +2517,20 @@
     "An instalment plan has two instalments or more.": "تتكون خطة الأقساط من قسطين أو أكثر.",
     "An instalment plan splits its lines' prices. Put charges and discounts in the prices.": "تقسّم خطة الأقساط أسعار بنودها، فأدرج الرسوم والخصومات ضمن الأسعار.",
     "Prepayment invoices are not issued in your country. Invoice each instalment instead.": "لا تُصدر فواتير الدفعات المقدمة في بلدك، فأصدر فاتورة لكل قسط بدلاً من ذلك.",
-    "Instalment :number has not been issued, so the final invoice cannot settle it yet.": "لم يُصدر القسط :number بعد، لذا لا يمكن للفاتورة النهائية تسويته حتى الآن."
+    "Instalment :number has not been issued, so the final invoice cannot settle it yet.": "لم يُصدر القسط :number بعد، لذا لا يمكن للفاتورة النهائية تسويته حتى الآن.",
+    "Only an active schedule can be paused.": "لا يمكن إيقاف جدول الفواتير مؤقتاً إلا إذا كان نشطاً.",
+    "Only a paused schedule can be resumed.": "لا يمكن استئناف جدول الفواتير إلا إذا كان متوقفاً مؤقتاً.",
+    "This schedule has already ended.": "انتهى جدول الفواتير هذا بالفعل.",
+    "An instalment is not skipped: the plan's total was agreed. Cancel the plan and make another.": "لا يُتخطى قسط من الأقساط، فقد اتُّفق على إجمالي الخطة. ألغِ الخطة وأنشئ خطة أخرى.",
+    "This schedule has no period left to skip.": "لم تبقَ في جدول الفواتير فترة لتخطيها.",
+    "An instalment plan's total was agreed. Cancel the plan and make another.": "اتُّفق على إجمالي خطة الأقساط. ألغِ الخطة وأنشئ خطة أخرى.",
+    "Give a price for each of the schedule's :count lines.": "حدّد سعراً لكل بند من بنود جدول الفواتير البالغ عددها :count.",
+    "This schedule has no period left to bill.": "لم تبقَ في جدول الفواتير فترة لفوترتها.",
+    "This period is already invoiced.": "صدرت فاتورة هذه الفترة بالفعل.",
+    "Paused a schedule": "أوقف جدول فواتير مؤقتاً",
+    "Resumed a schedule": "استأنف جدول فواتير",
+    "Cancelled a schedule": "ألغى جدول فواتير",
+    "Skipped a period of a schedule": "تخطّى فترة من جدول فواتير",
+    "Changed a schedule's prices": "غيّر أسعار جدول فواتير",
+    "A scheduled invoice could not be made": "تعذّر إنشاء فاتورة مجدولة"
 }
