@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Platform\Customization;
 
 use App\Domains\Invoice\Enums\PaperSize;
+use App\Domains\Invoice\Templates\InvoiceTemplate;
+use App\Domains\Invoice\Templates\InvoiceTemplates;
 use InvalidArgumentException;
 
 /**
@@ -118,6 +120,19 @@ final class Catalogue
                 options: ['arabic_first' => __('Arabic first, right to left'), 'english_first' => __('English first, left to right')],
                 // Only where invoices print in two languages.
                 country: true,
+            ),
+            // How invoices look on paper (InvoiceTemplates): set on the
+            // branding screens, each level keeping the fields it changes.
+            new Definition(
+                key: InvoiceTemplates::KEY,
+                group: __('Printing'),
+                label: __('Invoice template'),
+                help: __('The layout, colour, logo, text and columns of a printed invoice. A branch can differ from its organization.'),
+                type: 'record',
+                default: InvoiceTemplate::DEFAULTS,
+                levels: [Level::Platform, Level::Organization, Level::Branch],
+                fields: InvoiceTemplate::FIELDS,
+                ownScreen: true,
             ),
             new Definition(
                 key: 'branches.working',

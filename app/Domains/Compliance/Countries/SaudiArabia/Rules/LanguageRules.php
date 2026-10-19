@@ -22,6 +22,17 @@ class LanguageRules implements LanguageRulesPort
         return true;
     }
 
+    /**
+     * Arabic, a translation beside it allowed (E-Invoicing Detailed
+     * Guidelines p63): both languages, either first, never English alone.
+     * Which first, when the template says nothing, is the organization's
+     * printing order (Presentation::usesCustomization).
+     */
+    public function printLanguages(): array
+    {
+        return [self::ARABIC_FIRST, self::ENGLISH_FIRST];
+    }
+
     /** Arabic letters when given: free text the invoice prints. */
     public function arabicTextRules(): array
     {

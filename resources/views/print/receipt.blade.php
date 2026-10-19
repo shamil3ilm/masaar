@@ -38,6 +38,10 @@
         <div class="r-title">{{ $receipt->title->en }}</div>
         <div class="r-title" dir="rtl" lang="ar">{{ $receipt->title->ar }}</div>
     @endif
+    {{-- The organization's own header, from its invoice template. --}}
+    @foreach ($receipt->header as $line)
+        <div class="r-small r-center" dir="{{ $dir($line) }}">{{ $line }}</div>
+    @endforeach
 
     @foreach ($receipt->sections as $section)
         <div class="r-rule"></div>
@@ -69,7 +73,7 @@
             <td class="r-start r-label r-amount"><span dir="rtl" lang="ar">{{ $receipt->totalLabel->ar }}</span><br>{{ $receipt->totalLabel->en }}</td>
             <td class="r-end r-label"><span dir="rtl" lang="ar">{{ $receipt->quantityLabel->ar }} &times; {{ $receipt->unitPriceLabel->ar }}</span><br>{{ $receipt->quantityLabel->en }} &times; {{ $receipt->unitPriceLabel->en }}</td>
         @else
-            <td class="r-start r-label">{{ $receipt->quantityLabel->en }} &times; {{ $receipt->unitPriceLabel->en }}<br><span dir="rtl" lang="ar">{{ $receipt->quantityLabel->ar }} &times; {{ $receipt->unitPriceLabel->ar }}</span></td>
+            <td class="r-start r-label">{{ $receipt->quantityLabel->en }} &times; {{ $receipt->unitPriceLabel->en }}@if ($receipt->quantityLabel->ar !== '')<br><span dir="rtl" lang="ar">{{ $receipt->quantityLabel->ar }} &times; {{ $receipt->unitPriceLabel->ar }}</span>@endif</td>
             <td class="r-end r-label r-amount">{{ $receipt->totalLabel->en }}<br><span dir="rtl" lang="ar">{{ $receipt->totalLabel->ar }}</span></td>
         @endif
     </tr></table>
@@ -137,6 +141,14 @@
             <td class="r-end r-label" dir="rtl" lang="ar">{{ $receipt->notes->label->ar }}</td>
         </tr></table>
         <div class="r-text r-{{ $dir($receipt->notes->value) }}" dir="{{ $dir($receipt->notes->value) }}">{{ $receipt->notes->value }}</div>
+    @endif
+
+    {{-- The template's terms, bank details and closing note. --}}
+    @if ($receipt->closing !== [])
+        <div class="r-rule"></div>
+        @foreach ($receipt->closing as $line)
+            <div class="r-small r-{{ $dir($line) }}" dir="{{ $dir($line) }}">{{ $line }}</div>
+        @endforeach
     @endif
 
     @if ($qr !== '')

@@ -23,6 +23,8 @@ final readonly class Receipt
      * @param  list<string>  $footer  small print at the foot
      * @param  bool  $arabicFirst  laid out right to left: each Arabic caption
      *                             leads, amounts sit at the left
+     * @param  list<string>  $header  the organization's own lines under the title (its invoice template's)
+     * @param  list<string>  $closing  the organization's own lines after the totals: its terms, bank details, a closing note
      */
     public function __construct(
         public PrintLabel $title,
@@ -37,5 +39,7 @@ final readonly class Receipt
         public string $qrPayload,
         public array $footer = [],
         public bool $arabicFirst = false,
+        public array $header = [],
+        public array $closing = [],
     ) {}
 }

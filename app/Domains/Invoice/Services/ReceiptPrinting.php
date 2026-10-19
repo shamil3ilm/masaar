@@ -7,6 +7,8 @@ namespace App\Domains\Invoice\Services;
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Templates\InvoiceTemplates;
+use App\Domains\Invoice\Templates\TemplatedReceipt;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\PrintPreferences;
 use App\Support\EscPos;
@@ -33,6 +35,7 @@ class ReceiptPrinting
         private readonly ReceiptImage $images,
         private readonly EscPos $escPos,
         private readonly InvoiceExtraQr $extraQr,
+        private readonly InvoiceTemplates $templates,
     ) {}
 
     /**
@@ -51,13 +54,17 @@ class ReceiptPrinting
         // the edges.
         $logo = $this->assets->logoImage((string) $organization->id, intdiv($dots * 2, 3));
 
+        // The organization's template: its language order and its own lines,
+        // in black and white as the head prints them.
+        $template = $this->templates->for($organization, $invoice->branch_id);
+
         return $this->images->render(
-            $country->receipt($invoice, $organization),
+            TemplatedReceipt::apply($country->receipt($invoice, $organization), $template),
             $roll,
             $dots,
             $dpi,
             $logo,
-            $this->extraQr->for($invoice, $organization, $roll, $userId),
+            $template->businessQr ? $this->extraQr->for($invoice, $organization, $roll, $userId) : null,
         );
     }
 

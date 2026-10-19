@@ -14,6 +14,7 @@ use App\Domains\Branding\Http\Controllers\AdminBrandingController;
 use App\Domains\Branding\Http\Controllers\PortalBrandingController;
 use App\Domains\Branding\Http\Controllers\ThemeAssetController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\AdminKillSwitchController;
+use App\Domains\Invoice\Http\Controllers\AdminInvoiceTemplateController;
 use App\Domains\Invoice\Http\Controllers\InvoiceLinkController;
 use App\Domains\Invoice\Http\Controllers\PortalCatalogueLookupController;
 use App\Domains\Invoice\Http\Controllers\PortalCustomerController;
@@ -23,6 +24,7 @@ use App\Domains\Invoice\Http\Controllers\PortalInvoiceDraftController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceFilingController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoicePreviewController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoicePrintController;
+use App\Domains\Invoice\Http\Controllers\PortalInvoiceTemplateController;
 use App\Domains\Invoice\Http\Controllers\PortalNumberingController;
 use App\Domains\Invoice\Http\Controllers\PortalProductController;
 use App\Domains\Invoice\Http\Controllers\PortalQrCodeController;
@@ -120,6 +122,11 @@ Route::get('/theme/{scope}/stylesheet', [ThemeAssetController::class, 'styleshee
     ->where('scope', 'platform|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
     ->middleware('throttle:300,1')
     ->name('theme.css');
+// An invoice template's colour, for the print view (ThemeAssetController::accent).
+Route::get('/theme/print-accent/{accent}', [ThemeAssetController::class, 'accent'])
+    ->where('accent', '[0-9a-fA-F]{6}')
+    ->middleware('throttle:300,1')
+    ->name('theme.print-accent');
 Route::get('/theme/{scope}/logo', [ThemeAssetController::class, 'logo'])
     ->where('scope', 'platform|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
     ->middleware('throttle:300,1')
@@ -432,6 +439,12 @@ Route::prefix('admin')->name('admin.')
         Route::post('/branding/import', [AdminBrandingController::class, 'import'])->middleware('admin.can:platform.configure')->name('branding.import');
         Route::get('/branding/export', [AdminBrandingController::class, 'export'])->name('branding.export');
         Route::post('/branding/reset', [AdminBrandingController::class, 'reset'])->middleware('admin.can:platform.configure')->name('branding.reset');
+        // The platform's invoice template, which every organization's follows.
+        Route::get('/branding/invoice-template', [AdminInvoiceTemplateController::class, 'edit'])->name('invoice-template.edit');
+        Route::post('/branding/invoice-template', [AdminInvoiceTemplateController::class, 'update'])->middleware('admin.can:platform.configure')->name('invoice-template.update');
+        Route::post('/branding/invoice-template/reset', [AdminInvoiceTemplateController::class, 'reset'])->middleware('admin.can:platform.configure')->name('invoice-template.reset');
+        Route::get('/branding/invoice-template/preview', [AdminInvoiceTemplateController::class, 'preview'])->middleware('throttle:120,1')->name('invoice-template.preview');
+        Route::get('/branding/invoice-template/sample', [AdminInvoiceTemplateController::class, 'samplePdf'])->middleware('throttle:30,1')->name('invoice-template.sample');
 
         // The design system: every token and component, drawn by the
         // components themselves, in light and dark and in both directions.
@@ -675,6 +688,13 @@ Route::prefix('portal')->name('portal.')
         Route::post('/branding/import', [PortalBrandingController::class, 'import'])->name('branding.import');
         Route::get('/branding/export', [PortalBrandingController::class, 'export'])->name('branding.export');
         Route::post('/branding/reset', [PortalBrandingController::class, 'reset'])->name('branding.reset');
+        // The organization's invoice template, and a branch's (?branch=).
+        // Administrators of the organization only; the controller checks.
+        Route::get('/branding/invoice-template', [PortalInvoiceTemplateController::class, 'edit'])->name('invoice-template.edit');
+        Route::post('/branding/invoice-template', [PortalInvoiceTemplateController::class, 'update'])->name('invoice-template.update');
+        Route::post('/branding/invoice-template/reset', [PortalInvoiceTemplateController::class, 'reset'])->name('invoice-template.reset');
+        Route::get('/branding/invoice-template/preview', [PortalInvoiceTemplateController::class, 'preview'])->name('invoice-template.preview');
+        Route::get('/branding/invoice-template/sample', [PortalInvoiceTemplateController::class, 'samplePdf'])->middleware('throttle:30,1')->name('invoice-template.sample');
     });
 
 // A person's own preferences. Outside org.writer: a viewer chooses their own

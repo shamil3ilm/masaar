@@ -32,8 +32,7 @@ class DesignSystemTest extends TestCase
      * geometry, with the hex only as the fallback beneath its classes. A
      * country draws its own paper invoice and PDF under countries/x/print/.
      */
-    private const HEX_ALLOWED = ['pdf/', 'emails/', 'countries/saudi-arabia/emails/', 'portal/invoices/print.blade.php', 'countries/saudi-arabia/print/', 'components/logo.blade.php'];
-
+    private const HEX_ALLOWED = ['pdf/', 'emails/', 'countries/saudi-arabia/emails/', 'portal/invoices/print.blade.php', 'countries/saudi-arabia/print/', 'countries/united-arab-emirates/print/', 'components/logo.blade.php'];
     /** Hex colours in every other view. */
     private const HEX_CEILING = 0;
 
@@ -60,7 +59,7 @@ class DesignSystemTest extends TestCase
 
     /** Where a stock ramp is still the right thing to write. */
     private const PALETTE_ALLOWED = [
-        'pdf/', 'emails/', 'countries/saudi-arabia/emails/', 'portal/invoices/print.blade.php', 'countries/saudi-arabia/print/', 'components/',
+        'pdf/', 'emails/', 'countries/saudi-arabia/emails/', 'portal/invoices/print.blade.php', 'countries/saudi-arabia/print/', 'countries/united-arab-emirates/print/', 'components/',
         // The home page's invoice is a picture of paper and keeps paper's
         // colours in either mode; its route and stops are the logo's teal.
         'home/',

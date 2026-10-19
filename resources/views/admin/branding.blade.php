@@ -3,7 +3,11 @@
 @section('title', 'Branding')
 
 @section('content')
-<x-ui.page-header title="Branding" description="The platform's colours, name, logo and favicon: every page starts from these, and each organization can set its own over them." />
+<x-ui.page-header title="Branding" description="The platform's colours, name, logo and favicon: every page starts from these, and each organization can set its own over them.">
+    <x-slot:actions>
+        <x-ui.button variant="secondary" :href="route('admin.invoice-template.edit')">{{ __('Invoice template') }}</x-ui.button>
+    </x-slot:actions>
+</x-ui.page-header>
 
 @admincan('platform.configure')
 @include('branding.form')

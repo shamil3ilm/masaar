@@ -104,6 +104,8 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Countries/SaudiArabia/Presentation/Presentation.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Presentation/PrintedTerms.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Presentation/ReceiptContent.php' => 'Invoice',
+        // The made-up invoice an invoice template's preview draws, never saved.
+        'Domains/Compliance/Countries/SaudiArabia/Presentation/SampleInvoices.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Presentation/SetupSteps.php' => 'Invoice',
         // Each till, with the certificates it has held.
         'Domains/Compliance/Countries/SaudiArabia/Reports/CertificateVersions.php' => 'Organization',
@@ -129,6 +131,11 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Countries/UnitedArabEmirates/Module.php' => 'Invoice',
         // An invoice's page; whether a first invoice was issued, for the setup steps.
         'Domains/Compliance/Countries/UnitedArabEmirates/Presentation/Presentation.php' => 'Invoice',
+        // The human-readable tax invoice, drawn from the e-invoice's document.
+        'Domains/Compliance/Countries/UnitedArabEmirates/Presentation/PrintedInvoice.php' => 'Invoice',
+        'Domains/Compliance/Countries/UnitedArabEmirates/Presentation/ReceiptContent.php' => 'Invoice',
+        // The made-up invoice a UAE invoice template's preview draws, never saved.
+        'Domains/Compliance/Countries/UnitedArabEmirates/Presentation/SampleInvoices.php' => 'Invoice, Organization',
         'Domains/Compliance/Countries/UnitedArabEmirates/Presentation/SetupSteps.php' => 'Invoice',
         // An organization's Peppol documents, for its screens and dashboards.
         'Domains/Compliance/Countries/UnitedArabEmirates/Reports/UaeDocuments.php' => 'Compliance\Networks\Peppol',
@@ -146,6 +153,7 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Engine/Contracts/LanguageRules.php' => 'Invoice',
         'Domains/Compliance/Engine/Contracts/Presentation.php' => 'Invoice',
         'Domains/Compliance/Engine/Contracts/Transmission.php' => 'Invoice',
+        'Domains/Compliance/Engine/DTOs/PrintSample.php' => 'Invoice',
         'Domains/Compliance/Engine/Services/ComplianceEngine.php' => 'Invoice',
         'Domains/Compliance/Engine/Services/JurisdictionResolver.php' => 'Invoice',
         // The receiver of an inbound document is the endpoint on a compliance profile.

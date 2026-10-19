@@ -25,6 +25,9 @@ final class PintAe implements JurisdictionProfile
 
     public const SELF_BILLING = 'urn:peppol:pint:selfbilling-1@ae-1';
 
+    /** The tax accounting currency: VAT is owed in dirhams (VAT Decree-Law Art. 69). */
+    public const TAX_CURRENCY = 'AED';
+
     /** The participant scheme: 0235 plus the 10-digit TIN. */
     public const SCHEME = '0235';
 
@@ -187,7 +190,7 @@ final class PintAe implements JurisdictionProfile
 
     public function taxCurrency(): string
     {
-        return 'AED';
+        return self::TAX_CURRENCY;
     }
 
     /** IBR-190-AE: see STANDARD_RATE. */

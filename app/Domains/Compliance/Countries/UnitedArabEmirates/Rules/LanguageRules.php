@@ -22,6 +22,17 @@ class LanguageRules implements LanguageRulesPort
         return false;
     }
 
+    /**
+     * English alone, as the human-readable sample tax invoice in the
+     * Electronic Invoicing Guidelines (v1.1, 12.1, p34) is, or both
+     * languages, which the framework supports (5.1, p11). English unless
+     * the organization chooses both.
+     */
+    public function printLanguages(): array
+    {
+        return [self::ENGLISH, self::ENGLISH_FIRST, self::ARABIC_FIRST];
+    }
+
     public function arabicNameRules(string $of): array
     {
         return ['nullable', 'string', 'max:255'];

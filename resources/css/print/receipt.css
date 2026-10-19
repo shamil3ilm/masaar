@@ -120,6 +120,7 @@
 }
 
 .receipt .r-logo {
+    display: inline-block;
     max-width: 48mm;
     max-height: 16mm;
 }

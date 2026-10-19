@@ -35,6 +35,20 @@ class ThemeAssetController extends Controller
         ]);
     }
 
+    /**
+     * An invoice template's colour, for the print view: one variable, from
+     * six hex digits the route has already checked, so nothing but a colour
+     * reaches the stylesheet. The colour is the URL, so it never changes.
+     */
+    public function accent(string $accent): Response
+    {
+        return response(':root{--print-accent:#'.strtoupper($accent).';}', 200, [
+            'Content-Type' => 'text/css; charset=UTF-8',
+            'Cache-Control' => 'public, max-age=31536000, immutable',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
     public function logo(Request $request, string $scope): BinaryFileResponse
     {
         return $this->image($request, $scope, 'logo');

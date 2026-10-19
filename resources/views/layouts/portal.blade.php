@@ -108,7 +108,7 @@
                         <x-slot:icon><x-ui.icon name="hash" /></x-slot:icon>
                         {{ __('Numbering') }}
                     </x-ui.nav-link>
-                    <x-ui.nav-link :href="route('portal.branding.edit')" :active="request()->routeIs('portal.branding.*')">
+                    <x-ui.nav-link :href="route('portal.branding.edit')" :active="request()->routeIs('portal.branding.*', 'portal.invoice-template.*')">
                         <x-slot:icon><x-ui.icon name="palette" /></x-slot:icon>
                         {{ __('Branding') }}
                     </x-ui.nav-link>

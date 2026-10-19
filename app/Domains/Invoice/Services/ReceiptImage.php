@@ -59,6 +59,10 @@ class ReceiptImage
             $canvas->text($title, $small ? 9 : 10.5, true, ReceiptCanvas::CENTER);
         }
 
+        foreach ($receipt->header as $line) {
+            $canvas->text($line, $label, false, ReceiptCanvas::CENTER);
+        }
+
         foreach ($receipt->sections as $section) {
             $canvas->rule();
 
@@ -86,7 +90,10 @@ class ReceiptImage
             $canvas->pair($receipt->totalLabel->en, $receipt->quantityLabel->en.' × '.$receipt->unitPriceLabel->en, $label, startRtl: false);
         } else {
             $canvas->pair($receipt->quantityLabel->en.' × '.$receipt->unitPriceLabel->en, $receipt->totalLabel->en, $label);
-            $canvas->pair($receipt->quantityLabel->ar.' × '.$receipt->unitPriceLabel->ar, $receipt->totalLabel->ar, $label);
+            // Not on a receipt in English alone, whose Arabic captions are empty.
+            if ($receipt->quantityLabel->ar !== '') {
+                $canvas->pair($receipt->quantityLabel->ar.' × '.$receipt->unitPriceLabel->ar, $receipt->totalLabel->ar, $label);
+            }
         }
 
         foreach ($receipt->items as $item) {
@@ -133,6 +140,14 @@ class ReceiptImage
             $canvas->rule();
             $canvas->pair($receipt->notes->label->en, $receipt->notes->label->ar, $label);
             $canvas->text($receipt->notes->value, $body);
+        }
+
+        if ($receipt->closing !== []) {
+            $canvas->rule();
+
+            foreach ($receipt->closing as $line) {
+                $canvas->text($line, $label);
+            }
         }
 
         if ($receipt->qrPayload !== '') {

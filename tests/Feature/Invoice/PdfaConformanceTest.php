@@ -4,18 +4,28 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Invoice;
 
+use App\Domains\Branding\DTOs\ThemeDefinition;
+use App\Domains\Branding\Services\BrandAssets;
+use App\Domains\Branding\Services\ThemeService;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Models\InvoiceLine;
 use App\Domains\Invoice\Services\InvoiceExtraQr;
 use App\Domains\Invoice\Services\InvoicePdf;
+use App\Domains\Invoice\Templates\InvoiceTemplates;
+use App\Domains\Invoice\Templates\TemplateLayout;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\PrintPreferences;
+use App\Domains\Platform\Customization\Level;
+use App\Domains\Platform\Customization\Scope;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Feature\Compliance\UnitedArabEmirates\PintInvoices;
 use Tests\Fixtures\PrintSamples;
 use Tests\Fixtures\SigningCredentials;
 use Tests\TestCase;
@@ -31,6 +41,7 @@ use Tests\TestCase;
  */
 class PdfaConformanceTest extends TestCase
 {
+    use PintInvoices;
     use PrintSamples;
     use RefreshDatabase;
     use SigningCredentials;
@@ -150,6 +161,82 @@ class PdfaConformanceTest extends TestCase
 
         $this->assertConforms(app(InvoicePdf::class)->render($invoice, $this->acme->fresh(), PaperSize::A4));
         $this->assertConforms(app(InvoicePdf::class)->render($invoice, $this->acme->fresh(), PaperSize::Roll58));
+    }
+
+    /**
+     * @return array<string, array{TemplateLayout, PaperSize}>
+     */
+    public static function layoutsAndPapers(): array
+    {
+        $cases = [];
+
+        foreach (TemplateLayout::cases() as $layout) {
+            foreach (PaperSize::cases() as $paper) {
+                $cases[$layout->value.' on '.$paper->value] = [$layout, $paper];
+            }
+        }
+
+        return $cases;
+    }
+
+    /**
+     * Every invoice template layout on every paper, stamped, with a logo,
+     * the template's colour and all its own text: the coloured band and
+     * fills of the modern layout as much as the black-and-white receipt.
+     */
+    #[DataProvider('layoutsAndPapers')]
+    public function test_every_layout_stays_pdfa_stamped(TemplateLayout $layout, PaperSize $paper): void
+    {
+        Storage::fake(BrandAssets::DISK);
+        $credentials = $this->selfSignedCredentials(0x1234567890);
+        app(CredentialStore::class)->put($this->acme->id, null, CredentialStore::PCSID, [
+            'privateKey' => $credentials['privateKey'],
+            'pcsid' => $credentials['certificate'],
+            'secret' => 'secret',
+        ]);
+        app(ThemeService::class)->save((string) $this->acme->id, ThemeDefinition::fromArray(['colors' => ['primary' => '#14B8A6']]), ['logo' => UploadedFile::fake()->image('logo.png', 240, 80)]);
+        app(InvoiceTemplates::class)->save(Level::Organization, Scope::organization((string) $this->acme->id), [
+            'layout' => $layout->value,
+            'logo_position' => 'center',
+            'header_en' => 'Open Sunday to Thursday', 'header_ar' => 'مفتوح من الأحد إلى الخميس',
+            'terms_en' => 'Payment within 30 days', 'terms_ar' => 'السداد خلال ثلاثين يوماً',
+            'footer_en' => 'Thank you', 'footer_ar' => 'شكراً لكم',
+            'bank_name' => 'Riyad Bank', 'bank_iban' => 'SA0380000000608010167519', 'bank_account_name' => 'Acme Trading', 'bank_swift' => 'RIBLSARI',
+            'column_item_code' => true,
+        ], $this->acme, null);
+
+        $pdf = app(InvoicePdf::class)->render($this->sampleInvoice($this->acme, 'standard', 12), $this->acme->fresh(), $paper);
+
+        $this->assertStringContainsString('/ETSI.CAdES.detached', $pdf);
+        $this->assertConforms($pdf);
+    }
+
+    /**
+     * A UAE tax invoice printed for a buyer not yet on electronic invoicing,
+     * in every layout on every paper: plain PDF/A, with neither XML nor seal
+     * (the guidelines ask for neither on a PDF), in English and both
+     * languages.
+     */
+    #[DataProvider('layoutsAndPapers')]
+    public function test_every_uae_layout_is_pdfa(TemplateLayout $layout, PaperSize $paper): void
+    {
+        config(['peppol.countries.AE.enabled' => true]);
+        Queue::fake();
+        $gulf = $this->uaeOrganization();
+        $invoice = $this->uaeInvoice($gulf, [], [$this->uaeLine(), $this->uaeLine(['discount_amount' => 100, 'net_amount' => 900, 'tax_amount' => 45, 'line_total' => 945])], ['buyer_endpoint' => '0235:9900000098']);
+
+        foreach (['english', 'arabic_first'] as $language) {
+            app(InvoiceTemplates::class)->save(Level::Organization, Scope::organization((string) $gulf->id), [
+                'layout' => $layout->value, 'language' => $language,
+                'terms_en' => 'Payment within 30 days', 'terms_ar' => 'السداد خلال ثلاثين يوماً',
+                'bank_iban' => 'AE070331234567890123456',
+            ], $gulf, null);
+
+            $pdf = app(InvoicePdf::class)->render($invoice, $gulf->fresh(), $paper);
+
+            $this->assertStringNotContainsString('/EmbeddedFile', $pdf);
+            $this->assertConforms($pdf);
+        }
     }
 
     private function assertConforms(string $pdf): void

@@ -9,6 +9,10 @@ use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Templates\InvoiceTemplate;
+use App\Domains\Invoice\Templates\InvoiceTemplates;
+use App\Domains\Invoice\Templates\TemplatedReceipt;
+use App\Domains\Invoice\Templates\TemplateLayout;
 use App\Domains\Organization\Models\Organization;
 use App\Support\Brand;
 use DomainException;
@@ -52,6 +56,7 @@ class InvoicePdf
     public function __construct(
         private readonly PrintAssets $assets,
         private readonly JurisdictionResolver $jurisdictions,
+        private readonly InvoiceTemplates $templates,
     ) {}
 
     /**
@@ -63,20 +68,7 @@ class InvoicePdf
         $country = $this->country($organization);
         $country->assertShareable($invoice);
 
-        $html = $this->html($invoice, $organization, $paper);
-
-        $mpdf = $this->document($paper, $paper->isRoll() ? $this->rollLength($html, $paper) : null);
-
-        $mpdf->PDFA = true;
-        $mpdf->PDFAversion = '3-B';
-        // Corrects what PDF/A forbids - transparency in the logo, say -
-        // rather than refusing to write the file.
-        $mpdf->PDFAauto = true;
-        $mpdf->SetTitle((string) $invoice->invoice_number);
-        $mpdf->SetAuthor($organization->documentName());
-        $mpdf->SetCreator(Brand::name('en'));
-
-        $mpdf->WriteHTML($html);
+        $mpdf = $this->compose($this->html($invoice, $organization, $paper), $paper, (string) $invoice->invoice_number, $organization);
 
         $xml = $invoice->legal_xml;
 
@@ -91,6 +83,45 @@ class InvoicePdf
         }
 
         return $country->sealPdf($mpdf->Output('', 'S'), $invoice, $organization);
+    }
+
+    /**
+     * A made-up invoice as a PDF, laid out with a template not yet saved:
+     * the template preview's download. The same PDF/A-3 page, but no XML
+     * inside and no seal - it is not an invoice, and the seller's key signs
+     * only what it issued.
+     */
+    public function sample(Presentation $country, Invoice $invoice, Organization $organization, PaperSize $paper, InvoiceTemplate $template): string
+    {
+        $printing = $this->templates->printing($invoice, $organization, $country, $template);
+        $extraQr = $template->businessQr
+            ? ['label' => __('Your business QR code'), 'image' => (string) $this->assets->qrPng(__('Sample'))]
+            : null;
+
+        return $this->compose($this->markup($country, $invoice, $organization, $paper, $printing, $extraQr), $paper, __('Sample invoice'), $organization)
+            ->Output('', 'S');
+    }
+
+    /**
+     * The PDF/A-3 document with the page drawn on it: a sheet by its size, a
+     * roll as long as what is drawn.
+     */
+    private function compose(string $html, PaperSize $paper, string $title, Organization $organization): Mpdf
+    {
+        $mpdf = $this->document($paper, $paper->isRoll() ? $this->rollLength($html, $paper) : null);
+
+        $mpdf->PDFA = true;
+        $mpdf->PDFAversion = '3-B';
+        // Corrects what PDF/A forbids - transparency in the logo, say -
+        // rather than refusing to write the file.
+        $mpdf->PDFAauto = true;
+        $mpdf->SetTitle($title);
+        $mpdf->SetAuthor($organization->documentName());
+        $mpdf->SetCreator(Brand::name('en'));
+
+        $mpdf->WriteHTML($html);
+
+        return $mpdf;
     }
 
     public function fileName(Invoice $invoice, string $extension = 'pdf'): string
@@ -148,40 +179,61 @@ class InvoicePdf
 
     /**
      * The markup the renderer draws on the paper: the country's page for a
-     * sheet, its receipt for a roll.
+     * sheet in the organization's template layout, its receipt for a roll
+     * or a sheet in the thermal layout.
      */
     public function html(Invoice $invoice, Organization $organization, PaperSize $paper = PaperSize::A4): string
     {
         $country = $this->country($organization);
+        $printing = $this->templates->printing($invoice, $organization, $country);
 
-        return $paper->isRoll()
-            ? $this->receiptHtml($country, $invoice, $organization, $paper)
-            : view($country->pageView(true), [
-                'invoice' => $invoice,
-                'organization' => $organization,
-                'simplified' => $invoice->type === InvoiceType::Simplified,
-                'qr' => $this->assets->qrPng((string) $invoice->qr_code),
-                'logo' => $this->assets->logo((string) $organization->id),
-                'paper' => $paper,
-                'extraQr' => $this->assets->extraQr($invoice, $organization, $paper, 'png'),
-            ])->render();
+        return $this->markup($country, $invoice, $organization, $paper, $printing, $printing['template']->businessQr
+            ? $this->assets->extraQr($invoice, $organization, $paper, 'png')
+            : null);
     }
 
     /**
-     * The receipt for a roll, in the markup the print view uses and with the
-     * stylesheet it uses, given to the renderer whole.
+     * @param  array{template: InvoiceTemplate, columns: array<string, bool>, itemCodes: array<string, string>}  $printing
+     * @param  array{label: string, image: string}|null  $extraQr  the organization's own QR, as a PNG data URI
      */
-    private function receiptHtml(Presentation $country, Invoice $invoice, Organization $organization, PaperSize $paper): string
+    private function markup(Presentation $country, Invoice $invoice, Organization $organization, PaperSize $paper, array $printing, ?array $extraQr): string
+    {
+        $template = $printing['template'];
+
+        if ($paper->isRoll() || $template->layout === TemplateLayout::Thermal) {
+            return $this->receiptHtml($country, $invoice, $organization, $paper, $template, $extraQr);
+        }
+
+        return view($country->pageView(true), [
+            'invoice' => $invoice,
+            'organization' => $organization,
+            'simplified' => $invoice->type === InvoiceType::Simplified,
+            'qr' => $this->assets->qrPng((string) $invoice->qr_code),
+            'logo' => $this->assets->logo((string) $organization->id),
+            'paper' => $paper,
+            'extraQr' => $extraQr,
+            ...$printing,
+        ])->render();
+    }
+
+    /**
+     * The receipt, in the markup the print view uses and with the stylesheet
+     * it uses, given to the renderer whole: on a roll, or in the middle of a
+     * sheet in the thermal layout. Black on white whatever the template's
+     * colour.
+     *
+     * @param  array{label: string, image: string}|null  $extra
+     */
+    private function receiptHtml(Presentation $country, Invoice $invoice, Organization $organization, PaperSize $paper, InvoiceTemplate $template, ?array $extra): string
     {
         $qr = $this->assets->qrPng((string) $invoice->qr_code);
-        $extra = $this->assets->extraQr($invoice, $organization, $paper, 'png');
 
         return view('pdf.receipt', [
             'extraQr' => $extra === null ? null : [
                 'label' => $extra['label'],
                 'image' => '<img src="'.$extra['image'].'" alt="" style="width: 24mm; height: 24mm;">',
             ],
-            'receipt' => $country->receipt($invoice, $organization),
+            'receipt' => TemplatedReceipt::apply($country->receipt($invoice, $organization), $template),
             'paper' => $paper,
             // Sized here too: the renderer reads an image's size more surely
             // from the element than from a stylesheet.

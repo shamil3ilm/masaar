@@ -19,6 +19,9 @@ use Illuminate\Support\Str;
  *            changes an entry above it, adds its own, or hides one
  *   id       one record's id (a UUID), which the screen that sets it checks
  *            is one the holder may choose
+ *   record   a set of named $fields, merged field by field down the levels:
+ *            a level keeps only the fields it changes, and the screen that
+ *            sets it checks each field
  *
  * $ownScreen marks one set on a screen of its own (the branch switcher),
  * left off the settings and preferences pages.
@@ -51,7 +54,7 @@ final readonly class Definition
      * @param  list<Level>  $levels  the levels that may hold a value, broadest first
      * @param  array<string, string>  $options  for a choice: value => label
      * @param  array<string, string>  $columns  level value => 'table.column'
-     * @param  list<string>  $fields  for entries: the fields an entry carries besides its key
+     * @param  list<string>  $fields  for entries: the fields an entry carries besides its key; for a record, its fields
      */
     public function __construct(
         public string $key,
@@ -110,6 +113,7 @@ final readonly class Definition
             'choice' => is_scalar($raw) && array_key_exists((string) $raw, $this->options) ? (string) $raw : null,
             'int' => $this->parseInt($raw),
             'entries' => is_array($raw) ? array_values($raw) : null,
+            'record' => is_array($raw) ? array_intersect_key($raw, array_flip($this->fields)) : null,
             'id' => is_string($raw) && Str::isUuid($raw) ? $raw : null,
             default => null,
         };
@@ -122,6 +126,7 @@ final readonly class Definition
             'bool' => $value ? __('On') : __('Off'),
             'choice' => $this->options[(string) $value] ?? (string) $value,
             'entries' => __('Entries: :count', ['count' => is_array($value) ? count($value) : 0]),
+            'record' => __('Fields set: :count', ['count' => is_array($value) ? count($value) : 0]),
             default => $value === null ? '' : (string) $value,
         };
     }

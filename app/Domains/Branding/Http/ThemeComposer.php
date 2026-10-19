@@ -34,8 +34,13 @@ final class ThemeComposer
     /** Where the theme is kept on the request; the error frame sets it itself. */
     public const ATTRIBUTE = '_active_theme';
 
+    /**
+     * The theme service is resolved only when the request carries no theme.
+     * A page that supplies its own - the error frame, drawn when the
+     * database may be what failed - must not depend on the service being
+     * constructible at all.
+     */
     public function __construct(
-        private readonly ThemeService $themes,
         private readonly Request $request,
     ) {}
 
@@ -44,7 +49,7 @@ final class ThemeComposer
         $theme = $this->request->attributes->get(self::ATTRIBUTE);
 
         if (! $theme instanceof ActiveTheme) {
-            $theme = $this->themes->forRequest($this->request);
+            $theme = app(ThemeService::class)->forRequest($this->request);
             $this->request->attributes->set(self::ATTRIBUTE, $theme);
         }
 

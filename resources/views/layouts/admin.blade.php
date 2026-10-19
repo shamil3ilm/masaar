@@ -134,7 +134,7 @@
                     Countries
                 </x-ui.nav-link>
                 @endadmincan
-                <x-ui.nav-link :href="route('admin.branding.edit')" :active="request()->routeIs('admin.branding*')" collapsible>
+                <x-ui.nav-link :href="route('admin.branding.edit')" :active="request()->routeIs('admin.branding*', 'admin.invoice-template*')" collapsible>
                     <x-slot:icon><x-ui.icon name="palette" /></x-slot:icon>
                     Branding
                 </x-ui.nav-link>

@@ -8,6 +8,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Enums\InvoiceType;
+use App\Domains\Invoice\Support\LineSnapshot;
 use App\Domains\Organization\Concerns\BelongsToTenant;
 use App\Domains\Organization\Concerns\RecordsActors;
 use App\Domains\Organization\Models\Branch;
@@ -230,6 +231,14 @@ class Invoice extends Model
                     'This is a tax authority requirement. '.
                     'Use credit/debit notes for corrections.'
                 );
+            }
+        });
+
+        // Leaving the draft: each line keeps what it printed from its
+        // product, so the printed copy stays the issued one (LineSnapshot).
+        static::updating(function (Invoice $invoice) {
+            if ($invoice->isDirty('status') && $invoice->getOriginal('status') === InvoiceStatus::Draft && $invoice->status !== InvoiceStatus::Draft) {
+                LineSnapshot::take($invoice);
             }
         });
 

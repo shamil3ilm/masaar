@@ -15,6 +15,10 @@ export default defineConfig({
                 'resources/css/print/a5.css',
                 'resources/css/print/80mm.css',
                 'resources/css/print/58mm.css',
+                // An invoice template's layouts on a sheet, and the
+                // receipt's column for its thermal layout there.
+                'resources/css/print/template.css',
+                'resources/css/print/receipt.css',
                 'resources/js/receipt-page.js',
             ],
             refresh: true,
