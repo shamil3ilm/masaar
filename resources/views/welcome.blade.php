@@ -1,6 +1,6 @@
 @extends('layouts.public')
 
-@section('title', __('E-invoicing'))
+@section('title', $seo->content()->text('title'))
 
 @section('content')
 {{--

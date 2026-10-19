@@ -71,6 +71,12 @@ class RouteAuthPostureTest extends TestCase
         // What the home page shows anyone: a published testimonial's logo,
         // checked as an image on upload and served sandboxed. 404 otherwise.
         'website/testimonials/{testimonialId}/logo' => 'A published testimonial\'s logo, shown on the home page',
+        // What search engines and link previews read: the public pages in
+        // each language, the private areas they stay out of, and the
+        // picture a shared link shows. Nothing private is in any of them.
+        'sitemap.xml' => 'The public pages, in each language, for search engines',
+        'robots.txt' => 'Where crawlers may go, and the sitemap',
+        'website/share-image' => 'The picture a shared link to the site shows',
     ];
 
     public function test_all_web_routes_guarded(): void

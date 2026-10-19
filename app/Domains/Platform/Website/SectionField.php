@@ -8,7 +8,8 @@ namespace App\Domains\Platform\Website;
  * One piece of a home page section's text, written in English and Arabic.
  *
  * A line is a heading or a button's label; a paragraph may run to several
- * lines and mark words bold (PlainText).
+ * lines and mark words bold (PlainText). A field may hold less than its
+ * kind allows ($limit): a search result shows only so much of a title.
  */
 final readonly class SectionField
 {
@@ -20,10 +21,11 @@ final readonly class SectionField
         public string $name,
         public string $label,
         public bool $paragraph = false,
+        public ?int $limit = null,
     ) {}
 
     public function max(): int
     {
-        return $this->paragraph ? self::PARAGRAPH_MAX : self::LINE_MAX;
+        return $this->limit ?? ($this->paragraph ? self::PARAGRAPH_MAX : self::LINE_MAX);
     }
 }

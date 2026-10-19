@@ -21,7 +21,8 @@ return new class extends Migration
     {
         Schema::create('website_sections', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            // A SectionCatalogue key: hero, countries, faq ...
+            // A SectionCatalogue key (hero, countries, faq ...), or 'seo'
+            // for the search and sharing text (WebsiteSeo).
             $table->string('key', 32)->unique();
             $table->boolean('enabled')->default(true);
             $table->unsignedSmallInteger('position')->default(0);

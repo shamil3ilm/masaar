@@ -56,10 +56,12 @@ use App\Domains\Platform\Http\Controllers\AdminRolesController;
 use App\Domains\Platform\Http\Controllers\AdminSettingsController;
 use App\Domains\Platform\Http\Controllers\AdminUserController;
 use App\Domains\Platform\Http\Controllers\AdminWebsiteSectionController;
+use App\Domains\Platform\Http\Controllers\AdminWebsiteSeoController;
 use App\Domains\Platform\Http\Controllers\AdminWebsiteTestimonialController;
 use App\Domains\Platform\Http\Controllers\ContactController;
 use App\Domains\Platform\Http\Controllers\SavedListViewController;
 use App\Domains\Platform\Http\Controllers\WebsiteAssetController;
+use App\Domains\Platform\Http\Controllers\WebsiteSeoController;
 use App\Domains\Support\Http\Controllers\AdminSupportController;
 use App\Domains\Support\Http\Controllers\PortalSupportController;
 use App\Domains\Webhook\Http\Controllers\AdminWebhookController;
@@ -69,7 +71,15 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
-});
+})->name('home');
+
+// What a search engine reads: which public pages there are, each in both
+// languages (?lang=en, ?lang=ar), and where the private areas begin.
+Route::get('/sitemap.xml', [WebsiteSeoController::class, 'sitemap'])->middleware('throttle:60,1')->name('sitemap');
+Route::get('/robots.txt', [WebsiteSeoController::class, 'robots'])->middleware('throttle:60,1')->name('robots');
+
+// The picture a shared link to the site shows, when an admin has set one.
+Route::get('/website/share-image', [WebsiteAssetController::class, 'shareImage'])->middleware('throttle:300,1')->name('website.share-image');
 
 // The home page's contact form. CSRF like every web form; past that, no
 // CAPTCHA: ContactGuard's honeypot, time trap, limits per address and per
@@ -335,6 +345,8 @@ Route::prefix('admin')->name('admin.')
             Route::post('/sections/{sectionKey}/visibility', [AdminWebsiteSectionController::class, 'visibility'])->where('sectionKey', '[a-z_]+')->name('sections.visibility');
             Route::post('/sections/{sectionKey}/move', [AdminWebsiteSectionController::class, 'move'])->where('sectionKey', '[a-z_]+')->name('sections.move');
             Route::post('/sections/{sectionKey}/reset', [AdminWebsiteSectionController::class, 'reset'])->where('sectionKey', '[a-z_]+')->name('sections.reset');
+            Route::get('/seo', [AdminWebsiteSeoController::class, 'edit'])->name('seo.edit');
+            Route::post('/seo', [AdminWebsiteSeoController::class, 'update'])->name('seo.update');
             Route::get('/testimonials', [AdminWebsiteTestimonialController::class, 'index'])->name('testimonials.index');
             Route::get('/testimonials/create', [AdminWebsiteTestimonialController::class, 'create'])->name('testimonials.create');
             Route::post('/testimonials', [AdminWebsiteTestimonialController::class, 'store'])->name('testimonials.store');

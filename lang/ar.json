@@ -2165,5 +2165,20 @@
     "Save section": "حفظ القسم",
     "Reset to default": "إعادة إلى الافتراضي",
     "Reset :section to its default text?": "إعادة قسم :section إلى نصه الافتراضي؟",
-    "Its words in both languages go back to what the page shipped with, and are live at once. Whether it is shown, and its place, stay.": "تعود كلماته باللغتين إلى ما صدرت به الصفحة، وتظهر فوراً. ويبقى ظهوره ومكانه كما هما."
+    "Its words in both languages go back to what the page shipped with, and are live at once. Whether it is shown, and its place, stay.": "تعود كلماته باللغتين إلى ما صدرت به الصفحة، وتظهر فوراً. ويبقى ظهوره ومكانه كما هما.",
+    "Search and sharing": "البحث والمشاركة",
+    "How the public site appears in search results and when a link to it is shared.": "كيف يظهر الموقع العام في نتائج البحث وعند مشاركة رابط إليه.",
+    "Page title": "عنوان الصفحة",
+    "Shared link title": "عنوان الرابط المشترك",
+    "Shared link text": "نص الرابط المشترك",
+    "Search and sharing saved.": "حُفظت إعدادات البحث والمشاركة.",
+    "Search results": "نتائج البحث",
+    "The page title, and the description a search engine may show under it.": "عنوان الصفحة، والوصف الذي قد يعرضه محرك البحث تحته.",
+    "Shared links": "الروابط المشتركة",
+    "What a message or a social post shows when someone shares a link to the site.": "ما تعرضه رسالة أو منشور على وسائل التواصل عندما يشارك أحدهم رابطاً إلى الموقع.",
+    "The current picture": "الصورة الحالية",
+    "Remove the picture": "إزالة الصورة",
+    "Replace the picture": "استبدال الصورة",
+    "Picture": "الصورة",
+    "Optional. A PNG, JPEG or WebP of at most 1 MB; 1200 by 630 pixels suits most sites.": "اختياري. صورة PNG أو JPEG أو WebP لا يتجاوز حجمها 1 ميغابايت؛ ويناسب مقاس 1200 × 630 بكسل معظم المواقع."
 }
