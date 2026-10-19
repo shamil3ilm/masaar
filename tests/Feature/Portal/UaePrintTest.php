@@ -101,7 +101,10 @@ class UaePrintTest extends TestCase
             ->assertOk()->assertSee('Human-readable version of the electronic invoice.');
     }
 
-    /** A reverse-charge line prints the statement Art. 59(1)(l) asks for. */
+    /**
+     * A reverse-charge line prints the statement Art. 59(1)(l) asks for, citing
+     * the clause of Article 48 of the Decree-Law its goods type names.
+     */
     public function test_a_reverse_charge_says_so(): void
     {
         $invoice = $this->uaeInvoice($this->gulf, [], [$this->uaeLine(['tax_category' => 'AE', 'tax_rate' => 0, 'tax_amount' => 0, 'line_total' => 1000])], [
@@ -111,7 +114,7 @@ class UaePrintTest extends TestCase
 
         $this->portal()->get(route('portal.invoices.print', ['invoiceId' => $invoice->id, 'paper' => 'a4']))
             ->assertOk()->assertSee('data-print-statement', false)
-            ->assertSee('Reverse charge: the recipient is required to account for the VAT on this supply under the VAT Decree-Law.');
+            ->assertSee('Reverse charge: the Recipient is required to account for Tax on this supply under Clause 3 of Article 48 of Federal Decree-Law No. 8 of 2017 on Value Added Tax.');
     }
 
     public function test_a_draft_or_rejection_prints_nothing(): void

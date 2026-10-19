@@ -105,7 +105,8 @@ final class PrintedInvoice
             'status' => $status,
             'title' => $this->title($document->category),
             'note' => $this->note($status),
-            'meta' => $this->meta($document, $uuid),
+            'meta' => $this->meta($document, $uuid, $invoice),
+            'credit' => $this->credit($invoice, $document, $money),
             'seller' => $this->party($document->seller, true),
             'buyer' => $this->party($document->buyer, false),
             'foreign' => $foreign,
@@ -133,14 +134,21 @@ final class PrintedInvoice
         ];
     }
 
-    /** Art. 59(1)(a): the words "Tax Invoice", or the document's own kind. */
+    /**
+     * The words the Executive Regulation has displayed (MoF text, 09-2026):
+     * "Tax Invoice", Art. 59(1)(a) p51; "Tax Credit Note", Art. 60(1)(a)
+     * p54; on one the buyer raises, "Tax Invoice raised by buyer", Art.
+     * 59(9)(d) p53, and "Tax Credit Note created by buyer", Art. 60(4)(d)
+     * p55. A commercial invoice - no Tax Invoice under the Decree-Law - is
+     * named as the Electronic Invoicing Guidelines name it (10.2.1, p22).
+     */
     private function title(PintDocumentCategory $category): PrintLabel
     {
         return match ($category) {
             PintDocumentCategory::TaxInvoice => new PrintLabel('Tax Invoice', 'فاتورة ضريبية'),
             PintDocumentCategory::TaxCreditNote => new PrintLabel('Tax Credit Note', 'إشعار دائن ضريبي'),
-            PintDocumentCategory::SelfBilledInvoice => new PrintLabel('Tax Invoice (self-billed)', 'فاتورة ضريبية (فوترة ذاتية)'),
-            PintDocumentCategory::SelfBilledCreditNote => new PrintLabel('Tax Credit Note (self-billed)', 'إشعار دائن ضريبي (فوترة ذاتية)'),
+            PintDocumentCategory::SelfBilledInvoice => new PrintLabel('Tax Invoice raised by buyer', 'فاتورة ضريبية صادرة عن المشتري'),
+            PintDocumentCategory::SelfBilledCreditNote => new PrintLabel('Tax Credit Note created by buyer', 'إشعار دائن ضريبي صادر عن المشتري'),
             PintDocumentCategory::CommercialInvoice => new PrintLabel('Commercial Invoice', 'فاتورة تجارية'),
             PintDocumentCategory::CommercialCreditNote => new PrintLabel('Credit Note', 'إشعار دائن'),
         };
@@ -167,7 +175,7 @@ final class PrintedInvoice
     /**
      * @return list<ReceiptRow>
      */
-    private function meta(PintDocument $document, ?string $uuid): array
+    private function meta(PintDocument $document, ?string $uuid, Invoice $invoice): array
     {
         return array_values(array_filter([
             new ReceiptRow(new PrintLabel('Invoice number', 'رقم الفاتورة'), $document->number, true),
@@ -175,8 +183,10 @@ final class PrintedInvoice
             $document->taxPointDate ? new ReceiptRow(new PrintLabel('Date of supply', 'تاريخ التوريد'), $document->taxPointDate) : null,
             $document->periodStart && $document->periodEnd ? new ReceiptRow(new PrintLabel('Billing period', 'فترة الفوترة'), $document->periodStart.' - '.$document->periodEnd) : null,
             $document->dueDate ? new ReceiptRow(new PrintLabel('Due date', 'تاريخ الاستحقاق'), $document->dueDate) : null,
+            // Art. 60(1)(g) and (f), p54-55: what identifies the supply a
+            // credit note relates to, and why it is issued.
             $document->billingReferences !== [] ? new ReceiptRow(new PrintLabel('Invoice credited', 'الفاتورة الأصلية'), implode(', ', $document->billingReferences)) : null,
-            $document->creditReason ? new ReceiptRow(new PrintLabel('Reason', 'السبب'), $document->creditReason) : null,
+            $document->category->isCreditNote() && ($reason = $this->reason($document, $invoice)) !== null ? new ReceiptRow(new PrintLabel('Reason', 'السبب'), $reason) : null,
             $document->orderReference ? new ReceiptRow(new PrintLabel('Purchase order', 'رقم أمر الشراء'), $document->orderReference) : null,
             $document->contractReference ? new ReceiptRow(new PrintLabel('Contract', 'رقم العقد'), $document->contractReference) : null,
             $document->buyerReference ? new ReceiptRow(new PrintLabel('Buyer reference', 'مرجع المشتري'), $document->buyerReference) : null,
@@ -248,23 +258,155 @@ final class PrintedInvoice
     }
 
     /**
-     * Art. 59(1)(l): where the recipient accounts for the tax, a statement
-     * that it does.
+     * Art. 59(1)(l), p51: where the recipient accounts for the tax, "a
+     * statement that the Recipient is required to account for Tax, and a
+     * reference to the relevant provision of the Decree-Law". The provision
+     * is a clause of Article 48 of the Decree-Law (MoF text, pp23-25): Clause
+     * 3 for crude or refined oil, natural gas and pure hydrocarbons between
+     * Registrants, Clause 8 for goods or services the Cabinet has specified,
+     * Clause 1 for imported concerned goods or services. A line's goods
+     * type (BTAE-09: DL8.48.3.x, DL8.48.8.x) says which; with none, Article
+     * 48 is cited without a clause.
      *
      * @return list<PrintLabel>
      */
     private function statements(PintDocument $document): array
     {
+        $clauses = [];
+
         foreach ($document->lines as $line) {
-            if ($line->category === PintTaxCategory::ReverseCharge) {
-                return [new PrintLabel(
-                    'Reverse charge: the recipient is required to account for the VAT on this supply under the VAT Decree-Law.',
-                    'احتساب عكسي: يلتزم المتلقي باحتساب ضريبة القيمة المضافة على هذا التوريد وفقاً للمرسوم بقانون بشأن ضريبة القيمة المضافة.',
-                )];
+            if ($line->category !== PintTaxCategory::ReverseCharge) {
+                continue;
             }
+
+            $clauses[] = preg_match('/^DL8\.48\.(\d+)\./', (string) $line->goodsType, $match) === 1 ? (int) $match[1] : 0;
         }
 
-        return [];
+        if ($clauses === []) {
+            return [];
+        }
+
+        $clauses = array_values(array_unique($clauses));
+        sort($clauses);
+        $named = array_values(array_filter($clauses));
+        $where = $named === []
+            ? new PrintLabel('Article 48', 'المادة 48')
+            : new PrintLabel(
+                (count($named) > 1 ? 'Clauses ' : 'Clause ').implode(' and ', $named).' of Article 48',
+                (count($named) > 1 ? 'البندين ' : 'البند ').implode(' و', $named).' من المادة 48',
+            );
+
+        return [new PrintLabel(
+            'Reverse charge: the Recipient is required to account for Tax on this supply under '.$where->en.' of Federal Decree-Law No. 8 of 2017 on Value Added Tax.',
+            'احتساب عكسي: يلتزم المتلقي باحتساب الضريبة على هذا التوريد وفقاً ل'.$where->ar.' من المرسوم بقانون اتحادي رقم 8 لسنة 2017 بشأن ضريبة القيمة المضافة.',
+        )];
+    }
+
+    /**
+     * Art. 60(1)(e), p54: on a Tax Credit Note "the value of the supply shown
+     * on the Tax Invoice, the correct amount of the value of the supply, the
+     * difference between those two amounts, and the Tax charged that relates
+     * to that difference in AED", the value shown being the one left by any
+     * earlier credit note on the same invoice. The invoice credited is this
+     * organization's, found by its number; a credit note naming none (a
+     * volume discount) or one issued elsewhere states the difference and its
+     * tax only.
+     *
+     * @return list<ReceiptRow>|null
+     */
+    private function credit(Invoice $invoice, PintDocument $document, \Closure $money): ?array
+    {
+        if (! $document->category->isCreditNote()) {
+            return null;
+        }
+
+        $aed = fn (string $amount): string => $document->exchangeRate === null ? $amount : bcmul($amount, $document->exchangeRate, 2);
+        $difference = $aed($document->taxExclusiveAmount);
+        $tax = $document->taxAmountInTaxCurrency ?? $document->taxAmount;
+        $rows = [];
+        $original = $invoice->exists ? $this->originalValue($invoice) : null;
+
+        if ($original !== null) {
+            $rows[] = new ReceiptRow(new PrintLabel('Value of the supply on the tax invoice', 'قيمة التوريد في الفاتورة الضريبية'), $money($original, PintAe::TAX_CURRENCY));
+            $rows[] = new ReceiptRow(new PrintLabel('Correct value of the supply', 'القيمة الصحيحة للتوريد'), $money(bcsub($original, $difference, 2), PintAe::TAX_CURRENCY));
+        }
+
+        $rows[] = new ReceiptRow(new PrintLabel('Difference', 'الفرق'), $money($difference, PintAe::TAX_CURRENCY));
+        $rows[] = new ReceiptRow(new PrintLabel('Tax on the difference', 'الضريبة على الفرق'), $money($tax, PintAe::TAX_CURRENCY), true);
+
+        return $rows;
+    }
+
+    /**
+     * The value excluding tax, in AED, the credited invoice shows after any
+     * earlier credit notes on it; null when it is not one of this
+     * organization's invoices.
+     */
+    private function originalValue(Invoice $note): ?string
+    {
+        $reference = trim((string) $note->billing_ref);
+
+        if ($reference === '') {
+            return null;
+        }
+
+        $credited = Invoice::withoutTenantScope(fn () => Invoice::query()
+            ->with('lines.charges')
+            ->where('org_id', $note->org_id)
+            ->where('invoice_number', $reference)
+            ->where('document_type', 'invoice')
+            ->first());
+
+        if ($credited === null) {
+            return null;
+        }
+
+        $value = $this->valueInAed($this->preparer->document($credited));
+
+        $earlier = Invoice::withoutTenantScope(fn () => Invoice::query()
+            ->with('lines.charges')
+            ->where('org_id', $note->org_id)
+            ->where('billing_ref', $reference)
+            ->where('document_type', 'credit_note')
+            ->where('status', '!=', 'draft')
+            ->whereKeyNot($note->id)
+            ->where('issued_at', '<', $note->issued_at ?? now())
+            ->get());
+
+        foreach ($earlier as $previous) {
+            $value = bcsub($value, $this->valueInAed($this->preparer->document($previous)), 2);
+        }
+
+        return $value;
+    }
+
+    private function valueInAed(PintDocument $document): string
+    {
+        return $document->exchangeRate === null ? bcadd($document->taxExclusiveAmount, '0', 2) : bcmul($document->taxExclusiveAmount, $document->exchangeRate, 2);
+    }
+
+    /**
+     * Art. 60(1)(f): a brief explanation. The reason typed, else the
+     * Decree-Law case its code names (Art. 61(1)(a)-(e), MoF text pp29-30).
+     */
+    private function reason(PintDocument $document, Invoice $invoice): ?string
+    {
+        $typed = trim((string) $invoice->adjustment_reason);
+
+        if ($typed !== '') {
+            return $typed;
+        }
+
+        return match ($document->creditReason) {
+            'DL8.61.1.A' => 'The supply was cancelled (Decree-Law Art. 61(1)(a))',
+            'DL8.61.1.B' => 'The tax treatment changed with the nature of the supply (Art. 61(1)(b))',
+            'DL8.61.1.C' => 'The agreed consideration was altered (Art. 61(1)(c))',
+            'DL8.61.1.D' => 'Goods or services were returned and the consideration refunded (Art. 61(1)(d))',
+            'DL8.61.1.E' => 'Tax was charged or a tax treatment applied in error (Art. 61(1)(e))',
+            'VD' => 'Volume discount',
+            null, '' => null,
+            default => $document->creditReason,
+        };
     }
 
     private function categoryLabel(PintTaxCategory $category): PrintLabel

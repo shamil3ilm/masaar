@@ -120,6 +120,20 @@
         @endforeach
     </dl>
 
+    @if ($page['credit'])
+        {{-- Art. 60(1)(e): the value on the tax invoice, the correct value,
+             the difference and its tax, in AED. --}}
+        <dl class="mb-6 ms-auto w-full space-y-1 text-sm sm:w-96" data-print-credit>
+            <p class="tpl-block-title">{{ $L('Adjustment', 'التعديل') }}</p>
+            @foreach ($page['credit'] as $row)
+                <div @class(['flex justify-between', 'border-t border-gray-300 pt-1 font-semibold' => $row->strong])>
+                    <dt>{{ $cap($row->label) }}</dt>
+                    <dd class="shrink-0 ps-4 tabular-nums whitespace-nowrap" dir="ltr">{{ $row->value }}</dd>
+                </div>
+            @endforeach
+        </dl>
+    @endif
+
     @foreach ($page['statements'] as $statement)
         @foreach ($template->lines($statement) as $line)
             <p class="mb-2 text-sm font-semibold" dir="{{ $line['arabic'] ? 'rtl' : 'ltr' }}" data-print-statement>{{ $line['text'] }}</p>

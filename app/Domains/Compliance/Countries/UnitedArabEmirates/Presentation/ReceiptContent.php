@@ -51,7 +51,8 @@ final class ReceiptContent
                 notes: array_values(array_filter([$line['description'], $line['exemption']])),
             ), $page['lines']),
             itemsNote: null,
-            totals: $page['totals'],
+            // A credit note's adjustment after the totals (Art. 60(1)(e)).
+            totals: [...$page['totals'], ...($page['credit'] ?? [])],
             notes: null,
             qrPayload: '',
             // In both languages: the template leaves out the one it does

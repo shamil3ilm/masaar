@@ -163,7 +163,7 @@ class InvoiceTemplateScreensTest extends TestCase
         $portal()->get(route('portal.invoice-template.edit'))->assertOk()
             ->assertSee('data-template-preview', false)
             ->assertSee('data-locked-field="reverse_charge_statement"', false)
-            ->assertSee('VAT Executive Regulation Art. 59(1)(l)');
+            ->assertSee('Art. 59(1)(l), p51; VAT Decree-Law Art. 48, pp23-25');
 
         $portal()->get(route('portal.invoice-template.preview', ['paper' => 'a4']))->assertOk()
             ->assertSee('Tax Invoice')->assertSee('Gulf Trading LLC')->assertSee('100123456700003')

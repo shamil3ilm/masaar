@@ -205,6 +205,26 @@
     </tr>
 </table>
 
+@if ($page['credit'])
+{{-- Art. 60(1)(e): the value on the tax invoice, the correct value, the
+     difference and its tax, in AED. --}}
+<table width="100%" autosize="1" style="margin-top: 8pt;">
+    <tr>
+        <td width="40%"></td>
+        <td width="60%">
+            <span class="block-title">{{ $L('Adjustment', 'التعديل') }}</span>
+            <table class="totals" style="width: 100%;" data-print-credit>
+@foreach ($page['credit'] as $row)
+                <tr @class(['grand' => $row->strong])>
+                    <td>{{ $cap($row->label) }}</td>
+                    <td class="num">{{ $row->value }}</td>
+                </tr>
+@endforeach
+            </table>
+        </td>
+    </tr>
+</table>
+@endif
 @foreach ($page['statements'] as $statement)
 @foreach ($note($statement) as $line)
 <div class="note" dir="{{ $line['arabic'] ? 'rtl' : 'ltr' }}" style="direction: {{ $line['arabic'] ? 'rtl' : 'ltr' }}; font-weight: bold; margin-top: 6pt;" data-print-statement>{{ $line['text'] }}</div>

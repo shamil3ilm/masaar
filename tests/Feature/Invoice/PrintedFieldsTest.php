@@ -176,7 +176,7 @@ class PrintedFieldsTest extends TestCase
             $this->assertNotEmpty($fields);
 
             foreach ($fields as $field) {
-                $this->assertMatchesRegularExpression('/Art\. \d+|BT-\d+|KSA-\d+/', $field->source, $field->key);
+                $this->assertMatchesRegularExpression('/Art\. \d+|BT-\d+|KSA-\d+|Guidelines v[\d.]+, [\d.]+/', $field->source, $field->key);
                 $this->assertNotSame('', $field->label->ar, $field->key);
                 $this->assertNotSame([], [...$field->always, ...$field->whenGiven], $field->key);
             }
@@ -186,10 +186,12 @@ class PrintedFieldsTest extends TestCase
     /**
      * A UAE tax invoice to a buyer not yet on electronic invoicing, printed
      * as the guidelines require (Electronic Invoicing Guidelines v1.1,
-     * 10.2.2): every field of VAT Executive Regulation Art. 59(1) its
-     * invoices have, in every layout on every paper - one in dirhams with a
-     * discount and an earlier date of supply, one in dollars with a
-     * reverse-charge line.
+     * 10.2.2, p23): every particular of the Executive Regulation's Art. 59(1)
+     * (a)-(l) (MoF consolidated text to Cabinet Decision No. 149 of 2026,
+     * p51) its invoices have, in every layout on every paper - one in
+     * dirhams with a discount and an earlier date of supply, one in dollars
+     * with a reverse-charge line under Clause 3 of Article 48 of the
+     * Decree-Law, and a Tax Credit Note with Art. 60(1)(e)-(g) (pp54-55).
      */
     #[DataProvider('layoutsAndPapers')]
     public function test_uae_fields_print_in_every_layout(TemplateLayout $layout, PaperSize $paper): void
@@ -214,9 +216,13 @@ class PrintedFieldsTest extends TestCase
                 $this->uaeLine(['description' => 'Mobile phones', 'item_name' => 'Phones', 'quantity' => 1, 'unit_code' => 'H87', 'unit_price' => 400, 'net_amount' => 400, 'tax_category' => 'AE', 'tax_rate' => 0, 'tax_amount' => 0, 'line_total' => 400]),
             ], [...$reserved, 'lines' => ['2' => ['goods_type' => 'DL8.48.3.1']]]),
         ];
+        // A credit of 100 AED net on the dirham invoice (1,200 AED net).
+        $invoices['credit note'] = $this->uaeInvoice($gulf, ['document_type' => 'credit_note', 'billing_ref' => $invoices['dirhams']->invoice_number, 'due_date' => null], [
+            $this->uaeLine(['quantity' => 1, 'unit_price' => 100, 'net_amount' => 100, 'tax_amount' => 5, 'line_total' => 105]),
+        ], [...$reserved, 'credit_reason' => 'DL8.61.1.C']);
 
         foreach ($invoices as $name => $invoice) {
-            $expected = $this->uaeValues($invoice, $name === 'dollars');
+            $expected = $this->uaeValues($invoice, $name);
             $pages = [
                 'print view' => (string) $this->actingAs($this->member)->withSession(['portal_org_id' => $gulf->id])
                     ->get(route('portal.invoices.print', ['invoiceId' => $invoice->id, 'paper' => $paper->value]))->assertOk()->getContent(),
@@ -250,10 +256,13 @@ class PrintedFieldsTest extends TestCase
      *
      * @return array<string, array{bool, list<string>}>
      */
-    private function uaeValues(Invoice $invoice, bool $dollars): array
+    private function uaeValues(Invoice $invoice, string $name): array
     {
+        $dollars = $name === 'dollars';
+        $credit = $name === 'credit note';
+
         return [
-            'title' => [true, ['Tax Invoice']],
+            'title' => [true, [$credit ? 'Tax Credit Note' : 'Tax Invoice']],
             'seller_name' => [true, ['Gulf Trading LLC']],
             'seller_address' => [true, ['Sheikh Zayed Road', 'Dubai']],
             'seller_vat_number' => [true, ['100123456700003']],
@@ -262,18 +271,23 @@ class PrintedFieldsTest extends TestCase
             'buyer_vat_number' => [true, ['100765432100003']],
             'invoice_number' => [true, [$invoice->invoice_number]],
             'issue_date' => [true, ['2026-10-10']],
-            'supply_date' => [! $dollars, ['2026-10-05']],
+            'supply_date' => [$name === 'dirhams', ['2026-10-05']],
             'line_description' => [true, ['Consulting']],
-            'line_unit_price' => [true, [$dollars ? '500.00 USD' : '500.00 AED']],
-            'line_quantity' => [true, ['2']],
+            'line_unit_price' => [true, [$dollars ? '500.00 USD' : ($credit ? '100.00 AED' : '500.00 AED')]],
+            'line_quantity' => [true, [$credit ? '1' : '2']],
             'line_vat_rate' => [true, ['5%']],
-            'line_vat' => [true, [$dollars ? '183.63 AED' : '50.00 AED']],
-            'line_total' => [true, [$dollars ? '3,856.13 AED' : '1,050.00 AED']],
-            'line_discount' => [! $dollars, ['-100.00 AED']],
-            'total_with_vat' => [true, [$dollars ? '1,450.00 USD' : '1,260.00 AED']],
-            'vat_total' => [true, [$dollars ? '50.00 USD' : '60.00 AED']],
-            'vat_in_accounting_currency' => [$dollars, ['1 USD = 3.6725 AED', '183.63 AED']],
-            'reverse_charge_statement' => [$dollars, ['Reverse charge: the recipient is required to account for the VAT on this supply under the VAT Decree-Law.']],
+            'line_vat' => [true, [$dollars ? '183.63 AED' : ($credit ? '5.00 AED' : '50.00 AED')]],
+            'line_total' => [true, [$dollars ? '3,856.13 AED' : ($credit ? '105.00 AED' : '1,050.00 AED')]],
+            'line_discount' => [$name === 'dirhams', ['-100.00 AED']],
+            // Art. 59(1)(j) and (k): the gross amount and the tax in AED.
+            'total_with_vat' => [true, $dollars ? ['1,450.00 USD', '5,325.13 AED'] : [$credit ? '105.00 AED' : '1,260.00 AED']],
+            'vat_total' => [true, $dollars ? ['50.00 USD', '183.63 AED'] : [$credit ? '5.00 AED' : '60.00 AED']],
+            'vat_in_accounting_currency' => [$dollars, ['1 USD = 3.6725 AED']],
+            'reverse_charge_statement' => [$dollars, ['Reverse charge: the Recipient is required to account for Tax on this supply under Clause 3 of Article 48 of Federal Decree-Law No. 8 of 2017 on Value Added Tax.']],
+            // Art. 60(1)(e): 1,200 on the invoice, 1,100 correct, 100 and its 5.
+            'credit_note_values' => [$credit, ['1,200.00 AED', '1,100.00 AED', '100.00 AED', '5.00 AED']],
+            'credit_note_reason' => [$credit, ['The agreed consideration was altered (Art. 61(1)(c))']],
+            'credit_note_reference' => [$credit, ['Invoice credited']],
         ];
     }
 
