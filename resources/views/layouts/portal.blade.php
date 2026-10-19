@@ -151,7 +151,9 @@
 
         {{-- min-w-0 is what makes a table's scroll area work at all: a flex
              child will not shrink below its content without it. --}}
-        <main class="min-w-0 flex-1">
+        {{-- The country's second calendar, if it keeps one: the date picker
+             shows each day in it (resources/js/date-field.js). --}}
+        <main class="min-w-0 flex-1" @if ($navCountry->alternateCalendar()) data-alt-calendar="{{ $navCountry->alternateCalendar() }}" @endif>
             <x-zatca-environment-banner />
             @php($portalOrganization = app(\App\Domains\Organization\Services\TenantResolver::class)->getOrganization())
             @if ($portalOrganization?->isSuspended())

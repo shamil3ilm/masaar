@@ -18,6 +18,7 @@ use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Listing\Lists;
 use App\Http\Listing\ListState;
+use App\Support\CountryNames;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -171,7 +172,8 @@ class PortalCustomerController extends Controller
             'district' => ['nullable', 'string', 'max:100'],
             'city' => ['nullable', 'string', 'max:100'],
             'postal_code' => ['nullable', 'string', 'max:10'],
-            'country_code' => ['required', 'string', 'size:2', 'regex:/^[A-Z]{2}$/'],
+            // A code from the list the form offers (ISO 3166-1 alpha-2).
+            'country_code' => ['required', 'string', 'size:2', 'regex:/^[A-Z]{2}$/', Rule::in(CountryNames::CODES)],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:30'],
             // Printed on the invoices that take them: in Arabic where the

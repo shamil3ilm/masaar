@@ -56,6 +56,37 @@ class BrowserDrawnTest extends TestCase
     }
 
     /**
+     * A date or a time is entered through its component, never a bare
+     * native input: the browser's own calendar is in the browser's
+     * language, and knows no Hijri.
+     */
+    public function test_no_bare_date_or_time_inputs(): void
+    {
+        $this->assertSame([], $this->using('/type="(?:date|time|datetime-local|month|week)"/', [
+            'components/ui/date-input.blade.php', 'components/ui/time-input.blade.php',
+        ]), 'Use <x-ui.date-input> or <x-ui.time-input>.');
+    }
+
+    /**
+     * The views, outside those allowed, whose code matches.
+     *
+     * @param  list<string>  $allowed
+     * @return list<string>
+     */
+    private function using(string $pattern, array $allowed): array
+    {
+        $found = [];
+
+        foreach ($this->views() as $relative => $source) {
+            if (! in_array($relative, $allowed, true) && ! str_starts_with($relative, 'pdf/') && preg_match($pattern, $source) === 1) {
+                $found[] = $relative;
+            }
+        }
+
+        return $found;
+    }
+
+    /**
      * Every view, without its Blade comments.
      *
      * @return array<string, string>

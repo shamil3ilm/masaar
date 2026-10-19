@@ -183,6 +183,16 @@
                     </optgroup>
                 </x-ui.select>
             </x-ui.field>
+            {{-- data-alt-calendar is what the portal layout sets for a
+                 Saudi organization: each day shows its Umm al-Qura date. --}}
+            <div data-alt-calendar="islamic-umalqura">
+                <x-ui.field :label="$t('Issue date', 'تاريخ الإصدار')" :hint="$t('Type it, or open the calendar. With a second calendar, the Hijri date shows under the field.', 'اكتبه أو افتح التقويم. ومع تقويم ثانٍ يظهر التاريخ الهجري تحت الحقل.')">
+                    <x-ui.date-input name="specimen_issue_date" value="2026-10-14" min="2026-01-01" max="2026-12-31" />
+                </x-ui.field>
+            </div>
+            <x-ui.field :label="$t('Delivery time', 'وقت التسليم')" optional>
+                <x-ui.time-input name="specimen_time" value="13:30" />
+            </x-ui.field>
             <x-ui.field :label="$t('Note', 'ملاحظة')" class="sm:col-span-2">
                 <x-ui.textarea name="specimen_note" rows="2" />
             </x-ui.field>

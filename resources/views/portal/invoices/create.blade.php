@@ -60,20 +60,20 @@
 
             <div>
                 <x-ui.field :label="__('Issue date')">
-                    <x-ui.input type="date" name="issue_date" id="issue_date"
+                    <x-ui.date-input name="issue_date" id="issue_date"
                                 value="{{ old('issue_date', now()->toDateString()) }}" required />
                 </x-ui.field>
             </div>
 
             <div>
                 <x-ui.field :label="__('Supply date')">
-                    <x-ui.input type="date" name="supply_date" id="supply_date" value="{{ old('supply_date') }}" />
+                    <x-ui.date-input name="supply_date" id="supply_date" value="{{ old('supply_date') }}" />
                 </x-ui.field>
             </div>
 
             <div>
                 <x-ui.field :label="__('Supply end date')">
-                    <x-ui.input type="date" name="supply_end_date" id="supply_end_date" value="{{ old('supply_end_date') }}" />
+                    <x-ui.date-input name="supply_end_date" id="supply_end_date" value="{{ old('supply_end_date') }}" />
                 </x-ui.field>
                 <p class="mt-1 text-xs text-muted">{{ __('For a supply over a period, such as a subscription.') }}</p>
             </div>
@@ -112,7 +112,7 @@
 
             <div>
                 <x-ui.field :label="__('Due date')">
-                    <x-ui.input type="date" name="due_date" id="due_date" value="{{ old('due_date') }}" />
+                    <x-ui.date-input name="due_date" id="due_date" value="{{ old('due_date') }}" />
                 </x-ui.field>
             </div>
 

@@ -69,7 +69,7 @@
             <x-ui.input type="text" name="reference" maxlength="100" value="{{ old('reference') }}" />
         </x-ui.field>
         <x-ui.field label="Received on">
-            <x-ui.input type="date" name="paid_at" required value="{{ old('paid_at', now()->toDateString()) }}" />
+            <x-ui.date-input name="paid_at" required value="{{ old('paid_at', now()->toDateString()) }}" />
         </x-ui.field>
         <div class="sm:col-span-3">
             <x-ui.field label="Notes (optional)">

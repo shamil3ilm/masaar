@@ -69,18 +69,27 @@ export function enhance(selector, setUp) {
  * @param {HTMLElement} anchor
  */
 export function placeUnder(panel, anchor) {
-    const box = anchor.getBoundingClientRect();
     const gap = 4;
     const margin = 8;
-    const width = Math.min(Math.max(box.width, panel.offsetWidth || 0), window.innerWidth - margin * 2);
 
     panel.style.position = 'fixed';
     panel.style.margin = '0';
-    panel.style.minWidth = `${Math.min(box.width, window.innerWidth - margin * 2)}px`;
+    panel.style.minWidth = `${Math.min(anchor.getBoundingClientRect().width, window.innerWidth - margin * 2)}px`;
 
     const height = panel.offsetHeight;
-    const below = window.innerHeight - box.bottom - gap - margin;
-    const top = height > below && box.top - gap - margin > below ? Math.max(margin, box.top - gap - height) : box.bottom + gap;
+    let box = anchor.getBoundingClientRect();
+    const fitsBelow = () => window.innerHeight - box.bottom - gap - margin >= height;
+    const fitsAbove = () => box.top - gap - margin >= height;
+
+    // Room on neither side: bring the page up so it fits under the field,
+    // rather than laying the panel over the field it belongs to.
+    if (!fitsBelow() && !fitsAbove()) {
+        window.scrollBy({ top: Math.min(box.top - margin, height - (window.innerHeight - box.bottom - gap - margin)), behavior: 'instant' });
+        box = anchor.getBoundingClientRect();
+    }
+
+    const width = Math.min(Math.max(box.width, panel.offsetWidth || 0), window.innerWidth - margin * 2);
+    const top = !fitsBelow() && fitsAbove() ? box.top - gap - height : box.bottom + gap;
 
     // Start-aligned with the anchor in either direction, kept on screen.
     const rtl = getComputedStyle(anchor).direction === 'rtl';

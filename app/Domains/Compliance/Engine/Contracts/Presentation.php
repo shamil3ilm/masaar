@@ -83,4 +83,12 @@ interface Presentation
      * first, say. One it does not use is not shown to its organizations.
      */
     public function usesCustomization(string $key): bool;
+
+    /**
+     * The calendar, besides the Gregorian, a date is read against in the
+     * country - a Unicode calendar identifier, as Intl takes it - or null
+     * where there is none. The date picker shows each day in it; every
+     * value stays Gregorian.
+     */
+    public function alternateCalendar(): ?string;
 }

@@ -107,7 +107,7 @@
             </x-ui.field>
 
             <x-ui.field :label="__('Appointed on')" error="appointed_at">
-                <x-ui.input type="date" name="appointed_at" value="{{ old('appointed_at', $appointment?->appointed_at?->toDateString()) }}" />
+                <x-ui.date-input name="appointed_at" value="{{ old('appointed_at', $appointment?->appointed_at?->toDateString()) }}" />
             </x-ui.field>
 
             <x-ui.field :label="__('Appointment reference')" error="reference">
@@ -116,7 +116,7 @@
             </x-ui.field>
 
             <x-ui.field :label="__('Your last date to appoint')" error="deadline_on">
-                <x-ui.input type="date" name="deadline_on" value="{{ old('deadline_on', $appointment?->deadline_on?->toDateString()) }}" />
+                <x-ui.date-input name="deadline_on" value="{{ old('deadline_on', $appointment?->deadline_on?->toDateString()) }}" />
                 <span class="mt-1 block text-xs font-normal text-muted">{{ __('Optional. Only if your revenue band sets a different date from the one shown above.') }}</span>
             </x-ui.field>
 

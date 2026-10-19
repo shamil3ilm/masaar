@@ -112,6 +112,12 @@ class Presentation implements PresentationPort
         return false;
     }
 
+    /** Dates in the UAE are read in the Gregorian calendar alone. */
+    public function alternateCalendar(): ?string
+    {
+        return null;
+    }
+
     private function refuse(): never
     {
         throw new DomainException(__('Issue the invoice first. A draft has no QR code and is not a tax invoice.'));

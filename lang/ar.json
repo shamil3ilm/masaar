@@ -2335,5 +2335,14 @@
     "Searching...": "جارٍ البحث...",
     "No matches": "لا توجد نتائج مطابقة",
     ":count results": "عدد النتائج: :count",
-    "Could not search just now. The list shows what is already here.": "تعذّر البحث الآن. تعرض القائمة ما هو متاح هنا بالفعل."
+    "Could not search just now. The list shows what is already here.": "تعذّر البحث الآن. تعرض القائمة ما هو متاح هنا بالفعل.",
+    "Choose a date": "اختر تاريخاً",
+    "YYYY-MM-DD": "مثال: ⁦2026-10-14⁩",
+    "Hijri": "هجري",
+    "Enter a date like 2026-10-14.": "أدخل تاريخاً مثل ⁦2026-10-14⁩.",
+    "Previous month": "الشهر السابق",
+    "Next month": "الشهر التالي",
+    "Choose a time": "اختر وقتاً",
+    "HH:MM": "مثال: ⁦13:30⁩",
+    "Enter a time like 13:30.": "أدخل وقتاً مثل 13:30."
 }

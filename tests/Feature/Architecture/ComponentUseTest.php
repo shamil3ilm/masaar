@@ -89,7 +89,7 @@ class ComponentUseTest extends TestCase
 
             $loose = (string) preg_replace('#<x-ui\.field\b.*?</x-ui\.field>#s', '', $this->code($contents));
 
-            preg_match_all('/<x-ui\.(?:input|select|textarea)\b(?:[^>"]|"[^"]*")*>/s', $loose, $controls);
+            preg_match_all('/<x-ui\.(?:input|select|textarea|date-input|time-input|country-select|file)\b(?:[^>"]|"[^"]*")*>/s', $loose, $controls);
 
             foreach ($controls[0] as $control) {
                 if (preg_match('/type="hidden"|aria-label/', $control) !== 1) {
