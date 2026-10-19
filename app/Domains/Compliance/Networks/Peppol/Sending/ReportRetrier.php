@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Networks\Peppol\Sending;
 
-use App\Domains\Compliance\Networks\Peppol\Contracts\AspGateway;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\AspRefusedException;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\AspUnavailableException;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\NoAspConfiguredException;
+use App\Domains\Compliance\Networks\Peppol\Gateways\AspGatewayResolver;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -32,7 +32,7 @@ final class ReportRetrier
     public const WINDOW_DAYS = 30;
 
     public function __construct(
-        private readonly AspGateway $gateway,
+        private readonly AspGatewayResolver $gateways,
         private readonly DocumentStatus $status,
     ) {}
 
@@ -69,7 +69,7 @@ final class ReportRetrier
         }
 
         try {
-            $this->gateway->retryReport((string) $document->asp_message_id);
+            $this->gateways->forDocument($document)->retryReport((string) $document->asp_message_id);
         } catch (NoAspConfiguredException) {
             return 'No service provider is configured.';
         } catch (AspUnavailableException|AspRefusedException $e) {

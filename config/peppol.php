@@ -35,7 +35,34 @@ return [
         'AE' => [
             'enabled' => (bool) env('PEPPOL_AE_ENABLED', false),
             'report_only_endpoints' => ['0235:9900000097', '0235:9900000098', '0235:9900000099'],
+            // Each UAE organization appoints one service provider (UAE
+            // Electronic Invoicing Guidelines v1.1, p14) by a last date its
+            // revenue band sets (p19). The date is the operator's to set, not
+            // the code's: empty, no reminders. Reminders go this many days
+            // before it, to an organization with no provider appointed.
+            'appointment' => [
+                'deadline' => env('PEPPOL_AE_APPOINTMENT_DEADLINE') ?: null,
+                'reminder_days' => [60, 30, 14, 7, 1],
+            ],
         ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Service providers, by purpose
+    |--------------------------------------------------------------------------
+    |
+    | The providers an organization can be resolved to (AspGatewayResolver),
+    | named by purpose, never by vendor. 'platform' is the platform's partner
+    | provider: the one at asp.* below, or the simulator. An organization
+    | names another through its customization 'einvoicing.service_provider';
+    | such an entry carries its own base_url, client_id, client_secret and
+    | webhook_secret, and is driven by the same HTTP gateway. Only the
+    | platform's is configured now.
+    |
+    */
+    'providers' => [
+        'platform' => ['label' => 'Platform partner provider'],
     ],
 
     /*

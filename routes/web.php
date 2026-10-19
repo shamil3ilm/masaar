@@ -17,6 +17,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\AdminAlertCont
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\AdminKillSwitchController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalSubmissionController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalZatcaController;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalProviderAppointmentController;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalReceivedController;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalUaeInvoiceController;
 use App\Domains\Compliance\Networks\Peppol\Http\Controllers\AdminPeppolController;
@@ -512,6 +513,8 @@ Route::prefix('portal')->name('portal.')
         Route::post('/company', [PortalCompanyController::class, 'update'])->name('company.update');
         Route::post('/company/security', [PortalCompanyController::class, 'security'])->name('company.security');
         Route::post('/company/pricing', [PortalCompanyController::class, 'pricing'])->name('company.pricing');
+        // A UAE organization's appointed e-invoicing service provider; anyone else gets a 404.
+        Route::post('/company/service-provider', [PortalProviderAppointmentController::class, 'update'])->name('company.service-provider');
 
         // Customers and products, which the invoice form fills itself from.
         Route::get('/customers', [PortalCustomerController::class, 'index'])->name('customers.index');

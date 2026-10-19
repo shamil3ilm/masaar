@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Networks\Peppol\Sending;
 
-use App\Domains\Compliance\Networks\Peppol\Contracts\AspGateway;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\AspUnavailableException;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\NoAspConfiguredException;
+use App\Domains\Compliance\Networks\Peppol\Gateways\AspGatewayResolver;
 use App\Domains\Compliance\Networks\Peppol\Receiving\InboundDocuments;
 use Illuminate\Support\Facades\Cache;
 
@@ -32,14 +32,15 @@ final class ParticipantDirectory
     private const UNREGISTERED_SECONDS = 600;
 
     public function __construct(
-        private readonly AspGateway $gateway,
+        private readonly AspGatewayResolver $gateways,
         private readonly ReportOnlyEndpoints $reportOnly,
     ) {}
 
     /**
+     * @param  string|null  $organizationId  whose provider asks: each looks up in its own way
      * @return bool|null true registered, false not, null unknown
      */
-    public function reachable(?string $endpoint): ?bool
+    public function reachable(?string $endpoint, ?string $organizationId = null): ?bool
     {
         $endpoint = InboundDocuments::endpoint((string) $endpoint);
 
@@ -47,7 +48,8 @@ final class ParticipantDirectory
             return null;
         }
 
-        $key = 'peppol:participant:'.hash('sha256', $endpoint);
+        $provider = $this->gateways->providerFor($organizationId);
+        $key = 'peppol:participant:'.hash('sha256', $provider.'|'.$endpoint);
         $known = Cache::get($key);
 
         if (is_bool($known)) {
@@ -55,7 +57,7 @@ final class ParticipantDirectory
         }
 
         try {
-            $registered = $this->gateway->participantExists($endpoint);
+            $registered = $this->gateways->forOrganization($organizationId)->participantExists($endpoint);
         } catch (NoAspConfiguredException|AspUnavailableException) {
             return null;
         }

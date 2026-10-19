@@ -164,6 +164,16 @@ Schedule::command('peppol:poll-status')
     ->when(fn () => filled(config('peppol.asp.base_url')) || config('peppol.gateway') === 'simulator')
     ->appendOutputTo(storage_path('logs/peppol-status.log'));
 
+// UAE organizations with no service provider appointed, reminded on each
+// configured day before their last date to appoint one (UAE Electronic
+// Invoicing Guidelines v1.1, p14, p19). Nothing while no date is set.
+Schedule::command('uae:remind-provider-appointments')
+    ->onOneServer()
+    ->dailyAt('08:00')
+    ->withoutOverlapping(30)
+    ->when(fn () => filled(config('peppol.countries.AE.appointment.deadline')) || config('peppol.countries.AE.enabled'))
+    ->appendOutputTo(storage_path('logs/peppol-status.log'));
+
 // A document whose worker died mid-call is looked up with the provider by
 // its own reference, then recorded as sent or sent again (UAE Electronic
 // Invoicing Guidelines v1.1, p46: pending invoices go out on resumption).

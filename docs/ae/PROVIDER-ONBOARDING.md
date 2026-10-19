@@ -269,6 +269,70 @@ the gateway per organization, and keep each organization's appointment as
 a record. Then adding a second provider is configuration and one adapter,
 not a redesign.
 
+### The decision
+
+The owner chose the middle way: **one platform partner provider now, built
+so that each organization can have its own later.** What that means in the
+platform:
+
+- **Resolved per organization.** Every organization's documents go through
+  the provider `AspGatewayResolver` resolves for it. That is the platform's
+  partner (`peppol.providers.platform`: the provider at `PEPPOL_ASP_*`, or
+  the simulator) unless the organization's customization
+  `einvoicing.service_provider` names another configured provider by its
+  purpose key. Only the partner is configured. A second provider needs:
+  - its entry under `peppol.providers`, with its base URL, credentials and
+    webhook secret;
+  - an adapter, if its API differs from the generic shape;
+  - callback routes that say which provider a callback comes from.
+- **An appointment record per UAE organization** (`provider_appointments`,
+  a compliance record that is never deleted). It holds:
+  - the provider, by purpose key;
+  - the status (`pending`, `appointed`, `ended`);
+  - when it was appointed;
+  - the EmaraTax or provider reference;
+  - the organization's own last date, if its revenue band sets one;
+  - who recorded and changed it.
+
+  Recording an appointment also points the organization's documents at that
+  provider. A change of provider ends the old record and starts a new one.
+- **Readiness.** "Appoint your e-invoicing service provider" is a setup
+  step on the organization's dashboard (done once it is recorded as
+  appointed) and on the admin console's organization page.
+- **Reminders.** Organizations with no provider appointed are emailed 60,
+  30, 14, 7 and 1 days before their last date. The date comes from
+  `PEPPOL_AE_APPOINTMENT_DEADLINE`, or from the organization's own date. It
+  is never hard-coded, because the date depends on the revenue band
+  (Guidelines p19). With no date set, nothing is sent. The obligation is to
+  appoint one provider for sending and receiving (Guidelines p14), through
+  EmaraTax (Guidelines p38-39).
+
+### Questions for a partner provider
+
+1. **Reseller model.** Can the platform resell your service, so that its
+   customers contract with the platform rather than with you? Or must each
+   taxpayer contract with you directly? Who holds the taxpayer relationship
+   for support and for the authority?
+2. **Appointment through a partner.** When a taxpayer appoints you through
+   EmaraTax, can the platform start or complete the onboarding on its
+   behalf? What does the taxpayer do in EmaraTax and in your portal, and
+   what reference confirms the appointment (Guidelines p38-39)?
+3. **Pricing.** Per document, per organization, or a platform volume tier?
+   Are inbound documents and reports to the authority priced apart? Is any
+   free allowance written into the contract? What does the sandbox cost?
+   (Considerations p7 asks about the pricing model.)
+4. **Sandbox.** One sandbox for the platform, with test participant
+   identifiers on both sides, covering the six tests on Guidelines p40-41,
+   including reporting during the Corner 5 pilot?
+5. **Moving a taxpayer.** When a taxpayer moves to or from you, how is the
+   re-appointment done in EmaraTax, what happens to its participant
+   identifier and to documents in flight, and what records and logs do you
+   hand over (Guidelines p41: reverification and offboarding)?
+6. **Many taxpayers, one connection.** Do you take documents for many
+   taxpayers over one platform connection, identified by participant
+   identifier? Or does each taxpayer need its own credentials and callback
+   secret?
+
 ## Gaps in the contract
 
 These are the gaps between `AspGateway` as it stands and what the UAE

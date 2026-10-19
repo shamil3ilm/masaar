@@ -175,7 +175,7 @@ class IssuingStep implements IssuingJurisdiction
     {
         $endpoint = $this->preparer->receiverEndpoint($invoice);
 
-        if ($this->participants->reachable($endpoint) !== false) {
+        if ($this->participants->reachable($endpoint, (string) $invoice->org_id) !== false) {
             return [];
         }
 

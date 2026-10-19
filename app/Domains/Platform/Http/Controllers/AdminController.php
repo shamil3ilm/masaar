@@ -6,6 +6,7 @@ namespace App\Domains\Platform\Http\Controllers;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Enums\RequeueOutcome;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\Requeuer;
+use App\Domains\Organization\Services\SetupChecklist;
 use App\Domains\Platform\DTOs\FilterData;
 use App\Domains\Platform\Services\ArabicNameReport;
 use App\Domains\Platform\Services\FeatureReport;
@@ -40,6 +41,7 @@ class AdminController extends Controller
         private readonly FeatureReport $features,
         private readonly ArabicNameReport $arabicNames,
         private readonly Lists $lists,
+        private readonly SetupChecklist $setup,
     ) {}
 
     /**
@@ -98,8 +100,11 @@ class AdminController extends Controller
         // Where its country requires Arabic: the grace and what is missing.
         $arabic = $this->arabicNames->summary($id);
         $peopleSwitches = $this->features->people($id);
+        // Its setup, as its own dashboard shows it: the country's steps too,
+        // such as appointing a UAE service provider.
+        $setup = $this->setup->stepsFor($id);
 
-        return view('admin.organization-detail', compact('organization', 'stats', 'recentSubmissions', 'certificate', 'members', 'features', 'arabic', 'peopleSwitches'));
+        return view('admin.organization-detail', compact('organization', 'stats', 'recentSubmissions', 'certificate', 'members', 'features', 'arabic', 'peopleSwitches', 'setup'));
     }
 
     /**

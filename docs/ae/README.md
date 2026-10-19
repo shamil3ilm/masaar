@@ -130,6 +130,14 @@ To set up an organization:
    registration. This creates the organization's active UAE compliance
    profile.
 
+3. An administrator records the service provider the organization appointed
+   through EmaraTax, on the portal's **Company** page. A business appoints
+   one provider for sending and receiving (UAE Electronic Invoicing
+   Guidelines v1.1, p14), by the last date its revenue band sets (p19). The
+   platform works with one partner provider. Until the appointment is
+   recorded, it is an open step on the organization's setup checklist, and
+   reminders go out before `PEPPOL_AE_APPOINTMENT_DEADLINE`.
+
 After that, the organization can draft and send invoices.
 
 The provider integration (`HttpAspGateway`) is a generic REST shape: an OAuth2

@@ -44,6 +44,7 @@ return Application::configure(basePath: dirname(__DIR__))
         __DIR__.'/../app/Domains/Billing/Console',
         __DIR__.'/../app/Domains/Platform/Console',
         __DIR__.'/../app/Domains/Compliance/Countries/SaudiArabia/Console',
+        __DIR__.'/../app/Domains/Compliance/Countries/UnitedArabEmirates/Console',
         __DIR__.'/../app/Domains/Compliance/Networks/Peppol/Console',
     ])
     ->withMiddleware(function (Middleware $middleware): void {

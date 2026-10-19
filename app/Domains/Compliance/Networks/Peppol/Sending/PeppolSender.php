@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Networks\Peppol\Sending;
 
-use App\Domains\Compliance\Networks\Peppol\Contracts\AspGateway;
 use App\Domains\Compliance\Networks\Peppol\DTOs\AspError;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\AspRefusedException;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\AspUnavailableException;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\NoAspConfiguredException;
+use App\Domains\Compliance\Networks\Peppol\Gateways\AspGatewayResolver;
 use App\Domains\Compliance\Networks\Peppol\Gateways\AspStatus;
 use App\Domains\Compliance\Networks\Peppol\Jobs\SendPeppolDocument;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
@@ -35,7 +35,7 @@ use Illuminate\Support\Facades\Log;
 final class PeppolSender
 {
     public function __construct(
-        private readonly AspGateway $gateway,
+        private readonly AspGatewayResolver $gateways,
         private readonly DocumentStatus $status,
         private readonly ReportOnlyEndpoints $reportOnly,
         private readonly ProviderOutage $outage,
@@ -108,7 +108,7 @@ final class PeppolSender
         }
 
         try {
-            $receipt = $this->gateway->submit($document);
+            $receipt = $this->gateways->forDocument($document)->submit($document);
         } catch (NoAspConfiguredException) {
             // Not an attempt: the document waits, uncounted, for a manual upload.
             $this->status->transition($documentId, DocumentStatus::READY, fn (PeppolDocument $locked) => [
@@ -198,8 +198,14 @@ final class PeppolSender
      */
     public function recover(string $documentId): string
     {
+        $stuck = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->find($documentId));
+
+        if ($stuck === null) {
+            return 'unknown';
+        }
+
         try {
-            $held = $this->gateway->findByReference($documentId);
+            $held = $this->gateways->forDocument($stuck)->findByReference($documentId);
         } catch (AspUnavailableException|NoAspConfiguredException) {
             return 'unknown';
         }

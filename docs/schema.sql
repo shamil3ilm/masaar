@@ -1175,6 +1175,26 @@ CREATE TABLE `products` (
     FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
 
+CREATE TABLE `provider_appointments` (
+    `id` STRING NOT NULL,
+    `appointed_at` TIMESTAMP NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `deadline_on` DATE NULL,
+    `ended_at` TIMESTAMP NULL,
+    `org_id` STRING NOT NULL,
+    `provider` STRING NOT NULL,
+    `reference` STRING NULL,
+    `status` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `provider_appointments_org_id_status_index` (`org_id`, `status`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`),
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
 CREATE TABLE `reporting_attempts` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `attempted_at` TIMESTAMP NOT NULL,

@@ -11,6 +11,9 @@
 
     @param \App\Domains\Organization\Models\Organization $organization
     @param array<string, string|null>                    $uae  the stored UAE settings
+    @param ProviderAppointment|null                       $appointment  the one in force (SellerRules::companyData)
+    @param \Carbon\CarbonImmutable|null                   $appointmentDeadline
+    @param array<string, string>                          $providers  purpose key => label
 --}}
 <div class="mb-6">
     <h1 class="text-2xl font-semibold tracking-tight text-fg">{{ __('Company') }}</h1>
@@ -78,4 +81,56 @@
     </div>
 
     <x-ui.button variant="primary">{{ __('Save company details') }}</x-ui.button>
+</form>
+
+{{-- The service provider this organization appointed: one, for sending and
+     receiving, through EmaraTax, by the last date its revenue band sets (UAE
+     Electronic Invoicing Guidelines v1.1, p14, p19, p38-39). Saved by
+     PortalProviderAppointmentController; recording one also routes the
+     organization's e-invoices through it (AspGatewayResolver). --}}
+<form method="POST" action="{{ route('portal.company.service-provider') }}" class="mb-6 max-w-2xl" data-service-provider>
+    @csrf
+    <x-ui.section :title="__('E-invoicing service provider')">
+        <div class="space-y-4">
+            <p class="text-sm text-muted">
+                @if ($appointmentDeadline)
+                    {{ __('Appoint one accredited service provider for sending and receiving e-invoices through EmaraTax by :date, then record it here.', ['date' => $appointmentDeadline->toDateString()]) }}
+                @else
+                    {{ __('Appoint one accredited service provider for sending and receiving e-invoices through EmaraTax, then record it here.') }}
+                @endif
+            </p>
+
+            <x-ui.field :label="__('Service provider')" error="provider">
+                <x-ui.select name="provider" required>
+                    @foreach ($providers as $key => $label)
+                        <option value="{{ $key }}" @selected(old('provider', $appointment?->provider ?? 'platform') === $key)>{{ __($label) }}</option>
+                    @endforeach
+                </x-ui.select>
+            </x-ui.field>
+
+            @php($appointmentStatus = old('status', $appointment?->status ?? 'pending'))
+            <x-ui.field :label="__('Appointment')" error="status">
+                <x-ui.select name="status" required>
+                    <option value="pending" @selected($appointmentStatus === 'pending')>{{ __('Not yet appointed') }}</option>
+                    <option value="appointed" @selected($appointmentStatus === 'appointed')>{{ __('Appointed') }}</option>
+                </x-ui.select>
+            </x-ui.field>
+
+            <x-ui.field :label="__('Appointed on')" error="appointed_at">
+                <x-ui.input type="date" name="appointed_at" value="{{ old('appointed_at', $appointment?->appointed_at?->toDateString()) }}" />
+            </x-ui.field>
+
+            <x-ui.field :label="__('Appointment reference')" error="reference">
+                <x-ui.input type="text" name="reference" maxlength="255" dir="ltr" value="{{ old('reference', $appointment?->reference) }}" />
+                <span class="mt-1 block text-xs font-normal text-muted">{{ __('Optional. The reference EmaraTax or the provider gave for the appointment.') }}</span>
+            </x-ui.field>
+
+            <x-ui.field :label="__('Your last date to appoint')" error="deadline_on">
+                <x-ui.input type="date" name="deadline_on" value="{{ old('deadline_on', $appointment?->deadline_on?->toDateString()) }}" />
+                <span class="mt-1 block text-xs font-normal text-muted">{{ __('Optional. Only if your revenue band sets a different date from the one shown above.') }}</span>
+            </x-ui.field>
+
+            <x-ui.button variant="secondary">{{ __('Save service provider') }}</x-ui.button>
+        </div>
+    </x-ui.section>
 </form>

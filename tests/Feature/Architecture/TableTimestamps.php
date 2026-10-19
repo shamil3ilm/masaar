@@ -148,6 +148,10 @@ final class TableTimestamps
             'actors' => ['zatca_notified_by' => 'zatca_notified_by', 'zatca_renotified_by' => 'zatca_renotified_by']],
         'peppol_documents' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',
             'system' => 'sent or received by the platform; the person is on the invoice'],
+        // Which service provider a UAE organization appointed (UAE Electronic
+        // Invoicing Guidelines v1.1, p14): its status moves, it is never deleted.
+        'provider_appointments' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',
+            'actors' => ['created_by' => 'created_by', 'updated_by' => 'updated_by']],
         // Every move, callback and lookup of a Peppol document, kept as it
         // came (UAE Electronic Invoicing Guidelines v1.1, p12).
         'peppol_document_events' => ['class' => 'd', 'event' => 'occurred_at', 'tenant' => 'parent:document_id',

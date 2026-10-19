@@ -6,9 +6,11 @@ namespace Tests\Feature\Compliance\UnitedArabEmirates;
 
 use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Issuing\InvoiceIssuer;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\ProviderAppointments;
 use App\Domains\Compliance\Exceptions\IssuanceRefusedException;
 use App\Domains\Compliance\Networks\Peppol\Console\PintValidator;
 use App\Domains\Compliance\Networks\Peppol\Contracts\AspGateway;
+use App\Domains\Compliance\Networks\Peppol\Gateways\AspGatewayResolver;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use App\Domains\Compliance\Networks\Peppol\Sending\DocumentHistory;
 use App\Domains\Compliance\Networks\Peppol\Sending\DocumentStatus;
@@ -300,6 +302,21 @@ class SimulatorConformanceTest extends TestCase
 
         $this->assertDelivered($this->sendNow($document));
         $this->assertFalse($outage->active());
+    }
+
+    /**
+     * The organization's appointed provider carries its e-invoices: the
+     * platform's partner, recorded as appointed (UAE Electronic Invoicing
+     * Guidelines v1.1, p14), resolved per organization.
+     */
+    public function test_appointed_provider_carries_the_invoice(): void
+    {
+        $draft = $this->draftFor('standard');
+        $organization = Organization::query()->findOrFail($draft->org_id);
+        app(ProviderAppointments::class)->record($organization, ['provider' => 'platform', 'status' => 'appointed', 'appointed_at' => now()->toDateString()], null);
+
+        $this->assertSame('platform', app(AspGatewayResolver::class)->providerFor((string) $organization->id));
+        $this->assertDelivered($this->sendIssued($draft));
     }
 
     /** No answer to the first attempt: the document waits, and the retry is delivered. */

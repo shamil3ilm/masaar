@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Rules;
 
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\ProviderAppointments;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaeSellerDetails;
 use App\Domains\Compliance\Engine\Contracts\SellerRules as SellerRulesPort;
+use App\Domains\Compliance\Networks\Peppol\Gateways\AspGatewayResolver;
 use App\Domains\Organization\DTOs\AddressFields;
 use App\Domains\Organization\DTOs\OrganizationChangesData;
 use App\Domains\Organization\Models\Organization;
@@ -41,6 +43,7 @@ class SellerRules implements SellerRulesPort
     public function __construct(
         private readonly UaeSellerDetails $details,
         private readonly Registrar $registrar,
+        private readonly ProviderAppointments $appointments,
     ) {}
 
     public function rules(bool $complete, ?Organization $existing = null): array
@@ -100,7 +103,13 @@ class SellerRules implements SellerRulesPort
 
     public function companyData(Organization $organization): array
     {
-        return ['uae' => $this->details->current($organization)];
+        return [
+            'uae' => $this->details->current($organization),
+            // The service provider it appointed, and by when it must (p14, p19).
+            'appointment' => $this->appointments->current((string) $organization->id),
+            'appointmentDeadline' => $this->appointments->deadline((string) $organization->id),
+            'providers' => AspGatewayResolver::configured(),
+        ];
     }
 
     /** The TRN: a seller with only a TIN is not VAT-registered, and has none. */
