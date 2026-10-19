@@ -8,8 +8,8 @@
     <p class="-mt-2 text-sm text-muted">{{ __('Your tax registration and the licence your company trades under, as the authority holds them. They are carried on every e-invoice you send.') }}</p>
 
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        @include('portal.partials.uae-tax-identity', ['values' => []])
-        @include('portal.partials.uae-legal-registration', ['values' => []])
+        @include('countries.united-arab-emirates.tax-identity', ['values' => []])
+        @include('countries.united-arab-emirates.legal-registration', ['values' => []])
     </div>
 </fieldset>
 

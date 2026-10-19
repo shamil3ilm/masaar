@@ -37,7 +37,7 @@
                             value="{{ old('name_ar', $organization->name_ar) }}" />
             </x-ui.field>
 
-            @include('portal.partials.uae-tax-identity', ['values' => $uae])
+            @include('countries.united-arab-emirates.tax-identity', ['values' => $uae])
 
             <x-ui.field :label="__('Peppol endpoint')">
                 <x-ui.input type="text" name="endpoint_id" maxlength="15" required dir="ltr" placeholder="0235:1234567890"
@@ -45,7 +45,7 @@
                 <span class="mt-1 block text-xs font-normal text-muted">{{ __('As your e-invoicing service provider issued it: 0235: followed by 10 digits. Invoices sent to you arrive here.') }}</span>
             </x-ui.field>
 
-            @include('portal.partials.uae-legal-registration', ['values' => $uae])
+            @include('countries.united-arab-emirates.legal-registration', ['values' => $uae])
 
             <x-ui.field :label="__('Payment account (IBAN)')">
                 <x-ui.input type="text" name="payment_account" maxlength="34" dir="ltr"

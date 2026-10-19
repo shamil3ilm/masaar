@@ -17,8 +17,9 @@ use Tests\TestCase;
 
 /**
  * A rename is config/brand.php and nothing else: with the brand set to
- * another name, the home page in both languages, the portal, an email, a
- * PDF and the API's description all say the new one, and none the old.
+ * another name, the home page in both languages, the portal, an email, an
+ * invoice PDF, the invoice template's editor and sample PDF, and the API's
+ * description all say the new one, and none the old.
  */
 class BrandRenameTest extends TestCase
 {
@@ -71,6 +72,22 @@ class BrandRenameTest extends TestCase
         [$organization] = $this->member();
 
         $pdf = app(InvoicePdf::class)->render($this->invoice($organization), $organization);
+
+        $this->assertStringContainsString('Nibras', $pdf);
+        $this->assertStringNotContainsString($this->old['en'], $pdf);
+    }
+
+    /** The invoice template's editor and its sample PDF, as an admin sees them. */
+    public function test_a_template_pdf_follows(): void
+    {
+        $admin = User::factory()->create(['is_platform_admin' => true, 'platform_role' => 'owner']);
+
+        $this->actingAs($admin)->get(route('admin.invoice-template.edit'))->assertOk()
+            ->assertSee('Nibras')
+            ->assertDontSee($this->old['en']);
+
+        $pdf = (string) $this->actingAs($admin)->get(route('admin.invoice-template.sample'))
+            ->assertOk()->assertHeader('Content-Type', 'application/pdf')->getContent();
 
         $this->assertStringContainsString('Nibras', $pdf);
         $this->assertStringNotContainsString($this->old['en'], $pdf);
