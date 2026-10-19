@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Invoice\Services;
 
 use App\Domains\Audit\Services\AuditService;
+use App\Domains\Invoice\Enums\InstalmentModel;
 use App\Domains\Invoice\Enums\ScheduleFrequency;
 use App\Domains\Invoice\Enums\ScheduleStatus;
 use App\Domains\Invoice\Models\InvoiceSchedule;
@@ -32,6 +33,7 @@ class Schedules
         private readonly AuditService $audit,
         private readonly Catalogue $catalogue,
         private readonly BranchService $branches,
+        private readonly Instalments $instalments,
     ) {}
 
     /**
@@ -120,10 +122,15 @@ class Schedules
             $terms ?? [],
         );
         $first = $periods->at(0) ?? throw ValidationException::withMessages(['end_date' => __('The schedule ends before its first period starts.')]);
+        $model = filled($attributes['instalment_model'] ?? null) ? InstalmentModel::from((string) $attributes['instalment_model']) : null;
+
+        if ($model !== null) {
+            $this->instalments->assertSplittable($organization, $template, $model, $periods->count());
+        }
 
         $this->checked($organization, $template, $frequency, $first['start'], $first['end'], $attributes['due_days'] ?? null);
 
-        return DB::transaction(function () use ($organization, $attributes, $frequency, $terms, $start, $template, $first): InvoiceSchedule {
+        return DB::transaction(function () use ($organization, $attributes, $frequency, $terms, $start, $template, $first, $model): InvoiceSchedule {
             $schedule = InvoiceSchedule::withoutTenantScope(fn () => InvoiceSchedule::query()->create([
                 'org_id' => $organization->id,
                 'branch_id' => $attributes['branch_id'] ?? null,
@@ -137,6 +144,7 @@ class Schedules
                 'occurrences' => $attributes['occurrences'] ?? null,
                 'auto_issue' => (bool) ($attributes['auto_issue'] ?? false),
                 'due_days' => $attributes['due_days'] ?? null,
+                'instalment_model' => $model,
                 'template' => $template,
                 'status' => ScheduleStatus::Active,
                 'next_period' => 0,
@@ -148,6 +156,7 @@ class Schedules
                 'frequency' => $frequency->value,
                 'start_date' => $start,
                 'auto_issue' => $schedule->auto_issue,
+                'instalment_model' => $model?->value,
             ], organizationId: (string) $organization->id);
 
             return $schedule;

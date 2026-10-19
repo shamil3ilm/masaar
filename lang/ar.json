@@ -2512,5 +2512,10 @@
     "A scheduled invoice was not made: :name": "لم تُنشأ فاتورة مجدولة: :name",
     "The invoice for :start to :end could not be made, and it has been tried several times. No invoice was issued for this period.": "تعذّر إنشاء فاتورة الفترة من :start إلى :end رغم تكرار المحاولة عدة مرات، ولم تُصدر أي فاتورة لهذه الفترة.",
     "The reason given: :reason": "السبب المذكور: :reason",
-    "Open the schedule": "افتح جدول الفواتير"
+    "Open the schedule": "افتح جدول الفواتير",
+    "instalment :number of :count": "القسط :number من :count",
+    "An instalment plan has two instalments or more.": "تتكون خطة الأقساط من قسطين أو أكثر.",
+    "An instalment plan splits its lines' prices. Put charges and discounts in the prices.": "تقسّم خطة الأقساط أسعار بنودها، فأدرج الرسوم والخصومات ضمن الأسعار.",
+    "Prepayment invoices are not issued in your country. Invoice each instalment instead.": "لا تُصدر فواتير الدفعات المقدمة في بلدك، فأصدر فاتورة لكل قسط بدلاً من ذلك.",
+    "Instalment :number has not been issued, so the final invoice cannot settle it yet.": "لم يُصدر القسط :number بعد، لذا لا يمكن للفاتورة النهائية تسويته حتى الآن."
 }

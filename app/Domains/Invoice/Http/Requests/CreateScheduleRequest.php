@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Http\Requests;
 
+use App\Domains\Invoice\Enums\InstalmentModel;
 use App\Domains\Invoice\Enums\ScheduleFrequency;
 use App\Domains\Invoice\Services\Schedules;
 use App\Domains\Organization\Services\TenantResolver;
@@ -43,6 +44,10 @@ class CreateScheduleRequest extends FormRequest
             'terms.*.end_date' => ['required', 'date', 'after_or_equal:terms.*.start_date'],
             'auto_issue' => ['nullable', 'boolean'],
             'due_days' => ['nullable', 'integer', 'min:0', 'max:365'],
+            // An instalment plan: the invoice is one agreed total, split over
+            // the schedule's periods, each an invoice or a prepayment
+            // invoice (InstalmentModel).
+            'instalment_model' => ['nullable', 'string', Rule::enum(InstalmentModel::class)],
             'branch_id' => ['nullable', 'string', 'uuid'],
             'customer_id' => ['nullable', 'string', 'uuid'],
             'invoice' => ['required', 'array'],

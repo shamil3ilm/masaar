@@ -57,6 +57,7 @@ class ScheduleRunner
         private readonly TenantResolver $tenant,
         private readonly Access $access,
         private readonly ScheduleAlerts $alerts,
+        private readonly Instalments $instalments,
     ) {}
 
     /**
@@ -89,7 +90,8 @@ class ScheduleRunner
     /**
      * The runs that failed and are due another try: drafted again, or for
      * a run whose draft exists and was to be issued, issued again. A
-     * paused or cancelled schedule's wait.
+     * paused or cancelled schedule's wait; a completed one's last periods
+     * are still owed.
      *
      * @return int how many were tried
      */
@@ -100,7 +102,7 @@ class ScheduleRunner
         InvoiceScheduleRun::query()
             ->whereNotNull('next_attempt_at')
             ->where('next_attempt_at', '<=', now())
-            ->whereHas('schedule', fn ($query) => $query->withoutGlobalScopes()->where('status', ScheduleStatus::Active->value))
+            ->whereHas('schedule', fn ($query) => $query->withoutGlobalScopes()->whereIn('status', [ScheduleStatus::Active->value, ScheduleStatus::Completed->value]))
             ->orderBy('next_attempt_at')
             ->lazyById(100)
             ->each(function (InvoiceScheduleRun $run) use (&$tried): void {
@@ -180,6 +182,11 @@ class ScheduleRunner
             });
         } catch (ValidationException $e) {
             $this->failed($schedule, $run, implode(' ', array_merge(...array_values($e->errors()))));
+
+            return;
+        } catch (DomainException $e) {
+            // Said for a person: an instalment not issued yet, say.
+            $this->failed($schedule, $run, $e->getMessage());
 
             return;
         } catch (Throwable $e) {
@@ -266,6 +273,11 @@ class ScheduleRunner
             SchedulePeriods::date($run->period_end->toDateString()),
             $schedule->due_days,
         );
+
+        // An instalment plan's period bills its part of the total.
+        if ($schedule->instalment_model !== null) {
+            $payload = $this->instalments->payload($schedule, $run->period, $payload);
+        }
 
         $checked = $this->templates->check($organization, $payload);
 

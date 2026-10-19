@@ -3262,6 +3262,8 @@ paths:
                   type: boolean
                 due_days:
                   type: integer
+                instalment_model:
+                  type: string
                 branch_id:
                   type: string
                 customer_id:

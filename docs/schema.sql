@@ -587,6 +587,7 @@ CREATE TABLE `invoice_schedules` (
     `due_days` INTEGER NULL,
     `end_date` DATE NULL,
     `frequency` STRING NOT NULL,
+    `instalment_model` STRING NULL,
     `last_error` STRING NULL,
     `license_id` STRING NULL,
     `name` STRING NOT NULL,

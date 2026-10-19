@@ -95,9 +95,73 @@ class ScheduleConformanceTest extends TestCase
         $this->assertAccepted($xml);
     }
 
+    /** A service already delivered, paid in three: the first part, a tax invoice for its share. */
+    public function test_an_instalment_invoice_validates(): void
+    {
+        $this->requireSdk();
+
+        $xml = $this->signedRun($this->schedule('monthly', CarbonImmutable::now('UTC')->toDateString(), more: ['occurrences' => 3, 'instalment_model' => 'invoice']));
+
+        $this->assertMatchesRegularExpression('#<cbc:InvoiceTypeCode[^>]*>388</cbc:InvoiceTypeCode>#', $xml);
+        $this->assertMatchesRegularExpression('#<cbc:TaxExclusiveAmount[^>]*>333.33</cbc:TaxExclusiveAmount>#', $xml);
+        $this->assertAccepted($xml);
+    }
+
+    /** School fees paid ahead: an instalment before the last is a prepayment invoice (386). */
+    public function test_an_advance_instalment_validates(): void
+    {
+        $this->requireSdk();
+
+        $xml = $this->signedRun($this->schedule('monthly', CarbonImmutable::now('UTC')->toDateString(), more: ['occurrences' => 3, 'instalment_model' => 'prepayment']));
+
+        $this->assertMatchesRegularExpression('#<cbc:InvoiceTypeCode[^>]*>386</cbc:InvoiceTypeCode>#', $xml);
+        $this->assertAccepted($xml);
+    }
+
+    /**
+     * The plan's last instalment: the final invoice for the whole year, the
+     * two advances taken off it by number, date and time (KSA-26 to KSA-30)
+     * and by VAT category (KSA-31 to KSA-34), the prepaid amount (BT-113)
+     * their sum with VAT - many advances to one final invoice
+     * (E-Invoicing Detailed Guidelines 8.1.h, p43).
+     */
+    public function test_the_final_instalment_settles_and_validates(): void
+    {
+        $this->requireSdk();
+        $start = CarbonImmutable::now('UTC')->startOfDay()->subMonthsNoOverflow(2);
+        $schedule = $this->schedule('monthly', $start->toDateString(), [
+            'lines' => [['description' => 'Annual tuition', 'description_ar' => 'الرسوم الدراسية السنوية', 'quantity' => 1, 'unit_price' => '30000.00']],
+        ], more: ['occurrences' => 3, 'instalment_model' => 'prepayment']);
+
+        // The advances are drafted; the final waits for them to be issued.
+        app(ScheduleRunner::class)->runSchedule($schedule);
+        $advances = Invoice::withoutTenantScope(fn () => Invoice::query()->where('document_type', 'prepayment')->orderBy('supply_date')->get());
+        $this->assertCount(2, $advances);
+
+        // Issued outside the device's chain, so the final invoice is the
+        // first in it, as the SDK's PIH check expects.
+        foreach ($advances as $index => $advance) {
+            $number = 'ADV-'.($index + 1);
+            $advance->forceFill(['invoice_number' => $number, 'status' => 'accepted', 'hash' => base64_encode(hash('sha256', $number, true)), 'issued_at' => $start->addMonthsNoOverflow($index)->setTime(9, 0)])->save();
+        }
+
+        $this->travel(16)->minutes();
+        app(ScheduleRunner::class)->retryDue();
+
+        $final = Invoice::withoutTenantScope(fn () => Invoice::with('lines')->where('document_type', 'invoice')->sole());
+        $xml = app(Submitter::class)->generate($final, $this->organization)['signed_xml'];
+
+        // 30000 + 4500, less two advances of 10000 + 1500.
+        $this->assertMatchesRegularExpression('#<cbc:PrepaidAmount[^>]*>23000.00</cbc:PrepaidAmount>#', $xml);
+        $this->assertMatchesRegularExpression('#<cbc:PayableAmount[^>]*>11500.00</cbc:PayableAmount>#', $xml);
+        $this->assertSame(2, preg_match_all('#<cbc:DocumentTypeCode[^>]*>386</cbc:DocumentTypeCode>#', $xml));
+        $this->assertAccepted($xml);
+    }
+
     /**
      * @param  array<string, mixed>  $invoice
      * @param  list<array{start_date: string, end_date: string}>|null  $terms
+     * @param  array<string, mixed>  $more
      */
     private function schedule(string $frequency, ?string $start, array $invoice = [], ?array $terms = null, array $more = []): InvoiceSchedule
     {
