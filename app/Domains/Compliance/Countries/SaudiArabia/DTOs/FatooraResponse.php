@@ -55,10 +55,43 @@ final readonly class FatooraResponse
             validationStatus: $response['validationResults']['status'] ?? null,
             clearedInvoice: $response['clearedInvoice'] ?? null,
             validationResults: $response['validationResults'] ?? [],
-            warningMessages: $response['warningMessages'] ?? [],
+            // ZATCA puts its advice under validationResults (the Reporting
+            // and Clearance APIs answer 202 with it); read from the top level
+            // only, every warning was lost.
+            warningMessages: self::messages([
+                ...(array) ($response['validationResults']['warningMessages'] ?? []),
+                ...(array) ($response['warningMessages'] ?? []),
+            ]),
             errorMessages: $response['errorMessages'] ?? [],
             rawResponse: json_encode($response),
         );
+    }
+
+    /**
+     * The authority's messages as a person and an integrator read them:
+     * "BR-KSA-F-13: what it says", its rule code first. Text already in
+     * that shape is kept, and nothing is dropped.
+     *
+     * @param  array<int|string, mixed>  $entries
+     * @return list<string>
+     */
+    public static function messages(array $entries): array
+    {
+        $messages = [];
+
+        foreach ($entries as $entry) {
+            if (is_array($entry)) {
+                $code = trim((string) ($entry['code'] ?? ''));
+                $text = trim((string) ($entry['message'] ?? ''));
+                $entry = $code !== '' && $text !== '' ? $code.': '.$text : ($text !== '' ? $text : ($code !== '' ? $code : (string) json_encode($entry)));
+            }
+
+            if (is_scalar($entry) && trim((string) $entry) !== '') {
+                $messages[] = trim((string) $entry);
+            }
+        }
+
+        return array_values(array_unique($messages));
     }
 
     /**

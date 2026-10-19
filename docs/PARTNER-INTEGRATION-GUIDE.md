@@ -1474,6 +1474,12 @@ What is no longer refused:
 - Batch submission (`POST /api/v1/pipeline/batch`) needs no particular
   licence tier.
 
+The warnings ZATCA accepts an invoice with, such as `BR-KSA-F-13`, are
+listed in `warnings` as `code: message`: in the answer to
+`POST /api/compliance/sa/submit/{id}` and to the pipeline (a replay of the
+same request too), and on `GET /api/invoices/{id}` and
+`GET /api/compliance/sa/status/{id}` afterwards. They do not stop the invoice.
+
 Send `H87` for a piece. `PCE` is still accepted and sent as `H87`.
 
 ---

@@ -138,6 +138,7 @@ class CrossDomainModelTest extends TestCase
         // Keeps a UAE seller's tax identity on its UAE ComplianceProfile.
         'Domains/Compliance/Countries/UnitedArabEmirates/Support/UaeSellerDetails.php' => 'Organization',
         // The compliance engine issues an invoice in its organization's jurisdiction.
+        'Domains/Compliance/Engine/Contracts/IssueNotices.php' => 'Invoice',
         'Domains/Compliance/Engine/Contracts/LanguageRules.php' => 'Invoice',
         'Domains/Compliance/Engine/Contracts/Presentation.php' => 'Invoice',
         'Domains/Compliance/Engine/Contracts/Transmission.php' => 'Invoice',

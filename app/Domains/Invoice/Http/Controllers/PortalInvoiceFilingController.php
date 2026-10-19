@@ -96,6 +96,13 @@ class PortalInvoiceFilingController extends Controller
                 ->with('warning', __('Issued, and filing did not succeed: :error The invoice keeps its counter and will be retried.', ['error' => $outcome->errors[0]]));
         }
 
+        // Accepted, with advice: said here, and listed on the invoice.
+        if ($outcome->warnings !== []) {
+            return redirect()
+                ->route('portal.invoices.show', $invoiceId)
+                ->with('warning', __('Issued and filed, with warnings from the authority. They do not stop the invoice; they are listed on it.'));
+        }
+
         return redirect()
             ->route('portal.invoices.show', $invoiceId)
             ->with('success', $jurisdiction->notices()->filed());

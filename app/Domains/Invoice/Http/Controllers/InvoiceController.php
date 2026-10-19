@@ -2,6 +2,7 @@
 
 namespace App\Domains\Invoice\Http\Controllers;
 
+use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Invoice\Exceptions\InvoiceNotEditableException;
 use App\Domains\Invoice\Http\Requests\CreateInvoiceRequest;
@@ -51,6 +52,7 @@ class InvoiceController extends Controller
         private readonly MissingText $missing,
         private readonly BranchAccess $branches,
         private readonly Tills $tills,
+        private readonly JurisdictionResolver $jurisdictions,
     ) {}
 
     /**
@@ -138,7 +140,7 @@ class InvoiceController extends Controller
     {
         $invoice = $this->invoices->findWithLines($this->tenant->getOrganizationId(), $id);
 
-        return ApiResponse::success(['invoice' => $invoice]);
+        return ApiResponse::success(['invoice' => $invoice, ...$this->warnings($invoice)]);
     }
 
     /**
@@ -195,15 +197,20 @@ class InvoiceController extends Controller
     }
 
     /**
-     * The text the invoice still lacks, which only a grace period lets
-     * through (MissingText): `warnings` beside the invoice, and nothing
-     * when there is none.
+     * The warnings the authority accepted it with (IssueNotices::
+     * advisories()) and the text the invoice still lacks, which only a
+     * grace period lets through (MissingText): `warnings` beside the
+     * invoice, and nothing when there is none.
      *
      * @return array{warnings?: list<string>}
      */
     private function warnings(Invoice $invoice): array
     {
-        $warnings = $this->missing->warnings($invoice, $this->tenant->getOrganization());
+        $organization = $this->tenant->getOrganization();
+        $warnings = [
+            ...$this->jurisdictions->forRules($organization)->notices()->advisories($invoice),
+            ...$this->missing->warnings($invoice, $organization),
+        ];
 
         return $warnings === [] ? [] : ['warnings' => $warnings];
     }

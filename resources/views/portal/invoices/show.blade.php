@@ -48,6 +48,18 @@
     </x-slot:actions>
 </x-ui.page-header>
 
+{{-- What the authority advised while accepting it (IssueNotices::advisories()):
+     nothing to correct on this invoice, and nothing silently dropped. --}}
+@if (! empty($advisories))
+    <x-ui.alert tone="warning" :title="__('Accepted with warnings from the authority')" class="mb-6" data-advisories>
+        <ul class="mt-1 list-disc space-y-1 ps-5">
+            @foreach ($advisories as $advisory)
+                <li dir="auto">{{ $advisory }}</li>
+            @endforeach
+        </ul>
+    </x-ui.alert>
+@endif
+
 @if ($invoice->status !== \App\Domains\Invoice\Enums\InvoiceStatus::Draft && $page->shareable
     && ! \App\Domains\Organization\Enums\MemberRole::readOnly(auth()->user()?->roleIn((string) request()->attributes->get(\App\Domains\Organization\Http\Middleware\PortalTenant::ORG_ID))))
     <form method="POST" action="{{ route('portal.invoices.send', $invoice->id) }}"

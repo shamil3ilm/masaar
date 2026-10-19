@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Pipeline\Services;
 
+use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\MissingText;
@@ -20,6 +21,7 @@ class PipelineResult
 {
     public function __construct(
         private readonly MissingText $missing,
+        private readonly JurisdictionResolver $jurisdictions,
     ) {}
 
     /**
@@ -28,6 +30,8 @@ class PipelineResult
      */
     public function build(Invoice $invoice, array $errors, array $warnings, ?array $zatcaResponse): array
     {
+        $organization = Organization::query()->find($invoice->org_id);
+
         return [
             'invoice_id' => $invoice->id,
             'uuid' => $invoice->id,
@@ -51,9 +55,14 @@ class PipelineResult
                 'total' => $invoice->total,
             ],
             'errors' => $errors,
-            // Beside the authority's, the text the invoice lacks that a
-            // grace period let through (MissingText).
-            'warnings' => [...$warnings, ...$this->missing->warnings($invoice, Organization::query()->find($invoice->org_id))],
+            // The authority's, as this filing answered or as the invoice
+            // kept them - so a replay repeats them - and the text the
+            // invoice lacks that a grace period let through (MissingText).
+            'warnings' => array_values(array_unique([
+                ...$warnings,
+                ...$this->jurisdictions->forRules($organization)->notices()->advisories($invoice),
+                ...$this->missing->warnings($invoice, $organization),
+            ])),
         ];
     }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia;
 
+use App\Domains\Compliance\Countries\SaudiArabia\DTOs\FatooraResponse;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\OfflineQueue;
 use App\Domains\Compliance\Countries\SaudiArabia\Issuing\InvoiceIssuer;
 use App\Domains\Compliance\Countries\SaudiArabia\Issuing\IssuingStep;
@@ -266,5 +267,15 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
     public function notFiled(): string
     {
         return __('Issued. It has not been filed with ZATCA: this organization has no certificate yet, so complete onboarding before the reporting deadline.');
+    }
+
+    /**
+     * The warnings ZATCA accepted it with, as the verdict kept them on the
+     * invoice (InvoiceVerdict) - BR-KSA-F-13 on a counter out of sequence,
+     * for one.
+     */
+    public function advisories(Invoice $invoice): array
+    {
+        return FatooraResponse::messages((array) ($invoice->zatca_response['warnings'] ?? []));
     }
 }

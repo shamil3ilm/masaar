@@ -53,3 +53,15 @@ it('detects warnings correctly', function () {
     expect($response->hasWarnings())->toBeTrue();
     expect($response->hasErrors())->toBeFalse();
 });
+
+it('reads the warnings ZATCA puts under validationResults', function () {
+    $response = ZatcaResponse::fromApiResponse([
+        'reportingStatus' => 'REPORTED',
+        'validationResults' => ['status' => 'WARNING', 'warningMessages' => [
+            ['type' => 'WARNING', 'code' => 'BR-KSA-F-13', 'category' => 'KSA', 'message' => 'Not sequential.', 'status' => 'WARNING'],
+        ]],
+    ]);
+
+    expect($response->success)->toBeTrue();
+    expect($response->warningMessages)->toBe(['BR-KSA-F-13: Not sequential.']);
+});

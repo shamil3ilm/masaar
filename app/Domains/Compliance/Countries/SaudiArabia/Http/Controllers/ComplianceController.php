@@ -2,6 +2,7 @@
 
 namespace App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers;
 
+use App\Domains\Compliance\Countries\SaudiArabia\DTOs\FatooraResponse;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\SubmissionTracker;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\Submitter;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Middleware\ZatcaFiling;
@@ -172,6 +173,8 @@ class ComplianceController extends Controller implements HasMiddleware
             'hash' => $invoice->hash,
             'qr_code' => $invoice->qr_code,
             'zatca_response' => $invoice->zatca_response,
+            // What ZATCA accepted it with, as code: message.
+            'warnings' => FatooraResponse::messages((array) ($invoice->zatca_response['warnings'] ?? [])),
         ]);
     }
 }

@@ -261,4 +261,10 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
     {
         return __('Issued. Its UAE e-invoice is ready and has not been queued for sending.');
     }
+
+    /** The provider passes a document or refuses it; it advises nothing beside. */
+    public function advisories(Invoice $invoice): array
+    {
+        return [];
+    }
 }

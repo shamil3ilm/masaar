@@ -104,12 +104,15 @@ class PortalInvoiceController extends Controller
         abort_if(Gate::denies('view', $invoice), 404);
 
         $organization = $this->tenant->getOrganization();
+        $jurisdiction = $this->jurisdictions->forRules($organization);
 
         return view('portal.invoices.show', [
             'organization' => $organization,
             'invoice' => $invoice,
             'sendTo' => $this->catalogue->emailFor((string) $orgId, $invoice->buyer_vat_number),
-            'page' => $this->jurisdictions->forRules($organization)->presentation()->invoicePage($invoice),
+            'page' => $jurisdiction->presentation()->invoicePage($invoice),
+            // The warnings the authority accepted it with, never dropped.
+            'advisories' => $jurisdiction->notices()->advisories($invoice),
             // What a grace period let through without its Arabic: noted on
             // this page, never on the copy the buyer is given.
             'missingText' => $this->missing->of($invoice, $organization),
