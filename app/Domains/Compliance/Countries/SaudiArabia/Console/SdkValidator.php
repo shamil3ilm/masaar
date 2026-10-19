@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia\Console;
 
+use App\Support\CountryClock;
 use RuntimeException;
 
 /**
@@ -138,6 +139,13 @@ final class SdkValidator
             [
                 $this->java(),
                 '-Dfile.encoding=UTF-8',
+                // BR-KSA-04 refuses an IssueDate after "the current date", and
+                // the SDK reads that date off the JVM's clock. IssueDate is the
+                // Kingdom's business date, so a validator on a UTC machine
+                // refused every invoice issued between 00:00 and 03:00 Riyadh
+                // time - while ZATCA itself accepted them. Run it on the
+                // Kingdom's clock, the one the rule is about.
+                '-Duser.timezone='.CountryClock::timeZone('SA'),
                 '-jar', $this->jar(),
                 '--globalVersion', $this->version(),
                 '-validate',
