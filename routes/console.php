@@ -121,6 +121,14 @@ Schedule::command('fatoora:check-certificate --notify')
     ->withoutOverlapping(60)
     ->appendOutputTo(storage_path('logs/zatca-certificate.log'));
 
+// A till asked to retire with documents still to file is retired once ZATCA
+// holds them all, without anyone asking again; its organization is told.
+Schedule::command('fatoora:finish-retirements')
+    ->onOneServer()
+    ->dailyAt('05:00')
+    ->withoutOverlapping(60)
+    ->appendOutputTo(storage_path('logs/zatca-certificate.log'));
+
 // The CA's revocation lists, for every certificate a device signs or files
 // with: a revoked one is recorded, its organization and the platform told,
 // and its device stops signing (Security Features Implementation Standard

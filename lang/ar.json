@@ -2324,5 +2324,8 @@
     ":till is connected to ZATCA and signs with a certificate of its own.": "رُبطت :till مع الهيئة وأصبحت توقّع بشهادتها الخاصة.",
     "Tax category :category takes one exemption reason per invoice, but this invoice gives :codes: put them on separate invoices (ZATCA XML Implementation Standard §8.4).": "تأخذ فئة الضريبة :category سبب إعفاء واحداً في الفاتورة، لكن هذه الفاتورة تذكر :codes: أصدِرها في فواتير منفصلة (المعيار التنفيذي لصيغة XML لدى هيئة الزكاة والضريبة والجمارك، البند 8.4).",
     "Issued and filed, with warnings from the authority. They do not stop the invoice; they are listed on it.": "صدرت الفاتورة وأُرسلت، مع تحذيرات من الجهة المختصة. لا تمنع هذه التحذيرات الفاتورة، وهي مدرجة فيها.",
-    "Accepted with warnings from the authority": "قُبلت مع تحذيرات من الجهة المختصة"
+    "Accepted with warnings from the authority": "قُبلت مع تحذيرات من الجهة المختصة",
+    ":till is retired - :organization": "أُوقفت :till نهائياً - :organization",
+    "A till has been retired": "أُوقفت نقطة بيع نهائياً",
+    ":organization: :till has filed everything it signed with ZATCA and is now retired. It will not issue invoices again; what it signed is kept.": ":organization: أرسلت :till إلى هيئة الزكاة والضريبة والجمارك كل ما وقّعته، وأُوقفت الآن نهائياً. لن تُصدر فواتير بعد ذلك، ويُحتفظ بكل ما وقّعته."
 }

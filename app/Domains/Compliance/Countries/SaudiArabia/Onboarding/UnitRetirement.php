@@ -90,4 +90,54 @@ class UnitRetirement
             return $unit;
         });
     }
+
+    /**
+     * Retire a retiring till once nothing it signed is left to file, with
+     * nobody asking again (FinishRetirements, daily).
+     *
+     * Recorded in its organization's audit log as the retirement the person
+     * asked for: retired_by is whoever set it retiring, the scheduler being
+     * only the one who finished it.
+     *
+     * @return bool whether it was retired now
+     */
+    public function finish(EgsUnit $unit): bool
+    {
+        if ($unit->status !== EgsUnit::RETIRING) {
+            return false;
+        }
+
+        return DB::transaction(function () use ($unit): bool {
+            DB::table('issuing_locks')->upsert(
+                [['org_id' => $unit->org_id, 'scope' => $unit->id, 'held_at' => now()]],
+                ['org_id', 'scope'],
+                ['held_at'],
+            );
+
+            if ($this->waiting($unit)->isNotEmpty()) {
+                return false;
+            }
+
+            // By the till's own id: retire() logs under the tenant of the
+            // moment, which a console caller does not have.
+            $askedBy = DB::table('audit_logs')
+                ->where('action', 'zatca.unit.retiring')
+                ->where('metadata->device_id', (string) $unit->id)
+                ->orderByDesc('created_at')
+                ->value('user_id');
+
+            $unit->forceFill(['status' => EgsUnit::RETIRED, 'retired_at' => now(), 'retired_by' => $askedBy])->save();
+
+            $this->audit->logFor((string) $unit->org_id, 'zatca.unit.retired', $unit, [
+                'org_id' => (string) $unit->org_id,
+                'device_id' => (string) $unit->id,
+                'branch_id' => $unit->branch_id,
+                'unfiled' => [],
+                'finished_by' => 'system',
+                'asked_by' => $askedBy,
+            ]);
+
+            return true;
+        });
+    }
 }

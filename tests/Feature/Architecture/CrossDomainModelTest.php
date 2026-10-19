@@ -62,6 +62,8 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Countries/SaudiArabia/Console/CheckCertificateExpiry.php' => 'Organization',
         // Moved from app/Console/Commands, where the import was not counted.
         'Domains/Compliance/Countries/SaudiArabia/Console/FatooraSandboxFiling.php' => 'Invoice',
+        // Finds the retiring tills, an EGS unit being the Organization's.
+        'Domains/Compliance/Countries/SaudiArabia/Console/FinishRetirements.php' => 'Organization',
         'Domains/Compliance/Countries/SaudiArabia/Console/ProcessOfflineQueue.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Console/VerifyHashChain.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Document/DocumentBuilder.php' => 'Invoice',

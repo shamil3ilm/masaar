@@ -7,6 +7,7 @@ namespace Tests\Feature\Compliance\SaudiArabia;
 use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\Submitter;
+use App\Domains\Compliance\Countries\SaudiArabia\Mail\TillRetiredMail;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\UnitRetirement;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Invoice\Models\Invoice;
@@ -16,8 +17,10 @@ use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\BranchService;
 use App\Domains\Organization\Services\Tills;
 use DomainException;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Tests\Fixtures\SigningCredentials;
 use Tests\TestCase;
@@ -115,6 +118,45 @@ class TillRetirementTest extends TestCase
         Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($waiting->id)->update(['status' => 'reported']));
 
         $this->assertSame(EgsUnit::RETIRED, $this->retire()->status);
+    }
+
+    /**
+     * Nobody has to ask again: the daily run retires every retiring till
+     * whose documents are all filed, records it in the organization's audit
+     * log as done for the person who asked, and tells its administrators.
+     */
+    public function test_retiring_tills_finish_on_their_own(): void
+    {
+        Mail::fake();
+        $admin = User::factory()->create();
+        $admin->organizations()->attach($this->acme->id, ['role' => 'admin', 'status' => 'active']);
+        $waiting = $this->issue($this->second->id);
+        $this->actingAs($admin);
+        $this->assertSame(EgsUnit::RETIRING, $this->retire()->status);
+        auth()->logout();
+
+        // Not yet: what it signed is still waiting for ZATCA.
+        $this->artisan('fatoora:finish-retirements')->assertSuccessful();
+        $this->assertSame(EgsUnit::RETIRING, $this->second->fresh()->status);
+        Mail::assertNothingSent();
+
+        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($waiting->id)->update(['status' => 'reported']));
+        $this->artisan('fatoora:finish-retirements')->assertSuccessful();
+
+        $unit = $this->second->fresh();
+        $this->assertSame([EgsUnit::RETIRED, (string) $admin->id], [$unit->status, (string) $unit->retired_by]);
+        $this->assertNotNull($unit->retired_at);
+        $log = DB::table('audit_logs')->where('action', 'zatca.unit.retired')->sole();
+        $this->assertSame([(string) $this->acme->id, (string) $this->second->id], [(string) $log->org_id, json_decode((string) $log->metadata, true)['device_id']]);
+        Mail::assertSent(TillRetiredMail::class, fn (TillRetiredMail $mail): bool => $mail->hasTo($admin->email) && str_contains($mail->render(), $mail->tillName));
+    }
+
+    public function test_the_retirements_run_daily(): void
+    {
+        $event = collect(app(Schedule::class)->events())->first(fn ($event): bool => str_contains((string) $event->command, 'fatoora:finish-retirements'));
+
+        $this->assertNotNull($event);
+        $this->assertSame('0 5 * * *', $event->expression);
     }
 
     public function test_head_office_is_never_retired(): void
