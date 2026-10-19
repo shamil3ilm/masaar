@@ -1,0 +1,82 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domains\Compliance\Countries\SaudiArabia\Reports;
+
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\UnfiledDocuments;
+use App\Domains\Compliance\Countries\SaudiArabia\Models\CertificateVersion;
+use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\BranchService;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+
+/**
+ * The certificate versions devices have held, for the screens that show them.
+ */
+class CertificateVersions
+{
+    public function __construct(
+        private readonly UnfiledDocuments $unfiled,
+        private readonly BranchService $branches,
+    ) {}
+
+    /**
+     * An organization's devices, each with every certificate it has held -
+     * newest first - and how many documents still wait to be filed under
+     * each.
+     *
+     * @return list<array{device: string, name: string, versions: list<array{version: int, status: string, serial: ?string, issuer: ?string, valid_from: ?string, valid_to: ?string, waiting: int}>}>
+     */
+    public function forOrganization(Organization $organization): array
+    {
+        $organizationId = (string) $organization->id;
+        $waiting = $this->unfiled->countsFor($organizationId);
+        $names = array_column($this->branches->tills($organizationId), 'name', 'id');
+
+        $versions = CertificateVersion::withoutTenantScope(fn () => CertificateVersion::query()
+            ->where('org_id', $organizationId)
+            ->orderBy('device_id')->orderByDesc('version')
+            ->get());
+
+        return $versions->groupBy('device_id')->map(fn ($held, $device): array => [
+            'device' => (string) $device,
+            'name' => $device === $organizationId ? __('Head office') : (string) ($names[$device] ?? $device),
+            'versions' => $held->map(fn (CertificateVersion $version): array => [
+                'version' => $version->version,
+                'status' => $version->status,
+                'serial' => $version->serial_number,
+                'issuer' => $version->issuer,
+                'valid_from' => $version->valid_from?->format('Y-m-d'),
+                'valid_to' => $version->valid_to?->format('Y-m-d'),
+                'waiting' => $waiting[(string) $device][$version->certificate_id] ?? 0,
+            ])->values()->all(),
+        ])->sortBy(fn (array $device): string => $device['device'] === $organizationId ? '' : $device['name'])->values()->all();
+    }
+
+    /**
+     * Every device's versions across the platform, for the console, with the
+     * organization's name on each.
+     */
+    public function all(int $perPage = 50): LengthAwarePaginator
+    {
+        $versions = CertificateVersion::withoutTenantScope(fn () => CertificateVersion::query()
+            ->orderBy('org_id')->orderBy('device_id')->orderByDesc('version')
+            ->paginate($perPage));
+
+        $names = Organization::query()->whereIn('id', $versions->pluck('org_id')->unique())->pluck('name', 'id');
+
+        $versions->getCollection()->each(
+            fn (CertificateVersion $version) => $version->setAttribute('organization_name', $names[$version->org_id] ?? $version->org_id)
+        );
+
+        return $versions;
+    }
+
+    /**
+     * One version, wherever it belongs.
+     */
+    public function find(int $id): CertificateVersion
+    {
+        return CertificateVersion::withoutTenantScope(fn () => CertificateVersion::query()->findOrFail($id));
+    }
+}

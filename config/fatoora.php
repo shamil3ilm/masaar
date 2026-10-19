@@ -74,6 +74,11 @@ return [
         // the root. Stamped PDFs carry the path to the anchor, as the
         // Security Features standard asks. Empty: the device certificate only.
         'chain_path' => env('ZATCA_CA_CHAIN_PATH'),
+        // Where the CA publishes its revocation list, for certificates that
+        // name no CRL distribution point. Comma-separated http(s) URLs.
+        // Checked before every stamp (Security Features Implementation
+        // Standard v1.2, section 2.2.1, requirement 14).
+        'crl_urls' => array_values(array_filter(array_map('trim', explode(',', (string) env('ZATCA_CRL_URLS', ''))))),
     ],
 
     /*

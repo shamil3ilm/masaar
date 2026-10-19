@@ -166,7 +166,7 @@ class Submitter
         // Issuance above guarantees both are present.
         $invoiceXml = (string) $invoice->signed_xml;
         $invoiceHash = (string) $invoice->hash;
-        $device = $this->credentials->forInvoice((string) $invoice->org_id, $invoice->device_id, $invoice->branch_id);
+        $device = $this->credentials->forInvoice((string) $invoice->org_id, $invoice->device_id, $invoice->branch_id, (string) $invoice->id, $invoice->signed_xml);
 
         // Choose clearance (B2B) or reporting (B2C) based on invoice type
         if ($invoice->requiresClearance()) {

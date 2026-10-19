@@ -60,6 +60,7 @@ enum ErrorCode: string
     case CERT_EXPIRED = 'CERT_002';
     case CERT_REVOKED = 'CERT_004';
     case CERT_INVALID_FORMAT = 'CERT_005';
+    case CERT_REVOCATION_UNVERIFIED = 'CERT_006';     // Retryable once the revocation list is reachable
 
     // ============================================================
     // NETWORK ERRORS (NET_*) - Generally retryable
@@ -116,6 +117,9 @@ enum ErrorCode: string
             // System retryable
             self::SYS_MAINTENANCE_MODE,
 
+            // A revocation list the CA serves again
+            self::CERT_REVOCATION_UNVERIFIED,
+
             // Idempotency special
             self::IDEM_PROCESSING_IN_PROGRESS,
         ], true);
@@ -147,6 +151,7 @@ enum ErrorCode: string
 
             // System issues
             self::SYS_MAINTENANCE_MODE => 60,
+            self::CERT_REVOCATION_UNVERIFIED => 300,
 
             // In-progress
             self::IDEM_PROCESSING_IN_PROGRESS => 2,
@@ -253,7 +258,8 @@ enum ErrorCode: string
             // or the status and the retry advice contradict each other.
             self::ZATCA_SERVICE_UNAVAILABLE,
             self::ZATCA_MAINTENANCE,
-            self::SYS_MAINTENANCE_MODE => 503,
+            self::SYS_MAINTENANCE_MODE,
+            self::CERT_REVOCATION_UNVERIFIED => 503,
 
             // 504 Gateway Timeout
             self::ZATCA_TIMEOUT,
@@ -321,6 +327,7 @@ enum ErrorCode: string
 
             self::CERT_INVALID_FORMAT => 'Certificate could not be read; expected PEM or base64 DER',
             self::CERT_EXPIRED => 'Certificate has expired and must be renewed',
+            self::CERT_REVOCATION_UNVERIFIED => 'The certificate revocation status could not be checked against a current revocation list',
 
             self::NET_CONNECTION_FAILED => 'The connection to ZATCA could not be established',
             self::NET_DNS_RESOLUTION_FAILED => 'The ZATCA hostname could not be resolved',

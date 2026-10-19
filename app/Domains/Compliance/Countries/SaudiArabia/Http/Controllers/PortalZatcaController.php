@@ -8,6 +8,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\LateReporting;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\ReportingAttempts;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\OrganizationOnboarding;
+use App\Domains\Compliance\Countries\SaudiArabia\Reports\CertificateVersions;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\FilingClearance;
@@ -65,6 +66,7 @@ class PortalZatcaController extends Controller
             'common_name' => ['required', 'string', 'max:64'],
             'organization_unit' => ['nullable', 'string', 'max:64'],
             'industry' => ['nullable', 'string', 'max:64'],
+            'renewal_override_reason' => ['nullable', 'string', 'max:500'],
         ], ['otp.regex' => __('The OTP is the 6 digits the Fatoora portal showed you.')]);
 
         return $this->step(function () use ($organization, $data): string {
@@ -73,7 +75,7 @@ class PortalZatcaController extends Controller
                 'serial_number' => '1-'.Str::slug((string) config('app.name', 'Masaar')).'|2-1.0|3-'.Str::uuid(),
                 'organization_unit' => $data['organization_unit'] ?: null,
                 'industry' => $data['industry'] ?: null,
-            ]);
+            ], $data['renewal_override_reason'] ?? null);
 
             return __('ZATCA issued a compliance certificate. Next, run the compliance checks.');
         });
@@ -105,9 +107,10 @@ class PortalZatcaController extends Controller
     public function production(Request $request): RedirectResponse
     {
         $organization = $this->cleared($request);
+        $override = $request->validate(['renewal_override_reason' => ['nullable', 'string', 'max:500']])['renewal_override_reason'] ?? null;
 
-        return $this->step(function () use ($organization): string {
-            $this->onboarding->requestPcsid($organization);
+        return $this->step(function () use ($organization, $override): string {
+            $this->onboarding->requestPcsid($organization, $override);
 
             return __('Connected. Invoices you issue are now signed and filed with ZATCA.');
         });
@@ -123,6 +126,19 @@ class PortalZatcaController extends Controller
         } catch (DomainException|CertificateException $e) {
             return back()->withInput()->with('error', $e->getMessage());
         }
+    }
+
+    /**
+     * Every certificate each of the organization's devices has held: its
+     * status, validity, issuer and serial, and how many documents still wait
+     * to be filed under it - the ones a renewal or a revocation of it puts at
+     * risk. Its administrators only.
+     */
+    public function certificates(Request $request, CertificateVersions $versions): View
+    {
+        return view('countries.saudi-arabia.certificates', [
+            'devices' => $versions->forOrganization($this->organization($request)),
+        ]);
     }
 
     /**

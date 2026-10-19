@@ -148,6 +148,12 @@ final class TableTimestamps
             'actors' => ['zatca_notified_by' => 'zatca_notified_by', 'zatca_renotified_by' => 'zatca_renotified_by']],
         'peppol_documents' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',
             'system' => 'sent or received by the platform; the person is on the invoice'],
+        // Every production certificate a device has held (CertificateVersion):
+        // superseded or revoked, never deleted - it is how the documents it
+        // signed were stamped. device_id is the branch, or the organization's
+        // own id for head office.
+        'device_certificates' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',
+            'actors' => ['created_by' => 'created_by', 'revoked_by' => 'revoked_by']],
 
         // Money.
         'payments' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',

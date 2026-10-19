@@ -325,6 +325,30 @@ CREATE TABLE `customizations` (
     FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 );
 
+CREATE TABLE `device_certificates` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `certificate_id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `device_id` STRING NOT NULL,
+    `issuer` STRING NULL,
+    `org_id` STRING NOT NULL,
+    `revoked_by` STRING NULL,
+    `revoked_reason` STRING NULL,
+    `serial_number` STRING NULL,
+    `status` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `valid_from` TIMESTAMP NULL,
+    `valid_to` TIMESTAMP NULL,
+    `version` INTEGER NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `device_certificates_device_certificate_unique` (`device_id`, `certificate_id`),
+    UNIQUE INDEX `device_certificates_device_version_unique` (`device_id`, `version`),
+    INDEX `device_certificates_org_index` (`org_id`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`revoked_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
 CREATE TABLE `failed_jobs` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `connection` TEXT NOT NULL,

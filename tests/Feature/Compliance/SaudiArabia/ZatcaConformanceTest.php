@@ -676,6 +676,49 @@ class ZatcaConformanceTest extends TestCase
     }
 
     /**
+     * A renewal changes the certificate between two documents of one chain.
+     *
+     * The document signed before it is archived as it was and still passes
+     * every check it passed then; the one signed after carries the new
+     * certificate and still passes the content checks, chained onto the
+     * first. The new certificate is self-signed - the SDK ships one
+     * ZATCA-issued certificate - so its certificate and PIH stages say
+     * nothing here, and only the content stages are asked.
+     */
+    public function test_documents_validate_across_a_renewal(): void
+    {
+        $before = $this->signed('simplified');
+
+        $renewed = $this->selfSignedCredentials(serial: 2);
+        app(CredentialStore::class)->put(
+            $this->organization->id,
+            null,
+            CredentialStore::PCSID,
+            ['privateKey' => $renewed['privateKey'], 'pcsid' => $renewed['certificate'], 'secret' => 'renewed-secret']
+        );
+
+        $after = $this->signed('standard');
+
+        $this->assertStringContainsString($this->certificateBody($renewed['certificate']), $after, 'the renewal did not sign the next document');
+        $this->assertStringNotContainsString($this->certificateBody($renewed['certificate']), $before);
+
+        $first = $this->validate($before);
+        $this->assertSame([], $this->businessRules($first['errors']), 'the document signed before the renewal no longer validates');
+
+        $second = $this->validate($after);
+        $this->assertTrue(
+            $this->sdk()->contentPassed($second),
+            "ZATCA rejected the document signed after the renewal:\n".implode("\n", $second['errors'])
+        );
+        $this->assertSame([], array_values(array_filter($second['errors'], static fn (string $e): bool => str_starts_with($e, 'BR-'))));
+    }
+
+    private function certificateBody(string $pem): string
+    {
+        return (string) preg_replace('/-----[A-Z ]+-----|\s+/', '', $pem);
+    }
+
+    /**
      * Advisories are not failures, which is exactly why they need a test.
      *
      * BR-KSA-51 sat here reporting that every line's amount-with-VAT was zero,

@@ -7,6 +7,7 @@ namespace Tests\Feature\Security;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificatePem;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use Illuminate\Encryption\EncryptionServiceProvider;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -22,6 +23,9 @@ use Tests\TestCase;
  */
 class CredentialStoreTest extends TestCase
 {
+    // Certificate versions are rows beside the files.
+    use RefreshDatabase;
+
     private CredentialStore $store;
 
     protected function setUp(): void

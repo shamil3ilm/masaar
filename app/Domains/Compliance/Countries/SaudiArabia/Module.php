@@ -96,7 +96,17 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
 
     public function readiness(): array
     {
-        return ['ZATCA environment' => (string) config('fatoora.environment')];
+        // What the revocation check before every stamp has to work with
+        // (Security Features Implementation Standard v1.2, section 2.2.1,
+        // requirement 14): without the CA chain an http list cannot be
+        // verified, and a certificate naming no list needs one configured.
+        return [
+            'ZATCA environment' => (string) config('fatoora.environment'),
+            'CA certificate chain' => filled(config('fatoora.certificate.chain_path')) ? 'configured' : 'not configured',
+            'Revocation lists' => config('fatoora.certificate.crl_urls') !== []
+                ? implode(', ', (array) config('fatoora.certificate.crl_urls'))
+                : 'only those certificates name',
+        ];
     }
 
     public function issuingStep(): IssuingJurisdiction

@@ -42,10 +42,13 @@ class OnboardingController extends Controller
             'organization_unit' => ['nullable', 'string', 'max:255'],
             'location' => ['nullable', 'string', 'max:255'],
             'industry' => ['nullable', 'string', 'max:100'],
+            // A renewal is refused while documents the current certificate
+            // signed are unfiled; a reason renews anyway, and is audited.
+            'renewal_override_reason' => ['nullable', 'string', 'max:500'],
         ]);
 
         try {
-            $result = $this->onboarding->requestCcsid($this->tenant->getOrganization(), (string) $device['otp'], $device);
+            $result = $this->onboarding->requestCcsid($this->tenant->getOrganization(), (string) $device['otp'], $device, $device['renewal_override_reason'] ?? null);
         } catch (DomainException $e) {
             return ApiResponse::error($e->getMessage(), 422);
         } catch (CertificateException $e) {
@@ -86,8 +89,10 @@ class OnboardingController extends Controller
      */
     public function requestPcsid(Request $request): JsonResponse
     {
+        $override = $request->validate(['renewal_override_reason' => ['nullable', 'string', 'max:500']]);
+
         try {
-            $this->onboarding->requestPcsid($this->tenant->getOrganization());
+            $this->onboarding->requestPcsid($this->tenant->getOrganization(), $override['renewal_override_reason'] ?? null);
         } catch (DomainException $e) {
             return ApiResponse::error($e->getMessage(), 422);
         } catch (CertificateException $e) {

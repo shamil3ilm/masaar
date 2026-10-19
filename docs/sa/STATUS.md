@@ -248,6 +248,14 @@ Two things to expect that differ from the sandbox, and one to re-check:
   Features standard asks for. A bundle that does not lead from the device
   certificate to a self-signed root logs "does not reach a trust anchor";
   check the log after downloading the first stamped PDF.
+- Every stamp is checked against the CA's revocation list first (Security
+  Features Implementation Standard v1.2, section 2.2.1, requirement 14). The
+  chain above is what verifies a list's signature. If the device certificates
+  name no CRL distribution point - the authority's test certificate names
+  none - set `ZATCA_CRL_URLS` to where ZATCA publishes the list, and allow its
+  host in `REVOCATION_ALLOWED_HOSTS`. A held list carries stamping through
+  seven days without the CA; after that, stamping stops until a current list
+  is obtained.
 
 ### The rehearsal that counts: the platform's own path
 

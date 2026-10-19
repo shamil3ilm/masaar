@@ -234,7 +234,7 @@ class SubmissionTracker
     {
         // Before the transition: a device with no credentials has sent
         // nothing, and must not be left in 'submitted', which nothing resends.
-        $device = $this->credentials->forInvoice((string) $invoice->org_id, $invoice->device_id, $invoice->branch_id);
+        $device = $this->credentials->forInvoice((string) $invoice->org_id, $invoice->device_id, $invoice->branch_id, (string) $invoice->id, $invoice->signed_xml);
 
         $this->ledger->transition($submission, 'submitted', 'api_call');
 
