@@ -54,10 +54,12 @@ class UaeInvoicePageTest extends TestCase
             ->assertSee(route('portal.invoices.xml', $invoice->id), false)
             ->assertSee('TRN 100765432100003')
             ->assertDontSee('Counter (ICV)')
-            ->assertDontSee(route('portal.invoices.print', $invoice->id), false)
-            ->assertDontSee(route('portal.invoices.pdf', $invoice->id), false)
-            ->assertDontSee(route('portal.invoices.adjust', [$invoice->id, 'debit_note']), false)
-            ->assertDontSee(route('portal.invoices.send', $invoice->id), false);
+            // A copy on request; a regular tax invoice beside the e-invoice
+            // is required only for a buyer not on e-invoicing (UaePrintTest).
+            ->assertSee(route('portal.invoices.print', $invoice->id), false)
+            ->assertSee(route('portal.invoices.pdf', $invoice->id), false)
+            ->assertSee(__('Print a copy'))
+            ->assertDontSee(route('portal.invoices.adjust', [$invoice->id, 'debit_note']), false);
     }
 
     /** What the provider said, said again: status, message id and errors. */

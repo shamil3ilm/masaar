@@ -52,6 +52,7 @@ Tax invoices to registered buyers
 Credit notes
 Sent the way the country requires, with its status shown
 Invoices your suppliers send you
+A PDF to print or email
 Your ERP, through the API
 Other countries: ask us
 We can add another country's e-invoicing rules to the platform. Tell us where you need to file.

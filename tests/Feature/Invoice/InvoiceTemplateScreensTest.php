@@ -147,8 +147,12 @@ class InvoiceTemplateScreensTest extends TestCase
         $this->actingAs($this->admin('owner'))->get(route('admin.invoice-template.sample'))->assertOk()->assertHeader('Content-Type', 'application/pdf');
     }
 
-    /** A country that prints no copy says so, and has nothing to preview. */
-    public function test_a_country_without_print_says_so(): void
+    /**
+     * A UAE organization previews its own tax invoice to a buyer not yet on
+     * electronic invoicing, in English as the country prints unless it
+     * chooses both languages.
+     */
+    public function test_a_uae_organization_previews_its_own(): void
     {
         config(['peppol.countries.AE.enabled' => true]);
         $gulf = $this->uaeOrganization();
@@ -157,9 +161,16 @@ class InvoiceTemplateScreensTest extends TestCase
         $portal = fn () => $this->actingAs($user)->withSession(['portal_org_id' => $gulf->id]);
 
         $portal()->get(route('portal.invoice-template.edit'))->assertOk()
-            ->assertSee(__('Invoices in your country reach the buyer as e-invoices, so no printed copy is handed over and this template is not used yet. It is kept for when one is.'))
-            ->assertDontSee('data-template-preview', false);
-        $portal()->get(route('portal.invoice-template.sample'))->assertNotFound();
+            ->assertSee('data-template-preview', false)
+            ->assertSee('data-locked-field="reverse_charge_statement"', false)
+            ->assertSee('VAT Executive Regulation Art. 59(1)(l)');
+
+        $portal()->get(route('portal.invoice-template.preview', ['paper' => 'a4']))->assertOk()
+            ->assertSee('Tax Invoice')->assertSee('Gulf Trading LLC')->assertSee('100123456700003')
+            ->assertDontSee('فاتورة ضريبية');
+        $portal()->get(route('portal.invoice-template.preview', ['paper' => '80mm', 'language' => 'english_first']))->assertOk()
+            ->assertSee('فاتورة ضريبية');
+        $portal()->get(route('portal.invoice-template.sample'))->assertOk()->assertHeader('Content-Type', 'application/pdf');
     }
 
     /** @param  array<string, mixed>  $values */

@@ -182,6 +182,14 @@ final class UnitCode
         return implode(' / ', $arabicFirst ? array_reverse(self::PRINTED[$code]) : self::PRINTED[$code]);
     }
 
+    /** The unit in English alone, for an invoice printed in English alone. */
+    public static function printedInEnglish(?string $code): string
+    {
+        $code = self::normalise($code);
+
+        return self::PRINTED[$code][0] ?? $code;
+    }
+
     /**
      * English and Arabic abbreviations, as a receipt prints them.
      *

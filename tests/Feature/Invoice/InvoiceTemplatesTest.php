@@ -162,7 +162,8 @@ class InvoiceTemplatesTest extends TestCase
         $this->assertSame('english_first', $this->templates->for($this->organization)->language);
 
         $gulf = $this->uaeOrganization();
-        $this->assertSame(['arabic_first', 'english_first', 'arabic', 'english'], array_keys($this->templates->languages($gulf)));
+        // English, as the guidelines' sample is (12.1), or both: English unless chosen.
+        $this->assertSame(['english', 'english_first', 'arabic_first'], array_keys($this->templates->languages($gulf)));
         $this->assertSame('english', $this->templates->for($gulf)->language);
     }
 

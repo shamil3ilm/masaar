@@ -16,8 +16,9 @@ use App\Domains\Compliance\Engine\DTOs\PrintLabel;
  * UAE Electronic Invoicing Guidelines (v1.1) p23 and p27 point to the same
  * two articles for an electronic tax invoice.
  *
- * Today the buyer receives the e-invoice itself and there is no printed copy
- * (Presentation::assertShareable); these are what one would have to carry.
+ * A buyer not yet on electronic invoicing is given these on paper or as a
+ * PDF beside the e-invoice (Guidelines 10.2.2, p23), drawn by PrintedInvoice
+ * from the e-invoice's own document.
  */
 final class PrintedFields
 {
@@ -47,7 +48,8 @@ final class PrintedFields
             $field('line_unit_price', 'Unit price', 'سعر الوحدة', self::ARTICLE.'59(1)(h)', self::STANDARD),
             $field('line_quantity', 'Quantity', 'الكمية', self::ARTICLE.'59(1)(h)', self::STANDARD),
             $field(PrintedField::LINE_VAT_RATE, 'VAT rate', 'نسبة الضريبة', self::ARTICLE.'59(1)(h)', self::STANDARD),
-            $field('line_total', 'Amount payable per line, in AED', 'المبلغ المستحق لكل بند بالدرهم', self::ARTICLE.'59(1)(h)', self::STANDARD),
+            $field('line_vat', 'VAT per line, in AED', 'ضريبة كل بند بالدرهم', 'Electronic Invoicing Guidelines v1.1, 12.2 item 16; '.self::ARTICLE.'59(1)(h)', self::STANDARD),
+            $field('line_total', 'Amount payable per line, in AED', 'المبلغ المستحق لكل بند بالدرهم', self::ARTICLE.'59(1)(h); Electronic Invoicing Guidelines v1.1, 12.2 item 16', self::STANDARD),
             $field(PrintedField::LINE_DISCOUNT, 'Discount offered', 'الخصم الممنوح', self::ARTICLE.'59(1)(i)', [], self::STANDARD),
             $field('total_with_vat', 'Gross amount payable, in AED', 'إجمالي المبلغ المستحق بالدرهم', self::ARTICLE.'59(1)(j) and 59(5)(e)'),
             $field('vat_total', 'VAT payable, in AED', 'مبلغ الضريبة المستحقة بالدرهم', self::ARTICLE.'59(1)(k) and 59(5)(e)'),

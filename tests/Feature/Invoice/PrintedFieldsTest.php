@@ -184,32 +184,97 @@ class PrintedFieldsTest extends TestCase
     }
 
     /**
-     * A UAE tax invoice's fields (VAT Executive Regulation Art. 59) cannot be
-     * left off a printed copy in any layout or on any paper, because none is
-     * printed: the buyer receives the e-invoice itself.
+     * A UAE tax invoice to a buyer not yet on electronic invoicing, printed
+     * as the guidelines require (Electronic Invoicing Guidelines v1.1,
+     * 10.2.2): every field of VAT Executive Regulation Art. 59(1) its
+     * invoices have, in every layout on every paper - one in dirhams with a
+     * discount and an earlier date of supply, one in dollars with a
+     * reverse-charge line.
      */
-    public function test_uae_prints_no_copy_at_all(): void
+    #[DataProvider('layoutsAndPapers')]
+    public function test_uae_fields_print_in_every_layout(TemplateLayout $layout, PaperSize $paper): void
     {
         config(['peppol.countries.AE.enabled' => true]);
         Queue::fake();
         $gulf = $this->uaeOrganization();
         $this->member->organizations()->attach($gulf->id, ['role' => 'member', 'status' => 'active']);
-        $invoice = $this->uaeInvoice($gulf);
-        $keys = array_map(fn (PrintedField $field): string => $field->key, $this->country($gulf)->printedFields());
+        app(InvoiceTemplates::class)->save(Level::Organization, Scope::organization((string) $gulf->id), [
+            'layout' => $layout->value, 'column_unit' => false, 'column_discount' => false, 'column_vat_rate' => false,
+        ], $gulf, null);
+        $fields = $this->country($gulf)->printedFields();
+        $reserved = ['buyer_endpoint' => '0235:9900000098'];
 
-        foreach (['title', 'seller_vat_number', 'buyer_vat_number', 'invoice_number', 'line_vat_rate', 'total_with_vat', 'vat_total'] as $key) {
-            $this->assertContains($key, $keys);
-        }
+        $invoices = [
+            'dirhams' => $this->uaeInvoice($gulf, ['supply_date' => '2026-10-05'], [
+                $this->uaeLine(),
+                $this->uaeLine(['description' => 'Cabling, installed', 'item_name' => 'Cabling', 'quantity' => 1, 'unit_code' => 'C62', 'unit_price' => 300, 'discount_amount' => 100, 'net_amount' => 200, 'tax_amount' => 10, 'line_total' => 210]),
+            ], $reserved),
+            'dollars' => $this->uaeInvoice($gulf, ['currency' => 'USD', 'exchange_rate' => '3.6725'], [
+                $this->uaeLine(),
+                $this->uaeLine(['description' => 'Mobile phones', 'item_name' => 'Phones', 'quantity' => 1, 'unit_code' => 'H87', 'unit_price' => 400, 'net_amount' => 400, 'tax_category' => 'AE', 'tax_rate' => 0, 'tax_amount' => 0, 'line_total' => 400]),
+            ], [...$reserved, 'lines' => ['2' => ['goods_type' => 'DL8.48.3.1']]]),
+        ];
 
-        foreach (TemplateLayout::cases() as $layout) {
-            app(InvoiceTemplates::class)->save(Level::Organization, Scope::organization((string) $gulf->id), ['layout' => $layout->value], $gulf, null);
+        foreach ($invoices as $name => $invoice) {
+            $expected = $this->uaeValues($invoice, $name === 'dollars');
+            $pages = [
+                'print view' => (string) $this->actingAs($this->member)->withSession(['portal_org_id' => $gulf->id])
+                    ->get(route('portal.invoices.print', ['invoiceId' => $invoice->id, 'paper' => $paper->value]))->assertOk()->getContent(),
+                'PDF' => app(InvoicePdf::class)->html($invoice, $gulf, $paper),
+            ];
 
-            foreach (PaperSize::cases() as $paper) {
-                $this->actingAs($this->member)->withSession(['portal_org_id' => $gulf->id])
-                    ->get(route('portal.invoices.print', ['invoiceId' => $invoice->id, 'paper' => $paper->value]))
-                    ->assertRedirect(route('portal.invoices.show', $invoice->id));
+            foreach ($pages as $where => $html) {
+                // No QR code: the UAE's e-invoices feature none (5.3).
+                $this->assertStringNotContainsString('data-print-qr>', $html, $where);
+            }
+
+            foreach ($fields as $field) {
+                $this->assertArrayHasKey($field->key, $expected, 'The test does not know how to find '.$field->key);
+                [$given, $values] = $expected[$field->key];
+
+                if (! $field->requiredOn('standard', $given)) {
+                    continue;
+                }
+
+                foreach ($pages as $where => $html) {
+                    foreach ($values as $value) {
+                        $this->assertStringContainsString(e($value), $html, "{$field->key} ({$field->source}) is missing from the {$name} invoice's {$where} in {$layout->value} on {$paper->value}");
+                    }
+                }
             }
         }
+    }
+
+    /**
+     * Where each UAE field's value is found, and whether the invoice has one.
+     *
+     * @return array<string, array{bool, list<string>}>
+     */
+    private function uaeValues(Invoice $invoice, bool $dollars): array
+    {
+        return [
+            'title' => [true, ['Tax Invoice']],
+            'seller_name' => [true, ['Gulf Trading LLC']],
+            'seller_address' => [true, ['Sheikh Zayed Road', 'Dubai']],
+            'seller_vat_number' => [true, ['100123456700003']],
+            'buyer_name' => [true, ['Noor Electronics LLC']],
+            'buyer_address' => [true, ['Khalifa Street', 'Abu Dhabi']],
+            'buyer_vat_number' => [true, ['100765432100003']],
+            'invoice_number' => [true, [$invoice->invoice_number]],
+            'issue_date' => [true, ['2026-10-10']],
+            'supply_date' => [! $dollars, ['2026-10-05']],
+            'line_description' => [true, ['Consulting']],
+            'line_unit_price' => [true, [$dollars ? '500.00 USD' : '500.00 AED']],
+            'line_quantity' => [true, ['2']],
+            'line_vat_rate' => [true, ['5%']],
+            'line_vat' => [true, [$dollars ? '183.63 AED' : '50.00 AED']],
+            'line_total' => [true, [$dollars ? '3,856.13 AED' : '1,050.00 AED']],
+            'line_discount' => [! $dollars, ['-100.00 AED']],
+            'total_with_vat' => [true, [$dollars ? '1,450.00 USD' : '1,260.00 AED']],
+            'vat_total' => [true, [$dollars ? '50.00 USD' : '60.00 AED']],
+            'vat_in_accounting_currency' => [$dollars, ['1 USD = 3.6725 AED', '183.63 AED']],
+            'reverse_charge_statement' => [$dollars, ['Reverse charge: the recipient is required to account for the VAT on this supply under the VAT Decree-Law.']],
+        ];
     }
 
     /**

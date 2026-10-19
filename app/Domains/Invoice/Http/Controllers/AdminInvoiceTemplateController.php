@@ -19,8 +19,8 @@ use Illuminate\Http\Request;
  * Admin › Branding › Invoice template: the platform's default, which every
  * organization's invoices follow until it sets its own.
  *
- * The preview draws the first country that hands over a printed copy, with
- * a made-up seller.
+ * The preview draws the deployment's default country, or the first other
+ * that hands over a printed copy, with a made-up seller.
  */
 class AdminInvoiceTemplateController extends InvoiceTemplateController
 {
@@ -43,7 +43,10 @@ class AdminInvoiceTemplateController extends InvoiceTemplateController
 
     protected function country(?Organization $organization): ?Presentation
     {
-        foreach ($this->registry->registered() as $code) {
+        // The deployment's own country first, then the others in order.
+        $codes = array_values(array_unique([$this->registry->defaultCode(), ...$this->registry->registered()]));
+
+        foreach ($codes as $code) {
             $presentation = $this->registry->get($code)->presentation();
 
             if ($presentation->sampleInvoice() !== null) {

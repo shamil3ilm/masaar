@@ -20,7 +20,7 @@ class FeatureSupportTest extends TestCase
     public function test_business_documents_and_receiving(): void
     {
         $support = app(Module::class)->features();
-        $absent = [Feature::IssueSimplified, Feature::DebitNotes, Feature::PdfAndEmail, Feature::OfflineMode];
+        $absent = [Feature::IssueSimplified, Feature::DebitNotes, Feature::OfflineMode];
 
         foreach (Feature::cases() as $feature) {
             $this->assertSame(! in_array($feature, $absent, true), $support->supportsFeature($feature), $feature->value);
@@ -28,6 +28,9 @@ class FeatureSupportTest extends TestCase
 
         $this->assertTrue($support->supportsFeature(Feature::ReceiveInvoices));
         $this->assertTrue($support->supportsFeature(Feature::CreditNotes));
+        // A regular tax invoice beside the e-invoice, for a buyer not yet on
+        // electronic invoicing (Electronic Invoicing Guidelines v1.1, 10.2.2).
+        $this->assertTrue($support->supportsFeature(Feature::PdfAndEmail));
     }
 
     /** Only the shared issuance switch: sending is the network's. */

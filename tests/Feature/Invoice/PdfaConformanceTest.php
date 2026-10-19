@@ -22,8 +22,10 @@ use App\Domains\Platform\Customization\Scope;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Feature\Compliance\UnitedArabEmirates\PintInvoices;
 use Tests\Fixtures\PrintSamples;
 use Tests\Fixtures\SigningCredentials;
 use Tests\TestCase;
@@ -39,6 +41,7 @@ use Tests\TestCase;
  */
 class PdfaConformanceTest extends TestCase
 {
+    use PintInvoices;
     use PrintSamples;
     use RefreshDatabase;
     use SigningCredentials;
@@ -206,6 +209,34 @@ class PdfaConformanceTest extends TestCase
 
         $this->assertStringContainsString('/ETSI.CAdES.detached', $pdf);
         $this->assertConforms($pdf);
+    }
+
+    /**
+     * A UAE tax invoice printed for a buyer not yet on electronic invoicing,
+     * in every layout on every paper: plain PDF/A, with neither XML nor seal
+     * (the guidelines ask for neither on a PDF), in English and both
+     * languages.
+     */
+    #[DataProvider('layoutsAndPapers')]
+    public function test_every_uae_layout_is_pdfa(TemplateLayout $layout, PaperSize $paper): void
+    {
+        config(['peppol.countries.AE.enabled' => true]);
+        Queue::fake();
+        $gulf = $this->uaeOrganization();
+        $invoice = $this->uaeInvoice($gulf, [], [$this->uaeLine(), $this->uaeLine(['discount_amount' => 100, 'net_amount' => 900, 'tax_amount' => 45, 'line_total' => 945])], ['buyer_endpoint' => '0235:9900000098']);
+
+        foreach (['english', 'arabic_first'] as $language) {
+            app(InvoiceTemplates::class)->save(Level::Organization, Scope::organization((string) $gulf->id), [
+                'layout' => $layout->value, 'language' => $language,
+                'terms_en' => 'Payment within 30 days', 'terms_ar' => 'السداد خلال ثلاثين يوماً',
+                'bank_iban' => 'AE070331234567890123456',
+            ], $gulf, null);
+
+            $pdf = app(InvoicePdf::class)->render($invoice, $gulf->fresh(), $paper);
+
+            $this->assertStringNotContainsString('/EmbeddedFile', $pdf);
+            $this->assertConforms($pdf);
+        }
     }
 
     private function assertConforms(string $pdf): void

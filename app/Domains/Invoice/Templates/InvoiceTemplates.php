@@ -198,25 +198,29 @@ class InvoiceTemplates
     }
 
     /**
-     * The languages the organization's invoices may print in: both, either
-     * first, wherever the country requires Arabic; one alone besides where
-     * it does not. The platform's default may be any of them, and is read
-     * by each country as it allows.
+     * The languages the organization's invoices may print in, as its
+     * country allows (LanguageRules::printLanguages). The platform's default
+     * may be any of them, and is read by each country as it allows.
      *
      * @return array<string, string> value => label
      */
     public function languages(?Organization $organization): array
     {
-        $both = [
+        $labels = [
             'arabic_first' => __('Arabic and English, Arabic first'),
             'english_first' => __('English and Arabic, English first'),
+            'arabic' => __('Arabic only'),
+            'english' => __('English only'),
         ];
 
-        if ($organization !== null && $this->jurisdictions->forRules($organization)->languageRules()->requiresArabic()) {
-            return $both;
+        if ($organization === null) {
+            return $labels;
         }
 
-        return [...$both, 'arabic' => __('Arabic only'), 'english' => __('English only')];
+        $allowed = $this->jurisdictions->forRules($organization)->languageRules()->printLanguages();
+
+        // In the country's order: its first is its default.
+        return array_combine($allowed, array_map(fn (string $language): string => $labels[$language], $allowed));
     }
 
     /**
@@ -314,15 +318,28 @@ class InvoiceTemplates
      */
     private function language(mixed $chosen, ?Organization $organization): string
     {
-        if (! is_string($chosen) || ! in_array($chosen, InvoiceTemplate::LANGUAGES, true)) {
-            return $organization === null || $this->preferences->arabicFirst($organization) ? 'arabic_first' : 'english_first';
-        }
+        $allowed = array_keys($this->languages($organization));
 
-        if (array_key_exists($chosen, $this->languages($organization))) {
+        if (is_string($chosen) && in_array($chosen, $allowed, true)) {
             return $chosen;
         }
 
-        return $chosen === 'english' ? 'english_first' : 'arabic_first';
+        if (is_string($chosen) && in_array($chosen, InvoiceTemplate::LANGUAGES, true)) {
+            // One language alone where the country prints both: both, that
+            // one first; Arabic alone where it is not offered: both, Arabic
+            // first.
+            return $chosen === 'english' ? 'english_first' : 'arabic_first';
+        }
+
+        // None chosen: the country's own default, or - where the country
+        // has the organization choose its order - that order.
+        $country = $organization === null ? null : $this->jurisdictions->forRules($organization);
+
+        if ($country === null || $country->presentation()->usesCustomization('printing.language_order')) {
+            return $organization === null || $this->preferences->arabicFirst($organization) ? 'arabic_first' : 'english_first';
+        }
+
+        return $allowed[0];
     }
 
     /** The organization's theme colour, or the platform's. */

@@ -73,7 +73,7 @@
             <td class="r-start r-label r-amount"><span dir="rtl" lang="ar">{{ $receipt->totalLabel->ar }}</span><br>{{ $receipt->totalLabel->en }}</td>
             <td class="r-end r-label"><span dir="rtl" lang="ar">{{ $receipt->quantityLabel->ar }} &times; {{ $receipt->unitPriceLabel->ar }}</span><br>{{ $receipt->quantityLabel->en }} &times; {{ $receipt->unitPriceLabel->en }}</td>
         @else
-            <td class="r-start r-label">{{ $receipt->quantityLabel->en }} &times; {{ $receipt->unitPriceLabel->en }}<br><span dir="rtl" lang="ar">{{ $receipt->quantityLabel->ar }} &times; {{ $receipt->unitPriceLabel->ar }}</span></td>
+            <td class="r-start r-label">{{ $receipt->quantityLabel->en }} &times; {{ $receipt->unitPriceLabel->en }}@if ($receipt->quantityLabel->ar !== '')<br><span dir="rtl" lang="ar">{{ $receipt->quantityLabel->ar }} &times; {{ $receipt->unitPriceLabel->ar }}</span>@endif</td>
             <td class="r-end r-label r-amount">{{ $receipt->totalLabel->en }}<br><span dir="rtl" lang="ar">{{ $receipt->totalLabel->ar }}</span></td>
         @endif
     </tr></table>

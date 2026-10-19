@@ -2429,5 +2429,9 @@
     "Invoices here reach the buyer as e-invoices: there is no printed copy to preview.": "تصل الفواتير هنا إلى المشتري فواتيرَ إلكترونية: لا توجد نسخة مطبوعة لمعاينتها.",
     "Only an administrator of this organization can change its invoice template.": "لا يستطيع تغيير قالب فاتورة هذه المنشأة إلا أحد مسؤوليها.",
     "Sample - not a tax invoice": "نموذج - ليست فاتورة ضريبية",
-    "Open preview": "فتح المعاينة"
+    "Open preview": "فتح المعاينة",
+    "Print tax invoice for the buyer": "طباعة الفاتورة الضريبية للمشتري",
+    "Print a copy": "طباعة نسخة",
+    "Issue the invoice first. A draft is not a tax invoice.": "أصدر الفاتورة أولاً. المسودة ليست فاتورة ضريبية.",
+    "The e-invoice was rejected, so it is not a valid tax invoice. Correct it and issue a new one.": "رُفضت الفاتورة الإلكترونية، فهي ليست فاتورة ضريبية صالحة. صحّحها وأصدر فاتورة جديدة."
 }

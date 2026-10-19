@@ -27,6 +27,27 @@ interface LanguageRules
     /** A saved product's Arabic name, for arabicNameRules(). */
     public const PRODUCT = 'product';
 
+    /** Both languages, the Arabic first, right to left. */
+    public const ARABIC_FIRST = 'arabic_first';
+
+    /** Both languages, the English first. */
+    public const ENGLISH_FIRST = 'english_first';
+
+    /** Arabic alone. */
+    public const ARABIC = 'arabic';
+
+    /** English alone. */
+    public const ENGLISH = 'english';
+
+    /**
+     * The languages a printed invoice may be in (the constants above), the
+     * one it prints in when the organization chooses none first. An
+     * invoice template offers only these.
+     *
+     * @return list<string>
+     */
+    public function printLanguages(): array;
+
     /**
      * Whether the country's invoices must carry Arabic text: the Arabic
      * names of the seller, its customers and its products are then required

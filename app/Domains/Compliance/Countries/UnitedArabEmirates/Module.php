@@ -200,14 +200,16 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
 
     /**
      * PINT AE is business to business: no simplified invoice and no debit
-     * note (a correction is a credit note). The document is the e-invoice, so
-     * there is no PDF to share or email (InvoicePdf needs a seal it does not
-     * have), and the service provider carries every document, so nothing
-     * waits offline. Receiving is the network's inbound documents.
+     * note (a correction is a credit note). The e-invoice is the tax
+     * invoice, and a buyer not yet on electronic invoicing is given a regular
+     * one, "e.g. in pdf", beside it (Electronic Invoicing Guidelines v1.1,
+     * 10.2.2): so a PDF to print or email. The service provider carries every
+     * document, so nothing waits offline. Receiving is the network's inbound
+     * documents.
      */
     public function supportsFeature(Feature $feature): bool
     {
-        return ! in_array($feature, [Feature::IssueSimplified, Feature::DebitNotes, Feature::PdfAndEmail, Feature::OfflineMode], true);
+        return ! in_array($feature, [Feature::IssueSimplified, Feature::DebitNotes, Feature::OfflineMode], true);
     }
 
     /** None beyond the shared issuance switch: sending is the network's, which no switch stops. */
