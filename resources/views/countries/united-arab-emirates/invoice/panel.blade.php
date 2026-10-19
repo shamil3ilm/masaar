@@ -17,7 +17,7 @@
 
     {{-- PEPPOL_GATEWAY=simulator, local and staging only: said where the status is, so nobody takes it for a delivery. --}}
     @if (config('peppol.gateway') === 'simulator')
-        <p class="mb-4 rounded-lg border border-warning-line bg-warning-soft p-3 text-sm text-warning" data-simulated>{{ __('Test mode: a service-provider simulator handles this e-invoice. Nothing is sent on the Peppol network or reported to the authority.') }}</p>
+        <x-ui.alert tone="warning" class="mb-4" data-simulated>{{ __('Test mode: a service-provider simulator handles this e-invoice. Nothing is sent on the Peppol network or reported to the authority.') }}</x-ui.alert>
     @endif
 
     @if ($invoice->status === \App\Domains\Invoice\Enums\InvoiceStatus::Draft)
@@ -35,7 +35,7 @@
         @endforeach
 
         @if (! empty($outage) && in_array($document->status, ['ready', 'sending'], true))
-            <p class="mb-4 rounded-lg border border-warning-line bg-warning-soft p-3 text-sm text-warning" data-provider-outage>{{ __('The service provider is not answering at the moment. This e-invoice waits and is sent as soon as it answers again.') }}</p>
+            <x-ui.alert tone="warning" class="mb-4" data-provider-outage>{{ __('The service provider is not answering at the moment. This e-invoice waits and is sent as soon as it answers again.') }}</x-ui.alert>
         @endif
 
         <dl class="space-y-3 text-sm">
@@ -111,7 +111,7 @@
                 <ol class="space-y-2 text-xs">
                     @foreach ($history as $event)
                         <li class="flex flex-wrap items-center gap-2">
-                            <span class="text-muted">{{ $event->occurred_at?->format('Y-m-d H:i:s') }}</span>
+                            <x-ui.date :value="$event->occurred_at" time :zone="\App\Support\CountryClock::timeZone($document->country)" class="text-muted" />
                             <span class="text-fg">{{ match ($event->source) {
                                 'submission' => __('Handed to the provider'),
                                 'callback' => __('Provider callback'),

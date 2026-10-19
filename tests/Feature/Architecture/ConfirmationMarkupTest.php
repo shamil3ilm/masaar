@@ -51,6 +51,9 @@ class ConfirmationMarkupTest extends TestCase
         'archive', 'issue', 'invoice', 'send', 'role', 'approve', 'grant', 'invite', 'offer', 'accept', 'reactivate',
         'resume', 'enable', 'disable', 'withdraw', 'replay', 'password-reset', 'enrolment-link', 'sessions', 'import',
         'features', 'language-grace', 'notified', 'restore', 'restore-removed', 'bypass',
+        // Puts a document back on the network, or asks the provider to file
+        // its report with the authority again.
+        'resend', 'retry-report',
     ];
 
     /**

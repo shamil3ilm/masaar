@@ -11,19 +11,16 @@
     unanswered, once the cause is fixed; Retry report is peppol:retry-reports,
     for a document whose report to the authority failed.
 --}}
-<div class="mb-6">
-    <h1 class="text-2xl font-semibold tracking-tight text-fg">Peppol</h1>
-    <p class="mt-1 max-w-3xl text-sm text-muted">Documents sent and received over the Peppol network, for every organization.</p>
-</div>
+<x-ui.page-header title="Peppol" description="Documents sent and received over the Peppol network, for every organization." />
 
 {{-- ProviderOutage: several documents in a row with no answer. Nothing is
      given up on while it lasts, and what waits is sent when it answers. --}}
 @if ($outage)
-    <div class="mb-6 rounded-card border border-warning-line bg-warning-soft p-4 text-sm text-warning" data-peppol-outage>
-        The service provider has not answered since {{ \Carbon\Carbon::parse($outage['since'])->diffForHumans() }}
+    <x-ui.alert tone="warning" class="mb-6" data-peppol-outage>
+        The service provider has not answered since <x-ui.date :value="$outage['since']" time />
         ({{ $outage['last_error'] }}). Documents wait and are sent as soon as it answers again; the provider
         must notify the authority of the disruption.
-    </div>
+    </x-ui.alert>
 @endif
 
 <div class="mb-6 rounded-card border border-line bg-surface p-4 shadow-card" data-peppol-gateway>
@@ -70,17 +67,23 @@
                 <td class="px-6 py-4 text-sm">{{ $document->attempts }}</td>
                 @php($first = $document->errorList('errors')[0] ?? $document->errorList('reporting_errors')[0] ?? null)
                 <td class="px-6 py-4 text-sm text-danger">{{ Str::limit((string) ($document->last_error ?? ($first ? trim(($first['code'] ? $first['code'].': ' : '').$first['message']) : '')), 80) }}</td>
-                <td class="px-6 py-4 text-sm text-muted">{{ $document->updated_at?->diffForHumans() }}</td>
+                <td class="px-6 py-4 text-sm text-muted whitespace-nowrap"><x-ui.date :value="$document->updated_at" time /></td>
                 <td class="px-6 py-4">
                     @admincan('operations.run')
                         @if ($document->status === 'failed')
-                            <form action="{{ route('admin.peppol.resend', $document->id) }}" method="POST" class="inline">
+                            <form action="{{ route('admin.peppol.resend', $document->id) }}" method="POST" class="inline"
+                                  data-confirm="Resend {{ $document->org?->name ?? 'this organization' }}'s document to {{ $document->receiver_endpoint }}?"
+                                  data-confirm-detail="It goes back on the queue with its attempts reset and is sent to the service provider again, so fix the cause of the failure first."
+                                  data-confirm-action="Resend">
                                 @csrf
                                 <x-ui.link-button>Resend</x-ui.link-button>
                             </form>
                         @endif
                         @if ($document->reporting_status === 'report_failed')
-                            <form action="{{ route('admin.peppol.retry-report', $document->id) }}" method="POST" class="inline">
+                            <form action="{{ route('admin.peppol.retry-report', $document->id) }}" method="POST" class="inline"
+                                  data-confirm="Ask the service provider to report {{ $document->org?->name ?? 'this organization' }}'s document again?"
+                                  data-confirm-detail="The report goes back to awaiting the authority until the provider answers. Delivery to the buyer is not repeated."
+                                  data-confirm-action="Retry report">
                                 @csrf
                                 <x-ui.link-button>Retry report</x-ui.link-button>
                             </form>
@@ -123,7 +126,7 @@
                 <td class="px-6 py-4 font-mono text-xs">{{ $document->sender_endpoint }}</td>
                 <td class="px-6 py-4 font-mono text-xs">{{ $document->receiver_endpoint }}</td>
                 <td class="px-6 py-4 break-all font-mono text-xs">{{ $document->asp_message_id }}</td>
-                <td class="px-6 py-4 text-sm text-muted">{{ $document->updated_at?->diffForHumans() }}</td>
+                <td class="px-6 py-4 text-sm text-muted whitespace-nowrap"><x-ui.date :value="$document->updated_at" time /></td>
             </tr>
         @empty
             <x-ui.empty :columns="9">No Peppol document yet.</x-ui.empty>
