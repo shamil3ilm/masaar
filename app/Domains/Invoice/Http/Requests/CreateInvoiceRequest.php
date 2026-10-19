@@ -62,7 +62,7 @@ class CreateInvoiceRequest extends CountryInvoiceRequest
             'branch_id' => ['nullable', 'string', 'uuid', Rule::exists('branches', 'id')
                 ->where('org_id', app(TenantResolver::class)->getOrganizationId())->withoutTrashed()],
             // Checked against the organization's tills when the draft is
-            // made (Tills::resolve): its own, of the branch named, issuing.
+            // made (Tills::named): its own, of the branch named, issuing.
             'till_id' => ['nullable', 'string', 'uuid'],
             'till_number' => ['nullable', 'integer', 'min:1'],
             // An instant, so it names its offset: a bare local time would be

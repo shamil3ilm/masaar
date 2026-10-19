@@ -2770,6 +2770,135 @@ paths:
                 $ref: '#/components/schemas/Error'
       security:
         - bearerAuth: []
+  '/api/organizations/branches/{branch}/units':
+    post:
+      tags:
+        - Compliance
+      operationId: unitController.store
+      summary: 'Store — Unit Controller'
+      parameters:
+        - name: branch
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - bearerAuth: []
+  /api/organizations/units:
+    get:
+      tags:
+        - Compliance
+      operationId: unitController.index
+      summary: 'Index — Unit Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - bearerAuth: []
+  '/api/organizations/units/{unit}/onboarding/ccsid':
+    post:
+      tags:
+        - Compliance
+      operationId: unitController.ccsid
+      summary: 'Ccsid — Unit Controller'
+      parameters:
+        - name: unit
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - bearerAuth: []
+  '/api/organizations/units/{unit}/onboarding/compliance-check':
+    post:
+      tags:
+        - Compliance
+      operationId: unitController.complianceCheck
+      summary: 'Compliance Check — Unit Controller'
+      parameters:
+        - name: unit
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - bearerAuth: []
+  '/api/organizations/units/{unit}/onboarding/pcsid':
+    post:
+      tags:
+        - Compliance
+      operationId: unitController.pcsid
+      summary: 'Pcsid — Unit Controller'
+      parameters:
+        - name: unit
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - bearerAuth: []
   '/api/organizations/{id}/switch':
     post:
       tags:

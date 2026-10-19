@@ -91,7 +91,7 @@ class InvoiceController extends Controller
         // The till that made the sale, when the request names one; its
         // branch is the invoice's when the request names none.
         try {
-            ['branch' => $branchId, 'till' => $tillId] = $this->tills->resolve(
+            ['branch' => $branchId, 'till' => $tillId] = $this->tills->named(
                 (string) $organizationId,
                 $request->validated('branch_id'),
                 $request->validated('till_id'),

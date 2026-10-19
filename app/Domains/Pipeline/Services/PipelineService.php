@@ -112,7 +112,7 @@ class PipelineService
         // The till that made the sale, when the ERP names one: by its id, or
         // by its number in the branch it names.
         try {
-            ['branch' => $branchId, 'till' => $tillId] = $this->tills->resolve(
+            ['branch' => $branchId, 'till' => $tillId] = $this->tills->named(
                 $organizationId,
                 $this->resolveBranch($branchId, $organizationId),
                 $data['till_id'] ?? null,

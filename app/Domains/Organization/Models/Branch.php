@@ -226,7 +226,10 @@ class Branch extends Model
             postalCode: $this->postal_code,
             district: $this->district,
             buildingNumber: $this->building_number,
-            additionalNumber: $this->additional_number,
+            // AddressData has no additionalNumber: the name threw on every
+            // call. The organization's own additional number goes in the
+            // same place (Organization::getAddressData).
+            additionalStreet: $this->additional_number,
             countryCode: $this->country_code,
         );
     }

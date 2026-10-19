@@ -6,9 +6,12 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Onboarding;
 
 use App\Domains\Compliance\Countries\SaudiArabia\DTOs\CsrData;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateIdentity;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
+use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\Registrar;
+use App\Domains\Organization\Services\Tills;
 use DomainException;
 use Illuminate\Support\Str;
 
@@ -29,6 +32,7 @@ class OrganizationOnboarding
         private readonly ComplianceSampleSet $samples,
         private readonly OnboardingEvents $events,
         private readonly RenewalGuard $renewal,
+        private readonly Tills $tills,
     ) {}
 
     /**
@@ -88,6 +92,12 @@ class OrganizationOnboarding
         ), $otp);
 
         $this->credentials->put((string) $organization->id, null, CredentialStore::CCSID, $result);
+
+        // Head office's unit is known to ZATCA by the serial this request carried.
+        $this->tills->headOffice((string) $organization->id)->forceFill([
+            'egs_serial' => $device['serial_number'],
+            'onboarding_status' => Branch::STATUS_CSR_GENERATED,
+        ])->save();
         $this->events->announce((string) $organization->id, OnboardingEvents::CCSID_OBTAINED);
 
         return ['ccsid' => (string) $result['ccsid'], 'request_id' => (string) $result['requestId']];
@@ -169,6 +179,10 @@ class OrganizationOnboarding
         // keys, and a merge built from a copy loaded earlier discards
         // anything written in between.
         $this->registrar->markOnboarded($organization);
+        $this->tills->headOffice((string) $organization->id)->forceFill([
+            'onboarding_status' => Branch::STATUS_ACTIVE,
+            'cert_expires_at' => CertificateIdentity::of((string) $this->stored($organization, CredentialStore::PCSID)['pcsid'])->validTo,
+        ])->save();
         $this->events->announce((string) $organization->id, OnboardingEvents::PCSID_OBTAINED);
     }
 
@@ -179,12 +193,20 @@ class OrganizationOnboarding
     }
 
     /**
-     * The serial number ZATCA expects for a new device: the solution, its
-     * version and the device, 1-<solution>|2-<version>|3-<device id>.
+     * The serial number ZATCA expects for a device: the solution, its
+     * version and the device, 1-<solution>|2-<version>|3-<device id>. Head
+     * office's unit keeps the one it was onboarded under, so a renewal names
+     * the same unit; before it has one, its id is the device's.
      */
-    public function deviceSerial(): string
+    public function deviceSerial(?Organization $organization = null): string
     {
-        return '1-'.Str::slug((string) config('app.name', 'Masaar')).'|2-1.0|3-'.Str::uuid();
+        if ($organization === null) {
+            return '1-'.Str::slug((string) config('app.name', 'Masaar')).'|2-1.0|3-'.Str::uuid();
+        }
+
+        $unit = $this->tills->headOffice((string) $organization->id);
+
+        return filled($unit->egs_serial) ? (string) $unit->egs_serial : Tills::serialFor((string) $unit->id);
     }
 
     /**

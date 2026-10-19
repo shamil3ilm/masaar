@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\AdminCertificateController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalCertificateRenewalController;
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\UnitController;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateRevocationActions;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\GovernedRevocationApprovals;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\RevocationApprovals;
@@ -76,6 +77,26 @@ class ModuleServiceProvider extends ServiceProvider
                 Route::get('/zatca/certificates/renew', [PortalCertificateRenewalController::class, 'show'])->name('zatca.renew');
                 Route::post('/zatca/certificates/renew', [PortalCertificateRenewalController::class, 'renew'])->middleware('throttle:6,1')->name('zatca.renew.store');
                 Route::post('/zatca/certificates/renew/finish', [PortalCertificateRenewalController::class, 'finish'])->middleware('throttle:6,1')->name('zatca.renew.finish');
+            });
+
+        // The organization's tills (EGS units) over the tenant API, behind
+        // that surface's own guard (routes/api/tenant.php): listing them for
+        // anyone who writes, adding one and onboarding it - each with its own
+        // OTP - for its administrators, onboarding only once it may file.
+        Route::middleware(['api', 'jwt.auth', 'rate.api', 'org.writer'])
+            ->prefix('api/organizations')
+            ->group(function (): void {
+                Route::get('/units', [UnitController::class, 'index']);
+
+                Route::middleware('org.admin')->group(function (): void {
+                    Route::post('/branches/{branch}/units', [UnitController::class, 'store']);
+
+                    Route::middleware('filing.cleared')->group(function (): void {
+                        Route::post('/units/{unit}/onboarding/ccsid', [UnitController::class, 'ccsid']);
+                        Route::post('/units/{unit}/onboarding/compliance-check', [UnitController::class, 'complianceCheck']);
+                        Route::post('/units/{unit}/onboarding/pcsid', [UnitController::class, 'pcsid']);
+                    });
+                });
             });
     }
 }

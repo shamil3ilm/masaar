@@ -81,7 +81,7 @@ class InvoiceDrafter
      * and nothing a Saudi request validated can reach them.
      *
      * $tillId is the till the request named, already checked to be one of
-     * the organization's that issues (Tills::resolve): the draft keeps it, and
+     * the organization's that issues (Tills::named): the draft keeps it, and
      * is issued on it. Null leaves the till to be chosen at issue.
      *
      * @param  array<string, mixed>  $countryFields

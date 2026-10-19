@@ -3,8 +3,9 @@
 @section('title', __('Certificates'))
 
 {{--
-    Every ZATCA certificate each of the organization's devices has held,
-    newest first, and how many documents still wait to be filed under each
+    Each of the organization's tills - its EGS units, head office's first -
+    with where it stands, and every ZATCA certificate it has held, newest
+    first, with how many documents still wait to be filed under each
     (PortalZatcaController::certificates). A document is filed with the
     certificate that signed it, so a superseded certificate with documents
     waiting is still in use.
@@ -28,6 +29,16 @@
 
 @forelse ($devices as $device)
     <x-ui.section :title="$device['name']" flush class="mb-6">
+        <div class="flex flex-wrap items-center gap-2 px-5 py-3 text-sm">
+            <x-ui.badge :state="$device['status']" :tone="in_array($device['status'], ['retiring', 'retired', 'lost'], true) ? 'neutral' : null" :label="$device['status_label']" />
+            <x-ui.badge :tone="$device['ready'] ? 'success' : 'warning'" :label="$device['ready'] ? __('Ready to issue') : __('Not connected to ZATCA')" />
+            @if ($device['expires'])
+                <span class="text-muted">{{ __('Certificate valid until') }} <x-ui.date :value="$device['expires']" /></span>
+            @endif
+        </div>
+        @if ($device['versions'] === [])
+            <p class="border-t border-line px-5 py-3 text-sm text-muted">{{ __('This till holds no certificate yet. Connect it to ZATCA with its own one-time code.') }}</p>
+        @else
         <x-ui.table :primary="[0, 1, 5]">
             <x-slot:head>
                 <x-ui.th>{{ __('Version') }}</x-ui.th>
@@ -58,6 +69,7 @@
                 </tr>
             @endforeach
         </x-ui.table>
+        @endif
     </x-ui.section>
 @empty
     <x-ui.card>

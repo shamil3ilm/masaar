@@ -83,7 +83,7 @@ class Tills
      *
      * @throws DomainException saying why the till named cannot issue it
      */
-    public function resolve(string $organizationId, ?string $branchId, ?string $tillId, ?int $tillNumber): array
+    public function named(string $organizationId, ?string $branchId, ?string $tillId, ?int $tillNumber): array
     {
         if ($tillId === null && $tillNumber === null) {
             return ['branch' => $branchId, 'till' => null];

@@ -2061,5 +2061,13 @@
     "Lost": "مفقودة",
     "Till :till is not one of this organization's.": "نقطة البيع :till ليست من نقاط بيع هذه المنشأة.",
     "There is no till :number here.": "لا توجد نقطة بيع برقم :number هنا.",
-    ":till is not one of this branch's tills.": ":till ليست من نقاط بيع هذا الفرع."
+    ":till is not one of this branch's tills.": ":till ليست من نقاط بيع هذا الفرع.",
+    "Connect :till to ZATCA": "ربط :till مع الهيئة",
+    "Optional: each till is its own device, onboarded with its own one-time code. Until then head office signs for its branch.": "اختياري: كل نقطة بيع جهاز مستقل يُربط مع الهيئة برمز مؤقت خاص به. وإلى أن يتم ذلك يوقّع المركز الرئيسي عن فرعها.",
+    "Ready to issue": "جاهزة للإصدار",
+    "Not connected to ZATCA": "غير مربوطة مع الهيئة",
+    "Certificate valid until": "الشهادة صالحة حتى",
+    "This till holds no certificate yet. Connect it to ZATCA with its own one-time code.": "لا تحمل نقطة البيع هذه شهادة بعد. اربطها مع الهيئة برمزها المؤقت الخاص.",
+    "This branch has no till of its own.": "ليس لهذا الفرع نقطة بيع خاصة به.",
+    "Head office is onboarded as the organization, from the ZATCA page.": "يُربط المركز الرئيسي مع الهيئة بوصفه المنشأة، من صفحة الربط مع الهيئة."
 }
