@@ -145,7 +145,7 @@
                     </div>
                     <x-locale-switch class="block" />
                 @endauth
-                <p class="pt-1 text-xs text-subtle">{{ __('Powered by Masaar') }}</p>
+                <p class="pt-1 text-xs text-subtle">{{ __('Powered by :app') }}</p>
             </div>
         </aside>
 

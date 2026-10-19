@@ -44,7 +44,7 @@
         ['text-display', 'text-display font-semibold', $t('Every invoice, on the right path.', 'كل فاتورة في مسارها الصحيح.')],
         ['text-title', 'text-title font-semibold', $t('One account. The rules of each country.', 'حساب واحد. وقواعد كل دولة.')],
         ['text-heading', 'text-heading font-semibold', $t('Your company', 'شركتك')],
-        ['text-lead', 'text-lead text-muted', $t('Masaar signs, files and keeps each invoice.', 'يوقّع مسار كل فاتورة ويقدّمها ويحفظها.')],
+        ['text-lead', 'text-lead text-muted', $t(\App\Support\Brand::name('en').' signs, files and keeps each invoice.', 'يوقّع '.\App\Support\Brand::name('ar').' كل فاتورة ويقدّمها ويحفظها.')],
         ['text-base', 'text-base', $t('Running text, for anything longer than a line.', 'نص متصل لكل ما يزيد على سطر.')],
         ['text-sm', 'text-sm text-muted', $t('Secondary text: descriptions, table cells.', 'نص ثانوي: الأوصاف وخلايا الجداول.')],
         ['text-eyebrow', 'text-eyebrow font-semibold uppercase text-accent', $t('Where we work', 'أين نعمل')],

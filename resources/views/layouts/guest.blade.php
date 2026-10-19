@@ -53,7 +53,7 @@
         </main>
 
         <footer class="mx-auto flex w-full max-w-page flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-6 text-sm text-subtle sm:px-6">
-            <p>{{ __('Powered by Masaar') }}</p>
+            <p>{{ __('Powered by :app') }}</p>
             <nav class="flex flex-wrap gap-x-5" aria-label="{{ __('Legal') }}">
                 <a href="{{ route('privacy') }}" class="inline-flex min-h-11 items-center hover:text-fg hover:underline underline-offset-4">{{ __('Privacy') }}</a>
                 <a href="{{ route('terms') }}" class="inline-flex min-h-11 items-center hover:text-fg hover:underline underline-offset-4">{{ __('Terms') }}</a>
