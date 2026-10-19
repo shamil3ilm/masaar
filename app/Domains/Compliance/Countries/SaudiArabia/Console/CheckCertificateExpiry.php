@@ -10,7 +10,9 @@ use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificatePem;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateService;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Organization\Enums\MemberRole;
+use App\Domains\Organization\Models\EgsUnit;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\Tills;
 use App\Domains\Platform\Services\Settings;
 use App\Domains\Webhook\Events\CertificateExpiring;
 use Illuminate\Console\Command;
@@ -23,6 +25,12 @@ use Illuminate\Support\Facades\Mail;
  *
  * Run daily via scheduler to proactively alert organizations
  * before their certificates expire.
+ *
+ * Per till: each EGS unit is onboarded on its own and signs with a CSID of
+ * its own (E-Invoicing Detailed Guidelines p10, p39), so head office's
+ * certificate says nothing about a till's. Every till still in service -
+ * active, or retiring and still filing what it signed - is checked, and
+ * each organization's administrators are warned about each one.
  */
 class CheckCertificateExpiry extends Command
 {
@@ -36,6 +44,7 @@ class CheckCertificateExpiry extends Command
         private readonly CertificateService $certificateService,
         private readonly CredentialStore $credentials,
         private readonly ThemeService $themes,
+        private readonly Tills $tills,
     ) {
         parent::__construct();
     }
@@ -61,33 +70,45 @@ class CheckCertificateExpiry extends Command
             $query->where('id', $organizationId);
         }
 
-        $organizations = $query->get()->filter(
-            fn (Organization $org) => $this->credentials->has((string) $org->id, null, CredentialStore::PCSID)
-        );
+        // Every till that holds a certificate: head office's under the
+        // organization in the credential store, any other under its own id.
+        $rows = [];
 
-        if ($organizations->isEmpty()) {
+        foreach ($query->get() as $organization) {
+            foreach ($this->tills->all((string) $organization->id) as $unit) {
+                if (! $unit->files() || ! $this->credentials->has((string) $organization->id, $this->deviceKey($unit), CredentialStore::PCSID)) {
+                    continue;
+                }
+
+                $rows[] = $this->checkTill($organization, $unit, $shouldNotify);
+            }
+        }
+
+        if ($rows === []) {
             $this->warn('No organizations with certificates found.');
 
             return Command::SUCCESS;
         }
 
-        $this->table(
-            ['Organization', 'VAT Number', 'Expiry Date', 'Days Left', 'Status'],
-            $organizations->map(function ($org) use ($shouldNotify) {
-                return $this->checkOrganization($org, $shouldNotify);
-            })
-        );
+        $this->table(['Organization', 'Till', 'VAT Number', 'Expiry Date', 'Days Left', 'Status'], $rows);
 
         $this->info('');
 
         return Command::SUCCESS;
     }
 
-    private function checkOrganization(Organization $organization, bool $shouldNotify): array
+    /** Where a till's credentials are kept: head office's under the organization itself. */
+    private function deviceKey(EgsUnit $unit): ?string
     {
+        return $unit->isHeadOffice() ? null : (string) $unit->id;
+    }
+
+    private function checkTill(Organization $organization, EgsUnit $unit, bool $shouldNotify): array
+    {
+        $till = $this->tills->label($unit);
         $certificate = $this->credentials->get(
             (string) $organization->id,
-            null,
+            $this->deviceKey($unit),
             CredentialStore::PCSID
         )['pcsid'] ?? null;
         $certificate = CertificatePem::from($certificate);
@@ -95,6 +116,7 @@ class CheckCertificateExpiry extends Command
         if (! $certificate) {
             return [
                 $organization->name,
+                $till,
                 $organization->vat_number ?? 'N/A',
                 'N/A',
                 'N/A',
@@ -108,6 +130,7 @@ class CheckCertificateExpiry extends Command
             if (! $expiryDate) {
                 return [
                     $organization->name,
+                    $till,
                     $organization->vat_number ?? 'N/A',
                     'Unknown',
                     'Unknown',
@@ -127,17 +150,19 @@ class CheckCertificateExpiry extends Command
             if ($daysRemaining <= 0) {
                 Log::critical('A tenant certificate has expired; it cannot issue or file until it is renewed', [
                     'org_id' => $organization->id,
+                    'device_id' => $unit->id,
                     'expired_on' => $expiryCarbon->toDateString(),
                 ]);
             }
 
             // Send notifications if needed
             if ($shouldNotify) {
-                $this->sendNotificationIfNeeded($organization, $daysRemaining, $expiryCarbon);
+                $this->sendNotificationIfNeeded($organization, $unit, $till, $daysRemaining, $expiryCarbon);
             }
 
             return [
                 $organization->name,
+                $till,
                 $organization->vat_number ?? 'N/A',
                 $expiryCarbon->format('Y-m-d'),
                 $daysRemaining,
@@ -147,11 +172,13 @@ class CheckCertificateExpiry extends Command
         } catch (\Exception $e) {
             Log::error('Certificate check failed', [
                 'org_id' => $organization->id,
+                'device_id' => $unit->id,
                 'error' => $e->getMessage(),
             ]);
 
             return [
                 $organization->name,
+                $till,
                 $organization->vat_number ?? 'N/A',
                 'Error',
                 'Error',
@@ -183,6 +210,8 @@ class CheckCertificateExpiry extends Command
 
     private function sendNotificationIfNeeded(
         Organization $organization,
+        EgsUnit $unit,
+        string $till,
         int $daysRemaining,
         Carbon $expiryDate
     ): void {
@@ -204,8 +233,8 @@ class CheckCertificateExpiry extends Command
             return;
         }
 
-        // Check if notification already sent today
-        $cacheKey = "cert_notify:{$organization->id}:{$daysRemaining}";
+        // Once a day per till.
+        $cacheKey = "cert_notify:{$organization->id}:{$unit->id}:{$daysRemaining}";
         if (cache()->has($cacheKey)) {
             return;
         }
@@ -215,9 +244,9 @@ class CheckCertificateExpiry extends Command
 
         foreach ($channels as $channel) {
             match ($channel) {
-                'mail' => $this->sendMailNotification($organization, $daysRemaining, $expiryDate),
-                'webhook' => $this->sendWebhookNotification($organization, $daysRemaining, $expiryDate),
-                'slack' => $this->sendSlackNotification($organization, $daysRemaining, $expiryDate),
+                'mail' => $this->sendMailNotification($organization, $till, $daysRemaining, $expiryDate),
+                'webhook' => $this->sendWebhookNotification($organization, $unit, $daysRemaining, $expiryDate),
+                'slack' => $this->sendSlackNotification($organization, $till, $daysRemaining, $expiryDate),
                 default => null,
             };
         }
@@ -227,6 +256,7 @@ class CheckCertificateExpiry extends Command
 
         Log::info('Certificate expiry notification sent', [
             'org_id' => $organization->id,
+            'device_id' => $unit->id,
             'days_remaining' => $daysRemaining,
             'channels' => $channels,
         ]);
@@ -234,6 +264,7 @@ class CheckCertificateExpiry extends Command
 
     private function sendMailNotification(
         Organization $organization,
+        string $till,
         int $daysRemaining,
         Carbon $expiryDate
     ): void {
@@ -255,12 +286,14 @@ class CheckCertificateExpiry extends Command
                 daysRemaining: $daysRemaining,
                 expiryDate: $expiryDate->format('Y-m-d'),
                 brand: $brand,
+                tillName: $till,
             ));
         }
     }
 
     private function sendWebhookNotification(
         Organization $organization,
+        EgsUnit $unit,
         int $daysRemaining,
         Carbon $expiryDate
     ): void {
@@ -270,11 +303,13 @@ class CheckCertificateExpiry extends Command
             organizationId: $organization->id,
             daysRemaining: $daysRemaining,
             expiryDate: $expiryDate->toIso8601String(),
+            deviceId: (string) $unit->id,
         ));
     }
 
     private function sendSlackNotification(
         Organization $organization,
+        string $till,
         int $daysRemaining,
         Carbon $expiryDate
     ): void {
@@ -293,6 +328,7 @@ class CheckCertificateExpiry extends Command
                     'color' => $daysRemaining <= 0 ? 'danger' : ($daysRemaining <= 7 ? 'warning' : '#ffcc00'),
                     'fields' => [
                         ['title' => 'Organization', 'value' => $organization->name, 'short' => true],
+                        ['title' => 'Till', 'value' => $till, 'short' => true],
                         ['title' => 'VAT Number', 'value' => $organization->vat_number ?? 'N/A', 'short' => true],
                         ['title' => 'Expiry Date', 'value' => $expiryDate->format('Y-m-d'), 'short' => true],
                         ['title' => 'Days Remaining', 'value' => (string) $daysRemaining, 'short' => true],

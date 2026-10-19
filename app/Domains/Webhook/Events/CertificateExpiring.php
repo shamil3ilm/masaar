@@ -22,6 +22,8 @@ class CertificateExpiring
         public readonly string $organizationId,
         public readonly int $daysRemaining,
         public readonly string $expiryDate,
+        /** The till (EGS unit) whose certificate it is; each signs with its own. */
+        public readonly ?string $deviceId = null,
     ) {}
 
     /**
@@ -45,6 +47,7 @@ class CertificateExpiring
             'org_id' => $this->organizationId,
             'days_remaining' => $this->daysRemaining,
             'expiry_date' => $this->expiryDate,
+            'device_id' => $this->deviceId,
             'severity' => $this->getSeverity(),
             'message' => $this->getMessage(),
         ];

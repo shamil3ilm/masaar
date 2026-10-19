@@ -56,7 +56,7 @@ the URL again and deleting the old webhook.
 | `onboarding.ccsid_obtained` | A ZATCA compliance certificate is obtained, for the organization or one of its tills | `org_id`, `branch_id` (null for the organization's own device), `unit_id` (the till; the organization's id for head office), `occurred_at` |
 | `onboarding.compliance_passed` | The compliance documents pass | `org_id`, `branch_id`, `unit_id`, `occurred_at` |
 | `onboarding.pcsid_obtained` | The production certificate is obtained: the organization or till can issue | `org_id`, `branch_id`, `unit_id`, `occurred_at` |
-| `certificate.expiring` | The signing certificate nears its expiry | `org_id`, `days_remaining`, `expiry_date`, `severity`, `message` |
+| `certificate.expiring` | A till's signing certificate nears its expiry, one event per till | `org_id`, `device_id` (the till), `days_remaining`, `expiry_date`, `severity`, `message` |
 | `e_invoice.sent` | A UAE e-invoice's service provider takes it for delivery | the e-invoice fields below |
 | `e_invoice.delivered` | The buyer's service provider accepts it (message level response `AB` or `AP`) | the e-invoice fields |
 | `e_invoice.rejected` | The provider or the buyer's provider refuses it | the e-invoice fields, with `errors` |

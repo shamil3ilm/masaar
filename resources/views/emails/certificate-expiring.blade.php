@@ -5,6 +5,8 @@
 @extends('emails.layout')
 
 @php($expired = $daysRemaining <= 0)
+{{-- The till beside the organization: each till has a certificate of its own. --}}
+@php($subjectName = empty($tillName) ? $organizationName : $organizationName.' - '.$tillName)
 
 @section('title', $brand->name())
 
@@ -14,11 +16,11 @@
     </h1>
     <p style="margin:0 0 16px;color:#4a5170;">
         @if ($expired)
-            {{ __(':organization: the certificate expired on :date. Invoices cannot be issued or filed until it is renewed.', ['organization' => $organizationName, 'date' => $expiryDate]) }}
+            {{ __(':organization: the certificate expired on :date. Invoices cannot be issued or filed until it is renewed.', ['organization' => $subjectName, 'date' => $expiryDate]) }}
         @elseif ($daysRemaining === 1)
-            {{ __(':organization: the certificate expires on :date, in 1 day. Renew it before then to keep filing without interruption.', ['organization' => $organizationName, 'date' => $expiryDate]) }}
+            {{ __(':organization: the certificate expires on :date, in 1 day. Renew it before then to keep filing without interruption.', ['organization' => $subjectName, 'date' => $expiryDate]) }}
         @else
-            {{ __(':organization: the certificate expires on :date, in :days days. Renew it before then to keep filing without interruption.', ['organization' => $organizationName, 'date' => $expiryDate, 'days' => $daysRemaining]) }}
+            {{ __(':organization: the certificate expires on :date, in :days days. Renew it before then to keep filing without interruption.', ['organization' => $subjectName, 'date' => $expiryDate, 'days' => $daysRemaining]) }}
         @endif
     </p>
     <p style="margin:0;font-weight:600;color:#1a1f36;">{{ __('Renew through ZATCA onboarding') }}</p>
