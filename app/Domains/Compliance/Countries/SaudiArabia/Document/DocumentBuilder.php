@@ -295,7 +295,29 @@ class DocumentBuilder
             prepayments: $this->prepayments($invoice),
             orderReference: $this->filledOrNull($invoice->order_reference),
             contractReference: $this->filledOrNull($invoice->contract_reference),
+            note: $this->splitNote($invoice),
         );
+    }
+
+    /**
+     * BT-22 on a share of a split sale (SplitNote), naming the documents
+     * beside it that are already issued; null on every other invoice.
+     */
+    private function splitNote(Invoice $invoice): ?string
+    {
+        if ($invoice->insurance_split_id === null) {
+            return null;
+        }
+
+        $numbers = Invoice::withoutGlobalScopes()
+            ->where('insurance_split_id', $invoice->insurance_split_id)
+            ->whereNotNull('invoice_number')
+            ->pluck('invoice_number', 'split_role');
+        $credit = $invoice->split_role === 'rebill'
+            ? Invoice::withoutGlobalScopes()->whereKey($invoice->insuranceSplit()->withoutGlobalScopes()->value('credit_note_id'))->value('invoice_number')
+            : null;
+
+        return SplitNote::text((string) $invoice->split_role, $numbers['patient'] ?? null, $numbers['insurer'] ?? null, $credit === null ? null : (string) $credit);
     }
 
     /**

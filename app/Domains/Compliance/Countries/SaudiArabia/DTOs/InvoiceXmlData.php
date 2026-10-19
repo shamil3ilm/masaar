@@ -137,6 +137,9 @@ final readonly class InvoiceXmlData
         // tax}: written as a line each (KSA-26 to KSA-34, KSA-41, KSA-42),
         // together the prepaidAmount (BR-KSA-80).
         public array $prepayments = [],
+        // BT-22, a note on the whole invoice: on a share of a split sale,
+        // which share it is and the invoice for the other (SplitNote).
+        public ?string $note = null,
     ) {}
 
     /**

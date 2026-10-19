@@ -139,6 +139,10 @@ class InvoiceDrafter
                 // An instant, so held in UTC whatever offset it was sent with.
                 'sold_at' => filled($data['sold_at'] ?? null) ? CarbonImmutable::parse($data['sold_at'])->utc() : null,
                 'prices_include_vat' => $inclusive,
+                // The split sale it is a share of (InsuranceSplits), which
+                // only that service names: no request rule lets it through.
+                'insurance_split_id' => $data['insurance_split_id'] ?? null,
+                'split_role' => $data['split_role'] ?? null,
             ]);
 
             foreach (array_values($data['lines']) as $index => $line) {

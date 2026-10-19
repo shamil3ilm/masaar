@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\ComplianceController;
+use App\Domains\Invoice\Http\Controllers\InsuranceSplitController;
 use App\Domains\Invoice\Http\Controllers\InvoiceController;
 use App\Domains\Pipeline\Http\Controllers\PipelineController;
 use App\Domains\Platform\Http\Controllers\DashboardController;
@@ -49,6 +50,13 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
 
     Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy'])
         ->middleware(['scope:invoice.cancel']);
+
+    // A sale billed in two shares: a simplified invoice to the patient and a
+    // tax invoice to the insurer, so the licence must include both kinds.
+    Route::get('/invoices/splits/{split}', [InsuranceSplitController::class, 'show'])
+        ->middleware(['scope:invoice.read']);
+    Route::post('/invoices/splits', [InsuranceSplitController::class, 'store'])
+        ->middleware(['scope:invoice.submit', 'license.feature:simplified_invoices', 'license.feature:standard_invoices']);
 
     /* Compliance ----------------------------------------------------------- */
 

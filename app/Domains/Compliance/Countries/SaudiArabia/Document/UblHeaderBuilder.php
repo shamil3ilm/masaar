@@ -89,6 +89,14 @@ class UblHeaderBuilder
         $typeCode = $this->addElement($dom, 'cbc:InvoiceTypeCode', $data->invoiceTypeCode);
         $typeCode->setAttribute('name', $data->getInvoiceTypeName());
 
+        // BT-22, after the type code as UBL orders it: in Arabic with the
+        // English beside it, as the invoice's human-readable text is to be
+        // (Detailed Guidelines, FAQ p62). Only a share of a split sale has
+        // one, so no other document changes.
+        if ($data->note !== null) {
+            $this->addElement($dom, 'cbc:Note', $data->note);
+        }
+
         // KSA-10, the reason a credit or debit note was issued, is emitted by
         // addPaymentMeans() as cbc:InstructionNote — the element BR-KSA-17
         // reads. Not cbc:Note here, which is BT-22, a free-text remark on any

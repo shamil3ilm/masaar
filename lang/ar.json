@@ -2496,5 +2496,22 @@
     "The e-invoice was rejected, so it is not a valid tax invoice. Correct it and issue a new one.": "رُفضت الفاتورة الإلكترونية، فهي ليست فاتورة ضريبية صالحة. صحّحها وأصدر فاتورة جديدة.",
     "Insurer": "شركة تأمين",
     "Billed for the insurer's share of a sale split with a patient. Needs the VAT number and the address.": "تُصدر لها فاتورة بحصة شركة التأمين من بيع مقسوم مع مريض. تتطلب الرقم الضريبي والعنوان.",
-    "An insurer is invoiced as a registered buyer: give its VAT number.": "تُصدر الفاتورة لشركة التأمين بصفتها مشترياً مسجلاً: أدخل رقمها الضريبي."
+    "An insurer is invoiced as a registered buyer: give its VAT number.": "تُصدر الفاتورة لشركة التأمين بصفتها مشترياً مسجلاً: أدخل رقمها الضريبي.",
+    "In the UAE a sale to a patient is outside e-invoicing (UAE Electronic Invoicing Guidelines, section 6.2), so a sale is not split here: invoice the insurer's share to the insurer on the ordinary invoice form.": "في الإمارات يقع البيع للمريض خارج نطاق الفوترة الإلكترونية (إرشادات الفوترة الإلكترونية في الإمارات، القسم 6.2)، لذلك لا يُقسم البيع هنا: أصدر فاتورة بحصة شركة التأمين لها من نموذج الفاتورة المعتاد.",
+    "A split sale leaves the patient a share and the insurer a share: each pays some of it.": "يترك البيع المقسوم حصة للمريض وحصة لشركة التأمين: يدفع كل منهما جزءاً منه.",
+    "Line :line: say who pays it, the patient or the insurer.": "البند :line: حدّد من يدفعه، المريض أم شركة التأمين.",
+    "Line :line: its share of the amount does not divide evenly over a quantity of :quantity. Split by percentage or by line instead.": "البند :line: لا تنقسم حصته من المبلغ بالتساوي على كمية قدرها :quantity. اقسم البيع بنسبة مئوية أو حسب البنود بدلاً من ذلك.",
+    "Line :line: a split sale takes no line discount. Enter the price after it.": "البند :line: لا يقبل البيع المقسوم خصماً على البند. أدخل السعر بعد الخصم.",
+    "Line :line: a split sale takes no line charges. Enter the price with them.": "البند :line: لا يقبل البيع المقسوم رسوماً على البند. أدخل السعر شاملاً لها.",
+    "The insurer's decision on this sale is already recorded.": "سبق تسجيل قرار شركة التأمين بشأن هذا البيع.",
+    "Issue both shares before recording the insurer's decision.": "أصدر الحصتين قبل تسجيل قرار شركة التأمين.",
+    "The approved amount is between 0 and the insurer's invoice total, :total.": "يكون المبلغ المعتمد بين 0 وإجمالي فاتورة شركة التأمين، :total.",
+    "Choose one of your customers marked as an insurer.": "اختر أحد عملائك المصنفين شركة تأمين.",
+    "Say how the sale is split between the patient and the insurer.": "حدّد طريقة قسمة البيع بين المريض وشركة التأمين.",
+    "Name the insurer: one of your customers marked as an insurer, or its details.": "حدّد شركة التأمين: أحد عملائك المصنفين شركة تأمين، أو بياناتها.",
+    "Split by line: say who pays each line, the patient or the insurer.": "القسمة حسب البنود: حدّد من يدفع كل بند، المريض أم شركة التأمين.",
+    "A sale is split on an invoice; correct a share with a note against it.": "يُقسم البيع في فاتورة؛ وتُصحَّح الحصة بإشعار عليها.",
+    "A split sale takes no document discount. Enter the prices after it.": "لا يقبل البيع المقسوم خصماً على الفاتورة. أدخل الأسعار بعد الخصم.",
+    "A split sale takes no document charges. Enter the prices with them.": "لا يقبل البيع المقسوم رسوماً على الفاتورة. أدخل الأسعار شاملة لها.",
+    "A split sale settles no prepayments.": "لا يسوّي البيع المقسوم دفعات مقدمة."
 }

@@ -118,6 +118,11 @@ final class TableTimestamps
         'invoice_lines' => ['class' => 'c', 'updates' => true, 'tenant' => 'parent:invoice_id', 'parent' => true],
         'invoice_charges' => ['class' => 'c', 'updates' => true, 'tenant' => 'parent:invoice_id', 'parent' => true],
         'invoice_prepayments' => ['class' => 'c', 'updates' => true, 'tenant' => 'parent:invoice_id', 'parent' => true],
+        // A sale billed in two shares, patient and insurer: settled once,
+        // when the insurer's decision is recorded.
+        'insurance_splits' => ['class' => 'c', 'updates' => true, 'tenant' => 'branch',
+            'actors' => ['created_by' => 'created_by', 'settled_by' => 'settled_by'],
+            'channel' => self::CHANNEL],
         'invoice_sequences' => ['class' => 'a', 'tenant' => 'organization', 'actors' => self::ENTITY],
         'invoice_links' => ['class' => 'a', 'tenant' => 'organization', 'why' => 'revoked, not removed (revoked_at)',
             'actors' => self::ENTITY],
