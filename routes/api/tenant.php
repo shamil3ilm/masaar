@@ -63,6 +63,10 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
     // drafts, linked (InsuranceSplits).
     Route::get('/invoices/splits/{split}', [InsuranceSplitController::class, 'show']);
     Route::post('/invoices/splits', [InsuranceSplitController::class, 'store'])->middleware('org.writer');
+    // The insurer's decision: issues a credit note and an invoice, so it
+    // is for those who issue.
+    Route::post('/invoices/splits/{split}/settle', [InsuranceSplitController::class, 'settle'])
+        ->middleware(['org.writer', 'jurisdiction.available', 'access.person:issue_invoices']);
 
     /* Customers and products ------------------------------------------- */
     // One an invoice used can only be archived: removing it answers 409

@@ -138,6 +138,37 @@ class InsuranceSplitConformanceTest extends TestCase
     }
 
     /**
+     * The insurer rejects its share, or approves part: the credit note on
+     * its tax invoice and the patient's new simplified invoice both validate.
+     *
+     * @return iterable<string, array{string}>
+     */
+    public static function decisions(): iterable
+    {
+        yield 'rejected' => ['0'];
+        yield 'partly approved' => ['199.99'];
+    }
+
+    #[DataProvider('decisions')]
+    public function test_a_declined_share_validates(string $approved): void
+    {
+        $split = $this->issuedSplit(self::sales()->current()[0]);
+
+        app(InsuranceSplits::class)->settle($split, $this->organization, $approved, null, new IssueOptions(file: false));
+        $split->refresh();
+
+        $credit = Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($split->credit_note_id));
+        $rebill = Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($split->rebill_invoice_id));
+
+        $this->assertStringContainsString('<cbc:InvoiceTypeCode name="0100000">381</cbc:InvoiceTypeCode>', (string) $credit->signed_xml);
+        $this->assertStringContainsString('<cbc:InvoiceTypeCode name="0200000">388</cbc:InvoiceTypeCode>', (string) $rebill->signed_xml);
+        $this->assertAccepted((string) $credit->signed_xml, 'the credit note on the insurer\'s invoice');
+        $this->assertAccepted((string) $rebill->signed_xml, 'the patient\'s new invoice');
+        $this->assertStringContainsString('credit note '.$credit->invoice_number, (string) $rebill->signed_xml);
+        $this->assertChained();
+    }
+
+    /**
      * @param  array<string, mixed>  $sale
      */
     private function issuedSplit(array $sale): InsuranceSplit

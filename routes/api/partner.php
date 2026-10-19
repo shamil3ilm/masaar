@@ -57,6 +57,10 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
         ->middleware(['scope:invoice.read']);
     Route::post('/invoices/splits', [InsuranceSplitController::class, 'store'])
         ->middleware(['scope:invoice.submit', 'license.feature:simplified_invoices', 'license.feature:standard_invoices']);
+    // The insurer's decision: a credit note on its invoice and an invoice
+    // to the patient, issued and filed.
+    Route::post('/invoices/splits/{split}/settle', [InsuranceSplitController::class, 'settle'])
+        ->middleware(['scope:invoice.submit', 'license.feature:credit_notes', 'license.quota']);
 
     /* Compliance ----------------------------------------------------------- */
 

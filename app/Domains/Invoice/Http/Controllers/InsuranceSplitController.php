@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Http\Controllers;
 
+use App\Domains\Compliance\Engine\DTOs\IssueOptions;
 use App\Domains\Invoice\Http\Requests\SplitSaleRequest;
 use App\Domains\Invoice\Models\InsuranceSplit;
 use App\Domains\Invoice\Services\InsuranceSplits;
+use App\Domains\Invoice\Support\AdjustmentReason;
 use App\Domains\Organization\Services\BranchAccess;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Organization\Services\Tills;
@@ -14,6 +16,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use DomainException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 /**
  * A sale billed in two shares through the API: both drafts, linked
@@ -79,6 +83,36 @@ class InsuranceSplitController extends Controller
         $split = $this->splits->find((string) $this->tenant->getOrganizationId(), $id) ?? abort(404);
 
         return ApiResponse::success(self::present($split));
+    }
+
+    /**
+     * The insurer's decision on its share: what it approved, with VAT. What
+     * it declined is credited on its invoice and billed to the patient on a
+     * new invoice, both issued and filed (InsuranceSplits::settle()).
+     *
+     * POST /api/invoices/splits/{id}/settle {approved, adjustment_reason?}
+     */
+    public function settle(Request $request, string $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'approved' => ['required', 'numeric', 'min:0', 'decimal:0,2'],
+            // One of the reasons the authority lists (KSA-10); the one for a
+            // supply cancelled wholly or partly when none is given.
+            'adjustment_reason' => ['nullable', 'string', Rule::in([...AdjustmentReason::values(), ...array_keys(AdjustmentReason::OFFICIAL)])],
+        ]);
+
+        $organization = $this->tenant->getOrganization() ?? abort(404);
+        $split = $this->splits->find((string) $organization->id, $id) ?? abort(404);
+        $reason = AdjustmentReason::bilingual($validated['adjustment_reason'] ?? null) ?? ($validated['adjustment_reason'] ?? null);
+
+        $outcomes = $this->splits->settle($split, $organization, (string) $validated['approved'], $reason, new IssueOptions(file: true));
+        $errors = [...($outcomes['credit']?->errors ?? []), ...($outcomes['rebill']?->errors ?? [])];
+
+        return ApiResponse::success(
+            [...self::present($split->fresh()), ...($errors === [] ? [] : ['errors' => $errors])],
+            $errors === [] ? 'The insurer\'s decision is recorded' : 'The decision is recorded; a document was not filed cleanly. See errors.',
+            $errors === [] ? 200 : 207,
+        );
     }
 
     /**
