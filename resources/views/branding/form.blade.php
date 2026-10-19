@@ -76,8 +76,8 @@
                 <div class="flex flex-wrap items-center gap-4">
                     <input type="hidden" name="custom[{{ $key }}]" value="0">
                     <x-ui.checkbox name="custom[{{ $key }}]" value="1" :checked="old('custom.'.$key, $own !== null ? '1' : '0') === '1'">{{ $label }}</x-ui.checkbox>
-                    <x-ui.input type="color" name="colors[{{ $key }}]" value="{{ $shown }}"
-                                aria-label="{{ __(':label colour', ['label' => $label]) }}" class="!mt-0 !w-20 cursor-pointer" />
+                    <x-ui.color-input name="colors[{{ $key }}]" value="{{ $shown }}"
+                                aria-label="{{ __(':label colour', ['label' => $label]) }}" />
                     <span class="text-xs text-muted">{{ $help }} {{ $inherits ? __('Unticked, the platform\'s colour applies.') : __('Unticked, the shipped colour applies.') }}</span>
                 </div>
             @endforeach

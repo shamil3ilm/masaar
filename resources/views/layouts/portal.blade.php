@@ -204,6 +204,7 @@
     </div>
 
     <x-ui.strings />
+    <x-ui.toasts />
     <x-ui.confirm-dialog />
 </body>
 </html>

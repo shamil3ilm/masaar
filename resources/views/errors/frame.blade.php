@@ -57,5 +57,6 @@
         </footer>
     </div>
     <x-ui.strings />
+    <x-ui.toasts />
 </body>
 </html>

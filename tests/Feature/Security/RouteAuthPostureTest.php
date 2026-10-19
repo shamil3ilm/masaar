@@ -77,6 +77,7 @@ class RouteAuthPostureTest extends TestCase
         'sitemap.xml' => 'The public pages, in each language, for search engines',
         'robots.txt' => 'Where crawlers may go, and the sitemap',
         'website/share-image' => 'The picture a shared link to the site shows',
+        'manifest.webmanifest' => 'What a phone calls the product on its home screen, and its icons',
     ];
 
     public function test_all_web_routes_guarded(): void

@@ -53,6 +53,11 @@
         ':field is not in the expected format.' => __(':field is not in the expected format.'),
         'This field' => __('This field'),
         'Please correct the following:' => __('Please correct the following:'),
+        // Colours and passwords (color-field.js, password.js)
+        ':name, hex code' => __(':name, hex code'),
+        'Colour' => __('Colour'),
+        'Enter a colour as a six-digit hex code.' => __('Enter a colour as a six-digit hex code.'),
+        'Show password' => __('Show password'),
     ];
 @endphp
 <div hidden data-ui-strings="{{ json_encode($strings, JSON_UNESCAPED_UNICODE) }}"></div>

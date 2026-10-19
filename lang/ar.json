@@ -2385,5 +2385,11 @@
     "Service unavailable": "الخدمة غير متاحة",
     "We are making an improvement and will be back shortly. Please try again in a few minutes.": "نُجري تحسيناً وسنعود قريباً. يُرجى المحاولة مرة أخرى بعد بضع دقائق.",
     "This is taking longer than it should. Please try again in a few minutes.": "يستغرق هذا وقتاً أطول مما ينبغي. يُرجى المحاولة مرة أخرى بعد بضع دقائق.",
-    "Try again": "حاول مرة أخرى"
+    "Try again": "حاول مرة أخرى",
+    ":name, hex code": ":name، الرمز السداسي",
+    "Colour": "اللون",
+    "Enter a colour as a six-digit hex code.": "أدخل اللون رمزاً سداسياً من ست خانات.",
+    "Show password": "إظهار كلمة المرور",
+    "Dismiss": "إغلاق",
+    "Loading": "جارٍ التحميل"
 }

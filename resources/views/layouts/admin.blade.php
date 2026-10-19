@@ -211,6 +211,7 @@
         </main>
     </div>
     <x-ui.strings />
+    <x-ui.toasts />
     <x-ui.confirm-dialog />
 
     @stack('scripts')

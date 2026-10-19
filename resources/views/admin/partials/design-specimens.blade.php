@@ -229,6 +229,34 @@
             <x-ui.field :label="$t('Copies', 'النسخ')" :hint="$t('A count: the numeric keypad.', 'عدد: لوحة الأرقام.')">
                 <x-ui.input type="number" name="specimen_copies" min="1" value="2" />
             </x-ui.field>
+            <x-ui.field :label="$t('Password', 'كلمة المرور')" :hint="$t('Our show button, the same in every browser.', 'زر الإظهار الخاص بنا، نفسه في كل متصفح.')">
+                <x-ui.input type="password" name="specimen_password" value="correct horse" autocomplete="off" />
+            </x-ui.field>
+            <x-ui.field :label="$t('Search', 'بحث')" :hint="$t('The clear cross is ours.', 'علامة المسح خاصة بنا.')">
+                <x-ui.input type="search" name="specimen_search" value="INV-2026" />
+            </x-ui.field>
+            <x-ui.field :label="$t('Accent colour', 'لون التمييز')" :hint="$t('Our swatch opens the picker; the hex code can be typed or pasted.', 'يفتح المربع منتقي الألوان، ويمكن كتابة الرمز السداسي أو لصقه.')">
+                <x-ui.color-input name="specimen_colour" :value="\App\Domains\Branding\DTOs\ThemeDefinition::shipped()->colors['primary']" :aria-label="$t('Accent colour', 'لون التمييز')" />
+            </x-ui.field>
+            <div class="space-y-3 text-sm">
+                <p class="font-medium">{{ $t('Progress and range', 'التقدّم والنطاق') }}</p>
+                <progress max="100" value="64" class="w-full" aria-label="{{ $t('Upload', 'الرفع') }}"></progress>
+                <x-ui.field :label="$t('Paper width', 'عرض الورق')">
+                    <x-ui.input type="range" name="specimen_range" min="58" max="80" value="72" class="!border-0 !bg-transparent !shadow-none !px-0" />
+                </x-ui.field>
+            </div>
+            <details class="rounded-tile border border-line px-4 py-3 text-sm sm:col-span-2">
+                <summary class="min-h-11 font-medium">{{ $t('Technical details (a plain details element)', 'تفاصيل تقنية (عنصر details عادي)') }}</summary>
+                <p class="mt-2 text-muted">{{ $t('Our chevron, along the line of reading, down when open.', 'سهمنا باتجاه القراءة، ويتجه للأسفل عند الفتح.') }}</p>
+            </details>
+            <div class="space-y-2 sm:col-span-2">
+                <p class="text-sm font-medium">{{ $t('Loading', 'التحميل') }}</p>
+                <x-ui.skeleton :lines="3" class="max-w-md" :label="$t('Loading the list', 'جارٍ تحميل القائمة')" />
+            </div>
+            <div class="flex flex-wrap gap-2 sm:col-span-2">
+                <x-ui.button type="button" size="sm" variant="secondary" :data-toast="$t('Link copied.', 'نُسخ الرابط.')">{{ $t('Show a toast', 'اعرض إشعاراً') }}</x-ui.button>
+                <x-ui.button type="button" size="sm" variant="secondary" :data-toast="$t('The upload did not finish.', 'لم يكتمل الرفع.')" data-toast-tone="danger">{{ $t('A failing one', 'إشعار بخطأ') }}</x-ui.button>
+            </div>
             <div class="flex flex-wrap items-center gap-2 text-sm text-fg sm:col-span-2">
                 {{ $t('Reporting deadline', 'مهلة الإبلاغ') }}
                 <x-ui.tooltip :text="$t('A simplified invoice is reported within 24 hours of issue. The same words are in the help beside the form.', 'تُبلَّغ الفاتورة المبسطة خلال 24 ساعة من إصدارها. والكلمات نفسها في المساعدة بجانب النموذج.')" :label="$t('About the deadline', 'عن المهلة')" />

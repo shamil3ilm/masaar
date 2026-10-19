@@ -76,6 +76,34 @@ class BrowserDrawnTest extends TestCase
         $this->assertSame([], $this->using('/type="file"/', ['components/ui/file.blade.php']), 'Use <x-ui.file>.');
     }
 
+    /** A colour is our swatch and hex field, never the platform's well. */
+    public function test_no_bare_colour_inputs(): void
+    {
+        $this->assertSame([], $this->using('/type="color"/', ['components/ui/color-input.blade.php']), 'Use <x-ui.color-input>.');
+    }
+
+    /**
+     * Hand-pasted <svg> outside the components and the home page's drawings,
+     * which only shrinks: an icon is <x-ui.icon name="...">, one outline set
+     * at one weight. The ten left are a sort arrow drawn per direction and
+     * larger illustrations.
+     */
+    public function test_inline_icons_only_shrink(): void
+    {
+        $found = [];
+
+        foreach ($this->views() as $relative => $source) {
+            if (preg_match('#^(components|pdf|print|emails|home)/#', $relative) !== 1 && ($count = substr_count($source, '<svg')) > 0) {
+                $found[] = $relative.': '.$count;
+            }
+        }
+
+        $total = array_sum(array_map(fn (string $line): int => (int) substr(strrchr($line, ' '), 1), $found));
+
+        $this->assertLessThanOrEqual(10, $total, "Inline SVGs over the ceiling - use <x-ui.icon>:\n  ".implode("\n  ", $found));
+        $this->assertSame(10, $total, 'Fewer inline SVGs now: lower the ceiling in '.static::class.' to '.$total.'.');
+    }
+
     /**
      * The views, outside those allowed, whose code matches.
      *
