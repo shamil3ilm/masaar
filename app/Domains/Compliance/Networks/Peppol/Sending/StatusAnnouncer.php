@@ -89,9 +89,9 @@ final class StatusAnnouncer
             'reporting_status' => $document->reporting_status,
             'message_id' => $document->asp_message_id,
             'mls_code' => $document->mls_code,
-            'errors' => $document->errors ?? [],
+            'errors' => $document->errorList('errors'),
             'authority_reference' => $document->authority_reference,
-            'reporting_errors' => $document->reporting_errors ?? [],
+            'reporting_errors' => $document->errorList('reporting_errors'),
             'sender' => $document->sender_endpoint,
             'receiver' => $document->receiver_endpoint,
         ]];

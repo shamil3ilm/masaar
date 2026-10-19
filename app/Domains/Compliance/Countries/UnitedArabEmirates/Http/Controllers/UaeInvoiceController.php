@@ -93,13 +93,14 @@ class UaeInvoiceController extends Controller
             'status' => $document?->status,
             'message_id' => $document?->asp_message_id,
             'mls_code' => $document?->mls_code,
-            'errors' => $document?->errors ?? [],
+            // Each {code, severity, field, message}.
+            'errors' => $document?->errorList('errors') ?? [],
             'last_error' => $document?->last_error,
             // The report to the authority, confirmed apart from delivery
             // (UAE Electronic Invoicing Guidelines v1.1, p10-11).
             'reporting_status' => $document?->reporting_status,
             'authority_reference' => $document?->authority_reference,
-            'reporting_errors' => $document?->reporting_errors ?? [],
+            'reporting_errors' => $document?->errorList('reporting_errors') ?? [],
             'warnings' => IssueDeadline::warnings($document),
         ]);
     }

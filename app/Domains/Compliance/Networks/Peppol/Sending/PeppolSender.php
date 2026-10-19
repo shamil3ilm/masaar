@@ -8,6 +8,7 @@ use App\Domains\Compliance\Networks\Peppol\Contracts\AspGateway;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\AspRefusedException;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\AspUnavailableException;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\NoAspConfiguredException;
+use App\Domains\Compliance\Networks\Peppol\Gateways\AspError;
 use App\Domains\Compliance\Networks\Peppol\Jobs\SendPeppolDocument;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use Illuminate\Support\Facades\Log;
@@ -102,7 +103,7 @@ final class PeppolSender
             return false;
         } catch (AspRefusedException $e) {
             $this->status->transition($documentId, DocumentStatus::REJECTED, [
-                'errors' => $e->errors,
+                'errors' => AspError::toArrays($e->errors),
                 'last_error' => $e->getMessage(),
             ], source: DocumentHistory::SOURCE_SUBMISSION);
 

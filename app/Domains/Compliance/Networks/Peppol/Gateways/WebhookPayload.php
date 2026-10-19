@@ -12,7 +12,8 @@ use Illuminate\Validation\ValidationException;
  * The generic callback bodies, until a provider's own are known.
  *
  *   status:  {"message_id", "status": sent|delivered|rejected|reported|report_failed,
- *             "mls_code": AB|AP|RE, "errors": [string],
+ *             "mls_code": AB|AP|RE,
+ *             "errors": [string | {code, severity, field, message}],
  *             "authority_reference": the authority's reference for a report}
  *   inbound: {"message_id", "document": base64 XML, "sender", "receiver"}
  *
@@ -32,8 +33,9 @@ final class WebhookPayload
             'message_id' => ['required', 'string', 'max:255'],
             'status' => ['nullable', 'string', 'max:30'],
             'mls_code' => ['nullable', 'string', 'max:20'],
+            // A string or an object each (AspError::from); what neither
+            // reads as is dropped rather than refusing the whole callback.
             'errors' => ['nullable', 'array', 'max:200'],
-            'errors.*' => ['string', 'max:2000'],
             'authority_reference' => ['nullable', 'string', 'max:255'],
         ])->validate();
 
@@ -54,7 +56,7 @@ final class WebhookPayload
             ? $data['status']
             : AspStatus::fromMlsCode($mls);
 
-        $errors = array_values(array_filter((array) ($data['errors'] ?? []), 'is_string'));
+        $errors = AspError::listFrom((array) ($data['errors'] ?? []));
 
         $reference = is_string($data['authority_reference'] ?? null) && $data['authority_reference'] !== ''
             ? mb_substr($data['authority_reference'], 0, 255)

@@ -7,6 +7,7 @@ namespace Tests\Feature\Compliance\Networks\Peppol;
 use App\Domains\Compliance\Networks\Peppol\Contracts\AspGateway;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\AspRefusedException;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\AspUnavailableException;
+use App\Domains\Compliance\Networks\Peppol\Gateways\AspError;
 use App\Domains\Compliance\Networks\Peppol\Gateways\HttpAspGateway;
 use App\Domains\Compliance\Networks\Peppol\Gateways\NullAspGateway;
 use App\Domains\Compliance\Networks\Peppol\Gateways\WebhookSignature;
@@ -69,7 +70,8 @@ class AspHttpGatewayTest extends TestCase
         Http::fake([
             self::BASE.'/oauth/token' => Http::response(['access_token' => 'token-1']),
             self::BASE.'/documents' => Http::response(['errors' => [
-                ['code' => 'BR-AE-01', 'message' => 'Buyer endpoint missing'],
+                ['code' => 'BR-AE-01', 'severity' => 'fatal', 'location' => '/Invoice/cac:AccountingCustomerParty', 'message' => 'Buyer endpoint missing'],
+                'BR-AE-02: Buyer name missing',
             ]], 422),
         ]);
 
@@ -77,7 +79,10 @@ class AspHttpGatewayTest extends TestCase
             $this->gateway()->submit($this->document());
             $this->fail('A 422 is a refusal.');
         } catch (AspRefusedException $e) {
-            $this->assertSame(['BR-AE-01 Buyer endpoint missing'], $e->errors);
+            $this->assertSame([
+                ['code' => 'BR-AE-01', 'severity' => 'fatal', 'field' => '/Invoice/cac:AccountingCustomerParty', 'message' => 'Buyer endpoint missing'],
+                ['code' => 'BR-AE-02', 'severity' => 'error', 'field' => null, 'message' => 'Buyer name missing'],
+            ], AspError::toArrays($e->errors));
         }
     }
 

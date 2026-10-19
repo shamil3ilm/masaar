@@ -7,6 +7,7 @@ namespace Tests\Feature\Compliance\Networks\Peppol;
 use App\Domains\Compliance\Engine\Services\JurisdictionRegistry;
 use App\Domains\Compliance\Networks\Peppol\Console\PintValidator;
 use App\Domains\Compliance\Networks\Peppol\Contracts\AspGateway;
+use App\Domains\Compliance\Networks\Peppol\Gateways\AspError;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use App\Domains\Compliance\Networks\Peppol\NetworkServiceProvider;
 use App\Domains\Compliance\Networks\Peppol\Sending\PeppolSender;
@@ -71,13 +72,13 @@ class SimulatorTest extends TestCase
 
     public function test_failing_document_refused_with_rules(): void
     {
-        $this->judgedBy(new StubPintValidator(['[ibr-003]-An Invoice MUST have an Invoice issue date (ibt-002).']));
+        $this->judgedBy(new StubPintValidator([new AspError('An Invoice MUST have an Invoice issue date (ibt-002).', 'ibr-003', AspError::FATAL, '/*:Invoice[1]')]));
 
         $document = $this->send($this->readyDocument());
 
         $this->assertSame('rejected', $document->status);
         $this->assertNull($document->asp_message_id);
-        $this->assertSame(['[ibr-003]-An Invoice MUST have an Invoice issue date (ibt-002).'], $document->errors);
+        $this->assertSame([['code' => 'ibr-003', 'severity' => 'fatal', 'field' => '/*:Invoice[1]', 'message' => 'An Invoice MUST have an Invoice issue date (ibt-002).']], $document->errors);
         Queue::assertNotPushed(PlaySimulatedMessage::class);
     }
 
@@ -88,7 +89,8 @@ class SimulatorTest extends TestCase
 
         $document->refresh();
         $this->assertSame('rejected', $document->status);
-        $this->assertStringContainsString('0235:1999999901 is not a participant', $document->errors[0]);
+        $this->assertSame('PARTICIPANT-NOT-FOUND', $document->errors[0]['code']);
+        $this->assertStringContainsString('0235:1999999901 is not a participant', $document->errors[0]['message']);
     }
 
     public function test_buyer_rejection_carries_its_code(): void

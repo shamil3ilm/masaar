@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Networks\Peppol\Console;
 
+use App\Domains\Compliance\Networks\Peppol\Gateways\AspError;
 use DOMDocument;
 use DOMElement;
 use DOMXPath;
@@ -19,8 +20,8 @@ use RuntimeException;
  * billing or self-billing by the document's CustomizationID, and the UBL 2.1
  * schema where its package is unpacked beside them, since the schematrons do
  * not look at element order. Every failed assertion flagged fatal or error
- * comes back as the rule's own text, which starts with its ID
- * ("[ibr-003]-An Invoice MUST have ...").
+ * comes back as an AspError: the rule's ID ("ibr-003"), its flag, where in
+ * the document, and the rule's own text.
  *
  * The artefacts are free downloads that are not committed, so they are
  * found through peppol.artefacts_path (PEPPOL_ARTEFACTS_PATH) and the jar
@@ -52,7 +53,7 @@ class PintValidator
     /**
      * Every rule the document breaks; none when it passes.
      *
-     * @return list<string>
+     * @return list<AspError>
      *
      * @throws RuntimeException the rules cannot be run here, or Saxon failed
      */
@@ -66,14 +67,14 @@ class PintValidator
 
         // LIBXML_NONET: a document under judgement never makes this server fetch.
         if (! @$document->loadXML($xml, LIBXML_NONET) || $document->documentElement === null) {
-            return ['XSD: the document is not well-formed XML.'];
+            return [new AspError('The document is not well-formed XML.', 'XSD', AspError::FATAL)];
         }
 
         return [...$this->schema($document), ...$this->schematron($document, $xml)];
     }
 
     /**
-     * @return list<string>
+     * @return list<AspError>
      */
     private function schema(DOMDocument $document): array
     {
@@ -90,7 +91,7 @@ class PintValidator
             $document->schemaValidate($xsd);
 
             return array_map(
-                fn ($error): string => 'XSD: '.trim($error->message)." (line {$error->line})",
+                fn ($error): AspError => new AspError(trim($error->message), 'XSD', AspError::FATAL, "line {$error->line}"),
                 libxml_get_errors(),
             );
         } finally {
@@ -100,7 +101,7 @@ class PintValidator
     }
 
     /**
-     * @return list<string>
+     * @return list<AspError>
      */
     private function schematron(DOMDocument $document, string $xml): array
     {
@@ -139,7 +140,7 @@ class PintValidator
     }
 
     /**
-     * @return list<string>
+     * @return list<AspError>
      */
     private function failedAsserts(string $svrl): array
     {
@@ -155,10 +156,16 @@ class PintValidator
 
         foreach ($xpath->query('//svrl:failed-assert[@flag="fatal" or @flag="error"]') ?: [] as $assert) {
             $text = (string) preg_replace('/\s+/', ' ', trim($assert->textContent));
-            $id = $assert instanceof DOMElement ? $assert->getAttribute('id') : '';
+            $element = $assert instanceof DOMElement ? $assert : null;
+            $id = (string) $element?->getAttribute('id');
 
-            // The published rules lead with their ID; one that does not is given it.
-            $failures[] = $id !== '' && ! str_starts_with($text, '['.$id.']') ? "[{$id}]-{$text}" : $text;
+            // The published rules lead their text with their ID; it is the code here.
+            $failures[] = new AspError(
+                message: (string) preg_replace('/^\['.preg_quote($id, '/').'\]\s*-?\s*/', '', $text),
+                code: $id !== '' ? $id : null,
+                severity: (string) $element?->getAttribute('flag') === 'fatal' ? AspError::FATAL : AspError::ERROR,
+                field: ((string) $element?->getAttribute('location')) ?: null,
+            );
         }
 
         return $failures;

@@ -162,7 +162,13 @@ class UaeDocuments
      */
     public static function metadata(PeppolDocument $document): array
     {
-        return $document->only(self::METADATA);
+        // Errors each as {code, severity, field, message}, whatever form a
+        // row from before that holds.
+        return [
+            ...$document->only(self::METADATA),
+            'errors' => $document->errorList('errors'),
+            'reporting_errors' => $document->errorList('reporting_errors'),
+        ];
     }
 
     private function ofOrganization(?string $organizationId): Builder

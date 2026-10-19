@@ -60,13 +60,7 @@
             @if (! empty($document->reporting_errors))
                 <div>
                     <dt class="text-muted">{{ __('Why the report failed') }}</dt>
-                    <dd>
-                        <ul class="mt-1 list-disc space-y-1 ps-5 text-xs text-danger">
-                            @foreach ((array) $document->reporting_errors as $error)
-                                <li class="break-words">{{ is_scalar($error) ? $error : json_encode($error) }}</li>
-                            @endforeach
-                        </ul>
-                    </dd>
+                    <dd>@include('portal.partials.peppol-errors', ['errors' => $document->errorList('reporting_errors')])</dd>
                 </div>
             @endif
             <div>
@@ -82,13 +76,7 @@
             @if (! empty($document->errors))
                 <div>
                     <dt class="text-muted">{{ __('Errors') }}</dt>
-                    <dd>
-                        <ul class="mt-1 list-disc space-y-1 ps-5 text-xs text-danger">
-                            @foreach ((array) $document->errors as $error)
-                                <li class="break-words">{{ is_scalar($error) ? $error : json_encode($error) }}</li>
-                            @endforeach
-                        </ul>
-                    </dd>
+                    <dd>@include('portal.partials.peppol-errors', ['errors' => $document->errorList('errors')])</dd>
                 </div>
             @endif
             @if ($document->last_error)

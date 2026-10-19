@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Networks\Peppol\Sending;
 
+use App\Domains\Compliance\Networks\Peppol\Gateways\AspError;
 use App\Domains\Compliance\Networks\Peppol\Gateways\AspStatus;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use Closure;
@@ -205,12 +206,12 @@ final class DocumentStatus
 
         $moved = $reporting
             ? $this->move((string) $document->id, self::TRACK_REPORTING, $update->status, array_filter([
-                'reporting_errors' => $update->errors === [] ? null : $update->errors,
+                'reporting_errors' => $update->errors === [] ? null : AspError::toArrays($update->errors),
                 'authority_reference' => $update->authorityReference,
             ], fn ($value) => $value !== null), null, $source, $digest)
             : $this->move((string) $document->id, self::TRACK_DELIVERY, $update->status, array_filter([
                 'mls_code' => $update->mlsCode,
-                'errors' => $update->errors === [] ? null : $update->errors,
+                'errors' => $update->errors === [] ? null : AspError::toArrays($update->errors),
             ], fn ($value) => $value !== null), null, $source, $digest);
 
         if ($moved === null) {

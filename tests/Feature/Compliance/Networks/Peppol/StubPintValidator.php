@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Compliance\Networks\Peppol;
 
 use App\Domains\Compliance\Networks\Peppol\Console\PintValidator;
+use App\Domains\Compliance\Networks\Peppol\Gateways\AspError;
 
 /**
  * The published rules' verdict, scripted, where Java and the artefacts are
@@ -16,7 +17,7 @@ final class StubPintValidator extends PintValidator
     public array $judged = [];
 
     /**
-     * @param  list<string>  $verdict  what failures() answers
+     * @param  list<AspError>  $verdict  what failures() answers
      */
     public function __construct(private readonly array $verdict = []) {}
 

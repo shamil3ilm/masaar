@@ -47,17 +47,22 @@ final readonly class AspStatus
      */
     private const MLS = ['AB' => self::DELIVERED, 'AP' => self::DELIVERED, 'RE' => self::REJECTED];
 
+    /** @var list<AspError> */
+    public array $errors;
+
     /**
-     * @param  list<string>  $errors
+     * @param  iterable<AspError|string|array<string, mixed>>  $errors  as the provider gave them
      * @param  string|null  $authorityReference  the authority's reference for the report, where the provider relays one
      */
     public function __construct(
         public string $messageId,
         public ?string $status,
         public ?string $mlsCode = null,
-        public array $errors = [],
+        iterable $errors = [],
         public ?string $authorityReference = null,
-    ) {}
+    ) {
+        $this->errors = AspError::listFrom($errors);
+    }
 
     /**
      * The status a message level response code stands for, or null.

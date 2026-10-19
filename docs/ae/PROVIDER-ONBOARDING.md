@@ -110,7 +110,7 @@ mapping in `WebhookPayload::statusFrom`:
 | `report_failed` | The tax data did not reach the authority, with the reasons. A reporting status | The provider (Guidelines p41, item vi) |
 
 - [ ] Errors carry the rule ID (for example `ibr-003`), a severity and a
-      location, not only text.
+      location, not only text. The platform reads either form (gap 7).
 - [ ] A failed report to the authority is its own status, with its reasons,
       and the provider can be asked to report a document again. The platform
       tracks the report apart from delivery (gap 1) and calls `retryReport`
@@ -289,9 +289,15 @@ The order is by how much each matters at go-live.
 6. **Confirmations for received invoices** are forwarded to the buyer
    (Guidelines p11, step 11). Received documents are stored, but nothing
    records their reporting confirmation.
-7. **Structured validation errors** (question 3). Errors are a list of
-   strings. Rule ID, severity and location would let the portal point at the
-   field.
+7. **Structured validation errors.** *Closed.* Every error is now
+   `{code, severity, field, message}` (`AspError`): the rule ID, `fatal`,
+   `error` or `warning`, where in the document, and the words. This applies
+   to refusals, callbacks, lookups, the API and the portal. A provider's
+   errors are read whether it sends objects (`code`/`rule_id`, `severity`/
+   `flag`, `field`/`location`/`path`, `message`) or strings that lead with
+   their code (`[ibr-003]-...`, `BV: ...`). This supports the governance
+   model for resolving errors that the Guidelines ask for (p41). **Ask the
+   provider** (question 3) which names it uses.
 8. **Outages.** The provider must notify the taxpayer and the authority, and
    exchange pending invoices once service resumes (Guidelines p46). The
    platform gives up after five unanswered attempts, and an operator has to

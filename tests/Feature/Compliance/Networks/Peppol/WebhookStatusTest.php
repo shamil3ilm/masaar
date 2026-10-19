@@ -50,13 +50,18 @@ class WebhookStatusTest extends TestCase
     {
         $document = $this->document('sent', 'msg-1');
 
-        $this->report(['message_id' => 'msg-1', 'mls_code' => 'RE', 'errors' => ['BR-AE-10 invalid TRN']])
-            ->assertOk();
+        $this->report(['message_id' => 'msg-1', 'mls_code' => 'RE', 'errors' => [
+            ['rule_id' => 'BR-AE-10', 'severity' => 'fatal', 'field' => 'cbc:CompanyID', 'message' => 'invalid TRN'],
+            'BV: Business rule violation',
+        ]])->assertOk();
 
         $document->refresh();
         $this->assertSame('rejected', $document->status);
         $this->assertSame('RE', $document->mls_code);
-        $this->assertSame(['BR-AE-10 invalid TRN'], $document->errors);
+        $this->assertSame([
+            ['code' => 'BR-AE-10', 'severity' => 'fatal', 'field' => 'cbc:CompanyID', 'message' => 'invalid TRN'],
+            ['code' => 'BV', 'severity' => 'error', 'field' => null, 'message' => 'Business rule violation'],
+        ], $document->errors);
     }
 
     /**
@@ -86,7 +91,7 @@ class WebhookStatusTest extends TestCase
 
         $document->refresh();
         $this->assertSame(['delivered', 'report_failed'], [$document->status, $document->reporting_status]);
-        $this->assertSame(['The authority did not acknowledge it'], $document->reporting_errors);
+        $this->assertSame([['code' => null, 'severity' => 'error', 'field' => null, 'message' => 'The authority did not acknowledge it']], $document->reporting_errors);
         $this->assertNull($document->errors);
     }
 

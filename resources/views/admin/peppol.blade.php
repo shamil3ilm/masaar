@@ -58,7 +58,8 @@
                 </td>
                 <td class="px-6 py-4 font-mono text-xs">{{ $document->receiver_endpoint }}</td>
                 <td class="px-6 py-4 text-sm">{{ $document->attempts }}</td>
-                <td class="px-6 py-4 text-sm text-danger">{{ Str::limit((string) ($document->last_error ?? ((array) $document->errors)[0] ?? ((array) $document->reporting_errors)[0] ?? ''), 80) }}</td>
+                @php($first = $document->errorList('errors')[0] ?? $document->errorList('reporting_errors')[0] ?? null)
+                <td class="px-6 py-4 text-sm text-danger">{{ Str::limit((string) ($document->last_error ?? ($first ? trim(($first['code'] ? $first['code'].': ' : '').$first['message']) : '')), 80) }}</td>
                 <td class="px-6 py-4 text-sm text-muted">{{ $document->updated_at?->diffForHumans() }}</td>
                 <td class="px-6 py-4">
                     @admincan('operations.run')

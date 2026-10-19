@@ -387,7 +387,16 @@ Authorization: Bearer <token>
 ```
 
 The document fields are `null` until the invoice has been sent. `warnings`
-holds the late-issue warning when it applies.
+holds the late-issue warning when it applies. Each entry in `errors` and
+`reporting_errors` is an object:
+
+```json
+{ "code": "ibr-003", "severity": "fatal", "field": "/Invoice[1]", "message": "An Invoice MUST have an Invoice issue date (ibt-002)." }
+```
+
+`code` is the rule or error code, and `severity` is `fatal`, `error` or
+`warning`. `field` says where in the document, when the provider says.
+`code` and `field` may be null.
 
 The service provider delivers the document to the buyer's provider and, in
 parallel, reports its tax data to the authority. It confirms each one
@@ -515,6 +524,11 @@ Until a provider is chosen, these are the generic bodies
 ```json
 { "message_id": "provider-message-id", "status": "delivered", "mls_code": "AP", "errors": [] }
 ```
+
+Each entry in `errors` may be a string or an object with `code` (or
+`rule_id`), `severity`, `field` (or `location`) and `message`. A string that
+starts with its code (`[ibr-003]-...` or `BV: ...`) is split into code and
+message.
 
 `status` is one of `sent`, `delivered` or `rejected` (delivery), or
 `reported` or `report_failed` (the report to the authority, which may carry

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Networks\Peppol\Simulator;
 
+use App\Domains\Compliance\Networks\Peppol\Gateways\AspError;
 use App\Domains\Compliance\Networks\Peppol\Gateways\AspStatus;
 use App\Domains\Compliance\Networks\Peppol\Sending\ReportOnlyEndpoints;
 use Illuminate\Support\Str;
@@ -82,16 +83,16 @@ enum Outcome: string
             self::ReportFailed => [
                 $sent,
                 $delivered,
-                self::status(AspStatus::REPORT_FAILED, null, ['The authority did not acknowledge the tax data (simulated reporting failure).']),
+                self::status(AspStatus::REPORT_FAILED, null, [new AspError('The authority did not acknowledge the tax data (simulated reporting failure).', 'REPORT-NOT-ACKNOWLEDGED', AspError::ERROR)]),
                 ...$inbound,
             ],
             self::Rejected => [
                 $sent,
-                self::status(AspStatus::REJECTED, 'RE', ['BV: The buyer\'s access point refused the document (simulated rejection).']),
+                self::status(AspStatus::REJECTED, 'RE', [new AspError('The buyer\'s access point refused the document (simulated rejection).', 'BV', AspError::FATAL)]),
                 self::reported(),
             ],
             self::UnknownReceiver => [
-                self::status(AspStatus::REJECTED, null, ["The receiver {$receiver} is not a participant on the network: no capability lookup entry (simulated)."]),
+                self::status(AspStatus::REJECTED, null, [new AspError("The receiver {$receiver} is not a participant on the network: no capability lookup entry (simulated).", 'PARTICIPANT-NOT-FOUND', AspError::FATAL, 'cac:AccountingCustomerParty/cac:Party/cbc:EndpointID')]),
             ],
             self::ReportOnly => [$sent, self::reported()],
         };
@@ -108,11 +109,11 @@ enum Outcome: string
     }
 
     /**
-     * @param  list<string>  $errors
-     * @return array{type: string, status: string, mls_code: string|null, errors: list<string>}
+     * @param  list<AspError>  $errors
+     * @return array{type: string, status: string, mls_code: string|null, errors: list<array<string, string|null>>}
      */
     private static function status(string $status, ?string $mls = null, array $errors = []): array
     {
-        return ['type' => 'status', 'status' => $status, 'mls_code' => $mls, 'errors' => $errors];
+        return ['type' => 'status', 'status' => $status, 'mls_code' => $mls, 'errors' => AspError::toArrays($errors)];
     }
 }

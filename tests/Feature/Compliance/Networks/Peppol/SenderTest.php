@@ -150,7 +150,7 @@ class SenderTest extends TestCase
 
         $document->refresh();
         $this->assertSame('rejected', $document->status);
-        $this->assertSame(['BR-AE-01 buyer endpoint missing'], $document->errors);
+        $this->assertSame([['code' => null, 'severity' => 'error', 'field' => null, 'message' => 'BR-AE-01 buyer endpoint missing']], $document->errors);
     }
 
     /**

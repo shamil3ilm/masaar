@@ -25,7 +25,8 @@ use RuntimeException;
  * It does what the platform relies on a provider for:
  *
  * - judges each document with the published rules (PintValidator) and
- *   refuses one that fails, with the rule IDs as the errors;
+ *   refuses one that fails, each error with its rule ID, severity and
+ *   location;
  * - takes a document once per idempotency key - the document id, as
  *   HttpAspGateway sends it - so a retry gets the first message id back and
  *   nothing is filed twice;

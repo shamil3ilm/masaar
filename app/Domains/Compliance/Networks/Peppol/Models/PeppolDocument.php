@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Networks\Peppol\Models;
 
 use App\Domains\Compliance\Networks\Peppol\Exceptions\DocumentRetainedException;
+use App\Domains\Compliance\Networks\Peppol\Gateways\AspError;
 use App\Domains\Organization\Concerns\BelongsToTenant;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -78,6 +79,19 @@ class PeppolDocument extends Model
         static::deleting(function (PeppolDocument $document): void {
             throw DocumentRetainedException::for((string) $document->id);
         });
+    }
+
+    /**
+     * The document's errors on one track, each as {code, severity, field,
+     * message}. Rows from before errors were structured hold strings; they
+     * are read the same way a provider's string is (AspError::from).
+     *
+     * @param  'errors'|'reporting_errors'  $column
+     * @return list<array{code: string|null, severity: string, field: string|null, message: string}>
+     */
+    public function errorList(string $column = 'errors'): array
+    {
+        return AspError::toArrays(AspError::listFrom((array) ($this->getAttribute($column) ?? [])));
     }
 
     public function org(): BelongsTo

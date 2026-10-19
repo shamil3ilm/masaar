@@ -149,7 +149,11 @@ class SimulatorConformanceTest extends TestCase
 
         $this->assertSame('rejected', $document->status);
         $this->assertNull($document->asp_message_id);
-        $this->assertContains('[ibr-003]-An Invoice MUST have an Invoice issue date (ibt-002).', (array) $document->errors);
+        // Each error with its rule ID, severity and where in the document.
+        $this->assertContains(
+            ['code' => 'ibr-003', 'severity' => 'fatal', 'field' => "/*:Invoice[namespace-uri()='urn:oasis:names:specification:ubl:schema:xsd:Invoice-2'][1]", 'message' => 'An Invoice MUST have an Invoice issue date (ibt-002).'],
+            (array) $document->errors,
+        );
     }
 
     public function test_unknown_buyer_endpoint_is_rejected(): void
@@ -157,7 +161,7 @@ class SimulatorConformanceTest extends TestCase
         $document = $this->sendIssued($this->draftFor('standard', ['buyer_endpoint' => '0235:1999999901']));
 
         $this->assertSame('rejected', $document->status);
-        $this->assertStringContainsString('is not a participant on the network', ((array) $document->errors)[0] ?? '');
+        $this->assertSame('PARTICIPANT-NOT-FOUND', $document->errors[0]['code'] ?? null);
     }
 
     public function test_buyer_access_point_rejection(): void

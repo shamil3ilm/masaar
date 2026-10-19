@@ -1951,5 +1951,6 @@
     "Report asked again": "طُلب الإبلاغ مجدداً",
     "Operator": "المشغّل",
     "Earlier record": "سجل سابق",
-    "(no change)": "(دون تغيير)"
+    "(no change)": "(دون تغيير)",
+    "At :field": "في :field"
 }

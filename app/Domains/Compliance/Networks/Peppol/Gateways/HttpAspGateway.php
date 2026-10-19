@@ -175,29 +175,22 @@ final class HttpAspGateway implements AspGateway
 
         throw new AspRefusedException(
             "The service provider refused the document (HTTP {$status}).",
-            $this->errorsIn($response) ?: ["HTTP {$status}"],
+            $this->errorsIn($response) ?: [new AspError("HTTP {$status}", (string) $status)],
         );
     }
 
     /**
-     * @return list<string>
+     * The provider's errors, each with its rule, severity and field where it
+     * gives them, else its message.
+     *
+     * @return list<AspError>
      */
     private function errorsIn(Response $response): array
     {
-        $errors = [];
-
-        foreach (array_slice((array) $response->json('errors', []), 0, 50) as $error) {
-            $text = is_array($error)
-                ? trim(($error['code'] ?? '').' '.($error['message'] ?? ''))
-                : (is_string($error) ? $error : '');
-
-            if ($text !== '') {
-                $errors[] = Str::limit($text, 1000);
-            }
-        }
+        $errors = AspError::listFrom((array) $response->json('errors', []), 50);
 
         if ($errors === [] && is_string($response->json('message'))) {
-            $errors[] = Str::limit($response->json('message'), 1000);
+            $errors[] = new AspError(Str::limit($response->json('message'), 1000));
         }
 
         return $errors;
