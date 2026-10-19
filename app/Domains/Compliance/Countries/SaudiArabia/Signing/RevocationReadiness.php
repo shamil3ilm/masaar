@@ -39,6 +39,15 @@ class RevocationReadiness
      */
     public function problems(): array
     {
+        // Only invoices stamped for ZATCA's production gateway carry legal
+        // weight. A deployment still on the simulation or sandbox gateway
+        // is a rehearsal, and is often stood up before the operator holds
+        // the CA chain - refusing it traffic would block the rehearsal, not
+        // protect an invoice.
+        if (config('fatoora.environment') !== 'production') {
+            return [];
+        }
+
         $problems = [];
         $chain = (string) config('fatoora.certificate.chain_path');
 

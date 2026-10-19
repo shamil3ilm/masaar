@@ -256,7 +256,7 @@ docker run --rm -v masaar-redis:/data -v $(pwd):/backup alpine tar czf /backup/r
 | Endpoint | Purpose | Expected Response |
 |----------|---------|-------------------|
 | `GET /api/health` | Liveness: PHP is answering. The container health check uses it. | `200 {"status":"ok"}` |
-| `GET /api/health/ready` | Readiness: the database and the cache answer and, in production, each country that is on can serve (for Saudi Arabia: `ZATCA_CA_CHAIN_PATH` readable, and a revocation list for every active certificate - its own, or `ZATCA_CRL_URLS`). Traefik routes only to replicas that pass. | `200 {"status":"ready","checks":{"database":"ok","cache":"ok"}}`, or `503` with `"not_ready"` and the failing check named |
+| `GET /api/health/ready` | Readiness: the database and the cache answer and, in production, each country that is on can serve (for Saudi Arabia on ZATCA's production gateway, `ZATCA_ENVIRONMENT=production`: `ZATCA_CA_CHAIN_PATH` readable, and a revocation list for every active certificate - its own, or `ZATCA_CRL_URLS`). Traefik routes only to replicas that pass. | `200 {"status":"ready","checks":{"database":"ok","cache":"ok"}}`, or `503` with `"not_ready"` and the failing check named |
 | `GET /api/metrics` | Prometheus scrape: latencies, queue depths, failed jobs, the ZATCA circuit breaker. Closed unless `METRICS_ALLOWED_IPS` or `METRICS_TOKEN` is set. | Prometheus text format |
 
 ZATCA reachability is deliberately not part of readiness: when ZATCA is down,

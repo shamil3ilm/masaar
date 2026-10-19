@@ -35,7 +35,12 @@ class ProductionReadinessTest extends TestCase
         parent::setUp();
 
         Storage::fake('creds');
-        config(['fatoora.signing.disk' => 'creds', 'fatoora.enabled' => true, 'fatoora.certificate.crl_urls' => []]);
+        config([
+            'fatoora.signing.disk' => 'creds',
+            'fatoora.enabled' => true,
+            'fatoora.environment' => 'production',
+            'fatoora.certificate.crl_urls' => [],
+        ]);
         $this->authority();
         $this->app['env'] = 'production';
 
@@ -93,6 +98,19 @@ class ProductionReadinessTest extends TestCase
         config(['fatoora.enabled' => false, 'fatoora.certificate.chain_path' => null]);
 
         $this->getJson('/api/health/ready')->assertOk();
+    }
+
+    /**
+     * A deployment rehearsing on ZATCA's simulation gateway stamps nothing
+     * with legal weight, so a missing chain does not keep it from traffic.
+     */
+    public function test_simulation_gateway_is_not_asked(): void
+    {
+        config(['fatoora.environment' => 'simulation', 'fatoora.certificate.chain_path' => null]);
+
+        $this->getJson('/api/health/ready')
+            ->assertOk()
+            ->assertJsonPath('checks.countries', 'ok');
     }
 
     public function test_outside_production_is_not_asked(): void
