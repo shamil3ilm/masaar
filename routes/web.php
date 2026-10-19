@@ -55,6 +55,7 @@ use App\Domains\Platform\Http\Controllers\AdminOwnershipController;
 use App\Domains\Platform\Http\Controllers\AdminRolesController;
 use App\Domains\Platform\Http\Controllers\AdminSettingsController;
 use App\Domains\Platform\Http\Controllers\AdminUserController;
+use App\Domains\Platform\Http\Controllers\AdminWebsiteSectionController;
 use App\Domains\Platform\Http\Controllers\AdminWebsiteTestimonialController;
 use App\Domains\Platform\Http\Controllers\ContactController;
 use App\Domains\Platform\Http\Controllers\SavedListViewController;
@@ -324,17 +325,24 @@ Route::prefix('admin')->name('admin.')
             Route::post('/{messageId}/restore', [AdminContactMessageController::class, 'restore'])->name('restore');
         });
 
-        // Website › the public site's words: testimonials. Its own
-        // permission (website.manage), held by the owner and operations.
-        Route::prefix('/website')->name('website.')->middleware('admin.can:website.manage')->whereUuid('testimonialId')->group(function () {
+        // Website › the public site's words: the home page's sections and
+        // testimonials. Its own permission (website.manage), held by the
+        // owner and operations.
+        Route::prefix('/website')->name('website.')->middleware('admin.can:website.manage')->group(function () {
+            Route::get('/sections', [AdminWebsiteSectionController::class, 'index'])->name('sections.index');
+            Route::get('/sections/{sectionKey}/edit', [AdminWebsiteSectionController::class, 'edit'])->where('sectionKey', '[a-z_]+')->name('sections.edit');
+            Route::post('/sections/{sectionKey}', [AdminWebsiteSectionController::class, 'update'])->where('sectionKey', '[a-z_]+')->name('sections.update');
+            Route::post('/sections/{sectionKey}/visibility', [AdminWebsiteSectionController::class, 'visibility'])->where('sectionKey', '[a-z_]+')->name('sections.visibility');
+            Route::post('/sections/{sectionKey}/move', [AdminWebsiteSectionController::class, 'move'])->where('sectionKey', '[a-z_]+')->name('sections.move');
+            Route::post('/sections/{sectionKey}/reset', [AdminWebsiteSectionController::class, 'reset'])->where('sectionKey', '[a-z_]+')->name('sections.reset');
             Route::get('/testimonials', [AdminWebsiteTestimonialController::class, 'index'])->name('testimonials.index');
             Route::get('/testimonials/create', [AdminWebsiteTestimonialController::class, 'create'])->name('testimonials.create');
             Route::post('/testimonials', [AdminWebsiteTestimonialController::class, 'store'])->name('testimonials.store');
-            Route::get('/testimonials/{testimonialId}/edit', [AdminWebsiteTestimonialController::class, 'edit'])->name('testimonials.edit');
-            Route::post('/testimonials/{testimonialId}', [AdminWebsiteTestimonialController::class, 'update'])->name('testimonials.update');
-            Route::post('/testimonials/{testimonialId}/visibility', [AdminWebsiteTestimonialController::class, 'visibility'])->name('testimonials.visibility');
-            Route::post('/testimonials/{testimonialId}/move', [AdminWebsiteTestimonialController::class, 'move'])->name('testimonials.move');
-            Route::post('/testimonials/{testimonialId}/delete', [AdminWebsiteTestimonialController::class, 'destroy'])->name('testimonials.destroy');
+            Route::get('/testimonials/{testimonialId}/edit', [AdminWebsiteTestimonialController::class, 'edit'])->whereUuid('testimonialId')->name('testimonials.edit');
+            Route::post('/testimonials/{testimonialId}', [AdminWebsiteTestimonialController::class, 'update'])->whereUuid('testimonialId')->name('testimonials.update');
+            Route::post('/testimonials/{testimonialId}/visibility', [AdminWebsiteTestimonialController::class, 'visibility'])->whereUuid('testimonialId')->name('testimonials.visibility');
+            Route::post('/testimonials/{testimonialId}/move', [AdminWebsiteTestimonialController::class, 'move'])->whereUuid('testimonialId')->name('testimonials.move');
+            Route::post('/testimonials/{testimonialId}/delete', [AdminWebsiteTestimonialController::class, 'destroy'])->whereUuid('testimonialId')->name('testimonials.destroy');
         });
 
         Route::get('/users', [AdminUserController::class, 'index'])->name('users.index');

@@ -551,6 +551,8 @@ class ScreenRenderTest extends TestCase
             'requestId' => $this->approvalRequest()->id,
             'messageId' => $this->contactMessage()->id,
             'testimonialId' => $this->testimonial()->id,
+            // The section with a list; WebsiteSectionAdminTest opens every one.
+            'sectionKey' => 'faq',
         ];
 
         $screens = [];

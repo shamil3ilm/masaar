@@ -17,7 +17,10 @@
 </x-ui.page-header>
 
 @unless ($sectionOn)
-    <x-ui.alert tone="info" class="mb-6">{{ __('The testimonials section is off on the home page, so none is shown yet. Turn it on with the home page\'s sections.') }}</x-ui.alert>
+    <x-ui.alert tone="info" class="mb-6">
+        {{ __('The testimonials section is off on the home page, so none is shown yet. Turn it on with the home page\'s sections.') }}
+        <a href="{{ route('admin.website.sections.index') }}" class="font-semibold underline underline-offset-4">{{ __('Home page') }}</a>
+    </x-ui.alert>
 @endunless
 
 <div class="overflow-hidden rounded-card border border-line bg-surface shadow-card">
