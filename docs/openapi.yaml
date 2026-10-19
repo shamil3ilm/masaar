@@ -115,6 +115,8 @@ components:
         - e_invoice.reported
         - e_invoice.report_failed
         - e_invoice.received
+        - schedule.run_created
+        - schedule.failed
         - '*'
 paths:
   /api/admin/dashboard:

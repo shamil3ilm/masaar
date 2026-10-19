@@ -44,22 +44,30 @@ use Throwable;
  */
 class ScheduleRunner
 {
+    /** Tries a run gets before it is given up on and its administrators told. */
+    public const MAX_ATTEMPTS = 5;
+
+    /** The wait before the first retry, doubled for each one after it. */
+    public const RETRY_MINUTES = 15;
+
     public function __construct(
         private readonly ScheduleTemplates $templates,
         private readonly InvoiceDrafter $drafter,
         private readonly ComplianceEngine $engine,
         private readonly TenantResolver $tenant,
         private readonly Access $access,
+        private readonly ScheduleAlerts $alerts,
     ) {}
 
     /**
-     * Every active schedule's due periods.
+     * Every active schedule's due periods, then the failed runs whose retry
+     * is due.
      *
      * @return int how many periods were attempted
      */
     public function runDue(): int
     {
-        $attempted = 0;
+        $attempted = $this->retryDue();
 
         // A day ahead of UTC covers every clock east of it; each schedule is
         // then held to its own organization's today.
@@ -76,6 +84,36 @@ class ScheduleRunner
             }));
 
         return $attempted;
+    }
+
+    /**
+     * The runs that failed and are due another try: drafted again, or for
+     * a run whose draft exists and was to be issued, issued again. A
+     * paused or cancelled schedule's wait.
+     *
+     * @return int how many were tried
+     */
+    public function retryDue(): int
+    {
+        $tried = 0;
+
+        InvoiceScheduleRun::query()
+            ->whereNotNull('next_attempt_at')
+            ->where('next_attempt_at', '<=', now())
+            ->whereHas('schedule', fn ($query) => $query->withoutGlobalScopes()->where('status', ScheduleStatus::Active->value))
+            ->orderBy('next_attempt_at')
+            ->lazyById(100)
+            ->each(function (InvoiceScheduleRun $run) use (&$tried): void {
+                $schedule = InvoiceSchedule::withoutTenantScope(fn (): ?InvoiceSchedule => InvoiceSchedule::query()->find($run->schedule_id));
+                $organization = $schedule === null ? null : Organization::query()->find($schedule->org_id);
+
+                if ($schedule !== null && $organization !== null) {
+                    $this->attempt($schedule, $run, $organization, CountryClock::now($organization->country)->toDateString());
+                    $tried++;
+                }
+            });
+
+        return $tried;
     }
 
     /**
@@ -124,8 +162,10 @@ class ScheduleRunner
      */
     public function attempt(InvoiceSchedule $schedule, InvoiceScheduleRun $run, Organization $organization, string $today): void
     {
+        $draftedNow = false;
+
         try {
-            $invoice = DB::transaction(function () use ($schedule, $run, $organization, $today): ?Invoice {
+            $invoice = DB::transaction(function () use ($schedule, $run, $organization, $today, &$draftedNow): ?Invoice {
                 $locked = InvoiceScheduleRun::query()->whereKey($run->id)->lockForUpdate()->firstOrFail();
 
                 if ($locked->status->isDone()) {
@@ -134,6 +174,7 @@ class ScheduleRunner
 
                 $invoice = $this->draft($schedule, $locked, $organization, $today);
                 $locked->update(['status' => ScheduleRunStatus::Drafted, 'invoice_id' => $invoice->id, 'error' => null, 'next_attempt_at' => null]);
+                $draftedNow = true;
 
                 return $invoice;
             });
@@ -148,8 +189,16 @@ class ScheduleRunner
             return;
         }
 
-        if ($invoice !== null && $schedule->auto_issue) {
-            $this->issue($schedule, $run->fresh() ?? $run, $invoice, $organization);
+        $issued = $invoice !== null && $schedule->auto_issue
+            && $this->issue($schedule, $run->fresh() ?? $run, $invoice, $organization);
+
+        if ($draftedNow || $issued) {
+            InvoiceSchedule::withoutTenantScope(fn () => InvoiceSchedule::query()->whereKey($schedule->id)->update(['last_error' => null]));
+        }
+
+        // Announced once, when its invoice is made, as it then stands.
+        if ($draftedNow) {
+            $this->alerts->created($schedule, $run->fresh() ?? $run, $this->invoiceOf($run->fresh() ?? $run));
         }
     }
 
@@ -235,7 +284,7 @@ class ScheduleRunner
      * then the country's issuing, filing when the organization can file.
      * Refused or failed, the draft stays a draft and the run says why.
      */
-    private function issue(InvoiceSchedule $schedule, InvoiceScheduleRun $run, Invoice $invoice, Organization $organization): void
+    private function issue(InvoiceSchedule $schedule, InvoiceScheduleRun $run, Invoice $invoice, Organization $organization): bool
     {
         try {
             $decision = $this->access->decide($organization, null, Feature::IssueInvoices);
@@ -256,28 +305,38 @@ class ScheduleRunner
         } catch (Throwable $e) {
             $this->failed($schedule, $run, $e->getMessage());
 
-            return;
+            return false;
         }
 
         $run->update(['status' => ScheduleRunStatus::Issued, 'error' => null, 'next_attempt_at' => null]);
+
+        return true;
     }
 
     /**
-     * A run that did not finish: the reason kept on it and on its schedule.
+     * A run that did not finish: the reason kept on it and on its schedule,
+     * another try set for later - fifteen minutes, then twice as long each
+     * time - and the organization told. After the last try it is left for a
+     * person, and its administrators are emailed.
      */
     private function failed(InvoiceSchedule $schedule, InvoiceScheduleRun $run, string $error): void
     {
         $error = mb_substr($error, 0, 500);
         $run = $run->fresh() ?? $run;
+        $attempts = $run->attempts + 1;
+        $willRetry = $attempts < self::MAX_ATTEMPTS;
 
         $run->update([
             // A drafted run whose issuing failed keeps its invoice.
             'status' => $run->status === ScheduleRunStatus::Drafted ? ScheduleRunStatus::Drafted : ScheduleRunStatus::Failed,
-            'attempts' => $run->attempts + 1,
+            'attempts' => $attempts,
             'error' => $error,
+            'next_attempt_at' => $willRetry ? now()->addMinutes(self::RETRY_MINUTES * 2 ** ($attempts - 1)) : null,
         ]);
 
         InvoiceSchedule::withoutTenantScope(fn () => InvoiceSchedule::query()->whereKey($schedule->id)->update(['last_error' => $error, 'updated_at' => now()]));
+
+        $this->alerts->failed($schedule, $run, $willRetry);
     }
 
     /** The schedule as it stands now, whoever the tenant of the moment is. */
