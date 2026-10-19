@@ -9,8 +9,10 @@ use App\Domains\Compliance\Networks\Peppol\Exceptions\AspRefusedException;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\AspUnavailableException;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\NoAspConfiguredException;
 use App\Domains\Compliance\Networks\Peppol\Gateways\AspError;
+use App\Domains\Compliance\Networks\Peppol\Gateways\AspStatus;
 use App\Domains\Compliance\Networks\Peppol\Jobs\SendPeppolDocument;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -26,7 +28,9 @@ use Illuminate\Support\Facades\Log;
  * index on direction and asp_message_id backs that up.
  *
  * A document left in 'sending' by a worker that died mid-call may already be
- * with the provider. It is not sent again: the provider would file it twice.
+ * with the provider. It is not sent again blindly - the provider would file
+ * it twice - but looked up by its own reference (recover()): taken, it is
+ * sent; never received, it is sent again.
  */
 final class PeppolSender
 {
@@ -146,6 +150,70 @@ final class PeppolSender
     }
 
     /**
+     * Documents left in 'sending' longer than any attempt takes: their
+     * worker died before the provider's answer was recorded.
+     *
+     * @return Collection<int, PeppolDocument>
+     */
+    public function stuck(int $olderThanMinutes, int $limit): Collection
+    {
+        return PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()
+            ->where('direction', PeppolDocument::DIRECTION_OUT)
+            ->where('status', DocumentStatus::SENDING)
+            ->where('updated_at', '<=', now()->subMinutes($olderThanMinutes))
+            ->orderBy('updated_at')
+            ->limit($limit)
+            ->get());
+    }
+
+    /**
+     * Settle a stuck document by asking the provider what it holds under the
+     * document's own reference: what it took is recorded as sent, and what it
+     * never received is sent again. Pending documents must go out once
+     * service resumes (Electronic Invoicing Guidelines v1.1, p46).
+     *
+     * @return string what was done: 'sent', 'requeued', or 'unknown' when the provider could not say
+     */
+    public function recover(string $documentId): string
+    {
+        try {
+            $held = $this->gateway->findByReference($documentId);
+        } catch (AspUnavailableException|NoAspConfiguredException) {
+            return 'unknown';
+        }
+
+        if ($held === null) {
+            $document = $this->status->transition($documentId, DocumentStatus::READY, [
+                'last_error' => 'The service provider never received it; it is sent again.',
+            ], from: DocumentStatus::SENDING, source: DocumentHistory::SOURCE_LOOKUP);
+
+            if ($document === null) {
+                return 'unknown';
+            }
+
+            $this->queue($document);
+
+            return 'requeued';
+        }
+
+        $document = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->find($documentId));
+        $taken = $this->reportOnly->contains($document?->receiver_endpoint) ? DocumentStatus::NOT_EXCHANGED : DocumentStatus::SENT;
+
+        $moved = $this->status->transition($documentId, $taken, [
+            'asp_message_id' => $held->messageId,
+            'last_error' => null,
+            'reporting_status' => DocumentStatus::PENDING,
+            'reporting_changed_at' => now(),
+        ], from: DocumentStatus::SENDING, source: DocumentHistory::SOURCE_LOOKUP);
+
+        if ($moved !== null && $held->status !== null && $held->status !== AspStatus::SENT) {
+            $this->status->apply($held, DocumentHistory::SOURCE_LOOKUP);
+        }
+
+        return $moved === null ? 'unknown' : 'sent';
+    }
+
+    /**
      * Try a failed document again, from its first attempt.
      *
      * For an operator, once whatever failed every attempt - credentials, an
@@ -189,7 +257,7 @@ final class PeppolSender
         $document = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->find($documentId));
 
         if ($document?->status === DocumentStatus::SENDING) {
-            Log::critical('A Peppol document was being sent when its job gave up; check with the service provider before it is sent again', [
+            Log::critical('A Peppol document was being sent when its job gave up; peppol:recover-sending will look it up with the service provider', [
                 'document_id' => $documentId,
                 'org_id' => $document->org_id,
                 'error' => $reason,

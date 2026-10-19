@@ -283,9 +283,15 @@ The order is by how much each matters at go-live.
 
 **Important.**
 
-5. **A document stuck in `sending` cannot be recovered.** A worker that dies
-   mid-call leaves no message id, so the platform has nothing to ask about.
-   **Change:** a lookup by our own reference (question 6).
+5. **A document stuck in `sending` is recovered.** *Closed.* A worker that
+   dies mid-call used to leave no message id, and so nothing to ask about.
+   `AspGateway::findByReference` now asks the provider what it holds under
+   the document's own id, which is sent as the idempotency key.
+   `peppol:recover-sending` runs every ten minutes. It records a document
+   the provider took as sent, and sends again a document the provider never
+   received. Pending invoices go out once service resumes (Guidelines p46).
+   **Ask the provider** (question 6) whether it can look up by our
+   reference.
 6. **Confirmations for received invoices** are forwarded to the buyer
    (Guidelines p11, step 11). Received documents are stored, but nothing
    records their reporting confirmation.

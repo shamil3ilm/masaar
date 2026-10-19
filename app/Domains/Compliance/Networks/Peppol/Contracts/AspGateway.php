@@ -50,6 +50,23 @@ interface AspGateway
     public function status(string $messageId): array;
 
     /**
+     * Find what the provider holds under our own reference - the document
+     * id, sent as the idempotency key - for a document whose submission got
+     * no answer back: a worker died mid-call, so there is no message id to
+     * ask about. Null when the provider never received it.
+     *
+     * Pending documents must be exchanged and reported once service resumes
+     * (Electronic Invoicing Guidelines v1.1, p46); this is how one stuck
+     * halfway is found rather than sent twice or never.
+     *
+     * @return AspStatus|null its message id and, where known, its delivery status
+     *
+     * @throws NoAspConfiguredException
+     * @throws AspUnavailableException
+     */
+    public function findByReference(string $reference): ?AspStatus;
+
+    /**
      * Ask the provider to report a document's tax data to the authority
      * again, after it relayed a failed report. The answer arrives as a
      * reporting status, by callback or lookup, like the first one.

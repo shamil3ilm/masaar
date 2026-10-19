@@ -164,6 +164,16 @@ Schedule::command('peppol:poll-status')
     ->when(fn () => filled(config('peppol.asp.base_url')) || config('peppol.gateway') === 'simulator')
     ->appendOutputTo(storage_path('logs/peppol-status.log'));
 
+// A document whose worker died mid-call is looked up with the provider by
+// its own reference, then recorded as sent or sent again (UAE Electronic
+// Invoicing Guidelines v1.1, p46: pending invoices go out on resumption).
+Schedule::command('peppol:recover-sending')
+    ->onOneServer()
+    ->everyTenMinutes()
+    ->withoutOverlapping(10)
+    ->when(fn () => filled(config('peppol.asp.base_url')) || config('peppol.gateway') === 'simulator')
+    ->appendOutputTo(storage_path('logs/peppol-status.log'));
+
 // A failed report to the authority is the taxpayer's to see through (UAE
 // Electronic Invoicing Guidelines v1.1, p45): asked again every hour.
 Schedule::command('peppol:retry-reports')

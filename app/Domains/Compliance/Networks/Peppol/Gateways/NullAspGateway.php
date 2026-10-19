@@ -28,6 +28,11 @@ final class NullAspGateway implements AspGateway
         throw NoAspConfiguredException::make();
     }
 
+    public function findByReference(string $reference): ?AspStatus
+    {
+        throw NoAspConfiguredException::make();
+    }
+
     public function retryReport(string $messageId): void
     {
         throw NoAspConfiguredException::make();

@@ -559,6 +559,7 @@ recognise changes nothing.
 |---|---|
 | `php artisan peppol:poll-status [--minutes=30] [--limit=200]` | Asks the provider about `sent` documents that have had no callback for at least `--minutes` minutes, up to 14 days old. It is scheduled every ten minutes on one server, only when `PEPPOL_ASP_BASE_URL` is set or the simulator is the gateway, and logs to `storage/logs/peppol-status.log` |
 | `php artisan peppol:retry-reports [--limit=200]` | Asks the provider to report again every document whose report to the authority failed, at most once an hour each, for up to 30 days. It is scheduled hourly on one server when a provider or the simulator is connected. The admin console's **Peppol** page has the same action as **Retry report** |
+| `php artisan peppol:recover-sending [--minutes=15] [--limit=200]` | Settles documents that have been in `sending` for at least `--minutes` minutes. It asks the provider what it holds under each document's own reference: a document the provider took is recorded as sent, and one it never received is sent again. It is scheduled every ten minutes on one server |
 | `php artisan peppol:resend {document}` | Queues a `failed` document again, from its first attempt. It refuses any other status. The document keeps its id, which is the idempotency key sent to the provider, so a resend cannot file it twice. The admin console's **Peppol** page (`/admin/peppol`) has the same action as **Resend** |
 | `php artisan peppol:simulate-inbound {endpoint} [--file=]` | Simulator only ([SIMULATOR.md](SIMULATOR.md)). Delivers another supplier's document to the organization that holds `endpoint`, through the signed inbound callback |
 
@@ -573,6 +574,9 @@ Outgoing documents are sent by the `SendPeppolDocument` job, on the
   `rejected`.
 
 **A document left in `sending`** by a worker that died during the call may
-already be with the provider. It is never sent again automatically. A
-critical log entry names it. Check with the provider before taking any
-action.
+already be with the provider, so it is never sent again blindly. A critical
+log entry names it. Every ten minutes, `peppol:recover-sending` asks the
+provider what it holds under the document's own id, which is the
+idempotency key. A document the provider took is recorded as sent, with its
+message id. A document the provider never received is sent again (UAE
+Electronic Invoicing Guidelines v1.1, p46).

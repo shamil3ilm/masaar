@@ -33,6 +33,12 @@ final class FakeAspGateway implements AspGateway
 
     private ?Throwable $reportRetryFailure = null;
 
+    /** @var list<string> references looked up, in order */
+    public array $lookedUp = [];
+
+    /** @var array<string, AspStatus> */
+    private array $held = [];
+
     /** @var array<string, list<AspStatus>> */
     private array $statuses = [];
 
@@ -81,6 +87,24 @@ final class FakeAspGateway implements AspGateway
         $this->queried[] = $messageId;
 
         return $this->statuses[$messageId] ?? [];
+    }
+
+    /**
+     * What findByReference() answers: the provider holds this message under
+     * the reference.
+     */
+    public function holds(string $reference, string $messageId, ?string $status = AspStatus::SENT): self
+    {
+        $this->held[$reference] = new AspStatus($messageId, $status);
+
+        return $this;
+    }
+
+    public function findByReference(string $reference): ?AspStatus
+    {
+        $this->lookedUp[] = $reference;
+
+        return $this->held[$reference] ?? null;
     }
 
     public function retryReport(string $messageId): void

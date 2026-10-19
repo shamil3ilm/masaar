@@ -32,6 +32,7 @@ use RuntimeException;
  *   status  GET {base}/documents/{id} -> {status, mls_code, errors,
  *           reporting_status, authority_reference, reporting_errors}
  *   report  POST {base}/documents/{id}/report -> 2xx: reported again
+ *   find    GET {base}/documents?reference={our document id} -> {id, status} or 404
  *   hooks   WebhookSignature and WebhookPayload
  *
  * The idempotency key is what makes a retry after a lost answer safe; a
@@ -113,6 +114,28 @@ final class HttpAspGateway implements AspGateway
         }
 
         return WebhookPayload::lookupFrom($messageId, (array) $response->json());
+    }
+
+    public function findByReference(string $reference): ?AspStatus
+    {
+        $response = $this->call(fn (PendingRequest $http) => $http
+            ->get($this->url(self::DOCUMENTS_PATH), ['reference' => $reference]));
+
+        if ($response->status() === 404) {
+            return null;
+        }
+
+        if (! $response->successful()) {
+            throw new AspUnavailableException("The service provider did not answer the lookup by reference (HTTP {$response->status()}).");
+        }
+
+        $id = $response->json('id');
+
+        if (! is_string($id) && ! is_int($id)) {
+            return null;
+        }
+
+        return WebhookPayload::statusFrom((string) $id, (array) $response->json());
     }
 
     public function retryReport(string $messageId): void

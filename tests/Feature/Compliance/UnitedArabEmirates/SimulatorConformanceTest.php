@@ -7,8 +7,10 @@ namespace Tests\Feature\Compliance\UnitedArabEmirates;
 use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Issuing\InvoiceIssuer;
 use App\Domains\Compliance\Networks\Peppol\Console\PintValidator;
+use App\Domains\Compliance\Networks\Peppol\Contracts\AspGateway;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use App\Domains\Compliance\Networks\Peppol\Sending\DocumentHistory;
+use App\Domains\Compliance\Networks\Peppol\Sending\DocumentStatus;
 use App\Domains\Compliance\Networks\Peppol\Sending\PeppolSender;
 use App\Domains\Compliance\Networks\Peppol\Simulator\SimulatorCallbacks;
 use App\Domains\Invoice\Models\Invoice;
@@ -215,6 +217,39 @@ class SimulatorConformanceTest extends TestCase
 
         $this->travel(1)->hours();
         $this->artisan('peppol:poll-status')->expectsOutputToContain('Asked about 0 of 0 documents.')->assertSuccessful();
+    }
+
+    /**
+     * The provider took it, then the worker died before recording the
+     * answer: found by its own reference, recorded as sent, and delivered -
+     * not sent twice (UAE Electronic Invoicing Guidelines v1.1, p46).
+     */
+    public function test_stuck_document_is_found_by_reference(): void
+    {
+        $document = app(InvoiceIssuer::class)->issue($this->draftFor('standard'), send: false);
+        $claimed = app(DocumentStatus::class)->transition((string) $document->id, 'sending');
+        $messageId = app(AspGateway::class)->submit($claimed);
+
+        $this->travel(20)->minutes();
+        $this->artisan('peppol:recover-sending')->expectsOutputToContain('Found at the provider: 1.')->assertSuccessful();
+        $this->playNetwork();
+
+        $document = $document->fresh();
+        $this->assertSame($messageId, $document->asp_message_id);
+        $this->assertDelivered($document);
+    }
+
+    /** Claimed but never handed over: the provider has nothing, so it is sent again. */
+    public function test_never_received_document_is_sent_again(): void
+    {
+        $document = app(InvoiceIssuer::class)->issue($this->draftFor('standard'), send: false);
+        app(DocumentStatus::class)->transition((string) $document->id, 'sending');
+
+        $this->travel(20)->minutes();
+        $this->artisan('peppol:recover-sending')->expectsOutputToContain('Sent again: 1.')->assertSuccessful();
+        $this->playNetwork();
+
+        $this->assertDelivered($document->fresh());
     }
 
     /** No answer to the first attempt: the document waits, and the retry is delivered. */

@@ -109,6 +109,17 @@ final class SimulatedAspGateway implements AspGateway
     }
 
     /**
+     * The message taken under the idempotency key, if any - as the provider
+     * keeps it whatever became of the answer to the submission.
+     */
+    public function findByReference(string $reference): ?AspStatus
+    {
+        $messageId = $this->ledger->messageIdFor($reference);
+
+        return $messageId === null ? null : ($this->status($messageId)[0] ?? new AspStatus($messageId, AspStatus::SENT));
+    }
+
+    /**
      * Report it again: the authority's confirmation follows, a step later,
      * through the same callback.
      */
