@@ -7,6 +7,7 @@ namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\UaeDocuments;
 use App\Domains\Compliance\Engine\Contracts\Presentation as PresentationPort;
 use App\Domains\Compliance\Engine\DTOs\InvoicePage;
+use App\Domains\Compliance\Engine\DTOs\PrintSample;
 use App\Domains\Compliance\Engine\DTOs\Receipt;
 use App\Domains\Compliance\Networks\Peppol\Sending\DocumentHistory;
 use App\Domains\Compliance\Networks\Peppol\Sending\ProviderOutage;
@@ -113,6 +114,12 @@ class Presentation implements PresentationPort
     public function printedFields(): array
     {
         return PrintedFields::all();
+    }
+
+    /** No printed copy to preview: the buyer receives the e-invoice. */
+    public function sampleInvoice(?Organization $seller = null): ?PrintSample
+    {
+        return null;
     }
 
     /** A UAE invoice prints in one language: no order to choose. */

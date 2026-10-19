@@ -166,6 +166,29 @@ class InvoiceTemplates
             : $this->customizations->set(self::KEY, $level, $scope, $own, $actorId);
     }
 
+    /**
+     * A template from a form not yet saved, for its preview: the scope's
+     * template with the form's fields laid over it, each taken only when it
+     * is one the template could hold - a half-typed IBAN previews as the
+     * saved one, not as an error.
+     *
+     * @param  array<string, mixed>  $input
+     */
+    public function preview(Scope $scope, array $input, ?Organization $organization): InvoiceTemplate
+    {
+        $values = $this->values($scope);
+
+        foreach (array_intersect_key($input, InvoiceTemplate::DEFAULTS) as $field => $value) {
+            try {
+                $values = [...$values, ...$this->validate([$field => $value], $organization)];
+            } catch (ValidationException) {
+                continue;
+            }
+        }
+
+        return $this->build($values, $organization);
+    }
+
     /** Back to the level above's template, every field. */
     public function reset(Level $level, Scope $scope, ?string $actorId): void
     {

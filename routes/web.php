@@ -21,6 +21,7 @@ use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalP
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalReceivedController;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalUaeInvoiceController;
 use App\Domains\Compliance\Networks\Peppol\Http\Controllers\AdminPeppolController;
+use App\Domains\Invoice\Http\Controllers\AdminInvoiceTemplateController;
 use App\Domains\Invoice\Http\Controllers\InvoiceLinkController;
 use App\Domains\Invoice\Http\Controllers\PortalCustomerController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceController;
@@ -29,6 +30,7 @@ use App\Domains\Invoice\Http\Controllers\PortalInvoiceDraftController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceFilingController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoicePreviewController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoicePrintController;
+use App\Domains\Invoice\Http\Controllers\PortalInvoiceTemplateController;
 use App\Domains\Invoice\Http\Controllers\PortalNumberingController;
 use App\Domains\Invoice\Http\Controllers\PortalProductController;
 use App\Domains\Invoice\Http\Controllers\PortalQrCodeController;
@@ -440,6 +442,12 @@ Route::prefix('admin')->name('admin.')
         Route::post('/branding/import', [AdminBrandingController::class, 'import'])->middleware('admin.can:platform.configure')->name('branding.import');
         Route::get('/branding/export', [AdminBrandingController::class, 'export'])->name('branding.export');
         Route::post('/branding/reset', [AdminBrandingController::class, 'reset'])->middleware('admin.can:platform.configure')->name('branding.reset');
+        // The platform's invoice template, which every organization's follows.
+        Route::get('/branding/invoice-template', [AdminInvoiceTemplateController::class, 'edit'])->name('invoice-template.edit');
+        Route::post('/branding/invoice-template', [AdminInvoiceTemplateController::class, 'update'])->middleware('admin.can:platform.configure')->name('invoice-template.update');
+        Route::post('/branding/invoice-template/reset', [AdminInvoiceTemplateController::class, 'reset'])->middleware('admin.can:platform.configure')->name('invoice-template.reset');
+        Route::get('/branding/invoice-template/preview', [AdminInvoiceTemplateController::class, 'preview'])->middleware('throttle:120,1')->name('invoice-template.preview');
+        Route::get('/branding/invoice-template/sample', [AdminInvoiceTemplateController::class, 'samplePdf'])->middleware('throttle:30,1')->name('invoice-template.sample');
 
         // The design system: every token and component, drawn by the
         // components themselves, in light and dark and in both directions.
@@ -719,6 +727,13 @@ Route::prefix('portal')->name('portal.')
         Route::post('/branding/import', [PortalBrandingController::class, 'import'])->name('branding.import');
         Route::get('/branding/export', [PortalBrandingController::class, 'export'])->name('branding.export');
         Route::post('/branding/reset', [PortalBrandingController::class, 'reset'])->name('branding.reset');
+        // The organization's invoice template, and a branch's (?branch=).
+        // Administrators of the organization only; the controller checks.
+        Route::get('/branding/invoice-template', [PortalInvoiceTemplateController::class, 'edit'])->name('invoice-template.edit');
+        Route::post('/branding/invoice-template', [PortalInvoiceTemplateController::class, 'update'])->name('invoice-template.update');
+        Route::post('/branding/invoice-template/reset', [PortalInvoiceTemplateController::class, 'reset'])->name('invoice-template.reset');
+        Route::get('/branding/invoice-template/preview', [PortalInvoiceTemplateController::class, 'preview'])->name('invoice-template.preview');
+        Route::get('/branding/invoice-template/sample', [PortalInvoiceTemplateController::class, 'samplePdf'])->middleware('throttle:30,1')->name('invoice-template.sample');
     });
 
 // A person's own preferences. Outside org.writer: a viewer chooses their own

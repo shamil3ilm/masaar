@@ -13,6 +13,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Signing\RevocationCheck;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\SigningCredentials;
 use App\Domains\Compliance\Engine\Contracts\Presentation as PresentationPort;
 use App\Domains\Compliance\Engine\DTOs\InvoicePage;
+use App\Domains\Compliance\Engine\DTOs\PrintSample;
 use App\Domains\Compliance\Engine\DTOs\Receipt;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Enums\InvoiceType;
@@ -45,6 +46,7 @@ class Presentation implements PresentationPort
         private readonly InvoiceExtraQr $extraQr,
         private readonly PrintPreferences $preferences,
         private readonly RevocationCheck $revocation,
+        private readonly SampleInvoices $samples,
     ) {}
 
     public function tagline(): string
@@ -176,5 +178,11 @@ class Presentation implements PresentationPort
     public function printedFields(): array
     {
         return PrintedFields::all();
+    }
+
+    /** A standard tax invoice, made up (SampleInvoices). */
+    public function sampleInvoice(?Organization $seller = null): ?PrintSample
+    {
+        return $this->samples->build($seller);
     }
 }

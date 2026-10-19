@@ -65,7 +65,7 @@ class ScreenRenderTest extends TestCase
      * as one. Every other portal screen is rendered as a plain member, so a
      * screen that needs more than that still fails here.
      */
-    private const ORG_ADMIN_ONLY = ['portal.branding.edit', 'portal.company.edit', 'portal.numbering.edit', 'portal.zatca.show', 'portal.zatca.certificates', 'portal.zatca.renew', 'portal.zatca.tills.certificate', 'portal.zatca.late', 'portal.team.index', 'portal.billing', 'portal.branches.index', 'portal.branches.create', 'portal.branches.edit', 'portal.activity', 'portal.settings.edit'];
+    private const ORG_ADMIN_ONLY = ['portal.branding.edit', 'portal.invoice-template.edit', 'portal.invoice-template.preview', 'portal.company.edit', 'portal.numbering.edit', 'portal.zatca.show', 'portal.zatca.certificates', 'portal.zatca.renew', 'portal.zatca.tills.certificate', 'portal.zatca.late', 'portal.team.index', 'portal.billing', 'portal.branches.index', 'portal.branches.create', 'portal.branches.edit', 'portal.activity', 'portal.settings.edit'];
 
     /**
      * Portal screens only someone in two companies of one group has: a 404
@@ -113,6 +113,9 @@ class ScreenRenderTest extends TestCase
         // and InvoiceLinkTest cover them.
         'portal.qr-codes.download',
         'portal.qr-codes.links.download',
+        // An invoice template's sample PDF. InvoiceTemplateScreensTest covers it.
+        'admin.invoice-template.sample',
+        'portal.invoice-template.sample',
         // A UAE e-invoice's XML. UaePortalTest and ReceivedInvoicesTest cover them.
         'portal.invoices.xml',
         'portal.received.xml',
@@ -140,6 +143,10 @@ class ScreenRenderTest extends TestCase
         // The organization picker, on the guest layout: the layout's card
         // carries its heading, as on sign-in.
         'portal.switch' => 0,
+        // An invoice template's preview: the print view of a sample invoice,
+        // which is paper and has no page header, as the print view has none.
+        'admin.invoice-template.preview' => 0,
+        'portal.invoice-template.preview' => 0,
     ];
 
     private User $orgAdmin;

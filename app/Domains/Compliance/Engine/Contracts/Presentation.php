@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Engine\Contracts;
 
 use App\Domains\Compliance\Engine\DTOs\InvoicePage;
 use App\Domains\Compliance\Engine\DTOs\PrintedField;
+use App\Domains\Compliance\Engine\DTOs\PrintSample;
 use App\Domains\Compliance\Engine\DTOs\Receipt;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
@@ -89,6 +90,14 @@ interface Presentation
      * @return list<PrintedField>
      */
     public function printedFields(): array;
+
+    /**
+     * A made-up invoice in the country's form, for an invoice template's
+     * preview: from the seller given, or from a made-up one for the
+     * platform's default. Never stored or issued, and its QR code says it
+     * is a sample. Null where the country hands over no printed copy.
+     */
+    public function sampleInvoice(?Organization $seller = null): ?PrintSample;
 
     /**
      * Whether the country uses a customization only some countries do

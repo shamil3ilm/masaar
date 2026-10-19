@@ -104,6 +104,8 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Countries/SaudiArabia/Presentation/Presentation.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Presentation/PrintedTerms.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Presentation/ReceiptContent.php' => 'Invoice',
+        // The made-up invoice an invoice template's preview draws, never saved.
+        'Domains/Compliance/Countries/SaudiArabia/Presentation/SampleInvoices.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Presentation/SetupSteps.php' => 'Invoice',
         // Each till, with the certificates it has held.
         'Domains/Compliance/Countries/SaudiArabia/Reports/CertificateVersions.php' => 'Organization',
@@ -146,6 +148,7 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Engine/Contracts/LanguageRules.php' => 'Invoice',
         'Domains/Compliance/Engine/Contracts/Presentation.php' => 'Invoice',
         'Domains/Compliance/Engine/Contracts/Transmission.php' => 'Invoice',
+        'Domains/Compliance/Engine/DTOs/PrintSample.php' => 'Invoice',
         'Domains/Compliance/Engine/Services/ComplianceEngine.php' => 'Invoice',
         'Domains/Compliance/Engine/Services/JurisdictionResolver.php' => 'Invoice',
         // The receiver of an inbound document is the endpoint on a compliance profile.
