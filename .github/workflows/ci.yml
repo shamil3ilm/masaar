@@ -652,13 +652,15 @@ jobs:
       # simulator: every document sent end to end must pass them there too.
       - name: Run the PINT AE suite
         run: |
-          php artisan test --do-not-cache-result --filter 'PintConformance|SimulatorConformance' | tee pint.log
-          if grep -qE '^[[:space:]]*Tests:.*skipped' pint.log; then
+          # Judged from the JUnit report, not the console: the printer's
+          # layout depends on the terminal and is not a contract.
+          php artisan test --do-not-cache-result --log-junit pint.xml --filter 'PintConformance|SimulatorConformance'
+          if grep -q '<skipped' pint.xml; then
             echo "::error title=PINT AE skipped::The rules were fetched but the suite still skipped."
             exit 1
           fi
           for suite in PintConformanceTest SimulatorConformanceTest; do
-            if ! grep -q "$suite" pint.log; then
+            if ! grep -q "$suite" pint.xml; then
               echo "::error title=PINT AE suite missing::$suite did not run; the filter no longer matches it."
               exit 1
             fi
