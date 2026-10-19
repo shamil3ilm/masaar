@@ -655,7 +655,13 @@ jobs:
           # Judged from the JUnit report, not the console: the printer's
           # layout depends on the terminal and is not a contract.
           status=0
-          php artisan test --do-not-cache-result --log-junit pint.xml --filter 'PintConformance|SimulatorConformance' || status=$?
+          php artisan test --do-not-cache-result --log-junit pint.xml --filter 'PintConformance|SimulatorConformance' > pint.log 2>&1 || status=$?
+          cat pint.log
+          if [ "$status" -ne 0 ]; then
+            # The run's last words, readable without the job log.
+            tail -n 40 pint.log | sed 's/\x1b\[[0-9;]*m//g' | awk 'BEGIN{ORS="%0A"} {print}' | sed 's/^/::error title=PINT AE run ended '"$status"'::/'
+            echo
+          fi
           # Each failure as an annotation, readable without the job log.
           php -r '
             $xml = @simplexml_load_file("pint.xml");
