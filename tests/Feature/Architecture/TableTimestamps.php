@@ -154,6 +154,10 @@ final class TableTimestamps
         // own id for head office.
         'device_certificates' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',
             'actors' => ['created_by' => 'created_by', 'revoked_by' => 'revoked_by']],
+        // A till (EGS unit): every document it signed names it, so it is
+        // retired, never deleted. Head office's has no branch.
+        'egs_units' => ['class' => 'c', 'updates' => true, 'tenant' => 'branch',
+            'actors' => ['created_by' => 'created_by', 'updated_by' => 'updated_by', 'retired_by' => 'retired_by']],
 
         // Money.
         'payments' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',

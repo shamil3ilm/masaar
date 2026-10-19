@@ -80,6 +80,21 @@ class Organization extends Model
     }
 
     /**
+     * Every organization has head office's own unit, under its own id: what
+     * it issues on before it has tills, and what a branch without a till of
+     * its own issues on.
+     */
+    protected static function booted(): void
+    {
+        static::created(function (Organization $organization): void {
+            EgsUnit::withoutTenantScope(fn () => (new EgsUnit)->forceFill([
+                'id' => $organization->id,
+                'org_id' => $organization->id,
+            ])->save());
+        });
+    }
+
+    /**
      * Whether its prices include VAT unless an invoice says otherwise: its
      * own choice, or the platform's (invoices.prices_include_vat). The column
      * keeps the organization's own; null there is "as the platform".
@@ -136,6 +151,14 @@ class Organization extends Model
     public function branches(): HasMany
     {
         return $this->hasMany(Branch::class);
+    }
+
+    /**
+     * Its tills (EGS units), head office's own included.
+     */
+    public function units(): HasMany
+    {
+        return $this->hasMany(EgsUnit::class);
     }
 
     /**

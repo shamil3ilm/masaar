@@ -382,6 +382,34 @@ CREATE TABLE `device_certificates` (
     FOREIGN KEY (`revoked_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
 
+CREATE TABLE `egs_units` (
+    `id` STRING NOT NULL,
+    `branch_id` STRING NULL,
+    `cert_expires_at` TIMESTAMP NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `egs_serial` STRING NULL,
+    `host` STRING NOT NULL DEFAULT 'cloud',
+    `name` STRING NULL,
+    `onboarding_status` STRING NOT NULL DEFAULT 'pending',
+    `org_id` STRING NOT NULL,
+    `retired_at` TIMESTAMP NULL,
+    `retired_by` STRING NULL,
+    `status` STRING NOT NULL DEFAULT 'active',
+    `till_number` INTEGER NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `egs_units_branch_status_index` (`org_id`, `branch_id`, `status`),
+    UNIQUE INDEX `egs_units_org_serial_unique` (`org_id`, `egs_serial`),
+    UNIQUE INDEX `egs_units_org_till_unique` (`org_id`, `till_number`),
+    FOREIGN KEY (`branch_id`) REFERENCES `branches` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`retired_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
 CREATE TABLE `failed_jobs` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `connection` TEXT NOT NULL,
@@ -683,6 +711,7 @@ CREATE TABLE `invoices` (
     FOREIGN KEY (`branch_id`) REFERENCES `branches` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`device_id`) REFERENCES `egs_units` (`id`),
     FOREIGN KEY (`issued_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`license_id`) REFERENCES `licenses` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`),
