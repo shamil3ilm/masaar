@@ -26,5 +26,5 @@
         {{ $slot }}
     @endif
     <span role="tooltip" id="{{ $id }}"
-          class="pointer-events-none invisible absolute bottom-full start-1/2 z-50 mb-2 w-max max-w-[min(18rem,calc(100vw-2rem))] -translate-x-1/2 rounded-control bg-ink-900 px-3 py-2 text-xs font-normal leading-snug text-white opacity-0 shadow-raised transition-opacity duration-150 group-hover/tip:visible group-hover/tip:opacity-100 group-focus-within/tip:visible group-focus-within/tip:opacity-100 group-data-shown/tip:visible group-data-shown/tip:opacity-100 group-data-dismissed/tip:invisible group-data-dismissed/tip:opacity-0 rtl:translate-x-1/2 dark:bg-sand-100 dark:text-ink-950">{{ $text }}</span>
+          class="pointer-events-none absolute bottom-full start-1/2 z-50 mb-2 hidden w-max max-w-[min(18rem,calc(100vw-2rem))] -translate-x-1/2 rounded-control bg-ink-900 px-3 py-2 text-xs font-normal leading-snug text-white shadow-raised group-hover/tip:block group-focus-within/tip:block group-data-shown/tip:block group-data-dismissed/tip:hidden rtl:translate-x-1/2 dark:bg-sand-100 dark:text-ink-950">{{ $text }}</span>
 </span>

@@ -74,7 +74,7 @@ export function placeUnder(panel, anchor) {
 
     panel.style.position = 'fixed';
     panel.style.margin = '0';
-    panel.style.minWidth = `${Math.min(anchor.getBoundingClientRect().width, window.innerWidth - margin * 2)}px`;
+    panel.style.minWidth = `${Math.min(anchor.getBoundingClientRect().width, document.documentElement.clientWidth - margin * 2)}px`;
 
     const height = panel.offsetHeight;
     let box = anchor.getBoundingClientRect();
@@ -88,13 +88,13 @@ export function placeUnder(panel, anchor) {
         box = anchor.getBoundingClientRect();
     }
 
-    const width = Math.min(Math.max(box.width, panel.offsetWidth || 0), window.innerWidth - margin * 2);
+    const width = Math.min(Math.max(box.width, panel.offsetWidth || 0), document.documentElement.clientWidth - margin * 2);
     const top = !fitsBelow() && fitsAbove() ? box.top - gap - height : box.bottom + gap;
 
     // Start-aligned with the anchor in either direction, kept on screen.
     const rtl = getComputedStyle(anchor).direction === 'rtl';
     let left = rtl ? box.right - width : box.left;
-    left = Math.min(Math.max(margin, left), window.innerWidth - margin - width);
+    left = Math.min(Math.max(margin, left), document.documentElement.clientWidth - margin - width);
 
     panel.style.top = `${Math.round(top)}px`;
     panel.style.left = `${Math.round(left)}px`;

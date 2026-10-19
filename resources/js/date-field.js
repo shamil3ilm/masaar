@@ -132,13 +132,13 @@ function firstWeekday() {
  * The second calendar's date, in the page's language - Umm al-Qura for a
  * Saudi organization. Null where there is none, or the browser cannot.
  */
-function altFormatter(calendar, options) {
+function altFormatter(calendar, options, element) {
     if (!calendar) {
         return null;
     }
 
     try {
-        const format = new Intl.DateTimeFormat(locale(`-ca-${calendar}`), { ...options, timeZone: 'UTC' });
+        const format = new Intl.DateTimeFormat(locale(`-ca-${calendar}`, element), { ...options, timeZone: 'UTC' });
 
         return format.resolvedOptions().calendar === calendar ? format : null;
     } catch {
@@ -231,9 +231,9 @@ function setUpDate(host) {
     input.placeholder ||= t('YYYY-MM-DD');
 
     const calendar = host.closest('[data-alt-calendar]')?.dataset.altCalendar || '';
-    const altLong = altFormatter(calendar, { day: 'numeric', month: 'long', year: 'numeric' });
-    const altDay = altFormatter(calendar, { day: 'numeric' });
-    const altMonth = altFormatter(calendar, { month: 'long', year: 'numeric' });
+    const altLong = altFormatter(calendar, { day: 'numeric', month: 'long', year: 'numeric' }, host);
+    const altDay = altFormatter(calendar, { day: 'numeric' }, host);
+    const altMonth = altFormatter(calendar, { month: 'long', year: 'numeric' }, host);
 
     // The chosen day in the second calendar, under the field.
     let alt = null;
@@ -247,10 +247,10 @@ function setUpDate(host) {
         input.setAttribute('aria-describedby', [input.getAttribute('aria-describedby'), alt.id].filter(Boolean).join(' '));
     }
 
-    const monthName = new Intl.DateTimeFormat(locale(), { month: 'long', year: 'numeric', timeZone: 'UTC' });
-    const dayName = new Intl.DateTimeFormat(locale(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
-    const weekdayShort = new Intl.DateTimeFormat(locale(), { weekday: 'short', timeZone: 'UTC' });
-    const weekdayLong = new Intl.DateTimeFormat(locale(), { weekday: 'long', timeZone: 'UTC' });
+    const monthName = new Intl.DateTimeFormat(locale('', host), { month: 'long', year: 'numeric', timeZone: 'UTC' });
+    const dayName = new Intl.DateTimeFormat(locale('', host), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+    const weekdayShort = new Intl.DateTimeFormat(locale('', host), { weekday: 'short', timeZone: 'UTC' });
+    const weekdayLong = new Intl.DateTimeFormat(locale('', host), { weekday: 'long', timeZone: 'UTC' });
 
     const show = () => {
         input.value = native.value;

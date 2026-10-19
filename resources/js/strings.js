@@ -40,9 +40,12 @@ export function t(key, replace = {}) {
     return text;
 }
 
-/** The page's language, for Intl: Latin digits either way, as the forms take. */
-export function locale(extension = '') {
-    const lang = document.documentElement.lang?.startsWith('ar') ? 'ar' : 'en';
+/**
+ * The language an element is in (its nearest lang), for Intl: Latin digits
+ * either way, as the forms take.
+ */
+export function locale(extension = '', element = document.documentElement) {
+    const lang = element.closest('[lang]')?.lang?.startsWith('ar') ? 'ar' : 'en';
 
     return `${lang}-u-nu-latn${extension}`;
 }
