@@ -111,13 +111,13 @@ class SiteQrTest extends TestCase
         $renderer->shouldHaveReceived('markedSvg')->twice();
     }
 
-    public function test_the_home_page_shows_it_captioned(): void
+    public function test_the_home_page_shows_it_uncaptioned(): void
     {
         $this->get('/')
             ->assertOk()
             ->assertSee('data-site-qr', false)
-            ->assertSee('Scan to visit Masaar')
-            ->assertSee('امسح لزيارة مسار')
+            ->assertDontSee('Scan to visit Masaar')
+            ->assertDontSee('امسح لزيارة مسار')
             ->assertSee('Sample Trading Co.')
             ->assertSee('Sample</p>', false)
             // No ZATCA sample: no VAT number, no TLV.

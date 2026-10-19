@@ -7,8 +7,9 @@
     either language, as a printed invoice's do.
 
     The QR code in its corner is not the invoice's: it opens this website
-    (PublicSite::siteQr), small, with the Masaar mark in it and a caption in
-    both languages, so the invoice stays what the eye lands on.
+    (PublicSite::siteQr), small and uncaptioned, with the Masaar mark in it,
+    tilted with the card so it reads as part of the invoice, and the invoice
+    stays what the eye lands on.
 --}}
 @php
     $sample = $publicSite->sampleInvoice();
@@ -87,14 +88,10 @@
 
                 <div class="mt-3 flex items-end justify-between gap-4">
                     <p class="text-xs font-semibold uppercase tracking-wider text-ink-700">{{ __('Sample') }}</p>
-                    <div class="flex shrink-0 items-center gap-2.5">
-                        <p class="text-end text-xs leading-snug text-ink-700">Scan to visit Masaar<br><span lang="ar" dir="rtl">امسح لزيارة مسار</span></p>
-                        {{-- Drawn on its own paper tile, so it reads in either
-                             theme, and turned back square to the screen so
-                             its modules land on whole pixels rather than the
-                             card's tilt. --}}
-                        <div class="shrink-0 rotate-2 leading-none" data-site-qr>{!! $siteQr['svg'] !!}</div>
-                    </div>
+                    {{-- Drawn on its own paper tile, so it reads in either
+                         theme. It keeps the card's tilt, as a printed QR on
+                         a tilted page would; phones read a code at any angle. --}}
+                    <div class="shrink-0 leading-none" data-site-qr>{!! $siteQr['svg'] !!}</div>
                 </div>
             </figure>
         </div>
