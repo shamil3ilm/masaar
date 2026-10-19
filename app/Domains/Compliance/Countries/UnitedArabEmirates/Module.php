@@ -9,6 +9,7 @@ use App\Domains\Compliance\Countries\UnitedArabEmirates\Issuing\IssuingStep;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation\DeviceStatus;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation\Presentation;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation\SetupSteps;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation\Website;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\Dashboard;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\TaxReports;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\InvoiceRules;
@@ -27,6 +28,7 @@ use App\Domains\Compliance\Engine\Contracts\SellerRules as SellerRulesPort;
 use App\Domains\Compliance\Engine\Contracts\SetupSteps as SetupStepsPort;
 use App\Domains\Compliance\Engine\Contracts\TaxReports as TaxReportsPort;
 use App\Domains\Compliance\Engine\Contracts\Transmission;
+use App\Domains\Compliance\Engine\Contracts\Website as WebsitePort;
 use App\Domains\Compliance\Engine\DTOs\IssueOptions;
 use App\Domains\Compliance\Engine\DTOs\IssueOutcome;
 use App\Domains\Compliance\Engine\Services\JurisdictionAvailability;
@@ -60,6 +62,7 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
         private readonly Dashboard $dashboard,
         private readonly SetupSteps $setup,
         private readonly DeviceStatus $devices,
+        private readonly Website $website,
     ) {}
 
     public function code(): string
@@ -158,6 +161,11 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
     public function devices(): Devices
     {
         return $this->devices;
+    }
+
+    public function website(): WebsitePort
+    {
+        return $this->website;
     }
 
     /**

@@ -184,8 +184,9 @@ class AppServiceProvider extends ServiceProvider
         Paginator::defaultSimpleView('components.ui.pagination');
 
         // The public site's switches - the parent brand's signs, where contact
-        // goes - for the public pages that show them, and only those.
-        View::composer(['layouts.public', 'home.contact', 'errors::404'], fn (\Illuminate\View\View $view) => $view->with('publicSite', $this->app->make(PublicSite::class)));
+        // goes - and its countries, for the public pages that show them, and
+        // only those.
+        View::composer(['layouts.public', 'welcome', 'home.*', 'errors::404'], fn (\Illuminate\View\View $view) => $view->with('publicSite', $this->app->make(PublicSite::class)));
 
         // After the delete has happened - an organization with invoices
         // cannot be deleted, and its branding should not go if it stays.

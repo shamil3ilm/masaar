@@ -20,10 +20,8 @@
 --}}
 @php
     $pair = app()->getLocale() === 'ar' ? 'en' : 'ar';
-    $registry = app(\App\Domains\Compliance\Engine\Services\JurisdictionRegistry::class);
-    $countries = array_map(fn (string $code) => $registry->get($code), $registry->registered());
     // Switched on first: what someone can sign up for today leads.
-    usort($countries, fn ($a, $b) => [! $a->enabled(), $a->name()] <=> [! $b->enabled(), $b->name()]);
+    $countries = $publicSite->countries();
 @endphp
 
 @include('home.hero')

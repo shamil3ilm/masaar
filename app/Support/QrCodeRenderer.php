@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use BaconQrCode\Common\ErrorCorrectionLevel;
 use BaconQrCode\Encoder\Encoder;
 use BaconQrCode\Renderer\GDLibRenderer;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
@@ -29,6 +30,9 @@ class QrCodeRenderer
     /** 32 mm on the page at about 475 dpi: sharp on any printer. */
     private const PRINT_SIZE = 600;
 
+    /** The light margin a reader needs around the code, in modules (ISO/IEC 18004, 9.1). */
+    public const QUIET_ZONE = 4;
+
     /**
      * @param  string  $encoding  how the payload's bytes are read: Latin-1, as
      *                            the country's base64 payload is, or UTF-8 for
@@ -48,6 +52,40 @@ class QrCodeRenderer
         );
 
         return $writer->writeString($payload, $encoding);
+    }
+
+    /**
+     * The code drawn on its own grid: one SVG unit per module, the quiet zone
+     * around it, dark modules on white whatever the page's theme, and crisp
+     * edges, so it stays sharp at whatever size the page sets and a phone can
+     * read it from the screen. $size is its width and height in CSS pixels.
+     */
+    public function gridSvg(string $payload, int $size, string $encoding = Encoder::DEFAULT_BYTE_MODE_ENCODING): string
+    {
+        if (trim($payload) === '') {
+            return '';
+        }
+
+        $matrix = Encoder::encode($payload, ErrorCorrectionLevel::L(), $encoding)->getMatrix();
+        $modules = $matrix->getWidth();
+        $span = $modules + 2 * self::QUIET_ZONE;
+        $path = '';
+
+        for ($y = 0; $y < $modules; $y++) {
+            for ($x = 0; $x < $modules; $x++) {
+                if ($matrix->get($x, $y) === 1) {
+                    $path .= 'M'.($x + self::QUIET_ZONE).' '.($y + self::QUIET_ZONE).'h1v1h-1z';
+                }
+            }
+        }
+
+        return sprintf(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="%1$d" height="%1$d" viewBox="0 0 %2$d %2$d" shape-rendering="crispEdges" aria-hidden="true" focusable="false">'
+            .'<rect width="%2$d" height="%2$d" fill="white"/><path fill="black" d="%3$s"/></svg>',
+            $size,
+            $span,
+            $path,
+        );
     }
 
     /**

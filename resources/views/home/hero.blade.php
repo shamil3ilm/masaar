@@ -5,7 +5,17 @@
     The invoice is a picture of one, not a real one, and says so to a screen
     reader. Its numbers are set in tabular figures and read left to right in
     either language, as a printed invoice's do.
+
+    Its QR code is a real one a phone can read, encoded as the leading country
+    that prints one encodes it, from the card's own figures (PublicSite), and
+    labelled a sample beside it. Where no country here prints a QR code, the
+    card has none.
 --}}
+@php
+    $sample = $publicSite->sampleInvoice();
+    $sampleQr = $publicSite->sampleQr();
+    $amount = fn (string $value): string => number_format((float) $value, 2);
+@endphp
 <section class="mx-auto max-w-page overflow-x-clip px-4 pb-16 pt-12 sm:px-6 sm:pb-24 sm:pt-20" aria-labelledby="hero-title">
     <div class="grid items-center gap-14 lg:grid-cols-[1.15fr_1fr]">
         <div class="min-w-0">
@@ -59,21 +69,36 @@
                     </span>
                 </div>
 
-                <p class="mt-5 font-mono text-sm font-medium tabular-nums" dir="ltr">INV-2026-00418</p>
+                <div class="mt-5 text-sm" dir="ltr">
+                    <p class="font-semibold">{{ $sample->sellerName }}</p>
+                    @if ($sampleQr)
+                        <p class="font-mono text-xs tabular-nums text-ink-700">{{ $sampleQr['taxNumber'] }}</p>
+                    @endif
+                    <p class="mt-2 flex flex-wrap justify-between gap-x-4 font-mono font-medium tabular-nums">
+                        <span>{{ $sample->number }}</span>
+                        <span class="text-ink-700">{{ $sample->issuedAt->format('Y-m-d') }}</span>
+                    </p>
+                </div>
 
                 <dl class="mt-5 grid gap-2 border-t border-dashed border-ink-900/20 pt-4 text-sm" dir="ltr">
-                    <div class="flex justify-between gap-4"><dt>Annual maintenance</dt><dd class="font-mono tabular-nums">800.00</dd></div>
-                    <div class="flex justify-between gap-4"><dt>Installation</dt><dd class="font-mono tabular-nums">200.00</dd></div>
-                    <div class="flex justify-between gap-4 text-ink-700"><dt>VAT</dt><dd class="font-mono tabular-nums">150.00</dd></div>
-                    <div class="flex justify-between gap-4 border-t border-ink-900/10 pt-2.5 font-semibold"><dt>Total</dt><dd class="font-mono tabular-nums">1,150.00</dd></div>
+                    @foreach ($sample->lines as $description => $value)
+                        <div class="flex justify-between gap-4"><dt>{{ $description }}</dt><dd class="font-mono tabular-nums">{{ $amount($value) }}</dd></div>
+                    @endforeach
+                    <div class="flex justify-between gap-4 text-ink-700"><dt>VAT</dt><dd class="font-mono tabular-nums">{{ $amount($sample->tax) }}</dd></div>
+                    <div class="flex justify-between gap-4 border-t border-ink-900/10 pt-2.5 font-semibold"><dt>Total</dt><dd class="font-mono tabular-nums">{{ $amount($sample->total) }}</dd></div>
                 </dl>
 
                 <div class="mt-5 flex items-center gap-4">
-                    {{-- A QR code's shape, not a readable one. --}}
-                    <svg class="size-20 shrink-0 text-ink-900" viewBox="0 0 7 7" shape-rendering="crispEdges">
-                        <path fill="currentColor" d="M0 0h3v3H0zM4 0h3v3H4zM0 4h3v3H0zM4 4h1v1H4zM6 4h1v1H6zM5 5h1v1H5zM4 6h1v1H4zM6 6h1v1H6z" />
-                        <path class="fill-paper" d="M1 1h1v1H1zM5 1h1v1H5zM1 5h1v1H1z" />
-                    </svg>
+                    @if ($sampleQr)
+                        {{-- Drawn with its quiet zone on white, so it reads on
+                             the paper in either theme, and turned back
+                             square to the screen so its modules land on whole
+                             pixels rather than the card's tilt. --}}
+                        <div class="shrink-0 rotate-2 text-center">
+                            <div class="leading-none" data-sample-qr>{!! $sampleQr['svg'] !!}</div>
+                            <p class="mt-1 text-xs font-semibold uppercase tracking-wider text-ink-700">{{ __('Sample') }}</p>
+                        </div>
+                    @endif
                     <p class="text-xs leading-relaxed text-ink-700">{{ __('Checked, filed with the authority and kept - every one, in order.') }}</p>
                 </div>
             </figure>

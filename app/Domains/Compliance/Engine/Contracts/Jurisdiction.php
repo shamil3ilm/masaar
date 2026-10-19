@@ -87,4 +87,7 @@ interface Jurisdiction
 
     /** A branch as a device the authority knows, for the branch screens. */
     public function devices(): Devices;
+
+    /** What the public website says and shows about the country. */
+    public function website(): Website;
 }
