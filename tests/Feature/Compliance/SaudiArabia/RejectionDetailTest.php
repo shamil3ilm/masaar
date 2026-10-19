@@ -85,7 +85,8 @@ class RejectionDetailTest extends TestCase
         $this->assertSame(InvoiceStatus::Rejected, $invoice->fresh()->status);
 
         $submission = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()->where('invoice_id', $invoice->id)->sole());
-        $this->assertSame(['rejected', [self::RULE], [self::ADVICE]], [$submission->state, $submission->zatca_errors, $submission->zatca_warnings]);
+        // By key: MySQL keeps a JSON object's keys in an order of its own.
+        $this->assertEquals(['rejected', [self::RULE], [self::ADVICE]], [$submission->state, $submission->zatca_errors, $submission->zatca_warnings]);
     }
 
     public function test_the_invoice_keeps_the_rule(): void
