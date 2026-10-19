@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domains\Licensing\Http\Middleware;
 
+use App\Domains\Licensing\DTOs\Credential;
 use App\Domains\Licensing\Exceptions\LicenseException;
-use App\Domains\Licensing\Models\License;
+use App\Domains\Licensing\Models\ApiKey;
 use App\Domains\Licensing\Models\UsageEvent;
+use App\Domains\Licensing\Services\ApiKeys;
 use App\Domains\Licensing\Services\LicenseValidationService;
 use App\Domains\Licensing\Services\UsageMeteringService;
 use App\Domains\Organization\Services\TenantResolver;
@@ -35,6 +37,7 @@ class ValidateLicense
         private readonly LicenseValidationService $validationService,
         private readonly UsageMeteringService $meteringService,
         private readonly TenantResolver $tenantResolver,
+        private readonly ApiKeys $apiKeys,
     ) {}
 
     /**
@@ -53,6 +56,7 @@ class ValidateLicense
         $isError = false;
         $requestId = $request->header('X-Request-ID') ?? Str::uuid()->toString();
         $license = null;
+        $credential = null;
 
         try {
             // Extract credentials from request
@@ -63,17 +67,19 @@ class ValidateLicense
                 throw LicenseException::invalidApiKey();
             }
 
-            // Validate license
-            $license = $this->validationService->validateAndGetLicense($apiKey, $apiSecret);
+            // The licence, or one of the organization's own API keys and
+            // the licence it acts under.
+            $credential = $this->validationService->authenticate($apiKey, $apiSecret, $request->ip());
+            $license = $credential->licence;
 
             // Check environment match
             if ($requiredEnvironment !== null) {
-                $this->validateEnvironment($license, $requiredEnvironment);
+                $this->validateEnvironment($credential, $requiredEnvironment);
             }
 
             // Check required scope if specified
             if ($requiredScope !== null) {
-                $this->validateScopeAccess($license, $requiredScope);
+                $this->validateScopeAccess($credential, $requiredScope);
             }
 
             // Check rate limits
@@ -96,6 +102,12 @@ class ValidateLicense
             // X-Request-ID header.
             $request->attributes->set('license', $license);
 
+            // An organization's own key beside it: RequireScope narrows to
+            // its scopes, and SandboxGuard reads its environment.
+            if ($credential->key !== null) {
+                $request->attributes->set(ApiKey::ATTRIBUTE, $credential->key);
+            }
+
             // Process request
             $response = $next($request);
 
@@ -104,10 +116,11 @@ class ValidateLicense
 
             // Track successful API call (both aggregate and event)
             $this->meteringService->recordApiCall($license, false);
-            $this->recordUsageEvent($license, $request, $requestId, 'success', $durationMs);
+            $this->recordUsageEvent($credential, $request, $requestId, 'success', $durationMs);
+            $this->recordKeyUse($credential, method_exists($response, 'getStatusCode') && $response->getStatusCode() >= 400);
 
             // Add rate limit headers
-            $this->addRateLimitHeaders($response, $license);
+            $this->addRateLimitHeaders($response, $credential);
 
             return $response;
         } catch (LicenseException $e) {
@@ -122,10 +135,11 @@ class ValidateLicense
             ]);
 
             // Record failed event if we have a license
-            if ($license) {
+            if ($credential !== null) {
                 $durationMs = (int) ((microtime(true) - $startTime) * 1000);
-                $this->recordUsageEvent($license, $request, $requestId, 'failed', $durationMs, $e->errorCode);
-                $this->meteringService->recordApiCall($license, true);
+                $this->recordUsageEvent($credential, $request, $requestId, 'failed', $durationMs, $e->errorCode);
+                $this->meteringService->recordApiCall($credential->licence, true);
+                $this->recordKeyUse($credential, true);
             }
 
             return $this->handleLicenseError($e);
@@ -139,10 +153,11 @@ class ValidateLicense
             ]);
 
             // Record error event if we have a license
-            if ($license) {
+            if ($credential !== null) {
                 $durationMs = (int) ((microtime(true) - $startTime) * 1000);
-                $this->recordUsageEvent($license, $request, $requestId, 'error', $durationMs, 'SYSTEM_ERROR');
-                $this->meteringService->recordApiCall($license, true);
+                $this->recordUsageEvent($credential, $request, $requestId, 'error', $durationMs, 'SYSTEM_ERROR');
+                $this->meteringService->recordApiCall($credential->licence, true);
+                $this->recordKeyUse($credential, true);
             }
 
             return ApiResponse::error(
@@ -221,9 +236,9 @@ class ValidateLicense
      *
      * ZATCA Compliance: Scopes only control authorization, never data access.
      */
-    private function validateScopeAccess(License $license, string $scope): void
+    private function validateScopeAccess(Credential $credential, string $scope): void
     {
-        if (! $license->hasScope($scope)) {
+        if (! $credential->licence->hasScope($scope) || ($credential->key !== null && ! $credential->key->hasScope($scope))) {
             throw LicenseException::scopeDenied($scope);
         }
     }
@@ -233,13 +248,33 @@ class ValidateLicense
      *
      * ZATCA Compliance: Prevents sandbox keys from submitting real invoices.
      */
-    private function validateEnvironment(License $license, string $requiredEnvironment): void
+    private function validateEnvironment(Credential $credential, string $requiredEnvironment): void
     {
-        if (! $license->matchesEnvironment($requiredEnvironment)) {
+        if ($credential->environment()->value !== $requiredEnvironment) {
             throw LicenseException::environmentMismatch(
-                $license->environment->value,
+                $credential->environment()->value,
                 $requiredEnvironment
             );
+        }
+    }
+
+    /**
+     * Count the call against the organization's own key, when it was one.
+     * Never at the request's expense.
+     */
+    private function recordKeyUse(Credential $credential, bool $failed): void
+    {
+        if ($credential->key === null) {
+            return;
+        }
+
+        try {
+            $this->apiKeys->recordUse($credential->key, $failed);
+        } catch (\Throwable $e) {
+            Log::warning('Failed to record API key use', [
+                'api_key_id' => $credential->key->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
@@ -247,15 +282,18 @@ class ValidateLicense
      * Record a usage event (append-only for billing and audit).
      */
     private function recordUsageEvent(
-        License $license,
+        Credential $credential,
         Request $request,
         string $requestId,
         string $status,
         int $durationMs,
         ?string $errorCode = null
     ): void {
+        $license = $credential->licence;
+
         try {
             UsageEvent::record($license->id, 'api.request', [
+                'api_key_id' => $credential->key?->id,
                 'request_id' => $requestId,
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
@@ -265,7 +303,7 @@ class ValidateLicense
                 'metadata' => [
                     'method' => $request->method(),
                     'path' => $request->path(),
-                    'environment' => $license->environment->value,
+                    'environment' => $credential->environment()->value,
                 ],
             ]);
         } catch (\Exception $e) {
@@ -280,16 +318,18 @@ class ValidateLicense
     /**
      * Add rate limit headers to response.
      */
-    private function addRateLimitHeaders(mixed $response, License $license): void
+    private function addRateLimitHeaders(mixed $response, Credential $credential): void
     {
         if (! method_exists($response, 'header')) {
             return;
         }
 
+        $license = $credential->licence;
+
         $response->header('X-RateLimit-Limit-Minute', $license->calls_per_min);
         $response->header('X-RateLimit-Limit-Day', $license->calls_per_day);
         $response->header('X-License-Tier', $license->tier->value);
-        $response->header('X-License-Environment', $license->environment->value);
+        $response->header('X-License-Environment', $credential->environment()->value);
     }
 
     /**

@@ -254,6 +254,17 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
         return true;
     }
 
+    /**
+     * Live unless the deployment answers for the network with the
+     * service-provider simulator (PEPPOL_GATEWAY=simulator). A deployment
+     * with no provider is live too: what waits there is uploaded to the real
+     * network by hand.
+     */
+    public function live(): bool
+    {
+        return config('peppol.gateway') !== NetworkServiceProvider::SIMULATOR;
+    }
+
     public function filed(): string
     {
         return __('Issued, and its UAE e-invoice is queued for sending.');

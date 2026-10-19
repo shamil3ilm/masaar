@@ -160,6 +160,8 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Networks/Peppol/Receiving/InboundDocuments.php' => 'Organization',
         'Domains/Invoice/Models/Invoice.php' => 'Compliance\Countries\SaudiArabia, Organization',
         'Domains/Licensing/Http/Middleware/RequireLicenseFeature.php' => 'Invoice',
+        // Names the approval request a waiting key belongs to, for its page.
+        'Domains/Licensing/Services/ApiKeys.php' => 'Platform',
         'Domains/Organization/Models/Branch.php' => 'Invoice',
         'Domains/Organization/Models/ComplianceProfile.php' => 'Invoice',
         'Domains/Organization/Models/Organization.php' => 'Invoice',
@@ -169,6 +171,8 @@ class CrossDomainModelTest extends TestCase
         // The plan level reads the organization's licences, found through
         // LicenseValidationService; the partner API hands it the request's.
         'Domains/Platform/Access/Access.php' => 'Licensing',
+        // Puts a production API key a customer made to use, once approved.
+        'Domains/Platform/Approvals/Actions/ApiKeyActions.php' => 'Licensing',
     ];
 
     public function test_domains_keep_their_models_to_themselves(): void

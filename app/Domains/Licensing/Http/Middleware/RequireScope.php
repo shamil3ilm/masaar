@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Licensing\Http\Middleware;
 
 use App\Domains\Licensing\Exceptions\LicenseException;
+use App\Domains\Licensing\Models\ApiKey;
 use App\Domains\Licensing\Models\License;
 use Closure;
 use Illuminate\Http\Request;
@@ -44,10 +45,14 @@ class RequireScope
             $requiredScopes = array_merge($requiredScopes, explode(',', $scope));
         }
 
+        // An organization's own key acts under its licence with the scopes
+        // chosen for it: both have to hold the scope.
+        $key = $request->attributes->get(ApiKey::ATTRIBUTE);
+
         // Check all required scopes
         foreach ($requiredScopes as $scope) {
             $scope = trim($scope);
-            if (! $license->hasScope($scope)) {
+            if (! $license->hasScope($scope) || ($key instanceof ApiKey && ! $key->hasScope($scope))) {
                 throw LicenseException::scopeDenied($scope);
             }
         }

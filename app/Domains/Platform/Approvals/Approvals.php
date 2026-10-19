@@ -304,6 +304,23 @@ class Approvals
     }
 
     /**
+     * Requests by id, for a screen saying how the ones it made ended.
+     *
+     * @param  list<string>  $requestIds
+     * @return Collection<string, ApprovalRequest> by id
+     */
+    public function requests(array $requestIds): Collection
+    {
+        if ($requestIds === []) {
+            return collect();
+        }
+
+        $this->expireDue();
+
+        return ApprovalRequest::query()->whereIn('id', $requestIds)->get()->keyBy('id');
+    }
+
+    /**
      * The approvals page's three lists: waiting for this admin, asked for by
      * them, and everything decided.
      *
@@ -330,7 +347,14 @@ class Approvals
         $requester = $request->requester;
 
         try {
-            if ($requester === null || ! $requester->isActive() || ! $requester->canAdmin($family->permission($request->action))) {
+            // A customer's request is run if they may still ask for it - an
+            // administrator of the organization it is for - and an admin's if
+            // they still hold the permission it takes.
+            $mayStill = $requester !== null && ($family instanceof RequestedByCustomers
+                ? $family->requesterMayStill($request->action, $request->payload, $requester)
+                : $requester->canAdmin($family->permission($request->action)));
+
+            if ($requester === null || ! $requester->isActive() || ! $mayStill) {
                 throw new DomainException(__('The admin who asked no longer holds the permission this takes.'));
             }
 

@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Licensing\Services;
 
+use App\Domains\Licensing\DTOs\Credential;
 use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Exceptions\LicenseException;
+use App\Domains\Licensing\Models\ApiKey;
 use App\Domains\Licensing\Models\License;
 use App\Support\LogSanitizer;
 use Illuminate\Database\Eloquent\Builder;
@@ -42,6 +44,63 @@ class LicenseValidationService
     public function validateAndGetLicense(string $apiKey, string $apiSecret): License
     {
         return $this->validate($apiKey, $apiSecret);
+    }
+
+    /**
+     * Who a key and secret are: an organization's own API key, acting under
+     * its licence, or a licence's key.
+     *
+     * The organization's keys are looked for first, by their unique index
+     * and never cached: revoking one has to stop it on the next call. A key
+     * that is neither falls through to validate(), which refuses it as it
+     * always has.
+     *
+     * @throws LicenseException
+     */
+    public function authenticate(string $apiKey, string $apiSecret, ?string $address = null): Credential
+    {
+        $key = ApiKey::withoutTenantScope(fn (): ?ApiKey => ApiKey::query()->where('api_key', $apiKey)->first());
+
+        if ($key === null) {
+            return new Credential($this->validate($apiKey, $apiSecret));
+        }
+
+        if (! $key->verifySecret($apiSecret)) {
+            Log::warning('Invalid API key secret attempted', ['api_key_id' => $key->id]);
+
+            throw LicenseException::invalidApiSecret();
+        }
+
+        if (! $key->isActive()) {
+            throw LicenseException::keyPendingApproval();
+        }
+
+        if ($key->isExpired()) {
+            throw LicenseException::keyExpired($key->expires_at);
+        }
+
+        if (! $key->allowsAddress($address)) {
+            throw LicenseException::addressNotAllowed($address);
+        }
+
+        // The organization's licence is what the call is allowed and
+        // metered by. With none valid, its keys reach nothing.
+        $licence = $this->meteringLicence((string) $key->org_id);
+
+        if ($licence === null) {
+            throw LicenseException::inactive();
+        }
+
+        return new Credential($licence, $key);
+    }
+
+    /**
+     * The licence an organization's own API keys act under: the first it
+     * was given of those it can use.
+     */
+    public function meteringLicence(string $organizationId): ?License
+    {
+        return $this->licensed($organizationId)->orderBy('created_at')->orderBy('id')->first();
     }
 
     /**

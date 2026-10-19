@@ -30,6 +30,7 @@ use App\Domains\Invoice\Http\Controllers\PortalProductController;
 use App\Domains\Invoice\Http\Controllers\PortalQrCodeController;
 use App\Domains\Invoice\Http\Controllers\PortalReportController;
 use App\Domains\Licensing\Http\Controllers\AdminLicenceController;
+use App\Domains\Licensing\Http\Controllers\PortalApiKeyController;
 use App\Domains\Organization\Http\Controllers\AdminBusinessTypeController;
 use App\Domains\Organization\Http\Controllers\CustomerPortalController;
 use App\Domains\Organization\Http\Controllers\InvitationController;
@@ -653,6 +654,14 @@ Route::prefix('portal')->name('portal.')
         Route::get('/numbering', [PortalNumberingController::class, 'edit'])->name('numbering.edit');
         Route::post('/numbering-mode', [PortalNumberingController::class, 'mode'])->name('numbering.mode');
         Route::post('/numbering/{documentType}', [PortalNumberingController::class, 'update'])->name('numbering.update');
+
+        // Integrations: the organization's own API keys for its ERP or
+        // store, made and revoked here. Administrators only; the controller
+        // checks the role. Making one is throttled, and limited per hour
+        // for the organization as well (ApiKeys).
+        Route::get('/integrations', [PortalApiKeyController::class, 'index'])->name('integrations.index');
+        Route::post('/integrations/keys', [PortalApiKeyController::class, 'store'])->middleware('throttle:10,1')->name('integrations.keys.store');
+        Route::post('/integrations/keys/{keyId}/revoke', [PortalApiKeyController::class, 'revoke'])->whereUuid('keyId')->name('integrations.keys.revoke');
 
         // The organization's own value for each customization, against the
         // platform's. Administrators only; the controller checks the role.

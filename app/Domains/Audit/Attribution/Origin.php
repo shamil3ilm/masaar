@@ -99,6 +99,23 @@ class Origin
     }
 
     /**
+     * The environment of the organization's own API key acting - 'sandbox'
+     * or 'production' - carried into its jobs. ValidateLicense puts the key
+     * beside the licence it acts under. Null for a licence's own key, a
+     * person or the platform.
+     */
+    public function apiKeyEnvironment(): ?string
+    {
+        $key = $this->request()?->attributes->get('api_key');
+
+        if (is_object($key) && isset($key->environment)) {
+            return $key->environment instanceof \BackedEnum ? (string) $key->environment->value : (string) $key->environment;
+        }
+
+        return $this->carried('api_key_environment');
+    }
+
+    /**
      * The request's correlation id (LogContext), carried into its jobs, so
      * one request can be followed from the call to its filing.
      */
@@ -151,6 +168,7 @@ class Origin
             'channel' => $this->channel()->value,
             'license_id' => $this->licenseId(),
             'request_id' => $this->requestId(),
+            'api_key_environment' => $this->apiKeyEnvironment(),
         ];
     }
 

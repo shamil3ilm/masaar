@@ -100,6 +100,10 @@
                         <x-slot:icon><x-ui.icon name="users" /></x-slot:icon>
                         {{ __('Team') }}
                     </x-ui.nav-link>
+                    <x-ui.nav-link :href="route('portal.integrations.index')" :active="request()->routeIs('portal.integrations.*')">
+                        <x-slot:icon><x-ui.icon name="key" /></x-slot:icon>
+                        {{ __('Integrations') }}
+                    </x-ui.nav-link>
                     {{-- And for its administrators. --}}
                     @if ($navLinks = $navCountry->navigation(\App\Domains\Compliance\Engine\Contracts\Presentation::NAV_ADMIN))
                         @include($navLinks)

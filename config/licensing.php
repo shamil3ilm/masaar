@@ -26,6 +26,16 @@ return [
         'calls_per_day' => (int) env('LICENSING_DAILY_API_CALLS', -1),
     ],
 
+    /*
+    | The API keys an organization's administrators make in the portal
+    | (Integrations): how many it may hold at once, and how many it may make
+    | in an hour, so a stolen session cannot mint credentials by the hundred.
+    */
+    'api_keys' => [
+        'max_per_organization' => 20,
+        'created_per_hour' => 10,
+    ],
+
     'cache' => [
         'ttl_seconds' => env('LICENSE_CACHE_TTL', 300), // 5 minutes
         'prefix' => 'license:',

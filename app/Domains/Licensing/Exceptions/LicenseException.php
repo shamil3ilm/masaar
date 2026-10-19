@@ -152,6 +152,45 @@ class LicenseException extends Exception
     }
 
     /**
+     * An organization's API key past the expiry its administrator gave it.
+     */
+    public static function keyExpired(?\DateTimeInterface $expiresAt): self
+    {
+        return new self(
+            'API key has expired',
+            'API_KEY_EXPIRED',
+            ['expired_at' => $expiresAt?->format('Y-m-d H:i:s')],
+            403
+        );
+    }
+
+    /**
+     * A production key still waiting for a platform admin's approval.
+     */
+    public static function keyPendingApproval(): self
+    {
+        return new self(
+            'API key is waiting for approval',
+            'API_KEY_PENDING_APPROVAL',
+            [],
+            403
+        );
+    }
+
+    /**
+     * Used from an address the key's allowlist does not name.
+     */
+    public static function addressNotAllowed(?string $address): self
+    {
+        return new self(
+            'API key may not be used from this address',
+            'API_KEY_ADDRESS_NOT_ALLOWED',
+            ['ip' => $address],
+            403
+        );
+    }
+
+    /**
      * Get response array for API.
      */
     public function toArray(): array

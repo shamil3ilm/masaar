@@ -9,6 +9,7 @@ use App\Domains\Invoice\Contracts\IssuingJurisdiction;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Licensing\Services\SandboxGuard;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Support\Facades\DB;
 
@@ -24,6 +25,7 @@ class IssuingLifecycle
     public function __construct(
         private readonly InvoiceNumbering $numbering,
         private readonly AuditService $audit,
+        private readonly SandboxGuard $sandbox,
     ) {}
 
     /**
@@ -34,6 +36,10 @@ class IssuingLifecycle
      */
     public function issue(Invoice $invoice, Organization $organization, IssuingJurisdiction $jurisdiction, bool $reissue = false): mixed
     {
+        // An organization's sandbox API key seals nothing into its real
+        // chain where its country files live, whichever path it came by.
+        $this->sandbox->assertMayFile($organization);
+
         // Re-issuing rewrites the hash and, through ChainRecorder's
         // updateOrCreate, the chain entry built from it - while the next
         // invoice's entry still names the old hash. The chain forks, nothing

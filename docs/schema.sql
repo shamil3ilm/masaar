@@ -53,6 +53,48 @@ CREATE TABLE `allowance_warnings` (
     UNIQUE INDEX `allowance_warnings_once` (`license_id`, `allowance`, `period`, `percent`)
 );
 
+CREATE TABLE `api_key_usage` (
+    `id` STRING NOT NULL,
+    `api_key_id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `errors` INTEGER NOT NULL DEFAULT 0,
+    `requests` INTEGER NOT NULL DEFAULT 0,
+    `updated_at` TIMESTAMP NULL,
+    `usage_date` DATE NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `api_key_usage_api_key_id_usage_date_unique` (`api_key_id`, `usage_date`),
+    FOREIGN KEY (`api_key_id`) REFERENCES `api_keys` (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `api_keys` (
+    `id` STRING NOT NULL,
+    `allowed_ips` TEXT NULL,
+    `api_key` STRING NOT NULL,
+    `approval_request_id` STRING NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `deleted_at` TIMESTAMP NULL,
+    `deleted_by` STRING NULL,
+    `environment` STRING NOT NULL,
+    `expires_at` TIMESTAMP NULL,
+    `last_used_at` TIMESTAMP NULL,
+    `name` STRING NOT NULL,
+    `org_id` STRING NOT NULL,
+    `scopes` TEXT NOT NULL,
+    `secret_hash` STRING NOT NULL,
+    `status` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `api_keys_api_key_unique` (`api_key`),
+    INDEX `api_keys_org_id_created_at_index` (`org_id`, `created_at`),
+    FOREIGN KEY (`approval_request_id`) REFERENCES `approval_requests` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
 CREATE TABLE `approval_decisions` (
     `id` STRING NOT NULL,
     `created_at` TIMESTAMP NULL,

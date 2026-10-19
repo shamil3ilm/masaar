@@ -19,6 +19,7 @@ use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Policies\InvoicePolicy;
 use App\Domains\Licensing\Http\Middleware\CheckInvoiceQuota;
 use App\Domains\Licensing\Http\Middleware\PlatformLicense;
+use App\Domains\Licensing\Http\Middleware\RefuseSandboxFiling;
 use App\Domains\Licensing\Http\Middleware\RequireLicenseFeature;
 use App\Domains\Licensing\Http\Middleware\RequireScope;
 use App\Domains\Licensing\Http\Middleware\ValidateLicense;
@@ -79,6 +80,7 @@ class AppServiceProvider extends ServiceProvider
         'license.quota' => CheckInvoiceQuota::class,
         'scope' => RequireScope::class,
         'license.feature' => RequireLicenseFeature::class,
+        'sandbox.filing' => RefuseSandboxFiling::class,
         'platform.license' => PlatformLicense::class,
         'filing.cleared' => FilingCleared::class,
         'uae.invoicing' => UaeInvoicing::class,
