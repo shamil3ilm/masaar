@@ -68,6 +68,8 @@ class RouteAuthPostureTest extends TestCase
         'theme/{scope}/stylesheet' => 'Theme colours, needed before sign-in',
         'theme/{scope}/logo' => 'Uploaded logo, shown on sign-in and on invoices',
         'theme/{scope}/favicon' => 'Uploaded favicon, needed before sign-in',
+        // One CSS variable from six hex digits the route checks: no stored data.
+        'theme/print-accent/{accent}' => 'An invoice template colour, for the print view',
         // What the home page shows anyone: a published testimonial's logo,
         // checked as an image on upload and served sandboxed. 404 otherwise.
         'website/testimonials/{testimonialId}/logo' => 'A published testimonial\'s logo, shown on the home page',

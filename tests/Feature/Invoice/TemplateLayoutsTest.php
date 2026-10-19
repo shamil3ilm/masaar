@@ -162,6 +162,20 @@ class TemplateLayoutsTest extends TestCase
     }
 
     /**
+     * The print view's colour is a stylesheet of one variable, from six hex
+     * digits and nothing else.
+     */
+    public function test_the_colour_is_a_stylesheet(): void
+    {
+        $this->get(route('theme.print-accent', ['accent' => '1e3a8a']))
+            ->assertOk()
+            ->assertHeader('Content-Type', 'text/css; charset=UTF-8')
+            ->assertSeeText(':root{--print-accent:#1E3A8A;}', false);
+
+        $this->get('/theme/print-accent/red;}x')->assertNotFound();
+    }
+
+    /**
      * The template can leave the organization's own QR off; the country's
      * stays on every paper.
      */
