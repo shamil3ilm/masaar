@@ -71,7 +71,7 @@ class PortalZatcaController extends Controller
         return $this->step(function () use ($organization, $data): string {
             $this->onboarding->requestCcsid($organization, (string) $data['otp'], [
                 'common_name' => $data['common_name'],
-                'serial_number' => $this->onboarding->deviceSerial(),
+                'serial_number' => $this->onboarding->deviceSerial($organization),
                 'organization_unit' => $data['organization_unit'] ?: null,
                 'industry' => $data['industry'] ?: null,
             ], $data['renewal_override_reason'] ?? null);

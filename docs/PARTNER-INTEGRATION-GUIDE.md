@@ -458,6 +458,8 @@ it:
 | `org_id` | Required. The licence's organization id |
 | `auto_submit` | Whether to file it straight after issuing. `true` unless sent |
 | `branch_id` | The branch it comes from, which decides the device that signs it |
+| `till_id` | The till that made the sale, one of the organization's EGS units: its counter, chain and certificate issue the invoice |
+| `till_number` | Instead of `till_id`: the till's number within `branch_id` |
 | `erp_reference_id` | Your own reference, at most 255 characters, returned as sent |
 | `invoice_type` | Accepted for `type` |
 | `invoice_number` | Optional: without one the invoice is numbered at issue from the organization's sequence |

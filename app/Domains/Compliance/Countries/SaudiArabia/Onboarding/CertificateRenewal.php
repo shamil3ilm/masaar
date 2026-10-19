@@ -6,12 +6,14 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Onboarding;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
+use App\Domains\Organization\Models\EgsUnit;
 use App\Domains\Organization\Models\Organization;
 use DomainException;
 
 /**
- * Renewing the organization's own production certificate, from the portal:
- * the three onboarding steps run again, one after another.
+ * Renewing a production certificate from the portal - head office's, or
+ * any till's - the three onboarding steps run again, one after another. A
+ * till not yet connected is connected the same way, with its own OTP.
  *
  * A new OTP buys a compliance certificate on a new key, the six compliance
  * documents pass on it, and the production certificate it then gets becomes
@@ -28,6 +30,7 @@ class CertificateRenewal
     public function __construct(
         private readonly OrganizationOnboarding $onboarding,
         private readonly CredentialStore $credentials,
+        private readonly UnitOnboarding $units,
     ) {}
 
     /**
@@ -50,6 +53,60 @@ class CertificateRenewal
         return $this->renewable($organization)
             && ! empty($compliance['privateKey'])
             && ($compliance['privateKey'] ?? null) !== ($production['privateKey'] ?? null);
+    }
+
+    /**
+     * Whether a till holds a production certificate to renew.
+     */
+    public function tillRenewable(EgsUnit $unit): bool
+    {
+        return ! empty($this->credentials->get((string) $unit->org_id, (string) $unit->id, CredentialStore::PCSID)[CredentialStore::PCSID]);
+    }
+
+    /**
+     * A till's OTP was spent and its steps not finished: a compliance
+     * certificate on a key its production certificate - if it has one -
+     * was not issued on.
+     */
+    public function tillPending(EgsUnit $unit): bool
+    {
+        $compliance = $this->credentials->get((string) $unit->org_id, (string) $unit->id, CredentialStore::CCSID);
+        $production = $this->credentials->get((string) $unit->org_id, (string) $unit->id, CredentialStore::PCSID);
+
+        return ! empty($compliance['privateKey'])
+            && ($compliance['privateKey'] ?? null) !== ($production['privateKey'] ?? null);
+    }
+
+    /**
+     * A till's three steps on its own OTP: its first certificate, or its
+     * next one. RenewalGuard is asked at the first step and the last.
+     *
+     * @return array{passed: bool, results: array<mixed>}
+     *
+     * @throws DomainException when the till cannot be onboarded, or RenewalGuard holds it
+     * @throws CertificateException when ZATCA refuses
+     */
+    public function renewTill(Organization $organization, EgsUnit $unit, string $otp, ?string $overrideReason): array
+    {
+        return $this->units->connect($organization, $unit, $otp, $overrideReason);
+    }
+
+    /**
+     * The checks and the production certificate, for a till whose OTP is
+     * already spent.
+     *
+     * @return array{passed: bool, results: array<mixed>}
+     *
+     * @throws DomainException when nothing is waiting to be finished, or RenewalGuard holds it
+     * @throws CertificateException when ZATCA refuses
+     */
+    public function finishTill(Organization $organization, EgsUnit $unit, ?string $overrideReason): array
+    {
+        if (! $this->tillPending($unit)) {
+            throw new DomainException(__('No renewal is waiting to be finished.'));
+        }
+
+        return $this->units->finish($organization, $unit, $overrideReason);
     }
 
     /**

@@ -53,9 +53,9 @@ the URL again and deleting the old webhook.
 | `invoice.warning` | ZATCA accepts an invoice **with warnings**, in place of `invoice.cleared` or `invoice.reported` | the submission fields, `warnings` |
 | `invoice.rejected` | ZATCA rejects an invoice | the submission fields, `errors`, `error_count` |
 | `invoice.failed` | A filing attempt fails | the submission fields; `will_retry` or `permanent` says whether it is tried again |
-| `onboarding.ccsid_obtained` | A ZATCA compliance certificate is obtained, for the organization or one of its branches | `org_id`, `branch_id` (null for the organization's own device), `occurred_at` |
-| `onboarding.compliance_passed` | The compliance documents pass | `org_id`, `branch_id`, `occurred_at` |
-| `onboarding.pcsid_obtained` | The production certificate is obtained: the organization or branch can issue | `org_id`, `branch_id`, `occurred_at` |
+| `onboarding.ccsid_obtained` | A ZATCA compliance certificate is obtained, for the organization or one of its tills | `org_id`, `branch_id` (null for the organization's own device), `unit_id` (the till; the organization's id for head office), `occurred_at` |
+| `onboarding.compliance_passed` | The compliance documents pass | `org_id`, `branch_id`, `unit_id`, `occurred_at` |
+| `onboarding.pcsid_obtained` | The production certificate is obtained: the organization or till can issue | `org_id`, `branch_id`, `unit_id`, `occurred_at` |
 | `certificate.expiring` | The signing certificate nears its expiry | `org_id`, `days_remaining`, `expiry_date`, `severity`, `message` |
 | `e_invoice.sent` | A UAE e-invoice's service provider takes it for delivery | the e-invoice fields below |
 | `e_invoice.delivered` | The buyer's service provider accepts it (message level response `AB` or `AP`) | the e-invoice fields |

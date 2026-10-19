@@ -220,7 +220,8 @@ class PdfStampTest extends TestCase
         ]));
         $this->store($branch->id, $jeddah);
 
-        $pdf = $this->render(['branch_id' => $branch->id]);
+        // Issued on the branch's own till, which has the branch's id.
+        $pdf = $this->render(['branch_id' => $branch->id, 'device_id' => $branch->id]);
 
         $this->assertTrue($this->opensslVerifies($this->signedBytes($pdf), $this->cms($pdf), $signer));
         $this->assertSame($this->der($jeddah['certificate']), $this->der((string) $signer));

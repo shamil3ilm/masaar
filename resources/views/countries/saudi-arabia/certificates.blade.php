@@ -3,14 +3,16 @@
 @section('title', __('Certificates'))
 
 {{--
-    Every ZATCA certificate each of the organization's devices has held,
-    newest first, and how many documents still wait to be filed under each
+    Each of the organization's tills - its EGS units, head office's first -
+    with where it stands, and every ZATCA certificate it has held, newest
+    first, with how many documents still wait to be filed under each
     (PortalZatcaController::certificates). A document is filed with the
     certificate that signed it, so a superseded certificate with documents
     waiting is still in use.
 
     @param list<array> $devices    CertificateVersions::forOrganization
-    @param bool        $renewable  head office holds a production certificate (CertificateRenewal)
+    @param bool        $renewable  head office holds a production certificate (CertificateRenewal);
+                                   each till is connected or renewed from its own page
 --}}
 
 @section('content')
@@ -28,6 +30,33 @@
 
 @forelse ($devices as $device)
     <x-ui.section :title="$device['name']" flush class="mb-6">
+        <div class="flex flex-wrap items-center gap-2 px-5 py-3 text-sm">
+            <x-ui.badge :state="$device['status']" :tone="in_array($device['status'], ['retiring', 'retired', 'lost'], true) ? 'neutral' : null" :label="$device['status_label']" />
+            <x-ui.badge :tone="$device['ready'] ? 'success' : 'warning'" :label="$device['ready'] ? __('Ready to issue') : __('Not connected to ZATCA')" />
+            @if ($device['expires'])
+                <span class="text-muted">{{ __('Certificate valid until') }} <x-ui.date :value="$device['expires']" /></span>
+            @endif
+            @if (! $device['head_office'] && in_array($device['status'], ['active', 'retiring'], true))
+                <div class="ms-auto flex flex-wrap gap-2">
+                    @if ($device['issues'])
+                        {{-- Each till's own certificate: connected, then renewed, on its own page. --}}
+                        <x-ui.button variant="secondary" size="sm" :href="route('portal.zatca.tills.certificate', $device['device'])">
+                            {{ collect($device['versions'])->contains('status', 'active') ? __('Renew') : __('Connect') }}
+                        </x-ui.button>
+                    @endif
+                    <form method="POST" action="{{ route('portal.zatca.tills.retire', $device['device']) }}"
+                          data-confirm-tone="danger" data-confirm-action="{{ __('Retire') }}"
+                          data-confirm="{{ __('Retire :till?', ['till' => $device['name']]) }}"
+                          data-confirm-detail="{{ __('It issues no new invoices. Once everything it signed is filed with ZATCA it is retired for good and cannot be brought back.') }}">
+                        @csrf
+                        <x-ui.button variant="danger" size="sm">{{ $device['status'] === 'retiring' ? __('Finish retiring') : __('Retire') }}</x-ui.button>
+                    </form>
+                </div>
+            @endif
+        </div>
+        @if ($device['versions'] === [])
+            <p class="border-t border-line px-5 py-3 text-sm text-muted">{{ __('This till holds no certificate yet. Connect it to ZATCA with its own one-time code.') }}</p>
+        @else
         <x-ui.table :primary="[0, 1, 5]">
             <x-slot:head>
                 <x-ui.th>{{ __('Version') }}</x-ui.th>
@@ -58,6 +87,7 @@
                 </tr>
             @endforeach
         </x-ui.table>
+        @endif
     </x-ui.section>
 @empty
     <x-ui.card>

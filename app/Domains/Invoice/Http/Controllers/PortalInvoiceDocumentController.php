@@ -51,7 +51,7 @@ class PortalInvoiceDocumentController extends Controller
     {
         $invoice = $this->invoice($request, $invoiceId);
         $organization = $this->organization();
-        $paper = $preferences->paper($organization, $invoice->branch_id, $request->user()?->id, (string) $request->query('paper'));
+        $paper = $preferences->paper($organization, $invoice->branch_id, $request->user()?->id, (string) $request->query('paper'), $invoice->device_id);
 
         try {
             $pdf = $this->pdf->render($invoice, $organization, $paper);

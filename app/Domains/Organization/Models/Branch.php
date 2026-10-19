@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Branch model for multi-EGS support.
@@ -108,16 +109,49 @@ class Branch extends Model
 
     /**
      * A new branch is the organization's next till: its number follows the
-     * highest given, a removed branch's included, so a till's numbering
-     * series (InvoiceNumbering) is never another's.
+     * highest given, a removed branch's and any till's included, so a till's
+     * numbering series (InvoiceNumbering) is never another's.
+     *
+     * And it comes with its first till: a unit under the branch's own id,
+     * which is the device a branch always was. More tills can join it.
      */
     protected static function booted(): void
     {
         static::creating(function (Branch $branch): void {
-            $branch->till_number ??= 1 + (int) static::withoutTenantScope(fn () => static::withTrashed()
-                ->where('org_id', $branch->org_id)
-                ->max('till_number'));
+            $branch->till_number ??= EgsUnit::nextTillNumber((string) $branch->org_id);
         });
+
+        static::created(function (Branch $branch): void {
+            EgsUnit::withoutTenantScope(fn () => (new EgsUnit)->forceFill([
+                'id' => $branch->id,
+                'org_id' => $branch->org_id,
+                'branch_id' => $branch->id,
+                'till_number' => $branch->till_number,
+                'egs_serial' => $branch->device_serial,
+                'onboarding_status' => $branch->onboarding_status,
+                'cert_expires_at' => $branch->cert_expires_at,
+            ])->save());
+        });
+
+        // The branch's onboarding columns are its first till's: the branch
+        // onboarding API and the console still write them on the branch.
+        static::updated(function (Branch $branch): void {
+            if ($branch->wasChanged(['onboarding_status', 'cert_expires_at'])) {
+                EgsUnit::withoutTenantScope(fn () => EgsUnit::query()->whereKey($branch->id)->update([
+                    'onboarding_status' => $branch->onboarding_status,
+                    'cert_expires_at' => $branch->cert_expires_at,
+                    'updated_at' => now(),
+                ]));
+            }
+        });
+    }
+
+    /**
+     * The branch's tills, its first one included.
+     */
+    public function units(): HasMany
+    {
+        return $this->hasMany(EgsUnit::class);
     }
 
     /**
@@ -193,7 +227,10 @@ class Branch extends Model
             postalCode: $this->postal_code,
             district: $this->district,
             buildingNumber: $this->building_number,
-            additionalNumber: $this->additional_number,
+            // AddressData has no additionalNumber: the name threw on every
+            // call. The organization's own additional number goes in the
+            // same place (Organization::getAddressData).
+            additionalStreet: $this->additional_number,
             countryCode: $this->country_code,
         );
     }
@@ -252,10 +289,12 @@ class Branch extends Model
     {
         $branchCount = $organization->branches()->withTrashed()->count() + 1;
 
+        // The solution is the product's configured name, never written in.
         return sprintf(
-            '1-%s|2-%03d|3-MASAAR',
+            '1-%s|2-%03d|3-%s',
             $organization->vat_number,
-            $branchCount
+            $branchCount,
+            Str::upper(Str::slug((string) config('app.name'), '')),
         );
     }
 

@@ -5,14 +5,13 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
-use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\ComplianceSampleSet;
-use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\CsidOnboarding;
-use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\OnboardingEvents;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\RenewalGuard;
-use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificatePem;
+use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\UnitOnboarding;
 use App\Domains\Organization\Models\Branch;
+use App\Domains\Organization\Models\EgsUnit;
 use App\Domains\Organization\Services\BranchService;
 use App\Domains\Organization\Services\TenantResolver;
+use App\Domains\Organization\Services\Tills;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use DomainException;
@@ -22,17 +21,17 @@ use Illuminate\Http\Request;
 /**
  * Branch ZATCA Onboarding API controller.
  *
- * Handles ZATCA onboarding for individual branches (EGS units).
- * Each branch goes through the 3-step onboarding process independently.
+ * Onboards a branch's first till - the EGS unit under the branch's own id -
+ * through the three steps, as UnitOnboarding does any till's. A branch's
+ * other tills are onboarded by their own id (UnitController).
  */
 class BranchOnboardingController extends Controller
 {
     public function __construct(
         private readonly TenantResolver $tenant,
         private readonly BranchService $branchService,
-        private readonly CsidOnboarding $onboarding,
-        private readonly ComplianceSampleSet $samples,
-        private readonly OnboardingEvents $events,
+        private readonly UnitOnboarding $units,
+        private readonly Tills $tills,
         private readonly RenewalGuard $renewal,
     ) {}
 
@@ -72,22 +71,13 @@ class BranchOnboardingController extends Controller
             );
         }
 
-        $csrData = $branch->getCsrData();
-
         try {
             // This is a LIVE call to ZATCA - OTP must be valid
-            $result = $this->onboarding->requestComplianceCsid($csrData, $request->otp);
-
-            // Store credentials for this branch
-            $this->branchService->storeCredentials($branch, 'ccsid', $result);
-
-            // Update branch status
-            $branch->update(['onboarding_status' => Branch::STATUS_CSR_GENERATED]);
-            $this->events->announce((string) $organization->id, OnboardingEvents::CCSID_OBTAINED, (string) $branch->id);
+            $result = $this->units->requestCcsid($organization, $this->firstTill($branch), (string) $request->otp);
 
             return ApiResponse::success([
                 'ccsid' => substr($result['ccsid'], 0, 50).'...',
-                'request_id' => $result['requestId'],
+                'request_id' => $result['request_id'],
                 'branch_id' => $branch->id,
                 'branch_name' => $branch->name,
                 'next_step' => 'POST /api/organizations/branches/'.$branch->id.'/onboarding/compliance-check',
@@ -100,6 +90,8 @@ class BranchOnboardingController extends Controller
             // exception's own message - CsidOnboarding already throws
             // 'Failed to obtain CCSID: ...'.
             return ApiResponse::fromCertificate($e);
+        } catch (DomainException $e) {
+            return ApiResponse::error($e->getMessage(), 422);
         }
     }
 
@@ -119,26 +111,12 @@ class BranchOnboardingController extends Controller
             return ApiResponse::error('Branch not found', 404);
         }
 
-        $credentials = $this->branchService->getCredentials($branch, 'ccsid');
-
-        if (! $credentials) {
+        if (! $this->branchService->getCredentials($branch, 'ccsid')) {
             return ApiResponse::error('No CCSID found. Complete step 1 first.', 422);
         }
 
-        // Generate test invoices for this branch
-        $testInvoices = $this->generateTestInvoices($organization, $branch);
-
         try {
-            $result = $this->onboarding->runComplianceChecks(
-                $credentials['ccsid'],
-                $credentials['secret'],
-                $testInvoices
-            );
-
-            if ($result['passed']) {
-                $branch->update(['onboarding_status' => Branch::STATUS_COMPLIANCE_PASSED]);
-                $this->events->announce((string) $organization->id, OnboardingEvents::COMPLIANCE_PASSED, (string) $branch->id);
-            }
+            $result = $this->units->runComplianceCheck($organization, $this->firstTill($branch));
 
             return ApiResponse::success([
                 'passed' => $result['passed'],
@@ -159,6 +137,8 @@ class BranchOnboardingController extends Controller
             // exception's own message - CsidOnboarding already throws
             // 'Failed to obtain CCSID: ...'.
             return ApiResponse::fromCertificate($e);
+        } catch (DomainException $e) {
+            return ApiResponse::error($e->getMessage(), 422);
         }
     }
 
@@ -198,46 +178,18 @@ class BranchOnboardingController extends Controller
             //
             // So: if the credential is present, finish the row and do not ask
             // the authority for a second certificate.
-            $existing = $this->branchService->getCredentials($branch, 'pcsid');
+            $already = ! empty($this->branchService->getCredentials($branch, 'pcsid')['pcsid']);
 
-            if (! empty($existing['pcsid'])) {
-                $branch->markAsActive($this->parseCertificateExpiry($existing['pcsid']));
-
-                return ApiResponse::success([
-                    'branch_id' => $branch->id,
-                    'branch_name' => $branch->name,
-                    'onboarded' => true,
-                    'cert_expires_at' => $branch->fresh()->cert_expires_at?->toIso8601String(),
-                ], 'Production CSID was already obtained. The branch is now marked ready.');
-            }
-
-            $result = $this->onboarding->requestProductionCsid(
-                $credentials['ccsid'],
-                $credentials['secret'],
-                $credentials['requestId']
-            );
-
-            // Store production credentials
-            $this->branchService->storeCredentials($branch, 'pcsid', array_merge($result, [
-                'privateKey' => $credentials['privateKey'],
-            ]));
-
-            // Parse certificate expiry
-            $certificateExpiry = null;
-            if (isset($result['pcsid'])) {
-                $certificateExpiry = $this->parseCertificateExpiry($result['pcsid']);
-            }
-
-            // Mark branch as active
-            $branch->markAsActive($certificateExpiry);
-            $this->events->announce((string) $organization->id, OnboardingEvents::PCSID_OBTAINED, (string) $branch->id);
+            $this->units->requestPcsid($organization, $this->firstTill($branch));
 
             return ApiResponse::success([
                 'branch_id' => $branch->id,
                 'branch_name' => $branch->name,
                 'onboarded' => true,
-                'cert_expires_at' => $certificateExpiry?->toIso8601String(),
-            ], 'Production CSID obtained. Branch is now ZATCA compliant and ready for invoicing.');
+                'cert_expires_at' => $branch->fresh()->cert_expires_at?->toIso8601String(),
+            ], $already
+                ? 'Production CSID was already obtained. The branch is now marked ready.'
+                : 'Production CSID obtained. Branch is now ZATCA compliant and ready for invoicing.');
 
         } catch (CertificateException $e) {
             // Its own code and category, from the one place that knows them.
@@ -246,6 +198,8 @@ class BranchOnboardingController extends Controller
             // exception's own message - CsidOnboarding already throws
             // 'Failed to obtain CCSID: ...'.
             return ApiResponse::fromCertificate($e);
+        } catch (DomainException $e) {
+            return ApiResponse::error($e->getMessage(), 422);
         }
     }
 
@@ -303,49 +257,11 @@ class BranchOnboardingController extends Controller
     }
 
     /**
-     * Generate test invoices for compliance check.
+     * The branch's first till: the unit under the branch's own id.
      */
-    private function generateTestInvoices($organization, Branch $branch): array
+    private function firstTill(Branch $branch): EgsUnit
     {
-        $documents = $this->samples->build(
-            sellerName: $organization->name,
-            sellerVatNumber: $organization->vat_number ?? '',
-            sellerCrNumber: $organization->cr_number,
-            sellerAddress: $branch->getAddressData(),
-            numberPrefix: 'TEST-'.$branch->id,
-        );
-
-        return array_map(fn (array $document): string => $document['xml'], $documents);
-    }
-
-    /**
-     * Parse certificate expiry from PEM.
-     */
-    private function parseCertificateExpiry(string $certificate): ?\DateTime
-    {
-        try {
-            // Stored as ZATCA issues it - a token, not a PEM - which this read
-            // as nothing, so a branch was activated with no expiry on record.
-            $cert = openssl_x509_read((string) CertificatePem::from($certificate));
-            if (! $cert) {
-                return null;
-            }
-
-            $certInfo = openssl_x509_parse($cert);
-            if (! $certInfo || ! isset($certInfo['validTo_time_t'])) {
-                return null;
-            }
-
-            return (new \DateTime)->setTimestamp($certInfo['validTo_time_t']);
-        } catch (\Exception $e) {
-            // A certificate this cannot read has no expiry to report, which
-            // the caller handles. There was a CertificateException arm here
-            // returning ApiResponse::fromCertificate - added by a replace
-            // across this file that assumed every catch in it belonged to a
-            // controller action. This one does not: the method is declared
-            // ?\DateTime, so that arm was a TypeError waiting for a
-            // certificate bad enough to reach it.
-            return null;
-        }
+        return $this->tills->find((string) $branch->org_id, (string) $branch->id)
+            ?? throw new DomainException(__('This branch has no till of its own.'));
     }
 }

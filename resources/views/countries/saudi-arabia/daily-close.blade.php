@@ -27,7 +27,7 @@
 
 @foreach (['devices' => __('By device'), 'branches' => __('By branch')] as $section => $heading)
 <x-ui.card class="mb-6 overflow-hidden" flush :title="$heading"
-           :description="$section === 'devices' ? __('ZATCA counts documents per device: a branch with its own certificate, or head office.') : null">
+           :description="$section === 'devices' ? __('ZATCA counts documents per device: each till with its own certificate, or head office.') : null">
 
     @if ($close[$section] === [])
         <p class="p-6 text-sm text-muted">{{ __('Nothing was issued on this day.') }}</p>

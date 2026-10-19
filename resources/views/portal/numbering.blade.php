@@ -5,7 +5,7 @@
 {{--
     @param list<array<string, mixed>> $sequences  NumberingSettings::sequences
     @param bool $shared  every branch numbers from the organization's series
-    @param list<array{id: string, name: string, till_number: int|null}> $branches  BranchService::tills
+    @param list<array{id: string, name: string, till_number: int|null}> $branches  the tills with series of their own (Tills::series)
     @param string|null $branchId  the till whose series is shown, or null
 --}}
 

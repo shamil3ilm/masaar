@@ -96,6 +96,8 @@ class ConfirmationMarkupTest extends TestCase
         // Recording the UAE service provider routes the organization's
         // e-invoices through it (AspGatewayResolver).
         'portal.company.service-provider',
+        // Retiring a till stops it issuing for good.
+        'portal.zatca.tills.retire',
     ];
 
     /**

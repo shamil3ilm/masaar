@@ -9,6 +9,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificatePem;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\RevocationCheck;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\SigningCredentials;
 use App\Domains\Invoice\Models\Invoice;
 use App\Support\Errors\ComplianceException;
 use App\Support\Errors\ErrorCode;
@@ -109,7 +110,7 @@ class OfflineFallback
         // falls back to the organization's certificate, which is what the
         // signing path has always done and this did not - so a branch invoice
         // was re-signed unsigned while a usable PCSID sat one level up.
-        $signing = $this->credentials->signing((string) $organization->id, $invoice->branch_id);
+        $signing = $this->credentials->signing((string) $organization->id, SigningCredentials::keyOf($invoice));
 
         // Only an invoice that was never issued is signed here.
         //

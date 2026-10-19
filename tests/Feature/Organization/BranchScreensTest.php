@@ -118,8 +118,10 @@ class BranchScreensTest extends TestCase
 
         $this->page($this->owner, '/portal/branches/'.$branch->id)
             ->assertOk()
-            ->assertSee('ZATCA device')
-            ->assertSee('ZATCA would refuse invoices from this branch now.');
+            // Its tills, the first one made with it, each with where it stands.
+            ->assertSee('Add a till')
+            ->assertSee('Till 1')
+            ->assertSee('Not connected to ZATCA');
 
         $this->page($this->owner, '/portal/branches')->assertOk()->assertSee('Olaya')->assertSee('Not yet');
     }
@@ -136,7 +138,7 @@ class BranchScreensTest extends TestCase
         $branch = $this->branchNamed('Marina');
 
         $this->assertSame('AE', $branch->country_code);
-        $this->page($admin, '/portal/branches/'.$branch->id)->assertOk()->assertDontSee('ZATCA device');
+        $this->page($admin, '/portal/branches/'.$branch->id)->assertOk()->assertDontSee('Add a till');
     }
 
     private function page(User $user, string $uri): TestResponse

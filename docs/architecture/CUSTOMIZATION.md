@@ -3,7 +3,7 @@
 Every customization has a shipped default, and each level below can set its own:
 
 ```
-shipped default  ->  platform  ->  organization  ->  branch  ->  person
+shipped default  ->  platform  ->  organization  ->  branch  ->  till  ->  person
 ```
 
 The nearest level that sets a value wins, unless a level above locked its own
@@ -35,7 +35,7 @@ value its definition cannot hold or a level it does not allow.
 ## Storage
 
 One table, `customizations`: a row per key per holder (`platform`,
-`organization:{id}`, `branch:{id}`, `member:{org}:{user}`, `user:{id}`). No live
+`organization:{id}`, `branch:{id}`, `till:{id}`, `member:{org}:{user}`, `user:{id}`). No live
 row means "as the level above": resetting a value soft-deletes its row with
 who reset it, and setting it again brings the same row back. Each row records
 who made it and who last changed it. Values are
@@ -63,5 +63,7 @@ every such page posts, accepting only keys the page's level shows.
 | Portal › Settings | organization (its administrators) |
 | Portal › Preferences | the person (everyone, a viewer too) |
 
-Lists of entries (common charges) and the branch level have screens of their
-own (printing) and are left off the generic pages.
+Lists of entries (common charges) and the branch and till levels have screens
+of their own (printing, on the branch page) and are left off the generic pages.
+A till is one of the organization's EGS units; only the printing
+customizations go down to it.

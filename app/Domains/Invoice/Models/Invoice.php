@@ -12,6 +12,7 @@ use App\Domains\Organization\Concerns\BelongsToTenant;
 use App\Domains\Organization\Concerns\RecordsActors;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\ComplianceProfile;
+use App\Domains\Organization\Models\EgsUnit;
 use App\Domains\Organization\Models\Organization;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -343,15 +344,22 @@ class Invoice extends Model
     }
 
     /**
-     * The EGS unit that issued this invoice, if any.
-     *
-     * Submitter reads this to choose signing credentials: a branch holds its
-     * own ZATCA certificate, and ZATCA treats each as a separate device. Null
-     * means the organization's own credentials are used.
+     * The branch this invoice was issued for: its address is the seller's.
+     * The till that signed it is unit().
      */
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
+    }
+
+    /**
+     * The till (EGS unit) whose counter and chain it is in, named by
+     * device_id: head office's under the organization's own id. Set when it
+     * is issued, or on the draft when the request names a till.
+     */
+    public function unit(): BelongsTo
+    {
+        return $this->belongsTo(EgsUnit::class, 'device_id');
     }
 
     /**

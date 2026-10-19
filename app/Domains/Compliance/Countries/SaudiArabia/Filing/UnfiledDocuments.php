@@ -30,13 +30,17 @@ class UnfiledDocuments
     private const UNANSWERED = ['issued', 'submitted'];
 
     /**
+     * What one certificate of a device signed - or, with no certificate
+     * named, anything the device signed, under any certificate it has held:
+     * what retiring the device would leave behind.
+     *
      * @return Collection<int, array{id: string, invoice_number: string, reason: string}>
      */
-    public function signedBy(string $organizationId, string $deviceId, string $certificateId): Collection
+    public function signedBy(string $organizationId, string $deviceId, ?string $certificateId = null): Collection
     {
         $entries = ChainEntry::withoutTenantScope(fn () => $this->unfiled($organizationId)
             ->where('device_id', $deviceId)
-            ->where('certificate_id', $certificateId)
+            ->when($certificateId !== null, fn (Builder $query) => $query->where('certificate_id', $certificateId))
             ->with('invoice:id,invoice_number,type,issued_at')
             ->orderBy('icv')
             ->get());

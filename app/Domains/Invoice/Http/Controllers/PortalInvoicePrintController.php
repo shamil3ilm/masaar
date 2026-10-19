@@ -41,7 +41,7 @@ class PortalInvoicePrintController extends Controller
         $organization = $this->tenant->getOrganization() ?? abort(404);
         // The paper chosen on this screen, else the person's, the till's or
         // the organization's.
-        $paper = $this->preferences->paper($organization, $invoice->branch_id, $request->user()?->id, (string) $request->query('paper'));
+        $paper = $this->preferences->paper($organization, $invoice->branch_id, $request->user()?->id, (string) $request->query('paper'), $invoice->device_id);
 
         // The same gate as the PDF: a printed copy is a copy handed to the
         // buyer, so one the country would not hand over has none.

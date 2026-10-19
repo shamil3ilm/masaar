@@ -16,8 +16,11 @@ enum Level: string
     /** One organization's, set by its administrators. */
     case Organization = 'organization';
 
-    /** One branch of an organization: the till's printer, for one. */
+    /** One branch of an organization: its printer, for one. */
     case Branch = 'branch';
+
+    /** One till of a branch - an EGS unit - with a printer of its own. */
+    case Till = 'till';
 
     /** One person's own: in one organization, or across all of them. */
     case User = 'user';
@@ -28,6 +31,7 @@ enum Level: string
             self::Platform => __('Platform'),
             self::Organization => __('Organization'),
             self::Branch => __('Branch'),
+            self::Till => __('Till'),
             self::User => __('Your own'),
         };
     }
@@ -39,7 +43,8 @@ enum Level: string
             self::Platform => 0,
             self::Organization => 1,
             self::Branch => 2,
-            self::User => 3,
+            self::Till => 3,
+            self::User => 4,
         };
     }
 }

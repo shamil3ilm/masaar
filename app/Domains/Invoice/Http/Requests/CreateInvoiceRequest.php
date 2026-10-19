@@ -23,8 +23,13 @@ use Illuminate\Validation\Rule;
  *
  * Beside the country's fields, two every API invoice may carry:
  *
- *   branch_id  the branch it comes from, one of the organization's own: the
- *              branch decides which certificate signs it
+ *   branch_id  the branch it comes from, one of the organization's own: its
+ *              address is the seller's
+ *   till_id    the till that made the sale - one of the organization's EGS
+ *              units - whose counter, chain and certificate it is issued on;
+ *              or till_number, the till's number within branch_id. Naming
+ *              neither issues it on the branch's first till, else head
+ *              office's
  *   sold_at    the moment a till made the sale, for a till issuing what it
  *              sold while it was offline. It is the actual supply: its date
  *              is the supply date when none is given, and the daily close
@@ -56,6 +61,10 @@ class CreateInvoiceRequest extends CountryInvoiceRequest
             // sign with.
             'branch_id' => ['nullable', 'string', 'uuid', Rule::exists('branches', 'id')
                 ->where('org_id', app(TenantResolver::class)->getOrganizationId())->withoutTrashed()],
+            // Checked against the organization's tills when the draft is
+            // made (Tills::named): its own, of the branch named, issuing.
+            'till_id' => ['nullable', 'string', 'uuid'],
+            'till_number' => ['nullable', 'integer', 'min:1'],
             // An instant, so it names its offset: a bare local time would be
             // read on the server's clock, which is not the till's.
             'sold_at' => ['nullable', 'date', 'regex:/(Z|[+-]\d{2}:?\d{2})$/'],

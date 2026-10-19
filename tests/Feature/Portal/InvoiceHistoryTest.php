@@ -7,6 +7,7 @@ namespace Tests\Feature\Portal;
 use App\Domains\Auth\Models\User;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\Tills;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Testing\TestResponse;
@@ -122,6 +123,23 @@ class InvoiceHistoryTest extends TestCase
             ->assertSee('JED-CN')
             ->assertDontSee('JED-1')
             ->assertDontSee('HQ-1');
+    }
+
+    /**
+     * A branch may have several tills, and the till filter tells them apart.
+     */
+    public function test_till_narrows_within_a_branch(): void
+    {
+        $branch = $this->branch('Jeddah');
+        $lane = app(Tills::class)->add($branch, 'Express lane');
+        $this->makeInvoice($this->acme, 'JED-T1', ['branch_id' => $branch->id, 'device_id' => $branch->id]);
+        $this->makeInvoice($this->acme, 'JED-T2', ['branch_id' => $branch->id, 'device_id' => $lane->id]);
+
+        $this->page('/portal/invoices?till='.$lane->id)
+            ->assertOk()
+            ->assertSee('Express lane · Jeddah')
+            ->assertSee('JED-T2')
+            ->assertDontSee('JED-T1');
     }
 
     public function test_another_tenants_branch_narrows_nothing(): void

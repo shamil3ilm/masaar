@@ -15,6 +15,7 @@ use App\Domains\Invoice\Contracts\Seal;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\FilingClearance;
+use App\Domains\Organization\Services\Tills;
 use App\Domains\Platform\Access\Feature;
 use App\Domains\Platform\Access\FeatureOverrides;
 use App\Domains\Platform\Services\KillSwitch;
@@ -38,6 +39,7 @@ class IssuingStep implements IssuingJurisdiction
         private readonly FeatureOverrides $overrides,
         private readonly TimestampValidator $timestamps,
         private readonly RevocationCheck $revocation,
+        private readonly Tills $tills,
     ) {}
 
     public function refuseIssued(Invoice $invoice): FatooraException
@@ -117,20 +119,16 @@ class IssuingStep implements IssuingJurisdiction
             }
         }
 
-        // The device that issues the document signs it: the invoice's branch
-        // when it has a certificate of its own, the organization otherwise -
-        // the same device CredentialStore::device() files it as. The branch
-        // was never passed, so a branch document was signed by head office
-        // and filed by the branch.
+        // The till that issues the document signs it: the one the draft
+        // named, else its branch's default till - head office's when the
+        // branch has none, or none with a certificate of its own - the same
+        // unit CredentialStore::forInvoice() files it as. A retired till is
+        // refused here, before a counter is spent.
         //
         // Required once the organization is onboarded. Unsigned is Phase 1 and
         // correct before onboarding; after it, it is a document no device can
         // file, and it was issued without a word.
-        $credentials = $this->signing->for(
-            $organization->id,
-            $this->signing->branchOf($invoice),
-            required: $organization->zatca_onboarded,
-        );
+        $credentials = $this->signing->forInvoice($invoice, required: $organization->zatca_onboarded);
 
         // Before a counter is spent: a certificate is checked against its
         // CA's revocation list before it stamps (Security Features
@@ -174,10 +172,15 @@ class IssuingStep implements IssuingJurisdiction
         // A draft carries no counter. Anything already numbered keeps its
         // number, so re-issuing a document does not move it in the chain.
         //
-        // Numbered in the sequence of the device that signs it - the
-        // branch when it has its own certificate, head office otherwise -
-        // because ZATCA keeps a counter and a chain per EGS unit.
+        // Numbered in the sequence of the till that signs it - its own
+        // when it holds a certificate, head office's otherwise - because
+        // ZATCA keeps a counter and a chain per EGS unit.
         if ($invoice->icv === null) {
+            // Asked again under the till's lock: a till retired while this
+            // waited for it - UnitRetirement takes the same lock - takes no
+            // new counter.
+            $this->assertStillIssues((string) $invoice->org_id, (string) $context['device']);
+
             $invoice->device_id = $context['device'];
             $invoice->icv = Invoice::generateNextIcv((string) $invoice->org_id, $invoice->device_id);
 
@@ -259,6 +262,22 @@ class IssuingStep implements IssuingJurisdiction
                 "Invoice {$this->label($invoice)}: {$problem}",
                 ErrorCode::VALIDATION_FAILED,
                 ['sold_at' => $invoice->sold_at->toIso8601String()],
+            );
+        }
+    }
+
+    /**
+     * @throws FatooraException when the till no longer issues
+     */
+    private function assertStillIssues(string $organizationId, string $deviceId): void
+    {
+        $unit = $this->tills->find($organizationId, $deviceId);
+
+        if ($unit !== null && ! $unit->issues()) {
+            throw new FatooraException(
+                __('Till :till no longer issues invoices (:status). Issue from another till.', ['till' => $unit->label(), 'status' => $unit->statusLabel()]),
+                ErrorCode::VALIDATION_FAILED,
+                ['device_id' => $deviceId, 'status' => $unit->status],
             );
         }
     }

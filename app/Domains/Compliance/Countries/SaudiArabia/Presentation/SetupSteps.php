@@ -8,6 +8,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Rules\SellerRules;
 use App\Domains\Compliance\Engine\Contracts\SetupSteps as SetupStepsPort;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\Tills;
 
 /**
  * A Saudi organization's own setup steps: its VAT number and national
@@ -21,6 +22,7 @@ class SetupSteps implements SetupStepsPort
 {
     public function __construct(
         private readonly SellerRules $seller,
+        private readonly Tills $tills,
     ) {}
 
     public function company(Organization $organization): array
@@ -36,9 +38,16 @@ class SetupSteps implements SetupStepsPort
         ];
     }
 
+    /**
+     * Head office's connection, then each till still to be onboarded with
+     * its own OTP: every EGS unit is onboarded on its own (E-Invoicing
+     * Detailed Guidelines p10, p39). A till's step is optional - head office
+     * issues for a branch whose till is not connected - and is gone once the
+     * till is ready or retired.
+     */
     public function onboarding(Organization $organization): array
     {
-        return [[
+        $steps = [[
             'key' => 'zatca',
             'done' => $organization->zatca_onboarded,
             'required' => true,
@@ -47,6 +56,24 @@ class SetupSteps implements SetupStepsPort
             'detail' => __('With the one-time code from the Fatoora portal. Your invoices are signed with the certificate it issues.'),
             'member' => false,
         ]];
+
+        foreach ($this->tills->all((string) $organization->id) as $unit) {
+            if ($unit->isHeadOffice() || ! $unit->issues() || $unit->isReady()) {
+                continue;
+            }
+
+            $steps[] = [
+                'key' => 'zatca-till-'.$unit->id,
+                'done' => false,
+                'required' => false,
+                'route' => 'portal.zatca.certificates',
+                'title' => __('Connect :till to ZATCA', ['till' => $this->tills->label($unit)]),
+                'detail' => __('Optional: each till is its own device, onboarded with its own one-time code. Until then head office signs for its branch.'),
+                'member' => false,
+            ];
+        }
+
+        return $steps;
     }
 
     /** Done once an invoice has its hash: signed, and in the chain. */

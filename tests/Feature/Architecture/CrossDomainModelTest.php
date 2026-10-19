@@ -74,6 +74,13 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Countries/SaudiArabia/Filing/SubmissionTracker.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Filing/Submitter.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Http/Controllers/BranchOnboardingController.php' => 'Organization',
+        // A till's certificate from the portal: connecting it, renewing it.
+        'Domains/Compliance/Countries/SaudiArabia/Http/Controllers/PortalCertificateRenewalController.php' => 'Organization',
+        // A branch's tills from the portal: adding one, retiring one.
+        'Domains/Compliance/Countries/SaudiArabia/Http/Controllers/PortalTillController.php' => 'Organization',
+        // A till is the organization's EGS unit: listed, added and onboarded
+        // over the API.
+        'Domains/Compliance/Countries/SaudiArabia/Http/Controllers/UnitController.php' => 'Organization',
         'Domains/Compliance/Countries/SaudiArabia/Issuing/ChainRecorder.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Issuing/InvoiceIssuer.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Issuing/IssuingStep.php' => 'Invoice',
@@ -83,12 +90,19 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Countries/SaudiArabia/Models/SubmissionIdempotency.php' => 'Invoice',
         // Saudi Arabia's engine module: issues and files an invoice.
         'Domains/Compliance/Countries/SaudiArabia/Module.php' => 'Invoice',
+        // Onboarding writes where the till it onboards stands.
+        'Domains/Compliance/Countries/SaudiArabia/Onboarding/CertificateRenewal.php' => 'Organization',
+        'Domains/Compliance/Countries/SaudiArabia/Onboarding/OrganizationOnboarding.php' => 'Organization',
+        'Domains/Compliance/Countries/SaudiArabia/Onboarding/UnitOnboarding.php' => 'Organization',
+        'Domains/Compliance/Countries/SaudiArabia/Onboarding/UnitRetirement.php' => 'Organization',
         // An invoice's page and the copies of it a buyer is given; whether a
         // first invoice was issued, for the setup steps.
         'Domains/Compliance/Countries/SaudiArabia/Presentation/Presentation.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Presentation/PrintedTerms.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Presentation/ReceiptContent.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Presentation/SetupSteps.php' => 'Invoice',
+        // Each till, with the certificates it has held.
+        'Domains/Compliance/Countries/SaudiArabia/Reports/CertificateVersions.php' => 'Organization',
         'Domains/Compliance/Countries/SaudiArabia/Reports/DailyClose.php' => 'Invoice, Organization',
         'Domains/Compliance/Countries/SaudiArabia/Reports/DeadlineReport.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Rules/InvoiceValidator.php' => 'Invoice',

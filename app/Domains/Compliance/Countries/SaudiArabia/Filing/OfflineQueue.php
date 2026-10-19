@@ -12,6 +12,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\OfflineItem;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\SigningCredentials;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Platform\Services\KillSwitch;
@@ -588,9 +589,10 @@ class OfflineQueue
         // credential store — where onboarding writes. An item judged to have
         // no certificate stays in the queue, so this has to look where the
         // certificate actually is.
+        // The till's own, by the unit the invoice was issued on.
         $certificate = $this->credentials->certificate(
             (string) $item->org_id,
-            $item->branch_id ?? null
+            $invoice !== null ? SigningCredentials::keyOf($invoice) : ($item->branch_id ?? null)
         );
 
         if ($certificate === null) {

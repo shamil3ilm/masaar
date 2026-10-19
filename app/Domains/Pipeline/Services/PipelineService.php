@@ -14,10 +14,12 @@ use App\Domains\Invoice\Services\IdempotentDraft;
 use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\Tills;
 use App\Domains\Platform\Access\Feature;
 use App\Domains\Platform\Access\FeatureOverrides;
 use App\Support\Errors\ComplianceException;
 use App\Support\Errors\ErrorCode;
+use DomainException;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -47,6 +49,7 @@ class PipelineService
         private readonly ComplianceEngine $engine,
         private readonly PipelineResult $result,
         private readonly FeatureOverrides $overrides,
+        private readonly Tills $tills,
     ) {}
 
     /**
@@ -106,6 +109,19 @@ class PipelineService
             return $this->replay($earlier, $data, $organization, null);
         }
 
+        // The till that made the sale, when the ERP names one: by its id, or
+        // by its number in the branch it names.
+        try {
+            ['branch' => $branchId, 'till' => $tillId] = $this->tills->named(
+                $organizationId,
+                $this->resolveBranch($branchId, $organizationId),
+                $data['till_id'] ?? null,
+                isset($data['till_number']) ? (int) $data['till_number'] : null,
+            );
+        } catch (DomainException $e) {
+            throw new ComplianceException($e->getMessage(), ErrorCode::VAL_INVALID_FORMAT);
+        }
+
         // Drafted as the country's rules map the request, with the ERP's
         // reference and key beside it: a country's draft names only its
         // invoice's own fields.
@@ -115,9 +131,10 @@ class PipelineService
                 'erp_reference_id' => $data['erp_reference_id'] ?? null,
             ],
             $organizationId,
-            $this->resolveBranch($branchId, $organizationId),
+            $branchId,
             $rules->countryFields($data),
             $idempotencyKey,
+            $tillId,
         );
 
         // Two retries raced past the check above; the unique index let one

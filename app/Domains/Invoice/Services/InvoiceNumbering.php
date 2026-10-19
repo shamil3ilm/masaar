@@ -7,7 +7,7 @@ namespace App\Domains\Invoice\Services;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Models\InvoiceSequence;
 use App\Domains\Organization\Models\Organization;
-use App\Domains\Organization\Services\BranchService;
+use App\Domains\Organization\Services\Tills;
 use App\Support\CountryClock;
 use Carbon\Carbon;
 use DateTimeInterface;
@@ -25,9 +25,12 @@ use RuntimeException;
  * number, and a failure after this rolls the number back with everything
  * else. Issued invoices therefore run without gaps.
  *
- * Each till (branch) numbers from a series of its own by default - the
+ * Each till numbers from a series of its own by default - the
  * organization's pattern with the till's number in it, INV-T01-{YYYY}-{SEQ}
- * - so two tills never wait for each other here. An organization that turns
+ * - so two tills never wait for each other here. The till is the unit the
+ * invoice is issued on (its device), or, for one issued on head office's,
+ * its branch, as before tills were kept apart from branches; a branch's
+ * first till has the branch's id, so the two are one series. An organization that turns
  * on shared_numbering numbers every document from its one series instead,
  * and then its tills do wait for each other, for the rest of the issuance.
  *
@@ -41,7 +44,7 @@ class InvoiceNumbering
     private const MAX_SKIPPED = 1000;
 
     public function __construct(
-        private readonly BranchService $branches,
+        private readonly Tills $tills,
     ) {}
 
     /**
@@ -119,7 +122,7 @@ class InvoiceNumbering
     {
         $type = $invoice->document_type->value;
         $organizationId = (string) $invoice->org_id;
-        $till = $invoice->branch_id !== null && ! self::shared($organizationId) ? (string) $invoice->branch_id : null;
+        $till = self::shared($organizationId) ? null : self::tillOf($invoice);
 
         return InvoiceSequence::withoutTenantScope(function () use ($organizationId, $till, $type): InvoiceSequence {
             $query = fn (string $scope, bool $lock) => InvoiceSequence::query()
@@ -154,6 +157,20 @@ class InvoiceNumbering
         });
     }
 
+    /**
+     * The series an invoice numbers from when each till has its own: the
+     * till it is issued on, else its branch's, else none - the
+     * organization's.
+     */
+    public static function tillOf(Invoice $invoice): ?string
+    {
+        if ($invoice->device_id !== null && $invoice->device_id !== $invoice->org_id) {
+            return (string) $invoice->device_id;
+        }
+
+        return $invoice->branch_id === null ? null : (string) $invoice->branch_id;
+    }
+
     /** Whether the organization numbers every branch from one series. */
     public static function shared(string $organizationId): bool
     {
@@ -166,9 +183,11 @@ class InvoiceNumbering
      * INV-T01-{YYYY}-{SEQ} - and never a pattern another series of the
      * organization already has, which would count through the same numbers.
      *
+     * $tillId is a till's id, or a branch's - its first till's.
+     *
      * @return array<string, mixed>
      */
-    public function tillDefaults(string $organizationId, string $documentType, string $branchId): array
+    public function tillDefaults(string $organizationId, string $documentType, string $tillId): array
     {
         $organization = InvoiceSequence::withoutTenantScope(fn () => InvoiceSequence::query()
             ->where('org_id', $organizationId)
@@ -178,19 +197,19 @@ class InvoiceNumbering
 
         $used = InvoiceSequence::withoutTenantScope(fn () => InvoiceSequence::query()
             ->where('org_id', $organizationId)
-            ->where('scope', '!=', $branchId)
+            ->where('scope', '!=', $tillId)
             ->pluck('pattern')
             ->all());
         $used = [...$used, ...array_values(InvoiceSequence::DEFAULT_PATTERNS)];
 
-        $till = $this->branches->tillNumber($branchId) ?? 1;
+        $till = $this->tills->tillNumber($tillId) ?? 1;
 
         do {
             $pattern = self::withTill((string) $organization->pattern, $till++);
         } while (in_array($pattern, $used, true));
 
         return [
-            ...self::defaults($organizationId, $documentType, $branchId),
+            ...self::defaults($organizationId, $documentType, $this->tills->branchOf($tillId), $tillId),
             'pattern' => $pattern,
             'padding' => $organization->padding,
             'reset' => $organization->reset,
@@ -212,12 +231,12 @@ class InvoiceNumbering
     /**
      * @return array<string, mixed>
      */
-    public static function defaults(string $organizationId, string $documentType, ?string $branchId = null): array
+    public static function defaults(string $organizationId, string $documentType, ?string $branchId = null, ?string $scope = null): array
     {
         return [
             'org_id' => $organizationId,
             'branch_id' => $branchId,
-            'scope' => $branchId ?? InvoiceSequence::ORGANIZATION,
+            'scope' => $scope ?? $branchId ?? InvoiceSequence::ORGANIZATION,
             'document_type' => $documentType,
             'pattern' => InvoiceSequence::DEFAULT_PATTERNS[$documentType] ?? 'DOC-{YYYY}-{SEQ}',
             'padding' => InvoiceSequence::DEFAULT_PADDING,

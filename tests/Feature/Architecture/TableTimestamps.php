@@ -163,6 +163,10 @@ final class TableTimestamps
         'peppol_document_events' => ['class' => 'd', 'event' => 'occurred_at', 'tenant' => 'parent:document_id',
             'system' => 'recorded by the platform from its own moves and the provider\'s word; the person is on the invoice',
             'correlation' => 'request_id'],
+        // A till (EGS unit): every document it signed names it, so it is
+        // retired, never deleted. Head office's has no branch.
+        'egs_units' => ['class' => 'c', 'updates' => true, 'tenant' => 'branch',
+            'actors' => ['created_by' => 'created_by', 'updated_by' => 'updated_by', 'retired_by' => 'retired_by']],
 
         // Money.
         'payments' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',
