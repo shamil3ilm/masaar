@@ -9,23 +9,17 @@
     another party's document, and the download below is the record kept.
 --}}
 @section('content')
-<div class="mb-6">
-    <a href="{{ route('portal.received.index') }}" class="text-sm text-accent hover:underline"><span class="inline-block rtl:rotate-180">&larr;</span> {{ __('All received invoices') }}</a>
-</div>
-
-<div class="mb-8 flex flex-wrap items-start justify-between gap-4">
-    <div>
-        <p class="text-sm font-semibold tracking-wide text-muted uppercase">
-            {{ $summary->isCreditNote() ? __('Credit note received') : __('Invoice received') }}
-        </p>
-        <h2 class="mt-1 text-2xl font-semibold text-fg">{{ $summary->number !== '' ? $summary->number : __('No number') }}</h2>
-        <p class="text-muted">{{ __('Received :date', ['date' => $document->created_at?->toDateTimeString()]) }}</p>
-    </div>
-    <div class="flex items-center gap-3">
+<x-ui.page-header :eyebrow="$summary->isCreditNote() ? __('Credit note received') : __('Invoice received')"
+                  :title="$summary->number !== '' ? $summary->number : __('No number')" class="mb-8">
+    <x-slot:breadcrumb>
+        <x-ui.breadcrumb :items="[['label' => __('Received invoices'), 'href' => route('portal.received.index')], ['label' => $summary->number !== '' ? $summary->number : __('No number')]]" />
+    </x-slot:breadcrumb>
+    <x-slot:description>{{ __('Received') }} <x-ui.date :value="$document->created_at" time /></x-slot:description>
+    <x-slot:actions>
         @include('portal.partials.peppol-status', ['status' => $document->status])
         <x-ui.button variant="secondary" :href="route('portal.received.xml', $document->id)">{{ __('Download e-invoice (XML)') }}</x-ui.button>
-    </div>
-</div>
+    </x-slot:actions>
+</x-ui.page-header>
 
 <div class="grid gap-6 lg:grid-cols-2">
     <div class="rounded-card bg-surface p-6 border border-line shadow-card">

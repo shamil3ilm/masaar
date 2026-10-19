@@ -3,22 +3,14 @@
 @section('title', 'Billing - '.$organization->name)
 
 @section('content')
-<div class="mb-6">
-    <nav class="text-sm text-muted">
-        <a href="{{ route('admin.organizations') }}" class="hover:text-accent-strong">Organizations</a>
-        <span>/</span>
-        <a href="{{ route('admin.organization.detail', $organization->id) }}" class="hover:text-accent-strong">{{ $organization->name }}</a>
-        <span>/</span>
-        <span>Billing</span>
-    </nav>
-    <h2 class="mt-2 text-2xl font-semibold text-fg">Billing</h2>
-    <p class="text-muted">Recording a payment renews the plan and issues the platform's invoice for it.</p>
-</div>
+<x-ui.page-header title="Billing" description="Recording a payment renews the plan and issues the platform's invoice for it.">
+    <x-slot:breadcrumb>
+        <x-ui.breadcrumb :items="[['label' => 'Organizations', 'href' => route('admin.organizations')], ['label' => $organization->name, 'href' => route('admin.organization.detail', $organization->id)], ['label' => 'Billing']]" />
+    </x-slot:breadcrumb>
+</x-ui.page-header>
 
 @foreach ($billingProblems as $problem)
-    <div class="mb-6 rounded border border-warning-line bg-warning-soft px-4 py-3 text-sm text-warning">
-        {{ $problem }}
-    </div>
+    <x-ui.alert tone="warning" class="mb-6">{{ $problem }}</x-ui.alert>
 @endforeach
 
 <div class="mb-6 grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -110,7 +102,7 @@
             <td class="px-6 py-4 text-sm text-fg">{{ $payment->paid_at->toDateString() }}</td>
             <td class="px-6 py-4 text-sm text-muted">{{ ucfirst($payment->tier) }}, {{ $payment->months }} mo</td>
             <td class="px-6 py-4 text-sm text-muted">{{ $payment->period_start->toDateString() }} to {{ $payment->period_end->toDateString() }}</td>
-            <td class="px-6 py-4 text-right text-sm tabular-nums text-fg">{{ number_format((float) $payment->total, 2) }} {{ $payment->currency }}</td>
+            <td class="px-6 py-4 text-right text-sm tabular-nums text-fg"><x-ui.amount :value="$payment->total" :currency="$payment->currency" /></td>
             <td class="px-6 py-4 text-sm text-muted">
                 {{ $payment->method->label() }}
                 @if ($payment->reference)
@@ -125,7 +117,7 @@
                     @admincan('billing.manage')
                     <form method="POST" action="{{ route('admin.billing.invoice', [$organization->id, $payment->id]) }}" class="mt-1"
                           data-confirm-action="Issue invoice"
-                          data-confirm="Issue the invoice for {{ $organization->name }}'s payment of {{ number_format((float) $payment->total, 2) }} {{ $payment->currency }}?"
+                          data-confirm="Issue the invoice for {{ $organization->name }}'s payment of {{ $payment->paid_at->toDateString() }}?"
                           data-confirm-detail="It takes the next number in the platform's own series and goes to the authority. This cannot be undone."
                           data-confirm-type="issue">
                         @csrf

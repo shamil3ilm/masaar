@@ -1,15 +1,14 @@
 @extends('layouts.admin')
 
-@section('title', 'Reporting Deadlines')
+@section('title', 'Reporting deadlines')
 
 @section('content')
-<div class="mb-6">
-    <h1 class="text-2xl font-semibold tracking-tight text-fg">Reporting deadlines</h1>
-    <p class="mt-1 max-w-3xl text-sm text-muted">
+<x-ui.page-header title="Reporting deadlines">
+    <x-slot:description>
         ZATCA gives a simplified invoice {{ (int) $deadlineHours }} hours from issuance to be reported.
         The same rows <code class="text-xs">fatoora:overdue-submissions</code> alerts on, every hour.
-    </p>
-</div>
+    </x-slot:description>
+</x-ui.page-header>
 
 @if($overdue->isEmpty() && $atRisk->isEmpty())
     <div class="bg-surface rounded-card border border-line shadow-card px-6 py-10 text-center">

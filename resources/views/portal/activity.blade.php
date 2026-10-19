@@ -19,7 +19,7 @@
         @forelse ($entries as $entry)
             <tr class="hover:bg-sunken align-top">
                 <td class="px-6 py-4 text-sm text-muted whitespace-nowrap">
-                    <time datetime="{{ $entry['when']?->toIso8601String() }}" dir="ltr">{{ $entry['when']?->timezone(\App\Support\CountryClock::timeZone($organization->country))->format('Y-m-d H:i') }}</time>
+                    <x-ui.date :value="$entry['when']" time :zone="\App\Support\CountryClock::timeZone($organization->country)" />
                 </td>
                 <td class="px-6 py-4 text-sm">
                     @if ($entry['who'] || $entry['email'])

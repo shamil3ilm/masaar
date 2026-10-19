@@ -3,10 +3,11 @@
 @section('title', $product->exists ? $product->name : __('New product'))
 
 @section('content')
-<div class="mb-6">
-    <p class="text-sm"><a href="{{ route('portal.products.index') }}" class="text-accent hover:underline"><span class="inline-block rtl:rotate-180">&larr;</span> {{ __('Products') }}</a></p>
-    <h2 class="mt-2 text-2xl font-semibold text-fg">{{ $product->exists ? $product->name : __('New product') }}</h2>
-</div>
+<x-ui.page-header :title="$product->exists ? $product->name : __('New product')">
+    <x-slot:breadcrumb>
+        <x-ui.breadcrumb :items="[['label' => __('Products'), 'href' => route('portal.products.index')], ['label' => $product->exists ? $product->name : __('New product')]]" />
+    </x-slot:breadcrumb>
+</x-ui.page-header>
 
 <form method="POST" action="{{ $product->exists ? route('portal.products.update', $product->id) : route('portal.products.store') }}"
       class="max-w-3xl space-y-6">

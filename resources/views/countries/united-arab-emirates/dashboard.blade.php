@@ -15,7 +15,7 @@
         <p class="text-3xl font-semibold text-fg">{{ $stats['invoices_today'] }}</p>
     </div>
     <div class="bg-surface rounded-card border border-line shadow-card p-6">
-        <p class="text-sm text-muted">{{ __('This Month') }}</p>
+        <p class="text-sm text-muted">{{ __('This month') }}</p>
         <p class="text-3xl font-semibold text-fg">{{ $stats['invoices_month'] }}</p>
     </div>
     <div class="bg-surface rounded-card border border-line shadow-card p-6">
@@ -48,7 +48,7 @@
     <div class="p-6 border-b flex justify-between items-center">
         <h3 class="text-lg font-semibold text-fg">{{ __('Recent e-invoices') }}</h3>
         <a href="{{ route('portal.invoices.index') }}"
-           class="text-accent hover:text-accent-strong text-sm">{{ __('View All') }}</a>
+           class="text-accent hover:text-accent-strong text-sm">{{ __('View all') }}</a>
     </div>
     <div class="divide-y">
         @forelse ($recentDocuments as $document)

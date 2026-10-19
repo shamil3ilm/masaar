@@ -3,20 +3,17 @@
 @section('title', $ticket->reference())
 
 @section('content')
-<div class="mb-6">
-    <nav class="text-sm text-muted">
-        <a href="{{ route('admin.support.index') }}" class="hover:text-accent-strong">Support</a>
-        <span>/</span>
-        <span>{{ $ticket->reference() }}</span>
-    </nav>
-    <div class="mt-2 flex flex-wrap items-center gap-3">
-        <h1 class="text-2xl font-semibold tracking-tight text-fg">{{ $ticket->subject }}</h1>
+<x-ui.page-header :title="$ticket->subject">
+    <x-slot:breadcrumb>
+        <x-ui.breadcrumb :items="[['label' => 'Support', 'href' => route('admin.support.index')], ['label' => $ticket->reference()]]" />
+    </x-slot:breadcrumb>
+    <x-slot:meta>
         <x-ui.badge :tone="$ticket->status->tone()" :label="$ticket->status->label()" />
         @if ($ticket->priority === \App\Domains\Support\Enums\TicketPriority::Urgent)
             <x-ui.badge tone="danger" label="Urgent" />
         @endif
-    </div>
-    <p class="text-sm text-muted">
+    </x-slot:meta>
+    <x-slot:description>
         {{ $ticket->category->label() }} &middot;
         @if ($ticket->organization)
             <a href="{{ route('admin.organization.detail', $ticket->org_id) }}" class="text-accent hover:underline">{{ $ticket->organization->name }}</a>
@@ -27,9 +24,9 @@
         @else
             a deleted user
         @endif
-        on {{ $ticket->created_at->format('M d, Y H:i') }}
-    </p>
-</div>
+        on <x-ui.date :value="$ticket->created_at" time />
+    </x-slot:description>
+</x-ui.page-header>
 
 <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
     <div class="space-y-6 lg:col-span-2">

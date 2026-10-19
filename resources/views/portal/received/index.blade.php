@@ -10,10 +10,7 @@
     not recomputed: this is their document.
 --}}
 @section('content')
-<div class="mb-8">
-    <h1 class="text-2xl font-semibold tracking-tight text-fg">{{ __('Received invoices') }}</h1>
-    <p class="mt-1 max-w-3xl text-sm text-muted">{{ __('UAE e-invoices other suppliers sent to your Peppol endpoint. Keep them as your purchase records.') }}</p>
-</div>
+<x-ui.page-header :title="__('Received invoices')" :description="__('UAE e-invoices other suppliers sent to your Peppol endpoint. Keep them as your purchase records.')" />
 
 <div class="overflow-hidden rounded-card bg-surface border border-line shadow-card">
     <x-ui.table :primary="[0, 1, 4]">
@@ -43,7 +40,7 @@
                     @endif
                     <span class="block font-mono text-xs text-muted" dir="ltr">{{ $document->sender_endpoint }}</span>
                 </td>
-                <td class="px-4 py-3 text-sm text-muted">{{ $document->created_at?->toDateTimeString() }}</td>
+                <td class="px-4 py-3 text-sm text-muted"><x-ui.date :value="$document->created_at" time /></td>
                 <td class="px-4 py-3 text-sm text-fg">
                     {{ $summary->isCreditNote() ? __('Credit note') : __('Invoice') }}
                 </td>

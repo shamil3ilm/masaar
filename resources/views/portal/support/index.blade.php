@@ -3,13 +3,11 @@
 @section('title', __('Support'))
 
 @section('content')
-<div class="mb-6 flex flex-wrap items-start justify-between gap-4">
-    <div>
-        <h1 class="text-2xl font-semibold tracking-tight text-fg">{{ __('Support') }}</h1>
-        <p class="mt-1 max-w-3xl text-sm text-muted">{{ __('Ask us anything about ZATCA, your invoices or your account. Everyone in your company sees these tickets.') }}</p>
-    </div>
-    <x-ui.button :href="route('portal.support.create')">{{ __('New ticket') }}</x-ui.button>
-</div>
+<x-ui.page-header :title="__('Support')" :description="__('Ask us anything about ZATCA, your invoices or your account. Everyone in your company sees these tickets.')">
+    <x-slot:actions>
+        <x-ui.button :href="route('portal.support.create')">{{ __('New ticket') }}</x-ui.button>
+    </x-slot:actions>
+</x-ui.page-header>
 
 <div class="bg-surface rounded-card border border-line shadow-card overflow-hidden">
     <x-ui.table :primary="[1, 2, 0]">

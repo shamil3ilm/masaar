@@ -3,10 +3,7 @@
 @section('title', __('Dashboard - :organization', ['organization' => $organization->name]))
 
 @section('content')
-<div class="mb-8">
-    <h1 class="text-2xl font-semibold tracking-tight text-fg">{{ __('Dashboard') }}</h1>
-    <p class="mt-1 max-w-3xl text-sm text-muted">{{ $heading }}</p>
-</div>
+<x-ui.page-header :title="__('Dashboard')" :description="$heading" />
 
 @if ($group ?? null)
     <x-ui.alert class="mb-8" :title="__(':organization is one of the companies of :group.', ['organization' => $organization->name, 'group' => $group->name])">

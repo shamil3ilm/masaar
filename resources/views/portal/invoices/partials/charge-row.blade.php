@@ -9,8 +9,7 @@
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         @if ($chargePresets !== [])
             {{-- Fills this row's fields and submits nothing itself. --}}
-            <label class="block text-xs font-medium text-muted lg:col-span-2">
-                {{ __('Common charge') }}
+            <x-ui.field :label="__('Common charge')" class="lg:col-span-2">
                 <x-ui.select data-charge-picker>
                     <option value="">{{ __('Choose to fill in this charge...') }}</option>
                     @foreach ($chargePresets as $preset)
@@ -24,47 +23,40 @@
                         ], fn ($value): bool => $value !== null)) }}">{{ __($preset['reason']) }}</option>
                     @endforeach
                 </x-ui.select>
-            </label>
+            </x-ui.field>
         @endif
 
-        <label class="block text-xs font-medium text-muted lg:col-span-2">
-            {{ __('Reason') }}
+        <x-ui.field :label="__('Reason')" class="lg:col-span-2">
             <x-ui.input type="text" maxlength="255" name="charges[{{ $index }}][reason]" value="{{ $row['reason'] ?? '' }}" />
-        </label>
+        </x-ui.field>
 
-        <label class="block text-xs font-medium text-muted">
-            {{ __('Amount') }}
+        <x-ui.field :label="__('Amount')">
             <x-ui.input type="number" step="0.01" min="0" name="charges[{{ $index }}][amount]" value="{{ $row['amount'] ?? '' }}" />
-        </label>
+        </x-ui.field>
 
-        <label class="block text-xs font-medium text-muted">
-            {{ __('Or percent of the lines') }}
+        <x-ui.field :label="__('Or percent of the lines')">
             <x-ui.input type="number" step="0.01" min="0" max="100" name="charges[{{ $index }}][percent]" value="{{ $row['percent'] ?? '' }}" />
-        </label>
+        </x-ui.field>
 
-        <label class="block text-xs font-medium text-muted">
-            {{ __('Tax category') }}
+        <x-ui.field :label="__('Tax category')">
             <x-ui.select name="charges[{{ $index }}][tax_category]">
                 @foreach ($chargeCategories as $code => $label)
                     <option value="{{ $code }}" @selected(($row['tax_category'] ?? array_key_first($chargeCategories)) === $code)>{{ $label }}</option>
                 @endforeach
             </x-ui.select>
-        </label>
+        </x-ui.field>
 
-        <label class="block text-xs font-medium text-muted">
-            {{ __('VAT %') }}
+        <x-ui.field :label="__('VAT %')">
             <x-ui.input type="number" step="0.01" min="0" max="100" name="charges[{{ $index }}][tax_rate]" value="{{ $row['tax_rate'] ?? $standardRate }}" />
-        </label>
+        </x-ui.field>
 
-        <label class="block text-xs font-medium text-muted">
-            {{ __('Exemption code') }}
+        <x-ui.field :label="__('Exemption code')">
             <x-ui.input type="text" maxlength="50" name="charges[{{ $index }}][exempt_code]" value="{{ $row['exempt_code'] ?? '' }}" />
-        </label>
+        </x-ui.field>
 
-        <label class="block text-xs font-medium text-muted lg:col-span-2">
-            {{ __('Exemption reason') }}
+        <x-ui.field :label="__('Exemption reason')" class="lg:col-span-2">
             <x-ui.input type="text" maxlength="255" name="charges[{{ $index }}][exempt_reason]" value="{{ $row['exempt_reason'] ?? '' }}" />
-        </label>
+        </x-ui.field>
 
         <div class="flex items-end">
             <x-ui.button type="button" size="sm" variant="ghost" data-remove-charge class="-ms-3 text-danger">{{ __('Remove') }}</x-ui.button>

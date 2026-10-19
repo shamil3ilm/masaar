@@ -3,12 +3,7 @@
 @section('title', 'Webhooks')
 
 @section('content')
-<div class="mb-6">
-    <h1 class="text-2xl font-semibold tracking-tight text-fg">Webhook endpoints</h1>
-    <p class="mt-1 max-w-3xl text-sm text-muted">
-        Every customer endpoint on the platform, across tenants, with what its deliveries have been doing.
-    </p>
-</div>
+<x-ui.page-header title="Webhook endpoints" description="Every customer endpoint on the platform, across tenants, with what its deliveries have been doing." />
 
 <div class="bg-surface rounded-card border border-line shadow-card overflow-hidden">
     <x-ui.table :primary="[0, 1, 2]">

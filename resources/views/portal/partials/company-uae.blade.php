@@ -12,22 +12,9 @@
     @param \App\Domains\Organization\Models\Organization $organization
     @param array<string, string|null>                    $uae  the stored UAE settings
 --}}
-<div class="mb-6">
-    <h1 class="text-2xl font-semibold tracking-tight text-fg">{{ __('Company') }}</h1>
-    <p class="mt-1 max-w-3xl text-sm text-muted">
-        {{ __('The seller details on every UAE e-invoice you issue, in the shapes the UAE e-invoicing rules check.') }}
-    </p>
-</div>
+<x-ui.page-header :title="__('Company')" :description="__('The seller details on every UAE e-invoice you issue, in the shapes the UAE e-invoicing rules check.')" />
 
-@if ($errors->any())
-    <div class="mb-6 rounded border border-danger-line bg-danger-soft px-4 py-3 text-sm text-danger">
-        <ul class="list-disc ps-5">
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    </div>
-@endif
+{{-- The form's errors are listed by the layout's x-ui.flash. --}}
 
 <form method="POST" action="{{ route('portal.company.update') }}" class="mb-6 max-w-2xl">
     @csrf

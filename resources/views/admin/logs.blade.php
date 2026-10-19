@@ -1,12 +1,9 @@
 @extends('layouts.admin')
 
-@section('title', 'Submission Logs')
+@section('title', 'Submission logs')
 
 @section('content')
-<div class="mb-6">
-    <h1 class="text-2xl font-semibold tracking-tight text-fg">Submission Logs</h1>
-    <p class="mt-1 max-w-3xl text-sm text-muted">ZATCA submission history and status</p>
-</div>
+<x-ui.page-header title="Submission logs" description="ZATCA submission history and status" />
 
 <!-- State Summary -->
 <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">

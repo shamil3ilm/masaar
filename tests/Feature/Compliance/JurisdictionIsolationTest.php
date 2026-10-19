@@ -343,8 +343,8 @@ class JurisdictionIsolationTest extends TestCase
             ->assertViewMissing('einvoices')
             ->assertViewHas('certificate', null)
             ->assertSee('Your ZATCA compliance overview')
-            ->assertSee('Recent Submissions')
-            ->assertSee('Activity by User (7 days)')
+            ->assertSee('Recent submissions')
+            ->assertSee('Activity by user (7 days)')
             ->assertDontSee('Recent e-invoices'));
     }
 

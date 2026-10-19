@@ -14,18 +14,15 @@
 @endphp
 
 @section('content')
-<div class="mb-6">
-    <h1 class="text-2xl font-semibold tracking-tight text-fg">{{ __('Reports') }}</h1>
-    <p class="mt-1 max-w-3xl text-sm text-muted">{{ __('Your sales for a period, grouped as the VAT return asks, and the invoices behind them.') }}</p>
-</div>
+<x-ui.page-header :title="__('Reports')" :description="__('Your sales for a period, grouped as the VAT return asks, and the invoices behind them.')" />
 
 @include('portal.partials.report-period')
 
 @if ($summary['missing_rate'] !== [])
     {{-- Left out of the figures rather than converted at 1: the return is in riyals. --}}
-    <div role="alert" class="mb-6 rounded border border-warning-line bg-warning-soft px-4 py-3 text-sm text-warning">
+    <x-ui.alert tone="warning" class="mb-6">
         {{ __(':count documents in another currency have no exchange rate, so they are not in the figures below. Give each its rate in riyals: :numbers', ['count' => count($summary['missing_rate']), 'numbers' => implode(', ', array_slice($summary['missing_rate'], 0, 20)).(count($summary['missing_rate']) > 20 ? ' …' : '')]) }}
-    </div>
+    </x-ui.alert>
 @endif
 
 <div class="mb-6 bg-surface rounded-card border border-line shadow-card overflow-hidden">
@@ -62,7 +59,7 @@
             <td class="px-6 py-4 text-sm text-muted">{{ $box }}</td>
             <td class="px-6 py-4 text-sm text-fg">{{ $boxLabels[$box] ?? $values['label'] }}</td>
             @foreach (['base', 'adjustment_base', 'vat', 'adjustment_vat'] as $key)
-            <td class="px-6 py-4 text-end text-sm tabular-nums text-fg"><span dir="ltr">{{ number_format($values[$key], 2) }}</span></td>
+            <td class="px-6 py-4 text-end text-sm tabular-nums text-fg"><x-ui.amount :value="$values[$key]" /></td>
             @endforeach
         </tr>
         @endforeach
@@ -70,22 +67,22 @@
             <td class="px-6 py-4"></td>
             <td class="px-6 py-4 text-sm text-fg">{{ __('Total sales') }}</td>
             @foreach (['total_base', 'total_adjustment_base', 'total_vat', 'total_adjustment_vat'] as $key)
-            <td class="px-6 py-4 text-end text-sm tabular-nums text-fg"><span dir="ltr">{{ number_format($summary[$key], 2) }}</span></td>
+            <td class="px-6 py-4 text-end text-sm tabular-nums text-fg"><x-ui.amount :value="$summary[$key]" /></td>
             @endforeach
         </tr>
         <tr class="font-semibold">
             <td class="px-6 py-4"></td>
             <td class="px-6 py-4 text-sm text-fg">{{ __('Net of adjustments') }}</td>
-            <td class="px-6 py-4 text-end text-sm tabular-nums text-fg"><span dir="ltr">{{ number_format($summary['net_base'], 2) }}</span></td>
+            <td class="px-6 py-4 text-end text-sm tabular-nums text-fg"><x-ui.amount :value="$summary['net_base']" /></td>
             <td class="px-6 py-4"></td>
-            <td class="px-6 py-4 text-end text-sm tabular-nums text-fg"><span dir="ltr">{{ number_format($summary['net_vat'], 2) }}</span></td>
+            <td class="px-6 py-4 text-end text-sm tabular-nums text-fg"><x-ui.amount :value="$summary['net_vat']" /></td>
             <td class="px-6 py-4"></td>
         </tr>
         @if ($summary['out_of_scope'] != 0)
         <tr>
             <td class="px-6 py-4"></td>
             <td class="px-6 py-4 text-sm text-muted">{{ __('Out of scope - not on the return') }}</td>
-            <td class="px-6 py-4 text-end text-sm tabular-nums text-muted"><span dir="ltr">{{ number_format($summary['out_of_scope'], 2) }}</span></td>
+            <td class="px-6 py-4 text-end text-sm tabular-nums text-muted"><x-ui.amount :value="$summary['out_of_scope']" /></td>
             <td class="px-6 py-4" colspan="3"></td>
         </tr>
         @endif

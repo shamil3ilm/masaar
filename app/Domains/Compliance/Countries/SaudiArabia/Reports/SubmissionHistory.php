@@ -66,7 +66,7 @@ class SubmissionHistory
                     'pending_submission' => __('Pending submission'),
                 ], 'invoice_submissions.state'),
                 new Choice('type', __('Type'), ['clearance' => __('Clearance'), 'reporting' => __('Reporting')], 'invoice_submissions.submission_type'),
-                new Choice('user_id', __('User'), $people, 'invoice_submissions.created_by', __('All Users')),
+                new Choice('user_id', __('User'), $people, 'invoice_submissions.created_by', __('All users')),
             ],
             tiebreaker: 'invoice_submissions.id',
         );
@@ -105,6 +105,7 @@ class SubmissionHistory
                 'users.email as user_email',
                 'invoices.invoice_number',
                 'invoices.total as invoice_total',
+                'invoices.currency as invoice_currency',
             ]);
     }
 }

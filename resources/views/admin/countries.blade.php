@@ -14,13 +14,7 @@
     Every control is a POST behind data-confirm, read by the bundled listener
     (resources/js/confirm.js) - the content policy allows no inline handler.
 --}}
-<div class="mb-6">
-    <h1 class="text-2xl font-semibold tracking-tight text-fg">Countries</h1>
-    <p class="mt-1 max-w-3xl text-sm text-muted">
-        Where the platform issues e-invoices. Switching a country off stops new issuing there on the next
-        request and is recorded with who did it; invoices already issued keep being filed or sent.
-    </p>
-</div>
+<x-ui.page-header title="Countries" description="Where the platform issues e-invoices. Switching a country off stops new issuing there on the next request and is recorded with who did it; invoices already issued keep being filed or sent." />
 
 <div class="space-y-4">
     @foreach ($countries as $country)

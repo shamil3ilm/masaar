@@ -9,12 +9,14 @@
 @php($periodRoute ??= 'portal.reports')
 <form method="GET" action="{{ route($periodRoute) }}" class="mb-4 bg-surface rounded-card border border-line shadow-card p-4 flex flex-wrap items-end gap-4">
     <div>
-        <label for="from" class="block text-xs font-medium text-muted uppercase mb-1">{{ __('From') }}</label>
-        <x-ui.input id="from" name="from" type="date" value="{{ $from->toDateString() }}" />
+        <x-ui.field :label="__('From')">
+            <x-ui.input id="from" name="from" type="date" value="{{ $from->toDateString() }}" />
+        </x-ui.field>
     </div>
     <div>
-        <label for="to" class="block text-xs font-medium text-muted uppercase mb-1">{{ __('To') }}</label>
-        <x-ui.input id="to" name="to" type="date" value="{{ $to->toDateString() }}" />
+        <x-ui.field :label="__('To')">
+            <x-ui.input id="to" name="to" type="date" value="{{ $to->toDateString() }}" />
+        </x-ui.field>
     </div>
     <x-ui.button variant="secondary">{{ __('Show') }}</x-ui.button>
 </form>

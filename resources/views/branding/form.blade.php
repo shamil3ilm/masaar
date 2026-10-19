@@ -23,15 +23,7 @@
     ];
 @endphp
 
-@if ($errors->any())
-    <div class="mb-6 rounded border border-danger-line bg-danger-soft px-4 py-3 text-sm text-danger">
-        <ul class="list-disc ps-5">
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    </div>
-@endif
+{{-- The form's errors are listed by the layout's x-ui.flash. --}}
 
 <form method="POST" action="{{ route($route.'.update') }}" enctype="multipart/form-data" class="mb-6 max-w-2xl">
     @csrf

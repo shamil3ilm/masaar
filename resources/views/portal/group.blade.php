@@ -32,8 +32,8 @@
                 </td>
                 <td class="px-6 py-4 text-sm text-muted">{{ __($row['country']) }}</td>
                 <td class="px-6 py-4 text-end text-sm tabular-nums text-muted">{{ $row['documents'] }}</td>
-                <td class="px-6 py-4 text-end text-sm tabular-nums text-fg"><span dir="ltr">{{ number_format($row['base'], 2) }} {{ $row['currency'] }}</span></td>
-                <td class="px-6 py-4 text-end text-sm tabular-nums text-fg"><span dir="ltr">{{ number_format($row['vat'], 2) }} {{ $row['currency'] }}</span></td>
+                <td class="px-6 py-4 text-end text-sm tabular-nums text-fg"><x-ui.amount :value="$row['base']" :currency="$row['currency']" /></td>
+                <td class="px-6 py-4 text-end text-sm tabular-nums text-fg"><x-ui.amount :value="$row['vat']" :currency="$row['currency']" /></td>
                 <td class="px-6 py-4 text-end text-sm">
                     <a href="{{ route('portal.dashboard', ['org_id' => $row['id']]) }}" class="text-accent hover:underline">{{ __('Open') }}</a>
                 </td>
@@ -44,8 +44,8 @@
                 <td class="px-6 py-4 text-sm text-fg">{{ __('All companies in :currency', ['currency' => $currency]) }}</td>
                 <td class="px-6 py-4"></td>
                 <td class="px-6 py-4 text-end text-sm tabular-nums text-fg">{{ $sum['documents'] }}</td>
-                <td class="px-6 py-4 text-end text-sm tabular-nums text-fg"><span dir="ltr">{{ number_format($sum['base'], 2) }} {{ $currency }}</span></td>
-                <td class="px-6 py-4 text-end text-sm tabular-nums text-fg"><span dir="ltr">{{ number_format($sum['vat'], 2) }} {{ $currency }}</span></td>
+                <td class="px-6 py-4 text-end text-sm tabular-nums text-fg"><x-ui.amount :value="$sum['base']" :currency="$currency" /></td>
+                <td class="px-6 py-4 text-end text-sm tabular-nums text-fg"><x-ui.amount :value="$sum['vat']" :currency="$currency" /></td>
                 <td class="px-6 py-4"></td>
             </tr>
         @endforeach

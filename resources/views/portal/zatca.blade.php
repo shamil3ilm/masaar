@@ -21,26 +21,17 @@
 @endphp
 
 @section('content')
-<div class="mb-6">
-    <h1 class="text-2xl font-semibold tracking-tight text-fg">{{ __('Connect to ZATCA') }}</h1>
-    <p class="mt-1 max-w-3xl text-sm text-muted">
-        {{ __('Three steps, once. Afterwards every invoice you issue is signed with your own certificate and cleared or reported to ZATCA.') }}
-    </p>
-</div>
+<x-ui.page-header :title="__('Connect to ZATCA')" :description="__('Three steps, once. Afterwards every invoice you issue is signed with your own certificate and cleared or reported to ZATCA.')" />
 
 @if ($status['is_onboarded'])
-    <div class="mb-6 rounded border border-success-line bg-success-soft px-4 py-3 text-sm text-success">
-        <strong>{{ __('Connected.') }}</strong> {{ __(':organization is onboarded with ZATCA (:environment).', ['organization' => $organization->name, 'environment' => $environment]) }}
-    </div>
+    <x-ui.alert tone="success" class="mb-6" :title="__('Connected.')">{{ __(':organization is onboarded with ZATCA (:environment).', ['organization' => $organization->name, 'environment' => $environment]) }}</x-ui.alert>
 @elseif ($blocked)
-    <div class="mb-6 rounded border border-warning-line bg-warning-soft px-4 py-3 text-sm text-warning">
-        {{ $blocked }}
-    </div>
+    <x-ui.alert tone="warning" class="mb-6">{{ $blocked }}</x-ui.alert>
 @elseif (! $status['profile_complete'])
-    <div class="mb-6 rounded border border-warning-line bg-warning-soft px-4 py-3 text-sm text-warning">
+    <x-ui.alert tone="warning" class="mb-6">
         {{ __('Your company details are incomplete. ZATCA needs the VAT number and the full national address -') }}
         <a href="{{ route('portal.company.edit') }}" class="underline">{{ __('complete them first') }}</a>.
-    </div>
+    </x-ui.alert>
 @endif
 
 @php($disabled = $status['is_onboarded'] || $blocked || ! $status['profile_complete'])

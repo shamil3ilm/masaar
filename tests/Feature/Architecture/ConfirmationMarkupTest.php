@@ -154,7 +154,9 @@ class ConfirmationMarkupTest extends TestCase
                 $verb = strtolower(trim((string) preg_replace("/\{\{\s*__\('([^']*)'\)\s*\}\}/", '$1', $action[1] ?? '')));
 
                 $problems = array_filter([
-                    ! str_contains($question[1] ?? '', '?') ? 'the title is not a question' : null,
+                    // Written out, it is a question; a variable is checked where it is written.
+                    ! str_contains($question[1] ?? '', '?') && preg_match('/^\{\{\s*\$[^}]+\}\}$/', $question[1] ?? '') !== 1
+                        ? 'the title is not a question' : null,
                     ! str_contains($tag, 'data-confirm-detail="') ? 'no data-confirm-detail' : null,
                     ($action[1] ?? '') === '' ? 'no data-confirm-action' : null,
                     in_array($verb, self::VAGUE, true) ? 'the accept button says "'.$verb.'"' : null,

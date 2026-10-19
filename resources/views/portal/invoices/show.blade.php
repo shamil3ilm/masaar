@@ -3,27 +3,22 @@
 @section('title', ($invoice->invoice_number ?? __('Draft')) . ' - ' . $organization->name)
 
 @section('content')
-<div class="mb-6">
-    <a href="{{ route('portal.invoices.index') }}" class="text-sm text-accent hover:underline"><span class="inline-block rtl:rotate-180">&larr;</span> {{ __('All invoices') }}</a>
-</div>
-
-<div class="mb-8 flex flex-wrap items-start justify-between gap-4">
-    <div>
-        {{-- The kind of document, as its country names it (Presentation::invoicePage). --}}
-        @include($page->heading, $page->data)
-
-        <h2 class="mt-1 text-2xl font-semibold text-fg">{{ $invoice->invoice_number ?? __('Draft (numbered when issued)') }}</h2>
+<x-ui.page-header :title="$invoice->invoice_number ?? __('Draft (numbered when issued)')" class="mb-8">
+    <x-slot:breadcrumb>
+        <x-ui.breadcrumb :items="[['label' => __('Invoices'), 'href' => route('portal.invoices.index')], ['label' => $invoice->invoice_number ?? __('Draft')]]" />
+    </x-slot:breadcrumb>
+    {{-- The kind of document, as its country names it (Presentation::invoicePage). --}}
+    <x-slot:eyebrow>@include($page->heading, $page->data)</x-slot:eyebrow>
+    <x-slot:description>
+        <span lang="ar" dir="rtl">تاريخ الفاتورة</span> &middot; {{ __('issued :date', ['date' => $invoice->issue_date?->toDateString()]) }}
         {{-- Text a grace period let through without its Arabic (MissingText).
              On this page only: the print view, the PDF and the receipt the
              buyer is given never carry it. --}}
         @if (! empty($missingText))
-            <p class="mt-1 text-xs text-warning print:hidden" data-missing-text title="{{ implode(' · ', $missingText) }}">{{ __('Arabic text missing') }}</p>
+            <span class="mt-1 block text-xs text-warning print:hidden" data-missing-text title="{{ implode(' · ', $missingText) }}">{{ __('Arabic text missing') }}</span>
         @endif
-        <p class="text-muted">
-            <span lang="ar" dir="rtl">تاريخ الفاتورة</span> &middot; {{ __('issued :date', ['date' => $invoice->issue_date]) }}
-        </p>
-    </div>
-    <div class="flex items-center gap-3">
+    </x-slot:description>
+    <x-slot:actions>
         @include('portal.partials.invoice-status', ['status' => $invoice->status])
 
         @if ($invoice->status === \App\Domains\Invoice\Enums\InvoiceStatus::Draft)
@@ -48,8 +43,8 @@
             {{-- What the country offers on an issued invoice. --}}
             @include($page->actions, $page->data)
         @endif
-    </div>
-</div>
+    </x-slot:actions>
+</x-ui.page-header>
 
 @if ($invoice->status !== \App\Domains\Invoice\Enums\InvoiceStatus::Draft && $page->shareable
     && ! \App\Domains\Organization\Enums\MemberRole::readOnly(auth()->user()?->roleIn((string) request()->attributes->get(\App\Domains\Organization\Http\Middleware\PortalTenant::ORG_ID))))

@@ -30,8 +30,7 @@
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         @if (($products ?? collect())->isNotEmpty())
             {{-- Fills this row's fields and submits nothing itself. --}}
-            <label class="block text-xs font-medium text-muted sm:col-span-2 lg:col-span-6">
-                {{ __('Product') }}
+            <x-ui.field :label="__('Product')" class="sm:col-span-2 lg:col-span-6">
                 <x-ui.select data-product-picker>
                     <option value="">{{ __('Choose to fill in this line...') }}</option>
                     @foreach ($products as $product)
@@ -40,50 +39,43 @@
                         </option>
                     @endforeach
                 </x-ui.select>
-            </label>
+            </x-ui.field>
         @endif
         {{-- The saved product the picker filled it from, if any: so that product is known to be used. --}}
         <input type="hidden" name="lines[{{ $index }}][product_id]" value="{{ $row['product_id'] ?? '' }}">
 
-        <label class="block text-xs font-medium text-muted lg:col-span-2">
-            {{ __('Description') }}
+        <x-ui.field :label="__('Description')" class="lg:col-span-2">
             <x-ui.input type="text" name="lines[{{ $index }}][description]"
                    value="{{ $row['description'] ?? '' }}" />
-        </label>
+        </x-ui.field>
 
-        <label class="block text-xs font-medium text-muted lg:col-span-2">
-            {{ __('Description in Arabic') }}
+        <x-ui.field :label="__('Description in Arabic')" class="lg:col-span-2">
             <x-ui.input type="text" name="lines[{{ $index }}][description_ar]"
                    value="{{ $row['description_ar'] ?? '' }}"
                    dir="rtl" lang="ar" />
-        </label>
+        </x-ui.field>
 
-        <label class="block text-xs font-medium text-muted">
-            {{ __('Quantity') }}
+        <x-ui.field :label="__('Quantity')">
             <x-ui.input type="number" step="0.001" min="0" name="lines[{{ $index }}][quantity]"
                    value="{{ $row['quantity'] ?? '' }}" />
-        </label>
+        </x-ui.field>
 
-        <label class="block text-xs font-medium text-muted">
-            {{ __('Unit price') }}
+        <x-ui.field :label="__('Unit price')">
             <x-ui.input type="number" step="0.01" min="0" name="lines[{{ $index }}][unit_price]"
                    value="{{ $row['unit_price'] ?? '' }}" />
-        </label>
+        </x-ui.field>
 
-        <label class="block text-xs font-medium text-muted">
-            {{ __('Line discount') }}
+        <x-ui.field :label="__('Line discount')">
             <x-ui.input type="number" step="0.01" min="0" name="lines[{{ $index }}][discount_amount]"
                    value="{{ $row['discount_amount'] ?? '' }}" />
-        </label>
+        </x-ui.field>
 
-        <label class="block text-xs font-medium text-muted">
-            {{ __('VAT %') }}
+        <x-ui.field :label="__('VAT %')">
             <x-ui.input type="number" step="0.01" min="0" max="100" name="lines[{{ $index }}][tax_rate]"
                    value="{{ $row['tax_rate'] ?? '15' }}" />
-        </label>
+        </x-ui.field>
 
-        <label class="block text-xs font-medium text-muted">
-            {{ __('Unit') }}
+        <x-ui.field :label="__('Unit')">
             {{-- Grouped, and read from App\Domains\Invoice\Support\UnitCode.
 
                  This list used to be written out here: eleven codes against
@@ -104,7 +96,7 @@
                     </optgroup>
                 @endforeach
             </x-ui.select>
-        </label>
+        </x-ui.field>
     </div>
 
     {{-- What a line carries without the form offering it: a credit note

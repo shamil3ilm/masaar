@@ -11,19 +11,11 @@
     product pages.
 --}}
 @section('content')
-<div class="mb-6">
-    <div class="flex items-center space-x-2 text-sm text-muted mb-2">
-        <a href="{{ route('admin.organizations') }}" class="hover:text-accent-strong">Organizations</a>
-        <span>/</span>
-        <a href="{{ route('admin.organization.detail', $organization->id) }}" class="hover:text-accent-strong">{{ $organization->name }}</a>
-        <span>/</span>
-        <span>Missing Arabic names</span>
-    </div>
-    <h1 class="text-2xl font-semibold tracking-tight text-fg">Missing Arabic names</h1>
-    <p class="mt-1 max-w-3xl text-sm text-muted">
-        Fill these in before enforcement reaches this organization: an invoice naming one of these customers or products takes its Arabic name, and one without is refused.
-    </p>
-</div>
+<x-ui.page-header title="Missing Arabic names" description="Fill these in before enforcement reaches this organization: an invoice naming one of these customers or products takes its Arabic name, and one without is refused.">
+    <x-slot:breadcrumb>
+        <x-ui.breadcrumb :items="[['label' => 'Organizations', 'href' => route('admin.organizations')], ['label' => $organization->name, 'href' => route('admin.organization.detail', $organization->id)], ['label' => 'Missing Arabic names']]" />
+    </x-slot:breadcrumb>
+</x-ui.page-header>
 
 <x-ui.section title="The organization" collapse class="mb-6">
     <p class="text-sm {{ $seller ? 'text-warning' : 'text-muted' }}">

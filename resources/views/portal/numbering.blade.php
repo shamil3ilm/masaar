@@ -73,13 +73,13 @@
                 </x-slot:actions>
 
                 @if ($bag->any())
-                    <div class="mb-4 rounded-control border border-danger-line bg-danger-soft px-4 py-3 text-sm text-danger">
+                    <x-ui.alert tone="danger" class="mb-4">
                         <ul class="list-disc ps-5">
                             @foreach ($bag->all() as $error)
                                 <li>{{ $error }}</li>
                             @endforeach
                         </ul>
-                    </div>
+                    </x-ui.alert>
                 @endif
 
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">

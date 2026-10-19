@@ -263,7 +263,7 @@
                 <tr>
                     <td class="px-6 py-4 font-mono tabular-nums" dir="ltr">INV-2026-00418</td>
                     <td class="px-6 py-4 text-muted">{{ $t('Northwind Trading', 'نورثويند للتجارة') }}</td>
-                    <td class="px-6 py-4 text-end font-mono tabular-nums" dir="ltr">1,150.00</td>
+                    <td class="px-6 py-4 text-end"><x-ui.amount value="1150" currency="SAR" /></td>
                     <td class="px-6 py-4"><x-ui.badge state="cleared" /></td>
                 </tr>
                 <x-ui.empty columns="4">{{ $t('An empty table says so, centred under its columns.', 'يقول الجدول الفارغ ذلك، في المنتصف تحت أعمدته.') }}</x-ui.empty>
@@ -305,17 +305,17 @@
                 <tr data-expanded>
                     <td class="px-6 py-4 font-mono tabular-nums" dir="ltr">INV-2026-00418</td>
                     <td class="px-6 py-4 text-muted">{{ $t('Northwind Trading', 'نورثويند للتجارة') }}</td>
-                    <td class="px-6 py-4 text-muted">2026-10-14</td>
+                    <td class="px-6 py-4 text-muted"><x-ui.date value="2026-10-14" /></td>
                     <td class="px-6 py-4"><x-ui.badge state="cleared" /></td>
-                    <td class="px-6 py-4 font-mono tabular-nums" dir="ltr">1,150.00</td>
+                    <td class="px-6 py-4"><x-ui.amount value="1150" /></td>
                     <td class="px-6 py-4"><x-ui.button size="sm" variant="secondary" href="#">{{ $t('Download PDF', 'تنزيل PDF') }}</x-ui.button></td>
                 </tr>
                 <tr>
                     <td class="px-6 py-4 font-mono tabular-nums" dir="ltr">INV-2026-00419</td>
                     <td class="px-6 py-4 text-muted">{{ $t('Gulf Supplies', 'إمدادات الخليج') }}</td>
-                    <td class="px-6 py-4 text-muted">2026-10-15</td>
+                    <td class="px-6 py-4 text-muted"><x-ui.date value="2026-10-15" /></td>
                     <td class="px-6 py-4"><x-ui.badge state="pending" /></td>
-                    <td class="px-6 py-4 font-mono tabular-nums" dir="ltr">420.00</td>
+                    <td class="px-6 py-4"><x-ui.amount value="420" /></td>
                     <td class="px-6 py-4"><x-ui.button size="sm" variant="secondary" href="#">{{ $t('Download PDF', 'تنزيل PDF') }}</x-ui.button></td>
                 </tr>
             </x-ui.table>

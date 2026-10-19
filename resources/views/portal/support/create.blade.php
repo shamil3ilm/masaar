@@ -3,11 +3,11 @@
 @section('title', __('New ticket'))
 
 @section('content')
-<div class="mb-6">
-    <p class="text-sm"><a href="{{ route('portal.support.index') }}" class="text-accent hover:underline"><span class="inline-block rtl:rotate-180">&larr;</span> {{ __('Support') }}</a></p>
-    <h2 class="mt-2 text-2xl font-semibold text-fg">{{ __('New ticket') }}</h2>
-    <p class="text-muted">{{ __('Tell us what happened. An invoice number and the message ZATCA gave help us answer faster.') }}</p>
-</div>
+<x-ui.page-header :title="__('New ticket')" :description="__('Tell us what happened. An invoice number and the message ZATCA gave help us answer faster.')">
+    <x-slot:breadcrumb>
+        <x-ui.breadcrumb :items="[['label' => __('Support'), 'href' => route('portal.support.index')], ['label' => __('New ticket')]]" />
+    </x-slot:breadcrumb>
+</x-ui.page-header>
 
 <form method="POST" action="{{ route('portal.support.store') }}" enctype="multipart/form-data"
       class="max-w-3xl space-y-4 rounded-card bg-surface p-6 border border-line shadow-card">

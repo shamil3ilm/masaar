@@ -3,29 +3,23 @@
 @section('title', $organization->name)
 
 @section('content')
-<div class="mb-6">
-    <div class="flex items-center space-x-2 text-sm text-muted mb-2">
-        <a href="{{ route('admin.organizations') }}" class="hover:text-accent-strong">Organizations</a>
-        <span>/</span>
-        <span>{{ $organization->name }}</span>
-    </div>
-    <div class="flex flex-wrap items-center justify-between gap-3">
-        <h1 class="text-2xl font-semibold tracking-tight text-fg">{{ $organization->name }}</h1>
+<x-ui.page-header :title="$organization->name">
+    <x-slot:breadcrumb>
+        <x-ui.breadcrumb :items="[['label' => 'Organizations', 'href' => route('admin.organizations')], ['label' => $organization->name]]" />
+    </x-slot:breadcrumb>
+    <x-slot:actions>
         <x-ui.button variant="secondary" :href="route('admin.billing.show', $organization->id)">Plan and billing</x-ui.button>
-    </div>
-</div>
+    </x-slot:actions>
+</x-ui.page-header>
 
 @if (in_array($organization->status, ['pending_review', 'rejected'], true))
-<div class="mb-6 rounded-lg border border-warning-line bg-warning-soft p-6">
-    <h3 class="text-lg font-semibold text-warning">
-        {{ $organization->status === 'rejected' ? 'Not approved' : 'Awaiting review' }}
-    </h3>
-    <p class="mt-1 text-sm text-warning">
+<x-ui.alert tone="warning" class="mb-6" :title="$organization->status === 'rejected' ? 'Not approved' : 'Awaiting review'">
+    <p>
         Signed up {{ \Illuminate\Support\Carbon::parse($organization->created_at)->diffForHumans() }}.
         Check the company details below against its VAT and CR registration before approving: approval lets it obtain a ZATCA certificate and issue.
     </p>
     @if ($organization->review_note)
-        <p class="mt-2 text-sm text-warning"><strong>Reason given:</strong> {{ $organization->review_note }}</p>
+        <p class="mt-2"><strong>Reason given:</strong> {{ $organization->review_note }}</p>
     @endif
 
     <div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -65,7 +59,7 @@
         @endadmincan
         @endif
     </div>
-</div>
+</x-ui.alert>
 @endif
 
 {{-- Suspension: nothing new is issued; its people keep their data and
@@ -103,11 +97,11 @@
 <!-- Stats Cards -->
 <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
     <div class="bg-surface rounded-card border border-line shadow-card p-6">
-        <div class="text-sm font-medium text-muted">Total Invoices</div>
+        <div class="text-sm font-medium text-muted">Total invoices</div>
         <div class="text-3xl font-semibold text-fg mt-2">{{ number_format($stats['invoices']) }}</div>
     </div>
     <div class="bg-surface rounded-card border border-line shadow-card p-6">
-        <div class="text-sm font-medium text-muted">Total Submissions</div>
+        <div class="text-sm font-medium text-muted">Total submissions</div>
         <div class="text-3xl font-semibold text-fg mt-2">{{ number_format($stats['submissions']) }}</div>
     </div>
     <div class="bg-surface rounded-card border border-line shadow-card p-6">
@@ -122,7 +116,7 @@
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
     <!-- Organization Details -->
-    <x-ui.section title="Organization Details" collapse class="lg:col-span-2">
+    <x-ui.section title="Organization details" collapse class="lg:col-span-2">
         <div>
             <dl class="grid grid-cols-2 gap-4">
                 <div>
@@ -153,11 +147,11 @@
                 </div>
                 <div>
                     <dt class="text-sm font-medium text-muted">Created</dt>
-                    <dd class="text-sm text-fg mt-1">{{ $organization->created_at ? \Carbon\Carbon::parse($organization->created_at)->format('M d, Y H:i') : '-' }}</dd>
+                    <dd class="text-sm text-fg mt-1"><x-ui.date :value="$organization->created_at" time /></dd>
                 </div>
                 <div>
                     <dt class="text-sm font-medium text-muted">Updated</dt>
-                    <dd class="text-sm text-fg mt-1">{{ $organization->updated_at ? \Carbon\Carbon::parse($organization->updated_at)->format('M d, Y H:i') : '-' }}</dd>
+                    <dd class="text-sm text-fg mt-1"><x-ui.date :value="$organization->updated_at" time /></dd>
                 </div>
             </dl>
         </div>
@@ -166,7 +160,7 @@
     <!-- Certificate Status -->
     <div class="bg-surface rounded-card border border-line shadow-card">
         <div class="p-6 border-b">
-            <h3 class="text-lg font-semibold text-fg">Certificate Status</h3>
+            <h3 class="text-lg font-semibold text-fg">Certificate status</h3>
         </div>
         <div class="p-6">
             @if($certificate)
@@ -185,7 +179,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                             </svg>
                         </div>
-                        <p class="text-sm text-danger mt-2 font-medium">Certificate Expired</p>
+                        <p class="text-sm text-danger mt-2 font-medium">Certificate expired</p>
                     @endif
                 </div>
                 <dl class="space-y-2 text-sm">
@@ -194,12 +188,12 @@
                         <dd class="text-fg font-mono text-xs">{{ Str::limit($certificate->serial_number ?? '-', 16) }}</dd>
                     </div>
                     <div class="flex justify-between">
-                        <dt class="text-muted">Valid From</dt>
-                        <dd class="text-fg">{{ $certificate->valid_from ? \Carbon\Carbon::parse($certificate->valid_from)->format('M d, Y') : '-' }}</dd>
+                        <dt class="text-muted">Valid from</dt>
+                        <dd class="text-fg"><x-ui.date :value="$certificate->valid_from" /></dd>
                     </div>
                     <div class="flex justify-between">
-                        <dt class="text-muted">Valid To</dt>
-                        <dd class="text-fg">{{ $certificate->valid_to ? \Carbon\Carbon::parse($certificate->valid_to)->format('M d, Y') : '-' }}</dd>
+                        <dt class="text-muted">Valid to</dt>
+                        <dd class="text-fg"><x-ui.date :value="$certificate->valid_to" /></dd>
                     </div>
                     <div class="flex justify-between">
                         <dt class="text-muted">Status</dt>
@@ -246,7 +240,7 @@
             <td class="px-6 py-4 text-sm text-muted">{{ $member->role }}</td>
             <td class="px-6 py-4"><x-ui.badge :state="$member->status" /></td>
             <td class="px-6 py-4"><x-ui.badge :state="$member->account_status" /></td>
-            <td class="px-6 py-4 text-sm text-muted">{{ $member->joined_at ? \Carbon\Carbon::parse($member->joined_at)->format('M d, Y') : '-' }}</td>
+            <td class="px-6 py-4 text-sm text-muted"><x-ui.date :value="$member->joined_at" /></td>
         </tr>
         @empty
         <x-ui.empty :columns="5">No members</x-ui.empty>
@@ -255,13 +249,13 @@
 </x-ui.section>
 
 <!-- Recent Submissions -->
-<x-ui.section title="Recent Submissions" collapse flush>
-    <p class="px-5 pt-3 text-sm"><a href="{{ route('admin.logs', ['org_id' => $organization->id]) }}" class="inline-flex min-h-11 items-center text-accent hover:text-accent-strong">View All</a></p>
+<x-ui.section title="Recent submissions" collapse flush>
+    <p class="px-5 pt-3 text-sm"><a href="{{ route('admin.logs', ['org_id' => $organization->id]) }}" class="inline-flex min-h-11 items-center text-accent hover:text-accent-strong">View all</a></p>
     <x-ui.table :primary="[0, 1, 3]">
         <x-slot:head>
             <x-ui.th>Invoice ID</x-ui.th>
             <x-ui.th>State</x-ui.th>
-            <x-ui.th>Submission Type</x-ui.th>
+            <x-ui.th>Submission type</x-ui.th>
             <x-ui.th>Created</x-ui.th>
         </x-slot:head>
 
@@ -272,7 +266,7 @@
                 <x-ui.badge :state="$submission->state" />
             </td>
             <td class="px-6 py-4 text-sm text-muted">{{ $submission->submission_type ?? '-' }}</td>
-            <td class="px-6 py-4 text-sm text-muted">{{ $submission->created_at ? \Carbon\Carbon::parse($submission->created_at)->format('M d, Y H:i') : '-' }}</td>
+            <td class="px-6 py-4 text-sm text-muted"><x-ui.date :value="$submission->created_at" time /></td>
         </tr>
         @empty
         <x-ui.empty :columns="4">No submissions found</x-ui.empty>

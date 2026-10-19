@@ -9,11 +9,9 @@
     <a href="{{ $user->is_platform_admin ? route('admin.dashboard') : route('portal.dashboard') }}" class="text-accent hover:underline"><span class="inline-block rtl:rotate-180">&larr;</span> {{ __('Back') }}</a>
 </p>
 
-@foreach (['success' => 'green', 'error' => 'red'] as $key => $tone)
+@foreach (['success' => 'success', 'error' => 'danger'] as $key => $tone)
     @if (session($key))
-        <div class="mb-6 rounded border px-4 py-3 text-sm {{ $tone === 'green' ? 'border-success-line bg-success-soft text-success' : 'border-danger-line bg-danger-soft text-danger' }}">
-            {{ session($key) }}
-        </div>
+        <x-ui.alert :tone="$tone" class="mb-6">{{ session($key) }}</x-ui.alert>
     @endif
 @endforeach
 
@@ -68,14 +66,13 @@
         <h3 class="font-semibold text-fg">{{ __('Two-factor authentication') }}</h3>
 
         @if (session('recovery_codes'))
-            <div class="rounded border border-warning-line bg-warning-soft p-4">
-                <p class="mb-2 text-sm font-medium text-warning">{{ __('Recovery codes - each works once, shown only now:') }}</p>
-                <ul class="grid grid-cols-2 gap-1 font-mono text-sm text-warning">
+            <x-ui.alert tone="warning" :title="__('Recovery codes - each works once, shown only now:')">
+                <ul class="mt-1 grid grid-cols-2 gap-1 font-mono">
                     @foreach (session('recovery_codes') as $code)
-                        <li>{{ $code }}</li>
+                        <li dir="ltr">{{ $code }}</li>
                     @endforeach
                 </ul>
-            </div>
+            </x-ui.alert>
         @endif
 
         @if ($user->hasTwoFactor())

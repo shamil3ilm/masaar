@@ -3,13 +3,7 @@
 @section('title', 'Settings')
 
 @section('content')
-<div class="mb-6">
-    <h1 class="text-2xl font-semibold tracking-tight text-fg">Settings</h1>
-    <p class="mt-1 max-w-3xl text-sm text-muted">
-        What the dashboard treats as a problem, and when a certificate expiry is worth telling someone about.
-        These took a release to change before.
-    </p>
-</div>
+<x-ui.page-header title="Settings" description="What the dashboard treats as a problem, and when a certificate expiry is worth telling someone about. These took a release to change before." />
 
 @admincan('platform.configure')
 <form method="POST" action="{{ route('admin.settings.update') }}" class="max-w-2xl">

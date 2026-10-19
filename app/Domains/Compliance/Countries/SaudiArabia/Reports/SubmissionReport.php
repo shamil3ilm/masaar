@@ -185,6 +185,7 @@ class SubmissionReport
                 'invoice_submissions.*',
                 'invoices.invoice_number',
                 'invoices.total as invoice_total',
+                'invoices.currency as invoice_currency',
             ])
             ->orderByDesc('invoice_submissions.created_at')
             ->orderByDesc('invoice_submissions.id')

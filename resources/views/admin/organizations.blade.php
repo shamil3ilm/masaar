@@ -3,10 +3,9 @@
 @section('title', 'Organizations')
 
 @section('content')
+<x-ui.page-header title="Organizations" description="Every registered organization, and the ones waiting for review." class="mb-3" />
 <div class="mb-6">
-    <h1 class="text-2xl font-semibold tracking-tight text-fg">Organizations</h1>
-    <p class="mt-1 max-w-3xl text-sm text-muted">Manage all registered organizations</p>
-    <div class="mt-3 flex gap-4 text-sm">
+    <div class="flex gap-4 text-sm">
         <a href="{{ route('admin.organizations') }}" class="{{ $list->value('status') ? 'text-muted' : 'font-semibold text-accent' }} hover:underline">All</a>
         <a href="{{ route('admin.organizations', ['status' => 'pending_review']) }}" class="{{ $list->value('status') === 'pending_review' ? 'font-semibold text-accent' : 'text-muted' }} hover:underline">Awaiting review</a>
     </div>

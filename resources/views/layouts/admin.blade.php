@@ -56,7 +56,7 @@
                 </x-ui.nav-link>
                 <x-ui.nav-link :href="route('admin.queue')" :active="request()->routeIs('admin.queue')" collapsible>
                     <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg></x-slot:icon>
-                    Offline Queue
+                    Offline queue
                 </x-ui.nav-link>
                 <x-ui.nav-link :href="route('admin.logs')" :active="request()->routeIs('admin.logs')" collapsible>
                     <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg></x-slot:icon>
