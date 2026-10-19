@@ -156,9 +156,10 @@ class AdjustmentNoteTest extends TestCase
             ->assertSessionHasInput('discount_amount', '50.00');
         $fields = session()->getOldInput();
 
-        $this->portal()->get(route('portal.invoices.create'))
-            ->assertSee('name="lines[0][exempt_code]" value="VATEX-SA-32"', false)
-            ->assertSee('name="lines[0][tax_category]" value="Z"', false);
+        // The line's VAT treatment comes back chosen in its selects.
+        $form = (string) $this->portal()->get(route('portal.invoices.create'))->getContent();
+        $this->assertMatchesRegularExpression('#<option value="VATEX-SA-32"[^>]*\sselected>#', $form);
+        $this->assertMatchesRegularExpression('#<option value="Z"\s+selected>#', $form);
 
         $this->portal()->post('/portal/invoices', [...$fields, 'issue_date' => now()->toDateString(), 'adjustment_reason' => $this->reason()])
             ->assertSessionHasNoErrors();

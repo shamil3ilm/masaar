@@ -34,6 +34,10 @@ use Illuminate\Support\Str;
  * than in the store - 'table.column', on the row the level's holder names -
  * so a setting that every issuing path already reads from its column keeps
  * being read there. Null in the column means "as the level above".
+ *
+ * $preset names the field of the organization's business type that
+ * defaults it (Catalogue::BUSINESS_TYPES): between the platform's value and
+ * the organization's own, so the type suggests and the organization decides.
  */
 final readonly class Definition
 {
@@ -69,6 +73,7 @@ final readonly class Definition
         public bool $console = false,
         public bool $ownScreen = false,
         public bool $country = false,
+        public ?string $preset = null,
     ) {}
 
     public function allows(Level $level): bool

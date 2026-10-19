@@ -113,9 +113,24 @@ class ExemptLineTest extends TestCase
      */
     public function test_a_stated_category_is_kept(): void
     {
-        $line = $this->create('VATEX-SA-HEA', category: 'E')->lines->first();
+        $line = $this->create('VATEX-SA-29', category: 'E')->lines->first();
 
         $this->assertSame('E', $line->tax_category);
+    }
+
+    /**
+     * Nor does it accept a contradiction: VATEX-SA-HEA is a zero-rating
+     * reason, so a line calling itself exempt under it is refused with the
+     * rule rather than filed as ZATCA would warn about it (BR-KSA-CL-04).
+     */
+    public function test_a_mismatched_category_is_refused(): void
+    {
+        $details = $this->withToken($this->token)
+            ->postJson('/api/invoices', $this->payload($this->line('VATEX-SA-HEA', 'E'), 'VATEX-SA-HEA'))
+            ->assertStatus(422)
+            ->json('error.details');
+
+        $this->assertSame('Line 1: VATEX-SA-HEA is a reason for tax category Z, not E (BR-KSA-CL-04).', $details['lines.0.exempt_code'][0] ?? null);
     }
 
     /**
@@ -130,6 +145,19 @@ class ExemptLineTest extends TestCase
     }
 
     private function create(?string $code, ?string $category = null): Invoice
+    {
+        $id = $this->withToken($this->token)
+            ->postJson('/api/invoices', $this->payload($this->line($code, $category), $code))
+            ->assertSuccessful()
+            ->json('data.invoice.id');
+
+        return Invoice::withoutTenantScope(fn () => Invoice::with('lines')->findOrFail($id));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function line(?string $code, ?string $category = null): array
     {
         $line = [
             'description' => 'Item',
@@ -147,18 +175,26 @@ class ExemptLineTest extends TestCase
             $line['tax_category'] = $category;
         }
 
-        $id = $this->withToken($this->token)
-            ->postJson('/api/invoices', [
-                'invoice_number' => 'INV-'.uniqid(),
-                'type' => 'simplified',
-                'issue_date' => now()->toDateString(),
-                'buyer_name' => 'Buyer',
-                'buyer_name_ar' => 'المشتري',
-                'lines' => [$line],
-            ])
-            ->assertSuccessful()
-            ->json('data.invoice.id');
+        return $line;
+    }
 
-        return Invoice::withoutTenantScope(fn () => Invoice::with('lines')->findOrFail($id));
+    /**
+     * Healthcare and education to a citizen name the buyer by national ID
+     * (BR-KSA-49).
+     *
+     * @param  array<string, mixed>  $line
+     * @return array<string, mixed>
+     */
+    private function payload(array $line, ?string $code): array
+    {
+        return [
+            'invoice_number' => 'INV-'.uniqid(),
+            'type' => 'simplified',
+            'issue_date' => now()->toDateString(),
+            'buyer_name' => 'Buyer',
+            'buyer_name_ar' => 'المشتري',
+            ...(in_array($code, ['VATEX-SA-HEA', 'VATEX-SA-EDU'], true) ? ['buyer_id' => '1234567890', 'buyer_id_scheme' => 'NAT'] : []),
+            'lines' => [$line],
+        ];
     }
 }

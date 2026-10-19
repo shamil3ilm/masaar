@@ -87,6 +87,8 @@
             @include('auth.partials.country-choice')
         @endif
 
+        @include('auth.partials.business-type')
+
         @include('auth.partials.register-nav')
     </section>
 

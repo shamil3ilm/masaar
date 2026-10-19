@@ -80,6 +80,9 @@ interface Jurisdiction
     /** What an invoice draft has to be, and the columns only this country's invoices carry. */
     public function invoiceRules(): InvoiceRules;
 
+    /** The tax categories and exemption reasons a line can be given, from the country's code lists. */
+    public function vatTreatments(): VatTreatments;
+
     /** Which language its invoices have to carry, and what a saved one lacks of it. */
     public function languageRules(): LanguageRules;
 
@@ -94,6 +97,9 @@ interface Jurisdiction
 
     /** The country's steps in the setup checklist. */
     public function setup(): SetupSteps;
+
+    /** Which business types the country's e-invoicing serves, for the defaults they suggest. */
+    public function sectors(): Sectors;
 
     /** A branch as a device the authority knows, for the branch screens. */
     public function devices(): Devices;

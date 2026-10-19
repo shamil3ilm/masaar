@@ -68,6 +68,12 @@ class Customizations
         $levels = [];
 
         foreach ($definition->levels as $level) {
+            // The organization's business type suggests a value, between the
+            // platform's and the organization's own (Definition $preset).
+            if ($level === Level::Organization && $definition->preset !== null && $lockedBy === null && $scope->organizationId !== null) {
+                $value = $this->preset($definition, $scope->organizationId) ?? $value;
+            }
+
             if (! $scope->has($level) || $scope->holder($level, $definition->acrossOrganizations) === null) {
                 continue;
             }
@@ -102,6 +108,30 @@ class Customizations
         }
 
         return new Resolved($definition, $value, $source, $at, $levels[$at->value] ?? null, $lockedBy, $levels);
+    }
+
+    /**
+     * What the organization's business type sets for a customization, or
+     * null when it has no type or the type leaves it alone. The types are a
+     * customization too, so an organization's own list counts.
+     */
+    private function preset(Definition $definition, string $organizationId): mixed
+    {
+        $type = DB::table('organizations')->where('id', $organizationId)->value('business_type');
+
+        if (! is_string($type) || $type === '') {
+            return null;
+        }
+
+        foreach ((array) $this->get(Catalogue::BUSINESS_TYPES, Scope::organization($organizationId)) as $entry) {
+            if (($entry['key'] ?? null) === $type) {
+                $raw = $entry[$definition->preset] ?? null;
+
+                return $raw === null || $raw === '' ? null : $definition->parse($raw);
+            }
+        }
+
+        return null;
     }
 
     /** What one level itself sets, or null when it inherits. */

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Invoice\Http\Controllers;
 
 use App\Domains\Compliance\Engine\Contracts\LanguageRules;
+use App\Domains\Compliance\Engine\Contracts\VatTreatments;
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Exceptions\RecordInUseException;
 use App\Domains\Invoice\Models\Product;
@@ -13,6 +14,7 @@ use App\Domains\Invoice\Services\CatalogueRemoval;
 use App\Domains\Invoice\Services\CustomerHistory;
 use App\Domains\Invoice\Services\ProductHistory;
 use App\Domains\Invoice\Support\UnitCode;
+use App\Domains\Invoice\Support\VatTreatmentChoice;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
@@ -64,6 +66,7 @@ class PortalProductController extends Controller
         return view('portal.products.form', [
             'product' => new Product(['unit_code' => UnitCode::DEFAULT, 'tax_rate' => 15]),
             'arabicRequired' => $this->language()->requiresArabic(),
+            'treatments' => $this->treatments(),
         ]);
     }
 
@@ -84,6 +87,7 @@ class PortalProductController extends Controller
             'product' => $product,
             'removable' => ! $this->removal->inUse($product),
             'arabicRequired' => $this->language()->requiresArabic(),
+            'treatments' => $this->treatments(),
         ]);
     }
 
@@ -142,7 +146,7 @@ class PortalProductController extends Controller
      */
     private function validated(Request $request, string $organizationId, ?Product $product = null): array
     {
-        return $request->validate([
+        return VatTreatmentChoice::kept($this->treatments(), $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'name_ar' => $this->language()->arabicNameRules(LanguageRules::PRODUCT),
             'sku' => [
@@ -152,9 +156,16 @@ class PortalProductController extends Controller
             'unit_code' => ['required', 'string', Rule::in(UnitCode::accepted())],
             'unit_price' => ['required', 'numeric', 'min:0', 'max:9999999999'],
             'tax_rate' => ['required', 'numeric', 'min:0', 'max:100'],
+            // The treatment its lines start in, from the country's code lists.
+            ...VatTreatmentChoice::rules($this->treatments(), $request),
         ], [
             'sku.unique' => __('Another product already has this code.'),
-        ]);
+        ]));
+    }
+
+    private function treatments(): VatTreatments
+    {
+        return $this->jurisdictions->forRules($this->tenant->getOrganization())->vatTreatments();
     }
 
     /** The organization's country's language rules, switched on or not. */

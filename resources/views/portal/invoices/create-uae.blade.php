@@ -20,7 +20,8 @@
     $rows = old('lines', [[]]);
     $flags = array_map('strval', (array) old('flags', []));
     $choice = old('buyer_endpoint_choice', 'own');
-    $rates = ['S' => \App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe::STANDARD_RATE, 'Z' => '0', 'E' => '', 'O' => '', 'AE' => \App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe::STANDARD_RATE, 'N' => \App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe::STANDARD_RATE];
+    // The rate each category fills in, from the module's code list (VatTreatments).
+    $rates = collect($treatments->categories())->mapWithKeys(fn ($category) => [$category->code => (string) $category->rate])->all();
     // The positions of the eight-character transaction-type code (BTAE-02), in its order.
     $flagLabels = [
         \App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe::FLAG_FREE_ZONE => __('Free zone'),
@@ -38,7 +39,8 @@
 
 {{-- The form's errors are listed by the layout's x-ui.flash. --}}
 
-<form method="POST" action="{{ route('portal.invoices.uae.store') }}" data-invoice-form data-uae-invoice-form
+<form method="POST" action="{{ route('portal.invoices.uae.store') }}" data-invoice-form
+      data-preview-url="{{ route('portal.invoices.preview') }}"
       data-default-rates="{{ json_encode($rates) }}">
     @csrf
 
@@ -117,16 +119,18 @@
 
             <div>
                 <x-ui.field :label="__('Payment means')">
+                    {{-- Starts on what the business type suggests (BusinessTypes). --}}
+                    @php($means = (string) old('payment_means_code', $businessType?->paymentMeans ?? '10'))
                     <x-ui.select name="payment_means_code" id="payment_means_code">
-                        <option value="10" @selected(old('payment_means_code', '10') === '10')>{{ __('Cash') }}</option>
-                        <option value="30" @selected(old('payment_means_code') === '30')>{{ __('Credit transfer') }}</option>
+                        <option value="10" @selected($means === '10')>{{ __('Cash') }}</option>
+                        <option value="30" @selected($means === '30')>{{ __('Credit transfer') }}</option>
                         {{-- PINT AE's code list of payment means used in the UAE (PintAe::PAYMENT_MEANS). --}}
-                        <option value="49" @selected(old('payment_means_code') === '49')>{{ __('Direct debit') }}</option>
-                        <option value="54" @selected(old('payment_means_code') === '54')>{{ __('Credit card') }}</option>
-                        <option value="55" @selected(old('payment_means_code') === '55')>{{ __('Debit card') }}</option>
-                        <option value="20" @selected(old('payment_means_code') === '20')>{{ __('Cheque') }}</option>
-                        <option value="68" @selected(old('payment_means_code') === '68')>{{ __('Online payment service') }}</option>
-                        <option value="1" @selected(old('payment_means_code') === '1')>{{ __('Instrument not defined') }}</option>
+                        <option value="49" @selected($means === '49')>{{ __('Direct debit') }}</option>
+                        <option value="54" @selected($means === '54')>{{ __('Credit card') }}</option>
+                        <option value="55" @selected($means === '55')>{{ __('Debit card') }}</option>
+                        <option value="20" @selected($means === '20')>{{ __('Cheque') }}</option>
+                        <option value="68" @selected($means === '68')>{{ __('Online payment service') }}</option>
+                        <option value="1" @selected($means === '1')>{{ __('Instrument not defined') }}</option>
                     </x-ui.select>
                 </x-ui.field>
                 <p class="mt-1 text-xs text-muted">{{ __('A transfer prints the IBAN from your company details.') }}</p>
@@ -369,6 +373,8 @@
         'chargeCategories' => ['S' => __('Standard-rated'), 'Z' => __('Zero-rated'), 'E' => __('Exempt'), 'O' => __('Out of scope')],
         'standardRate' => \App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe::STANDARD_RATE,
     ])
+
+    @include('portal.invoices.partials.vat-summary')
 
     {{-- Optional: folded away on a phone until wanted, opened by an error inside. --}}
     <x-ui.section :title="__('Totals and notes')" collapse class="mb-6">

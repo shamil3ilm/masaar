@@ -27,12 +27,14 @@ use App\Domains\Invoice\Http\Controllers\PortalInvoiceController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceDocumentController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceDraftController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceFilingController;
+use App\Domains\Invoice\Http\Controllers\PortalInvoicePreviewController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoicePrintController;
 use App\Domains\Invoice\Http\Controllers\PortalNumberingController;
 use App\Domains\Invoice\Http\Controllers\PortalProductController;
 use App\Domains\Invoice\Http\Controllers\PortalQrCodeController;
 use App\Domains\Invoice\Http\Controllers\PortalReportController;
 use App\Domains\Licensing\Http\Controllers\AdminLicenceController;
+use App\Domains\Organization\Http\Controllers\AdminBusinessTypeController;
 use App\Domains\Organization\Http\Controllers\CustomerPortalController;
 use App\Domains\Organization\Http\Controllers\InvitationController;
 use App\Domains\Organization\Http\Controllers\PortalBranchController;
@@ -420,6 +422,12 @@ Route::prefix('admin')->name('admin.')
         Route::get('/settings/approvals', [AdminApprovalPolicyController::class, 'index'])->name('approval-policies.index');
         Route::post('/settings/approvals-bypass', [AdminApprovalPolicyController::class, 'bypass'])->middleware('admin.can:admins.manage')->name('approval-policies.bypass');
         Route::post('/settings/approvals/{action}', [AdminApprovalPolicyController::class, 'update'])->middleware('admin.can:platform.configure')->name('approval-policies.update');
+        // What an organization can say it is, and the defaults each suggests.
+        Route::get('/settings/business-types', [AdminBusinessTypeController::class, 'index'])->name('business-types.index');
+        Route::post('/settings/business-types', [AdminBusinessTypeController::class, 'store'])->middleware('admin.can:platform.configure')->name('business-types.store');
+        Route::post('/settings/business-types/{key}', [AdminBusinessTypeController::class, 'update'])->middleware('admin.can:platform.configure')->name('business-types.update');
+        Route::post('/settings/business-types/{key}/retire', [AdminBusinessTypeController::class, 'retire'])->middleware('admin.can:platform.configure')->name('business-types.retire');
+        Route::post('/settings/business-types/{key}/move', [AdminBusinessTypeController::class, 'move'])->middleware('admin.can:platform.configure')->name('business-types.move');
 
         // The platform's look: colours, name, logo and favicon.
         Route::get('/branding', [AdminBrandingController::class, 'edit'])->name('branding.edit');
@@ -537,6 +545,8 @@ Route::prefix('portal')->name('portal.')
         // order should not depend on knowing that.
         Route::get('/invoices/create', [PortalInvoiceDraftController::class, 'create'])->name('invoices.create');
         Route::post('/invoices', [PortalInvoiceDraftController::class, 'store'])->name('invoices.store');
+        // The form's running figures: each line's VAT and the VAT by category.
+        Route::post('/invoices/preview', PortalInvoicePreviewController::class)->middleware('throttle:120,1')->name('invoices.preview');
         Route::get('/invoices/{invoiceId}', [PortalInvoiceController::class, 'show'])->name('invoices.show');
         Route::post('/invoices/{invoiceId}/issue', [PortalInvoiceFilingController::class, 'issue'])->name('invoices.issue');
         // A note correcting an issued invoice, its form filled in from it.
@@ -576,6 +586,7 @@ Route::prefix('portal')->name('portal.')
         Route::post('/company/pricing', [PortalCompanyController::class, 'pricing'])->name('company.pricing');
         // A UAE organization's appointed e-invoicing service provider; anyone else gets a 404.
         Route::post('/company/service-provider', [PortalProviderAppointmentController::class, 'update'])->name('company.service-provider');
+        Route::post('/company/business-type', [PortalCompanyController::class, 'businessType'])->name('company.business-type');
 
         // Customers and products, which the invoice form fills itself from.
         Route::get('/customers', [PortalCustomerController::class, 'index'])->name('customers.index');

@@ -49,6 +49,15 @@
     </div>
 @endif
 
+{{-- The shortcuts the organization's business type suggests (BusinessTypes::shortcuts). --}}
+@if ($shortcuts ?? [])
+    <nav class="mb-8 flex flex-wrap gap-3" aria-label="{{ __('Shortcuts') }}">
+        @foreach ($shortcuts as $shortcut)
+            <x-ui.button variant="secondary" :href="route($shortcut['route'])">{{ $shortcut['label'] }}</x-ui.button>
+        @endforeach
+    </nav>
+@endif
+
 {{-- The country's figures (Dashboard::portal): what it files, and how that went. --}}
 @include($countryDashboard)
 @endsection

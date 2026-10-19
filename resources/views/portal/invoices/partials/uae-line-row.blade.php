@@ -6,7 +6,7 @@
     resources/js/invoice-lines.js, each input nested in its own label so a
     cloned row duplicates no id. What differs is PINT AE's: an item name
     beside the description, and the line's tax category, whose rate
-    resources/js/uae-invoice.js fills in when the category changes.
+    resources/js/invoice-vat.js fills in when the category changes.
 
     @param int   $index  Position in the lines array.
     @param array $row    Previously submitted values, or empty.
@@ -76,13 +76,11 @@
         </x-ui.field>
 
         <x-ui.field :label="__('Tax category')" class="lg:col-span-2">
+            {{-- PINT AE's categories, from the module (VatTreatments). --}}
             <x-ui.select name="lines[{{ $index }}][tax_category]" data-tax-category>
-                <option value="S" @selected($category === 'S')>{{ __('Standard rate') }}</option>
-                <option value="Z" @selected($category === 'Z')>{{ __('Zero-rated') }}</option>
-                <option value="E" @selected($category === 'E')>{{ __('Exempt') }}</option>
-                <option value="O" @selected($category === 'O')>{{ __('Out of scope') }}</option>
-                <option value="AE" @selected($category === 'AE')>{{ __('Reverse charge') }}</option>
-                <option value="N" @selected($category === 'N')>{{ __('Margin scheme') }}</option>
+                @foreach ($treatments->categories() as $option)
+                    <option value="{{ $option->code }}" @selected($category === $option->code)>{{ $option->label }}</option>
+                @endforeach
             </x-ui.select>
         </x-ui.field>
 
@@ -95,12 +93,12 @@
     {{-- Asked only of an exempt or a reverse-charge line; blank otherwise. --}}
     <div class="mt-3 grid gap-3 sm:grid-cols-3">
         <x-ui.field :label="__('Exemption reason (exempt lines)')">
-            <x-ui.select name="lines[{{ $index }}][exempt_code]">
+            {{-- The exemption reasons of Aligned-TaxExemptionCodes (IBR-167-AE). --}}
+            <x-ui.select name="lines[{{ $index }}][exempt_code]" data-exempt-code>
                 <option value="">{{ __('None') }}</option>
-                <option value="DL8.46.1" @selected(($row['exempt_code'] ?? '') === 'DL8.46.1')>DL8.46.1 &middot; {{ __('Financial services') }}</option>
-                <option value="DL8.46.2" @selected(($row['exempt_code'] ?? '') === 'DL8.46.2')>DL8.46.2 &middot; {{ __('Residential buildings') }}</option>
-                <option value="DL8.46.3" @selected(($row['exempt_code'] ?? '') === 'DL8.46.3')>DL8.46.3 &middot; {{ __('Bare land') }}</option>
-                <option value="DL8.46.4" @selected(($row['exempt_code'] ?? '') === 'DL8.46.4')>DL8.46.4 &middot; {{ __('Local passenger transport') }}</option>
+                @foreach ($treatments->exemptions() as $reason)
+                    <option value="{{ $reason->code }}" data-category="{{ $reason->category }}" @selected(($row['exempt_code'] ?? '') === $reason->code)>{{ $reason->label() }}</option>
+                @endforeach
             </x-ui.select>
         </x-ui.field>
 
@@ -118,4 +116,7 @@
                    value="{{ $row['item_id'] ?? '' }}" />
         </x-ui.field>
     </div>
+
+    {{-- The line's VAT and total as the draft will have them (resources/js/invoice-preview.js). --}}
+    <p data-line-vat class="mt-3 text-sm text-muted" aria-live="polite"></p>
 </div>

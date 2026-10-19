@@ -19,7 +19,9 @@
 
 {{-- The form's errors are listed by the layout's x-ui.flash. --}}
 
-<form method="POST" action="{{ route('portal.invoices.store') }}" data-invoice-form>
+<form method="POST" action="{{ route('portal.invoices.store') }}" data-invoice-form
+      data-preview-url="{{ route('portal.invoices.preview') }}"
+      data-default-rates="{{ json_encode(collect($treatments->categories())->mapWithKeys(fn ($category) => [$category->code => (string) $category->rate])) }}">
     @csrf
 
     <div class="mb-6 rounded-card bg-surface p-6 border border-line shadow-card">
@@ -36,8 +38,10 @@
             <div>
                 <x-ui.field :label="__('Type')">
                     <x-ui.select name="type" id="type">
-                        <option value="simplified" @selected(old('type', 'simplified') === 'simplified')>{{ __('Simplified (B2C)') }}</option>
-                        <option value="standard" @selected(old('type') === 'standard')>{{ __('Standard (B2B)') }}</option>
+                        {{-- Starts on what the business type suggests (BusinessTypes). --}}
+                        @php($invoiceType = old('type', $businessType?->invoiceType ?? 'simplified'))
+                        <option value="simplified" @selected($invoiceType === 'simplified')>{{ __('Simplified (B2C)') }}</option>
+                        <option value="standard" @selected($invoiceType === 'standard')>{{ __('Standard (B2B)') }}</option>
                     </x-ui.select>
                 </x-ui.field>
                 <p class="mt-1 text-xs text-muted">{{ __('Standard needs the buyer\'s VAT number and address.') }}</p>
@@ -93,7 +97,7 @@
                 <x-ui.field :label="__('Payment means')">
                     <x-ui.select name="payment_means_code" id="payment_means_code">
                         @foreach (['10' => __('Cash'), '30' => __('Credit transfer'), '42' => __('Payment to bank account'), '48' => __('Bank card'), '1' => __('Instrument not defined')] as $code => $label)
-                            <option value="{{ $code }}" @selected((string) old('payment_means_code', '10') === (string) $code)>{{ $label }}</option>
+                            <option value="{{ $code }}" @selected((string) old('payment_means_code', $businessType?->paymentMeans ?? '10') === (string) $code)>{{ $label }}</option>
                         @endforeach
                     </x-ui.select>
                 </x-ui.field>
@@ -197,6 +201,16 @@
                 <p class="mt-1 text-xs text-muted">{{ __('Required on a standard invoice.') }}</p>
             </div>
 
+        </div>
+
+        {{-- At a till the buyer is usually nobody in particular, so a
+             business type that sells over a counter has these folded away
+             (BusinessType::$buyerFields). Folded, not removed: one click
+             opens them, and an error inside or a standard invoice opens
+             them by itself. --}}
+        <x-ui.disclosure :summary="__('VAT number, other identifier and address')" class="mt-2 border-b-0 py-3"
+                         :open="($businessType?->buyerFields ?? 'full') === 'full' || $errors->any() || old('type', $businessType?->invoiceType) === 'standard'">
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
                 <x-ui.field :label="__('VAT number')">
                     <x-ui.input type="text" name="buyer_vat_number" id="buyer_vat_number" value="{{ old('buyer_vat_number') }}" />
@@ -265,6 +279,7 @@
                 </x-ui.field>
             </div>
         </div>
+        </x-ui.disclosure>
 
         <div class="mt-3">
             <x-ui.checkbox name="save_customer" value="1" :checked="(bool) old('save_customer')">{{ __('Save this buyer to Customers') }}</x-ui.checkbox>
@@ -295,6 +310,8 @@
         'chargeCategories' => ['S' => __('Standard-rated'), 'Z' => __('Zero-rated'), 'E' => __('Exempt'), 'O' => __('Out of scope')],
         'standardRate' => '15',
     ])
+
+    @include('portal.invoices.partials.vat-summary')
 
     {{-- Optional: folded away on a phone until wanted, opened by an error inside. --}}
     <x-ui.section :title="__('Totals and notes')" collapse class="mb-6">

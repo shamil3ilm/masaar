@@ -8,6 +8,7 @@ use App\Domains\Compliance\Countries\UnitedArabEmirates\Issuing\InvoiceIssuer;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Issuing\IssuingStep;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation\DeviceStatus;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation\Presentation;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation\Sectors;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation\SetupSteps;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation\Website;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\Dashboard;
@@ -16,6 +17,7 @@ use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\InvoiceRules;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\IssueDeadline;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\LanguageRules;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\SellerRules;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\VatTreatments;
 use App\Domains\Compliance\Engine\Contracts\Dashboard as DashboardPort;
 use App\Domains\Compliance\Engine\Contracts\Devices;
 use App\Domains\Compliance\Engine\Contracts\FeatureSupport;
@@ -24,10 +26,12 @@ use App\Domains\Compliance\Engine\Contracts\IssueNotices;
 use App\Domains\Compliance\Engine\Contracts\Jurisdiction;
 use App\Domains\Compliance\Engine\Contracts\LanguageRules as LanguageRulesPort;
 use App\Domains\Compliance\Engine\Contracts\Presentation as PresentationPort;
+use App\Domains\Compliance\Engine\Contracts\Sectors as SectorsPort;
 use App\Domains\Compliance\Engine\Contracts\SellerRules as SellerRulesPort;
 use App\Domains\Compliance\Engine\Contracts\SetupSteps as SetupStepsPort;
 use App\Domains\Compliance\Engine\Contracts\TaxReports as TaxReportsPort;
 use App\Domains\Compliance\Engine\Contracts\Transmission;
+use App\Domains\Compliance\Engine\Contracts\VatTreatments as VatTreatmentsPort;
 use App\Domains\Compliance\Engine\Contracts\Website as WebsitePort;
 use App\Domains\Compliance\Engine\DTOs\IssueOptions;
 use App\Domains\Compliance\Engine\DTOs\IssueOutcome;
@@ -57,11 +61,13 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
         private readonly JurisdictionAvailability $availability,
         private readonly SellerRules $seller,
         private readonly InvoiceRules $invoices,
+        private readonly VatTreatments $vat,
         private readonly LanguageRules $language,
         private readonly Presentation $presentation,
         private readonly TaxReports $reports,
         private readonly Dashboard $dashboard,
         private readonly SetupSteps $setup,
+        private readonly Sectors $sectors,
         private readonly DeviceStatus $devices,
         private readonly Website $website,
     ) {}
@@ -147,6 +153,11 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
         return $this->invoices;
     }
 
+    public function vatTreatments(): VatTreatmentsPort
+    {
+        return $this->vat;
+    }
+
     public function languageRules(): LanguageRulesPort
     {
         return $this->language;
@@ -170,6 +181,11 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
     public function setup(): SetupStepsPort
     {
         return $this->setup;
+    }
+
+    public function sectors(): SectorsPort
+    {
+        return $this->sectors;
     }
 
     public function devices(): Devices

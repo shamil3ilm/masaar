@@ -97,14 +97,18 @@
                 @endforeach
             </x-ui.select>
         </x-ui.field>
+
+        @include('portal.invoices.partials.vat-treatment')
     </div>
 
+    {{-- The line's VAT and total as the draft will have them, filled in by
+         resources/js/invoice-preview.js. --}}
+    <p data-line-vat class="mt-3 text-sm text-muted" aria-live="polite"></p>
+
     {{-- What a line carries without the form offering it: a credit note
-         started from an invoice brings each line's VAT category, exemption
-         and classification with it. Without these a zero-rated or exempt
-         line came back as standard-rated at 0%. Blank on a new row, and a
-         blank is treated as absent. --}}
-    @foreach (['tax_category', 'exempt_code', 'exempt_reason', 'class_code'] as $carried)
+         started from an invoice brings each line's classification with it.
+         Blank on a new row, and a blank is treated as absent. --}}
+    @foreach (['class_code'] as $carried)
         <input type="hidden" name="lines[{{ $index }}][{{ $carried }}]" value="{{ $row[$carried] ?? '' }}">
     @endforeach
     {{-- And its own charges, which the form does not edit line by line. --}}

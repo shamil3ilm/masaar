@@ -17,3 +17,15 @@
             <x-ui.field :label="__('Identifier number')">
                 <x-ui.input type="text" name="buyer_id" maxlength="50" dir="ltr" value="{{ old('buyer_id', $customer->buyer_id) }}" />
             </x-ui.field>
+            {{-- A citizen's private healthcare or education is zero-rated
+                 (VATEX-SA-HEA, VATEX-SA-EDU), named by national ID
+                 (BR-KSA-49): an invoice for this customer starts its lines
+                 in it, unless a product says otherwise. --}}
+            <x-ui.field :label="__('Citizen zero rating')" :hint="__('For a Saudi citizen receiving private healthcare or education. Needs the national ID above.')">
+                <x-ui.select name="exempt_code">
+                    <option value="">{{ __('None') }}</option>
+                    @foreach (\App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig::NAMED_BUYER_EXEMPTIONS as $code)
+                        <option value="{{ $code }}" @selected((string) old('exempt_code', $customer->exempt_code) === $code)>{{ $code }} · {{ app()->getLocale() === 'ar' ? \App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig::EXEMPTION_REASONS_AR[$code] : \App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig::EXEMPTION_REASONS_EN[$code] }}</option>
+                    @endforeach
+                </x-ui.select>
+            </x-ui.field>

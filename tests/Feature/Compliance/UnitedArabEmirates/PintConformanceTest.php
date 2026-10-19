@@ -101,6 +101,51 @@ class PintConformanceTest extends TestCase
     }
 
     /**
+     * A mixed basket through the API: standard-rated, zero-rated, exempt
+     * under two reasons from Aligned-TaxExemptionCodes (IBR-167-AE) and out
+     * of scope, under one document discount - a breakdown per category, one
+     * exempt breakdown for both reasons (ALIGNED-IBRP-E-01), each line its
+     * own reason.
+     */
+    public function test_mixed_categories_pass_official_rules(): void
+    {
+        [$artefacts, $jar] = $this->requireArtefacts();
+        config(['peppol.countries.AE.enabled' => true]);
+        Queue::fake();
+
+        $organization = $this->uaeOrganization();
+        $user = User::factory()->create();
+        $user->organizations()->attach($organization->id, ['role' => 'admin', 'status' => 'active']);
+        $api = $this->withToken(JWTAuth::claims(['org_id' => $organization->id, 'role' => 'admin'])->fromUser($user));
+
+        $id = $api->postJson('/api/compliance/ae/invoices', [
+            'issue_date' => '2026-10-10',
+            'due_date' => '2026-11-09',
+            'payment_means_code' => '30',
+            'discount_amount' => '40.00',
+            'buyer_name' => 'Noor Electronics LLC',
+            'buyer_vat_number' => '100765432100003',
+            'buyer_address' => ['street' => 'Khalifa Street', 'city' => 'Abu Dhabi'],
+            'buyer_endpoint' => '0235:1007654321',
+            'buyer_subdivision' => 'AUH',
+            'lines' => [
+                ['item_name' => 'Maintenance', 'quantity' => 2, 'unit_code' => 'DAY', 'unit_price' => '750.00', 'tax_category' => 'S', 'tax_rate' => 5],
+                ['item_name' => 'Medicine', 'quantity' => 4, 'unit_code' => 'H87', 'unit_price' => '87.35', 'tax_category' => 'Z'],
+                ['item_name' => 'Staff housing, October', 'quantity' => 1, 'unit_code' => 'MON', 'unit_price' => '4200.00', 'tax_category' => 'E', 'exempt_code' => 'DL8.46.2', 'exempt_reason' => 'Supply of residential units (lease or sale)'],
+                ['item_name' => 'Staff bus', 'quantity' => 1, 'unit_code' => 'MON', 'unit_price' => '900.00', 'tax_category' => 'E', 'exempt_code' => 'DL8.46.4', 'exempt_reason' => 'Local passenger transport'],
+                ['item_name' => 'Visa fees paid on your behalf', 'quantity' => 1, 'unit_code' => 'C62', 'unit_price' => '320.00', 'tax_category' => 'O'],
+            ],
+        ])->assertCreated()->json('data.invoice.id');
+        $documentId = $api->postJson("/api/compliance/ae/invoices/{$id}/send")->assertOk()->json('data.document_id');
+
+        $xml = PeppolDocument::query()->findOrFail($documentId)->xml;
+        $failures = $this->validate($xml, $artefacts, $jar);
+
+        $this->assertSame(4, substr_count($xml, '<cac:TaxSubtotal>'));
+        $this->assertSame([], $failures, "PINT AE refused the mixed invoice:\n".implode("\n", $failures)."\n\n".$xml);
+    }
+
+    /**
      * Each payment means of PINT AE's list of codes used in the UAE
      * (UNCL4461.gc), drafted through the API: the codes the API takes are
      * codes the official rules pass (IBR-CL-16, IBR-192-AE for a transfer).

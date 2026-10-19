@@ -35,7 +35,7 @@ use Illuminate\Validation\Validator;
 class InvoiceRules implements InvoiceRulesPort
 {
     /** The standard VAT rate, a line's when it states none. */
-    private const STANDARD_RATE = '15';
+    public const STANDARD_RATE = '15';
 
     /**
      * BT-46-1, the registers a buyer identifier can come from.
@@ -92,8 +92,21 @@ class InvoiceRules implements InvoiceRulesPort
             'payment_means_code' => $request->input('payment_means_code') ?? '10',
         ];
 
+        // A saved customer eligible for a citizen's zero rating: its lines
+        // start in it, and it is named by the national ID it keeps
+        // (BR-KSA-49), unless the invoice says otherwise.
+        $citizen = is_string($request->input('customer_id')) && $this->organizationId() !== null
+            ? $this->catalogue->customerWithExemption($this->organizationId(), $request->input('customer_id'))
+            : null;
+
+        if ($citizen !== null && blank($request->input('buyer_id'))) {
+            $defaults['buyer_id'] = $citizen->buyer_id;
+            $defaults['buyer_id_scheme'] = $citizen->buyer_id_scheme;
+        }
+
         if ($request->has('lines')) {
-            $defaults['lines'] = collect($request->input('lines'))->map(function ($line) {
+            $defaults['lines'] = collect($request->input('lines'))->map(function ($line) use ($citizen) {
+                $line = is_array($line) ? $this->catalogueTreatment($line, $citizen?->exempt_code) : $line;
                 $exemptionCode = $line['exempt_code'] ?? null;
 
                 $category = $line['tax_category']
@@ -104,6 +117,15 @@ class InvoiceRules implements InvoiceRulesPort
                     'tax_category' => $category,
                     'tax_rate' => $category === FatooraConfig::TAX_CATEGORY_STANDARD ? (int) self::STANDARD_RATE : 0,
                 ], $line));
+
+                // A code with an official text states it as the reason
+                // (BT-120) when the caller gives none: the authority's own
+                // words, which the printed copy puts beside its Arabic.
+                $official = is_string($exemptionCode) ? (FatooraConfig::EXEMPTION_REASONS_EN[$exemptionCode] ?? null) : null;
+
+                if ($official !== null && blank($line['exempt_reason'] ?? null)) {
+                    $line['exempt_reason'] = $official;
+                }
 
                 if (is_array($line['charges'] ?? null)) {
                     $line['charges'] = array_map(fn ($charge) => is_array($charge) ? self::chargeArabic($charge) : $charge, $line['charges']);
@@ -204,6 +226,35 @@ class InvoiceRules implements InvoiceRulesPort
         );
 
         return $arabic === null ? $line : [...$line, 'description_ar' => $arabic];
+    }
+
+    /**
+     * A line that says nothing of its VAT - no category, no reason, no
+     * rate - starts in its saved product's treatment, or failing one, the
+     * zero rating its customer is eligible for. A product that names its
+     * treatment keeps it for every buyer: a citizen's sunscreen is still
+     * standard-rated. A line that says anything keeps what it says.
+     *
+     * @param  array<string, mixed>  $line
+     * @return array<string, mixed>
+     */
+    private function catalogueTreatment(array $line, ?string $customerCode): array
+    {
+        if (filled($line['tax_category'] ?? null) || filled($line['exempt_code'] ?? null) || filled($line['tax_rate'] ?? null) || $this->organizationId() === null) {
+            return $line;
+        }
+
+        $product = $this->catalogue->productNamed(
+            $this->organizationId(),
+            is_string($line['product_id'] ?? null) ? $line['product_id'] : null,
+            is_string($line['product_code'] ?? null) ? $line['product_code'] : null,
+        );
+
+        return match (true) {
+            filled($product?->tax_category) => [...$line, 'tax_category' => $product->tax_category, 'exempt_code' => $product->exempt_code, 'tax_rate' => (string) $product->tax_rate],
+            $customerCode !== null => [...$line, 'exempt_code' => $customerCode],
+            default => $line,
+        };
     }
 
     private function organizationId(): ?string
@@ -468,24 +519,107 @@ class InvoiceRules implements InvoiceRulesPort
      */
     public function after(Validator $validator, Request $request): void
     {
-        foreach ($request->input('lines', []) as $index => $line) {
-            $category = $line['tax_category'] ?? null;
-            $exemptionCode = $line['exempt_code'] ?? null;
-
-            if (in_array($category, ['Z', 'E', 'O'], true) && empty($exemptionCode)) {
-                $validator->errors()->add(
-                    "lines.{$index}.exempt_code",
-                    __('Exemption code is required for line :line with tax category :category.', ['line' => $index + 1, 'category' => $category])
-                );
-            }
-        }
-
+        $this->lineTreatments($validator, $request);
+        $this->citizenBuyer($validator, $request);
         $this->refuseDiscountBeyondLines($validator, $request);
         $this->transactionFlags($validator, $request);
         ChargeRules::after($validator, $request);
         $this->chargeCategories($validator, $request);
         $this->prepayments($validator, $request);
         $this->arabicText($validator, $request);
+    }
+
+    /**
+     * Each line's VAT treatment as ZATCA reads it, from its SDK's
+     * Schematrons (CEN-EN16931-UBL.xsl and 20210819_ZATCA_E-invoice_
+     * Validation_Rules.xsl):
+     *
+     *   BR-KSA-CL-04  a zero-rated or exempt line names its reason, from that
+     *                 category's codes; BR-KSA-24 an out-of-scope one too.
+     *   BR-S-05       a standard-rated line has a rate above zero, and
+     *   BR-Z-05,      a zero-rated or exempt line a rate of zero; an
+     *   BR-E-05       out-of-scope one charges nothing either (BR-O-09).
+     *
+     * A mixed basket - zero-rated medicines and standard-rated cosmetics on
+     * one pharmacy receipt - is two categories, and every rule holds. Two
+     * reasons in one category are accepted too, as ZATCA's validator accepts
+     * an export with its freight (ScenarioConformanceTest): each line states
+     * its own. A line whose category is not yet known is left to the drafter.
+     */
+    private function lineTreatments(Validator $validator, Request $request): void
+    {
+        $errors = $validator->errors();
+
+        foreach ((array) $request->input('lines', []) as $index => $line) {
+            if (! is_array($line) || blank($line['tax_category'] ?? null) || $errors->has("lines.{$index}.tax_category") || $errors->has("lines.{$index}.exempt_code")) {
+                continue;
+            }
+
+            $category = (string) $line['tax_category'];
+            $code = $line['exempt_code'] ?? null;
+            $standard = $category === FatooraConfig::TAX_CATEGORY_STANDARD;
+
+            if (! $standard && blank($code)) {
+                $errors->add("lines.{$index}.exempt_code", __('Exemption code is required for line :line with tax category :category.', ['line' => $index + 1, 'category' => $category]));
+
+                continue;
+            }
+
+            if (filled($code) && (FatooraConfig::CODE_CATEGORIES[$code] ?? null) !== $category) {
+                $errors->add("lines.{$index}.exempt_code", __('Line :line: :code is a reason for tax category :expected, not :category (BR-KSA-CL-04).', [
+                    'line' => $index + 1, 'code' => $code, 'expected' => FatooraConfig::CODE_CATEGORIES[$code] ?? '-', 'category' => $category,
+                ]));
+
+                continue;
+            }
+
+            $this->lineRate($validator, $index, $line, $standard);
+        }
+    }
+
+    /**
+     * BR-S-05, BR-Z-05 and BR-E-05, and nothing charged out of scope.
+     *
+     * @param  array<string, mixed>  $line
+     */
+    private function lineRate(Validator $validator, int|string $index, array $line, bool $standard): void
+    {
+        $rate = $line['tax_rate'] ?? null;
+
+        if (! is_numeric($rate) || $validator->errors()->has("lines.{$index}.tax_rate")) {
+            return;
+        }
+
+        if ($standard !== (bccomp((string) $rate, '0', 2) > 0)) {
+            $validator->errors()->add("lines.{$index}.tax_rate", $standard
+                ? __('Line :line: a standard-rated line has a rate above zero (BR-S-05).', ['line' => $index + 1])
+                : __('Line :line: a line that is zero-rated, exempt or out of scope has a rate of zero (BR-Z-05, BR-E-05).', ['line' => $index + 1]));
+        }
+    }
+
+    /**
+     * BR-KSA-49: a line zero-rated as private healthcare or private
+     * education to a citizen (VATEX-SA-HEA, VATEX-SA-EDU) names the buyer by
+     * national ID - the other buyer ID (BT-46) with scheme NAT (BT-46-1).
+     * The rate depends on who the buyer is, so the invoice says who.
+     */
+    private function citizenBuyer(Validator $validator, Request $request): void
+    {
+        $code = collect((array) $request->input('lines', []))
+            ->map(fn ($line) => is_array($line) ? ($line['exempt_code'] ?? null) : null)
+            ->first(fn ($code): bool => in_array($code, FatooraConfig::NAMED_BUYER_EXEMPTIONS, true));
+
+        if ($code === null) {
+            return;
+        }
+
+        if ($request->input('buyer_id_scheme') !== FatooraConfig::CITIZEN_BUYER_SCHEME) {
+            $validator->errors()->add('buyer_id_scheme', __(':code is zero-rated only for a citizen: identify the buyer by national ID (BR-KSA-49).', ['code' => $code]));
+        }
+
+        if (! $request->filled('buyer_id')) {
+            $validator->errors()->add('buyer_id', __(':code needs the buyer national ID number (BR-KSA-49).', ['code' => $code]));
+        }
     }
 
     /**
@@ -635,18 +769,29 @@ class InvoiceRules implements InvoiceRulesPort
     public function buyerRules(Request $request): array
     {
         $saudi = strtoupper((string) $request->input('country_code', 'SA')) === 'SA';
+        $citizen = $request->filled('exempt_code');
 
         return [
             'postal_code' => $saudi ? ['nullable', 'digits:5'] : ['nullable', 'string', 'max:10'],
-            'buyer_id' => ['nullable', 'string', 'max:50', 'regex:/^[A-Za-z0-9]+$/', 'required_with:buyer_id_scheme'],
-            'buyer_id_scheme' => ['nullable', Rule::in(self::VALID_BUYER_ID_SCHEMES), 'required_with:buyer_id'],
+            'buyer_id' => ['nullable', 'string', 'max:50', 'regex:/^[A-Za-z0-9]+$/', 'required_with:buyer_id_scheme',
+                // A citizen's national ID: ten digits, the first a 1 (an
+                // Iqama, a resident's, starts with 2).
+                ...($citizen ? ['required', 'regex:/^1\d{9}$/'] : [])],
+            'buyer_id_scheme' => ['nullable', Rule::in(self::VALID_BUYER_ID_SCHEMES), 'required_with:buyer_id',
+                ...($citizen ? [Rule::in([FatooraConfig::CITIZEN_BUYER_SCHEME])] : [])],
+            // The zero rating the customer is eligible for as a citizen
+            // (VATEX-SA-HEA, VATEX-SA-EDU), which BR-KSA-49 ties to the
+            // national ID above.
+            'exempt_code' => ['nullable', Rule::in(FatooraConfig::NAMED_BUYER_EXEMPTIONS)],
         ];
     }
 
     public function buyerMessages(): array
     {
         return [
-            'buyer_id.regex' => __('The identifier is letters and digits only, with no spaces.'),
+            'buyer_id.regex' => __('The identifier is letters and digits only, with no spaces. A citizen\'s national ID is ten digits starting with 1.'),
+            'buyer_id.required' => __('A citizen\'s zero rating needs the national ID number (BR-KSA-49).'),
+            'buyer_id_scheme.in' => __('A citizen\'s zero rating identifies the buyer by national ID (BR-KSA-49).'),
         ];
     }
 

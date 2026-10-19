@@ -5,16 +5,19 @@ declare(strict_types=1);
 namespace App\Domains\Organization\Http\Controllers;
 
 use App\Domains\Compliance\Engine\Contracts\SellerRules;
+use App\Domains\Organization\DTOs\BusinessType;
 use App\Domains\Organization\DTOs\OrganizationChangesData;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Rules\CompanyProfileRules;
+use App\Domains\Organization\Services\BusinessTypes;
 use App\Domains\Organization\Services\Registrar;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
@@ -35,6 +38,7 @@ class PortalCompanyController extends Controller
     public function __construct(
         private readonly TenantResolver $tenant,
         private readonly Registrar $registrar,
+        private readonly BusinessTypes $businessTypes,
     ) {}
 
     public function edit(Request $request): View
@@ -46,6 +50,7 @@ class PortalCompanyController extends Controller
             'organization' => $organization,
             'form' => $seller->companyView(),
             'formData' => $seller->companyData($organization),
+            'businessTypes' => $this->offeredTypes($organization),
         ]);
     }
 
@@ -107,6 +112,29 @@ class PortalCompanyController extends Controller
         ));
 
         return redirect()->route('portal.company.edit')->with('success', __('Pricing saved. New invoices follow it unless they say otherwise.'));
+    }
+
+    /**
+     * What the business mostly is, from the types its country serves: the
+     * defaults it suggests, and nothing it refuses.
+     */
+    public function businessType(Request $request): RedirectResponse
+    {
+        $organization = $this->organization($request);
+        $offered = array_map(fn ($type): string => $type->key, $this->offeredTypes($organization));
+        $validated = $request->validate(['business_type' => ['nullable', 'string', Rule::in($offered)]]);
+
+        $this->businessTypes->choose($organization, $validated['business_type'] ?? null, (string) $request->user()->id);
+
+        return redirect()->route('portal.company.edit')->with('success', __('Business type saved. New invoices start with its defaults; you can still change any of them.'));
+    }
+
+    /**
+     * @return list<BusinessType>
+     */
+    private function offeredTypes(Organization $organization): array
+    {
+        return $this->businessTypes->offered(CompanyProfileRules::jurisdiction($organization->country), $organization->business_type, (string) $organization->id);
     }
 
     private function seller(Organization $organization): SellerRules

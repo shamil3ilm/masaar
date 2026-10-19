@@ -148,6 +148,40 @@ class UaeInvoiceFormTest extends TestCase
         $this->submit($this->form())->assertSessionHas('success');
     }
 
+    /**
+     * Standard, zero-rated and exempt lines on one invoice: the form's
+     * preview states the VAT by category the draft is saved with, from PINT
+     * AE's own code lists.
+     */
+    public function test_mixed_categories_preview_and_draft(): void
+    {
+        $lines = [
+            $this->formLine(),
+            $this->formLine(['item_name' => 'Parts shipped abroad', 'quantity' => '1', 'unit_price' => '300', 'tax_category' => 'Z', 'tax_rate' => '0']),
+            $this->formLine(['item_name' => 'Flat rent', 'quantity' => '1', 'unit_price' => '200', 'tax_category' => 'E', 'tax_rate' => '', 'exempt_code' => 'DL8.46.2']),
+        ];
+
+        $this->asRequest(fn () => $this->actingAs($this->admin)->withSession(['portal_org_id' => $this->gulf->id])
+            ->get('/portal/invoices/create')
+            ->assertSee('DL8.46.2 · Supply of residential units (lease or sale)'));
+
+        $preview = $this->asRequest(fn () => $this->actingAs($this->admin)
+            ->withSession(['portal_org_id' => $this->gulf->id, '_token' => self::TOKEN])
+            ->postJson('/portal/invoices/preview', ['_token' => self::TOKEN, 'lines' => $lines]))
+            ->assertOk()->json();
+
+        $this->assertSame([['S', '1000.00', '50.00'], ['Z', '300.00', '0.00'], ['E', '200.00', '0.00']], array_map(
+            fn (array $category): array => [$category['code'], $category['base'], $category['tax']],
+            $preview['categories'],
+        ));
+        $this->assertSame(['DL8.46.2'], $preview['categories'][2]['reasons']);
+
+        $this->submit($this->form(['lines' => $lines]))->assertSessionHasNoErrors();
+        $invoice = $this->drafted();
+        $this->assertSame(['1500.00', '50.00', '1550.00'], [$invoice->subtotal, $invoice->tax_amount, $invoice->total]);
+        $this->assertSame([$preview['subtotal'], $preview['tax'], $preview['total']], [$invoice->subtotal, $invoice->tax_amount, $invoice->total]);
+    }
+
     private function drafted(): Invoice
     {
         return Invoice::withoutTenantScope(fn () => Invoice::query()->where('org_id', $this->gulf->id)->latest()->firstOrFail());

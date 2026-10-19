@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Domains\Auth\Http\Requests;
 
 use App\Domains\Organization\Rules\CompanyProfileRules;
+use App\Domains\Organization\Services\BusinessTypes;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Arr;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
 /**
@@ -31,7 +33,7 @@ class SignupRequest extends FormRequest
     /**
      * @return array<string, mixed>
      */
-    public function rules(): array
+    public function rules(BusinessTypes $businessTypes): array
     {
         $country = $this->companyCountry();
         $company = CompanyProfileRules::rules($country, complete: true);
@@ -50,6 +52,10 @@ class SignupRequest extends FormRequest
             'company_name' => $company['name'],
             'company_name_ar' => $company['name_ar'],
             ...Arr::only($company, $fields),
+
+            // What the business mostly is, from the types its country
+            // serves: defaults only, so it may be left out.
+            'business_type' => ['nullable', 'string', Rule::in($businessTypes->offeredKeys(CompanyProfileRules::jurisdiction($country)))],
 
             'terms' => ['accepted'],
         ];
