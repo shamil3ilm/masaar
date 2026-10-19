@@ -30,12 +30,13 @@ final class PublicSite
     public const PARENT_BRAND_URL = 'https://justletmeknow.app';
 
     /**
-     * The sample QR code's width on the page, in CSS pixels: big enough for
-     * a phone to read from a screen, small enough for the invoice card.
+     * The website QR code's width on the invoice card, in CSS pixels, near
+     * enough: small beside the invoice, still big enough for a phone to read
+     * from a screen.
      */
-    public const SAMPLE_QR_SIZE = 108;
+    public const SITE_QR_SIZE = 72;
 
-    private const SAMPLE_QR_CACHE = 'public-site.sample-qr:';
+    private const SITE_QR_CACHE = 'public-site.site-qr:';
 
     public function __construct(
         private readonly Settings $settings,
@@ -75,10 +76,7 @@ final class PublicSite
         return array_values(array_unique($standards));
     }
 
-    /**
-     * The invoice the home page draws. Made up, and labelled a sample: the
-     * card and its QR code are drawn from these same figures, so they agree.
-     */
+    /** The invoice the home page draws. Made up, and labelled a sample. */
     public function sampleInvoice(): SampleInvoice
     {
         return new SampleInvoice(
@@ -92,34 +90,26 @@ final class PublicSite
     }
 
     /**
-     * The sample invoice's QR code, as the leading country that prints one
-     * encodes it, drawn as SVG; null when no country here prints a QR code.
+     * The QR code on the home page's invoice card: the website's own
+     * address, with the Masaar mark in its middle, drawn as SVG. The same on
+     * every country's page, so it is the website's, not a country's.
      *
-     * The drawing is cached for good under its payload: the same figures
-     * always give the same code, and new figures give a new key.
+     * Outside local development url('/') is APP_URL, so the code always
+     * opens the public home page. The drawing is cached for good under that
+     * address and its size; a new address gives a new key.
      *
-     * @return array{svg: string, payload: string, taxNumber: string}|null
+     * @return array{svg: string, url: string}
      */
-    public function sampleQr(): ?array
+    public function siteQr(): array
     {
-        $sample = $this->sampleInvoice();
+        $url = url('/');
 
-        foreach ($this->countries() as $country) {
-            $qr = $country->website()->sampleQr($sample);
+        $svg = Cache::rememberForever(
+            self::SITE_QR_CACHE.hash('sha256', self::SITE_QR_SIZE.'|'.$url),
+            fn (): string => $this->qr->markedSvg($url, self::SITE_QR_SIZE),
+        );
 
-            if ($qr === null) {
-                continue;
-            }
-
-            $svg = Cache::rememberForever(
-                self::SAMPLE_QR_CACHE.hash('sha256', self::SAMPLE_QR_SIZE.'|'.$qr->encoding.'|'.$qr->payload),
-                fn (): string => $this->qr->gridSvg($qr->payload, self::SAMPLE_QR_SIZE, $qr->encoding),
-            );
-
-            return ['svg' => $svg, 'payload' => $qr->payload, 'taxNumber' => $qr->taxNumber];
-        }
-
-        return null;
+        return ['svg' => $svg, 'url' => $url];
     }
 
     /**

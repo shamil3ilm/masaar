@@ -6,14 +6,13 @@
     reader. Its numbers are set in tabular figures and read left to right in
     either language, as a printed invoice's do.
 
-    Its QR code is a real one a phone can read, encoded as the leading country
-    that prints one encodes it, from the card's own figures (PublicSite), and
-    labelled a sample beside it. Where no country here prints a QR code, the
-    card has none.
+    The QR code in its corner is not the invoice's: it opens this website
+    (PublicSite::siteQr), small, with the Masaar mark in it and a caption in
+    both languages, so the invoice stays what the eye lands on.
 --}}
 @php
     $sample = $publicSite->sampleInvoice();
-    $sampleQr = $publicSite->sampleQr();
+    $siteQr = $publicSite->siteQr();
 @endphp
 <section class="mx-auto max-w-page overflow-x-clip px-4 pb-16 pt-12 sm:px-6 sm:pb-24 sm:pt-20" aria-labelledby="hero-title">
     <div class="grid items-center gap-14 lg:grid-cols-[1.15fr_1fr]">
@@ -70,9 +69,6 @@
 
                 <div class="mt-5 text-sm" dir="ltr">
                     <p class="font-semibold">{{ $sample->sellerName }}</p>
-                    @if ($sampleQr)
-                        <p class="font-mono text-xs tabular-nums text-ink-700">{{ $sampleQr['taxNumber'] }}</p>
-                    @endif
                     <p class="mt-2 flex flex-wrap justify-between gap-x-4 font-mono font-medium tabular-nums">
                         <span>{{ $sample->number }}</span>
                         <x-ui.date :value="$sample->issuedAt" class="text-ink-700" />
@@ -87,18 +83,18 @@
                     <div class="flex justify-between gap-4 border-t border-ink-900/10 pt-2.5 font-semibold"><dt>Total</dt><dd class="font-mono"><x-ui.amount :value="$sample->total" /></dd></div>
                 </dl>
 
-                <div class="mt-5 flex items-center gap-4">
-                    @if ($sampleQr)
-                        {{-- Drawn with its quiet zone on white, so it reads on
-                             the paper in either theme, and turned back
-                             square to the screen so its modules land on whole
-                             pixels rather than the card's tilt. --}}
-                        <div class="shrink-0 rotate-2 text-center">
-                            <div class="leading-none" data-sample-qr>{!! $sampleQr['svg'] !!}</div>
-                            <p class="mt-1 text-xs font-semibold uppercase tracking-wider text-ink-700">{{ __('Sample') }}</p>
-                        </div>
-                    @endif
-                    <p class="text-xs leading-relaxed text-ink-700">{{ __('Checked, filed with the authority and kept - every one, in order.') }}</p>
+                <p class="mt-5 text-xs leading-relaxed text-ink-700">{{ __('Checked, filed with the authority and kept - every one, in order.') }}</p>
+
+                <div class="mt-3 flex items-end justify-between gap-4">
+                    <p class="text-xs font-semibold uppercase tracking-wider text-ink-700">{{ __('Sample') }}</p>
+                    <div class="flex shrink-0 items-center gap-2.5">
+                        <p class="text-end text-xs leading-snug text-ink-700">Scan to visit Masaar<br><span lang="ar" dir="rtl">امسح لزيارة مسار</span></p>
+                        {{-- Drawn on its own paper tile, so it reads in either
+                             theme, and turned back square to the screen so
+                             its modules land on whole pixels rather than the
+                             card's tilt. --}}
+                        <div class="shrink-0 rotate-2 leading-none" data-site-qr>{!! $siteQr['svg'] !!}</div>
+                    </div>
                 </div>
             </figure>
         </div>

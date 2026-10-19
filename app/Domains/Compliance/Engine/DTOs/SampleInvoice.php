@@ -8,7 +8,7 @@ use Carbon\CarbonImmutable;
 
 /**
  * The invoice the home page draws: made up, and labelled a sample wherever
- * it is shown. One set of figures, so the picture and its QR code agree.
+ * it is shown.
  *
  * Amounts are two-decimal strings, as an invoice prints them.
  */
