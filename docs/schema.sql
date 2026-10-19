@@ -552,6 +552,67 @@ CREATE TABLE `invoice_prepayments` (
     FOREIGN KEY (`prepayment_invoice_id`) REFERENCES `invoices` (`id`)
 );
 
+CREATE TABLE `invoice_schedule_runs` (
+    `id` STRING NOT NULL,
+    `attempts` INTEGER NOT NULL DEFAULT 0,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `error` STRING NULL,
+    `invoice_id` STRING NULL,
+    `next_attempt_at` TIMESTAMP NULL,
+    `period` INTEGER NOT NULL,
+    `period_end` DATE NOT NULL,
+    `period_start` DATE NOT NULL,
+    `schedule_id` STRING NOT NULL,
+    `status` STRING NOT NULL DEFAULT 'pending',
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `invoice_schedule_runs_period_unique` (`schedule_id`, `period`),
+    INDEX `invoice_schedule_runs_retry_index` (`status`, `next_attempt_at`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`schedule_id`) REFERENCES `invoice_schedules` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `invoice_schedules` (
+    `id` STRING NOT NULL,
+    `auto_issue` BOOLEAN NOT NULL DEFAULT 0,
+    `branch_id` STRING NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `created_via` STRING NULL,
+    `customer_id` STRING NULL,
+    `due_days` INTEGER NULL,
+    `end_date` DATE NULL,
+    `frequency` STRING NOT NULL,
+    `last_error` STRING NULL,
+    `license_id` STRING NULL,
+    `name` STRING NOT NULL,
+    `next_period` INTEGER NULL,
+    `next_run_on` DATE NULL,
+    `occurrences` INTEGER NULL,
+    `org_id` STRING NOT NULL,
+    `source_invoice_id` STRING NULL,
+    `start_date` DATE NOT NULL,
+    `status` STRING NOT NULL DEFAULT 'active',
+    `template` TEXT NOT NULL,
+    `terms` TEXT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `invoice_schedules_due_index` (`status`, `next_run_on`),
+    INDEX `invoice_schedules_org_status_index` (`org_id`, `status`),
+    FOREIGN KEY (`branch_id`) REFERENCES `branches` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`license_id`) REFERENCES `licenses` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`source_invoice_id`) REFERENCES `invoices` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
 CREATE TABLE `invoice_sequences` (
     `id` STRING NOT NULL,
     `branch_id` STRING NULL,

@@ -2493,5 +2493,19 @@
     "Print tax invoice for the buyer": "طباعة الفاتورة الضريبية للمشتري",
     "Print a copy": "طباعة نسخة",
     "Issue the invoice first. A draft is not a tax invoice.": "أصدر الفاتورة أولاً. المسودة ليست فاتورة ضريبية.",
-    "The e-invoice was rejected, so it is not a valid tax invoice. Correct it and issue a new one.": "رُفضت الفاتورة الإلكترونية، فهي ليست فاتورة ضريبية صالحة. صحّحها وأصدر فاتورة جديدة."
+    "The e-invoice was rejected, so it is not a valid tax invoice. Correct it and issue a new one.": "رُفضت الفاتورة الإلكترونية، فهي ليست فاتورة ضريبية صالحة. صحّحها وأصدر فاتورة جديدة.",
+    "Weekly": "أسبوعي",
+    "Monthly": "شهري",
+    "Quarterly": "ربع سنوي",
+    "Termly": "فصلي",
+    "Yearly": "سنوي",
+    "The schedule ends before its first period starts.": "ينتهي جدول الفواتير قبل أن تبدأ فترته الأولى.",
+    "Started the schedule :name": "أنشأ جدول الفواتير :name",
+    "There is no branch with this id.": "لا يوجد فرع بهذا المعرّف.",
+    "Give the date the schedule starts.": "حدّد تاريخ بدء جدول الفواتير.",
+    "Give each term's first and last day.": "حدّد اليوم الأول والأخير لكل فصل دراسي.",
+    "A term starts after the one before it ends.": "يبدأ الفصل الدراسي بعد انتهاء الفصل الذي يسبقه.",
+    "Draft created": "أُنشئت مسودة",
+    "Paused": "متوقف مؤقتاً",
+    "Skipped": "تم التخطي"
 }

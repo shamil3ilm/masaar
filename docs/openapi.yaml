@@ -3206,6 +3206,114 @@ paths:
                 $ref: '#/components/schemas/Error'
       security:
         - bearerAuth: []
+  /api/schedules:
+    get:
+      tags:
+        - Invoice
+      operationId: scheduleController.index
+      summary: 'Index — Schedule Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Paginated'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - bearerAuth: []
+    post:
+      tags:
+        - Invoice
+      operationId: scheduleController.store
+      summary: 'Store — Schedule Controller'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                frequency:
+                  type: string
+                start_date:
+                  type: string
+                end_date:
+                  type: string
+                occurrences:
+                  type: integer
+                terms:
+                  type: array
+                  items: { type: object, properties: { start_date: { type: string }, end_date: { type: string } } }
+                auto_issue:
+                  type: boolean
+                due_days:
+                  type: integer
+                branch_id:
+                  type: string
+                customer_id:
+                  type: string
+                invoice:
+                  type: array
+              required:
+                - name
+                - frequency
+                - invoice
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - bearerAuth: []
+  '/api/schedules/{schedule}':
+    get:
+      tags:
+        - Invoice
+      operationId: scheduleController.show
+      summary: 'Show — Schedule Controller'
+      parameters:
+        - name: schedule
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - bearerAuth: []
   /api/settings/numbering:
     get:
       tags:

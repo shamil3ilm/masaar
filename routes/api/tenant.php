@@ -13,6 +13,7 @@ use App\Domains\Invoice\Http\Controllers\CatalogueController;
 use App\Domains\Invoice\Http\Controllers\InvoiceController;
 use App\Domains\Invoice\Http\Controllers\InvoiceReceiptController;
 use App\Domains\Invoice\Http\Controllers\NumberingController;
+use App\Domains\Invoice\Http\Controllers\ScheduleController;
 use App\Domains\Organization\Http\Controllers\BranchController;
 use App\Domains\Organization\Http\Controllers\ComplianceProfileController;
 use App\Domains\Organization\Http\Controllers\OrganizationController;
@@ -58,6 +59,13 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
     Route::apiResource('invoices', InvoiceController::class)->only(['store', 'update'])->middleware('org.writer');
     Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy'])
         ->middleware('org.admin');
+
+    /* Schedules ---------------------------------------------------------- */
+    // An invoice to one buyer made again each period: a school's terms, a
+    // subscription, a monthly service, an instalment plan.
+    Route::get('/schedules', [ScheduleController::class, 'index']);
+    Route::get('/schedules/{schedule}', [ScheduleController::class, 'show'])->whereUuid('schedule');
+    Route::post('/schedules', [ScheduleController::class, 'store'])->middleware('org.writer');
 
     /* Customers and products ------------------------------------------- */
     // One an invoice used can only be archived: removing it answers 409

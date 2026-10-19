@@ -36,7 +36,7 @@ class ActivityLog
      * @var array<string, list<string>>
      */
     private const KINDS = [
-        'invoices' => ['Invoice.%', 'invoice.%', '%.submission.%'],
+        'invoices' => ['Invoice.%', 'invoice.%', '%.submission.%', 'schedule.%'],
         'settings' => ['Organization.%', 'Branch.%', '%.late_reporting.%'],
         'people' => ['security.member.%'],
         'security' => ['security.login.%', 'security.logout', 'security.mfa.%', 'security.password.%', 'security.account.%'],
@@ -114,6 +114,7 @@ class ActivityLog
                 $action === 'Invoice.created' => $number === '' ? __('Started a draft invoice') : __('Started draft :number', ['number' => $number]),
                 $action === 'Invoice.updated' => __('Changed a draft invoice'),
                 $action === 'Invoice.deleted' => __('Deleted a draft invoice'),
+                $action === 'schedule.created' => __('Started the schedule :name', ['name' => (string) ($values['name'] ?? '')]),
                 str_ends_with($action, '.submission.success') => __('An invoice was accepted by the authority'),
                 str_ends_with($action, '.submission.failed') => __('An invoice was not accepted by the authority'),
                 str_contains($action, '.late_reporting.') => __('Recorded a notice of late reporting'),

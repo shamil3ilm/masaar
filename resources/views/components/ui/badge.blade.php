@@ -42,18 +42,18 @@
         'rejected', 'revoked', 'cancelled', 'expired' => 'danger',
 
         // No verdict. Worth watching, and usually worth retrying.
-        'failed', 'suspended', 'expiring_soon' => 'warning',
+        'failed', 'suspended', 'expiring_soon', 'paused' => 'warning',
 
         // On its way.
         'queued', 'queued_offline', 'pending', 'pending_submission', 'pending_activation',
-        'processing', 'submitted', 'issued', 'csr_generated' => 'info',
+        'processing', 'submitted', 'issued', 'csr_generated', 'drafted' => 'info',
 
         // Accepted with warnings: the authority has it, and said something.
         'warning' => 'warning',
 
         // Never issued. A Phase 1 organization has no certificate and that is
         // not a fault, so it is not coloured as one.
-        'missing', 'unknown' => 'neutral',
+        'missing', 'unknown', 'skipped' => 'neutral',
 
         default => 'neutral',
     };
@@ -91,6 +91,9 @@
         'submitted' => __('Submitted'),
         'issued' => __('Issued'),
         'draft' => __('Draft'),
+        'drafted' => __('Draft created'),
+        'paused' => __('Paused'),
+        'skipped' => __('Skipped'),
         'in_progress' => __('In progress'),
         'passed' => __('Passed'),
         'warning' => __('Warning'),
