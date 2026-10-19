@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia\Filing;
 
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -90,7 +91,8 @@ class TimestampValidator
 
         $erpTimestamp = $this->parseTimestamp($erpTimestamp);
         $zatcaReceivedAt = $this->parseTimestamp($zatcaReceivedAt);
-        $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+        // The application clock, so a test can stand at any hour of the day.
+        $now = Carbon::now('UTC')->toDateTimeImmutable();
         $warnings = [];
         $errors = [];
         $maxDriftFound = 0;
@@ -190,7 +192,7 @@ class TimestampValidator
      */
     public function saleTimeProblem(\DateTimeInterface $saleTime, ?\DateTimeInterface $now = null): ?string
     {
-        $now ??= new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+        $now ??= Carbon::now('UTC')->toDateTimeImmutable();
         $behind = $now->getTimestamp() - $saleTime->getTimestamp();
         $maxAhead = (int) config('fatoora.sale_time.max_ahead_seconds', self::MAX_DRIFT_SECONDS);
 

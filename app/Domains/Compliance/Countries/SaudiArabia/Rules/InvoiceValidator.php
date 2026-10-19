@@ -9,6 +9,7 @@ use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\InvoiceTotals;
 use App\Domains\Organization\Models\Organization;
+use App\Support\CountryClock;
 use App\Support\Xml;
 
 /**
@@ -458,8 +459,10 @@ class InvoiceValidator
             }
         }
 
-        // Future date warning
-        if ($invoice->issue_date->isFuture()) {
+        // Future date warning. issue_date is the Kingdom's business date held
+        // as midnight UTC, so it is compared as a date on the Kingdom's clock:
+        // as an instant it is "in the future" every night from 21:00 UTC.
+        if ($invoice->issue_date->toDateString() > CountryClock::now('SA')->toDateString()) {
             $warnings[] = 'Invoice date is in the future';
         }
 

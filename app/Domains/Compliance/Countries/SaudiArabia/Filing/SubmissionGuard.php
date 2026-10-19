@@ -143,9 +143,13 @@ class SubmissionGuard
      */
     private function validateInvoiceTimestamp(Invoice $invoice): void
     {
-        $invoiceTimestamp = $invoice->issue_date instanceof \DateTimeInterface
-            ? $invoice->issue_date
-            : new \DateTimeImmutable($invoice->issue_date);
+        // The moment it was issued, not issue_date. issue_date is the business
+        // date on the Kingdom's clock, held as midnight UTC: between 21:00 and
+        // 24:00 UTC the Kingdom is already on the next day, so that midnight
+        // lay up to three hours ahead and every invoice issued then was
+        // refused as "in the future" - found when CI happened to run at
+        // 00:20 Riyadh time. issuedMoment() is the real instant.
+        $invoiceTimestamp = $invoice->issuedMoment()->toDateTimeImmutable();
 
         // The ERP's own timestamp would let this detect clock drift between the
         // calling system and the platform. It is not captured: there is no

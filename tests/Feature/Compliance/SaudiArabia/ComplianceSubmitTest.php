@@ -46,6 +46,8 @@ class ComplianceSubmitTest extends TestCase
 
     private string $token;
 
+    private User $user;
+
     /**
      * What the authority answers.
      *
@@ -90,6 +92,7 @@ class ComplianceSubmitTest extends TestCase
         $user = User::factory()->create();
         $user->organizations()->attach($this->acme->id, ['role' => 'admin', 'status' => 'active']);
 
+        $this->user = $user;
         $this->token = JWTAuth::claims(['org_id' => $this->acme->id, 'role' => 'admin'])->fromUser($user);
 
         Http::fake([
@@ -114,6 +117,27 @@ class ComplianceSubmitTest extends TestCase
         $this->submit($invoice);
 
         $this->assertSame(1, $this->zatcaCalls(), 'the invoice was filed twice');
+    }
+
+    /**
+     * Just after midnight in Riyadh, while UTC is still on the day before.
+     *
+     * The guard read issue_date - the Kingdom's business date, held as
+     * midnight UTC - as the moment of issue. From 21:00 to 24:00 UTC that
+     * midnight is up to three hours ahead, so every invoice issued in those
+     * hours was refused as "in the future". CI found it by running at 00:20
+     * Riyadh time.
+     */
+    public function test_files_just_after_riyadh_midnight(): void
+    {
+        $this->travelTo(now('UTC')->setTime(21, 30));
+        // A token minted before the clock moved would be issued "later" than
+        // now and refused; mint it on the travelled clock.
+        $this->token = JWTAuth::claims(['org_id' => $this->acme->id, 'role' => 'admin'])->fromUser($this->user);
+
+        $invoice = $this->issued('ACME-NIGHT');
+
+        $this->submit($invoice)->assertOk();
     }
 
     /**
