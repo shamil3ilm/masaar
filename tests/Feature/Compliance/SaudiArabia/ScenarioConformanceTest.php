@@ -368,6 +368,86 @@ class ScenarioConformanceTest extends TestCase
         $this->assertAccepted($xml);
     }
 
+    /**
+     * Sector invoices, each with its exemption reason from §11.2.4, the
+     * official text filled in by the rules: a pharmacy's mixed basket -
+     * zero-rated medicines (VATEX-SA-35) and standard-rated cosmetics under
+     * one discount, prices with VAT in them as at a till - and a citizen's
+     * private healthcare and education (VATEX-SA-HEA, VATEX-SA-EDU), which
+     * name the buyer and identify them by national ID (BR-KSA-25,
+     * BR-KSA-49).
+     *
+     * @return iterable<string, array{array<string, mixed>, list<string>}>
+     */
+    public static function sectors(): iterable
+    {
+        $citizen = ['buyer_name' => 'Fahad Al Harbi', 'buyer_name_ar' => 'فهد الحربي', 'buyer_id' => '1047392816', 'buyer_id_scheme' => 'NAT'];
+
+        yield 'mixed pharmacy basket' => [self::simplified([
+            'prices_include_vat' => true,
+            'discount_amount' => '5.00',
+            'lines' => [
+                ['description' => 'Paracetamol 500mg', 'description_ar' => 'باراسيتامول ٥٠٠ ملغ', 'quantity' => 3, 'unit_price' => '12.75', 'tax_category' => 'Z', 'tax_rate' => 0, 'exempt_code' => 'VATEX-SA-35'],
+                ['description' => 'Insulin pen', 'description_ar' => 'قلم إنسولين', 'quantity' => 1, 'unit_price' => '189.90', 'tax_category' => 'Z', 'tax_rate' => 0, 'exempt_code' => 'VATEX-SA-35'],
+                ['description' => 'Sunscreen SPF50', 'description_ar' => 'واقي شمس', 'quantity' => 2, 'unit_price' => '64.50', 'tax_category' => 'S', 'tax_rate' => 15],
+            ],
+        ]), ['VATEX-SA-35']];
+        yield 'citizen healthcare' => [self::simplified([...$citizen, 'lines' => [
+            ['description' => 'Specialist consultation', 'description_ar' => 'استشارة طبيب مختص', 'quantity' => 1, 'unit_price' => '450.00', 'exempt_code' => 'VATEX-SA-HEA'],
+        ]]), ['VATEX-SA-HEA']];
+        yield 'citizen education' => [self::simplified([...$citizen, 'lines' => [
+            ['description' => 'Tuition, first term', 'description_ar' => 'الرسوم الدراسية للفصل الأول', 'quantity' => 1, 'unit_price' => '12500.00', 'exempt_code' => 'VATEX-SA-EDU'],
+            ['description' => 'School uniform', 'description_ar' => 'الزي المدرسي', 'quantity' => 2, 'unit_price' => '150.00'],
+        ]]), ['VATEX-SA-EDU']];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @param  list<string>  $reasons
+     */
+    #[DataProvider('sectors')]
+    public function test_sector_invoices_validate(array $payload, array $reasons): void
+    {
+        $xml = $this->signedFrom($payload);
+
+        foreach ($reasons as $reason) {
+            $this->assertMatchesRegularExpression("#<cbc:TaxExemptionReasonCode[^>]*>{$reason}</cbc:TaxExemptionReasonCode>#", $xml);
+        }
+
+        if (array_intersect($reasons, ['VATEX-SA-HEA', 'VATEX-SA-EDU']) !== []) {
+            $this->assertMatchesRegularExpression('#<cbc:ID[^>]*schemeID="NAT">1047392816</cbc:ID>#', $xml);
+        }
+
+        $this->assertAccepted($xml);
+    }
+
+    /**
+     * A citizen's healthcare without the national ID is refused here with
+     * BR-KSA-49, and built anyway, ZATCA's validator refuses it the same.
+     */
+    public function test_citizen_healthcare_needs_national_id(): void
+    {
+        $this->requireSdk();
+        $token = $this->token();
+        $dates = ['issue_date' => now()->toDateString(), 'supply_date' => now()->toDateString()];
+        $line = ['description' => 'Consultation', 'description_ar' => 'استشارة', 'quantity' => 1, 'unit_price' => '300.00', 'exempt_code' => 'VATEX-SA-HEA'];
+
+        $this->withToken($token)->postJson('/api/invoices', ['invoice_number' => 'HEA-REFUSED', ...$dates, ...self::simplified(['buyer_name' => 'Fahad Al Harbi', 'lines' => [$line]])])
+            ->assertStatus(422)
+            ->assertJsonPath('error.details.buyer_id_scheme.0', 'VATEX-SA-HEA is zero-rated only for a citizen: identify the buyer by national ID (BR-KSA-49).');
+
+        $id = $this->withToken($token)->postJson('/api/invoices', [
+            'invoice_number' => 'HEA-FORCED', ...$dates,
+            ...self::simplified(['buyer_name' => 'Fahad Al Harbi', 'buyer_id' => '1047392816', 'buyer_id_scheme' => 'NAT', 'lines' => [$line]]),
+        ])->assertCreated()->json('data.invoice.id');
+        $invoice = Invoice::withoutTenantScope(fn () => Invoice::with('lines')->findOrFail($id));
+        $invoice->forceFill(['buyer_id_scheme' => 'IQA', 'buyer_id' => '2047392816'])->saveQuietly();
+
+        $xml = app(DocumentBuilder::class)->generateComplianceData($invoice->fresh('lines'), $this->organization)['xml'];
+
+        $this->assertContains('BR-KSA-49', array_map(fn (string $error): string => explode(':', $error)[0], $this->validate($xml)['errors']));
+    }
+
     /** A prepayment invoice (386) for an advance, as the buyer is billed for it. */
     public function test_a_prepayment_invoice_validates(): void
     {
