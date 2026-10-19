@@ -12,6 +12,11 @@
 <div class="rounded-card bg-surface p-6 border border-line shadow-card">
     <h3 class="mb-4 text-xs font-semibold uppercase tracking-wider text-muted">{{ __('UAE e-invoice') }}</h3>
 
+    {{-- PEPPOL_GATEWAY=simulator, local and staging only: said where the status is, so nobody takes it for a delivery. --}}
+    @if (config('peppol.gateway') === 'simulator')
+        <p class="mb-4 rounded-lg border border-warning-line bg-warning-soft p-3 text-sm text-warning" data-simulated>{{ __('Test mode: a service-provider simulator handles this e-invoice. Nothing is sent on the Peppol network or reported to the authority.') }}</p>
+    @endif
+
     @if ($invoice->status === \App\Domains\Invoice\Enums\InvoiceStatus::Draft)
         <p class="text-sm text-muted">
             {{ __('This invoice is still a draft. When it is issued it takes its number and is sent to the buyer as a UAE e-invoice.') }}

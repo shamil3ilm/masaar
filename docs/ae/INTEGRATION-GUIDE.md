@@ -508,8 +508,9 @@ rejected. A status the platform does not recognise changes nothing.
 
 | Command | What it does |
 |---|---|
-| `php artisan peppol:poll-status [--minutes=30] [--limit=200]` | Asks the provider about `sent` documents that have had no callback for at least `--minutes` minutes, up to 14 days old. It is scheduled every ten minutes on one server, only when `PEPPOL_ASP_BASE_URL` is set, and logs to `storage/logs/peppol-status.log` |
-| `php artisan peppol:resend {document}` | Queues a `failed` document again, from its first attempt. It refuses any other status. The document keeps its id, which is the idempotency key sent to the provider, so a resend cannot file it twice |
+| `php artisan peppol:poll-status [--minutes=30] [--limit=200]` | Asks the provider about `sent` documents that have had no callback for at least `--minutes` minutes, up to 14 days old. It is scheduled every ten minutes on one server, only when `PEPPOL_ASP_BASE_URL` is set or the simulator is the gateway, and logs to `storage/logs/peppol-status.log` |
+| `php artisan peppol:resend {document}` | Queues a `failed` document again, from its first attempt. It refuses any other status. The document keeps its id, which is the idempotency key sent to the provider, so a resend cannot file it twice. The admin console's **Peppol** page (`/admin/peppol`) has the same action as **Resend** |
+| `php artisan peppol:simulate-inbound {endpoint} [--file=]` | Simulator only ([SIMULATOR.md](SIMULATOR.md)). Delivers another supplier's document to the organization that holds `endpoint`, through the signed inbound callback |
 
 Outgoing documents are sent by the `SendPeppolDocument` job, on the
 `PEPPOL_QUEUE` queue (worker `laravel-worker-peppol`):

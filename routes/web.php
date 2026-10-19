@@ -19,6 +19,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalSubmissi
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalZatcaController;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalReceivedController;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalUaeInvoiceController;
+use App\Domains\Compliance\Networks\Peppol\Http\Controllers\AdminPeppolController;
 use App\Domains\Invoice\Http\Controllers\InvoiceLinkController;
 use App\Domains\Invoice\Http\Controllers\PortalCustomerController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceController;
@@ -406,6 +407,10 @@ Route::prefix('admin')->name('admin.')
         // Actions
         Route::post('/queue/process', [AdminController::class, 'processQueue'])->middleware('admin.can:operations.run')->name('queue.process');
         Route::post('/queue/{id}/retry', [AdminController::class, 'retryQueueItem'])->middleware('admin.can:operations.run')->name('queue.retry');
+
+        // Peppol: the gateway, documents per state, and Resend for a failed one.
+        Route::get('/peppol', [AdminPeppolController::class, 'index'])->name('peppol');
+        Route::post('/peppol/{id}/resend', [AdminPeppolController::class, 'resend'])->middleware('admin.can:operations.run')->name('peppol.resend');
     });
 
 /*

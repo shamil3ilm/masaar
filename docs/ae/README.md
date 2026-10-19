@@ -142,6 +142,12 @@ provider has been chosen yet. Once one is chosen, check its API against
   through a provider's portal by hand. The platform cannot learn about a manual
   upload, so the document's status stays `ready`. Callbacks are refused, and
   `peppol:poll-status` does not run.
+- **The service-provider simulator** (`PEPPOL_GATEWAY=simulator`, local and
+  staging only). It plays a provider inside the application. It checks every
+  document against the official rules, then calls back through the signed
+  webhooks: accepted, delivered, reported, or a configured failure. It also
+  delivers inbound documents. Production refuses to boot with it. How to
+  switch it on and what to show are in [SIMULATOR.md](SIMULATOR.md).
 - **Automated tests** replace the provider with `FakeAspGateway`. It returns
   scripted answers, records every call, and checks callbacks with the real
   signature code. The UAE's tests are in
@@ -194,6 +200,7 @@ The following is not done:
 
 - [COMPLIANCE-RULES.md](COMPLIANCE-RULES.md): the rules and the official sources behind them
 - [INTEGRATION-GUIDE.md](INTEGRATION-GUIDE.md): the API, callbacks and operator commands
+- [SIMULATOR.md](SIMULATOR.md): the service-provider simulator and demo mode
 - [Jurisdiction routing](../architecture/JURISDICTION-ROUTING.md): how the UAE and Saudi flows sit in the code
 - Peppol PINT AE specification: https://docs.peppol.eu/poac/ae/pint-ae/ (self-billing: https://docs.peppol.eu/poac/ae/pint-ae-sb/)
 - Ministry of Finance e-invoicing pages: https://mof.gov.ae/einvoicing/

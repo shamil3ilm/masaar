@@ -1075,6 +1075,7 @@
     "Type DELETE to confirm.": "اكتب DELETE للتأكيد.",
     "Typeface": "الخط",
     "UAE e-invoice": "الفاتورة الإلكترونية الإماراتية",
+    "Test mode: a service-provider simulator handles this e-invoice. Nothing is sent on the Peppol network or reported to the authority.": "وضع الاختبار: يتولّى محاكي مزوّد الخدمة هذه الفاتورة الإلكترونية، فلا يُرسَل شيء عبر شبكة Peppol ولا يُبلَّغ عنها إلى الهيئة.",
     "UAE e-invoices other suppliers sent to your Peppol endpoint. Keep them as your purchase records.": "الفواتير الإلكترونية الإماراتية التي أرسلها موردون آخرون إلى عنوان Peppol الخاص بكم. احتفظوا بها ضمن سجلات مشترياتكم.",
     "UAE e-invoicing is for an organization registered in the UAE.": "الفوترة الإلكترونية في الإمارات مخصصة للمنشآت المسجلة في دولة الإمارات العربية المتحدة.",
     "UAE E-invoicing Portal": "بوابة الفوترة الإلكترونية في الإمارات",
