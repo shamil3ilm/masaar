@@ -143,4 +143,55 @@ final class PublicSite
 
         return $url === '' ? null : $url;
     }
+
+    /**
+     * Where a contact link goes: the address an admin pointed contact at, or
+     * the home page's own contact section, with the topic chosen when one is
+     * given.
+     */
+    public function contactLink(?string $topic = null): string
+    {
+        return $this->contactUrl() ?? url('/').($topic === null ? '' : '?topic='.rawurlencode($topic)).'#contact';
+    }
+
+    /**
+     * The address the public pages show for writing to us: the one an admin
+     * set, else the operator's from config/company.php; null with neither.
+     */
+    public function contactEmail(): ?string
+    {
+        $email = (string) $this->settings->get('site.contact_email');
+
+        if ($email === '') {
+            $email = (string) config('company.email');
+        }
+
+        return $email === '' ? null : $email;
+    }
+
+    /** Where the contact form's messages are emailed; null when nowhere. */
+    public function notifyEmail(): ?string
+    {
+        $email = (string) $this->settings->get('site.contact_notify');
+
+        return $email === '' ? $this->contactEmail() : $email;
+    }
+
+    /**
+     * What the sender is emailed back, in both languages, or null while the
+     * automatic reply is off.
+     *
+     * @return array{en: string, ar: string}|null
+     */
+    public function autoReply(): ?array
+    {
+        if (! $this->settings->get('site.contact_auto_reply')) {
+            return null;
+        }
+
+        return [
+            'en' => (string) $this->settings->get('site.contact_auto_reply_en'),
+            'ar' => (string) $this->settings->get('site.contact_auto_reply_ar'),
+        ];
+    }
 }

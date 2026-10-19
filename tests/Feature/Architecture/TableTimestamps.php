@@ -187,6 +187,14 @@ final class TableTimestamps
         'support_messages' => ['class' => 'd', 'tenant' => 'parent:ticket_id', 'actors' => ['author' => 'user_id']],
         'support_attachments' => ['class' => 'd', 'tenant' => 'parent:message_id', 'parent' => true],
 
+        // The public website. A contact form message is the platform's own;
+        // its sender is not a user, so created_by stays empty and who wrote
+        // it is the name and email they gave. The network address and
+        // browser are kept for spam review only and cleared after
+        // website.contact.keep_details_days (PruneContactDetails).
+        'contact_messages' => ['class' => 'b', 'tenant' => 'global',
+            'actors' => [...self::REMOVABLE, 'reader' => 'read_by', 'replier' => 'replied_by']],
+
         // Lists and branches.
         'saved_list_views' => ['class' => 'b', 'tenant' => 'either', 'actors' => self::REMOVABLE,
             'unique_across_removed' => ['saved_list_views_name_unique' => 'saving the name again restores the removed view']],

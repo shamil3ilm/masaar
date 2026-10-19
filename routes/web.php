@@ -44,6 +44,7 @@ use App\Domains\Platform\Http\Controllers\AdminAdminsController;
 use App\Domains\Platform\Http\Controllers\AdminApprovalPolicyController;
 use App\Domains\Platform\Http\Controllers\AdminApprovalsController;
 use App\Domains\Platform\Http\Controllers\AdminAuditController;
+use App\Domains\Platform\Http\Controllers\AdminContactMessageController;
 use App\Domains\Platform\Http\Controllers\AdminController;
 use App\Domains\Platform\Http\Controllers\AdminCountryController;
 use App\Domains\Platform\Http\Controllers\AdminCustomizationController;
@@ -54,6 +55,7 @@ use App\Domains\Platform\Http\Controllers\AdminOwnershipController;
 use App\Domains\Platform\Http\Controllers\AdminRolesController;
 use App\Domains\Platform\Http\Controllers\AdminSettingsController;
 use App\Domains\Platform\Http\Controllers\AdminUserController;
+use App\Domains\Platform\Http\Controllers\ContactController;
 use App\Domains\Platform\Http\Controllers\SavedListViewController;
 use App\Domains\Support\Http\Controllers\AdminSupportController;
 use App\Domains\Support\Http\Controllers\PortalSupportController;
@@ -65,6 +67,12 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 });
+
+// The home page's contact form. CSRF like every web form; past that, no
+// CAPTCHA: ContactGuard's honeypot, time trap, limits per address and per
+// email, and link and keyword checks. The throttle is the backstop for a
+// flood the guard's hourly limits are too slow to stop.
+Route::post('/contact', [ContactController::class, 'store'])->middleware('throttle:10,1')->name('contact.store');
 
 // The privacy notice and the terms, which sign-up asks people to accept.
 Route::get('/privacy', [LegalController::class, 'privacy'])->name('privacy');
@@ -295,6 +303,17 @@ Route::prefix('admin')->name('admin.')
         Route::post('/support/{ticketId}/reply', [AdminSupportController::class, 'reply'])->middleware('admin.can:support.manage')->name('support.reply');
         Route::post('/support/{ticketId}/assign', [AdminSupportController::class, 'assign'])->middleware('admin.can:support.manage')->name('support.assign');
         Route::post('/support/{ticketId}/status', [AdminSupportController::class, 'status'])->middleware('admin.can:support.manage')->name('support.status');
+
+        // Website › Messages: the home page's contact form. Reading and
+        // answering both take support.manage - answering people is support's
+        // work, and the senders' details are theirs to keep.
+        Route::prefix('/website/messages')->name('website.messages.')->middleware('admin.can:support.manage')->whereUuid('messageId')->group(function () {
+            Route::get('/', [AdminContactMessageController::class, 'index'])->name('index');
+            Route::get('/{messageId}', [AdminContactMessageController::class, 'show'])->name('show');
+            Route::post('/{messageId}/replied', [AdminContactMessageController::class, 'replied'])->name('replied');
+            Route::post('/{messageId}/archive', [AdminContactMessageController::class, 'archive'])->name('archive');
+            Route::post('/{messageId}/restore', [AdminContactMessageController::class, 'restore'])->name('restore');
+        });
 
         Route::get('/users', [AdminUserController::class, 'index'])->name('users.index');
         Route::get('/users/{userId}', [AdminUserController::class, 'show'])->name('users.show');

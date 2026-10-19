@@ -49,6 +49,12 @@
                                 {{-- Empty is a value here: it means none. --}}
                                 <x-ui.input type="url" name="{{ $key }}" dir="ltr" placeholder="https://"
                                             value="{{ old($key, $settings->display($key)) }}" />
+                            @elseif ($definition['type'] === 'email')
+                                {{-- Empty is a value here too: the fallback the help names. --}}
+                                <x-ui.input type="email" name="{{ $key }}" dir="ltr" placeholder="shamil3ilm@gmail.com"
+                                            value="{{ old($key, $settings->display($key)) }}" />
+                            @elseif ($definition['type'] === 'text')
+                                <x-ui.textarea name="{{ $key }}" rows="3" maxlength="2000" dir="auto" required>{{ old($key, $settings->display($key)) }}</x-ui.textarea>
                             @else
                                 <x-ui.input type="text" name="{{ $key }}" required
                                             value="{{ old($key, $settings->display($key)) }}" />

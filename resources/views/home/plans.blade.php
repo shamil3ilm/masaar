@@ -20,7 +20,7 @@
                     <a href="{{ route('register') }}" class="inline-flex min-h-12 items-center justify-center rounded-button bg-teal-500 px-6 font-semibold text-ink-950 transition-colors hover:bg-teal-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-300">{{ __('Start your free month') }}</a>
                 @endguest
             @endif
-            <a href="#contact" class="inline-flex min-h-12 items-center justify-center rounded-button border border-white/25 px-6 font-medium text-white transition-colors hover:border-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-300">{{ __('Talk to us about a plan') }}</a>
+            <a href="{{ $publicSite->contactLink('pricing') }}" data-contact-topic="pricing" class="inline-flex min-h-12 items-center justify-center rounded-button border border-white/25 px-6 font-medium text-white transition-colors hover:border-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-300">{{ __('Talk to us about a plan') }}</a>
         </div>
     </div>
 </section>

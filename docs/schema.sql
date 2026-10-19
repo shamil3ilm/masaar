@@ -260,6 +260,39 @@ CREATE TABLE `compliance_profiles` (
     FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
 
+CREATE TABLE `contact_messages` (
+    `id` STRING NOT NULL,
+    `company` STRING NULL,
+    `country` STRING NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `deleted_at` TIMESTAMP NULL,
+    `deleted_by` STRING NULL,
+    `email` STRING NOT NULL,
+    `ip_address` STRING NULL,
+    `locale` STRING NOT NULL,
+    `message` TEXT NOT NULL,
+    `name` STRING NOT NULL,
+    `read_at` TIMESTAMP NULL,
+    `read_by` STRING NULL,
+    `replied_at` TIMESTAMP NULL,
+    `replied_by` STRING NULL,
+    `status` STRING NOT NULL DEFAULT 'new',
+    `topic` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    `user_agent` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `contact_messages_email_index` (`email`),
+    INDEX `contact_messages_status_created_at_index` (`status`, `created_at`),
+    INDEX `contact_messages_topic_index` (`topic`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`read_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`replied_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
 CREATE TABLE `customers` (
     `id` STRING NOT NULL,
     `archived_at` TIMESTAMP NULL,

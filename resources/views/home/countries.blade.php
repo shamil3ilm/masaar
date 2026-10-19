@@ -77,7 +77,7 @@
                         <h3 class="text-heading font-semibold">{{ __('Other countries: ask us') }}</h3>
                         <p class="mt-2 text-sm text-muted">{{ __('We can add another country\'s e-invoicing rules to the platform. Tell us where you need to file.') }}</p>
                     </div>
-                    <x-ui.button variant="secondary" :href="url('/').'?topic=country#contact'" data-contact-topic="country">{{ __('Ask about a country') }}</x-ui.button>
+                    <x-ui.button variant="secondary" :href="$publicSite->contactLink('country')" data-contact-topic="country">{{ __('Ask about a country') }}</x-ui.button>
                 </div>
             </x-ui.tab-panel>
         </x-ui.tabs>

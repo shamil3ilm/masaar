@@ -25,7 +25,7 @@
                 <svg class="size-7 text-teal-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $icon }}" /></svg>
                 <h3 class="mt-4 text-base font-semibold">{{ $title }}</h3>
                 <p class="mt-1.5 flex-1 text-sm leading-relaxed text-muted">{{ $detail }}</p>
-                <a href="{{ url('/') }}?topic={{ $topic }}#contact" data-contact-topic="{{ $topic }}"
+                <a href="{{ $publicSite->contactLink($topic) }}" data-contact-topic="{{ $topic }}"
                    class="mt-4 inline-flex min-h-11 items-center gap-1.5 self-start text-sm font-semibold text-accent hover:underline underline-offset-4">
                     {{ __('Ask us') }}
                     <svg class="size-4 rtl:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 6l6 6-6 6" /></svg>
@@ -55,8 +55,8 @@
                 @endforeach
             </ul>
         </div>
-        <x-ui.button variant="secondary" :href="url('/').'?topic=engineer#contact'" data-contact-topic="engineer">{{ __('Talk to us') }}</x-ui.button>
+        <x-ui.button variant="secondary" :href="$publicSite->contactLink('engineer')" data-contact-topic="engineer">{{ __('Talk to us') }}</x-ui.button>
     </div>
 
-    <x-ui.button size="lg" class="mt-8" :href="url('/').'?topic=general#contact'" data-contact-topic="general">{{ __('Tell us what you need') }}</x-ui.button>
+    <x-ui.button size="lg" class="mt-8" :href="$publicSite->contactLink('general')" data-contact-topic="general">{{ __('Tell us what you need') }}</x-ui.button>
 </section>

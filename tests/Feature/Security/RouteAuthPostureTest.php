@@ -28,6 +28,10 @@ class RouteAuthPostureTest extends TestCase
      */
     private const PUBLIC_ROUTES = [
         '/' => 'Marketing landing page',
+        // Anyone may write to us before they have an account. CSRF, a
+        // throttle and ContactGuard (honeypot, time trap, per-address and
+        // per-email limits, link and keyword checks) stand in for a session.
+        'contact' => 'Home page contact form submission',
         'login' => 'Credential entry form',
         // Which language the pages are in; it changes nothing else.
         'locale' => 'Interface language, offered before sign-in',

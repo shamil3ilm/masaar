@@ -116,7 +116,45 @@ final class Settings
             'type' => 'url',
             'default' => '',
         ],
+        'site.contact_email' => [
+            'group' => 'Public site',
+            'label' => 'Contact address shown',
+            'help' => 'The address the home page and its footer show, for anyone who would rather write than use the form. Empty: the address in CONTACT_EMAIL.',
+            'type' => 'email',
+            'default' => '',
+        ],
+        'site.contact_notify' => [
+            'group' => 'Public site',
+            'label' => 'Send contact messages to',
+            'help' => 'Where each message from the contact form is emailed, with a reply-to of the sender. Empty: the contact address shown. Every message is also kept in Website, Messages.',
+            'type' => 'email',
+            'default' => '',
+        ],
+        'site.contact_auto_reply' => [
+            'group' => 'Public site',
+            'label' => 'Reply to the sender automatically',
+            'help' => 'Email whoever sends the contact form a short note that their message arrived, in English and Arabic. It never repeats what they wrote.',
+            'type' => 'bool',
+            'default' => false,
+        ],
+        'site.contact_auto_reply_en' => [
+            'group' => 'Public site',
+            'label' => 'Automatic reply, in English',
+            'help' => 'Plain text, up to 2000 characters.',
+            'type' => 'text',
+            'default' => 'Thank you for writing to us. Your message has arrived, and we will reply as soon as we can.',
+        ],
+        'site.contact_auto_reply_ar' => [
+            'group' => 'Public site',
+            'label' => 'Automatic reply, in Arabic',
+            'help' => 'Plain text, up to 2000 characters.',
+            'type' => 'text',
+            'default' => 'شكراً لتواصلك معنا. وصلتنا رسالتك، وسنردّ عليك في أقرب وقت ممكن.',
+        ],
     ];
+
+    /** The longest a text setting may be. */
+    private const TEXT_MAX = 2000;
 
     /**
      * One setting's current value.
@@ -255,6 +293,8 @@ final class Settings
             'days' => $this->parseDays($raw),
             'channels' => $this->parseChannels($raw),
             'url' => $this->parseUrl($raw),
+            'email' => $this->parseEmail($raw),
+            'text' => $this->parseText($raw),
             default => null,
         };
     }
@@ -309,6 +349,33 @@ final class Settings
         }
 
         return $url;
+    }
+
+    /** An email address, or empty for none. */
+    private function parseEmail(mixed $raw): ?string
+    {
+        $email = trim((string) $raw);
+
+        if ($email === '') {
+            return '';
+        }
+
+        return mb_strlen($email) <= 255 && filter_var($email, FILTER_VALIDATE_EMAIL) !== false ? $email : null;
+    }
+
+    /**
+     * Plain text a person wrote, kept as typed but for its line endings. Not
+     * empty: a text setting is something to say.
+     */
+    private function parseText(mixed $raw): ?string
+    {
+        if (! is_string($raw)) {
+            return null;
+        }
+
+        $text = trim(str_replace("\r\n", "\n", $raw));
+
+        return $text === '' || mb_strlen($text) > self::TEXT_MAX ? null : $text;
     }
 
     /**
