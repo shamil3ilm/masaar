@@ -27,6 +27,7 @@ level sets (`levels`).
 | `acrossOrganizations` | a person's value is theirs everywhere (language), not per organization |
 | `audit` | `security` (security log), `record` (audit log) or `none` |
 | `columns` | a level kept in an existing column (`table.column`) rather than the store |
+| `country` | only some countries use it: an organization sees it only where its module's `Presentation::usesCustomization()` says so (`printing.language_order`) |
 
 A key that is not in the catalogue cannot be stored, and the store refuses a
 value its definition cannot hold or a level it does not allow.

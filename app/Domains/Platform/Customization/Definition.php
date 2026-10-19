@@ -26,6 +26,10 @@ use Illuminate\Support\Str;
  * $console marks a person's preference that belongs to the admin console,
  * left off the portal's preferences.
  *
+ * $country marks one only some countries use: an organization is shown it
+ * only where its country's module says it uses it
+ * (Presentation::usesCustomization). The platform's default is always shown.
+ *
  * $columns names a level whose value is kept in an existing column rather
  * than in the store - 'table.column', on the row the level's holder names -
  * so a setting that every issuing path already reads from its column keeps
@@ -64,6 +68,7 @@ final readonly class Definition
         public array $fields = [],
         public bool $console = false,
         public bool $ownScreen = false,
+        public bool $country = false,
     ) {}
 
     public function allows(Level $level): bool

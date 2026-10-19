@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Platform\Customization;
 
 use App\Domains\Audit\Services\AuditService;
+use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
+use App\Domains\Organization\Models\Organization;
 use DomainException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -38,6 +40,7 @@ class Customizations
     public function __construct(
         private readonly Catalogue $catalogue,
         private readonly AuditService $audit,
+        private readonly JurisdictionResolver $jurisdictions,
     ) {}
 
     public function definition(string $key): Definition
@@ -171,6 +174,11 @@ class Customizations
                 continue;
             }
 
+            // Nor one the organization's country does not use.
+            if ($definition->country && $scope->organizationId !== null && ! $this->countryUses($definition->key, $scope->organizationId)) {
+                continue;
+            }
+
             $resolved = $this->resolve($definition->key, $this->trim($scope, $level, $definition));
 
             if ($resolved->at === $level) {
@@ -179,6 +187,11 @@ class Customizations
         }
 
         return $rows;
+    }
+
+    private function countryUses(string $key, string $organizationId): bool
+    {
+        return $this->jurisdictions->forRules(Organization::query()->find($organizationId))->presentation()->usesCustomization($key);
     }
 
     /**

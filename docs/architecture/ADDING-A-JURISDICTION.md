@@ -52,7 +52,9 @@ what goes in each.
      the country adds, an invoice's page (`invoicePage()`, an
      `Engine\DTOs\InvoicePage` naming the heading, actions and panel views),
      when an invoice may be given to the buyer (`assertShareable()`), and the
-     seal on its PDF (`sealPdf()`, the PDF as it is where there is none). Keep
+     seal on its PDF (`sealPdf()`, the PDF as it is where there is none), and
+     which country-only customizations it uses (`usesCustomization()`, such
+     as `printing.language_order` for bilingual invoices). Keep
      the actions consistent with `features()`: a country without
      `pdf_and_email` offers no PDF and is never `shareable`;
    - `reports()`, a `Reports/TaxReports` implementing

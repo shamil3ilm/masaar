@@ -76,4 +76,11 @@ interface Presentation
      * Only asked for an invoice assertShareable() allowed.
      */
     public function receipt(Invoice $invoice, Organization $organization): Receipt;
+
+    /**
+     * Whether the country uses a customization only some countries do
+     * (Definition $country) - which language a bilingual invoice prints
+     * first, say. One it does not use is not shown to its organizations.
+     */
+    public function usesCustomization(string $key): bool;
 }

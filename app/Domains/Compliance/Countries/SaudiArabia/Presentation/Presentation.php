@@ -51,6 +51,16 @@ class Presentation implements PresentationPort
         return __('ZATCA Portal');
     }
 
+    /**
+     * Which language prints first: an invoice here is in Arabic, a
+     * translation beside it allowed (E-Invoicing Detailed Guidelines p63),
+     * so it prints in both.
+     */
+    public function usesCustomization(string $key): bool
+    {
+        return $key === 'printing.language_order';
+    }
+
     /** ZATCA onboarding, among the administrator's links. */
     public function navigation(string $section): ?string
     {

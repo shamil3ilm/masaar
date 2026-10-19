@@ -95,6 +95,12 @@ class Presentation implements PresentationPort
         $this->refuse();
     }
 
+    /** A UAE invoice prints in one language: no order to choose. */
+    public function usesCustomization(string $key): bool
+    {
+        return false;
+    }
+
     private function refuse(): never
     {
         throw new DomainException(__('Issue the invoice first. A draft has no QR code and is not a tax invoice.'));

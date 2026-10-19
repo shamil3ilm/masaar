@@ -80,6 +80,8 @@ final class Catalogue
                 default: 'arabic_first',
                 levels: [Level::Platform, Level::Organization],
                 options: ['arabic_first' => __('Arabic first, right to left'), 'english_first' => __('English first, left to right')],
+                // Only where invoices print in two languages.
+                country: true,
             ),
             new Definition(
                 key: 'branches.working',

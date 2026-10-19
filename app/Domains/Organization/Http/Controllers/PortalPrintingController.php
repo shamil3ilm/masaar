@@ -8,6 +8,7 @@ use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
+use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\PrintPreferences;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
@@ -20,8 +21,9 @@ use Illuminate\View\View;
  * The paper invoices print on: each person's own, and - for the
  * organization's administrators - the organization's and each branch's.
  *
- * And, where the country's invoices are bilingual (LanguageRules), which
- * language they print first: the platform's default, Arabic first, or the
+ * And, where the country's invoices are bilingual (its Presentation uses
+ * the printing.language_order customization), which language they print
+ * first: the platform's default, Arabic first, or the
  * organization's choice. Never one language alone.
  */
 class PortalPrintingController extends Controller
@@ -45,7 +47,7 @@ class PortalPrintingController extends Controller
             'admin' => MemberRole::administers($request->user()?->roleIn($organizationId)),
             'organizationPaper' => $this->preferences->organizationPaper($organization),
             'branches' => $this->preferences->branches($organizationId),
-            'bilingual' => $this->jurisdictions->forRules($organization)->languageRules()->requiresArabic(),
+            'bilingual' => $this->bilingual($organization),
             'languageOrder' => $this->preferences->languageOrder($organization),
         ]);
     }
@@ -79,7 +81,7 @@ class PortalPrintingController extends Controller
         $actorId = (string) $request->user()?->id;
         $this->preferences->setOrganizationPaper($organization, PaperSize::from($validated['paper']), $actorId);
 
-        if ($request->has('language_order') && $this->jurisdictions->forRules($organization)->languageRules()->requiresArabic()) {
+        if ($request->has('language_order') && $this->bilingual($organization)) {
             $this->preferences->setLanguageOrder($organization, $validated['language_order'] ?? null, $actorId);
         }
 
@@ -96,5 +98,10 @@ class PortalPrintingController extends Controller
         }
 
         return redirect()->route('portal.printing.edit')->with('success', __('Printing settings saved.'));
+    }
+
+    private function bilingual(Organization $organization): bool
+    {
+        return $this->jurisdictions->forRules($organization)->presentation()->usesCustomization('printing.language_order');
     }
 }

@@ -213,6 +213,27 @@ class CustomizationsTest extends TestCase
         $this->portal($this->member)->get('/portal')->assertRedirect(route('account.show').'#two-factor');
     }
 
+    /**
+     * Which language an invoice prints first is a choice only where the
+     * country's invoices print two (the module's Presentation says so): a
+     * UAE organization neither sees it nor can set it.
+     */
+    public function test_language_order_only_where_printed(): void
+    {
+        $this->portal($this->admin)->get(route('portal.settings.edit'))->assertSee(__('Language printed first'));
+
+        $emirates = Organization::create(['name' => 'Emirates Trading', 'country' => 'AE']);
+        $this->acme = $emirates;
+        $this->admin->organizations()->attach($emirates->id, ['role' => 'admin', 'status' => 'active']);
+
+        $this->portal($this->admin)->get(route('portal.settings.edit'))
+            ->assertOk()
+            ->assertSee(__('Paper'))
+            ->assertDontSee(__('Language printed first'));
+        $this->portal($this->admin)->post(route('portal.settings.update', 'printing.language_order'), ['value' => 'english_first'])->assertNotFound();
+        $this->portal($this->admin)->get(route('portal.printing.edit'))->assertOk()->assertDontSee('name="language_order"', false);
+    }
+
     private function portal(User $user): static
     {
         return $this->actingAs($user)->withSession(['portal_org_id' => $this->acme->id]);
