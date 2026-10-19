@@ -10,7 +10,7 @@
     <x-slot:meta>
         <x-ui.badge :tone="$ticket->status->tone()" :label="$ticket->status->label()" />
     </x-slot:meta>
-    <x-slot:description><span dir="ltr">{{ $ticket->reference() }}</span> &middot; {{ $ticket->category->label() }} &middot; {{ __('opened :date', ['date' => $ticket->created_at->toDateString()]) }}</x-slot:description>
+    <x-slot:description><span dir="ltr">{{ $ticket->reference() }}</span> &middot; {{ $ticket->category->label() }} &middot; {{ __('opened :date', ['date' => "\u{2066}".$ticket->created_at->toDateString()."\u{2069}"]) }}</x-slot:description>
 </x-ui.page-header>
 
 <div class="max-w-3xl space-y-6">

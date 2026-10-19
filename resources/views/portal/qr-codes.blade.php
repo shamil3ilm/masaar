@@ -47,7 +47,7 @@
                     <div class="flex flex-wrap items-center gap-3 border-t border-line py-3">
                         <div class="min-w-0 flex-1">
                             <p class="font-medium text-fg">{{ $code->label }}</p>
-                            <p class="text-xs text-muted">{{ $kinds[$code->kind] ?? $code->kind }} &middot; {{ __('Removed :date', ['date' => $code->deleted_at?->toDateString()]) }}</p>
+                            <p class="text-xs text-muted">{{ $kinds[$code->kind] ?? $code->kind }} &middot; {{ __('Removed :date', ['date' => "\u{2066}".$code->deleted_at?->toDateString()."\u{2069}"]) }}</p>
                         </div>
                         <form method="POST" action="{{ route('portal.qr-codes.restore', $code->id) }}">
                             @csrf

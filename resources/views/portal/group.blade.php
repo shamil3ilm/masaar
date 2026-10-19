@@ -10,7 +10,7 @@
 
 <div class="mb-6 overflow-hidden rounded-card border border-line bg-surface shadow-card">
     <div class="border-b border-line p-6">
-        <h3 class="text-lg font-semibold text-fg">{{ __(':from to :to', ['from' => $from->toDateString(), 'to' => $to->toDateString()]) }}</h3>
+        <h3 class="text-lg font-semibold text-fg">{{ __(':from to :to', ['from' => "\u{2066}".$from->toDateString()."\u{2069}", 'to' => "\u{2066}".$to->toDateString()."\u{2069}"]) }}</h3>
         <p class="text-sm text-muted">{{ __('Each company as its own country\'s report counts it, in its own currency. Credit notes are taken off.') }}</p>
     </div>
     <x-ui.table :primary="[0, 4, 2]">

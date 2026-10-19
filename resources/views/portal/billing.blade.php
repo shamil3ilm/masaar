@@ -47,7 +47,7 @@
         <tr class="hover:bg-sunken">
             <td class="px-6 py-4 text-sm text-fg"><span dir="ltr">{{ $payment->paid_at->toDateString() }}</span></td>
             <td class="px-6 py-4 text-sm text-muted">{{ $plans[$payment->tier] ?? ucfirst($payment->tier) }}</td>
-            <td class="px-6 py-4 text-sm text-muted">{{ __(':from to :to', ['from' => $payment->period_start->toDateString(), 'to' => $payment->period_end->toDateString()]) }}</td>
+            <td class="px-6 py-4 text-sm text-muted">{{ __(':from to :to', ['from' => "\u{2066}".$payment->period_start->toDateString()."\u{2069}", 'to' => "\u{2066}".$payment->period_end->toDateString()."\u{2069}"]) }}</td>
             <td class="px-6 py-4 text-end text-sm tabular-nums text-fg"><x-ui.amount :value="$payment->total" :currency="$payment->currency" /></td>
             <td class="px-6 py-4 text-sm">
                 @if ($payment->invoice_id)

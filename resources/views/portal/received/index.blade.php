@@ -31,7 +31,7 @@
                         {{ $summary->number !== '' ? $summary->number : __('No number') }}
                     </a>
                     @if ($summary->issueDate !== '')
-                        <p class="text-xs text-subtle">{{ __('Dated :date', ['date' => $summary->issueDate]) }}</p>
+                        <p class="text-xs text-subtle">{{ __('Dated :date', ['date' => "\u{2066}".$summary->issueDate."\u{2069}"]) }}</p>
                     @endif
                 </td>
                 <td class="px-4 py-3 text-sm text-fg">

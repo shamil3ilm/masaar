@@ -10,7 +10,7 @@
     {{-- The kind of document, as its country names it (Presentation::invoicePage). --}}
     <x-slot:eyebrow>@include($page->heading, $page->data)</x-slot:eyebrow>
     <x-slot:description>
-        <span lang="ar" dir="rtl">تاريخ الفاتورة</span> &middot; {{ __('issued :date', ['date' => $invoice->issue_date?->toDateString()]) }}
+        <span lang="ar" dir="rtl">تاريخ الفاتورة</span> &middot; {{ __('issued :date', ['date' => "\u{2066}".$invoice->issue_date?->toDateString()."\u{2069}"]) }}
         {{-- Text a grace period let through without its Arabic (MissingText).
              On this page only: the print view, the PDF and the receipt the
              buyer is given never carry it. --}}
@@ -25,9 +25,11 @@
             {{-- Access decides (docs/architecture/ACCESS.md): a viewer sees no
                  button; anyone else who cannot issue now is told why. --}}
             @canuse('issue_invoices')
+            {{-- Isolated, so a Latin name in an Arabic question keeps its punctuation where it belongs. --}}
+            @php($isolatedBuyer = "\u{2068}".$invoice->buyer_name."\u{2069}")
             <form method="POST" action="{{ route('portal.invoices.issue', $invoice->id) }}"
                   data-confirm-action="{{ __('Issue invoice') }}"
-                  data-confirm="{{ $invoice->buyer_name ? __('Issue this invoice to :buyer?', ['buyer' => $invoice->buyer_name]) : __('Issue this invoice?') }}"
+                  data-confirm="{{ $invoice->buyer_name ? __('Issue this invoice to :buyer?', ['buyer' => $isolatedBuyer]) : __('Issue this invoice?') }}"
                   data-confirm-detail="{{ $page->issueConfirm }}"
                   data-confirm-type="{{ __('Issue') }}">
                 @csrf

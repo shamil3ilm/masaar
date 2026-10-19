@@ -137,7 +137,7 @@
                     $dependencies = [
                         'Database' => $health['database']['status'] ?? 'unknown',
                         'Cache' => $health['cache']['status'] ?? 'unknown',
-                        'Circuit Breaker' => $breakerState,
+                        'Circuit breaker' => $breakerState,
                         'Queue' => $health['queue']['status'] ?? 'unknown',
                     ];
                     $good = ['healthy', 'closed'];
@@ -170,7 +170,7 @@
             fetch calls; the breaker closes on its own after its timeout.
         --}}
         <div class="bg-surface rounded-card border border-line shadow-card p-6">
-            <h3 class="text-lg font-semibold mb-4">ZATCA Circuit Breaker</h3>
+            <h3 class="text-lg font-semibold mb-4">ZATCA circuit breaker</h3>
             <div class="text-center py-4">
                 <div class="inline-flex items-center justify-center w-16 h-16 rounded-full mb-3 {{ $breakerClosed ? 'bg-success-soft' : 'bg-danger-soft' }}">
                     <svg class="w-8 h-8 {{ $breakerClosed ? 'text-success' : 'text-danger' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -216,13 +216,13 @@
             @endadmincan
             <x-ui.button variant="secondary" :href="route('admin.dashboard')">Refresh</x-ui.button>
             <x-ui.button variant="secondary" :href="route('admin.logs', ['state' => 'failed'])">
-                View Failed Submissions
+                View failed submissions
             </x-ui.button>
         </div>
     </div>
 
     <p class="text-xs text-subtle">
-        Counted {{ $overview['generated_at'] }}, dependencies checked {{ $health['checked_at'] }}.
+        Counted <x-ui.date :value="$overview['generated_at']" time />, dependencies checked <x-ui.date :value="$health['checked_at']" time />.
     </p>
 </div>
 @endsection

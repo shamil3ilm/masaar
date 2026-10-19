@@ -35,7 +35,7 @@
 <div class="mb-6 bg-surface rounded-card border border-line shadow-card overflow-hidden">
     <div class="p-6 border-b flex flex-wrap items-center justify-between gap-3">
         <div>
-            <h3 class="text-lg font-semibold text-fg">{{ __('Sales by tax category, :from to :to', ['from' => $from->toDateString(), 'to' => $to->toDateString()]) }}</h3>
+            <h3 class="text-lg font-semibold text-fg">{{ __('Sales by tax category, :from to :to', ['from' => "\u{2066}".$from->toDateString()."\u{2069}", 'to' => "\u{2066}".$to->toDateString()."\u{2069}"]) }}</h3>
             <p class="text-sm text-muted">
                 {{ __(':documents documents, :credit_notes of them credit notes, which are taken off.', ['documents' => $summary['documents'], 'credit_notes' => $summary['credit_notes']]) }}
                 @if ($summary['converted'] > 0)
