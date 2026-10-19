@@ -44,7 +44,7 @@ class ReceiptPrinting
         $country->assertShareable($invoice);
 
         $roll = $this->roll($organization, $invoice, $userId, $paper);
-        $printer = $this->preferences->receiptPrinter((string) $organization->id, $invoice->branch_id);
+        $printer = $this->preferences->receiptPrinter((string) $organization->id, $invoice->branch_id, $invoice->device_id);
         $dpi ??= $printer['dpi'] ?? self::DPI;
         $dots ??= $printer['dots'] ?? (int) $roll->printerDots($dpi);
         // The logo fits within two thirds of the paper, so it never crowds
@@ -83,7 +83,7 @@ class ReceiptPrinting
 
     private function roll(Organization $organization, Invoice $invoice, ?string $userId, ?string $paper): PaperSize
     {
-        $chosen = $this->preferences->paper($organization, $invoice->branch_id, $userId, $paper);
+        $chosen = $this->preferences->paper($organization, $invoice->branch_id, $userId, $paper, $invoice->device_id);
 
         return $chosen->isRoll() ? $chosen : PaperSize::Roll80;
     }

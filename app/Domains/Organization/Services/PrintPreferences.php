@@ -6,6 +6,7 @@ namespace App\Domains\Organization\Services;
 
 use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Organization\Models\Branch;
+use App\Domains\Organization\Models\EgsUnit;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Platform\Customization\Customizations;
 use App\Domains\Platform\Customization\Level;
@@ -16,15 +17,20 @@ use App\Domains\Platform\Customization\Scope;
  *
  * The paper chosen on the print screen itself wins; after it the
  * printing.paper customization decides, the nearer level winning: the
- * person's own (they print at a till with a roll on it), the branch's (the
- * till's printer), the organization's, then the platform's. With none, A4.
+ * person's own (they print at a till with a roll on it), the till's that
+ * issued the invoice (its printer), its branch's, the organization's, then
+ * the platform's. With none, A4.
  *
  * And which language a bilingual invoice prints first (arabicFirst()): the
  * printing.language_order customization, the organization's or the
  * platform's.
  *
- * A branch's receipt printer is two more customizations, printing.receipt_dpi
- * and printing.receipt_dots, null for the common printer.
+ * A branch's or a till's receipt printer is two more customizations,
+ * printing.receipt_dpi and printing.receipt_dots, null for the common
+ * printer. A till is one of the organization's EGS units other than head
+ * office's; a branch's first till has the branch's id, and its own level is
+ * apart from the branch's, so a branch's printer still applies until the
+ * till sets one.
  */
 class PrintPreferences
 {
@@ -73,12 +79,17 @@ class PrintPreferences
         $this->put(self::LANGUAGE_ORDER, Level::Organization, Scope::organization((string) $organization->id), $order, $actorId);
     }
 
-    public function paper(Organization $organization, ?string $branchId, ?string $userId, ?string $requested = null): PaperSize
+    /**
+     * @param  string|null  $tillId  the till that issued it: the invoice's device_id
+     */
+    public function paper(Organization $organization, ?string $branchId, ?string $userId, ?string $requested = null, ?string $tillId = null): PaperSize
     {
         $organizationId = (string) $organization->id;
         $branchId = $branchId === null || $this->branch($organizationId, $branchId) === null ? null : $branchId;
+        $tillId = $this->till($organizationId, $tillId);
         $scope = match (true) {
-            $userId !== null => Scope::member($organizationId, $userId, $branchId),
+            $userId !== null => Scope::member($organizationId, $userId, $branchId, $tillId),
+            $tillId !== null => Scope::till($organizationId, $branchId, $tillId),
             $branchId !== null => Scope::branch($organizationId, $branchId),
             default => Scope::organization($organizationId),
         };
@@ -120,11 +131,15 @@ class PrintPreferences
      *
      * @return array{dpi: int|null, dots: int|null}
      */
-    public function receiptPrinter(string $organizationId, ?string $branchId): array
+    public function receiptPrinter(string $organizationId, ?string $branchId, ?string $tillId = null): array
     {
-        $scope = $branchId === null || $this->branch($organizationId, $branchId) === null
-            ? Scope::organization($organizationId)
-            : Scope::branch($organizationId, $branchId);
+        $branchId = $branchId === null || $this->branch($organizationId, $branchId) === null ? null : $branchId;
+        $tillId = $this->till($organizationId, $tillId);
+        $scope = match (true) {
+            $tillId !== null => Scope::till($organizationId, $branchId, $tillId),
+            $branchId !== null => Scope::branch($organizationId, $branchId),
+            default => Scope::organization($organizationId),
+        };
 
         return [
             'dpi' => $this->customizations->get(self::DPI, $scope),
@@ -141,6 +156,44 @@ class PrintPreferences
         $scope = Scope::branch($organizationId, $branchId);
         $this->put(self::DPI, Level::Branch, $scope, $dpi, $actorId);
         $this->put(self::DOTS, Level::Branch, $scope, $dots, $actorId);
+    }
+
+    /**
+     * A till's own paper and receipt printer; each null when it prints as
+     * its branch does.
+     *
+     * @return array{paper: PaperSize|null, dpi: int|null, dots: int|null}
+     */
+    public function tillPrinting(string $organizationId, string $tillId): array
+    {
+        $tillId = $this->till($organizationId, $tillId);
+
+        if ($tillId === null) {
+            return ['paper' => null, 'dpi' => null, 'dots' => null];
+        }
+
+        $scope = Scope::till($organizationId, null, $tillId);
+
+        return [
+            'paper' => PaperSize::tryFrom((string) $this->customizations->own(self::PAPER, Level::Till, $scope)),
+            'dpi' => $this->customizations->own(self::DPI, Level::Till, $scope),
+            'dots' => $this->customizations->own(self::DOTS, Level::Till, $scope),
+        ];
+    }
+
+    /** Set a till's own paper and receipt printer, or with nulls print as its branch. */
+    public function setTillPrinting(string $organizationId, string $tillId, ?PaperSize $paper, ?int $dpi, ?int $dots, ?string $actorId = null): void
+    {
+        $unit = EgsUnit::withoutTenantScope(fn () => EgsUnit::query()->where('org_id', $organizationId)->whereKey($tillId)->first());
+
+        if ($unit === null || $unit->isHeadOffice()) {
+            return;
+        }
+
+        $scope = Scope::till($organizationId, $unit->branch_id, (string) $unit->id);
+        $this->put(self::PAPER, Level::Till, $scope, $paper?->value, $actorId);
+        $this->put(self::DPI, Level::Till, $scope, $dpi, $actorId);
+        $this->put(self::DOTS, Level::Till, $scope, $dots, $actorId);
     }
 
     /** The person's own paper in this organization; null when they have none. */
@@ -175,6 +228,19 @@ class PrintPreferences
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * The till, when it is one of the organization's other than head
+     * office's - whose printer is the organization's own.
+     */
+    private function till(string $organizationId, ?string $tillId): ?string
+    {
+        if ($tillId === null || $tillId === $organizationId) {
+            return null;
+        }
+
+        return EgsUnit::withoutTenantScope(fn (): bool => EgsUnit::query()->where('org_id', $organizationId)->whereKey($tillId)->exists()) ? $tillId : null;
     }
 
     private function branch(string $organizationId, string $branchId): ?Branch

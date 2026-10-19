@@ -54,3 +54,31 @@
         <x-ui.button variant="ghost" :href="route('portal.zatca.certificates')">{{ __('Certificates') }}</x-ui.button>
     </div>
 </x-ui.section>
+
+<x-ui.section collapse :title="__('Till printers')" :description="__('What each till prints on, over this branch\'s printer and paper. A person\'s own choice still comes first.')">
+    <div class="space-y-6">
+        @foreach (array_filter($tills, fn (array $till): bool => $till['files']) as $till)
+            <form method="POST" action="{{ route('portal.zatca.tills.printing', $till['id']) }}" class="space-y-3">
+                @csrf
+                <p class="text-sm font-medium text-fg">{{ $till['name'] }}</p>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-4 sm:items-end">
+                    <x-ui.field :label="__('Paper')">
+                        <x-ui.select name="paper">
+                            <option value="" @selected($till['printing']['paper'] === null)>{{ __('As the branch') }}</option>
+                            @foreach ($papers as $size)
+                                <option value="{{ $size->value }}" @selected($till['printing']['paper'] === $size)>{{ $size->label() }}</option>
+                            @endforeach
+                        </x-ui.select>
+                    </x-ui.field>
+                    <x-ui.field :label="__('Receipt printer dpi')" optional>
+                        <x-ui.input type="number" name="dpi" min="100" max="600" placeholder="203" value="{{ $till['printing']['dpi'] }}" />
+                    </x-ui.field>
+                    <x-ui.field :label="__('Dots across the head')" optional>
+                        <x-ui.input type="number" name="dots" min="64" max="1280" step="8" placeholder="576" value="{{ $till['printing']['dots'] }}" />
+                    </x-ui.field>
+                    <x-ui.button variant="secondary">{{ __('Save this till\'s printer') }}</x-ui.button>
+                </div>
+            </form>
+        @endforeach
+    </div>
+</x-ui.section>

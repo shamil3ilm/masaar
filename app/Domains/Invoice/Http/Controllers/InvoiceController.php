@@ -159,7 +159,7 @@ class InvoiceController extends Controller
         $organization = $this->tenant->getOrganization() ?? abort(404);
 
         try {
-            $pdf = $this->pdf->render($invoice, $organization, $preferences->paper($organization, $invoice->branch_id, $request->user()?->id, $paper));
+            $pdf = $this->pdf->render($invoice, $organization, $preferences->paper($organization, $invoice->branch_id, $request->user()?->id, $paper, $invoice->device_id));
         } catch (DomainException $e) {
             return ApiResponse::error($e->getMessage(), 409);
         }

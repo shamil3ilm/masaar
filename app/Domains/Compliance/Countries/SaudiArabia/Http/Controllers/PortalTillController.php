@@ -5,19 +5,23 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\UnitRetirement;
+use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Models\EgsUnit;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\BranchService;
+use App\Domains\Organization\Services\PrintPreferences;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Organization\Services\Tills;
 use App\Http\Controllers\Controller;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 /**
- * A branch's tills from the portal: adding one, and retiring one. Each is
+ * A branch's tills from the portal: adding one, its printer, and retiring
+ * one. Each is
  * its own EGS unit, connected to ZATCA with its own OTP from its
  * certificate page. Its administrators only.
  */
@@ -30,6 +34,7 @@ class PortalTillController extends Controller
         private readonly BranchService $branches,
         private readonly Tills $tills,
         private readonly UnitRetirement $retirement,
+        private readonly PrintPreferences $printing,
     ) {}
 
     public function store(Request $request, string $branchId): RedirectResponse
@@ -61,6 +66,33 @@ class PortalTillController extends Controller
                 'till' => $this->tills->label($unit),
                 'count' => $this->retirement->waiting($unit)->count(),
             ]));
+    }
+
+    /**
+     * A till's own paper and receipt printer, over its branch's.
+     */
+    public function printing(Request $request, string $unitId): RedirectResponse
+    {
+        $organization = $this->organization($request);
+        $unit = $this->tills->find((string) $organization->id, $unitId) ?? abort(404);
+        abort_if($unit->isHeadOffice(), 404);
+
+        $data = $request->validate([
+            'paper' => ['nullable', Rule::enum(PaperSize::class)],
+            'dpi' => ['nullable', 'integer', 'between:100,600'],
+            'dots' => ['nullable', 'integer', 'between:64,1280', 'multiple_of:8'],
+        ]);
+
+        $this->printing->setTillPrinting(
+            (string) $organization->id,
+            (string) $unit->id,
+            PaperSize::tryFrom((string) ($data['paper'] ?? '')),
+            isset($data['dpi']) ? (int) $data['dpi'] : null,
+            isset($data['dots']) ? (int) $data['dots'] : null,
+            (string) $request->user()?->getAuthIdentifier(),
+        );
+
+        return back()->with('success', __('Printer of :till saved.', ['till' => $this->tills->label($unit)]));
     }
 
     private function organization(Request $request): Organization

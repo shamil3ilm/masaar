@@ -83,6 +83,7 @@ class ModuleServiceProvider extends ServiceProvider
                 // retiring one once nothing it signed is left to file.
                 Route::post('/branches/{branchId}/tills', [PortalTillController::class, 'store'])->name('branches.tills.store');
                 Route::post('/zatca/tills/{unitId}/retire', [PortalTillController::class, 'retire'])->name('zatca.tills.retire');
+                Route::post('/zatca/tills/{unitId}/printing', [PortalTillController::class, 'printing'])->name('zatca.tills.printing');
             });
 
         // The organization's tills (EGS units) over the tenant API, behind

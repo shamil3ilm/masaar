@@ -16,11 +16,11 @@ use InvalidArgumentException;
 
 /**
  * Every customization's value, by level: the shipped default, then the
- * platform's, the organization's, the branch's and the person's, the nearest
+ * platform's, the organization's, the branch's, the till's and the person's, the nearest
  * winning unless a level above locked its own (docs/architecture/CUSTOMIZATION.md).
  *
  * The store is one table, a row per key per holder - 'platform',
- * 'organization:{id}', 'branch:{id}', 'member:{org}:{user}' or 'user:{id}' -
+ * 'organization:{id}', 'branch:{id}', 'till:{id}', 'member:{org}:{user}' or 'user:{id}' -
  * with no live row meaning "as the level above", so resetting soft-deletes
  * it, with who did, and setting it again brings the row back. Each row
  * records who made it and who last changed it. A
@@ -204,6 +204,7 @@ class Customizations
             Level::Platform => Scope::platform(),
             Level::Organization => Scope::organization((string) $scope->organizationId),
             Level::Branch => Scope::branch((string) $scope->organizationId, (string) $scope->branchId),
+            Level::Till => Scope::till((string) $scope->organizationId, $scope->branchId, (string) $scope->tillId),
             Level::User => $definition->acrossOrganizations || $scope->organizationId === null
                 ? Scope::person((string) $scope->userId)
                 : Scope::member($scope->organizationId, (string) $scope->userId),
@@ -327,7 +328,8 @@ class Customizations
             'level' => $level->value,
             'holder' => $holder,
             'org_id' => $level === Level::Platform || ($level === Level::User && $definition->acrossOrganizations) ? null : $scope->organizationId,
-            'branch_id' => $level === Level::Branch ? $scope->branchId : null,
+            // A till's row names its branch, so it goes with the branch.
+            'branch_id' => in_array($level, [Level::Branch, Level::Till], true) ? $scope->branchId : null,
             'user_id' => $level === Level::User ? $scope->userId : null,
             'created_by' => $actorId,
             'created_at' => now(),
@@ -353,6 +355,7 @@ class Customizations
         return match ($level) {
             Level::Organization => $scope->organizationId,
             Level::Branch => $scope->branchId,
+            Level::Till => $scope->tillId,
             Level::User => $scope->userId,
             Level::Platform => null,
         };

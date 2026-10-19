@@ -7,7 +7,9 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Presentation;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Compliance\Engine\Contracts\Devices;
 use App\Domains\Compliance\Engine\DTOs\Panel;
+use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Organization\Services\BranchService;
+use App\Domains\Organization\Services\PrintPreferences;
 use App\Domains\Organization\Services\Tills;
 
 /**
@@ -27,6 +29,7 @@ class DeviceStatus implements Devices
         private readonly BranchService $branches,
         private readonly Tills $tills,
         private readonly CredentialStore $credentials,
+        private readonly PrintPreferences $printing,
     ) {}
 
     public function branchStatus(string $organizationId, string $branchId): ?Panel
@@ -39,6 +42,7 @@ class DeviceStatus implements Devices
 
         return new Panel('countries.saudi-arabia.branch-device', [
             'branch' => (string) $branch->id,
+            'papers' => PaperSize::cases(),
             'tills' => $this->tills->forBranch($organizationId, $branchId)
                 ->map(fn ($unit): array => [
                     'id' => (string) $unit->id,
@@ -53,6 +57,9 @@ class DeviceStatus implements Devices
                     'production' => $this->credentials->has($organizationId, (string) $unit->id, CredentialStore::PCSID),
                     'expires' => $unit->cert_expires_at,
                     'days' => $unit->daysUntilCertificateExpiry(),
+                    'files' => $unit->files(),
+                    // Its own paper and receipt printer, over the branch's.
+                    'printing' => $this->printing->tillPrinting($organizationId, (string) $unit->id),
                 ])
                 ->values()
                 ->all(),

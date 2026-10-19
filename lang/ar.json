@@ -2084,5 +2084,11 @@
     "Each till is its own ZATCA device: its own certificate, counter and numbering, connected with its own one-time code.": "كل نقطة بيع جهاز مستقل لدى الهيئة: لها شهادتها وعدّادها وترقيمها، وتُربط برمزها المؤقت الخاص.",
     "New till's name": "اسم نقطة البيع الجديدة",
     "Add a till": "إضافة نقطة بيع",
-    "This branch has no till that still issues. Add one, or choose All branches to issue from head office.": "ليس لهذا الفرع نقطة بيع ما زالت تُصدر الفواتير. أضف واحدة، أو اختر جميع الفروع للإصدار من المركز الرئيسي."
+    "This branch has no till that still issues. Add one, or choose All branches to issue from head office.": "ليس لهذا الفرع نقطة بيع ما زالت تُصدر الفواتير. أضف واحدة، أو اختر جميع الفروع للإصدار من المركز الرئيسي.",
+    "Till printers": "طابعات نقاط البيع",
+    "What each till prints on, over this branch's printer and paper. A person's own choice still comes first.": "ما تطبع عليه كل نقطة بيع بدلاً من طابعة هذا الفرع وورقه. ويبقى اختيار الشخص نفسه مقدَّماً.",
+    "As the branch": "كما في الفرع",
+    "Save this till's printer": "حفظ طابعة نقطة البيع هذه",
+    "Printer of :till saved.": "حُفظت طابعة :till.",
+    "The paper an invoice prints on. The nearest choice wins: your own, then the till that issued the invoice, then its branch, then the organization.": "الورق الذي تُطبع عليه الفاتورة. يُعتمد الاختيار الأقرب: اختيارك أنت، ثم نقطة البيع التي أصدرت الفاتورة، ثم فرعها، ثم المنشأة."
 }
