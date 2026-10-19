@@ -37,6 +37,26 @@ class DesignSystemTest extends TestCase
     }
 
     /**
+     * The four kinds of confirmation, each drawn and each askable, and the
+     * wording rules beside them.
+     */
+    public function test_it_shows_every_confirmation_kind(): void
+    {
+        $html = $this->actingAs(User::factory()->create(['is_platform_admin' => true]))
+            ->get('/admin/design-system')
+            ->assertOk()
+            ->getContent();
+
+        // One of each per preview: standard, danger, typed and approval.
+        $this->assertSame(16, substr_count($html, 'data-confirm-detail='));
+        $this->assertSame(4, substr_count($html, 'data-confirm-tone="danger"'));
+        $this->assertSame(4, substr_count($html, 'data-confirm-type='));
+        $this->assertSame(4, substr_count($html, 'name="approval_reason"'));
+        $this->assertStringContainsString('OK, Yes or Confirm on the button.', $html);
+        $this->assertStringContainsString('data-confirm-dialog', $html);
+    }
+
+    /**
      * A component added to the library is shown here too, or this fails.
      */
     public function test_every_component_has_a_specimen(): void
