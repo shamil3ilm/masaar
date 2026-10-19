@@ -95,6 +95,11 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
     Route::post('/pipeline/batch', [PipelineController::class, 'batch'])
         ->middleware(['scope:invoice.submit', 'license.quota']);
 
+    // A sale billed in two shares, both drafted, issued and filed in one
+    // call: the patient's first, then the insurer's.
+    Route::post('/pipeline/split', [PipelineController::class, 'split'])
+        ->middleware(['scope:invoice.submit', 'license.feature:simplified_invoices', 'license.feature:standard_invoices', 'license.quota']);
+
     Route::get('/pipeline/status/{invoiceId}', [PipelineController::class, 'status'])
         ->middleware(['scope:compliance.status']);
 

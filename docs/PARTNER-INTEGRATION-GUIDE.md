@@ -206,8 +206,8 @@ A licence holds a list of scopes, and each route needs one:
 
 | Scope | Routes |
 |---|---|
-| `invoice.read` | `GET /api/v1/invoices`, `GET /api/v1/invoices/{invoice}` |
-| `invoice.submit` | `POST /api/v1/invoices`, `PUT /api/v1/invoices/{invoice}`, `POST /api/v1/compliance/generate/{invoiceId}`, `POST /api/v1/compliance/validate/{invoiceId}`, `POST /api/v1/compliance/submit/{invoiceId}`, `POST /api/v1/pipeline/submit`, `POST /api/v1/pipeline/batch` |
+| `invoice.read` | `GET /api/v1/invoices`, `GET /api/v1/invoices/{invoice}`, `GET /api/v1/invoices/splits/{split}` |
+| `invoice.submit` | `POST /api/v1/invoices`, `PUT /api/v1/invoices/{invoice}`, `POST /api/v1/compliance/generate/{invoiceId}`, `POST /api/v1/compliance/validate/{invoiceId}`, `POST /api/v1/compliance/submit/{invoiceId}`, `POST /api/v1/pipeline/submit`, `POST /api/v1/pipeline/batch`, `POST /api/v1/invoices/splits`, `POST /api/v1/invoices/splits/{split}/settle`, `POST /api/v1/pipeline/split` |
 | `invoice.cancel` | `DELETE /api/v1/invoices/{invoice}` (a draft only) |
 | `compliance.status` | `GET /api/v1/compliance/status/{invoiceId}`, `GET /api/v1/pipeline/status/{invoiceId}` |
 | `webhook.manage` | `/api/v1/webhooks` |
@@ -697,7 +697,29 @@ pipeline: the four `/api/v1/compliance/*` routes answer it 422 with the code
 `JURISDICTION_ENDPOINT_MISMATCH`, and `error.details.use` lists the pipeline
 routes its invoices take.
 
-### 5.6 Dashboard
+### 5.6 A sale split between a patient and an insurer (Saudi Arabia)
+
+A pharmacy, clinic or hospital enters a sale once with a `split`, and the
+platform bills it in two linked invoices:
+
+- the patient's share, on a simplified invoice;
+- the insurer's share, on a standard invoice to the insurer.
+
+| Endpoint | Does | Answers in `data` |
+|---|---|---|
+| `POST /api/v1/invoices/splits` | Draft both shares (takes `Idempotency-Key`) | `split`, `invoices.patient`, `invoices.insurer` |
+| `POST /api/v1/pipeline/split` | Draft, issue and file both, the patient's first | `split`, `patient`, `insurer` |
+| `GET /api/v1/invoices/splits/{split}` | The split and its invoices | `split`, `invoices` |
+| `POST /api/v1/invoices/splits/{split}/settle` | Record what the insurer approved. The rest is credited on its invoice and billed to the patient. | `split`, `invoices` |
+
+The licence needs `simplified_invoices` and `standard_invoices`. Settling
+also needs `credit_notes`. Each share counts against the invoice allowance.
+The body, how the sale is divided and how each line is taxed are in the
+Saudi guide: [Split billing](sa/INTEGRATION-GUIDE.md#split-billing-patient-and-insurer).
+The UAE does not split a sale, because its e-invoicing leaves sales to
+consumers out (UAE Electronic Invoicing Guidelines §6.2).
+
+### 5.7 Dashboard
 
 `GET /api/v1/dashboard` (an overview), `GET /api/v1/dashboard/health` (the
 checks, among them the certificate the organization signs with, under

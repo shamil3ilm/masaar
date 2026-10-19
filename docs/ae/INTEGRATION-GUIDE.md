@@ -22,6 +22,15 @@ available:
   Countries page, or by default (`PEPPOL_AE_ENABLED=false`). The read routes
   stay open, so documents already sent can still be followed.
 
+**Split billing.** A sale split between a patient and an insurer is not
+offered in the UAE. The patient's share would be a sale to a consumer, and
+UAE e-invoicing leaves those out: "Any supplies to or from natural persons
+who are not in Business are not within the scope of Electronic Invoicing"
+(UAE Electronic Invoicing Guidelines v1.1, §6.2, p14). Invoice the insurer's
+share to the insurer as an ordinary tax invoice. PINT AE has no transaction
+flag for a third party paying (BTAE-02). `POST /api/invoices/splits` answers
+`422` with the reason under `split`.
+
 ## Responses and errors
 
 Every JSON answer uses the platform's envelope.
