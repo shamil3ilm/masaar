@@ -66,6 +66,8 @@ class Customer extends Model
         // The zero rating this buyer is eligible for, where the rate depends
         // on who buys (a citizen's healthcare or education).
         'exempt_code',
+        // An insurer: the buyer of the insurer's share of a split sale.
+        'is_insurer',
         'archived_at',
     ];
 
@@ -74,7 +76,7 @@ class Customer extends Model
 
     protected function casts(): array
     {
-        return ['archived_at' => 'datetime'];
+        return ['archived_at' => 'datetime', 'is_insurer' => 'boolean'];
     }
 
     /**

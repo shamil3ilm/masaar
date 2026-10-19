@@ -156,21 +156,28 @@ class PortalCustomerController extends Controller
     {
         $rules = $this->jurisdiction()->invoiceRules();
 
+        // An insurer is invoiced for its share of a split sale on a tax
+        // invoice to a registered buyer, so it keeps the VAT number and the
+        // address that invoice names it by.
+        $insurer = $request->boolean('is_insurer');
+        $required = $insurer ? ['required'] : ['nullable'];
+
         // The country's buyer rules replace a shared one in its place, and
         // add their own after.
-        return $request->validate([...[
+        return [...$request->validate([...[
             'name' => ['required', 'string', 'max:255'],
             // What an invoice naming the customer takes as the buyer's
             // Arabic name, required where the country requires Arabic.
             'name_ar' => $this->jurisdiction()->languageRules()->arabicNameRules(LanguageRules::CUSTOMER),
             'vat_number' => [
-                'nullable', 'string', new VatNumber,
+                ...$required, 'string', new VatNumber,
                 Rule::unique('customers', 'vat_number')->where('org_id', $organizationId)->withoutTrashed()->ignore($customer?->id),
             ],
-            'street' => ['nullable', 'string', 'max:255'],
-            'building_number' => ['nullable', 'string', 'max:20'],
+            'is_insurer' => ['sometimes', 'boolean'],
+            'street' => [...$required, 'string', 'max:255'],
+            'building_number' => [...$required, 'string', 'max:20'],
             'district' => ['nullable', 'string', 'max:100'],
-            'city' => ['nullable', 'string', 'max:100'],
+            'city' => [...$required, 'string', 'max:100'],
             'postal_code' => ['nullable', 'string', 'max:10'],
             // A code from the list the form offers (ISO 3166-1 alpha-2).
             'country_code' => ['required', 'string', 'size:2', 'regex:/^[A-Z]{2}$/', Rule::in(CountryNames::CODES)],
@@ -181,8 +188,9 @@ class PortalCustomerController extends Controller
             'payment_terms' => [...$this->jurisdiction()->languageRules()->arabicTextRules(), 'max:1000'],
         ], ...$rules->buyerRules($request)], [
             'vat_number.unique' => __('Another customer already has this VAT number.'),
+            'vat_number.required' => __('An insurer is invoiced as a registered buyer: give its VAT number.'),
             ...$rules->buyerMessages(),
-        ]);
+        ]), 'is_insurer' => $insurer];
     }
 
     /** The organization's country's module, switched on or not. */

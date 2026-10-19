@@ -2493,5 +2493,8 @@
     "Print tax invoice for the buyer": "طباعة الفاتورة الضريبية للمشتري",
     "Print a copy": "طباعة نسخة",
     "Issue the invoice first. A draft is not a tax invoice.": "أصدر الفاتورة أولاً. المسودة ليست فاتورة ضريبية.",
-    "The e-invoice was rejected, so it is not a valid tax invoice. Correct it and issue a new one.": "رُفضت الفاتورة الإلكترونية، فهي ليست فاتورة ضريبية صالحة. صحّحها وأصدر فاتورة جديدة."
+    "The e-invoice was rejected, so it is not a valid tax invoice. Correct it and issue a new one.": "رُفضت الفاتورة الإلكترونية، فهي ليست فاتورة ضريبية صالحة. صحّحها وأصدر فاتورة جديدة.",
+    "Insurer": "شركة تأمين",
+    "Billed for the insurer's share of a sale split with a patient. Needs the VAT number and the address.": "تُصدر لها فاتورة بحصة شركة التأمين من بيع مقسوم مع مريض. تتطلب الرقم الضريبي والعنوان.",
+    "An insurer is invoiced as a registered buyer: give its VAT number.": "تُصدر الفاتورة لشركة التأمين بصفتها مشترياً مسجلاً: أدخل رقمها الضريبي."
 }
