@@ -38,17 +38,19 @@ class AspHttpGatewayTest extends TestCase
     {
         Http::fake([
             self::BASE.'/oauth/token' => Http::response(['access_token' => 'token-1', 'expires_in' => 3600]),
-            self::BASE.'/documents' => Http::response(['id' => 'msg-42'], 201),
+            self::BASE.'/documents' => Http::response(['id' => 'msg-42', 'reference' => 'ASP-DOC-7'], 201),
         ]);
 
         $document = $this->document();
+        $receipt = $this->gateway()->submit($document);
 
-        $this->assertSame('msg-42', $this->gateway()->submit($document));
+        $this->assertSame(['msg-42', 'ASP-DOC-7'], [$receipt->messageId, $receipt->providerReference]);
 
         Http::assertSent(fn (Request $request) => $request->url() === self::BASE.'/documents'
             && $request->hasHeader('Authorization', 'Bearer token-1')
             && $request->hasHeader('Idempotency-Key', 'doc-1')
             && base64_decode($request['document']) === '<Invoice/>'
+            && $request['uuid'] === '5f0c7b0e-8f6a-4c1e-9a2b-3d4e5f6a7b8c'
             && $request['receiver'] === '0235:1000000002');
     }
 
@@ -149,6 +151,7 @@ class AspHttpGatewayTest extends TestCase
     {
         return (new PeppolDocument)->forceFill([
             'id' => 'doc-1',
+            'document_uuid' => '5f0c7b0e-8f6a-4c1e-9a2b-3d4e5f6a7b8c',
             'xml' => '<Invoice/>',
             'sender_endpoint' => '0235:1000000001',
             'receiver_endpoint' => '0235:1000000002',

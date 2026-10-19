@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Networks\Peppol\Gateways;
 
 use App\Domains\Compliance\Networks\Peppol\Contracts\AspGateway;
+use App\Domains\Compliance\Networks\Peppol\DTOs\SubmitReceipt;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use Illuminate\Http\Request;
 use Throwable;
@@ -77,7 +78,7 @@ final class FakeAspGateway implements AspGateway
         return $this;
     }
 
-    public function submit(PeppolDocument $document): string
+    public function submit(PeppolDocument $document): SubmitReceipt
     {
         $this->submitted[] = (string) $document->id;
 
@@ -85,7 +86,7 @@ final class FakeAspGateway implements AspGateway
             throw array_shift($this->failures);
         }
 
-        return 'fake-'.$document->id;
+        return new SubmitReceipt('fake-'.$document->id);
     }
 
     public function status(string $messageId): array

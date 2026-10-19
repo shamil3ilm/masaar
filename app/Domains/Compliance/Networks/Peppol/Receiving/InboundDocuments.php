@@ -60,7 +60,7 @@ final class InboundDocuments
             return null;
         }
 
-        [$customization, $profile, $type] = $this->describe($message->xml);
+        [$customization, $profile, $type, $uuid] = $this->describe($message->xml);
 
         try {
             $document = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->create([
@@ -71,6 +71,8 @@ final class InboundDocuments
                 'customization_id' => $customization,
                 'profile_id' => $profile,
                 'document_type' => $type,
+                // The supplier's UUID for it, as the document says.
+                'document_uuid' => $uuid !== '' ? $uuid : null,
                 'xml' => $message->xml,
                 'asp_message_id' => $message->messageId,
                 'status' => DocumentStatus::RECEIVED,
@@ -153,13 +155,13 @@ final class InboundDocuments
     }
 
     /**
-     * CustomizationID, ProfileID and the root element (Invoice, CreditNote)
-     * of a received document, blank where the XML does not say.
+     * CustomizationID, ProfileID, the root element (Invoice, CreditNote) and
+     * the UUID of a received document, blank where the XML does not say.
      *
      * Stored whatever it says: the buyer's provider has validated it already,
      * and what the taxpayer received must be kept as it arrived.
      *
-     * @return array{0: string, 1: string, 2: string}
+     * @return array{0: string, 1: string, 2: string, 3: string}
      */
     private function describe(string $xml): array
     {
@@ -167,7 +169,7 @@ final class InboundDocuments
 
         // LIBXML_NONET: a received document never makes this server fetch.
         if (! @$dom->loadXML($xml, LIBXML_NONET) || $dom->documentElement === null) {
-            return ['', '', ''];
+            return ['', '', '', ''];
         }
 
         $root = $dom->documentElement;
@@ -185,6 +187,7 @@ final class InboundDocuments
             mb_substr($child('CustomizationID'), 0, 255),
             mb_substr($child('ProfileID'), 0, 255),
             mb_substr((string) $root->localName, 0, 30),
+            mb_substr($child('UUID'), 0, 36),
         ];
     }
 }

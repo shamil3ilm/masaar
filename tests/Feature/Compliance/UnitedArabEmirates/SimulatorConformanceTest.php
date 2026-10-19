@@ -18,6 +18,7 @@ use App\Domains\Compliance\Networks\Peppol\Simulator\SimulatorCallbacks;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Feature\Compliance\Networks\Peppol\PlaysTheSimulator;
@@ -71,6 +72,14 @@ class SimulatorConformanceTest extends TestCase
         $document = $this->sendThroughApi($this->uaeOrganization());
 
         $this->assertDelivered($document);
+
+        // Its own UUID, generated for the document, not the invoice's id
+        // (UAE Electronic Invoicing Guidelines v1.1, p11 row 7); the
+        // provider's id for it kept as a reference.
+        $this->assertTrue(Str::isUuid((string) $document->document_uuid));
+        $this->assertNotSame($document->invoice_id, $document->document_uuid);
+        $this->assertStringContainsString('<cbc:UUID>'.$document->document_uuid.'</cbc:UUID>', (string) $document->xml);
+        $this->assertStringStartsWith('SIMDOC-', (string) $document->fresh()->provider_reference);
         $this->assertSame(['sent', 'delivered', 'reported'], array_column($this->callbacksTo(SimulatorCallbacks::STATUS_PATH), 'status'));
     }
 
@@ -245,7 +254,7 @@ class SimulatorConformanceTest extends TestCase
     {
         $document = app(InvoiceIssuer::class)->issue($this->draftFor('standard'), send: false);
         $claimed = app(DocumentStatus::class)->transition((string) $document->id, 'sending');
-        $messageId = app(AspGateway::class)->submit($claimed);
+        $messageId = app(AspGateway::class)->submit($claimed)->messageId;
 
         $this->travel(20)->minutes();
         $this->artisan('peppol:recover-sending')->expectsOutputToContain('Found at the provider: 1.')->assertSuccessful();

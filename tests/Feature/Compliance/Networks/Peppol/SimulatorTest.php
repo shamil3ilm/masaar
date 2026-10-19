@@ -149,7 +149,7 @@ class SimulatorTest extends TestCase
         $messageId = $document->asp_message_id;
 
         $this->assertFalse(app(PeppolSender::class)->send((string) $document->id));
-        $this->assertSame($messageId, app(AspGateway::class)->submit($document));
+        $this->assertSame($messageId, app(AspGateway::class)->submit($document)->messageId);
 
         $this->assertCount(1, $this->rules->judged);
         Queue::assertPushed(PlaySimulatedMessage::class, 1);
@@ -183,7 +183,7 @@ class SimulatorTest extends TestCase
     public function test_early_callback_is_retried(): void
     {
         $document = $this->readyDocument();
-        $messageId = app(AspGateway::class)->submit($document);
+        $messageId = app(AspGateway::class)->submit($document)->messageId;
 
         $this->playNext();
         $this->assertSame([404], $this->callbackAnswers);

@@ -26,7 +26,7 @@ class UaeDocuments
         'id', 'invoice_id', 'direction', 'country', 'customization_id', 'profile_id', 'document_type',
         'asp_message_id', 'status', 'mls_code', 'errors', 'sender_endpoint', 'receiver_endpoint',
         'attempts', 'last_error', 'reporting_status', 'authority_reference', 'reporting_errors',
-        'reporting_changed_at', 'created_at', 'updated_at',
+        'reporting_changed_at', 'document_uuid', 'provider_reference', 'created_at', 'updated_at',
     ];
 
     public function paginate(?string $organizationId, ?string $direction, ?string $status, int $perPage): LengthAwarePaginator

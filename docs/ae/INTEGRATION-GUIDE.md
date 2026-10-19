@@ -251,6 +251,11 @@ Sending does the following:
 1. Issues the draft. It takes the next number in the organization's sequence
    and records its moment of issue.
 2. Builds the PINT AE document and checks it.
+   The document gets a UUID of its own (`document_uuid`, written as
+   `cbc:UUID`). This is not the invoice's id: the UUID is what makes each
+   e-invoice unique (UAE Electronic Invoicing Guidelines v1.1, p11 row 7).
+   The documents API returns it, with `provider_reference`, the service
+   provider's own id for the document where it keeps one.
 3. Looks the recipient's Peppol identifier up on the network, through the
    service provider, as the provider does before transmitting (UAE
    Electronic Invoicing Guidelines v1.1, p11 rows 5-6). An identifier that

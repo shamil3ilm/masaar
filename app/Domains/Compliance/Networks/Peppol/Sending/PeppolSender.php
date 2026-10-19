@@ -108,7 +108,7 @@ final class PeppolSender
         }
 
         try {
-            $messageId = $this->gateway->submit($document);
+            $receipt = $this->gateway->submit($document);
         } catch (NoAspConfiguredException) {
             // Not an attempt: the document waits, uncounted, for a manual upload.
             $this->status->transition($documentId, DocumentStatus::READY, fn (PeppolDocument $locked) => [
@@ -161,7 +161,8 @@ final class PeppolSender
         $taken = $this->reportOnly->contains($document->receiver_endpoint) ? DocumentStatus::NOT_EXCHANGED : DocumentStatus::SENT;
 
         $this->status->transition($documentId, $taken, [
-            'asp_message_id' => $messageId,
+            'asp_message_id' => $receipt->messageId,
+            'provider_reference' => $receipt->providerReference,
             'last_error' => null,
             'reporting_status' => DocumentStatus::PENDING,
             'reporting_changed_at' => now(),

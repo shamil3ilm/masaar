@@ -53,6 +53,10 @@ class PeppolDocument extends Model
         'authority_reference',
         'reporting_errors',
         'reporting_changed_at',
+        // The platform's UUID for the document (cbc:UUID), and the
+        // provider's own id for it, kept as a reference.
+        'document_uuid',
+        'provider_reference',
     ];
 
     protected function casts(): array

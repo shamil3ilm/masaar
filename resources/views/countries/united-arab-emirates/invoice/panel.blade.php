@@ -55,6 +55,12 @@
                     @endif
                 </dd>
             </div>
+            @if ($document->provider_reference)
+                <div>
+                    <dt class="text-muted">{{ __('Service provider reference') }}</dt>
+                    <dd class="break-all font-mono text-xs text-fg">{{ $document->provider_reference }}</dd>
+                </div>
+            @endif
             @if ($document->authority_reference)
                 <div>
                     <dt class="text-muted">{{ __('Authority reference') }}</dt>
@@ -65,6 +71,12 @@
                 <div>
                     <dt class="text-muted">{{ __('Why the report failed') }}</dt>
                     <dd>@include('portal.partials.peppol-errors', ['errors' => $document->errorList('reporting_errors')])</dd>
+                </div>
+            @endif
+            @if ($document->document_uuid)
+                <div>
+                    <dt class="text-muted">{{ __('E-invoice UUID') }}</dt>
+                    <dd class="break-all font-mono text-xs text-fg">{{ $document->document_uuid }}</dd>
                 </div>
             @endif
             <div>

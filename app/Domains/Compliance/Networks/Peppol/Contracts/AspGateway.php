@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Networks\Peppol\Contracts;
 
+use App\Domains\Compliance\Networks\Peppol\DTOs\SubmitReceipt;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\AspRefusedException;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\AspUnavailableException;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\NoAspConfiguredException;
@@ -27,15 +28,21 @@ use Illuminate\Http\Request;
 interface AspGateway
 {
     /**
-     * Hand the document to the provider.
+     * Hand the document to the provider, with the platform's UUID for it
+     * (document_uuid, cbc:UUID): the platform generates the UUID that makes
+     * each e-invoice unique (Electronic Invoicing Guidelines v1.1, p11 row 7
+     * puts it with the provider; one generated here travels with the
+     * document and is the same in every copy), and keeps the provider's ids
+     * as references.
      *
-     * @return string the provider's message id, which every later status refers to
+     * @return SubmitReceipt the provider's message id, which every later
+     *                       status refers to, and its own document id if any
      *
      * @throws NoAspConfiguredException no provider: the document waits for a manual upload
      * @throws AspUnavailableException no verdict (unreachable, throttled, 5xx): try again later
      * @throws AspRefusedException the provider refused the document itself
      */
-    public function submit(PeppolDocument $document): string;
+    public function submit(PeppolDocument $document): SubmitReceipt;
 
     /**
      * Ask the provider what became of a document, for when a callback was

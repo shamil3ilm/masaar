@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Networks\Peppol\Gateways;
 
 use App\Domains\Compliance\Networks\Peppol\Contracts\AspGateway;
 use App\Domains\Compliance\Networks\Peppol\DTOs\AspError;
+use App\Domains\Compliance\Networks\Peppol\DTOs\SubmitReceipt;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\AspRefusedException;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\AspUnavailableException;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
@@ -28,8 +29,8 @@ use RuntimeException;
  *
  *   token   POST {base}/oauth/token, OAuth2 client credentials
  *           (PEPPOL_ASP_CLIENT_ID / _SECRET), cached until it expires
- *   submit  POST {base}/documents {document: base64 XML, sender, receiver}
- *           with Idempotency-Key: the document id -> {id}
+ *   submit  POST {base}/documents {document: base64 XML, uuid, sender, receiver}
+ *           with Idempotency-Key: the document id -> {id, reference?}
  *   status  GET {base}/documents/{id} -> {status, mls_code, errors,
  *           reporting_status, authority_reference, reporting_errors}
  *   report  POST {base}/documents/{id}/report -> 2xx: reported again
@@ -80,12 +81,13 @@ final class HttpAspGateway implements AspGateway
         private readonly WebhookSignature $signature,
     ) {}
 
-    public function submit(PeppolDocument $document): string
+    public function submit(PeppolDocument $document): SubmitReceipt
     {
         $response = $this->call(fn (PendingRequest $http) => $http
             ->withHeaders(['Idempotency-Key' => (string) $document->id])
             ->post($this->url(self::DOCUMENTS_PATH), [
                 'document' => base64_encode((string) $document->xml),
+                'uuid' => $document->document_uuid,
                 'sender' => $document->sender_endpoint,
                 'receiver' => $document->receiver_endpoint,
             ]));
@@ -102,7 +104,10 @@ final class HttpAspGateway implements AspGateway
             throw new RuntimeException('The service provider accepted the document without a message id.');
         }
 
-        return (string) $id;
+        // The provider's own id for the document, where it keeps one apart.
+        $reference = $response->json('reference') ?? $response->json('document_id');
+
+        return new SubmitReceipt((string) $id, is_string($reference) && $reference !== '' ? mb_substr($reference, 0, 255) : null);
     }
 
     public function status(string $messageId): array

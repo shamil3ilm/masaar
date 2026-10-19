@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Networks\Peppol\Simulator;
 
 use App\Domains\Compliance\Networks\Peppol\Console\PintValidator;
 use App\Domains\Compliance\Networks\Peppol\Contracts\AspGateway;
+use App\Domains\Compliance\Networks\Peppol\DTOs\SubmitReceipt;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\AspRefusedException;
 use App\Domains\Compliance\Networks\Peppol\Exceptions\AspUnavailableException;
 use App\Domains\Compliance\Networks\Peppol\Gateways\AspStatus;
@@ -57,11 +58,11 @@ final class SimulatedAspGateway implements AspGateway
         $this->signature = new WebhookSignature(SimulatorCallbacks::secret());
     }
 
-    public function submit(PeppolDocument $document): string
+    public function submit(PeppolDocument $document): SubmitReceipt
     {
         $key = (string) $document->id;
 
-        return $this->ledger->exclusively($key, function () use ($document, $key): string {
+        $messageId = $this->ledger->exclusively($key, function () use ($document, $key): string {
             // Seen before: the same answer, and nothing filed twice.
             $known = $this->ledger->messageIdFor($key);
 
@@ -102,6 +103,10 @@ final class SimulatedAspGateway implements AspGateway
 
             return $message->messageId;
         });
+
+        // The simulated provider's own id for the document: the same for
+        // every answer about one message.
+        return new SubmitReceipt($messageId, 'SIMDOC-'.strtoupper(substr(hash('sha256', $messageId), 0, 16)));
     }
 
     public function status(string $messageId): array

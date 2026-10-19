@@ -327,10 +327,16 @@ The order is by how much each matters at go-live.
    (p23). The answer is cached for a day when registered and ten minutes
    when not. An unknown answer (no provider, or no reply) stops nothing.
    **Ask the provider** (question 4) for its lookup call.
-10. **The UUID.** The Guidelines make the UUID the provider's job
-    (Guidelines p11, row 7). The platform sets `cbc:UUID` itself, and keeps
-    the XML as it built it. `submit` should return any UUID, or final
-    document, the provider substitutes.
+10. **The UUID.** *Closed.* The Guidelines say the UUID that makes each
+    e-invoice unique is generated for it (p11, row 7). The platform used the
+    invoice's database id. It now generates a UUID for each document
+    (`document_uuid`, written as `cbc:UUID`) and sends it with the document.
+    `submit` returns a `SubmitReceipt`: the message id, plus the provider's
+    own document id where it keeps one, which is stored as
+    `provider_reference`. A received document's UUID is read from its XML.
+    **Ask the provider** (question 5) whether it keeps our UUID or
+    substitutes its own. If it substitutes, it should return the final
+    document.
 
 **Nice to have.**
 
