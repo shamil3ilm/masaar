@@ -150,6 +150,25 @@ class ReportingTrackTest extends TestCase
         $this->assertSame(['fake-'.$document->id], $this->asp->queried);
     }
 
+    /**
+     * A received document's report is made by the buyer's provider, which
+     * forwards the authority's confirmation (Electronic Invoicing Guidelines
+     * v1.1, p11 steps 9 and 11); a delivery status for it changes nothing.
+     */
+    public function test_received_document_records_its_report(): void
+    {
+        $received = $this->document('received', 'msg-in');
+        $received->forceFill(['direction' => PeppolDocument::DIRECTION_IN, 'reporting_status' => null])->save();
+        $status = app(DocumentStatus::class);
+
+        $this->assertTrue($status->apply(new AspStatus('msg-in', 'reported', null, [], 'TDD-IN')));
+        $this->assertFalse($status->apply(new AspStatus('msg-in', 'delivered', 'AP')));
+
+        $received->refresh();
+        $this->assertSame(['received', 'reported', 'TDD-IN'], [$received->status, $received->reporting_status, $received->authority_reference]);
+        $this->assertSame('in', $this->announced[0]['payload']['e_invoice']['direction']);
+    }
+
     /** Polled while either track is open, and not once both have answered. */
     public function test_poll_asks_until_reported(): void
     {

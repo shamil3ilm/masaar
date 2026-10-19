@@ -50,9 +50,12 @@ final class SimulatorCallbacks
      */
     public function deliver(SimulatedMessage $message, array $event): int
     {
+        // The buyer's provider gives the delivered copy its own message id.
+        $inboundId = $message->messageId.'-in';
+
         if ($event['type'] === 'inbound') {
             return $this->post(self::INBOUND_PATH, [
-                'message_id' => $message->messageId,
+                'message_id' => $inboundId,
                 'document' => base64_encode($message->xml),
                 'sender' => $message->sender,
                 'receiver' => $message->receiver,
@@ -60,7 +63,7 @@ final class SimulatorCallbacks
         }
 
         return $this->post(self::STATUS_PATH, [
-            'message_id' => $message->messageId,
+            'message_id' => ($event['for'] ?? null) === 'inbound' ? $inboundId : $message->messageId,
             'status' => $event['status'] ?? null,
             'mls_code' => $event['mls_code'] ?? null,
             'errors' => $event['errors'] ?? [],

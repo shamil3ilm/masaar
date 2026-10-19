@@ -351,6 +351,10 @@ class SimulatorConformanceTest extends TestCase
 
         $received = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->where('direction', 'in')->sole());
         $this->assertSame([$buyer->id, 'received', $sent->xml], [$received->org_id, $received->status, $received->xml]);
+        // Its report, by the buyer's provider, confirmed and forwarded (UAE
+        // Electronic Invoicing Guidelines v1.1, p11 steps 9 and 11).
+        $this->assertSame('reported', $received->reporting_status);
+        $this->assertNotNull($received->authority_reference);
 
         $this->portal($buyer, 'GET', '/portal/received')->assertOk()->assertSee($number);
         $this->portal($buyer, 'GET', "/portal/received/{$received->id}")->assertOk()->assertSee('Gulf Trading LLC');

@@ -88,7 +88,9 @@ enum Outcome: string
     {
         $sent = self::status(AspStatus::SENT);
         $delivered = self::status(AspStatus::DELIVERED, 'AP');
-        $inbound = $receiverIsHere ? [['type' => 'inbound']] : [];
+        // Delivered to one of ours: it arrives, then the buyer's provider
+        // forwards the authority's confirmation of its own report (p11 step 11).
+        $inbound = $receiverIsHere ? [['type' => 'inbound'], [...self::reported(), 'for' => 'inbound']] : [];
 
         return match ($this) {
             self::Delivered, self::Unavailable, self::Outage, self::AnswerLost => [$sent, $delivered, self::reported(), ...$inbound],

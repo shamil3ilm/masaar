@@ -292,9 +292,13 @@ The order is by how much each matters at go-live.
    received. Pending invoices go out once service resumes (Guidelines p46).
    **Ask the provider** (question 6) whether it can look up by our
    reference.
-6. **Confirmations for received invoices** are forwarded to the buyer
-   (Guidelines p11, step 11). Received documents are stored, but nothing
-   records their reporting confirmation.
+6. **Confirmations for received invoices.** *Closed.* The buyer's provider
+   reports a received invoice to the authority and forwards the
+   confirmation to the buyer (Guidelines p10 step 7; p11 steps 9 and 11). A
+   reporting callback for a received document's message id now records its
+   reporting status and the authority's reference, announces
+   `e_invoice.reported`, and shows on the portal's received invoice page.
+   **Ask the provider** (question 9) whether it forwards these.
 7. **Structured validation errors.** *Closed.* Every error is now
    `{code, severity, field, message}` (`AspError`): the rule ID, `fatal`,
    `error` or `warning`, where in the document, and the words. This applies

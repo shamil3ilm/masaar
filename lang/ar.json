@@ -1956,5 +1956,6 @@
     "The service provider is not answering at the moment. This e-invoice waits and is sent as soon as it answers again.": "مزوّد الخدمة لا يستجيب حالياً. تنتظر هذه الفاتورة الإلكترونية وتُرسَل فور استجابته.",
     "The recipient's Peppol identifier :endpoint is not registered on the Peppol network, so the e-invoice cannot be delivered. Check the identifier with them. A buyer that is not on e-invoicing yet uses :reserved (UAE Electronic Invoicing Guidelines, p23).": "معرّف Peppol للمستلم :endpoint غير مسجّل على شبكة Peppol، لذا لا يمكن تسليم الفاتورة الإلكترونية. تحقّق من المعرّف مع المستلم. ويستخدم المشتري الذي لم ينضم بعد إلى الفوترة الإلكترونية المعرّف :reserved (الإرشادات الإماراتية للفوترة الإلكترونية، ص23).",
     "E-invoice UUID": "المعرّف الفريد للفاتورة الإلكترونية (UUID)",
-    "Service provider reference": "مرجع مزوّد الخدمة"
+    "Service provider reference": "مرجع مزوّد الخدمة",
+    "No confirmation forwarded yet": "لم يُحَل أي تأكيد بعد"
 }

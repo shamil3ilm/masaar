@@ -117,7 +117,7 @@ authority are confirmed separately: delivery (`status`), then the report
 
 | Buyer endpoint | Outcome | Callbacks, in order | Final status |
 |---|---|---|---|
-| any other | Delivered | sent, delivered (`AP`), reported, and inbound if the buyer is on this platform | `delivered`, `reported` |
+| any other | Delivered | sent, delivered (`AP`), reported. If the buyer is on this platform, the document then arrives as inbound under its own message id, followed by the buyer's provider's report confirmation | `delivered`, `reported` |
 | `0235:1999999901` | The buyer is not a participant on the network. The platform's participant lookup refuses to issue the invoice. A document sent to it anyway is rejected later | none: refused before issue; or rejected, with the reason | draft; or `rejected`, none |
 | `0235:1999999902` | No answer to the first attempt (a simulated `503`) | none for the first attempt; after the retry, as delivered | `delivered`, `reported` |
 | `0235:1999999903` | The first attempt is accepted but its answer is lost | the retry gets the same message id; one set of callbacks, as delivered | `delivered`, `reported` |

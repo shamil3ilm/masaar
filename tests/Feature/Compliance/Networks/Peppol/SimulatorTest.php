@@ -175,7 +175,9 @@ class SimulatorTest extends TestCase
         $this->playNetwork();
 
         $received = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->where('direction', 'in')->sole());
-        $this->assertSame([$buyer->id, 'received', $sent->asp_message_id], [$received->org_id, $received->status, $received->asp_message_id]);
+        $this->assertSame([$buyer->id, 'received', $sent->asp_message_id.'-in'], [$received->org_id, $received->status, $received->asp_message_id]);
+        // The buyer's provider forwards the authority's confirmation of its report.
+        $this->assertSame('reported', $received->reporting_status);
         $this->assertSame([$sent->xml, self::SELLER, self::BUYER], [$received->xml, $received->sender_endpoint, $received->receiver_endpoint]);
     }
 

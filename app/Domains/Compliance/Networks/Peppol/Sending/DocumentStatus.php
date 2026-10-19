@@ -52,7 +52,9 @@ use Illuminate\Support\Facades\Log;
  * and each word from the provider that moves nothing, goes on the
  * document's append-only record (DocumentHistory) in the same transaction.
  *
- * Inbound documents are 'received' and never move.
+ * Inbound documents are 'received' and their delivery never moves; their
+ * report, which the buyer's provider makes, does, as the provider forwards
+ * the authority's confirmation.
  */
 final class DocumentStatus
 {
@@ -189,7 +191,8 @@ final class DocumentStatus
         $document = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()
             ->where('asp_message_id', $update->messageId)
             ->where('direction', PeppolDocument::DIRECTION_OUT)
-            ->first());
+            ->first())
+            ?? $this->received($update);
 
         if ($document === null) {
             return false;
@@ -226,6 +229,25 @@ final class DocumentStatus
         }
 
         return true;
+    }
+
+    /**
+     * A document received for one of ours that the report is about: the
+     * buyer's provider reports it to the authority and forwards the
+     * confirmation to the buyer (Electronic Invoicing Guidelines v1.1, p10
+     * step 7, p11 steps 9 and 11). Only the report: a received document's
+     * delivery is done.
+     */
+    private function received(AspStatus $update): ?PeppolDocument
+    {
+        if (! $update->aboutReporting()) {
+            return null;
+        }
+
+        return PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()
+            ->where('asp_message_id', $update->messageId)
+            ->where('direction', PeppolDocument::DIRECTION_IN)
+            ->first());
     }
 
     /**
