@@ -38,7 +38,9 @@
  *
  * A form holding the approval reason (admin.partials.approval-reason, there
  * only while the action's approval policy is on) is told that it will be
- * sent for approval, without saying so twice in every view.
+ * sent for approval, without saying so twice in every view. A form whose
+ * own reason doubles as the request's (marking a certificate revoked) says
+ * so with data-confirm-approval instead.
  *
  * Capture phase, so it runs before anything a page adds for itself.
  */
@@ -248,7 +250,7 @@ function questionFor(form, submitter) {
         tone: source.dataset.confirmTone ?? 'primary',
         action: source.dataset.confirmAction ?? 'Confirm',
         word: source.dataset.confirmType ?? '',
-        approval: form.querySelector('[name="approval_reason"]') !== null,
+        approval: form.hasAttribute('data-confirm-approval') || form.querySelector('[name="approval_reason"]') !== null,
     };
 }
 

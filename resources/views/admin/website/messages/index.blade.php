@@ -24,7 +24,7 @@
 
         @forelse ($messages as $message)
             <tr @class(['hover:bg-sunken', 'font-semibold' => $message->read_at === null])>
-                <td class="px-6 py-4 text-sm text-muted whitespace-nowrap">{{ $message->created_at->format('Y-m-d H:i') }}</td>
+                <td class="px-6 py-4 text-sm text-muted whitespace-nowrap"><x-ui.date :value="$message->created_at" time /></td>
                 <td class="px-6 py-4 text-sm">
                     <a href="{{ route('admin.website.messages.show', $message->id) }}" class="text-accent hover:text-accent-strong hover:underline">{{ $message->name }}</a>
                     <div class="text-xs font-normal text-muted" dir="ltr">{{ $message->email }}</div>

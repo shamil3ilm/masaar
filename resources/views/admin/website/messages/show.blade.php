@@ -15,16 +15,17 @@
     $mailto = 'mailto:'.$message->email.'?subject='.rawurlencode($subject);
 @endphp
 
-<x-ui.page-header :title="$message->name" :description="$message->topic->label().' · '.$message->created_at->format('Y-m-d H:i')">
+<x-ui.page-header :title="$message->name">
     <x-slot:breadcrumb>
         <x-ui.breadcrumb :items="[
             ['label' => __('Messages'), 'href' => route('admin.website.messages.index')],
             ['label' => $message->name],
         ]" />
     </x-slot:breadcrumb>
-    <x-slot:actions>
+    <x-slot:meta>
         <x-ui.badge :tone="$message->status->tone()" :label="$message->status->label()" />
-    </x-slot:actions>
+    </x-slot:meta>
+    <x-slot:description>{{ $message->topic->label() }} &middot; <x-ui.date :value="$message->created_at" time /></x-slot:description>
 </x-ui.page-header>
 
 <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -75,11 +76,11 @@
             </div>
             <div>
                 <dt class="text-muted">{{ __('Read') }}</dt>
-                <dd class="text-fg">{{ $message->read_at?->format('Y-m-d H:i') ?? '-' }} @if ($message->reader) &middot; {{ $message->reader->name }} @endif</dd>
+                <dd class="text-fg"><x-ui.date :value="$message->read_at" time /> @if ($message->reader) &middot; {{ $message->reader->name }} @endif</dd>
             </div>
             <div>
                 <dt class="text-muted">{{ __('Replied') }}</dt>
-                <dd class="text-fg">{{ $message->replied_at?->format('Y-m-d H:i') ?? '-' }} @if ($message->replier) &middot; {{ $message->replier->name }} @endif</dd>
+                <dd class="text-fg"><x-ui.date :value="$message->replied_at" time /> @if ($message->replier) &middot; {{ $message->replier->name }} @endif</dd>
             </div>
             <div>
                 <dt class="text-muted">{{ __('Network address and browser') }}</dt>

@@ -48,8 +48,8 @@
                             default => $version['status'],
                         }" />
                     </td>
-                    <td class="px-4 py-3 text-sm text-muted" dir="ltr">{{ $version['valid_from'] ?? '-' }}</td>
-                    <td class="px-4 py-3 text-sm text-muted" dir="ltr">{{ $version['valid_to'] ?? '-' }}</td>
+                    <td class="px-4 py-3 text-sm text-muted"><x-ui.date :value="$version['valid_from'] ?? null" /></td>
+                    <td class="px-4 py-3 text-sm text-muted"><x-ui.date :value="$version['valid_to'] ?? null" /></td>
                     <td class="px-4 py-3 text-xs text-muted" dir="ltr">
                         <div>{{ $version['issuer'] ?? '-' }}</div>
                         <div>{{ $version['serial'] ?? '-' }}</div>

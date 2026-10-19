@@ -74,13 +74,27 @@ class ConfirmationMarkupTest extends TestCase
         // every company.
         'portal.team.invite' => 'withdrawable until accepted, and scoped to one company',
         'verification.send' => 'sends the person their own verification link again',
+        // A contact message filed away from the inbox, and back: Restore and
+        // Archive undo each other on the same page, as for customers.
+        'admin.website.messages.archive' => 'files a contact message away; Restore undoes it',
+        'admin.website.messages.restore' => 'returns an archived message to the inbox; Archive undoes it',
+    ];
+
+    /**
+     * Routes whose name ends in a neutral verb but which change something
+     * that cannot be put back. A form posting to one asks.
+     */
+    private const ASK_ROUTES = [
+        // Renewing revokes the current ZATCA certificate.
+        'portal.zatca.renew.store',
+        'portal.zatca.renew.finish',
     ];
 
     /**
      * Irreversible and high-impact: the accept button stays disabled until
      * the word is typed.
      */
-    private const TYPED = ['portal.invoices.issue', 'admin.billing.invoice', 'admin.licences.revoke', 'admin.ownership.offer', 'admin.organizations.suspend'];
+    private const TYPED = ['portal.invoices.issue', 'admin.billing.invoice', 'admin.licences.revoke', 'admin.ownership.offer', 'admin.organizations.suspend', 'admin.certificates.revoke'];
 
     /** Accept labels that say nothing about the action. */
     private const VAGUE = ['confirm', 'ok', 'yes', 'continue', 'submit', 'proceed'];
@@ -99,7 +113,7 @@ class ConfirmationMarkupTest extends TestCase
 
             if (in_array($verb, self::DANGER, true) && (! $asks || ! str_contains($tag, 'data-confirm-tone="danger"'))) {
                 $missing[] = $where.' '.$route.' (destructive: needs data-confirm and data-confirm-tone="danger")';
-            } elseif (in_array($verb, self::ASK, true) && ! $asks) {
+            } elseif ((in_array($verb, self::ASK, true) || in_array($route, self::ASK_ROUTES, true)) && ! $asks) {
                 $missing[] = $where.' '.$route.' (needs data-confirm)';
             }
         }

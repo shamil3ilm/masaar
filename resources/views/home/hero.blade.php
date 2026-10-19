@@ -14,7 +14,6 @@
 @php
     $sample = $publicSite->sampleInvoice();
     $sampleQr = $publicSite->sampleQr();
-    $amount = fn (string $value): string => number_format((float) $value, 2);
 @endphp
 <section class="mx-auto max-w-page overflow-x-clip px-4 pb-16 pt-12 sm:px-6 sm:pb-24 sm:pt-20" aria-labelledby="hero-title">
     <div class="grid items-center gap-14 lg:grid-cols-[1.15fr_1fr]">
@@ -76,16 +75,16 @@
                     @endif
                     <p class="mt-2 flex flex-wrap justify-between gap-x-4 font-mono font-medium tabular-nums">
                         <span>{{ $sample->number }}</span>
-                        <span class="text-ink-700">{{ $sample->issuedAt->format('Y-m-d') }}</span>
+                        <x-ui.date :value="$sample->issuedAt" class="text-ink-700" />
                     </p>
                 </div>
 
                 <dl class="mt-5 grid gap-2 border-t border-dashed border-ink-900/20 pt-4 text-sm" dir="ltr">
                     @foreach ($sample->lines as $description => $value)
-                        <div class="flex justify-between gap-4"><dt>{{ $description }}</dt><dd class="font-mono tabular-nums">{{ $amount($value) }}</dd></div>
+                        <div class="flex justify-between gap-4"><dt>{{ $description }}</dt><dd class="font-mono"><x-ui.amount :value="$value" /></dd></div>
                     @endforeach
-                    <div class="flex justify-between gap-4 text-ink-700"><dt>VAT</dt><dd class="font-mono tabular-nums">{{ $amount($sample->tax) }}</dd></div>
-                    <div class="flex justify-between gap-4 border-t border-ink-900/10 pt-2.5 font-semibold"><dt>Total</dt><dd class="font-mono tabular-nums">{{ $amount($sample->total) }}</dd></div>
+                    <div class="flex justify-between gap-4 text-ink-700"><dt>VAT</dt><dd class="font-mono"><x-ui.amount :value="$sample->tax" /></dd></div>
+                    <div class="flex justify-between gap-4 border-t border-ink-900/10 pt-2.5 font-semibold"><dt>Total</dt><dd class="font-mono"><x-ui.amount :value="$sample->total" /></dd></div>
                 </dl>
 
                 <div class="mt-5 flex items-center gap-4">

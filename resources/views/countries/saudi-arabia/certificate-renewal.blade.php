@@ -34,6 +34,12 @@
         'simplified_debit_note' => __('Simplified debit note'),
     ];
     $disabled = ! $renewable || $blocked;
+    // Renewing revokes the current certificate: with documents it has not
+    // filed yet, that is the destructive case, and the dialog says why.
+    $renewTone = $waiting->isNotEmpty() ? 'danger' : 'primary';
+    $renewDetail = $waiting->isNotEmpty()
+        ? trans_choice('One document is not filed with ZATCA yet and may be refused once the current certificate is revoked. Your reason is recorded with it.|:count documents are not filed with ZATCA yet and may be refused once the current certificate is revoked. Your reason is recorded with them.', $waiting->count(), ['count' => $waiting->count()])
+        : __('New invoices are signed with the new certificate, and the current one is revoked. This cannot be undone.');
     $listed = 50;
 @endphp
 
@@ -64,7 +70,7 @@
                 </div>
                 <div>
                     <dt class="text-muted">{{ __('Valid until') }}</dt>
-                    <dd class="mt-1 font-medium text-fg" dir="ltr">{{ $current['valid_to'] ?? '-' }}</dd>
+                    <dd class="mt-1 font-medium text-fg"><x-ui.date :value="$current['valid_to'] ?? null" /></dd>
                 </div>
                 <div>
                     <dt class="text-muted">{{ __('Waiting to file') }}</dt>
@@ -99,7 +105,10 @@
     @if ($pending)
         <x-ui.section :title="__('Finish the renewal')"
                       :description="__('The OTP is spent and the new compliance certificate is held. Run the compliance checks again and get the production certificate; your current certificate signs until then.')">
-            <form method="POST" action="{{ route('portal.zatca.renew.finish') }}" class="space-y-4">
+            <form method="POST" action="{{ route('portal.zatca.renew.finish') }}" class="space-y-4"
+                  data-confirm-tone="{{ $renewTone }}" data-confirm-action="{{ __('Finish the renewal') }}"
+                  data-confirm="{{ __('Finish renewing the ZATCA certificate?') }}"
+                  data-confirm-detail="{{ $renewDetail }}">
                 @csrf
                 @include('countries.saudi-arabia.partials.renewal-override')
                 <x-ui.button variant="primary" :disabled="$disabled">{{ __('Finish the renewal') }}</x-ui.button>
@@ -107,7 +116,10 @@
         </x-ui.section>
     @else
         <x-ui.section :title="__('New OTP')">
-            <form method="POST" action="{{ route('portal.zatca.renew.store') }}" class="space-y-4">
+            <form method="POST" action="{{ route('portal.zatca.renew.store') }}" class="space-y-4"
+                  data-confirm-tone="{{ $renewTone }}" data-confirm-action="{{ __('Renew the certificate') }}"
+                  data-confirm="{{ __('Renew the ZATCA certificate?') }}"
+                  data-confirm-detail="{{ $renewDetail }}">
                 @csrf
                 <p class="text-sm text-muted">
                     {{ __('Sign in to the Fatoora portal, choose to renew the solution unit\'s certificate, and generate one OTP. It is valid for an hour - enter it here straight away.') }}
