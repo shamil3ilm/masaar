@@ -200,6 +200,9 @@ final class TableTimestamps
         'api_keys' => ['class' => 'b', 'tenant' => 'organization', 'actors' => self::REMOVABLE,
             'unique_across_removed' => ['api_keys_api_key_unique' => 'a generated key, never issued twice']],
         'api_key_usage' => ['class' => 'a', 'tenant' => 'parent:api_key_id', 'system' => 'counters the platform keeps per key per day'],
+        // The partner API's recent requests, for the organization to read;
+        // pruned after its keeping period (integrations.request_log_days).
+        'api_request_logs' => ['class' => 'd', 'event' => 'occurred_at', 'tenant' => 'organization', 'correlation' => 'request_id'],
 
         // Webhooks.
         'webhooks' => ['class' => 'b', 'tenant' => 'organization', 'actors' => self::REMOVABLE],

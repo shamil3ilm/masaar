@@ -2621,5 +2621,22 @@
     "What was sent": "ما أُرسل",
     "You cannot add a webhook now": "لا يمكنك إضافة خطاف ويب الآن",
     "Your receiver checks each delivery's X-Webhook-Signature with it. It is not shown again; rotate it to get a new one.": "يتحقق المستقبِل لديك به من الترويسة X-Webhook-Signature في كل تسليم. لن يُعرض مرة أخرى، فغيّره للحصول على سر جديد.",
-    "Your systems are told what happened to your invoices as it happens: one HTTPS endpoint per receiver, sent only the events it needs.": "تُبلَّغ أنظمتك بما يحدث لفواتيرك فور حدوثه: نقطة استقبال HTTPS لكل مستقبِل، تُرسل إليها الأحداث التي تحتاجها فقط."
+    "Your systems are told what happened to your invoices as it happens: one HTTPS endpoint per receiver, sent only the events it needs.": "تُبلَّغ أنظمتك بما يحدث لفواتيرك فور حدوثه: نقطة استقبال HTTPS لكل مستقبِل، تُرسل إليها الأحداث التي تحتاجها فقط.",
+    ":name (revoked)": ":name (ملغى)",
+    "A key since removed": "مفتاح أُزيل لاحقاً",
+    "A path, request id or error code": "المسار أو معرّف الطلب أو رمز الخطأ",
+    "Any answer": "أي رد",
+    "Any key": "أي مفتاح",
+    "Days the API request log is kept": "عدد أيام الاحتفاظ بسجل طلبات الواجهة البرمجية",
+    "Every call your systems made to the API in the last :days days: what was asked, how it was answered and with which key. Read-only, and never a request body or a secret.": "كل استدعاء أجرته أنظمتك للواجهة البرمجية خلال آخر :days يوماً: ما الذي طُلب، وبماذا أُجيب، وبأي مفتاح. للقراءة فقط، ولا يتضمن أبداً محتوى طلب أو سراً.",
+    "Failed (5xx)": "فشل (5xx)",
+    "Method": "الطريقة",
+    "No requests for these filters.": "لا توجد طلبات تطابق عوامل التصفية هذه.",
+    "No requests yet.": "لا توجد طلبات بعد.",
+    "Refused (4xx)": "مرفوض (4xx)",
+    "Request id": "معرّف الطلب",
+    "Request log": "سجل الطلبات",
+    "Requests older than this are removed from the log your administrators read. No request body or secret is ever kept.": "تُحذف الطلبات الأقدم من ذلك من السجل الذي يطّلع عليه مسؤولوك. ولا يُحفظ أبداً محتوى أي طلب أو أي سر.",
+    "Succeeded (2xx)": "نجح (2xx)",
+    "The licence key": "مفتاح الترخيص"
 }

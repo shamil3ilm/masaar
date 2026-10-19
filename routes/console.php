@@ -219,6 +219,13 @@ Schedule::command('peppol:retry-reports')
     ->when(fn () => filled(config('peppol.asp.base_url')) || config('peppol.gateway') === 'simulator')
     ->appendOutputTo(storage_path('logs/peppol-status.log'));
 
+// The partner API's request log, past each organization's keeping period
+// (integrations.request_log_days).
+Schedule::command('integrations:prune-request-log')
+    ->onOneServer()
+    ->dailyAt('04:45')
+    ->withoutOverlapping(30);
+
 // Webhook delivery logs past their retention (WebhookLog::RETENTION_DAYS).
 Schedule::command('model:prune', ['--model' => [WebhookLog::class]])
     ->onOneServer()

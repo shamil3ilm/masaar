@@ -10,6 +10,7 @@ use App\Domains\Licensing\Models\ApiKey;
 use App\Domains\Licensing\Models\UsageEvent;
 use App\Domains\Licensing\Services\ApiKeys;
 use App\Domains\Licensing\Services\LicenseValidationService;
+use App\Domains\Licensing\Services\RequestLog;
 use App\Domains\Licensing\Services\UsageMeteringService;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Organization\ValueObjects\OrganizationContext;
@@ -38,6 +39,7 @@ class ValidateLicense
         private readonly UsageMeteringService $meteringService,
         private readonly TenantResolver $tenantResolver,
         private readonly ApiKeys $apiKeys,
+        private readonly RequestLog $requests,
     ) {}
 
     /**
@@ -118,6 +120,7 @@ class ValidateLicense
             $this->meteringService->recordApiCall($license, false);
             $this->recordUsageEvent($credential, $request, $requestId, 'success', $durationMs);
             $this->recordKeyUse($credential, method_exists($response, 'getStatusCode') && $response->getStatusCode() >= 400);
+            $this->requests->record($credential, $request, method_exists($response, 'getStatusCode') ? $response->getStatusCode() : 200, RequestLog::errorCodeOf($response), $requestId, $durationMs);
 
             // Add rate limit headers
             $this->addRateLimitHeaders($response, $credential);
@@ -140,6 +143,7 @@ class ValidateLicense
                 $this->recordUsageEvent($credential, $request, $requestId, 'failed', $durationMs, $e->errorCode);
                 $this->meteringService->recordApiCall($credential->licence, true);
                 $this->recordKeyUse($credential, true);
+                $this->requests->record($credential, $request, (int) ($e->getCode() ?: 403), $e->errorCode, $requestId, $durationMs);
             }
 
             return $this->handleLicenseError($e);
@@ -158,6 +162,7 @@ class ValidateLicense
                 $this->recordUsageEvent($credential, $request, $requestId, 'error', $durationMs, 'SYSTEM_ERROR');
                 $this->meteringService->recordApiCall($credential->licence, true);
                 $this->recordKeyUse($credential, true);
+                $this->requests->record($credential, $request, 500, 'LICENSE_SYSTEM_ERROR', $requestId, $durationMs);
             }
 
             return ApiResponse::error(

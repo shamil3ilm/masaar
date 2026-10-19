@@ -194,6 +194,11 @@ in `X-API-Key` and `X-API-Secret`.
 - A **production** key (`cp_live_`) may wait for a platform administrator's
   approval before it works, when the platform holds them for approval.
 - Revoking a key stops it on the next request.
+- Portal › Integrations › Request log lists the organization's recent
+  requests - method, path, status, error code, key, time and the
+  `X-Request-Id` - for its administrators, searchable, and never a body or a
+  secret. It is kept for 30 days unless the organization's setting says
+  otherwise (Portal › Settings).
 
 Admin › Licences still issues the licence itself, to a partner or for the
 platform's own use.

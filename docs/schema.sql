@@ -95,6 +95,26 @@ CREATE TABLE `api_keys` (
     FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
 
+CREATE TABLE `api_request_logs` (
+    `id` STRING NOT NULL,
+    `api_key_id` STRING NULL,
+    `duration_ms` INTEGER NOT NULL DEFAULT 0,
+    `error_code` STRING NULL,
+    `license_id` STRING NOT NULL,
+    `method` STRING NOT NULL,
+    `occurred_at` TIMESTAMP NOT NULL,
+    `org_id` STRING NOT NULL,
+    `path` STRING NOT NULL,
+    `request_id` STRING NULL,
+    `status` INTEGER NOT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `api_request_logs_org_id_occurred_at_index` (`org_id`, `occurred_at`),
+    INDEX `api_request_logs_request_id_index` (`request_id`),
+    FOREIGN KEY (`api_key_id`) REFERENCES `api_keys` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`license_id`) REFERENCES `licenses` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
+);
+
 CREATE TABLE `approval_decisions` (
     `id` STRING NOT NULL,
     `created_at` TIMESTAMP NULL,

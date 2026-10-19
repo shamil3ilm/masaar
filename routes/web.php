@@ -31,6 +31,7 @@ use App\Domains\Invoice\Http\Controllers\PortalQrCodeController;
 use App\Domains\Invoice\Http\Controllers\PortalReportController;
 use App\Domains\Licensing\Http\Controllers\AdminLicenceController;
 use App\Domains\Licensing\Http\Controllers\PortalApiKeyController;
+use App\Domains\Licensing\Http\Controllers\PortalRequestLogController;
 use App\Domains\Organization\Http\Controllers\AdminBusinessTypeController;
 use App\Domains\Organization\Http\Controllers\CustomerPortalController;
 use App\Domains\Organization\Http\Controllers\InvitationController;
@@ -663,6 +664,8 @@ Route::prefix('portal')->name('portal.')
         Route::get('/integrations', [PortalApiKeyController::class, 'index'])->name('integrations.index');
         Route::post('/integrations/keys', [PortalApiKeyController::class, 'store'])->middleware('throttle:10,1')->name('integrations.keys.store');
         Route::post('/integrations/keys/{keyId}/revoke', [PortalApiKeyController::class, 'revoke'])->whereUuid('keyId')->name('integrations.keys.revoke');
+        // Its recent API requests, with no bodies or secrets (RequestLog).
+        Route::get('/integrations/requests', [PortalRequestLogController::class, 'index'])->name('integrations.requests');
         // Its webhooks: endpoints, their events and signing secret, a test
         // event, and each one's recent deliveries. A test posts to the
         // customer's own server, so it is throttled like rotating is.
