@@ -30,12 +30,15 @@
     <meta property="og:description" content="{{ \App\Domains\Platform\Website\PlainText::flat($search->text('share_text')) }}">
     <meta property="og:locale" content="{{ $locale === 'ar' ? 'ar_SA' : 'en_US' }}">
     <meta property="og:locale:alternate" content="{{ $locale === 'ar' ? 'en_US' : 'ar_SA' }}">
-    @if ($shareImage)
-        <meta property="og:image" content="{{ route('website.share-image', ['v' => $shareImage['version']]) }}">
-        <meta name="twitter:card" content="summary_large_image">
-    @else
-        <meta name="twitter:card" content="summary">
-    @endif
+    {{-- The picture an admin set, or else the mark on the route line
+         (public/icons/og-image.png, no words on it). --}}
+    <meta property="og:image" content="{{ $shareImage ? route('website.share-image', ['v' => $shareImage['version']]) : asset('icons/og-image.png') }}">
+    @unless ($shareImage)
+        <meta property="og:image:width" content="1200">
+        <meta property="og:image:height" content="630">
+    @endunless
+    <meta property="og:image:alt" content="{{ $theme->name() }}">
+    <meta name="twitter:card" content="summary_large_image">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <x-theme-head />
 </head>

@@ -65,6 +65,7 @@ use App\Domains\Platform\Http\Controllers\AdminWebsiteSeoController;
 use App\Domains\Platform\Http\Controllers\AdminWebsiteTestimonialController;
 use App\Domains\Platform\Http\Controllers\ContactController;
 use App\Domains\Platform\Http\Controllers\SavedListViewController;
+use App\Domains\Platform\Http\Controllers\AppManifestController;
 use App\Domains\Platform\Http\Controllers\WebsiteAssetController;
 use App\Domains\Platform\Http\Controllers\WebsiteSeoController;
 use App\Domains\Support\Http\Controllers\AdminSupportController;
@@ -82,6 +83,9 @@ Route::get('/', function () {
 // languages (?lang=en, ?lang=ar), and where the private areas begin.
 Route::get('/sitemap.xml', [WebsiteSeoController::class, 'sitemap'])->middleware('throttle:60,1')->name('sitemap');
 Route::get('/robots.txt', [WebsiteSeoController::class, 'robots'])->middleware('throttle:60,1')->name('robots');
+
+// What a phone calls the product on its home screen, and the icons it uses.
+Route::get('/manifest.webmanifest', AppManifestController::class)->middleware('throttle:60,1')->name('app.manifest');
 
 // The picture a shared link to the site shows, when an admin has set one.
 Route::get('/website/share-image', [WebsiteAssetController::class, 'shareImage'])->middleware('throttle:300,1')->name('website.share-image');

@@ -31,7 +31,8 @@ final class ThemeComposer
         'components.theme-head',
     ];
 
-    private const ATTRIBUTE = '_active_theme';
+    /** Where the theme is kept on the request; the error frame sets it itself. */
+    public const ATTRIBUTE = '_active_theme';
 
     public function __construct(
         private readonly ThemeService $themes,

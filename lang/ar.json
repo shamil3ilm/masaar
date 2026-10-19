@@ -2370,5 +2370,20 @@
     ":field is not in steps of :step.": "يجب أن يكون :field من مضاعفات :step.",
     ":field is not in the expected format.": "صيغة :field غير صحيحة.",
     "This field": "هذا الحقل",
-    "More information": "مزيد من المعلومات"
+    "More information": "مزيد من المعلومات",
+    "You cannot open this page": "لا يمكنك فتح هذه الصفحة",
+    "Your account does not have access to it. If you think it should, ask your organization's administrator.": "ليس لحسابك صلاحية الوصول إليها. إن كنت ترى أنه ينبغي أن تكون له، فاطلب ذلك من مسؤول منشأتك.",
+    "This page has expired": "انتهت صلاحية هذه الصفحة",
+    "It was open too long to send safely. Go back, reload the page and send it again.": "ظلت مفتوحة مدة أطول من أن تُرسل بأمان. عُد إلى الصفحة وأعد تحميلها ثم أرسلها مرة أخرى.",
+    "Go back": "رجوع",
+    "Too many requests": "طلبات كثيرة جداً",
+    "That was a lot at once. Wait a minute, then try again.": "أُرسل عدد كبير من الطلبات في وقت واحد. انتظر دقيقة ثم حاول مرة أخرى.",
+    "Something went wrong": "حدث خطأ ما",
+    "Something went wrong on our side": "حدث خطأ من جهتنا",
+    "It has been logged. Try again in a moment; if it keeps happening, let us know.": "سُجِّل الخطأ. حاول مرة أخرى بعد قليل، وإن تكرر فأخبرنا.",
+    "Down for maintenance": "متوقف للصيانة",
+    "Service unavailable": "الخدمة غير متاحة",
+    "We are making an improvement and will be back shortly. Please try again in a few minutes.": "نُجري تحسيناً وسنعود قريباً. يُرجى المحاولة مرة أخرى بعد بضع دقائق.",
+    "This is taking longer than it should. Please try again in a few minutes.": "يستغرق هذا وقتاً أطول مما ينبغي. يُرجى المحاولة مرة أخرى بعد بضع دقائق.",
+    "Try again": "حاول مرة أخرى"
 }
