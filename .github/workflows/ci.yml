@@ -518,7 +518,7 @@ jobs:
       # the failure this whole job exists to stop being invisible.
       - name: Run the conformance suite
         if: env.SDK_URL != ''
-        run: bash scripts/ci/run-conformance.sh 'ZatcaConformance|ScenarioConformance|SaleTimeConformance' ZatcaConformanceTest ScenarioConformanceTest SaleTimeConformanceTest
+        run: bash scripts/ci/run-conformance.sh 'ZatcaConformance|ScenarioConformance|SaleTimeConformance|test_saudi_lists_are_the_schematrons' ZatcaConformanceTest ScenarioConformanceTest SaleTimeConformanceTest CodeListConformanceTest
 
   # Invoice PDFs are PDF/A-3b, checked by an independent validator rather than
   # by our reading of ISO 19005-3. The renderer once emitted a QR the format
@@ -650,8 +650,22 @@ jobs:
           php artisan key:generate --force
           php artisan jwt:secret --force
 
+      # The simulator's end-to-end cases open portal pages, which render
+      # @vite - and public/build is gitignored, so it exists only once built.
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Build front-end assets
+        run: |
+          npm ci
+          npm run build
+
+      # The Saudi code-list comparison needs the ZATCA SDK and runs in the
+      # ZATCA job; here only the lists PINT AE's own artefacts can judge.
       - name: Run the PINT AE suite
-        run: bash scripts/ci/run-conformance.sh 'PintConformance|SimulatorConformance|CodeListConformance' PintConformanceTest SimulatorConformanceTest CodeListConformanceTest
+        run: bash scripts/ci/run-conformance.sh 'PintConformance|SimulatorConformance|test_uae_lists_are_pint_aes|test_units_are_recommendation_20' PintConformanceTest SimulatorConformanceTest CodeListConformanceTest
 
   # Onboarding, end to end, against ZATCA's developer sandbox.
   #
