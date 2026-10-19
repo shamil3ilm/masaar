@@ -7,6 +7,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\LateReporting;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\ReportingAttempts;
+use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\CertificateRenewal;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\OrganizationOnboarding;
 use App\Domains\Compliance\Countries\SaudiArabia\Reports\CertificateVersions;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
@@ -18,7 +19,6 @@ use App\Support\Errors\ComplianceException;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -49,13 +49,12 @@ class PortalZatcaController extends Controller
             'organization' => $organization,
             'status' => $this->onboarding->status($organization),
             'blocked' => $this->refusal($organization),
-            'defaultDevice' => 'EGS1-'.Str::upper(Str::substr(Str::slug((string) $organization->name, ''), 0, 12)),
+            'defaultDevice' => $this->onboarding->deviceName($organization),
         ]);
     }
 
     /**
-     * Step 1. The serial number ZATCA expects is the solution, its version
-     * and this device: 1-<solution>|2-<version>|3-<device id>.
+     * Step 1.
      */
     public function ccsid(Request $request): RedirectResponse
     {
@@ -72,7 +71,7 @@ class PortalZatcaController extends Controller
         return $this->step(function () use ($organization, $data): string {
             $this->onboarding->requestCcsid($organization, (string) $data['otp'], [
                 'common_name' => $data['common_name'],
-                'serial_number' => '1-'.Str::slug((string) config('app.name', 'Masaar')).'|2-1.0|3-'.Str::uuid(),
+                'serial_number' => $this->onboarding->deviceSerial(),
                 'organization_unit' => $data['organization_unit'] ?: null,
                 'industry' => $data['industry'] ?: null,
             ], $data['renewal_override_reason'] ?? null);
@@ -132,12 +131,15 @@ class PortalZatcaController extends Controller
      * Every certificate each of the organization's devices has held: its
      * status, validity, issuer and serial, and how many documents still wait
      * to be filed under it - the ones a renewal or a revocation of it puts at
-     * risk. Its administrators only.
+     * risk - and the way to renew. Its administrators only.
      */
-    public function certificates(Request $request, CertificateVersions $versions): View
+    public function certificates(Request $request, CertificateVersions $versions, CertificateRenewal $renewal): View
     {
+        $organization = $this->organization($request);
+
         return view('countries.saudi-arabia.certificates', [
-            'devices' => $versions->forOrganization($this->organization($request)),
+            'devices' => $versions->forOrganization($organization),
+            'renewable' => $renewal->renewable($organization),
         ]);
     }
 

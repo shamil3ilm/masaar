@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\SaudiArabia;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\AdminCertificateController;
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalCertificateRenewalController;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateRevocationActions;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\GovernedRevocationApprovals;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\RevocationApprovals;
@@ -40,9 +41,10 @@ class ModuleServiceProvider extends ServiceProvider
     }
 
     /**
-     * The module's own console page: every device certificate, and marking
-     * one revoked. Registered here rather than in routes/web.php, which only
-     * loses country knowledge (ModuleBoundaryTest), behind the console's own
+     * The module's own console page - every device certificate, and marking
+     * one revoked - and the portal's certificate renewal. Registered here
+     * rather than in routes/web.php, which only loses country knowledge
+     * (ModuleBoundaryTest). The console page sits behind the console's own
      * middleware - platform.admin, the console permission, the audit of every
      * change - with configuring the platform required to revoke.
      */
@@ -61,6 +63,19 @@ class ModuleServiceProvider extends ServiceProvider
                     ->whereNumber('version')
                     ->middleware('admin.can:platform.configure')
                     ->name('certificates.revoke');
+            });
+
+        // Renewing the organization's certificate, from the portal's
+        // Certificates panel, behind the portal's own middleware. Each step
+        // reaches ZATCA, so the two that send are throttled; the controller
+        // checks the administrator and the clearance.
+        Route::middleware(['web', 'auth', 'auth.session', 'verified', 'portal.tenant', 'portal.branch', 'org.two_factor', 'org.writer'])
+            ->prefix('portal')
+            ->name('portal.')
+            ->group(function (): void {
+                Route::get('/zatca/certificates/renew', [PortalCertificateRenewalController::class, 'show'])->name('zatca.renew');
+                Route::post('/zatca/certificates/renew', [PortalCertificateRenewalController::class, 'renew'])->middleware('throttle:6,1')->name('zatca.renew.store');
+                Route::post('/zatca/certificates/renew/finish', [PortalCertificateRenewalController::class, 'finish'])->middleware('throttle:6,1')->name('zatca.renew.finish');
             });
     }
 }

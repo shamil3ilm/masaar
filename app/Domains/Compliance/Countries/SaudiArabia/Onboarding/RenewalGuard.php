@@ -10,6 +10,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateIdentity;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Organization\Models\Organization;
 use DomainException;
+use Illuminate\Support\Collection;
 
 /**
  * No renewal while documents signed by the current certificate are unfiled.
@@ -37,22 +38,33 @@ class RenewalGuard
     ) {}
 
     /**
-     * @throws DomainException listing what is unfiled, when renewal must wait
+     * What the device's current certificate signed that ZATCA does not hold
+     * yet: what a renewal now would put at risk. Empty when the device holds
+     * no production certificate, which is not a renewal.
+     *
+     * @return Collection<int, array{id: string, invoice_number: string, reason: string}>
      */
-    public function assertMayRenew(string $organizationId, ?string $branchId, ?string $overrideReason): void
+    public function waiting(string $organizationId, ?string $branchId): Collection
     {
         $held = $this->credentials->get($organizationId, $branchId, CredentialStore::PCSID);
 
-        // Not a renewal: the device holds no production certificate.
         if (empty($held[CredentialStore::PCSID])) {
-            return;
+            return collect();
         }
 
-        $waiting = $this->unfiled->signedBy(
+        return $this->unfiled->signedBy(
             $organizationId,
             $branchId ?? $organizationId,
             CertificateIdentity::of((string) $held[CredentialStore::PCSID])->id,
         );
+    }
+
+    /**
+     * @throws DomainException listing what is unfiled, when renewal must wait
+     */
+    public function assertMayRenew(string $organizationId, ?string $branchId, ?string $overrideReason): void
+    {
+        $waiting = $this->waiting($organizationId, $branchId);
 
         if ($waiting->isEmpty()) {
             return;

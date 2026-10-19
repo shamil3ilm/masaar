@@ -10,6 +10,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\Registrar;
 use DomainException;
+use Illuminate\Support\Str;
 
 /**
  * An organization's own ZATCA onboarding: OTP to compliance certificate, the
@@ -169,6 +170,21 @@ class OrganizationOnboarding
         // anything written in between.
         $this->registrar->markOnboarded($organization);
         $this->events->announce((string) $organization->id, OnboardingEvents::PCSID_OBTAINED);
+    }
+
+    /** The device name the portal suggests: EGS1- and the organization's name. */
+    public function deviceName(Organization $organization): string
+    {
+        return 'EGS1-'.Str::upper(Str::substr(Str::slug((string) $organization->name, ''), 0, 12));
+    }
+
+    /**
+     * The serial number ZATCA expects for a new device: the solution, its
+     * version and the device, 1-<solution>|2-<version>|3-<device id>.
+     */
+    public function deviceSerial(): string
+    {
+        return '1-'.Str::slug((string) config('app.name', 'Masaar')).'|2-1.0|3-'.Str::uuid();
     }
 
     /**

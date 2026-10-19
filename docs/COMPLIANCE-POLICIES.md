@@ -338,6 +338,8 @@ The certificate, its secret and its private key stay in the encrypted credential
 
 An organization renews by onboarding again: a new OTP and compliance CSID on a new key, then the production step, which requests a new certificate because the held one was issued on another key.
 
+In the portal, an administrator renews head office's certificate from the Certificates panel (`CertificateRenewal`): the page lists what the current certificate signed and ZATCA does not hold yet, then one OTP runs the three steps and the new version ends `active`. The OTP is spent at the first step; if the compliance checks fail after it, the current certificate keeps signing and the renewal is finished on the same page without another OTP. A branch still renews through the API (`/onboarding/reset`).
+
 ### Filing
 
 Every filing path - the submission tracker, the queued job and its recovery, the offline queue, and a direct submit, for clearance and for reporting - files with `CredentialStore::forInvoice()`, which returns the version named by the document's chain entry. A document with no chain entry is matched on the certificate it carries.

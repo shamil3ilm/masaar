@@ -9,7 +9,8 @@
     certificate that signed it, so a superseded certificate with documents
     waiting is still in use.
 
-    @param list<array> $devices  CertificateVersions::forOrganization
+    @param list<array> $devices    CertificateVersions::forOrganization
+    @param bool        $renewable  head office holds a production certificate (CertificateRenewal)
 --}}
 
 @section('content')
@@ -18,6 +19,11 @@
     <x-slot:breadcrumb>
         <x-ui.breadcrumb :items="[['label' => __('ZATCA'), 'href' => route('portal.zatca.show')], ['label' => __('Certificates')]]" />
     </x-slot:breadcrumb>
+    @if ($renewable)
+        <x-slot:actions>
+            <x-ui.button variant="secondary" :href="route('portal.zatca.renew')">{{ __('Renew the certificate') }}</x-ui.button>
+        </x-slot:actions>
+    @endif
 </x-ui.page-header>
 
 @forelse ($devices as $device)
