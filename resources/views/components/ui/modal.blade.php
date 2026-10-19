@@ -20,7 +20,7 @@
         <h2 id="{{ $id }}-title" class="text-lg font-semibold">{{ $title }}</h2>
         <button type="button" data-modal-close aria-label="{{ __('Close') }}"
                 class="-me-2 -mt-1 inline-flex size-11 items-center justify-center rounded-button text-subtle hover:bg-sunken hover:text-fg focus-visible:outline-2 focus-visible:outline-focus">
-            <svg class="size-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18" /></svg>
+            <x-ui.icon name="x" class="size-5" />
         </button>
     </div>
     <div class="px-6 py-5 text-sm text-muted">

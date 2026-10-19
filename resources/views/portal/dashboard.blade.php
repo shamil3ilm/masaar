@@ -26,7 +26,7 @@
                 <li class="flex items-start gap-4 p-4">
                     @if ($step['done'])
                         <span class="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-action text-on-action" aria-label="{{ __('Done') }}">
-                            <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                            <x-ui.icon name="check" class="size-4" />
                         </span>
                     @else
                         <span class="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-line-strong bg-surface text-xs text-muted">{{ $loop->iteration }}</span>

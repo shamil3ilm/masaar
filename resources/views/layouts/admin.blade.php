@@ -35,40 +35,40 @@
             </div>
             <nav class="flex-1 space-y-1 p-3" aria-label="Console">
                 <x-ui.nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')" collapsible>
-                    <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg></x-slot:icon>
+                    <x-slot:icon><x-ui.icon name="home" /></x-slot:icon>
                     Dashboard
                 </x-ui.nav-link>
                 <x-ui.nav-link :href="route('admin.organizations')" :active="request()->routeIs('admin.organizations*')" collapsible>
-                    <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg></x-slot:icon>
+                    <x-slot:icon><x-ui.icon name="building" /></x-slot:icon>
                     Organizations
                 </x-ui.nav-link>
                 <x-ui.nav-link :href="route('admin.billing.renewals')" :active="request()->routeIs('admin.billing.renewals')" collapsible>
-                    <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></x-slot:icon>
+                    <x-slot:icon><x-ui.icon name="calendar" /></x-slot:icon>
                     Renewals
                 </x-ui.nav-link>
                 <x-ui.nav-link :href="route('admin.support.index')" :active="request()->routeIs('admin.support.*')" collapsible>
-                    <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg></x-slot:icon>
+                    <x-slot:icon><x-ui.icon name="chat" /></x-slot:icon>
                     Support
                 </x-ui.nav-link>
                 <x-ui.nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')" collapsible>
-                    <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path></svg></x-slot:icon>
+                    <x-slot:icon><x-ui.icon name="users" /></x-slot:icon>
                     Users
                 </x-ui.nav-link>
                 <x-ui.nav-link :href="route('admin.queue')" :active="request()->routeIs('admin.queue')" collapsible>
-                    <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg></x-slot:icon>
+                    <x-slot:icon><x-ui.icon name="queue" /></x-slot:icon>
                     Offline queue
                 </x-ui.nav-link>
                 <x-ui.nav-link :href="route('admin.peppol')" :active="request()->routeIs('admin.peppol*')" collapsible>
-                    <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg></x-slot:icon>
+                    <x-slot:icon><x-ui.icon name="exchange" /></x-slot:icon>
                     Peppol
                 </x-ui.nav-link>
                 <x-ui.nav-link :href="route('admin.logs')" :active="request()->routeIs('admin.logs')" collapsible>
-                    <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg></x-slot:icon>
+                    <x-slot:icon><x-ui.icon name="document" /></x-slot:icon>
                     Logs
                 </x-ui.nav-link>
                 @admincan('audit.view')
                 <x-ui.nav-link :href="route('admin.audit')" :active="request()->routeIs('admin.audit')" collapsible>
-                    <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg></x-slot:icon>
+                    <x-slot:icon><x-ui.icon name="clipboard" /></x-slot:icon>
                     Audit log
                 </x-ui.nav-link>
                 @endadmincan
@@ -76,22 +76,22 @@
                      telling approvers, beside the email. --}}
                 @php($waitingApprovals = auth()->user() ? app(\App\Domains\Platform\Approvals\Approvals::class)->waitingFor(auth()->user())->count() : 0)
                 <x-ui.nav-link :href="route('admin.approvals.index')" :active="request()->routeIs('admin.approvals.*') || request()->routeIs('admin.approval-policies.*')" collapsible>
-                    <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12l2 2 4-4M7 4h10a2 2 0 012 2v14l-7-3-7 3V6a2 2 0 012-2z"></path></svg></x-slot:icon>
+                    <x-slot:icon><x-ui.icon name="approval" /></x-slot:icon>
                     {{ __('Approvals') }}
                     @if ($waitingApprovals > 0)
                         <x-ui.badge tone="warning" :label="(string) $waitingApprovals" />
                     @endif
                 </x-ui.nav-link>
                 <x-ui.nav-link :href="route('admin.licences.index')" :active="request()->routeIs('admin.licences.*')" collapsible>
-                    <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg></x-slot:icon>
+                    <x-slot:icon><x-ui.icon name="key" /></x-slot:icon>
                     Licences
                 </x-ui.nav-link>
                 <x-ui.nav-link :href="route('admin.alerts')" :active="request()->routeIs('admin.alerts')" collapsible>
-                    <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></x-slot:icon>
+                    <x-slot:icon><x-ui.icon name="alert" /></x-slot:icon>
                     Alerts
                 </x-ui.nav-link>
                 <x-ui.nav-link :href="route('admin.webhooks.index')" :active="request()->routeIs('admin.webhooks.*')" collapsible>
-                    <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></x-slot:icon>
+                    <x-slot:icon><x-ui.icon name="bolt" /></x-slot:icon>
                     Webhooks
                 </x-ui.nav-link>
                 {{-- The public website: its inbox, with the number nobody has
@@ -102,22 +102,22 @@
                 @endif
                 @admincan('website.manage')
                 <x-ui.nav-link :href="route('admin.website.sections.index')" :active="request()->routeIs('admin.website.sections.*')" collapsible>
-                    <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v3H4V5zM4 12h7v8H5a1 1 0 01-1-1v-7zm11 0h5v7a1 1 0 01-1 1h-4v-8z"></path></svg></x-slot:icon>
+                    <x-slot:icon><x-ui.icon name="layout" /></x-slot:icon>
                     {{ __('Home page') }}
                 </x-ui.nav-link>
                 <x-ui.nav-link :href="route('admin.website.testimonials.index')" :active="request()->routeIs('admin.website.testimonials.*')" collapsible>
-                    <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7.5 8.5h9M7.5 12h6M21 12c0 4.4-4 8-9 8a9.8 9.8 0 01-4.3-1L3 20l1.4-3.7A7.4 7.4 0 013 12c0-4.4 4-8 9-8s9 3.6 9 8z"></path></svg></x-slot:icon>
+                    <x-slot:icon><x-ui.icon name="quote" /></x-slot:icon>
                     {{ __('Testimonials') }}
                 </x-ui.nav-link>
                 <x-ui.nav-link :href="route('admin.website.seo.edit')" :active="request()->routeIs('admin.website.seo.*')" collapsible>
-                    <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M21 21l-5.2-5.2M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z"></path></svg></x-slot:icon>
+                    <x-slot:icon><x-ui.icon name="search" /></x-slot:icon>
                     {{ __('Search and sharing') }}
                 </x-ui.nav-link>
                 @endadmincan
                 @admincan('support.manage')
                 @php($unreadMessages = app(\App\Domains\Platform\Website\ContactInbox::class)->unread())
                 <x-ui.nav-link :href="route('admin.website.messages.index')" :active="request()->routeIs('admin.website.messages.*')" collapsible>
-                    <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg></x-slot:icon>
+                    <x-slot:icon><x-ui.icon name="mail" /></x-slot:icon>
                     {{ __('Messages') }}
                     @if ($unreadMessages > 0)
                         <x-ui.badge tone="warning" :label="(string) $unreadMessages" data-unread-messages />
@@ -126,35 +126,35 @@
                 @endadmincan
                 <p class="px-3 pb-1 pt-5 text-xs font-semibold uppercase tracking-wider text-subtle" x-show="labelled">Platform</p>
                 <x-ui.nav-link :href="route('admin.kill-switches')" :active="request()->routeIs('admin.kill-switches*')" collapsible>
-                    <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M18.364 5.636a9 9 0 11-12.728 0M12 3v9"></path></svg></x-slot:icon>
+                    <x-slot:icon><x-ui.icon name="power" /></x-slot:icon>
                     Kill switches
                 </x-ui.nav-link>
                 <x-ui.nav-link :href="route('admin.certificates')" :active="request()->routeIs('admin.certificates*')" collapsible>
-                    <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg></x-slot:icon>
+                    <x-slot:icon><x-ui.icon name="shield" /></x-slot:icon>
                     Certificates
                 </x-ui.nav-link>
                 <x-ui.nav-link :href="route('admin.settings')" :active="request()->routeIs('admin.settings*')" collapsible>
-                    <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg></x-slot:icon>
+                    <x-slot:icon><x-ui.icon name="settings" /></x-slot:icon>
                     Settings
                 </x-ui.nav-link>
                 @admincan('platform.configure')
                 <x-ui.nav-link :href="route('admin.countries')" :active="request()->routeIs('admin.countries*')" collapsible>
-                    <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></x-slot:icon>
+                    <x-slot:icon><x-ui.icon name="globe" /></x-slot:icon>
                     Countries
                 </x-ui.nav-link>
                 @endadmincan
                 <x-ui.nav-link :href="route('admin.branding.edit')" :active="request()->routeIs('admin.branding*')" collapsible>
-                    <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path></svg></x-slot:icon>
+                    <x-slot:icon><x-ui.icon name="palette" /></x-slot:icon>
                     Branding
                 </x-ui.nav-link>
                 @admincan('admins.manage')
                 <x-ui.nav-link :href="route('admin.admins.index')" :active="request()->routeIs('admin.admins.*')" collapsible>
-                    <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg></x-slot:icon>
+                    <x-slot:icon><x-ui.icon name="user-shield" /></x-slot:icon>
                     Admins
                 </x-ui.nav-link>
                 @endadmincan
                 <x-ui.nav-link :href="route('admin.design-system')" :active="request()->routeIs('admin.design-system')" collapsible>
-                    <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 3a3 3 0 106 0 3 3 0 00-6 0z"></path></svg></x-slot:icon>
+                    <x-slot:icon><x-ui.icon name="grid" /></x-slot:icon>
                     Design system
                 </x-ui.nav-link>
             </nav>
@@ -172,7 +172,7 @@
                     <button type="button" @click="toggle" :aria-expanded="expanded"
                             aria-controls="sidebar" aria-label="Navigation"
                             class="-ms-2 inline-flex min-h-11 min-w-11 items-center justify-center rounded-button text-muted transition-colors hover:bg-sunken hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
-                        <svg class="size-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                        <x-ui.icon name="menu" class="size-6" />
                     </button>
                     @auth
                         <x-ui.menu :label="'Account: '.auth()->user()->email">

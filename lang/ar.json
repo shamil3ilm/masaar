@@ -2369,5 +2369,6 @@
     ":field must be :max or less.": "يجب أن يكون :field :max أو أقل.",
     ":field is not in steps of :step.": "يجب أن يكون :field من مضاعفات :step.",
     ":field is not in the expected format.": "صيغة :field غير صحيحة.",
-    "This field": "هذا الحقل"
+    "This field": "هذا الحقل",
+    "More information": "مزيد من المعلومات"
 }

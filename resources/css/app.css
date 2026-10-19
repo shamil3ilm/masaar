@@ -429,6 +429,22 @@
 }
 
 /*
+ * A number has no spinner: a price is typed, not clicked up a cent at a
+ * time, and the arrows sat over the digits on the wrong side in Arabic.
+ * x-ui.input gives it the keypad it needs instead (inputmode).
+ */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type='number'] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+/*
  * A progress bar and a range slider, which every browser draws in its own
  * grey and blue: a rounded track in the sunken colour, filled and thumbed in
  * the action colour. Each engine names the parts differently, so each is

@@ -11,6 +11,7 @@ import { registerInvoiceLines } from './invoice-lines.js';
 import { registerInvoicePreview } from './invoice-preview.js';
 import { registerInvoiceVat } from './invoice-vat.js';
 import { signupCountry } from './signup-country.js';
+import { registerTooltips } from './tooltip.js';
 import { registerInterface } from './ui.js';
 import { registerValidation } from './validate.js';
 import { drawer, sidebar } from './sidebar.js';
@@ -44,6 +45,7 @@ registerInterface();
 registerComboboxes();
 registerDateFields();
 registerFileFields();
+registerTooltips();
 registerEasterEggs();
 
 Alpine.start();

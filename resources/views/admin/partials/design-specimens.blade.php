@@ -219,6 +219,32 @@
         </div>
     </section>
 
+    {{-- What the browser would otherwise draw --}}
+    <section aria-labelledby="{{ $scope }}-native" class="space-y-4">
+        <h2 id="{{ $scope }}-native" class="text-heading font-semibold">{{ $t('Numbers, notes and icons', 'الأرقام والتلميحات والأيقونات') }}</h2>
+        <div class="grid gap-5 rounded-card border border-line bg-surface p-5 sm:grid-cols-2">
+            <x-ui.field :label="$t('Unit price', 'سعر الوحدة')" :hint="$t('No spinner; the decimal keypad on a phone.', 'بلا أسهم، ولوحة الأرقام العشرية على الهاتف.')">
+                <x-ui.input type="number" name="specimen_price" step="0.01" min="0" value="115.00" />
+            </x-ui.field>
+            <x-ui.field :label="$t('Copies', 'النسخ')" :hint="$t('A count: the numeric keypad.', 'عدد: لوحة الأرقام.')">
+                <x-ui.input type="number" name="specimen_copies" min="1" value="2" />
+            </x-ui.field>
+            <div class="flex flex-wrap items-center gap-2 text-sm text-fg sm:col-span-2">
+                {{ $t('Reporting deadline', 'مهلة الإبلاغ') }}
+                <x-ui.tooltip :text="$t('A simplified invoice is reported within 24 hours of issue. The same words are in the help beside the form.', 'تُبلَّغ الفاتورة المبسطة خلال 24 ساعة من إصدارها. والكلمات نفسها في المساعدة بجانب النموذج.')" :label="$t('About the deadline', 'عن المهلة')" />
+                <span class="text-subtle">{{ $t('Hover, focus or long-press the i. Escape puts it away.', 'مرّر المؤشر أو انتقل إلى i أو اضغط عليه مطولاً. يخفيه Escape.') }}</span>
+            </div>
+            <ul class="flex flex-wrap gap-3 text-muted sm:col-span-2" aria-label="{{ $t('Icon set', 'مجموعة الأيقونات') }}">
+                @foreach (['home', 'invoice', 'user', 'users', 'box', 'document', 'shield', 'chart', 'chat', 'printer', 'sliders', 'qr', 'building', 'clock', 'branch', 'settings', 'hash', 'palette', 'card', 'link', 'inbox', 'calendar', 'search', 'mail', 'key', 'alert', 'info', 'check', 'check-circle', 'x', 'plus', 'trash', 'upload', 'download', 'eye', 'eye-off', 'chevron-start', 'chevron-end', 'external', 'globe', 'menu'] as $icon)
+                    <li class="flex w-20 flex-col items-center gap-1 rounded-tile border border-line p-2">
+                        <x-ui.icon :name="$icon" class="size-6 text-fg" />
+                        <code class="font-mono text-[0.625rem]" dir="ltr">{{ $icon }}</code>
+                    </li>
+                @endforeach
+            </ul>
+        </div>
+    </section>
+
     {{-- Feedback --}}
     <section aria-labelledby="{{ $scope }}-feedback" class="space-y-4">
         <h2 id="{{ $scope }}-feedback" class="text-heading font-semibold">{{ $t('Messages and states', 'الرسائل والحالات') }}</h2>
@@ -392,11 +418,11 @@
 
         <nav class="max-w-xs space-y-1 rounded-card border border-line bg-surface p-3" aria-label="{{ $t('Sidebar', 'الشريط الجانبي') }}">
             <x-ui.nav-link href="#" active>
-                <x-slot:icon><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 14h6m-6-4h6m4 10H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v12a2 2 0 01-2 2z" /></svg></x-slot:icon>
+                <x-slot:icon><x-ui.icon name="invoice" /></x-slot:icon>
                 {{ $t('Invoices', 'الفواتير') }}
             </x-ui.nav-link>
             <x-ui.nav-link href="#">
-                <x-slot:icon><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg></x-slot:icon>
+                <x-slot:icon><x-ui.icon name="user" /></x-slot:icon>
                 {{ $t('Customers', 'العملاء') }}
             </x-ui.nav-link>
         </nav>
