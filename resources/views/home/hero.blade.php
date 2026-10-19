@@ -10,6 +10,10 @@
     (PublicSite::siteQr), small and uncaptioned, with the Masaar mark in it,
     tilted with the card so it reads as part of the invoice, and the invoice
     stays what the eye lands on.
+
+    Its words are $section's (Admin › Website); the country names and
+    whether each is coming soon are the registry's, and the sample invoice
+    is the code's.
 --}}
 @php
     $sample = $publicSite->sampleInvoice();
@@ -21,7 +25,7 @@
             @if ($countries !== [])
                 <p class="inline-flex flex-wrap items-center gap-2 rounded-full bg-accent-soft px-3 py-1.5 text-sm font-medium text-accent">
                     <span class="size-1.5 rounded-full bg-teal-500" aria-hidden="true"></span>
-                    {{ __('E-invoicing for') }}
+                    {{ $section->text('badge') }}
                     @foreach ($countries as $country)
                         <span>{{ __($country->name()) }}@if (! $country->enabled()) <span class="font-normal">({{ __('coming soon') }})</span>@endif</span>@if (! $loop->last)<span aria-hidden="true">&middot;</span>@endif
                     @endforeach
@@ -29,11 +33,11 @@
             @endif
 
             <h1 id="hero-title" class="mt-6 text-display font-semibold">
-                {{ __('Every invoice,') }}<br>{{ __('on the right path.') }}
+                {{ $section->text('title_1') }}<br>{{ $section->text('title_2') }}
             </h1>
 
             <p class="mt-6 max-w-xl text-lead text-muted">
-                {{ __('Issue invoices in the portal or send them from your ERP. Masaar checks, sends and keeps each one the way your tax authority expects - in Arabic and English.') }}
+                {{ $section->html('lead') }}
             </p>
 
             <div class="mt-9 flex flex-wrap gap-3">
@@ -43,11 +47,13 @@
                     @if (config('signup.enabled'))
                         <x-ui.button size="lg" :href="route('register')">{{ __('Start your free month') }}</x-ui.button>
                     @endif
-                    <x-ui.button size="lg" variant="secondary" href="#steps">{{ __('See how it works') }}</x-ui.button>
+                    @if ($website->shows('steps'))
+                        <x-ui.button size="lg" variant="secondary" href="#steps">{{ __('See how it works') }}</x-ui.button>
+                    @endif
                 @endauth
             </div>
 
-            <p class="mt-4 text-sm text-subtle">{{ __('No card needed to sign up, and your first month is free.') }}</p>
+            <p class="mt-4 text-sm text-subtle">{{ $section->text('note') }}</p>
         </div>
 
         <div class="relative mx-auto w-full max-w-md">

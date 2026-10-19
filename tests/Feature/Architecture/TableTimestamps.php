@@ -200,6 +200,10 @@ final class TableTimestamps
         // website.contact.keep_details_days (PruneContactDetails).
         'contact_messages' => ['class' => 'b', 'tenant' => 'global',
             'actors' => [...self::REMOVABLE, 'reader' => 'read_by', 'replier' => 'replied_by']],
+        // A home page section as Admin › Website set it: an entity, one row
+        // per section key, never removed - "Reset to default" empties its
+        // content, and a section with no row shows its default.
+        'website_sections' => ['class' => 'a', 'tenant' => 'global', 'actors' => self::ENTITY],
 
         // Lists and branches.
         'saved_list_views' => ['class' => 'b', 'tenant' => 'either', 'actors' => self::REMOVABLE,

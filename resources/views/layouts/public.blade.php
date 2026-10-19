@@ -38,6 +38,8 @@
                     'plans' => __('Plans'),
                     'contact' => __('Contact'),
                 ] as $anchor => $label)
+                    {{-- A section switched off in Admin › Website has nothing to link to. --}}
+                    @continue(! $website->shows($anchor) && ! ($anchor === 'contact' && $publicSite->contactUrl()))
                     <a href="{{ $anchor === 'contact' ? $publicSite->contactLink() : url('/').'#'.$anchor }}" class="inline-flex min-h-11 items-center rounded-full px-3 text-muted transition-colors hover:bg-sunken hover:text-fg">{{ $label }}</a>
                 @endforeach
             </nav>

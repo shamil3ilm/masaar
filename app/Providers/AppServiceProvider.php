@@ -38,6 +38,7 @@ use App\Domains\Platform\Http\Middleware\PersonAccess;
 use App\Domains\Platform\Http\Middleware\RateLimitApi;
 use App\Domains\Platform\Services\PublicSite;
 use App\Domains\Platform\Services\SavedListViews;
+use App\Domains\Platform\Website\WebsiteSections;
 use App\Http\Listing\SavedViewStore;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\Paginator;
@@ -187,6 +188,10 @@ class AppServiceProvider extends ServiceProvider
         // goes - and its countries, for the public pages that show them, and
         // only those.
         View::composer(['layouts.public', 'welcome', 'home.*', 'errors::404'], fn (\Illuminate\View\View $view) => $view->with('publicSite', $this->app->make(PublicSite::class)));
+
+        // The home page's sections as Admin › Website set them: the page
+        // draws them, and the public layout's links skip one switched off.
+        View::composer(['layouts.public', 'welcome', 'home.*'], fn (\Illuminate\View\View $view) => $view->with('website', $this->app->make(WebsiteSections::class)));
 
         // After the delete has happened - an organization with invoices
         // cannot be deleted, and its branding should not go if it stays.

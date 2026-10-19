@@ -1489,3 +1489,19 @@ CREATE TABLE `webhooks` (
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
     FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
+
+CREATE TABLE `website_sections` (
+    `id` STRING NOT NULL,
+    `content` TEXT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `enabled` BOOLEAN NOT NULL DEFAULT 1,
+    `key` STRING NOT NULL,
+    `position` INTEGER NOT NULL DEFAULT 0,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `website_sections_key_unique` (`key`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
