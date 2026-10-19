@@ -90,6 +90,19 @@
                     <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></x-slot:icon>
                     Webhooks
                 </x-ui.nav-link>
+                {{-- The public website's inbox, with the number nobody has
+                     opened yet. Its people's details are support's to keep. --}}
+                @admincan('support.manage')
+                @php($unreadMessages = app(\App\Domains\Platform\Website\ContactInbox::class)->unread())
+                <p class="px-3 pb-1 pt-5 text-xs font-semibold uppercase tracking-wider text-subtle" x-show="labelled">{{ __('Website') }}</p>
+                <x-ui.nav-link :href="route('admin.website.messages.index')" :active="request()->routeIs('admin.website.messages.*')" collapsible>
+                    <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg></x-slot:icon>
+                    {{ __('Messages') }}
+                    @if ($unreadMessages > 0)
+                        <x-ui.badge tone="warning" :label="(string) $unreadMessages" data-unread-messages />
+                    @endif
+                </x-ui.nav-link>
+                @endadmincan
                 <p class="px-3 pb-1 pt-5 text-xs font-semibold uppercase tracking-wider text-subtle" x-show="labelled">Platform</p>
                 <x-ui.nav-link :href="route('admin.kill-switches')" :active="request()->routeIs('admin.kill-switches*')" collapsible>
                     <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M18.364 5.636a9 9 0 11-12.728 0M12 3v9"></path></svg></x-slot:icon>

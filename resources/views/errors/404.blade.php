@@ -16,7 +16,7 @@
     // composer does not match, so the theme is asked for here.
     $theme ??= app(\App\Domains\Branding\Services\ThemeService::class)->forRequest(request());
     $eggs = $publicSite->easterEggs();
-    $contact = $publicSite->contactUrl() ?? url('/').'#contact';
+    $contact = $publicSite->contactLink();
 @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}" class="{{ $theme->htmlClass() }}">

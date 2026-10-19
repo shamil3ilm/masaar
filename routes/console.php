@@ -33,6 +33,14 @@ Schedule::command('compliance:partition-maintenance --create-future --months-ahe
     ->withoutOverlapping(60)
     ->appendOutputTo(storage_path('logs/partition-maintenance.log'));
 
+// The contact form's senders' network address and browser, kept for spam
+// review only: cleared once a message is older than the keeping period.
+Schedule::command('website:prune-contact-details')
+    ->onOneServer()
+    ->dailyAt('02:30')
+    ->withoutOverlapping(30)
+    ->appendOutputTo(storage_path('logs/contact-prune.log'));
+
 /*
 |--------------------------------------------------------------------------
 | Licensing Scheduled Tasks

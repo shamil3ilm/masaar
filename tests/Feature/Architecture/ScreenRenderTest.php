@@ -18,6 +18,7 @@ use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Models\OrganizationGroup;
 use App\Domains\Platform\Models\ApprovalRequest;
+use App\Domains\Platform\Models\ContactMessage;
 use App\Domains\Support\Models\SupportMessage;
 use App\Domains\Support\Models\SupportTicket;
 use App\Domains\Webhook\Models\Webhook;
@@ -466,6 +467,18 @@ class ScreenRenderTest extends TestCase
         ]), fn (ApprovalRequest $request) => $request->forceFill(['requested_by' => $this->member->id])->save());
     }
 
+    /** A message from the home page's contact form, for the Website inbox. */
+    private function contactMessage(): ContactMessage
+    {
+        return ContactMessage::query()->create([
+            'name' => 'Huda Al-Harbi',
+            'email' => 'huda@example.com',
+            'topic' => 'general',
+            'message' => 'We would like a plan.',
+            'locale' => 'en',
+        ]);
+    }
+
     /**
      * The screens the router knows about, with their parameters filled in.
      *
@@ -484,6 +497,7 @@ class ScreenRenderTest extends TestCase
             'productId' => $this->product->id,
             'branchId' => $this->branch->id,
             'requestId' => $this->approvalRequest()->id,
+            'messageId' => $this->contactMessage()->id,
         ];
 
         $screens = [];

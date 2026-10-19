@@ -2,8 +2,9 @@
     Where this platform files, one tab per country.
 
     Everything here is the country module's own answer: its name, the system
-    it files through, whether this platform has it switched on, and which of
-    the platform's features it supports. A country added to the engine
+    it files through and how (its Website port), whether this platform has it
+    switched on, which of the platform's features it supports, and the
+    standards its documents are built to. A country added to the engine
     appears here without this file changing, and a country switched off in
     the admin console says so rather than disappearing.
 --}}
@@ -51,6 +52,7 @@
                                 @endif
                             </div>
                             <p class="mt-2 text-sm text-muted">{{ __('Invoices go through :system.', ['system' => $country->filingSystem()]) }}</p>
+                            <p class="mt-3 text-sm font-medium">{{ $country->website()->offering() }}</p>
                             <p @class(['mt-5 inline-flex items-center gap-2 text-sm font-semibold', 'text-accent' => $country->enabled(), 'text-warning' => ! $country->enabled()])>
                                 <span @class(['size-2 rounded-full', 'bg-teal-500' => $country->enabled(), 'bg-sand-200 ring-2 ring-warning/40' => ! $country->enabled()]) aria-hidden="true"></span>
                                 {{ $country->enabled() ? __('Available now') : __('Coming soon') }}
@@ -75,9 +77,20 @@
                         <h3 class="text-heading font-semibold">{{ __('Other countries: ask us') }}</h3>
                         <p class="mt-2 text-sm text-muted">{{ __('We can add another country\'s e-invoicing rules to the platform. Tell us where you need to file.') }}</p>
                     </div>
-                    <x-ui.button variant="secondary" :href="url('/').'?topic=country#contact'" data-contact-topic="country">{{ __('Ask about a country') }}</x-ui.button>
+                    <x-ui.button variant="secondary" :href="$publicSite->contactLink('country')" data-contact-topic="country">{{ __('Ask about a country') }}</x-ui.button>
                 </div>
             </x-ui.tab-panel>
         </x-ui.tabs>
+
+        {{-- The published standards the documents are built to, by their
+             own names: what the modules follow, not a certificate. --}}
+        @if ($publicSite->standards() !== [])
+            <p class="mt-6 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm text-muted">
+                <span class="font-semibold text-fg">{{ __('Standards we follow') }}</span>
+                @foreach ($publicSite->standards() as $standard)
+                    <span>{{ $standard }}</span>@if (! $loop->last)<span aria-hidden="true">&middot;</span>@endif
+                @endforeach
+            </p>
+        @endif
     @endif
 </section>

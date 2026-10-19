@@ -37,6 +37,7 @@ class ConfigReaderTest extends TestCase
         'metrics',
         'platform-license',
         'security',
+        'website',
     ];
 
     /**

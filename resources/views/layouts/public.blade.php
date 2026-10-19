@@ -38,7 +38,7 @@
                     'plans' => __('Plans'),
                     'contact' => __('Contact'),
                 ] as $anchor => $label)
-                    <a href="{{ url('/') }}#{{ $anchor }}" class="inline-flex min-h-11 items-center rounded-full px-3 text-muted transition-colors hover:bg-sunken hover:text-fg">{{ $label }}</a>
+                    <a href="{{ $anchor === 'contact' ? $publicSite->contactLink() : url('/').'#'.$anchor }}" class="inline-flex min-h-11 items-center rounded-full px-3 text-muted transition-colors hover:bg-sunken hover:text-fg">{{ $label }}</a>
                 @endforeach
             </nav>
 
@@ -82,8 +82,8 @@
             <nav class="flex flex-wrap items-center gap-x-5" aria-label="{{ __('Legal') }}">
                 <a href="{{ route('privacy') }}" class="inline-flex min-h-11 items-center hover:text-fg hover:underline underline-offset-4">{{ __('Privacy') }}</a>
                 <a href="{{ route('terms') }}" class="inline-flex min-h-11 items-center hover:text-fg hover:underline underline-offset-4">{{ __('Terms') }}</a>
-                @if (config('company.email'))
-                    <a href="mailto:{{ config('company.email') }}" class="inline-flex min-h-11 items-center hover:text-fg hover:underline underline-offset-4" dir="ltr">{{ config('company.email') }}</a>
+                @if ($publicSite->contactEmail())
+                    <a href="mailto:{{ $publicSite->contactEmail() }}" class="inline-flex min-h-11 items-center hover:text-fg hover:underline underline-offset-4" dir="ltr">{{ $publicSite->contactEmail() }}</a>
                 @endif
                 <x-locale-switch class="sm:hidden" />
             </nav>
