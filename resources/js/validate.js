@@ -261,7 +261,7 @@ function summarise(form, controls) {
     summary.tabIndex = -1;
     summary.setAttribute('role', 'alert');
     summary.className =
-        'mb-4 rounded-tile border border-danger-line bg-danger-soft p-4 text-sm text-fg focus-visible:outline-2 focus-visible:outline-focus';
+        'col-span-full mb-4 w-full basis-full rounded-tile border border-danger-line bg-danger-soft p-4 text-sm text-fg focus-visible:outline-2 focus-visible:outline-focus';
 
     const title = document.createElement('p');
     title.className = 'font-semibold text-danger';

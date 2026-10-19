@@ -273,6 +273,30 @@
         </div>
     </section>
 
+    {{-- Our own form errors, and the glass --}}
+    <section aria-labelledby="{{ $scope }}-errors" class="space-y-4">
+        <h2 id="{{ $scope }}-errors" class="text-heading font-semibold">{{ $t('Form errors and glass', 'أخطاء النماذج والزجاج') }}</h2>
+        <p class="max-w-3xl text-sm text-muted">{{ $t('Every form is checked by resources/js/validate.js, never the browser\'s bubble: a message under each field in the page\'s language, and a summary at the top that takes focus and links to each. Send this one empty.', 'يتحقق resources/js/validate.js من كل نموذج بدلاً من فقاعة المتصفح: رسالة تحت كل حقل بلغة الصفحة، وملخص في الأعلى يأخذ التركيز ويربط بكل حقل. أرسل هذا النموذج فارغاً.') }}</p>
+        <form method="GET" action="#{{ $scope }}-errors" class="grid gap-4 rounded-card border border-line bg-surface p-5 sm:grid-cols-2">
+            <x-ui.field :label="$t('Legal name', 'الاسم القانوني')">
+                <x-ui.input name="specimen_required_name" required />
+            </x-ui.field>
+            <x-ui.field :label="$t('Email', 'البريد الإلكتروني')">
+                <x-ui.input type="email" name="specimen_required_email" value="not-an-email" />
+            </x-ui.field>
+            <div class="sm:col-span-2">
+                <x-ui.button size="sm" variant="secondary">{{ $t('Check', 'تحقق') }}</x-ui.button>
+            </div>
+        </form>
+        <div class="relative overflow-hidden rounded-card border border-line">
+            <div aria-hidden="true" class="h-40 bg-[repeating-linear-gradient(135deg,var(--color-accent-soft)_0_12px,var(--color-surface)_12px_24px)]"></div>
+            <div class="glass-bar absolute inset-x-0 top-0 border-b border-line px-4 py-3 text-sm font-medium" data-scrolled>{{ $t('glass-bar: the sticky top bar, over what scrolls under it', 'glass-bar: الشريط العلوي الثابت فوق ما يمر تحته') }}</div>
+            <div class="glass-scrim absolute inset-x-0 bottom-0 top-14 flex items-center justify-center">
+                <p class="glass-chip rounded-full px-4 py-2 text-sm font-medium text-fg">{{ $t('glass-scrim behind a dialog; glass-chip, the hero\'s one accent', 'glass-scrim خلف النوافذ، وglass-chip لمسة الواجهة الوحيدة') }}</p>
+            </div>
+        </div>
+    </section>
+
     {{-- Feedback --}}
     <section aria-labelledby="{{ $scope }}-feedback" class="space-y-4">
         <h2 id="{{ $scope }}-feedback" class="text-heading font-semibold">{{ $t('Messages and states', 'الرسائل والحالات') }}</h2>
