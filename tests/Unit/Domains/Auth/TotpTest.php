@@ -70,10 +70,10 @@ class TotpTest extends TestCase
 
     public function test_the_uri_names_the_issuer(): void
     {
-        $uri = Totp::uri(self::SECRET, 'ops@masaar.test', 'Masaar');
+        $uri = Totp::uri(self::SECRET, 'ops@example.test', 'Acme');
 
-        $this->assertStringStartsWith('otpauth://totp/Masaar:ops%40masaar.test?', $uri);
+        $this->assertStringStartsWith('otpauth://totp/Acme:ops%40example.test?', $uri);
         $this->assertStringContainsString('secret='.self::SECRET, $uri);
-        $this->assertStringContainsString('issuer=Masaar', $uri);
+        $this->assertStringContainsString('issuer=Acme', $uri);
     }
 }

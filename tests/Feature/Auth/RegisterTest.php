@@ -39,14 +39,14 @@ class RegisterTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('message', 'User registered. Verify the email address, then sign in.')
             ->assertJsonPath('data.user.name', 'New Person')
-            ->assertJsonPath('data.user.email', 'new@masaar.test');
+            ->assertJsonPath('data.user.email', 'new@example.test');
 
         $this->assertSame(['id', 'name', 'email'], array_keys($response->json('data.user')));
         // No token until the address is verified: login asks for that, and
         // a token here would be the way around it.
         $this->assertNull($response->json('data.token'));
 
-        $this->assertDatabaseHas('users', ['email' => 'new@masaar.test', 'status' => 'active']);
+        $this->assertDatabaseHas('users', ['email' => 'new@example.test', 'status' => 'active']);
         $this->assertDatabaseHas('audit_logs', [
             'action' => 'auth.register',
             'user_id' => $response->json('data.user.id'),
@@ -61,14 +61,14 @@ class RegisterTest extends TestCase
 
         $this->register()->assertServerError();
 
-        $this->assertDatabaseMissing('users', ['email' => 'new@masaar.test']);
+        $this->assertDatabaseMissing('users', ['email' => 'new@example.test']);
     }
 
     private function register(): TestResponse
     {
         return $this->postJson('/api/auth/register', [
             'name' => 'New Person',
-            'email' => 'new@masaar.test',
+            'email' => 'new@example.test',
             'password' => self::PASSWORD,
             'password_confirmation' => self::PASSWORD,
         ]);

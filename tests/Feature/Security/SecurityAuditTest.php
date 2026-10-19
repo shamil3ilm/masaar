@@ -22,9 +22,9 @@ class SecurityAuditTest extends TestCase
 
     public function test_successful_login_is_recorded(): void
     {
-        $user = User::factory()->create(['email' => 'operator@masaar.test']);
+        $user = User::factory()->create(['email' => 'operator@example.test']);
 
-        $this->post('/login', ['email' => 'operator@masaar.test', 'password' => 'password']);
+        $this->post('/login', ['email' => 'operator@example.test', 'password' => 'password']);
 
         $entry = AuditLog::where('action', 'security.login.succeeded')->first();
 
@@ -38,14 +38,14 @@ class SecurityAuditTest extends TestCase
      */
     public function test_failed_login_is_recorded(): void
     {
-        User::factory()->create(['email' => 'operator@masaar.test']);
+        User::factory()->create(['email' => 'operator@example.test']);
 
-        $this->post('/login', ['email' => 'operator@masaar.test', 'password' => 'wrong']);
+        $this->post('/login', ['email' => 'operator@example.test', 'password' => 'wrong']);
 
         $entry = AuditLog::where('action', 'security.login.failed')->first();
 
         $this->assertNotNull($entry, 'failed login was not audited');
-        $this->assertSame('operator@masaar.test', $entry->metadata['email'] ?? null);
+        $this->assertSame('operator@example.test', $entry->metadata['email'] ?? null);
     }
 
     /**
@@ -57,9 +57,9 @@ class SecurityAuditTest extends TestCase
      */
     public function test_a_failure_names_the_account(): void
     {
-        $user = User::factory()->create(['email' => 'operator@masaar.test']);
+        $user = User::factory()->create(['email' => 'operator@example.test']);
 
-        $this->post('/login', ['email' => 'operator@masaar.test', 'password' => 'wrong']);
+        $this->post('/login', ['email' => 'operator@example.test', 'password' => 'wrong']);
 
         $this->assertSame((string) $user->id, AuditLog::where('action', 'security.login.failed')->first()->entity_id);
     }
@@ -73,10 +73,10 @@ class SecurityAuditTest extends TestCase
      */
     public function test_api_sign_ins_are_recorded(): void
     {
-        $user = User::factory()->create(['email' => 'operator@masaar.test']);
+        $user = User::factory()->create(['email' => 'operator@example.test']);
 
-        $this->postJson('/api/auth/login', ['email' => 'operator@masaar.test', 'password' => 'wrong']);
-        $this->postJson('/api/auth/login', ['email' => 'operator@masaar.test', 'password' => 'password']);
+        $this->postJson('/api/auth/login', ['email' => 'operator@example.test', 'password' => 'wrong']);
+        $this->postJson('/api/auth/login', ['email' => 'operator@example.test', 'password' => 'password']);
 
         $failed = AuditLog::where('action', 'security.login.failed')->first();
         $succeeded = AuditLog::where('action', 'security.login.succeeded')->first();
@@ -89,7 +89,7 @@ class SecurityAuditTest extends TestCase
 
     public function test_unknown_account_recorded(): void
     {
-        $this->post('/login', ['email' => 'nobody@masaar.test', 'password' => 'guess']);
+        $this->post('/login', ['email' => 'nobody@example.test', 'password' => 'guess']);
 
         $this->assertSame(1, AuditLog::where('action', 'security.login.failed')->count());
     }
@@ -106,9 +106,9 @@ class SecurityAuditTest extends TestCase
      */
     public function test_audit_entries_never_carry_the_secret(): void
     {
-        User::factory()->create(['email' => 'operator@masaar.test']);
+        User::factory()->create(['email' => 'operator@example.test']);
 
-        $this->post('/login', ['email' => 'operator@masaar.test', 'password' => 'sup3rs3cret']);
+        $this->post('/login', ['email' => 'operator@example.test', 'password' => 'sup3rs3cret']);
 
         $serialised = AuditLog::all()->toJson();
 
@@ -117,9 +117,9 @@ class SecurityAuditTest extends TestCase
 
     public function test_client_address_is_captured(): void
     {
-        User::factory()->create(['email' => 'operator@masaar.test']);
+        User::factory()->create(['email' => 'operator@example.test']);
 
-        $this->post('/login', ['email' => 'operator@masaar.test', 'password' => 'password']);
+        $this->post('/login', ['email' => 'operator@example.test', 'password' => 'password']);
 
         $entry = AuditLog::where('action', 'security.login.succeeded')->first();
 

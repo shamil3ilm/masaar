@@ -120,7 +120,7 @@ class InvoiceChargeTest extends TestCase
     {
         License::create([
             'org_id' => $this->acme->id, 'api_key' => 'cp_test_acme', 'api_secret_hash' => License::hashSecret('secret'),
-            'organization_name' => 'Acme', 'contact_email' => 'ops@masaar.test', 'environment' => 'sandbox',
+            'organization_name' => 'Acme', 'contact_email' => 'ops@example.test', 'environment' => 'sandbox',
             'tier' => 'professional', 'status' => 'active', 'scopes' => ['invoice.submit'],
         ]);
 

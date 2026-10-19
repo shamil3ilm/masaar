@@ -29,11 +29,11 @@ class JwtTokenTest extends TestCase
     private function user(): User
     {
         return User::factory()->create([
-            'email' => 'token-subject@masaar.test',
+            'email' => 'token-subject@example.test',
         ]);
     }
 
-    private function login(string $email = 'token-subject@masaar.test'): string
+    private function login(string $email = 'token-subject@example.test'): string
     {
         return $this->postJson('/api/auth/login', [
             'email' => $email,
@@ -118,7 +118,7 @@ class JwtTokenTest extends TestCase
     public function test_tampered_payload_denied(): void
     {
         $this->user();
-        $other = User::factory()->create(['email' => 'victim@masaar.test']);
+        $other = User::factory()->create(['email' => 'victim@example.test']);
 
         [$header, , $signature] = explode('.', $this->login());
 

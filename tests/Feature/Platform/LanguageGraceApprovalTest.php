@@ -38,8 +38,8 @@ class LanguageGraceApprovalTest extends TestCase
 
         Mail::fake();
         $this->acme = Organization::create(['name' => 'Acme', 'country' => 'SA', 'vat_number' => '300000000000003', 'status' => 'active']);
-        $this->owner = $this->admin('owner', 'ops@masaar.test');
-        $this->operations = $this->admin('operations', 'second@masaar.test');
+        $this->owner = $this->admin('owner', 'ops@example.test');
+        $this->operations = $this->admin('operations', 'second@example.test');
     }
 
     public function test_it_ships_off(): void

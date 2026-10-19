@@ -10,7 +10,7 @@ use PHPUnit\Framework\TestCase;
  * The docs tell a receiver to read the header the platform sends.
  *
  * WebhookService signs into X-Webhook-Signature. The integration guide and
- * the client SDKs once kept here told receivers to read X-Masaar-Signature,
+ * the client SDKs once kept here told receivers to read an X-<product>-Signature header,
  * which never arrives, so a receiver built from them read an empty header and either
  * refused every webhook or - worse - skipped verification. The guide's own
  * comparison also left off the sha256= prefix the header carries.

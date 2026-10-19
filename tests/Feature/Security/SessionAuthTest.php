@@ -19,10 +19,10 @@ class SessionAuthTest extends TestCase
 
     public function test_valid_login(): void
     {
-        $user = User::factory()->create(['email' => 'operator@masaar.test']);
+        $user = User::factory()->create(['email' => 'operator@example.test']);
 
         $this->post('/login', [
-            'email' => 'operator@masaar.test',
+            'email' => 'operator@example.test',
             'password' => 'password',
         ])->assertRedirect();
 
@@ -31,10 +31,10 @@ class SessionAuthTest extends TestCase
 
     public function test_wrong_password_denied(): void
     {
-        User::factory()->create(['email' => 'operator@masaar.test']);
+        User::factory()->create(['email' => 'operator@example.test']);
 
         $this->post('/login', [
-            'email' => 'operator@masaar.test',
+            'email' => 'operator@example.test',
             'password' => 'wrong-password',
         ])->assertSessionHasErrors('email');
 
@@ -47,10 +47,10 @@ class SessionAuthTest extends TestCase
      */
     public function test_suspended_account_denied(): void
     {
-        User::factory()->suspended()->create(['email' => 'suspended@masaar.test']);
+        User::factory()->suspended()->create(['email' => 'suspended@example.test']);
 
         $this->post('/login', [
-            'email' => 'suspended@masaar.test',
+            'email' => 'suspended@example.test',
             'password' => 'password',
         ])->assertSessionHasErrors('email');
 
@@ -59,18 +59,18 @@ class SessionAuthTest extends TestCase
 
     public function test_login_throttled(): void
     {
-        User::factory()->create(['email' => 'operator@masaar.test']);
+        User::factory()->create(['email' => 'operator@example.test']);
 
         for ($attempt = 0; $attempt < 5; $attempt++) {
             $this->post('/login', [
-                'email' => 'operator@masaar.test',
+                'email' => 'operator@example.test',
                 'password' => 'wrong-password',
             ]);
         }
 
         // The correct password must not succeed while the lockout holds.
         $this->post('/login', [
-            'email' => 'operator@masaar.test',
+            'email' => 'operator@example.test',
             'password' => 'password',
         ])->assertSessionHasErrors('email');
 
@@ -79,13 +79,13 @@ class SessionAuthTest extends TestCase
 
     public function test_session_id_rotates(): void
     {
-        User::factory()->create(['email' => 'operator@masaar.test']);
+        User::factory()->create(['email' => 'operator@example.test']);
 
         $this->get('/login');
         $before = session()->getId();
 
         $this->post('/login', [
-            'email' => 'operator@masaar.test',
+            'email' => 'operator@example.test',
             'password' => 'password',
         ]);
 
@@ -98,11 +98,11 @@ class SessionAuthTest extends TestCase
      */
     public function test_admin_lands_on_console(): void
     {
-        $admin = User::factory()->platformAdmin()->create(['email' => 'admin@masaar.test']);
+        $admin = User::factory()->platformAdmin()->create(['email' => 'admin@example.test']);
         $this->get(app(EnrolmentLinks::class)->issue($admin, null));
 
         $this->post('/login', [
-            'email' => 'admin@masaar.test',
+            'email' => 'admin@example.test',
             'password' => 'password',
         ])->assertRedirect(route('login.two-factor.setup'));
 
@@ -111,10 +111,10 @@ class SessionAuthTest extends TestCase
 
     public function test_user_lands_on_portal(): void
     {
-        User::factory()->create(['email' => 'user@masaar.test']);
+        User::factory()->create(['email' => 'user@example.test']);
 
         $this->post('/login', [
-            'email' => 'user@masaar.test',
+            'email' => 'user@example.test',
             'password' => 'password',
         ])->assertRedirect(route('portal.dashboard'));
     }

@@ -44,7 +44,7 @@ class JwtTenantTest extends TestCase
         $this->acme = Organization::create(['name' => 'Acme', 'country' => 'SA']);
         $this->rival = Organization::create(['name' => 'Rival', 'country' => 'SA']);
 
-        $this->user = User::factory()->create(['email' => 'member@masaar.test']);
+        $this->user = User::factory()->create(['email' => 'member@example.test']);
     }
 
     public function test_one_organization_scopes_at_login(): void
@@ -128,7 +128,7 @@ class JwtTenantTest extends TestCase
     private function login(): string
     {
         return $this->postJson('/api/auth/login', [
-            'email' => 'member@masaar.test',
+            'email' => 'member@example.test',
             'password' => 'password',
         ])->assertOk()->json('data.token.access_token');
     }

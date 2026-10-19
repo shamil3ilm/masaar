@@ -10,6 +10,7 @@ use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\BranchService;
+use App\Support\Brand;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -65,7 +66,7 @@ class ExceptionLeakTest extends TestCase
         $response = $this->withToken($this->token)->postJson('/api/compliance/onboarding/ccsid', [
             'otp' => '123456',
             'common_name' => 'EGS-1234567890',
-            'serial_number' => '1-Masaar|2-1.0|3-abc123',
+            'serial_number' => '1-'.Brand::csrSolution().'|2-1.0|3-abc123',
         ]);
 
         $response->assertStatus(500);

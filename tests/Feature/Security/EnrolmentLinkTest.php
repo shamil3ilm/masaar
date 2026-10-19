@@ -37,9 +37,9 @@ class EnrolmentLinkTest extends TestCase
 
     public function test_a_password_alone_cannot_enrol(): void
     {
-        $this->admin('new@masaar.test');
+        $this->admin('new@example.test');
 
-        $this->post('/login', ['email' => 'new@masaar.test', 'password' => 'password'])
+        $this->post('/login', ['email' => 'new@example.test', 'password' => 'password'])
             ->assertSessionHasErrors('email');
 
         $this->assertGuest();
@@ -51,18 +51,18 @@ class EnrolmentLinkTest extends TestCase
      */
     public function test_a_link_is_for_one_admin(): void
     {
-        $intended = $this->admin('new@masaar.test');
-        $this->admin('other@masaar.test');
+        $intended = $this->admin('new@example.test');
+        $this->admin('other@example.test');
 
         $this->get($this->links()->issue($intended, null));
 
-        $this->post('/login', ['email' => 'other@masaar.test', 'password' => 'password'])
+        $this->post('/login', ['email' => 'other@example.test', 'password' => 'password'])
             ->assertSessionHasErrors('email');
     }
 
     public function test_an_expired_link_is_refused(): void
     {
-        $admin = $this->admin('new@masaar.test');
+        $admin = $this->admin('new@example.test');
         $link = $this->links()->issue($admin, null);
 
         $this->travel(EnrolmentLinks::VALID_HOURS + 1)->hours();
@@ -77,7 +77,7 @@ class EnrolmentLinkTest extends TestCase
      */
     public function test_a_link_works_only_once(): void
     {
-        $admin = $this->admin('new@masaar.test');
+        $admin = $this->admin('new@example.test');
         $hash = EnrolmentLinks::hash($this->token($this->links()->issue($admin, null)));
 
         $this->assertTrue($this->links()->claim($admin, $hash));
@@ -89,9 +89,9 @@ class EnrolmentLinkTest extends TestCase
      */
     public function test_a_wrong_code_keeps_the_link(): void
     {
-        $admin = $this->admin('new@masaar.test');
+        $admin = $this->admin('new@example.test');
         $this->get($this->links()->issue($admin, null));
-        $this->post('/login', ['email' => 'new@masaar.test', 'password' => 'password']);
+        $this->post('/login', ['email' => 'new@example.test', 'password' => 'password']);
         $this->get('/login/two-factor/setup');
 
         $this->post('/login/two-factor/setup', ['code' => '000000'])->assertSessionHasErrors('code');
@@ -102,7 +102,7 @@ class EnrolmentLinkTest extends TestCase
 
     public function test_a_reset_ends_an_earlier_link(): void
     {
-        $admin = $this->admin('new@masaar.test');
+        $admin = $this->admin('new@example.test');
         $link = $this->links()->issue($admin, null);
 
         app(TwoFactor::class)->reset($admin);
@@ -112,7 +112,7 @@ class EnrolmentLinkTest extends TestCase
 
     public function test_issuing_again_replaces_the_link(): void
     {
-        $admin = $this->admin('new@masaar.test');
+        $admin = $this->admin('new@example.test');
         $first = $this->links()->issue($admin, null);
         $this->links()->issue($admin, null);
 
@@ -125,9 +125,9 @@ class EnrolmentLinkTest extends TestCase
      */
     public function test_a_reset_comes_with_a_link(): void
     {
-        $locked = $this->admin('lost@masaar.test');
+        $locked = $this->admin('lost@example.test');
         $locked->forceFill(['two_factor_secret' => self::SECRET, 'two_factor_confirmed_at' => now()])->save();
-        $helper = $this->admin('helper@masaar.test');
+        $helper = $this->admin('helper@example.test');
 
         $this->actingAs($helper)->post('/admin/users/'.$locked->id.'/reset-two-factor')
             ->assertSessionHas(AdminUserController::LINK, fn (string $link) => str_contains($link, '/login/two-factor/enrol/'));
@@ -137,7 +137,7 @@ class EnrolmentLinkTest extends TestCase
 
     public function test_an_admin_cannot_link_themselves(): void
     {
-        $admin = $this->admin('self@masaar.test');
+        $admin = $this->admin('self@example.test');
 
         $this->actingAs($admin)->post('/admin/users/'.$admin->id.'/enrolment-link')
             ->assertSessionHas('error')
@@ -150,12 +150,12 @@ class EnrolmentLinkTest extends TestCase
      */
     public function test_the_command_issues_a_link(): void
     {
-        $admin = $this->admin('ops@masaar.test');
+        $admin = $this->admin('ops@example.test');
         $admin->forceFill(['two_factor_secret' => self::SECRET, 'two_factor_confirmed_at' => now()])->save();
 
-        $this->artisan('platform:enrolment-link', ['email' => 'ops@masaar.test'])->assertFailed();
+        $this->artisan('platform:enrolment-link', ['email' => 'ops@example.test'])->assertFailed();
 
-        $this->artisan('platform:enrolment-link', ['email' => 'ops@masaar.test', '--reset' => true])
+        $this->artisan('platform:enrolment-link', ['email' => 'ops@example.test', '--reset' => true])
             ->expectsOutputToContain('/login/two-factor/enrol/')
             ->assertSuccessful();
 
@@ -164,10 +164,10 @@ class EnrolmentLinkTest extends TestCase
 
     public function test_a_localhost_link_is_flagged(): void
     {
-        $this->admin('ops@masaar.test');
+        $this->admin('ops@example.test');
         config(['app.url' => 'http://localhost']);
 
-        $this->artisan('platform:enrolment-link', ['email' => 'ops@masaar.test'])
+        $this->artisan('platform:enrolment-link', ['email' => 'ops@example.test'])
             ->expectsOutputToContain('Set APP_URL')
             ->assertSuccessful();
     }

@@ -41,11 +41,11 @@ class RootUrlTest extends TestCase
 
     public function test_elsewhere_links_ignore_the_host(): void
     {
-        $this->configureFor('production', 'https://masaar.example');
+        $this->configureFor('production', 'https://platform.example');
 
         $this->get('http://forged.example/')
             ->assertOk()
-            ->assertSee('https://masaar.example/login', false)
+            ->assertSee('https://platform.example/login', false)
             ->assertDontSee('forged.example', false);
     }
 

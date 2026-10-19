@@ -33,7 +33,7 @@ class AdminAuditTest extends TestCase
     {
         parent::setUp();
 
-        $this->admin = User::factory()->create(['is_platform_admin' => true, 'email' => 'ops@masaar.test']);
+        $this->admin = User::factory()->create(['is_platform_admin' => true, 'email' => 'ops@example.test']);
     }
 
     /**

@@ -85,12 +85,12 @@ class CustomAdminRolesTest extends TestCase
     public function test_an_admin_takes_a_custom_role(): void
     {
         app(AdminRoles::class)->save(['key' => 'desk', 'name' => 'Desk', 'description' => null, 'permissions' => ['console.view'], 'rank' => 1], null);
-        $newcomer = User::factory()->create(['email' => 'desk@masaar.test']);
+        $newcomer = User::factory()->create(['email' => 'desk@example.test']);
 
-        $this->actingAs($this->owner)->post('/admin/admins', ['email' => 'desk@masaar.test', 'role' => 'desk'])->assertSessionHas('success');
+        $this->actingAs($this->owner)->post('/admin/admins', ['email' => 'desk@example.test', 'role' => 'desk'])->assertSessionHas('success');
         $this->assertSame('desk', $newcomer->fresh()->platform_role);
 
-        $this->actingAs($this->owner)->post('/admin/admins', ['email' => 'desk@masaar.test', 'role' => 'nobody'])->assertSessionHasErrors('role');
+        $this->actingAs($this->owner)->post('/admin/admins', ['email' => 'desk@example.test', 'role' => 'nobody'])->assertSessionHasErrors('role');
     }
 
     public function test_system_and_held_roles_stay(): void

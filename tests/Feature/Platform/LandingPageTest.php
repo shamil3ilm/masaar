@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Platform;
 
 use App\Domains\Auth\Models\User;
+use App\Support\Brand;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -33,7 +34,7 @@ class LandingPageTest extends TestCase
         $response = $this->get('/');
 
         $response->assertOk();
-        $response->assertSee('Masaar');
+        $response->assertSee(Brand::name());
 
         // The logo is drawn inline, so its geometry is in the response or it
         // did not render. A component whose props go unread leaves no trace

@@ -1,5 +1,5 @@
 /**
- * Masaar ZATCA Submission Load Test
+ * ZATCA Submission Load Test
  *
  * Tests the ZATCA submission flow under load
  * This is the most critical test - simulates real production usage
@@ -190,7 +190,7 @@ export function handleSummary(data) {
     return {
         stdout: `
 ╔══════════════════════════════════════════════════════════════╗
-║         MASAAR ZATCA SUBMISSION LOAD TEST RESULTS         ║
+║            ZATCA SUBMISSION LOAD TEST RESULTS             ║
 ╠══════════════════════════════════════════════════════════════╣
 ║  Submissions:                                                ║
 ║    Successful:       ${successCount.toString().padStart(10)}                          ║

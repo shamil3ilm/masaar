@@ -12,6 +12,7 @@ use App\Domains\Organization\Models\Organization;
 use App\Domains\Webhook\Jobs\DeliverWebhook;
 use App\Domains\Webhook\Models\Webhook;
 use App\Domains\Webhook\Services\WebhookService;
+use App\Support\Brand;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -82,7 +83,7 @@ class WebhookEventsTest extends TestCase
         });
 
         $onboarding = app(OrganizationOnboarding::class);
-        $onboarding->requestCcsid($this->acme, '123456', ['common_name' => 'EGS-1', 'serial_number' => '1-Masaar|2-1|3-1']);
+        $onboarding->requestCcsid($this->acme, '123456', ['common_name' => 'EGS-1', 'serial_number' => '1-'.Brand::csrSolution().'|2-1|3-1']);
         $onboarding->runComplianceCheck($this->acme);
         $onboarding->requestPcsid($this->acme);
 

@@ -51,7 +51,7 @@ class ProductionSubmissionTest extends TestCase
     {
         parent::setUp();
 
-        $this->storage = sys_get_temp_dir().'/masaar-submission-'.bin2hex(random_bytes(6));
+        $this->storage = sys_get_temp_dir().'/platform-submission-'.bin2hex(random_bytes(6));
 
         foreach (['app/zatca', 'framework/views', 'framework/cache', 'logs'] as $path) {
             File::ensureDirectoryExists($this->storage.'/'.$path);

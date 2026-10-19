@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Queue;
  */
 trait PlaysTheSimulator
 {
-    private const CALLBACK_URL = 'http://simulator.masaar.test';
+    private const CALLBACK_URL = 'http://simulator.example.test';
 
     /** @var list<int> HTTP status of every callback, in order */
     private array $callbackAnswers = [];

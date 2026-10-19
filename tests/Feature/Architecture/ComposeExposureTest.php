@@ -68,7 +68,7 @@ class ComposeExposureTest extends TestCase
      * Production runs more than one app container, so nothing may pin it to one.
      *
      * The override asked for two replicas while the base file named the
-     * container masaar-app and bound it to a host port. Compose refuses both
+     * container <product>-app and bound it to a host port. Compose refuses both
      * for a second container, so the production stack could not start the
      * app at all.
      */
@@ -90,7 +90,7 @@ class ComposeExposureTest extends TestCase
     /**
      * Redis never starts without a password, and both sides read one variable.
      *
-     * The server fell back to masaar_redis and the app to null, so a stack
+     * The server fell back to a password named for the product and the app to null, so a stack
      * started without one ran Redis under a published default - and the app
      * could not authenticate to it anyway. Redis is optional now, so the
      * requirement lives in the container: compose checks ${VAR:?} across the

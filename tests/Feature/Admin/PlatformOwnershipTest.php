@@ -74,20 +74,20 @@ class PlatformOwnershipTest extends TestCase
 
     public function test_a_grant_never_makes_one(): void
     {
-        $someone = User::factory()->create(['email' => 'someone@masaar.test']);
+        $someone = User::factory()->create(['email' => 'someone@example.test']);
 
-        $this->actingAs($this->owner)->post('/admin/admins', ['email' => 'someone@masaar.test', 'role' => 'owner'])->assertSessionHas('error');
+        $this->actingAs($this->owner)->post('/admin/admins', ['email' => 'someone@example.test', 'role' => 'owner'])->assertSessionHas('error');
 
         $this->assertFalse($someone->fresh()->is_platform_admin);
     }
 
     public function test_an_invitation_never_makes_one(): void
     {
-        $this->actingAs($this->owner)->post(route('admin.admins.invite'), ['email' => 'new@masaar.test', 'role' => 'owner'])->assertSessionHas('error');
+        $this->actingAs($this->owner)->post(route('admin.admins.invite'), ['email' => 'new@example.test', 'role' => 'owner'])->assertSessionHas('error');
         Mail::assertNothingSent();
 
         $this->expectException(DomainException::class);
-        app(AdminInvitations::class)->invite('new@masaar.test', 'owner', $this->owner);
+        app(AdminInvitations::class)->invite('new@example.test', 'owner', $this->owner);
     }
 
     /**

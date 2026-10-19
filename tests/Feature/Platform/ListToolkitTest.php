@@ -75,12 +75,12 @@ class ListToolkitTest extends TestCase
     {
         $list = ListState::fromQuery($this->spec(), [
             'status' => 'issued', 'amount_min' => '100', 'junk' => 'x', 'sort' => 'newest', 'per_page' => '25', 'page' => '3',
-        ], 'https://masaar.test/list');
+        ], 'https://example.test/list');
 
         // In the spec's order, whatever order the link had.
         $this->assertSame(['amount_min' => '100', 'status' => 'issued'], $list->query());
-        $this->assertSame('https://masaar.test/list', $list->clearUrl());
-        $this->assertSame('https://masaar.test/list?amount_min=100&status=issued&sort=amount&dir=desc', $list->sortUrl('amount'));
+        $this->assertSame('https://example.test/list', $list->clearUrl());
+        $this->assertSame('https://example.test/list?amount_min=100&status=issued&sort=amount&dir=desc', $list->sortUrl('amount'));
     }
 
     public function test_a_second_click_turns_the_order(): void

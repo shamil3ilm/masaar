@@ -1,5 +1,5 @@
 /**
- * Masaar Invoice API Load Test
+ * Invoice API Load Test
  *
  * Tests the full invoice CRUD operations under load
  *

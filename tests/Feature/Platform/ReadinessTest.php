@@ -34,7 +34,7 @@ class ReadinessTest extends TestCase
         config([
             'database.connections.unreachable' => [
                 'driver' => 'sqlite',
-                'database' => sys_get_temp_dir().'/masaar-missing-'.uniqid().'/none.sqlite',
+                'database' => sys_get_temp_dir().'/platform-missing-'.uniqid().'/none.sqlite',
             ],
             'database.default' => 'unreachable',
         ]);

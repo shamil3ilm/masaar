@@ -40,7 +40,7 @@ class SupportTicketTest extends TestCase
 
         Mail::fake();
         Storage::fake('support');
-        config(['support.notify_address' => 'help@masaar.test']);
+        config(['support.notify_address' => 'help@example.test']);
 
         $this->acme = Organization::create(['name' => 'Acme Trading', 'country' => 'SA']);
         $this->member = User::factory()->create(['email' => 'sara@acme.test']);
@@ -62,7 +62,7 @@ class SupportTicketTest extends TestCase
         $this->assertSame(1, $ticket->number);
         $this->assertSame('T-000001', $ticket->reference());
         $this->assertSame(TicketStatus::Open, $ticket->status);
-        Mail::assertSent(TicketMail::class, fn (TicketMail $mail): bool => $mail->hasTo('help@masaar.test'));
+        Mail::assertSent(TicketMail::class, fn (TicketMail $mail): bool => $mail->hasTo('help@example.test'));
     }
 
     public function test_numbers_follow_on(): void

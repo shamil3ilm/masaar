@@ -30,12 +30,20 @@ class PublicDocsTest extends TestCase
     ];
 
     /**
-     * Names and places that only make sense inside the project - and hosts
-     * and addresses that were invented for it and serve nothing: a reader
-     * who wrote to support@masaar.sa or pointed a client at api.masaar.sa
-     * reached nobody. Examples use example.com.
+     * Names and places that only make sense inside the project.
      */
-    private const INTERNAL = '/shamil3ilm\.workers\.dev|docs\/superpowers|docs\/audit\/|_audit\/|erp-backend|erp-frontend|bounty|masaar\.(sa|io|com)\b|github\.com\/masaar\//i';
+    private const INTERNAL = '/shamil3ilm\.workers\.dev|docs\/superpowers|docs\/audit\/|_audit\/|erp-backend|erp-frontend|bounty/i';
+
+    /**
+     * Hosts and addresses that were invented for the project and serve
+     * nothing: a reader who wrote to support@ the product's name .sa, or
+     * pointed a client at api. the same, reached nobody. Examples use
+     * example.com. Held as SHA-256 of the lowercased name, as the partners
+     * are, so this file does not spell the product's name (BrandNameTest).
+     */
+    private const INVENTED_HOSTS = [
+        '5390b0c25867e3d1cd6c189c40389840329fcdad0f4e080d75b36ed0618d7a29',
+    ];
 
     /**
      * A calendar date, or a "last updated" line. Versions and legal citations
@@ -49,7 +57,7 @@ class PublicDocsTest extends TestCase
 
         foreach ($this->readmes() as $file) {
             foreach (file($file) ?: [] as $number => $line) {
-                if (preg_match(self::DATED, $line) || preg_match(self::INTERNAL, $line) || $this->namesPartner($line)) {
+                if (preg_match(self::DATED, $line) || $this->internal($line) || $this->namesPartner($line)) {
                     $offending[] = $this->relative($file).':'.($number + 1).': '.trim($line);
                 }
             }
@@ -64,7 +72,7 @@ class PublicDocsTest extends TestCase
 
         foreach ($this->docs() as $file) {
             foreach (file($file) ?: [] as $number => $line) {
-                if ($this->namesPartner($line) || preg_match(self::INTERNAL, $line)) {
+                if ($this->namesPartner($line) || $this->internal($line)) {
                     $offending[] = $this->relative($file).':'.($number + 1).': '.trim($line);
                 }
             }
@@ -82,6 +90,26 @@ class PublicDocsTest extends TestCase
     {
         $this->assertTrue($this->namesPartner('ops@'.strrev('ylfxat').'.test'));
         $this->assertFalse($this->namesPartner('api.example.com'));
+    }
+
+    /** An internal reference, or a host invented for the project. */
+    private function internal(string $line): bool
+    {
+        if (preg_match(self::INTERNAL, $line)) {
+            return true;
+        }
+
+        preg_match_all('/\b([a-z0-9-]+)\.(?:sa|io|com)\b|github\.com\/([a-z0-9-]+)\//i', strtolower($line), $hosts, PREG_SET_ORDER);
+
+        foreach ($hosts as $host) {
+            $name = ($host[2] ?? '') !== '' ? $host[2] : $host[1];
+
+            if (in_array(hash('sha256', $name), self::INVENTED_HOSTS, true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function namesPartner(string $line): bool

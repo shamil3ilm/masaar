@@ -42,7 +42,7 @@ trait RevocationAuthority
         openssl_x509_export(openssl_csr_sign($csr, null, $key, 365, $config, 1), $certificate);
         openssl_pkey_export($key, $privateKey, null, $config);
 
-        $chain = sys_get_temp_dir().'/masaar-test-chain-'.getmypid().'-'.spl_object_id($this).'.pem';
+        $chain = sys_get_temp_dir().'/platform-test-chain-'.getmypid().'-'.spl_object_id($this).'.pem';
         file_put_contents($chain, $certificate);
         config(['fatoora.certificate.chain_path' => $chain]);
 
@@ -100,7 +100,7 @@ trait RevocationAuthority
      */
     private function authorityConfig(): array
     {
-        $path = sys_get_temp_dir().'/masaar-test-authority.cnf';
+        $path = sys_get_temp_dir().'/platform-test-authority.cnf';
 
         if (! file_exists($path)) {
             file_put_contents($path, <<<'CNF'

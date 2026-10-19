@@ -44,8 +44,8 @@ class WebsiteSectionsTest extends TestCase
 
         foreach (array_keys($catalogue->all()) as $key) {
             $defaults = (string) json_encode($catalogue->defaults($key), JSON_UNESCAPED_UNICODE);
-            $this->assertStringNotContainsString('Masaar', $defaults, $key);
-            $this->assertDoesNotMatchRegularExpression('/(?<!\p{L})مسار(?!\p{L})/u', $defaults, $key);
+            $this->assertStringNotContainsString(Brand::name('en'), $defaults, $key);
+            $this->assertDoesNotMatchRegularExpression('/(?<!\p{L})'.preg_quote(Brand::name('ar'), '/').'(?!\p{L})/u', $defaults, $key);
         }
 
         config(['brand.name' => 'Nibras', 'brand.name_ar' => 'نبراس']);

@@ -63,7 +63,7 @@ class PipelineTenantGuardTest extends TestCase
             'api_key' => 'cp_test_'.$organization->id,
             'api_secret_hash' => License::hashSecret($secret),
             'organization_name' => $organization->name,
-            'contact_email' => 'ops@masaar.test',
+            'contact_email' => 'ops@example.test',
             'environment' => 'sandbox',
             // Professional: these submit standard invoices, which a Starter
             // licence does not include now that licence features are enforced.

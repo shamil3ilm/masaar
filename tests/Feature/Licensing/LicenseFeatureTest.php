@@ -126,7 +126,7 @@ class LicenseFeatureTest extends TestCase
             'api_key' => 'cp_test_'.$key,
             'api_secret_hash' => License::hashSecret('secret-'.$key),
             'organization_name' => 'Acme',
-            'contact_email' => 'ops@masaar.test',
+            'contact_email' => 'ops@example.test',
             'environment' => 'sandbox',
             'tier' => $tier,
             'status' => 'active',

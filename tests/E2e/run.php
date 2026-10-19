@@ -166,7 +166,7 @@ $acme = Organization::create($identity + ['name' => 'Acme', 'vat_number' => '300
 $rival = Organization::create($identity + ['name' => 'Rival', 'vat_number' => '311111111111113']);
 check('organizations created with vat', $acme->fresh()->vat_number === '300000000000003');
 
-$admin = User::create(['name' => 'Admin', 'email' => 'admin@masaar.test',
+$admin = User::create(['name' => 'Admin', 'email' => 'admin@example.test',
     'password' => Hash::make('secret-password'), 'status' => 'active']);
 // Enrolled in a second factor, as a platform admin must be before the console
 // lets them in. The secret is kept here so the harness can compute a code.
@@ -278,15 +278,15 @@ check('tenant sees only its own', $seen === ['ACME-1', 'ACME-2'], json_encode($s
 
 echo "\n=== login ===\n";
 check('csrf enforced', send($kernel, 'POST', '/login',
-    ['email' => 'admin@masaar.test', 'password' => 'secret-password'])->getStatusCode() === 419);
+    ['email' => 'admin@example.test', 'password' => 'secret-password'])->getStatusCode() === 419);
 
 $bad = send($kernel, 'POST', '/login',
-    ['_token' => token($kernel), 'email' => 'admin@masaar.test', 'password' => 'nope']);
+    ['_token' => token($kernel), 'email' => 'admin@example.test', 'password' => 'nope']);
 check('bad password refused', $bad->getStatusCode() === 302);
 check('failure audited', DB::table('audit_logs')->where('action', 'security.login.failed')->count() >= 1);
 
 $good = send($kernel, 'POST', '/login',
-    ['_token' => token($kernel), 'email' => 'admin@masaar.test', 'password' => 'secret-password']);
+    ['_token' => token($kernel), 'email' => 'admin@example.test', 'password' => 'secret-password']);
 check('password leads to the code', str_ends_with((string) $good->headers->get('Location'), '/login/two-factor'));
 check('a password alone is not in', send($kernel, 'GET', '/admin/organizations')->getStatusCode() === 302);
 

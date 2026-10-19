@@ -31,7 +31,7 @@ class SecretFileTest extends TestCase
         // live, and emptying it before and after every run deleted them. The
         // commands resolve it through storage_path(), so a scratch storage path
         // puts the same directory somewhere disposable.
-        $this->app->useStoragePath(sys_get_temp_dir().'/masaar-secret-file-test');
+        $this->app->useStoragePath(sys_get_temp_dir().'/platform-secret-file-test');
 
         $this->dir = storage_path('app/zatca');
         File::deleteDirectory($this->dir);

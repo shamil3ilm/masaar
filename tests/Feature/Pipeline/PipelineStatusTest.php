@@ -30,7 +30,7 @@ class PipelineStatusTest extends TestCase
         $issued = License::createWithCredentials([
             'org_id' => $this->acme->id,
             'organization_name' => 'Acme',
-            'contact_email' => 'acme@masaar.test',
+            'contact_email' => 'acme@example.test',
             'tier' => 'starter',
             'scopes' => ['compliance.status'],
         ]);

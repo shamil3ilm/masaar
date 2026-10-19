@@ -29,7 +29,7 @@ use Tests\TestCase;
  * which were English only.
  *
  * The Arabic here is copied from the authority's own illustrative invoices in
- * the annex of that guideline rather than translated, so the words on a Masaar
+ * the annex of that guideline rather than translated, so the words on an
  * invoice are the words ZATCA prints on its examples.
  */
 class InvoiceRenditionTest extends TestCase

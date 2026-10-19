@@ -9,6 +9,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
+use App\Support\Brand;
 use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
@@ -40,7 +41,7 @@ class AlertDeliveryTest extends TestCase
     {
         parent::setUp();
 
-        $this->alertFile = sys_get_temp_dir().'/masaar-alerts-'.uniqid().'.log';
+        $this->alertFile = sys_get_temp_dir().'/platform-alerts-'.uniqid().'.log';
 
         config([
             'logging.default' => 'stack',
@@ -163,7 +164,7 @@ class AlertDeliveryTest extends TestCase
      */
     public function test_a_failed_backup_is_critical(): void
     {
-        event(new BackupHasFailed(new Exception('bucket unreachable'), 's3', 'Masaar'));
+        event(new BackupHasFailed(new Exception('bucket unreachable'), 's3', Brand::name('en')));
 
         $this->assertStringContainsString('Backup failed', $this->alerts());
         $this->assertStringContainsString('bucket unreachable', $this->alerts());
@@ -171,7 +172,7 @@ class AlertDeliveryTest extends TestCase
 
     public function test_a_stale_backup_is_critical(): void
     {
-        event(new UnhealthyBackupWasFound('s3', 'Masaar', collect([
+        event(new UnhealthyBackupWasFound('s3', Brand::name('en'), collect([
             ['check' => 'MaximumAgeInDays', 'message' => 'The latest backup is too old'],
         ])));
 

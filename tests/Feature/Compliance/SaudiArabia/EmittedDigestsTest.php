@@ -68,14 +68,14 @@ class EmittedDigestsTest extends TestCase
             'postal_code' => '12345',
         ]);
 
-        $user = User::factory()->create(['email' => 'biller@masaar.test']);
+        $user = User::factory()->create(['email' => 'biller@example.test']);
         $user->organizations()->attach($this->organization->id, [
             'role' => 'admin',
             'status' => 'active',
         ]);
 
         $this->token = $this->postJson('/api/auth/login', [
-            'email' => 'biller@masaar.test',
+            'email' => 'biller@example.test',
             'password' => 'password',
         ])->json('data.token.access_token');
     }

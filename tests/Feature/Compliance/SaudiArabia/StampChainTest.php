@@ -148,7 +148,7 @@ class StampChainTest extends TestCase
 
     private function opensslConfig(): string
     {
-        $path = sys_get_temp_dir().'/masaar-test-chain-openssl.cnf';
+        $path = sys_get_temp_dir().'/platform-test-chain-openssl.cnf';
 
         if (! file_exists($path)) {
             file_put_contents($path, <<<'CNF'

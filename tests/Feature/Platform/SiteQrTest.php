@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Platform;
 
 use App\Domains\Platform\Services\PublicSite;
+use App\Support\Brand;
 use App\Support\QrCodeRenderer;
 use BaconQrCode\Common\ErrorCorrectionLevel;
 use BaconQrCode\Encoder\Encoder;
@@ -16,7 +17,7 @@ use Tests\TestCase;
 /**
  * The home page's invoice card carries a QR code that opens the website,
  * drawn in the brand's navy with round dots, rounded finder patterns and the
- * Masaar mark in the middle - and a phone can still read it.
+ * product's mark in the middle - and a phone can still read it.
  *
  * Two checks. The modules are read back off the SVG and compared with an
  * independent encode of the URL at level H: every dot drawn is one of the
@@ -116,8 +117,8 @@ class SiteQrTest extends TestCase
         $this->get('/')
             ->assertOk()
             ->assertSee('data-site-qr', false)
-            ->assertDontSee('Scan to visit Masaar')
-            ->assertDontSee('امسح لزيارة مسار')
+            ->assertDontSee('Scan to visit '.Brand::name('en'))
+            ->assertDontSee('امسح لزيارة '.Brand::name('ar'))
             ->assertSee('Sample Trading Co.')
             ->assertSee('Sample</p>', false)
             // No ZATCA sample: no VAT number, no TLV.

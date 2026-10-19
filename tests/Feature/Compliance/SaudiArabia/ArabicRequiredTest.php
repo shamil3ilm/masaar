@@ -259,7 +259,7 @@ class ArabicRequiredTest extends TestCase
     public function test_admin_grants_grace_with_audit(): void
     {
         $owner = User::factory()->create([
-            'is_platform_admin' => true, 'platform_role' => 'owner', 'email' => 'ops@masaar.test',
+            'is_platform_admin' => true, 'platform_role' => 'owner', 'email' => 'ops@example.test',
             'two_factor_secret' => 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ', 'two_factor_recovery_codes' => [], 'two_factor_confirmed_at' => now(),
         ]);
         $until = now()->addMonths(2)->toDateString();
@@ -271,7 +271,7 @@ class ArabicRequiredTest extends TestCase
             ->assertSessionHas('success');
 
         $grace = app(LanguageGrace::class)->describe($this->acme);
-        $this->assertSame([$until, 'Migrating its catalogue', 'ops@masaar.test', true], [$grace['until'], $grace['reason'], $grace['by'], $grace['active']]);
+        $this->assertSame([$until, 'Migrating its catalogue', 'ops@example.test', true], [$grace['until'], $grace['reason'], $grace['by'], $grace['active']]);
         $this->assertNotNull(DB::table('language_graces')->where('org_id', $this->acme->id)->value('created_at'));
         // The admin's user id, never a copy of their email.
         $this->assertSame($owner->id, DB::table('language_graces')->where('org_id', $this->acme->id)->value('updated_by'));
@@ -400,7 +400,7 @@ class ArabicRequiredTest extends TestCase
     {
         License::create([
             'org_id' => $this->acme->id, 'api_key' => 'cp_test_arabic', 'api_secret_hash' => License::hashSecret('secret-arabic'),
-            'organization_name' => 'Acme', 'contact_email' => 'ops@masaar.test', 'environment' => 'sandbox', 'tier' => 'enterprise',
+            'organization_name' => 'Acme', 'contact_email' => 'ops@example.test', 'environment' => 'sandbox', 'tier' => 'enterprise',
             'status' => 'active', 'scopes' => ['invoice.submit', 'compliance.status'],
         ]);
 

@@ -187,8 +187,8 @@ class RevocationSweepTest extends TestCase
 
         $this->store($this->issuedDevice(4097));
         $version = $this->versions()[0];
-        $owner = $this->operator('owner', 'owner@masaar.test');
-        $operations = $this->operator('operations', 'operations@masaar.test');
+        $owner = $this->operator('owner', 'owner@example.test');
+        $operations = $this->operator('operations', 'operations@example.test');
 
         $this->actingAs($owner)
             ->withSession(['_token' => 'token'])
@@ -211,8 +211,8 @@ class RevocationSweepTest extends TestCase
     public function test_revocation_policy_off_runs_at_once(): void
     {
         $policies = app(ApprovalPolicies::class);
-        $owner = $this->operator('owner', 'owner@masaar.test');
-        $this->operator('operations', 'operations@masaar.test');
+        $owner = $this->operator('owner', 'owner@example.test');
+        $this->operator('operations', 'operations@example.test');
         $policies->save(CertificateRevocationActions::REVOKE, $policies->clean(CertificateRevocationActions::REVOKE, [
             'approvals_required' => 1, 'approver_roles' => ['owner', 'operations'], 'expires_after_hours' => 24,
         ]), (string) $owner->id);
@@ -234,7 +234,7 @@ class RevocationSweepTest extends TestCase
         $version = $this->versions()[0];
         app(CredentialStore::class)->revoke($this->acme->id, null, $version->certificate_id);
 
-        $this->actingAs($this->operator('owner', 'owner@masaar.test'))
+        $this->actingAs($this->operator('owner', 'owner@example.test'))
             ->withSession(['_token' => 'token'])
             ->post("/admin/certificates/{$version->id}/revoke", ['reason' => 'ZATCA confirmed the key was exposed', '_token' => 'token'])
             ->assertSessionHas('error', 'This certificate is already recorded as revoked.');

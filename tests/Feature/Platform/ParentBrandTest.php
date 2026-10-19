@@ -10,7 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * The quiet signs of just let me know., the business behind Masaar.
+ * The quiet signs of just let me know., the business behind the product.
  *
  * Public pages only, all behind one admin setting, and never on anything a
  * customer issues or works in: an invoice, its PDF, its print view, an

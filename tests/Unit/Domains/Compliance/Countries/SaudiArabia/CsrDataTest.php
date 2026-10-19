@@ -99,7 +99,7 @@ class CsrDataTest extends TestCase
             'organizationUnit' => 'Riyadh Branch',
             'commonName' => 'EGS-1234567890',
             'vatNumber' => '300000000000003',
-            'serialNumber' => '1-Masaar|2-1.0|3-abc123',
+            'serialNumber' => '1-Acme|2-1.0|3-abc123',
             'location' => 'Riyadh',
             'industry' => 'Retail',
         ];

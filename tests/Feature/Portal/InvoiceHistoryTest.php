@@ -8,6 +8,7 @@ use App\Domains\Auth\Models\User;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\Tills;
+use App\Support\Brand;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Testing\TestResponse;
@@ -288,7 +289,7 @@ class InvoiceHistoryTest extends TestCase
     private function address(Organization $organization, string $name): array
     {
         return [
-            'org_id' => $organization->id, 'name' => $name, 'device_serial' => '1-'.$name.'|2-001|3-MASAAR',
+            'org_id' => $organization->id, 'name' => $name, 'device_serial' => '1-'.$name.'|2-001|3-'.strtoupper(Brand::slug()),
             'street' => 'King Road', 'building_number' => '1234', 'district' => 'Centre', 'city' => 'Riyadh', 'postal_code' => '12345',
         ];
     }

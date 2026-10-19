@@ -52,14 +52,14 @@ class RouteSmokeTest extends TestCase
             'postal_code' => '12345',
         ]);
 
-        $user = User::factory()->create(['email' => 'smoke@masaar.test']);
+        $user = User::factory()->create(['email' => 'smoke@example.test']);
         $user->organizations()->attach($organization->id, [
             'role' => 'admin',
             'status' => 'active',
         ]);
 
         $this->token = (string) $this->postJson('/api/auth/login', [
-            'email' => 'smoke@masaar.test',
+            'email' => 'smoke@example.test',
             'password' => 'password',
         ])->json('data.token.access_token');
 
@@ -70,7 +70,7 @@ class RouteSmokeTest extends TestCase
         $issued = License::createWithCredentials([
             'org_id' => $organization->id,
             'organization_name' => 'Smoke Trading',
-            'contact_email' => 'smoke@masaar.test',
+            'contact_email' => 'smoke@example.test',
             'tier' => 'starter',
         ]);
 

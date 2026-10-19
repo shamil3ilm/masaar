@@ -154,11 +154,11 @@ class JurisdictionIsolationTest extends TestCase
     public function test_saudi_invoice_refuses_uae_categories(): void
     {
         $organization = Organization::create(['name' => 'Acme', 'country' => 'SA']);
-        $user = User::factory()->create(['email' => 'biller@masaar.test']);
+        $user = User::factory()->create(['email' => 'biller@example.test']);
         $user->organizations()->attach($organization->id, ['role' => 'admin', 'status' => 'active']);
 
         $token = $this->postJson('/api/auth/login', [
-            'email' => 'biller@masaar.test',
+            'email' => 'biller@example.test',
             'password' => 'password',
         ])->json('data.token.access_token');
 

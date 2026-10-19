@@ -12,6 +12,7 @@ use App\Domains\Organization\Services\BranchAccess;
 use App\Domains\Platform\Customization\Customizations;
 use App\Domains\Platform\Customization\Level;
 use App\Domains\Platform\Customization\Scope;
+use App\Support\Brand;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Tests\Fixtures\MakesInvoices;
@@ -286,7 +287,7 @@ class BranchAccessTest extends TestCase
     private function branch(string $name, bool $ready = false): Branch
     {
         return Branch::withoutTenantScope(fn () => Branch::create([
-            'org_id' => $this->acme->id, 'name' => $name, 'device_serial' => '1-300000000000003|2-'.$name.'|3-MASAAR',
+            'org_id' => $this->acme->id, 'name' => $name, 'device_serial' => '1-300000000000003|2-'.$name.'|3-'.strtoupper(Brand::slug()),
             'street' => 'King Road', 'building_number' => '1234', 'district' => 'Centre', 'city' => $name, 'postal_code' => '12345',
             'onboarding_status' => $ready ? Branch::STATUS_ACTIVE : Branch::STATUS_PENDING,
         ]));

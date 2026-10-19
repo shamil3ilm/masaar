@@ -37,7 +37,7 @@ class TwoFactorTest extends TestCase
     {
         $this->enrolledAdmin();
 
-        $this->post('/login', ['email' => 'ops@masaar.test', 'password' => 'password'])
+        $this->post('/login', ['email' => 'ops@example.test', 'password' => 'password'])
             ->assertRedirect(route('login.two-factor'));
 
         $this->assertGuest();
@@ -47,7 +47,7 @@ class TwoFactorTest extends TestCase
     {
         $admin = $this->enrolledAdmin();
 
-        $this->post('/login', ['email' => 'ops@masaar.test', 'password' => 'password']);
+        $this->post('/login', ['email' => 'ops@example.test', 'password' => 'password']);
         $this->post('/login/two-factor', ['code' => Totp::code(self::SECRET, time())])
             ->assertRedirect(route('admin.dashboard'));
 
@@ -58,7 +58,7 @@ class TwoFactorTest extends TestCase
     {
         $this->enrolledAdmin();
 
-        $this->post('/login', ['email' => 'ops@masaar.test', 'password' => 'password']);
+        $this->post('/login', ['email' => 'ops@example.test', 'password' => 'password']);
         $this->post('/login/two-factor', ['code' => '000000'])->assertSessionHasErrors('code');
 
         $this->assertGuest();
@@ -73,11 +73,11 @@ class TwoFactorTest extends TestCase
         $this->enrolledAdmin();
         $code = Totp::code(self::SECRET, time());
 
-        $this->post('/login', ['email' => 'ops@masaar.test', 'password' => 'password']);
+        $this->post('/login', ['email' => 'ops@example.test', 'password' => 'password']);
         $this->post('/login/two-factor', ['code' => $code]);
         $this->post('/logout');
 
-        $this->post('/login', ['email' => 'ops@masaar.test', 'password' => 'password']);
+        $this->post('/login', ['email' => 'ops@example.test', 'password' => 'password']);
         $this->post('/login/two-factor', ['code' => $code])->assertSessionHasErrors('code');
 
         $this->assertGuest();
@@ -87,11 +87,11 @@ class TwoFactorTest extends TestCase
     {
         $this->enrolledAdmin(['abcde-fghij', 'klmno-pqrst']);
 
-        $this->post('/login', ['email' => 'ops@masaar.test', 'password' => 'password']);
+        $this->post('/login', ['email' => 'ops@example.test', 'password' => 'password']);
         $this->post('/login/two-factor', ['code' => 'abcde-fghij'])->assertRedirect(route('admin.dashboard'));
         $this->post('/logout');
 
-        $this->post('/login', ['email' => 'ops@masaar.test', 'password' => 'password']);
+        $this->post('/login', ['email' => 'ops@example.test', 'password' => 'password']);
         $this->post('/login/two-factor', ['code' => 'abcde-fghij'])->assertSessionHasErrors('code');
 
         $this->assertGuest();
@@ -103,12 +103,12 @@ class TwoFactorTest extends TestCase
      */
     public function test_an_unenrolled_admin_must_enrol(): void
     {
-        $admin = User::factory()->create(['email' => 'new@masaar.test', 'is_platform_admin' => true]);
+        $admin = User::factory()->create(['email' => 'new@example.test', 'is_platform_admin' => true]);
 
         // The enrolment link another admin sent them, opened in this browser.
         $this->get(app(EnrolmentLinks::class)->issue($admin, null))->assertRedirect(route('login'));
 
-        $this->post('/login', ['email' => 'new@masaar.test', 'password' => 'password'])
+        $this->post('/login', ['email' => 'new@example.test', 'password' => 'password'])
             ->assertRedirect(route('login.two-factor.setup'));
         $this->assertGuest();
 
@@ -139,11 +139,11 @@ class TwoFactorTest extends TestCase
     {
         $this->enrolledAdmin();
 
-        $this->postJson('/api/auth/login', ['email' => 'ops@masaar.test', 'password' => 'password'])
+        $this->postJson('/api/auth/login', ['email' => 'ops@example.test', 'password' => 'password'])
             ->assertUnauthorized();
 
         $this->postJson('/api/auth/login', [
-            'email' => 'ops@masaar.test',
+            'email' => 'ops@example.test',
             'password' => 'password',
             'two_factor_code' => Totp::code(self::SECRET, time()),
         ])->assertOk();
@@ -159,14 +159,14 @@ class TwoFactorTest extends TestCase
 
         for ($guess = 0; $guess < 5; $guess++) {
             $this->postJson('/api/auth/login', [
-                'email' => 'ops@masaar.test',
+                'email' => 'ops@example.test',
                 'password' => 'password',
                 'two_factor_code' => '000000',
             ])->assertUnauthorized();
         }
 
         $this->postJson('/api/auth/login', [
-            'email' => 'ops@masaar.test',
+            'email' => 'ops@example.test',
             'password' => 'password',
             'two_factor_code' => Totp::code(self::SECRET, time()),
         ])->assertStatus(429)->assertHeader('Retry-After');
@@ -174,9 +174,9 @@ class TwoFactorTest extends TestCase
 
     public function test_the_api_refuses_an_unenrolled_admin(): void
     {
-        User::factory()->create(['email' => 'new@masaar.test', 'is_platform_admin' => true]);
+        User::factory()->create(['email' => 'new@example.test', 'is_platform_admin' => true]);
 
-        $this->postJson('/api/auth/login', ['email' => 'new@masaar.test', 'password' => 'password'])
+        $this->postJson('/api/auth/login', ['email' => 'new@example.test', 'password' => 'password'])
             ->assertForbidden();
     }
 
@@ -199,7 +199,7 @@ class TwoFactorTest extends TestCase
      */
     private function enrolledAdmin(array $recoveryCodes = []): User
     {
-        $admin = User::factory()->create(['email' => 'ops@masaar.test', 'is_platform_admin' => true]);
+        $admin = User::factory()->create(['email' => 'ops@example.test', 'is_platform_admin' => true]);
 
         $admin->forceFill([
             'two_factor_secret' => self::SECRET,

@@ -78,7 +78,7 @@ class PageSizeTest extends TestCase
             'vat_number' => '300000000000003',
         ]);
 
-        $user = User::factory()->create(['email' => 'paging@masaar.test']);
+        $user = User::factory()->create(['email' => 'paging@example.test']);
         $user->organizations()->attach($organization->id, ['role' => 'admin', 'status' => 'active']);
 
         foreach (range(1, 20) as $n) {
@@ -86,14 +86,14 @@ class PageSizeTest extends TestCase
         }
 
         $token = (string) $this->postJson('/api/auth/login', [
-            'email' => 'paging@masaar.test',
+            'email' => 'paging@example.test',
             'password' => 'password',
         ])->json('data.token.access_token');
 
         $issued = License::createWithCredentials([
             'org_id' => $organization->id,
             'organization_name' => 'Paging Trading',
-            'contact_email' => 'paging@masaar.test',
+            'contact_email' => 'paging@example.test',
             'tier' => 'starter',
         ]);
 

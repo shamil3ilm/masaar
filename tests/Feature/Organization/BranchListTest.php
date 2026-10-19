@@ -51,11 +51,11 @@ class BranchListTest extends TestCase
             'postal_code' => '12345',
         ]);
 
-        $user = User::factory()->create(['email' => 'admin@masaar.test']);
+        $user = User::factory()->create(['email' => 'admin@example.test']);
         $user->organizations()->attach($this->acme->id, ['role' => 'admin', 'status' => 'active']);
 
         $this->token = $this->postJson('/api/auth/login', [
-            'email' => 'admin@masaar.test',
+            'email' => 'admin@example.test',
             'password' => 'password',
         ])->json('data.token.access_token');
     }

@@ -30,7 +30,7 @@ class AdminInvitationsTest extends TestCase
 
     public function test_a_stranger_becomes_an_admin(): void
     {
-        $url = $this->invite('ops@masaar.test', 'operations');
+        $url = $this->invite('ops@example.test', 'operations');
 
         $this->get($url)->assertOk()->assertSee(__('Create account and accept'));
 
@@ -41,7 +41,7 @@ class AdminInvitationsTest extends TestCase
             'terms' => '1',
         ])->assertRedirectContains('/login/two-factor/enrol/');
 
-        $omar = User::query()->where('email', 'ops@masaar.test')->sole();
+        $omar = User::query()->where('email', 'ops@example.test')->sole();
         $this->assertSame('operations', $omar->platform_role);
         $this->assertTrue($omar->hasVerifiedEmail());
         $this->assertFalse($omar->hasTwoFactor());
@@ -50,8 +50,8 @@ class AdminInvitationsTest extends TestCase
 
     public function test_an_account_accepts_signed_in(): void
     {
-        $sara = User::factory()->create(['email' => 'sara@masaar.test']);
-        $url = $this->invite('sara@masaar.test', 'support');
+        $sara = User::factory()->create(['email' => 'sara@example.test']);
+        $url = $this->invite('sara@example.test', 'support');
 
         $this->actingAs(User::factory()->create())->post($url.'/accept')->assertSessionHas('error');
         $this->actingAs($sara)->post($url.'/accept')->assertRedirectContains('/login/two-factor/enrol/');
@@ -61,14 +61,14 @@ class AdminInvitationsTest extends TestCase
 
     public function test_the_admins_page_lists_everything(): void
     {
-        $this->invite('later@masaar.test', 'auditor');
+        $this->invite('later@example.test', 'auditor');
 
         $this->actingAs($this->owner)->get(route('admin.admins.index'))
             ->assertOk()
             ->assertSee($this->owner->email)
             ->assertSee(__('Last sign-in'))
             ->assertSee(__('Never'))
-            ->assertSee('later@masaar.test');
+            ->assertSee('later@example.test');
     }
 
     private function invite(string $email, string $role): string

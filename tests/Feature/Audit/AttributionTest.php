@@ -263,7 +263,7 @@ class AttributionTest extends TestCase
             'api_key' => 'cp_test_acme',
             'api_secret_hash' => License::hashSecret('test-secret-acme'),
             'organization_name' => 'Acme',
-            'contact_email' => 'ops@masaar.test',
+            'contact_email' => 'ops@example.test',
             'environment' => 'sandbox',
             'tier' => 'starter',
             'status' => 'active',

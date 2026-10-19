@@ -41,7 +41,7 @@ class OnboardingComplianceCheckTest extends TestCase
             'postal_code' => '12345',
         ]);
 
-        $user = User::factory()->create(['email' => 'admin@masaar.test']);
+        $user = User::factory()->create(['email' => 'admin@example.test']);
         $user->organizations()->attach($organization->id, ['role' => 'admin', 'status' => 'active']);
 
         app(CredentialStore::class)->put($organization->id, null, CredentialStore::CCSID, [
@@ -53,7 +53,7 @@ class OnboardingComplianceCheckTest extends TestCase
         Http::fake(['*/compliance/invoices' => Http::response(['validationResults' => ['status' => 'PASS']])]);
 
         $token = $this->postJson('/api/auth/login', [
-            'email' => 'admin@masaar.test',
+            'email' => 'admin@example.test',
             'password' => 'password',
         ])->json('data.token.access_token');
 

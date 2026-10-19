@@ -82,8 +82,8 @@ class AdminCountriesTest extends TestCase
         $this->switch($this->owner, 'SA', false)->assertSessionHas('success');
 
         $this->assertFalse(app(JurisdictionRegistry::class)->get('SA')->enabled());
-        $this->assertSame('ops@masaar.test', app(JurisdictionAvailability::class)->switched('SA')['by']);
-        $this->open($this->owner)->assertSee('Admin switch, ops@masaar.test', false);
+        $this->assertSame('ops@example.test', app(JurisdictionAvailability::class)->switched('SA')['by']);
+        $this->open($this->owner)->assertSee('Admin switch, ops@example.test', false);
 
         $entry = AuditLog::where('action', 'admin.countries.update')->sole();
         $this->assertSame((string) $this->owner->id, $entry->user_id);
@@ -108,7 +108,7 @@ class AdminCountriesTest extends TestCase
         return User::factory()->create([
             'is_platform_admin' => true,
             'platform_role' => $role,
-            'email' => $role === 'owner' ? 'ops@masaar.test' : $role.'@masaar.test',
+            'email' => $role === 'owner' ? 'ops@example.test' : $role.'@example.test',
             'two_factor_secret' => 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
             'two_factor_recovery_codes' => [],
             'two_factor_confirmed_at' => now(),

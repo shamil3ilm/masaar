@@ -93,13 +93,13 @@ class AdminRolesTest extends TestCase
     public function test_an_owner_manages_admins(): void
     {
         $owner = $this->admin(PlatformRole::Owner);
-        $newcomer = User::factory()->create(['email' => 'ops@masaar.test']);
+        $newcomer = User::factory()->create(['email' => 'ops@example.test']);
         // Who may do what, not maker-checker (ApprovalsTest): once the
         // newcomer is an operations admin, the next change would wait for
         // their approval.
         $this->withoutAdminApprovals();
 
-        $this->actingAs($owner)->post('/admin/admins', ['email' => 'ops@masaar.test', 'role' => 'operations'])
+        $this->actingAs($owner)->post('/admin/admins', ['email' => 'ops@example.test', 'role' => 'operations'])
             ->assertSessionHas('success')
             ->assertSessionHas('enrolment_link');
 

@@ -12,6 +12,7 @@ use App\Domains\Licensing\Models\License;
 use App\Domains\Organization\Mail\OrganizationReviewedMail;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\FilingClearance;
+use App\Support\Brand;
 use App\Support\Errors\ComplianceException;
 use App\Support\Errors\ErrorCode;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -95,7 +96,7 @@ class OrganizationReviewTest extends TestCase
         $this->withToken($token)->postJson('/api/compliance/onboarding/ccsid', [
             'otp' => '123456',
             'common_name' => 'EGS1-Acme',
-            'serial_number' => '1-Masaar|2-1.0|3-abc',
+            'serial_number' => '1-'.Brand::csrSolution().'|2-1.0|3-abc',
         ])
             ->assertForbidden()
             ->assertJsonPath('error.code', ErrorCode::AUTH_ORGANIZATION_UNDER_REVIEW->value);
@@ -173,7 +174,7 @@ class OrganizationReviewTest extends TestCase
         $this->withToken(JWTAuth::fromUser($this->founder))->postJson('/api/compliance/onboarding/ccsid', [
             'otp' => '123456',
             'common_name' => 'EGS1-Acme',
-            'serial_number' => '1-Masaar|2-1.0|3-abc',
+            'serial_number' => '1-'.Brand::csrSolution().'|2-1.0|3-abc',
         ])->assertForbidden();
 
         Http::assertNothingSent();

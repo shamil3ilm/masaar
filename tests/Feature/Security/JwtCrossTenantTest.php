@@ -44,14 +44,14 @@ class JwtCrossTenantTest extends TestCase
         $this->acme = Organization::create(['name' => 'Acme', 'country' => 'SA']);
         $this->rival = Organization::create(['name' => 'Rival', 'country' => 'SA']);
 
-        $user = User::factory()->create(['email' => 'acme@masaar.test']);
+        $user = User::factory()->create(['email' => 'acme@example.test']);
         $user->organizations()->attach($this->acme->id, [
             'role' => 'admin',
             'status' => 'active',
         ]);
 
         $this->token = $this->postJson('/api/auth/login', [
-            'email' => 'acme@masaar.test',
+            'email' => 'acme@example.test',
             'password' => 'password',
         ])->json('data.token.access_token');
     }

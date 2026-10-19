@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace Tests\Feature\Platform;
 
 use App\Domains\Compliance\Engine\Services\JurisdictionAvailability;
+use App\Support\Brand;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
  * The public site says plainly what each country's invoices go through and
  * which standards they are built to, in the module's own words, and claims
- * nothing Masaar does not hold.
+ * nothing the platform does not hold.
  */
 class PublicStandardsTest extends TestCase
 {
@@ -57,7 +58,7 @@ class PublicStandardsTest extends TestCase
     {
         $html = strtolower((string) $this->get('/')->getContent());
 
-        foreach (['certified', 'certification', 'accredited by', 'approved by zatca', 'masaar is accredited'] as $claim) {
+        foreach (['certified', 'certification', 'accredited by', 'approved by zatca', strtolower(Brand::name('en')).' is accredited'] as $claim) {
             $this->assertStringNotContainsString($claim, $html);
         }
     }

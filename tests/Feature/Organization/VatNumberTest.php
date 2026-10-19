@@ -42,10 +42,10 @@ class VatNumberTest extends TestCase
     {
         parent::setUp();
 
-        User::factory()->create(['email' => 'admin@masaar.test']);
+        User::factory()->create(['email' => 'admin@example.test']);
 
         $this->token = $this->postJson('/api/auth/login', [
-            'email' => 'admin@masaar.test',
+            'email' => 'admin@example.test',
             'password' => 'password',
         ])->json('data.token.access_token');
     }

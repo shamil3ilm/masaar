@@ -123,7 +123,7 @@ class PlatformLicenseTest extends TestCase
      */
     public function test_the_old_default_secret_signs_nothing(): void
     {
-        $forged = 'ACME-PROD-20991231-'.substr(hash_hmac('sha256', 'ACME-PROD-20991231', 'masaar-default-secret-change-me'), 0, 8);
+        $forged = 'ACME-PROD-20991231-'.substr(hash_hmac('sha256', 'ACME-PROD-20991231', 'platform-default-secret-change-me'), 0, 8);
 
         config([
             'platform-license.enabled' => true,

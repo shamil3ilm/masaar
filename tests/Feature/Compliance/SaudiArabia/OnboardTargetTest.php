@@ -33,7 +33,7 @@ class OnboardTargetTest extends TestCase
     {
         parent::setUp();
 
-        $this->storage = sys_get_temp_dir().'/masaar-onboard-'.uniqid();
+        $this->storage = sys_get_temp_dir().'/platform-onboard-'.uniqid();
         mkdir($this->storage.'/app/zatca', 0700, true);
         $this->app->useStoragePath($this->storage);
     }

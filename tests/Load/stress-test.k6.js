@@ -1,5 +1,5 @@
 /**
- * Masaar Stress Test
+ * Stress Test
  *
  * Pushes the system to its limits to find breaking points
  * Run this to determine maximum capacity
@@ -102,7 +102,7 @@ export function handleSummary(data) {
     return {
         stdout: `
 ╔══════════════════════════════════════════════════════════════╗
-║             MASAAR STRESS TEST RESULTS                    ║
+║                    STRESS TEST RESULTS                    ║
 ╠══════════════════════════════════════════════════════════════╣
 ║  Peak Virtual Users: ${maxVUs.toString().padStart(10)}                          ║
 ║  Total Requests:     ${(reqs.count || 0).toString().padStart(10)}                          ║

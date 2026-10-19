@@ -12,7 +12,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * The /admin console is Masaar-internal and spans every tenant.
+ * The /admin console is platform-internal and spans every tenant.
  *
  * It exposes the full organization register, submission logs, and two routes
  * that mutate state, so no part of it is reachable without a platform-admin

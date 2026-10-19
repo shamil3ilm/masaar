@@ -30,9 +30,9 @@ class ApiEmailVerificationTest extends TestCase
 
     public function test_an_unverified_login_gets_no_token(): void
     {
-        User::factory()->unverified()->create(['email' => 'new@masaar.test']);
+        User::factory()->unverified()->create(['email' => 'new@example.test']);
 
-        $this->postJson('/api/auth/login', ['email' => 'new@masaar.test', 'password' => 'password'])
+        $this->postJson('/api/auth/login', ['email' => 'new@example.test', 'password' => 'password'])
             ->assertForbidden()
             ->assertJsonPath('error.code', ErrorCode::AUTH_EMAIL_NOT_VERIFIED->value)
             ->assertJsonMissingPath('data.token');
@@ -43,27 +43,27 @@ class ApiEmailVerificationTest extends TestCase
      */
     public function test_a_wrong_password_reveals_nothing(): void
     {
-        User::factory()->unverified()->create(['email' => 'new@masaar.test']);
+        User::factory()->unverified()->create(['email' => 'new@example.test']);
 
-        $this->postJson('/api/auth/login', ['email' => 'new@masaar.test', 'password' => 'wrong'])
+        $this->postJson('/api/auth/login', ['email' => 'new@example.test', 'password' => 'wrong'])
             ->assertUnauthorized();
     }
 
     public function test_a_verified_login_gets_a_token(): void
     {
-        User::factory()->create(['email' => 'ok@masaar.test']);
+        User::factory()->create(['email' => 'ok@example.test']);
 
-        $this->postJson('/api/auth/login', ['email' => 'ok@masaar.test', 'password' => 'password'])
+        $this->postJson('/api/auth/login', ['email' => 'ok@example.test', 'password' => 'password'])
             ->assertOk()
             ->assertJsonStructure(['data' => ['token' => ['access_token']]]);
     }
 
     public function test_the_link_can_be_sent_again(): void
     {
-        $user = User::factory()->unverified()->create(['email' => 'new@masaar.test']);
+        $user = User::factory()->unverified()->create(['email' => 'new@example.test']);
 
-        $this->postJson('/api/auth/email/resend', ['email' => 'new@masaar.test'])->assertOk();
-        $this->postJson('/api/auth/email/resend', ['email' => 'nobody@masaar.test'])->assertOk();
+        $this->postJson('/api/auth/email/resend', ['email' => 'new@example.test'])->assertOk();
+        $this->postJson('/api/auth/email/resend', ['email' => 'nobody@example.test'])->assertOk();
 
         Notification::assertSentTo($user, VerifyEmail::class);
         Notification::assertCount(1);

@@ -32,13 +32,13 @@ class AuthThrottleTest extends TestCase
 
     public function test_repeated_logins_are_throttled(): void
     {
-        User::factory()->create(['email' => 'target@masaar.test']);
+        User::factory()->create(['email' => 'target@example.test']);
 
         $statuses = [];
 
         for ($attempt = 0; $attempt < 25; $attempt++) {
             $statuses[] = $this->postJson('/api/auth/login', [
-                'email' => 'target@masaar.test',
+                'email' => 'target@example.test',
                 'password' => 'not-the-password',
             ])->getStatusCode();
         }
@@ -58,7 +58,7 @@ class AuthThrottleTest extends TestCase
         for ($attempt = 0; $attempt < 25; $attempt++) {
             $statuses[] = $this->postJson('/api/auth/register', [
                 'name' => 'Flood '.$attempt,
-                'email' => "flood{$attempt}@masaar.test",
+                'email' => "flood{$attempt}@example.test",
                 'password' => 'Password123!',
                 'password_confirmation' => 'Password123!',
             ])->getStatusCode();
@@ -77,16 +77,16 @@ class AuthThrottleTest extends TestCase
      */
     public function test_rotating_addresses_still_locks_the_account(): void
     {
-        User::factory()->create(['email' => 'target@masaar.test']);
+        User::factory()->create(['email' => 'target@example.test']);
 
         foreach (range(1, SignInThrottle::PER_ACCOUNT) as $address) {
             $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.'.$address])
-                ->postJson('/api/auth/login', ['email' => 'target@masaar.test', 'password' => 'not-the-password'])
+                ->postJson('/api/auth/login', ['email' => 'target@example.test', 'password' => 'not-the-password'])
                 ->assertUnauthorized();
         }
 
         $this->withServerVariables(['REMOTE_ADDR' => '198.51.100.7'])
-            ->postJson('/api/auth/login', ['email' => 'target@masaar.test', 'password' => 'password'])
+            ->postJson('/api/auth/login', ['email' => 'target@example.test', 'password' => 'password'])
             ->assertStatus(429);
     }
 
@@ -95,15 +95,15 @@ class AuthThrottleTest extends TestCase
      */
     public function test_the_console_shares_the_account_count(): void
     {
-        User::factory()->create(['email' => 'target@masaar.test']);
+        User::factory()->create(['email' => 'target@example.test']);
 
         foreach (range(1, SignInThrottle::PER_ACCOUNT) as $address) {
             $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.'.$address])
-                ->postJson('/api/auth/login', ['email' => 'target@masaar.test', 'password' => 'not-the-password']);
+                ->postJson('/api/auth/login', ['email' => 'target@example.test', 'password' => 'not-the-password']);
         }
 
         $this->withServerVariables(['REMOTE_ADDR' => '198.51.100.7'])
-            ->post('/login', ['email' => 'target@masaar.test', 'password' => 'password'])
+            ->post('/login', ['email' => 'target@example.test', 'password' => 'password'])
             ->assertSessionHasErrors('email');
 
         $this->assertGuest();
@@ -115,10 +115,10 @@ class AuthThrottleTest extends TestCase
      */
     public function test_a_first_login_still_works(): void
     {
-        User::factory()->create(['email' => 'legitimate@masaar.test']);
+        User::factory()->create(['email' => 'legitimate@example.test']);
 
         $this->postJson('/api/auth/login', [
-            'email' => 'legitimate@masaar.test',
+            'email' => 'legitimate@example.test',
             'password' => 'password',
         ])->assertSuccessful();
     }

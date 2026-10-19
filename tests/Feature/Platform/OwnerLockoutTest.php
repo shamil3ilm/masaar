@@ -68,8 +68,8 @@ class OwnerLockoutTest extends TestCase
     public function test_recovery_approves_one_request(): void
     {
         $this->policies()->save(ApprovalPolicies::BYPASS, app(ApprovalPolicies::class)->clean(ApprovalPolicies::BYPASS, ['enabled' => false]), (string) $this->owner->id);
-        User::factory()->create(['email' => 'new@masaar.test']);
-        $this->actingAs($this->owner)->post('/admin/admins', ['email' => 'new@masaar.test', 'role' => 'support', 'approval_reason' => 'First hire']);
+        User::factory()->create(['email' => 'new@example.test']);
+        $this->actingAs($this->owner)->post('/admin/admins', ['email' => 'new@example.test', 'role' => 'support', 'approval_reason' => 'First hire']);
         $request = ApprovalRequest::query()->where('action', 'admins.grant')->sole();
 
         $this->artisan('platform:owner-recover', ['--approve' => $request->id])
@@ -78,7 +78,7 @@ class OwnerLockoutTest extends TestCase
             ->assertSuccessful();
 
         $this->assertSame([ApprovalRequest::EXECUTED, null], [$request->fresh()->status, $request->fresh()->approved_by]);
-        $this->assertTrue((bool) User::query()->where('email', 'new@masaar.test')->value('is_platform_admin'));
+        $this->assertTrue((bool) User::query()->where('email', 'new@example.test')->value('is_platform_admin'));
         $this->assertTrue(DB::table('audit_logs')->where('action', 'security.approval.approved_from_server')->exists());
     }
 

@@ -8,6 +8,7 @@ use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Pipeline\Services\PipelineService;
+use App\Support\Brand;
 use App\Support\Errors\ComplianceException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -114,7 +115,7 @@ class BranchRoutingTest extends TestCase
             'org_id' => $organization->id,
             'name' => $name,
             // ZATCA requires each EGS unit to carry a unique device serial.
-            'device_serial' => '1-Masaar|2-1.0|3-'.uniqid(),
+            'device_serial' => '1-'.Brand::csrSolution().'|2-1.0|3-'.uniqid(),
             'street' => 'King Fahd Road',
             'building_number' => '1234',
             'district' => 'Al Olaya',

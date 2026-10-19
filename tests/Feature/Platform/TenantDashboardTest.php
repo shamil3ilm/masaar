@@ -184,7 +184,7 @@ class TenantDashboardTest extends TestCase
         $issued = License::createWithCredentials([
             'org_id' => $this->acme->id,
             'organization_name' => 'Acme',
-            'contact_email' => 'acme@masaar.test',
+            'contact_email' => 'acme@example.test',
             'tier' => 'starter',
         ]);
 
@@ -249,8 +249,8 @@ class TenantDashboardTest extends TestCase
 
     private function tenant(): self
     {
-        $user = User::query()->where('email', 'acme-admin@masaar.test')->first()
-            ?? User::factory()->create(['email' => 'acme-admin@masaar.test']);
+        $user = User::query()->where('email', 'acme-admin@example.test')->first()
+            ?? User::factory()->create(['email' => 'acme-admin@example.test']);
 
         if (! $user->belongsToOrganization($this->acme->id)) {
             $user->organizations()->attach($this->acme->id, ['role' => 'admin', 'status' => 'active']);

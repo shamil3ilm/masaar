@@ -8,6 +8,7 @@ use App\Domains\Auth\Models\User;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Webhook\Models\Webhook;
+use App\Support\Brand;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -48,7 +49,7 @@ class OrgAdminTest extends TestCase
             ->postJson('/api/compliance/onboarding/ccsid', [
                 'otp' => '123456',
                 'common_name' => 'EGS-1',
-                'serial_number' => '1-Masaar|2-1.0|3-abc',
+                'serial_number' => '1-'.Brand::csrSolution().'|2-1.0|3-abc',
             ])
             ->assertForbidden();
     }
@@ -166,7 +167,7 @@ class OrgAdminTest extends TestCase
 
     private function member(string $role): User
     {
-        $user = User::factory()->create(['email' => $role.'@masaar.test']);
+        $user = User::factory()->create(['email' => $role.'@example.test']);
 
         $user->organizations()->attach($this->organization->id, [
             'role' => $role,

@@ -70,7 +70,7 @@ class SafeUrlTest extends TestCase
     }
 
     /**
-     * With an allowlist configured it is the only gate: Masaar validates
+     * With an allowlist configured it is the only gate: the platform validates
      * certificates from one issuer chain, so an unvetted host has no business
      * being contacted whatever it resolves to.
      */

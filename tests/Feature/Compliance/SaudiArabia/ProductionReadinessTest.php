@@ -67,7 +67,7 @@ class ProductionReadinessTest extends TestCase
 
     public function test_an_unreadable_chain_is_not_ready(): void
     {
-        config(['fatoora.certificate.chain_path' => sys_get_temp_dir().'/masaar-no-chain-'.uniqid().'.pem']);
+        config(['fatoora.certificate.chain_path' => sys_get_temp_dir().'/platform-no-chain-'.uniqid().'.pem']);
 
         $this->getJson('/api/health/ready')->assertStatus(503);
     }

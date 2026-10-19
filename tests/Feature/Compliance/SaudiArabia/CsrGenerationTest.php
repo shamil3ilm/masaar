@@ -6,6 +6,7 @@ namespace Tests\Feature\Compliance\SaudiArabia;
 
 use App\Domains\Compliance\Countries\SaudiArabia\DTOs\CsrData;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\CsrBuilder;
+use App\Support\Brand;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -94,7 +95,7 @@ class CsrGenerationTest extends TestCase
     {
         $der = $this->der();
 
-        $this->assertStringContainsString('1-Masaar|2-1.0|3-abc123', $der, 'The CSR does not carry the solution serial number.');
+        $this->assertStringContainsString('1-'.Brand::csrSolution().'|2-1.0|3-abc123', $der, 'The CSR does not carry the solution serial number.');
         $this->assertStringContainsString('300000000000003', $der, 'The CSR does not carry the VAT registration.');
         $this->assertStringContainsString('1100', $der, 'The CSR does not declare the invoice types.');
     }
@@ -155,7 +156,7 @@ class CsrGenerationTest extends TestCase
             organizationUnit: 'Riyadh Branch',
             commonName: 'EGS-1234567890',
             vatNumber: '300000000000003',
-            serialNumber: '1-Masaar|2-1.0|3-abc123',
+            serialNumber: '1-'.Brand::csrSolution().'|2-1.0|3-abc123',
             location: 'Riyadh',
             industry: 'Retail',
             invoiceTypesStandard: $standard,

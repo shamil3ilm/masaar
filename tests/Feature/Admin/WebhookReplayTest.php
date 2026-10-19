@@ -52,7 +52,7 @@ class WebhookReplayTest extends TestCase
     {
         Http::fake(['203.0.113.10/*' => Http::response('{"received":true}', 200)]);
 
-        $webhook = $this->endpoint($this->organization('Acme Trading'), 'https://203.0.113.10/hooks/masaar');
+        $webhook = $this->endpoint($this->organization('Acme Trading'), 'https://203.0.113.10/hooks/einvoicing');
         $delivery = $this->delivery($webhook, ['response_status' => 503, 'success' => false]);
 
         $response = $this->replay($webhook, $delivery);
@@ -72,7 +72,7 @@ class WebhookReplayTest extends TestCase
         $this->assertTrue($replayed?->success);
 
         Http::assertSent(function ($request) {
-            return $request->url() === 'https://203.0.113.10/hooks/masaar'
+            return $request->url() === 'https://203.0.113.10/hooks/einvoicing'
                 && $request['event'] === 'invoice.cleared'
                 && $request['data'] === ['invoice_number' => 'INV-9001'];
         });
@@ -93,7 +93,7 @@ class WebhookReplayTest extends TestCase
     {
         Http::fake(fn () => throw new ConnectionException('cURL error 28: Operation timed out'));
 
-        $webhook = $this->endpoint($this->organization('Acme Trading'), 'https://203.0.113.10/hooks/masaar');
+        $webhook = $this->endpoint($this->organization('Acme Trading'), 'https://203.0.113.10/hooks/einvoicing');
         $delivery = $this->delivery($webhook, ['response_status' => 500, 'success' => false]);
 
         $response = $this->replay($webhook, $delivery);
@@ -123,7 +123,7 @@ class WebhookReplayTest extends TestCase
     {
         Http::fake();
 
-        $acme = $this->endpoint($this->organization('Acme Trading'), 'https://203.0.113.10/hooks/masaar');
+        $acme = $this->endpoint($this->organization('Acme Trading'), 'https://203.0.113.10/hooks/einvoicing');
         $rawafid = $this->endpoint($this->organization('Rawafid Logistics'), 'https://rawafid.test/webhooks/zatca');
         $delivery = $this->delivery($acme, ['response_status' => 503, 'success' => false]);
 
@@ -167,7 +167,7 @@ class WebhookReplayTest extends TestCase
 
         $webhook = $this->endpoint(
             $this->organization('Acme Trading'),
-            'https://203.0.113.10/hooks/masaar',
+            'https://203.0.113.10/hooks/einvoicing',
             active: false,
             failures: 10,
         );

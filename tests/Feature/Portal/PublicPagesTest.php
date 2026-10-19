@@ -38,12 +38,12 @@ class PublicPagesTest extends TestCase
      */
     public function test_the_privacy_notice_names_the_operator(): void
     {
-        config(['company.legal_name' => 'Masaar Information Technology Co.', 'company.email' => 'privacy@masaar.test']);
+        config(['company.legal_name' => 'Acme Information Technology Co.', 'company.email' => 'privacy@example.test']);
 
         $this->get('/privacy')
             ->assertOk()
-            ->assertSee('Masaar Information Technology Co.')
-            ->assertSee('privacy@masaar.test')
+            ->assertSee('Acme Information Technology Co.')
+            ->assertSee('privacy@example.test')
             ->assertSee('Personal Data Protection Law');
     }
 

@@ -30,7 +30,7 @@ class BackupTest extends TestCase
     {
         parent::setUp();
 
-        $source = sys_get_temp_dir().DIRECTORY_SEPARATOR.'masaar-backup-src-'.uniqid();
+        $source = sys_get_temp_dir().DIRECTORY_SEPARATOR.'platform-backup-src-'.uniqid();
         mkdir($source.DIRECTORY_SEPARATOR.'zatca', 0777, true);
 
         // Canonical, so relative_path matches the paths the package collects

@@ -33,12 +33,12 @@ class WebhookListTest extends TestCase
 
     public function test_endpoints_are_listed(): void
     {
-        $this->endpoint($this->organization('Acme Trading'), 'https://acme.test/hooks/masaar');
+        $this->endpoint($this->organization('Acme Trading'), 'https://acme.test/hooks/einvoicing');
 
         $this->asRequest(fn () => $this->actingAs($this->admin())
             ->get('/admin/webhooks')
             ->assertOk()
-            ->assertSee('https://acme.test/hooks/masaar')
+            ->assertSee('https://acme.test/hooks/einvoicing')
             ->assertSee('Acme Trading'));
     }
 
@@ -50,13 +50,13 @@ class WebhookListTest extends TestCase
      */
     public function test_endpoints_across_tenants_appear(): void
     {
-        $this->endpoint($this->organization('Acme Trading'), 'https://acme.test/hooks/masaar');
+        $this->endpoint($this->organization('Acme Trading'), 'https://acme.test/hooks/einvoicing');
         $this->endpoint($this->organization('Rawafid Logistics'), 'https://rawafid.test/webhooks/zatca');
 
         $this->asRequest(fn () => $this->actingAs($this->admin())
             ->get('/admin/webhooks')
             ->assertOk()
-            ->assertSee('https://acme.test/hooks/masaar')
+            ->assertSee('https://acme.test/hooks/einvoicing')
             ->assertSee('https://rawafid.test/webhooks/zatca'));
     }
 
@@ -67,7 +67,7 @@ class WebhookListTest extends TestCase
      */
     public function test_the_log_shows_deliveries(): void
     {
-        $webhook = $this->endpoint($this->organization('Acme Trading'), 'https://acme.test/hooks/masaar');
+        $webhook = $this->endpoint($this->organization('Acme Trading'), 'https://acme.test/hooks/einvoicing');
 
         WebhookLog::create([
             'webhook_id' => $webhook->id,
@@ -102,7 +102,7 @@ class WebhookListTest extends TestCase
      */
     public function test_a_truncated_log_says_so(): void
     {
-        $webhook = $this->endpoint($this->organization('Acme Trading'), 'https://acme.test/hooks/masaar');
+        $webhook = $this->endpoint($this->organization('Acme Trading'), 'https://acme.test/hooks/einvoicing');
 
         foreach (range(1, 51) as $n) {
             WebhookLog::create([
@@ -128,7 +128,7 @@ class WebhookListTest extends TestCase
      */
     public function test_a_complete_log_claims_nothing(): void
     {
-        $webhook = $this->endpoint($this->organization('Acme Trading'), 'https://acme.test/hooks/masaar');
+        $webhook = $this->endpoint($this->organization('Acme Trading'), 'https://acme.test/hooks/einvoicing');
 
         WebhookLog::create([
             'webhook_id' => $webhook->id,

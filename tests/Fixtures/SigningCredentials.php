@@ -112,7 +112,7 @@ trait SigningCredentials
 
     private function opensslConfig(): string
     {
-        $path = sys_get_temp_dir().'/masaar-test-openssl.cnf';
+        $path = sys_get_temp_dir().'/platform-test-openssl.cnf';
 
         if (! file_exists($path)) {
             // default_bits is read even for EC keys; without it PHP sees 0 and

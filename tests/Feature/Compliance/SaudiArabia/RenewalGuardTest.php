@@ -12,6 +12,7 @@ use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
+use App\Support\Brand;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
@@ -176,7 +177,7 @@ class RenewalGuardTest extends TestCase
     private function renew(?string $reason = null): void
     {
         app(OrganizationOnboarding::class)->requestCcsid($this->acme, '123456', [
-            'common_name' => 'EGS1', 'serial_number' => '1-Masaar|2-1.0|3-'.uniqid(),
+            'common_name' => 'EGS1', 'serial_number' => '1-'.Brand::csrSolution().'|2-1.0|3-'.uniqid(),
         ], $reason);
     }
 

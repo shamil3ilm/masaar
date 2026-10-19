@@ -10,6 +10,7 @@ use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Organization\ValueObjects\OrganizationContext;
 use App\Domains\Webhook\Models\Webhook;
+use App\Support\Brand;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -81,7 +82,7 @@ class TenantIsolationTest extends TestCase
             Branch::create([
                 'org_id' => $this->rival->id,
                 'name' => 'Rival Jeddah',
-                'device_serial' => '1-Masaar|2-1.0|3-rival',
+                'device_serial' => '1-'.Brand::csrSolution().'|2-1.0|3-rival',
                 'street' => 'Rival Street',
                 'building_number' => '9999',
                 'district' => 'Rival District',

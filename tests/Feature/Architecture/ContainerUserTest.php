@@ -9,7 +9,7 @@ use PHPUnit\Framework\TestCase;
 /**
  * The image may not start as a user that cannot do what its init expects.
  *
- * The Dockerfile ended with `USER masaar`, under a comment saying nginx would
+ * The Dockerfile ended with `USER <the application user>`, under a comment saying nginx would
  * run as root and then drop privileges - which that very line made
  * impossible. A process cannot acquire a privilege it was not started with.
  *
@@ -20,7 +20,7 @@ use PHPUnit\Framework\TestCase;
  *   nginx and php-fpm are declared with no user= because their masters are
  *   meant to be root, one to bind :80 and open /var/log/nginx and the other
  *   to hand its pool to www-data;
- *   the queue workers carry user=masaar, which is a per-program drop that
+ *   the queue workers carry user=app, which is a per-program drop that
  *   only works from root;
  *   entrypoint.sh guards its chown with `if [ "$(id -u)" = "0" ]`.
  *

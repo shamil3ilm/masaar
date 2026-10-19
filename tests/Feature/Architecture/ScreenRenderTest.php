@@ -24,6 +24,7 @@ use App\Domains\Support\Models\SupportMessage;
 use App\Domains\Support\Models\SupportTicket;
 use App\Domains\Webhook\Models\Webhook;
 use App\Domains\Webhook\Models\WebhookLog;
+use App\Support\Brand;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
@@ -191,7 +192,7 @@ class ScreenRenderTest extends TestCase
 
         $this->webhook = Webhook::create([
             'org_id' => $this->org->id,
-            'url' => 'https://acme.test/hooks/masaar',
+            'url' => 'https://acme.test/hooks/einvoicing',
             'events' => ['invoice.cleared'],
             'secret' => 'whsec_'.str_repeat('a', 32),
             'is_active' => true,
@@ -227,7 +228,7 @@ class ScreenRenderTest extends TestCase
 
         // A branch, so the branch screens and the switcher render with one.
         $this->branch = Branch::withoutTenantScope(fn () => Branch::create([
-            'org_id' => $this->org->id, 'name' => 'Olaya', 'device_serial' => '1-300000000000003|2-001|3-MASAAR',
+            'org_id' => $this->org->id, 'name' => 'Olaya', 'device_serial' => '1-300000000000003|2-001|3-'.strtoupper(Brand::slug()),
             'street' => 'Olaya Street', 'building_number' => '1234', 'district' => 'Al Olaya', 'city' => 'Riyadh', 'postal_code' => '12345',
         ]));
 

@@ -76,7 +76,7 @@ class MailLocaleTest extends TestCase
 
     public function test_the_mail_renders_in_arabic(): void
     {
-        $html = (new EmailChangeMail(name: 'Sara', confirmUrl: 'https://masaar.test/x', validHours: 24))->locale('ar')->render();
+        $html = (new EmailChangeMail(name: 'Sara', confirmUrl: 'https://example.test/x', validHours: 24))->locale('ar')->render();
 
         $this->assertStringContainsString('dir="rtl"', $html);
         $this->assertMatchesRegularExpression('/\p{Arabic}/u', $html);

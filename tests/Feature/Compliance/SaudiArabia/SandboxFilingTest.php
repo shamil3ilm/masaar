@@ -37,7 +37,7 @@ class SandboxFilingTest extends TestCase
         Storage::fake('creds');
         config(['fatoora.signing.disk' => 'creds']);
 
-        $this->storage = sys_get_temp_dir().'/masaar-sandbox-'.uniqid();
+        $this->storage = sys_get_temp_dir().'/platform-sandbox-'.uniqid();
         mkdir($this->storage.'/app/zatca', 0700, true);
         $this->app->useStoragePath($this->storage);
     }

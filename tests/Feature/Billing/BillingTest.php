@@ -18,6 +18,7 @@ use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Licensing\Models\License;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\LanguageGrace;
+use App\Support\Brand;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -152,7 +153,7 @@ class BillingTest extends TestCase
         $this->actingAs($owner)->get(route('admin.billing.show', $this->acme->id))->assertOk()->assertSee('The billing organization has no Arabic name');
         $this->actingAs($owner)->get(route('admin.countries'))->assertOk()->assertSee('The billing organization has no Arabic name');
 
-        $platform->forceFill(['name_ar' => 'منصة مسار'])->save();
+        $platform->forceFill(['name_ar' => 'منصة '.Brand::name('ar')])->save();
         $this->assertSame([], app(Billing::class)->readiness());
     }
 
@@ -332,8 +333,8 @@ class BillingTest extends TestCase
     private function platform(bool $issues = true): Organization
     {
         $platform = Organization::create([
-            'name' => 'Masaar Platform',
-            'name_ar' => 'منصة مسار',
+            'name' => Brand::name('en').' Platform',
+            'name_ar' => 'منصة '.Brand::name('ar'),
             'country' => 'SA',
             'vat_number' => '300000000000003',
             'compliance_profile' => ['zatca_onboarded' => true],

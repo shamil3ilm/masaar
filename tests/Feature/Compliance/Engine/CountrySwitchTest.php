@@ -58,14 +58,14 @@ class CountrySwitchTest extends TestCase
     {
         config(['fatoora.enabled' => true, 'peppol.countries.AE.enabled' => false]);
 
-        $admin = User::factory()->create(['email' => 'ops@masaar.test']);
+        $admin = User::factory()->create(['email' => 'ops@example.test']);
         $this->switches->set('SA', false, $admin->id);
         $this->switches->set('AE', true);
 
         $this->assertSame(['AE'], $this->registry()->enabled());
         // Kept as the admin's user id, shown as their email.
         $this->assertSame($admin->id, DB::table('settings')->where('key', 'jurisdiction.SA.enabled')->value('updated_by'));
-        $this->assertSame('ops@masaar.test', $this->switches->switched('SA')['by']);
+        $this->assertSame('ops@example.test', $this->switches->switched('SA')['by']);
         $this->assertFalse($this->switches->switched('SA')['enabled']);
 
         $this->switches->set('SA', true);

@@ -40,7 +40,7 @@ class JwtRevocationTest extends TestCase
 
         $this->acme = Organization::create(['name' => 'Acme', 'country' => 'SA']);
 
-        $this->user = User::factory()->create(['email' => 'member@masaar.test']);
+        $this->user = User::factory()->create(['email' => 'member@example.test']);
         $this->user->organizations()->attach($this->acme->id, [
             'role' => 'admin',
             'status' => 'active',
@@ -57,7 +57,7 @@ class JwtRevocationTest extends TestCase
         ]));
 
         $this->token = $this->postJson('/api/auth/login', [
-            'email' => 'member@masaar.test',
+            'email' => 'member@example.test',
             'password' => 'password',
         ])->json('data.token.access_token');
     }

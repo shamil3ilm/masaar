@@ -117,9 +117,9 @@ class ApprovalsTest extends TestCase
     public function test_a_lone_owner_still_acts(): void
     {
         $this->alone();
-        $newcomer = User::factory()->create(['email' => 'new@masaar.test']);
+        $newcomer = User::factory()->create(['email' => 'new@example.test']);
 
-        $this->actingAs($this->owner)->post('/admin/admins', ['email' => 'new@masaar.test', 'role' => 'support', 'approval_reason' => 'First hire'])->assertSessionHas('success');
+        $this->actingAs($this->owner)->post('/admin/admins', ['email' => 'new@example.test', 'role' => 'support', 'approval_reason' => 'First hire'])->assertSessionHas('success');
 
         $this->assertSame('support', $newcomer->fresh()->platform_role);
         $this->assertSame(0, ApprovalRequest::query()->count());
@@ -140,11 +140,11 @@ class ApprovalsTest extends TestCase
         $this->alone();
         $this->assertFalse(app(ApprovalPolicies::class)->allowsBypass());
 
-        User::factory()->create(['email' => 'new@masaar.test']);
-        $this->actingAs($this->owner)->post('/admin/admins', ['email' => 'new@masaar.test', 'role' => 'support', 'approval_reason' => 'First hire']);
+        User::factory()->create(['email' => 'new@example.test']);
+        $this->actingAs($this->owner)->post('/admin/admins', ['email' => 'new@example.test', 'role' => 'support', 'approval_reason' => 'First hire']);
 
         $this->assertSame(ApprovalRequest::PENDING, ApprovalRequest::query()->where('action', 'admins.grant')->sole()->status);
-        $this->assertFalse((bool) User::query()->where('email', 'new@masaar.test')->value('is_platform_admin'));
+        $this->assertFalse((bool) User::query()->where('email', 'new@example.test')->value('is_platform_admin'));
     }
 
     /**

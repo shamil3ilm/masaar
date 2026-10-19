@@ -64,7 +64,7 @@ class FeatureOverrideTest extends TestCase
 
         $page->assertSee('override_off')
             ->assertSee('Disputed invoices')
-            ->assertSee('Switched off by ops@masaar.test', false)
+            ->assertSee('Switched off by ops@example.test', false)
             ->assertSee('Not switchable per company')
             ->assertSee(route('admin.organizations.features', $this->acme->id), false);
     }
@@ -93,7 +93,7 @@ class FeatureOverrideTest extends TestCase
         $switch = app(FeatureOverrides::class)->for((string) $this->acme->id)['issue_invoices'];
         $this->assertSame('off', $switch['state']);
         $this->assertSame('Disputed invoices', $switch['reason']);
-        $this->assertSame('ops@masaar.test', $switch['by']);
+        $this->assertSame('ops@example.test', $switch['by']);
 
         $entry = AuditLog::where('action', 'admin.organizations.features')->sole();
         $this->assertSame((string) $owner->id, $entry->user_id);
@@ -231,7 +231,7 @@ class FeatureOverrideTest extends TestCase
             'api_key' => 'cp_test_acme',
             'api_secret_hash' => License::hashSecret('secret-acme'),
             'organization_name' => 'Acme',
-            'contact_email' => 'ops@masaar.test',
+            'contact_email' => 'ops@example.test',
             'environment' => 'sandbox',
             'tier' => $tier,
             'status' => 'active',
@@ -246,7 +246,7 @@ class FeatureOverrideTest extends TestCase
         return User::factory()->create([
             'is_platform_admin' => true,
             'platform_role' => $role,
-            'email' => $role === 'owner' ? 'ops@masaar.test' : $role.'@masaar.test',
+            'email' => $role === 'owner' ? 'ops@example.test' : $role.'@example.test',
             'two_factor_secret' => 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
             'two_factor_recovery_codes' => [],
             'two_factor_confirmed_at' => now(),

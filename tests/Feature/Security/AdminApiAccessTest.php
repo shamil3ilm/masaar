@@ -19,7 +19,7 @@ use Tymon\JWTAuth\Facades\JWTAuth;
  * The gate is `platform.admin`, not the `admin` alias. `admin` checks
  * role=admin inside the JWT's organization context, which every customer's own
  * org-admin carries — using it here would hand one tenant every other tenant's
- * figures. `platform.admin` checks users.is_platform_admin, which only Masaar
+ * figures. `platform.admin` checks users.is_platform_admin, which only platform
  * staff hold.
  */
 class AdminApiAccessTest extends TestCase

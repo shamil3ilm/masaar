@@ -93,7 +93,7 @@ class ApiKeyPepperTest extends TestCase
             'api_key' => 'cp_test_'.$org->id,
             'api_secret_hash' => License::hashSecret($secret),
             'organization_name' => 'Acme',
-            'contact_email' => 'ops@masaar.test',
+            'contact_email' => 'ops@example.test',
             'environment' => 'sandbox',
             'tier' => 'starter',
             'status' => 'active',

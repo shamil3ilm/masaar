@@ -7,6 +7,7 @@ namespace Tests\Feature\Compliance\SaudiArabia;
 use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Organization\Models\Organization;
+use App\Support\Brand;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -51,14 +52,14 @@ class OnboardingFlowTest extends TestCase
             'postal_code' => '12345',
         ]);
 
-        $user = User::factory()->create(['email' => 'onboarder@masaar.test']);
+        $user = User::factory()->create(['email' => 'onboarder@example.test']);
         $user->organizations()->attach($this->organization->id, [
             'role' => 'admin',
             'status' => 'active',
         ]);
 
         $this->token = $this->postJson('/api/auth/login', [
-            'email' => 'onboarder@masaar.test',
+            'email' => 'onboarder@example.test',
             'password' => 'password',
         ])->json('data.token.access_token');
     }
@@ -191,7 +192,7 @@ class OnboardingFlowTest extends TestCase
             ->postJson('/api/compliance/onboarding/ccsid', [
                 'otp' => '123456',
                 'common_name' => 'EGS-1234567890',
-                'serial_number' => '1-Masaar|2-1.0|3-abc123',
+                'serial_number' => '1-'.Brand::csrSolution().'|2-1.0|3-abc123',
             ]);
     }
 }
